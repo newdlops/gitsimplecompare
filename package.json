@@ -1,0 +1,153 @@
+{
+  "name": "git-simple-compare",
+  "displayName": "Git Simple Compare",
+  "description": "git 브랜치/파일을 간단하게 비교하고, 비교하면서 편집할 수 있는 확장",
+  "version": "0.1.0",
+  "publisher": "kodebox",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "compare",
+    "branch",
+    "merge"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitSimpleCompare.compareBranches",
+        "title": "브랜치끼리 비교",
+        "category": "Git Simple Compare",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.compareFileWithBranch",
+        "title": "이 파일을 브랜치와 비교",
+        "category": "Git Simple Compare",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.compareActiveFileWithBranch",
+        "title": "현재 파일을 브랜치와 비교",
+        "category": "Git Simple Compare",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.refreshChanges",
+        "title": "변경 목록 새로고침",
+        "category": "Git Simple Compare",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitSimpleCompare.openChangeDiff",
+        "title": "변경 파일 비교 열기",
+        "category": "Git Simple Compare"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitSimpleCompare",
+          "title": "Git Simple Compare",
+          "icon": "$(git-compare)"
+        }
+      ]
+    },
+    "views": {
+      "gitSimpleCompare": [
+        {
+          "id": "gitSimpleCompare.changes",
+          "name": "변경 파일",
+          "icon": "$(git-compare)",
+          "contextualTitle": "Git Simple Compare"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "gitSimpleCompare.changes",
+        "contents": "아직 비교한 브랜치가 없습니다.\n[브랜치끼리 비교](command:gitSimpleCompare.compareBranches)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitSimpleCompare.compareBranches",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.refreshChanges",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "gitSimpleCompare.compareActiveFileWithBranch",
+          "when": "editorIsOpen && resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gitSimpleCompare.compareFileWithBranch",
+          "when": "resourceScheme == file && !explorerResourceIsFolder",
+          "group": "3_compare"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gitSimpleCompare.openChangeDiff",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Git Simple Compare",
+      "properties": {
+        "gitSimpleCompare.diffBase": {
+          "type": "string",
+          "enum": [
+            "twoDot",
+            "threeDot"
+          ],
+          "enumDescriptions": [
+            "두 브랜치 끝점을 직접 비교 (base..target)",
+            "공통 조상 기준으로 비교 (base...target, PR 리뷰 방식)"
+          ],
+          "default": "twoDot",
+          "description": "브랜치끼리 비교할 때 사용할 diff 기준"
+        },
+        "gitSimpleCompare.includeRemoteBranches": {
+          "type": "boolean",
+          "default": true,
+          "description": "브랜치 선택 목록에 원격 브랜치를 포함할지 여부"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0"
+  }
+}
