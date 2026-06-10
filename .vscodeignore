@@ -8,4 +8,6 @@ tsconfig.json
 **/*.map
 **/*.ts
 node_modules/**
-.zoek-rs
+.zoek-rs/**
+.claude/**
+CLAUDE.md

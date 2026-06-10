@@ -26,7 +26,7 @@ export async function compareFileWithBranch(
   const config = readConfig();
   const branches = await service.listBranches(config.includeRemoteBranches);
   if (branches.length === 0) {
-    vscode.window.showWarningMessage("비교할 브랜치가 없습니다.");
+    vscode.window.showWarningMessage(vscode.l10n.t("No branches to compare."));
     return;
   }
 
@@ -34,7 +34,7 @@ export async function compareFileWithBranch(
   const current = branches.find((b) => b.isCurrent)?.name;
   const branch = await pickBranch(
     branches,
-    `'${relPath}' 와(과) 비교할 브랜치를 선택하세요`,
+    vscode.l10n.t("Select a branch to compare with '{0}'", relPath),
     current
   );
   if (!branch) {
@@ -57,7 +57,9 @@ export async function compareExplorerFileWithBranch(
 ): Promise<void> {
   const target = fileUri ?? vscode.window.activeTextEditor?.document.uri;
   if (!target) {
-    vscode.window.showWarningMessage("비교할 파일을 찾을 수 없습니다.");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Could not find a file to compare.")
+    );
     return;
   }
   await compareFileWithBranch(deps, target);
@@ -73,7 +75,9 @@ export async function compareActiveFileWithBranch(
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    vscode.window.showWarningMessage("열려 있는 파일이 없습니다.");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("No file is currently open.")
+    );
     return;
   }
   await compareFileWithBranch(deps, editor.document.uri);

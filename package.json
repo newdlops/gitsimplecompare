@@ -1,10 +1,19 @@
 {
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
-  "description": "git 브랜치/파일을 간단하게 비교하고, 비교하면서 편집할 수 있는 확장",
+  "description": "%ext.description%",
   "version": "0.1.0",
-  "publisher": "kodebox",
+  "publisher": "newdlops",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/newdlops/gitsimplecompare.git"
+  },
+  "bugs": {
+    "url": "https://github.com/newdlops/gitsimplecompare/issues"
+  },
+  "homepage": "https://github.com/newdlops/gitsimplecompare#readme",
+  "l10n": "./l10n",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -25,39 +34,129 @@
     "commands": [
       {
         "command": "gitSimpleCompare.compareBranches",
-        "title": "브랜치끼리 비교",
+        "title": "%cmd.compareBranches%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
       },
       {
         "command": "gitSimpleCompare.compareFileWithBranch",
-        "title": "이 파일을 브랜치와 비교",
+        "title": "%cmd.compareFileWithBranch%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
       },
       {
         "command": "gitSimpleCompare.compareActiveFileWithBranch",
-        "title": "현재 파일을 브랜치와 비교",
+        "title": "%cmd.compareActiveFileWithBranch%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
       },
       {
         "command": "gitSimpleCompare.refreshChanges",
-        "title": "변경 목록 새로고침",
+        "title": "%cmd.refreshChanges%",
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
       {
         "command": "gitSimpleCompare.openChangeDiff",
-        "title": "변경 파일 비교 열기",
+        "title": "%cmd.openChangeDiff%",
         "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.changeComparisonRef",
+        "title": "%cmd.changeComparisonRef%",
+        "category": "Git Simple Compare",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "gitSimpleCompare.viewAsTree",
+        "title": "%cmd.viewAsTree%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "gitSimpleCompare.viewAsList",
+        "title": "%cmd.viewAsList%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "gitSimpleCompare.changeSortOrder",
+        "title": "%cmd.changeSortOrder%",
+        "category": "Git Simple Compare",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "gitSimpleCompare.applyLeftToRight",
+        "title": "%cmd.applyLeftToRight%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "gitSimpleCompare.showGraph",
+        "title": "%cmd.showGraph%",
+        "category": "Git Simple Compare",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "gitSimpleCompare.startInteractiveRebase",
+        "title": "%cmd.startInteractiveRebase%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "gitSimpleCompare.splitCommits",
+        "title": "%cmd.splitCommits%",
+        "category": "Git Simple Compare",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "gitSimpleCompare.refreshConflicts",
+        "title": "%cmd.refreshConflicts%",
+        "category": "Git Simple Compare",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitSimpleCompare.takeOurs",
+        "title": "%cmd.takeOurs%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-left)"
+      },
+      {
+        "command": "gitSimpleCompare.takeTheirs",
+        "title": "%cmd.takeTheirs%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "gitSimpleCompare.markResolved",
+        "title": "%cmd.markResolved%",
+        "category": "Git Simple Compare",
+        "icon": "$(check)"
+      },
+      {
+        "command": "gitSimpleCompare.openMergeEditor",
+        "title": "%cmd.openMergeEditor%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "gitSimpleCompare.continueOperation",
+        "title": "%cmd.continueOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "gitSimpleCompare.abortOperation",
+        "title": "%cmd.abortOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(circle-slash)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "gitSimpleCompare",
-          "title": "Git Simple Compare",
+          "title": "%viewContainer.title%",
           "icon": "$(git-compare)"
         }
       ]
@@ -66,49 +165,190 @@
       "gitSimpleCompare": [
         {
           "id": "gitSimpleCompare.changes",
-          "name": "변경 파일",
+          "name": "%view.changes.name%",
+          "type": "webview",
           "icon": "$(git-compare)",
-          "contextualTitle": "Git Simple Compare"
+          "contextualTitle": "%viewContainer.title%"
+        },
+        {
+          "id": "gitSimpleCompare.conflicts",
+          "name": "%view.conflicts.name%",
+          "icon": "$(git-merge)",
+          "contextualTitle": "%viewContainer.title%",
+          "when": "gitSimpleCompare.hasConflicts || gitSimpleCompare.operationInProgress"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "gitSimpleCompare.changes",
-        "contents": "아직 비교한 브랜치가 없습니다.\n[브랜치끼리 비교](command:gitSimpleCompare.compareBranches)"
+        "view": "gitSimpleCompare.conflicts",
+        "contents": "%welcome.conflicts%"
       }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "gitSimpleCompare.showGraph",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@0"
+        },
+        {
+          "command": "gitSimpleCompare.viewAsTree",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.viewMode == list",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.viewAsList",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.viewMode == tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.changeSortOrder",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@2"
+        },
+        {
           "command": "gitSimpleCompare.compareBranches",
           "when": "view == gitSimpleCompare.changes",
-          "group": "navigation@1"
+          "group": "navigation@3"
         },
         {
           "command": "gitSimpleCompare.refreshChanges",
           "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@4"
+        },
+        {
+          "command": "gitSimpleCompare.startInteractiveRebase",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@1"
+        },
+        {
+          "command": "gitSimpleCompare.splitCommits",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@2"
+        },
+        {
+          "command": "gitSimpleCompare.continueOperation",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.abortOperation",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
           "group": "navigation@2"
+        },
+        {
+          "command": "gitSimpleCompare.refreshConflicts",
+          "when": "view == gitSimpleCompare.conflicts",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitSimpleCompare.openMergeEditor",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "inline@0"
+        },
+        {
+          "command": "gitSimpleCompare.takeOurs",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitSimpleCompare.takeTheirs",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitSimpleCompare.markResolved",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "inline@3"
+        },
+        {
+          "command": "gitSimpleCompare.takeOurs",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "1_resolve@1"
+        },
+        {
+          "command": "gitSimpleCompare.takeTheirs",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "1_resolve@2"
+        },
+        {
+          "command": "gitSimpleCompare.markResolved",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "1_resolve@3"
         }
       ],
       "editor/title": [
         {
+          "command": "gitSimpleCompare.applyLeftToRight",
+          "when": "gitSimpleCompare.activeDiff",
+          "group": "navigation@1"
+        },
+        {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
-          "when": "editorIsOpen && resourceScheme == file",
-          "group": "navigation"
+          "when": "resourceScheme == file && !gitSimpleCompare.activeDiff",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "gitSimpleCompare.compareActiveFileWithBranch",
+          "when": "resourceScheme == file",
+          "group": "1_gitSimpleCompare@1"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "gitSimpleCompare.compareActiveFileWithBranch",
+          "when": "resourceScheme == file",
+          "group": "1_gitSimpleCompare@1"
         }
       ],
       "explorer/context": [
         {
           "command": "gitSimpleCompare.compareFileWithBranch",
           "when": "resourceScheme == file && !explorerResourceIsFolder",
-          "group": "3_compare"
+          "group": "3_compare@1"
         }
       ],
       "commandPalette": [
         {
           "command": "gitSimpleCompare.openChangeDiff",
           "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.changeComparisonRef",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.applyLeftToRight",
+          "when": "gitSimpleCompare.activeDiff"
+        },
+        {
+          "command": "gitSimpleCompare.takeOurs",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.takeTheirs",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.markResolved",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.openMergeEditor",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.continueOperation",
+          "when": "gitSimpleCompare.operationInProgress"
+        },
+        {
+          "command": "gitSimpleCompare.abortOperation",
+          "when": "gitSimpleCompare.operationInProgress"
         }
       ]
     },
@@ -122,16 +362,23 @@
             "threeDot"
           ],
           "enumDescriptions": [
-            "두 브랜치 끝점을 직접 비교 (base..target)",
-            "공통 조상 기준으로 비교 (base...target, PR 리뷰 방식)"
+            "%config.diffBase.twoDot%",
+            "%config.diffBase.threeDot%"
           ],
           "default": "twoDot",
-          "description": "브랜치끼리 비교할 때 사용할 diff 기준"
+          "description": "%config.diffBase.desc%"
         },
         "gitSimpleCompare.includeRemoteBranches": {
           "type": "boolean",
           "default": true,
-          "description": "브랜치 선택 목록에 원격 브랜치를 포함할지 여부"
+          "description": "%config.includeRemote.desc%"
+        },
+        "gitSimpleCompare.graph.maxCommits": {
+          "type": "number",
+          "default": 300,
+          "minimum": 10,
+          "maximum": 5000,
+          "description": "%config.graph.maxCommits.desc%"
         }
       }
     }
@@ -147,6 +394,7 @@
   "devDependencies": {
     "@types/node": "^20.x",
     "@types/vscode": "^1.85.0",
+    "@vscode/codicons": "^0.0.45",
     "esbuild": "^0.24.0",
     "typescript": "^5.5.0"
   }

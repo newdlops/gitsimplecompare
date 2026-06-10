@@ -42,6 +42,10 @@ export interface FileChange {
   status: FileChangeStatus;
   path: string;
   oldPath?: string;
+  /** 추가된 라인 수(numstat 기반, 없으면 undefined) */
+  additions?: number;
+  /** 삭제된 라인 수(numstat 기반, 없으면 undefined) */
+  deletions?: number;
 }
 
 /**

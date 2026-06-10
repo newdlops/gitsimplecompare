@@ -2,22 +2,13 @@
 // - 이 확장에서 git에 접근하는 "유일한" 지점이다. UI/프로바이더/명령 레이어는
 //   반드시 GitService 를 통해서만 git을 다룬다(경계 분리·재사용성).
 // - vscode API에 의존하지 않으므로 단위 테스트나 다른 환경에서도 그대로 쓸 수 있다.
-import { execFile } from "node:child_process";
 import * as path from "node:path";
-import {
-  BranchInfo,
-  DiffBase,
-  FileChange,
-  FileChangeStatus,
-} from "./gitTypes";
+import { BranchInfo, DiffBase, FileChange } from "./gitTypes";
+import { GitError, runGit } from "./gitExec";
+import { parseNameStatusZ, parseNumstat } from "./diffParse";
 
-/** git 명령 실행 중 발생한 오류를 식별하기 위한 전용 에러 타입 */
-export class GitError extends Error {
-  constructor(message: string, public readonly stderr: string) {
-    super(message);
-    this.name = "GitError";
-  }
-}
+// GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
+export { GitError } from "./gitExec";
 
 /**
  * 특정 저장소 루트에 묶인 git 작업 단위.
@@ -34,10 +25,7 @@ export class GitService {
    */
   static async detectRepoRoot(cwd: string): Promise<string | undefined> {
     try {
-      const out = await GitService.exec(
-        ["rev-parse", "--show-toplevel"],
-        cwd
-      );
+      const out = await runGit(["rev-parse", "--show-toplevel"], cwd);
       return out.trim() || undefined;
     } catch {
       return undefined;
@@ -106,13 +94,20 @@ export class GitService {
   ): Promise<FileChange[]> {
     const range =
       diffBase === "threeDot" ? `${base}...${target}` : `${base}..${target}`;
-    const out = await this.run([
-      "diff",
-      "--name-status",
-      "-z", // NUL 구분 출력: 공백/특수문자 포함 경로를 안전하게 파싱
-      range,
+    // 상태(추가/수정/이름변경)와 증감 라인 수를 각각 조회해 합친다.
+    const [nameStatus, numstat] = await Promise.all([
+      this.run(["diff", "--name-status", "-z", range]),
+      this.run(["diff", "--numstat", "-M", range]),
     ]);
-    return this.parseNameStatusZ(out);
+    const counts = parseNumstat(numstat);
+    return parseNameStatusZ(nameStatus).map((change) => {
+      const stat = counts.get(change.path);
+      return {
+        ...change,
+        additions: stat?.additions,
+        deletions: stat?.deletions,
+      };
+    });
   }
 
   /**
@@ -154,66 +149,6 @@ export class GitService {
    * @param args git 인자 배열
    */
   private run(args: string[]): Promise<string> {
-    return GitService.exec(args, this.repoRoot);
-  }
-
-  /**
-   * --name-status -z 출력(NUL 구분)을 FileChange 배열로 파싱한다.
-   * - 일반 항목: <status>\0<path>\0
-   * - 이름변경/복사: <Rxxx|Cxxx>\0<oldPath>\0<newPath>\0
-   * @param raw git diff 의 원문 출력
-   */
-  private parseNameStatusZ(raw: string): FileChange[] {
-    const tokens = raw.split("\0").filter((t) => t.length > 0);
-    const changes: FileChange[] = [];
-    let i = 0;
-    while (i < tokens.length) {
-      const statusToken = tokens[i++];
-      const code = statusToken[0] as FileChangeStatus;
-      if (code === "R" || code === "C") {
-        // 이름변경/복사는 경로 토큰이 두 개(old, new)다.
-        const oldPath = tokens[i++];
-        const newPath = tokens[i++];
-        changes.push({ status: code, path: newPath, oldPath });
-      } else {
-        const filePath = tokens[i++];
-        changes.push({ status: code, path: filePath });
-      }
-    }
-    return changes;
-  }
-
-  /**
-   * git 명령을 실제로 실행하는 정적 래퍼.
-   * - execFile 로 셸을 거치지 않아 인자 이스케이프 문제가 없다.
-   * - 대용량 파일 내용(git show)도 받을 수 있도록 버퍼 한도를 넉넉히 둔다.
-   * @param args git 인자 배열
-   * @param cwd  실행 디렉터리
-   */
-  private static exec(args: string[], cwd: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      execFile(
-        "git",
-        args,
-        {
-          cwd,
-          maxBuffer: 64 * 1024 * 1024, // 64MB
-          windowsHide: true,
-          encoding: "utf8",
-        },
-        (error, stdout, stderr) => {
-          if (error) {
-            reject(
-              new GitError(
-                `git ${args.join(" ")} 실패: ${error.message}`,
-                stderr
-              )
-            );
-            return;
-          }
-          resolve(stdout);
-        }
-      );
-    });
+    return runGit(args, this.repoRoot);
   }
 }

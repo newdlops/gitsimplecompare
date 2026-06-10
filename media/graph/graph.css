@@ -1,0 +1,177 @@
+/* git 그래프 웹뷰 스타일. VS Code 테마 변수를 사용해 라이트/다크 테마에 자동 적응한다. */
+:root {
+  --row-height: 24px;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background: var(--vscode-editor-background);
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+/* 왼쪽: 그래프 + 커밋 행 목록 */
+#graph {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: auto;
+  outline: none;
+}
+
+#graph svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.row {
+  position: absolute;
+  height: var(--row-height);
+  line-height: var(--row-height);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  padding-right: 12px;
+}
+
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.row.selected {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.row .subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+}
+
+.row .meta {
+  flex: 0 0 auto;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.ref {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.ref.head {
+  background: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+  color: var(--vscode-editor-background);
+  font-weight: bold;
+}
+
+/* 오른쪽: 커밋 상세 */
+#detail {
+  flex: 0 0 38%;
+  max-width: 520px;
+  border-left: 1px solid var(--vscode-panel-border);
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+#detail .placeholder {
+  opacity: 0.6;
+}
+
+#detail h2 {
+  font-size: 1.05em;
+  margin: 0 0 4px;
+}
+
+#detail .commit-meta {
+  opacity: 0.8;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
+#detail .actions {
+  margin: 0 0 12px;
+}
+
+#detail .actions button {
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+#detail .actions button:hover {
+  filter: brightness(1.1);
+}
+
+#detail .message {
+  white-space: pre-wrap;
+  background: var(--vscode-textCodeBlock-background);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+#detail .files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#detail .file {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+#detail .file:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+#detail .file .status {
+  flex: 0 0 1.2em;
+  text-align: center;
+  font-weight: bold;
+}
+
+#detail .file .path {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#detail .file .stat {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+}
+
+.add {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+}
+
+.del {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}

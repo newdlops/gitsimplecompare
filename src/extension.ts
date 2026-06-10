@@ -2,17 +2,20 @@
 // - 여기서는 각 모듈을 조립(생성·등록)하고 정리(dispose)만 책임진다.
 //   실제 기능 로직은 git/providers/ui/commands 모듈에 위임한다(경계 분리).
 import * as vscode from "vscode";
-import { FileChange } from "./git/gitTypes";
 import { GitServiceRegistry } from "./git/serviceRegistry";
 import { BranchContentProvider } from "./providers/branchContentProvider";
-import { ChangesTreeProvider } from "./providers/changesTreeProvider";
+import { ChangesViewProvider } from "./webview/changesViewProvider";
+import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
+import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
+import { ConflictsController } from "./providers/conflictsController";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
+import { syncViewContext } from "./commands/viewState";
 
 /**
  * 확장이 활성화될 때 호출된다.
- * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/트리뷰/명령을 등록한 뒤
+ * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/트리뷰/명령/추적기를 등록한 뒤
  *   모든 Disposable 을 context.subscriptions 에 모아 자동 정리되게 한다.
  * @param context VS Code 확장 컨텍스트
  */
@@ -29,19 +32,50 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
-  // 3) 브랜치 비교 결과를 보여줄 트리뷰
-  const treeProvider = new ChangesTreeProvider();
-  const treeView = vscode.window.createTreeView<FileChange>(
-    "gitSimpleCompare.changes",
-    { treeDataProvider: treeProvider, showCollapseAll: false }
+  // 3) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
+  const changesView = new ChangesViewProvider(
+    context.extensionUri,
+    context.globalState
   );
-  context.subscriptions.push(treeView);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      ChangesViewProvider.viewId,
+      changesView
+    )
+  );
 
-  // 4) 명령 등록(핸들러는 commands 모듈에 위임)
-  const deps: CommandDeps = { registry, treeProvider, treeView };
+  // 4) 충돌 해결 뷰 + 컨트롤러
+  const conflictsProvider = new ConflictsTreeProvider();
+  context.subscriptions.push(
+    vscode.window.createTreeView("gitSimpleCompare.conflicts", {
+      treeDataProvider: conflictsProvider,
+    })
+  );
+  const conflicts = new ConflictsController(registry, conflictsProvider);
+
+  // 5) 명령 등록(핸들러는 commands 모듈에 위임)
+  const deps: CommandDeps = {
+    registry,
+    changesView,
+    extensionUri: context.extensionUri,
+    conflicts,
+  };
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
   }
+
+  // 6) "좌→우 반영" 버튼 노출용 컨텍스트 키 추적기 등록
+  context.subscriptions.push(registerActiveDiffTracker());
+
+  // 7) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
+  syncViewContext(deps);
+
+  // 8) 충돌 상태를 초기화하고, 편집기 전환·파일 저장 시 자동 갱신한다.
+  void conflicts.refresh();
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => void conflicts.refresh()),
+    vscode.workspace.onDidSaveTextDocument(() => void conflicts.refresh())
+  );
 }
 
 /**

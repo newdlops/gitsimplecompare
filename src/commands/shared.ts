@@ -2,18 +2,21 @@
 // - 저장소 컨텍스트 탐지와 설정 읽기처럼 여러 명령에서 반복되는 일을 모은다.
 // - 명령 본문(compareBranches/compareFile)은 이 헬퍼에 위임해 짧고 명확하게 유지한다.
 import * as vscode from "vscode";
-import { DiffBase, FileChange } from "../git/gitTypes";
+import { DiffBase } from "../git/gitTypes";
 import { GitService } from "../git/gitService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
-import { ChangesTreeProvider } from "../providers/changesTreeProvider";
+import { ChangesViewProvider } from "../webview/changesViewProvider";
+import { ConflictsController } from "../providers/conflictsController";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
   registry: GitServiceRegistry;
-  /** 브랜치 비교 결과를 보관·표시하는 트리 프로바이더 */
-  treeProvider: ChangesTreeProvider;
-  /** 트리뷰 노출/리빌에 사용하는 VS Code 트리뷰 핸들 */
-  treeView: vscode.TreeView<FileChange>;
+  /** 브랜치 비교 결과를 보관·표시하는 CHANGES 웹뷰 프로바이더 */
+  changesView: ChangesViewProvider;
+  /** 확장 루트 URI(웹뷰 미디어 리소스 경로 계산용) */
+  extensionUri: vscode.Uri;
+  /** 충돌 해결 UI 상태 컨트롤러 */
+  conflicts: ConflictsController;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */
@@ -46,14 +49,16 @@ export async function resolveServiceForFile(
 ): Promise<GitService | undefined> {
   if (fileUri.scheme !== "file") {
     vscode.window.showWarningMessage(
-      "로컬 파일에서만 브랜치 비교를 사용할 수 있습니다."
+      vscode.l10n.t("Branch comparison is only available for local files.")
     );
     return undefined;
   }
   const dir = dirNameOf(fileUri.fsPath);
   const service = await registry.resolve(dir);
   if (!service) {
-    vscode.window.showWarningMessage("이 파일은 git 저장소 안에 있지 않습니다.");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("This file is not inside a git repository.")
+    );
   }
   return service;
 }
@@ -88,7 +93,7 @@ export async function resolveWorkspaceService(
 
   if (services.length === 0) {
     vscode.window.showWarningMessage(
-      "열린 워크스페이스에서 git 저장소를 찾지 못했습니다."
+      vscode.l10n.t("No git repository found in the open workspace.")
     );
     return undefined;
   }
@@ -99,7 +104,7 @@ export async function resolveWorkspaceService(
   // 3) 저장소가 여러 개면 사용자에게 선택을 받는다.
   const picked = await vscode.window.showQuickPick(
     services.map((s) => ({ label: s.repoRoot, service: s })),
-    { placeHolder: "비교할 저장소를 선택하세요" }
+    { placeHolder: vscode.l10n.t("Select a repository to compare") }
   );
   return picked?.service;
 }

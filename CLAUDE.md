@@ -19,11 +19,24 @@ VS Code 확장 "Git Simple Compare" 저장소입니다.
 
 ## 아키텍처 개요
 
-- `git/gitService.ts` — git CLI를 감싼 유일한 git 접근 지점. 다른 레이어는 여기만 호출한다.
+- `git/gitExec.ts` — git CLI 를 실제 실행하는 저수준 래퍼(`runGit`, env 주입 지원) + `GitError`. 모든 git 서비스가 공유하는 유일한 실행 지점.
+- `git/gitService.ts` — 브랜치/변경목록/파일내용 등 비교용 git 작업.
+- `git/gitLogService.ts` — 그래프용 커밋 로그/커밋 상세 조회.
+- `git/conflictService.ts` — 충돌 파일 조회/ours·theirs 수용/작업상태(merge·rebase 등) 판별·continue·abort. `detectOperation` 공유 함수 포함.
+- `git/rebaseService.ts` — 비대화식 인터랙티브 rebase(todo/메시지를 헬퍼 스크립트로 주입). 헬퍼는 `media/rebase/rebaseEditor.js`(ELECTRON_RUN_AS_NODE 로 구동).
+- `git/diffHunkService.ts` — `git diff` 를 파일/hunk 로 파싱하고 선택 hunk 만 `git apply --cached` 로 부분 스테이징해 분할 커밋.
+- `git/diffParse.ts` — `--name-status`/`--numstat` 출력 파서(서비스들이 공유).
+- `graph/graphLayout.ts` — 커밋 DAG → 레인/간선 배치(순수 함수, vscode 비의존). `graph/graphTypes.ts` 에 도메인 타입.
+- `webview/{graphPanel,rebasePanel,splitPanel}.ts` — 각 웹뷰 패널 생애주기 + 메시지 라우팅. 프로토콜은 `webview/*Protocol.ts`, UI 는 `media/{graph,rebase,split}/`.
+- `providers/conflictsController.ts` + `conflictsTreeProvider.ts` — 충돌 뷰 상태 조정 + 트리 표시.
 - `providers/branchContentProvider.ts` — 커스텀 URI 스킴(`gitsimplecompare:`)으로 특정 ref의 파일 내용을 읽기 전용 가상 문서로 제공한다.
-- `providers/changesTreeProvider.ts` — 브랜치 비교 결과(변경 파일 목록)를 트리뷰로 보여준다.
+- `providers/changesTreeProvider.ts` + `changesTreeModel.ts` — 변경 파일 목록을 트리/리스트로 보여준다(모델은 순수 변환).
 - `ui/diffPresenter.ts` — `vscode.diff`를 호출해 비교 에디터를 연다. 한쪽이 작업트리 파일이면 편집 가능, 양쪽이 ref이면 읽기 전용.
 - `commands/` — 위 모듈을 조립해 사용자 명령을 구현한다. 로직은 최대한 하위 모듈로 위임한다.
+
+### i18n
+- UI 기본 영어. package.json 기여 문자열은 `%키%` + `package.nls.json`/`package.nls.ko.json`. 런타임 문자열은 `vscode.l10n.t(...)` + `l10n/bundle.l10n.ko.json`.
+- 코드 주석은 한글 유지(지침 4).
 
 ## 빌드 / 실행
 

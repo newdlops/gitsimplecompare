@@ -1,0 +1,31 @@
+{
+  "changelists": [
+    {
+      "name": "Default",
+      "files": [
+        "README.md",
+        "package.json",
+        "src/commands/compareBranches.ts",
+        "src/commands/compareFile.ts",
+        "src/commands/index.ts",
+        "src/commands/shared.ts",
+        "src/extension.ts",
+        "src/providers/changesTreeProvider.ts",
+        "src/ui/diffPresenter.ts",
+        "src/ui/quickPick.ts",
+        "CHANGELOG.md",
+        "README.ko.md",
+        "l10n/bundle.l10n.ko.json",
+        "package.nls.json",
+        "package.nls.ko.json",
+        "src/commands/applyChanges.ts",
+        "src/commands/viewState.ts",
+        "src/providers/activeDiffTracker.ts",
+        "src/providers/changesTreeModel.ts",
+        ".vscode/changelists.json",
+        "LICENSE"
+      ]
+    }
+  ],
+  "active": "Default"
+}

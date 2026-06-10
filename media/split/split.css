@@ -1,0 +1,129 @@
+/* 변경 분할(부분 커밋) 웹뷰 스타일. VS Code 테마 변수 사용. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background: var(--vscode-editor-background);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  padding: 12px 16px 4px;
+}
+
+header h1 {
+  font-size: 1.1em;
+  margin: 0 0 4px;
+}
+
+.hint {
+  opacity: 0.7;
+  margin: 0;
+  font-size: 0.9em;
+}
+
+#files {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.empty {
+  opacity: 0.6;
+  padding: 16px;
+}
+
+.file {
+  margin-bottom: 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.file-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--vscode-editorWidget-background);
+  font-weight: 600;
+}
+
+.file-head .path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hunk {
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.hunk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--vscode-editor-background);
+}
+
+.hunk pre {
+  margin: 0;
+  padding: 4px 8px 8px 28px;
+  overflow-x: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 0.9em);
+  line-height: 1.4;
+}
+
+.line-add {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+}
+
+.line-del {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}
+
+.line-meta {
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.8;
+}
+
+footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+#message {
+  flex: 1 1 auto;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  padding: 4px 8px;
+}
+
+button {
+  padding: 4px 14px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+button:hover {
+  filter: brightness(1.1);
+}

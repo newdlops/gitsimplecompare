@@ -1,36 +1,78 @@
 # Git Simple Compare
 
-git 브랜치와 파일을 간단하게 비교하고, **비교하면서 바로 편집**할 수 있는 VS Code 확장입니다.
+Compare git branches and files with simple, **editable** diffs — right inside VS Code.
 
-## 기능
 
-1. **브랜치끼리 비교** — 로컬/원격 브랜치 두 개를 골라 변경된 파일 목록을 트리뷰로 확인하고, 각 파일의 diff를 엽니다.
-2. **파일과 브랜치 비교** — 탐색기에서 파일을 우클릭해 특정 브랜치 버전과 비교합니다.
-3. **현재 파일과 브랜치 비교** — 열려 있는 파일을 특정 브랜치 버전과 비교합니다.
-4. **비교하면서 편집** — 파일 vs 브랜치 비교에서는 작업트리(현재 파일) 쪽이 편집 가능합니다. 고치고 저장하면 그대로 반영됩니다.
+## Features
 
-## 사용 방법
+1. **Compare branches** — pick two local/remote branches, browse the changed files in a tree (or flat list), and open each file's diff.
+2. **Compare a file with a branch** — right-click a file in the Explorer to diff it against a specific branch version.
+3. **Compare the active file with a branch** — diff the currently open file against a branch version from the editor title bar or context menu.
+4. **Edit while comparing** — in file-vs-branch diffs the working-tree side stays editable. You can also **apply the whole left (branch) version to the right (working) file in one click**.
+5. **Git Graph** — a visual commit graph across all branches. Click a commit to see its details (author, message, changed files), and click a file to open that commit's diff.
+6. **Conflict resolution** — during a merge/rebase/cherry-pick/revert, the Conflicts view lists unmerged files with one-click actions (open merge editor, accept ours/theirs, mark resolved) and Continue/Abort.
+7. **Interactive rebase** — edit a rebase plan in a drag-and-drop webview (reorder + pick/reword/squash/fixup/drop). Launch it from the graph ("Rebase from here") or the command palette.
+8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
 
-- 명령 팔레트(`Cmd/Ctrl+Shift+P`) → `Git Simple Compare: 브랜치끼리 비교`
-- 탐색기에서 파일 우클릭 → `이 파일을 브랜치와 비교`
-- 에디터 우측 상단 비교 아이콘 → `현재 파일을 브랜치와 비교`
-- 좌측 액티비티 바의 **Git Simple Compare** 아이콘에서 변경 파일 목록 확인
+## Usage
 
-## 설정
+- Command Palette (`Cmd/Ctrl+Shift+P`) → `Git Simple Compare: Compare Branches`
+- Explorer → right-click a file → `Compare This File with Branch`
+- Editor → right-click (or tab right-click) → `Compare Active File with Branch`
+- Editor title bar → comparison icon
+- Activity Bar → **Git Simple Compare** icon to see the changed-files view
+- Command Palette → `Git Simple Compare: Show Git Graph` (or the graph icon in the Changes view toolbar)
 
-| 설정 | 기본값 | 설명 |
+### Git Graph
+
+Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The number of commits loaded is controlled by `gitSimpleCompare.graph.maxCommits`.
+
+### Interactive rebase
+
+From the Git Graph, select a commit and click **Rebase from here** (or run `Git Simple Compare: Start Interactive Rebase…`). Arrange the plan by dragging rows and choosing an action per commit — **pick / reword / squash / fixup / drop**. Requires a clean working tree and confirms before rewriting history. If conflicts occur, the rebase pauses and the **Conflicts** view takes over; resolve and Continue.
+
+### Conflict resolution
+
+During a merge/rebase/cherry-pick/revert, the **Conflicts** view appears with the unmerged files. Per file: open the 3-way merge editor, **Accept Ours (`--ours`)**, **Accept Theirs (`--theirs`)**, or **Mark as Resolved**. Use **Continue** / **Abort** in the view toolbar. Note: during a rebase, `--ours`/`--theirs` are relative to the rebase (ours = the base being replayed onto), which is git's standard behavior.
+
+### Split changes into commits
+
+Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for the first commit, type a message, and commit; the remaining changes stay in your working tree so you can commit them separately. Requires no pre-staged changes (so each commit contains exactly what you select). New (untracked) files are not shown — `git add` them first.
+
+### The Changes view
+
+- Toggle between **tree** and **list** layout from the view toolbar.
+- Change the sort order (**name / path / status**) from the view toolbar.
+- Click any file to open its diff.
+
+### Apply Left → Right
+
+While a file-vs-branch diff is focused, the editor title bar shows an **Apply Left to Right** (→) button. It replaces the whole working file with the branch version. The change is applied as an editor edit, so you can review, undo, or tweak it before saving.
+
+## Language
+
+The UI defaults to **English**. When VS Code's display language is set to Korean (`ko`), all commands and messages switch to Korean automatically. Use *"Configure Display Language"* from the Command Palette to change it.
+
+## Settings
+
+| Setting | Default | Description |
 | --- | --- | --- |
-| `gitSimpleCompare.diffBase` | `twoDot` | 브랜치 비교 기준 (`twoDot`=직접 비교, `threeDot`=공통 조상 기준) |
-| `gitSimpleCompare.includeRemoteBranches` | `true` | 브랜치 선택 목록에 원격 브랜치 포함 여부 |
+| `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
+| `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
+| `gitSimpleCompare.graph.maxCommits` | `300` | Maximum number of commits to load in the Git Graph view |
 
-## 개발
+## Development
 
 ```bash
 npm install
-npm run compile     # 번들
-npm run watch       # 변경 감지 빌드
-npm run check-types # 타입 검사
+npm run compile     # bundle
+npm run watch       # incremental build
+npm run check-types # type check
 ```
 
-VS Code에서 `F5`를 누르면 Extension Development Host가 실행됩니다.
+Press `F5` in VS Code to launch the Extension Development Host.
 
+
+## License
+
+MIT

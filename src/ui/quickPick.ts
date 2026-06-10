@@ -11,12 +11,14 @@ import { BranchInfo } from "../git/gitTypes";
  * @param branches    선택 후보 브랜치 목록
  * @param placeHolder 입력창 안내 문구
  * @param activeName  맨 위로 올릴 브랜치 이름(선택)
+ * @param title       QuickPick 상단 제목(단계 안내 등, 선택)
  * @returns 선택한 브랜치, 취소 시 undefined
  */
 export async function pickBranch(
   branches: BranchInfo[],
   placeHolder: string,
-  activeName?: string
+  activeName?: string,
+  title?: string
 ): Promise<BranchInfo | undefined> {
   // activeName 브랜치를 가장 앞에 두고 나머지는 원래 순서를 유지한다.
   const ordered = activeName
@@ -25,6 +27,7 @@ export async function pickBranch(
   const items = ordered.map((b) => toQuickPickItem(b));
 
   const picked = await vscode.window.showQuickPick(items, {
+    title,
     placeHolder,
     matchOnDescription: true,
     ignoreFocusOut: true,
@@ -58,16 +61,18 @@ export async function pickBaseAndTarget(
 ): Promise<{ base: BranchInfo; target: BranchInfo } | undefined> {
   const base = await pickBranch(
     branches,
-    "기준 브랜치를 선택하세요 (왼쪽 / base)",
-    currentName
+    vscode.l10n.t("Pick the FROM branch — the base you compare against"),
+    currentName,
+    vscode.l10n.t("Compare Branches (1/2): choose FROM (base)")
   );
   if (!base) {
     return undefined;
   }
   const target = await pickBranch(
     branches,
-    `대상 브랜치를 선택하세요 (오른쪽 / target) — 기준: ${base.name}`,
-    currentName
+    vscode.l10n.t("Pick the TO branch — changes are shown relative to FROM"),
+    currentName,
+    vscode.l10n.t("Compare Branches (2/2): choose TO (target) — FROM is {0}", base.name)
   );
   if (!target) {
     return undefined;
@@ -86,9 +91,11 @@ interface BranchQuickPickItem extends vscode.QuickPickItem {
  */
 function toQuickPickItem(branch: BranchInfo): BranchQuickPickItem {
   const icon = branch.kind === "remote" ? "$(cloud)" : "$(git-branch)";
-  const descParts: string[] = [branch.kind === "remote" ? "원격" : "로컬"];
+  const descParts: string[] = [
+    branch.kind === "remote" ? vscode.l10n.t("remote") : vscode.l10n.t("local"),
+  ];
   if (branch.isCurrent) {
-    descParts.push("현재");
+    descParts.push(vscode.l10n.t("current"));
   }
   return {
     label: `${icon} ${branch.name}`,
