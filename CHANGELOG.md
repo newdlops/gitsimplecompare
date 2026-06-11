@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Folders are collapsible; From/To/Compare remain interactive. Fully localized.
   Styled to match VS Code's native tree/list — **codicon** icons, list/tree
   theme colors (hover, indent guides), and theme-aware From/To rows.
+  Organized as a collapsible **accordion** (Explorer/Source Control style):
+  - **Repositories** — workspace git repos with their current branch (like the
+    SCM repositories list); click to set the active repo.
+  - **Compare Branches** — From/To selectors, Compare, **and the branch
+    comparison result** (changed files; click to open the branch diff).
+  - **Changes** — the active repo's **working-tree changes** (like Source
+    Control's Changes); click to open HEAD ↔ working diff. Auto-refreshes on
+    save / editor switch.
+
+  Section collapse state is remembered.
 - **Explicit From/To setup**: the Changes view now starts with editable
   **From / To** rows and a **Compare** action, so you set both branches
   explicitly before comparing. The quick two-step picker now shows titled

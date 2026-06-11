@@ -109,6 +109,63 @@ export async function resolveWorkspaceService(
   return picked?.service;
 }
 
+/** Repositories 섹션에 표시할 저장소 정보(루트 + 현재 브랜치) */
+export interface RepoInfo {
+  root: string;
+  branch: string;
+}
+
+/**
+ * 워크스페이스(활성 에디터 + 폴더들)에서 git 저장소를 조용히 수집한다.
+ * - 각 저장소의 현재 브랜치까지 읽어 VS Code SCM 처럼 표시한다. 경고는 띄우지 않는다.
+ * @param registry GitService 레지스트리
+ */
+export async function discoverRepositories(
+  registry: GitServiceRegistry
+): Promise<RepoInfo[]> {
+  const roots = new Set<string>();
+  const active = vscode.window.activeTextEditor?.document.uri;
+  if (active?.scheme === "file") {
+    const svc = await registry.resolve(dirNameOf(active.fsPath));
+    if (svc) {
+      roots.add(svc.repoRoot);
+    }
+  }
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    const svc = await registry.resolve(folder.uri.fsPath);
+    if (svc) {
+      roots.add(svc.repoRoot);
+    }
+  }
+
+  const infos: RepoInfo[] = [];
+  for (const root of roots) {
+    let branch = "";
+    try {
+      branch = await registry.get(root).getCurrentBranch();
+    } catch {
+      branch = "";
+    }
+    infos.push({ root, branch });
+  }
+  return infos;
+}
+
+/**
+ * 비교에 사용할 저장소를 정한다.
+ * - CHANGES 뷰에서 선택된 활성 저장소를 우선하고, 없으면 워크스페이스에서 탐지한다.
+ * @param deps 공유 의존성(활성 저장소는 changesView 가 보유)
+ */
+export async function resolveCompareService(
+  deps: CommandDeps
+): Promise<GitService | undefined> {
+  const active = deps.changesView.getActiveRepo();
+  if (active) {
+    return deps.registry.get(active);
+  }
+  return resolveWorkspaceService(deps.registry);
+}
+
 /**
  * 경로에서 디렉터리 부분만 떼어낸다(플랫폼 구분자 모두 고려).
  * @param fsPath 파일 경로

@@ -13,11 +13,31 @@ import {
   compareActiveFileWithBranch,
   compareExplorerFileWithBranch,
 } from "./compareFile";
-import { changeSortOrder, setViewMode } from "./viewState";
+import { changeSortOrder, setViewMode, toggleSectionViewMode } from "./viewState";
+import type { TreeSection } from "../webview/changesViewProvider";
 import { applyLeftToRight } from "./applyChanges";
 import { showGraph } from "./showGraph";
 import { startInteractiveRebase } from "./rebase";
 import { showSplitCommits } from "./splitCommits";
+import {
+  commitChanges,
+  discardChanges,
+  openFile,
+  openWorkingChange,
+  refreshWorkingChanges,
+  stageChanges,
+  unstageChanges,
+} from "./workingChanges";
+import { runScmAction } from "./scmActions";
+import {
+  applyStash,
+  branchStash,
+  dropStash,
+  openStashFile,
+  popStash,
+  refreshStashes,
+  stashSelected,
+} from "./stash";
 import {
   abortOperation,
   continueOperation,
@@ -64,12 +84,81 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand("gitSimpleCompare.runComparison", () =>
       runComparison(deps)
     ),
+    // Changes 섹션: 작업트리 변경 새로고침 / 항목 열기
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.refreshWorkingChanges",
+      () => refreshWorkingChanges(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openWorkingChange",
+      (arg: { root: string; path: string }) => openWorkingChange(arg)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openFile",
+      (arg: { root: string; path: string }) => openFile(arg)
+    ),
+    // Changes 섹션: 스테이징/해제/버리기/커밋(웹뷰가 호출하는 내부 명령)
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.stage",
+      (paths?: string[]) => stageChanges(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.unstage",
+      (paths?: string[]) => unstageChanges(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.discard",
+      (paths?: string[]) => discardChanges(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.commit",
+      (op?: Parameters<typeof commitChanges>[1]) => commitChanges(deps, op)
+    ),
+    // 미트볼(...) 메뉴 액션 디스패치
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.scmAction",
+      (action: string) => runScmAction(deps, action)
+    ),
+    // Stash: 목록 새로고침 / 선택 파일 stash / apply·pop·drop·branch / 파일 보기
+    vscode.commands.registerCommand("gitSimpleCompare.refreshStashes", () =>
+      refreshStashes(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.stashSelected",
+      (paths?: string[]) => stashSelected(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.applyStash",
+      (ref: string) => applyStash(deps, ref)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.popStash",
+      (ref: string) => popStash(deps, ref)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.dropStash",
+      (arg: { ref: string; message?: string }) =>
+        dropStash(deps, arg?.ref, arg?.message)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.branchStash",
+      (ref: string) => branchStash(deps, ref)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openStashFile",
+      (arg: { ref: string; path: string }) => openStashFile(deps, arg)
+    ),
     // 보기 상태: 트리/리스트 토글 및 정렬 변경
     vscode.commands.registerCommand("gitSimpleCompare.viewAsTree", () =>
       setViewMode(deps, "tree")
     ),
     vscode.commands.registerCommand("gitSimpleCompare.viewAsList", () =>
       setViewMode(deps, "list")
+    ),
+    // 섹션별 트리/리스트 토글(웹뷰 섹션 헤더 버튼이 호출하는 내부 명령)
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.toggleSectionViewMode",
+      (section: TreeSection) => toggleSectionViewMode(deps, section)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.changeSortOrder", () =>
       changeSortOrder(deps)

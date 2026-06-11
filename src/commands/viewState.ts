@@ -4,30 +4,47 @@
 import * as vscode from "vscode";
 import { CommandDeps } from "./shared";
 import { SortKey, ViewMode } from "../providers/changesTreeModel";
+import { TreeSection } from "../webview/changesViewProvider";
 
-/** 현재 보기 모드를 when 절에서 쓰기 위한 컨텍스트 키 이름 */
+/** 현재(대표) 보기 모드를 when 절에서 쓰기 위한 컨텍스트 키 이름 */
 export const VIEW_MODE_CONTEXT = "gitSimpleCompare.viewMode";
 
 /**
- * 트리뷰 보기 모드를 바꾸고 컨텍스트 키도 함께 갱신한다.
+ * 상단 툴바의 전역 토글 — 모든 트리 섹션을 같은 보기 모드로 맞추고 컨텍스트 키도 갱신한다.
  * - view/title 의 "트리로 보기 / 목록으로 보기" 버튼 노출이 컨텍스트 키로 토글된다.
+ * - 섹션별 토글과 달리, 이 버튼은 Compare/Changes 를 한꺼번에 바꾼다.
  * @param deps 공유 의존성
  * @param mode 적용할 보기 모드
  */
 export function setViewMode(deps: CommandDeps, mode: ViewMode): void {
-  deps.changesView.setViewMode(mode);
+  deps.changesView.setAllViewModes(mode);
   void vscode.commands.executeCommand("setContext", VIEW_MODE_CONTEXT, mode);
 }
 
 /**
- * 현재 트리뷰 보기 모드를 컨텍스트 키에 한 번 동기화한다(활성화 시 호출).
+ * 특정 섹션의 보기 모드만 토글한다(웹뷰 섹션 헤더의 트리/리스트 버튼).
+ * - 토글 후 대표 모드를 컨텍스트 키에 다시 동기화해 툴바 아이콘이 어긋나지 않게 한다.
+ * @param deps    공유 의존성
+ * @param section 토글할 섹션("compare" | "changes")
+ */
+export function toggleSectionViewMode(
+  deps: CommandDeps,
+  section: TreeSection
+): void {
+  const next = deps.changesView.getViewMode(section) === "tree" ? "list" : "tree";
+  deps.changesView.setViewMode(section, next);
+  syncViewContext(deps);
+}
+
+/**
+ * 대표 보기 모드를 컨텍스트 키에 한 번 동기화한다(활성화 시 + 섹션 토글 후).
  * @param deps 공유 의존성
  */
 export function syncViewContext(deps: CommandDeps): void {
   void vscode.commands.executeCommand(
     "setContext",
     VIEW_MODE_CONTEXT,
-    deps.changesView.getViewMode()
+    deps.changesView.getRepresentativeViewMode()
   );
 }
 

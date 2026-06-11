@@ -10,7 +10,7 @@ import { ChangeDiffArgs } from "../providers/changesTreeModel";
 import {
   CommandDeps,
   readConfig,
-  resolveWorkspaceService,
+  resolveCompareService,
 } from "./shared";
 
 /**
@@ -19,7 +19,7 @@ import {
  * @param deps 공유 의존성(레지스트리/트리)
  */
 export async function compareBranches(deps: CommandDeps): Promise<void> {
-  const service = await resolveWorkspaceService(deps.registry);
+  const service = await resolveCompareService(deps);
   if (!service) {
     return;
   }
@@ -68,7 +68,7 @@ export async function changeComparisonRef(
   const comparison = deps.changesView.getComparison();
   const service = comparison
     ? deps.registry.get(comparison.repoRoot)
-    : await resolveWorkspaceService(deps.registry);
+    : await resolveCompareService(deps);
   if (!service) {
     return;
   }
@@ -117,7 +117,7 @@ export async function runComparison(deps: CommandDeps): Promise<void> {
     );
     return;
   }
-  const service = await resolveWorkspaceService(deps.registry);
+  const service = await resolveCompareService(deps);
   if (!service) {
     return;
   }

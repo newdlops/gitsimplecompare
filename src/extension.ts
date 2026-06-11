@@ -10,7 +10,7 @@ import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { ConflictsController } from "./providers/conflictsController";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
-import { CommandDeps } from "./commands/shared";
+import { CommandDeps, discoverRepositories } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 
 /**
@@ -70,11 +70,44 @@ export function activate(context: vscode.ExtensionContext): void {
   // 7) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
 
-  // 8) 충돌 상태를 초기화하고, 편집기 전환·파일 저장 시 자동 갱신한다.
+  // 8) 충돌/작업변경을 초기화하고, 편집기 전환·파일 저장 시 자동 갱신한다.
+  const refreshWorking = (): void => {
+    void vscode.commands.executeCommand(
+      "gitSimpleCompare.refreshWorkingChanges"
+    );
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+  };
   void conflicts.refresh();
+  refreshWorking();
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(() => void conflicts.refresh()),
-    vscode.workspace.onDidSaveTextDocument(() => void conflicts.refresh())
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      void conflicts.refresh();
+      refreshWorking();
+    }),
+    vscode.workspace.onDidSaveTextDocument(() => {
+      void conflicts.refresh();
+      refreshWorking();
+    })
+  );
+
+  // 9) Repositories 섹션 채우기: 활성화 시 + 워크스페이스 폴더 변경 시 재탐지.
+  const refreshRepos = async (): Promise<void> => {
+    changesView.setRepositories(await discoverRepositories(registry));
+    refreshWorking();
+  };
+  void refreshRepos();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshRepos())
+  );
+
+  // 10) 파일 아이콘/색상 테마가 바뀌면 Changes 웹뷰의 파일 아이콘도 다시 그린다.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("workbench.iconTheme")) {
+        changesView.refresh();
+      }
+    }),
+    vscode.window.onDidChangeActiveColorTheme(() => changesView.refresh())
   );
 }
 

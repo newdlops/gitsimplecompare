@@ -26,6 +26,58 @@ export function parseNameStatusZ(raw: string): FileChange[] {
 }
 
 /**
+ * `git status --porcelain -z --untracked-files=all` 출력을 스테이징/미스테이징 두 그룹으로 나눈다.
+ * - XY 두 글자에서 X(인덱스)=스테이징, Y(작업트리)=미스테이징. 한 파일이 양쪽에 모두 나올 수 있다
+ *   (예: "MM" → 스테이징된 수정 + 추가 미스테이징 수정).
+ * - 미추적("??")은 미스테이징 그룹에 A(추가)로 넣는다.
+ * - 충돌(U 계열, AA/DD)은 미스테이징 그룹에 U 로 넣는다(별도 충돌 뷰가 해결을 담당).
+ * - 이름변경/복사(R/C)는 다음 토큰이 원본 경로다.
+ * @param raw git status 의 원문 출력
+ */
+export function parsePorcelainGroups(raw: string): {
+  staged: FileChange[];
+  unstaged: FileChange[];
+} {
+  const tokens = raw.split("\0").filter((t) => t.length > 0);
+  const staged: FileChange[] = [];
+  const unstaged: FileChange[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const entry = tokens[i++];
+    const x = entry[0];
+    const y = entry[1];
+    const filePath = entry.slice(3); // 2글자 상태 + 공백 이후
+    // 이름변경/복사면 원본 경로 토큰이 뒤따른다.
+    const oldPath =
+      x === "R" || x === "C" || y === "R" || y === "C" ? tokens[i++] : undefined;
+
+    if (x === "?" && y === "?") {
+      unstaged.push({ status: "A", path: filePath });
+      continue;
+    }
+    if (x === "U" || y === "U" || entry.slice(0, 2) === "AA" || entry.slice(0, 2) === "DD") {
+      unstaged.push({ status: "U", path: filePath, oldPath });
+      continue;
+    }
+    if (x !== " " && x !== "?") {
+      staged.push({ status: mapStatusCode(x), path: filePath, oldPath });
+    }
+    if (y !== " " && y !== "?") {
+      unstaged.push({ status: mapStatusCode(y), path: filePath, oldPath });
+    }
+  }
+  return { staged, unstaged };
+}
+
+/**
+ * porcelain 상태 한 글자를 표시용 상태 코드로 변환한다(알 수 없으면 수정 M).
+ * @param code 상태 한 글자(예: "M", "A", "D", "R", "C", "T")
+ */
+function mapStatusCode(code: string): FileChangeStatus {
+  return "AMDRCT".includes(code) ? (code as FileChangeStatus) : "M";
+}
+
+/**
  * `git diff --numstat` 출력을 경로별 {추가, 삭제} 라인 수 맵으로 파싱한다.
  * - 바이너리 파일은 "-"로 표시되며 0 으로 처리한다.
  * - 이름변경 표기("old => new", "{a => b}/c")는 새 경로 기준으로 정규화한다(근사).

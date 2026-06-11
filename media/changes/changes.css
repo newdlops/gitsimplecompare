@@ -1,14 +1,28 @@
-/* CHANGES 사이드바 웹뷰 스타일 — VS Code 네이티브 트리/리스트 모양에 맞춤.
-   - codicon 폰트로 표준 아이콘 사용, list/tree 테마 변수로 색을 맞춰 테마 인식.
-   - 가로 스크롤: #files overflow-x:auto, .rows width:max-content. */
+/* CHANGES 사이드바 웹뷰 — VS Code Explorer/Source Control 스타일 아코디언.
+   - 섹션 헤더(접기/펼치기) + codicon + list/tree 테마 변수로 네이티브 톤·테마 인식.
+   - Changes 본문은 가로 스크롤(overflow-x). */
 html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
   color: var(--vscode-foreground);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+body {
+  overflow: hidden;
+}
+
+/* 섹션들이 뷰 높이를 가득 채우는 세로 스택(각 섹션은 sash 로 크기 조절). */
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .codicon {
@@ -16,19 +30,300 @@ body {
   line-height: 22px;
 }
 
-/* ── From/To 설정 영역 ── */
-#refs {
-  padding: 2px 0 4px;
-  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+/* ── 아코디언 섹션 ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* 헤더(22) + 본문 최소(~26). flex-grow 분배 시 이 높이 밑으로는 안 줄어든다. */
+  min-height: 48px;
 }
 
+/* 접힌 섹션은 헤더(22px)만 차지하고 크기 분배에서 빠진다. */
+.section.collapsed {
+  min-height: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 12px 0 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+  background: var(--vscode-sideBarSectionHeader-background, transparent);
+}
+
+.section-header:hover {
+  color: var(--vscode-foreground);
+}
+
+.section-header .twistie {
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.section-header .count {
+  margin-left: 6px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.section-header .header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.section-header:hover .header-actions {
+  opacity: 1;
+}
+
+.header-action {
+  padding: 0 3px;
+  border-radius: 4px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.header-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.section-body {
+  /* 헤더를 뺀 섹션의 남은 높이를 채우고, 내용이 넘치면 세로 스크롤한다. */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 4px;
+  /* 본문 들여쓰기는 각 행(.row/.ref/.empty)의 padding-left 로 준다.
+     행 자체는 전체 폭을 차지하므로 hover 하이라이트가 끝까지 칠해진다. */
+}
+
+.section.collapsed .section-body {
+  display: none;
+}
+
+.section.dragging {
+  opacity: 0.55;
+}
+
+.section.drop-before::before,
+.section.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 20;
+  background: var(--vscode-focusBorder);
+}
+
+.section.drop-before::before {
+  top: 0;
+}
+
+.section.drop-after::after {
+  bottom: 0;
+}
+
+/* ── 리사이즈 핸들(sash) — VS Code PaneView 의 섹션 경계와 동일한 상호작용 ── */
+.sash {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  cursor: ns-resize;
+  z-index: 10;
+}
+
+.sash::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  /* 네이티브처럼 약간 지연된 뒤 경계선이 나타난다. */
+  transition: background 0.1s ease 0.25s;
+}
+
+.sash:hover::before,
+.sash.active::before {
+  background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+}
+
+/* 드래그 중에는 커서를 고정하고 텍스트 선택을 막는다. */
+body.resizing {
+  cursor: ns-resize;
+  user-select: none;
+}
+
+body.resizing .sash.active::before {
+  background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+  transition: none;
+}
+
+/* ── 파일 다중 선택 사각형 ── */
+body.marquee-selecting {
+  cursor: default;
+  user-select: none;
+}
+
+.selection-marquee {
+  position: fixed;
+  z-index: 900;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 1px solid var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-focusBorder) 22%, transparent);
+}
+
+/* ── 공통 행 ── */
+.row {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  line-height: 22px;
+  /* 헤더(아코디언 타이틀)와 구분되도록 본문 행을 들여쓴다.
+     헤더 타이틀(좌측 24px)에 맞춰 행 내용이 한 단계 안쪽에서 시작하게 한다. */
+  padding-left: 20px;
+  padding-right: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* 다중 선택 강조(VS Code 리스트 선택과 동일 톤). hover 보다 우선. */
+.row.selected,
+.row.selected:hover {
+  background: var(
+    --vscode-list-inactiveSelectionBackground,
+    var(--vscode-list-activeSelectionBackground, rgba(127, 127, 127, 0.28))
+  );
+  color: var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground));
+}
+
+body:focus-within .row.selected,
+body:focus-within .row.selected:hover {
+  background: var(
+    --vscode-list-activeSelectionBackground,
+    var(--vscode-list-inactiveSelectionBackground, rgba(127, 127, 127, 0.28))
+  );
+  color: var(
+    --vscode-list-activeSelectionForeground,
+    var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground))
+  );
+}
+
+.row.single-selected {
+  box-shadow: inset 0 0 0 1px
+    var(--vscode-list-focusOutline, var(--vscode-focusBorder));
+}
+
+.row .icon {
+  flex: 0 0 16px;
+  margin-right: 4px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.row.file > .icon {
+  margin-right: 2px;
+}
+
+.row .extension-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  margin-right: 4px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.95;
+}
+
+.row .extension-icon img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.row .theme-file-icon-glyph {
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.row.selected .extension-icon {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.row.selected .name,
+.row.selected .dir,
+.row.selected .icon,
+.row.selected .stat {
+  color: inherit;
+}
+
+.row .name {
+  flex: 0 0 auto;
+}
+
+/* ── Repositories ── */
+.repo .branch {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.repo .branch .codicon {
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.repo .badge {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.repo.active .name {
+  font-weight: 600;
+}
+
+.repo .icon.codicon-pass-filled {
+  color: var(--vscode-charts-green, var(--vscode-gitDecoration-addedResourceForeground));
+}
+
+/* ── Compare Branches ── */
 .ref {
   display: flex;
   align-items: center;
   gap: 6px;
   height: 22px;
   line-height: 22px;
-  padding: 0 8px 0 12px;
+  /* From/To 행도 본문이므로 .row 와 동일한 들여쓰기를 적용한다. */
+  padding: 0 8px 0 20px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -46,10 +341,6 @@ body {
   color: var(--vscode-descriptionForeground);
 }
 
-.ref .value {
-  color: var(--vscode-foreground);
-}
-
 .ref .value.empty {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
@@ -57,7 +348,6 @@ body {
 
 .ref .actions {
   margin-left: auto;
-  display: flex;
   opacity: 0;
 }
 
@@ -67,22 +357,21 @@ body {
 
 .action {
   padding: 0 3px;
-  color: var(--vscode-icon-foreground, var(--vscode-foreground));
   border-radius: 4px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
 }
 
 .action:hover {
   background: var(--vscode-toolbar-hoverBackground);
 }
 
-/* VS Code welcome-view 버튼 톤의 Compare 버튼 */
 #compare {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   width: calc(100% - 24px);
-  margin: 8px 12px 4px;
+  margin: 6px 12px 2px;
   padding: 3px 14px;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 2px;
@@ -102,47 +391,37 @@ body {
   outline-offset: 2px;
 }
 
-/* ── 변경 파일 트리/리스트 (가로 스크롤) ── */
-#files {
-  overflow: auto;
+/* ── 파일 트리(Compare 는 가로 스크롤) ── */
+.files {
+  overflow-x: auto;
 }
 
 .rows {
   width: max-content;
   min-width: 100%;
-  padding: 2px 0;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  height: 22px;
-  line-height: 22px;
-  padding-right: 12px;
-  white-space: nowrap;
-  cursor: pointer;
+/* 작업트리(Staged/Changes) 목록은 가로 스크롤 대신 이름을 줄임표 처리하고
+   통계·액션을 오른쪽에 고정한다 → hover 액션이 항상 보이고 다중선택이 편하다(VS Code SCM 동일). */
+.wt-files {
+  overflow-x: hidden;
 }
 
-.row:hover {
-  background: var(--vscode-list-hoverBackground);
+.wt-files .rows {
+  width: auto;
+  min-width: 0;
 }
 
-.row .twistie {
-  flex: 0 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--vscode-foreground);
+.wt-files .row .name,
+.wt-files .row .dir {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.row .icon {
-  flex: 0 0 16px;
-  margin-right: 4px;
-  color: var(--vscode-icon-foreground, var(--vscode-foreground));
-}
-
-.row .name {
-  flex: 0 0 auto;
+.wt-files .row .stat {
+  margin-left: auto;
 }
 
 .row .dir {
@@ -158,7 +437,15 @@ body {
   font-size: 0.9em;
 }
 
-/* 상태별 색: 파일명과 상태 아이콘에 git 데코레이션 색 적용(SCM 과 동일 톤) */
+.row .twistie {
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-foreground);
+}
+
+/* 상태별 색(파일명·아이콘) — SCM 과 동일 톤 */
 .row[data-status="A"] .name,
 .row[data-status="A"] .icon {
   color: var(--vscode-gitDecoration-addedResourceForeground);
@@ -180,7 +467,6 @@ body {
   color: var(--vscode-gitDecoration-renamedResourceForeground);
 }
 
-/* +/- 숫자 색상 */
 .add {
   color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
 }
@@ -188,7 +474,6 @@ body {
   color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
 }
 
-/* 폴더 자식: 들여쓰기 가이드 라인(테마 인식) */
 .children {
   border-left: 1px solid var(--vscode-tree-indentGuidesStroke, transparent);
   margin-left: 16px;
@@ -199,6 +484,261 @@ body {
 }
 
 .empty {
-  padding: 10px 12px;
+  /* 빈 안내 문구도 본문 들여쓰기에 맞춘다. */
+  padding: 6px 12px 6px 20px;
   color: var(--vscode-descriptionForeground);
+}
+
+/* ── Stashes(브랜치처럼 펼쳐서 파일 보기) ── */
+.stash {
+  display: flex;
+  flex-direction: column;
+}
+
+.stash.collapsed .stash-files {
+  display: none;
+}
+
+.stash-header .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stash-meta {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+/* ── 커밋 박스(메시지 + 분할 커밋 버튼) ── */
+.commit-box {
+  padding: 6px 12px 8px;
+}
+
+.commit-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 26px;
+  max-height: 200px;
+  resize: none;
+  padding: 4px 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.commit-input:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.commit-input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.commit-bar {
+  display: flex;
+  margin-top: 6px;
+}
+
+.commit-btn,
+.commit-caret {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  border: 1px solid var(--vscode-button-border, transparent);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.commit-btn {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 2px 0 0 2px;
+}
+
+.commit-caret {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-left: 1px solid
+    var(--vscode-button-separator, rgba(255, 255, 255, 0.25));
+  border-radius: 0 2px 2px 0;
+}
+
+.commit-btn:hover,
+.commit-caret:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.commit-btn:focus-visible,
+.commit-caret:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* ── Staged / Changes 그룹(VS Code SCM 의 리소스 그룹처럼 접기 헤더로 구분) ── */
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 접힌 그룹은 헤더만 남기고 파일 목록을 숨긴다. */
+.group.collapsed .files {
+  display: none;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  line-height: 22px;
+  padding-left: 8px;
+  padding-right: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-header:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.group-header .twistie {
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.group-title {
+  font-weight: 700;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+}
+
+.group-header .count {
+  margin-left: 6px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.group-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.group-header:hover .group-actions {
+  opacity: 1;
+}
+
+.group-action {
+  padding: 0 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.group-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+/* ── 행 hover 인라인 액션(stage/unstage/discard) ── */
+.row-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+  padding-left: 8px;
+  opacity: 0;
+}
+
+.row:hover .row-actions {
+  opacity: 1;
+}
+
+.row-action {
+  padding: 0 3px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.row-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+/* ── 미트볼/커밋 드롭다운 메뉴(드릴다운) ── */
+.menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 4px 0;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  border: 1px solid
+    var(--vscode-menu-border, var(--vscode-editorWidget-border, transparent));
+  border-radius: 5px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menu-item:hover {
+  color: var(--vscode-menu-selectionForeground, inherit);
+  background: var(
+    --vscode-menu-selectionBackground,
+    var(--vscode-list-hoverBackground)
+  );
+}
+
+.menu-label {
+  flex: 1 1 auto;
+}
+
+.menu-check {
+  flex: 0 0 16px;
+  font-size: 14px;
+}
+
+.menu-sub {
+  flex: 0 0 auto;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.menu-back {
+  color: var(--vscode-descriptionForeground);
+}
+
+.menu-sep {
+  height: 0;
+  margin: 4px 0;
+  border-top: 1px solid
+    var(
+      --vscode-menu-separatorBackground,
+      var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35))
+    );
 }

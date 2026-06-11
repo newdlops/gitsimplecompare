@@ -33,6 +33,24 @@ export type FileChangeStatus =
   | "B";
 
 /**
+ * stash 항목 한 개(`git stash list` 한 줄).
+ * - index: 0-based 스택 위치(stash@{index}).
+ * - ref: "stash@{0}" 형태의 참조.
+ * - message: 표시용 메시지(WIP 면 "<sha> <subject>", -m 지정 시 그 메시지).
+ * - branch: stash 가 만들어진 브랜치(가능하면 추출, 없으면 빈 문자열).
+ * - relativeDate: 상대 시각("2 hours ago" 등).
+ * - hash: stash 커밋 해시(파일 캐시 키로 사용).
+ */
+export interface StashEntry {
+  index: number;
+  ref: string;
+  message: string;
+  branch: string;
+  relativeDate: string;
+  hash: string;
+}
+
+/**
  * 두 ref 사이에서 변경된 파일 한 개.
  * - path: 저장소 루트 기준 상대 경로(현재/대상 경로).
  * - oldPath: 이름변경/복사(R/C)일 때의 원본 경로.
