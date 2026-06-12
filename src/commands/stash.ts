@@ -7,11 +7,12 @@ import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
 import { FileChange, StashEntry } from "../git/gitTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
+import { logInfo } from "../ui/outputLog";
 
 /** 웹뷰로 보낼 stash(목록 항목 + 담긴 파일 목록). */
 export type StashView = StashEntry & { files: FileChange[] };
 
-/** `${root}@${hash}` → 파일 목록 캐시(해시가 같으면 재사용). */
+/** `${root}@${ref}@${hash}` → 파일 목록 캐시(같은 stash 항목이면 재사용). */
 const fileCache = new Map<string, FileChange[]>();
 
 /** 활성 저장소의 GitService(없으면 undefined). */
@@ -39,8 +40,9 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
   }
   try {
     const entries = await svc.listStashes();
-    // 더 이상 없는 해시의 캐시는 정리한다.
-    const valid = new Set(entries.map((e) => `${root}@${e.hash}`));
+    logInfo("stashes listed", { root, count: entries.length });
+    // 더 이상 없는 stash 항목의 파일 캐시는 정리한다.
+    const valid = new Set(entries.map((e) => stashFileCacheKey(root, e)));
     for (const key of [...fileCache.keys()]) {
       if (key.startsWith(`${root}@`) && !valid.has(key)) {
         fileCache.delete(key);
@@ -48,7 +50,7 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
     }
     const views: StashView[] = await Promise.all(
       entries.map(async (e) => {
-        const key = `${root}@${e.hash}`;
+        const key = stashFileCacheKey(root, e);
         let files = fileCache.get(key);
         if (!files) {
           files = await svc.stashShowFiles(e.ref);
@@ -57,16 +59,25 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
         return { ...e, files };
       })
     );
+    logInfo("stashes rendered", {
+      root,
+      count: views.length,
+      files: views.reduce((sum, item) => sum + item.files.length, 0),
+    });
     deps.changesView.setStashes(views);
   } catch {
     deps.changesView.setStashes([]);
   }
 }
 
-/** 작업트리 + stash 를 함께 새로고친다(stash 가 작업트리를 바꾸는 동작 뒤에 호출). */
-function refreshAll(deps: CommandDeps): void {
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
-  void refreshStashes(deps);
+/** stash 파일 목록 캐시 키를 만든다. */
+function stashFileCacheKey(root: string, entry: StashEntry): string {
+  return `${root}@${entry.ref}@${entry.hash || entry.index}`;
+}
+
+/** stash 작업 뒤 작업트리/stash/ref/비교 결과를 함께 새로고친다. */
+function refreshAll(): void {
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
 }
 
 /**
@@ -100,7 +111,7 @@ export async function stashSelected(
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
   }
-  refreshAll(deps);
+  refreshAll();
 }
 
 /** stash 를 작업트리에 적용한다(목록 유지). */
@@ -116,7 +127,7 @@ export async function applyStash(deps: CommandDeps, ref: string): Promise<void> 
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
   }
-  refreshAll(deps);
+  refreshAll();
 }
 
 /** stash 를 적용하고 목록에서 제거한다(pop). */
@@ -132,7 +143,7 @@ export async function popStash(deps: CommandDeps, ref: string): Promise<void> {
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
   }
-  refreshAll(deps);
+  refreshAll();
 }
 
 /** stash 를 버린다(모달 확인). */
@@ -160,7 +171,7 @@ export async function dropStash(
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
   }
-  refreshAll(deps);
+  refreshAll();
 }
 
 /** stash 를 새 브랜치로 펼친다(브랜치 이름 입력). */
@@ -186,7 +197,7 @@ export async function branchStash(
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
   }
-  refreshAll(deps);
+  refreshAll();
 }
 
 /**

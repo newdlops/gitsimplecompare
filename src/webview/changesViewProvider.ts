@@ -11,31 +11,33 @@ import {
   ChangeDiffArgs,
   SortKey,
   ViewMode,
-  buildNodes,
 } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
 import { buildCommitMenu, buildScmMenu } from "../commands/scmActions";
 import type { StashView } from "../commands/stash";
 import { FileIconThemeResolver } from "./fileIconTheme";
+import { buildChangesRenderPayload } from "./changesRenderPayload";
+import {
+  TREE_SECTIONS,
+  VISIBLE_SECTIONS,
+  type ComparisonDraft,
+  type TreeSection,
+  type ViewModes,
+  type VisibleSection,
+  type VisibleSections,
+} from "./changesViewTypes";
+
+export { VISIBLE_SECTIONS } from "./changesViewTypes";
+export type {
+  ComparisonDraft,
+  TreeSection,
+  VisibleSection,
+} from "./changesViewTypes";
 
 /** 보기 모드/정렬을 세션 간 유지하기 위한 저장 키 */
 const VIEW_MODE_STATE = "gitSimpleCompare.viewMode";
 const SORT_KEY_STATE = "gitSimpleCompare.sortKey";
-
-/** 트리/리스트 보기를 가지는 섹션(Repositories 는 제외). */
-export type TreeSection = "compare" | "changes";
-
-/** 섹션별 보기 모드 묶음 — 섹션마다 트리/리스트를 따로 둔다. */
-type ViewModes = Record<TreeSection, ViewMode>;
-
-/** 트리 섹션 식별자 목록(순회·기본값 생성용). */
-const TREE_SECTIONS: TreeSection[] = ["compare", "changes"];
-
-/** 비교 실행 전, 사용자가 설정 중인 from/to 초안 */
-export interface ComparisonDraft {
-  from?: string;
-  to?: string;
-}
+const VISIBLE_SECTIONS_STATE = "gitSimpleCompare.visibleSections";
 
 /**
  * CHANGES 웹뷰 뷰 프로바이더.
@@ -54,7 +56,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private commitMessage = "";
   private viewModes: ViewModes;
   private sortKey: SortKey;
+  private visibleSections: VisibleSections;
   private readonly fileIcons = new FileIconThemeResolver();
+  private renderTimer: ReturnType<typeof setTimeout> | undefined;
+  private lastRenderPayloadJson = "";
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -62,6 +67,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   ) {
     this.viewModes = loadViewModes(memento.get(VIEW_MODE_STATE));
     this.sortKey = memento.get<SortKey>(SORT_KEY_STATE, "path");
+    this.visibleSections = loadVisibleSections(
+      memento.get(VISIBLE_SECTIONS_STATE)
+    );
   }
 
   /**
@@ -75,9 +83,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, "media")],
     };
     view.webview.html = this.buildHtml(view.webview);
+    this.lastRenderPayloadJson = "";
     view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
     view.onDidDispose(() => {
       this.view = undefined;
+      this.clearRenderTimer();
     });
   }
 
@@ -168,6 +178,26 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     return this.sortKey;
   }
 
+  /** 아코디언 섹션 표시 상태를 반환한다(view/title 메뉴 체크 상태와 payload 공용). */
+  getVisibleSections(): VisibleSections {
+    return { ...this.visibleSections };
+  }
+
+  /** 아코디언 섹션 표시를 토글한다. 마지막으로 보이는 섹션은 숨기지 않는다. */
+  toggleVisibleSection(section: VisibleSection): void {
+    if (this.visibleSections[section]) {
+      const visibleCount = VISIBLE_SECTIONS.filter(
+        (id) => this.visibleSections[id]
+      ).length;
+      if (visibleCount <= 1) {
+        return;
+      }
+    }
+    this.visibleSections[section] = !this.visibleSections[section];
+    void this.memento.update(VISIBLE_SECTIONS_STATE, this.visibleSections);
+    this.render();
+  }
+
   /** 특정 섹션의 보기 모드를 바꾸고(변경 시) 저장·재렌더한다. */
   setViewMode(section: TreeSection, mode: ViewMode): void {
     if (mode !== this.viewModes[section]) {
@@ -204,6 +234,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 강제로 다시 그린다. */
   refresh(): void {
     if (this.view) {
+      this.clearRenderTimer();
+      this.lastRenderPayloadJson = "";
       this.view.webview.html = this.buildHtml(this.view.webview);
     } else {
       this.render();
@@ -232,67 +264,57 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
   }
 
-  /** 현재 상태로 렌더 payload 를 만들어 웹뷰로 보낸다. */
+  /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
   private render(): void {
     if (!this.view) {
       return;
     }
-    const payload = {
-      repos: this.repositories.map((r) => ({
-        root: r.root,
-        name: baseName(r.root),
-        branch: r.branch,
-        active: r.root === this.activeRepo,
-      })),
-      compare: {
-        mode: this.comparison ? ("comparison" as const) : ("draft" as const),
-        from: this.comparison ? this.comparison.base : this.draft.from ?? "",
-        to: this.comparison ? this.comparison.target : this.draft.to ?? "",
-        viewMode: this.viewModes.compare,
-        nodes: this.comparison
-          ? buildNodes(
-              this.comparison.changes,
-              this.viewModes.compare,
-              this.sortKey
-            )
-          : [],
-      },
-      changes: {
-        viewMode: this.viewModes.changes,
-        staged: buildNodes(this.staged, this.viewModes.changes, this.sortKey),
-        unstaged: buildNodes(
-          this.unstaged,
-          this.viewModes.changes,
-          this.sortKey
-        ),
-      },
-      commit: {
-        message: this.commitMessage,
-        branch: this.repositories.find((r) => r.root === this.activeRepo)
-          ?.branch,
-        hasRepo: !!this.activeRepo,
-      },
-      stashes: this.stashes.map((s) => ({
-        ref: s.ref,
-        hash: s.hash,
-        message: s.message,
-        branch: s.branch,
-        date: s.relativeDate,
-        files: s.files,
-      })),
-      fileIcons: this.fileIcons.payloadFor(this.collectFilePaths()),
-    };
+    if (this.renderTimer) {
+      return;
+    }
+    this.renderTimer = setTimeout(() => {
+      this.renderTimer = undefined;
+      this.postRender();
+    }, 16);
+  }
+
+  /** 현재 상태로 렌더 payload 를 만들어 변경이 있을 때만 웹뷰로 보낸다. */
+  private postRender(): void {
+    if (!this.view) {
+      return;
+    }
+    const payload = buildChangesRenderPayload(this.renderState(), this.fileIcons);
+    const payloadJson = JSON.stringify(payload);
+    if (payloadJson === this.lastRenderPayloadJson) {
+      return;
+    }
+    this.lastRenderPayloadJson = payloadJson;
     void this.view.webview.postMessage({ type: "render", payload });
   }
 
-  /** 현재 웹뷰 payload 에 포함되는 모든 파일 경로를 모은다(아이콘 테마 해석용). */
-  private collectFilePaths(): string[] {
-    return [
-      ...(this.comparison?.changes.map((c) => c.path) ?? []),
-      ...this.staged.map((c) => c.path),
-      ...this.unstaged.map((c) => c.path),
-      ...this.stashes.flatMap((s) => s.files.map((f) => f.path)),
-    ];
+  /** payload builder 에 넘길 provider 상태 스냅샷을 만든다. */
+  private renderState() {
+    return {
+      repositories: this.repositories,
+      activeRepo: this.activeRepo,
+      comparison: this.comparison,
+      draft: this.draft,
+      staged: this.staged,
+      unstaged: this.unstaged,
+      stashes: this.stashes,
+      commitMessage: this.commitMessage,
+      viewModes: this.viewModes,
+      sortKey: this.sortKey,
+      visibleSections: this.getVisibleSections(),
+    };
+  }
+
+  /** 예약된 렌더 타이머를 취소한다. */
+  private clearRenderTimer(): void {
+    if (this.renderTimer) {
+      clearTimeout(this.renderTimer);
+      this.renderTimer = undefined;
+    }
   }
 
   /**
@@ -310,6 +332,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     op?: string;
     action?: string;
     ref?: string;
+    stage?: string;
   }): void {
     if (msg.type === "ready") {
       this.render();
@@ -342,6 +365,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       void vscode.commands.executeCommand("gitSimpleCompare.openWorkingChange", {
         root: this.activeRepo,
         path: msg.path,
+        stage: msg.stage,
+        hasStaged: this.staged.some((item) => item.path === msg.path),
       });
     } else if (msg.type === "openFile" && msg.path && this.activeRepo) {
       void vscode.commands.executeCommand("gitSimpleCompare.openFile", {
@@ -363,6 +388,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         this.commitMessage = msg.message;
       }
       void vscode.commands.executeCommand("gitSimpleCompare.commit", msg.op);
+    } else if (msg.type === "splitCommits") {
+      void vscode.commands.executeCommand("gitSimpleCompare.splitCommits", {
+        path: msg.path,
+        stage: msg.stage,
+      });
     } else if (msg.type === "scmAction" && msg.action) {
       void vscode.commands.executeCommand(
         "gitSimpleCompare.scmAction",
@@ -439,6 +469,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       stagedChanges: vscode.l10n.t("Staged Changes"),
       commitPlaceholder: vscode.l10n.t("Message (Ctrl+Enter to commit)"),
       commit: vscode.l10n.t("Commit"),
+      splitChanges: vscode.l10n.t("Stage Hunks"),
       moreActions: vscode.l10n.t("More Actions..."),
       stage: vscode.l10n.t("Stage Changes"),
       unstage: vscode.l10n.t("Unstage Changes"),
@@ -503,6 +534,21 @@ function loadViewModes(saved: unknown): ViewModes {
   return { compare: "tree", changes: "tree" };
 }
 
+/** 저장된 아코디언 섹션 표시 상태를 정규화한다. */
+function loadVisibleSections(saved: unknown): VisibleSections {
+  const result = {} as VisibleSections;
+  const raw = saved && typeof saved === "object"
+    ? (saved as Partial<VisibleSections>)
+    : {};
+  for (const section of VISIBLE_SECTIONS) {
+    result[section] = raw[section] !== false;
+  }
+  if (!VISIBLE_SECTIONS.some((section) => result[section])) {
+    result.changes = true;
+  }
+  return result;
+}
+
 /**
  * 웹뷰 정적 리소스 캐시를 깨기 위한 버전 문자열을 만든다.
  * @param mediaRoot `media/changes` 디렉터리 URI
@@ -535,12 +581,6 @@ function fileMtime(uri: vscode.Uri): number {
   } catch {
     return Date.now();
   }
-}
-
-/** 경로에서 마지막 세그먼트(저장소 폴더명)를 뽑는다. */
-function baseName(p: string): string {
-  const idx = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
-  return idx >= 0 ? p.slice(idx + 1) : p;
 }
 
 /** CSP 의 script nonce(1회성 난수 문자열)를 만든다. */

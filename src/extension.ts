@@ -8,10 +8,13 @@ import { ChangesViewProvider } from "./webview/changesViewProvider";
 import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
 import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { ConflictsController } from "./providers/conflictsController";
+import { HunkCheckboxController } from "./providers/hunkCheckboxController";
+import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
-import { CommandDeps, discoverRepositories } from "./commands/shared";
+import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
+import { disposeOutputLog, logInfo } from "./ui/outputLog";
 
 /**
  * 확장이 활성화될 때 호출된다.
@@ -20,6 +23,11 @@ import { syncViewContext } from "./commands/viewState";
  * @param context VS Code 확장 컨텍스트
  */
 export function activate(context: vscode.ExtensionContext): void {
+  logInfo("extension activating", {
+    workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0,
+  });
+  context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
+
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();
 
@@ -40,7 +48,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       ChangesViewProvider.viewId,
-      changesView
+      changesView,
+      { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
 
@@ -52,6 +61,13 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
   const conflicts = new ConflictsController(registry, conflictsProvider);
+  const hunkCheckboxes = new HunkCheckboxController(registry);
+  context.subscriptions.push(hunkCheckboxes.register());
+  const nativeDiffOverlay = new NativeDiffOverlayController(
+    context.globalStorageUri,
+    hunkCheckboxes
+  );
+  context.subscriptions.push(nativeDiffOverlay.register());
 
   // 5) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {
@@ -59,6 +75,7 @@ export function activate(context: vscode.ExtensionContext): void {
     changesView,
     extensionUri: context.extensionUri,
     conflicts,
+    hunkCheckboxes,
   };
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
@@ -70,45 +87,127 @@ export function activate(context: vscode.ExtensionContext): void {
   // 7) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
 
-  // 8) 충돌/작업변경을 초기화하고, 편집기 전환·파일 저장 시 자동 갱신한다.
-  const refreshWorking = (): void => {
-    void vscode.commands.executeCommand(
-      "gitSimpleCompare.refreshWorkingChanges"
+  // 8) 충돌/작업변경/stash/브랜치 비교를 초기화하고 파일·git 변경 이벤트에 맞춰 갱신한다.
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  let refreshReason = "startup";
+  const refreshEverything = (reason: string): void => {
+    logInfo("refresh requested", { reason });
+    void conflicts.refresh();
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason,
+    });
+  };
+  const scheduleRefresh = (reason: string, delay = 180): void => {
+    refreshReason = refreshTimer ? `${refreshReason},${reason}` : reason;
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+    }
+    refreshTimer = setTimeout(() => {
+      refreshTimer = undefined;
+      const reason = refreshReason;
+      refreshReason = "scheduled";
+      refreshEverything(reason);
+    }, delay);
+  };
+  const watchRefresh = (
+    watcher: vscode.FileSystemWatcher,
+    source: "workspace" | "git"
+  ): void => {
+    watcher.onDidCreate(
+      (uri) => scheduleRefreshForUri(source, "create", uri),
+      undefined,
+      context.subscriptions
     );
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+    watcher.onDidChange(
+      (uri) => scheduleRefreshForUri(source, "change", uri),
+      undefined,
+      context.subscriptions
+    );
+    watcher.onDidDelete(
+      (uri) => scheduleRefreshForUri(source, "delete", uri),
+      undefined,
+      context.subscriptions
+    );
   };
   void conflicts.refresh();
-  refreshWorking();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "startup",
+  });
+  const workspaceWatcher = vscode.workspace.createFileSystemWatcher("**/*");
+  const gitWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**}"
+  );
+  const scheduleRefreshForUri = (
+    source: "workspace" | "git",
+    event: "create" | "change" | "delete",
+    uri: vscode.Uri
+  ): void => {
+    const decision = shouldRefreshForUri(source, uri);
+    if (!decision.refresh) {
+      if (shouldLogIgnoredRefresh(decision.reason)) {
+        logInfo("refresh event ignored", {
+          source,
+          event,
+          path: uri.fsPath,
+          reason: decision.reason,
+        });
+      }
+      return;
+    }
+    registry.invalidateStatusCaches();
+    scheduleRefresh(`${source}:${event}:${decision.reason}`);
+  };
+  watchRefresh(workspaceWatcher, "workspace");
+  watchRefresh(gitWatcher, "git");
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(() => {
-      void conflicts.refresh();
-      refreshWorking();
+    workspaceWatcher,
+    gitWatcher,
+    new vscode.Disposable(() => {
+      if (refreshTimer) {
+        clearTimeout(refreshTimer);
+      }
     }),
     vscode.workspace.onDidSaveTextDocument(() => {
-      void conflicts.refresh();
-      refreshWorking();
+      registry.invalidateStatusCaches();
+      scheduleRefresh("documentSaved");
+    }),
+    vscode.workspace.onDidCreateFiles(() => {
+      registry.invalidateStatusCaches();
+      scheduleRefresh("filesCreated");
+    }),
+    vscode.workspace.onDidDeleteFiles(() => {
+      registry.invalidateStatusCaches();
+      scheduleRefresh("filesDeleted");
+    }),
+    vscode.workspace.onDidRenameFiles(() => {
+      registry.invalidateStatusCaches();
+      scheduleRefresh("filesRenamed");
     })
   );
 
-  // 9) Repositories 섹션 채우기: 활성화 시 + 워크스페이스 폴더 변경 시 재탐지.
-  const refreshRepos = async (): Promise<void> => {
-    changesView.setRepositories(await discoverRepositories(registry));
-    refreshWorking();
-  };
-  void refreshRepos();
+  // 9) 워크스페이스 폴더가 바뀌면 저장소 목록부터 다시 찾는다.
   context.subscriptions.push(
-    vscode.workspace.onDidChangeWorkspaceFolders(() => void refreshRepos())
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      registry.invalidateResolveCache();
+      registry.invalidateStatusCaches();
+      scheduleRefresh("workspaceFolders", 0);
+    })
   );
 
   // 10) 파일 아이콘/색상 테마가 바뀌면 Changes 웹뷰의 파일 아이콘도 다시 그린다.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("workbench.iconTheme")) {
+        logInfo("file icon theme changed");
         changesView.refresh();
       }
     }),
-    vscode.window.onDidChangeActiveColorTheme(() => changesView.refresh())
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      logInfo("color theme changed");
+      changesView.refresh();
+    })
   );
+  logInfo("extension activated");
 }
 
 /**
@@ -117,4 +216,66 @@ export function activate(context: vscode.ExtensionContext): void {
  */
 export function deactivate(): void {
   // 정리할 추가 리소스 없음.
+}
+
+interface RefreshDecision {
+  refresh: boolean;
+  reason: string;
+}
+
+/**
+ * 파일 시스템 이벤트가 Changes refresh 로 이어져야 하는지 판정한다.
+ * - 작업 파일 변경은 빠르게 반영하되, git status 가 만지는 `.git/index` 나 빌드 산출물처럼
+ *   refresh 자체가 다시 이벤트를 만들 수 있는 경로는 제외해 로딩 루프를 막는다.
+ * @param source 이벤트를 발생시킨 watcher 종류
+ * @param uri    변경된 파일 URI
+ */
+function shouldRefreshForUri(
+  source: "workspace" | "git",
+  uri: vscode.Uri
+): RefreshDecision {
+  const path = uri.fsPath.replace(/\\/g, "/");
+  if (source === "workspace") {
+    const ignored = ignoredWorkspaceSegment(path);
+    return ignored
+      ? { refresh: false, reason: ignored }
+      : { refresh: true, reason: "working-tree-file" };
+  }
+  return isStableGitStatePath(path)
+    ? { refresh: true, reason: "stable-git-state" }
+    : { refresh: false, reason: "volatile-git-state" };
+}
+
+/**
+ * 무시한 파일 이벤트 중 OUTPUT 에 남길 가치가 있는 것만 고른다.
+ * - `.git`/fsmonitor cookie 는 git/VS Code 가 자주 만드는 정상 이벤트라 로그만 과도해진다.
+ * @param reason shouldRefreshForUri 가 반환한 무시 사유
+ */
+function shouldLogIgnoredRefresh(reason: string): boolean {
+  return reason !== ".git" && reason !== "volatile-git-state";
+}
+
+/**
+ * 작업 파일 watcher 에서 무시할 경로 세그먼트를 찾는다.
+ * @param path 슬래시(`/`)로 정규화된 절대 경로
+ * @returns 무시 사유 또는 undefined
+ */
+function ignoredWorkspaceSegment(path: string): string | undefined {
+  const segments = path.split("/");
+  for (const segment of [".git", "node_modules", "dist", "out", ".vscode-test"]) {
+    if (segments.includes(segment)) {
+      return segment;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * `.git` 내부 이벤트 중 refresh 가치가 있는 안정적인 상태 파일인지 확인한다.
+ * @param path 슬래시(`/`)로 정규화된 절대 경로
+ */
+function isStableGitStatePath(path: string): boolean {
+  return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/)/.test(
+    path
+  );
 }

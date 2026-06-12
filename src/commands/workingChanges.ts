@@ -1,10 +1,13 @@
 // Changes 섹션(작업트리 변경) 관련 명령 — 조회/열기 + 스테이징/커밋 쓰기 작업.
 // - 활성 저장소의 상태를 staged/unstaged 로 읽어 CHANGES 뷰에 채우고,
-//   파일 클릭 시 HEAD ↔ 작업파일 diff(편집 가능)를 연다.
+//   파일 클릭 시 staged 는 HEAD ↔ index, unstaged 는 HEAD ↔ 남은 unstaged diff 를 연다.
 // - Stage/Unstage/Discard/Commit 은 GitService 쓰기 작업에 위임하고, 끝나면 뷰를 새로고친다.
 //   로직은 GitService 에 두고 여기서는 "조립 + 사용자 확인/알림"만 담당한다(경계 분리).
 import * as vscode from "vscode";
-import { openRefVsWorkingDiff } from "../ui/diffPresenter";
+import {
+  openHeadVsIndexDiff,
+  openHeadVsRemainingUnstagedDiff,
+} from "../ui/diffPresenter";
 import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
 
@@ -37,18 +40,23 @@ export async function refreshWorkingChanges(deps: CommandDeps): Promise<void> {
 }
 
 /**
- * Changes 항목 클릭 시 HEAD ↔ 작업파일 비교를 연다(작업파일은 편집 가능).
- * @param arg { root, path } 저장소 루트와 상대 경로
+ * Changes 항목 클릭 시 staged/unstaged 상태에 맞는 비교를 연다.
+ * @param arg { root, path, stage } 저장소 루트와 상대 경로, staged/unstaged 구분
  */
 export async function openWorkingChange(arg: {
   root: string;
   path: string;
+  stage?: "staged" | "unstaged";
+  hasStaged?: boolean;
 }): Promise<void> {
   if (!arg?.root || !arg?.path) {
     return;
   }
-  const fileUri = vscode.Uri.file(`${arg.root}/${arg.path}`);
-  await openRefVsWorkingDiff(arg.root, "HEAD", fileUri, arg.path);
+  if (arg.stage === "staged") {
+    await openHeadVsIndexDiff(arg.root, arg.path);
+    return;
+  }
+  await openHeadVsRemainingUnstagedDiff(arg.root, arg.path);
 }
 
 /**
@@ -222,5 +230,5 @@ export async function commitChanges(
       vscode.l10n.t("Commit failed: {0}", errText(e))
     );
   }
-  void refreshWorkingChanges(deps);
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
 }

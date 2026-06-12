@@ -107,6 +107,8 @@ export class FileIconThemeResolver {
   private readonly imageCache = new Map<string, string>();
   private readonly fontCache = new Map<string, string>();
   private usedFonts = new Map<string, FileIconFontView>();
+  private lastPayloadKey = "";
+  private lastPayload: FileIconPayload = { icons: {}, fonts: [] };
 
   /**
    * 여러 파일 경로에 대한 아이콘 payload 를 만든다.
@@ -115,16 +117,22 @@ export class FileIconThemeResolver {
    */
   payloadFor(paths: string[]): FileIconPayload {
     this.ensureTheme();
+    const unique = [...new Set(paths)].sort();
+    const payloadKey = `${this.cacheKey}\0${unique.join("\0")}`;
+    if (payloadKey === this.lastPayloadKey) {
+      return this.lastPayload;
+    }
     this.usedFonts = new Map();
     const out: Record<string, FileIconView> = {};
-    const unique = new Set(paths);
     for (const filePath of unique) {
       const icon = this.iconFor(filePath);
       if (icon) {
         out[filePath] = icon;
       }
     }
-    return { icons: out, fonts: [...this.usedFonts.values()] };
+    this.lastPayloadKey = payloadKey;
+    this.lastPayload = { icons: out, fonts: [...this.usedFonts.values()] };
+    return this.lastPayload;
   }
 
   /** 현재 설정/색상 테마 기준으로 캐시가 유효한지 확인하고 필요하면 테마를 다시 읽는다. */
@@ -137,6 +145,8 @@ export class FileIconThemeResolver {
     this.cacheKey = key;
     this.imageCache.clear();
     this.fontCache.clear();
+    this.lastPayloadKey = "";
+    this.lastPayload = { icons: {}, fonts: [] };
     this.theme = id ? loadThemeById(id) : undefined;
   }
 

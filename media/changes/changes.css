@@ -515,7 +515,7 @@ body:focus-within .row.selected:hover {
   white-space: nowrap;
 }
 
-/* ── 커밋 박스(메시지 + 분할 커밋 버튼) ── */
+/* ── 커밋 박스(메시지 + 커밋 버튼) ── */
 .commit-box {
   padding: 6px 12px 8px;
 }
@@ -547,6 +547,7 @@ body:focus-within .row.selected:hover {
 
 .commit-bar {
   display: flex;
+  gap: 6px;
   margin-top: 6px;
 }
 

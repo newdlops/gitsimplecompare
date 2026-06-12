@@ -86,10 +86,103 @@
         "icon": "$(sort-precedence)"
       },
       {
+        "command": "gitSimpleCompare.toggleSection.repos.visible",
+        "title": "%cmd.section.repos.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.repos.hidden",
+        "title": "%cmd.section.repos%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.changes.visible",
+        "title": "%cmd.section.changes.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.changes.hidden",
+        "title": "%cmd.section.changes%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.compare.visible",
+        "title": "%cmd.section.compare.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.compare.hidden",
+        "title": "%cmd.section.compare%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.stashes.visible",
+        "title": "%cmd.section.stashes.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.stashes.hidden",
+        "title": "%cmd.section.stashes%",
+        "category": "Git Simple Compare"
+      },
+      {
         "command": "gitSimpleCompare.applyLeftToRight",
         "title": "%cmd.applyLeftToRight%",
         "category": "Git Simple Compare",
         "icon": "$(arrow-right)"
+      },
+      {
+        "command": "gitSimpleCompare.stageSelectedLines",
+        "title": "%cmd.stageSelectedLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(diff-added)"
+      },
+      {
+        "command": "gitSimpleCompare.discardSelectedLines",
+        "title": "%cmd.discardSelectedLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "gitSimpleCompare.stageCurrentHunk",
+        "title": "%cmd.stageCurrentHunk%",
+        "category": "Git Simple Compare",
+        "icon": "$(diff-added)"
+      },
+      {
+        "command": "gitSimpleCompare.discardCurrentHunk",
+        "title": "%cmd.discardCurrentHunk%",
+        "category": "Git Simple Compare",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "gitSimpleCompare.stageCheckedLines",
+        "title": "%cmd.stageCheckedLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "gitSimpleCompare.unstageCheckedLines",
+        "title": "%cmd.unstageCheckedLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "gitSimpleCompare.clearCheckedLines",
+        "title": "%cmd.clearCheckedLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleHunkLineCheckbox",
+        "title": "%cmd.toggleHunkLineCheckbox%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.chooseHunkControlMode",
+        "title": "%cmd.chooseHunkControlMode%",
+        "category": "Git Simple Compare",
+        "icon": "$(settings-gear)"
       },
       {
         "command": "gitSimpleCompare.showGraph",
@@ -218,6 +311,51 @@
           "group": "navigation@4"
         },
         {
+          "command": "gitSimpleCompare.chooseHunkControlMode",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@5"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.repos.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.repos.visible",
+          "group": "2_sections@1"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.repos.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.repos.visible",
+          "group": "2_sections@1"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.changes.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.changes.visible",
+          "group": "2_sections@2"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.changes.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.changes.visible",
+          "group": "2_sections@2"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.compare.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.compare.visible",
+          "group": "2_sections@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.compare.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.compare.visible",
+          "group": "2_sections@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.stashes.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.stashes.visible",
+          "group": "2_sections@4"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.stashes.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.stashes.visible",
+          "group": "2_sections@4"
+        },
+        {
           "command": "gitSimpleCompare.startInteractiveRebase",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@1"
@@ -287,23 +425,113 @@
           "group": "navigation@1"
         },
         {
+          "command": "gitSimpleCompare.stageSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitSimpleCompare.discardSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "navigation@3"
+        },
+        {
+          "command": "gitSimpleCompare.stageCheckedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "navigation@4"
+        },
+        {
+          "command": "gitSimpleCompare.unstageCheckedLines",
+          "when": "gitSimpleCompare.activeStagedHunkDiff",
+          "group": "navigation@4"
+        },
+        {
+          "command": "gitSimpleCompare.clearCheckedLines",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
+          "group": "navigation@5"
+        },
+        {
+          "command": "gitSimpleCompare.chooseHunkControlMode",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
+          "group": "navigation@6"
+        },
+        {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
           "when": "resourceScheme == file && !gitSimpleCompare.activeDiff",
-          "group": "navigation@2"
+          "group": "navigation@7"
         }
       ],
       "editor/context": [
         {
+          "command": "gitSimpleCompare.stageSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@1"
+        },
+        {
+          "command": "gitSimpleCompare.discardSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@2"
+        },
+        {
+          "command": "gitSimpleCompare.stageCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@3"
+        },
+        {
+          "command": "gitSimpleCompare.discardCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@4"
+        },
+        {
+          "command": "gitSimpleCompare.stageCheckedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@5"
+        },
+        {
+          "command": "gitSimpleCompare.unstageCheckedLines",
+          "when": "gitSimpleCompare.activeStagedHunkDiff",
+          "group": "1_gitSimpleCompare@5"
+        },
+        {
+          "command": "gitSimpleCompare.clearCheckedLines",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
+          "group": "1_gitSimpleCompare@6"
+        },
+        {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
           "when": "resourceScheme == file",
-          "group": "1_gitSimpleCompare@1"
+          "group": "1_gitSimpleCompare@7"
         }
       ],
       "editor/title/context": [
         {
+          "command": "gitSimpleCompare.stageCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@1"
+        },
+        {
+          "command": "gitSimpleCompare.discardCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@2"
+        },
+        {
+          "command": "gitSimpleCompare.stageCheckedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "group": "1_gitSimpleCompare@3"
+        },
+        {
+          "command": "gitSimpleCompare.unstageCheckedLines",
+          "when": "gitSimpleCompare.activeStagedHunkDiff",
+          "group": "1_gitSimpleCompare@3"
+        },
+        {
+          "command": "gitSimpleCompare.clearCheckedLines",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
+          "group": "1_gitSimpleCompare@4"
+        },
+        {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
           "when": "resourceScheme == file",
-          "group": "1_gitSimpleCompare@1"
+          "group": "1_gitSimpleCompare@5"
         }
       ],
       "explorer/context": [
@@ -315,6 +543,38 @@
       ],
       "commandPalette": [
         {
+          "command": "gitSimpleCompare.toggleSection.repos.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.repos.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.changes.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.changes.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.compare.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.compare.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.stashes.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.stashes.hidden",
+          "when": "false"
+        },
+        {
           "command": "gitSimpleCompare.openChangeDiff",
           "when": "false"
         },
@@ -325,6 +585,41 @@
         {
           "command": "gitSimpleCompare.applyLeftToRight",
           "when": "gitSimpleCompare.activeDiff"
+        },
+        {
+          "command": "gitSimpleCompare.stageSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.discardSelectedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.stageCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.discardCurrentHunk",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.stageCheckedLines",
+          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.unstageCheckedLines",
+          "when": "gitSimpleCompare.activeStagedHunkDiff"
+        },
+        {
+          "command": "gitSimpleCompare.clearCheckedLines",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff"
+        },
+        {
+          "command": "gitSimpleCompare.chooseHunkControlMode"
+        },
+        {
+          "command": "gitSimpleCompare.toggleHunkLineCheckbox",
+          "when": "false"
         },
         {
           "command": "gitSimpleCompare.takeOurs",
@@ -373,6 +668,19 @@
           "default": true,
           "description": "%config.includeRemote.desc%"
         },
+        "gitSimpleCompare.hunkControlMode": {
+          "type": "string",
+          "enum": [
+            "nativeOverlay",
+            "command"
+          ],
+          "enumDescriptions": [
+            "%config.hunkControl.nativeOverlay%",
+            "%config.hunkControl.command%"
+          ],
+          "default": "nativeOverlay",
+          "description": "%config.hunkControl.desc%"
+        },
         "gitSimpleCompare.graph.maxCommits": {
           "type": "number",
           "default": 300,
@@ -394,8 +702,12 @@
   "devDependencies": {
     "@types/node": "^20.x",
     "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.18.1",
     "@vscode/codicons": "^0.0.45",
     "esbuild": "^0.24.0",
     "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "ws": "^8.21.0"
   }
 }

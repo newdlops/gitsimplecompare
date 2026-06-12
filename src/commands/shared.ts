@@ -7,6 +7,7 @@ import { GitService } from "../git/gitService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { ChangesViewProvider } from "../webview/changesViewProvider";
 import { ConflictsController } from "../providers/conflictsController";
+import { HunkCheckboxController } from "../providers/hunkCheckboxController";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
@@ -17,6 +18,8 @@ export interface CommandDeps {
   extensionUri: vscode.Uri;
   /** 충돌 해결 UI 상태 컨트롤러 */
   conflicts: ConflictsController;
+  /** editable diff 라인별 stage 체크박스 컨트롤러 */
+  hunkCheckboxes: HunkCheckboxController;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */

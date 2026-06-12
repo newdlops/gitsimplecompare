@@ -131,6 +131,28 @@ export async function runComparison(deps: CommandDeps): Promise<void> {
 }
 
 /**
+ * 현재 표시 중인 브랜치 비교 결과를 같은 from/to/ref 기준으로 다시 조회한다.
+ * - 브랜치가 새 커밋을 가리키거나 fetch/rebase/commit 으로 ref 가 바뀐 경우
+ *   기존 비교 UI 가 오래된 파일 목록을 들고 있지 않도록 자동/수동 refresh 에서 호출한다.
+ * @param deps 공유 의존성
+ */
+export async function refreshActiveComparison(
+  deps: CommandDeps
+): Promise<void> {
+  const comparison = deps.changesView.getComparison();
+  if (!comparison) {
+    return;
+  }
+  const service = deps.registry.get(comparison.repoRoot);
+  const changes = await service.listChanges(
+    comparison.base,
+    comparison.target,
+    comparison.diffBase
+  );
+  deps.changesView.setComparison({ ...comparison, changes });
+}
+
+/**
  * 주어진 기준/대상으로 변경 목록을 조회해 트리에 반영하는 공통 로직.
  * - compareBranches 와 changeComparisonRef 가 공유한다(재사용).
  * @param deps     공유 의존성

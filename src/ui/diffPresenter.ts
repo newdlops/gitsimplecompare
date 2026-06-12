@@ -3,6 +3,7 @@
 //   · ref ↔ ref  : 양쪽 모두 가상 문서(읽기 전용) → 과거 상태 리뷰용
 //   · ref ↔ 작업파일 : 왼쪽은 가상 문서(읽기 전용), 오른쪽은 실제 파일 → 편집 가능
 import * as vscode from "vscode";
+import { refreshBranchContent } from "../providers/branchContentProvider";
 import { makeDiffTitle, makeRefUri } from "../utils/uri";
 
 /** diff 를 열 때의 공통 옵션(미리보기 끄고 새 탭으로 연다) */
@@ -62,6 +63,56 @@ export async function openRefVsWorkingDiff(
     "vscode.diff",
     left,
     fileUri,
+    title,
+    DIFF_OPTIONS
+  );
+}
+
+/**
+ * HEAD 와 "staged 변경을 제거한 작업트리" 가상 문서를 비교한다(양쪽 읽기 전용).
+ * - 부분 stage 된 라인은 source/context 에서도 빠져, 남은 unstaged 변경만 보인다.
+ * @param repoRoot 저장소 루트
+ * @param relPath  저장소 상대 경로
+ */
+export async function openHeadVsRemainingUnstagedDiff(
+  repoRoot: string,
+  relPath: string
+): Promise<void> {
+  const left = makeRefUri("HEAD", relPath, repoRoot);
+  const right = makeRefUri(":unstaged", relPath, repoRoot);
+  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
+  const title = makeDiffTitle("HEAD", vscode.l10n.t("Unstaged"), fileLabel);
+  refreshBranchContent(left);
+  refreshBranchContent(right);
+  await vscode.commands.executeCommand(
+    "vscode.diff",
+    left,
+    right,
+    title,
+    DIFF_OPTIONS
+  );
+}
+
+/**
+ * index 에 올라간 파일 버전을 HEAD 와 비교한다(양쪽 읽기 전용).
+ * - staged 목록에서 파일을 열 때 사용해, 부분 stage 된 변화만 정확히 보여준다.
+ * @param repoRoot 저장소 루트
+ * @param relPath  저장소 상대 경로
+ */
+export async function openHeadVsIndexDiff(
+  repoRoot: string,
+  relPath: string
+): Promise<void> {
+  const left = makeRefUri("HEAD", relPath, repoRoot);
+  const right = makeRefUri(":0", relPath, repoRoot);
+  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
+  const title = makeDiffTitle("HEAD", vscode.l10n.t("Index"), fileLabel);
+  refreshBranchContent(left);
+  refreshBranchContent(right);
+  await vscode.commands.executeCommand(
+    "vscode.diff",
+    left,
+    right,
     title,
     DIFF_OPTIONS
   );

@@ -16,6 +16,8 @@ VS Code 확장 "Git Simple Compare" 저장소입니다.
 3. **재사용성**: 모듈은 재사용 가능하도록 설계한다. UI/명령 레이어에 비즈니스 로직을 박아 넣지 말고, `GitService`처럼 독립적으로 호출 가능한 단위로 만든다.
 4. **주석**: 모듈의 함수마다 설명 주석을 한글로 자세히 남긴다. "무엇을/왜" 하는지, 매개변수와 반환값의 의미를 적는다.
 5. **확장성**: 기능 확장이 용이하도록 설계한다. 새 비교 모드/새 git 명령을 추가할 때 기존 모듈을 최소 수정으로 끼워 넣을 수 있어야 한다.
+6. **관찰성**: 확장 동작 상태는 VS Code OUTPUT 의 `Git Simple Compare` 채널에서 확인 가능해야 한다. 활성화/새로고침/이벤트 스킵/오류처럼 문제 재현에 필요한 상태 전환에는 로그를 남긴다.
+7. **버튼 툴팁**: UI 에 버튼을 만들 때는 항상 hover tooltip 을 둔다. 웹뷰 버튼은 `title`/접근성 라벨을, VS Code 기여 명령 버튼은 명확한 command title 을 제공한다.
 
 ## 아키텍처 개요
 
@@ -31,7 +33,9 @@ VS Code 확장 "Git Simple Compare" 저장소입니다.
 - `providers/conflictsController.ts` + `conflictsTreeProvider.ts` — 충돌 뷰 상태 조정 + 트리 표시.
 - `providers/branchContentProvider.ts` — 커스텀 URI 스킴(`gitsimplecompare:`)으로 특정 ref의 파일 내용을 읽기 전용 가상 문서로 제공한다.
 - `providers/changesTreeProvider.ts` + `changesTreeModel.ts` — 변경 파일 목록을 트리/리스트로 보여준다(모델은 순수 변환).
+- `providers/hunkCheckboxController.ts` — HEAD ↔ Working Tree editable diff 에 라인별 stage 체크박스를 제공한다.
 - `ui/diffPresenter.ts` — `vscode.diff`를 호출해 비교 에디터를 연다. 한쪽이 작업트리 파일이면 편집 가능, 양쪽이 ref이면 읽기 전용.
+- `ui/outputLog.ts` — VS Code OUTPUT 채널에 확장 상태 로그를 남긴다.
 - `commands/` — 위 모듈을 조립해 사용자 명령을 구현한다. 로직은 최대한 하위 모듈로 위임한다.
 
 ### i18n

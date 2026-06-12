@@ -11,3 +11,5 @@ node_modules/**
 .zoek-rs/**
 .claude/**
 CLAUDE.md
+Trace-*.json
+.lh

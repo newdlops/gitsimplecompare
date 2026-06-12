@@ -28,6 +28,7 @@
       stagedChanges: "Staged Changes",
       commitPlaceholder: "Message (Ctrl+Enter to commit)",
       commit: "Commit",
+      splitChanges: "Stage Hunks",
       moreActions: "More Actions...",
       stage: "Stage Changes",
       unstage: "Unstage Changes",
@@ -52,14 +53,9 @@
   state.collapsed = state.collapsed || {};
   state.sizes = state.sizes || {};
   state.groups = state.groups || {}; // Staged/Changes 그룹 접힘 상태
-  state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(해시별)
+  state.folders = state.folders || {}; // 파일 트리 폴더 접힘 상태(kind:path)
+  state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
   const SECTION_IDS = ["repos", "changes", "compare", "stashes"];
-  const SECTION_LABELS = {
-    repos: () => T.repositories,
-    changes: () => T.changes,
-    compare: () => T.compareBranches,
-    stashes: () => T.stashes,
-  };
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
   let currentFileIcons = {};
@@ -97,11 +93,6 @@
       visible.changes = true;
     }
     return visible;
-  }
-
-  /** 현재 표시 중인 섹션 중 첫 번째 섹션인지 확인한다(카테고리 메뉴 위치용). */
-  function isFirstVisibleSection(id) {
-    return state.sectionOrder.filter((s) => state.visibleSections[s] !== false)[0] === id;
   }
 
   // 섹션 리사이즈(네이티브 PaneView 풍) 상수: 헤더 높이 / 크기조절 섹션의 최소 높이.
@@ -293,14 +284,20 @@
       const children = node.children
         .map((c) => nodeHtml(c, viewMode, kind))
         .join("");
+      const key = folderKey(kind, node.path);
+      const collapsed = !!state.folders[key];
       return (
-        `<div class="row folder">` +
-        `<span class="twistie codicon codicon-chevron-down"></span>` +
-        `<span class="icon codicon codicon-folder-opened"></span>` +
+        `<div class="row folder" data-folder-key="${esc(key)}">` +
+        `<span class="twistie codicon ${
+          collapsed ? "codicon-chevron-right" : "codicon-chevron-down"
+        }"></span>` +
+        `<span class="icon codicon ${
+          collapsed ? "codicon-folder" : "codicon-folder-opened"
+        }"></span>` +
         `<span class="name">${esc(node.name)}</span>` +
         rowActionsHtml(kind, false) +
         `</div>` +
-        `<div class="children">${children}</div>`
+        `<div class="children${collapsed ? " collapsed" : ""}">${children}</div>`
       );
     }
     const ch = node.change;
@@ -311,7 +308,8 @@
       viewMode === "list" && dir ? `<span class="dir">${esc(dir)}</span>` : "";
     return (
       `<div class="row file" data-status="${esc(ch.status)}" ` +
-      `data-path="${esc(ch.path)}" title="${esc(ch.path)}">` +
+      `data-path="${esc(ch.path)}" data-stage="${esc(kind)}" ` +
+      `title="${esc(ch.path)}">` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(ch.status)}"></span>` +
       fileIconHtml(ch.path) +
@@ -321,6 +319,11 @@
       rowActionsHtml(kind, true) +
       `</div>`
     );
+  }
+
+  /** 파일 트리 폴더 접힘 상태 키를 만든다. */
+  function folderKey(kind, path) {
+    return `${kind}:${path}`;
   }
 
   /** 노드 배열을 가로 스크롤 가능한 파일 트리로 감싼다. kind 로 행 액션/클릭 동작을 구분한다. */
@@ -374,23 +377,14 @@
   }
 
   /** 섹션 고유 액션에 아코디언 메뉴 미트볼을 더한다. */
-  function sectionActions(actionsHtml) {
-    const actions = actionsHtml || "";
-    return actions + meatballAction();
+  function sectionActions() {
+    return meatballAction();
   }
 
-  /** 아코디언 미트볼 메뉴 항목을 만든다(섹션별 보기 토글 + 카테고리 표시 토글). */
+  /** 아코디언 미트볼 메뉴 항목을 만든다(섹션별 보기 토글 전용). */
   function accordionMenuNodes(sectionId) {
-    const nodes = [];
     const viewNode = viewModeMenuNode(sectionId);
-    if (viewNode) {
-      nodes.push(viewNode, { separator: true });
-    }
-    return nodes.concat(state.sectionOrder.map((id) => ({
-      label: SECTION_LABELS[id] ? SECTION_LABELS[id]() : id,
-      checked: state.visibleSections[id] !== false,
-      onClick: () => toggleSectionVisibility(id),
-    })));
+    return viewNode ? [viewNode] : [];
   }
 
   /** 파일 트리 섹션의 현재 보기 모드를 뒤집는 메뉴 항목을 만든다. */
@@ -416,22 +410,7 @@
     };
   }
 
-  /** 아코디언 카테고리 표시 여부를 토글한다. 마지막 표시 섹션은 숨기지 않는다. */
-  function toggleSectionVisibility(id) {
-    const visibleCount = SECTION_IDS.filter(
-      (sectionId) => state.visibleSections[sectionId] !== false
-    ).length;
-    if (state.visibleSections[id] !== false && visibleCount <= 1) {
-      return;
-    }
-    state.visibleSections[id] = state.visibleSections[id] === false;
-    vscode.setState(state);
-    if (lastPayload) {
-      render(lastPayload);
-    }
-  }
-
-  /** 커밋 입력 박스(메시지 textarea + 분할 커밋 버튼) HTML. */
+  /** 커밋 입력 박스(메시지 textarea + 커밋 버튼) HTML. */
   function commitBoxHtml(commit) {
     if (!commit || !commit.hasRepo) {
       return "";
@@ -514,13 +493,14 @@
 
   /** stash 한 개(접기 헤더 + 펼치면 파일 목록). */
   function stashItemHtml(s) {
-    const expanded = state.stashExpanded[s.hash] !== false;
+    const key = s.hash || s.ref || String(s.index || "");
+    const expanded = state.stashExpanded[key] !== false;
     const chevron = expanded ? "codicon-chevron-down" : "codicon-chevron-right";
     const meta = [s.branch, s.date].filter(Boolean).join(" · ");
     const files = s.files.map((f) => stashFileHtml(s.ref, f)).join("");
     return (
       `<div class="stash${expanded ? "" : " collapsed"}" data-ref="${esc(s.ref)}" ` +
-      `data-hash="${esc(s.hash)}" data-msg="${esc(s.message)}">` +
+      `data-key="${esc(key)}" data-hash="${esc(s.hash)}" data-msg="${esc(s.message)}">` +
       `<div class="row stash-header">` +
       `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="icon codicon codicon-archive"></span>` +
@@ -560,8 +540,10 @@
 
   /** 전체 화면을 그린다. */
   function render(p) {
+    const transient = captureTransientUi();
     closeDropdown();
     lastPayload = p;
+    state.visibleSections = normalizeVisibleSections(p.visibleSections);
     currentFileIcons = (p.fileIcons && p.fileIcons.icons) || {};
     loadFileIconFonts(p.fileIcons && p.fileIcons.fonts);
     const compareCount =
@@ -575,28 +557,28 @@
         T.repositories,
         p.repos.length,
         reposBody(p.repos),
-        sectionActions("")
+        ""
       ),
       changes: section(
         "changes",
         T.changes,
         changesCount,
         changesBody(p.changes, p.commit, p.changes.viewMode),
-        sectionActions("")
+        sectionActions()
       ),
       compare: section(
         "compare",
         T.compareBranches,
         compareCount,
         compareBody(p.compare, p.compare.viewMode),
-        sectionActions("")
+        p.compare.mode === "comparison" ? sectionActions() : ""
       ),
       stashes: section(
         "stashes",
         T.stashes,
         (p.stashes || []).length,
         stashesBody(p.stashes || []),
-        sectionActions("")
+        ""
       ),
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
@@ -606,6 +588,87 @@
     bindEvents();
     applyResize();
     applySelection();
+    restoreTransientUi(transient);
+  }
+
+  /** 렌더 직전 사용자가 조작 중인 일시 상태를 캡처한다. */
+  function captureTransientUi() {
+    const active = document.activeElement;
+    const focus =
+      active && rootEl.contains(active)
+        ? {
+            id: active.id || "",
+            value: typeof active.value === "string" ? active.value : undefined,
+            selectionStart:
+              typeof active.selectionStart === "number"
+                ? active.selectionStart
+                : undefined,
+            selectionEnd:
+              typeof active.selectionEnd === "number"
+                ? active.selectionEnd
+                : undefined,
+          }
+        : null;
+    const sectionScroll = {};
+    rootEl.querySelectorAll(".section").forEach((sec) => {
+      const body = sec.querySelector(".section-body");
+      if (body) {
+        sectionScroll[sec.dataset.section] = {
+          top: body.scrollTop,
+          left: body.scrollLeft,
+        };
+      }
+    });
+    return {
+      rootTop: rootEl.scrollTop,
+      rootLeft: rootEl.scrollLeft,
+      sectionScroll,
+      focus,
+    };
+  }
+
+  /** 렌더 후 입력 포커스/커서와 스크롤 위치를 되돌린다. */
+  function restoreTransientUi(snapshot) {
+    if (!snapshot) {
+      return;
+    }
+    rootEl.scrollTop = snapshot.rootTop || 0;
+    rootEl.scrollLeft = snapshot.rootLeft || 0;
+    rootEl.querySelectorAll(".section").forEach((sec) => {
+      const saved = snapshot.sectionScroll[sec.dataset.section];
+      const body = sec.querySelector(".section-body");
+      if (saved && body) {
+        body.scrollTop = saved.top || 0;
+        body.scrollLeft = saved.left || 0;
+      }
+    });
+    if (!snapshot.focus?.id) {
+      return;
+    }
+    const next = document.getElementById(snapshot.focus.id);
+    if (!next) {
+      return;
+    }
+    if (typeof snapshot.focus.value === "string" && "value" in next) {
+      next.value = snapshot.focus.value;
+      if (next.id === "commit-msg") {
+        vscode.postMessage({
+          type: "commitMessageChange",
+          message: next.value,
+        });
+      }
+    }
+    next.focus({ preventScroll: true });
+    if (
+      typeof next.setSelectionRange === "function" &&
+      snapshot.focus.selectionStart !== undefined &&
+      snapshot.focus.selectionEnd !== undefined
+    ) {
+      next.setSelectionRange(
+        snapshot.focus.selectionStart,
+        snapshot.focus.selectionEnd
+      );
+    }
   }
 
   /** 섹션 접힘 상태를 DOM 에 반영한다. */
@@ -711,6 +774,8 @@
         return;
       }
       const collapsed = children.classList.toggle("collapsed");
+      state.folders[el.dataset.folderKey] = collapsed;
+      vscode.setState(state);
       const twistie = el.querySelector(".twistie");
       const folderIcon = el.querySelector(".icon");
       twistie.classList.toggle("codicon-chevron-down", !collapsed);
@@ -887,10 +952,10 @@
           return;
         }
         const stash = h.closest(".stash");
-        const hash = stash.dataset.hash;
-        const wasExpanded = state.stashExpanded[hash] !== false;
+        const key = stash.dataset.key || stash.dataset.ref || stash.dataset.hash;
+        const wasExpanded = state.stashExpanded[key] !== false;
         const expanded = !wasExpanded;
-        state.stashExpanded[hash] = expanded;
+        state.stashExpanded[key] = expanded;
         vscode.setState(state);
         stash.classList.toggle("collapsed", !expanded);
         const tw = h.querySelector(".twistie");
@@ -1059,7 +1124,7 @@
       });
       nodes.push({
         label: T.openChanges,
-        onClick: () => vscode.postMessage({ type: "openWorkingChange", path }),
+        onClick: () => openWorkingPath(path, kind),
       });
       nodes.push({ separator: true });
     }
@@ -1353,8 +1418,13 @@
       selection = new Set([key]);
       selAnchor = key;
       applySelection();
-      vscode.postMessage({ type: "openWorkingChange", path: row.dataset.path });
+      openWorkingPath(row.dataset.path, row.dataset.stage);
     }
+  }
+
+  /** 작업트리 파일 열기: staged/unstaged 모두 native diff 를 연다. */
+  function openWorkingPath(path, stage) {
+    vscode.postMessage({ type: "openWorkingChange", path, stage });
   }
 
   /**

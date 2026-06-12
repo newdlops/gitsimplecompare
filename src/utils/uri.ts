@@ -11,6 +11,7 @@ export const COMPARE_SCHEME = "gitsimplecompare";
 interface RefUriPayload {
   ref: string;
   repoRoot: string;
+  nonce?: string;
 }
 
 /**
@@ -25,9 +26,10 @@ interface RefUriPayload {
 export function makeRefUri(
   ref: string,
   fsPath: string,
-  repoRoot: string
+  repoRoot: string,
+  nonce?: string
 ): vscode.Uri {
-  const payload: RefUriPayload = { ref, repoRoot };
+  const payload: RefUriPayload = { ref, repoRoot, nonce };
   return vscode.Uri.from({
     scheme: COMPARE_SCHEME,
     // path 앞에 "/"를 보장해 일관된 형태를 유지한다.

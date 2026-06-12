@@ -4,10 +4,15 @@
 import * as vscode from "vscode";
 import { CommandDeps } from "./shared";
 import { SortKey, ViewMode } from "../providers/changesTreeModel";
-import { TreeSection } from "../webview/changesViewProvider";
+import {
+  TreeSection,
+  VISIBLE_SECTIONS,
+  VisibleSection,
+} from "../webview/changesViewProvider";
 
 /** 현재(대표) 보기 모드를 when 절에서 쓰기 위한 컨텍스트 키 이름 */
 export const VIEW_MODE_CONTEXT = "gitSimpleCompare.viewMode";
+const SECTION_VISIBLE_CONTEXT_PREFIX = "gitSimpleCompare.section";
 
 /**
  * 상단 툴바의 전역 토글 — 모든 트리 섹션을 같은 보기 모드로 맞추고 컨텍스트 키도 갱신한다.
@@ -36,6 +41,15 @@ export function toggleSectionViewMode(
   syncViewContext(deps);
 }
 
+/** 최상위 view/title 메뉴에서 아코디언 섹션 표시 여부를 토글한다. */
+export function toggleVisibleSection(
+  deps: CommandDeps,
+  section: VisibleSection
+): void {
+  deps.changesView.toggleVisibleSection(section);
+  syncSectionVisibilityContext(deps);
+}
+
 /**
  * 대표 보기 모드를 컨텍스트 키에 한 번 동기화한다(활성화 시 + 섹션 토글 후).
  * @param deps 공유 의존성
@@ -46,6 +60,19 @@ export function syncViewContext(deps: CommandDeps): void {
     VIEW_MODE_CONTEXT,
     deps.changesView.getRepresentativeViewMode()
   );
+  syncSectionVisibilityContext(deps);
+}
+
+/** 아코디언 섹션 표시 상태를 view/title 메뉴 when 절에 맞춰 동기화한다. */
+function syncSectionVisibilityContext(deps: CommandDeps): void {
+  const visible = deps.changesView.getVisibleSections();
+  for (const section of VISIBLE_SECTIONS) {
+    void vscode.commands.executeCommand(
+      "setContext",
+      `${SECTION_VISIBLE_CONTEXT_PREFIX}.${section}.visible`,
+      visible[section]
+    );
+  }
 }
 
 /**

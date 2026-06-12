@@ -1,0 +1,175 @@
+// Changes 웹뷰의 실제 데이터 새로고침 명령.
+// - 단순 재렌더가 아니라 저장소/작업트리/stash/활성 브랜치 비교를 다시 읽는다.
+import * as vscode from "vscode";
+import { refreshActiveComparison } from "./compareBranches";
+import { refreshStashes } from "./stash";
+import { CommandDeps, discoverRepositories } from "./shared";
+import { refreshWorkingChanges } from "./workingChanges";
+import { logError, logInfo, logWarn } from "../ui/outputLog";
+
+let refreshInFlight = false;
+let refreshPending = false;
+let refreshPendingReason = "";
+let refreshSequence = 0;
+
+export interface RefreshRequest {
+  reason?: string;
+}
+
+/**
+ * Changes 웹뷰에 표시되는 모든 동적 데이터를 다시 조회한다.
+ * - 사용자가 누르는 refresh 와 파일/git 변경 이벤트가 모두 이 함수로 수렴한다.
+ * - 각 섹션은 독립적으로 실패할 수 있으므로 allSettled 로 가능한 섹션은 계속 갱신한다.
+ * @param deps 공유 의존성
+ * @param request refresh 를 요청한 출처 정보
+ */
+export async function refreshChangesView(
+  deps: CommandDeps,
+  request: RefreshRequest = {}
+): Promise<void> {
+  const reason = request.reason ?? "command";
+  if (refreshInFlight) {
+    refreshPending = true;
+    refreshPendingReason = mergeReason(refreshPendingReason, reason);
+    logInfo("changes refresh queued", { reason });
+    return;
+  }
+  const runId = ++refreshSequence;
+  refreshInFlight = true;
+  logInfo("changes refresh started", { runId, reason });
+  try {
+    let currentReason = reason;
+    do {
+      refreshPending = false;
+      refreshPendingReason = "";
+      await refreshChangesViewOnce(deps, currentReason);
+      currentReason = refreshPendingReason || reason;
+    } while (refreshPending);
+    logInfo("changes refresh finished", { runId });
+  } catch (error) {
+    logError("changes refresh failed", error, { runId, reason });
+    vscode.window.showErrorMessage(
+      vscode.l10n.t(
+        "Git Simple Compare refresh failed. See the Git Simple Compare output for details."
+      )
+    );
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+/** 실제 git 조회를 한 번 수행한다. 겹친 호출은 refreshChangesView 가 직렬화한다. */
+async function refreshChangesViewOnce(
+  deps: CommandDeps,
+  reason: string
+): Promise<void> {
+  await vscode.window.withProgress(
+    { location: { viewId: "gitSimpleCompare.changes" } },
+    async () => {
+      const sections = refreshSectionsForReason(reason);
+      logInfo("changes refresh scoped", { reason, sections });
+      if (reason === "command") {
+        deps.registry.invalidateStatusCaches();
+      }
+      if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
+        const repositories = await discoverRepositories(deps.registry);
+        deps.changesView.setRepositories(repositories);
+      }
+      const tasks = [
+        sectionTask(sections, "workingChanges", () => refreshWorkingChanges(deps)),
+        sectionTask(sections, "stashes", () => refreshStashes(deps)),
+        sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
+      ].filter((task): task is RefreshTask => !!task);
+      const results = await Promise.allSettled(
+        tasks.map((task) => timedRefreshSection(task.section, task.run))
+      );
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const section = tasks[index]?.section ?? "unknown";
+          logWarn("changes refresh section failed", {
+            section,
+            reason:
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason),
+          });
+        }
+      });
+    }
+  );
+}
+
+type RefreshSection =
+  | "repositories"
+  | "workingChanges"
+  | "stashes"
+  | "comparison";
+
+interface RefreshTask {
+  section: RefreshSection;
+  run: () => Promise<void>;
+}
+
+/** refresh 사유를 합쳐 pending refresh 가 어떤 범위를 봐야 하는지 보존한다. */
+function mergeReason(previous: string, reason: string): string {
+  return previous ? `${previous},${reason}` : reason;
+}
+
+/**
+ * refresh 사유에 따라 필요한 git 조회 범위를 고른다.
+ * - 파일 저장/작업트리 변경/hunk stage 는 stash 와 branch comparison 을 다시 읽지 않는다.
+ * @param reason refresh 요청 사유
+ */
+function refreshSectionsForReason(reason: string): RefreshSection[] {
+  if (isWorkingOnlyReason(reason)) {
+    return ["workingChanges"];
+  }
+  return ["repositories", "workingChanges", "stashes", "comparison"];
+}
+
+/** 작업트리 상태만 바뀐 refresh 사유인지 확인한다. */
+function isWorkingOnlyReason(reason: string): boolean {
+  const parts = reason.split(",").map((part) => part.trim()).filter(Boolean);
+  return (
+    parts.length > 0 &&
+    parts.every(
+      (part) =>
+        part.includes("working-tree-file") ||
+        part === "documentSaved" ||
+        part === "filesCreated" ||
+        part === "filesDeleted" ||
+        part === "filesRenamed" ||
+        part.startsWith("hunkCheckbox:")
+    )
+  );
+}
+
+/** 선택된 section 만 실행 목록에 넣는다. */
+function sectionTask(
+  sections: RefreshSection[],
+  section: RefreshSection,
+  run: () => Promise<void>
+): RefreshTask | undefined {
+  return sections.includes(section) ? { section, run } : undefined;
+}
+
+/**
+ * refresh 내부 섹션 시간을 측정하고 느린 경우에만 OUTPUT 에 남긴다.
+ * - 전체 refresh 가 느릴 때 git status/stash/branch 비교 중 어느 쪽이 원인인지 분리하기 위함이다.
+ * @param section 섹션 이름
+ * @param run     실제 조회 작업
+ */
+async function timedRefreshSection(
+  section: string,
+  run: () => Promise<void>
+): Promise<void> {
+  const started = Date.now();
+  try {
+    await run();
+  } finally {
+    const elapsed = Date.now() - started;
+    if (elapsed >= 250) {
+      logInfo("changes refresh section slow", { section, elapsed });
+    }
+  }
+}

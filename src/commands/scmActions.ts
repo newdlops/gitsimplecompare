@@ -214,9 +214,8 @@ export async function runScmAction(
       );
       return;
     }
-    // 위임 명령이 작업트리/스테이징/stash 를 바꿨을 수 있으니 갱신한다.
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+    // 위임 명령이 작업트리/스테이징/stash/ref 를 바꿨을 수 있으니 전체를 갱신한다.
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
     return;
   }
 

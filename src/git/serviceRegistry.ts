@@ -9,6 +9,10 @@ import { GitService } from "./gitService";
  */
 export class GitServiceRegistry {
   private readonly cache = new Map<string, GitService>();
+  private readonly resolveCache = new Map<
+    string,
+    { at: number; root: string | undefined }
+  >();
 
   /**
    * 저장소 루트에 해당하는 GitService 를 반환한다(없으면 생성해 캐싱).
@@ -29,10 +33,27 @@ export class GitServiceRegistry {
    * @returns GitService, 저장소가 아니면 undefined
    */
   async resolve(cwd: string): Promise<GitService | undefined> {
+    const cached = this.resolveCache.get(cwd);
+    if (cached && Date.now() - cached.at < 5000) {
+      return cached.root ? this.get(cached.root) : undefined;
+    }
     const root = await GitService.detectRepoRoot(cwd);
+    this.resolveCache.set(cwd, { at: Date.now(), root });
     if (!root) {
       return undefined;
     }
     return this.get(root);
+  }
+
+  /** 모든 저장소의 작업트리 상태 캐시를 무효화한다. */
+  invalidateStatusCaches(): void {
+    for (const service of this.cache.values()) {
+      service.invalidateStatusCache();
+    }
+  }
+
+  /** 저장소 루트 탐지 캐시를 비운다. */
+  invalidateResolveCache(): void {
+    this.resolveCache.clear();
   }
 }

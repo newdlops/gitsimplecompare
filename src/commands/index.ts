@@ -13,12 +13,20 @@ import {
   compareActiveFileWithBranch,
   compareExplorerFileWithBranch,
 } from "./compareFile";
-import { changeSortOrder, setViewMode, toggleSectionViewMode } from "./viewState";
-import type { TreeSection } from "../webview/changesViewProvider";
+import {
+  changeSortOrder,
+  setViewMode,
+  toggleSectionViewMode,
+  toggleVisibleSection,
+} from "./viewState";
+import type { TreeSection, VisibleSection } from "../webview/changesViewProvider";
 import { applyLeftToRight } from "./applyChanges";
 import { showGraph } from "./showGraph";
 import { startInteractiveRebase } from "./rebase";
 import { showSplitCommits } from "./splitCommits";
+import { discardEditorHunks, stageEditorHunks } from "./editorHunks";
+import { refreshChangesView } from "./refreshChangesView";
+import type { RefreshRequest } from "./refreshChangesView";
 import {
   commitChanges,
   discardChanges,
@@ -49,6 +57,17 @@ import {
 } from "./conflicts";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 
+const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
+  ["gitSimpleCompare.toggleSection.repos.visible", "repos"],
+  ["gitSimpleCompare.toggleSection.repos.hidden", "repos"],
+  ["gitSimpleCompare.toggleSection.changes.visible", "changes"],
+  ["gitSimpleCompare.toggleSection.changes.hidden", "changes"],
+  ["gitSimpleCompare.toggleSection.compare.visible", "compare"],
+  ["gitSimpleCompare.toggleSection.compare.hidden", "compare"],
+  ["gitSimpleCompare.toggleSection.stashes.visible", "stashes"],
+  ["gitSimpleCompare.toggleSection.stashes.hidden", "stashes"],
+];
+
 /**
  * 모든 명령을 등록하고 Disposable 배열을 반환한다.
  * - 반환된 Disposable 들은 extension.ts 에서 context.subscriptions 에 등록한다.
@@ -57,6 +76,11 @@ import { ChangeDiffArgs } from "../providers/changesTreeModel";
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
+    ...SECTION_TOGGLE_COMMANDS.map(([command, section]) =>
+      vscode.commands.registerCommand(command, () =>
+        toggleVisibleSection(deps, section)
+      )
+    ),
     vscode.commands.registerCommand("gitSimpleCompare.compareBranches", () =>
       compareBranches(deps)
     ),
@@ -68,8 +92,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.compareActiveFileWithBranch",
       () => compareActiveFileWithBranch(deps)
     ),
-    vscode.commands.registerCommand("gitSimpleCompare.refreshChanges", () =>
-      deps.changesView.refresh()
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.refreshChanges",
+      (request?: RefreshRequest) => refreshChangesView(deps, request)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openChangeDiff",
@@ -91,7 +116,13 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openWorkingChange",
-      (arg: { root: string; path: string }) => openWorkingChange(arg)
+      (arg: {
+        root: string;
+        path: string;
+        stage?: "staged" | "unstaged";
+        hasStaged?: boolean;
+      }) =>
+        openWorkingChange(arg)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openFile",
@@ -168,6 +199,39 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.applyLeftToRight",
       () => applyLeftToRight()
     ),
+    // editable diff 안에서 선택 라인/현재 hunk 를 바로 stage/discard
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.stageSelectedLines",
+      () => stageEditorHunks(deps, "selection")
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.discardSelectedLines",
+      () => discardEditorHunks(deps, "selection")
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.stageCurrentHunk",
+      () => stageEditorHunks(deps, "currentHunk")
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.discardCurrentHunk",
+      () => discardEditorHunks(deps, "currentHunk")
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.toggleHunkLineCheckbox",
+      (uri: string, lineIds: string[]) => deps.hunkCheckboxes.toggle(uri, lineIds)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.stageCheckedLines", () =>
+      deps.hunkCheckboxes.stageChecked()
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.unstageCheckedLines", () =>
+      deps.hunkCheckboxes.unstageChecked()
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.clearCheckedLines", () =>
+      deps.hunkCheckboxes.clearChecked()
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.chooseHunkControlMode", () =>
+      deps.hunkCheckboxes.chooseMode()
+    ),
     // git 그래프 웹뷰 열기
     vscode.commands.registerCommand("gitSimpleCompare.showGraph", () =>
       showGraph(deps)
@@ -180,7 +244,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     // 변경을 여러 커밋으로 분할
     vscode.commands.registerCommand(
       "gitSimpleCompare.splitCommits",
-      () => showSplitCommits(deps)
+      (focus) => showSplitCommits(deps, focus)
     ),
     // 충돌 해결
     vscode.commands.registerCommand("gitSimpleCompare.refreshConflicts", () =>
