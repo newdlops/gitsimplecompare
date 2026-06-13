@@ -18,9 +18,6 @@
   const SUMMARY_MIN_H = 96;
   const FILES_MIN_H = 120;
 
-  // 레인 색상 팔레트(색상 인덱스를 순환 사용)
-  const COLORS = ["#e06c75", "#61afef", "#98c379", "#e5c07b", "#c678dd", "#56b6c2", "#d19a66", "#56b6c2"];
-
   const graphEl = document.getElementById("graph");
   const graphContentEl = document.getElementById("graph-content");
   const detailEl = document.getElementById("detail");
@@ -50,11 +47,6 @@
     return row * ROW_H + ROW_H / 2;
   }
 
-  /** 색상 인덱스를 팔레트 색으로 변환한다. */
-  function colorOf(idx) {
-    return COLORS[idx % COLORS.length];
-  }
-
   /** 숫자를 min/max 범위 안으로 제한한다. */
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -62,11 +54,8 @@
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
-    return String(text == null ? "" : text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+    const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+    return String(text == null ? "" : text).replace(/[&<>"]/g, (ch) => map[ch]);
   }
 
   /** 네임스페이스를 지정해 SVG 요소를 만든다. */
@@ -142,18 +131,19 @@
         svgEl("path", {
           d: edgePath(edge, currentRows.length),
           fill: "none",
-          stroke: colorOf(edge.color),
+          stroke: window.GscGraphColors.edgeColor(edge, currentRows),
           "stroke-width": "1.5",
         })
       );
     }
     for (let r = 0; r < currentRows.length; r++) {
       const row = currentRows[r];
+      const nodeColor = window.GscGraphColors.rowColor(row);
       const node = svgEl("circle", {
         cx: laneX(row.column),
         cy: rowY(r),
         r: NODE_R,
-        fill: colorOf(row.color),
+        fill: nodeColor,
         stroke: "var(--vscode-editor-background)",
         "stroke-width": "1",
         class: window.GscGraphFeatures?.nodeClass(row) || "node",
@@ -161,6 +151,7 @@
         "data-row": String(r),
         "data-column": String(row.column),
         "aria-label": rowTitle(row),
+        style: `--graph-node-color: ${nodeColor}`,
       });
       const title = svgEl("title", {});
       title.textContent = rowTitle(row);
@@ -231,12 +222,11 @@
     el.className =
       "row" +
       (row.hash === selectedHash ? " selected" : "") +
-      (row.kind ? " " + row.kind + "-row" : "") +
-      (localOnlyBranches.length ? " local-only-row" : "");
+      (row.kind ? " " + row.kind + "-row" : "");
     el.style.top = index * ROW_H + "px";
     el.style.left = leftInset + "px";
     el.style.right = "0";
-    el.style.setProperty("--branch-color", colorOf(row.color));
+    el.style.setProperty("--branch-color", window.GscGraphColors.rowColor(row));
     el.dataset.hash = row.hash;
     el.dataset.subject = row.subject || "";
     el.dataset.refs = (row.refs || []).join("\t");
@@ -250,10 +240,11 @@
       )
       .join("");
     const date = formatDate(row.dateIso);
+    const badge = localOnlyBranches.length ? `<span class="local-only-badge" title="${esc(`local only: ${localOnlyBranches.join(", ")}`)}">-local only-</span>` : "";
     el.innerHTML =
       refs +
       `<span class="subject">${esc(row.subject)}</span>` +
-      `<span class="meta">${esc(row.authorName)} · ${esc(date)}</span>`;
+      `<span class="meta">${esc(row.authorName)} · ${esc(date)}</span>` + badge;
 
     el.addEventListener("click", () => selectCommit(row.hash));
     return el;
@@ -284,9 +275,7 @@
       return iso;
     }
     const p = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(
-      d.getHours()
-    )}:${p(d.getMinutes())}`;
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
   /**
@@ -296,9 +285,7 @@
   function selectCommit(hash) {
     selectedHash = hash;
     const rows = graphContentEl.querySelectorAll(".row");
-    rows.forEach((el) =>
-      el.classList.toggle("selected", el.dataset.hash === hash)
-    );
+    rows.forEach((el) => el.classList.toggle("selected", el.dataset.hash === hash));
     vscode.postMessage({ type: "selectCommit", hash: hash });
     if (isDrawerMode()) {
       setDetailVisible(true);

@@ -8,7 +8,6 @@ import {
   ONGOING_COMMIT_HASH,
   STAGED_COMMIT_HASH,
 } from "../git/gitLogService";
-import { RebaseService } from "../git/rebaseService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, LocalBranchStatus } from "../graph/graphTypes";
 import {
@@ -18,7 +17,6 @@ import {
 } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
-import { RebasePanel } from "./rebasePanel";
 import {
   FromWebviewMessage,
   GraphLoadState,
@@ -132,13 +130,6 @@ export class GitGraphPanel {
           base,
           msg.hash,
           msg.path
-        );
-      } else if (msg.type === "rebaseFrom") {
-        // 선택한 커밋과 그 이후를 편집하도록 base 를 picked^ 로 설정해 패널을 연다.
-        RebasePanel.createOrShow(
-          this.extensionUri,
-          new RebaseService(this.logService.repoRoot),
-          `${msg.hash}^`
         );
       }
     } catch (err) {
@@ -400,6 +391,9 @@ export class GitGraphPanel {
     const featureScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphFeatures.js")
     );
+    const colorScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphColors.js")
+    );
     const detailScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphDetail.js")
     );
@@ -501,6 +495,7 @@ export class GitGraphPanel {
     )}</p></div>
   </div>
   <div id="drawer-backdrop"></div>
+  <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

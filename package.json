@@ -169,12 +169,6 @@
         "icon": "$(graph)"
       },
       {
-        "command": "gitSimpleCompare.startInteractiveRebase",
-        "title": "%cmd.startInteractiveRebase%",
-        "category": "Git Simple Compare",
-        "icon": "$(list-ordered)"
-      },
-      {
         "command": "gitSimpleCompare.splitCommits",
         "title": "%cmd.splitCommits%",
         "category": "Git Simple Compare",
@@ -328,11 +322,6 @@
           "command": "gitSimpleCompare.toggleSection.stashes.hidden",
           "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.stashes.visible",
           "group": "2_sections@4"
-        },
-        {
-          "command": "gitSimpleCompare.startInteractiveRebase",
-          "when": "view == gitSimpleCompare.changes",
-          "group": "1_ops@1"
         },
         {
           "command": "gitSimpleCompare.splitCommits",

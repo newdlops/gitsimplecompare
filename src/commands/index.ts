@@ -24,7 +24,6 @@ import { applyLeftToRight } from "./applyChanges";
 import { openDiffFileEditor } from "./diffEditor";
 import { showGraph } from "./showGraph";
 import { checkoutBranch } from "./checkoutBranch";
-import { startInteractiveRebase } from "./rebase";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -253,11 +252,6 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     // git 그래프 웹뷰 열기
     vscode.commands.registerCommand("gitSimpleCompare.showGraph", () =>
       showGraph(deps)
-    ),
-    // 인터랙티브 rebase 시작
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.startInteractiveRebase",
-      () => startInteractiveRebase(deps)
     ),
     // 변경을 여러 커밋으로 분할
     vscode.commands.registerCommand(

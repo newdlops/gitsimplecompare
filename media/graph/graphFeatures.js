@@ -130,7 +130,6 @@
       actionButton("create-branch", "git-branch-create", "Create branch here", "Create Branch", "create-action"),
       actionButton("create-tag", "tag", "Create tag here", "Create Tag", "create-action"),
       actionButton("cherry-pick", "git-pull-request", "Cherry-pick commit", "Cherry-pick"),
-      actionButton("rebase-from", "list-ordered", "Interactive rebase from this commit: edit, reorder, squash, or drop this commit and newer commits.", "Rebase From Here"),
     ];
     if (undoableHeadBranch(detail.hash)) {
       actions.push(actionButton("undo-commit", "discard", "Undo latest unpushed commit and keep changes staged.", "Undo Commit"));
@@ -162,7 +161,6 @@
     bind("create-branch", () => ({ type: "createBranch", hash: detail.hash }));
     bind("create-tag", () => ({ type: "createTag", hash: detail.hash }));
     bind("cherry-pick", () => ({ type: "cherryPick", hash: detail.hash }));
-    bind("rebase-from", () => ({ type: "rebaseFrom", hash: detail.hash }));
     bind("undo-commit", () => ({ type: "undoCommit", hash: detail.hash }));
     bind("delete-branch", () => deleteBranchMessage(detail.hash));
   }

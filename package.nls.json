@@ -31,7 +31,6 @@
   "cmd.toggleHunkLineCheckbox": "Toggle Stage Checkbox",
   "cmd.chooseHunkControlMode": "Choose Hunk Control UI",
   "cmd.showGraph": "Show Git Graph",
-  "cmd.startInteractiveRebase": "Start Interactive Rebase…",
   "cmd.splitCommits": "Editable Diff",
   "cmd.refreshConflicts": "Refresh Conflicts",
   "cmd.takeOurs": "Accept Ours (--ours)",

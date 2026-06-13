@@ -31,7 +31,6 @@
   "cmd.toggleHunkLineCheckbox": "스테이징 체크박스 토글",
   "cmd.chooseHunkControlMode": "Hunk 컨트롤 UI 선택",
   "cmd.showGraph": "git 그래프 보기",
-  "cmd.startInteractiveRebase": "인터랙티브 rebase 시작…",
   "cmd.splitCommits": "편집 가능한 Diff",
   "cmd.refreshConflicts": "충돌 목록 새로고침",
   "cmd.takeOurs": "우리쪽(--ours) 수용",

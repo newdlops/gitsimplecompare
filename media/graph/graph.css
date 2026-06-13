@@ -162,12 +162,11 @@ body.resizing {
 }
 
 #graph-content .node.local-only-node {
-  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  fill: var(--graph-node-color, #ff8a4c);
+  stroke: var(--graph-node-color, #ff8a4c);
   stroke-width: 3;
   stroke-dasharray: 2 2;
-  filter: drop-shadow(
-    0 0 3px var(--vscode-gitDecoration-addedResourceForeground, #89d185)
-  );
+  filter: drop-shadow(0 0 3px var(--graph-node-color, #ff8a4c));
 }
 
 #graph-content .node.ongoing-node {
@@ -214,17 +213,6 @@ body.resizing {
   color: var(--vscode-list-activeSelectionForeground);
 }
 
-.row.local-only-row::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  top: 5px;
-  bottom: 5px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
-}
-
 .row.ongoing-row,
 .row.staged-row {
   font-weight: 600;
@@ -240,6 +228,19 @@ body.resizing {
   flex: 0 0 auto;
   opacity: 0.7;
   font-size: 0.9em;
+}
+
+.row .local-only-badge {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--branch-color, #ff8a4c);
+  border-radius: 4px;
+  color: var(--branch-color, #ff8a4c);
+  background: color-mix(in srgb, var(--branch-color, #ff8a4c) 14%, transparent);
+  font-size: 0.78em;
+  font-weight: 600;
+  line-height: 16px;
 }
 
 .ref {
@@ -318,7 +319,7 @@ body.resizing {
   position: absolute;
   top: calc(100% + 4px);
   left: 50%;
-  z-index: 50;
+  z-index: 200;
   max-width: 280px;
   padding: 4px 7px;
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
@@ -331,7 +332,9 @@ body.resizing {
   white-space: nowrap;
   content: attr(data-tooltip);
   pointer-events: none;
-  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  background-color: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background, #1e1e1e));
+  background-image: none;
+  background-clip: padding-box;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
   transform: translateX(-50%);
 }
@@ -339,6 +342,7 @@ body.resizing {
 .ref[data-tooltip]:hover::after,
 .ref[data-tooltip]:focus-visible::after {
   opacity: 1;
+  backdrop-filter: none;
 }
 
 .ref.branch-action:hover {

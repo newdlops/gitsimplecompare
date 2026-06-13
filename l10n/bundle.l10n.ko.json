@@ -143,7 +143,6 @@
   "Rebase failed: {0}": "rebase 실패: {0}",
   "No commits to rebase.": "rebase 할 커밋이 없습니다.",
   "Could not load commits: {0}": "커밋을 불러올 수 없습니다: {0}",
-  "Rebase from this commit (it and newer commits become editable)": "이 커밋부터 rebase (이 커밋과 이후 커밋을 편집할 수 있습니다)",
   "Split Changes into Commits": "변경을 여러 커밋으로 분할",
   "Stage Hunks": "Hunk 스테이징",
   "Select hunks, write a message, and commit. Repeat for the rest.": "hunk 를 선택하고 메시지를 작성해 커밋하세요. 나머지도 반복합니다.",
