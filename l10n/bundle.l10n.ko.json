@@ -99,6 +99,7 @@
   "Compare Branches (2/2): choose TO (target) — FROM is {0}": "브랜치 비교 (2/2): TO(대상) 선택 — FROM은 {0}",
   "(select a branch)": "(브랜치 선택)",
   "Compare": "비교 실행",
+  "Toggle section": "섹션 접기/펼치기",
   "Select both From and To branches first.": "먼저 From·To 브랜치를 모두 선택하세요.",
   "remote": "원격",
   "local": "로컬",

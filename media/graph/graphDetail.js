@@ -82,16 +82,16 @@
     );
   }
 
-  /** 커밋을 직접 가리키는 브랜치 목록을 chip 형태로 만든다. */
+  /** 커밋을 포함하는 브랜치 목록을 chip 형태로 만든다. */
   function branchHtml(branches) {
     const chips = branches.length
       ? branches.slice(0, 16).map(branchChipHtml).join("")
-      : `<span class="branch-empty">No branch at this commit</span>`;
+      : `<span class="branch-empty">No branch contains this commit</span>`;
     const extra = branches.length > 16
       ? `<span class="branch-extra">+${branches.length - 16}</span>`
       : "";
     return (
-      `<div class="detail-branches" aria-label="Branches at this commit">` +
+      `<div class="detail-branches" aria-label="Branches containing this commit">` +
       `<span class="codicon codicon-git-branch" aria-hidden="true"></span>` +
       `<div class="branch-list">${chips}${extra}</div></div>`
     );
@@ -104,8 +104,72 @@
       branch.kind === "remote" ? "remote" : "local",
       branch.current ? "current" : "",
     ].filter(Boolean).join(" ");
-    const title = `${branch.current ? "current " : ""}${branch.kind} branch ${branch.name}`;
-    return `<span class="${cls}" title="${esc(title)}">${esc(branch.name)}</span>`;
+    const color = graphColorForBranch(branch);
+    const style = color ? ` style="--detail-branch-color: ${color}"` : "";
+    const title = `${branch.current ? "current " : ""}${branch.kind} branch ${branch.name} contains this commit`;
+    return `<span class="${cls}"${style} title="${esc(title)}">${esc(branch.name)}</span>`;
+  }
+
+  /**
+   * 상세 브랜치 chip 에 쓸 그래프 색상을 찾는다.
+   * - 브랜치 tip row 가 현재 렌더된 그래프에 있으면 그 row 의 ref 배지 색상을 우선 사용한다.
+   * @param branch 상세 패널에 표시할 브랜치 정보
+   * @returns CSS custom property 에 넣을 수 있는 안전한 색상값
+   */
+  function graphColorForBranch(branch) {
+    return (
+      graphColorForHash(branch?.tipHash) ||
+      graphColorForRef(branch?.name) ||
+      graphColorForHash(lastDetail?.hash) ||
+      ""
+    );
+  }
+
+  /**
+   * 렌더된 그래프 row 중 특정 ref 를 가진 row 의 레인 색상을 반환한다.
+   * @param ref 찾을 브랜치 ref 이름
+   * @returns 그래프 row 에 설정된 색상값
+   */
+  function graphColorForRef(ref) {
+    if (!ref) {
+      return "";
+    }
+    const rows = document.querySelectorAll("#graph-content .row");
+    for (const row of rows) {
+      const refs = (row.dataset.refs || "").split("\t");
+      if (refs.includes(ref)) {
+        return safeGraphColor(row.style.getPropertyValue("--branch-color"));
+      }
+    }
+    return "";
+  }
+
+  /**
+   * 브랜치 tip row 를 찾지 못한 경우 선택 커밋 row 의 레인 색상을 fallback 으로 반환한다.
+   * @param hash 현재 상세 패널이 보여주는 커밋 해시
+   * @returns 선택 커밋 row 에 설정된 색상값
+   */
+  function graphColorForHash(hash) {
+    if (!hash) {
+      return "";
+    }
+    const rows = document.querySelectorAll("#graph-content .row");
+    for (const row of rows) {
+      if (row.dataset.hash === hash) {
+        return safeGraphColor(row.style.getPropertyValue("--branch-color"));
+      }
+    }
+    return "";
+  }
+
+  /**
+   * 내부 그래프 팔레트에서 온 hex 색상만 style 속성으로 전달한다.
+   * @param color row 의 `--branch-color` 값
+   * @returns 안전하게 검증된 hex 색상 또는 빈 문자열
+   */
+  function safeGraphColor(color) {
+    const value = String(color || "").trim();
+    return /^#[0-9a-f]{6}$/i.test(value) ? value : "";
   }
 
   /** 작성자 정보를 공간을 적게 쓰는 한 줄 HTML 로 만든다. */

@@ -19,6 +19,7 @@
       to: "To:",
       selectBranch: "(select a branch)",
       compare: "Compare",
+      toggleSection: "Toggle section",
       noCompare: "No changes between the selected branches.",
       noChanges: "No working tree changes.",
       noRepos: "No git repository found.",
@@ -218,7 +219,7 @@
       `<div class="section" data-section="${id}">` +
       `<div class="section-header">` +
       `<span class="twistie codicon codicon-chevron-down"></span>` +
-      `<span class="title">${esc(title)}</span>${countHtml}${actions}</div>` +
+      `<span class="title">${esc(title)}</span>${countHtml}</div>${actions}` +
       `<div class="section-body">${bodyHtml}</div></div>`
     );
   }
@@ -287,7 +288,7 @@
       const key = folderKey(kind, node.path);
       const collapsed = !!state.folders[key];
       return (
-        `<div class="row folder" data-folder-key="${esc(key)}">` +
+        `<div class="row folder" data-folder-key="${esc(key)}" title="${esc(node.path)}">` +
         `<span class="twistie codicon ${
           collapsed ? "codicon-chevron-right" : "codicon-chevron-down"
         }"></span>` +
@@ -343,7 +344,7 @@
       const icon = side === "from" ? "codicon-git-commit" : "codicon-target";
       const shown = isEmpty ? T.selectBranch : value;
       return (
-        `<div class="ref" data-side="${side}">` +
+        `<div class="ref" data-side="${side}" title="${esc(T.change)}">` +
         `<span class="icon codicon ${icon}"></span>` +
         `<span class="label">${esc(label)}</span>` +
         `<span class="value${isEmpty ? " empty" : ""}">${esc(shown)}</span>` +
@@ -354,7 +355,8 @@
     let html = refRow("from", compare.from) + refRow("to", compare.to);
     if (compare.mode === "draft") {
       html +=
-        `<button id="compare"><span class="codicon codicon-git-compare">` +
+        `<button id="compare" type="button" title="${esc(T.compare)}" ` +
+        `aria-label="${esc(T.compare)}"><span class="codicon codicon-git-compare">` +
         `</span>${esc(T.compare)}</button>`;
     } else {
       html += fileTree(
@@ -371,8 +373,8 @@
   /** 헤더 우측 미트볼(...) 버튼 HTML. */
   function meatballAction() {
     return (
-      `<span class="header-action meatball codicon codicon-ellipsis" ` +
-      `title="${esc(T.moreActions)}"></span>`
+      `<button class="header-action meatball codicon codicon-ellipsis" type="button" ` +
+      `aria-label="${esc(T.moreActions)}" data-tooltip="${esc(T.moreActions)}"></button>`
     );
   }
 
@@ -418,12 +420,15 @@
     return (
       `<div class="commit-box">` +
       `<textarea id="commit-msg" class="commit-input" rows="1" ` +
+      `title="${esc(T.commitPlaceholder)}" aria-label="${esc(T.commitPlaceholder)}" ` +
       `placeholder="${esc(T.commitPlaceholder)}">${esc(commit.message)}</textarea>` +
       `<div class="commit-bar">` +
-      `<button id="commit-btn" class="commit-btn" title="${esc(T.commit)}">` +
+      `<button id="commit-btn" class="commit-btn" type="button" ` +
+      `title="${esc(T.commit)}" aria-label="${esc(T.commit)}">` +
       `<span class="codicon codicon-check"></span>` +
       `<span class="commit-label">${esc(T.commit)}</span></button>` +
-      `<button id="commit-caret" class="commit-caret" title="${esc(T.commit)}">` +
+      `<button id="commit-caret" class="commit-caret" type="button" ` +
+      `title="${esc(T.moreActions)}" aria-label="${esc(T.moreActions)}">` +
       `<span class="codicon codicon-chevron-down"></span></button>` +
       `</div></div>`
     );
@@ -449,7 +454,7 @@
     }
     return (
       `<div class="group${collapsed ? " collapsed" : ""}" data-gkey="${kind}">` +
-      `<div class="group-header">` +
+      `<div class="group-header" title="${esc(`${T.toggleSection}: ${title}`)}">` +
       `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="group-title">${esc(title)}</span>` +
       `<span class="count">${count}</span>` +
@@ -501,7 +506,7 @@
     return (
       `<div class="stash${expanded ? "" : " collapsed"}" data-ref="${esc(s.ref)}" ` +
       `data-key="${esc(key)}" data-hash="${esc(s.hash)}" data-msg="${esc(s.message)}">` +
-      `<div class="row stash-header">` +
+      `<div class="row stash-header" title="${esc(`${T.toggleSection}: ${s.message}`)}">` +
       `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="icon codicon codicon-archive"></span>` +
       `<span class="name">${esc(s.message)}</span>` +
@@ -1528,6 +1533,7 @@
       if (stack.length > 1) {
         const back = document.createElement("div");
         back.className = "menu-item menu-back";
+        back.title = top.title || "";
         back.innerHTML =
           `<span class="codicon codicon-chevron-left"></span>` +
           `<span class="menu-label">${esc(top.title || "")}</span>`;
@@ -1548,6 +1554,7 @@
         const hasSub = !!(node.submenu && node.submenu.length);
         const item = document.createElement("div");
         item.className = "menu-item";
+        item.title = node.label || "";
         item.innerHTML =
           `<span class="menu-check codicon ${
             node.checked ? "codicon-check" : ""

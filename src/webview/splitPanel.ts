@@ -315,9 +315,11 @@ export class SplitPanel {
     <div class="toolbar">
       <label class="search">
         <span class="codicon codicon-search"></span>
-        <input id="filter" type="search" placeholder="${vscode.l10n.t(
-          "Filter"
-        )}" />
+	        <input id="filter" type="search" title="${vscode.l10n.t(
+            "Filter"
+          )}" aria-label="${vscode.l10n.t("Filter")}" placeholder="${vscode.l10n.t(
+	          "Filter"
+	        )}" />
       </label>
       <button id="selected-only" class="secondary" type="button" title="${vscode.l10n.t(
         "Selected"

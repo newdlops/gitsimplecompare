@@ -43,11 +43,12 @@
       `<span class="handle" title="drag to reorder">⠿</span>` +
       `<div class="body">` +
       `<div class="top">` +
-      `<select class="action">${options}</select>` +
+	      `<select class="action" title="Choose rebase action" aria-label="Choose rebase action">${options}</select>` +
       `<span class="subject">${esc(commit.subject)}</span>` +
       `<span class="hash">${esc(commit.hash.slice(0, 7))}</span>` +
       `</div>` +
-      `<textarea class="message" placeholder="commit message"></textarea>` +
+	      `<textarea class="message" title="Edit commit message" ` +
+	      `aria-label="Edit commit message" placeholder="commit message"></textarea>` +
       `</div>`;
 
     const select = li.querySelector(".action");

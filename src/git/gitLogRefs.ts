@@ -2,25 +2,31 @@
 // - GitLogService 의 커밋 조회 책임과 ref 문자열 정규화 책임을 분리해 파일 크기를 관리한다.
 import type { CommitBranchInfo } from "../graph/graphTypes";
 
+/** 커밋 해시를 포함한 branch ref 캐시 내부 레코드 */
+export interface CommitBranchRef extends CommitBranchInfo {
+  hash: string;
+}
+
 /**
- * for-each-ref 출력 한 줄들을 커밋 상세용 브랜치 목록으로 변환한다.
- * - origin/HEAD 같은 remote symbolic ref 는 실제 checkout 대상이 아니라 제외한다.
+ * objectname 을 포함한 for-each-ref 출력 한 줄들을 브랜치 캐시 레코드로 변환한다.
+ * - 입력 포맷은 hash, HEAD 표시, short ref, full ref 순서여야 한다.
  * @param raw FS 로 구분된 for-each-ref 원문
  * @param separator git format 에 사용한 필드 구분자
  */
-export function parseBranchRefs(
+export function parseBranchRefRecords(
   raw: string,
   separator: string
-): CommitBranchInfo[] {
+): CommitBranchRef[] {
   return raw
     .split("\n")
     .filter((line) => line.trim().length > 0)
-    .flatMap<CommitBranchInfo>((line) => {
-      const [head, name, full] = line.split(separator);
-      if (!name || name.endsWith("/HEAD")) {
+    .flatMap<CommitBranchRef>((line) => {
+      const [hash, head, name, full] = line.split(separator);
+      if (!hash || !name || name.endsWith("/HEAD")) {
         return [];
       }
       return [{
+        hash,
         name,
         kind: full?.startsWith("refs/remotes/") ? "remote" : "local",
         current: head === "*",

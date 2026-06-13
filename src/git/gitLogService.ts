@@ -5,13 +5,19 @@ import { runGit } from "./gitExec";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import {
   Commit,
-  CommitBranchInfo,
   CommitDetail,
   CommitFileChange,
   GraphRowKind,
   LocalBranchStatus,
 } from "../graph/graphTypes";
-import { parseBranchRefs, parseTrack } from "./gitLogRefs";
+import { GitBranchRefCache } from "./gitBranchRefCache";
+import { loadLocalOnlyBranchMap } from "./gitLocalOnlyBranches";
+import { parseTrack } from "./gitLogRefs";
+import {
+  isUnpushedLocalHead,
+  localNameFromRemoteRef,
+  splitRemoteRef,
+} from "./gitRefNames";
 import { countUntrackedLines } from "./untrackedStats";
 
 /** 빈 트리 오브젝트 해시(루트 커밋의 부모 대용으로 diff 비교에 사용) */
@@ -28,7 +34,12 @@ const FS = "\x1f";
  * 특정 저장소의 로그/상세를 다루는 서비스(저장소 루트 1개에 대응).
  */
 export class GitLogService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly branchRefCache: GitBranchRefCache;
+  private localOnlyBranchMapPromise: Promise<Map<string, string[]>> | undefined;
+
+  constructor(public readonly repoRoot: string) {
+    this.branchRefCache = new GitBranchRefCache(repoRoot, FS);
+  }
 
   /**
    * 커밋 목록을 자식→부모 순(topo-order)으로 반환한다.
@@ -60,6 +71,9 @@ export class GitLogService {
       return [];
     }
     const safeSkip = Math.max(0, Math.floor(skip));
+    if (safeSkip === 0) {
+      this.invalidateBranchCaches();
+    }
     const format = ["%H", "%P", "%an", "%ae", "%aI", "%D", "%s"].join(FS);
     const refArgs = refs.length > 0 ? refs : ["--all"];
     const out = await runGit(
@@ -76,10 +90,12 @@ export class GitLogService {
       this.repoRoot
     );
 
-    return out
+    const commits = out
       .split("\0")
       .filter((entry) => entry.length > 0)
       .map((entry) => this.parseCommit(entry));
+    await this.attachLocalOnlyBranches(commits);
+    return commits;
   }
 
   /**
@@ -102,7 +118,7 @@ export class GitLogService {
 
     const [files, branches] = await Promise.all([
       this.getCommitFiles(base, hash),
-      this.getBranchesPointingAt(hash),
+      this.branchRefCache.getBranchesContainingCommit(hash),
     ]);
     return {
       hash: parts[0],
@@ -162,11 +178,16 @@ export class GitLogService {
   /**
    * 그래프의 로컬 브랜치 chip 클릭에서 선택한 브랜치로 전환한다.
    * - 호출부에서 getLocalBranches 로 검증한 로컬 브랜치 이름만 전달한다.
-   * - 작업트리 충돌/미저장 변경으로 전환할 수 없으면 git 오류를 그대로 던져 UI 가 안내한다.
+   * - merge=true 면 작업트리 변경과 대상 브랜치를 3-way merge 하며 checkout 해 충돌을 노출한다.
    * @param branchName 전환할 로컬 브랜치 이름
+   * @param merge      로컬 변경 충돌 시 merge checkout 을 시도할지 여부
    */
-  async checkoutLocalBranch(branchName: string): Promise<void> {
-    await runGit(["switch", branchName], this.repoRoot);
+  async checkoutLocalBranch(branchName: string, merge = false): Promise<void> {
+    await runGit(
+      ["switch", ...(merge ? ["--merge"] : []), branchName],
+      this.repoRoot
+    );
+    this.invalidateBranchCaches();
   }
 
   /**
@@ -193,28 +214,33 @@ export class GitLogService {
       ],
       this.repoRoot
     );
+    this.invalidateBranchCaches();
     return localName;
   }
 
   /** 특정 커밋으로 detached HEAD checkout 을 수행한다. */
   async checkoutCommitDetached(hash: string): Promise<void> {
     await runGit(["switch", "--detach", hash], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 지정 커밋을 시작점으로 새 로컬 브랜치를 만든다. */
   async createBranchAt(name: string, startPoint: string): Promise<void> {
     await runGit(["branch", name, startPoint], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 로컬 브랜치를 삭제한다. */
   async deleteLocalBranch(name: string, force = false): Promise<void> {
     await runGit(["branch", force ? "-D" : "-d", name], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 원격 브랜치를 원격 저장소에서 삭제한다. */
   async deleteRemoteBranch(ref: string): Promise<void> {
     const parsed = splitRemoteRef(ref);
     await runGit(["push", parsed.remote, "--delete", parsed.branch], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 그래프 액션에서 선택할 수 있는 브랜치 목록을 반환한다. */
@@ -275,6 +301,7 @@ export class GitLogService {
   /** 전체 원격 브랜치 ref 를 fetch/prune 한다. tag 동기화는 tag 충돌을 피하기 위해 별도 액션으로 분리한다. */
   async fetchAll(): Promise<void> {
     await runGit(["fetch", "--all", "--prune"], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** tag 목록만 원격에서 가져온다. */
@@ -285,16 +312,19 @@ export class GitLogService {
   /** 현재 브랜치의 upstream 변경을 fast-forward 방식으로 pull 한다. */
   async pullCurrent(): Promise<void> {
     await runGit(["pull", "--ff-only"], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 현재 브랜치의 커밋을 upstream 으로 push 한다. */
   async pushCurrent(): Promise<void> {
     await runGit(["push"], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /** 지정 커밋을 현재 브랜치에 cherry-pick 한다. */
   async cherryPick(hash: string): Promise<void> {
     await runGit(["cherry-pick", hash], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   /**
@@ -309,9 +339,55 @@ export class GitLogService {
       throw new Error(`Commit is not an unpushed local HEAD: ${hash}`);
     }
     await runGit(["reset", "--soft", "HEAD~1"], this.repoRoot);
+    this.invalidateBranchCaches();
   }
 
   // ---- 내부 구현 ----
+
+  /** 브랜치 ref 와 로컬 전용 커밋 표시 캐시를 함께 비운다. */
+  private invalidateBranchCaches(): void {
+    this.branchRefCache.invalidate();
+    this.localOnlyBranchMapPromise = undefined;
+  }
+
+  /**
+   * 현재 페이지 커밋에 upstream 보다 앞선 로컬 브랜치 이름을 붙인다.
+   * - 그래프에서 원격 기준점 이후의 로컬 전용 노드를 별도 스타일로 표시하기 위한 메타데이터다.
+   * @param commits 이번 그래프 페이지에 포함된 커밋 목록
+   */
+  private async attachLocalOnlyBranches(commits: Commit[]): Promise<void> {
+    if (!commits.length) {
+      return;
+    }
+    const byHash = await this.localOnlyBranchMap().catch(() => new Map<string, string[]>());
+    for (const commit of commits) {
+      const branches = byHash.get(commit.hash);
+      if (branches?.length) {
+        commit.localOnlyBranches = [...branches];
+      }
+    }
+  }
+
+  /**
+   * 로컬 전용 커밋 해시별 브랜치 목록을 캐시해서 반환한다.
+   * @returns commit hash → 이 커밋을 upstream 보다 앞선 변경으로 포함하는 로컬 브랜치 이름들
+   */
+  private localOnlyBranchMap(): Promise<Map<string, string[]>> {
+    if (!this.localOnlyBranchMapPromise) {
+      this.localOnlyBranchMapPromise = this.loadLocalOnlyBranchMap();
+    }
+    return this.localOnlyBranchMapPromise;
+  }
+
+  /**
+   * ahead 상태인 로컬 브랜치의 `upstream..local` 범위를 해시별로 묶는다.
+   * - upstream 이 없거나 사라진 브랜치는 기준점이 모호하므로 여기서는 표시하지 않는다.
+   * @returns 로컬 전용 커밋 해시별 브랜치 이름 맵
+   */
+  private async loadLocalOnlyBranchMap(): Promise<Map<string, string[]>> {
+    const branches = await this.getLocalBranches().catch(() => []);
+    return loadLocalOnlyBranchMap(this.repoRoot, branches);
+  }
 
   /**
    * base..hash 사이 변경 파일 목록을 상태 + 증감 라인 수와 함께 만든다.
@@ -361,45 +437,10 @@ export class GitLogService {
         kind === "ongoing"
           ? "Ongoing changes\n\nIncludes staged and unstaged working tree changes."
           : "Staged changes\n\nRepresents the current index snapshot.",
-      branches: await this.getCurrentBranchInfo(),
+      branches: await this.branchRefCache.getCurrentBranches(),
       files,
       kind,
     };
-  }
-
-  /**
-   * 지정 커밋을 직접 가리키는 local/remote 브랜치를 찾는다.
-   * - 상세 패널 클릭마다 실행되므로 히스토리를 걷는 `--contains` 대신 `--points-at`을 써서
-   *   ref 테이블만 확인한다. 오래된 커밋의 "포함 브랜치"보다 현재 ref 위치를 빠르게 보여주는 데 초점을 둔다.
-   * @param hash 브랜치 ref 가 직접 가리키는지 검사할 커밋 해시
-   */
-  private async getBranchesPointingAt(hash: string): Promise<CommitBranchInfo[]> {
-    const format = ["%(HEAD)", "%(refname:short)", "%(refname)"].join(FS);
-    const out = await runGit(
-      [
-        "for-each-ref",
-        `--points-at=${hash}`,
-        `--format=${format}`,
-        "refs/heads",
-        "refs/remotes",
-      ],
-      this.repoRoot
-    ).catch(() => "");
-    return parseBranchRefs(out, FS);
-  }
-
-  /**
-   * 가상 커밋(Working Tree/Index)에 표시할 현재 브랜치 정보를 만든다.
-   * - 가상 노드는 실제 커밋이 아니므로 contains 검색 대신 현재 checkout 브랜치만 보여준다.
-   */
-  private async getCurrentBranchInfo(): Promise<CommitBranchInfo[]> {
-    return (await this.getLocalBranches())
-      .filter((branch) => branch.current)
-      .map((branch) => ({
-        name: branch.name,
-        kind: "local" as const,
-        current: true,
-      }));
   }
 
   /**
@@ -552,26 +593,4 @@ function virtualCommit(
     subject: kind === "ongoing" ? "Ongoing changes" : "Staged changes",
     kind,
   };
-}
-
-/** origin/feature 형태의 원격 브랜치 ref 를 remote 이름과 브랜치 이름으로 나눈다. */
-function splitRemoteRef(ref: string): { remote: string; branch: string } {
-  const slash = ref.indexOf("/");
-  if (slash <= 0 || slash === ref.length - 1) {
-    throw new Error(`Invalid remote branch: ${ref}`);
-  }
-  return {
-    remote: ref.slice(0, slash),
-    branch: ref.slice(slash + 1),
-  };
-}
-
-/** 원격 브랜치 short name 에서 로컬 브랜치명을 만든다. */
-function localNameFromRemoteRef(ref: string): string {
-  return splitRemoteRef(ref).branch;
-}
-
-/** 현재 로컬 HEAD 가 remote 에 아직 반영되지 않은 상태인지 판단한다. */
-function isUnpushedLocalHead(branch: LocalBranchStatus): boolean {
-  return branch.ahead > 0 || !branch.upstream || branch.gone;
 }

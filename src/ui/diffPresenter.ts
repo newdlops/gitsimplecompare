@@ -94,6 +94,30 @@ export async function openHeadVsRemainingUnstagedDiff(
 }
 
 /**
+ * HEAD 와 실제 작업트리 파일을 비교한다(오른쪽=실제 파일이라 편집 가능).
+ * - Editable Diff 진입점에서 사용해 diff 오른쪽 문서를 그대로 수정할 수 있게 한다.
+ * @param repoRoot 저장소 루트
+ * @param relPath  저장소 상대 경로
+ */
+export async function openHeadVsWorkingTreeDiff(
+  repoRoot: string,
+  relPath: string
+): Promise<void> {
+  const left = makeRefUri("HEAD", relPath, repoRoot);
+  const right = vscode.Uri.file(`${repoRoot}/${relPath}`);
+  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
+  const title = makeDiffTitle("HEAD", vscode.l10n.t("Working Tree"), fileLabel);
+  refreshBranchContent(left);
+  await vscode.commands.executeCommand(
+    "vscode.diff",
+    left,
+    right,
+    title,
+    DIFF_OPTIONS
+  );
+}
+
+/**
  * index 에 올라간 파일 버전을 HEAD 와 비교한다(양쪽 읽기 전용).
  * - staged 목록에서 파일을 열 때 사용해, 부분 stage 된 변화만 정확히 보여준다.
  * @param repoRoot 저장소 루트

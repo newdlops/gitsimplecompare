@@ -403,9 +403,6 @@ export class GitGraphPanel {
     const detailScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphDetail.js")
     );
-    const virtualHeaderScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphVirtualHeader.js")
-    );
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graph.css")
     );
@@ -414,9 +411,6 @@ export class GitGraphPanel {
     );
     const detailStyleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphDetail.css")
-    );
-    const virtualHeaderStyleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphVirtualHeader.css")
     );
     const codiconStyleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
@@ -429,6 +423,13 @@ export class GitGraphPanel {
       `script-src 'nonce-${nonce}'`,
       `font-src ${webview.cspSource}`,
     ].join("; ");
+    const refreshGraphTitle = vscode.l10n.t("Refresh graph");
+    const fetchTitle = vscode.l10n.t("Fetch");
+    const pullTitle = vscode.l10n.t("Pull");
+    const pushTitle = vscode.l10n.t("Push");
+    const openRemoteTitle = vscode.l10n.t("Open Remote Branch");
+    const jumpHeadTitle = vscode.l10n.t("Jump to HEAD");
+    const toggleDetailTitle = vscode.l10n.t("Toggle commit details");
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -440,49 +441,41 @@ export class GitGraphPanel {
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
-  <link href="${virtualHeaderStyleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
 <body class="detail-open">
   <div id="app">
     <main id="graph-pane">
-      <div id="graph-toolbar">
-        <div class="toolbar-group">
-          <button id="refresh-graph" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Refresh graph"
-          )}" aria-label="${vscode.l10n.t("Refresh graph")}">
-            <span class="codicon codicon-refresh" aria-hidden="true"></span>
-          </button>
-          <button id="fetch-graph" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Fetch"
-          )}" aria-label="${vscode.l10n.t("Fetch")}">
-            <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
-          </button>
-          <button id="pull-graph" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Pull"
-          )}" aria-label="${vscode.l10n.t("Pull")}">
-            <span class="codicon codicon-repo-pull" aria-hidden="true"></span>
-          </button>
-          <button id="push-graph" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Push"
-          )}" aria-label="${vscode.l10n.t("Push")}">
-            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
-          </button>
-          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${vscode.l10n.t(
-            "Open Remote Branch"
-          )}" aria-label="${vscode.l10n.t("Open Remote Branch")}">
-            <span class="codicon codicon-link-external" aria-hidden="true"></span>
-          </button>
-          <button id="jump-head" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Jump to HEAD"
-          )}" aria-label="${vscode.l10n.t("Jump to HEAD")}">
-            <span class="codicon codicon-target" aria-hidden="true"></span>
-          </button>
-          <button id="toggle-detail" class="icon-button" type="button" title="${vscode.l10n.t(
-            "Toggle commit details"
-          )}" aria-label="${vscode.l10n.t("Toggle commit details")}">
-            <span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span>
-          </button>
+	      <div id="graph-toolbar">
+	        <div class="toolbar-group">
+	          <button id="refresh-graph" class="icon-button" type="button" title="${refreshGraphTitle}"
+	            aria-label="${refreshGraphTitle}" data-tooltip="${refreshGraphTitle}">
+	            <span class="codicon codicon-refresh" aria-hidden="true"></span>
+	          </button>
+	          <button id="fetch-graph" class="icon-button" type="button" title="${fetchTitle}"
+	            aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
+	            <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
+	          </button>
+	          <button id="pull-graph" class="icon-button" type="button" title="${pullTitle}"
+	            aria-label="${pullTitle}" data-tooltip="${pullTitle}">
+	            <span class="codicon codicon-repo-pull" aria-hidden="true"></span>
+	          </button>
+	          <button id="push-graph" class="icon-button" type="button" title="${pushTitle}"
+	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
+	            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
+	          </button>
+	          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${openRemoteTitle}"
+	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">
+	            <span class="codicon codicon-link-external" aria-hidden="true"></span>
+	          </button>
+	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
+	            aria-label="${jumpHeadTitle}" data-tooltip="${jumpHeadTitle}">
+	            <span class="codicon codicon-target" aria-hidden="true"></span>
+	          </button>
+	          <button id="toggle-detail" class="icon-button" type="button" title="${toggleDetailTitle}"
+	            aria-label="${toggleDetailTitle}" data-tooltip="${toggleDetailTitle}">
+	            <span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span>
+	          </button>
         </div>
         <div id="graph-search" role="search">
           <span class="codicon codicon-search" aria-hidden="true"></span>
@@ -510,7 +503,6 @@ export class GitGraphPanel {
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
-  <script nonce="${nonce}" src="${virtualHeaderScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

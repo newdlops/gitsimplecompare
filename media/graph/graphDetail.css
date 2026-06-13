@@ -80,20 +80,38 @@
   white-space: nowrap;
 }
 
+.detail-branch {
+  border-color: var(
+    --detail-branch-color,
+    var(--detail-branch-fallback, var(--vscode-panel-border))
+  );
+  color: var(
+    --detail-branch-color,
+    var(--detail-branch-fallback, var(--vscode-foreground))
+  );
+  background: color-mix(
+    in srgb,
+    var(--detail-branch-color, var(--detail-branch-fallback, transparent)) 12%,
+    transparent
+  );
+}
+
 .detail-branch.local {
-  border-color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
-  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+  --detail-branch-fallback: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
 }
 
 .detail-branch.remote {
-  border-color: var(--vscode-textLink-foreground, #3794ff);
+  --detail-branch-fallback: var(--vscode-textLink-foreground, #3794ff);
   border-style: dashed;
-  color: var(--vscode-textLink-foreground, #3794ff);
 }
 
 .detail-branch.current {
   font-weight: 600;
-  background: var(--vscode-list-activeSelectionBackground);
+  background: color-mix(
+    in srgb,
+    var(--detail-branch-color, var(--detail-branch-fallback, var(--vscode-focusBorder))) 22%,
+    var(--vscode-list-activeSelectionBackground)
+  );
 }
 
 .branch-empty {

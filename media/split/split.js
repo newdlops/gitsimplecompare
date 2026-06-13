@@ -345,6 +345,8 @@
     row.type = "button";
     row.className = "file-row" + (fileKey(file) === activeKey ? " active" : "");
     row.dataset.path = file.path;
+    row.title = file.path;
+    row.setAttribute("aria-label", file.path);
     const count = file.binary ? T.binary : `${file.hunks.length} ${T.hunks}`;
     const picked = selectedCount(file);
     row.innerHTML =
@@ -457,7 +459,8 @@
     const label = document.createElement("label");
     label.className = "binary-card";
     label.innerHTML =
-      `<input type="checkbox" ${item.binary ? "checked" : ""} />` +
+      `<input type="checkbox" title="${esc(T.stageSelected)}" ` +
+      `aria-label="${esc(T.stageSelected)}" ${item.binary ? "checked" : ""} />` +
       `<span class="codicon codicon-file-binary"></span>` +
       `<span>${esc(file.path)}</span>`;
     label.querySelector("input").addEventListener("change", (event) => {
@@ -482,9 +485,10 @@
     const stats = hunkStats(lines);
     card.innerHTML =
       `<header class="hunk-head">` +
-      `<label class="check-wrap"><input type="checkbox" class="hunk-check" ${
+      `<label class="check-wrap"><input type="checkbox" class="hunk-check" ` +
+      `title="${esc(T.stageSelected)}" aria-label="${esc(T.stageSelected)}" ${
         checked ? "checked" : ""
-      } /></label>` +
+	      } /></label>` +
       `<span class="hunk-title">${esc(hunkTitle(headLine, ordinal))}</span>` +
       `<span class="hunk-stat"><span class="add">+${stats.add}</span> ` +
       `<span class="del">-${stats.del}</span></span>` +

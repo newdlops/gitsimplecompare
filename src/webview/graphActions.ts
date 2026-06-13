@@ -7,6 +7,11 @@ import {
   STAGED_COMMIT_HASH,
 } from "../git/gitLogService";
 import { logError } from "../ui/outputLog";
+import {
+  confirmCheckoutWithConflicts,
+  focusCheckoutConflicts,
+  isCheckoutConflictError,
+} from "./graphCheckoutConflicts";
 import { FromWebviewMessage } from "./graphProtocol";
 import {
   fetchAll,
@@ -184,7 +189,21 @@ async function checkoutBranch(
   if (branch.current) {
     return;
   }
-  await deps.logService.checkoutLocalBranch(branch.name);
+  try {
+    await deps.logService.checkoutLocalBranch(branch.name);
+  } catch (err) {
+    if (!isCheckoutConflictError(err)) {
+      throw err;
+    }
+    if (!(await confirmCheckoutWithConflicts(err))) {
+      return;
+    }
+    await deps.logService.checkoutLocalBranch(branch.name, true);
+    await deps.refreshGraph();
+    if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
+      return;
+    }
+  }
   await deps.refreshCheckout();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Checked out branch '{0}'.", branch.name)
@@ -229,16 +248,14 @@ async function checkoutRemoteBranch(
     if (!isCheckoutConflictError(err)) {
       throw err;
     }
-    const choice = await vscode.window.showWarningMessage(
-      vscode.l10n.t("Checkout conflicts with local changes."),
-      { modal: true, detail: errText(err) },
-      vscode.l10n.t("Checkout with Conflicts"),
-      vscode.l10n.t("Do Not Checkout")
-    );
-    if (choice !== vscode.l10n.t("Checkout with Conflicts")) {
+    if (!(await confirmCheckoutWithConflicts(err))) {
       return;
     }
     await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true);
+    await deps.refreshGraph();
+    if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
+      return;
+    }
   }
 
   await deps.refreshCheckout();
@@ -550,13 +567,6 @@ function isUnpushed(branch: { upstream?: string; ahead: number; gone: boolean })
 function localNameForRemoteBranch(remoteBranch: string): string {
   const slash = remoteBranch.indexOf("/");
   return slash >= 0 ? remoteBranch.slice(slash + 1) : remoteBranch;
-}
-
-/** checkout 이 작업트리 변경과 충돌해 실패한 git 오류인지 판단한다. */
-function isCheckoutConflictError(err: unknown): boolean {
-  return /local changes|would be overwritten|untracked working tree files|not uptodate|Please commit/i.test(
-    errText(err)
-  );
 }
 
 /** 가상 커밋을 실제 git 작업 대상에서 제외한다. */

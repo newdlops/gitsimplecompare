@@ -219,6 +219,7 @@ function toRow(commit: Commit, column: number, color: number): GraphRow {
     hash: commit.hash,
     parents: commit.parents,
     refs: commit.refs,
+    localOnlyBranches: commit.localOnlyBranches,
     authorName: commit.authorName,
     authorEmail: commit.authorEmail,
     dateIso: commit.dateIso,

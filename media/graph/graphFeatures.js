@@ -48,11 +48,11 @@
 
   /** 로컬 브랜치 배지의 hover tooltip 내용을 만든다. */
   function branchTitle(branch) {
-    const parts = [branch.name];
+    const parts = [];
     if (branch.current) {
-      parts.push("current");
+      parts.push(`Current branch: ${branch.name}`);
     } else {
-      parts.push("click to checkout");
+      parts.push(`Click to checkout this branch: ${branch.name}`);
     }
     if (branch.gone) {
       parts.push("upstream gone");
@@ -81,7 +81,7 @@
       const name = tagName(ref);
       return `<span class="ref tag" role="button" tabindex="0" data-tag-name="${safeEsc(
         name
-      )}" title="${safeEsc(`tag ${name}`)}">` +
+      )}" title="${safeEsc(`tag ${name}`)}" aria-label="${safeEsc(`tag ${name}`)}">` +
         `<span class="codicon codicon-tag ref-icon" aria-hidden="true"></span>` +
         `<span class="ref-label">${safeEsc(name)}</span></span>`;
     }
@@ -99,19 +99,25 @@
           )}" data-branch-kind="local" aria-label="${safeEsc(
             `Checkout branch ${branch.name}`
           )}"`;
-      return `<span class="${branchClass(branch)}" title="${safeEsc(
+      return `<span class="${branchClass(branch)}" data-tooltip="${safeEsc(
         branchTitle(branch)
       )}"${attrs}><span class="codicon codicon-git-branch ref-icon" ` +
         `aria-hidden="true"></span><span class="ref-label">${safeEsc(ref)}</span></span>`;
     }
-    const className = ref.indexOf("/") >= 0 ? "ref remote" : "ref";
-    const icon = className === "ref remote"
+    const remote = ref.indexOf("/") >= 0;
+    const className = remote ? "ref remote branch-action" : "ref";
+    const icon = remote
       ? '<span class="codicon codicon-cloud ref-icon" aria-hidden="true"></span>'
       : "";
-    const attrs = className === "ref remote"
-      ? ` role="button" tabindex="0" data-branch-name="${safeEsc(ref)}" data-branch-kind="remote"`
+    const attrs = remote
+      ? ` role="button" tabindex="0" data-branch-name="${safeEsc(ref)}" ` +
+        `data-branch-kind="remote" data-tooltip="${safeEsc(
+          `Click to checkout this branch: ${ref}`
+        )}" ` +
+        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"`
       : "";
-    return `<span class="${className}"${attrs}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
+    const title = remote ? "" : ` title="${safeEsc(ref)}"`;
+    return `<span class="${className}"${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
   }
 
   /** 커밋 상세 패널에 표시할 액션 버튼 HTML 을 만든다. */
@@ -179,10 +185,12 @@
   /** 커밋 노드의 SVG class 를 ref/kind 기준으로 만든다. */
   function nodeClass(row) {
     const refs = row.refs || [];
+    const localOnly = (row.localOnlyBranches || []).length > 0;
     return [
       "node",
       row.kind ? `${row.kind}-node` : "",
-      refs.some((ref) => localBranches.has(ref)) ? "local-node" : "",
+      refs.some((ref) => localBranches.has(ref)) || localOnly ? "local-node" : "",
+      localOnly ? "local-only-node" : "",
       refs.some(isTagRef) ? "tag-node" : "",
     ]
       .filter(Boolean)
@@ -308,7 +316,9 @@
 
   /** 검색 후보 한 줄 HTML 을 만든다. */
   function searchResultHtml(item) {
-    return `<button class="search-result" type="button" data-hash="${esc(item.hash)}">` +
+    const title = `${item.type}: ${item.label} | ${item.meta}`;
+    return `<button class="search-result" type="button" data-hash="${esc(item.hash)}" ` +
+      `title="${esc(title)}" aria-label="${esc(title)}">` +
       `<span class="search-kind">${esc(item.type)}</span>` +
       `<span class="search-label">${esc(item.label)}</span>` +
       `<span class="search-meta">${esc(item.meta)}</span></button>`;

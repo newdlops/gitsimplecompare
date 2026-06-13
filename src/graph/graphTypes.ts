@@ -7,6 +7,7 @@ import { FileChangeStatus } from "../git/gitTypes";
  * 그래프의 한 커밋(노드).
  * - parents: 부모 커밋 해시들(첫 번째가 첫 부모). 머지 커밋은 2개 이상.
  * - refs: 이 커밋을 가리키는 참조 이름들(브랜치/태그/HEAD).
+ * - localOnlyBranches: upstream 보다 앞서 있어 로컬에만 있는 브랜치 이름들.
  */
 export interface Commit {
   hash: string;
@@ -15,6 +16,7 @@ export interface Commit {
   authorEmail: string;
   dateIso: string;
   refs: string[];
+  localOnlyBranches?: string[];
   subject: string;
   kind?: GraphRowKind;
 }
@@ -28,9 +30,10 @@ export interface CommitFileChange {
   deletions: number;
 }
 
-/** 커밋 상세에서 보여줄 브랜치 한 건(커밋을 직접 가리키는 local/remote ref) */
+/** 커밋 상세에서 보여줄 브랜치 한 건(커밋을 포함하는 local/remote ref) */
 export interface CommitBranchInfo {
   name: string;
+  tipHash?: string;
   kind: "local" | "remote";
   current: boolean;
 }
@@ -73,6 +76,7 @@ export interface GraphRow {
   hash: string;
   parents: string[];
   refs: string[];
+  localOnlyBranches?: string[];
   authorName: string;
   authorEmail: string;
   dateIso: string;

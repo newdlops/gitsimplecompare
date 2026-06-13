@@ -54,6 +54,7 @@ body.resizing {
 }
 
 .icon-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,6 +70,35 @@ body.resizing {
 
 .icon-button:hover {
   background: var(--vscode-toolbar-hoverBackground);
+}
+
+#graph-toolbar .icon-button[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 30;
+  max-width: 240px;
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  white-space: nowrap;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%) translateY(0);
+  transition: none;
+}
+
+#graph-toolbar .icon-button[data-tooltip]:hover::after,
+#graph-toolbar .icon-button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .icon-button:focus-visible,
@@ -131,6 +161,15 @@ body.resizing {
   stroke-width: 2.5;
 }
 
+#graph-content .node.local-only-node {
+  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  stroke-width: 3;
+  stroke-dasharray: 2 2;
+  filter: drop-shadow(
+    0 0 3px var(--vscode-gitDecoration-addedResourceForeground, #89d185)
+  );
+}
+
 #graph-content .node.ongoing-node {
   stroke: var(--vscode-button-background, #0e639c);
   stroke-width: 2.8;
@@ -175,6 +214,17 @@ body.resizing {
   color: var(--vscode-list-activeSelectionForeground);
 }
 
+.row.local-only-row::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+}
+
 .row.ongoing-row,
 .row.staged-row {
   font-weight: 600;
@@ -202,7 +252,8 @@ body.resizing {
   max-width: none;
   height: 22px;
   padding: 0 8px;
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 4px;
   font-size: 0.88em;
@@ -255,6 +306,39 @@ body.resizing {
 
 .ref.branch-action {
   cursor: pointer;
+}
+
+.ref.branch-action .ref-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.ref[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 50;
+  max-width: 280px;
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+}
+
+.ref[data-tooltip]:hover::after,
+.ref[data-tooltip]:focus-visible::after {
+  opacity: 1;
 }
 
 .ref.branch-action:hover {

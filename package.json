@@ -290,11 +290,6 @@
           "group": "navigation@4"
         },
         {
-          "command": "gitSimpleCompare.chooseHunkControlMode",
-          "when": "view == gitSimpleCompare.changes",
-          "group": "navigation@5"
-        },
-        {
           "command": "gitSimpleCompare.toggleSection.repos.visible",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.repos.visible",
           "group": "2_sections@1"

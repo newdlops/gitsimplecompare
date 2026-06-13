@@ -149,20 +149,23 @@
     }
     for (let r = 0; r < currentRows.length; r++) {
       const row = currentRows[r];
-      svg.appendChild(
-        svgEl("circle", {
-          cx: laneX(row.column),
-          cy: rowY(r),
-          r: NODE_R,
-          fill: colorOf(row.color),
-          stroke: "var(--vscode-editor-background)",
-          "stroke-width": "1",
-          class: window.GscGraphFeatures?.nodeClass(row) || "node",
-          "data-hash": row.hash,
-          "data-row": String(r),
-          "data-column": String(row.column),
-        })
-      );
+      const node = svgEl("circle", {
+        cx: laneX(row.column),
+        cy: rowY(r),
+        r: NODE_R,
+        fill: colorOf(row.color),
+        stroke: "var(--vscode-editor-background)",
+        "stroke-width": "1",
+        class: window.GscGraphFeatures?.nodeClass(row) || "node",
+        "data-hash": row.hash,
+        "data-row": String(r),
+        "data-column": String(row.column),
+        "aria-label": rowTitle(row),
+      });
+      const title = svgEl("title", {});
+      title.textContent = rowTitle(row);
+      node.appendChild(title);
+      svg.appendChild(node);
     }
     graphContentEl.appendChild(svg);
 
@@ -170,6 +173,7 @@
     for (let r = 0; r < currentRows.length; r++) {
       graphContentEl.appendChild(buildRow(currentRows[r], r, graphWidth));
     }
+    syncScrollableWidth(graphWidth);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     if (state && state.reset) window.GscGraphFeatures?.focusHead(graphEl, graphContentEl);
     window.GscGraphFeatures?.updateSearchIndex(graphEl, graphContentEl);
@@ -201,6 +205,20 @@
     graphContentEl.style.height = Math.max(graphContentHeight(), graphEl.clientHeight) + "px";
   }
 
+  /** row 내용이 가로로 길 때 그래프 컨텐츠 폭을 실제 row 폭에 맞춰 넓힌다. */
+  function syncScrollableWidth(graphWidth) {
+    const rowsRight = Array.from(graphContentEl.querySelectorAll(".row")).reduce(
+      (max, row) => Math.max(max, row.offsetLeft + row.scrollWidth + 24),
+      0
+    );
+    const graphRight = (graphWidth || graphWidthForLaneCount(currentLaneCount)) + 680;
+    const width = Math.max(graphEl.clientWidth, rowsRight, graphRight);
+    if (width > 0) {
+      graphContentEl.style.width = width + "px";
+      graphContentEl.style.minWidth = width + "px";
+    }
+  }
+
   /**
    * 커밋 한 행의 DOM(참조 배지 + 제목 + 작성자/날짜)을 만든다.
    * @param row       GraphRow
@@ -209,7 +227,12 @@
    */
   function buildRow(row, index, leftInset) {
     const el = document.createElement("div");
-    el.className = "row" + (row.hash === selectedHash ? " selected" : "") + (row.kind ? " " + row.kind + "-row" : "");
+    const localOnlyBranches = row.localOnlyBranches || [];
+    el.className =
+      "row" +
+      (row.hash === selectedHash ? " selected" : "") +
+      (row.kind ? " " + row.kind + "-row" : "") +
+      (localOnlyBranches.length ? " local-only-row" : "");
     el.style.top = index * ROW_H + "px";
     el.style.left = leftInset + "px";
     el.style.right = "0";
@@ -217,6 +240,8 @@
     el.dataset.hash = row.hash;
     el.dataset.subject = row.subject || "";
     el.dataset.refs = (row.refs || []).join("\t");
+    el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
+    el.title = rowTitle(row);
 
     const refRenderer = window.GscGraphFeatures && window.GscGraphFeatures.refBadge;
     const refs = (row.refs || [])
@@ -232,6 +257,21 @@
 
     el.addEventListener("click", () => selectCommit(row.hash));
     return el;
+  }
+
+  /** 커밋 row/node hover tooltip 에 표시할 짧은 설명을 만든다. */
+  function rowTitle(row) {
+    const refs = (row.refs || []).filter(Boolean).join(", ");
+    const localOnlyBranches = (row.localOnlyBranches || []).filter(Boolean).join(", ");
+    const subject = row.subject || row.hash;
+    const parts = [subject];
+    if (refs) {
+      parts.push(refs);
+    }
+    if (localOnlyBranches) {
+      parts.push(`local only: ${localOnlyBranches}`);
+    }
+    return parts.join(" | ");
   }
 
   /** ISO 날짜를 YYYY-MM-DD HH:mm 형태로 짧게 표시한다. */
@@ -330,6 +370,7 @@
     const title = enabled ? `Open remote branch ${upstream}` : "No remote branch connected";
     openRemoteBtn.title = title;
     openRemoteBtn.setAttribute("aria-label", title);
+    openRemoteBtn.dataset.tooltip = title;
   }
 
   /**
@@ -404,6 +445,7 @@
     document.body.classList.toggle("detail-collapsed", !visible);
     if (toggleDetailBtn) {
       toggleDetailBtn.title = visible ? "Hide commit details" : "Show commit details";
+      toggleDetailBtn.dataset.tooltip = toggleDetailBtn.title;
       toggleDetailBtn.setAttribute(
         "aria-label",
         visible ? "Hide commit details" : "Show commit details"
@@ -532,6 +574,7 @@
     });
     window.addEventListener("resize", () => {
       resizeGraphContent();
+      syncScrollableWidth();
       renderLoadTail();
       maybeLoadMore();
     });
@@ -548,6 +591,7 @@
       graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
       const graphWidth = graphWidthForLaneCount(currentLaneCount);
       currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));
+      syncScrollableWidth(graphWidth);
       window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
       window.GscGraphFeatures?.updateSearchIndex(graphEl, graphContentEl);
     } else if (msg.type === "graphLoadState") {

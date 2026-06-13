@@ -45,13 +45,14 @@ body {
 }
 
 .section-header {
+  position: relative;
   display: flex;
   align-items: center;
   flex: 0 0 auto;
   gap: 4px;
   height: 22px;
   line-height: 22px;
-  padding: 0 12px 0 4px;
+  padding: 0 4px;
   cursor: pointer;
   user-select: none;
   font-size: 11px;
@@ -80,25 +81,79 @@ body {
   opacity: 0.7;
 }
 
-.section-header .header-actions {
-  margin-left: auto;
+.section > .header-actions {
+  position: absolute;
+  top: 2px;
+  right: 4px;
   display: flex;
-  gap: 2px;
+  margin-left: 0;
+  gap: 0;
   opacity: 0;
+  pointer-events: none;
 }
 
-.section-header:hover .header-actions {
+.section-header:hover + .header-actions,
+.section > .header-actions:hover,
+.section > .header-actions:focus-within {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .header-action {
-  padding: 0 3px;
-  border-radius: 4px;
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
   color: var(--vscode-icon-foreground, var(--vscode-foreground));
+  font: inherit;
+  line-height: 16px;
+  background: transparent;
+  cursor: pointer;
 }
 
 .header-action:hover {
   background: var(--vscode-toolbar-hoverBackground);
+}
+
+.header-action[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1000;
+  max-width: 220px;
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateY(0);
+  transition: none;
+}
+
+.header-action[data-tooltip]:hover::after,
+.header-action[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .section-body {
@@ -110,6 +165,11 @@ body {
   padding-bottom: 4px;
   /* 본문 들여쓰기는 각 행(.row/.ref/.empty)의 padding-left 로 준다.
      행 자체는 전체 폭을 차지하므로 hover 하이라이트가 끝까지 칠해진다. */
+}
+
+.section[data-section="changes"] > .section-body {
+  padding-right: 12px;
+  scrollbar-gutter: stable;
 }
 
 .section.collapsed .section-body {
@@ -412,6 +472,18 @@ body:focus-within .row.selected:hover {
   min-width: 0;
 }
 
+.wt-files .row {
+  --row-actions-width: 68px;
+  position: relative;
+  padding-right: 6px;
+}
+
+.wt-files .row:hover,
+.wt-files .row:focus-within,
+.wt-files .row.single-selected {
+  padding-right: calc(var(--row-actions-width) + 6px);
+}
+
 .wt-files .row .name,
 .wt-files .row .dir {
   flex: 0 1 auto;
@@ -661,15 +733,16 @@ body:focus-within .row.selected:hover {
 
 /* ── 행 hover 인라인 액션(stage/unstage/discard) ── */
 .row-actions {
-  margin-left: auto;
-  display: inline-flex;
+  flex: 0 0 auto;
+  display: none;
   gap: 2px;
-  padding-left: 8px;
-  opacity: 0;
+  margin-left: 8px;
 }
 
-.row:hover .row-actions {
-  opacity: 1;
+.row:hover .row-actions,
+.row:focus-within .row-actions,
+.row.single-selected .row-actions {
+  display: inline-flex;
 }
 
 .row-action {
@@ -681,6 +754,18 @@ body:focus-within .row.selected:hover {
 
 .row-action:hover {
   background: var(--vscode-toolbar-hoverBackground);
+}
+
+.wt-files .row-actions {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  z-index: 3;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--row-actions-width);
+  height: 18px;
+  margin-left: 0;
 }
 
 /* ── 미트볼/커밋 드롭다운 메뉴(드릴다운) ── */

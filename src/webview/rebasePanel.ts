@@ -198,8 +198,16 @@ export class RebasePanel {
   </header>
   <ul id="list"></ul>
   <footer>
-    <button id="start" class="primary">${vscode.l10n.t("Start Rebase")}</button>
-    <button id="cancel">${vscode.l10n.t("Cancel")}</button>
+	    <button id="start" class="primary" type="button" title="${vscode.l10n.t(
+        "Start Rebase"
+      )}" aria-label="${vscode.l10n.t("Start Rebase")}">${vscode.l10n.t(
+      "Start Rebase"
+    )}</button>
+	    <button id="cancel" type="button" title="${vscode.l10n.t(
+        "Cancel"
+      )}" aria-label="${vscode.l10n.t("Cancel")}">${vscode.l10n.t(
+      "Cancel"
+    )}</button>
   </footer>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
