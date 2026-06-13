@@ -4,6 +4,8 @@
 //   · ref ↔ 작업파일 : 왼쪽은 가상 문서(읽기 전용), 오른쪽은 실제 파일 → 편집 가능
 import * as vscode from "vscode";
 import { refreshBranchContent } from "../providers/branchContentProvider";
+import { beginDiffOpen } from "../providers/diffOpenGate";
+import { logInfo } from "./outputLog";
 import { makeDiffTitle, makeRefUri } from "../utils/uri";
 
 /** diff 를 열 때의 공통 옵션(미리보기 끄고 새 탭으로 연다) */
@@ -103,18 +105,32 @@ export async function openHeadVsWorkingTreeDiff(
   repoRoot: string,
   relPath: string
 ): Promise<void> {
-  const left = makeRefUri("HEAD", relPath, repoRoot);
+  const started = Date.now();
+  const left = makeRefUri("HEAD", relPath, repoRoot, String(Date.now()));
   const right = vscode.Uri.file(`${repoRoot}/${relPath}`);
   const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
   const title = makeDiffTitle("HEAD", vscode.l10n.t("Working Tree"), fileLabel);
-  refreshBranchContent(left);
-  await vscode.commands.executeCommand(
-    "vscode.diff",
-    left,
-    right,
-    title,
-    DIFF_OPTIONS
-  );
+  const finishDiffOpen = beginDiffOpen(right);
+  logInfo("diff open started", {
+    mode: "head-vs-working",
+    path: relPath,
+  });
+  try {
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      left,
+      right,
+      title,
+      DIFF_OPTIONS
+    );
+  } finally {
+    finishDiffOpen();
+    logInfo("diff open finished", {
+      mode: "head-vs-working",
+      path: relPath,
+      elapsed: Date.now() - started,
+    });
+  }
 }
 
 /**

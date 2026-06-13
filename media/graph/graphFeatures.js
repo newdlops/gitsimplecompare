@@ -380,7 +380,7 @@
       }
       row.dataset.dragBound = "1";
       row.addEventListener("pointerdown", (event) => {
-        if (event.target.closest?.(".ref")) {
+        if (event.target.closest?.(".ref,button,.rebase-row-actions")) {
           return;
         }
         const node = nodeForHash(root, row.dataset.hash || "");

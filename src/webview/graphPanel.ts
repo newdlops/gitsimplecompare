@@ -17,6 +17,7 @@ import {
 } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
+import { prepareGraphRebase, runGraphRebase } from "./graphRebaseActions";
 import {
   FromWebviewMessage,
   GraphLoadState,
@@ -131,6 +132,20 @@ export class GitGraphPanel {
           msg.hash,
           msg.path
         );
+      } else if (msg.type === "prepareGraphRebase") {
+        const plan = await prepareGraphRebase(msg.hash, {
+          logService: this.logService,
+        });
+        this.post({ type: "graphRebasePlan", plan });
+      } else if (msg.type === "runGraphRebase") {
+        const result = await runGraphRebase(msg.base, msg.items, {
+          extensionUri: this.extensionUri,
+          logService: this.logService,
+          refreshGraph: () => this.refreshAfterGraphAction(),
+        });
+        if (result.status !== "failed") {
+          this.post({ type: "graphRebaseClear" });
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -397,6 +412,9 @@ export class GitGraphPanel {
     const detailScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphDetail.js")
     );
+    const rebaseScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphRebase.js")
+    );
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graph.css")
     );
@@ -405,6 +423,9 @@ export class GitGraphPanel {
     );
     const detailStyleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphDetail.css")
+    );
+    const rebaseStyleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphRebase.css")
     );
     const codiconStyleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
@@ -435,6 +456,7 @@ export class GitGraphPanel {
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
+  <link href="${rebaseStyleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
 <body class="detail-open">
@@ -499,6 +521,7 @@ export class GitGraphPanel {
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
 </body>
 </html>`;
   }

@@ -10,6 +10,10 @@ import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { ConflictsController } from "./providers/conflictsController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
+import {
+  isAnyDiffOpenInProgress,
+  onDidEndDiffOpen,
+} from "./providers/diffOpenGate";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
@@ -90,6 +94,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // 8) 충돌/작업변경/stash/브랜치 비교를 초기화하고 파일·git 변경 이벤트에 맞춰 갱신한다.
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   let refreshReason = "startup";
+  let deferredDiffOpenRefresh = false;
   const refreshEverything = (reason: string): void => {
     logInfo("refresh requested", { reason });
     void conflicts.refresh();
@@ -142,6 +147,10 @@ export function activate(context: vscode.ExtensionContext): void {
     event: "create" | "change" | "delete",
     uri: vscode.Uri
   ): void => {
+    if (source === "workspace" && isAnyDiffOpenInProgress()) {
+      deferredDiffOpenRefresh = true;
+      return;
+    }
     const decision = shouldRefreshForUri(source, uri);
     if (!decision.refresh) {
       if (shouldLogIgnoredRefresh(decision.reason)) {
@@ -182,6 +191,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidRenameFiles(() => {
       registry.invalidateStatusCaches();
       scheduleRefresh("filesRenamed");
+    }),
+    onDidEndDiffOpen(() => {
+      if (!deferredDiffOpenRefresh) {
+        return;
+      }
+      deferredDiffOpenRefresh = false;
+      registry.invalidateStatusCaches();
+      scheduleRefresh("diffOpenFinished", 0);
     })
   );
 

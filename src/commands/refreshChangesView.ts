@@ -139,6 +139,7 @@ function isWorkingOnlyReason(reason: string): boolean {
         part === "filesCreated" ||
         part === "filesDeleted" ||
         part === "filesRenamed" ||
+        part === "diffOpenFinished" ||
         part.startsWith("hunkCheckbox:")
     )
   );

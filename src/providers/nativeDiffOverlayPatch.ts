@@ -7,7 +7,7 @@ import {
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
 
-const PATCH_VERSION = 33;
+const PATCH_VERSION = 35;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
 
@@ -118,7 +118,9 @@ export function rendererPatchScript(): string {
 
       function scheduleFollowUpPaints() {
         clearFollowUpPaints();
-        [40, 120, 300, 700].forEach(function (delay) { state.repaintTimers.push(setTimeout(schedulePaint, delay)); });
+        [40, 120, 300, 700, 1200, 2000, 3500, 5200, 7600, 11000].forEach(function (delay) {
+          state.repaintTimers.push(setTimeout(schedulePaint, delay));
+        });
       }
 
       function bindViewportEvents() {
@@ -411,7 +413,7 @@ export function rendererPatchScript(): string {
         var visible = new Set();
         var markerRows = [];
         var markerWithoutLineId = [];
-        var lineWithoutMarker = [];
+        var lineFallback = [];
         var markerEntries = [];
         var lineRows = [];
         var usedLineNos = new Set();
@@ -456,8 +458,13 @@ export function rendererPatchScript(): string {
           placed++;
         });
         lineRows.forEach(function (entry) {
-          if (usedLineNos.has(entry.lineNo)) return;
-          if (lineWithoutMarker.length < 24) lineWithoutMarker.push(String(entry.lineNo));
+          if (usedLineNos.has(entry.lineNo) || usedRows.has(entry.row)) return;
+          appendCheckboxAtRow(layer, entry.row, snapshot, entry.line, entry.marker || 'line');
+          usedLineNos.add(entry.lineNo);
+          usedRows.add(entry.row);
+          if (lineFallback.length < 24) lineFallback.push(String(entry.lineNo));
+          if (matched.length < 24) matched.push(entry.lineNo + '~');
+          placed++;
         });
         var missing = [];
         return {
@@ -468,7 +475,7 @@ export function rendererPatchScript(): string {
           sample: matched.join('/'),
           missing: missing.slice(0, 24).join('/'),
           markerWithoutLineId: markerWithoutLineId.join('/'),
-          lineWithoutMarker: lineWithoutMarker.join('/'),
+          lineWithoutMarker: lineFallback.join('/'),
         };
       }
 

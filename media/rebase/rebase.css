@@ -118,6 +118,7 @@ footer {
 }
 
 button {
+  position: relative;
   padding: 4px 14px;
   border: 1px solid transparent;
   border-radius: 3px;
@@ -133,4 +134,31 @@ button.primary {
 
 button:hover {
   filter: brightness(1.1);
+}
+
+button[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  z-index: 1000;
+  max-width: 240px;
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+  transition: none;
+}
+
+button[data-tooltip]:hover::after,
+button[data-tooltip]:focus-visible::after {
+  opacity: 1;
 }

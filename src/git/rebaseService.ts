@@ -15,7 +15,7 @@ export interface RebaseCommit {
 }
 
 /** todo 한 줄의 동작 */
-export type RebaseAction = "pick" | "reword" | "squash" | "fixup" | "drop";
+export type RebaseAction = "pick" | "reword" | "edit" | "squash" | "fixup" | "drop";
 
 /** 사용자가 짠 계획 한 항목 */
 export interface RebaseItem {
@@ -29,6 +29,15 @@ export interface RebaseItem {
 export interface RebaseResult {
   status: "completed" | "conflicts" | "failed" | "noop";
   message?: string;
+}
+
+/** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
+export interface RebasePlanInfo {
+  branch: string;
+  upstream?: string;
+  base: string;
+  baseReason: "upstream" | "selected";
+  commits: RebaseCommit[];
 }
 
 /**
@@ -65,6 +74,63 @@ export class RebaseService {
         const [hash, subject, body] = entry.split("\x1f");
         return { hash, subject: subject ?? "", body: (body ?? "").trim() };
       });
+  }
+
+  /**
+   * 현재 checkout 된 로컬 브랜치에서 그래프 rebase 계획의 기준점을 자동 계산한다.
+   * - upstream 이 있고 로컬 전용 커밋이 있으면 merge-base 를 기준점으로 삼아 원격 공개 이력을 피한다.
+   * - 그렇지 않으면 사용자가 드래그한 커밋의 부모를 기준점으로 삼는다.
+   * @param startHash 사용자가 그래프에서 드래그한 시작 커밋 해시
+   */
+  async prepareCurrentBranchPlan(startHash?: string): Promise<RebasePlanInfo> {
+    const branch = (
+      await runGit(["branch", "--show-current"], this.repoRoot)
+    ).trim();
+    if (!branch) {
+      throw new Error("Interactive rebase requires a checked-out local branch.");
+    }
+    if (startHash) {
+      await this.assertHeadAncestor(startHash);
+    }
+
+    const upstream = await optionalGit(
+      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+      this.repoRoot
+    );
+    let base = "";
+    let baseReason: RebasePlanInfo["baseReason"] = "selected";
+    if (upstream) {
+      const mergeBase = (
+        await runGit(["merge-base", "HEAD", upstream], this.repoRoot)
+      ).trim();
+      const localCount = Number(
+        (
+          await runGit(["rev-list", "--count", `${mergeBase}..HEAD`], this.repoRoot)
+        ).trim()
+      );
+      const startIsLocal = startHash
+        ? await isAncestor(mergeBase, startHash, this.repoRoot)
+        : true;
+      if (localCount > 0 && startIsLocal) {
+        base = mergeBase;
+        baseReason = "upstream";
+      }
+    }
+    if (!base && startHash) {
+      base = await this.parentOf(startHash);
+    }
+    if (!base) {
+      throw new Error("Drag a commit on the current branch to choose the rebase start point.");
+    }
+
+    const commits = await this.getCommits(base);
+    return {
+      branch,
+      upstream: upstream || undefined,
+      base,
+      baseReason,
+      commits,
+    };
   }
 
   /**
@@ -132,6 +198,53 @@ export class RebaseService {
       safeUnlink(todoFile);
       safeUnlink(queueFile);
     }
+  }
+
+  /** 지정 커밋이 현재 HEAD 의 조상인지 확인한다. */
+  private async assertHeadAncestor(hash: string): Promise<void> {
+    if (!(await isAncestor(hash, "HEAD", this.repoRoot))) {
+      throw new Error(
+        "Only commits on the current branch can be rebased from the graph."
+      );
+    }
+  }
+
+  /** 지정 커밋의 첫 부모를 반환한다. 루트 커밋은 이 POC 에서 지원하지 않는다. */
+  private async parentOf(hash: string): Promise<string> {
+    try {
+      return (await runGit(["rev-parse", `${hash}^`], this.repoRoot)).trim();
+    } catch {
+      throw new Error(
+        "Root commit rebase is not supported by the graph POC yet."
+      );
+    }
+  }
+}
+
+/** 실패해도 undefined 로 삼을 수 있는 git 조회를 실행한다. */
+async function optionalGit(
+  args: string[],
+  repoRoot: string
+): Promise<string | undefined> {
+  try {
+    const out = await runGit(args, repoRoot);
+    return out.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** ancestor 가 target 의 조상인지 확인한다. */
+async function isAncestor(
+  ancestor: string,
+  target: string,
+  repoRoot: string
+): Promise<boolean> {
+  try {
+    await runGit(["merge-base", "--is-ancestor", ancestor, target], repoRoot);
+    return true;
+  } catch {
+    return false;
   }
 }
 

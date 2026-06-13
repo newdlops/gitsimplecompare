@@ -200,12 +200,16 @@ export class RebasePanel {
   <footer>
 	    <button id="start" class="primary" type="button" title="${vscode.l10n.t(
         "Start Rebase"
-      )}" aria-label="${vscode.l10n.t("Start Rebase")}">${vscode.l10n.t(
+      )}" aria-label="${vscode.l10n.t("Start Rebase")}" data-tooltip="${vscode.l10n.t(
+      "Start Rebase"
+    )}">${vscode.l10n.t(
       "Start Rebase"
     )}</button>
 	    <button id="cancel" type="button" title="${vscode.l10n.t(
         "Cancel"
-      )}" aria-label="${vscode.l10n.t("Cancel")}">${vscode.l10n.t(
+      )}" aria-label="${vscode.l10n.t("Cancel")}" data-tooltip="${vscode.l10n.t(
+      "Cancel"
+    )}">${vscode.l10n.t(
       "Cancel"
     )}</button>
   </footer>

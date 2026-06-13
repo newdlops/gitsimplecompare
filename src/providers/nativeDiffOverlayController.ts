@@ -13,6 +13,7 @@ import {
   rendererPatchScript,
 } from "./nativeDiffOverlayPatch";
 import { snapshotSignature, workspaceHints } from "./nativeDiffOverlaySupport";
+import { NativeDiffInitialPaintRetry } from "./nativeDiffOverlayRetry";
 import { activeHunkWorkingModifiedUri } from "./hunkDiffContext";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
@@ -41,12 +42,12 @@ export class NativeDiffOverlayController {
   private lastToggleKey = "";
   private lastToggleAt = 0;
   private lastRenderSignature = "";
+  private readonly initialPaintRetry = new NativeDiffInitialPaintRetry();
 
   constructor(
     private readonly globalStorageUri: vscode.Uri,
     private readonly hunkCheckboxes: HunkCheckboxController
   ) {}
-
   /** overlay 갱신에 필요한 VS Code 이벤트를 등록한다. */
   register(): vscode.Disposable {
     const disposable = vscode.Disposable.from(
@@ -125,6 +126,7 @@ export class NativeDiffOverlayController {
       );
       this.lastRenderSignature = signature;
       this.hunkCheckboxes.setNativeOverlayAvailable(true);
+      this.initialPaintRetry.schedule(signature, result, reason, (r, d) => this.scheduleRender(r, d));
       logInfo("native diff overlay rendered", {
         reason,
         paths: snapshots.map((snapshot) => snapshot.path),
@@ -388,6 +390,7 @@ export class NativeDiffOverlayController {
       clearTimeout(this.renderTimer);
       this.renderTimer = undefined;
     }
+    this.initialPaintRetry.clear();
     this.closeSocket();
   }
 

@@ -24,6 +24,7 @@ import {
   visibleHunkTargets,
 } from "./hunkCheckboxTargets";
 import { checkboxLinesForDisplayedDiff } from "./hunkVisibleLineMap";
+import { isAnyDiffOpenInProgress, onDidEndDiffOpen } from "./diffOpenGate";
 
 export type HunkControlMode = "nativeOverlay" | "command";
 type CheckedLineAction = "stage" | "unstage";
@@ -85,6 +86,7 @@ export class HunkCheckboxController {
       vscode.window.tabGroups.onDidChangeTabGroups(() => this.requestRender()),
       vscode.window.onDidChangeActiveTextEditor(() => this.requestRender()),
       vscode.window.onDidChangeVisibleTextEditors(() => this.requestRender()),
+      onDidEndDiffOpen(() => this.requestRender()),
       vscode.workspace.onDidSaveTextDocument(() => this.refresh()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(`gitSimpleCompare.${MODE_CONFIG}`)) {
@@ -162,6 +164,9 @@ export class HunkCheckboxController {
    * @returns editor group 별 active hunk diff 에 대응하는 snapshot 목록
    */
   async overlaySnapshots(): Promise<HunkOverlaySnapshot[]> {
+    if (isAnyDiffOpenInProgress()) {
+      return [];
+    }
     const targets = visibleHunkTargets();
     const snapshots = await Promise.all(
       targets.map((target) => this.snapshotForTarget(target))

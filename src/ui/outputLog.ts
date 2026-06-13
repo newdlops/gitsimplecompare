@@ -5,6 +5,9 @@ import * as vscode from "vscode";
 type LogLevel = "info" | "warn" | "error";
 
 let channel: vscode.OutputChannel | undefined;
+let muteDepth = 0;
+let mutedLines = 0;
+let mutedReason = "";
 
 /** OUTPUT 채널을 지연 생성해 확장 활성화 이후 필요한 시점부터 사용한다. */
 function getChannel(): vscode.OutputChannel {
@@ -46,11 +49,40 @@ function write(
   message: string,
   detail?: Record<string, unknown>
 ): void {
+  if (muteDepth > 0) {
+    mutedLines++;
+    return;
+  }
   getChannel().appendLine(
     `[${timestamp()}] [${level.toUpperCase()}] ${message}${formatDetail(
       detail
     )}`
   );
+}
+
+/**
+ * 짧은 고부하 구간 동안 OUTPUT 쓰기를 멈추고 마지막에 요약 한 줄만 남긴다.
+ * @param reason 로그를 묶는 이유
+ * @returns 구간 종료 시 호출할 함수
+ */
+export function pauseOutputLog(reason: string): () => void {
+  muteDepth++;
+  mutedReason = mutedReason || reason;
+  let finished = false;
+  return () => {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    muteDepth = Math.max(0, muteDepth - 1);
+    if (muteDepth === 0 && mutedLines > 0) {
+      const lines = mutedLines;
+      const lastReason = mutedReason;
+      mutedLines = 0;
+      mutedReason = "";
+      logInfo("output log muted", { reason: lastReason, lines });
+    }
+  };
 }
 
 /** 일반 상태 전환 로그를 남긴다. */

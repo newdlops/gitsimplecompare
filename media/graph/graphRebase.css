@@ -1,0 +1,233 @@
+/* 그래프 내부 interactive rebase POC 스타일. */
+
+#graph-rebase-bar {
+  display: flex;
+  flex: 0 0 30px;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-foreground);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+#graph-rebase-bar .rebase-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0.9;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#graph-rebase-bar button {
+  display: inline-flex;
+  position: relative;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-button-foreground);
+  font: inherit;
+  background: var(--vscode-button-background);
+  cursor: pointer;
+}
+
+#graph-rebase-bar button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+#graph-rebase-cancel {
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, transparent);
+}
+
+#graph-rebase-cancel:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+}
+
+.row.rebase-row {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--branch-color, #61afef) 44%, transparent);
+}
+
+.row.rebase-row.dragging-row {
+  background: color-mix(in srgb, var(--branch-color, #61afef) 18%, var(--vscode-list-hoverBackground));
+}
+
+.rebase-order {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--branch-color, #61afef);
+  border-radius: 50%;
+  color: var(--branch-color, #61afef);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.rebase-action-marker {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--branch-color, #61afef);
+  border-radius: 4px;
+  color: var(--branch-color, #61afef);
+  background: color-mix(in srgb, var(--branch-color, #61afef) 12%, transparent);
+  font-size: 0.78em;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.rebase-action-marker.action-drop {
+  border-color: var(--vscode-gitDecoration-deletedResourceForeground, #f14c4c);
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #f14c4c);
+}
+
+.rebase-action-marker.action-squash,
+.rebase-action-marker.action-fixup {
+  border-color: var(--vscode-charts-yellow, #d7ba7d);
+  color: var(--vscode-charts-yellow, #d7ba7d);
+}
+
+.rebase-action-marker.action-edit,
+.rebase-action-marker.action-reword {
+  border-color: var(--vscode-textLink-foreground, #3794ff);
+  color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.rebase-row-actions {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.row.rebase-row:hover .rebase-row-actions,
+.row.rebase-row:focus-within .rebase-row-actions {
+  display: inline-flex;
+}
+
+.rebase-action-button {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+  background: transparent;
+  cursor: pointer;
+}
+
+.rebase-action-button:hover,
+.rebase-action-button.active {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.rebase-action-button.active {
+  color: var(--branch-color, var(--vscode-focusBorder));
+  box-shadow: inset 0 0 0 1px var(--branch-color, var(--vscode-focusBorder));
+}
+
+#graph-rebase-drop-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  height: 2px;
+  pointer-events: none;
+  background: var(--vscode-focusBorder);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-focusBorder) 34%, transparent);
+}
+
+#graph-rebase-menu {
+  position: fixed;
+  z-index: 2000;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+
+#graph-rebase-menu button {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+#graph-rebase-menu button:hover {
+  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+}
+
+#graph-rebase-bar button[data-tooltip]::after,
+.rebase-action-button[data-tooltip]::after,
+#graph-rebase-menu button[data-tooltip]::after {
+  position: absolute;
+  z-index: 2100;
+  max-width: 260px;
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background-color: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background, #1e1e1e));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transition: none;
+}
+
+#graph-rebase-bar button[data-tooltip]::after,
+.rebase-action-button[data-tooltip]::after {
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#graph-rebase-menu button[data-tooltip]::after {
+  top: 50%;
+  left: calc(100% + 6px);
+  transform: translateY(-50%);
+}
+
+#graph-rebase-bar button[data-tooltip]:hover::after,
+#graph-rebase-bar button[data-tooltip]:focus-visible::after,
+.rebase-action-button[data-tooltip]:hover::after,
+.rebase-action-button[data-tooltip]:focus-visible::after,
+#graph-rebase-menu button[data-tooltip]:hover::after,
+#graph-rebase-menu button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
