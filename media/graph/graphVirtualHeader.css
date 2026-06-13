@@ -1,0 +1,67 @@
+/* graph 상단에 HEAD/ongoing/staged 상태를 고정 표시하는 얇은 상태 바. */
+#graph-virtual-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+#graph-virtual-header[hidden] {
+  display: none;
+}
+
+.virtual-head-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(320px, 42vw);
+  height: 24px;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background));
+  cursor: pointer;
+}
+
+.virtual-head-item:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+}
+
+.virtual-head-item:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.virtual-head-item.ongoing {
+  border-color: var(--vscode-button-background, #0e639c);
+}
+
+.virtual-head-item.staged {
+  border-color: var(--vscode-charts-yellow, #cca700);
+}
+
+.virtual-head-item.head {
+  border-color: var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+}
+
+.virtual-head-label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.virtual-head-subject {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0.72;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

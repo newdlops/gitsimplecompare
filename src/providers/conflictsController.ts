@@ -3,7 +3,9 @@
 //   git 접근은 ConflictService, 표시는 ConflictsTreeProvider 에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { ConflictService, MergeOperation } from "../git/conflictService";
+import { PullService } from "../git/pullService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
+import { logInfo } from "../ui/outputLog";
 import { ConflictsTreeProvider } from "./conflictsTreeProvider";
 
 /** 충돌 존재 여부를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
@@ -11,6 +13,9 @@ export const HAS_CONFLICTS_CONTEXT = "gitSimpleCompare.hasConflicts";
 /** 진행 중 작업(merge/rebase 등)이 있는지를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
 export const OPERATION_IN_PROGRESS_CONTEXT =
   "gitSimpleCompare.operationInProgress";
+/** pull 충돌을 pull 직전 상태로 되돌릴 snapshot 이 있는지를 when 절에서 쓰기 위한 컨텍스트 키 */
+export const PULL_ROLLBACK_AVAILABLE_CONTEXT =
+  "gitSimpleCompare.pullRollbackAvailable";
 
 /**
  * 충돌 해결 UI 의 상태를 관리하는 컨트롤러.
@@ -19,6 +24,8 @@ export const OPERATION_IN_PROGRESS_CONTEXT =
 export class ConflictsController {
   private service?: ConflictService;
   private operation: MergeOperation = "none";
+  private refreshing = false;
+  private pendingRefresh = false;
 
   constructor(
     private readonly registry: GitServiceRegistry,
@@ -38,14 +45,36 @@ export class ConflictsController {
   /**
    * 저장소를 탐지해 충돌 목록과 작업 상태를 다시 읽고 UI/컨텍스트를 갱신한다.
    * - 조용히 동작한다(저장소가 없어도 경고를 띄우지 않음). 자주 호출되기 때문.
+   * - pull/checkout 중 파일 이벤트가 몰릴 때 git 상태 조회가 겹치지 않도록 직렬화한다.
    */
   async refresh(): Promise<void> {
+    if (this.refreshing) {
+      this.pendingRefresh = true;
+      return;
+    }
+
+    this.refreshing = true;
+    try {
+      do {
+        this.pendingRefresh = false;
+        await this.refreshOnce();
+      } while (this.pendingRefresh);
+    } finally {
+      this.refreshing = false;
+    }
+  }
+
+  /**
+   * 실제 충돌 상태를 한 번 읽어 UI/컨텍스트를 갱신한다.
+   * - refresh() 가 호출 순서를 제어하므로 이 메서드는 동시에 실행되지 않는다.
+   */
+  private async refreshOnce(): Promise<void> {
     const repoRoot = await this.resolveRepoRoot();
     if (!repoRoot) {
       this.service = undefined;
       this.operation = "none";
       this.provider.setState("", []);
-      this.updateContext([], "none");
+      this.updateContext([], "none", false);
       return;
     }
 
@@ -54,9 +83,19 @@ export class ConflictsController {
       this.service.listConflicts(),
       this.service.getOperation(),
     ]);
+    const snapshot =
+      conflicts.length > 0 || operation !== "none"
+        ? await new PullService(repoRoot).findLatestPullRollbackSnapshot()
+        : undefined;
     this.operation = operation;
     this.provider.setState(repoRoot, conflicts);
-    this.updateContext(conflicts, operation);
+    this.updateContext(conflicts, operation, Boolean(snapshot));
+    logInfo("conflicts refreshed", {
+      repoRoot,
+      count: conflicts.length,
+      operation,
+      pullRollbackAvailable: Boolean(snapshot),
+    });
   }
 
   // ---- 내부 구현 ----
@@ -87,7 +126,11 @@ export class ConflictsController {
    * @param conflicts 충돌 파일 목록
    * @param operation 진행 중 작업 종류
    */
-  private updateContext(conflicts: string[], operation: MergeOperation): void {
+  private updateContext(
+    conflicts: string[],
+    operation: MergeOperation,
+    pullRollbackAvailable: boolean
+  ): void {
     void vscode.commands.executeCommand(
       "setContext",
       HAS_CONFLICTS_CONTEXT,
@@ -97,6 +140,11 @@ export class ConflictsController {
       "setContext",
       OPERATION_IN_PROGRESS_CONTEXT,
       operation !== "none"
+    );
+    void vscode.commands.executeCommand(
+      "setContext",
+      PULL_ROLLBACK_AVAILABLE_CONTEXT,
+      pullRollbackAvailable
     );
   }
 }

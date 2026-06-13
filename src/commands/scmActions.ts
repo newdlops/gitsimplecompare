@@ -3,10 +3,12 @@
 //   Changes / Pull,Push / Branch / Stash / Remote / Tags / Output / Clone).
 // - 메뉴 "구성(라벨/구조)"은 buildScmMenu 가 만들어 웹뷰에 주입하고, 웹뷰는 선택된
 //   액션 ID 만 되돌려 보낸다. 실제 "동작"은 runScmAction 이 담당한다(표시/동작 분리).
-// - 스테이징/커밋 등 우리 UI 와 밀접한 것은 직접 구현하고, pull/push/stash/branch 등은
-//   내장 Git 확장의 git.* 명령에 위임해 충실도를 유지한다(화이트리스트로만 실행).
+// - 스테이징/커밋/일반 push 처럼 우리 UI 정책과 밀접한 것은 직접 구현하고, 나머지 git.* 동작은
+//   내장 Git 확장의 명령에 위임해 충실도를 유지한다(화이트리스트로만 실행).
 import * as vscode from "vscode";
-import { CommandDeps } from "./shared";
+import { GitLogService } from "../git/gitLogService";
+import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
+import { CommandDeps, resolveCompareService } from "./shared";
 import { syncViewContext } from "./viewState";
 import {
   commitChanges,
@@ -202,6 +204,11 @@ export async function runScmAction(
     return;
   }
 
+  if (action === "git.push") {
+    await pushCurrentBranch(deps);
+    return;
+  }
+
   if (action.startsWith("git.")) {
     try {
       await vscode.commands.executeCommand(action);
@@ -265,4 +272,52 @@ export async function runScmAction(
       await commitChanges(deps, "amendAll");
       break;
   }
+}
+
+/**
+ * Changes 메뉴의 일반 Push 를 실행한다.
+ * - force push 는 제공하지 않고, non-fast-forward 거절이면 안내만 보여준다.
+ * @param deps 공유 의존성(활성 저장소 탐지/Changes view 갱신)
+ */
+async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
+  const service = await resolveCompareService(deps);
+  if (!service) {
+    return;
+  }
+  const logService = new GitLogService(service.repoRoot);
+  try {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: vscode.l10n.t("Pushing..."),
+      },
+      () => logService.pushCurrent()
+    );
+  } catch (err) {
+    if (isForcePushRequiredError(err)) {
+      await showForcePushRequiredMessage(err);
+      return;
+    }
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Push failed: {0}", gitErrorText(err))
+    );
+    return;
+  }
+  vscode.window.showInformationMessage(vscode.l10n.t("Push completed."));
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "push",
+  });
+}
+
+/**
+ * force push 가 필요할 수 있는 push 거절을 안내한다.
+ * @param err git push 오류
+ */
+async function showForcePushRequiredMessage(err: unknown): Promise<void> {
+  await vscode.window.showWarningMessage(
+    vscode.l10n.t(
+      "Push was rejected because the remote branch is not a fast-forward update. Git Simple Compare does not provide force push."
+    ),
+    { modal: true, detail: gitErrorText(err) }
+  );
 }

@@ -2,6 +2,7 @@
 // - 각 핸들러는 ConflictsController(상태/서비스)를 받아 git 작업을 수행한 뒤 새로고침한다.
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
+import { PullService } from "../git/pullService";
 import { ConflictsController } from "../providers/conflictsController";
 
 /**
@@ -84,14 +85,20 @@ export async function continueOperation(
   if (!svc) {
     return;
   }
+  const operation = controller.currentOperation;
+  let continued = false;
   try {
-    await svc.continueOperation(controller.currentOperation);
+    await svc.continueOperation(operation);
+    continued = true;
   } catch (err) {
     vscode.window.showErrorMessage(
       vscode.l10n.t("Could not continue: {0}", errorText(err))
     );
   }
   await controller.refresh();
+  if (continued && operation === "merge") {
+    await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
+  }
 }
 
 /**
@@ -125,6 +132,52 @@ export async function abortOperation(
 }
 
 /**
+ * 충돌이 난 pull 을 pull 직전 HEAD/작업트리 상태로 되돌린다.
+ * @param controller 충돌 컨트롤러
+ */
+export async function rollbackPull(
+  controller: ConflictsController
+): Promise<void> {
+  const svc = controller.current;
+  if (!svc) {
+    return;
+  }
+  const service = new PullService(svc.repoRoot);
+  const snapshot = await service.findLatestPullRollbackSnapshot();
+  if (!snapshot) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("No pull rollback snapshot found.")
+    );
+    return;
+  }
+  const yes = vscode.l10n.t("Rollback Pull");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t(
+      "Rollback pull and restore local changes from before pull? Current conflict-resolution edits will be discarded."
+    ),
+    { modal: true },
+    yes
+  );
+  if (choice !== yes) {
+    return;
+  }
+  try {
+    await service.rollbackLatestPull();
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("Pull was rolled back to the pre-pull state.")
+    );
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not rollback pull: {0}", errorText(err))
+    );
+  }
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "pullRollback",
+  });
+}
+
+/**
  * 파일 단위 동작을 실행한 뒤 목록을 새로고침하는 공통 래퍼.
  * @param controller 충돌 컨트롤러
  * @param rel        대상 경로(로깅/가드용)
@@ -147,6 +200,64 @@ async function runFileAction(
     );
   }
   await controller.refresh();
+  await dropPullSnapshotAfterResolvedRestore(controller);
+}
+
+/**
+ * pull merge 충돌이 continue 로 해결된 뒤 임시 stash 를 복원하고 정리한다.
+ * @param controller 충돌 컨트롤러
+ * @param repoRoot   대상 저장소 루트
+ */
+async function restorePullSnapshotAfterContinue(
+  controller: ConflictsController,
+  repoRoot: string
+): Promise<void> {
+  const result = await new PullService(repoRoot).restoreSnapshotAfterResolvedPull();
+  if (result.status === "none") {
+    return;
+  }
+  if (result.status === "restored") {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("Local changes restored after pull.")
+    );
+  } else if (result.status === "conflicts") {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Pull conflicts were resolved, but restoring local changes caused conflicts."
+      )
+    );
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+  }
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "pullSnapshotCleanup",
+  });
+}
+
+/**
+ * stash apply 충돌 해결이 끝났으면 이미 반영된 rollback stash 를 제거한다.
+ * @param controller 충돌 컨트롤러
+ */
+async function dropPullSnapshotAfterResolvedRestore(
+  controller: ConflictsController
+): Promise<void> {
+  const svc = controller.current;
+  if (!svc) {
+    return;
+  }
+  const result = await new PullService(
+    svc.repoRoot
+  ).dropSnapshotAfterResolvedRestore();
+  if (result.status !== "dropped") {
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Pull rollback snapshot cleaned.")
+  );
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "pullSnapshotCleanup",
+  });
 }
 
 /** 오류 객체에서 사람이 읽을 메시지를 뽑는다. */

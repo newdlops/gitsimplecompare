@@ -12,6 +12,7 @@ import {
   parsePorcelainGroups,
 } from "./diffParse";
 import { buildWorkingContentWithoutStaged } from "./unstagedView";
+import { countUntrackedLines } from "./untrackedStats";
 
 /** 작업트리 상태를 스테이징/미스테이징 두 그룹으로 나눈 결과 */
 export interface StatusGroups {
@@ -139,8 +140,8 @@ export class GitService {
    *   `--untracked-files=all` 이 없으면 새로 생긴 디렉터리가 "newdir/" 한 줄로 접혀
    *   1뎁스 이상 깊은 새 파일이 트리에 안 잡힌다.
    * - 스테이징은 `git diff --cached --numstat`, 미스테이징은 `git diff --numstat` 로
-   *   각각 추가/삭제 라인 수를 병합한다. 미추적 파일은 내용 전체를 읽지 않아 목록 표시를
-   *   빠르게 유지하고, 라인 통계는 비워 둔다.
+   *   각각 추가/삭제 라인 수를 병합한다. `git diff`에 나오지 않는 미추적 파일은 파일을
+   *   직접 읽어 추가 라인 수를 계산하고 삭제 라인은 0으로 표시한다.
    */
   async getStatusGroups(options: StatusGroupOptions = {}): Promise<StatusGroups> {
     const maxAge = options.maxCacheAgeMs ?? 1000;
@@ -185,10 +186,20 @@ export class GitService {
       const s = stagedCounts.get(c.path);
       return { ...c, additions: s?.additions, deletions: s?.deletions };
     });
-    const withUnstaged = unstaged.map((c) => {
+    const withUnstaged = await Promise.all(unstaged.map(async (c) => {
       const s = unstagedCounts.get(c.path);
-      return { ...c, additions: s?.additions, deletions: s?.deletions };
-    });
+      if (s) {
+        return { ...c, additions: s.additions, deletions: s.deletions };
+      }
+      if (c.status === "A") {
+        return {
+          ...c,
+          additions: await countUntrackedLines(this.repoRoot, c.path),
+          deletions: 0,
+        };
+      }
+      return { ...c, additions: 0, deletions: 0 };
+    }));
     return { staged: withStaged, unstaged: withUnstaged };
   }
 

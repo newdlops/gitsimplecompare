@@ -1,6 +1,7 @@
 {
   "ext.description": "Compare git branches and files with simple, editable diffs.",
   "cmd.compareBranches": "Compare Branches",
+  "cmd.checkoutBranch": "Switch Branch",
   "cmd.compareFileWithBranch": "Compare This File with Branch",
   "cmd.compareActiveFileWithBranch": "Compare Active File with Branch",
   "cmd.refreshChanges": "Refresh Changes",
@@ -18,7 +19,9 @@
   "cmd.section.stashes.checked": "✓ Stashes",
   "cmd.section.stashes": "Stashes",
   "cmd.applyLeftToRight": "Apply Left to Right",
-  "cmd.stageSelectedLines": "Stage Selected Lines",
+  "cmd.openDiffFileEditor": "Open File Editor",
+  "cmd.stageSelectedLines": "Stage/Unstage Selected Lines",
+  "cmd.toggleSelectedLineCheckbox": "Select/Unselect Checkbox for Selected Lines",
   "cmd.discardSelectedLines": "Discard Selected Lines",
   "cmd.stageCurrentHunk": "Stage Current Hunk",
   "cmd.discardCurrentHunk": "Discard Current Hunk",
@@ -37,6 +40,7 @@
   "cmd.openMergeEditor": "Resolve in Merge Editor",
   "cmd.continueOperation": "Continue",
   "cmd.abortOperation": "Abort",
+  "cmd.rollbackPull": "Rollback Pull",
   "view.changes.name": "Changes",
   "view.conflicts.name": "Conflicts",
   "viewContainer.title": "Git Simple Compare",
@@ -47,6 +51,5 @@
   "config.includeRemote.desc": "Include remote branches in the branch picker.",
   "config.hunkControl.desc": "Controls how line staging controls are shown in the native HEAD ↔ Working Tree diff.",
   "config.hunkControl.nativeOverlay": "Show real checkbox controls in the native diff margin.",
-  "config.hunkControl.command": "Show no inline controls. Use editor title/context commands for selected lines or current hunk.",
-  "config.graph.maxCommits.desc": "Maximum number of commits to load in the Git Graph view."
+  "config.hunkControl.command": "Show no inline controls. Use editor title/context commands for selected lines."
 }

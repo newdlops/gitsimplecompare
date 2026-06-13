@@ -7,6 +7,9 @@ import { hunkDiffTargetFromTab, isHunkDiffTab } from "./hunkDiffContext";
 
 /** "좌→우 반영"이 가능한 diff 가 활성화됐는지 나타내는 컨텍스트 키 이름 */
 export const ACTIVE_DIFF_CONTEXT = "gitSimpleCompare.activeDiff";
+/** 이 확장이 연 diff 가 활성화됐는지 나타내며, 공통 diff 액션을 노출할 때 사용한다. */
+export const ACTIVE_EXTENSION_DIFF_CONTEXT =
+  "gitSimpleCompare.activeExtensionDiff";
 /** hunk stage/discard 가 working tree diff 에서 동작할 수 있는지 나타낸다. */
 export const ACTIVE_HEAD_WORKING_DIFF_CONTEXT =
   "gitSimpleCompare.activeHeadWorkingDiff";
@@ -31,6 +34,11 @@ export function registerActiveDiffTracker(): vscode.Disposable {
       "setContext",
       ACTIVE_DIFF_CONTEXT,
       isApplicableDiff(tab)
+    );
+    void vscode.commands.executeCommand(
+      "setContext",
+      ACTIVE_EXTENSION_DIFF_CONTEXT,
+      isExtensionDiff(tab)
     );
     void vscode.commands.executeCommand(
       "setContext",
@@ -67,5 +75,18 @@ function isApplicableDiff(tab: vscode.Tab | undefined): boolean {
     input instanceof vscode.TabInputTextDiff &&
     input.original.scheme === COMPARE_SCHEME &&
     input.modified.scheme === "file"
+  );
+}
+
+/**
+ * 주어진 탭이 Git Simple Compare 가 만든 diff 인지 판별한다.
+ * @param tab 검사할 탭(없을 수 있음)
+ */
+function isExtensionDiff(tab: vscode.Tab | undefined): boolean {
+  const input = tab?.input;
+  return (
+    input instanceof vscode.TabInputTextDiff &&
+    (input.original.scheme === COMPARE_SCHEME ||
+      input.modified.scheme === COMPARE_SCHEME)
   );
 }

@@ -1,0 +1,334 @@
+/* git graph 상세 패널 스타일. 커밋 요약, author 카드, 브랜치 chip, 파일 목록을 담당한다. */
+#detail {
+  display: flex;
+  flex: 0 0 38%;
+  width: 38%;
+  min-width: 280px;
+  max-width: 760px;
+  border-left: 1px solid var(--vscode-panel-border);
+  overflow: hidden;
+  background: var(--vscode-editor-background);
+}
+
+#detail .placeholder {
+  margin: 0;
+  padding: 12px 16px;
+  opacity: 0.6;
+}
+
+.detail-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.commit-summary {
+  flex: 0 0 180px;
+  min-height: 96px;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+#detail h2 {
+  font-size: 1.05em;
+  margin: 0 0 6px;
+}
+
+#detail .commit-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.82;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
+.commit-date {
+  margin-left: 4px;
+}
+
+.detail-branches {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.branch-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.detail-branch,
+.branch-extra,
+.branch-empty {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 0.86em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-branch.local {
+  border-color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+}
+
+.detail-branch.remote {
+  border-color: var(--vscode-textLink-foreground, #3794ff);
+  border-style: dashed;
+  color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.detail-branch.current {
+  font-weight: 600;
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.branch-empty {
+  opacity: 0.65;
+}
+
+.author-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 10px;
+  opacity: 0.86;
+  font-size: 0.9em;
+}
+
+.author-name,
+.author-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.author-name {
+  flex: 0 1 auto;
+  font-weight: 600;
+}
+
+.author-email {
+  flex: 1 1 auto;
+  opacity: 0.7;
+}
+
+#detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+#detail .actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+#detail .actions button:hover {
+  filter: brightness(1.1);
+}
+
+#detail .message {
+  background: var(--vscode-textCodeBlock-background);
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+.detail-splitter {
+  flex: 0 0 var(--splitter-size);
+  cursor: row-resize;
+  border-top: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+.detail-splitter:hover {
+  background: var(--vscode-focusBorder);
+}
+
+.files-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.files-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+  font-weight: 600;
+}
+
+.files-header .count {
+  margin-left: auto;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
+.file-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.file-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.file-view-button:hover,
+.file-view-button.active {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+#detail .files,
+.folder-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#detail .files {
+  padding: 4px 8px 12px;
+}
+
+#detail .file,
+.folder-row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px 2px var(--indent, 8px);
+  border-radius: 3px;
+}
+
+#detail .file {
+  cursor: pointer;
+}
+
+#detail .file:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.folder-row {
+  opacity: 0.82;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.folder-row:hover,
+.folder-row:focus-visible {
+  background: var(--vscode-list-hoverBackground);
+  outline: none;
+}
+
+.folder-children.collapsed {
+  display: none;
+}
+
+.files.tree .folder-children {
+  position: relative;
+  margin-left: 22px;
+  border-left: 1px solid var(--vscode-tree-indentGuidesStroke, var(--vscode-panel-border));
+}
+
+.files.tree .folder-children > .file::before,
+.files.tree .folder-children > .file-folder > .folder-row::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: -14px;
+  width: 10px;
+  border-top: 1px solid var(--vscode-tree-indentGuidesStroke, var(--vscode-panel-border));
+}
+
+.folder-row .twistie {
+  flex: 0 0 14px;
+  font-size: 12px;
+}
+
+#detail .file .status {
+  flex: 0 0 1.2em;
+  text-align: center;
+  font-weight: bold;
+}
+
+#detail .file .path,
+.folder-row .path {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#detail .file .stat {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+}
+
+.add {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+}
+
+.del {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}
+
+@media (max-width: 760px) {
+  #detail {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(88vw, 520px);
+    max-width: none;
+    min-width: 0;
+    transform: translateX(100%);
+    transition: transform 120ms ease-out;
+    box-shadow: -8px 0 22px rgba(0, 0, 0, 0.28);
+  }
+
+  body.detail-open #detail {
+    transform: translateX(0);
+  }
+}

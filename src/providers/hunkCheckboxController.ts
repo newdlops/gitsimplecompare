@@ -398,6 +398,11 @@ export class HunkCheckboxController {
     this.onDidChangeEmitter.fire();
   }
 
+  /** checkbox 체크 상태만 바뀐 경우 git diff/표시 줄 매핑 캐시를 유지한 채 화면만 다시 그린다. */
+  renderCheckedState(): void {
+    this.requestRender();
+  }
+
   /** git 재조회 없이 현재 checkbox 상태만 renderer 에 다시 전달한다. */
   private requestRender(): void {
     this.onDidChangeEmitter.fire();

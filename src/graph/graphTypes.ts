@@ -16,6 +16,7 @@ export interface Commit {
   dateIso: string;
   refs: string[];
   subject: string;
+  kind?: GraphRowKind;
 }
 
 /** 커밋 상세에서 보여줄 파일 변경 한 건(증감 라인 수 포함) */
@@ -27,6 +28,13 @@ export interface CommitFileChange {
   deletions: number;
 }
 
+/** 커밋 상세에서 보여줄 브랜치 한 건(커밋을 직접 가리키는 local/remote ref) */
+export interface CommitBranchInfo {
+  name: string;
+  kind: "local" | "remote";
+  current: boolean;
+}
+
 /** 노드를 클릭했을 때 보여줄 커밋 상세 정보 */
 export interface CommitDetail {
   hash: string;
@@ -35,8 +43,26 @@ export interface CommitDetail {
   authorEmail: string;
   authorDateIso: string;
   message: string;
+  branches: CommitBranchInfo[];
   files: CommitFileChange[];
+  kind?: GraphRowKind;
 }
+
+/** Git graph 에 함께 표시할 로컬 브랜치 상태 */
+export interface LocalBranchStatus {
+  name: string;
+  hash: string;
+  upstream?: string;
+  ahead: number;
+  behind: number;
+  gone: boolean;
+  current: boolean;
+  dateIso: string;
+  subject: string;
+}
+
+/** 그래프 행의 종류. 실제 커밋 외에 작업 중 상태를 가상 커밋으로 표현한다. */
+export type GraphRowKind = "commit" | "ongoing" | "staged";
 
 /**
  * 레이아웃이 끝난 커밋 행.
@@ -51,6 +77,7 @@ export interface GraphRow {
   authorEmail: string;
   dateIso: string;
   subject: string;
+  kind?: GraphRowKind;
   column: number;
   color: number;
 }

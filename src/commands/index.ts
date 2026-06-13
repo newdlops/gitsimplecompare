@@ -21,10 +21,16 @@ import {
 } from "./viewState";
 import type { TreeSection, VisibleSection } from "../webview/changesViewProvider";
 import { applyLeftToRight } from "./applyChanges";
+import { openDiffFileEditor } from "./diffEditor";
 import { showGraph } from "./showGraph";
+import { checkoutBranch } from "./checkoutBranch";
 import { startInteractiveRebase } from "./rebase";
 import { showSplitCommits } from "./splitCommits";
-import { discardEditorHunks, stageEditorHunks } from "./editorHunks";
+import {
+  discardEditorHunks,
+  stageEditorHunks,
+  toggleSelectedLineCheckboxes,
+} from "./editorHunks";
 import { refreshChangesView } from "./refreshChangesView";
 import type { RefreshRequest } from "./refreshChangesView";
 import {
@@ -52,6 +58,7 @@ import {
   markResolved,
   openMergeEditor,
   refreshConflicts,
+  rollbackPull,
   takeOurs,
   takeTheirs,
 } from "./conflicts";
@@ -83,6 +90,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.compareBranches", () =>
       compareBranches(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.checkoutBranch", () =>
+      checkoutBranch(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.compareFileWithBranch",
@@ -199,7 +209,15 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.applyLeftToRight",
       () => applyLeftToRight()
     ),
-    // editable diff 안에서 선택 라인/현재 hunk 를 바로 stage/discard
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openDiffFileEditor",
+      () => openDiffFileEditor()
+    ),
+    // editable diff 안에서 선택 라인 checkbox 토글과 stage/unstage 를 수행
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.toggleSelectedLineCheckbox",
+      () => toggleSelectedLineCheckboxes(deps)
+    ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.stageSelectedLines",
       () => stageEditorHunks(deps, "selection")
@@ -271,6 +289,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.abortOperation", () =>
       abortOperation(deps.conflicts)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.rollbackPull", () =>
+      rollbackPull(deps.conflicts)
     ),
   ];
 }

@@ -38,14 +38,19 @@ export function layoutGraph(commits: Commit[]): GraphData {
     let column: number;
     let color: number;
     if (incoming.length > 0) {
-      column = incoming[0];
-      color = laneColor[column];
+      const virtualLane = virtualIncomingLane(commits, rows, r, incoming);
+      const realIncoming = incoming.filter((lane) => lane !== virtualLane);
+      column = realIncoming[0] ?? firstFreeLaneExcept(lanes, virtualLane);
+      color = laneColor[realIncoming[0] ?? virtualLane ?? column] ?? nextColor++;
+      laneColor[column] = color;
       // 합쳐진 나머지 레인은 비운다(여러 자식이 이 커밋으로 모인 경우).
-      for (let k = 1; k < incoming.length; k++) {
-        lanes[incoming[k]] = null;
+      for (const lane of incoming) {
+        if (lane !== column) {
+          lanes[lane] = null;
+        }
       }
     } else {
-      column = firstFreeLane(lanes);
+      column = commit.kind ? firstFreeLaneFrom(lanes, 1) : firstFreeLane(lanes);
       color = nextColor++;
       laneColor[column] = color;
       lanes[column] = commit.hash; // 일단 점유(아래에서 부모로 교체)
@@ -159,6 +164,50 @@ function firstFreeLane(lanes: (string | null)[]): number {
   return lanes.length - 1;
 }
 
+/** 지정 시작점 이후의 비어 있는 첫 레인을 찾는다. */
+function firstFreeLaneFrom(lanes: (string | null)[], start: number): number {
+  for (let i = start; i < lanes.length; i++) {
+    if (lanes[i] === null) {
+      return i;
+    }
+  }
+  while (lanes.length < start) {
+    lanes.push(null);
+  }
+  lanes.push(null);
+  return lanes.length - 1;
+}
+
+/** 제외할 레인을 피해 비어 있는 첫 레인을 찾는다. */
+function firstFreeLaneExcept(
+  lanes: (string | null)[],
+  except: number | undefined
+): number {
+  for (let i = 0; i < lanes.length; i++) {
+    if (i !== except && lanes[i] === null) {
+      return i;
+    }
+  }
+  lanes.push(null);
+  return lanes.length - 1;
+}
+
+/** staged 가상 커밋에서 HEAD 로 들어오는 레인을 찾는다. */
+function virtualIncomingLane(
+  commits: Commit[],
+  rows: GraphRow[],
+  rowIndex: number,
+  incoming: number[]
+): number | undefined {
+  const commit = commits[rowIndex];
+  const previous = commits[rowIndex - 1];
+  const previousRow = rows[rowIndex - 1];
+  if (!commit.refs.includes("HEAD") || previous?.kind !== "staged") {
+    return undefined;
+  }
+  return incoming.includes(previousRow?.column) ? previousRow.column : undefined;
+}
+
 /**
  * Commit 을 GraphRow 로 변환한다(열/색 부여).
  * @param commit 변환할 커밋
@@ -174,6 +223,7 @@ function toRow(commit: Commit, column: number, color: number): GraphRow {
     authorEmail: commit.authorEmail,
     dateIso: commit.dateIso,
     subject: commit.subject,
+    kind: commit.kind,
     column,
     color,
   };

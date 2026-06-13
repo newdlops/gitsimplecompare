@@ -11,6 +11,14 @@ export class GitError extends Error {
   }
 }
 
+export interface RunGitOptions {
+  env?: Record<string, string>;
+  retryOnLock?: boolean;
+  beforeRetry?: () => Promise<void>;
+}
+
+const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
+
 /**
  * git 명령을 실행하고 표준 출력을 문자열로 반환한다.
  * - 대용량 출력(git show / git log 전체)도 받을 수 있도록 버퍼 한도를 넉넉히 둔다.
@@ -18,9 +26,34 @@ export class GitError extends Error {
  * - env 를 주면 기존 환경에 덮어써 실행한다(예: GIT_EDITOR=true 로 에디터 우회).
  * @param args git 인자 배열
  * @param cwd  실행 디렉터리(저장소 경로)
- * @param env  추가/덮어쓸 환경변수(선택)
+ * @param options 추가 env 또는 lock 재시도 옵션
  */
-export function runGit(
+export async function runGit(
+  args: string[],
+  cwd: string,
+  options?: Record<string, string> | RunGitOptions
+): Promise<string> {
+  const normalized = normalizeOptions(options);
+  const retryOnLock = normalized.retryOnLock !== false;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await runGitOnce(args, cwd, normalized.env);
+    } catch (error) {
+      if (
+        !retryOnLock ||
+        !isRetryableGitError(error) ||
+        attempt >= LOCK_RETRY_DELAYS_MS.length
+      ) {
+        throw error;
+      }
+      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
+      await normalized.beforeRetry?.();
+    }
+  }
+}
+
+/** git 명령 한 번을 실행한다. lock 재시도 루프는 runGit 이 담당한다. */
+function runGitOnce(
   args: string[],
   cwd: string,
   env?: Record<string, string>
@@ -47,4 +80,61 @@ export function runGit(
       }
     );
   });
+}
+
+/** 세 번째 인자가 env shortcut 인지 options 객체인지 판별해 정규화한다. */
+function normalizeOptions(
+  options?: Record<string, string> | RunGitOptions
+): RunGitOptions {
+  if (!options) {
+    return {};
+  }
+  if (
+    "env" in options ||
+    "retryOnLock" in options ||
+    "beforeRetry" in options
+  ) {
+    return options as RunGitOptions;
+  }
+  return { env: options as Record<string, string> };
+}
+
+/** git index/ref lock 이 다른 git 프로세스에 의해 잡힌 상황인지 확인한다. */
+function isGitLockError(error: GitError): boolean {
+  const text = `${error.message}\n${error.stderr}`;
+  return (
+    /index\.lock/.test(text) ||
+    /cannot lock ref/i.test(text) ||
+    /unable to create .*\.lock/i.test(text) ||
+    /another git process seems to be running/i.test(text)
+  );
+}
+
+/** git 실행 자체가 일시적 자원 오류나 lock 으로 실패했는지 확인한다. */
+function isRetryableGitError(error: unknown): boolean {
+  if (error instanceof GitError) {
+    return isGitLockError(error) || isTransientSpawnError(error);
+  }
+  const code =
+    typeof error === "object" && error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  return isTransientSpawnError({ code, message });
+}
+
+/** spawn/파일 디스크립터 계열의 일시적 실행 오류인지 확인한다. */
+function isTransientSpawnError(error: { code?: unknown; message: string }): boolean {
+  return (
+    error.code === "EBADF" ||
+    error.code === "EMFILE" ||
+    error.code === "ENFILE" ||
+    error.code === "EAGAIN" ||
+    /spawn (EBADF|EMFILE|ENFILE|EAGAIN)/i.test(error.message)
+  );
+}
+
+/** lock 이 풀릴 시간을 주기 위한 Promise 기반 sleep. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,6 +1,8 @@
 /* git 그래프 웹뷰 스타일. VS Code 테마 변수를 사용해 라이트/다크 테마에 자동 적응한다. */
 :root {
-  --row-height: 24px;
+  --row-height: 30px;
+  --toolbar-height: 32px;
+  --splitter-size: 6px;
 }
 
 html,
@@ -8,43 +10,160 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   color: var(--vscode-foreground);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   background: var(--vscode-editor-background);
 }
 
+body.resizing {
+  user-select: none;
+}
+
 #app {
   display: flex;
   height: 100vh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#graph-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 260px;
+  overflow: hidden;
+}
+
+#graph-toolbar {
+  display: flex;
+  flex: 0 0 var(--toolbar-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.icon-button:focus-visible,
+.icon-mini:focus-visible,
+.message-copy:focus-visible,
+.file-view-button:focus-visible,
+.search-result:focus-visible,
+#main-splitter:focus-visible,
+.detail-splitter:focus-visible,
+#load-more:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+#load-status {
+  overflow: hidden;
+  opacity: 0.72;
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#load-status.loading {
+  opacity: 1;
 }
 
 /* 왼쪽: 그래프 + 커밋 행 목록 */
 #graph {
   position: relative;
   flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   outline: none;
 }
 
-#graph svg {
+#graph-content {
+  position: relative;
+  min-height: 100%;
+}
+
+#graph-content svg {
   position: absolute;
   top: 0;
   left: 0;
   pointer-events: none;
 }
 
+#graph-content .node {
+  cursor: grab;
+  pointer-events: auto;
+}
+
+#graph-content .node.dragging-node {
+  cursor: grabbing;
+  filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
+}
+
+#graph-content .node.local-node {
+  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  stroke-width: 2.5;
+}
+
+#graph-content .node.ongoing-node {
+  stroke: var(--vscode-button-background, #0e639c);
+  stroke-width: 2.8;
+}
+
+#graph-content .node.staged-node {
+  stroke: var(--vscode-charts-yellow, #cca700);
+  stroke-width: 2.5;
+}
+
+.empty {
+  margin: 0;
+  padding: 16px;
+  opacity: 0.6;
+}
+
 .row {
   position: absolute;
+  right: auto !important;
+  width: max-content;
   height: var(--row-height);
   line-height: var(--row-height);
   display: flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  overflow: hidden;
-  cursor: pointer;
+  overflow: visible;
+  cursor: grab;
   padding-right: 12px;
+}
+
+.row.dragging-row {
+  cursor: grabbing;
 }
 
 .row:hover {
@@ -56,10 +175,15 @@ body {
   color: var(--vscode-list-activeSelectionForeground);
 }
 
+.row.ongoing-row,
+.row.staged-row {
+  font-weight: 600;
+}
+
 .row .subject {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1 1 auto;
+  overflow: visible;
+  text-overflow: clip;
+  flex: 0 0 auto;
 }
 
 .row .meta {
@@ -69,12 +193,34 @@ body {
 }
 
 .ref {
+  display: inline-flex;
   flex: 0 0 auto;
-  padding: 0 6px;
-  border-radius: 8px;
-  font-size: 0.85em;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: none;
+  height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  font-size: 0.88em;
+  line-height: 20px;
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+}
+
+.ref-label {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.ref-icon {
+  flex: 0 0 auto;
+  font-size: 12px;
 }
 
 .ref.head {
@@ -83,95 +229,168 @@ body {
   font-weight: bold;
 }
 
-/* 오른쪽: 커밋 상세 */
-#detail {
-  flex: 0 0 38%;
-  max-width: 520px;
-  border-left: 1px solid var(--vscode-panel-border);
-  overflow: auto;
-  padding: 12px 16px;
+.ref.local {
+  border-color: var(--branch-color, var(--vscode-gitDecoration-addedResourceForeground, #89d185));
+  background: var(--vscode-list-inactiveSelectionBackground, var(--vscode-editorWidget-background));
+  background: color-mix(
+    in srgb,
+    var(--branch-color, var(--vscode-gitDecoration-addedResourceForeground, #89d185)) 14%,
+    var(--vscode-editorWidget-background, #1e1e1e)
+  );
+  color: var(--branch-color, var(--vscode-gitDecoration-addedResourceForeground, #89d185));
+  font-weight: 600;
 }
 
-#detail .placeholder {
-  opacity: 0.6;
+.ref.current-local {
+  border-color: var(--branch-color, var(--vscode-focusBorder, var(--vscode-button-background, #0e639c)));
+  background: var(--vscode-list-activeSelectionBackground, var(--vscode-button-background, #0e639c));
+  background: color-mix(
+    in srgb,
+    var(--branch-color, var(--vscode-button-background, #0e639c)) 24%,
+    var(--vscode-editorWidget-background, #1e1e1e)
+  );
+  color: var(--branch-color, var(--vscode-button-foreground, #ffffff));
+  box-shadow: 0 0 0 1px var(--branch-color, var(--vscode-focusBorder, transparent));
 }
 
-#detail h2 {
-  font-size: 1.05em;
-  margin: 0 0 4px;
-}
-
-#detail .commit-meta {
-  opacity: 0.8;
-  font-size: 0.9em;
-  margin-bottom: 10px;
-}
-
-#detail .actions {
-  margin: 0 0 12px;
-}
-
-#detail .actions button {
-  padding: 3px 10px;
-  border: 1px solid transparent;
-  border-radius: 3px;
+.ref.branch-action {
   cursor: pointer;
-  color: var(--vscode-button-foreground);
-  background: var(--vscode-button-background);
 }
 
-#detail .actions button:hover {
-  filter: brightness(1.1);
+.ref.branch-action:hover {
+  border-color: var(--branch-color, var(--vscode-focusBorder, var(--vscode-button-hoverBackground)));
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+  background: color-mix(
+    in srgb,
+    var(--branch-color, var(--vscode-button-hoverBackground, #1177bb)) 22%,
+    var(--vscode-editorWidget-background, #1e1e1e)
+  );
 }
 
-#detail .message {
-  white-space: pre-wrap;
-  background: var(--vscode-textCodeBlock-background);
-  padding: 8px 10px;
-  border-radius: 4px;
-  margin-bottom: 12px;
+.ref.branch-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
 }
 
-#detail .files {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.ref.remote {
+  border-color: var(--branch-color, var(--vscode-textLink-foreground, #3794ff));
+  border-style: dashed;
+  background: var(--vscode-textBlockQuote-background, var(--vscode-editorWidget-background));
+  background: color-mix(
+    in srgb,
+    var(--branch-color, var(--vscode-textLink-foreground, #3794ff)) 12%,
+    var(--vscode-editorWidget-background, #1e1e1e)
+  );
+  color: var(--branch-color, var(--vscode-textLink-foreground, #3794ff));
 }
 
-#detail .file {
+.ref.tag {
+  border-color: var(--vscode-charts-yellow, #cca700);
+  background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background));
+  color: var(--vscode-charts-yellow, #cca700);
+}
+
+.ref.virtual {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+}
+
+.ref.virtual.ongoing {
+  border-color: var(--vscode-button-background, #0e639c);
+}
+
+.ref.virtual.staged {
+  border-color: var(--vscode-charts-yellow, #cca700);
+}
+
+.ref.gone {
+  border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-gitDecoration-deletedResourceForeground, #ad0707));
+  border-style: dashed;
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-gitDecoration-deletedResourceForeground, #ad0707));
+}
+
+.ref.current-local.gone {
+  color: var(--vscode-button-foreground, #ffffff);
+}
+
+.ref.behind {
+  box-shadow: inset 0 -2px 0 var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}
+
+.ref.ahead {
+  box-shadow: inset 0 2px 0 var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d);
+}
+
+.ref.ahead.behind {
+  box-shadow:
+    inset 0 2px 0 var(--vscode-gitDecoration-modifiedResourceForeground, #e2c08d),
+    inset 0 -2px 0 var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}
+
+#graph-tail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 42px;
   display: flex;
-  gap: 8px;
   align-items: center;
-  padding: 2px 4px;
-  cursor: pointer;
+  justify-content: center;
+  gap: 6px;
+  color: var(--vscode-descriptionForeground);
+}
+
+#load-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 3px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
 }
 
-#detail .file:hover {
-  background: var(--vscode-list-hoverBackground);
+#load-more:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
 }
 
-#detail .file .status {
-  flex: 0 0 1.2em;
-  text-align: center;
-  font-weight: bold;
+/* 영역 크기 조절 핸들 */
+#main-splitter {
+  flex: 0 0 var(--splitter-size);
+  cursor: col-resize;
+  background: var(--vscode-panel-border);
 }
 
-#detail .file .path {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+#main-splitter:hover {
+  background: var(--vscode-focusBorder);
 }
 
-#detail .file .stat {
-  flex: 0 0 auto;
-  font-size: 0.85em;
+body.detail-collapsed #detail,
+body.detail-collapsed #main-splitter {
+  display: none;
 }
 
-.add {
-  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+#drawer-backdrop {
+  display: none;
 }
 
-.del {
-  color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+@media (max-width: 760px) {
+  #main-splitter {
+    display: none;
+  }
+
+  body.detail-collapsed #detail {
+    display: flex;
+  }
+
+  body.detail-open #drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: block;
+    background: rgba(0, 0, 0, 0.28);
+  }
 }

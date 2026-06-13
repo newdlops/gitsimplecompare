@@ -697,6 +697,11 @@
         sec.style.flex = `0 0 ${HEADER_H}px`;
         return;
       }
+      if (id === "repos") {
+        const body = sec.querySelector(".section-body");
+        sec.style.flex = `0 0 ${HEADER_H + (body ? body.scrollHeight : 0)}px`;
+        return;
+      }
       const weight =
         state.sizes[id] > 0 ? state.sizes[id] : DEFAULT_WEIGHT[id] || 160;
       sec.style.flex = `${weight} 1 0`;

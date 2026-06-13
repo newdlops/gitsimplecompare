@@ -25,7 +25,7 @@ Compare git branches and files with simple, **editable** diffs — right inside 
 
 ### Git Graph
 
-Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The number of commits loaded is controlled by `gitSimpleCompare.graph.maxCommits`.
+Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit.
 
 ### Interactive rebase
 
@@ -59,7 +59,6 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | --- | --- | --- |
 | `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
-| `gitSimpleCompare.graph.maxCommits` | `300` | Maximum number of commits to load in the Git Graph view |
 
 ## Development
 

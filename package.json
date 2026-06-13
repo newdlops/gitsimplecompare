@@ -39,6 +39,12 @@
         "icon": "$(git-compare)"
       },
       {
+        "command": "gitSimpleCompare.checkoutBranch",
+        "title": "%cmd.checkoutBranch%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-branch)"
+      },
+      {
         "command": "gitSimpleCompare.compareFileWithBranch",
         "title": "%cmd.compareFileWithBranch%",
         "category": "Git Simple Compare",
@@ -132,51 +138,23 @@
         "icon": "$(arrow-right)"
       },
       {
+        "command": "gitSimpleCompare.openDiffFileEditor",
+        "title": "%cmd.openDiffFileEditor%",
+        "category": "Git Simple Compare",
+        "icon": "$(go-to-file)",
+        "enablement": "gitSimpleCompare.activeExtensionDiff"
+      },
+      {
         "command": "gitSimpleCompare.stageSelectedLines",
         "title": "%cmd.stageSelectedLines%",
         "category": "Git Simple Compare",
-        "icon": "$(diff-added)"
+        "icon": "$(arrow-swap)"
       },
       {
-        "command": "gitSimpleCompare.discardSelectedLines",
-        "title": "%cmd.discardSelectedLines%",
+        "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
+        "title": "%cmd.toggleSelectedLineCheckbox%",
         "category": "Git Simple Compare",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "gitSimpleCompare.stageCurrentHunk",
-        "title": "%cmd.stageCurrentHunk%",
-        "category": "Git Simple Compare",
-        "icon": "$(diff-added)"
-      },
-      {
-        "command": "gitSimpleCompare.discardCurrentHunk",
-        "title": "%cmd.discardCurrentHunk%",
-        "category": "Git Simple Compare",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "gitSimpleCompare.stageCheckedLines",
-        "title": "%cmd.stageCheckedLines%",
-        "category": "Git Simple Compare",
-        "icon": "$(check-all)"
-      },
-      {
-        "command": "gitSimpleCompare.unstageCheckedLines",
-        "title": "%cmd.unstageCheckedLines%",
-        "category": "Git Simple Compare",
-        "icon": "$(remove)"
-      },
-      {
-        "command": "gitSimpleCompare.clearCheckedLines",
-        "title": "%cmd.clearCheckedLines%",
-        "category": "Git Simple Compare",
-        "icon": "$(clear-all)"
-      },
-      {
-        "command": "gitSimpleCompare.toggleHunkLineCheckbox",
-        "title": "%cmd.toggleHunkLineCheckbox%",
-        "category": "Git Simple Compare"
+        "icon": "$(checklist)"
       },
       {
         "command": "gitSimpleCompare.chooseHunkControlMode",
@@ -243,7 +221,8 @@
         "title": "%cmd.abortOperation%",
         "category": "Git Simple Compare",
         "icon": "$(circle-slash)"
-      }
+      },
+      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -301,7 +280,7 @@
           "group": "navigation@2"
         },
         {
-          "command": "gitSimpleCompare.compareBranches",
+          "command": "gitSimpleCompare.checkoutBranch",
           "when": "view == gitSimpleCompare.changes",
           "group": "navigation@3"
         },
@@ -375,11 +354,8 @@
           "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
           "group": "navigation@2"
         },
-        {
-          "command": "gitSimpleCompare.refreshConflicts",
-          "when": "view == gitSimpleCompare.conflicts",
-          "group": "navigation@3"
-        }
+        { "command": "gitSimpleCompare.rollbackPull", "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable", "group": "navigation@3" },
+        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@4" }
       ],
       "view/item/context": [
         {
@@ -420,39 +396,24 @@
       ],
       "editor/title": [
         {
+          "command": "gitSimpleCompare.openDiffFileEditor",
+          "when": "gitSimpleCompare.activeExtensionDiff",
+          "group": "navigation@0"
+        },
+        {
           "command": "gitSimpleCompare.applyLeftToRight",
           "when": "gitSimpleCompare.activeDiff",
           "group": "navigation@1"
         },
         {
-          "command": "gitSimpleCompare.stageSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
           "group": "navigation@2"
         },
         {
-          "command": "gitSimpleCompare.discardSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "command": "gitSimpleCompare.stageSelectedLines",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
           "group": "navigation@3"
-        },
-        {
-          "command": "gitSimpleCompare.stageCheckedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "navigation@4"
-        },
-        {
-          "command": "gitSimpleCompare.unstageCheckedLines",
-          "when": "gitSimpleCompare.activeStagedHunkDiff",
-          "group": "navigation@4"
-        },
-        {
-          "command": "gitSimpleCompare.clearCheckedLines",
-          "when": "gitSimpleCompare.activeHeadWorkingDiff",
-          "group": "navigation@5"
-        },
-        {
-          "command": "gitSimpleCompare.chooseHunkControlMode",
-          "when": "gitSimpleCompare.activeHeadWorkingDiff",
-          "group": "navigation@6"
         },
         {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
@@ -462,39 +423,14 @@
       ],
       "editor/context": [
         {
-          "command": "gitSimpleCompare.stageSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
           "group": "1_gitSimpleCompare@1"
         },
         {
-          "command": "gitSimpleCompare.discardSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@2"
-        },
-        {
-          "command": "gitSimpleCompare.stageCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@3"
-        },
-        {
-          "command": "gitSimpleCompare.discardCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@4"
-        },
-        {
-          "command": "gitSimpleCompare.stageCheckedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@5"
-        },
-        {
-          "command": "gitSimpleCompare.unstageCheckedLines",
-          "when": "gitSimpleCompare.activeStagedHunkDiff",
-          "group": "1_gitSimpleCompare@5"
-        },
-        {
-          "command": "gitSimpleCompare.clearCheckedLines",
+          "command": "gitSimpleCompare.stageSelectedLines",
           "when": "gitSimpleCompare.activeHeadWorkingDiff",
-          "group": "1_gitSimpleCompare@6"
+          "group": "1_gitSimpleCompare@2"
         },
         {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
@@ -504,29 +440,14 @@
       ],
       "editor/title/context": [
         {
-          "command": "gitSimpleCompare.stageCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
+          "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff",
           "group": "1_gitSimpleCompare@1"
         },
         {
-          "command": "gitSimpleCompare.discardCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@2"
-        },
-        {
-          "command": "gitSimpleCompare.stageCheckedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff",
-          "group": "1_gitSimpleCompare@3"
-        },
-        {
-          "command": "gitSimpleCompare.unstageCheckedLines",
-          "when": "gitSimpleCompare.activeStagedHunkDiff",
-          "group": "1_gitSimpleCompare@3"
-        },
-        {
-          "command": "gitSimpleCompare.clearCheckedLines",
+          "command": "gitSimpleCompare.stageSelectedLines",
           "when": "gitSimpleCompare.activeHeadWorkingDiff",
-          "group": "1_gitSimpleCompare@4"
+          "group": "1_gitSimpleCompare@2"
         },
         {
           "command": "gitSimpleCompare.compareActiveFileWithBranch",
@@ -587,39 +508,15 @@
           "when": "gitSimpleCompare.activeDiff"
         },
         {
+          "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
+          "when": "gitSimpleCompare.activeHeadWorkingDiff"
+        },
+        {
           "command": "gitSimpleCompare.stageSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.discardSelectedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.stageCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.discardCurrentHunk",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.stageCheckedLines",
-          "when": "gitSimpleCompare.activeUnstagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.unstageCheckedLines",
-          "when": "gitSimpleCompare.activeStagedHunkDiff"
-        },
-        {
-          "command": "gitSimpleCompare.clearCheckedLines",
           "when": "gitSimpleCompare.activeHeadWorkingDiff"
         },
         {
           "command": "gitSimpleCompare.chooseHunkControlMode"
-        },
-        {
-          "command": "gitSimpleCompare.toggleHunkLineCheckbox",
-          "when": "false"
         },
         {
           "command": "gitSimpleCompare.takeOurs",
@@ -680,13 +577,6 @@
           ],
           "default": "nativeOverlay",
           "description": "%config.hunkControl.desc%"
-        },
-        "gitSimpleCompare.graph.maxCommits": {
-          "type": "number",
-          "default": 300,
-          "minimum": 10,
-          "maximum": 5000,
-          "description": "%config.graph.maxCommits.desc%"
         }
       }
     }

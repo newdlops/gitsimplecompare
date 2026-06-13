@@ -2,13 +2,14 @@
 // - staged/unstaged diff 를 모두 파싱하고, 선택 hunk 만 커밋한다.
 // - 선택하지 않은 staged hunk 는 커밋 뒤 다시 staged 상태로 복원한다.
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import {
   filePatchForDiscard,
   filePatchForUnstage,
   filePatchFromSelection,
 } from "./diffPatchBuild";
+import { createDiffMutationGuard } from "./diffMutationGuard";
+import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
 import { runGit } from "./gitExec";
 
 /** hunk 가 어느 diff 영역에서 왔는지 나타낸다. */
@@ -156,9 +157,20 @@ export class DiffHunkService {
       throw new Error("No unstaged hunks selected.");
     }
 
-    await applyPatch(this.repoRoot, patchParts);
+    const guard = createDiffMutationGuard(this, files, selections);
+    await guard.assertSafe();
+    await applyPatch(
+      this.repoRoot,
+      patchParts,
+      false,
+      undefined,
+      true,
+      guard.beforeRetry
+    );
     for (const filePath of binaryPaths) {
-      await runGit(["add", "--", filePath], this.repoRoot);
+      await runGit(["add", "--", filePath], this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
     }
   }
 
@@ -208,12 +220,25 @@ export class DiffHunkService {
       throw new Error("No staged hunks selected.");
     }
 
-    await applyPatch(this.repoRoot, patchParts);
+    const guard = createDiffMutationGuard(this, files, selections);
+    await guard.assertSafe();
+    await applyPatch(
+      this.repoRoot,
+      patchParts,
+      false,
+      undefined,
+      true,
+      guard.beforeRetry
+    );
     for (const filePath of resetPaths) {
-      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot);
+      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
     }
     for (const filePath of binaryPaths) {
-      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot);
+      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
     }
   }
 
@@ -254,9 +279,20 @@ export class DiffHunkService {
       throw new Error("No unstaged hunks selected.");
     }
 
-    await applyPatch(this.repoRoot, patchParts, true, undefined, false);
+    const guard = createDiffMutationGuard(this, files, selections);
+    await guard.assertSafe();
+    await applyPatch(
+      this.repoRoot,
+      patchParts,
+      true,
+      undefined,
+      false,
+      guard.beforeRetry
+    );
     for (const filePath of binaryPaths) {
-      await runGit(["checkout", "--", filePath], this.repoRoot);
+      await runGit(["checkout", "--", filePath], this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
     }
   }
 
@@ -308,10 +344,13 @@ export class DiffHunkService {
       throw new Error("No hunks selected.");
     }
 
+    const guard = createDiffMutationGuard(this, files, selections);
+    await guard.assertSafe();
+    const oldHead = (await runGit(["rev-parse", "HEAD"], this.repoRoot)).trim();
     const tempIndex = tempIndexPath();
     const tempEnv = { GIT_INDEX_FILE: tempIndex };
     try {
-      await runGit(["read-tree", "HEAD"], this.repoRoot, tempEnv);
+      await runGit(["read-tree", oldHead], this.repoRoot, tempEnv);
       await applyPatch(this.repoRoot, pickedStagedParts, false, tempEnv);
       await applyPatch(this.repoRoot, pickedUnstagedParts, false, tempEnv);
       for (const filePath of [
@@ -322,14 +361,28 @@ export class DiffHunkService {
       }
       const tree = (await runGit(["write-tree"], this.repoRoot, tempEnv)).trim();
       const commit = (
-        await runGit(["commit-tree", tree, "-p", "HEAD", "-m", message], this.repoRoot)
+        await runGit(
+          ["commit-tree", tree, "-p", oldHead, "-m", message],
+          this.repoRoot
+        )
       ).trim();
 
-      await applyPatch(this.repoRoot, pickedUnstagedParts);
+      await applyPatch(
+        this.repoRoot,
+        pickedUnstagedParts,
+        false,
+        undefined,
+        true,
+        guard.beforeRetry
+      );
       for (const filePath of pickedUnstagedBinaryPaths) {
-        await runGit(["add", "--", filePath], this.repoRoot);
+        await runGit(["add", "--", filePath], this.repoRoot, {
+          beforeRetry: guard.beforeRetry,
+        });
       }
-      await runGit(["update-ref", "HEAD", commit], this.repoRoot);
+      await runGit(["update-ref", "HEAD", commit, oldHead], this.repoRoot, {
+        beforeRetry: guard.beforeRetry,
+      });
     } finally {
       safeUnlink(tempIndex);
     }
@@ -527,63 +580,4 @@ function rangeText(start: number, count: number): string {
 /** 선택 키는 같은 파일의 staged/unstaged hunk 를 구분해야 한다. */
 function selectionKey(stage: DiffStage, filePath: string): string {
   return `${stage}\0${filePath}`;
-}
-
-/**
- * patch 조각들을 index 또는 working tree 에 적용한다.
- * - 선택 라인으로 hunk 본문을 재구성하므로 `--recount` 로 header count 를 git 이 다시 검증하게 한다.
- * @param repoRoot 저장소 루트
- * @param parts 적용할 unified diff 조각들
- * @param reverse true 면 patch 를 반대로 적용한다
- * @param env 임시 index 등 git 환경 변수
- * @param cached true 면 index 에 적용하고 false 면 working tree 에 적용한다
- */
-async function applyPatch(
-  repoRoot: string,
-  parts: string[],
-  reverse = false,
-  env?: Record<string, string>,
-  cached = true
-): Promise<void> {
-  if (!parts.length) {
-    return;
-  }
-  const patchFile = tempPatchPath();
-  fs.writeFileSync(patchFile, parts.join("\n") + "\n", "utf8");
-  try {
-    await runGit(
-      [
-        "apply",
-        "--recount",
-        ...(cached ? ["--cached"] : []),
-        ...(reverse ? ["--reverse"] : []),
-        patchFile,
-      ],
-      repoRoot,
-      env
-    );
-  } finally {
-    safeUnlink(patchFile);
-  }
-}
-
-/** 임시 패치 파일 경로를 만든다(난수 접미사). */
-function tempPatchPath(): string {
-  const suffix = Math.random().toString(36).slice(2);
-  return path.join(os.tmpdir(), `gsc-split-${suffix}.patch`);
-}
-
-/** 임시 git index 파일 경로를 만든다. */
-function tempIndexPath(): string {
-  const suffix = Math.random().toString(36).slice(2);
-  return path.join(os.tmpdir(), `gsc-split-index-${suffix}`);
-}
-
-/** 파일을 조용히 삭제한다(없어도 무시). */
-function safeUnlink(file: string): void {
-  try {
-    fs.unlinkSync(file);
-  } catch {
-    /* 무시 */
-  }
 }
