@@ -320,6 +320,37 @@ export class RebaseService {
   }
 
   /**
+   * edit 으로 멈춘 커밋에서 사용자가 수정한 파일을 현재 커밋에 반영한다.
+   * - rebase edit 중 VS Code diff 로 바꾼 내용은 우선 작업트리 변경으로 남는다.
+   * - Continue 전에 해당 커밋의 변경 파일만 stage 한 뒤 `commit --amend --no-edit` 로 커밋 자체를 갱신한다.
+   * @param paused 이미 읽어 둔 edit 정지 상태. 없으면 현재 상태를 다시 읽는다.
+   * @returns amend 할 staged 변경이 있어 커밋을 갱신했으면 true
+   */
+  async amendPausedEditChanges(paused?: RebasePausedState): Promise<boolean> {
+    if (await detectOperation(this.repoRoot) !== "rebase") {
+      return false;
+    }
+    if (await this.hasUnmergedFiles()) {
+      return false;
+    }
+    const state = paused ?? await this.getPausedEditState();
+    const paths = uniquePaths((state?.files ?? []).map((file) => file.path));
+    if (paths.length === 0) {
+      return false;
+    }
+    await runGit(["add", "-A", "--", ...paths], this.repoRoot);
+    if (!(await this.hasStagedChanges(paths))) {
+      return false;
+    }
+    await runGit(
+      ["commit", "--amend", "--no-edit", "--allow-empty"],
+      this.repoRoot,
+      { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" }
+    );
+    return true;
+  }
+
+  /**
    * 커밋 한 건의 변경 파일 목록을 첫 부모 기준으로 반환한다.
    * @param hash 대상 커밋 해시
    */
@@ -362,6 +393,16 @@ export class RebaseService {
       this.repoRoot
     ).catch(() => "");
     return out.split("\0").some((entry) => entry.length > 0);
+  }
+
+  /** 지정 경로 중 index 에 커밋할 변경이 stage 되어 있는지 확인한다. */
+  private async hasStagedChanges(paths: string[]): Promise<boolean> {
+    try {
+      await runGit(["diff", "--cached", "--quiet", "--", ...paths], this.repoRoot);
+      return false;
+    } catch {
+      return true;
+    }
   }
 
   /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */

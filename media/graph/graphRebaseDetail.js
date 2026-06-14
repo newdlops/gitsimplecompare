@@ -64,7 +64,7 @@
       ? buttonHtml("open-first-edit-file", "go-to-file", "Open editable diff", "Open the first editable file from this paused commit", esc)
       : buttonHtml("start-edit-rebase", "play", "Start rebase", "Start rebase; Git will pause at this commit for manual edits", esc);
     const flowCtas = hasPaused
-      ? buttonHtml("continue-rebase", "debug-continue", "Continue", "Continue the paused rebase after editing and amending files", esc) +
+      ? buttonHtml("continue-rebase", "debug-continue", "Continue", "Amend this edit commit, then continue rebase", esc) +
         buttonHtml("abort-rebase", "debug-stop", "Abort", "Abort this paused rebase and return to the previous branch state", esc)
       : "";
     const state = isPausedHere ? "Paused here" : "Will pause here";

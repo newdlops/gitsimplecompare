@@ -38,8 +38,31 @@
 
   /** 현재 rebase 계획에 포함된 해시 집합을 반환한다. */
   function itemHashSet() {
-    return new Set(items.map((item) => item.hash));
+    const hashes = new Set(items.map((item) => item.hash));
+    if (paused?.hash && itemIndexForHash(paused.hash) >= 0) {
+      hashes.add(paused.hash);
+    }
+    return hashes;
   }
+
+  /** 원본 todo 해시와 rebase 중 새로 생긴 paused 해시를 같은 항목으로 매핑한다. */
+  function itemIndexForHash(hash) {
+    const direct = items.findIndex((item) => item.hash === hash);
+    if (direct >= 0) {
+      return direct;
+    }
+    if (paused?.hash === hash && paused.originalHash) {
+      return items.findIndex((item) => item.hash === paused.originalHash);
+    }
+    return -1;
+  }
+
+  /** 화면의 row 해시로 현재 rebase todo 항목을 찾는다. */
+  function itemForHash(hash) {
+    const index = itemIndexForHash(hash);
+    return index >= 0 ? items[index] : undefined;
+  }
+
   /** 그래프 표시 순서(위=newer)에 맞춘 계획 배열을 반환한다. */
   function visualItems() {
     return [...items].reverse();
@@ -185,7 +208,7 @@
     const onto = plan.onto ? ` · onto ${esc(plan.onto.slice(0, 10))}` : "";
     const controls = paused || operationActive
       ? `<button id="graph-rebase-continue" type="button" title="Continue rebase" ` +
-        `aria-label="Continue rebase" data-tooltip="Continue the paused rebase">` +
+        `aria-label="Continue rebase" data-tooltip="Amend this edit commit, then continue rebase">` +
         `<span class="codicon codicon-debug-continue" aria-hidden="true"></span><span>Continue</span></button>` +
         `<button id="graph-rebase-abort" type="button" title="Abort rebase" ` +
         `aria-label="Abort rebase" data-tooltip="Abort this paused rebase and restore the previous state">` +
@@ -222,16 +245,17 @@
       row.querySelector(".rebase-order")?.remove();
       row.querySelector(".rebase-action-marker")?.remove();
       row.querySelector(".rebase-row-actions")?.remove();
-      const index = items.findIndex((item) => item.hash === row.dataset.hash);
-      if (index >= 0) {
+      const index = itemIndexForHash(row.dataset.hash);
+      const item = index >= 0 ? items[index] : undefined;
+      if (item) {
         const slot = layout.byHash.get(row.dataset.hash);
         if (slot && slot.dy !== 0) {
           row.style.transform = `translateY(${slot.dy}px)`;
           row.classList.add("rebase-preview-moved");
         }
-        row.appendChild(orderBadge(items[index]));
-        row.appendChild(actionMarker(items[index]));
-        row.appendChild(actionButtons(items[index]));
+        row.appendChild(orderBadge(item));
+        row.appendChild(actionMarker(item));
+        row.appendChild(actionButtons(item));
       }
     });
     window.GscGraphRebasePreview?.applyNodeTransforms?.(graphContent, layout.byHash);
@@ -286,7 +310,7 @@
 
   /** 특정 커밋의 rebase action 을 바꾸고 필요한 메시지를 입력받는다. */
   function setAction(hash, action) {
-    const item = items.find((entry) => entry.hash === hash);
+    const item = itemForHash(hash);
     if (!item) {
       return;
     }
@@ -329,7 +353,7 @@
 
   /** drawer 편집 UI 에서 메시지를 갱신한다. */
   function updateMessage(hash, message) {
-    const item = items.find((entry) => entry.hash === hash);
+    const item = itemForHash(hash);
     if (!item) {
       return;
     }
@@ -342,7 +366,7 @@
 
   /** drawer 편집 UI 에서 커밋 단위 파일 제외를 토글한다. */
   function toggleCommitExclude(hash, path) {
-    const item = items.find((entry) => entry.hash === hash);
+    const item = itemForHash(hash);
     if (item) {
       togglePath(item, "excludePaths", path);
       renderPlan();
@@ -550,7 +574,7 @@
 
   window.GscGraphRebaseContext = {
     contextMenuItems,
-    itemForHash: (hash) => items.find((item) => item.hash === hash),
+    itemForHash,
     items: () => items,
     paused: () => paused,
     requestEditFile,

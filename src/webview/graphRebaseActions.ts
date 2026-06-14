@@ -116,7 +116,7 @@ export async function runGraphRebase(
     await openPausedEditFile(deps.logService.repoRoot, result.paused, editPath);
     vscode.window.showInformationMessage(
       vscode.l10n.t(
-        "Rebase paused for edit. Change files, amend the commit, then Continue."
+        "Rebase paused for edit. Change files, then Continue to amend this commit."
       )
     );
   } else if (result.status === "noop") {
@@ -163,15 +163,27 @@ export async function continueGraphRebase(
     await refreshAfterRebaseControl(deps, "graphRebaseContinueNoop");
     return { status: "completed" };
   }
+  const rebase = new RebaseService(repoRoot);
+  const paused = await rebase.getPausedEditState();
+  if (await rebase.amendPausedEditChanges(paused)) {
+    logInfo("graph rebase edit commit amended", {
+      repoRoot,
+      paused: paused?.hash,
+      original: paused?.originalHash,
+    });
+  }
   try {
     await conflicts.continueOperation("rebase");
   } catch (err) {
     const state = await readRebaseControlState(deps, "");
-    if (state.status === "conflicts" || state.status === "paused") {
+    if (state.status === "conflicts") {
       return state;
     }
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(vscode.l10n.t("Rebase continue failed: {0}", message));
+    if (state.status === "paused") {
+      return { ...state, message };
+    }
     return { status: "failed", message };
   }
   return readRebaseControlState(deps, "Rebase completed.");
