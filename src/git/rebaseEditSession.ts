@@ -26,7 +26,7 @@ const sessions = new Map<string, RebaseEditEntry[]>();
 /**
  * paused edit 커밋의 파일 내용을 임시 파일로 복사한다.
  * - 파일 내용은 worktree 가 아니라 `paused.hash:path` blob 에서 읽는다.
- * - 같은 파일을 다시 열면 기존 세션을 교체해 Continue 때 최신 temp 파일만 반영한다.
+ * - 같은 파일을 다시 열면 기존 임시 파일을 재사용해 저장된 편집 내용을 유지한다.
  * @param repoRoot 저장소 루트
  * @param paused 현재 rebase edit 정지 상태
  * @param file drawer 에서 선택한 커밋 변경 파일
@@ -37,6 +37,11 @@ export async function createRebaseEditTempFile(
   paused: RebasePausedState,
   file: RebaseCommitFile
 ): Promise<RebaseEditTempFile> {
+  const existing = await findExistingTempFile(repoRoot, paused, file.path);
+  if (existing) {
+    return existing;
+  }
+
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gsc-rebase-edit-"));
   const tempPath = path.join(dir, safeRelativePath(file.path));
   await fs.mkdir(path.dirname(tempPath), { recursive: true });
@@ -57,6 +62,24 @@ export async function createRebaseEditTempFile(
   next.push(entry);
   sessions.set(repoRoot, next);
   return entry;
+}
+
+/** 이미 열린 같은 paused edit 파일의 임시 파일이 살아 있으면 반환한다. */
+async function findExistingTempFile(
+  repoRoot: string,
+  paused: RebasePausedState,
+  relPath: string
+): Promise<RebaseEditTempFile | undefined> {
+  const entry = matchingEntries(repoRoot, paused).find((item) => item.relPath === relPath);
+  if (!entry) {
+    return undefined;
+  }
+  try {
+    await fs.access(entry.tempPath);
+    return entry;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
