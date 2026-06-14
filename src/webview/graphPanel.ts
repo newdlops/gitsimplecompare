@@ -153,7 +153,7 @@ export class GitGraphPanel {
         this.post({ type: "graphRebasePlan", plan });
       } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
         const result = msg.type === "continueGraphRebase"
-          ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() })
+          ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
           : await abortGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() });
         if (result.status === "completed" || result.status === "aborted") {
           this.post({ type: "graphRebaseClear" });

@@ -58,7 +58,7 @@ export type FromWebviewMessage =
   | { type: "openFileDiff"; hash: string; parent: string; path: string }
   | { type: "openRebaseEditFile"; path: string }
   | { type: "prepareGraphRebase"; hash?: string; onto?: string }
-  | { type: "continueGraphRebase" }
+  | { type: "continueGraphRebase"; items?: RebaseItem[]; changedHashes?: string[] }
   | { type: "abortGraphRebase" }
   | {
       type: "runGraphRebase";

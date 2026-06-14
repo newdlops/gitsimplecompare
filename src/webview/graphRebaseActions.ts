@@ -6,6 +6,7 @@ import {
   createRebaseEditTempFile,
   listRebaseEditTempPaths,
 } from "../git/rebaseEditSession";
+import { updateInProgressRebaseTodo } from "../git/rebaseTodoEditor";
 import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
   RebaseItem,
@@ -159,7 +160,9 @@ export async function openPausedRebaseEditFile(
  * @param deps 그래프 패널 의존성
  */
 export async function continueGraphRebase(
-  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
+  items: RebaseItem[] = [],
+  changedHashes: string[] = []
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
@@ -171,6 +174,19 @@ export async function continueGraphRebase(
   const paused = await rebase.getPausedEditState();
   if (paused) {
     await saveRebaseEditTempDocuments(repoRoot, paused);
+  }
+  const todo = await updateInProgressRebaseTodo(repoRoot, items, changedHashes, paused);
+  if (todo.missingChangedEditHashes.length > 0) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("That commit has already been applied in this rebase. Abort and start a new rebase plan to edit it.")
+    );
+    return paused ? { status: "paused", paused } : { status: "failed", message: "commit already applied" };
+  }
+  if (todo.changed) {
+    logInfo("graph rebase todo updated before continue", {
+      repoRoot,
+      changedHashes: changedHashes.length,
+    });
   }
   if (await rebase.amendPausedEditChanges(paused)) {
     logInfo("graph rebase edit commit amended", {

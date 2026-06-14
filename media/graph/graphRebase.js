@@ -24,6 +24,7 @@
   let marker = null;
   let paused = null;
   let operationActive = false;
+  let changedDuringOperation = new Set();
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -130,6 +131,7 @@
     } else if (msg.type === "graphRebasePaused") {
       paused = msg.paused || null;
       operationActive = true;
+      changedDuringOperation.clear();
       ensureBar();
       renderPlan();
       window.GscGraphDetail?.refresh?.();
@@ -149,6 +151,7 @@
     plan = nextPlan;
     paused = null;
     operationActive = false;
+    changedDuringOperation.clear();
     items = (nextPlan.commits || []).map((commit) => ({
       hash: commit.hash,
       action: "pick",
@@ -178,6 +181,7 @@
     originalOrder = [];
     paused = null;
     operationActive = false;
+    changedDuringOperation.clear();
     pendingDrop = null;
     hideDropMarker();
     window.GscGraphRebasePreview?.clearTransforms?.(graphContent);
@@ -315,6 +319,7 @@
       return;
     }
     item.action = action;
+    if (paused || operationActive) changedDuringOperation.add(item.hash);
     if (MESSAGE_ACTIONS.has(action) && !item.message) {
       item.message = defaultMessage(item, action);
     }
@@ -520,13 +525,15 @@
       root: Boolean(plan.root),
       onto: plan.onto || "",
       editPath,
-      items: items.map((item) => ({
-        hash: item.hash,
-        action: item.action,
-        message: item.message || (item.action === "squash" ? window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || "" : ""),
-        excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [],
-      })),
+      items: itemsPayload(),
     });
+  }
+
+  /** 확장 호스트에 보낼 현재 rebase 계획 payload 를 만든다. */
+  function itemsPayload() {
+    return items.map((item) => ({ hash: item.hash, action: item.action,
+      message: item.message || (item.action === "squash" ? window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || "" : ""),
+      excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [] }));
   }
 
   /** edit 파일 버튼에서 rebase 시작 또는 paused edit 파일 열기를 요청한다. */
@@ -543,7 +550,11 @@
 
   /** 멈춰 있는 rebase 를 확장 호스트에 계속 진행하도록 요청한다. */
   function continueRebase() {
-    window.GscGraphPostMessage?.({ type: "continueGraphRebase" });
+    window.GscGraphPostMessage?.({
+      type: "continueGraphRebase",
+      items: itemsPayload(),
+      changedHashes: Array.from(changedDuringOperation),
+    });
   }
 
   /** 멈춰 있는 rebase 를 확장 호스트에 취소하도록 요청한다. */
