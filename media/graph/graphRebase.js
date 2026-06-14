@@ -19,6 +19,7 @@
 
   let plan = null;
   let items = [];
+  let originalOrder = [];
   let drag = null;
   let pendingDrop = null;
   let marker = null;
@@ -93,7 +94,11 @@
       targetHash: target?.dataset.hash || "",
       after: isAfter(target, y),
     };
-    window.GscGraphPostMessage?.({ type: "prepareGraphRebase", hash: drag.hash });
+    window.GscGraphPostMessage?.({
+      type: "prepareGraphRebase",
+      hash: drag.hash,
+      onto: pendingDrop.targetHash || "",
+    });
     drag = null;
   });
 
@@ -137,11 +142,16 @@
       message: "",
       subject: commit.subject,
       body: commit.body || "",
+      originalOrder: 0,
     }));
-    if (pendingDrop) {
+    items.forEach((item, index) => {
+      item.originalOrder = index;
+    });
+    originalOrder = items.map((item) => item.hash);
+    if (pendingDrop && itemHashSet().has(pendingDrop.targetHash)) {
       reorderByVisualTarget(pendingDrop.hash, pendingDrop.targetHash, pendingDrop.after);
-      pendingDrop = null;
     }
+    pendingDrop = null;
     document.body.classList.add("graph-rebase-mode");
     ensureBar();
     renderPlan();
@@ -151,9 +161,12 @@
   function clearPlan() {
     plan = null;
     items = [];
+    originalOrder = [];
     pendingDrop = null;
     hideDropMarker();
     closeContextMenu();
+    clearRebaseTransforms();
+    removePreviewBranch();
     document.body.classList.remove("graph-rebase-mode");
     document.getElementById("graph-rebase-bar")?.remove();
     graphContent.querySelectorAll(".rebase-row").forEach((row) => {
@@ -173,10 +186,11 @@
       graphPane.insertBefore(bar, graphEl);
     }
     const upstream = plan.upstream ? ` · upstream ${esc(plan.upstream)}` : "";
-    const base = plan.base ? ` · base ${esc(plan.base.slice(0, 10))}` : "";
+    const base = plan.root ? " · base root" : plan.base ? ` · base ${esc(plan.base.slice(0, 10))}` : "";
+    const onto = plan.onto ? ` · onto ${esc(plan.onto.slice(0, 10))}` : "";
     bar.innerHTML =
       `<span class="codicon codicon-list-ordered" aria-hidden="true"></span>` +
-      `<span class="rebase-title">Interactive rebase: ${esc(plan.branch)}${upstream}${base}</span>` +
+      `<span class="rebase-title">Interactive rebase: ${esc(plan.branch)}${upstream}${base}${onto}</span>` +
       `<button id="graph-rebase-run" type="button" title="Start rebase" ` +
       `aria-label="Start rebase" data-tooltip="Start rebase with this plan">` +
       `<span class="codicon codicon-play" aria-hidden="true"></span><span>Start</span></button>` +
@@ -193,26 +207,36 @@
       return;
     }
     const hashes = itemHashSet();
+    const layout = rebaseVisualLayout();
     graphContent.querySelectorAll(".row").forEach((row) => {
       row.classList.toggle("rebase-row", hashes.has(row.dataset.hash));
+      row.classList.remove("rebase-preview-moved");
+      row.style.transform = "";
       row.querySelector(".rebase-order")?.remove();
       row.querySelector(".rebase-action-marker")?.remove();
       row.querySelector(".rebase-row-actions")?.remove();
       const index = items.findIndex((item) => item.hash === row.dataset.hash);
       if (index >= 0) {
-        row.appendChild(orderBadge(index));
+        const slot = layout.byHash.get(row.dataset.hash);
+        if (slot && slot.dy !== 0) {
+          row.style.transform = `translateY(${slot.dy}px)`;
+          row.classList.add("rebase-preview-moved");
+        }
+        row.appendChild(orderBadge(items[index]));
         row.appendChild(actionMarker(items[index]));
         row.appendChild(actionButtons(items[index]));
       }
     });
+    applyNodeTransforms(layout.byHash);
+    renderPreviewBranch(layout);
   }
 
-  /** todo 순서 번호 배지를 만든다(오래된 커밋부터 1번). */
-  function orderBadge(index) {
+  /** 원래 todo 순서 번호 배지를 만든다(드래그 후에도 바뀌지 않는다). */
+  function orderBadge(item) {
     const badge = document.createElement("span");
     badge.className = "rebase-order";
-    badge.textContent = String(index + 1);
-    badge.title = `Rebase order ${index + 1}`;
+    badge.textContent = String(item.originalOrder + 1);
+    badge.title = `Original rebase order ${item.originalOrder + 1}`;
     return badge;
   }
 
@@ -364,6 +388,178 @@
     renderPlan();
   }
 
+  /** 현재 todo 순서와 원래 순서를 비교해 그래프 preview 가 필요한지 판단한다. */
+  function planDiffersFromGraph() {
+    return Boolean(plan?.onto) ||
+      items.some((item, index) => item.hash !== originalOrder[index]) ||
+      items.some((item) => item.action !== "pick");
+  }
+
+  /** rebase todo 의 현재 순서를 그래프 row 위치로 투영한다. */
+  function rebaseVisualLayout() {
+    const hashes = itemHashSet();
+    const rowByHash = new Map();
+    graphContent.querySelectorAll(".row").forEach((row) => {
+      if (hashes.has(row.dataset.hash)) {
+        rowByHash.set(row.dataset.hash, row);
+      }
+    });
+    const slots = Array.from(rowByHash.values())
+      .sort((a, b) => a.offsetTop - b.offsetTop)
+      .map((row) => ({
+        top: row.offsetTop,
+        y: row.offsetTop + row.offsetHeight / 2,
+      }));
+    const byHash = new Map();
+    visualItems().forEach((item, index) => {
+      const row = rowByHash.get(item.hash);
+      const slot = slots[index];
+      if (!row || !slot) {
+        return;
+      }
+      byHash.set(item.hash, {
+        item,
+        row,
+        top: slot.top,
+        y: slot.y,
+        dy: slot.top - row.offsetTop,
+      });
+    });
+    return { byHash };
+  }
+
+  /** todo 순서가 바뀐 커밋 node 를 새 위치로 옮긴다. */
+  function applyNodeTransforms(layout) {
+    graphContent.querySelectorAll(".node.rebase-preview-moved-node").forEach((node) => {
+      node.removeAttribute("transform");
+      node.classList.remove("rebase-preview-moved-node");
+    });
+    layout.forEach((slot, hash) => {
+      const node = nodeForHash(hash);
+      if (!node || slot.dy === 0) {
+        return;
+      }
+      node.setAttribute("transform", `translate(0 ${slot.dy})`);
+      node.classList.add("rebase-preview-moved-node");
+    });
+  }
+
+  /** 원본 그래프와 달라지는 계획을 별도 branch preview 로 그린다. */
+  function renderPreviewBranch(layout) {
+    removePreviewBranch();
+    if (!planDiffersFromGraph()) {
+      return;
+    }
+    const svg = graphContent.querySelector("svg");
+    if (!svg) {
+      return;
+    }
+    svg.style.overflow = "visible";
+    const kept = visualItems().filter(
+      (item) => item.action !== "drop" && layout.byHash.has(item.hash)
+    );
+    if (kept.length === 0) {
+      return;
+    }
+    const x = previewBranchX(svg);
+    const group = svgEl("g", { class: "rebase-preview-layer" });
+    const points = kept.map((item) => layout.byHash.get(item.hash).y);
+    const anchor = previewAnchor(layout);
+    const pathParts = anchor
+      ? [
+          `M ${anchor.x} ${anchor.y}`,
+          `L ${x} ${anchor.y}`,
+          `L ${x} ${points[0]}`,
+          ...points.slice(1).map((y) => `L ${x} ${y}`),
+        ]
+      : points.map((y, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`);
+    group.appendChild(svgEl("path", {
+      class: "rebase-preview-edge",
+      d: pathParts.join(" "),
+    }));
+    kept.forEach((item) => {
+      const slot = layout.byHash.get(item.hash);
+      const node = svgEl("circle", {
+        class: `rebase-preview-node action-${item.action}`,
+        cx: String(x),
+        cy: String(slot.y),
+        r: "5",
+      });
+      const title = svgEl("title", {});
+      title.textContent = `rebase preview ${item.originalOrder + 1}: ${item.subject || item.hash}`;
+      node.appendChild(title);
+      group.appendChild(node);
+    });
+    svg.appendChild(group);
+  }
+
+  /** preview branch 가 갈라져 나오는 기준 node 좌표를 찾는다. */
+  function previewAnchor(layout) {
+    const anchorHash = plan?.onto || (!plan?.root ? plan?.base : "");
+    if (!anchorHash) {
+      return null;
+    }
+    const slot = layout.byHash.get(anchorHash);
+    const node = nodeForHash(anchorHash);
+    if (slot && node) {
+      return {
+        x: Number(node.getAttribute("cx")) || 0,
+        y: slot.y,
+      };
+    }
+    if (!node) {
+      return null;
+    }
+    return {
+      x: Number(node.getAttribute("cx")) || 0,
+      y: Number(node.getAttribute("cy")) || 0,
+    };
+  }
+
+  /** SVG 안에 rebase preview branch 를 놓을 x 좌표를 계산한다. */
+  function previewBranchX(svg) {
+    const nodes = Array.from(svg.querySelectorAll(".node"));
+    const maxX = nodes.reduce(
+      (max, node) => Math.max(max, Number(node.getAttribute("cx")) || 0),
+      0
+    );
+    const width = Number(svg.getAttribute("width")) || maxX + 32;
+    return Math.min(Math.max(16, maxX + 24), Math.max(16, width - 8));
+  }
+
+  /** rebase preview branch SVG layer 를 제거한다. */
+  function removePreviewBranch() {
+    graphContent.querySelector(".rebase-preview-layer")?.remove();
+  }
+
+  /** rebase preview 를 위해 row/node 에 적용한 transform 을 제거한다. */
+  function clearRebaseTransforms() {
+    graphContent.querySelectorAll(".row").forEach((row) => {
+      row.style.transform = "";
+      row.classList.remove("rebase-preview-moved");
+    });
+    graphContent.querySelectorAll(".node.rebase-preview-moved-node").forEach((node) => {
+      node.removeAttribute("transform");
+      node.classList.remove("rebase-preview-moved-node");
+    });
+  }
+
+  /** 네임스페이스를 지정해 SVG 요소를 만든다. */
+  function svgEl(name, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const key in attrs) {
+      el.setAttribute(key, attrs[key]);
+    }
+    return el;
+  }
+
+  /** 해시로 SVG node 를 찾는다. */
+  function nodeForHash(hash) {
+    return Array.from(graphContent.querySelectorAll(".node")).find(
+      (node) => node.dataset.hash === hash
+    );
+  }
+
   /** drop marker 를 대상 row 위/아래에 표시한다. */
   function showDropMarker(row, y) {
     if (!row) {
@@ -392,6 +588,8 @@
     window.GscGraphPostMessage?.({
       type: "runGraphRebase",
       base: plan.base,
+      root: Boolean(plan.root),
+      onto: plan.onto || "",
       items: items.map((item) => ({
         hash: item.hash,
         action: item.action,

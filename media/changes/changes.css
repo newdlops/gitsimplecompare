@@ -81,6 +81,38 @@ body {
   opacity: 0.7;
 }
 
+.section.has-conflicts .section-header {
+  box-shadow: inset 3px 0 0 var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.conflict-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
+  border-radius: 3px;
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+  background: color-mix(
+    in srgb,
+    var(--vscode-inputValidation-errorBackground, #5a1d1d) 55%,
+    transparent
+  );
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.conflict-badge .codicon {
+  font-size: 12px;
+  line-height: 14px;
+}
+
 .section > .header-actions {
   position: absolute;
   top: 2px;
@@ -296,6 +328,10 @@ body:focus-within .row.selected:hover {
 .row.single-selected {
   box-shadow: inset 0 0 0 1px
     var(--vscode-list-focusOutline, var(--vscode-focusBorder));
+}
+
+.row.conflict {
+  box-shadow: inset 3px 0 0 var(--vscode-inputValidation-errorBorder, #f14c4c);
 }
 
 .row .icon {
@@ -538,6 +574,10 @@ body:focus-within .row.selected:hover {
 .row[data-status="C"] .icon {
   color: var(--vscode-gitDecoration-renamedResourceForeground);
 }
+.row[data-status="U"] .name,
+.row[data-status="U"] .icon {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+}
 
 .add {
   color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
@@ -706,6 +746,10 @@ body:focus-within .row.selected:hover {
   margin-left: 6px;
   font-weight: 400;
   opacity: 0.7;
+}
+
+.group.has-conflicts .group-header {
+  box-shadow: inset 3px 0 0 var(--vscode-inputValidation-errorBorder, #f14c4c);
 }
 
 .group-actions {

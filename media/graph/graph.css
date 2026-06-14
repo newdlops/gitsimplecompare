@@ -315,34 +315,88 @@ body.resizing {
   text-underline-offset: 2px;
 }
 
+#graph-toolbar .icon-button[data-tooltip]::after,
 .ref[data-tooltip]::after {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 50%;
-  z-index: 200;
-  max-width: 280px;
+  display: none;
+}
+
+.graph-tooltip {
+  position: fixed;
+  z-index: 2200;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 16px));
   padding: 4px 7px;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border: 1px solid var(--vscode-widget-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
   border-radius: 3px;
-  opacity: 0;
-  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  color: var(--vscode-quickInput-foreground, var(--vscode-menu-foreground, var(--vscode-foreground)));
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  white-space: nowrap;
-  content: attr(data-tooltip);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   pointer-events: none;
-  background-color: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background, #1e1e1e));
+  background: var(--vscode-quickInput-background, var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526)));
   background-image: none;
-  background-clip: padding-box;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
-  transform: translateX(-50%);
+  background-clip: border-box;
+  box-shadow:
+    0 0 0 1px var(--vscode-widget-border, rgba(0, 0, 0, 0.28)),
+    0 4px 12px rgba(0, 0, 0, 0.36);
 }
 
-.ref[data-tooltip]:hover::after,
-.ref[data-tooltip]:focus-visible::after {
-  opacity: 1;
-  backdrop-filter: none;
+.graph-tooltip[hidden] {
+  display: none;
+}
+
+.graph-context-menu {
+  position: fixed;
+  z-index: 2100;
+  box-sizing: border-box;
+  min-width: 220px;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 4px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
+  border-radius: 3px;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  background: var(--vscode-menu-background, var(--vscode-quickInput-background, var(--vscode-editorWidget-background, #252526)));
+  box-shadow:
+    0 0 0 1px var(--vscode-widget-border, rgba(0, 0, 0, 0.28)),
+    0 8px 18px rgba(0, 0, 0, 0.34);
+}
+
+.graph-context-menu[hidden] {
+  display: none;
+}
+
+.graph-context-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.graph-context-menu button:hover,
+.graph-context-menu button:focus-visible {
+  outline: none;
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, var(--vscode-foreground)));
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
+}
+
+.graph-context-menu .codicon {
+  flex: 0 0 auto;
+  width: 18px;
+  margin-right: 8px;
+  font-size: 14px;
 }
 
 .ref.branch-action:hover {

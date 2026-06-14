@@ -35,7 +35,12 @@ export interface RebaseResult {
 export interface RebasePlanInfo {
   branch: string;
   upstream?: string;
+  /** rebase 기준 커밋. root=true 일 때는 빈 문자열이다. */
   base: string;
+  /** true 면 `git rebase -i --root` 로 현재 브랜치의 루트부터 편집한다. */
+  root?: boolean;
+  /** --onto 대상 커밋. 없으면 git rebase -i base 형태로 실행한다. */
+  onto?: string;
   baseReason: "upstream" | "selected";
   commits: RebaseCommit[];
 }
@@ -48,7 +53,8 @@ export class RebaseService {
 
   /**
    * 작업트리가 깨끗한지(추적 파일에 미커밋 변경이 없는지) 확인한다.
-   * - rebase 는 깨끗한 작업트리를 요구하므로 시작 전에 검사한다(추적되지 않은 파일은 무시).
+   * - 현재 그래프 기반 rebase 는 --autostash 로 미커밋 변경을 보존하므로 필수 검사는 아니다.
+   * - 기존 명령/테스트가 상태를 표시해야 할 때 재사용할 수 있도록 유지한다(추적되지 않은 파일은 무시).
    */
   async isClean(): Promise<boolean> {
     const out = await runGit(
@@ -59,12 +65,19 @@ export class RebaseService {
   }
 
   /**
-   * base..HEAD 범위의 커밋들을 오래된 것부터(rebase todo 순서로) 반환한다.
+   * rebase 대상 커밋들을 오래된 것부터(rebase todo 순서로) 반환한다.
    * @param base 편집 대상의 직전 커밋(이 커밋은 포함되지 않음)
+   * @param root true 면 HEAD 의 전체 조상 커밋을 root 부터 반환한다.
    */
-  async getCommits(base: string): Promise<RebaseCommit[]> {
+  async getCommits(base: string, root = false): Promise<RebaseCommit[]> {
     const out = await runGit(
-      ["log", "--reverse", "--pretty=format:%H\x1f%s\x1f%b", "-z", `${base}..HEAD`],
+      [
+        "log",
+        "--reverse",
+        "--pretty=format:%H\x1f%s\x1f%b",
+        "-z",
+        root ? "HEAD" : `${base}..HEAD`,
+      ],
       this.repoRoot
     );
     return out
@@ -77,29 +90,34 @@ export class RebaseService {
   }
 
   /**
-   * 현재 checkout 된 로컬 브랜치에서 그래프 rebase 계획의 기준점을 자동 계산한다.
-   * - upstream 이 있고 로컬 전용 커밋이 있으면 merge-base 를 기준점으로 삼아 원격 공개 이력을 피한다.
-   * - 그렇지 않으면 사용자가 드래그한 커밋의 부모를 기준점으로 삼는다.
+   * 현재 checkout 된 로컬 브랜치에서 그래프 rebase 계획의 기준점을 계산한다.
+   * - 사용자가 커밋을 지정했으면 HEAD 조상 여부와 무관하게 그 커밋의 부모를 기준점으로 삼는다.
+   * - 사용자가 root 커밋을 지정했으면 --root rebase 로 현재 브랜치 전체를 편집한다.
+   * - 커밋을 지정하지 않았을 때만 upstream merge-base 를 자동 기준점으로 사용한다.
    * @param startHash 사용자가 그래프에서 드래그한 시작 커밋 해시
+   * @param ontoHash  드래그를 놓은 대상 커밋. 재작성 범위 바깥이면 --onto 대상으로 사용한다.
    */
-  async prepareCurrentBranchPlan(startHash?: string): Promise<RebasePlanInfo> {
+  async prepareCurrentBranchPlan(
+    startHash?: string,
+    ontoHash?: string
+  ): Promise<RebasePlanInfo> {
     const branch = (
       await runGit(["branch", "--show-current"], this.repoRoot)
     ).trim();
     if (!branch) {
       throw new Error("Interactive rebase requires a checked-out local branch.");
     }
-    if (startHash) {
-      await this.assertHeadAncestor(startHash);
-    }
-
     const upstream = await optionalGit(
       ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
       this.repoRoot
     );
     let base = "";
+    let root = false;
     let baseReason: RebasePlanInfo["baseReason"] = "selected";
-    if (upstream) {
+    if (startHash) {
+      base = (await this.parentOf(startHash)) ?? "";
+      root = !base;
+    } else if (upstream) {
       const mergeBase = (
         await runGit(["merge-base", "HEAD", upstream], this.repoRoot)
       ).trim();
@@ -108,26 +126,23 @@ export class RebaseService {
           await runGit(["rev-list", "--count", `${mergeBase}..HEAD`], this.repoRoot)
         ).trim()
       );
-      const startIsLocal = startHash
-        ? await isAncestor(mergeBase, startHash, this.repoRoot)
-        : true;
-      if (localCount > 0 && startIsLocal) {
+      if (localCount > 0) {
         base = mergeBase;
         baseReason = "upstream";
       }
     }
-    if (!base && startHash) {
-      base = await this.parentOf(startHash);
-    }
-    if (!base) {
-      throw new Error("Drag a commit on the current branch to choose the rebase start point.");
+    if (!base && !root) {
+      throw new Error("Drag a commit to choose the rebase start point.");
     }
 
-    const commits = await this.getCommits(base);
+    const commits = await this.getCommits(base, root);
+    const onto = await this.usableOntoTarget(ontoHash, base, root);
     return {
       branch,
       upstream: upstream || undefined,
       base,
+      root,
+      onto,
       baseReason,
       commits,
     };
@@ -137,15 +152,20 @@ export class RebaseService {
    * 사용자가 짠 계획대로 인터랙티브 rebase 를 실행한다.
    * - todo 와 메시지 큐를 임시 파일로 만들고, GIT_SEQUENCE_EDITOR/GIT_EDITOR 를
    *   우리 헬퍼 스크립트로 지정해 비대화식으로 주입한다.
+   * - staged/unstaged 변경이 있어도 --autostash 로 잠시 보관한 뒤 rebase 를 진행한다.
    * - 충돌로 멈추면 status="conflicts" 를 반환한다(충돌 뷰가 이어받음).
    * @param base         편집 대상 직전 커밋(rebase 기준점)
+   * @param root         true 면 root commit 부터 편집한다.
    * @param items        계획(최종 표시 순서, 오래된 것부터)
    * @param editorScript 헬퍼 스크립트(rebaseEditor.js) 절대 경로
+   * @param onto         선택 사항. 있으면 `git rebase -i --onto onto base` 로 실행한다.
    */
   async start(
     base: string,
+    root: boolean,
     items: RebaseItem[],
-    editorScript: string
+    editorScript: string,
+    onto?: string
   ): Promise<RebaseResult> {
     const kept = items.filter((i) => i.action !== "drop");
     if (kept.length === 0) {
@@ -182,7 +202,17 @@ export class RebaseService {
     };
 
     try {
-      await runGit(["rebase", "-i", base], this.repoRoot, env);
+      await runGit(
+        [
+          "rebase",
+          "-i",
+          "--autostash",
+          ...(onto ? ["--onto", onto] : []),
+          ...(root ? ["--root"] : [base]),
+        ],
+        this.repoRoot,
+        env
+      );
       return { status: "completed" };
     } catch (err) {
       // 비정상 종료 시, rebase 가 진행 중이면 충돌로 멈춘 것이다.
@@ -200,24 +230,55 @@ export class RebaseService {
     }
   }
 
-  /** 지정 커밋이 현재 HEAD 의 조상인지 확인한다. */
-  private async assertHeadAncestor(hash: string): Promise<void> {
-    if (!(await isAncestor(hash, "HEAD", this.repoRoot))) {
-      throw new Error(
-        "Only commits on the current branch can be rebased from the graph."
-      );
-    }
-  }
-
-  /** 지정 커밋의 첫 부모를 반환한다. 루트 커밋은 이 POC 에서 지원하지 않는다. */
-  private async parentOf(hash: string): Promise<string> {
+  /**
+   * 지정 커밋의 첫 부모를 반환한다.
+   * @param hash 부모를 찾을 커밋 해시
+   * @returns 첫 부모 해시. 루트 커밋이면 undefined
+   */
+  private async parentOf(hash: string): Promise<string | undefined> {
     try {
       return (await runGit(["rev-parse", `${hash}^`], this.repoRoot)).trim();
     } catch {
-      throw new Error(
-        "Root commit rebase is not supported by the graph POC yet."
-      );
+      return undefined;
     }
+  }
+
+  /**
+   * 드래그 drop 대상 커밋을 --onto 로 사용할 수 있는지 판단한다.
+   * - 대상이 base 이거나 base..HEAD 재작성 범위 내부면 reorder 의도로 보고 --onto 를 생략한다.
+   * - 대상이 다른 브랜치/과거 커밋처럼 범위 밖이면 현재 브랜치를 그 커밋 위로 옮기는 계획이 된다.
+   * @param ontoHash 사용자가 드래그를 놓은 대상 커밋 해시
+   * @param base     rebase 기준점
+   * @returns --onto 로 넘길 정규화된 커밋 해시. 사용할 수 없으면 undefined
+   */
+  private async usableOntoTarget(
+    ontoHash: string | undefined,
+    base: string,
+    root: boolean
+  ): Promise<string | undefined> {
+    if (!ontoHash) {
+      return undefined;
+    }
+    const onto = await this.normalizeCommit(ontoHash);
+    if (!root && onto === base) {
+      return undefined;
+    }
+    const insideRewrittenRange = root
+      ? await isAncestor(onto, "HEAD", this.repoRoot)
+      : (await isAncestor(base, onto, this.repoRoot)) &&
+        (await isAncestor(onto, "HEAD", this.repoRoot));
+    return insideRewrittenRange ? undefined : onto;
+  }
+
+  /**
+   * 사용자가 그래프에서 넘긴 해시가 실제 commit 인지 확인하고 전체 해시로 정규화한다.
+   * @param hash 그래프 row/node 에서 넘어온 커밋 식별자
+   * @returns git 이 확인한 commit 해시
+   */
+  private async normalizeCommit(hash: string): Promise<string> {
+    return (
+      await runGit(["rev-parse", "--verify", `${hash}^{commit}`], this.repoRoot)
+    ).trim();
   }
 }
 

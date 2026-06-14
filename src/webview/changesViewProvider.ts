@@ -463,6 +463,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
 	      toggleSection: vscode.l10n.t("Toggle section"),
 	      noCompare: vscode.l10n.t("No changes between the selected branches."),
       noChanges: vscode.l10n.t("No working tree changes."),
+      conflicts: vscode.l10n.t("Conflicts"),
       noRepos: vscode.l10n.t("No git repository found."),
       change: vscode.l10n.t("Change branch"),
       viewAsTree: vscode.l10n.t("View as Tree"),

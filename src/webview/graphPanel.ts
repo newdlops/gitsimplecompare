@@ -133,16 +133,22 @@ export class GitGraphPanel {
           msg.path
         );
       } else if (msg.type === "prepareGraphRebase") {
-        const plan = await prepareGraphRebase(msg.hash, {
+        const plan = await prepareGraphRebase(msg.hash, msg.onto, {
           logService: this.logService,
         });
         this.post({ type: "graphRebasePlan", plan });
       } else if (msg.type === "runGraphRebase") {
-        const result = await runGraphRebase(msg.base, msg.items, {
-          extensionUri: this.extensionUri,
-          logService: this.logService,
-          refreshGraph: () => this.refreshAfterGraphAction(),
-        });
+        const result = await runGraphRebase(
+          msg.base,
+          Boolean(msg.root),
+          msg.onto,
+          msg.items,
+          {
+            extensionUri: this.extensionUri,
+            logService: this.logService,
+            refreshGraph: () => this.refreshAfterGraphAction(),
+          }
+        );
         if (result.status !== "failed") {
           this.post({ type: "graphRebaseClear" });
         }
@@ -406,6 +412,9 @@ export class GitGraphPanel {
     const featureScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphFeatures.js")
     );
+    const contextScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphContextMenu.js")
+    );
     const colorScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphColors.js")
     );
@@ -519,6 +528,7 @@ export class GitGraphPanel {
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
+  <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseScriptUri}"></script>

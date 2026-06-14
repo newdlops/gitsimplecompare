@@ -22,6 +22,7 @@
       toggleSection: "Toggle section",
       noCompare: "No changes between the selected branches.",
       noChanges: "No working tree changes.",
+      conflicts: "Conflicts",
       noRepos: "No git repository found.",
       change: "Change branch",
       viewAsTree: "View as Tree",
@@ -209,17 +210,47 @@
     return n;
   }
 
+  /** 노드 트리에서 충돌 파일 개수를 센다. */
+  function countConflicts(nodes) {
+    let n = 0;
+    for (const node of nodes) {
+      n += node.kind === "folder"
+        ? countConflicts(node.children)
+        : node.change.status === "U" ? 1 : 0;
+    }
+    return n;
+  }
+
+  /** 파일/폴더 노드가 충돌 상태를 포함하는지 확인한다. */
+  function hasConflict(node) {
+    return node.kind === "folder"
+      ? countConflicts(node.children) > 0
+      : node.change.status === "U";
+  }
+
+  /** 충돌 상태를 표시하는 작은 배지를 만든다. */
+  function conflictBadgeHtml(count) {
+    const label = count ? `${count} ${T.conflicts}` : T.conflicts;
+    return (
+      `<span class="conflict-badge" title="${esc(label)}">` +
+      `<span class="codicon codicon-warning" aria-hidden="true"></span>` +
+      (count ? `<span>${count}</span>` : "") +
+      `</span>`
+    );
+  }
+
   /** 섹션(헤더 + 본문) HTML. actionsHtml 은 헤더 우측 인라인 액션(hover 노출). */
-  function section(id, title, count, bodyHtml, actionsHtml) {
+  function section(id, title, count, bodyHtml, actionsHtml, conflictCount) {
     const countHtml = count ? `<span class="count">${count}</span>` : "";
+    const conflictHtml = conflictCount ? conflictBadgeHtml(conflictCount) : "";
     const actions = actionsHtml
       ? `<span class="header-actions">${actionsHtml}</span>`
       : "";
     return (
-      `<div class="section" data-section="${id}">` +
+      `<div class="section${conflictCount ? " has-conflicts" : ""}" data-section="${id}">` +
       `<div class="section-header">` +
       `<span class="twistie codicon codicon-chevron-down"></span>` +
-      `<span class="title">${esc(title)}</span>${countHtml}</div>${actions}` +
+      `<span class="title">${esc(title)}</span>${countHtml}${conflictHtml}</div>${actions}` +
       `<div class="section-body">${bodyHtml}</div></div>`
     );
   }
@@ -282,13 +313,16 @@
   /** 노드(폴더/파일)를 재귀 HTML 로(들여쓰기는 .children 중첩). kind: compare/staged/unstaged. */
   function nodeHtml(node, viewMode, kind) {
     if (node.kind === "folder") {
+      const conflictCount = countConflicts(node.children);
       const children = node.children
         .map((c) => nodeHtml(c, viewMode, kind))
         .join("");
       const key = folderKey(kind, node.path);
       const collapsed = !!state.folders[key];
+      const title = conflictCount ? `${node.path} - ${T.conflicts}` : node.path;
       return (
-        `<div class="row folder" data-folder-key="${esc(key)}" title="${esc(node.path)}">` +
+        `<div class="row folder${conflictCount ? " conflict" : ""}" ` +
+        `data-folder-key="${esc(key)}" title="${esc(title)}">` +
         `<span class="twistie codicon ${
           collapsed ? "codicon-chevron-right" : "codicon-chevron-down"
         }"></span>` +
@@ -296,6 +330,7 @@
           collapsed ? "codicon-folder" : "codicon-folder-opened"
         }"></span>` +
         `<span class="name">${esc(node.name)}</span>` +
+        (conflictCount ? conflictBadgeHtml(conflictCount) : "") +
         rowActionsHtml(kind, false) +
         `</div>` +
         `<div class="children${collapsed ? " collapsed" : ""}">${children}</div>`
@@ -307,16 +342,19 @@
     const dir = slash >= 0 ? ch.path.slice(0, slash) : "";
     const dirHtml =
       viewMode === "list" && dir ? `<span class="dir">${esc(dir)}</span>` : "";
+    const conflicted = hasConflict(node);
+    const title = conflicted ? `${ch.path} - ${T.conflicts}` : ch.path;
     return (
-      `<div class="row file" data-status="${esc(ch.status)}" ` +
+      `<div class="row file${conflicted ? " conflict" : ""}" data-status="${esc(ch.status)}" ` +
       `data-path="${esc(ch.path)}" data-stage="${esc(kind)}" ` +
-      `title="${esc(ch.path)}">` +
+      `title="${esc(title)}">` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(ch.status)}"></span>` +
       fileIconHtml(ch.path) +
       `<span class="name">${esc(fileName)}</span>` +
       dirHtml +
       statHtml(ch) +
+      (conflicted ? conflictBadgeHtml(0) : "") +
       rowActionsHtml(kind, true) +
       `</div>`
     );
@@ -438,6 +476,7 @@
   function changesGroupHtml(kind, nodes, viewMode) {
     const title = kind === "staged" ? T.stagedChanges : T.changes;
     const count = countFiles(nodes);
+    const conflictCount = countConflicts(nodes);
     const collapsed = !!state.groups[kind];
     const chevron = collapsed ? "codicon-chevron-right" : "codicon-chevron-down";
     let actions;
@@ -453,11 +492,13 @@
         `title="${esc(T.stageAll)}"></span>`;
     }
     return (
-      `<div class="group${collapsed ? " collapsed" : ""}" data-gkey="${kind}">` +
+      `<div class="group${collapsed ? " collapsed" : ""}${conflictCount ? " has-conflicts" : ""}" ` +
+      `data-gkey="${kind}">` +
       `<div class="group-header" title="${esc(`${T.toggleSection}: ${title}`)}">` +
       `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="group-title">${esc(title)}</span>` +
       `<span class="count">${count}</span>` +
+      (conflictCount ? conflictBadgeHtml(conflictCount) : "") +
       `<span class="group-actions">${actions}</span></div>` +
       fileTree(nodes, viewMode, kind, kind + "-files wt-files", "") +
       `</div>`
@@ -555,6 +596,8 @@
       p.compare.mode === "comparison" ? countFiles(p.compare.nodes) : 0;
     const changesCount =
       countFiles(p.changes.staged) + countFiles(p.changes.unstaged);
+    const changesConflictCount =
+      countConflicts(p.changes.staged) + countConflicts(p.changes.unstaged);
     // 트리/리스트 토글은 파일 트리 섹션의 미트볼 메뉴 안에 둔다.
     const sectionHtml = {
       repos: section(
@@ -569,7 +612,8 @@
         T.changes,
         changesCount,
         changesBody(p.changes, p.commit, p.changes.viewMode),
-        sectionActions()
+        sectionActions(),
+        changesConflictCount
       ),
       compare: section(
         "compare",

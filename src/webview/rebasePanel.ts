@@ -107,18 +107,11 @@ export class RebasePanel {
   }
 
   /**
-   * 계획을 실행하기 전 안전 검사(작업트리 정결, 확인)를 거쳐 rebase 를 수행한다.
+   * 계획을 실행하기 전 사용자 확인을 거쳐 rebase 를 수행한다.
+   * - 미커밋 변경은 RebaseService.start 의 --autostash 로 보존한다.
    * @param items 사용자가 짠 계획
    */
   private async runRebase(items: RebaseItem[]): Promise<void> {
-    if (!(await this.service.isClean())) {
-      vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          "Working tree has uncommitted changes. Commit or stash them before rebasing."
-        )
-      );
-      return;
-    }
     const count = items.filter((i) => i.action !== "drop").length;
     const yes = vscode.l10n.t("Start Rebase");
     const choice = await vscode.window.showWarningMessage(
@@ -133,7 +126,12 @@ export class RebasePanel {
       return;
     }
 
-    const result = await this.service.start(this.base, items, this.editorScript);
+    const result = await this.service.start(
+      this.base,
+      false,
+      items,
+      this.editorScript
+    );
     if (result.status === "completed") {
       vscode.window.showInformationMessage(vscode.l10n.t("Rebase completed."));
       this.dispose();

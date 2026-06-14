@@ -8,10 +8,13 @@ import {
 } from "../git/gitLogService";
 import { logError } from "../ui/outputLog";
 import {
-  confirmCheckoutWithConflicts,
-  focusCheckoutConflicts,
-  isCheckoutConflictError,
-} from "./graphCheckoutConflicts";
+  branchAction,
+  checkoutBranch,
+  checkoutRemoteBranch,
+  cloneBranch,
+  createBranch,
+  deleteBranch,
+} from "./graphBranchActions";
 import { FromWebviewMessage } from "./graphProtocol";
 import {
   fetchAll,
@@ -34,6 +37,7 @@ type GraphActionMessage = Extract<
       | "checkoutRemoteBranch"
       | "checkoutCommit"
       | "createBranch"
+      | "cloneBranch"
       | "deleteBranch"
       | "branchAction"
       | "commitAction"
@@ -53,8 +57,6 @@ interface GraphActionDeps {
   refreshCheckout: () => Promise<void>;
   refreshGraph: () => Promise<void>;
 }
-
-type BranchKind = "local" | "remote";
 
 /** 메시지가 graph action 계열인지 확인한다. */
 export function isGraphActionMessage(
@@ -88,6 +90,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "checkoutRemoteBranch",
   "checkoutCommit",
   "createBranch",
+  "cloneBranch",
   "deleteBranch",
   "branchAction",
   "commitAction",
@@ -132,7 +135,10 @@ async function dispatchGraphAction(
       await checkoutCommit(deps, msg.hash);
       return;
     case "createBranch":
-      await createBranch(deps, msg.hash);
+      await createBranch(deps, msg.hash, isRealCommit);
+      return;
+    case "cloneBranch":
+      await cloneBranch(deps, msg.branch, msg.checkout);
       return;
     case "deleteBranch":
       await deleteBranch(deps, msg.branch, msg.kind);
@@ -172,98 +178,6 @@ async function dispatchGraphAction(
   }
 }
 
-/** 로컬 브랜치로 checkout 한다. */
-async function checkoutBranch(
-  deps: GraphActionDeps,
-  branchName: string
-): Promise<void> {
-  const branch = (await deps.logService.getLocalBranches()).find(
-    (item) => item.name === branchName
-  );
-  if (!branch) {
-    vscode.window.showWarningMessage(
-      vscode.l10n.t("Branch not found: {0}", branchName)
-    );
-    return;
-  }
-  if (branch.current) {
-    return;
-  }
-  try {
-    await deps.logService.checkoutLocalBranch(branch.name);
-  } catch (err) {
-    if (!isCheckoutConflictError(err)) {
-      throw err;
-    }
-    if (!(await confirmCheckoutWithConflicts(err))) {
-      return;
-    }
-    await deps.logService.checkoutLocalBranch(branch.name, true);
-    await deps.refreshGraph();
-    if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
-      return;
-    }
-  }
-  await deps.refreshCheckout();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Checked out branch '{0}'.", branch.name)
-  );
-}
-
-/** 원격 브랜치 chip 클릭 시 같은 이름의 로컬 브랜치를 만들고 checkout 한다. */
-async function checkoutRemoteBranch(
-  deps: GraphActionDeps,
-  remoteBranch: string
-): Promise<void> {
-  const localName = localNameForRemoteBranch(remoteBranch);
-  const existing = (await deps.logService.getLocalBranches()).find(
-    (branch) => branch.name === localName
-  );
-  if (existing) {
-    const ok = await confirm(
-      vscode.l10n.t("Local branch '{0}' already exists. Checkout it?", localName),
-      vscode.l10n.t("Checkout")
-    );
-    if (ok) {
-      await checkoutBranch(deps, localName);
-    }
-    return;
-  }
-
-  const ok = await confirm(
-    vscode.l10n.t(
-      "Create local branch '{0}' from '{1}' and checkout?",
-      localName,
-      remoteBranch
-    ),
-    vscode.l10n.t("Create and Checkout")
-  );
-  if (!ok) {
-    return;
-  }
-
-  try {
-    await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch);
-  } catch (err) {
-    if (!isCheckoutConflictError(err)) {
-      throw err;
-    }
-    if (!(await confirmCheckoutWithConflicts(err))) {
-      return;
-    }
-    await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true);
-    await deps.refreshGraph();
-    if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
-      return;
-    }
-  }
-
-  await deps.refreshCheckout();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Branch '{0}' created and checked out.", localName)
-  );
-}
-
 /** 특정 커밋으로 detached HEAD checkout 을 수행한다. */
 async function checkoutCommit(
   deps: GraphActionDeps,
@@ -284,43 +198,6 @@ async function checkoutCommit(
   vscode.window.showInformationMessage(
     vscode.l10n.t("Checked out commit '{0}'.", shortHash(hash))
   );
-}
-
-/** 선택 커밋에서 새 브랜치를 만든다. */
-async function createBranch(
-  deps: GraphActionDeps,
-  hash: string
-): Promise<void> {
-  if (!isRealCommit(hash)) {
-    return;
-  }
-  const name = await vscode.window.showInputBox({
-    prompt: vscode.l10n.t("New branch name"),
-    validateInput: (value) =>
-      value.trim() ? undefined : vscode.l10n.t("Branch name is required."),
-  });
-  if (!name) {
-    return;
-  }
-  await deps.logService.createBranchAt(name.trim(), hash);
-  await deps.refreshGraph();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Branch '{0}' created.", name.trim())
-  );
-}
-
-/** 브랜치 chip 의 빠른 액션 메뉴를 보여준다. */
-async function branchAction(
-  deps: GraphActionDeps,
-  branch: string,
-  kind: BranchKind
-): Promise<void> {
-  if (kind === "remote") {
-    return;
-  }
-  if (await vscode.window.showQuickPick([{ label: vscode.l10n.t("Checkout Branch") }], { placeHolder: branch })) {
-    await checkoutBranch(deps, branch);
-  }
 }
 
 /** commit row/node 의 빠른 액션 메뉴를 보여준다. */
@@ -366,36 +243,6 @@ async function undoCommit(
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Commit undone. Changes remain staged.")
-  );
-}
-
-/** 로컬/원격 브랜치를 삭제한다. 브랜치를 넘기지 않으면 목록에서 고른다. */
-async function deleteBranch(
-  deps: GraphActionDeps,
-  branchName?: string,
-  kind?: BranchKind
-): Promise<void> {
-  const branch = branchName
-    ? { name: branchName, kind: kind ?? branchKind(branchName) }
-    : await pickBranch(deps);
-  if (!branch) {
-    return;
-  }
-  const label =
-    branch.kind === "remote"
-      ? vscode.l10n.t("Delete remote branch '{0}'?", branch.name)
-      : vscode.l10n.t("Delete local branch '{0}'?", branch.name);
-  if (!(await confirm(label, vscode.l10n.t("Delete")))) {
-    return;
-  }
-  if (branch.kind === "remote") {
-    await deps.logService.deleteRemoteBranch(branch.name);
-  } else {
-    await deps.logService.deleteLocalBranch(branch.name);
-  }
-  await deps.refreshGraph();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Branch '{0}' deleted.", branch.name)
   );
 }
 
@@ -493,22 +340,6 @@ async function cherryPick(deps: GraphActionDeps, hash: string): Promise<void> {
   );
 }
 
-/** 브랜치 목록에서 삭제 대상을 고른다. */
-async function pickBranch(
-  deps: GraphActionDeps
-): Promise<{ name: string; kind: BranchKind } | undefined> {
-  const branches = await deps.logService.getBranches();
-  const pick = await vscode.window.showQuickPick(
-    branches.map((branch) => ({
-      label: branch.name,
-      description: branch.kind,
-      branch,
-    })),
-    { placeHolder: vscode.l10n.t("Select a branch") }
-  );
-  return pick?.branch;
-}
-
 /** tag 목록에서 작업 대상을 고른다. */
 async function pickTag(deps: GraphActionDeps): Promise<string | undefined> {
   const tags = await deps.logService.getTags();
@@ -539,11 +370,6 @@ async function confirm(message: string, label: string): Promise<boolean> {
   );
 }
 
-/** 원격 브랜치처럼 보이는 이름이면 remote 로 간주한다. */
-function branchKind(name: string): BranchKind {
-  return name.includes("/") ? "remote" : "local";
-}
-
 /** 현재 local HEAD 이면서 remote 에 push 되지 않은 커밋이면 브랜치 상태를 반환한다. */
 async function undoableHeadBranch(
   deps: GraphActionDeps,
@@ -561,12 +387,6 @@ async function undoableHeadBranch(
 /** remote 에 아직 반영되지 않은 local branch 상태인지 확인한다. */
 function isUnpushed(branch: { upstream?: string; ahead: number; gone: boolean }): boolean {
   return branch.ahead > 0 || !branch.upstream || branch.gone;
-}
-
-/** origin/feature 형태의 remote ref 에서 feature 를 로컬 브랜치명으로 사용한다. */
-function localNameForRemoteBranch(remoteBranch: string): string {
-  const slash = remoteBranch.indexOf("/");
-  return slash >= 0 ? remoteBranch.slice(slash + 1) : remoteBranch;
 }
 
 /** 가상 커밋을 실제 git 작업 대상에서 제외한다. */

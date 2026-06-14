@@ -21,38 +21,46 @@ export interface GraphRebaseDeps {
 /**
  * 그래프에서 드래그한 커밋을 기준으로 현재 브랜치의 rebase 계획을 만든다.
  * @param hash 사용자가 드래그한 커밋 해시
+ * @param onto 사용자가 드래그를 놓은 대상 커밋 해시
  * @param deps 그래프 패널 의존성
  */
 export async function prepareGraphRebase(
   hash: string | undefined,
+  onto: string | undefined,
   deps: Pick<GraphRebaseDeps, "logService">
 ): Promise<RebasePlanInfo> {
   const service = new RebaseService(deps.logService.repoRoot);
-  return service.prepareCurrentBranchPlan(hash);
+  const plan = await service.prepareCurrentBranchPlan(hash, onto);
+  logInfo("graph rebase plan prepared", {
+    repoRoot: deps.logService.repoRoot,
+    startHash: hash,
+    requestedOnto: onto,
+    base: plan.base,
+    root: Boolean(plan.root),
+    onto: plan.onto,
+    commits: plan.commits.length,
+  });
+  return plan;
 }
 
 /**
  * 그래프 UI 에서 확정한 rebase 계획을 실행한다.
- * - 실행 전 작업트리 정결성과 사용자 확인을 거친다.
+ * - staged/unstaged 변경은 RebaseService 의 --autostash 로 보존하고, 실행 전 사용자 확인만 거친다.
  * - 충돌로 멈추면 Conflicts 뷰를 갱신하고 포커스한다.
  * @param base rebase 기준 커밋
+ * @param root true 면 root commit 부터 interactive rebase 한다.
+ * @param onto --onto 대상 커밋. 없으면 일반 interactive rebase 로 실행한다.
  * @param items rebase todo 항목(오래된 커밋부터)
  * @param deps 그래프 패널 의존성
  */
 export async function runGraphRebase(
   base: string,
+  root: boolean,
+  onto: string | undefined,
   items: RebaseItem[],
   deps: GraphRebaseDeps
 ): Promise<RebaseResult> {
   const service = new RebaseService(deps.logService.repoRoot);
-  if (!(await service.isClean())) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t(
-        "Working tree has uncommitted changes. Commit or stash them before rebasing."
-      )
-    );
-    return { status: "failed", message: "working tree is not clean" };
-  }
   const count = items.filter((item) => item.action !== "drop").length;
   const yes = vscode.l10n.t("Start Rebase");
   const choice = await vscode.window.showWarningMessage(
@@ -67,10 +75,19 @@ export async function runGraphRebase(
     return { status: "failed", message: "cancelled" };
   }
 
+  logInfo("graph rebase starting", {
+    repoRoot: deps.logService.repoRoot,
+    base,
+    root,
+    onto,
+    items: items.length,
+  });
   const result = await service.start(
     base,
+    root,
     items,
-    editorScriptPath(deps.extensionUri)
+    editorScriptPath(deps.extensionUri),
+    onto
   );
   if (result.status === "completed") {
     await deps.refreshGraph();

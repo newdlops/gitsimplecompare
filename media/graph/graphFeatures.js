@@ -51,8 +51,10 @@
     const parts = [];
     if (branch.current) {
       parts.push(`Current branch: ${branch.name}`);
+      parts.push("Click for branch actions including clone");
     } else {
       parts.push(`Click to checkout this branch: ${branch.name}`);
+      parts.push("Right-click for branch actions including clone");
     }
     if (branch.gone) {
       parts.push("upstream gone");
@@ -346,7 +348,7 @@
     }
     attachBranchCheckout(root);
     attachRefActionMenu(root);
-    attachCommitContextMenu(root);
+    attachGraphContextMenu(root);
     attachRowDrag(root);
     root.querySelectorAll(".node").forEach((node) => {
       if (node.dataset.dragBound === "1") {
@@ -357,14 +359,13 @@
     });
   }
 
-  /** 브랜치/태그 chip 의 보조 액션 메뉴를 click/contextmenu 로 연결한다. */
+  /** 브랜치/태그 chip 의 click/keyboard 보조 액션을 연결한다. 우클릭은 graphContextMenu 가 맡는다. */
   function attachRefActionMenu(root) {
     if (root.dataset.refActionBound === "1") {
       return;
     }
     root.dataset.refActionBound = "1";
     root.addEventListener("click", handleRefActionEvent, true);
-    root.addEventListener("contextmenu", handleRefActionEvent, true);
     root.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         handleRefActionEvent(event);
@@ -391,10 +392,17 @@
     });
   }
 
+  /** graph 전용 context menu 를 연결하고 undo 가능 여부 계산 함수를 넘긴다. */
+  function attachGraphContextMenu(root) {
+    window.GscGraphContextMenu?.attach(root, {
+      canUndoCommit: undoableHeadBranch,
+    });
+  }
+
   /** 브랜치/태그 chip 이벤트를 액션 메뉴 웹뷰 메시지로 변환한다. */
   function handleRefActionEvent(event) {
     const target = eventTargetElement(event)?.closest?.("[data-tag-name],[data-branch-name]");
-    if (!target || target.dataset.checkoutBranch && event.type !== "contextmenu") {
+    if (!target || target.dataset.checkoutBranch) {
       return;
     }
     const tag = target.dataset.tagName;
@@ -405,7 +413,7 @@
       window.GscGraphPostMessage?.({ type: "tagAction", tag });
     } else if (branch) {
       const kind = target.dataset.branchKind || "local";
-      if (kind === "remote" && event.type !== "contextmenu") {
+      if (kind === "remote") {
         window.GscGraphPostMessage?.({ type: "checkoutRemoteBranch", branch });
         return;
       }
@@ -415,27 +423,6 @@
         kind,
       });
     }
-  }
-
-  /** HEAD commit row/node 의 contextmenu 를 undo commit 액션 메뉴로 연결한다. */
-  function attachCommitContextMenu(root) {
-    if (root.dataset.commitContextBound === "1") {
-      return;
-    }
-    root.dataset.commitContextBound = "1";
-    root.addEventListener("contextmenu", (event) => {
-      const target = eventTargetElement(event);
-      if (target?.closest?.(".ref")) {
-        return;
-      }
-      const hash = commitHashFromEvent(root, event);
-      if (!undoableHeadBranch(hash)) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      window.GscGraphPostMessage?.({ type: "commitAction", hash });
-    });
   }
 
   /** 로컬 브랜치 chip 의 click/keyboard checkout shortcut 을 이벤트 위임으로 연결한다. */
@@ -518,17 +505,6 @@
     return Array.from(root.querySelectorAll(".node")).find(
       (node) => node.dataset.hash === hash
     );
-  }
-
-  /** contextmenu 이벤트가 가리키는 commit hash 를 row 또는 SVG node 에서 찾는다. */
-  function commitHashFromEvent(root, event) {
-    const target = eventTargetElement(event);
-    const row = target?.closest?.(".row");
-    if (row?.dataset.hash) {
-      return row.dataset.hash;
-    }
-    const node = target?.closest?.(".node");
-    return node?.dataset.hash || "";
   }
 
   /** undo commit 을 허용할 수 있는 현재 local HEAD 브랜치인지 확인한다. */

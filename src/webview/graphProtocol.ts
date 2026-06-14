@@ -37,6 +37,7 @@ export type FromWebviewMessage =
   | { type: "checkoutRemoteBranch"; branch: string }
   | { type: "checkoutCommit"; hash: string }
   | { type: "createBranch"; hash: string }
+  | { type: "cloneBranch"; branch: string; checkout: boolean }
   | { type: "deleteBranch"; branch?: string; kind?: "local" | "remote" }
   | { type: "branchAction"; branch: string; kind: "local" | "remote" }
   | { type: "commitAction"; hash: string }
@@ -49,5 +50,11 @@ export type FromWebviewMessage =
   | { type: "copyCommitHash"; hash: string }
   | { type: "copyCommitMessage"; message: string }
   | { type: "openFileDiff"; hash: string; parent: string; path: string }
-  | { type: "prepareGraphRebase"; hash?: string }
-  | { type: "runGraphRebase"; base: string; items: RebaseItem[] };
+  | { type: "prepareGraphRebase"; hash?: string; onto?: string }
+  | {
+      type: "runGraphRebase";
+      base: string;
+      root?: boolean;
+      onto?: string;
+      items: RebaseItem[];
+    };

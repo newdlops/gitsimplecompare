@@ -53,10 +53,27 @@
 
 .row.rebase-row {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--branch-color, #61afef) 44%, transparent);
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out,
+    background 80ms ease-out;
+  will-change: transform;
 }
 
 .row.rebase-row.dragging-row {
   background: color-mix(in srgb, var(--branch-color, #61afef) 18%, var(--vscode-list-hoverBackground));
+}
+
+.row.rebase-preview-moved {
+  z-index: 12;
+  background: color-mix(in srgb, var(--branch-color, #61afef) 14%, var(--vscode-list-hoverBackground));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--branch-color, #61afef) 72%, transparent),
+    0 1px 5px rgba(0, 0, 0, 0.18);
+}
+
+#graph-content .node.rebase-preview-moved-node {
+  filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
 }
 
 .rebase-order {
@@ -153,6 +170,39 @@
   pointer-events: none;
   background: var(--vscode-focusBorder);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--vscode-focusBorder) 34%, transparent);
+}
+
+.rebase-preview-layer {
+  pointer-events: none;
+}
+
+.rebase-preview-edge {
+  fill: none;
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+}
+
+.rebase-preview-node {
+  fill: var(--vscode-editor-background);
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2;
+}
+
+.rebase-preview-node.action-reword,
+.rebase-preview-node.action-edit {
+  stroke: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.rebase-preview-node.action-squash,
+.rebase-preview-node.action-fixup {
+  stroke: var(--vscode-charts-yellow, #d7ba7d);
+}
+
+.rebase-preview-node.action-drop {
+  opacity: 0.45;
+  stroke: var(--vscode-gitDecoration-deletedResourceForeground, #f14c4c);
 }
 
 #graph-rebase-menu {
