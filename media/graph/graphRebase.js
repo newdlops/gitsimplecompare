@@ -208,18 +208,18 @@
     const onto = plan.onto ? ` · onto ${esc(plan.onto.slice(0, 10))}` : "";
     const controls = paused || operationActive
       ? `<button id="graph-rebase-continue" type="button" title="Continue rebase" ` +
-        `aria-label="Continue rebase" data-tooltip="Amend this edit commit, then continue rebase">` +
+        `aria-label="Continue rebase" data-tooltip="Save rebase edit files, amend the paused commit, then run git rebase --continue; Git may pause again at the next edit commit or conflicts">` +
         `<span class="codicon codicon-debug-continue" aria-hidden="true"></span><span>Continue</span></button>` +
         `<button id="graph-rebase-abort" type="button" title="Abort rebase" ` +
-        `aria-label="Abort rebase" data-tooltip="Abort this paused rebase and restore the previous state">` +
+        `aria-label="Abort rebase" data-tooltip="Abort the in-progress rebase and restore the branch to the state before the rebase started">` +
         `<span class="codicon codicon-debug-stop" aria-hidden="true"></span><span>Abort</span></button>`
-      : `<label id="graph-rebase-squash-option" title="Include squashed commit history in the editable message" data-tooltip="Include squashed commit history in the editable message">` +
+      : `<label id="graph-rebase-squash-option" title="Include squashed commit history in the editable message" data-tooltip="When squash is used, include the squashed commit messages in the editable combined message">` +
         `<input id="graph-rebase-include-squash" type="checkbox" checked /><span>Squash history</span></label>` +
         `<button id="graph-rebase-run" type="button" title="Start rebase" ` +
-        `aria-label="Start rebase" data-tooltip="Start rebase with this plan">` +
+        `aria-label="Start rebase" data-tooltip="Start this interactive rebase plan for the current branch; selected actions rewrite commits in todo order">` +
         `<span class="codicon codicon-play" aria-hidden="true"></span><span>Start</span></button>` +
         `<button id="graph-rebase-cancel" type="button" title="Cancel rebase plan" ` +
-        `aria-label="Cancel rebase plan" data-tooltip="Cancel this rebase plan">` +
+        `aria-label="Cancel rebase plan" data-tooltip="Close the rebase planning UI without running git or changing commits">` +
         `<span class="codicon codicon-close" aria-hidden="true"></span><span>Cancel</span></button>`;
     bar.innerHTML =
       `<span class="codicon codicon-list-ordered" aria-hidden="true"></span>` +

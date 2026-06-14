@@ -2,7 +2,10 @@
 // - 웹뷰 패널은 메시지 라우팅만 하고, 기준점 계산/실행/충돌 이동은 이 모듈이 담당한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
-import { createRebaseEditTempFile } from "../git/rebaseEditSession";
+import {
+  createRebaseEditTempFile,
+  listRebaseEditTempPaths,
+} from "../git/rebaseEditSession";
 import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
   RebaseItem,
@@ -166,6 +169,9 @@ export async function continueGraphRebase(
   }
   const rebase = new RebaseService(repoRoot);
   const paused = await rebase.getPausedEditState();
+  if (paused) {
+    await saveRebaseEditTempDocuments(repoRoot, paused);
+  }
   if (await rebase.amendPausedEditChanges(paused)) {
     logInfo("graph rebase edit commit amended", {
       repoRoot,
@@ -262,6 +268,18 @@ async function refreshAfterRebaseControl(
 ): Promise<void> {
   await deps.refreshGraph();
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
+}
+
+/** Continue 직전에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다. */
+async function saveRebaseEditTempDocuments(
+  repoRoot: string,
+  paused: RebasePausedState
+): Promise<void> {
+  const paths = new Set(listRebaseEditTempPaths(repoRoot, paused));
+  const docs = vscode.workspace.textDocuments.filter(
+    (doc) => doc.isDirty && doc.uri.scheme === "file" && paths.has(doc.uri.fsPath)
+  );
+  await Promise.all(docs.map((doc) => doc.save()));
 }
 
 /** edit 정지 지점에서 첫 편집 가능 파일 또는 사용자가 고른 파일을 editable diff 로 연다. */

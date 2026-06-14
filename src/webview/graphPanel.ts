@@ -423,7 +423,7 @@ export class GitGraphPanel {
    * @param reset true 면 첫 페이지 로드 중인 상태임을 뜻한다.
    */
   private postLoadState(reset: boolean): void {
-    this.post({ type: "graphLoadState", state: this.makeLoadState(reset) });
+    this.post({ type: "graphLoadState", state: this.makeLoadState(reset && !this.loading) });
   }
 
   /** 타입이 보장된 메시지를 웹뷰로 전송한다. */

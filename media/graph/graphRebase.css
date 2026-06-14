@@ -345,6 +345,7 @@
 
 .rebase-detail-editor .file-row {
   display: flex;
+  position: relative;
   align-items: center;
   gap: 6px;
   min-height: 24px;
@@ -388,6 +389,11 @@
   font-size: 0.85em;
 }
 
+.rebase-detail-editor .file-row:hover .stat,
+.rebase-detail-editor .file-row:focus-within .stat {
+  margin-right: 76px;
+}
+
 .rebase-detail-editor .file-row[data-status="A"] .name,
 .rebase-detail-editor .file-row[data-status="A"] .icon {
   color: var(--vscode-gitDecoration-addedResourceForeground);
@@ -419,17 +425,32 @@
 
 .rebase-detail-editor .file-rewrite-actions {
   display: inline-flex;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  z-index: 4;
   justify-content: flex-end;
   gap: 4px;
-  margin-left: 4px;
+  padding: 1px 2px;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background, #252526));
+  box-shadow: -8px 0 10px var(--vscode-editorWidget-background, #252526);
+  transform: translateY(-50%);
+}
+
+.rebase-detail-editor .file-row:hover .file-rewrite-actions,
+.rebase-detail-editor .file-row:focus-within .file-rewrite-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .rebase-detail-editor .file-row button {
-  min-width: 0;
+  min-width: 22px;
+  width: 22px;
   height: 22px;
-  padding: 0 6px;
-  white-space: nowrap;
+  padding: 0;
 }
 
 .rebase-detail-editor .edit-unavailable {
@@ -442,6 +463,13 @@
   opacity: 0.72;
   color: var(--vscode-descriptionForeground, var(--vscode-foreground));
   white-space: nowrap;
+}
+
+.rebase-detail-editor .icon-action {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
 }
 
 .rebase-detail-editor button.active {

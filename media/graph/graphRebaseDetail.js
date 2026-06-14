@@ -61,11 +61,11 @@
       return "";
     }
     const editCta = isPausedHere
-      ? buttonHtml("open-first-edit-file", "go-to-file", "Open editable diff", "Open the first editable file from this paused commit", esc)
-      : buttonHtml("start-edit-rebase", "play", "Start rebase", "Start rebase; Git will pause at this commit for manual edits", esc);
+      ? buttonHtml("open-first-edit-file", "go-to-file", "Open editable diff", "Open a temporary editable copy of the first file in this paused commit", esc)
+      : buttonHtml("start-edit-rebase", "play", "Start rebase", "Start this interactive rebase plan; Git will pause at edit commits so their historical files can be changed", esc);
     const flowCtas = hasPaused
-      ? buttonHtml("continue-rebase", "debug-continue", "Continue", "Amend this edit commit, then continue rebase", esc) +
-        buttonHtml("abort-rebase", "debug-stop", "Abort", "Abort this paused rebase and return to the previous branch state", esc)
+      ? buttonHtml("continue-rebase", "debug-continue", "Continue", "Save rebase edit files, amend the paused commit, then run git rebase --continue; Git may pause at the next edit commit or conflicts", esc) +
+        buttonHtml("abort-rebase", "debug-stop", "Abort", "Abort this rebase and restore the branch to the state before the rebase started", esc)
       : "";
     const state = isPausedHere ? "Paused here" : "Will pause here";
     return (
@@ -104,13 +104,13 @@
   function fileEditButton(file, isPausedHere, esc) {
     if (file.status.startsWith("D")) {
       const tooltip = title("Deleted files cannot be opened as editable working-tree diffs", esc);
-      return `<span class="edit-unavailable" ${tooltip}>` +
-        `<span class="codicon codicon-warning" aria-hidden="true"></span><span>Deleted</span></span>`;
+      return `<span class="edit-unavailable icon-action" ${tooltip}>` +
+        `<span class="codicon codicon-warning" aria-hidden="true"></span></span>`;
     }
     const tooltip = isPausedHere
-      ? "Open this paused commit file in an editable diff"
-      : "Start rebase and open this file when Git pauses at this edit commit";
-    return buttonHtml("open-edit-file", "edit", "Edit file", tooltip, esc);
+      ? "Open a temporary editable copy of this historical file; Continue applies it to the paused commit"
+      : "Start rebase and open a temporary editable copy of this file when Git pauses here";
+    return iconButton("open-edit-file", "edit", tooltip, esc);
   }
 
   /** changes 아코디언과 같은 상태 아이콘을 반환한다. */
@@ -146,9 +146,11 @@
   /** 파일 제외 토글 버튼을 만든다. */
   function toggleButton(kind, active, inactiveLabel, activeLabel, tooltip, esc) {
     const label = active ? activeLabel : inactiveLabel;
+    const icon = kind === "history" ? "history" : "exclude";
     const activeClass = active ? " active" : "";
-    return `<button type="button" data-exclude="${kind}" class="${activeClass}" ` +
-      `aria-pressed="${active ? "true" : "false"}" ${title(tooltip, esc)}>${label}</button>`;
+    return `<button type="button" data-exclude="${kind}" class="icon-action${activeClass}" ` +
+      `aria-pressed="${active ? "true" : "false"}" ${title(`${label}. ${tooltip}`, esc)}>` +
+      `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`;
   }
 
   /** drawer 안에 들어가는 일반 action 버튼을 만든다. */
@@ -156,6 +158,14 @@
     return (
       `<button type="button" data-rebase-action="${action}" ${title(tooltip, esc)}>` +
       `<span class="codicon codicon-${icon}" aria-hidden="true"></span><span>${esc(label)}</span></button>`
+    );
+  }
+
+  /** 파일 row hover 액션에 쓰는 icon-only 버튼을 만든다. */
+  function iconButton(action, icon, tooltip, esc) {
+    return (
+      `<button type="button" class="icon-action" data-rebase-action="${action}" ${title(tooltip, esc)}>` +
+      `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`
     );
   }
 
