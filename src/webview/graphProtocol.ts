@@ -24,6 +24,7 @@ export type ToWebviewMessage =
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
+  | { type: "graphRebaseOperation"; active: boolean }
   | { type: "graphRebaseClear" }
   | { type: "error"; message: string };
 
@@ -57,6 +58,8 @@ export type FromWebviewMessage =
   | { type: "openFileDiff"; hash: string; parent: string; path: string }
   | { type: "openRebaseEditFile"; path: string }
   | { type: "prepareGraphRebase"; hash?: string; onto?: string }
+  | { type: "continueGraphRebase" }
+  | { type: "abortGraphRebase" }
   | {
       type: "runGraphRebase";
       base: string;

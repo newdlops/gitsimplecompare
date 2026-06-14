@@ -48,7 +48,7 @@
       `<label class="field message"><span>Commit message</span>` +
       `<textarea id="rebase-detail-message" spellcheck="false" ` +
       `${title("Edit the commit message used by reword or squash", esc)}>${esc(itemMessage(item))}</textarea></label>` +
-      editPanelHtml(item, isPausedHere, esc) +
+      editPanelHtml(item, isPausedHere, Boolean(paused), esc) +
       `<div class="files-title"><span>Changed files</span><span class="count">${(item.files || detail.files || []).length}</span></div>` +
       `<div class="rebase-detail-files">${files || `<p>No changed files.</p>`}</div>` +
       `</section>`
@@ -56,17 +56,21 @@
   }
 
   /** edit action 상태에 맞는 수동 편집 패널을 만든다. */
-  function editPanelHtml(item, isPausedHere, esc) {
+  function editPanelHtml(item, isPausedHere, hasPaused, esc) {
     if (item.action !== "edit") {
       return "";
     }
-    const cta = isPausedHere
+    const editCta = isPausedHere
       ? buttonHtml("open-first-edit-file", "go-to-file", "Open editable diff", "Open the first editable file from this paused commit", esc)
       : buttonHtml("start-edit-rebase", "play", "Start rebase", "Start rebase; Git will pause at this commit for manual edits", esc);
+    const flowCtas = hasPaused
+      ? buttonHtml("continue-rebase", "debug-continue", "Continue", "Continue the paused rebase after editing and amending files", esc) +
+        buttonHtml("abort-rebase", "debug-stop", "Abort", "Abort this paused rebase and return to the previous branch state", esc)
+      : "";
     const state = isPausedHere ? "Paused here" : "Will pause here";
     return (
       `<div class="edit-state"><span class="codicon codicon-debug-pause" aria-hidden="true"></span>` +
-      `<strong>${state}</strong>${cta}</div>`
+      `<strong>${state}</strong>${editCta}${flowCtas}</div>`
     );
   }
 
@@ -191,6 +195,12 @@
       const path = section.querySelector(".file-row:not([data-deleted])")?.dataset.path || "";
       openEditFile(path);
     });
+    section.querySelector('[data-rebase-action="continue-rebase"]')?.addEventListener("click", () => {
+      window.GscGraphRebaseContext?.continueRebase?.();
+    });
+    section.querySelector('[data-rebase-action="abort-rebase"]')?.addEventListener("click", () => {
+      window.GscGraphRebaseContext?.abortRebase?.();
+    });
     section.querySelectorAll('[data-rebase-action="open-edit-file"]').forEach((button) => {
       button.addEventListener("click", () => {
         openEditFile(button.closest(".file-row")?.dataset.path || "");
@@ -206,5 +216,11 @@
     window.GscGraphRebaseContext?.requestEditFile?.(path);
   }
 
-  window.GscGraphRebaseDetail = { detailHtml, bind };
+  /** rebase edit 커밋에서는 중복 changed-files 패널을 숨겨 edit 전용 패널만 남긴다. */
+  function hideFilesPane(detail) {
+    const item = window.GscGraphRebaseContext?.itemForHash?.(detail.hash);
+    return item?.action === "edit";
+  }
+
+  window.GscGraphRebaseDetail = { detailHtml, bind, hideFilesPane };
 })();

@@ -2,31 +2,20 @@
 // - 패널 생애주기(생성/표시/해제)와 웹뷰↔확장 메시지 라우팅만 담당한다.
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
-import {
-  GitLogService,
-  EMPTY_TREE,
-  ONGOING_COMMIT_HASH,
-  STAGED_COMMIT_HASH,
-} from "../git/gitLogService";
+import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, LocalBranchStatus } from "../graph/graphTypes";
-import {
-  openHeadVsIndexDiff,
-  openRefVsRefDiff,
-  openRefVsWorkingDiff,
-} from "../ui/diffPresenter";
+import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
 import {
+  abortGraphRebase,
+  continueGraphRebase,
   openPausedRebaseEditFile,
   prepareGraphRebase,
   runGraphRebase,
 } from "./graphRebaseActions";
-import {
-  FromWebviewMessage,
-  GraphLoadState,
-  ToWebviewMessage,
-} from "./graphProtocol";
+import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -162,6 +151,17 @@ export class GitGraphPanel {
           logService: this.logService,
         });
         this.post({ type: "graphRebasePlan", plan });
+      } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
+        const result = msg.type === "continueGraphRebase"
+          ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() })
+          : await abortGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() });
+        if (result.status === "completed" || result.status === "aborted") {
+          this.post({ type: "graphRebaseClear" });
+        } else if (result.status === "paused" && result.paused) {
+          this.post({ type: "graphRebasePaused", paused: result.paused });
+        } else if (result.status === "conflicts") {
+          this.post({ type: "graphRebaseOperation", active: true });
+        }
       } else if (msg.type === "runGraphRebase") {
         const result = await runGraphRebase(
           msg.base,
@@ -179,6 +179,8 @@ export class GitGraphPanel {
           this.post({ type: "graphRebaseClear" });
         } else if (result.status === "paused" && result.paused) {
           this.post({ type: "graphRebasePaused", paused: result.paused });
+        } else if (result.status === "conflicts") {
+          this.post({ type: "graphRebaseOperation", active: true });
         }
       }
     } catch (err) {

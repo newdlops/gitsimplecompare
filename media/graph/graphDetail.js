@@ -53,8 +53,15 @@
     const title = detail.message.split("\n")[0] || detail.hash.slice(0, 10);
     const actions = window.GscGraphFeatures?.commitActions(detail, esc) || "";
     const rebaseEditor = window.GscGraphRebaseDetail?.detailHtml?.(detail, esc) || "";
+    const hideFilesPane = window.GscGraphRebaseDetail?.hideFilesPane?.(detail) || false;
+    const filesPane = hideFilesPane
+      ? ""
+      : `<div id="detail-splitter" class="detail-splitter" role="separator" ` +
+        `aria-orientation="horizontal" tabindex="0" title="Resize file list" ` +
+        `aria-label="Resize file list"></div>` +
+        filesPaneHtml(detail);
     lastHost.root.innerHTML =
-      `<div class="detail-shell">` +
+      `<div class="detail-shell${hideFilesPane ? " rebase-edit-detail" : ""}">` +
       `<section class="commit-summary">` +
       `<h2>${esc(title)}</h2>` +
       metaHtml(detail) +
@@ -64,13 +71,12 @@
       rebaseEditor +
       messageHtml(detail.message) +
       `</section>` +
-      `<div id="detail-splitter" class="detail-splitter" role="separator" ` +
-      `aria-orientation="horizontal" tabindex="0" title="Resize file list" ` +
-      `aria-label="Resize file list"></div>` +
-      filesPaneHtml(detail) +
+      filesPane +
       `</div>`;
     bindEvents(detail);
-    lastHost.bindSplitter?.();
+    if (!hideFilesPane) {
+      lastHost.bindSplitter?.();
+    }
   }
 
   /** 해시/작성 시각을 담은 상세 메타 HTML 을 만든다. */

@@ -23,6 +23,7 @@
   let pendingDrop = null;
   let marker = null;
   let paused = null;
+  let operationActive = false;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -105,6 +106,13 @@
       enterPlan(msg.plan);
     } else if (msg.type === "graphRebasePaused") {
       paused = msg.paused || null;
+      operationActive = true;
+      ensureBar();
+      renderPlan();
+      window.GscGraphDetail?.refresh?.();
+    } else if (msg.type === "graphRebaseOperation") {
+      operationActive = Boolean(msg.active);
+      ensureBar();
       renderPlan();
       window.GscGraphDetail?.refresh?.();
     } else if (msg.type === "graphRebaseClear") {
@@ -117,6 +125,7 @@
   function enterPlan(nextPlan) {
     plan = nextPlan;
     paused = null;
+    operationActive = false;
     items = (nextPlan.commits || []).map((commit) => ({
       hash: commit.hash,
       action: "pick",
@@ -145,6 +154,7 @@
     items = [];
     originalOrder = [];
     paused = null;
+    operationActive = false;
     pendingDrop = null;
     hideDropMarker();
     window.GscGraphRebasePreview?.clearTransforms?.(graphContent);
@@ -156,10 +166,14 @@
       row.querySelector(".rebase-action-marker")?.remove();
       row.querySelector(".rebase-row-actions")?.remove();
     });
+    window.GscGraphDetail?.refresh?.();
   }
 
   /** 상단 rebase 실행 바를 만든다. */
   function ensureBar() {
+    if (!plan) {
+      return;
+    }
     let bar = document.getElementById("graph-rebase-bar");
     if (!bar) {
       bar = document.createElement("div");
@@ -169,19 +183,29 @@
     const upstream = plan.upstream ? ` · upstream ${esc(plan.upstream)}` : "";
     const base = plan.root ? " · base root" : plan.base ? ` · base ${esc(plan.base.slice(0, 10))}` : "";
     const onto = plan.onto ? ` · onto ${esc(plan.onto.slice(0, 10))}` : "";
+    const controls = paused || operationActive
+      ? `<button id="graph-rebase-continue" type="button" title="Continue rebase" ` +
+        `aria-label="Continue rebase" data-tooltip="Continue the paused rebase">` +
+        `<span class="codicon codicon-debug-continue" aria-hidden="true"></span><span>Continue</span></button>` +
+        `<button id="graph-rebase-abort" type="button" title="Abort rebase" ` +
+        `aria-label="Abort rebase" data-tooltip="Abort this paused rebase and restore the previous state">` +
+        `<span class="codicon codicon-debug-stop" aria-hidden="true"></span><span>Abort</span></button>`
+      : `<label id="graph-rebase-squash-option" title="Include squashed commit history in the editable message" data-tooltip="Include squashed commit history in the editable message">` +
+        `<input id="graph-rebase-include-squash" type="checkbox" checked /><span>Squash history</span></label>` +
+        `<button id="graph-rebase-run" type="button" title="Start rebase" ` +
+        `aria-label="Start rebase" data-tooltip="Start rebase with this plan">` +
+        `<span class="codicon codicon-play" aria-hidden="true"></span><span>Start</span></button>` +
+        `<button id="graph-rebase-cancel" type="button" title="Cancel rebase plan" ` +
+        `aria-label="Cancel rebase plan" data-tooltip="Cancel this rebase plan">` +
+        `<span class="codicon codicon-close" aria-hidden="true"></span><span>Cancel</span></button>`;
     bar.innerHTML =
       `<span class="codicon codicon-list-ordered" aria-hidden="true"></span>` +
       `<span class="rebase-title">Interactive rebase: ${esc(plan.branch)}${upstream}${base}${onto}</span>` +
-      `<label id="graph-rebase-squash-option" title="Include squashed commit history in the editable message" data-tooltip="Include squashed commit history in the editable message">` +
-      `<input id="graph-rebase-include-squash" type="checkbox" checked /><span>Squash history</span></label>` +
-      `<button id="graph-rebase-run" type="button" title="Start rebase" ` +
-      `aria-label="Start rebase" data-tooltip="Start rebase with this plan">` +
-      `<span class="codicon codicon-play" aria-hidden="true"></span><span>Start</span></button>` +
-      `<button id="graph-rebase-cancel" type="button" title="Cancel rebase plan" ` +
-      `aria-label="Cancel rebase plan" data-tooltip="Cancel this rebase plan">` +
-      `<span class="codicon codicon-close" aria-hidden="true"></span><span>Cancel</span></button>`;
-    bar.querySelector("#graph-rebase-run").addEventListener("click", () => runRebase());
-    bar.querySelector("#graph-rebase-cancel").addEventListener("click", clearPlan);
+      controls;
+    bar.querySelector("#graph-rebase-run")?.addEventListener("click", () => runRebase());
+    bar.querySelector("#graph-rebase-cancel")?.addEventListener("click", clearPlan);
+    bar.querySelector("#graph-rebase-continue")?.addEventListener("click", continueRebase);
+    bar.querySelector("#graph-rebase-abort")?.addEventListener("click", abortRebase);
   }
 
   /** 현재 계획을 그래프 row 에 마커/호버 액션으로 반영한다. */
@@ -493,6 +517,16 @@
     runRebase(path);
   }
 
+  /** 멈춰 있는 rebase 를 확장 호스트에 계속 진행하도록 요청한다. */
+  function continueRebase() {
+    window.GscGraphPostMessage?.({ type: "continueGraphRebase" });
+  }
+
+  /** 멈춰 있는 rebase 를 확장 호스트에 취소하도록 요청한다. */
+  function abortRebase() {
+    window.GscGraphPostMessage?.({ type: "abortGraphRebase" });
+  }
+
   /** graph context menu 에 합쳐 넣을 rebase 전용 항목을 만든다. */
   function contextMenuItems(hash) {
     if (!plan || !itemHashSet().has(hash)) {
@@ -520,6 +554,8 @@
     items: () => items,
     paused: () => paused,
     requestEditFile,
+    continueRebase,
+    abortRebase,
     updateAction,
     updateMessage,
     toggleCommitExclude,

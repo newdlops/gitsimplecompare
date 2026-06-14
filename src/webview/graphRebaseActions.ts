@@ -20,6 +20,13 @@ export interface GraphRebaseDeps {
   refreshGraph: () => Promise<void>;
 }
 
+/** paused rebase 의 Continue/Abort UI 처리 결과 */
+export interface GraphRebaseControlResult {
+  status: "completed" | "conflicts" | "failed" | "paused" | "aborted";
+  message?: string;
+  paused?: RebasePausedState;
+}
+
 /**
  * 그래프에서 드래그한 커밋을 기준으로 현재 브랜치의 rebase 계획을 만든다.
  * @param hash 사용자가 드래그한 커밋 해시
@@ -142,6 +149,63 @@ export async function openPausedRebaseEditFile(
   await openPausedEditFile(deps.logService.repoRoot, paused, relPath);
 }
 
+/**
+ * 그래프 rebase bar/drawer 에서 paused rebase 를 계속 진행한다.
+ * - 다음 edit 지점이면 drawer 상태를 paused 로 유지하고, 완료되면 clear 신호를 보낸다.
+ * @param deps 그래프 패널 의존성
+ */
+export async function continueGraphRebase(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">
+): Promise<GraphRebaseControlResult> {
+  const repoRoot = deps.logService.repoRoot;
+  const conflicts = new ConflictService(repoRoot);
+  if (await conflicts.getOperation() !== "rebase") {
+    await refreshAfterRebaseControl(deps, "graphRebaseContinueNoop");
+    return { status: "completed" };
+  }
+  try {
+    await conflicts.continueOperation("rebase");
+  } catch (err) {
+    const state = await readRebaseControlState(deps, "");
+    if (state.status === "conflicts" || state.status === "paused") {
+      return state;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(vscode.l10n.t("Rebase continue failed: {0}", message));
+    return { status: "failed", message };
+  }
+  return readRebaseControlState(deps, "Rebase completed.");
+}
+
+/**
+ * 그래프 rebase bar/drawer 에서 paused rebase 를 중단한다.
+ * - 중단이 끝나면 그래프와 changes 를 갱신하고 웹뷰 rebase edit 모드를 정리한다.
+ * @param deps 그래프 패널 의존성
+ */
+export async function abortGraphRebase(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">
+): Promise<GraphRebaseControlResult> {
+  const repoRoot = deps.logService.repoRoot;
+  const conflicts = new ConflictService(repoRoot);
+  if (await conflicts.getOperation() !== "rebase") {
+    await refreshAfterRebaseControl(deps, "graphRebaseAbortNoop");
+    return { status: "completed" };
+  }
+  const yes = vscode.l10n.t("Abort Rebase");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t("Abort the paused rebase and restore the previous branch state?"),
+    { modal: true },
+    yes
+  );
+  if (choice !== yes) {
+    return { status: "failed", message: "cancelled" };
+  }
+  await conflicts.abortOperation("rebase");
+  await refreshAfterRebaseControl(deps, "graphRebaseAborted");
+  vscode.window.showInformationMessage(vscode.l10n.t("Rebase aborted."));
+  return { status: "aborted" };
+}
+
 /** rebaseEditor.js 헬퍼 스크립트의 파일 시스템 경로를 만든다. */
 function editorScriptPath(extensionUri: vscode.Uri): string {
   return vscode.Uri.joinPath(
@@ -150,6 +214,41 @@ function editorScriptPath(extensionUri: vscode.Uri): string {
     "rebase",
     "rebaseEditor.js"
   ).fsPath;
+}
+
+/** continue 뒤 rebase 의 다음 상태를 읽고 필요한 UI 전환을 수행한다. */
+async function readRebaseControlState(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
+  completedMessage: string
+): Promise<GraphRebaseControlResult> {
+  const repoRoot = deps.logService.repoRoot;
+  const rebase = new RebaseService(repoRoot);
+  const paused = await rebase.getPausedEditState();
+  if (paused) {
+    await refreshAfterRebaseControl(deps, "graphRebaseEditPaused");
+    await openPausedEditFile(repoRoot, paused);
+    return { status: "paused", paused };
+  }
+  const conflicts = await new ConflictService(repoRoot).listConflicts().catch(() => []);
+  if (conflicts.length > 0) {
+    await refreshAfterRebaseControl(deps, "graphRebaseConflict");
+    await focusRebaseConflicts(repoRoot);
+    return { status: "conflicts" };
+  }
+  await refreshAfterRebaseControl(deps, "graphRebaseCompleted");
+  if (completedMessage) {
+    vscode.window.showInformationMessage(vscode.l10n.t(completedMessage));
+  }
+  return { status: "completed" };
+}
+
+/** rebase 제어 후 그래프와 Changes 트리를 같은 타이밍에 갱신한다. */
+async function refreshAfterRebaseControl(
+  deps: Pick<GraphRebaseDeps, "refreshGraph">,
+  reason: string
+): Promise<void> {
+  await deps.refreshGraph();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
 }
 
 /** edit 정지 지점에서 첫 편집 가능 파일 또는 사용자가 고른 파일을 editable diff 로 연다. */

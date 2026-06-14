@@ -42,12 +42,14 @@
   background: var(--vscode-button-hoverBackground);
 }
 
-#graph-rebase-cancel {
+#graph-rebase-cancel,
+#graph-rebase-abort {
   color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
   background: var(--vscode-button-secondaryBackground, transparent);
 }
 
-#graph-rebase-cancel:hover {
+#graph-rebase-cancel:hover,
+#graph-rebase-abort:hover {
   background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }
 
@@ -145,6 +147,8 @@
 
 .rebase-row-actions {
   display: none;
+  position: relative;
+  z-index: 1201;
   flex: 0 0 auto;
   align-items: center;
   gap: 2px;
@@ -154,6 +158,11 @@
 .row.rebase-row:hover .rebase-row-actions,
 .row.rebase-row:focus-within .rebase-row-actions {
   display: inline-flex;
+}
+
+.row.rebase-row:hover,
+.row.rebase-row:focus-within {
+  z-index: 1200;
 }
 
 .rebase-action-button {
@@ -295,6 +304,7 @@
 .rebase-detail-editor .edit-state {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0 8px 8px;
   padding: 7px 8px;
@@ -466,7 +476,7 @@
 
 .rebase-detail-editor [data-tooltip]:hover::after,
 .rebase-detail-editor [data-tooltip]:focus-visible::after {
-  opacity: 1;
+  opacity: 1 !important;
   background: #252526 !important;
   background-color: #252526 !important;
 }
@@ -477,15 +487,15 @@
 #graph-rebase-squash-option[data-tooltip]:focus-within::after,
 .rebase-action-button[data-tooltip]:hover::after,
 .rebase-action-button[data-tooltip]:focus-visible::after {
-  opacity: 1;
-  background: #252526;
+  opacity: 1 !important;
+  background: #252526 !important;
 }
 
 #graph-rebase-bar button[data-tooltip]::after,
 #graph-rebase-squash-option[data-tooltip]::after,
 .rebase-action-button[data-tooltip]::after {
   position: absolute;
-  z-index: 2100;
+  z-index: 10000;
   padding: 4px 7px;
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   border-radius: 3px;
@@ -520,7 +530,7 @@
 #graph-rebase-squash-option[data-tooltip]:focus-within::after,
 .rebase-action-button[data-tooltip]:hover::after,
 .rebase-action-button[data-tooltip]:focus-visible::after {
-  opacity: 1;
+  opacity: 1 !important;
   background: #252526 !important;
   background-color: #252526 !important;
 }
