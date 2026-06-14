@@ -145,20 +145,13 @@ body.resizing {
   position: absolute;
   top: 0;
   left: 0;
+  overflow: visible;
   pointer-events: none;
 }
 
 #graph-content .node {
   cursor: grab;
   pointer-events: auto;
-}
-
-#graph-content .compact-edge {
-  opacity: 0.92;
-}
-
-#graph-content .compact-node-marker {
-  pointer-events: none;
 }
 
 #graph-content .node.dragging-node {

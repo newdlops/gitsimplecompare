@@ -3,11 +3,9 @@
 (function () {
   "use strict";
 
-  const COLORS = [
-    "#e06c75", "#61afef", "#98c379", "#e5c07b", "#c678dd", "#56b6c2",
-    "#d19a66", "#abb2bf", "#ff6b6b", "#4dd4ac", "#f39c12", "#7fdbff",
-    "#ff8bd1", "#b8e986", "#9b8cff", "#00bcd4", "#f06292", "#c5e478",
-    "#4fc3f7", "#ffb74d", "#80cbc4", "#ce93d8", "#aed581", "#ef9a9a",
+  const LANE_FAMILY_HUES = [
+    0, 210, 96, 276, 44, 178, 326, 136,
+    242, 26, 190, 68, 346, 222, 154, 300,
   ];
   const LOCAL_ONLY_COLORS = [
     "#ff8a4c", "#00d7ff", "#a78bfa", "#2ee59d", "#ff4f8b", "#d0ff4f",
@@ -16,9 +14,10 @@
     "#b5e48c", "#ffca3a", "#52b788", "#c77dff", "#fb8500", "#90dbf4",
   ];
 
-  /** 레인 색상 인덱스를 기본 그래프 팔레트 색으로 변환한다. */
+  /** 레인 색상 인덱스를 인접 lane 간 색상 계열이 겹치지 않게 변환한다. */
   function colorOf(index) {
-    return COLORS[Math.abs(Number(index) || 0) % COLORS.length];
+    const safeIndex = Math.max(0, Math.floor(Math.abs(Number(index) || 0)));
+    return generatedLaneColor(safeIndex);
   }
 
   /** 브랜치 이름을 안정적인 팔레트 인덱스로 바꾼다. */
@@ -36,10 +35,20 @@
     return String(color || "").trim().toLowerCase();
   }
 
+  /** 팔레트가 부족할 때도 lane 색상이 순환 반복되지 않도록 보조 색상을 만든다. */
+  function generatedLaneColor(index) {
+    const family = index % LANE_FAMILY_HUES.length;
+    const cycle = Math.floor(index / LANE_FAMILY_HUES.length);
+    const hue = (LANE_FAMILY_HUES[family] + cycle * 7) % 360;
+    const saturation = 76 + (cycle % 3) * 4;
+    const lightness = 58 + ((cycle + family) % 3) * 4;
+    return hslToHex(hue, saturation, lightness);
+  }
+
   /** 팔레트가 부족할 때도 브랜치별 색상이 겹치지 않도록 보조 색상을 만든다. */
   function generatedBranchColor(index) {
-    const hue = Math.round((Number(index) || 0) * 137.508) % 360;
-    return hslToHex(hue, 78, 62);
+    const hue = Math.round((Number(index) || 0) * 137.508 + 71) % 360;
+    return hslToHex(hue, 82, 62);
   }
 
   /** HSL 값을 hex 색상 문자열로 변환한다. */
@@ -68,7 +77,7 @@
       const color = next < LOCAL_ONLY_COLORS.length
         ? LOCAL_ONLY_COLORS[next]
         : generatedBranchColor(next - LOCAL_ONLY_COLORS.length);
-      if (!avoided || normalizeColor(color) !== avoided) {
+      if (!avoided || !similarColor(color, avoided)) {
         return color;
       }
     }
@@ -100,6 +109,43 @@
     return from && (from.localOnlyBranches || []).length
       ? localOnlyColor(from.localOnlyBranches, from.color)
       : colorOf(edge.color);
+  }
+
+  /** 두 색이 같은 계열로 읽힐 만큼 hue 가 가까운지 판단한다. */
+  function similarColor(a, b) {
+    const first = hexToHsl(a);
+    const second = hexToHsl(b);
+    if (!first || !second) {
+      return normalizeColor(a) === normalizeColor(b);
+    }
+    const hueDistance = Math.abs(first.h - second.h);
+    const circularHueDistance = Math.min(hueDistance, 360 - hueDistance);
+    return circularHueDistance < 34 && Math.abs(first.l - second.l) < 18;
+  }
+
+  /** hex 색상을 HSL 로 변환한다. */
+  function hexToHsl(color) {
+    const match = /^#?([0-9a-f]{6})$/i.exec(String(color || "").trim());
+    if (!match) {
+      return undefined;
+    }
+    const value = match[1];
+    const r = parseInt(value.slice(0, 2), 16) / 255;
+    const g = parseInt(value.slice(2, 4), 16) / 255;
+    const b = parseInt(value.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d === 0) {
+      return { h: 0, s: 0, l: l * 100 };
+    }
+    const s = d / (1 - Math.abs(2 * l - 1));
+    const h =
+      max === r ? 60 * (((g - b) / d) % 6) :
+      max === g ? 60 * ((b - r) / d + 2) :
+      60 * ((r - g) / d + 4);
+    return { h: (h + 360) % 360, s: s * 100, l: l * 100 };
   }
 
   window.GscGraphColors = {

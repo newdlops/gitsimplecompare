@@ -1,0 +1,88 @@
+/* compact graph 전용 스타일. 접힌 lane 의 marker/port/mask 표현을 graph 기본 스타일과 분리한다. */
+#graph-content .compact-edge {
+  opacity: 0.92;
+}
+
+#graph-content .compact-edge-elided {
+  pointer-events: none;
+}
+
+#graph-content .lane-hover-target {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+#graph-content .lane-hover-hit,
+#graph-content .lane-hover-hit.lane-edge-highlight,
+#graph-content .lane-hover-hit.lane-edge-pinned {
+  stroke-opacity: 0 !important;
+  stroke-width: 10px !important;
+}
+
+#graph-content .lane-edge-highlight,
+#graph-content .lane-edge-pinned {
+  opacity: 1;
+  stroke-width: 3px;
+}
+
+#graph-content .lane-edge-pinned {
+  filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
+}
+
+#graph-content .node.lane-node-highlight,
+#graph-content .node.lane-node-pinned {
+  stroke: var(--vscode-focusBorder) !important;
+  stroke-width: 3.2px !important;
+  filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
+}
+
+#graph-content .node.lane-node-pinned {
+  stroke-width: 4px !important;
+}
+
+#graph-content .compact-continuation-hit {
+  pointer-events: all;
+}
+
+#graph-content .compact-continuation {
+  cursor: pointer;
+  opacity: 0.96;
+  pointer-events: auto;
+}
+
+#graph-content .compact-continuation * {
+  pointer-events: auto;
+}
+
+#graph-content .compact-continuation-pill {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.36));
+}
+
+#graph-content .compact-continuation-mask {
+  opacity: 0.96;
+}
+
+#graph-content .compact-continuation-label {
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--vscode-editor-background);
+  stroke-width: 2px;
+}
+
+#graph-content .compact-jump-pair .compact-continuation-pill {
+  stroke-width: 2;
+}
+
+#graph-content .compact-jump-highlight .compact-continuation-pill {
+  filter: drop-shadow(0 0 5px var(--vscode-focusBorder));
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 2.4;
+}
+
+#graph-content .compact-jump-highlight .compact-continuation-mask {
+  fill: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+}
+
+#graph-content .compact-node-marker {
+  pointer-events: none;
+}

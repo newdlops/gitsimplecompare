@@ -37,8 +37,6 @@
   let rowColorCache = new WeakMap();
   let localColorResolver = null;
 
-  const SVG_NS = "http://www.w3.org/2000/svg";
-
   /** 레인 인덱스를 x 좌표로 변환한다. */
   function laneX(col) {
     return MARGIN + col * LANE_W;
@@ -58,43 +56,6 @@
   function esc(text) {
     const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
     return String(text == null ? "" : text).replace(/[&<>"]/g, (ch) => map[ch]);
-  }
-
-  /** 네임스페이스를 지정해 SVG 요소를 만든다. */
-  function svgEl(name, attrs) {
-    const el = document.createElementNS(SVG_NS, name);
-    for (const key in attrs) {
-      el.setAttribute(key, attrs[key]);
-    }
-    return el;
-  }
-  /**
-   * 한 간선의 SVG path d 문자열을 만든다.
-   * - 자식 노드에서 부모의 레인으로 굽고, 레인을 따라 내려간 뒤 부모 노드로 굽는다.
-   */
-  function edgePath(edge, rowCount) {
-    const fx = laneX(edge.fromColumn);
-    const fy = rowY(edge.fromRow);
-    const cx = laneX(edge.column);
-    const toRow = Math.min(edge.toRow, rowCount); // 로드 밖이면 바닥
-    const tx = laneX(edge.toColumn);
-    const ty = rowY(toRow);
-
-    let d = `M ${fx} ${fy} `;
-    // 자식 -> 레인 진입(열이 다르면 반 행 높이로 굽힘)
-    if (edge.fromColumn !== edge.column) {
-      const my = fy + ROW_H / 2;
-      d += `C ${fx} ${my}, ${cx} ${my}, ${cx} ${fy + ROW_H} `;
-    }
-    // 레인을 따라 부모 근처까지 직선
-    const bottom = edge.toColumn !== edge.column ? ty - ROW_H : ty;
-    d += `L ${cx} ${bottom} `;
-    // 레인 -> 부모 노드 진입
-    if (edge.toColumn !== edge.column) {
-      const my = ty - ROW_H / 2;
-      d += `C ${cx} ${my}, ${tx} ${my}, ${tx} ${ty} `;
-    }
-    return d;
   }
 
   /**
@@ -128,57 +89,19 @@
     const bodyHeight = currentRows.length * ROW_H;
     resizeGraphContent();
 
-    // 1) SVG: 간선 먼저, 노드 나중에(노드가 위에 오도록)
-    const svg = svgEl("svg", { width: graphWidth, height: bodyHeight });
-    for (const edge of currentEdges) {
-      const edgeAttrs = window.GscGraphCompactRender?.edgeAttrs?.(edge) || { "stroke-width": "1.5" };
-      svg.appendChild(
-        svgEl("path", {
-          d: edgePath(edge, currentRows.length),
-          fill: "none",
-          stroke: edgeDisplayColor(edge),
-          ...edgeAttrs,
-        })
-      );
-    }
-    for (let r = 0; r < currentRows.length; r++) {
-      const row = currentRows[r];
-      const nodeColor = rowDisplayColor(row);
-      const nodeClass = window.GscGraphFeatures?.nodeClass(row) || "node";
-      const localOnly = nodeClass.includes("local-only-node");
-      if (localOnly) {
-        svg.appendChild(localOnlyRing(row, r, nodeColor));
-      }
-      const node = svgEl("circle", {
-        cx: laneX(row.column),
-        cy: rowY(r),
-        r: NODE_R,
-        fill: nodeColor,
-        stroke: "var(--vscode-editor-background)",
-        "stroke-width": "1",
-        class: nodeClass,
-        "data-hash": row.hash,
-        "data-row": String(r),
-        "data-column": String(row.column),
-        "aria-label": rowTitle(row),
-        style: nodeStyle(nodeColor, localOnly),
-      });
-      const title = svgEl("title", {});
-      title.textContent = rowTitle(row);
-      node.appendChild(title);
-      svg.appendChild(node);
-      const marker = window.GscGraphCompactRender?.nodeMarker?.({
-        x: laneX(row.column),
-        y: rowY(r),
-        radius: NODE_R,
-        row,
-        color: nodeColor,
-      });
-      if (marker) {
-        svg.appendChild(marker);
-      }
-    }
-    graphContentEl.appendChild(svg);
+    graphContentEl.appendChild(window.GscGraphSvgRender.render({
+      rows: currentRows,
+      edges: currentEdges,
+      graphWidth,
+      bodyHeight,
+      laneX,
+      rowY,
+      rowHeight: ROW_H,
+      nodeRadius: NODE_R,
+      rowDisplayColor,
+      edgeDisplayColor,
+      rowTitle,
+    }));
 
     // 2) 텍스트 행(그래프 폭만큼 왼쪽 여백)
     for (let r = 0; r < currentRows.length; r++) {
@@ -197,28 +120,6 @@
   /** 현재 레인 수에 맞는 그래프 SVG 폭을 계산한다. */
   function graphWidthForLaneCount(laneCount) {
     return MARGIN * 2 + Math.max(laneCount, 1) * LANE_W;
-  }
-
-  /** local-only 노드 본체 바깥에 간격을 둔 브랜치 색 ring 을 만든다. */
-  function localOnlyRing(row, rowIndex, color) {
-    return svgEl("circle", {
-      cx: laneX(row.column),
-      cy: rowY(rowIndex),
-      r: NODE_R + 1.8,
-      fill: "none",
-      stroke: color,
-      "stroke-width": "1.8",
-      class: "local-only-ring",
-      style: `--graph-node-color: ${color}; --branch-color: ${color}`,
-    });
-  }
-
-  /** 노드 색상 CSS 변수를 넣고, local-only 는 class rule 보다 inline 색상이 우선하도록 한다. */
-  function nodeStyle(color, localOnly) {
-    const vars = `--graph-node-color: ${color}; --branch-color: ${color}`;
-    return localOnly
-      ? `${vars}; fill: ${color}; stroke: none`
-      : vars;
   }
 
   /** 로딩/더 보기 행이 필요한지에 따라 그래프 내부 캔버스 높이를 계산한다. */
@@ -612,6 +513,8 @@
   function initEvents() {
     initMainSplitter();
     window.GscGraphFeatures?.initSearch(graphEl, graphContentEl);
+    window.GscGraphCompactRender?.bindNavigation(graphEl, graphContentEl);
+    window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);
     graphEl.addEventListener("scroll", maybeLoadMore);
     refreshBtn.addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     [["fetch-graph", "fetch"], ["pull-graph", "pull"], ["push-graph", "push"]].forEach(([id, type]) =>

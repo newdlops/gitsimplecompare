@@ -3,6 +3,9 @@
 // - 레인 스윕(lane sweep) 방식으로 각 커밋의 열과 간선을 계산한다. vscode 비의존.
 import { Commit, GraphData, GraphEdge, GraphRow } from "./graphTypes";
 
+/** 동시에 보이는 lane 끼리 같은 색상 계열을 피하기 위한 색상 family 수. */
+const LANE_COLOR_FAMILY_COUNT = 16;
+
 /**
  * 커밋 배열을 그래프 레이아웃(행/간선/레인 수)으로 변환한다.
  * - 위에서 아래로 훑으며 각 레인이 "도달을 기다리는 부모 해시"를 들고 있게 한다.
@@ -17,7 +20,12 @@ export function layoutGraph(commits: Commit[]): GraphData {
 
   const lanes: (string | null)[] = []; // 각 레인이 기다리는 부모 해시
   const laneColor: number[] = []; // 각 레인의 색상 인덱스
-  let nextColor = 0;
+  let nextColorSeed = 0;
+  const newColor = (targetLane?: number): number => {
+    const color = chooseLaneColor(lanes, laneColor, nextColorSeed, targetLane);
+    nextColorSeed = color + 1;
+    return color;
+  };
 
   const rows: GraphRow[] = [];
   const edges: GraphEdge[] = [];
@@ -41,7 +49,7 @@ export function layoutGraph(commits: Commit[]): GraphData {
       const virtualLane = virtualIncomingLane(commits, rows, r, incoming);
       const realIncoming = incoming.filter((lane) => lane !== virtualLane);
       column = realIncoming[0] ?? firstFreeLaneExcept(lanes, virtualLane);
-      color = laneColor[realIncoming[0] ?? virtualLane ?? column] ?? nextColor++;
+      color = laneColor[realIncoming[0] ?? virtualLane ?? column] ?? newColor(column);
       laneColor[column] = color;
       // 합쳐진 나머지 레인은 비운다(여러 자식이 이 커밋으로 모인 경우).
       for (const lane of incoming) {
@@ -51,7 +59,7 @@ export function layoutGraph(commits: Commit[]): GraphData {
       }
     } else {
       column = commit.kind ? firstFreeLaneFrom(lanes, 1) : firstFreeLane(lanes);
-      color = nextColor++;
+      color = newColor(column);
       laneColor[column] = color;
       lanes[column] = commit.hash; // 일단 점유(아래에서 부모로 교체)
     }
@@ -66,7 +74,7 @@ export function layoutGraph(commits: Commit[]): GraphData {
       indexByHash,
       rowIndex: r,
       totalRows: commits.length,
-      newColor: () => nextColor++,
+      newColor,
     });
 
     maxLanes = Math.max(maxLanes, lanes.length);
@@ -90,7 +98,7 @@ interface SweepState {
   indexByHash: Map<string, number>;
   rowIndex: number;
   totalRows: number;
-  newColor: () => number;
+  newColor: (targetLane?: number) => number;
 }
 
 /**
@@ -129,8 +137,8 @@ function assignParents(
         parentLane = existing;
       } else {
         parentLane = firstFreeLane(s.lanes);
+        s.laneColor[parentLane] = s.newColor(parentLane);
         s.lanes[parentLane] = parent;
-        s.laneColor[parentLane] = s.newColor();
       }
     }
 
@@ -149,6 +157,124 @@ function assignParents(
       color: s.laneColor[parentLane],
     });
   }
+}
+
+/**
+ * 새 lane 에 배정할 색상 인덱스를 고른다.
+ * - 현재 살아 있는 모든 lane 의 색상 family 를 우선 피한다.
+ * - family 수보다 active lane 이 많은 경우에는 사용 빈도가 가장 낮고 target 양옆과 덜 겹치는
+ *   family 를 고른다.
+ * @param lanes 현재 lane 점유 상태
+ * @param laneColor lane 별 색상 인덱스
+ * @param seed 다음 색상 탐색 시작점
+ * @param targetLane 색상을 넣을 lane 위치
+ * @returns 선택된 색상 인덱스
+ */
+function chooseLaneColor(
+  lanes: (string | null)[],
+  laneColor: number[],
+  seed: number,
+  targetLane?: number
+): number {
+  const usedFamilies = activeColorFamilies(lanes, laneColor, targetLane);
+  for (let offset = 0; offset < LANE_COLOR_FAMILY_COUNT * 4; offset++) {
+    const candidate = seed + offset;
+    if (!usedFamilies.has(colorFamily(candidate))) {
+      return candidate;
+    }
+  }
+  return leastConflictingColor(lanes, laneColor, seed, targetLane);
+}
+
+/**
+ * active lane 들의 색상 family 집합을 만든다.
+ * @param lanes 현재 lane 점유 상태
+ * @param laneColor lane 별 색상 인덱스
+ * @param targetLane 새 색을 넣을 lane. 비어 있는 과거 색은 제외한다.
+ * @returns 현재 동시에 보이는 색상 family 집합
+ */
+function activeColorFamilies(
+  lanes: (string | null)[],
+  laneColor: number[],
+  targetLane?: number
+): Set<number> {
+  const families = new Set<number>();
+  for (let i = 0; i < lanes.length; i++) {
+    if (i === targetLane || lanes[i] === null || laneColor[i] === undefined) {
+      continue;
+    }
+    families.add(colorFamily(laneColor[i]));
+  }
+  return families;
+}
+
+/**
+ * 모든 family 가 이미 쓰이는 과밀 상태에서 가장 덜 충돌하는 색상 인덱스를 고른다.
+ * @param lanes 현재 lane 점유 상태
+ * @param laneColor lane 별 색상 인덱스
+ * @param seed 다음 색상 탐색 시작점
+ * @param targetLane 색상을 넣을 lane 위치
+ * @returns 충돌 점수가 가장 낮은 색상 인덱스
+ */
+function leastConflictingColor(
+  lanes: (string | null)[],
+  laneColor: number[],
+  seed: number,
+  targetLane?: number
+): number {
+  let best = seed;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let offset = 0; offset < LANE_COLOR_FAMILY_COUNT * 4; offset++) {
+    const candidate = seed + offset;
+    const score = colorConflictScore(
+      colorFamily(candidate),
+      lanes,
+      laneColor,
+      targetLane
+    );
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/**
+ * 후보 색상 family 의 충돌 점수를 계산한다.
+ * - 전체 active lane 에 같은 family 가 있으면 충돌로 보고,
+ * - target 바로 양옆 lane 은 시각적으로 가장 가까우므로 높은 페널티를 준다.
+ * @param family 후보 색상 family
+ * @param lanes 현재 lane 점유 상태
+ * @param laneColor lane 별 색상 인덱스
+ * @param targetLane 색상을 넣을 lane 위치
+ * @returns 낮을수록 좋은 충돌 점수
+ */
+function colorConflictScore(
+  family: number,
+  lanes: (string | null)[],
+  laneColor: number[],
+  targetLane?: number
+): number {
+  let score = 0;
+  for (let i = 0; i < lanes.length; i++) {
+    if (i === targetLane || lanes[i] === null || laneColor[i] === undefined) {
+      continue;
+    }
+    if (colorFamily(laneColor[i]) !== family) {
+      continue;
+    }
+    score += 10;
+    if (targetLane !== undefined && Math.abs(i - targetLane) <= 1) {
+      score += 100;
+    }
+  }
+  return score;
+}
+
+/** 색상 인덱스를 시각적 계열 family 로 변환한다. */
+function colorFamily(index: number): number {
+  return Math.abs(Math.floor(index)) % LANE_COLOR_FAMILY_COUNT;
 }
 
 /**

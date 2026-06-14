@@ -21,12 +21,14 @@ export function buildGraphHtml(
   const localColorScriptUri = script(webview, mediaRoot, "graphLocalColors.js");
   const colorScriptUri = script(webview, mediaRoot, "graphColors.js");
   const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
+  const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
   const rebaseDetailScriptUri = script(webview, mediaRoot, "graphRebaseDetail.js");
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
+  const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
   const detailStyleUri = style(webview, mediaRoot, "graphDetail.css");
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
@@ -58,6 +60,7 @@ export function buildGraphHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
   <link href="${rebaseStyleUri}" rel="stylesheet" />
@@ -131,6 +134,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${localColorScriptUri}"></script>
   <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
+  <script nonce="${nonce}" src="${svgRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>

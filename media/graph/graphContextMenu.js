@@ -266,7 +266,7 @@
   /** 이벤트 대상에서 tooltip 을 표시할 graph UI 요소를 찾는다. */
   function tooltipTarget(event) {
     return eventTargetElement(event)?.closest?.(
-      ".ref[data-tooltip], #graph-toolbar [data-tooltip]"
+      ".ref[data-tooltip], .lane-hover-target[data-tooltip], #graph-toolbar [data-tooltip]"
     ) || undefined;
   }
 
