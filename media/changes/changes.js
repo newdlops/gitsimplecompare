@@ -40,6 +40,8 @@
       discardAll: "Discard All Changes",
       openFile: "Open File",
       openChanges: "Open Changes",
+      addToGitignore: "Add to .gitignore",
+      addToExclude: "Add to .git/info/exclude",
       stashes: "Stashes",
       noStashes: "No stashes.",
       stashSelected: "Stash Selected Changes",
@@ -322,7 +324,8 @@
       const title = conflictCount ? `${node.path} - ${T.conflicts}` : node.path;
       return (
         `<div class="row folder${conflictCount ? " conflict" : ""}" ` +
-        `data-folder-key="${esc(key)}" title="${esc(title)}">` +
+        `data-folder-key="${esc(key)}" data-path="${esc(node.path)}" ` +
+        `title="${esc(title)}">` +
         `<span class="twistie codicon ${
           collapsed ? "codicon-chevron-right" : "codicon-chevron-down"
         }"></span>` +
@@ -1199,6 +1202,20 @@
       });
     }
     nodes.push({ separator: true });
+    const ignoreTargets = ignorePaths(row);
+    if (ignoreTargets.length) {
+      nodes.push({
+        label: T.addToGitignore,
+        onClick: () =>
+          vscode.postMessage({ type: "addToGitignore", paths: ignoreTargets }),
+      });
+      nodes.push({
+        label: T.addToExclude,
+        onClick: () =>
+          vscode.postMessage({ type: "addToExclude", paths: ignoreTargets }),
+      });
+      nodes.push({ separator: true });
+    }
     nodes.push({
       label: T.stashSelected,
       onClick: () => vscode.postMessage({ type: "stashSelected", paths }),
@@ -1218,6 +1235,15 @@
     return Array.from(children.querySelectorAll(".row.file")).map(
       (f) => f.dataset.path
     );
+  }
+
+  /** ignore/exclude 컨텍스트 메뉴의 대상 경로. 폴더는 파일로 펼치지 않고 폴더 패턴으로 보낸다. */
+  function ignorePaths(row) {
+    if (row.classList.contains("folder")) {
+      const path = row.dataset.path || "";
+      return path ? [path.endsWith("/") ? path : path + "/"] : [];
+    }
+    return actionPaths(row);
   }
 
   // ── 다중 선택(작업트리 파일, VS Code 트리처럼 Ctrl/Cmd·Shift 선택) ──

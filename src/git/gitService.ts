@@ -7,6 +7,13 @@ import { readFile, rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitError, runGit } from "./gitExec";
 import {
+  appendIgnoreEntries,
+  gitPathArgs,
+  parseUnmergedPaths,
+  type IgnoreTarget,
+  type UntrackResult,
+} from "./ignoreRules";
+import {
   parseNameStatusZ,
   parseNumstat,
   parsePorcelainGroups,
@@ -25,6 +32,8 @@ export interface StatusGroupOptions {
   force?: boolean;
   maxCacheAgeMs?: number;
 }
+
+export type { IgnoreTarget, UntrackResult } from "./ignoreRules";
 
 // GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
 export { GitError } from "./gitExec";
@@ -219,6 +228,69 @@ export class GitService {
       "-z",
     ]).catch(() => "");
     return new Set(out.split("\0").filter((p) => p.length > 0));
+  }
+
+  /**
+   * 선택 경로를 .gitignore 또는 .git/info/exclude 에 추가한다.
+   * - 저장소 루트 기준 패턴(`/path` 또는 `/dir/`)으로 기록해 같은 이름의 다른 파일과
+   *   섞이지 않게 한다.
+   * - 이미 같은 패턴이 있으면 중복으로 쓰지 않는다.
+   * @param target 규칙을 쓸 대상 파일
+   * @param paths  저장소 상대/절대 경로 목록
+   * @returns 실제로 새로 추가된 ignore 패턴 목록
+   */
+  async addIgnoreEntries(
+    target: IgnoreTarget,
+    paths: string[]
+  ): Promise<string[]> {
+    const added = await appendIgnoreEntries(
+      this.repoRoot,
+      target,
+      paths.map((p) => this.toRepoRelative(p)),
+      async (gitPath) =>
+        (await this.run(["rev-parse", "--git-path", gitPath])).trim()
+    );
+    if (added.length) {
+      this.invalidateStatusCache();
+    }
+    return added;
+  }
+
+  /**
+   * 주어진 경로 중 Git 이 이미 추적 중인 파일 목록을 반환한다.
+   * - 폴더 경로가 들어오면 `git ls-files` 가 하위 추적 파일로 펼쳐준다.
+   * @param paths 저장소 상대/절대 경로 목록
+   */
+  async trackedPaths(paths: string[]): Promise<string[]> {
+    const targets = gitPathArgs(paths.map((p) => this.toRepoRelative(p)));
+    if (!targets.length) {
+      return [];
+    }
+    const out = await this.run(["ls-files", "-z", "--", ...targets]).catch(
+      () => ""
+    );
+    return gitPathArgs(out.split("\0"));
+  }
+
+  /**
+   * 이미 추적 중인 파일을 인덱스에서 제거해 다음 커밋부터 제외되게 한다.
+   * - 작업트리 파일은 보존한다(`git rm --cached`).
+   * - 충돌 중인 파일은 자동 제거하지 않고 skipped 로 반환한다.
+   * @param paths 저장소 상대/절대 경로 목록
+   */
+  async untrackPaths(paths: string[]): Promise<UntrackResult> {
+    const tracked = await this.trackedPaths(paths);
+    if (!tracked.length) {
+      return { removed: [], skipped: [] };
+    }
+    const conflicted = await this.unmergedPaths(tracked);
+    const removed = tracked.filter((p) => !conflicted.has(p));
+    const skipped = tracked.filter((p) => conflicted.has(p));
+    if (removed.length) {
+      await this.run(["rm", "--cached", "-r", "-f", "--", ...removed]);
+      this.invalidateStatusCache();
+    }
+    return { removed, skipped };
   }
 
   // ---- 스테이징/커밋(쓰기 작업) ----
@@ -458,6 +530,21 @@ export class GitService {
     const rel = this.toRepoRelative(fsPath);
     const out = await this.run(["diff", "--cached", "--name-only", "--", rel]);
     return out.trim().length > 0;
+  }
+
+  /**
+   * 주어진 경로 중 merge/rebase 충돌로 unmerged index entry 를 가진 파일을 찾는다.
+   * @param paths 저장소 상대 경로 목록
+   */
+  private async unmergedPaths(paths: string[]): Promise<Set<string>> {
+    const targets = gitPathArgs(paths);
+    if (!targets.length) {
+      return new Set();
+    }
+    const out = await this.run(["ls-files", "-u", "-z", "--", ...targets]).catch(
+      () => ""
+    );
+    return parseUnmergedPaths(out);
   }
 
   /**

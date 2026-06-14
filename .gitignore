@@ -6,3 +6,5 @@ out/
 .DS_Store
 .codeidx/
 .zoek-rs/
+/.lh/media/
+/.vscode/.auto-import-cache/

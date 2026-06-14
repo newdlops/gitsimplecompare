@@ -357,10 +357,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       const change = this.comparison.changes.find((c) => c.path === msg.path);
       if (change) {
         const args: ChangeDiffArgs = { comparison: this.comparison, change };
-        void vscode.commands.executeCommand(
-          "gitSimpleCompare.openChangeDiff",
-          args
-        );
+        void vscode.commands.executeCommand("gitSimpleCompare.openChangeDiff", args);
       }
     } else if (msg.type === "openWorkingChange" && msg.path && this.activeRepo) {
       void vscode.commands.executeCommand("gitSimpleCompare.openWorkingChange", {
@@ -381,6 +378,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       void vscode.commands.executeCommand("gitSimpleCompare.unstage", msg.paths);
     } else if (msg.type === "discard") {
       void vscode.commands.executeCommand("gitSimpleCompare.discard", msg.paths);
+    } else if (msg.type === "addToGitignore") {
+      void vscode.commands.executeCommand("gitSimpleCompare.addToGitignore", msg.paths);
+    } else if (msg.type === "addToExclude") {
+      void vscode.commands.executeCommand("gitSimpleCompare.addToExclude", msg.paths);
     } else if (msg.type === "commitMessageChange") {
       // 입력 중에는 저장만 하고 다시 그리지 않는다(타이핑 방해 방지).
       this.commitMessage = msg.message ?? "";
@@ -396,15 +397,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         stage: msg.stage,
       });
     } else if (msg.type === "scmAction" && msg.action) {
-      void vscode.commands.executeCommand(
-        "gitSimpleCompare.scmAction",
-        msg.action
-      );
+      void vscode.commands.executeCommand("gitSimpleCompare.scmAction", msg.action);
     } else if (msg.type === "stashSelected") {
-      void vscode.commands.executeCommand(
-        "gitSimpleCompare.stashSelected",
-        msg.paths
-      );
+      void vscode.commands.executeCommand("gitSimpleCompare.stashSelected", msg.paths);
     } else if (msg.type === "applyStash" && msg.ref) {
       void vscode.commands.executeCommand("gitSimpleCompare.applyStash", msg.ref);
     } else if (msg.type === "popStash" && msg.ref) {
@@ -445,10 +440,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     );
     const nonce = makeNonce();
     const csp = [
-      `default-src 'none'`,
-      `img-src data:`,
-      `style-src ${webview.cspSource}`,
-      `font-src ${webview.cspSource} data:`,
+      `default-src 'none'`, `img-src data:`,
+      `style-src ${webview.cspSource}`, `font-src ${webview.cspSource} data:`,
       `script-src 'nonce-${nonce}'`,
     ].join("; ");
 
@@ -483,6 +476,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       discardAll: vscode.l10n.t("Discard All Changes"),
       openFile: vscode.l10n.t("Open File"),
       openChanges: vscode.l10n.t("Open Changes"),
+      addToGitignore: vscode.l10n.t("Add to .gitignore"),
+      addToExclude: vscode.l10n.t("Add to .git/info/exclude"),
       stashes: vscode.l10n.t("Stashes"),
       noStashes: vscode.l10n.t("No stashes."),
       stashSelected: vscode.l10n.t("Stash Selected Changes"),

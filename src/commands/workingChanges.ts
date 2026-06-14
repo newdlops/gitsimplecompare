@@ -9,9 +9,10 @@ import {
   openHeadVsRemainingUnstagedDiff,
 } from "../ui/diffPresenter";
 import { CommandDeps } from "./shared";
-import { GitService } from "../git/gitService";
+import { GitService, IgnoreTarget } from "../git/gitService";
 import { GitGraphPanel } from "../webview/graphPanel";
 import { openConflictEditor } from "./conflicts";
+import { logError, logInfo, logWarn } from "../ui/outputLog";
 
 /** 활성 저장소의 GitService 를 반환한다(없으면 undefined). */
 function activeService(deps: CommandDeps): GitService | undefined {
@@ -188,6 +189,160 @@ export async function discardChanges(
     );
   }
   void refreshWorkingChanges(deps);
+}
+
+/**
+ * 선택 경로를 .gitignore 에 추가한다.
+ * - 이미 Git 이 추적 중인 파일은 ignore 만으로 제외되지 않으므로 사용자 확인 뒤
+ *   `git rm --cached` 로 다음 커밋부터 빠지게 할 수 있다.
+ * @param deps 공유 의존성
+ * @param paths ignore 에 추가할 저장소 상대 경로 목록
+ */
+export async function addToGitignore(
+  deps: CommandDeps,
+  paths?: string[]
+): Promise<void> {
+  await addIgnoreRules(deps, "gitignore", paths);
+}
+
+/**
+ * 선택 경로를 저장소 로컬 exclude(.git/info/exclude)에 추가한다.
+ * - exclude 는 커밋되지 않는 로컬 ignore 규칙이므로 개인 작업 파일 제외에 사용한다.
+ * @param deps 공유 의존성
+ * @param paths exclude 에 추가할 저장소 상대 경로 목록
+ */
+export async function addToExclude(
+  deps: CommandDeps,
+  paths?: string[]
+): Promise<void> {
+  await addIgnoreRules(deps, "exclude", paths);
+}
+
+/**
+ * ignore/exclude 규칙 추가와 선택적 추적 해제를 조립한다.
+ * @param deps 공유 의존성
+ * @param target 규칙을 추가할 대상 파일
+ * @param paths 대상 경로 목록
+ */
+async function addIgnoreRules(
+  deps: CommandDeps,
+  target: IgnoreTarget,
+  paths?: string[]
+): Promise<void> {
+  const svc = activeService(deps);
+  if (!svc) {
+    return;
+  }
+  const targets = uniqueNonEmpty(paths ?? []);
+  if (!targets.length) {
+    return;
+  }
+  const targetLabel = target === "gitignore" ? ".gitignore" : ".git/info/exclude";
+  try {
+    const added = await svc.addIgnoreEntries(target, targets);
+    logInfo("ignore rules updated", {
+      root: svc.repoRoot,
+      target,
+      requested: targets.length,
+      added: added.length,
+    });
+
+    const tracked = await svc.trackedPaths(targets);
+    if (tracked.length) {
+      await confirmAndUntrackIgnoredPaths(svc, targetLabel, tracked);
+    } else {
+      vscode.window.showInformationMessage(
+        added.length
+          ? vscode.l10n.t("Added {0} ignore rule(s) to {1}.", added.length, targetLabel)
+          : vscode.l10n.t("No new ignore rules were needed in {0}.", targetLabel)
+      );
+    }
+  } catch (e) {
+    logError("ignore rules update failed", e, {
+      root: svc.repoRoot,
+      target,
+      requested: targets.length,
+    });
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Action failed: {0}", errText(e))
+    );
+  }
+  void refreshWorkingChanges(deps);
+}
+
+/**
+ * 이미 추적 중인 ignore 대상 파일을 인덱스에서 제거할지 사용자에게 확인한다.
+ * @param svc 활성 저장소 GitService
+ * @param targetLabel 사용자에게 표시할 ignore 파일 이름
+ * @param tracked Git 이 이미 추적 중인 경로 목록
+ */
+async function confirmAndUntrackIgnoredPaths(
+  svc: GitService,
+  targetLabel: string,
+  tracked: string[]
+): Promise<void> {
+  const stopTracking = vscode.l10n.t("Stop Tracking");
+  const keepTracking = vscode.l10n.t("Keep Tracking");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t("Exclude {0} already tracked file(s) from future commits?", tracked.length),
+    {
+      modal: true,
+      detail: vscode.l10n.t(
+        "Rules in {0} do not affect files Git already tracks. Stop tracking runs git rm --cached and does not rewrite existing commit history.",
+        targetLabel
+      ),
+    },
+    stopTracking,
+    keepTracking
+  );
+  if (choice !== stopTracking) {
+    logInfo("ignore tracked files kept", {
+      root: svc.repoRoot,
+      tracked: tracked.length,
+    });
+    return;
+  }
+
+  const result = await svc.untrackPaths(tracked);
+  logInfo("ignore tracked files untracked", {
+    root: svc.repoRoot,
+    removed: result.removed.length,
+    skipped: result.skipped.length,
+  });
+  if (result.skipped.length) {
+    logWarn("ignore tracked files skipped because they are conflicted", {
+      root: svc.repoRoot,
+      skipped: result.skipped,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Stopped tracking {0} file(s). Skipped {1} conflicted file(s).",
+        result.removed.length,
+        result.skipped.length
+      )
+    );
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Stopped tracking {0} file(s).", result.removed.length)
+  );
+}
+
+/**
+ * 빈 문자열을 제거하고 순서를 유지한 고유 경로 목록을 만든다.
+ * @param paths 후보 경로 목록
+ */
+function uniqueNonEmpty(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const path of paths) {
+    if (!path || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
 }
 
 /**

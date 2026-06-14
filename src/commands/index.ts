@@ -33,6 +33,8 @@ import {
 import { refreshChangesView } from "./refreshChangesView";
 import type { RefreshRequest } from "./refreshChangesView";
 import {
+  addToExclude,
+  addToGitignore,
   commitChanges,
   discardChanges,
   openFile,
@@ -154,6 +156,14 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.discard",
       (paths?: string[]) => discardChanges(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.addToGitignore",
+      (paths?: string[]) => addToGitignore(deps, paths)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.addToExclude",
+      (paths?: string[]) => addToExclude(deps, paths)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.commit",
