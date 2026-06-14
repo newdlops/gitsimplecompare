@@ -5,9 +5,9 @@ import { GitLogService } from "../git/gitLogService";
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { logInfo } from "../ui/outputLog";
 import {
-  confirmCheckoutWithConflicts,
   focusCheckoutConflicts,
   isCheckoutConflictError,
+  retryCheckoutWithConflicts,
 } from "./graphCheckoutConflicts";
 
 export type BranchKind = "local" | "remote";
@@ -51,12 +51,20 @@ export async function checkoutBranch(
     if (!isCheckoutConflictError(err)) {
       throw err;
     }
-    if (!(await confirmCheckoutWithConflicts(err))) {
+    const result = await retryCheckoutWithConflicts(
+      err,
+      deps.logService.repoRoot,
+      branch.name,
+      () => deps.logService.checkoutLocalBranch(branch.name, true)
+    );
+    if (result === "cancelled") {
       return false;
     }
-    await deps.logService.checkoutLocalBranch(branch.name, true);
     await deps.refreshGraph();
     if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
+      return true;
+    }
+    if (result === "conflicts") {
       return true;
     }
   }
@@ -110,12 +118,20 @@ export async function checkoutRemoteBranch(
     if (!isCheckoutConflictError(err)) {
       throw err;
     }
-    if (!(await confirmCheckoutWithConflicts(err))) {
+    const result = await retryCheckoutWithConflicts(
+      err,
+      deps.logService.repoRoot,
+      remoteBranch,
+      () => deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true).then(() => undefined)
+    );
+    if (result === "cancelled") {
       return;
     }
-    await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true);
     await deps.refreshGraph();
     if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
+      return;
+    }
+    if (result === "conflicts") {
       return;
     }
   }

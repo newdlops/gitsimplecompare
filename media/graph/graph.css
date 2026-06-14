@@ -162,7 +162,11 @@ body.resizing {
 }
 
 #graph-content .node.local-only-node {
-  fill: var(--graph-node-color, #ff8a4c);
+  fill: color-mix(
+    in srgb,
+    var(--graph-node-color, #ff8a4c) 72%,
+    var(--vscode-editor-background, #1e1e1e)
+  );
   stroke: var(--graph-node-color, #ff8a4c);
   stroke-width: 3;
   stroke-dasharray: 2 2;

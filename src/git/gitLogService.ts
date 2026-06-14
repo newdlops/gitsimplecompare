@@ -218,9 +218,16 @@ export class GitLogService {
     return localName;
   }
 
-  /** 특정 커밋으로 detached HEAD checkout 을 수행한다. */
-  async checkoutCommitDetached(hash: string): Promise<void> {
-    await runGit(["switch", "--detach", hash], this.repoRoot);
+  /**
+   * 특정 커밋으로 detached HEAD checkout 을 수행한다.
+   * @param hash  checkout 할 커밋 해시
+   * @param merge 로컬 변경과 3-way merge 하며 전환할지 여부
+   */
+  async checkoutCommitDetached(hash: string, merge = false): Promise<void> {
+    await runGit(
+      ["switch", ...(merge ? ["--merge"] : []), "--detach", hash],
+      this.repoRoot
+    );
     this.invalidateCaches();
   }
 

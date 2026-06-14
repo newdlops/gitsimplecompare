@@ -6,7 +6,6 @@ import { ConflictService } from "../git/conflictService";
 import { PullService } from "../git/pullService";
 import { ConflictsController } from "../providers/conflictsController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
-import { ConflictPanel } from "../webview/conflictPanel";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -118,7 +117,7 @@ export async function openMergeEditor(
  */
 export async function openConflictEditor(
   controller: ConflictsController,
-  extensionUri: vscode.Uri,
+  _extensionUri: vscode.Uri,
   rel: string,
   repoRoot?: string
 ): Promise<void> {
@@ -129,9 +128,7 @@ export async function openConflictEditor(
   if (!svc) {
     return;
   }
-  ConflictPanel.createOrShow(extensionUri, svc, rel, async () => {
-    await controller.refresh();
-  });
+  await openMergeEditorUri(vscode.Uri.file(svc.absPath(rel)));
 }
 
 /**

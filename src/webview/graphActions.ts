@@ -8,6 +8,11 @@ import {
 } from "../git/gitLogService";
 import { logError } from "../ui/outputLog";
 import {
+  focusCheckoutConflicts,
+  isCheckoutConflictError,
+  retryCheckoutWithConflicts,
+} from "./graphCheckoutConflicts";
+import {
   branchAction,
   checkoutBranch,
   checkoutRemoteBranch,
@@ -193,7 +198,29 @@ async function checkoutCommit(
   if (!ok) {
     return;
   }
-  await deps.logService.checkoutCommitDetached(hash);
+  try {
+    await deps.logService.checkoutCommitDetached(hash);
+  } catch (err) {
+    if (!isCheckoutConflictError(err)) {
+      throw err;
+    }
+    const result = await retryCheckoutWithConflicts(
+      err,
+      deps.logService.repoRoot,
+      hash,
+      () => deps.logService.checkoutCommitDetached(hash, true)
+    );
+    if (result === "cancelled") {
+      return;
+    }
+    await deps.refreshGraph();
+    if (await focusCheckoutConflicts(deps.logService.repoRoot)) {
+      return;
+    }
+    if (result === "conflicts") {
+      return;
+    }
+  }
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Checked out commit '{0}'.", shortHash(hash))

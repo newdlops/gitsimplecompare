@@ -3,8 +3,18 @@
 (function () {
   "use strict";
 
-  const COLORS = ["#e06c75", "#61afef", "#98c379", "#e5c07b", "#c678dd", "#56b6c2", "#d19a66", "#abb2bf"];
-  const LOCAL_ONLY_COLORS = ["#ff8a4c", "#ff4f8b", "#00d7ff", "#f6f75a", "#a78bfa", "#2ee59d", "#ff6b6b", "#d0ff4f"];
+  const COLORS = [
+    "#e06c75", "#61afef", "#98c379", "#e5c07b", "#c678dd", "#56b6c2",
+    "#d19a66", "#abb2bf", "#ff6b6b", "#4dd4ac", "#f39c12", "#7fdbff",
+    "#ff8bd1", "#b8e986", "#9b8cff", "#00bcd4", "#f06292", "#c5e478",
+    "#4fc3f7", "#ffb74d", "#80cbc4", "#ce93d8", "#aed581", "#ef9a9a",
+  ];
+  const LOCAL_ONLY_COLORS = [
+    "#ff8a4c", "#00d7ff", "#a78bfa", "#2ee59d", "#ff4f8b", "#d0ff4f",
+    "#4da3ff", "#ffd166", "#06d6a0", "#ef476f", "#9b5de5", "#00bbf9",
+    "#f15bb5", "#fee440", "#8ac926", "#ff595e", "#1982c4", "#6a4c93",
+    "#b5e48c", "#ffca3a", "#52b788", "#c77dff", "#fb8500", "#90dbf4",
+  ];
 
   /** 레인 색상 인덱스를 기본 그래프 팔레트 색으로 변환한다. */
   function colorOf(index) {

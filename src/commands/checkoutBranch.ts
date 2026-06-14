@@ -5,6 +5,11 @@ import { GitLogService } from "../git/gitLogService";
 import { pickBranch } from "../ui/quickPick";
 import { logError, logInfo } from "../ui/outputLog";
 import {
+  focusCheckoutConflicts,
+  isCheckoutConflictError,
+  retryCheckoutWithConflicts,
+} from "../webview/graphCheckoutConflicts";
+import {
   CommandDeps,
   readConfig,
   resolveCompareService,
@@ -35,10 +40,30 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
 
   const logService = new GitLogService(service.repoRoot);
   try {
-    if (picked.kind === "remote") {
-      await logService.checkoutRemoteBranchAsLocal(picked.name);
-    } else {
-      await logService.checkoutLocalBranch(picked.name);
+    try {
+      if (picked.kind === "remote") {
+        await logService.checkoutRemoteBranchAsLocal(picked.name);
+      } else {
+        await logService.checkoutLocalBranch(picked.name);
+      }
+    } catch (err) {
+      if (!isCheckoutConflictError(err)) {
+        throw err;
+      }
+      const result = await retryCheckoutWithConflicts(
+        err,
+        service.repoRoot,
+        picked.name,
+        () => picked.kind === "remote"
+          ? logService.checkoutRemoteBranchAsLocal(picked.name, true).then(() => undefined)
+          : logService.checkoutLocalBranch(picked.name, true)
+      );
+      if (result === "cancelled") {
+        return;
+      }
+      if (await focusCheckoutConflicts(service.repoRoot)) {
+        return;
+      }
     }
     service.invalidateStatusCache();
     logInfo("branch checkout finished", {
