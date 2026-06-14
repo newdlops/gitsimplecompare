@@ -10,6 +10,7 @@ import {
 } from "../ui/diffPresenter";
 import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
+import { GitGraphPanel } from "../webview/graphPanel";
 
 /** 활성 저장소의 GitService 를 반환한다(없으면 undefined). */
 function activeService(deps: CommandDeps): GitService | undefined {
@@ -200,6 +201,7 @@ export async function commitChanges(
   if (!svc) {
     return;
   }
+  let committed = false;
   const amend = op.startsWith("amend");
   const message = deps.changesView.getCommitMessage().trim();
   if (!message && !amend) {
@@ -224,11 +226,17 @@ export async function commitChanges(
       await svc.stageAll();
     }
     await svc.commit(message, { amend });
+    committed = true;
     deps.changesView.setCommitMessage("");
   } catch (e) {
     vscode.window.showErrorMessage(
       vscode.l10n.t("Commit failed: {0}", errText(e))
     );
   }
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
+  if (committed) {
+    GitGraphPanel.refreshOpen(svc.repoRoot, "commit");
+  }
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: committed ? "commit" : "commitAttempt",
+  });
 }

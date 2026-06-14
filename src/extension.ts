@@ -22,6 +22,7 @@ import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logInfo } from "./ui/outputLog";
+import { GitGraphPanel } from "./webview/graphPanel";
 
 /**
  * 확장이 활성화될 때 호출된다.
@@ -98,8 +99,13 @@ export function activate(context: vscode.ExtensionContext): void {
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   let refreshReason = "startup";
   let deferredDiffOpenRefresh = false;
+  const pendingGraphRefreshRoots = new Set<string>();
   const refreshEverything = (reason: string): void => {
     logInfo("refresh requested", { reason });
+    for (const repoRoot of pendingGraphRefreshRoots) {
+      GitGraphPanel.refreshOpen(repoRoot, reason);
+    }
+    pendingGraphRefreshRoots.clear();
     void conflicts.refresh();
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason,
@@ -174,6 +180,10 @@ export function activate(context: vscode.ExtensionContext): void {
     registry.invalidateStatusCaches();
     if (source === "git") {
       clearBranchContentCache();
+      const repoRoot = repoRootFromGitUri(uri);
+      if (repoRoot) {
+        pendingGraphRefreshRoots.add(repoRoot);
+      }
     }
     scheduleRefresh(`${source}:${event}:${decision.reason}`);
   };
@@ -306,6 +316,18 @@ function isStableGitStatePath(path: string): boolean {
   return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/)/.test(
     path
   );
+}
+
+/**
+ * `.git` 내부 파일 이벤트에서 저장소 루트 경로를 꺼낸다.
+ * @param uri `.git/HEAD` 또는 `.git/refs/**` 아래에서 발생한 파일 이벤트 URI
+ * @returns 저장소 루트 절대 경로, `.git` 내부 이벤트가 아니면 undefined
+ */
+function repoRootFromGitUri(uri: vscode.Uri): string | undefined {
+  const path = uri.fsPath.replace(/\\/g, "/");
+  const marker = "/.git/";
+  const index = path.indexOf(marker);
+  return index >= 0 ? uri.fsPath.slice(0, index) : undefined;
 }
 
 /** diff open 중에는 작업트리 refresh 를 건너뛸 수 있는지 확인한다. */

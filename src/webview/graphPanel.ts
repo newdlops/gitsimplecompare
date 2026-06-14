@@ -73,6 +73,23 @@ export class GitGraphPanel {
     );
   }
 
+  /**
+   * 이미 열린 그래프 패널이 같은 저장소를 보고 있으면 최신 상태를 즉시 다시 읽는다.
+   * @param repoRoot 변경이 발생한 저장소 루트
+   * @param reason   OUTPUT 로그에 남길 새로고침 원인
+   * @returns 열린 그래프 패널에 새로고침을 요청했으면 true
+   */
+  static refreshOpen(repoRoot: string, reason: string): boolean {
+    const current = GitGraphPanel.current;
+    if (!current || current.logService.repoRoot !== repoRoot) {
+      return false;
+    }
+    logInfo("graph external refresh requested", { repoRoot, reason });
+    current.resetLoadedGraph();
+    void current.reloadGraph();
+    return true;
+  }
+
   private constructor(
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
@@ -315,6 +332,7 @@ export class GitGraphPanel {
 
   /** 현재 패널의 누적 커밋/종료 상태를 초기화하고 이전 비동기 로드 결과를 무효화한다. */
   private resetLoadedGraph(): void {
+    this.logService.invalidateCaches();
     this.commits = [];
     this.virtualCommits = [];
     this.loading = false;
