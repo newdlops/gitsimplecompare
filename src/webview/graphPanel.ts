@@ -433,6 +433,9 @@ export class GitGraphPanel {
     const contextScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphContextMenu.js")
     );
+    const localColorScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphLocalColors.js")
+    );
     const colorScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphColors.js")
     );
@@ -549,6 +552,7 @@ export class GitGraphPanel {
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
+  <script nonce="${nonce}" src="${localColorScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

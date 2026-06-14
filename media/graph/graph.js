@@ -29,10 +29,13 @@
   const openRemoteBtn = document.getElementById("open-remote-branch");
 
   let currentRows = []; // 마지막으로 렌더링한 행 데이터(선택/상세 요청에 사용)
+  let currentEdges = [];
   let currentLaneCount = 1;
   let selectedHash = null;
   let detailSummaryHeight = 180;
   let loadState = { loadedCount: 0, hasMore: false, loading: false, reset: true };
+  let rowColorCache = new WeakMap();
+  let localColorResolver = null;
 
   const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -65,9 +68,6 @@
     }
     return el;
   }
-  function rowDisplayColor(row) { return window.GscGraphFeatures?.rowColor?.(row) || window.GscGraphColors.rowColor(row); }
-  function edgeDisplayColor(edge) { return currentRows[edge.fromRow] ? rowDisplayColor(currentRows[edge.fromRow]) : window.GscGraphColors.edgeColor(edge, currentRows); }
-
   /**
    * 한 간선의 SVG path d 문자열을 만든다.
    * - 자식 노드에서 부모의 레인으로 굽고, 레인을 따라 내려간 뒤 부모 노드로 굽는다.
@@ -110,6 +110,9 @@
     }
 
     currentRows = data.rows || [];
+    currentEdges = data.edges || [];
+    rowColorCache = new WeakMap();
+    localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
     currentLaneCount = data.laneCount || 1;
     graphContentEl.innerHTML = "";
 
@@ -127,7 +130,7 @@
 
     // 1) SVG: 간선 먼저, 노드 나중에(노드가 위에 오도록)
     const svg = svgEl("svg", { width: graphWidth, height: bodyHeight });
-    for (const edge of data.edges) {
+    for (const edge of currentEdges) {
       svg.appendChild(
         svgEl("path", {
           d: edgePath(edge, currentRows.length),
@@ -140,6 +143,11 @@
     for (let r = 0; r < currentRows.length; r++) {
       const row = currentRows[r];
       const nodeColor = rowDisplayColor(row);
+      const nodeClass = window.GscGraphFeatures?.nodeClass(row) || "node";
+      const localOnly = nodeClass.includes("local-only-node");
+      if (localOnly) {
+        svg.appendChild(localOnlyRing(row, r, nodeColor));
+      }
       const node = svgEl("circle", {
         cx: laneX(row.column),
         cy: rowY(r),
@@ -147,12 +155,12 @@
         fill: nodeColor,
         stroke: "var(--vscode-editor-background)",
         "stroke-width": "1",
-        class: window.GscGraphFeatures?.nodeClass(row) || "node",
+        class: nodeClass,
         "data-hash": row.hash,
         "data-row": String(r),
         "data-column": String(row.column),
         "aria-label": rowTitle(row),
-        style: `--graph-node-color: ${nodeColor}`,
+        style: nodeStyle(nodeColor, localOnly),
       });
       const title = svgEl("title", {});
       title.textContent = rowTitle(row);
@@ -178,6 +186,28 @@
   /** 현재 레인 수에 맞는 그래프 SVG 폭을 계산한다. */
   function graphWidthForLaneCount(laneCount) {
     return MARGIN * 2 + Math.max(laneCount, 1) * LANE_W;
+  }
+
+  /** local-only 노드 본체 바깥에 간격을 둔 브랜치 색 ring 을 만든다. */
+  function localOnlyRing(row, rowIndex, color) {
+    return svgEl("circle", {
+      cx: laneX(row.column),
+      cy: rowY(rowIndex),
+      r: NODE_R + 1.8,
+      fill: "none",
+      stroke: color,
+      "stroke-width": "1.8",
+      class: "local-only-ring",
+      style: `--graph-node-color: ${color}; --branch-color: ${color}`,
+    });
+  }
+
+  /** 노드 색상 CSS 변수를 넣고, local-only 는 class rule 보다 inline 색상이 우선하도록 한다. */
+  function nodeStyle(color, localOnly) {
+    const vars = `--graph-node-color: ${color}; --branch-color: ${color}`;
+    return localOnly
+      ? `${vars}; fill: ${color}; stroke: none`
+      : vars;
   }
 
   /** 로딩/더 보기 행이 필요한지에 따라 그래프 내부 캔버스 높이를 계산한다. */
@@ -249,8 +279,31 @@
     el.addEventListener("click", () => selectCommit(row.hash));
     return el;
   }
-  function rowDisplayColor(row) { return window.GscGraphFeatures?.rowColor?.(row) || window.GscGraphColors.rowColor(row); }
-  function edgeDisplayColor(edge) { const from = currentRows[edge.fromRow]; return from ? rowDisplayColor(from) : window.GscGraphColors.edgeColor(edge, currentRows); }
+  /** row 별 표시 색상을 한 번만 계산해 SVG edge/node 와 텍스트 row 가 같은 값을 공유하게 한다. */
+  function rowDisplayColor(row) {
+    if (!row) {
+      return "#abb2bf";
+    }
+    const cached = rowColorCache.get(row);
+    if (cached) {
+      return cached;
+    }
+    const color =
+      localColorResolver?.colorForRow?.(row) ||
+      window.GscGraphFeatures?.rowColor?.(row) ||
+      window.GscGraphColors?.rowColor?.(row) ||
+      "#abb2bf";
+    rowColorCache.set(row, color);
+    return color;
+  }
+
+  /** edge 시작 row 색상을 재사용해 local-only edge 도 브랜치 색과 맞춘다. */
+  function edgeDisplayColor(edge) {
+    const from = currentRows[edge.fromRow];
+    return from
+      ? rowDisplayColor(from)
+      : window.GscGraphColors?.edgeColor?.(edge, currentRows) || "#abb2bf";
+  }
   /** 커밋 row/node hover tooltip 에 표시할 짧은 설명을 만든다. */
   function rowTitle(row) {
     const refs = (row.refs || []).filter(Boolean).join(", ");
@@ -575,6 +628,8 @@
       renderGraph(msg.data, msg.state);
     } else if (msg.type === "branchStatus") {
       window.GscGraphFeatures && window.GscGraphFeatures.setLocalBranches(msg.branches);
+      rowColorCache = new WeakMap();
+      localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
       updateRemoteBranchButton(msg.branches);
       graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
       const graphWidth = graphWidthForLaneCount(currentLaneCount);

@@ -156,21 +156,20 @@ body.resizing {
   filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
 }
 
-#graph-content .node.local-node {
-  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+#graph-content .node.local-node:not(.local-only-node) {
+  stroke: var(--branch-color, var(--graph-node-color, var(--vscode-gitDecoration-addedResourceForeground, #89d185)));
   stroke-width: 2.5;
 }
 
 #graph-content .node.local-only-node {
-  fill: color-mix(
-    in srgb,
-    var(--graph-node-color, #ff8a4c) 72%,
-    var(--vscode-editor-background, #1e1e1e)
-  );
-  stroke: var(--graph-node-color, #ff8a4c);
-  stroke-width: 3;
-  stroke-dasharray: 2 2;
-  filter: drop-shadow(0 0 3px var(--graph-node-color, #ff8a4c));
+  filter: none;
+}
+
+#graph-content .local-only-ring {
+  pointer-events: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 2.4 2.4;
 }
 
 #graph-content .node.ongoing-node {

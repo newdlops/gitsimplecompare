@@ -23,11 +23,10 @@
     (branches || []).forEach((branch) => {
       localBranches.set(branch.name, branch);
     });
-    Array.from(localBranches.keys()).sort().forEach((name, index) => {
+    Array.from(localBranches.keys()).forEach((name) => {
       localBranchColors.set(
         name,
-        window.GscGraphColors?.branchPaletteColor?.(index) ||
-          window.GscGraphColors?.branchColor?.(name)
+        window.GscGraphColors?.branchColor?.(name)
       );
     });
   }
@@ -69,7 +68,7 @@
 
   /** row 의 대표 브랜치 강조 색을 찾는다. */
   function rowColor(row) {
-    const localOnlyBranch = (row.localOnlyBranches || []).find(Boolean);
+    const localOnlyBranch = localOnlyBranchForRow(row);
     if (localOnlyBranch) {
       return branchColor(localOnlyBranch, row.color);
     }
@@ -79,6 +78,24 @@
     return branchRef
       ? branchColor(branchRef, row.color)
       : undefined;
+  }
+
+  /** local-only row 에서 색상 기준으로 삼을 브랜치를 고른다. */
+  function localOnlyBranchForRow(row) {
+    const branches = (row.localOnlyBranches || []).filter(Boolean);
+    if (!branches.length) {
+      return "";
+    }
+    const refs = new Set(row.refs || []);
+    const refBranch = branches.find((branch) => refs.has(branch));
+    if (refBranch) {
+      return refBranch;
+    }
+    if (branches.length === 1) {
+      return branches[0];
+    }
+    const current = branches.find((branch) => localBranches.get(branch)?.current);
+    return current || [...branches].sort()[0];
   }
 
   /** ref 문자열이 tag 내부 표기인지 확인한다. */
