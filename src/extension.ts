@@ -3,7 +3,10 @@
 //   실제 기능 로직은 git/providers/ui/commands 모듈에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { GitServiceRegistry } from "./git/serviceRegistry";
-import { BranchContentProvider } from "./providers/branchContentProvider";
+import {
+  BranchContentProvider,
+  clearBranchContentCache,
+} from "./providers/branchContentProvider";
 import { ChangesViewProvider } from "./webview/changesViewProvider";
 import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
 import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
@@ -111,6 +114,11 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshTimer = undefined;
       const reason = refreshReason;
       refreshReason = "scheduled";
+      if (isAnyDiffOpenInProgress() && isWorkingTreeRefreshReason(reason)) {
+        deferredDiffOpenRefresh = true;
+        logInfo("refresh timer skipped", { reason, active: "diffOpen" });
+        return;
+      }
       refreshEverything(reason);
     }, delay);
   };
@@ -164,6 +172,9 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     registry.invalidateStatusCaches();
+    if (source === "git") {
+      clearBranchContentCache();
+    }
     scheduleRefresh(`${source}:${event}:${decision.reason}`);
   };
   watchRefresh(workspaceWatcher, "workspace");
@@ -197,8 +208,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       deferredDiffOpenRefresh = false;
-      registry.invalidateStatusCaches();
-      scheduleRefresh("diffOpenFinished", 0);
+      logInfo("diff open refresh skipped", { reason: "deferredWorkspaceEvents" });
     })
   );
 
@@ -207,6 +217,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       registry.invalidateResolveCache();
       registry.invalidateStatusCaches();
+      clearBranchContentCache();
       scheduleRefresh("workspaceFolders", 0);
     })
   );
@@ -294,5 +305,16 @@ function ignoredWorkspaceSegment(path: string): string | undefined {
 function isStableGitStatePath(path: string): boolean {
   return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/)/.test(
     path
+  );
+}
+
+/** diff open 중에는 작업트리 refresh 를 건너뛸 수 있는지 확인한다. */
+function isWorkingTreeRefreshReason(reason: string): boolean {
+  return (
+    reason.includes("working-tree-file") ||
+    reason.includes("documentSaved") ||
+    reason.includes("filesCreated") ||
+    reason.includes("filesDeleted") ||
+    reason.includes("filesRenamed")
   );
 }

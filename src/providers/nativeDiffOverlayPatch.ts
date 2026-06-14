@@ -6,11 +6,9 @@ import {
   rendererEvalExpression,
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
-
-const PATCH_VERSION = 35;
+const PATCH_VERSION = 44;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
-
 /** renderer patch 설치와 snapshot render 를 main process 에서 수행할 CDP expression 으로 만든다. */
 export function injectionExpression(
   rendererScript: string,
@@ -36,7 +34,6 @@ export function injectionExpression(
     `
   );
 }
-
 /** renderer 에 남아 있는 overlay DOM 을 제거할 CDP expression 으로 만든다. */
 export function cleanupExpression(hints: NativeOverlayWorkspaceHints): string {
   return mainEvalExpression(
@@ -53,7 +50,6 @@ export function cleanupExpression(hints: NativeOverlayWorkspaceHints): string {
     `
   );
 }
-
 /** workbench renderer 에 상주하는 checkbox overlay patch 본문. */
 export function rendererPatchScript(): string {
   return `
@@ -69,13 +65,13 @@ export function rendererPatchScript(): string {
         scrollTargets: [],
         observedTargets: [],
         repaintTimers: [],
+        viewportTimer: 0,
         resizeBound: false,
         documentScrollBound: false
       };
       state.scrollTargets = state.scrollTargets || [];
       state.observedTargets = state.observedTargets || [];
       window.__gscNativeDiffOverlayState = state;
-
       function ensureStyle() {
         var style = document.getElementById(STYLE_ID);
         if (style && style.getAttribute('data-gsc-version') === String(VERSION)) return;
@@ -91,7 +87,6 @@ export function rendererPatchScript(): string {
         ].join('\\n');
         if (!style.parentNode) document.head.appendChild(style);
       }
-
       function cleanup() {
         Array.prototype.slice.call(document.querySelectorAll('.gsc-native-diff-overlay-layer')).forEach(function (el) {
           try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
@@ -100,7 +95,6 @@ export function rendererPatchScript(): string {
           try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
         });
       }
-
       function schedulePaint() {
         if (state.frame) return;
         state.frame = requestAnimationFrame(function () {
@@ -108,21 +102,23 @@ export function rendererPatchScript(): string {
           paint();
         });
       }
-
-      function scheduleViewportPaint() { schedulePaint(); setTimeout(schedulePaint, 24); }
-
+      function scheduleViewportPaint() {
+        if (state.viewportTimer) return;
+        state.viewportTimer = setTimeout(function () {
+          state.viewportTimer = 0;
+          schedulePaint();
+        }, 48);
+      }
       function clearFollowUpPaints() {
         (state.repaintTimers || []).forEach(function (timer) { try { clearTimeout(timer); } catch (_) {} });
         state.repaintTimers = [];
       }
-
       function scheduleFollowUpPaints() {
         clearFollowUpPaints();
-        [40, 120, 300, 700, 1200, 2000, 3500, 5200, 7600, 11000].forEach(function (delay) {
+        [120, 420, 1100, 2400].forEach(function (delay) {
           state.repaintTimers.push(setTimeout(schedulePaint, delay));
         });
       }
-
       function bindViewportEvents() {
         state.scrollTargets = (state.scrollTargets || []).filter(function (target) {
           return target && target.isConnected;
@@ -155,7 +151,6 @@ export function rendererPatchScript(): string {
           }, true);
         }
       }
-
       function isOverlayNode(node) {
         return !!(
           node &&
@@ -167,14 +162,12 @@ export function rendererPatchScript(): string {
           )
         );
       }
-
       function mutationIsOverlayOnly(mutation) {
         if (isOverlayNode(mutation.target)) return true;
         if (mutation.type !== 'childList') return false;
         var nodes = Array.prototype.slice.call(mutation.addedNodes || []).concat(Array.prototype.slice.call(mutation.removedNodes || []));
         return !!nodes.length && nodes.every(isOverlayNode);
       }
-
 	      function observeEditorDom(editorDom) {
 	        if (!editorDom || typeof MutationObserver === 'undefined') return;
 	        state.observedTargets = (state.observedTargets || []).filter(function (target) { return target && target.isConnected; });
@@ -195,12 +188,10 @@ export function rendererPatchScript(): string {
           } catch (_) {}
         });
 	      }
-
       function findEditorDom(side) {
         var selector = side === 'original' ? '.editor.original' : '.editor.modified';
         return Array.prototype.slice.call(document.querySelectorAll(selector)).filter(isVisibleNode)[0] || null;
       }
-
       function visibleDiffDoms() {
         var nodes = Array.prototype.slice.call(document.querySelectorAll('.monaco-diff-editor'));
         return nodes.flatMap(function (dom) {
@@ -209,11 +200,9 @@ export function rendererPatchScript(): string {
           return [{ dom: dom }];
         });
       }
-
       function isVisibleNode(node) {
         return !!(node && node.isConnected && node.offsetParent !== null && node.clientWidth > 0 && node.clientHeight > 0);
       }
-
       function fallbackTargets(snapshotIndex, snapshotCount, side) {
         var selector = side === 'original' ? '.editor.original' : '.editor.modified';
         var diffs = visibleDiffDoms();
@@ -224,11 +213,9 @@ export function rendererPatchScript(): string {
         var dom = snapshotCount === 1 ? findEditorDom(side) : null;
         return dom ? [{ editor: null, dom: dom, source: 'dom-best' }] : [];
       }
-
       function findTargets(snapshot, side, snapshotIndex, snapshotCount) {
         return fallbackTargets(snapshotIndex, snapshotCount, side);
       }
-
       function rowLineNumber(row) {
         var lineEl = row.querySelector('.line-numbers');
         var direct = row.getAttribute && row.getAttribute('data-line-number');
@@ -244,13 +231,11 @@ export function rendererPatchScript(): string {
         var match = /(?:^|\\D)(\\d+)(?:\\D|$)/.exec(text);
         return match ? Number(match[1]) : 0;
       }
-
       function linesForSide(snapshot, side) {
         return (snapshot.lines || []).filter(function (line) {
           return (line.side || 'modified') === side;
         });
       }
-
       // 라인 표시 문제를 재현할 때 snapshot 의 줄 범위와 체크 상태를 paint 로그에 압축해 남긴다.
       function lineStats(lines) {
         var min = 0, max = 0, checked = 0, ids = 0;
@@ -262,7 +247,6 @@ export function rendererPatchScript(): string {
         });
         return (lines || []).length + '@' + (min ? (min + '-' + max) : 'none') + ',checked=' + checked + ',ids=' + ids;
       }
-
       function makeLineMap(snapshot, side) {
         var map = new Map();
         linesForSide(snapshot, side).forEach(function (line) {
@@ -270,7 +254,6 @@ export function rendererPatchScript(): string {
         });
         return map;
       }
-
       function ensureRelative(host) {
         try {
           if (window.getComputedStyle(host).position === 'static') {
@@ -278,7 +261,6 @@ export function rendererPatchScript(): string {
           }
         } catch (_) {}
       }
-
       function createCheckboxWrap(snapshot, line, marker) {
         var wrap = document.createElement('span');
         wrap.className = 'gsc-native-diff-checkbox-wrap';
@@ -293,6 +275,7 @@ export function rendererPatchScript(): string {
         input.setAttribute('data-line-ids', lineIds.join('\\u0000'));
         input.setAttribute('data-visible-side', line.side || '');
         input.setAttribute('data-visible-line', String(line.line || ''));
+        input.setAttribute('data-visible-column', String(line.column || ''));
         input.setAttribute('data-visible-marker', marker || '');
         input.addEventListener('mousedown', stopEditorEvent, true);
         input.addEventListener('pointerdown', stopEditorEvent, true);
@@ -303,12 +286,11 @@ export function rendererPatchScript(): string {
           stopEditorClick(event);
           line.checked = input.checked;
           rememberLocalChecked(snapshot.uri, line, marker, input.checked);
-          notifyToggle(snapshot.uri, lineIds, input.checked, line.side, line.line, marker);
+          notifyToggle(snapshot.uri, lineIds, input.checked, line.side, line.line, line.column, marker, line.text);
         }, true);
         wrap.appendChild(input);
         return wrap;
       }
-
       function ensureLayer(host) {
         var layer = host.querySelector('.gsc-native-diff-overlay-layer');
         if (!layer) {
@@ -319,7 +301,6 @@ export function rendererPatchScript(): string {
         }
         return layer;
       }
-
       function appendCheckboxAtRow(layer, row, snapshot, line, marker) {
         var wrap = createCheckboxWrap(snapshot, line, marker);
         wrap.className += ' gsc-native-diff-checkbox-row';
@@ -327,41 +308,35 @@ export function rendererPatchScript(): string {
         wrap.style.height = Math.max(12, rowStyleNumber(row, 'height', 18)) + 'px';
         layer.appendChild(wrap);
       }
-
       function rowStyleNumber(row, name, fallback) {
         var value = parseFloat(row && row.style && row.style[name] || '');
         return Number.isFinite(value) ? value : fallback;
       }
-
       function stopEditorEvent(event) {
         try {
           event.stopPropagation();
           if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         } catch (_) {}
       }
-
       function stopEditorClick(event) {
         try {
           event.stopPropagation();
           if (event.stopImmediatePropagation) event.stopImmediatePropagation();
         } catch (_) {}
       }
-
-      function notifyToggle(uri, lineIds, checked, side, line, marker) {
+      function notifyToggle(uri, lineIds, checked, side, line, column, marker, text) {
         try {
           var fn = window[BINDING];
           if (typeof fn === 'function') {
-            fn(JSON.stringify({ uri: uri, lineIds: lineIds, checked: !!checked, side: side, line: line, marker: marker }));
+            fn(JSON.stringify({ uri: uri, lineIds: lineIds, checked: !!checked, side: side, line: line, column: column, marker: marker, text: text }));
           }
         } catch (_) {}
       }
-
       function lineKey(uri, line, marker) {
         var lineIds = line.lineIds || [];
         if (lineIds.length) return uri + '\\u0000ids\\u0000' + lineIds.join('\\u0000');
-        return uri + '\\u0000visible\\u0000' + (line.side || '') + '\\u0000' + (line.line || '') + '\\u0000' + (marker || '');
+        return uri + '\\u0000visible\\u0000' + (line.side || '') + '\\u0000' + (line.line || '') + '\\u0000' + (line.column || '') + '\\u0000' + (marker || '');
       }
-
       function rememberLocalChecked(uri, line, marker, checked) {
         state.localChecked[lineKey(uri, line, marker)] = {
           checked: !!checked,
@@ -369,7 +344,6 @@ export function rendererPatchScript(): string {
           generation: state.generation || 0
         };
       }
-
       function checkedValue(uri, line, marker) {
         var key = lineKey(uri, line, marker);
         var local = state.localChecked[key];
@@ -385,7 +359,6 @@ export function rendererPatchScript(): string {
         }
         return !!line.checked;
       }
-
       function rowDiffMarker(row) {
         if (!row || !row.querySelector) return '';
         if (row.querySelector('.gutter-insert,.insert-sign,.codicon-diff-insert')) return 'insert';
@@ -393,12 +366,21 @@ export function rendererPatchScript(): string {
         if (row.querySelector('.gutter-modified,.modified-sign,.codicon-diff-modified')) return 'modified';
         return '';
       }
-
       function markerMatchesSide(marker, side) {
-        if (side === 'modified') return marker === 'insert' || marker === 'modified';
-        return marker === 'delete' || marker === 'modified';
+        if (side === 'modified') return marker === 'insert';
+        return marker === 'delete';
       }
-
+      function viewTextForRow(sourceDom, marginRow) {
+        var top = rowStyleNumber(marginRow, 'top', NaN);
+        if (!Number.isFinite(top)) return undefined;
+        var rows = Array.prototype.slice.call((sourceDom && sourceDom.querySelectorAll('.view-lines .view-line')) || []);
+        for (var i = 0; i < rows.length; i++) {
+          if (Math.abs(rowStyleNumber(rows[i], 'top', NaN) - top) < 0.5) {
+            return String(rows[i].textContent || '').replace(/\\u00a0/g, ' ');
+          }
+        }
+        return undefined;
+      }
       function paintWithDomRows(snapshot, sourceDom, side) {
         var sourceMargin = sourceDom && sourceDom.querySelector('.margin-view-overlays');
         if (!sourceMargin) {
@@ -439,16 +421,17 @@ export function rendererPatchScript(): string {
             side: side,
             line: entry.lineNo,
             lineIds: [],
-            checked: false
+            checked: false,
+            text: viewTextForRow(sourceDom, entry.row)
           };
-          if (entry.line && usedLineNos.has(entry.lineNo)) {
+          if (usedLineNos.has(entry.lineNo)) {
             usedRows.add(entry.row);
             if (markerWithoutLineId.length < 24) markerWithoutLineId.push(entry.lineNo + ':' + entry.marker + ':duplicate');
             return;
           }
           appendCheckboxAtRow(layer, entry.row, snapshot, line, entry.marker);
+          usedLineNos.add(entry.lineNo);
           if (entry.line) {
-            usedLineNos.add(entry.lineNo);
             if (matched.length < 24) matched.push(String(entry.lineNo));
           } else {
             if (markerWithoutLineId.length < 24) markerWithoutLineId.push(entry.lineNo + ':' + entry.marker + ':visible');
@@ -459,12 +442,7 @@ export function rendererPatchScript(): string {
         });
         lineRows.forEach(function (entry) {
           if (usedLineNos.has(entry.lineNo) || usedRows.has(entry.row)) return;
-          appendCheckboxAtRow(layer, entry.row, snapshot, entry.line, entry.marker || 'line');
-          usedLineNos.add(entry.lineNo);
-          usedRows.add(entry.row);
           if (lineFallback.length < 24) lineFallback.push(String(entry.lineNo));
-          if (matched.length < 24) matched.push(entry.lineNo + '~');
-          placed++;
         });
         var missing = [];
         return {
@@ -478,7 +456,6 @@ export function rendererPatchScript(): string {
           lineWithoutMarker: lineFallback.join('/'),
         };
       }
-
       function paintSideOnTarget(snapshot, sourceTarget, side) {
         var source = (sourceTarget && sourceTarget.source) || 'dom';
         var dom = paintWithDomRows(snapshot, sourceTarget && sourceTarget.dom, side);
@@ -487,12 +464,13 @@ export function rendererPatchScript(): string {
           source: source + '+vscode-marker-first-row(rows=' + dom.rows + ',rowLines=' + dom.range + ',markers=' + dom.markers + ',matched=' + dom.sample + ',missing=' + dom.missing + ',markerNoId=' + dom.markerWithoutLineId + ',lineNoMarker=' + dom.lineWithoutMarker + ')',
         };
       }
-
       function paint() {
+        var started = (window.performance && performance.now) ? performance.now() : Date.now();
         var snapshots = normalizeSnapshots(state.snapshot);
         if (!snapshots.length) {
           cleanup();
           state.lastPaint = 'paint:none';
+          state.lastPaintGeneration = state.generation || 0;
           return state.lastPaint;
         }
         ensureStyle();
@@ -519,33 +497,43 @@ export function rendererPatchScript(): string {
         if (!details.length) {
           cleanup();
           state.lastPaint = 'paint:no-editor';
+          state.lastPaintGeneration = state.generation || 0;
           return state.lastPaint;
         }
-        state.lastPaint = 'paint:native:' + placed + '/' + snapshots.reduce(function (sum, snapshot) { return sum + ((snapshot.lines && snapshot.lines.length) || 0); }, 0) + ':' + details.join(',');
+        var elapsed = Math.round(((window.performance && performance.now) ? performance.now() : Date.now()) - started);
+        state.lastPaint = 'paint:native:' + placed + '/' + snapshots.reduce(function (sum, snapshot) { return sum + ((snapshot.lines && snapshot.lines.length) || 0); }, 0) + ':ms=' + elapsed + ':' + details.join(',');
+        state.lastPaintGeneration = state.generation || 0;
         return state.lastPaint;
       }
-
       function normalizeSnapshots(snapshot) {
         if (!snapshot) return [];
         return (Array.isArray(snapshot) ? snapshot : [snapshot]).filter(function (item) {
           return item && item.lines;
         });
       }
-
       window.__gscNativeDiffOverlay = {
         version: VERSION,
         render: function (snapshot) {
           clearFollowUpPaints();
           state.generation = (state.generation || 0) + 1;
+          var generation = state.generation;
           state.snapshot = snapshot || null;
           if (!snapshot) {
             cleanup();
             return 'cleaned';
           }
-          var painted = paint();
+          ensureStyle();
+          bindViewportEvents();
           schedulePaint();
           scheduleFollowUpPaints();
-          return painted || ('render-scheduled:' + normalizeSnapshots(snapshot).length);
+          return new Promise(function (resolve) {
+            setTimeout(function () {
+              if (state.lastPaintGeneration !== generation) {
+                try { paint(); } catch (_) {}
+              }
+              resolve('render-scheduled:' + normalizeSnapshots(snapshot).length + ':last=' + (state.lastPaint || 'none'));
+            }, 90);
+          });
         }
       };
       return 'gsc-native-overlay-installed:' + VERSION;

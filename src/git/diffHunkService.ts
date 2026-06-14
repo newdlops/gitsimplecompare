@@ -12,6 +12,8 @@ import { createDiffMutationGuard } from "./diffMutationGuard";
 import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
 import { runGit } from "./gitExec";
 
+const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
+
 /** hunk 가 어느 diff 영역에서 왔는지 나타낸다. */
 export type DiffStage = "staged" | "unstaged";
 
@@ -461,6 +463,7 @@ async function parseUntrackedFiles(
 
 /**
  * 미추적 파일 하나를 `/dev/null → working file` 형태의 synthetic diff 로 만든다.
+ * - 큰 미추적 파일은 extension host 를 막지 않도록 line hunk 를 만들지 않는다.
  * @param repoRoot 저장소 루트
  * @param relPath 저장소 상대 경로
  */
@@ -471,6 +474,10 @@ async function untrackedFileToDiff(
   const fullPath = path.join(repoRoot, relPath);
   const header = newFileHeader(relPath, await fileMode(fullPath));
   try {
+    const stats = await fs.promises.stat(fullPath);
+    if (stats.size > MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES) {
+      return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
+    }
     const buffer = await fs.promises.readFile(fullPath);
     if (buffer.includes(0)) {
       return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };

@@ -1,12 +1,12 @@
 // Changes 섹션(작업트리 변경) 관련 명령 — 조회/열기 + 스테이징/커밋 쓰기 작업.
 // - 활성 저장소의 상태를 staged/unstaged 로 읽어 CHANGES 뷰에 채우고,
-//   파일 클릭 시 staged 는 HEAD ↔ index, unstaged 는 HEAD ↔ 실제 작업 파일 diff 를 연다.
+//   파일 클릭 시 staged 는 HEAD ↔ index, unstaged 는 HEAD ↔ 남은 unstaged diff 를 연다.
 // - Stage/Unstage/Discard/Commit 은 GitService 쓰기 작업에 위임하고, 끝나면 뷰를 새로고친다.
 //   로직은 GitService 에 두고 여기서는 "조립 + 사용자 확인/알림"만 담당한다(경계 분리).
 import * as vscode from "vscode";
 import {
   openHeadVsIndexDiff,
-  openHeadVsWorkingTreeDiff,
+  openHeadVsRemainingUnstagedDiff,
 } from "../ui/diffPresenter";
 import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
@@ -56,7 +56,7 @@ export async function openWorkingChange(arg: {
     await openHeadVsIndexDiff(arg.root, arg.path);
     return;
   }
-  await openHeadVsWorkingTreeDiff(arg.root, arg.path);
+  await openHeadVsRemainingUnstagedDiff(arg.root, arg.path);
 }
 
 /**

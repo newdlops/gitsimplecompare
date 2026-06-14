@@ -493,7 +493,7 @@ export class GitLogService {
       paths.map(async (path) => ({
         status: "A" as const,
         path,
-        additions: await countUntrackedLines(this.repoRoot, path),
+        additions: (await countUntrackedLines(this.repoRoot, path)) ?? 0,
         deletions: 0,
       }))
     );

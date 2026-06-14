@@ -21,10 +21,21 @@ export class NativeDiffInitialPaintRetry {
     reason: string,
     scheduleRender: (reason: string, delay?: number) => void
   ): void {
-    this.clear();
-    this.signature = signature;
+    const retryReason = reason.startsWith("initialPaintRetry");
+    if (!retryReason) {
+      this.clear();
+      this.signature = signature;
+    } else if (this.signature !== signature) {
+      return;
+    }
     const text = String(result ?? "");
     if (!needsRetry(text)) {
+      if (retryReason) {
+        this.clear();
+      }
+      return;
+    }
+    if (retryReason) {
       return;
     }
     RETRY_DELAYS.forEach((delay, index) => {
@@ -53,15 +64,15 @@ export class NativeDiffInitialPaintRetry {
  * @returns retry 가 의미 있으면 true
  */
 function needsRetry(result: string): boolean {
-  if (!result.includes("paint:native:")) {
-    return false;
+  if (!result.includes("paint:native:") && !result.includes("paint:no-editor")) {
+    return result.includes("render-scheduled:");
   }
   if (
     result.includes("rowLines=no-margin") ||
     result.includes("rowLines=no-source") ||
     result.includes("paint:no-editor")
   ) {
-    return false;
+    return true;
   }
   return /paint:native:0\/[1-9]/.test(result);
 }

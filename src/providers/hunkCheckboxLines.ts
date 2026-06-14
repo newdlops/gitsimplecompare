@@ -2,9 +2,12 @@
 // - UI 상태와 git 적용 로직 사이에서 동일한 line id 규칙을 공유하도록 작게 분리한다.
 import { DiffFile, DiffHunk } from "../git/diffHunkService";
 
+export type CheckboxSide = "original" | "modified";
+
 export interface CheckboxLine {
-  side: "original" | "modified";
+  side: CheckboxSide;
   line: number;
+  column?: number;
   lineIds: string[];
 }
 
@@ -20,6 +23,23 @@ export function checkboxLines(file: DiffFile): CheckboxLine[] {
   return file.hunks.flatMap((hunk) => checkboxLinesForHunk(hunk));
 }
 
+/**
+ * checkbox line id 별 실제 diff side 를 만든다.
+ * @param lines 화면/patch 매핑에서 만든 checkbox 줄 목록
+ * @returns line id 를 key 로 하고 original/modified side 를 값으로 하는 map
+ */
+export function checkboxLineSides(
+  lines: readonly CheckboxLine[]
+): Map<string, CheckboxSide> {
+  const sides = new Map<string, CheckboxSide>();
+  for (const line of lines) {
+    for (const id of line.lineIds) {
+      sides.set(id, line.side);
+    }
+  }
+  return sides;
+}
+
 /** hunk 하나에서 git diff 의 `-`/`+` 변경 라인을 실제 old/new 줄에 각각 표시한다. */
 function checkboxLinesForHunk(hunk: DiffHunk): CheckboxLine[] {
   const [, ...body] = hunk.text.split("\n");
@@ -33,24 +53,33 @@ function checkboxLinesForHunk(hunk: DiffHunk): CheckboxLine[] {
   let newNo = parsed.newStart;
   while (index < body.length) {
     const line = body[index];
-    if (line.startsWith("-")) {
-      items.push({
-        side: "original",
-        line: oldNo,
-        lineIds: [lineId(hunk, index)],
-      });
-      oldNo++;
-      index++;
-      continue;
-    }
-    if (line.startsWith("+")) {
-      items.push({
-        side: "modified",
-        line: newNo,
-        lineIds: [lineId(hunk, index)],
-      });
-      newNo++;
-      index++;
+    if (line.startsWith("-") || line.startsWith("+")) {
+      const deletions: Array<{ index: number; line: number; text: string }> = [];
+      const additions: Array<{ index: number; line: number; text: string }> = [];
+      while (index < body.length && body[index].startsWith("-")) {
+        deletions.push({ index, line: oldNo++, text: body[index].slice(1) });
+        index++;
+      }
+      while (index < body.length && body[index].startsWith("+")) {
+        additions.push({ index, line: newNo++, text: body[index].slice(1) });
+        index++;
+      }
+      deletions.forEach((item, offset) =>
+        items.push({
+          side: "original",
+          line: item.line,
+          column: changeColumn(item.text, additions[offset]?.text),
+          lineIds: [lineId(hunk, item.index)],
+        })
+      );
+      additions.forEach((item, offset) =>
+        items.push({
+          side: "modified",
+          line: item.line,
+          column: changeColumn(deletions[offset]?.text, item.text),
+          lineIds: [lineId(hunk, item.index)],
+        })
+      );
       continue;
     }
     if (!line.startsWith("\\")) {
@@ -89,4 +118,18 @@ function parseHunkHeader(hunk: DiffHunk): HunkHeaderRange | undefined {
  */
 function lineId(hunk: DiffHunk, index: number): string {
   return `${hunk.id}:${index}`;
+}
+
+/** 두 줄에서 처음 달라지는 1-based column 을 계산한다. */
+function changeColumn(left: string | undefined, right: string | undefined): number {
+  if (left === undefined || right === undefined) {
+    return 1;
+  }
+  const limit = Math.min(left.length, right.length);
+  for (let index = 0; index < limit; index++) {
+    if (left[index] !== right[index]) {
+      return index + 1;
+    }
+  }
+  return limit + 1;
 }

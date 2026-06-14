@@ -80,39 +80,15 @@ export async function openHeadVsRemainingUnstagedDiff(
   repoRoot: string,
   relPath: string
 ): Promise<void> {
+  const started = Date.now();
   const left = makeRefUri("HEAD", relPath, repoRoot);
   const right = makeRefUri(":unstaged", relPath, repoRoot);
   const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
   const title = makeDiffTitle("HEAD", vscode.l10n.t("Unstaged"), fileLabel);
-  refreshBranchContent(left);
-  refreshBranchContent(right);
-  await vscode.commands.executeCommand(
-    "vscode.diff",
-    left,
-    right,
-    title,
-    DIFF_OPTIONS
-  );
-}
-
-/**
- * HEAD 와 실제 작업트리 파일을 비교한다(오른쪽=실제 파일이라 편집 가능).
- * - Editable Diff 진입점에서 사용해 diff 오른쪽 문서를 그대로 수정할 수 있게 한다.
- * @param repoRoot 저장소 루트
- * @param relPath  저장소 상대 경로
- */
-export async function openHeadVsWorkingTreeDiff(
-  repoRoot: string,
-  relPath: string
-): Promise<void> {
-  const started = Date.now();
-  const left = makeRefUri("HEAD", relPath, repoRoot, String(Date.now()));
-  const right = vscode.Uri.file(`${repoRoot}/${relPath}`);
-  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
-  const title = makeDiffTitle("HEAD", vscode.l10n.t("Working Tree"), fileLabel);
   const finishDiffOpen = beginDiffOpen(right);
+  refreshBranchContent(right);
   logInfo("diff open started", {
-    mode: "head-vs-working",
+    mode: "head-vs-remaining-unstaged",
     path: relPath,
   });
   try {
@@ -126,7 +102,51 @@ export async function openHeadVsWorkingTreeDiff(
   } finally {
     finishDiffOpen();
     logInfo("diff open finished", {
-      mode: "head-vs-working",
+      mode: "head-vs-remaining-unstaged",
+      path: relPath,
+      elapsed: Date.now() - started,
+    });
+  }
+}
+
+/**
+ * index 와 실제 작업트리 파일을 비교한다(오른쪽=실제 파일이라 편집 가능).
+ * - 실제 파일을 diff 오른쪽에서 직접 편집해야 하는 보조 경로에서 사용한다.
+ * - staged 변경은 index 쪽에도 있으므로 변경 마커에서는 빠지지만 문맥 줄로는 보일 수 있다.
+ * @param repoRoot 저장소 루트
+ * @param relPath  저장소 상대 경로
+ */
+export async function openHeadVsWorkingTreeDiff(
+  repoRoot: string,
+  relPath: string
+): Promise<void> {
+  const started = Date.now();
+  const left = makeRefUri(":0", relPath, repoRoot);
+  const right = vscode.Uri.file(`${repoRoot}/${relPath}`);
+  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
+  const title = makeDiffTitle(
+    vscode.l10n.t("Index"),
+    vscode.l10n.t("Working Tree"),
+    fileLabel
+  );
+  const finishDiffOpen = beginDiffOpen(right);
+  refreshBranchContent(left);
+  logInfo("diff open started", {
+    mode: "index-vs-working",
+    path: relPath,
+  });
+  try {
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      left,
+      right,
+      title,
+      DIFF_OPTIONS
+    );
+  } finally {
+    finishDiffOpen();
+    logInfo("diff open finished", {
+      mode: "index-vs-working",
       path: relPath,
       elapsed: Date.now() - started,
     });
@@ -147,7 +167,6 @@ export async function openHeadVsIndexDiff(
   const right = makeRefUri(":0", relPath, repoRoot);
   const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
   const title = makeDiffTitle("HEAD", vscode.l10n.t("Index"), fileLabel);
-  refreshBranchContent(left);
   refreshBranchContent(right);
   await vscode.commands.executeCommand(
     "vscode.diff",

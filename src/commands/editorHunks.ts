@@ -25,6 +25,8 @@ import { CommandDeps } from "./shared";
 interface LineRange {
   start: number;
   end: number;
+  startColumn?: number;
+  endColumn?: number;
 }
 
 type HunkEditMode = "selection" | "currentHunk";
@@ -96,7 +98,7 @@ export async function toggleSelectedLineCheckboxes(
     );
     return;
   }
-  deps.hunkCheckboxes.toggle(uri.toString(), selection.lineIds);
+  deps.hunkCheckboxes.toggle(uri.toString(), selection.lineIds, undefined, context.side);
   deps.hunkCheckboxes.renderCheckedState();
   logInfo("selected hunk line checkbox toggled", {
     path: context.file.path,
@@ -117,6 +119,22 @@ async function applyEditorHunkAction(
   mode: HunkEditMode,
   action: HunkEditAction
 ): Promise<void> {
+  if (action === "stage" && deps.hunkCheckboxes.hasCheckedForActiveDiff()) {
+    logInfo("editor hunk stage redirected to checked lines", { mode });
+    const staged = await deps.hunkCheckboxes.stageChecked(false);
+    if (staged) {
+      return;
+    }
+    logInfo("editor hunk stage fallback to editor selection", { mode });
+  }
+  if (action === "unstage" && deps.hunkCheckboxes.hasCheckedForActiveDiff()) {
+    logInfo("editor hunk unstage redirected to checked lines", { mode });
+    const unstaged = await deps.hunkCheckboxes.unstageChecked(false);
+    if (unstaged) {
+      return;
+    }
+    logInfo("editor hunk unstage fallback to editor selection", { mode });
+  }
   const expectedStage = action === "unstage" ? "staged" : "unstaged";
   const context = await resolveHunkContext(deps, expectedStage);
   if (!context) {
@@ -176,10 +194,15 @@ async function applyEditorHunkAction(
       );
     }
     refreshHunkDiffDocuments(activeTarget);
+    deps.hunkCheckboxes.refresh();
     await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: `editorHunks:${action}`,
     });
-    deps.hunkCheckboxes.refresh();
+    logInfo("editor hunk diff reopen deferred", {
+      action,
+      path: context.file.path,
+      reason: "preserve-active-diff-context",
+    });
   } catch (error) {
     vscode.window.showErrorMessage(
       vscode.l10n.t(
@@ -368,7 +391,13 @@ function selectionRanges(selections: readonly vscode.Selection[]): LineRange[] {
       !selection.isEmpty && selection.end.character === 0
         ? Math.max(start, selection.end.line)
         : selection.end.line + 1;
-    return { start, end };
+    const wholeLines =
+      !selection.isEmpty &&
+      selection.start.character === 0 &&
+      selection.end.character === 0;
+    return wholeLines || selection.isEmpty
+      ? { start, end }
+      : { start, end, startColumn: selection.start.character + 1, endColumn: selection.end.character };
   });
 }
 
@@ -383,7 +412,7 @@ async function selectionForRanges(
     .filter(
       (item) =>
         item.side === context.side &&
-        ranges.some((range) => item.line >= range.start && item.line <= range.end)
+        ranges.some((range) => rangeContains(range, item.line, item.column ?? 1))
     )
     .flatMap((item) => item.lineIds);
   if (!lineIds.length) {
@@ -396,6 +425,17 @@ async function selectionForRanges(
     lineIds,
     binary: false,
   };
+}
+
+/** 선택 range 안에 line/column 이 들어오는지 확인한다. */
+function rangeContains(range: LineRange, line: number, column: number): boolean {
+  if (line < range.start || line > range.end) {
+    return false;
+  }
+  if (line === range.start && range.startColumn !== undefined && column < range.startColumn) {
+    return false;
+  }
+  return !(line === range.end && range.endColumn !== undefined && column > range.endColumn);
 }
 
 /** 커서가 들어있는 hunk 전체를 HunkSelection 으로 만든다. */

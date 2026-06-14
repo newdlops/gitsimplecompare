@@ -68,7 +68,7 @@ async function refreshChangesViewOnce(
     async () => {
       const sections = refreshSectionsForReason(reason);
       logInfo("changes refresh scoped", { reason, sections });
-      if (reason === "command") {
+      if (shouldInvalidateStatusCaches(reason)) {
         deps.registry.invalidateStatusCaches();
       }
       if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
@@ -139,9 +139,20 @@ function isWorkingOnlyReason(reason: string): boolean {
         part === "filesCreated" ||
         part === "filesDeleted" ||
         part === "filesRenamed" ||
-        part === "diffOpenFinished" ||
-        part.startsWith("hunkCheckbox:")
+        part.startsWith("hunkCheckbox:") ||
+        part.startsWith("editorHunks:")
     )
+  );
+}
+
+/** 직접 git index 를 바꾸는 명령은 watcher 를 기다리지 않고 status cache 를 먼저 비운다. */
+function shouldInvalidateStatusCaches(reason: string): boolean {
+  return (
+    reason === "command" ||
+    reason.split(",").some((part) => {
+      const item = part.trim();
+      return item.startsWith("hunkCheckbox:") || item.startsWith("editorHunks:");
+    })
   );
 }
 

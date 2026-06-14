@@ -7,14 +7,11 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import WebSocket = require("ws");
 import { HunkCheckboxController } from "./hunkCheckboxController";
-import {
-  cleanupExpression,
-  injectionExpression,
-  rendererPatchScript,
-} from "./nativeDiffOverlayPatch";
-import { snapshotSignature, workspaceHints } from "./nativeDiffOverlaySupport";
+import { cleanupExpression, injectionExpression, rendererPatchScript } from "./nativeDiffOverlayPatch";
+import { shouldRepaintSameSnapshot, snapshotSignature, workspaceHints } from "./nativeDiffOverlaySupport";
 import { NativeDiffInitialPaintRetry } from "./nativeDiffOverlayRetry";
 import { activeHunkWorkingModifiedUri } from "./hunkDiffContext";
+import { onDidEndDiffOpen } from "./diffOpenGate";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
 const MAIN_BINDING = "gscNativeDiffOverlayEvent";
@@ -39,8 +36,7 @@ export class NativeDiffOverlayController {
   private readonly pending = new Map<number, PendingRequest>();
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
-  private lastToggleKey = "";
-  private lastToggleAt = 0;
+  private lastToggleKey = ""; private lastToggleAt = 0;
   private lastRenderSignature = "";
   private readonly initialPaintRetry = new NativeDiffInitialPaintRetry();
 
@@ -70,6 +66,7 @@ export class NativeDiffOverlayController {
         }
       }),
       vscode.workspace.onDidSaveTextDocument(() => this.scheduleRender("save")),
+      onDidEndDiffOpen(() => this.scheduleRender("diffOpenFinished", 0)),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("gitSimpleCompare.hunkControlMode")) {
           this.scheduleRender("config");
@@ -114,7 +111,11 @@ export class NativeDiffOverlayController {
       return;
     }
     const signature = snapshotSignature(snapshots);
-    if (reason === "documentChanged" && signature === this.lastRenderSignature) {
+    if (
+      signature === this.lastRenderSignature &&
+      !reason.startsWith("initialPaintRetry") &&
+      !shouldRepaintSameSnapshot(reason)
+    ) {
       logInfo("native diff overlay render skipped", { reason, sameSignature: true });
       return;
     }
@@ -168,10 +169,7 @@ export class NativeDiffOverlayController {
       return;
     }
     try {
-      await this.evaluateMain(
-        cleanupExpression(workspaceHints()),
-        2500
-      );
+      await this.evaluateMain(cleanupExpression(workspaceHints()), 2500);
       logInfo("native diff overlay cleaned", { reason });
     } catch (error) {
       logWarn("native diff overlay cleanup failed", {
@@ -324,26 +322,25 @@ export class NativeDiffOverlayController {
         lineIds?: string[];
         side?: "original" | "modified";
         line?: number;
+        column?: number;
         marker?: string;
+        text?: string;
         checked?: boolean;
       };
       if (!parsed.uri || !Array.isArray(parsed.lineIds)) {
         return;
       }
-      const visibleSide =
-        parsed.side === "original" || parsed.side === "modified"
-          ? parsed.side
-          : undefined;
-      const visibleLine =
-        typeof parsed.line === "number" && Number.isFinite(parsed.line)
-          ? parsed.line
-          : undefined;
+      const visibleSide = parsed.side === "original" || parsed.side === "modified" ? parsed.side : undefined;
+      const visibleLine = typeof parsed.line === "number" && Number.isFinite(parsed.line) ? parsed.line : undefined;
+      const visibleColumn = typeof parsed.column === "number" && Number.isFinite(parsed.column) ? parsed.column : undefined;
+      const visibleText = typeof parsed.text === "string" ? parsed.text : undefined;
       const key = [
         parsed.uri,
         parsed.checked ? "1" : "0",
         parsed.lineIds.join("\0"),
         visibleSide ?? "",
         visibleLine ?? "",
+        visibleColumn ?? "",
         parsed.marker ?? "",
       ].join("\0");
       const now = Date.now();
@@ -353,6 +350,7 @@ export class NativeDiffOverlayController {
           lineIds: parsed.lineIds.length,
           side: visibleSide,
           line: visibleLine,
+          column: visibleColumn,
         });
         return;
       }
@@ -363,18 +361,19 @@ export class NativeDiffOverlayController {
         lineIds: parsed.lineIds.length,
         side: visibleSide,
         line: visibleLine,
+        column: visibleColumn,
         marker: parsed.marker,
         checked: parsed.checked,
       });
       if (visibleSide && visibleLine) {
         void this.hunkCheckboxes.toggleVisible(
           parsed.uri,
-          { side: visibleSide, line: visibleLine, marker: parsed.marker },
+          { side: visibleSide, line: visibleLine, column: visibleColumn, marker: parsed.marker, text: visibleText },
           parsed.checked,
           parsed.lineIds
         );
       } else {
-        this.hunkCheckboxes.toggle(parsed.uri, parsed.lineIds, parsed.checked);
+        this.hunkCheckboxes.toggle(parsed.uri, parsed.lineIds, parsed.checked, visibleSide);
       }
     } catch (error) {
       logWarn("native diff overlay toggle payload ignored", {

@@ -8,6 +8,8 @@ let channel: vscode.OutputChannel | undefined;
 let muteDepth = 0;
 let mutedLines = 0;
 let mutedReason = "";
+const mutedSamples: string[] = [];
+const MAX_MUTED_SAMPLES = 20;
 
 /** OUTPUT 채널을 지연 생성해 확장 활성화 이후 필요한 시점부터 사용한다. */
 function getChannel(): vscode.OutputChannel {
@@ -49,15 +51,17 @@ function write(
   message: string,
   detail?: Record<string, unknown>
 ): void {
+  const line = `[${timestamp()}] [${level.toUpperCase()}] ${message}${formatDetail(
+    detail
+  )}`;
   if (muteDepth > 0) {
     mutedLines++;
+    if (mutedSamples.length < MAX_MUTED_SAMPLES) {
+      mutedSamples.push(line);
+    }
     return;
   }
-  getChannel().appendLine(
-    `[${timestamp()}] [${level.toUpperCase()}] ${message}${formatDetail(
-      detail
-    )}`
-  );
+  getChannel().appendLine(line);
 }
 
 /**
@@ -78,9 +82,19 @@ export function pauseOutputLog(reason: string): () => void {
     if (muteDepth === 0 && mutedLines > 0) {
       const lines = mutedLines;
       const lastReason = mutedReason;
+      const samples = mutedSamples.splice(0);
       mutedLines = 0;
       mutedReason = "";
-      logInfo("output log muted", { reason: lastReason, lines });
+      getChannel().appendLine(
+        `[${timestamp()}] [INFO] output log muted${formatDetail({
+          reason: lastReason,
+          lines,
+          samples: samples.length,
+        })}`
+      );
+      for (const sample of samples) {
+        getChannel().appendLine(`${sample} [muted]`);
+      }
     }
   };
 }

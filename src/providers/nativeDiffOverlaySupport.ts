@@ -29,9 +29,26 @@ export function snapshotSignature(snapshots: HunkOverlaySnapshot[]): string {
       lines: snapshot.lines.map((line) => [
         line.side,
         line.line,
+        line.column,
         line.checked,
         line.lineIds,
       ]),
     }))
   );
+}
+
+/**
+ * snapshot 데이터는 같아도 VS Code diff DOM 배치가 바뀔 수 있는 이벤트를 판별한다.
+ * @param reason overlay render 를 요청한 이벤트 이름
+ * @returns 같은 snapshot 서명이라도 renderer 에 다시 주입해야 하면 true
+ */
+export function shouldRepaintSameSnapshot(reason: string): boolean {
+  return [
+    "activeEditor",
+    "visibleEditors",
+    "tabs",
+    "tabGroups",
+    "diffOpenFinished",
+    "documentChanged",
+  ].includes(reason);
 }

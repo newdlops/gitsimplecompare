@@ -192,9 +192,13 @@ export class GitService {
         return { ...c, additions: s.additions, deletions: s.deletions };
       }
       if (c.status === "A") {
+        const additions = await countUntrackedLines(this.repoRoot, c.path);
+        if (additions === undefined) {
+          return { ...c };
+        }
         return {
           ...c,
-          additions: await countUntrackedLines(this.repoRoot, c.path),
+          additions,
           deletions: 0,
         };
       }

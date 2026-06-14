@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { pauseOutputLog } from "../ui/outputLog";
 
-const CHECKBOX_ATTACH_DELAY_MS = 1200;
+const CHECKBOX_ATTACH_DELAY_MS = 1800;
 
 const endEmitter = new vscode.EventEmitter<void>();
 const openFiles = new Map<string, number>();

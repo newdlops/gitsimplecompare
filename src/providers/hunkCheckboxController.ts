@@ -2,36 +2,23 @@
 // - checkbox UI 는 native overlay 로만 표시하고, fallback decoration/CodeLens 경로는 사용하지 않는다.
 // - 체크 상태만 관리하고, 실제 부분 stage 는 DiffHunkService 의 선택 적용 로직을 재사용한다.
 import * as vscode from "vscode";
-import {
-  DiffFile,
-  DiffHunkService,
-  HunkSelection,
-} from "../git/diffHunkService";
+import { DiffFile, DiffHunkService, HunkSelection } from "../git/diffHunkService";
 import { buildWorkingContentWithoutStagedView } from "../git/unstagedView";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
-import {
-  activeHunkDiffTarget,
-  activeHunkWorkingModifiedUri,
-  refreshHunkDiffDocuments,
-  type ActiveHunkDiffTarget,
-} from "./hunkDiffContext";
-import { CheckboxLine, checkboxLines } from "./hunkCheckboxLines";
-import {
-  activeTargetForModifiedUri,
-  resolveFileTarget,
-  targetToFileTarget,
-  visibleHunkTargets,
-} from "./hunkCheckboxTargets";
-import { checkboxLinesForDisplayedDiff } from "./hunkVisibleLineMap";
-import { isAnyDiffOpenInProgress, onDidEndDiffOpen } from "./diffOpenGate";
+import { activeHunkDiffTarget, activeHunkWorkingModifiedUri, refreshHunkDiffDocuments, type ActiveHunkDiffTarget } from "./hunkDiffContext";
+import { CheckboxLine, CheckboxSide, checkboxLineSides, checkboxLines } from "./hunkCheckboxLines";
+import { activeTargetForModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
+import { checkboxLinesForDisplayedDiff, lineIdsForVisibleChange } from "./hunkVisibleLineMap";
+import { isAnyDiffOpenInProgress } from "./diffOpenGate";
 
 export type HunkControlMode = "nativeOverlay" | "command";
 type CheckedLineAction = "stage" | "unstage";
 
 export interface HunkOverlayLine {
-  side: "original" | "modified";
+  side: CheckboxSide;
   line: number;
+  column?: number;
   lineIds: string[];
   checked: boolean;
 }
@@ -60,9 +47,11 @@ interface HunkOverlayBase {
 }
 
 interface VisibleLineRef {
-  side: "original" | "modified";
+  side: CheckboxSide;
   line: number;
+  column?: number;
   marker?: string;
+  text?: string;
 }
 
 const MODE_CONFIG = "hunkControlMode";
@@ -71,7 +60,7 @@ const MODES: HunkControlMode[] = ["nativeOverlay", "command"];
 /** hunk checkbox 표시 방식과 체크 상태를 관리하는 컨트롤러. */
 export class HunkCheckboxController {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
-  private readonly selected = new Map<string, Set<string>>();
+  private readonly selected = new Map<string, Map<string, CheckboxSide | undefined>>();
   private revision = 0;
   private readonly baseCache = new Map<string, HunkOverlayBase | undefined>();
 
@@ -86,7 +75,6 @@ export class HunkCheckboxController {
       vscode.window.tabGroups.onDidChangeTabGroups(() => this.requestRender()),
       vscode.window.onDidChangeActiveTextEditor(() => this.requestRender()),
       vscode.window.onDidChangeVisibleTextEditors(() => this.requestRender()),
-      onDidEndDiffOpen(() => this.requestRender()),
       vscode.workspace.onDidSaveTextDocument(() => this.refresh()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(`gitSimpleCompare.${MODE_CONFIG}`)) {
@@ -103,13 +91,13 @@ export class HunkCheckboxController {
    * @param lineIds 해당 체크박스가 대표하는 diff line id 목록
    * @param checkedState renderer 가 보고한 실제 checked 값. 없으면 기존처럼 상태를 뒤집는다.
    */
-  toggle(uriString: string, lineIds: string[], checkedState?: boolean): void {
+  toggle(uriString: string, lineIds: string[], checkedState?: boolean, side?: CheckboxSide): void {
     const picked = this.selectedFor(uriString);
     const nextChecked =
       checkedState ?? !lineIds.every((id) => picked.has(id));
     for (const id of lineIds) {
       if (nextChecked) {
-        picked.add(id);
+        picked.set(id, side);
       } else {
         picked.delete(id);
       }
@@ -140,23 +128,22 @@ export class HunkCheckboxController {
       (item) => item.modified.toString() === uriString
     );
     const base = target ? await this.overlayBase(target) : undefined;
-    const mappedLine = base?.lines.find(
-      (item) => item.side === visible.side && item.line === visible.line
-    );
-    const lineIds = mappedLine?.lineIds.length
-      ? mappedLine.lineIds
-      : fallbackLineIds;
+    const visibleLineIds = baseLineIdsForVisible(base?.lines, visible);
+    const resolvedLineIds = visibleLineIds.length ? visibleLineIds : base ? lineIdsForVisibleChange(base.file, visible) : [];
+    const lineIds = resolvedLineIds.length ? resolvedLineIds : fallbackLineIds;
     if (!lineIds.length) {
       logWarn("hunk checkbox visible line unresolved", {
         uri: uriString,
         side: visible.side,
         line: visible.line,
+        column: visible.column,
         marker: visible.marker,
+        textLength: visible.text?.length ?? 0,
       });
       this.requestRender();
       return;
     }
-    this.toggle(uriString, lineIds, checkedState);
+    this.toggle(uriString, lineIds, checkedState, visible.side);
   }
 
   /**
@@ -213,10 +200,7 @@ export class HunkCheckboxController {
    * @param action 적용할 index 동작
    * @param showNoopWarning 체크 대상이 없을 때 사용자 경고를 띄울지 여부
    */
-  private async applyChecked(
-    action: CheckedLineAction,
-    showNoopWarning: boolean
-  ): Promise<boolean> {
+  private async applyChecked(action: CheckedLineAction, showNoopWarning: boolean): Promise<boolean> {
     const uri = activeHunkWorkingModifiedUri();
     if (!uri) {
       if (showNoopWarning) {
@@ -263,8 +247,12 @@ export class HunkCheckboxController {
       return false;
     }
     const boxes = checkboxLines(context.file);
-    const valid = new Set(boxes.flatMap((item) => item.lineIds));
-    const lineIds = [...picked].filter((id) => valid.has(id));
+    const valid = checkboxLineSides(boxes);
+    const lineIds = [...picked.keys()].filter((id) => {
+      const actual = valid.get(id);
+      const requested = picked.get(id);
+      return !!actual && (!requested || requested === actual);
+    });
     const checkedBoxes = boxes.filter((item) =>
       item.lineIds.every((id) => picked.has(id))
     ).length;
@@ -317,10 +305,14 @@ export class HunkCheckboxController {
       });
       this.selected.delete(uri.toString());
       refreshHunkDiffDocuments(activeTarget);
+      this.refresh();
       await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
         reason: `hunkCheckbox:${action}`,
       });
-      this.refresh();
+      logInfo(`checked hunk lines ${action} refresh deferred`, {
+        path: context.file.path,
+        reason: "preserve-active-diff-context",
+      });
       vscode.window.showInformationMessage(
         action === "stage"
           ? vscode.l10n.t("Checked line(s) staged.")
@@ -455,7 +447,7 @@ export class HunkCheckboxController {
       return undefined;
     }
     this.pruneSelection(key, base.file);
-    const picked = this.selected.get(key) ?? new Set<string>();
+    const picked = this.selected.get(key);
     return {
       originalUri: target.original.toString(),
       uri: base.uri,
@@ -465,8 +457,9 @@ export class HunkCheckboxController {
       lines: base.lines.map((item) => ({
         side: item.side,
         line: item.line,
+        column: item.column,
         lineIds: item.lineIds,
-        checked: item.lineIds.every((id) => picked.has(id)),
+        checked: item.lineIds.every((id) => picked?.has(id)),
       })),
     };
   }
@@ -504,6 +497,7 @@ export class HunkCheckboxController {
     context: HunkFileContext,
     target: ActiveHunkDiffTarget
   ): Promise<CheckboxLine[]> {
+    const started = Date.now();
     try {
       const [leftText, rightText] = await Promise.all([
         this.documentText(target.original),
@@ -526,6 +520,7 @@ export class HunkCheckboxController {
         displayLines: mapped.displayLines,
         gitLines: mapped.gitLines,
         mappedLines: mapped.lines.length,
+        elapsed: Date.now() - started,
         exactMapped: mapped.exactMapped,
         textMapped: mapped.textMapped,
         displayOnly: mapped.displayOnly,
@@ -563,10 +558,10 @@ export class HunkCheckboxController {
   }
 
   /** 문서별 선택 set 을 얻는다. */
-  private selectedFor(uriString: string): Set<string> {
+  private selectedFor(uriString: string): Map<string, CheckboxSide | undefined> {
     let picked = this.selected.get(uriString);
     if (!picked) {
-      picked = new Set<string>();
+      picked = new Map<string, CheckboxSide | undefined>();
       this.selected.set(uriString, picked);
     }
     return picked;
@@ -578,14 +573,24 @@ export class HunkCheckboxController {
     if (!picked) {
       return;
     }
-    const valid = new Set(checkboxLines(file).flatMap((item) => item.lineIds));
-    for (const id of [...picked]) {
+    const valid = checkboxLineSides(checkboxLines(file));
+    for (const id of [...picked.keys()]) {
       if (!valid.has(id)) {
         picked.delete(id);
       }
     }
   }
-
+}
+/** 표시 diff 좌표에서 renderer snapshot line id 를 찾는다. */
+function baseLineIdsForVisible(lines: readonly CheckboxLine[] | undefined, visible: VisibleLineRef): string[] {
+  const candidates = (lines ?? []).filter(
+    (line) => line.side === visible.side && line.line === visible.line
+  );
+  if (!candidates.length) {
+    return [];
+  }
+  const exact = candidates.find((line) => line.column === visible.column);
+  return (exact ?? candidates[0]).lineIds;
 }
 
 /** 설정값이 지원하는 hunk control mode 인지 확인한다. */

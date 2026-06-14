@@ -16,6 +16,7 @@ interface EditChunk {
 interface GitChangeLine {
   side: DiffSide;
   line: number;
+  column: number;
   text: string;
   lineId: string;
   displayLine?: number;
@@ -24,7 +25,15 @@ interface GitChangeLine {
 interface DisplayChangeLine {
   side: DiffSide;
   line: number;
+  column: number;
   text: string;
+}
+
+export interface VisibleChangeRef {
+  side: DiffSide;
+  line: number;
+  column?: number;
+  text?: string;
 }
 
 interface HunkHeaderRange {
@@ -51,7 +60,7 @@ const MAX_DIFF_CELLS = 4_000_000;
 
 /**
  * 현재 diff 에 표시되는 좌/우 문서 텍스트를 기준으로 checkbox 줄과 git line id 를 연결한다.
- * - 화면 줄은 display diff 에서 만들고, git hunk line id 는 같은 side/line 또는 side/text 순서로 붙인다.
+ * - 화면 줄은 display diff 에서 만들고, git hunk line id 는 같은 side/line/column 또는 side/text 순서로 붙인다.
  * - VS Code marker row 에 exact 로 붙을 수 있도록 반환 line 은 표시 문서의 1-based 줄 번호다.
  * @param file git diff 에서 파싱한 hunk 파일
  * @param leftText diff 왼쪽에 표시되는 문서 텍스트
@@ -80,7 +89,7 @@ export function checkboxLinesForDisplayedDiff(
 
   for (const displayLine of displayLines) {
     const exactCandidates = takeUnused(
-      exact.get(exactKey(displayLine.side, displayLine.line)) ?? [],
+      exact.get(exactKey(displayLine.side, displayLine.line, displayLine.column)) ?? [],
       used
     );
     if (exactCandidates.length) {
@@ -114,6 +123,33 @@ export function checkboxLinesForDisplayedDiff(
   };
 }
 
+/**
+ * VS Code diff DOM 에 실제로 표시된 marker row 를 git hunk line id 로 해석한다.
+ * - renderer 가 SOT 이므로, 우리가 다시 계산한 display diff 에 없는 줄도 line/text/column 으로 찾는다.
+ * @param file git diff 에서 파싱한 파일 hunk
+ * @param visible renderer 가 본 side/line/column/text 정보
+ * @param options 가상 unstaged 문서처럼 git 좌표와 표시 좌표가 다른 경우의 보정 정보
+ * @returns 가장 가까운 hunk line id. 찾지 못하면 빈 배열
+ */
+export function lineIdsForVisibleChange(
+  file: DiffFile,
+  visible: VisibleChangeRef,
+  options: VisibleLineMapOptions = {}
+): string[] {
+  const gitLines = gitChangeLines(file).map((line) => ({
+    ...line,
+    displayLine: displayLineForGitLine(line, options.virtualUnstagedView),
+  }));
+  const candidates = gitLines.filter((line) => line.side === visible.side);
+  const sameLine = candidates.filter((line) => line.displayLine === visible.line);
+  const linePick = bestVisibleCandidate(sameLine, visible, false);
+  if (linePick) {
+    return [linePick.lineId];
+  }
+  const textPick = bestVisibleCandidate(candidates, visible, true);
+  return textPick ? [textPick.lineId] : [];
+}
+
 /** git hunk 본문을 line id 를 가진 변경 라인 목록으로 푼다. */
 function gitChangeLines(file: DiffFile): GitChangeLine[] {
   return file.hunks.flatMap((hunk) => gitChangeLinesForHunk(hunk));
@@ -129,30 +165,45 @@ function gitChangeLinesForHunk(hunk: DiffHunk): GitChangeLine[] {
   const lines: GitChangeLine[] = [];
   let oldNo = parsed.oldStart;
   let newNo = parsed.newStart;
-  for (let index = 0; index < body.length; index++) {
+  let index = 0;
+  while (index < body.length) {
     const line = body[index];
-    if (line.startsWith("-")) {
-      lines.push({
-        side: "original",
-        line: oldNo++,
-        text: line.slice(1),
-        lineId: lineId(hunk, index),
-      });
-      continue;
-    }
-    if (line.startsWith("+")) {
-      lines.push({
-        side: "modified",
-        line: newNo++,
-        text: line.slice(1),
-        lineId: lineId(hunk, index),
-      });
+    if (line.startsWith("-") || line.startsWith("+")) {
+      const deletions: Array<{ index: number; line: number; text: string }> = [];
+      const additions: Array<{ index: number; line: number; text: string }> = [];
+      while (index < body.length && body[index].startsWith("-")) {
+        deletions.push({ index, line: oldNo++, text: body[index].slice(1) });
+        index++;
+      }
+      while (index < body.length && body[index].startsWith("+")) {
+        additions.push({ index, line: newNo++, text: body[index].slice(1) });
+        index++;
+      }
+      deletions.forEach((item, offset) =>
+        lines.push({
+          side: "original",
+          line: item.line,
+          column: changeColumn(item.text, additions[offset]?.text),
+          text: item.text,
+          lineId: lineId(hunk, item.index),
+        })
+      );
+      additions.forEach((item, offset) =>
+        lines.push({
+          side: "modified",
+          line: item.line,
+          column: changeColumn(deletions[offset]?.text, item.text),
+          text: item.text,
+          lineId: lineId(hunk, item.index),
+        })
+      );
       continue;
     }
     if (!line.startsWith("\\")) {
       oldNo++;
       newNo++;
     }
+    index++;
   }
   return lines;
 }
@@ -165,10 +216,22 @@ function displayChangeLines(leftText: string, rightText: string): DisplayChangeL
   const lines: DisplayChangeLine[] = [];
   for (const chunk of chunks) {
     for (let index = chunk.aStart; index < chunk.aEnd; index++) {
-      lines.push({ side: "original", line: index + 1, text: left[index] });
+      const paired = right[chunk.bStart + (index - chunk.aStart)];
+      lines.push({
+        side: "original",
+        line: index + 1,
+        column: changeColumn(left[index], paired),
+        text: left[index],
+      });
     }
     for (let index = chunk.bStart; index < chunk.bEnd; index++) {
-      lines.push({ side: "modified", line: index + 1, text: right[index] });
+      const paired = left[chunk.aStart + (index - chunk.bStart)];
+      lines.push({
+        side: "modified",
+        line: index + 1,
+        column: changeColumn(paired, right[index]),
+        text: right[index],
+      });
     }
   }
   return lines;
@@ -191,7 +254,7 @@ function displayLineForGitLine(
   );
 }
 
-/** exact 매칭을 위해 side + 표시 줄 번호로 후보를 묶는다. */
+/** exact 매칭을 위해 side + 표시 줄 번호 + column 으로 후보를 묶는다. */
 function groupCandidatesByExactLine(
   lines: GitChangeLine[]
 ): Map<string, Array<{ index: number; line: GitChangeLine }>> {
@@ -200,7 +263,7 @@ function groupCandidatesByExactLine(
     if (!line.displayLine) {
       return;
     }
-    pushMap(map, exactKey(line.side, line.displayLine), { index, line });
+    pushMap(map, exactKey(line.side, line.displayLine, line.column), { index, line });
   });
   return map;
 }
@@ -240,6 +303,7 @@ function toCheckboxLine(
   return {
     side: displayLine.side,
     line: displayLine.line,
+    column: displayLine.column,
     lineIds: candidates.map((item) => item.line.lineId),
   };
 }
@@ -266,14 +330,50 @@ function splitLines(text: string): string[] {
   return lines;
 }
 
-/** side + line exact 매칭 키를 만든다. */
-function exactKey(side: DiffSide, line: number): string {
-  return `${side}\0${line}`;
+/** side + line + column exact 매칭 키를 만든다. */
+function exactKey(side: DiffSide, line: number, column: number): string {
+  return `${side}\0${line}\0${column}`;
 }
 
 /** side + line text 순서 매칭 키를 만든다. */
 function textKey(side: DiffSide, text: string): string {
   return `${side}\0${text}`;
+}
+
+/** renderer marker row 와 가장 잘 맞는 git hunk 후보를 고른다. */
+function bestVisibleCandidate(
+  candidates: GitChangeLine[],
+  visible: VisibleChangeRef,
+  requireText: boolean
+): GitChangeLine | undefined {
+  const text = normalizeText(visible.text);
+  const hasText = visible.text !== undefined;
+  const filtered = hasText
+    ? candidates.filter((line) => normalizeText(line.text) === text)
+    : requireText
+      ? []
+      : candidates;
+  return filtered
+    .map((line) => ({ line, score: visibleScore(line, visible, hasText) }))
+    .sort((a, b) => a.score - b.score)[0]?.line;
+}
+
+/** visible marker 와 git 후보 사이의 거리 점수. 낮을수록 더 정확하다. */
+function visibleScore(
+  line: GitChangeLine,
+  visible: VisibleChangeRef,
+  hasText: boolean
+): number {
+  const lineDistance = Math.abs((line.displayLine ?? line.line) - visible.line);
+  const columnDistance = visible.column === undefined
+    ? 0
+    : Math.abs(line.column - visible.column);
+  return lineDistance * 100 + columnDistance + (hasText ? 0 : 10_000);
+}
+
+/** DOM text 와 문서 text 의 공백 차이를 최소화한다. */
+function normalizeText(value: string | undefined): string | undefined {
+  return value?.replace(/\u00a0/g, " ");
 }
 
 /** hunk header 에서 old/new 시작 줄을 읽는다. */
@@ -289,6 +389,20 @@ function parseHunkHeader(hunk: DiffHunk): HunkHeaderRange | undefined {
 /** DiffHunkService 와 같은 hunk line id 를 만든다. */
 function lineId(hunk: DiffHunk, index: number): string {
   return `${hunk.id}:${index}`;
+}
+
+/** 두 줄에서 처음 달라지는 1-based column 을 계산한다. */
+function changeColumn(left: string | undefined, right: string | undefined): number {
+  if (left === undefined || right === undefined) {
+    return 1;
+  }
+  const limit = Math.min(left.length, right.length);
+  for (let index = 0; index < limit; index++) {
+    if (left[index] !== right[index]) {
+      return index + 1;
+    }
+  }
+  return limit + 1;
 }
 
 /** LCS 기반 줄 diff 를 edit chunk 배열로 만든다. */
