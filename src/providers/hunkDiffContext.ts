@@ -3,7 +3,10 @@
 // - HEAD ↔ Unstaged 는 staged 변경을 제거한 가상 문서로 남은 변경만 보여준다.
 import * as vscode from "vscode";
 import { DiffStage } from "../git/diffHunkService";
-import { refreshBranchContent } from "./branchContentProvider";
+import {
+  refreshBranchContent,
+  refreshIndexDependentBranchContent,
+} from "./branchContentProvider";
 import { COMPARE_SCHEME, parseRefUri } from "../utils/uri";
 import { logInfo } from "../ui/outputLog";
 
@@ -43,20 +46,32 @@ export function isHunkDiffBaseRef(ref: string): boolean {
   return ref === "HEAD" || ref === ":0";
 }
 
-/** 현재 diff 탭의 index/unstaged 가상 문서만 갱신해 같은 탭에서 변경 반영을 유도한다. */
+/** 현재 파일의 index/unstaged 가상 문서를 갱신해 열린 staged/unstaged 탭까지 변경 반영을 유도한다. */
 export function refreshHunkDiffDocuments(
   target = activeHunkDiffTarget()
 ): void {
   if (!target) {
     return;
   }
-  const refreshed = [target.original, target.modified].filter(refreshDynamicRef);
-  if (!refreshed.length) {
+  const refreshed = new Set<string>();
+  [target.original, target.modified].forEach((uri) => {
+    const ref = refreshDynamicRef(uri);
+    if (ref) {
+      refreshed.add(ref);
+    }
+  });
+  for (const ref of refreshIndexDependentBranchContent(
+    target.repoRoot,
+    target.relPath
+  )) {
+    refreshed.add(ref);
+  }
+  if (!refreshed.size) {
     return;
   }
   logInfo("hunk diff documents refreshed", {
     relPath: target.relPath,
-    refs: refreshed.map((uri) => parseRefUri(uri).ref),
+    refs: [...refreshed],
   });
 }
 
@@ -135,14 +150,14 @@ function stripLeadingSlash(value: string): string {
 }
 
 /** index/unstaged 처럼 git 상태에 따라 내용이 바뀌는 가상 문서만 갱신한다. */
-function refreshDynamicRef(uri: vscode.Uri): boolean {
+function refreshDynamicRef(uri: vscode.Uri): string | undefined {
   if (uri.scheme !== COMPARE_SCHEME) {
-    return false;
+    return undefined;
   }
   const ref = parseRefUri(uri).ref;
   if (ref !== ":0" && ref !== ":unstaged") {
-    return false;
+    return undefined;
   }
   refreshBranchContent(uri);
-  return true;
+  return ref;
 }

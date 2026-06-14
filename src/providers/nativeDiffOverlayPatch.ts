@@ -6,7 +6,7 @@ import {
   rendererEvalExpression,
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
-const PATCH_VERSION = 44;
+const PATCH_VERSION = 45;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
 /** renderer patch 설치와 snapshot render 를 main process 에서 수행할 CDP expression 으로 만든다. */
@@ -332,6 +332,14 @@ export function rendererPatchScript(): string {
           }
         } catch (_) {}
       }
+      function notifyContextLine(snapshot, line, marker) {
+        try {
+          var fn = window[BINDING];
+          if (typeof fn === 'function') {
+            fn(JSON.stringify({ type: 'contextLine', uri: snapshot.uri, lineIds: line.lineIds || [], side: line.side, line: line.line, column: line.column, marker: marker, text: line.text }));
+          }
+        } catch (_) {}
+      }
       function lineKey(uri, line, marker) {
         var lineIds = line.lineIds || [];
         if (lineIds.length) return uri + '\\u0000ids\\u0000' + lineIds.join('\\u0000');
@@ -370,16 +378,30 @@ export function rendererPatchScript(): string {
         if (side === 'modified') return marker === 'insert';
         return marker === 'delete';
       }
-      function viewTextForRow(sourceDom, marginRow) {
+      function viewLineForRow(sourceDom, marginRow) {
         var top = rowStyleNumber(marginRow, 'top', NaN);
         if (!Number.isFinite(top)) return undefined;
         var rows = Array.prototype.slice.call((sourceDom && sourceDom.querySelectorAll('.view-lines .view-line')) || []);
         for (var i = 0; i < rows.length; i++) {
           if (Math.abs(rowStyleNumber(rows[i], 'top', NaN) - top) < 0.5) {
-            return String(rows[i].textContent || '').replace(/\\u00a0/g, ' ');
+            return rows[i];
           }
         }
         return undefined;
+      }
+      function viewTextForRow(sourceDom, marginRow) {
+        var row = viewLineForRow(sourceDom, marginRow);
+        return row ? String(row.textContent || '').replace(/\\u00a0/g, ' ') : undefined;
+      }
+      function bindContextLine(node, snapshot, line, marker) {
+        if (!node || !node.setAttribute) return;
+        node.__gscContextLine = { snapshot: snapshot, line: line, marker: marker };
+        if (node.getAttribute('data-gsc-context-bound') === '1') return;
+        node.setAttribute('data-gsc-context-bound', '1');
+        node.addEventListener('contextmenu', function () {
+          var item = this.__gscContextLine;
+          if (item) notifyContextLine(item.snapshot, item.line, item.marker);
+        }, true);
       }
       function paintWithDomRows(snapshot, sourceDom, side) {
         var sourceMargin = sourceDom && sourceDom.querySelector('.margin-view-overlays');
@@ -429,6 +451,8 @@ export function rendererPatchScript(): string {
             if (markerWithoutLineId.length < 24) markerWithoutLineId.push(entry.lineNo + ':' + entry.marker + ':duplicate');
             return;
           }
+          bindContextLine(entry.row, snapshot, line, entry.marker);
+          bindContextLine(viewLineForRow(sourceDom, entry.row), snapshot, line, entry.marker);
           appendCheckboxAtRow(layer, entry.row, snapshot, line, entry.marker);
           usedLineNos.add(entry.lineNo);
           if (entry.line) {

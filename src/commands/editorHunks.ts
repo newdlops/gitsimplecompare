@@ -16,6 +16,7 @@ import {
   activeHunkWorkingModifiedUri,
   refreshHunkDiffDocuments,
 } from "../providers/hunkDiffContext";
+import { recentHunkContextLine } from "../providers/hunkContextLineStore";
 import { checkboxLines } from "../providers/hunkCheckboxLines";
 import { checkboxLinesForDisplayedDiff } from "../providers/hunkVisibleLineMap";
 import type { ActiveHunkDiffTarget } from "../providers/hunkDiffContext";
@@ -25,8 +26,6 @@ import { CommandDeps } from "./shared";
 interface LineRange {
   start: number;
   end: number;
-  startColumn?: number;
-  endColumn?: number;
 }
 
 type HunkEditMode = "selection" | "currentHunk";
@@ -87,25 +86,51 @@ export async function toggleSelectedLineCheckboxes(
     return;
   }
   const uri = activeHunkWorkingModifiedUri();
-  const selection = await selectionForRanges(
-    deps,
-    context,
-    selectionRanges(context.editor.selections)
-  );
+  const ranges = selectionRanges(context.editor.selections);
+  const selection = hasExplicitSelection(context.editor)
+    ? await selectionForRanges(deps, context, ranges)
+    : undefined;
+  if (uri && selection?.lineIds?.length) {
+    deps.hunkCheckboxes.toggle(uri.toString(), selection.lineIds, undefined, context.side);
+    deps.hunkCheckboxes.renderCheckedState();
+    logInfo("selected hunk line checkbox toggled", {
+      path: context.file.path,
+      stage: context.file.stage,
+      side: context.side,
+      lineIds: selection.lineIds.length,
+    });
+    return;
+  }
+  const contextLine = uri ? recentHunkContextLine(uri.toString()) : undefined;
+  if (uri && contextLine && !hasExplicitSelection(context.editor)) {
+    await deps.hunkCheckboxes.toggleVisible(
+      uri.toString(),
+      {
+        side: contextLine.side,
+        line: contextLine.line,
+        column: contextLine.column,
+        marker: contextLine.marker,
+        text: contextLine.text,
+      },
+      undefined,
+      contextLine.lineIds
+    );
+    deps.hunkCheckboxes.renderCheckedState();
+    logInfo("context hunk line checkbox toggled", {
+      path: context.file.path,
+      stage: context.file.stage,
+      side: contextLine.side,
+      line: contextLine.line,
+      lineIds: contextLine.lineIds.length,
+    });
+    return;
+  }
   if (!uri || !selection?.lineIds?.length) {
     vscode.window.showWarningMessage(
       vscode.l10n.t("No changed lines found in the current selection.")
     );
     return;
   }
-  deps.hunkCheckboxes.toggle(uri.toString(), selection.lineIds, undefined, context.side);
-  deps.hunkCheckboxes.renderCheckedState();
-  logInfo("selected hunk line checkbox toggled", {
-    path: context.file.path,
-    stage: context.file.stage,
-    side: context.side,
-    lineIds: selection.lineIds.length,
-  });
 }
 
 /**
@@ -391,14 +416,13 @@ function selectionRanges(selections: readonly vscode.Selection[]): LineRange[] {
       !selection.isEmpty && selection.end.character === 0
         ? Math.max(start, selection.end.line)
         : selection.end.line + 1;
-    const wholeLines =
-      !selection.isEmpty &&
-      selection.start.character === 0 &&
-      selection.end.character === 0;
-    return wholeLines || selection.isEmpty
-      ? { start, end }
-      : { start, end, startColumn: selection.start.character + 1, endColumn: selection.end.character };
+    return { start, end };
   });
+}
+
+/** 사용자가 실제 범위를 선택했는지 확인한다. */
+function hasExplicitSelection(editor: vscode.TextEditor): boolean {
+  return editor.selections.some((selection) => !selection.isEmpty);
 }
 
 /** 선택 범위에 걸친 표시 diff 변경 라인만 HunkSelection 으로 만든다. */
@@ -412,7 +436,7 @@ async function selectionForRanges(
     .filter(
       (item) =>
         item.side === context.side &&
-        ranges.some((range) => rangeContains(range, item.line, item.column ?? 1))
+        ranges.some((range) => rangeContains(range, item.line))
     )
     .flatMap((item) => item.lineIds);
   if (!lineIds.length) {
@@ -427,15 +451,9 @@ async function selectionForRanges(
   };
 }
 
-/** 선택 range 안에 line/column 이 들어오는지 확인한다. */
-function rangeContains(range: LineRange, line: number, column: number): boolean {
-  if (line < range.start || line > range.end) {
-    return false;
-  }
-  if (line === range.start && range.startColumn !== undefined && column < range.startColumn) {
-    return false;
-  }
-  return !(line === range.end && range.endColumn !== undefined && column > range.endColumn);
+/** 선택 range 안에 line 이 들어오는지 확인한다. */
+function rangeContains(range: LineRange, line: number): boolean {
+  return line >= range.start && line <= range.end;
 }
 
 /** 커서가 들어있는 hunk 전체를 HunkSelection 으로 만든다. */

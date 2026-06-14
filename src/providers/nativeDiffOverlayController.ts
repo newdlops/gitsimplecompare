@@ -10,6 +10,7 @@ import { HunkCheckboxController } from "./hunkCheckboxController";
 import { cleanupExpression, injectionExpression, rendererPatchScript } from "./nativeDiffOverlayPatch";
 import { shouldRepaintSameSnapshot, snapshotSignature, workspaceHints } from "./nativeDiffOverlaySupport";
 import { NativeDiffInitialPaintRetry } from "./nativeDiffOverlayRetry";
+import { NativeDiffOverlayEvents } from "./nativeDiffOverlayEvents";
 import { activeHunkWorkingModifiedUri } from "./hunkDiffContext";
 import { onDidEndDiffOpen } from "./diffOpenGate";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
@@ -36,14 +37,16 @@ export class NativeDiffOverlayController {
   private readonly pending = new Map<number, PendingRequest>();
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
-  private lastToggleKey = ""; private lastToggleAt = 0;
   private lastRenderSignature = "";
   private readonly initialPaintRetry = new NativeDiffInitialPaintRetry();
+  private readonly rendererEvents: NativeDiffOverlayEvents;
 
   constructor(
     private readonly globalStorageUri: vscode.Uri,
     private readonly hunkCheckboxes: HunkCheckboxController
-  ) {}
+  ) {
+    this.rendererEvents = new NativeDiffOverlayEvents(hunkCheckboxes);
+  }
   /** overlay 갱신에 필요한 VS Code 이벤트를 등록한다. */
   register(): vscode.Disposable {
     const disposable = vscode.Disposable.from(
@@ -310,75 +313,7 @@ export class NativeDiffOverlayController {
       message.method === "Runtime.bindingCalled" &&
       message.params?.name === MAIN_BINDING
     ) {
-      this.onRendererToggle(String(message.params.payload || ""));
-    }
-  }
-
-  /** renderer checkbox 클릭 payload 를 기존 hunk 선택 토글로 넘긴다. */
-  private onRendererToggle(payload: string): void {
-    try {
-      const parsed = JSON.parse(payload) as {
-        uri?: string;
-        lineIds?: string[];
-        side?: "original" | "modified";
-        line?: number;
-        column?: number;
-        marker?: string;
-        text?: string;
-        checked?: boolean;
-      };
-      if (!parsed.uri || !Array.isArray(parsed.lineIds)) {
-        return;
-      }
-      const visibleSide = parsed.side === "original" || parsed.side === "modified" ? parsed.side : undefined;
-      const visibleLine = typeof parsed.line === "number" && Number.isFinite(parsed.line) ? parsed.line : undefined;
-      const visibleColumn = typeof parsed.column === "number" && Number.isFinite(parsed.column) ? parsed.column : undefined;
-      const visibleText = typeof parsed.text === "string" ? parsed.text : undefined;
-      const key = [
-        parsed.uri,
-        parsed.checked ? "1" : "0",
-        parsed.lineIds.join("\0"),
-        visibleSide ?? "",
-        visibleLine ?? "",
-        visibleColumn ?? "",
-        parsed.marker ?? "",
-      ].join("\0");
-      const now = Date.now();
-      if (key === this.lastToggleKey && now - this.lastToggleAt < 250) {
-        logInfo("native diff overlay duplicate toggle ignored", {
-          uri: parsed.uri,
-          lineIds: parsed.lineIds.length,
-          side: visibleSide,
-          line: visibleLine,
-          column: visibleColumn,
-        });
-        return;
-      }
-      this.lastToggleKey = key;
-      this.lastToggleAt = now;
-      logInfo("native diff overlay toggle received", {
-        uri: parsed.uri,
-        lineIds: parsed.lineIds.length,
-        side: visibleSide,
-        line: visibleLine,
-        column: visibleColumn,
-        marker: parsed.marker,
-        checked: parsed.checked,
-      });
-      if (visibleSide && visibleLine) {
-        void this.hunkCheckboxes.toggleVisible(
-          parsed.uri,
-          { side: visibleSide, line: visibleLine, column: visibleColumn, marker: parsed.marker, text: visibleText },
-          parsed.checked,
-          parsed.lineIds
-        );
-      } else {
-        this.hunkCheckboxes.toggle(parsed.uri, parsed.lineIds, parsed.checked, visibleSide);
-      }
-    } catch (error) {
-      logWarn("native diff overlay toggle payload ignored", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.rendererEvents.handle(String(message.params.payload || ""));
     }
   }
 

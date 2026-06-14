@@ -9,10 +9,16 @@ import { parseRefUri } from "../utils/uri";
 const changeEmitter = new vscode.EventEmitter<vscode.Uri>();
 const contentCache = new Map<string, Promise<string>>();
 const knownUris = new Map<string, vscode.Uri>();
+const INDEX_DEPENDENT_REFS = [":0", ":unstaged"];
 
 /** provider 캐시에 사용할 ref/path 키를 만든다. nonce 는 재사용 방해 요소라 제외한다. */
 function cacheKey(ref: string, repoRoot: string, path: string): string {
   return `${repoRoot}\0${ref}\0${path}`;
+}
+
+/** 저장소 상대 경로를 provider 캐시의 URI path 형태로 맞춘다. */
+function cachePath(relPath: string): string {
+  return relPath.startsWith("/") ? relPath : `/${relPath}`;
 }
 
 /**
@@ -27,6 +33,39 @@ export function refreshBranchContent(uri: vscode.Uri): void {
     contentCache.delete(cacheKey(ref, repoRoot, path));
   }
   changeEmitter.fire(uri);
+}
+
+/**
+ * index 변경에 의존하는 같은 파일의 열린 가상 문서를 모두 갱신한다.
+ * - line stage/unstage 는 `:0` 과 `:unstaged` 를 동시에 바꾸므로,
+ *   active diff 밖에 열린 staged/unstaged 탭도 stale cache 를 비우고 onDidChange 를 보내야 한다.
+ * @param repoRoot 저장소 루트
+ * @param relPath 저장소 상대 파일 경로
+ * @returns 실제 onDidChange 를 보낸 ref 목록
+ */
+export function refreshIndexDependentBranchContent(
+  repoRoot: string,
+  relPath: string
+): string[] {
+  const refreshed: string[] = [];
+  const path = cachePath(relPath);
+  for (const ref of INDEX_DEPENDENT_REFS) {
+    const key = cacheKey(ref, repoRoot, path);
+    contentCache.delete(key);
+    const uri = knownUris.get(key);
+    if (!uri) {
+      continue;
+    }
+    changeEmitter.fire(uri);
+    refreshed.push(ref);
+  }
+  if (refreshed.length) {
+    logInfo("branch index-dependent content refreshed", {
+      path: relPath,
+      refs: refreshed,
+    });
+  }
+  return refreshed;
 }
 
 /** git ref/index 변경처럼 모든 가상 문서 내용이 바뀔 수 있는 이벤트에서 캐시를 비운다. */
