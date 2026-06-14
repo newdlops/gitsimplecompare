@@ -1,11 +1,12 @@
-// 로컬 브랜치가 upstream 보다 앞선 커밋 범위를 계산하는 보조 모듈.
+// 로컬 브랜치가 remote 기준점보다 앞서거나 remote 에 없는 커밋 범위를 계산하는 보조 모듈.
 // - 그래프 렌더링에서 "로컬에만 있는 커밋"을 표시할 수 있도록 해시별 브랜치 목록을 만든다.
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { runGit } from "./gitExec";
 
 /**
- * ahead 상태인 로컬 브랜치의 `upstream..local` 범위를 해시별로 묶는다.
- * - upstream 이 없거나 사라진 브랜치는 기준점이 모호하므로 표시 대상에서 제외한다.
+ * 로컬 전용 커밋 범위를 해시별로 묶는다.
+ * - upstream 이 살아 있으면 `upstream..local` 을 사용해 해당 브랜치의 ahead 커밋을 표시한다.
+ * - upstream 이 없거나 gone 이면 `local --not --remotes` 로 어떤 원격에도 없는 커밋을 표시한다.
  * @param repoRoot git 명령을 실행할 저장소 루트
  * @param branches `getLocalBranches` 가 반환한 로컬 브랜치 상태 목록
  * @returns 로컬 전용 커밋 해시별 브랜치 이름 맵
@@ -17,10 +18,11 @@ export async function loadLocalOnlyBranchMap(
   const result = new Map<string, string[]>();
   await Promise.all(
     branches
-      .filter((branch) => branch.upstream && !branch.gone && branch.ahead > 0)
+      .filter((branch) => shouldInspectBranch(branch))
       .map(async (branch) => {
+        const args = revListArgsForBranch(branch);
         const out = await runGit(
-          ["rev-list", `${branch.upstream}..refs/heads/${branch.name}`],
+          args,
           repoRoot
         ).catch(() => "");
         for (const hash of out.split("\n").filter(Boolean)) {
@@ -29,6 +31,28 @@ export async function loadLocalOnlyBranchMap(
       })
   );
   return result;
+}
+
+/**
+ * 로컬 전용 커밋을 검사해야 하는 브랜치인지 판단한다.
+ * @param branch 로컬 브랜치 상태
+ */
+function shouldInspectBranch(branch: LocalBranchStatus): boolean {
+  return branch.upstream && !branch.gone
+    ? branch.ahead > 0
+    : true;
+}
+
+/**
+ * 브랜치 상태에 맞는 rev-list 인자를 만든다.
+ * @param branch 로컬 브랜치 상태
+ */
+function revListArgsForBranch(branch: LocalBranchStatus): string[] {
+  const localRef = `refs/heads/${branch.name}`;
+  if (branch.upstream && !branch.gone) {
+    return ["rev-list", `${branch.upstream}..${localRef}`];
+  }
+  return ["rev-list", localRef, "--not", "--remotes"];
 }
 
 /**

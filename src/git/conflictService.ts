@@ -3,7 +3,7 @@
 //   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
 
 /** 진행 중인 git 작업 종류(충돌이 발생할 수 있는 작업들) */
 export type MergeOperation = "none" | "merge" | "rebase" | "cherry-pick" | "revert";
@@ -205,7 +205,16 @@ export class ConflictService {
     if (op === "none") {
       return;
     }
-    await runGit([op, "--continue"], this.repoRoot, { GIT_EDITOR: "true" });
+    const env = { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" };
+    try {
+      await runGit([op, "--continue"], this.repoRoot, env);
+    } catch (err) {
+      if (op === "rebase" && await this.canSkipEmptyRebaseStep(err)) {
+        await runGit(["rebase", "--skip"], this.repoRoot, env);
+        return;
+      }
+      throw err;
+    }
   }
 
   /**
@@ -293,6 +302,23 @@ export class ConflictService {
     ]);
     return `${current}${needsLineBreak(current, incoming) ? "\n" : ""}${incoming}`;
   }
+
+  /**
+   * rebase --continue 가 "적용할 변경이 없음"으로 실패한 상황인지 판단한다.
+   * - 충돌 파일이 더 남아 있지 않고 staged/unstaged diff 가 모두 비어 있을 때만 skip fallback 을 허용한다.
+   * @param err rebase --continue 실패 오류
+   */
+  private async canSkipEmptyRebaseStep(err: unknown): Promise<boolean> {
+    if (!isEmptyRebaseError(err)) {
+      return false;
+    }
+    const [conflicts, hasStaged, hasUnstaged] = await Promise.all([
+      this.listConflicts().catch(() => ["unknown"]),
+      hasDiff(this.repoRoot, ["diff", "--cached", "--quiet"]),
+      hasDiff(this.repoRoot, ["diff", "--quiet"]),
+    ]);
+    return conflicts.length === 0 && !hasStaged && !hasUnstaged;
+  }
 }
 
 /**
@@ -337,4 +363,34 @@ function acceptBothFromMarkers(raw: string): { changed: boolean; content: string
  */
 function needsLineBreak(left: string, right: string): boolean {
   return Boolean(left && right && !left.endsWith("\n") && !left.endsWith("\r"));
+}
+
+/**
+ * rebase continue 실패가 빈 패치/이미 적용된 변경을 의미하는지 확인한다.
+ * @param err git 실행 오류
+ */
+function isEmptyRebaseError(err: unknown): boolean {
+  const text =
+    err instanceof GitError
+      ? `${err.message}\n${err.stderr}`
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  return /No changes|did you forget to use 'git add'|patch contents already upstream|nothing to commit|empty/i.test(
+    text
+  );
+}
+
+/**
+ * git diff --quiet 계열 명령으로 diff 존재 여부를 확인한다.
+ * @param repoRoot git 저장소 루트
+ * @param args     diff --quiet 인자
+ */
+async function hasDiff(repoRoot: string, args: string[]): Promise<boolean> {
+  try {
+    await runGit(args, repoRoot, { retryOnLock: false });
+    return false;
+  } catch {
+    return true;
+  }
 }
