@@ -151,6 +151,7 @@
       pane("incoming", "Incoming", sideMeta(documentData.incoming), documentData.incoming.content) +
       `</main>` +
       `<div id="status" role="status" aria-live="polite"></div>`;
+    ensureButtonTooltips();
     bindActions();
   }
 
@@ -241,7 +242,21 @@
     const wrapper = document.createElement("div");
     wrapper.innerHTML = chunkBar(next);
     bar.replaceWith(wrapper.firstElementChild);
+    ensureButtonTooltips();
     bindChunkActionsOnly();
+  }
+
+  /** 렌더링된 모든 버튼에 hover tooltip/접근성 라벨을 보장한다. */
+  function ensureButtonTooltips() {
+    document.querySelectorAll("button").forEach((button) => {
+      const text = button.getAttribute("title") ||
+        button.getAttribute("aria-label") ||
+        button.textContent?.trim() ||
+        "Action";
+      button.setAttribute("title", text);
+      button.setAttribute("aria-label", text);
+      button.dataset.tooltip = text;
+    });
   }
 
   /** chunk 버튼만 다시 연결한다. */

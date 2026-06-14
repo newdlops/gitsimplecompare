@@ -6,12 +6,25 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
+import { parseNameStatusZ, parseNumstat } from "./diffParse";
+
+const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+/** rebase 계획에서 커밋별로 보여줄 변경 파일 한 건 */
+export interface RebaseCommitFile {
+  status: string;
+  path: string;
+  oldPath?: string;
+  additions: number;
+  deletions: number;
+}
 
 /** rebase 대상 커밋 한 건(계획 UI 표시용) */
 export interface RebaseCommit {
   hash: string;
   subject: string;
   body: string;
+  files: RebaseCommitFile[];
 }
 
 /** todo 한 줄의 동작 */
@@ -23,6 +36,10 @@ export interface RebaseItem {
   action: RebaseAction;
   /** reword/squash 시 사용할 메시지(빈 값이면 git 기본 메시지 유지) */
   message?: string;
+  /** 이 커밋에서 제외할 파일 경로 목록 */
+  excludePaths?: string[];
+  /** 계획 범위 전체 커밋에서 제외할 파일 경로 목록 */
+  historyExcludePaths?: string[];
 }
 
 /** rebase 실행 결과 */
@@ -80,13 +97,19 @@ export class RebaseService {
       ],
       this.repoRoot
     );
-    return out
+    const commits = out
       .split("\0")
       .filter((e) => e.length > 0)
       .map((entry) => {
         const [hash, subject, body] = entry.split("\x1f");
-        return { hash, subject: subject ?? "", body: (body ?? "").trim() };
+        return { hash, subject: subject ?? "", body: (body ?? "").trim(), files: [] };
       });
+    return Promise.all(
+      commits.map(async (commit) => ({
+        ...commit,
+        files: await this.getCommitFiles(commit.hash),
+      }))
+    );
   }
 
   /**
@@ -178,16 +201,31 @@ export class RebaseService {
 
     const todoLines: string[] = [];
     const messageQueue: (string | null)[] = [];
+    const opFiles: string[] = [];
+    const historyExcludePaths = uniquePaths(
+      items.flatMap((item) => item.historyExcludePaths ?? [])
+    );
     for (const item of kept) {
       todoLines.push(`${item.action} ${item.hash}`);
       if (item.action === "reword" || item.action === "squash") {
         const msg = item.message && item.message.trim() ? item.message : null;
         messageQueue.push(msg);
       }
+      const excludePaths = uniquePaths([
+        ...historyExcludePaths,
+        ...(item.excludePaths ?? []),
+      ]);
+      if (excludePaths.length) {
+        const opFile = tempPath("ops");
+        fs.writeFileSync(opFile, JSON.stringify({ excludePaths }), "utf8");
+        opFiles.push(opFile);
+        todoLines.push(`exec ${editorCmdForTodo(process.execPath, editorScript)} amend ${quoteArg(opFile)}`);
+      }
     }
 
     const todoFile = tempPath("todo");
     const queueFile = tempPath("queue");
+    let keepTempFiles = false;
     fs.writeFileSync(todoFile, todoLines.join("\n") + "\n", "utf8");
     fs.writeFileSync(queueFile, JSON.stringify(messageQueue), "utf8");
 
@@ -199,6 +237,7 @@ export class RebaseService {
       GIT_EDITOR: `${editorCmd} msg`,
       GSC_TODO: todoFile,
       GSC_MSG_QUEUE: queueFile,
+      GSC_REPO_ROOT: this.repoRoot,
     };
 
     try {
@@ -218,6 +257,7 @@ export class RebaseService {
       // 비정상 종료 시, rebase 가 진행 중이면 충돌로 멈춘 것이다.
       const op = await detectOperation(this.repoRoot);
       if (op === "rebase") {
+        keepTempFiles = true;
         return { status: "conflicts" };
       }
       return {
@@ -225,9 +265,37 @@ export class RebaseService {
         message: err instanceof Error ? err.message : String(err),
       };
     } finally {
-      safeUnlink(todoFile);
-      safeUnlink(queueFile);
+      if (!keepTempFiles) {
+        safeUnlink(todoFile);
+        safeUnlink(queueFile);
+        for (const opFile of opFiles) {
+          safeUnlink(opFile);
+        }
+      }
     }
+  }
+
+  /**
+   * 커밋 한 건의 변경 파일 목록을 첫 부모 기준으로 반환한다.
+   * @param hash 대상 커밋 해시
+   */
+  private async getCommitFiles(hash: string): Promise<RebaseCommitFile[]> {
+    const base = (await this.parentOf(hash)) ?? EMPTY_TREE;
+    const [nameStatus, numstat] = await Promise.all([
+      runGit(["diff", "--name-status", "-M", "-z", base, hash], this.repoRoot),
+      runGit(["diff", "--numstat", "-M", base, hash], this.repoRoot),
+    ]);
+    const counts = parseNumstat(numstat);
+    return parseNameStatusZ(nameStatus).map((change) => {
+      const stat = counts.get(change.path);
+      return {
+        status: change.status,
+        path: change.path,
+        oldPath: change.oldPath,
+        additions: stat?.additions ?? 0,
+        deletions: stat?.deletions ?? 0,
+      };
+    });
   }
 
   /**
@@ -313,6 +381,40 @@ async function isAncestor(
 function tempPath(kind: string): string {
   const suffix = Math.random().toString(36).slice(2);
   return path.join(os.tmpdir(), `gsc-rebase-${kind}-${suffix}`);
+}
+
+/**
+ * rebase todo 의 exec 줄에 넣을 헬퍼 명령 문자열을 만든다.
+ * @param nodePath Electron/Node 실행 파일 경로
+ * @param editorScript rebaseEditor.js 경로
+ */
+function editorCmdForTodo(nodePath: string, editorScript: string): string {
+  return `${quoteArg(nodePath)} ${quoteArg(editorScript)}`;
+}
+
+/**
+ * rebase todo 에 안전하게 넣을 shell 인자를 만든다.
+ * @param value 인자 문자열
+ */
+function quoteArg(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * 경로 배열의 빈 값과 중복을 제거한다.
+ * @param paths 경로 후보 목록
+ */
+function uniquePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const path of paths) {
+    if (!path || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
 }
 
 /** 파일을 조용히 삭제한다(없어도 무시). */

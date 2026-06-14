@@ -16,7 +16,6 @@
   const graphPane = document.getElementById("graph-pane");
   const graphEl = document.getElementById("graph");
   const graphContent = document.getElementById("graph-content");
-
   let plan = null;
   let items = [];
   let originalOrder = [];
@@ -137,6 +136,7 @@
       message: "",
       subject: commit.subject,
       body: commit.body || "",
+      files: commit.files || [], excludePaths: [], historyExcludePaths: [],
       originalOrder: 0,
     }));
     items.forEach((item, index) => {
@@ -295,8 +295,8 @@
       `<span class="codicon codicon-${action.icon}" aria-hidden="true"></span>${action.label}</button>`
     ).join("") +
       `<button type="button" data-edit-message="1" title="Edit queued rebase message" ` +
-      `aria-label="Edit queued rebase message" data-tooltip="Edit queued rebase message">` +
-      `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span>Edit message</button>`;
+      `aria-label="Edit commit details" data-tooltip="Edit commit message and excluded files">` +
+      `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span>Commit details</button>`;
     menu.addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button) {
@@ -305,7 +305,7 @@
       if (button.dataset.action) {
         setAction(hash, button.dataset.action);
       } else {
-        editMessage(hash);
+        window.GscGraphRebaseDetail?.open(items, hash, renderPlan) || editMessage(hash);
       }
       closeContextMenu();
     });
@@ -391,7 +391,7 @@
   function planDiffersFromGraph() {
     return Boolean(plan?.onto) ||
       items.some((item, index) => item.hash !== originalOrder[index]) ||
-      items.some((item) => item.action !== "pick");
+      items.some((item) => item.action !== "pick" || item.excludePaths?.length || item.historyExcludePaths?.length);
   }
 
   /** rebase todo 의 현재 순서를 그래프 row 위치로 투영한다. */
@@ -593,6 +593,7 @@
         hash: item.hash,
         action: item.action,
         message: item.message || (item.action === "squash" ? window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || "" : ""),
+        excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [],
       })),
     });
   }

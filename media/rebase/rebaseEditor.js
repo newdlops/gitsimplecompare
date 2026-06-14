@@ -4,9 +4,50 @@
 //   mode="msg": reword/squash 커밋 메시지를 큐(GSC_MSG_QUEUE)에서 꺼내 써넣는다.
 // - VS Code 확장 호스트(Electron)를 ELECTRON_RUN_AS_NODE=1 로 node 처럼 실행해 구동한다.
 const fs = require("fs");
+const cp = require("child_process");
 
 const mode = process.argv[2];
 const targetFile = process.argv[3];
+
+// git 명령을 현재 rebase 저장소에서 실행한다. 실패하면 rebase 가 멈추도록 예외를 그대로 올린다.
+function git(args) {
+  cp.execFileSync("git", args, {
+    cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+    stdio: "inherit",
+  });
+}
+
+// 실패해도 다음 fallback 을 시도할 수 있는 git 명령을 실행한다.
+function gitOk(args) {
+  try {
+    git(args);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// 현재 커밋에서 path 변경을 제거하기 위해 부모 커밋의 상태로 되돌린다.
+function restorePathFromParent(path) {
+  if (gitOk(["cat-file", "-e", `HEAD^:${path}`])) {
+    git(["checkout", "HEAD^", "--", path]);
+    return;
+  }
+  gitOk(["rm", "-r", "-f", "--", path]);
+}
+
+// index 에 amend 할 변경이 남아 있는지 확인한다.
+function hasStagedChanges() {
+  try {
+    cp.execFileSync("git", ["diff", "--cached", "--quiet"], {
+      cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+      stdio: "ignore",
+    });
+    return false;
+  } catch (err) {
+    return true;
+  }
+}
 
 try {
   if (mode === "seq") {
@@ -28,6 +69,15 @@ try {
       if (message != null) {
         fs.writeFileSync(targetFile, message);
       }
+    }
+  } else if (mode === "amend") {
+    const ops = JSON.parse(fs.readFileSync(targetFile, "utf8"));
+    const paths = Array.isArray(ops.excludePaths) ? ops.excludePaths : [];
+    for (const path of paths) {
+      restorePathFromParent(String(path));
+    }
+    if (hasStagedChanges()) {
+      git(["commit", "--amend", "--no-edit", "--allow-empty"]);
     }
   }
 } catch (err) {

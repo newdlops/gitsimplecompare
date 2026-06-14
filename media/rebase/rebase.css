@@ -163,4 +163,6 @@ button[data-tooltip]::after {
 button[data-tooltip]:hover::after,
 button[data-tooltip]:focus-visible::after {
   opacity: 1;
+  background: #252526;
+  background-image: none;
 }

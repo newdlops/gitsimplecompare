@@ -258,6 +258,154 @@
   background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
 }
 
+#graph-rebase-detail {
+  position: fixed;
+  top: 72px;
+  right: 18px;
+  z-index: 2050;
+  display: flex;
+  box-sizing: border-box;
+  width: min(460px, calc(100vw - 36px));
+  max-height: min(680px, calc(100vh - 96px));
+  flex-direction: column;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 5px;
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  background: var(--vscode-editorWidget-background, #252526);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+}
+
+#graph-rebase-detail header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+#graph-rebase-detail header strong {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#graph-rebase-detail .close,
+#graph-rebase-detail button[data-exclude] {
+  position: relative;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, transparent);
+  cursor: pointer;
+}
+
+#graph-rebase-detail .close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+#graph-rebase-detail .field {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+}
+
+#graph-rebase-detail select,
+#graph-rebase-detail textarea {
+  border: 1px solid var(--vscode-input-border);
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  font: inherit;
+}
+
+#graph-rebase-detail textarea {
+  min-height: 110px;
+  resize: vertical;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+#graph-rebase-detail .files-title,
+#graph-rebase-detail .file-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 72px 72px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+}
+
+#graph-rebase-detail .files-title {
+  border-top: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  font-weight: 600;
+}
+
+#graph-rebase-detail .rebase-detail-files {
+  overflow: auto;
+}
+
+#graph-rebase-detail .file-row .path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#graph-rebase-detail button[data-exclude] {
+  height: 22px;
+}
+
+#graph-rebase-detail button.active {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+#graph-rebase-detail [data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  z-index: 2200;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: normal;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: #252526;
+  background-image: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+  transition: none;
+}
+
+#graph-rebase-detail [data-tooltip]:hover::after,
+#graph-rebase-detail [data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
+#graph-rebase-bar button[data-tooltip]:hover::after,
+#graph-rebase-bar button[data-tooltip]:focus-visible::after,
+#graph-rebase-squash-option[data-tooltip]:hover::after,
+#graph-rebase-squash-option[data-tooltip]:focus-within::after,
+.rebase-action-button[data-tooltip]:hover::after,
+.rebase-action-button[data-tooltip]:focus-visible::after,
+#graph-rebase-menu button[data-tooltip]:hover::after,
+#graph-rebase-menu button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  background: #252526;
+}
+
 #graph-rebase-bar button[data-tooltip]::after,
 #graph-rebase-squash-option[data-tooltip]::after,
 .rebase-action-button[data-tooltip]::after,

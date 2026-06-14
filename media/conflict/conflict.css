@@ -207,6 +207,8 @@ p {
 .chunk-apply[data-tooltip]:hover::after,
 .chunk-apply[data-tooltip]:focus-visible::after {
   opacity: 1;
+  background: #252526;
+  background-image: none;
 }
 
 #panes {
