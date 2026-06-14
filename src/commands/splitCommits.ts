@@ -32,7 +32,7 @@ export async function showSplitCommits(
     );
     return;
   }
-  await openWorkingChange({
+  await openWorkingChange(deps, {
     root: service.repoRoot,
     path,
     stage: "unstaged",

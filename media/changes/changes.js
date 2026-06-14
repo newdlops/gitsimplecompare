@@ -1472,13 +1472,13 @@
       selection = new Set([key]);
       selAnchor = key;
       applySelection();
-      openWorkingPath(row.dataset.path, row.dataset.stage);
+      openWorkingPath(row.dataset.path, row.dataset.stage, row.dataset.status);
     }
   }
 
   /** 작업트리 파일 열기: staged/unstaged 모두 native diff 를 연다. */
-  function openWorkingPath(path, stage) {
-    vscode.postMessage({ type: "openWorkingChange", path, stage });
+  function openWorkingPath(path, stage, status) {
+    vscode.postMessage({ type: "openWorkingChange", path, stage, status });
   }
 
   /**

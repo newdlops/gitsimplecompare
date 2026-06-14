@@ -55,9 +55,13 @@ import {
   abortOperation,
   continueOperation,
   markResolved,
+  openConflictEditor,
   openMergeEditor,
   refreshConflicts,
   rollbackPull,
+  takeBoth,
+  takeCurrent,
+  takeIncoming,
   takeOurs,
   takeTheirs,
 } from "./conflicts";
@@ -130,8 +134,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
         path: string;
         stage?: "staged" | "unstaged";
         hasStaged?: boolean;
+        status?: string;
       }) =>
-        openWorkingChange(arg)
+        openWorkingChange(deps, arg)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openFile",
@@ -271,12 +276,36 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       (rel: string) => takeTheirs(deps.conflicts, rel)
     ),
     vscode.commands.registerCommand(
+      "gitSimpleCompare.takeCurrent",
+      (rel: string) => takeCurrent(deps.conflicts, rel)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.takeIncoming",
+      (rel: string) => takeIncoming(deps.conflicts, rel)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.takeBoth",
+      (rel: string) => takeBoth(deps.conflicts, rel)
+    ),
+    vscode.commands.registerCommand(
       "gitSimpleCompare.markResolved",
       (rel: string) => markResolved(deps.conflicts, rel)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openMergeEditor",
       (rel: string) => openMergeEditor(deps.conflicts, rel)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openConflictEditor",
+      (arg: string | { root?: string; path?: string }) =>
+        typeof arg === "string"
+          ? openConflictEditor(deps.conflicts, deps.extensionUri, arg)
+          : openConflictEditor(
+              deps.conflicts,
+              deps.extensionUri,
+              arg?.path ?? "",
+              arg?.root
+            )
     ),
     vscode.commands.registerCommand("gitSimpleCompare.continueOperation", () =>
       continueOperation(deps.conflicts)

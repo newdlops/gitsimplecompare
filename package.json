@@ -180,24 +180,16 @@
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
-      {
-        "command": "gitSimpleCompare.takeOurs",
-        "title": "%cmd.takeOurs%",
-        "category": "Git Simple Compare",
-        "icon": "$(arrow-left)"
-      },
-      {
-        "command": "gitSimpleCompare.takeTheirs",
-        "title": "%cmd.takeTheirs%",
-        "category": "Git Simple Compare",
-        "icon": "$(arrow-right)"
-      },
+      { "command": "gitSimpleCompare.takeCurrent", "title": "%cmd.takeCurrent%", "category": "Git Simple Compare", "icon": "$(arrow-left)" },
+      { "command": "gitSimpleCompare.takeIncoming", "title": "%cmd.takeIncoming%", "category": "Git Simple Compare", "icon": "$(arrow-right)" },
+      { "command": "gitSimpleCompare.takeBoth", "title": "%cmd.takeBoth%", "category": "Git Simple Compare", "icon": "$(combine)" },
       {
         "command": "gitSimpleCompare.markResolved",
         "title": "%cmd.markResolved%",
         "category": "Git Simple Compare",
         "icon": "$(check)"
       },
+      { "command": "gitSimpleCompare.openConflictEditor", "title": "%cmd.openConflictEditor%", "category": "Git Simple Compare", "icon": "$(git-merge)" },
       {
         "command": "gitSimpleCompare.openMergeEditor",
         "title": "%cmd.openMergeEditor%",
@@ -343,17 +335,17 @@
       ],
       "view/item/context": [
         {
-          "command": "gitSimpleCompare.openMergeEditor",
+          "command": "gitSimpleCompare.openConflictEditor",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "inline@0"
         },
         {
-          "command": "gitSimpleCompare.takeOurs",
+          "command": "gitSimpleCompare.takeCurrent",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "inline@1"
         },
         {
-          "command": "gitSimpleCompare.takeTheirs",
+          "command": "gitSimpleCompare.takeIncoming",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "inline@2"
         },
@@ -363,19 +355,29 @@
           "group": "inline@3"
         },
         {
-          "command": "gitSimpleCompare.takeOurs",
+          "command": "gitSimpleCompare.takeCurrent",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "1_resolve@1"
         },
         {
-          "command": "gitSimpleCompare.takeTheirs",
+          "command": "gitSimpleCompare.takeIncoming",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "1_resolve@2"
         },
         {
-          "command": "gitSimpleCompare.markResolved",
+          "command": "gitSimpleCompare.takeBoth",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "1_resolve@3"
+        },
+        {
+          "command": "gitSimpleCompare.markResolved",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "1_resolve@4"
+        },
+        {
+          "command": "gitSimpleCompare.openMergeEditor",
+          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
+          "group": "2_native@1"
         }
       ],
       "editor/title": [
@@ -502,18 +504,11 @@
         {
           "command": "gitSimpleCompare.chooseHunkControlMode"
         },
-        {
-          "command": "gitSimpleCompare.takeOurs",
-          "when": "false"
-        },
-        {
-          "command": "gitSimpleCompare.takeTheirs",
-          "when": "false"
-        },
-        {
-          "command": "gitSimpleCompare.markResolved",
-          "when": "false"
-        },
+        { "command": "gitSimpleCompare.markResolved", "when": "false" },
+        { "command": "gitSimpleCompare.takeCurrent", "when": "false" },
+        { "command": "gitSimpleCompare.takeIncoming", "when": "false" },
+        { "command": "gitSimpleCompare.takeBoth", "when": "false" },
+        { "command": "gitSimpleCompare.openConflictEditor", "when": "false" },
         {
           "command": "gitSimpleCompare.openMergeEditor",
           "when": "false"

@@ -2,8 +2,11 @@
 // - 각 핸들러는 ConflictsController(상태/서비스)를 받아 git 작업을 수행한 뒤 새로고침한다.
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
+import { ConflictService } from "../git/conflictService";
 import { PullService } from "../git/pullService";
 import { ConflictsController } from "../providers/conflictsController";
+import { openMergeEditorUri } from "../ui/mergePresenter";
+import { ConflictPanel } from "../webview/conflictPanel";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -40,6 +43,44 @@ export async function takeTheirs(
 }
 
 /**
+ * 선택한 파일을 Current 버전으로 확정한다.
+ * - UI 용어로는 Current 이고, git index stage 로는 ours(stage 2)를 뜻한다.
+ * @param controller 충돌 컨트롤러
+ * @param rel        저장소 상대 경로
+ */
+export async function takeCurrent(
+  controller: ConflictsController,
+  rel: string
+): Promise<void> {
+  await runFileAction(controller, rel, (svc) => svc.acceptCurrent(rel));
+}
+
+/**
+ * 선택한 파일을 Incoming 버전으로 확정한다.
+ * - UI 용어로는 Incoming 이고, git index stage 로는 theirs(stage 3)를 뜻한다.
+ * @param controller 충돌 컨트롤러
+ * @param rel        저장소 상대 경로
+ */
+export async function takeIncoming(
+  controller: ConflictsController,
+  rel: string
+): Promise<void> {
+  await runFileAction(controller, rel, (svc) => svc.acceptIncoming(rel));
+}
+
+/**
+ * 선택한 파일을 Current + Incoming 모두 보존하는 결과로 확정한다.
+ * @param controller 충돌 컨트롤러
+ * @param rel        저장소 상대 경로
+ */
+export async function takeBoth(
+  controller: ConflictsController,
+  rel: string
+): Promise<void> {
+  await runFileAction(controller, rel, (svc) => svc.acceptBoth(rel));
+}
+
+/**
  * 수동 편집으로 해결한 파일을 스테이징해 해결됨으로 표시한다.
  * @param controller 충돌 컨트롤러
  * @param rel        저장소 상대 경로
@@ -66,11 +107,31 @@ export async function openMergeEditor(
     return;
   }
   const uri = vscode.Uri.file(svc.absPath(rel));
-  try {
-    await vscode.commands.executeCommand("git.openMergeEditor", uri);
-  } catch {
-    await vscode.commands.executeCommand("vscode.open", uri);
+  await openMergeEditorUri(uri);
+}
+
+/**
+ * 파일을 Git Simple Compare 커스텀 충돌 편집기로 연다.
+ * @param controller   충돌 컨트롤러
+ * @param extensionUri 확장 루트 URI
+ * @param rel          저장소 상대 경로
+ */
+export async function openConflictEditor(
+  controller: ConflictsController,
+  extensionUri: vscode.Uri,
+  rel: string,
+  repoRoot?: string
+): Promise<void> {
+  if (!rel) {
+    return;
   }
+  const svc = repoRoot ? new ConflictService(repoRoot) : controller.current;
+  if (!svc) {
+    return;
+  }
+  ConflictPanel.createOrShow(extensionUri, svc, rel, async () => {
+    await controller.refresh();
+  });
 }
 
 /**

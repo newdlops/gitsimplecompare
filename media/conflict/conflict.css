@@ -1,0 +1,211 @@
+/* Custom conflict editor styles. */
+:root {
+  --current-accent: var(--vscode-charts-blue, #3794ff);
+  --incoming-accent: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  --result-accent: var(--vscode-charts-yellow, #cca700);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background: var(--vscode-editor-background);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+
+.title-block {
+  display: flex;
+  min-width: 180px;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-block > .codicon {
+  color: var(--result-accent);
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1 {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+p {
+  margin-top: 2px;
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.action.primary {
+  background: var(--vscode-button-background);
+}
+
+.action.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.action.current-action .codicon {
+  color: var(--current-accent);
+}
+
+.action.incoming-action .codicon {
+  color: var(--incoming-accent);
+}
+
+#panes {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+}
+
+.pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--vscode-panel-border);
+}
+
+.pane:last-child {
+  border-right: 0;
+}
+
+.pane header {
+  display: flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  border-top: 3px solid transparent;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-editor-background));
+}
+
+.pane.current header {
+  border-top-color: var(--current-accent);
+}
+
+.pane.incoming header {
+  border-top-color: var(--incoming-accent);
+}
+
+.pane.result header {
+  border-top-color: var(--result-accent);
+}
+
+.pane-title {
+  font-weight: 600;
+}
+
+.pane-meta {
+  overflow: hidden;
+  opacity: 0.72;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 0;
+  outline: none;
+  resize: none;
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  line-height: 1.45;
+  background: var(--vscode-editor-background);
+}
+
+textarea:focus {
+  box-shadow: inset 0 0 0 1px var(--vscode-focusBorder);
+}
+
+#status {
+  flex: 0 0 22px;
+  padding: 3px 8px;
+  border-top: 1px solid var(--vscode-panel-border);
+  opacity: 0.75;
+  font-size: 11px;
+}
+
+@media (max-width: 920px) {
+  #toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  #panes {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .pane {
+    min-height: 320px;
+    border-right: 0;
+    border-bottom: 1px solid var(--vscode-panel-border);
+  }
+}

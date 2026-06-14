@@ -333,6 +333,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     action?: string;
     ref?: string;
     stage?: string;
+    status?: string;
   }): void {
     if (msg.type === "ready") {
       this.render();
@@ -366,6 +367,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         root: this.activeRepo,
         path: msg.path,
         stage: msg.stage,
+        status: msg.status,
         hasStaged: this.staged.some((item) => item.path === msg.path),
       });
     } else if (msg.type === "openFile" && msg.path && this.activeRepo) {

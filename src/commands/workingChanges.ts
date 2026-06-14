@@ -11,6 +11,7 @@ import {
 import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
 import { GitGraphPanel } from "../webview/graphPanel";
+import { openConflictEditor } from "./conflicts";
 
 /** 활성 저장소의 GitService 를 반환한다(없으면 undefined). */
 function activeService(deps: CommandDeps): GitService | undefined {
@@ -42,15 +43,26 @@ export async function refreshWorkingChanges(deps: CommandDeps): Promise<void> {
 
 /**
  * Changes 항목 클릭 시 staged/unstaged 상태에 맞는 비교를 연다.
- * @param arg { root, path, stage } 저장소 루트와 상대 경로, staged/unstaged 구분
+ * @param deps 공유 의존성
+ * @param arg  { root, path, stage, status } 저장소 루트와 상대 경로, staged/unstaged/충돌 구분
  */
-export async function openWorkingChange(arg: {
+export async function openWorkingChange(deps: CommandDeps, arg: {
   root: string;
   path: string;
   stage?: "staged" | "unstaged";
   hasStaged?: boolean;
+  status?: string;
 }): Promise<void> {
   if (!arg?.root || !arg?.path) {
+    return;
+  }
+  if (arg.status === "U") {
+    await openConflictEditor(
+      deps.conflicts,
+      deps.extensionUri,
+      arg.path,
+      arg.root
+    );
     return;
   }
   if (arg.stage === "staged") {
