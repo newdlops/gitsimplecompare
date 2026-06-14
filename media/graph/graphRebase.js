@@ -180,7 +180,7 @@
       `<button id="graph-rebase-cancel" type="button" title="Cancel rebase plan" ` +
       `aria-label="Cancel rebase plan" data-tooltip="Cancel this rebase plan">` +
       `<span class="codicon codicon-close" aria-hidden="true"></span><span>Cancel</span></button>`;
-    bar.querySelector("#graph-rebase-run").addEventListener("click", runRebase);
+    bar.querySelector("#graph-rebase-run").addEventListener("click", () => runRebase());
     bar.querySelector("#graph-rebase-cancel").addEventListener("click", clearPlan);
   }
 
@@ -462,7 +462,7 @@
   }
 
   /** 계획을 실행 메시지로 보낸다. */
-  function runRebase() {
+  function runRebase(editPath = "") {
     if (!plan) {
       return;
     }
@@ -471,6 +471,7 @@
       base: plan.base,
       root: Boolean(plan.root),
       onto: plan.onto || "",
+      editPath,
       items: items.map((item) => ({
         hash: item.hash,
         action: item.action,
@@ -478,6 +479,18 @@
         excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [],
       })),
     });
+  }
+
+  /** edit 파일 버튼에서 rebase 시작 또는 paused edit 파일 열기를 요청한다. */
+  function requestEditFile(path) {
+    if (!path) {
+      return;
+    }
+    if (paused) {
+      window.GscGraphPostMessage?.({ type: "openRebaseEditFile", path });
+      return;
+    }
+    runRebase(path);
   }
 
   /** graph context menu 에 합쳐 넣을 rebase 전용 항목을 만든다. */
@@ -506,6 +519,7 @@
     itemForHash: (hash) => items.find((item) => item.hash === hash),
     items: () => items,
     paused: () => paused,
+    requestEditFile,
     updateAction,
     updateMessage,
     toggleCommitExclude,

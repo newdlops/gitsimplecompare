@@ -237,7 +237,7 @@
       return `<p class="empty">No changed files.</p>`;
     }
     if (fileViewMode === "list") {
-      return `<ul class="files list" role="list">${files.map((file) => fileHtml(file, 0, "listitem", displayPath(file))).join("")}</ul>`;
+      return `<ul class="files list" role="list">${files.map((file) => fileHtml(file, 0, "listitem", "")).join("")}</ul>`;
     }
     const tree = buildTree(files);
     return `<ul class="files tree" role="tree">${treeNodesHtml(tree.nodes, 0)}</ul>`;
@@ -319,13 +319,44 @@
   /** 변경 파일 한 줄 HTML 을 만든다. */
   function fileHtml(file, depth, role, label) {
     const title = displayPath(file);
+    const slash = file.path.lastIndexOf("/");
+    const fileName = label || (slash >= 0 ? file.path.slice(slash + 1) : file.path);
+    const dir = slash >= 0 ? file.path.slice(0, slash) : "";
+    const dirHtml = fileViewMode === "list" && dir ? `<span class="dir">${esc(dir)}</span>` : "";
     return (
-      `<li class="file" role="${role}" data-path="${esc(file.path)}" ` +
+      `<li class="file" role="${role}" data-status="${esc(file.status)}" data-path="${esc(file.path)}" ` +
       `style="--indent:${indent(depth)}px" title="${esc(title)}">` +
-      `<span class="status">${esc(file.status)}</span>` +
-      `<span class="path">${esc(label || title)}</span>` +
-      `<span class="stat"><span class="add">+${file.additions}</span> ` +
-      `<span class="del">-${file.deletions}</span></span></li>`
+      `<span class="twistie"></span>` +
+      `<span class="icon codicon ${statusCodicon(file.status)}"></span>` +
+      `<span class="extension-icon codicon codicon-file"></span>` +
+      `<span class="name">${esc(fileName)}</span>${dirHtml}` +
+      statHtml(file) +
+      `</li>`
+    );
+  }
+
+  /** changes 아코디언과 같은 상태 아이콘을 반환한다. */
+  function statusCodicon(status) {
+    switch (status) {
+      case "A":
+        return "codicon-diff-added";
+      case "D":
+        return "codicon-diff-removed";
+      case "R":
+      case "C":
+        return "codicon-diff-renamed";
+      case "U":
+        return "codicon-warning";
+      default:
+        return "codicon-diff-modified";
+    }
+  }
+
+  /** +추가 −삭제 숫자를 색상 span 으로 만든다. */
+  function statHtml(file) {
+    return (
+      `<span class="stat"><span class="add">+${file.additions || 0}</span> ` +
+      `<span class="del">−${file.deletions || 0}</span></span>`
     );
   }
 

@@ -168,6 +168,7 @@ export class GitGraphPanel {
           Boolean(msg.root),
           msg.onto,
           msg.items,
+          msg.editPath,
           {
             extensionUri: this.extensionUri,
             logService: this.logService,

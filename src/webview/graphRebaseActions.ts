@@ -60,6 +60,7 @@ export async function runGraphRebase(
   root: boolean,
   onto: string | undefined,
   items: RebaseItem[],
+  editPath: string | undefined,
   deps: GraphRebaseDeps
 ): Promise<RebaseResult> {
   const service = new RebaseService(deps.logService.repoRoot);
@@ -105,7 +106,7 @@ export async function runGraphRebase(
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: "graphRebaseEditPaused",
     });
-    await openPausedEditFile(deps.logService.repoRoot, result.paused);
+    await openPausedEditFile(deps.logService.repoRoot, result.paused, editPath);
     vscode.window.showInformationMessage(
       vscode.l10n.t(
         "Rebase paused for edit. Change files, amend the commit, then Continue."

@@ -49,7 +49,7 @@
       `<textarea id="rebase-detail-message" spellcheck="false" ` +
       `${title("Edit the commit message used by reword or squash", esc)}>${esc(itemMessage(item))}</textarea></label>` +
       editPanelHtml(item, isPausedHere, esc) +
-      `<div class="files-title"><span>Changed files</span><span>${(item.files || detail.files || []).length}</span><span>Rewrite</span></div>` +
+      `<div class="files-title"><span>Changed files</span><span class="count">${(item.files || detail.files || []).length}</span></div>` +
       `<div class="rebase-detail-files">${files || `<p>No changed files.</p>`}</div>` +
       `</section>`
     );
@@ -77,9 +77,17 @@
     const editButton = editMode
       ? fileEditButton(file, isPausedHere, esc)
       : "";
+    const slash = file.path.lastIndexOf("/");
+    const fileName = slash >= 0 ? file.path.slice(slash + 1) : file.path;
+    const dir = slash >= 0 ? file.path.slice(0, slash) : "";
+    const dirHtml = dir ? `<span class="dir">${esc(dir)}</span>` : "";
     return (
-      `<div class="file-row" data-path="${esc(file.path)}"${file.status.startsWith("D") ? " data-deleted=\"1\"" : ""}>` +
-      `<span class="status">${esc(file.status)}</span><span class="path">${esc(file.path)}</span>` +
+      `<div class="file-row" data-status="${esc(file.status)}" data-path="${esc(file.path)}"` +
+      `${file.status.startsWith("D") ? " data-deleted=\"1\"" : ""} title="${esc(displayPath(file))}">` +
+      `<span class="twistie"></span>` +
+      `<span class="icon codicon ${statusCodicon(file.status)}"></span>` +
+      `<span class="extension-icon codicon codicon-file"></span>` +
+      `<span class="name">${esc(fileName)}</span>${dirHtml}${statHtml(file)}` +
       `<span class="file-rewrite-actions">${editButton}` +
       toggleButton("commit", excluded, "Omit here", "Omitted here", "Remove this file change from only this commit", esc) +
       toggleButton("history", historyExcluded, "Remove from history", "Removed from history", "Remove this file from every commit in this rebase range", esc) +
@@ -95,10 +103,40 @@
       return `<span class="edit-unavailable" ${tooltip}>` +
         `<span class="codicon codicon-warning" aria-hidden="true"></span><span>Deleted</span></span>`;
     }
-    if (!isPausedHere) {
-      return "";
+    const tooltip = isPausedHere
+      ? "Open this paused commit file in an editable diff"
+      : "Start rebase and open this file when Git pauses at this edit commit";
+    return buttonHtml("open-edit-file", "edit", "Edit file", tooltip, esc);
+  }
+
+  /** changes 아코디언과 같은 상태 아이콘을 반환한다. */
+  function statusCodicon(status) {
+    switch (status) {
+      case "A":
+        return "codicon-diff-added";
+      case "D":
+        return "codicon-diff-removed";
+      case "R":
+      case "C":
+        return "codicon-diff-renamed";
+      case "U":
+        return "codicon-warning";
+      default:
+        return "codicon-diff-modified";
     }
-    return buttonHtml("open-edit-file", "edit", "Edit file", "Open this paused commit file in an editable diff", esc);
+  }
+
+  /** +추가 −삭제 숫자를 색상 span 으로 만든다. */
+  function statHtml(file) {
+    return (
+      `<span class="stat"><span class="add">+${file.additions || 0}</span> ` +
+      `<span class="del">−${file.deletions || 0}</span></span>`
+    );
+  }
+
+  /** 이름변경을 포함한 전체 파일 표시 경로를 만든다. */
+  function displayPath(file) {
+    return file.oldPath ? `${file.oldPath} -> ${file.path}` : file.path;
   }
 
   /** 파일 제외 토글 버튼을 만든다. */
@@ -165,7 +203,7 @@
     if (!path) {
       return;
     }
-    window.GscGraphPostMessage?.({ type: "openRebaseEditFile", path });
+    window.GscGraphRebaseContext?.requestEditFile?.(path);
   }
 
   window.GscGraphRebaseDetail = { detailHtml, bind };

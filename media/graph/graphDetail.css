@@ -252,7 +252,7 @@
 .folder-row {
   position: relative;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   min-height: 24px;
   padding: 2px 8px 2px var(--indent, 8px);
@@ -299,28 +299,73 @@
   border-top: 1px solid var(--vscode-tree-indentGuidesStroke, var(--vscode-panel-border));
 }
 
+#detail .file .twistie,
 .folder-row .twistie {
   flex: 0 0 14px;
   font-size: 12px;
 }
 
-#detail .file .status {
-  flex: 0 0 1.2em;
-  text-align: center;
-  font-weight: bold;
+#detail .file .icon,
+#detail .file .extension-icon {
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-#detail .file .path,
+#detail .file .name,
+#detail .file .dir,
 .folder-row .path {
-  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+#detail .file .name {
+  flex: 0 1 auto;
+}
+
+#detail .file .dir {
+  flex: 0 1 auto;
+  margin-left: 2px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
 #detail .file .stat {
   flex: 0 0 auto;
+  margin-left: auto;
   font-size: 0.85em;
+}
+
+#detail .file[data-status="A"] .name,
+#detail .file[data-status="A"] .icon {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+#detail .file[data-status="M"] .name,
+#detail .file[data-status="M"] .icon,
+#detail .file[data-status="T"] .name,
+#detail .file[data-status="T"] .icon {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+#detail .file[data-status="D"] .name,
+#detail .file[data-status="D"] .icon {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+#detail .file[data-status="R"] .name,
+#detail .file[data-status="R"] .icon,
+#detail .file[data-status="C"] .name,
+#detail .file[data-status="C"] .icon {
+  color: var(--vscode-gitDecoration-renamedResourceForeground);
+}
+
+#detail .file[data-status="U"] .name,
+#detail .file[data-status="U"] .icon {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
 }
 
 .add {

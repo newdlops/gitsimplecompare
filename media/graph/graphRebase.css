@@ -312,19 +312,20 @@
   padding: 0 8px;
 }
 
-.rebase-detail-editor .files-title,
-.rebase-detail-editor .file-row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+.rebase-detail-editor .files-title {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
   padding: 5px 8px;
-}
-
-.rebase-detail-editor .files-title {
   border-top: 1px solid var(--vscode-panel-border);
   border-bottom: 1px solid var(--vscode-panel-border);
   font-weight: 600;
+}
+
+.rebase-detail-editor .files-title .count {
+  opacity: 0.72;
+  font-weight: 400;
 }
 
 .rebase-detail-editor .rebase-detail-files {
@@ -332,16 +333,86 @@
   overflow: auto;
 }
 
-.rebase-detail-editor .file-row .path {
+.rebase-detail-editor .file-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 5px 8px;
+}
+
+.rebase-detail-editor .file-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.rebase-detail-editor .file-row .twistie,
+.rebase-detail-editor .file-row .icon,
+.rebase-detail-editor .file-row .extension-icon {
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rebase-detail-editor .file-row .name,
+.rebase-detail-editor .file-row .dir {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.rebase-detail-editor .file-row .name {
+  flex: 0 1 auto;
+}
+
+.rebase-detail-editor .file-row .dir {
+  flex: 0 1 auto;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.rebase-detail-editor .file-row .stat {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 0.85em;
+}
+
+.rebase-detail-editor .file-row[data-status="A"] .name,
+.rebase-detail-editor .file-row[data-status="A"] .icon {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+
+.rebase-detail-editor .file-row[data-status="M"] .name,
+.rebase-detail-editor .file-row[data-status="M"] .icon,
+.rebase-detail-editor .file-row[data-status="T"] .name,
+.rebase-detail-editor .file-row[data-status="T"] .icon {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+
+.rebase-detail-editor .file-row[data-status="D"] .name,
+.rebase-detail-editor .file-row[data-status="D"] .icon {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+.rebase-detail-editor .file-row[data-status="R"] .name,
+.rebase-detail-editor .file-row[data-status="R"] .icon,
+.rebase-detail-editor .file-row[data-status="C"] .name,
+.rebase-detail-editor .file-row[data-status="C"] .icon {
+  color: var(--vscode-gitDecoration-renamedResourceForeground);
+}
+
+.rebase-detail-editor .file-row[data-status="U"] .name,
+.rebase-detail-editor .file-row[data-status="U"] .icon {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+}
+
 .rebase-detail-editor .file-rewrite-actions {
   display: inline-flex;
+  flex: 0 0 auto;
   justify-content: flex-end;
   gap: 4px;
+  margin-left: 4px;
 }
 
 .rebase-detail-editor .file-row button {
@@ -386,6 +457,7 @@
   content: attr(data-tooltip);
   pointer-events: none;
   background: #252526;
+  background-color: #252526 !important;
   background-image: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
   transform: translateX(-50%);
@@ -395,6 +467,8 @@
 .rebase-detail-editor [data-tooltip]:hover::after,
 .rebase-detail-editor [data-tooltip]:focus-visible::after {
   opacity: 1;
+  background: #252526 !important;
+  background-color: #252526 !important;
 }
 
 #graph-rebase-bar button[data-tooltip]:hover::after,
@@ -425,7 +499,8 @@
   pointer-events: none;
   width: max-content;
   max-width: min(420px, calc(100vw - 24px));
-  background-color: #252526;
+  background: #252526 !important;
+  background-color: #252526 !important;
   background-image: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
   transition: none;
@@ -446,4 +521,6 @@
 .rebase-action-button[data-tooltip]:hover::after,
 .rebase-action-button[data-tooltip]:focus-visible::after {
   opacity: 1;
+  background: #252526 !important;
+  background-color: #252526 !important;
 }

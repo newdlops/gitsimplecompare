@@ -62,5 +62,6 @@ export type FromWebviewMessage =
       base: string;
       root?: boolean;
       onto?: string;
+      editPath?: string;
       items: RebaseItem[];
     };
