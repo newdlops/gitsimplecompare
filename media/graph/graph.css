@@ -103,6 +103,8 @@ body.resizing {
 
 .icon-button:focus-visible,
 .icon-mini:focus-visible,
+.search-icon-button:focus-visible,
+.branch-filter-shortcut:focus-visible,
 .message-copy:focus-visible,
 .file-view-button:focus-visible,
 .search-result:focus-visible,

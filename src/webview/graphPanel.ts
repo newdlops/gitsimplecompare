@@ -9,6 +9,19 @@ import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
 import {
+  buildBranchFilterSnapshot,
+  filterCommitRefs,
+  normalizeBranchFilterState,
+  resolveBranchFilter,
+  shouldShowVirtualCommits,
+} from "./graphBranchFilter";
+import type {
+  GraphBranchFilterState,
+  GraphBranchRef,
+  ResolvedGraphBranchFilter,
+} from "./graphBranchFilter";
+import { buildGraphHtml } from "./graphHtml";
+import {
   abortGraphRebase,
   continueGraphRebase,
   openPausedRebaseEditFile,
@@ -31,6 +44,9 @@ export class GitGraphPanel {
   private loading = false;
   private exhausted = false;
   private loadGeneration = 0;
+  private branchFilter: GraphBranchFilterState = { mode: "all", selected: [] };
+  private lastLocalBranches: LocalBranchStatus[] = [];
+  private lastBranchRefs: GraphBranchRef[] = [];
 
   /**
    * 패널을 만들거나, 이미 있으면 앞으로 가져온다.
@@ -88,7 +104,7 @@ export class GitGraphPanel {
     private readonly extensionUri: vscode.Uri,
     private logService: GitLogService
   ) {
-    this.panel.webview.html = this.buildHtml();
+    this.panel.webview.html = buildGraphHtml(panel, extensionUri);
     // 웹뷰에서 오는 메시지 처리
     this.panel.webview.onDidReceiveMessage(
       (msg: FromWebviewMessage) => this.handleMessage(msg),
@@ -122,6 +138,18 @@ export class GitGraphPanel {
         await this.reloadGraph();
       } else if (msg.type === "loadMore") {
         await this.loadNextPage(false);
+      } else if (msg.type === "setBranchFilter") {
+        this.branchFilter = normalizeBranchFilterState(
+          msg.mode,
+          msg.branches ?? []
+        );
+        logInfo("graph branch filter changed", {
+          repoRoot: this.logService.repoRoot,
+          mode: this.branchFilter.mode,
+          selectedCount: this.branchFilter.selected.length,
+        });
+        this.resetLoadedGraph();
+        await this.reloadGraph();
       } else if (msg.type === "selectCommit") {
         const detail = await this.logService.getCommitDetail(msg.hash);
         this.post({ type: "commitDetail", detail });
@@ -225,7 +253,7 @@ export class GitGraphPanel {
   /** checkout 이후에는 기존 graph 페이지를 재사용해 HEAD/가상 노드만 빠르게 갱신한다. */
   private async refreshAfterCheckoutAction(): Promise<void> {
     const branches = await this.sendBranches();
-    if (!this.syncLocalRefs(branches)) {
+    if (!this.syncLocalRefs(branches, this.currentBranchFilter().visibleRefs)) {
       this.resetLoadedGraph();
       await this.reloadGraph();
       return;
@@ -258,12 +286,22 @@ export class GitGraphPanel {
 
   /** 로컬 브랜치 현황을 읽어 웹뷰의 그래프 ref 배지 렌더러로 보낸다. */
   private async sendBranches(): Promise<LocalBranchStatus[]> {
-    const branches = await this.logService.getLocalBranches();
+    const [branches, branchRefs] = await Promise.all([
+      this.logService.getLocalBranches(),
+      this.logService.getBranches(),
+    ]);
+    this.lastLocalBranches = branches;
+    this.lastBranchRefs = branchRefs;
     this.post({ type: "branchStatus", branches });
+    this.post({
+      type: "branchFilterOptions",
+      filter: buildBranchFilterSnapshot(branchRefs, branches, this.branchFilter),
+    });
     logInfo("graph branch status sent", {
       repoRoot: this.logService.repoRoot,
       branches: branches.length,
       current: branches.find((branch) => branch.current)?.name,
+      filterMode: this.branchFilter.mode,
     });
     return branches;
   }
@@ -296,6 +334,17 @@ export class GitGraphPanel {
     const generation = this.loadGeneration;
     const skip = this.commits.length;
     const pageLimit = GRAPH_PAGE_SIZE;
+    const branchFilter = this.currentBranchFilter();
+    if (branchFilter.empty) {
+      this.virtualCommits = [];
+      this.exhausted = true;
+      this.post({
+        type: "graph",
+        data: layoutGraph([]),
+        state: this.makeLoadState(reset),
+      });
+      return;
+    }
 
     this.loading = true;
     this.postLoadState(reset);
@@ -303,14 +352,25 @@ export class GitGraphPanel {
       repoRoot: this.logService.repoRoot,
       skip,
       limit: pageLimit,
+      filterMode: branchFilter.mode,
+      refCount: branchFilter.refs.length,
     });
 
     let postedGraph = false;
     try {
       if (reset) {
-        this.virtualCommits = await this.logService.getVirtualCommits();
+        this.virtualCommits = shouldShowVirtualCommits(
+          branchFilter,
+          this.lastLocalBranches
+        )
+          ? await this.logService.getVirtualCommits()
+          : [];
       }
-      const page = await this.logService.getCommitPage(pageLimit + 1, skip);
+      const page = await this.logService.getCommitPage(
+        pageLimit + 1,
+        skip,
+        branchFilter.refs
+      );
       if (generation !== this.loadGeneration) {
         logInfo("graph page load ignored", {
           reason: "staleGeneration",
@@ -320,7 +380,10 @@ export class GitGraphPanel {
         return;
       }
 
-      const nextCommits = page.slice(0, pageLimit);
+      const nextCommits = filterCommitRefs(
+        page.slice(0, pageLimit),
+        branchFilter
+      );
       this.commits.push(...nextCommits);
       this.exhausted = page.length <= pageLimit;
       this.loading = false;
@@ -358,8 +421,19 @@ export class GitGraphPanel {
     return !this.exhausted;
   }
 
+  /** 현재 브랜치 필터 상태를 git log 와 ref 표시 필터에 쓸 수 있는 형태로 변환한다. */
+  private currentBranchFilter(): ResolvedGraphBranchFilter {
+    return resolveBranchFilter(
+      this.branchFilter,
+      this.lastBranchRefs
+    );
+  }
+
   /** 이미 로드된 커밋 목록에 최신 로컬 브랜치/HEAD 참조를 반영한다. */
-  private syncLocalRefs(branches: LocalBranchStatus[]): boolean {
+  private syncLocalRefs(
+    branches: LocalBranchStatus[],
+    visibleRefs: Set<string>
+  ): boolean {
     const localNames = new Set(branches.map((branch) => branch.name));
     for (const commit of this.commits) {
       commit.refs = commit.refs.filter(
@@ -368,7 +442,11 @@ export class GitGraphPanel {
     }
 
     let currentLoaded = false;
+    const currentBranch = branches.find((branch) => branch.current);
     for (const branch of branches) {
+      if (!visibleRefs.has(branch.name)) {
+        continue;
+      }
       const commit = this.commits.find((item) => item.hash === branch.hash);
       if (!commit) {
         continue;
@@ -381,7 +459,11 @@ export class GitGraphPanel {
         commit.refs.push(branch.name);
       }
     }
-    return currentLoaded || branches.every((branch) => !branch.current);
+    return (
+      currentLoaded ||
+      !currentBranch ||
+      !visibleRefs.has(currentBranch.name)
+    );
   }
 
   /** 레이아웃용 커밋 목록을 만든다. 가상 커밋은 HEAD 바로 위 두 row 에 끼워 넣는다. */
@@ -430,167 +512,4 @@ export class GitGraphPanel {
   private post(message: ToWebviewMessage): void {
     void this.panel.webview.postMessage(message);
   }
-
-  /**
-   * 웹뷰 HTML 을 만든다(CSP + nonce + 미디어 리소스 URI 주입).
-   */
-  private buildHtml(): string {
-    const webview = this.panel.webview;
-    const mediaRoot = vscode.Uri.joinPath(this.extensionUri, "media", "graph");
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graph.js")
-    );
-    const featureScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphFeatures.js")
-    );
-    const contextScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphContextMenu.js")
-    );
-    const localColorScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphLocalColors.js")
-    );
-    const colorScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphColors.js")
-    );
-    const detailScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphDetail.js")
-    );
-    const rebaseScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphRebase.js")
-    );
-    const rebaseMessageScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphRebaseMessages.js")
-    );
-    const rebaseDetailScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphRebaseDetail.js")
-    );
-    const rebasePreviewScriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphRebasePreview.js")
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graph.css")
-    );
-    const controlsStyleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphControls.css")
-    );
-    const detailStyleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphDetail.css")
-    );
-    const rebaseStyleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(mediaRoot, "graphRebase.css")
-    );
-    const codiconStyleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
-    );
-    const nonce = makeNonce();
-    const csp = [
-      `default-src 'none'`,
-      `img-src ${webview.cspSource} data:`,
-      `style-src ${webview.cspSource}`,
-      `script-src 'nonce-${nonce}'`,
-      `font-src ${webview.cspSource}`,
-    ].join("; ");
-    const refreshGraphTitle = vscode.l10n.t("Refresh graph");
-    const fetchTitle = vscode.l10n.t("Fetch");
-    const pullTitle = vscode.l10n.t("Pull");
-    const pushTitle = vscode.l10n.t("Push");
-    const openRemoteTitle = vscode.l10n.t("Open Remote Branch");
-    const jumpHeadTitle = vscode.l10n.t("Jump to HEAD");
-    const toggleDetailTitle = vscode.l10n.t("Toggle commit details");
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="${csp}" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="${codiconStyleUri}" rel="stylesheet" />
-  <link href="${styleUri}" rel="stylesheet" />
-  <link href="${controlsStyleUri}" rel="stylesheet" />
-  <link href="${detailStyleUri}" rel="stylesheet" />
-  <link href="${rebaseStyleUri}" rel="stylesheet" />
-  <title>Git Graph</title>
-</head>
-<body class="detail-open">
-  <div id="app">
-    <main id="graph-pane">
-	      <div id="graph-toolbar">
-	        <div class="toolbar-group">
-	          <button id="refresh-graph" class="icon-button" type="button" title="${refreshGraphTitle}"
-	            aria-label="${refreshGraphTitle}" data-tooltip="${refreshGraphTitle}">
-	            <span class="codicon codicon-refresh" aria-hidden="true"></span>
-	          </button>
-	          <button id="fetch-graph" class="icon-button" type="button" title="${fetchTitle}"
-	            aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
-	            <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
-	          </button>
-	          <button id="pull-graph" class="icon-button" type="button" title="${pullTitle}"
-	            aria-label="${pullTitle}" data-tooltip="${pullTitle}">
-	            <span class="codicon codicon-repo-pull" aria-hidden="true"></span>
-	          </button>
-	          <button id="push-graph" class="icon-button" type="button" title="${pushTitle}"
-	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
-	            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
-	          </button>
-	          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${openRemoteTitle}"
-	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">
-	            <span class="codicon codicon-link-external" aria-hidden="true"></span>
-	          </button>
-	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
-	            aria-label="${jumpHeadTitle}" data-tooltip="${jumpHeadTitle}">
-	            <span class="codicon codicon-target" aria-hidden="true"></span>
-	          </button>
-	          <button id="toggle-detail" class="icon-button" type="button" title="${toggleDetailTitle}"
-	            aria-label="${toggleDetailTitle}" data-tooltip="${toggleDetailTitle}">
-	            <span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span>
-	          </button>
-        </div>
-        <div id="graph-search" role="search">
-          <span class="codicon codicon-search" aria-hidden="true"></span>
-          <input id="graph-search-input" type="search" placeholder="${vscode.l10n.t(
-            "Search commits, branches"
-          )}" title="${vscode.l10n.t(
-      "Search by commit hash, commit title, or branch name"
-    )}" aria-label="${vscode.l10n.t(
-      "Search by commit hash, commit title, or branch name"
-    )}" />
-          <div id="graph-search-results" role="listbox" hidden></div>
-        </div>
-        <span id="load-status" aria-live="polite"></span>
-      </div>
-      <div id="graph" tabindex="0"><div id="graph-content"></div></div>
-    </main>
-    <div id="main-splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0"
-      title="${vscode.l10n.t("Resize commit details")}" aria-label="${vscode.l10n.t(
-      "Resize commit details"
-    )}"></div>
-    <div id="detail"><p class="placeholder">${vscode.l10n.t(
-      "Select a commit to see details."
-    )}</p></div>
-  </div>
-  <div id="drawer-backdrop"></div>
-  <script nonce="${nonce}" src="${colorScriptUri}"></script>
-  <script nonce="${nonce}" src="${featureScriptUri}"></script>
-  <script nonce="${nonce}" src="${localColorScriptUri}"></script>
-  <script nonce="${nonce}" src="${contextScriptUri}"></script>
-  <script nonce="${nonce}" src="${detailScriptUri}"></script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebasePreviewScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
-</body>
-</html>`;
-  }
-}
-
-/** CSP 의 script nonce(인라인/허용 스크립트 식별용 1회성 난수 문자열)를 만든다. */
-function makeNonce(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let text = "";
-  for (let i = 0; i < 32; i++) {
-    text += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return text;
 }

@@ -7,6 +7,10 @@ import type {
   RebasePausedState,
   RebasePlanInfo,
 } from "../git/rebaseService";
+import type {
+  GraphBranchFilterMode,
+  GraphBranchFilterSnapshot,
+} from "./graphBranchFilter";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
@@ -21,6 +25,7 @@ export type ToWebviewMessage =
   | { type: "graph"; data: GraphData; state: GraphLoadState }
   | { type: "graphLoadState"; state: GraphLoadState }
   | { type: "branchStatus"; branches: LocalBranchStatus[] }
+  | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
@@ -32,6 +37,11 @@ export type ToWebviewMessage =
 export type FromWebviewMessage =
   | { type: "ready" }
   | { type: "refresh" }
+  | {
+      type: "setBranchFilter";
+      mode: GraphBranchFilterMode;
+      branches?: string[];
+    }
   | { type: "fetch" }
   | { type: "fetchTags" }
   | { type: "pull" }
