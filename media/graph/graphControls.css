@@ -137,6 +137,25 @@
   background: var(--vscode-button-background);
 }
 
+.branch-filter-compact {
+  display: grid;
+  grid-template-columns: 18px 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 9px;
+  border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  cursor: pointer;
+}
+
+.branch-filter-compact:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.branch-filter-compact input {
+  margin: 0;
+}
+
 .branch-filter-list {
   max-height: 360px;
   overflow: auto;

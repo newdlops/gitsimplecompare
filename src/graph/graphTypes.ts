@@ -71,6 +71,7 @@ export type GraphRowKind = "commit" | "ongoing" | "staged";
  * 레이아웃이 끝난 커밋 행.
  * - column: 노드가 그려질 레인(열) 인덱스.
  * - color: 레인 색상 인덱스(웹뷰에서 팔레트로 매핑).
+ * - originalColumn/compacted: compact graph 에서 lane 이 접혔는지와 접히기 전 열.
  */
 export interface GraphRow {
   hash: string;
@@ -83,6 +84,8 @@ export interface GraphRow {
   subject: string;
   kind?: GraphRowKind;
   column: number;
+  originalColumn?: number;
+  compacted?: boolean;
   color: number;
 }
 
@@ -90,6 +93,7 @@ export interface GraphRow {
  * 커밋과 부모를 잇는 간선.
  * - fromRow/toRow: 행 인덱스(자식→부모). 부모가 로드 범위 밖이면 toRow 는 행 개수(바닥).
  * - column: 간선이 세로로 흐르는 레인. fromColumn/toColumn: 양 끝 노드의 열.
+ * - originalColumn/compacted: compact graph 에서 lane 이 접혔는지와 접히기 전 열.
  */
 export interface GraphEdge {
   fromRow: number;
@@ -97,6 +101,10 @@ export interface GraphEdge {
   column: number;
   fromColumn: number;
   toColumn: number;
+  originalColumn?: number;
+  originalFromColumn?: number;
+  originalToColumn?: number;
+  compacted?: boolean;
   color: number;
 }
 

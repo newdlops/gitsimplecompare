@@ -6,7 +6,7 @@
   let buttonEl;
   let menuEl;
   let bound = false;
-  let snapshot = { mode: "all", selected: [], branches: [] };
+  let snapshot = { mode: "all", selected: [], compact: true, branches: [] };
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -73,20 +73,23 @@
     event.preventDefault();
     const action = shortcut.dataset.branchFilterShortcut;
     if (action === "select-all") {
-      postFilter("all", []);
+      postFilter("all", [], compactChecked());
       return;
     }
     if (action === "clear-all") {
-      postFilter("custom", []);
+      postFilter("custom", [], compactChecked());
     }
   }
 
-  /** 체크박스 변경을 custom 필터 상태로 변환해 확장으로 보낸다. */
+  /** 체크박스 변경을 필터 상태로 변환해 확장으로 보낸다. */
   function handleMenuChange(event) {
-    if (!event.target.closest?.("[data-branch-filter-checkbox]")) {
+    if (event.target.closest?.("[data-branch-filter-compact]")) {
+      postFilter(snapshot.mode, snapshot.mode === "all" ? [] : checkedBranches(), compactChecked());
       return;
     }
-    postFilter("custom", checkedBranches());
+    if (event.target.closest?.("[data-branch-filter-checkbox]")) {
+      postFilter("custom", checkedBranches(), compactChecked());
+    }
   }
 
   /** 현재 체크된 브랜치 이름 목록을 읽는다. */
@@ -96,12 +99,19 @@
     ).map((input) => input.value);
   }
 
+  /** compact graph 체크박스의 현재 값을 읽는다. */
+  function compactChecked() {
+    const input = menuEl.querySelector("[data-branch-filter-compact]");
+    return input ? input.checked : snapshot.compact;
+  }
+
   /** 브랜치 필터 변경 메시지를 확장으로 보낸다. */
-  function postFilter(mode, branches) {
+  function postFilter(mode, branches, compact) {
     window.GscGraphPostMessage?.({
       type: "setBranchFilter",
       mode,
       branches,
+      compact,
     });
   }
 
@@ -110,6 +120,7 @@
     snapshot = {
       mode: next?.mode || "all",
       selected: Array.isArray(next?.selected) ? next.selected : [],
+      compact: next?.compact !== false,
       branches: Array.isArray(next?.branches) ? next.branches : [],
     };
     render();
@@ -150,6 +161,7 @@
         shortcutButton("select-all", "Select All", "Show every local and remote branch in the graph", snapshot.mode === "all") +
         shortcutButton("clear-all", "Clear All", "Hide every branch from the graph", snapshot.mode === "custom" && checkedCount === 0) +
       `</div>` +
+      compactToggleHtml() +
       `<div class="branch-filter-list" role="group" aria-label="Visible branches">` +
         branches +
       `</div>`
@@ -162,6 +174,16 @@
     return `<button class="branch-filter-shortcut${activeClass}" type="button" ` +
       `data-branch-filter-shortcut="${esc(action)}" title="${esc(tooltip)}" ` +
       `aria-label="${esc(tooltip)}" data-tooltip="${esc(tooltip)}">${esc(label)}</button>`;
+  }
+
+  /** compact graph 토글 HTML 을 만든다. */
+  function compactToggleHtml() {
+    const tooltip = "Limit graph width by folding overflow lanes into a compact lane";
+    return `<label class="branch-filter-compact" title="${esc(tooltip)}" data-tooltip="${esc(tooltip)}">` +
+      `<input type="checkbox" data-branch-filter-compact${snapshot.compact ? " checked" : ""} />` +
+      `<span class="codicon codicon-list-tree" aria-hidden="true"></span>` +
+      `<span>Compact graph</span>` +
+      `</label>`;
   }
 
   /** 브랜치 체크박스 한 줄 HTML 을 만든다. */

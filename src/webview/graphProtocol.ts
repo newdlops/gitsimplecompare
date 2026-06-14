@@ -41,6 +41,7 @@ export type FromWebviewMessage =
       type: "setBranchFilter";
       mode: GraphBranchFilterMode;
       branches?: string[];
+      compact?: boolean;
     }
   | { type: "fetch" }
   | { type: "fetchTags" }

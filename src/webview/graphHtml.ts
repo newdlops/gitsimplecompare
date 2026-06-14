@@ -20,6 +20,7 @@ export function buildGraphHtml(
   const contextScriptUri = script(webview, mediaRoot, "graphContextMenu.js");
   const localColorScriptUri = script(webview, mediaRoot, "graphLocalColors.js");
   const colorScriptUri = script(webview, mediaRoot, "graphColors.js");
+  const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
@@ -129,6 +130,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${localColorScriptUri}"></script>
+  <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>

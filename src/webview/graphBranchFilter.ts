@@ -15,6 +15,7 @@ export interface GraphBranchRef {
 export interface GraphBranchFilterState {
   mode: GraphBranchFilterMode;
   selected: string[];
+  compact: boolean;
 }
 
 /** 웹뷰 체크박스 목록에 표시할 브랜치 한 건 */
@@ -27,6 +28,7 @@ export interface GraphBranchFilterOption extends GraphBranchRef {
 export interface GraphBranchFilterSnapshot {
   mode: GraphBranchFilterMode;
   selected: string[];
+  compact: boolean;
   branches: GraphBranchFilterOption[];
 }
 
@@ -47,11 +49,13 @@ export interface ResolvedGraphBranchFilter {
  */
 export function normalizeBranchFilterState(
   mode: GraphBranchFilterMode,
-  selected: readonly string[] = []
+  selected: readonly string[] = [],
+  compact = true
 ): GraphBranchFilterState {
   return {
     mode,
     selected: unique(selected.map((item) => item.trim()).filter(Boolean)),
+    compact,
   };
 }
 
@@ -113,6 +117,7 @@ export function buildBranchFilterSnapshot(
     selected: resolved.filtersRefs
       ? branches.filter((branch) => branch.checked).map((branch) => branch.name)
       : branches.map((branch) => branch.name),
+    compact: state.compact,
     branches,
   };
 }

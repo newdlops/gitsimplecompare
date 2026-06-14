@@ -131,12 +131,13 @@
     // 1) SVG: 간선 먼저, 노드 나중에(노드가 위에 오도록)
     const svg = svgEl("svg", { width: graphWidth, height: bodyHeight });
     for (const edge of currentEdges) {
+      const edgeAttrs = window.GscGraphCompactRender?.edgeAttrs?.(edge) || { "stroke-width": "1.5" };
       svg.appendChild(
         svgEl("path", {
           d: edgePath(edge, currentRows.length),
           fill: "none",
           stroke: edgeDisplayColor(edge),
-          "stroke-width": "1.5",
+          ...edgeAttrs,
         })
       );
     }
@@ -166,6 +167,16 @@
       title.textContent = rowTitle(row);
       node.appendChild(title);
       svg.appendChild(node);
+      const marker = window.GscGraphCompactRender?.nodeMarker?.({
+        x: laneX(row.column),
+        y: rowY(r),
+        radius: NODE_R,
+        row,
+        color: nodeColor,
+      });
+      if (marker) {
+        svg.appendChild(marker);
+      }
     }
     graphContentEl.appendChild(svg);
 
@@ -315,6 +326,10 @@
     }
     if (localOnlyBranches) {
       parts.push(`local only: ${localOnlyBranches}`);
+    }
+    const compactTitle = window.GscGraphCompactRender?.titlePart?.(row);
+    if (compactTitle) {
+      parts.push(compactTitle);
     }
     return parts.join(" | ");
   }

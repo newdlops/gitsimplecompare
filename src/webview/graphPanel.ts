@@ -2,9 +2,10 @@
 // - 패널 생애주기(생성/표시/해제)와 웹뷰↔확장 메시지 라우팅만 담당한다.
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
+import { compactGraphData } from "../graph/graphCompact";
 import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
 import { layoutGraph } from "../graph/graphLayout";
-import { Commit, LocalBranchStatus } from "../graph/graphTypes";
+import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
 import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
@@ -44,7 +45,11 @@ export class GitGraphPanel {
   private loading = false;
   private exhausted = false;
   private loadGeneration = 0;
-  private branchFilter: GraphBranchFilterState = { mode: "all", selected: [] };
+  private branchFilter: GraphBranchFilterState = {
+    mode: "all",
+    selected: [],
+    compact: true,
+  };
   private lastLocalBranches: LocalBranchStatus[] = [];
   private lastBranchRefs: GraphBranchRef[] = [];
 
@@ -141,7 +146,8 @@ export class GitGraphPanel {
       } else if (msg.type === "setBranchFilter") {
         this.branchFilter = normalizeBranchFilterState(
           msg.mode,
-          msg.branches ?? []
+          msg.branches ?? [],
+          msg.compact ?? this.branchFilter.compact
         );
         logInfo("graph branch filter changed", {
           repoRoot: this.logService.repoRoot,
@@ -261,7 +267,7 @@ export class GitGraphPanel {
     this.virtualCommits = await this.logService.getVirtualCommits();
     this.post({
       type: "graph",
-      data: layoutGraph(this.graphCommits()),
+      data: this.layoutVisibleGraph(),
       state: this.makeLoadState(false),
     });
     logInfo("graph checkout refresh finished", {
@@ -340,7 +346,7 @@ export class GitGraphPanel {
       this.exhausted = true;
       this.post({
         type: "graph",
-        data: layoutGraph([]),
+        data: this.layoutVisibleGraph([]),
         state: this.makeLoadState(reset),
       });
       return;
@@ -389,7 +395,7 @@ export class GitGraphPanel {
       this.loading = false;
       this.post({
         type: "graph",
-        data: layoutGraph(this.graphCommits()),
+        data: this.layoutVisibleGraph(),
         state: this.makeLoadState(reset),
       });
       postedGraph = true;
@@ -485,6 +491,16 @@ export class GitGraphPanel {
       ...this.virtualCommits,
       ...this.commits.slice(headIndex),
     ];
+  }
+
+  /**
+   * 현재 필터의 compact 설정을 반영한 그래프 레이아웃을 만든다.
+   * @param commits 명시적으로 레이아웃할 커밋 목록. 생략하면 현재 누적 그래프 커밋을 쓴다.
+   * @returns 웹뷰로 보낼 GraphData
+   */
+  private layoutVisibleGraph(commits = this.graphCommits()): GraphData {
+    const graph = layoutGraph(commits);
+    return this.branchFilter.compact ? compactGraphData(graph) : graph;
   }
 
   /**
