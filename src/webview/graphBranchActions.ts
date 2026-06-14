@@ -268,6 +268,9 @@ export async function cloneBranch(
     );
     return;
   }
+  if (checkoutAfter) {
+    await deps.logService.ensureCheckoutAllowed();
+  }
   const existingNames = new Set(
     (await deps.logService.getBranches()).map((branch) => branch.name)
   );

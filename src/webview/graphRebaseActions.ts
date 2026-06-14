@@ -2,6 +2,7 @@
 // - 웹뷰 패널은 메시지 라우팅만 하고, 기준점 계산/실행/충돌 이동은 이 모듈이 담당한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
+import { createRebaseEditTempFile } from "../git/rebaseEditSession";
 import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
   RebaseItem,
@@ -285,15 +286,22 @@ async function openPausedEditFile(
     return;
   }
   const base = paused.parent || EMPTY_TREE;
+  const editFile = await createRebaseEditTempFile(repoRoot, paused, file);
   await openRefVsWorkingDiff(
     repoRoot,
     base,
-    vscode.Uri.file(`${repoRoot}/${file.path}`),
-    file.path
+    vscode.Uri.file(editFile.tempPath),
+    file.path,
+    {
+      fileLabel: file.path.slice(file.path.lastIndexOf("/") + 1),
+      leftRelPath: editFile.leftRelPath,
+      rightLabel: vscode.l10n.t("Rebase Edit"),
+    }
   );
   logInfo("graph rebase edit file opened", {
     repoRoot,
     path: file.path,
+    tempPath: editFile.tempPath,
     paused: paused.hash,
     original: paused.originalHash,
   });

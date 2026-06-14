@@ -69,3 +69,30 @@ export function parseTrack(track: string): {
     gone: track.includes("gone"),
   };
 }
+
+/**
+ * %D(decoration) 문자열을 참조 이름 배열로 파싱한다.
+ * - "HEAD -> main, origin/main, tag: v1" → ["HEAD", "main", "origin/main", "tag:v1"]
+ * @param decoration git 의 decoration 문자열
+ */
+export function parseRefs(decoration: string): string[] {
+  if (!decoration.trim()) {
+    return [];
+  }
+  return decoration.split(",").flatMap((raw) => {
+    const part = raw.trim();
+    if (part.startsWith("HEAD -> ")) {
+      return ["HEAD", part.slice("HEAD -> ".length)];
+    }
+    if (part === "HEAD") {
+      return ["HEAD"];
+    }
+    if (part.startsWith("tag: ")) {
+      return [`tag:${part.slice("tag: ".length)}`];
+    }
+    if (part === "refs/stash" || part.startsWith("stash@{")) {
+      return [];
+    }
+    return part ? [part] : [];
+  });
+}

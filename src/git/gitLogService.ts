@@ -2,6 +2,7 @@
 // - 그래프 UI 가 필요로 하는 커밋 목록과, 노드 클릭 시 보여줄 상세 정보를 제공한다.
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
+import { detectOperation } from "./conflictService";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import {
   Commit,
@@ -12,7 +13,7 @@ import {
 } from "../graph/graphTypes";
 import { GitBranchRefCache } from "./gitBranchRefCache";
 import { loadLocalOnlyBranchMap } from "./gitLocalOnlyBranches";
-import { parseTrack } from "./gitLogRefs";
+import { parseRefs, parseTrack } from "./gitLogRefs";
 import {
   isUnpushedLocalHead,
   localNameFromRemoteRef,
@@ -183,6 +184,7 @@ export class GitLogService {
    * @param merge      로컬 변경 충돌 시 merge checkout 을 시도할지 여부
    */
   async checkoutLocalBranch(branchName: string, merge = false): Promise<void> {
+    await this.ensureCheckoutAllowed();
     await runGit(
       ["switch", ...(merge ? ["--merge"] : []), branchName],
       this.repoRoot
@@ -202,6 +204,7 @@ export class GitLogService {
     remoteBranch: string,
     merge = false
   ): Promise<string> {
+    await this.ensureCheckoutAllowed();
     const localName = localNameFromRemoteRef(remoteBranch);
     await runGit(
       [
@@ -224,11 +227,21 @@ export class GitLogService {
    * @param merge 로컬 변경과 3-way merge 하며 전환할지 여부
    */
   async checkoutCommitDetached(hash: string, merge = false): Promise<void> {
+    await this.ensureCheckoutAllowed();
     await runGit(
       ["switch", ...(merge ? ["--merge"] : []), "--detach", hash],
       this.repoRoot
     );
     this.invalidateCaches();
+  }
+
+  /** rebase 진행 중에는 다른 브랜치/커밋으로 checkout 하지 못하게 막는다. */
+  async ensureCheckoutAllowed(): Promise<void> {
+    if (await detectOperation(this.repoRoot) === "rebase") {
+      throw new Error(
+        "Cannot checkout while a rebase is in progress. Continue or abort the rebase first."
+      );
+    }
   }
 
   /** 지정 커밋을 시작점으로 새 로컬 브랜치를 만든다. */
@@ -552,33 +565,6 @@ export class GitLogService {
       subject: subject ?? "",
     };
   }
-}
-
-/**
- * %D(decoration) 문자열을 참조 이름 배열로 파싱한다.
- * - "HEAD -> main, origin/main, tag: v1" → ["HEAD", "main", "origin/main", "tag:v1"]
- * @param decoration git 의 decoration 문자열
- */
-function parseRefs(decoration: string): string[] {
-  if (!decoration.trim()) {
-    return [];
-  }
-  return decoration.split(",").flatMap((raw) => {
-    const part = raw.trim();
-    if (part.startsWith("HEAD -> ")) {
-      return ["HEAD", part.slice("HEAD -> ".length)];
-    }
-    if (part === "HEAD") {
-      return ["HEAD"];
-    }
-    if (part.startsWith("tag: ")) {
-      return [`tag:${part.slice("tag: ".length)}`];
-    }
-    if (part === "refs/stash" || part.startsWith("stash@{")) {
-      return [];
-    }
-    return part ? [part] : [];
-  });
 }
 
 /** 지정 해시가 그래프 전용 가상 커밋인지 확인한다. */

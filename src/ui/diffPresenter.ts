@@ -56,11 +56,13 @@ export async function openRefVsWorkingDiff(
   repoRoot: string,
   ref: string,
   fileUri: vscode.Uri,
-  relPath: string
+  relPath: string,
+  opts?: { rightLabel?: string; leftRelPath?: string; fileLabel?: string }
 ): Promise<void> {
-  const left = makeRefUri(ref, relPath, repoRoot);
-  const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
-  const title = makeDiffTitle(ref, vscode.l10n.t("Working Tree"), fileLabel);
+  const left = makeRefUri(ref, opts?.leftRelPath ?? relPath, repoRoot);
+  const fileLabel = opts?.fileLabel ?? relPath.slice(relPath.lastIndexOf("/") + 1);
+  const rightLabel = opts?.rightLabel ?? vscode.l10n.t("Working Tree");
+  const title = makeDiffTitle(ref, rightLabel, fileLabel);
   await vscode.commands.executeCommand(
     "vscode.diff",
     left,

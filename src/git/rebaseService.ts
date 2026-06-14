@@ -6,7 +6,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
-import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { parseNameStatusZ, parseNumstat, parsePorcelainGroups } from "./diffParse";
+import {
+  applyRebaseEditTempFiles,
+  cleanupRebaseEditTempFiles,
+} from "./rebaseEditSession";
 
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -334,11 +338,20 @@ export class RebaseService {
       return false;
     }
     const state = paused ?? await this.getPausedEditState();
-    const paths = uniquePaths((state?.files ?? []).map((file) => file.path));
+    if (!state) {
+      return false;
+    }
+    const stagedFromTemp = await applyRebaseEditTempFiles(this.repoRoot, state);
+    const candidates = uniquePaths((state.files ?? []).map((file) => file.path));
+    const paths = stagedFromTemp.length > 0
+      ? stagedFromTemp
+      : await this.changedPausedEditPaths(candidates);
     if (paths.length === 0) {
       return false;
     }
-    await runGit(["add", "-A", "--", ...paths], this.repoRoot);
+    if (stagedFromTemp.length === 0) {
+      await runGit(["add", "-A", "--", ...paths], this.repoRoot);
+    }
     if (!(await this.hasStagedChanges(paths))) {
       return false;
     }
@@ -347,6 +360,7 @@ export class RebaseService {
       this.repoRoot,
       { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" }
     );
+    await cleanupRebaseEditTempFiles(this.repoRoot, state);
     return true;
   }
 
@@ -403,6 +417,29 @@ export class RebaseService {
     } catch {
       return true;
     }
+  }
+
+  /** edit 커밋 후보 경로 중 실제 작업트리/index 에 변경이 있는 경로만 고른다. */
+  private async changedPausedEditPaths(candidates: string[]): Promise<string[]> {
+    const wanted = new Set(candidates);
+    if (wanted.size === 0) {
+      return [];
+    }
+    const raw = await runGit(
+      ["status", "--porcelain", "-z", "--untracked-files=all"],
+      this.repoRoot
+    );
+    const { staged, unstaged } = parsePorcelainGroups(raw);
+    const changed = new Set<string>();
+    for (const change of [...staged, ...unstaged]) {
+      if (wanted.has(change.path)) {
+        changed.add(change.path);
+      }
+      if (change.oldPath && wanted.has(change.oldPath)) {
+        changed.add(change.oldPath);
+      }
+    }
+    return Array.from(changed);
   }
 
   /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */
