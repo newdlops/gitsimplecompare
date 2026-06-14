@@ -225,57 +225,18 @@
   stroke: var(--vscode-gitDecoration-deletedResourceForeground, #f14c4c);
 }
 
-#graph-rebase-menu {
-  position: fixed;
-  z-index: 2000;
-  min-width: 180px;
-  padding: 4px;
-  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
-  border-radius: 4px;
-  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
-}
-
-#graph-rebase-menu button {
-  display: flex;
-  position: relative;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 3px;
-  color: var(--vscode-menu-foreground, var(--vscode-foreground));
-  font: inherit;
-  text-align: left;
-  background: transparent;
-  cursor: pointer;
-}
-
-#graph-rebase-menu button:hover {
-  color: var(--vscode-menu-selectionForeground, var(--vscode-foreground));
-  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
-}
-
-#graph-rebase-detail {
-  position: fixed;
-  top: 72px;
-  right: 18px;
-  z-index: 2050;
+.rebase-detail-editor {
   display: flex;
   box-sizing: border-box;
-  width: min(460px, calc(100vw - 36px));
-  max-height: min(680px, calc(100vh - 96px));
   flex-direction: column;
+  margin: 8px 0;
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   border-radius: 5px;
   color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
   background: var(--vscode-editorWidget-background, #252526);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
 }
 
-#graph-rebase-detail header {
+.rebase-detail-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -284,7 +245,7 @@
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-#graph-rebase-detail header strong {
+.rebase-detail-title strong {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -292,8 +253,7 @@
   white-space: nowrap;
 }
 
-#graph-rebase-detail .close,
-#graph-rebase-detail button[data-exclude] {
+.rebase-detail-editor button[data-exclude] {
   position: relative;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 3px;
@@ -302,37 +262,28 @@
   cursor: pointer;
 }
 
-#graph-rebase-detail .close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-}
-
-#graph-rebase-detail .field {
+.rebase-detail-editor .field {
   display: grid;
   gap: 4px;
   padding: 8px;
 }
 
-#graph-rebase-detail select,
-#graph-rebase-detail textarea {
+.rebase-detail-editor select,
+.rebase-detail-editor textarea {
   border: 1px solid var(--vscode-input-border);
   color: var(--vscode-input-foreground);
   background: var(--vscode-input-background);
   font: inherit;
 }
 
-#graph-rebase-detail textarea {
+.rebase-detail-editor textarea {
   min-height: 110px;
   resize: vertical;
   font-family: var(--vscode-editor-font-family, monospace);
 }
 
-#graph-rebase-detail .files-title,
-#graph-rebase-detail .file-row {
+.rebase-detail-editor .files-title,
+.rebase-detail-editor .file-row {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 72px 72px;
   align-items: center;
@@ -340,32 +291,33 @@
   padding: 5px 8px;
 }
 
-#graph-rebase-detail .files-title {
+.rebase-detail-editor .files-title {
   border-top: 1px solid var(--vscode-panel-border);
   border-bottom: 1px solid var(--vscode-panel-border);
   font-weight: 600;
 }
 
-#graph-rebase-detail .rebase-detail-files {
+.rebase-detail-editor .rebase-detail-files {
+  max-height: 180px;
   overflow: auto;
 }
 
-#graph-rebase-detail .file-row .path {
+.rebase-detail-editor .file-row .path {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#graph-rebase-detail button[data-exclude] {
+.rebase-detail-editor button[data-exclude] {
   height: 22px;
 }
 
-#graph-rebase-detail button.active {
+.rebase-detail-editor button.active {
   color: var(--vscode-button-foreground);
   background: var(--vscode-button-background);
 }
 
-#graph-rebase-detail [data-tooltip]::after {
+.rebase-detail-editor [data-tooltip]::after {
   position: absolute;
   top: calc(100% + 5px);
   left: 50%;
@@ -389,8 +341,8 @@
   transition: none;
 }
 
-#graph-rebase-detail [data-tooltip]:hover::after,
-#graph-rebase-detail [data-tooltip]:focus-visible::after {
+.rebase-detail-editor [data-tooltip]:hover::after,
+.rebase-detail-editor [data-tooltip]:focus-visible::after {
   opacity: 1;
 }
 
@@ -399,17 +351,14 @@
 #graph-rebase-squash-option[data-tooltip]:hover::after,
 #graph-rebase-squash-option[data-tooltip]:focus-within::after,
 .rebase-action-button[data-tooltip]:hover::after,
-.rebase-action-button[data-tooltip]:focus-visible::after,
-#graph-rebase-menu button[data-tooltip]:hover::after,
-#graph-rebase-menu button[data-tooltip]:focus-visible::after {
+.rebase-action-button[data-tooltip]:focus-visible::after {
   opacity: 1;
   background: #252526;
 }
 
 #graph-rebase-bar button[data-tooltip]::after,
 #graph-rebase-squash-option[data-tooltip]::after,
-.rebase-action-button[data-tooltip]::after,
-#graph-rebase-menu button[data-tooltip]::after {
+.rebase-action-button[data-tooltip]::after {
   position: absolute;
   z-index: 2100;
   padding: 4px 7px;
@@ -439,19 +388,11 @@
   transform: translateX(-50%);
 }
 
-#graph-rebase-menu button[data-tooltip]::after {
-  top: 50%;
-  left: calc(100% + 6px);
-  transform: translateY(-50%);
-}
-
 #graph-rebase-bar button[data-tooltip]:hover::after,
 #graph-rebase-bar button[data-tooltip]:focus-visible::after,
 #graph-rebase-squash-option[data-tooltip]:hover::after,
 #graph-rebase-squash-option[data-tooltip]:focus-within::after,
 .rebase-action-button[data-tooltip]:hover::after,
-.rebase-action-button[data-tooltip]:focus-visible::after,
-#graph-rebase-menu button[data-tooltip]:hover::after,
-#graph-rebase-menu button[data-tooltip]:focus-visible::after {
+.rebase-action-button[data-tooltip]:focus-visible::after {
   opacity: 1;
 }

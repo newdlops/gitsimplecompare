@@ -395,6 +395,12 @@ body.resizing {
   background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
 }
 
+.graph-context-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--vscode-menu-separatorBackground, var(--vscode-panel-border));
+}
+
 .graph-context-menu .codicon {
   flex: 0 0 auto;
   width: 18px;

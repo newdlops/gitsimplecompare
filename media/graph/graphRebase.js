@@ -22,7 +22,6 @@
   let drag = null;
   let pendingDrop = null;
   let marker = null;
-  let menu = null;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -109,24 +108,6 @@
       window.setTimeout(renderPlan, 0);
     }
   });
-  /** 우클릭 컨텍스트 메뉴와 외부 클릭 닫기를 연결한다. */
-  graphContent.addEventListener("contextmenu", (event) => {
-    if (!plan) {
-      return;
-    }
-    const row = event.target.closest?.(".row");
-    if (!row || !itemHashSet().has(row.dataset.hash)) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    showContextMenu(row.dataset.hash, event.clientX, event.clientY);
-  }, true);
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest?.("#graph-rebase-menu")) {
-      closeContextMenu();
-    }
-  });
   /** rebase 계획 모드에 들어간다. */
   function enterPlan(nextPlan) {
     plan = nextPlan;
@@ -159,9 +140,7 @@
     originalOrder = [];
     pendingDrop = null;
     hideDropMarker();
-    closeContextMenu();
-    clearRebaseTransforms();
-    removePreviewBranch();
+    window.GscGraphRebasePreview?.clearTransforms?.(graphContent);
     document.body.classList.remove("graph-rebase-mode");
     document.getElementById("graph-rebase-bar")?.remove();
     graphContent.querySelectorAll(".rebase-row").forEach((row) => {
@@ -224,8 +203,14 @@
         row.appendChild(actionButtons(items[index]));
       }
     });
-    applyNodeTransforms(layout.byHash);
-    renderPreviewBranch(layout);
+    window.GscGraphRebasePreview?.applyNodeTransforms?.(graphContent, layout.byHash);
+    window.GscGraphRebasePreview?.renderBranch?.(
+      graphContent,
+      plan,
+      layout,
+      visualItems(),
+      planDiffersFromGraph()
+    );
   }
 
   /** 원래 todo 순서 번호 배지를 만든다(드래그 후에도 바뀌지 않는다). */
@@ -276,60 +261,82 @@
     }
     item.action = action;
     if (MESSAGE_ACTIONS.has(action) && !item.message) {
-      const message = window.GscGraphRebaseMessages?.defaultMessage?.(items, item, action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || item.body || item.subject || "";
-      item.message = window.prompt(`${action} message`, message) || "";
+      item.message = defaultMessage(item, action);
     }
     renderPlan();
+    if (MESSAGE_ACTIONS.has(action)) {
+      openCommitDetails(hash);
+    }
   }
 
-  /** 커밋 우클릭 액션 메뉴를 연다. */
-  function showContextMenu(hash, x, y) {
-    closeContextMenu();
-    menu = document.createElement("div");
-    menu.id = "graph-rebase-menu";
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
-    menu.innerHTML = ACTIONS.map((action) =>
-      `<button type="button" data-action="${action.action}" title="${esc(action.tooltip)}" ` +
-      `aria-label="${esc(action.tooltip)}" data-tooltip="${esc(action.tooltip)}">` +
-      `<span class="codicon codicon-${action.icon}" aria-hidden="true"></span>${action.label}</button>`
-    ).join("") +
-      `<button type="button" data-edit-message="1" title="Edit queued rebase message" ` +
-      `aria-label="Edit commit details" data-tooltip="Edit commit message and excluded files">` +
-      `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span>Commit details</button>`;
-    menu.addEventListener("click", (event) => {
-      const button = event.target.closest("button");
-      if (!button) {
-        return;
-      }
-      if (button.dataset.action) {
-        setAction(hash, button.dataset.action);
-      } else {
-        window.GscGraphRebaseDetail?.open(items, hash, renderPlan) || editMessage(hash);
-      }
-      closeContextMenu();
-    });
-    document.body.appendChild(menu);
+  /** drawer textarea 에 넣을 rebase 메시지 기본값을 계산한다. */
+  function defaultMessage(item, action) {
+    const include = document.getElementById("graph-rebase-include-squash")?.checked !== false;
+    return window.GscGraphRebaseMessages?.defaultMessage?.(items, item, action, include) ||
+      item.body || item.subject || "";
   }
 
-  /** 메시지 큐에 넣을 커밋 메시지를 직접 편집한다. */
-  function editMessage(hash) {
+  /** 커밋 row 클릭과 같은 경로로 drawer 상세를 연다. */
+  function openCommitDetails(hash) {
+    const row = graphContent.querySelector(`.row[data-hash="${cssEscape(hash)}"]`);
+    if (row) {
+      row.click();
+      return;
+    }
+    window.GscGraphPostMessage?.({ type: "selectCommit", hash });
+  }
+
+  /** CSS selector 에 넣을 값을 이스케이프한다. */
+  function cssEscape(value) {
+    return window.CSS?.escape ? window.CSS.escape(value) : String(value).replace(/"/g, '\\"');
+  }
+
+  /** drawer 편집 UI 에서 rebase action 을 갱신한다. */
+  function updateAction(hash, action) {
+    setAction(hash, action);
+  }
+
+  /** drawer 편집 UI 에서 메시지를 갱신한다. */
+  function updateMessage(hash, message) {
     const item = items.find((entry) => entry.hash === hash);
     if (!item) {
       return;
     }
-    const message = item.message || window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || item.body || item.subject || "";
-    item.message = window.prompt("Commit message", message) || "";
+    item.message = message || "";
     if (item.action === "pick") {
       item.action = "reword";
     }
     renderPlan();
   }
 
-  /** 열린 컨텍스트 메뉴를 닫는다. */
-  function closeContextMenu() {
-    menu?.remove();
-    menu = null;
+  /** drawer 편집 UI 에서 커밋 단위 파일 제외를 토글한다. */
+  function toggleCommitExclude(hash, path) {
+    const item = items.find((entry) => entry.hash === hash);
+    if (item) {
+      togglePath(item, "excludePaths", path);
+      renderPlan();
+    }
+  }
+
+  /** drawer 편집 UI 에서 rebase 범위 전체 파일 제외를 토글한다. */
+  function toggleHistoryExclude(path) {
+    const enabled = items.some((item) => (item.historyExcludePaths || []).includes(path));
+    for (const item of items) {
+      setPath(item, "historyExcludePaths", path, !enabled);
+    }
+    renderPlan();
+  }
+
+  /** item 의 경로 배열에서 값을 토글한다. */
+  function togglePath(item, key, path) {
+    setPath(item, key, path, !(item[key] || []).includes(path));
+  }
+
+  /** item 의 경로 배열에 값을 명시적으로 반영한다. */
+  function setPath(item, key, path, enabled) {
+    const next = new Set(item[key] || []);
+    enabled ? next.add(path) : next.delete(path);
+    item[key] = Array.from(next);
   }
 
   /** 계획 row 중 y 좌표와 가장 가까운 row 를 찾는다. */
@@ -427,138 +434,6 @@
     return { byHash };
   }
 
-  /** todo 순서가 바뀐 커밋 node 를 새 위치로 옮긴다. */
-  function applyNodeTransforms(layout) {
-    graphContent.querySelectorAll(".node.rebase-preview-moved-node").forEach((node) => {
-      node.removeAttribute("transform");
-      node.classList.remove("rebase-preview-moved-node");
-    });
-    layout.forEach((slot, hash) => {
-      const node = nodeForHash(hash);
-      if (!node || slot.dy === 0) {
-        return;
-      }
-      node.setAttribute("transform", `translate(0 ${slot.dy})`);
-      node.classList.add("rebase-preview-moved-node");
-    });
-  }
-
-  /** 원본 그래프와 달라지는 계획을 별도 branch preview 로 그린다. */
-  function renderPreviewBranch(layout) {
-    removePreviewBranch();
-    if (!planDiffersFromGraph()) {
-      return;
-    }
-    const svg = graphContent.querySelector("svg");
-    if (!svg) {
-      return;
-    }
-    svg.style.overflow = "visible";
-    const kept = visualItems().filter(
-      (item) => item.action !== "drop" && layout.byHash.has(item.hash)
-    );
-    if (kept.length === 0) {
-      return;
-    }
-    const x = previewBranchX(svg);
-    const group = svgEl("g", { class: "rebase-preview-layer" });
-    const points = kept.map((item) => layout.byHash.get(item.hash).y);
-    const anchor = previewAnchor(layout);
-    const pathParts = anchor
-      ? [
-          `M ${anchor.x} ${anchor.y}`,
-          `L ${x} ${anchor.y}`,
-          `L ${x} ${points[0]}`,
-          ...points.slice(1).map((y) => `L ${x} ${y}`),
-        ]
-      : points.map((y, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`);
-    group.appendChild(svgEl("path", {
-      class: "rebase-preview-edge",
-      d: pathParts.join(" "),
-    }));
-    kept.forEach((item) => {
-      const slot = layout.byHash.get(item.hash);
-      const node = svgEl("circle", {
-        class: `rebase-preview-node action-${item.action}`,
-        cx: String(x),
-        cy: String(slot.y),
-        r: "5",
-      });
-      const title = svgEl("title", {});
-      title.textContent = `rebase preview ${item.originalOrder + 1}: ${item.subject || item.hash}`;
-      node.appendChild(title);
-      group.appendChild(node);
-    });
-    svg.appendChild(group);
-  }
-
-  /** preview branch 가 갈라져 나오는 기준 node 좌표를 찾는다. */
-  function previewAnchor(layout) {
-    const anchorHash = plan?.onto || (!plan?.root ? plan?.base : "");
-    if (!anchorHash) {
-      return null;
-    }
-    const slot = layout.byHash.get(anchorHash);
-    const node = nodeForHash(anchorHash);
-    if (slot && node) {
-      return {
-        x: Number(node.getAttribute("cx")) || 0,
-        y: slot.y,
-      };
-    }
-    if (!node) {
-      return null;
-    }
-    return {
-      x: Number(node.getAttribute("cx")) || 0,
-      y: Number(node.getAttribute("cy")) || 0,
-    };
-  }
-
-  /** SVG 안에 rebase preview branch 를 놓을 x 좌표를 계산한다. */
-  function previewBranchX(svg) {
-    const nodes = Array.from(svg.querySelectorAll(".node"));
-    const maxX = nodes.reduce(
-      (max, node) => Math.max(max, Number(node.getAttribute("cx")) || 0),
-      0
-    );
-    const width = Number(svg.getAttribute("width")) || maxX + 32;
-    return Math.min(Math.max(16, maxX + 24), Math.max(16, width - 8));
-  }
-
-  /** rebase preview branch SVG layer 를 제거한다. */
-  function removePreviewBranch() {
-    graphContent.querySelector(".rebase-preview-layer")?.remove();
-  }
-
-  /** rebase preview 를 위해 row/node 에 적용한 transform 을 제거한다. */
-  function clearRebaseTransforms() {
-    graphContent.querySelectorAll(".row").forEach((row) => {
-      row.style.transform = "";
-      row.classList.remove("rebase-preview-moved");
-    });
-    graphContent.querySelectorAll(".node.rebase-preview-moved-node").forEach((node) => {
-      node.removeAttribute("transform");
-      node.classList.remove("rebase-preview-moved-node");
-    });
-  }
-
-  /** 네임스페이스를 지정해 SVG 요소를 만든다. */
-  function svgEl(name, attrs) {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", name);
-    for (const key in attrs) {
-      el.setAttribute(key, attrs[key]);
-    }
-    return el;
-  }
-
-  /** 해시로 SVG node 를 찾는다. */
-  function nodeForHash(hash) {
-    return Array.from(graphContent.querySelectorAll(".node")).find(
-      (node) => node.dataset.hash === hash
-    );
-  }
-
   /** drop marker 를 대상 row 위/아래에 표시한다. */
   function showDropMarker(row, y) {
     if (!row) {
@@ -597,4 +472,35 @@
       })),
     });
   }
+
+  /** graph context menu 에 합쳐 넣을 rebase 전용 항목을 만든다. */
+  function contextMenuItems(hash) {
+    if (!plan || !itemHashSet().has(hash)) {
+      return [];
+    }
+    return [
+      ...ACTIONS.map((action) => ({
+        label: action.label,
+        icon: action.icon,
+        title: action.tooltip,
+        run: () => setAction(hash, action.action),
+      })),
+      {
+        label: "Commit details",
+        icon: "comment-discussion",
+        title: "Edit commit message and excluded files",
+        run: () => openCommitDetails(hash),
+      },
+    ];
+  }
+
+  window.GscGraphRebaseContext = {
+    contextMenuItems,
+    itemForHash: (hash) => items.find((item) => item.hash === hash),
+    items: () => items,
+    updateAction,
+    updateMessage,
+    toggleCommitExclude,
+    toggleHistoryExclude,
+  };
 })();

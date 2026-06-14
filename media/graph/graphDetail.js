@@ -52,6 +52,7 @@
     const detail = lastDetail;
     const title = detail.message.split("\n")[0] || detail.hash.slice(0, 10);
     const actions = window.GscGraphFeatures?.commitActions(detail, esc) || "";
+    const rebaseEditor = window.GscGraphRebaseDetail?.detailHtml?.(detail, esc) || "";
     lastHost.root.innerHTML =
       `<div class="detail-shell">` +
       `<section class="commit-summary">` +
@@ -60,6 +61,7 @@
       branchHtml(detail.branches || []) +
       authorHtml(detail) +
       `<div class="actions">${actions}</div>` +
+      rebaseEditor +
       messageHtml(detail.message) +
       `</section>` +
       `<div id="detail-splitter" class="detail-splitter" role="separator" ` +
@@ -367,6 +369,7 @@
       });
     });
     window.GscGraphFeatures?.bindCommitActions(root, detail);
+    window.GscGraphRebaseDetail?.bind?.(root, detail);
   }
 
   /** Explorer 처럼 폴더 행을 접거나 펼친다. */
@@ -383,5 +386,5 @@
     draw();
   }
 
-  window.GscGraphDetail = { render };
+  window.GscGraphDetail = { render, refresh: draw };
 })();

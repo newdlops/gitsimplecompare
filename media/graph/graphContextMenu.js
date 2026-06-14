@@ -115,17 +115,24 @@
       return [];
     }
     const actions = [];
+    const rebaseItems = window.GscGraphRebaseContext?.contextMenuItems?.(hash) || [];
+    const rebaseActive = rebaseItems.length > 0;
+    if (rebaseActive) {
+      actions.push(...rebaseItems, separator());
+    }
     if (helpers.canUndoCommit?.(hash)) {
       actions.push(
         item("Undo Commit", "discard", () => ({ type: "undoCommit", hash }))
       );
     }
     if (isRealCommit(hash)) {
-      actions.push(
-        item("Interactive Rebase From Here", "list-ordered", () => ({
+      if (!rebaseActive) {
+        actions.push(item("Interactive Rebase From Here", "list-ordered", () => ({
           type: "prepareGraphRebase",
           hash,
-        })),
+        })));
+      }
+      actions.push(
         item("Checkout Detached", "debug-restart", () => ({
           type: "checkoutCommit",
           hash,
@@ -151,11 +158,18 @@
     return { label, icon, title: label, message };
   }
 
+  /** 메뉴 섹션 구분선을 만든다. */
+  function separator() {
+    return { separator: true };
+  }
+
   /** 메뉴 DOM 을 만들고 항목을 렌더링한 뒤 화면 안쪽에 배치한다. */
   function showMenu(items, x, y) {
     const menu = ensureMenu();
     menu.innerHTML = "";
-    items.forEach((entry) => menu.appendChild(menuButton(entry)));
+    items.forEach((entry) => {
+      menu.appendChild(entry.separator ? menuSeparator() : menuButton(entry));
+    });
     menu.hidden = false;
     menu.style.left = "0px";
     menu.style.top = "0px";
@@ -181,9 +195,21 @@
       event.preventDefault();
       event.stopPropagation();
       hideMenu();
-      window.GscGraphPostMessage?.(entry.message());
+      if (entry.run) {
+        entry.run();
+      } else {
+        window.GscGraphPostMessage?.(entry.message());
+      }
     });
     return button;
+  }
+
+  /** 메뉴 안에서 rebase/일반 액션을 구분하는 선을 만든다. */
+  function menuSeparator() {
+    const separator = document.createElement("div");
+    separator.className = "graph-context-separator";
+    separator.setAttribute("role", "separator");
+    return separator;
   }
 
   /** context menu 컨테이너를 지연 생성한다. */
