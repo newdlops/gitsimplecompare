@@ -36,6 +36,31 @@
       .join(" ");
   }
 
+  /** 로컬 브랜치가 remote 기준과 갈라져 별도 색으로 보여야 하는지 확인한다. */
+  function isSplitLocalBranch(branch) {
+    return Boolean(branch && (branch.ahead > 0 || !branch.upstream || branch.gone));
+  }
+
+  /** 브랜치 이름에 맞는 chip 색상 CSS 변수를 만든다. */
+  function branchStyle(name) {
+    const color = window.GscGraphColors?.branchColor?.(name);
+    return color ? ` style="--branch-color: ${esc(color)}"` : "";
+  }
+
+  /** row 의 대표 브랜치 강조 색을 찾는다. */
+  function rowColor(row) {
+    const localOnlyBranch = (row.localOnlyBranches || []).find(Boolean);
+    if (localOnlyBranch) {
+      return window.GscGraphColors?.branchColor?.(localOnlyBranch, row.color);
+    }
+    const branchRef = (row.refs || []).find((ref) =>
+      isSplitLocalBranch(localBranches.get(ref))
+    );
+    return branchRef
+      ? window.GscGraphColors?.branchColor?.(branchRef, row.color)
+      : undefined;
+  }
+
   /** ref 문자열이 tag 내부 표기인지 확인한다. */
   function isTagRef(ref) {
     return ref.indexOf("tag:") === 0;
@@ -103,7 +128,7 @@
           )}"`;
       return `<span class="${branchClass(branch)}" data-tooltip="${safeEsc(
         branchTitle(branch)
-      )}"${attrs}><span class="codicon codicon-git-branch ref-icon" ` +
+      )}"${attrs}${branchStyle(branch.name)}><span class="codicon codicon-git-branch ref-icon" ` +
         `aria-hidden="true"></span><span class="ref-label">${safeEsc(ref)}</span></span>`;
     }
     const remote = ref.indexOf("/") >= 0;
@@ -116,7 +141,7 @@
         `data-branch-kind="remote" data-tooltip="${safeEsc(
           `Click to checkout this branch: ${ref}`
         )}" ` +
-        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"`
+        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"${branchStyle(ref)}`
       : "";
     const title = remote ? "" : ` title="${safeEsc(ref)}"`;
     return `<span class="${className}"${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
@@ -541,6 +566,7 @@
     jumpToHead,
     nodeClass,
     refBadge,
+    rowColor,
     setLocalBranches,
     updateSearchIndex,
   };

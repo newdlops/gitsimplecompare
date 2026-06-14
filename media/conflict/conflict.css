@@ -105,6 +105,71 @@ p {
   color: var(--incoming-accent);
 }
 
+#chunk-bar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+}
+
+#chunk-bar.empty-chunks {
+  opacity: 0.65;
+  font-size: 11px;
+}
+
+.chunk-item {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(420px, 100%);
+  min-height: 24px;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+
+.chunk-label {
+  font-weight: 600;
+}
+
+.chunk-preview {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0.72;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chunk-apply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.chunk-apply:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.chunk-apply.current-action .codicon {
+  color: var(--current-accent);
+}
+
+.chunk-apply.incoming-action .codicon {
+  color: var(--incoming-accent);
+}
+
 #panes {
   display: grid;
   flex: 1 1 auto;

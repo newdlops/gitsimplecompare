@@ -143,7 +143,7 @@ export class ConflictPanel {
       reason,
     });
     await this.onDidMutate();
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: `conflict:${reason}`,
     });
     await this.reload();

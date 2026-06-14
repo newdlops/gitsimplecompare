@@ -131,14 +131,14 @@
         svgEl("path", {
           d: edgePath(edge, currentRows.length),
           fill: "none",
-          stroke: window.GscGraphColors.edgeColor(edge, currentRows),
+          stroke: edgeDisplayColor(edge),
           "stroke-width": "1.5",
         })
       );
     }
     for (let r = 0; r < currentRows.length; r++) {
       const row = currentRows[r];
-      const nodeColor = window.GscGraphColors.rowColor(row);
+      const nodeColor = rowDisplayColor(row);
       const node = svgEl("circle", {
         cx: laneX(row.column),
         cy: rowY(r),
@@ -226,13 +226,12 @@
     el.style.top = index * ROW_H + "px";
     el.style.left = leftInset + "px";
     el.style.right = "0";
-    el.style.setProperty("--branch-color", window.GscGraphColors.rowColor(row));
+    el.style.setProperty("--branch-color", rowDisplayColor(row));
     el.dataset.hash = row.hash;
     el.dataset.subject = row.subject || "";
     el.dataset.refs = (row.refs || []).join("\t");
     el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
     el.title = rowTitle(row);
-
     const refRenderer = window.GscGraphFeatures && window.GscGraphFeatures.refBadge;
     const refs = (row.refs || [])
       .map((ref) =>
@@ -249,7 +248,8 @@
     el.addEventListener("click", () => selectCommit(row.hash));
     return el;
   }
-
+  function rowDisplayColor(row) { return window.GscGraphFeatures?.rowColor?.(row) || window.GscGraphColors.rowColor(row); }
+  function edgeDisplayColor(edge) { const from = currentRows[edge.fromRow]; return from ? rowDisplayColor(from) : window.GscGraphColors.edgeColor(edge, currentRows); }
   /** 커밋 row/node hover tooltip 에 표시할 짧은 설명을 만든다. */
   function rowTitle(row) {
     const refs = (row.refs || []).filter(Boolean).join(", ");

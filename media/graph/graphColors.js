@@ -29,8 +29,14 @@
   /** local-only 커밋을 포함하는 로컬 브랜치명에 맞는 별도 색상을 고른다. */
   function localOnlyColor(branches, baseIndex) {
     const branch = (branches || []).find(Boolean) || "local";
+    return branchColor(branch, baseIndex);
+  }
+
+  /** 브랜치 이름에 맞는 안정적인 강조 색상을 반환한다. */
+  function branchColor(branch, baseIndex) {
+    const branchName = branch || "local";
     const base = normalizeColor(colorOf(baseIndex));
-    const start = hashText(branch) % LOCAL_ONLY_COLORS.length;
+    const start = hashText(branchName) % LOCAL_ONLY_COLORS.length;
     for (let offset = 0; offset < LOCAL_ONLY_COLORS.length; offset++) {
       const color = LOCAL_ONLY_COLORS[(start + offset) % LOCAL_ONLY_COLORS.length];
       if (normalizeColor(color) !== base) {
@@ -55,6 +61,7 @@
 
   window.GscGraphColors = {
     colorOf,
+    branchColor,
     rowColor,
     edgeColor,
   };

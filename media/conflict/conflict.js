@@ -37,6 +37,81 @@
     return `${side.ref || ""}${hash ? ` · ${hash}` : ""}`;
   }
 
+  /** 줄바꿈을 보존한 line 배열을 만든다. */
+  function linesOf(text) {
+    return String(text || "").match(/[^\n]*\n|[^\n]+/g) || [];
+  }
+
+  /** Result 안의 conflict marker 블록을 current/incoming chunk 로 나눈다. */
+  function conflictChunks(text) {
+    const lines = linesOf(text);
+    const chunks = [];
+    let start = -1;
+    let mode = "normal";
+    let current = [];
+    let incoming = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith("<<<<<<<")) {
+        start = i;
+        mode = "current";
+        current = [];
+        incoming = [];
+        continue;
+      }
+      if (mode === "current" && line.startsWith("|||||||")) {
+        mode = "base";
+        continue;
+      }
+      if ((mode === "current" || mode === "base") && line.startsWith("=======")) {
+        mode = "incoming";
+        continue;
+      }
+      if (mode === "incoming" && line.startsWith(">>>>>>>")) {
+        chunks.push({
+          start,
+          end: i + 1,
+          current: current.join(""),
+          incoming: incoming.join(""),
+        });
+        mode = "normal";
+        continue;
+      }
+      if (mode === "current") {
+        current.push(line);
+      } else if (mode === "incoming") {
+        incoming.push(line);
+      }
+    }
+    return chunks;
+  }
+
+  /** chunk 버튼에 표시할 짧은 미리보기 문자열을 만든다. */
+  function chunkPreview(chunk) {
+    const text = (chunk.current || chunk.incoming || "").trim().split(/\r?\n/)[0] || "empty block";
+    return text.length > 54 ? `${text.slice(0, 54)}...` : text;
+  }
+
+  /** conflict chunk 선택/적용 버튼 바를 만든다. */
+  function chunkBar(documentData) {
+    const chunks = conflictChunks(documentData.result);
+    if (!chunks.length) {
+      return `<div id="chunk-bar" class="empty-chunks">No conflict blocks in Result</div>`;
+    }
+    return `<div id="chunk-bar">` + chunks.map((chunk, index) =>
+      `<div class="chunk-item">` +
+      `<span class="chunk-label">Block ${index + 1}</span>` +
+      `<button class="chunk-apply current-action" type="button" data-chunk="${index}" data-side="current" ` +
+      `title="${esc(`Apply Current block ${index + 1} to Result`)}" aria-label="${esc(`Apply Current block ${index + 1} to Result`)}">` +
+      `<span class="codicon codicon-arrow-right" aria-hidden="true"></span></button>` +
+      `<button class="chunk-apply incoming-action" type="button" data-chunk="${index}" data-side="incoming" ` +
+      `title="${esc(`Apply Incoming block ${index + 1} to Result`)}" aria-label="${esc(`Apply Incoming block ${index + 1} to Result`)}">` +
+      `<span class="codicon codicon-arrow-left" aria-hidden="true"></span></button>` +
+      `<span class="chunk-preview">${esc(chunkPreview(chunk))}</span>` +
+      `</div>`
+    ).join("") + `</div>`;
+  }
+
   /** 편집 pane HTML 을 만든다. */
   function pane(kind, title, meta, content) {
     return (
@@ -63,10 +138,11 @@
       button("resolve-marked", "check", "Resolve Marked", "Save Result and mark this conflict as resolved", "primary") +
       button("open-native", "git-merge", "Native Merge", "Open VS Code Merge Editor", "") +
       `</div></header>` +
+      chunkBar(documentData) +
       `<main id="panes">` +
       pane("current", "Current", sideMeta(documentData.current), documentData.current.content) +
-      pane("incoming", "Incoming", sideMeta(documentData.incoming), documentData.incoming.content) +
       pane("result", "Result", "working tree", documentData.result) +
+      pane("incoming", "Incoming", sideMeta(documentData.incoming), documentData.incoming.content) +
       `</main>` +
       `<div id="status" role="status" aria-live="polite"></div>`;
     bindActions();
@@ -104,11 +180,65 @@
       setStatus("Saving Result...");
     });
     document.getElementById("resolve-marked")?.addEventListener("click", () => {
+      if (conflictChunks(values().result).length) {
+        setStatus("Apply or edit all conflict blocks before Resolve Marked");
+        return;
+      }
       vscode.postMessage({ type: "resolveMarked", content: values().result });
       setStatus("Resolving...");
     });
     document.getElementById("open-native")?.addEventListener("click", () => {
       vscode.postMessage({ type: "openMergeEditor" });
+    });
+    document.querySelectorAll("[data-chunk][data-side]").forEach((button) => {
+      button.addEventListener("click", () =>
+        applyChunk(Number(button.dataset.chunk), button.dataset.side)
+      );
+    });
+  }
+
+  /** 선택한 conflict block 의 한쪽 내용을 Result 에 반영한다. */
+  function applyChunk(index, side) {
+    const result = document.getElementById("result-text");
+    if (!result) {
+      return;
+    }
+    const lines = linesOf(result.value);
+    const chunks = conflictChunks(result.value);
+    const chunk = chunks[index];
+    if (!chunk) {
+      setStatus("Conflict block was already resolved");
+      return;
+    }
+    const replacement = side === "incoming" ? chunk.incoming : chunk.current;
+    result.value =
+      lines.slice(0, chunk.start).join("") +
+      replacement +
+      lines.slice(chunk.end).join("");
+    setStatus(`Applied ${side === "incoming" ? "Incoming" : "Current"} block ${index + 1} to Result`);
+    renderChunkBarFromResult();
+  }
+
+  /** Result 변경 후 chunk 버튼 바를 현재 marker 상태에 맞게 다시 그린다. */
+  function renderChunkBarFromResult() {
+    const result = document.getElementById("result-text");
+    const bar = document.getElementById("chunk-bar");
+    if (!result || !bar || !currentDocument) {
+      return;
+    }
+    const next = { ...currentDocument, result: result.value };
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = chunkBar(next);
+    bar.replaceWith(wrapper.firstElementChild);
+    bindChunkActionsOnly();
+  }
+
+  /** chunk 버튼만 다시 연결한다. */
+  function bindChunkActionsOnly() {
+    document.querySelectorAll("[data-chunk][data-side]").forEach((button) => {
+      button.addEventListener("click", () =>
+        applyChunk(Number(button.dataset.chunk), button.dataset.side)
+      );
     });
   }
 

@@ -261,6 +261,9 @@ async function runFileAction(
     );
   }
   await controller.refresh();
+  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "conflictFileAction",
+  });
   await dropPullSnapshotAfterResolvedRestore(controller);
 }
 
