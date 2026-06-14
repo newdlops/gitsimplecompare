@@ -29,12 +29,15 @@
     if (!item) {
       return "";
     }
+    const paused = window.GscGraphRebaseContext?.paused?.() || null;
+    const isPausedHere = paused &&
+      (paused.originalHash === detail.hash || paused.hash === detail.hash);
     const paths = historyPaths();
     const actionOptions = ACTIONS.map((action) =>
       `<option value="${action}"${item.action === action ? " selected" : ""}>${action}</option>`
     ).join("");
     const files = (item.files || detail.files || []).map((file) =>
-      fileRowHtml(item, file, paths, esc)
+      fileRowHtml(item, file, paths, item.action === "edit", isPausedHere, esc)
     ).join("");
     return (
       `<section class="rebase-detail-editor" data-rebase-hash="${esc(detail.hash)}">` +
@@ -45,24 +48,72 @@
       `<label class="field message"><span>Commit message</span>` +
       `<textarea id="rebase-detail-message" spellcheck="false" ` +
       `${title("Edit the commit message used by reword or squash", esc)}>${esc(itemMessage(item))}</textarea></label>` +
-      `<div class="files-title"><span>Changed files</span><span>${(item.files || detail.files || []).length}</span></div>` +
+      editPanelHtml(item, isPausedHere, esc) +
+      `<div class="files-title"><span>Changed files</span><span>${(item.files || detail.files || []).length}</span><span>Rewrite</span></div>` +
       `<div class="rebase-detail-files">${files || `<p>No changed files.</p>`}</div>` +
       `</section>`
     );
   }
 
+  /** edit action 상태에 맞는 수동 편집 패널을 만든다. */
+  function editPanelHtml(item, isPausedHere, esc) {
+    if (item.action !== "edit") {
+      return "";
+    }
+    const cta = isPausedHere
+      ? buttonHtml("open-first-edit-file", "go-to-file", "Open editable diff", "Open the first editable file from this paused commit", esc)
+      : buttonHtml("start-edit-rebase", "play", "Start rebase", "Start rebase; Git will pause at this commit for manual edits", esc);
+    const state = isPausedHere ? "Paused here" : "Will pause here";
+    return (
+      `<div class="edit-state"><span class="codicon codicon-debug-pause" aria-hidden="true"></span>` +
+      `<strong>${state}</strong>${cta}</div>`
+    );
+  }
+
   /** 변경 파일 한 줄과 제외 버튼을 만든다. */
-  function fileRowHtml(item, file, history, esc) {
+  function fileRowHtml(item, file, history, editMode, isPausedHere, esc) {
     const excluded = (item.excludePaths || []).includes(file.path);
     const historyExcluded = history.has(file.path);
+    const editButton = editMode
+      ? fileEditButton(file, isPausedHere, esc)
+      : "";
     return (
-      `<div class="file-row" data-path="${esc(file.path)}">` +
+      `<div class="file-row" data-path="${esc(file.path)}"${file.status.startsWith("D") ? " data-deleted=\"1\"" : ""}>` +
       `<span class="status">${esc(file.status)}</span><span class="path">${esc(file.path)}</span>` +
-      `<button type="button" data-exclude="commit" class="${excluded ? "active" : ""}" ` +
-      `${title("Exclude this file from this commit", esc)}>Commit</button>` +
-      `<button type="button" data-exclude="history" class="${historyExcluded ? "active" : ""}" ` +
-      `${title("Exclude this file from every commit in this branch rebase range", esc)}>History</button>` +
+      `<span class="file-rewrite-actions">${editButton}` +
+      toggleButton("commit", excluded, "Omit here", "Omitted here", "Remove this file change from only this commit", esc) +
+      toggleButton("history", historyExcluded, "Remove from history", "Removed from history", "Remove this file from every commit in this rebase range", esc) +
+      `</span>` +
       `</div>`
+    );
+  }
+
+  /** 파일 row 의 editable diff 버튼을 만든다. */
+  function fileEditButton(file, isPausedHere, esc) {
+    if (file.status.startsWith("D")) {
+      const tooltip = title("Deleted files cannot be opened as editable working-tree diffs", esc);
+      return `<span class="edit-unavailable" ${tooltip}>` +
+        `<span class="codicon codicon-warning" aria-hidden="true"></span><span>Deleted</span></span>`;
+    }
+    if (!isPausedHere) {
+      return "";
+    }
+    return buttonHtml("open-edit-file", "edit", "Edit file", "Open this paused commit file in an editable diff", esc);
+  }
+
+  /** 파일 제외 토글 버튼을 만든다. */
+  function toggleButton(kind, active, inactiveLabel, activeLabel, tooltip, esc) {
+    const label = active ? activeLabel : inactiveLabel;
+    const activeClass = active ? " active" : "";
+    return `<button type="button" data-exclude="${kind}" class="${activeClass}" ` +
+      `aria-pressed="${active ? "true" : "false"}" ${title(tooltip, esc)}>${label}</button>`;
+  }
+
+  /** drawer 안에 들어가는 일반 action 버튼을 만든다. */
+  function buttonHtml(action, icon, label, tooltip, esc) {
+    return (
+      `<button type="button" data-rebase-action="${action}" ${title(tooltip, esc)}>` +
+      `<span class="codicon codicon-${icon}" aria-hidden="true"></span><span>${esc(label)}</span></button>`
     );
   }
 
@@ -95,6 +146,26 @@
         window.GscGraphDetail?.refresh?.();
       });
     });
+    section.querySelector('[data-rebase-action="start-edit-rebase"]')?.addEventListener("click", () => {
+      document.getElementById("graph-rebase-run")?.click();
+    });
+    section.querySelector('[data-rebase-action="open-first-edit-file"]')?.addEventListener("click", () => {
+      const path = section.querySelector(".file-row:not([data-deleted])")?.dataset.path || "";
+      openEditFile(path);
+    });
+    section.querySelectorAll('[data-rebase-action="open-edit-file"]').forEach((button) => {
+      button.addEventListener("click", () => {
+        openEditFile(button.closest(".file-row")?.dataset.path || "");
+      });
+    });
+  }
+
+  /** edit 정지 지점의 파일을 확장 호스트에 요청해 editable diff 로 연다. */
+  function openEditFile(path) {
+    if (!path) {
+      return;
+    }
+    window.GscGraphPostMessage?.({ type: "openRebaseEditFile", path });
   }
 
   window.GscGraphRebaseDetail = { detailHtml, bind };

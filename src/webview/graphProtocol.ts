@@ -2,7 +2,11 @@
 // - 확장(Node)과 웹뷰(브라우저 컨텍스트)가 동일한 타입을 공유해 프로토콜 불일치를 막는다.
 // - 새 그래프 상호작용을 추가할 때 이 합집합 타입에 한 줄만 더하면 된다(확장성).
 import { CommitDetail, GraphData, LocalBranchStatus } from "../graph/graphTypes";
-import type { RebaseItem, RebasePlanInfo } from "../git/rebaseService";
+import type {
+  RebaseItem,
+  RebasePausedState,
+  RebasePlanInfo,
+} from "../git/rebaseService";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
@@ -19,6 +23,7 @@ export type ToWebviewMessage =
   | { type: "branchStatus"; branches: LocalBranchStatus[] }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
+  | { type: "graphRebasePaused"; paused: RebasePausedState }
   | { type: "graphRebaseClear" }
   | { type: "error"; message: string };
 
@@ -50,6 +55,7 @@ export type FromWebviewMessage =
   | { type: "copyCommitHash"; hash: string }
   | { type: "copyCommitMessage"; message: string }
   | { type: "openFileDiff"; hash: string; parent: string; path: string }
+  | { type: "openRebaseEditFile"; path: string }
   | { type: "prepareGraphRebase"; hash?: string; onto?: string }
   | {
       type: "runGraphRebase";

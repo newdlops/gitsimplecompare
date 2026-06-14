@@ -44,8 +44,17 @@ export interface RebaseItem {
 
 /** rebase 실행 결과 */
 export interface RebaseResult {
-  status: "completed" | "conflicts" | "failed" | "noop";
+  status: "completed" | "conflicts" | "failed" | "noop" | "paused";
   message?: string;
+  paused?: RebasePausedState;
+}
+
+/** rebase 가 edit todo 에서 멈췄을 때 UI 가 이어받을 상태 */
+export interface RebasePausedState {
+  hash: string;
+  originalHash?: string;
+  parent?: string;
+  files: RebaseCommitFile[];
 }
 
 /** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
@@ -252,12 +261,24 @@ export class RebaseService {
         this.repoRoot,
         env
       );
+      const paused = await this.getPausedEditState();
+      if (paused) {
+        keepTempFiles = true;
+        return { status: "paused", paused };
+      }
       return { status: "completed" };
     } catch (err) {
       // 비정상 종료 시, rebase 가 진행 중이면 충돌로 멈춘 것이다.
       const op = await detectOperation(this.repoRoot);
       if (op === "rebase") {
         keepTempFiles = true;
+        if (await this.hasUnmergedFiles()) {
+          return { status: "conflicts" };
+        }
+        const paused = await this.getPausedEditState();
+        if (paused) {
+          return { status: "paused", paused };
+        }
         return { status: "conflicts" };
       }
       return {
@@ -273,6 +294,29 @@ export class RebaseService {
         }
       }
     }
+  }
+
+  /**
+   * rebase 가 edit 지점에서 멈춘 상태를 읽는다.
+   * - 충돌이 없고 rebase 작업만 진행 중이면 HEAD 가 사용자가 수정할 커밋이다.
+   * - `.git/rebase-merge/stopped-sha` 는 원래 커밋 해시이므로 그래프 계획의 row 와 다시 연결하는 데 쓴다.
+   */
+  async getPausedEditState(): Promise<RebasePausedState | undefined> {
+    if (await detectOperation(this.repoRoot) !== "rebase") {
+      return undefined;
+    }
+    if (await this.hasUnmergedFiles()) {
+      return undefined;
+    }
+    const hash = (await runGit(["rev-parse", "HEAD"], this.repoRoot)).trim();
+    const originalHash = await this.readRebaseStateFile("stopped-sha");
+    const parent = await this.parentOf(hash);
+    return {
+      hash,
+      originalHash,
+      parent,
+      files: await this.getCommitFiles(hash),
+    };
   }
 
   /**
@@ -309,6 +353,29 @@ export class RebaseService {
     } catch {
       return undefined;
     }
+  }
+
+  /** rebase 충돌로 unmerged index entry 가 있는지 확인한다. */
+  private async hasUnmergedFiles(): Promise<boolean> {
+    const out = await runGit(
+      ["diff", "--name-only", "--diff-filter=U", "-z"],
+      this.repoRoot
+    ).catch(() => "");
+    return out.split("\0").some((entry) => entry.length > 0);
+  }
+
+  /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */
+  private async readRebaseStateFile(name: string): Promise<string | undefined> {
+    const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], this.repoRoot)).trim();
+    const gitDir = path.resolve(this.repoRoot, gitDirRaw);
+    for (const dir of ["rebase-merge", "rebase-apply"]) {
+      const file = path.join(gitDir, dir, name);
+      const value = await fs.promises.readFile(file, "utf8").catch(() => "");
+      if (value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
   }
 
   /**

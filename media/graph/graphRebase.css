@@ -253,13 +253,23 @@
   white-space: nowrap;
 }
 
-.rebase-detail-editor button[data-exclude] {
+.rebase-detail-editor button[data-exclude],
+.rebase-detail-editor [data-rebase-action] {
+  display: inline-flex;
   position: relative;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 3px;
   color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
   background: var(--vscode-button-secondaryBackground, transparent);
+  font: inherit;
   cursor: pointer;
+}
+
+.rebase-detail-editor button:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }
 
 .rebase-detail-editor .field {
@@ -282,10 +292,30 @@
   font-family: var(--vscode-editor-font-family, monospace);
 }
 
+.rebase-detail-editor .edit-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--vscode-inputOption-activeBorder, var(--vscode-panel-border));
+  border-radius: 4px;
+  background: var(--vscode-inputOption-activeBackground, rgba(57, 148, 188, 0.16));
+}
+
+.rebase-detail-editor .edit-state strong {
+  flex: 1 1 auto;
+}
+
+.rebase-detail-editor .edit-state [data-rebase-action] {
+  height: 24px;
+  padding: 0 8px;
+}
+
 .rebase-detail-editor .files-title,
 .rebase-detail-editor .file-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 72px 72px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
@@ -308,8 +338,29 @@
   white-space: nowrap;
 }
 
-.rebase-detail-editor button[data-exclude] {
+.rebase-detail-editor .file-rewrite-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rebase-detail-editor .file-row button {
+  min-width: 0;
   height: 22px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.rebase-detail-editor .edit-unavailable {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px;
+  opacity: 0.72;
+  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  white-space: nowrap;
 }
 
 .rebase-detail-editor button.active {

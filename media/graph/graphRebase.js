@@ -22,6 +22,7 @@
   let drag = null;
   let pendingDrop = null;
   let marker = null;
+  let paused = null;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -102,6 +103,10 @@
     const msg = event.data;
     if (msg.type === "graphRebasePlan") {
       enterPlan(msg.plan);
+    } else if (msg.type === "graphRebasePaused") {
+      paused = msg.paused || null;
+      renderPlan();
+      window.GscGraphDetail?.refresh?.();
     } else if (msg.type === "graphRebaseClear") {
       clearPlan();
     } else if (msg.type === "graph") {
@@ -111,6 +116,7 @@
   /** rebase 계획 모드에 들어간다. */
   function enterPlan(nextPlan) {
     plan = nextPlan;
+    paused = null;
     items = (nextPlan.commits || []).map((commit) => ({
       hash: commit.hash,
       action: "pick",
@@ -138,6 +144,7 @@
     plan = null;
     items = [];
     originalOrder = [];
+    paused = null;
     pendingDrop = null;
     hideDropMarker();
     window.GscGraphRebasePreview?.clearTransforms?.(graphContent);
@@ -498,6 +505,7 @@
     contextMenuItems,
     itemForHash: (hash) => items.find((item) => item.hash === hash),
     items: () => items,
+    paused: () => paused,
     updateAction,
     updateMessage,
     toggleCommitExclude,

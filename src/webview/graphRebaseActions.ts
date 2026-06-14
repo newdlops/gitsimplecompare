@@ -2,13 +2,15 @@
 // - 웹뷰 패널은 메시지 라우팅만 하고, 기준점 계산/실행/충돌 이동은 이 모듈이 담당한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
-import { GitLogService } from "../git/gitLogService";
+import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
   RebaseItem,
   RebasePlanInfo,
+  RebasePausedState,
   RebaseResult,
   RebaseService,
 } from "../git/rebaseService";
+import { openRefVsWorkingDiff } from "../ui/diffPresenter";
 import { logInfo } from "../ui/outputLog";
 
 /** 그래프 rebase 실행에 필요한 공유 의존성 */
@@ -98,6 +100,17 @@ export async function runGraphRebase(
   } else if (result.status === "conflicts") {
     await deps.refreshGraph();
     await focusRebaseConflicts(deps.logService.repoRoot);
+  } else if (result.status === "paused" && result.paused) {
+    await deps.refreshGraph();
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason: "graphRebaseEditPaused",
+    });
+    await openPausedEditFile(deps.logService.repoRoot, result.paused);
+    vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "Rebase paused for edit. Change files, amend the commit, then Continue."
+      )
+    );
   } else if (result.status === "noop") {
     vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
   } else if (result.message !== "cancelled") {
@@ -108,6 +121,26 @@ export async function runGraphRebase(
   return result;
 }
 
+/**
+ * edit 으로 멈춘 rebase 지점의 특정 파일을 편집 가능한 diff 로 연다.
+ * @param relPath 사용자가 drawer 에서 고른 저장소 상대 경로
+ * @param deps 그래프 패널 의존성
+ */
+export async function openPausedRebaseEditFile(
+  relPath: string,
+  deps: Pick<GraphRebaseDeps, "logService">
+): Promise<void> {
+  const service = new RebaseService(deps.logService.repoRoot);
+  const paused = await service.getPausedEditState();
+  if (!paused) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Start the rebase first. The editor opens when Git stops at this edit commit.")
+    );
+    return;
+  }
+  await openPausedEditFile(deps.logService.repoRoot, paused, relPath);
+}
+
 /** rebaseEditor.js 헬퍼 스크립트의 파일 시스템 경로를 만든다. */
 function editorScriptPath(extensionUri: vscode.Uri): string {
   return vscode.Uri.joinPath(
@@ -116,6 +149,42 @@ function editorScriptPath(extensionUri: vscode.Uri): string {
     "rebase",
     "rebaseEditor.js"
   ).fsPath;
+}
+
+/** edit 정지 지점에서 첫 편집 가능 파일 또는 사용자가 고른 파일을 editable diff 로 연다. */
+async function openPausedEditFile(
+  repoRoot: string,
+  paused: RebasePausedState,
+  requestedPath?: string
+): Promise<void> {
+  const file = requestedPath
+    ? paused.files.find((entry) => entry.path === requestedPath)
+    : paused.files.find((entry) => !entry.status.startsWith("D"));
+  if (!file) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("No editable file is available for this paused commit.")
+    );
+    return;
+  }
+  if (file.status.startsWith("D")) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Deleted files cannot be opened as editable working-tree diffs.")
+    );
+    return;
+  }
+  const base = paused.parent || EMPTY_TREE;
+  await openRefVsWorkingDiff(
+    repoRoot,
+    base,
+    vscode.Uri.file(`${repoRoot}/${file.path}`),
+    file.path
+  );
+  logInfo("graph rebase edit file opened", {
+    repoRoot,
+    path: file.path,
+    paused: paused.hash,
+    original: paused.originalHash,
+  });
 }
 
 /** rebase 충돌이 발생하면 충돌 뷰로 이동한다. */

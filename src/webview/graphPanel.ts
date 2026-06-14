@@ -17,7 +17,11 @@ import {
 } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
-import { prepareGraphRebase, runGraphRebase } from "./graphRebaseActions";
+import {
+  openPausedRebaseEditFile,
+  prepareGraphRebase,
+  runGraphRebase,
+} from "./graphRebaseActions";
 import {
   FromWebviewMessage,
   GraphLoadState,
@@ -149,6 +153,10 @@ export class GitGraphPanel {
           msg.hash,
           msg.path
         );
+      } else if (msg.type === "openRebaseEditFile") {
+        await openPausedRebaseEditFile(msg.path, {
+          logService: this.logService,
+        });
       } else if (msg.type === "prepareGraphRebase") {
         const plan = await prepareGraphRebase(msg.hash, msg.onto, {
           logService: this.logService,
@@ -166,8 +174,10 @@ export class GitGraphPanel {
             refreshGraph: () => this.refreshAfterGraphAction(),
           }
         );
-        if (result.status !== "failed") {
+        if (result.status === "completed" || result.status === "noop") {
           this.post({ type: "graphRebaseClear" });
+        } else if (result.status === "paused" && result.paused) {
+          this.post({ type: "graphRebasePaused", paused: result.paused });
         }
       }
     } catch (err) {
