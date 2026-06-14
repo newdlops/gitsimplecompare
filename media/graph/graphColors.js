@@ -26,6 +26,45 @@
     return String(color || "").trim().toLowerCase();
   }
 
+  /** 팔레트가 부족할 때도 브랜치별 색상이 겹치지 않도록 보조 색상을 만든다. */
+  function generatedBranchColor(index) {
+    const hue = Math.round((Number(index) || 0) * 137.508) % 360;
+    return hslToHex(hue, 78, 62);
+  }
+
+  /** HSL 값을 hex 색상 문자열로 변환한다. */
+  function hslToHex(hue, saturation, lightness) {
+    const s = saturation / 100;
+    const l = lightness / 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const m = l - c / 2;
+    const [r, g, b] =
+      hue < 60 ? [c, x, 0] :
+      hue < 120 ? [x, c, 0] :
+      hue < 180 ? [0, c, x] :
+      hue < 240 ? [0, x, c] :
+      hue < 300 ? [x, 0, c] : [c, 0, x];
+    const hex = (value) => Math.round((value + m) * 255).toString(16).padStart(2, "0");
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+  }
+
+  /** local branch 전용 팔레트에서 index 와 피해야 할 색상을 반영해 색을 고른다. */
+  function branchPaletteColor(index, avoidedColor) {
+    const avoided = normalizeColor(avoidedColor);
+    const safeIndex = Math.max(0, Math.floor(Number(index) || 0));
+    for (let offset = 0; offset < LOCAL_ONLY_COLORS.length + 8; offset++) {
+      const next = safeIndex + offset;
+      const color = next < LOCAL_ONLY_COLORS.length
+        ? LOCAL_ONLY_COLORS[next]
+        : generatedBranchColor(next - LOCAL_ONLY_COLORS.length);
+      if (!avoided || normalizeColor(color) !== avoided) {
+        return color;
+      }
+    }
+    return generatedBranchColor(safeIndex + 17);
+  }
+
   /** local-only 커밋을 포함하는 로컬 브랜치명에 맞는 별도 색상을 고른다. */
   function localOnlyColor(branches, baseIndex) {
     const branch = (branches || []).find(Boolean) || "local";
@@ -37,13 +76,7 @@
     const branchName = branch || "local";
     const base = normalizeColor(colorOf(baseIndex));
     const start = hashText(branchName) % LOCAL_ONLY_COLORS.length;
-    for (let offset = 0; offset < LOCAL_ONLY_COLORS.length; offset++) {
-      const color = LOCAL_ONLY_COLORS[(start + offset) % LOCAL_ONLY_COLORS.length];
-      if (normalizeColor(color) !== base) {
-        return color;
-      }
-    }
-    return LOCAL_ONLY_COLORS[start];
+    return branchPaletteColor(start, base);
   }
 
   /** 커밋 row/노드에 표시할 최종 색상을 반환한다. */
@@ -62,6 +95,7 @@
   window.GscGraphColors = {
     colorOf,
     branchColor,
+    branchPaletteColor,
     rowColor,
     edgeColor,
   };

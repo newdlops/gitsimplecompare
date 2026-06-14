@@ -34,7 +34,6 @@
   let detailSummaryHeight = 180;
   let loadState = { loadedCount: 0, hasMore: false, loading: false, reset: true };
 
-  // SVG_NS: SVG 요소 생성용 네임스페이스
   const SVG_NS = "http://www.w3.org/2000/svg";
 
   /** 레인 인덱스를 x 좌표로 변환한다. */
@@ -66,6 +65,8 @@
     }
     return el;
   }
+  function rowDisplayColor(row) { return window.GscGraphFeatures?.rowColor?.(row) || window.GscGraphColors.rowColor(row); }
+  function edgeDisplayColor(edge) { return currentRows[edge.fromRow] ? rowDisplayColor(currentRows[edge.fromRow]) : window.GscGraphColors.edgeColor(edge, currentRows); }
 
   /**
    * 한 간선의 SVG path d 문자열을 만든다.

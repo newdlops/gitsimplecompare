@@ -139,6 +139,7 @@ function isWorkingOnlyReason(reason: string): boolean {
         part === "filesCreated" ||
         part === "filesDeleted" ||
         part === "filesRenamed" ||
+        part.includes("conflict") ||
         part.startsWith("hunkCheckbox:") ||
         part.startsWith("editorHunks:")
     )
@@ -151,7 +152,11 @@ function shouldInvalidateStatusCaches(reason: string): boolean {
     reason === "command" ||
     reason.split(",").some((part) => {
       const item = part.trim();
-      return item.startsWith("hunkCheckbox:") || item.startsWith("editorHunks:");
+      return (
+        item.includes("conflict") ||
+        item.startsWith("hunkCheckbox:") ||
+        item.startsWith("editorHunks:")
+      );
     })
   );
 }

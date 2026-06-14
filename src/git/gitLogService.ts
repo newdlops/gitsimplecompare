@@ -75,7 +75,7 @@ export class GitLogService {
       this.invalidateCaches();
     }
     const format = ["%H", "%P", "%an", "%ae", "%aI", "%D", "%s"].join(FS);
-    const refArgs = refs.length > 0 ? refs : ["--all"];
+    const refArgs = refs.length > 0 ? refs : ["--branches", "--remotes", "--tags"];
     const out = await runGit(
       [
         "log",
@@ -566,6 +566,9 @@ function parseRefs(decoration: string): string[] {
     }
     if (part.startsWith("tag: ")) {
       return [`tag:${part.slice("tag: ".length)}`];
+    }
+    if (part === "refs/stash" || part.startsWith("stash@{")) {
+      return [];
     }
     return part ? [part] : [];
   });

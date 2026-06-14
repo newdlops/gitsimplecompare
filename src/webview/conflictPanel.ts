@@ -3,7 +3,6 @@
 // - git 데이터 접근은 ConflictService 에 위임하고, 이 모듈은 패널 생애주기와 메시지 라우팅만 담당한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
-import { openMergeEditorUri } from "../ui/mergePresenter";
 import { logError, logInfo } from "../ui/outputLog";
 
 type ConflictPanelMessage =
@@ -12,8 +11,7 @@ type ConflictPanelMessage =
   | { type: "resolveMarked"; content: string }
   | { type: "acceptCurrent"; content?: string }
   | { type: "acceptIncoming"; content?: string }
-  | { type: "acceptBoth" }
-  | { type: "openMergeEditor" };
+  | { type: "acceptBoth" };
 
 /**
  * 커스텀 conflict editor 패널. 동시에 하나만 유지하고, 다른 파일을 열면 같은 패널을 재사용한다.
@@ -111,8 +109,6 @@ export class ConflictPanel {
       } else if (msg.type === "acceptBoth") {
         await this.service.acceptBoth(this.rel);
         await this.afterMutation("acceptedBoth");
-      } else if (msg.type === "openMergeEditor") {
-        await openMergeEditorUri(vscode.Uri.file(this.service.absPath(this.rel)));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

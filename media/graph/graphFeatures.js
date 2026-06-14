@@ -4,6 +4,7 @@
   "use strict";
 
   let localBranches = new Map();
+  let localBranchColors = new Map();
   let searchBound = false;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
@@ -18,7 +19,17 @@
   /** 확장에서 받은 로컬 브랜치 상태를 ref 이름으로 빠르게 찾을 수 있게 저장한다. */
   function setLocalBranches(branches) {
     localBranches = new Map();
-    (branches || []).forEach((branch) => localBranches.set(branch.name, branch));
+    localBranchColors = new Map();
+    (branches || []).forEach((branch) => {
+      localBranches.set(branch.name, branch);
+    });
+    Array.from(localBranches.keys()).sort().forEach((name, index) => {
+      localBranchColors.set(
+        name,
+        window.GscGraphColors?.branchPaletteColor?.(index) ||
+          window.GscGraphColors?.branchColor?.(name)
+      );
+    });
   }
 
   /** 로컬 브랜치 상태를 CSS class 조합으로 변환한다. */
@@ -41,9 +52,18 @@
     return Boolean(branch && (branch.ahead > 0 || !branch.upstream || branch.gone));
   }
 
+  /** 브랜치 이름에 대해 현재 그래프 세션에서 고정된 색상을 반환한다. */
+  function branchColor(name, baseIndex) {
+    return (
+      localBranchColors.get(name) ||
+      window.GscGraphColors?.branchColor?.(name, baseIndex) ||
+      ""
+    );
+  }
+
   /** 브랜치 이름에 맞는 chip 색상 CSS 변수를 만든다. */
   function branchStyle(name) {
-    const color = window.GscGraphColors?.branchColor?.(name);
+    const color = branchColor(name);
     return color ? ` style="--branch-color: ${esc(color)}"` : "";
   }
 
@@ -51,13 +71,13 @@
   function rowColor(row) {
     const localOnlyBranch = (row.localOnlyBranches || []).find(Boolean);
     if (localOnlyBranch) {
-      return window.GscGraphColors?.branchColor?.(localOnlyBranch, row.color);
+      return branchColor(localOnlyBranch, row.color);
     }
     const branchRef = (row.refs || []).find((ref) =>
       isSplitLocalBranch(localBranches.get(ref))
     );
     return branchRef
-      ? window.GscGraphColors?.branchColor?.(branchRef, row.color)
+      ? branchColor(branchRef, row.color)
       : undefined;
   }
 
@@ -141,10 +161,10 @@
         `data-branch-kind="remote" data-tooltip="${safeEsc(
           `Click to checkout this branch: ${ref}`
         )}" ` +
-        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"${branchStyle(ref)}`
+        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"`
       : "";
     const title = remote ? "" : ` title="${safeEsc(ref)}"`;
-    return `<span class="${className}"${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
+    return `<span class="${className}"${branchStyle(ref)}${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
   }
 
   /** 커밋 상세 패널에 표시할 액션 버튼 HTML 을 만든다. */
@@ -560,6 +580,7 @@
   window.GscGraphFeatures = {
     attachNodeDrag,
     bindCommitActions,
+    branchColor,
     commitActions,
     focusHead,
     initSearch,

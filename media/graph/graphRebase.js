@@ -40,12 +40,10 @@
   function itemHashSet() {
     return new Set(items.map((item) => item.hash));
   }
-
   /** 그래프 표시 순서(위=newer)에 맞춘 계획 배열을 반환한다. */
   function visualItems() {
     return [...items].reverse();
   }
-
   /** row/node 드래그 시작 상태를 저장한다. */
   window.addEventListener("gsc-node-drag-start", (event) => {
     const hash = event.detail?.hash || "";
@@ -69,7 +67,6 @@
     const target = nearestPlanRow(y);
     showDropMarker(target, y);
   });
-
   /** 드래그 종료 시 계획 진입 또는 계획 재정렬을 수행한다. */
   window.addEventListener("gsc-node-drag-end", (event) => {
     if (!drag) {
@@ -113,7 +110,6 @@
       window.setTimeout(renderPlan, 0);
     }
   });
-
   /** 우클릭 컨텍스트 메뉴와 외부 클릭 닫기를 연결한다. */
   graphContent.addEventListener("contextmenu", (event) => {
     if (!plan) {
@@ -132,7 +128,6 @@
       closeContextMenu();
     }
   });
-
   /** rebase 계획 모드에 들어간다. */
   function enterPlan(nextPlan) {
     plan = nextPlan;
@@ -191,6 +186,8 @@
     bar.innerHTML =
       `<span class="codicon codicon-list-ordered" aria-hidden="true"></span>` +
       `<span class="rebase-title">Interactive rebase: ${esc(plan.branch)}${upstream}${base}${onto}</span>` +
+      `<label id="graph-rebase-squash-option" title="Include squashed commit history in the editable message" data-tooltip="Include squashed commit history in the editable message">` +
+      `<input id="graph-rebase-include-squash" type="checkbox" checked /><span>Squash history</span></label>` +
       `<button id="graph-rebase-run" type="button" title="Start rebase" ` +
       `aria-label="Start rebase" data-tooltip="Start rebase with this plan">` +
       `<span class="codicon codicon-play" aria-hidden="true"></span><span>Start</span></button>` +
@@ -279,7 +276,8 @@
     }
     item.action = action;
     if (MESSAGE_ACTIONS.has(action) && !item.message) {
-      item.message = window.prompt(`${action} message`, item.body || item.subject || "") || "";
+      const message = window.GscGraphRebaseMessages?.defaultMessage?.(items, item, action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || item.body || item.subject || "";
+      item.message = window.prompt(`${action} message`, message) || "";
     }
     renderPlan();
   }
@@ -320,7 +318,8 @@
     if (!item) {
       return;
     }
-    item.message = window.prompt("Commit message", item.message || item.body || item.subject || "") || "";
+    const message = item.message || window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || item.body || item.subject || "";
+    item.message = window.prompt("Commit message", message) || "";
     if (item.action === "pick") {
       item.action = "reword";
     }
@@ -593,7 +592,7 @@
       items: items.map((item) => ({
         hash: item.hash,
         action: item.action,
-        message: item.message || "",
+        message: item.message || (item.action === "squash" ? window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || "" : ""),
       })),
     });
   }

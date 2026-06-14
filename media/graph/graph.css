@@ -329,7 +329,7 @@ body.resizing {
   padding: 4px 7px;
   border: 1px solid var(--vscode-widget-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
   border-radius: 3px;
-  color: var(--vscode-quickInput-foreground, var(--vscode-menu-foreground, var(--vscode-foreground)));
+  color: var(--vscode-quickInput-foreground, var(--vscode-menu-foreground, #f3f3f3));
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
@@ -338,7 +338,7 @@ body.resizing {
   overflow-wrap: anywhere;
   word-break: break-word;
   pointer-events: none;
-  background: var(--vscode-quickInput-background, var(--vscode-menu-background, var(--vscode-editorWidget-background, #252526)));
+  background: #252526;
   background-image: none;
   background-clip: border-box;
   box-shadow:

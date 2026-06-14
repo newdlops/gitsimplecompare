@@ -373,11 +373,6 @@
           "command": "gitSimpleCompare.markResolved",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
           "group": "1_resolve@4"
-        },
-        {
-          "command": "gitSimpleCompare.openMergeEditor",
-          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
-          "group": "2_native@1"
         }
       ],
       "editor/title": [

@@ -442,6 +442,9 @@ export class GitGraphPanel {
     const rebaseScriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graphRebase.js")
     );
+    const rebaseMessageScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "graphRebaseMessages.js")
+    );
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "graph.css")
     );
@@ -549,6 +552,7 @@ export class GitGraphPanel {
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
 </body>
 </html>`;

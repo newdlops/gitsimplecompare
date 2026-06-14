@@ -74,6 +74,7 @@ p {
 
 .action {
   display: inline-flex;
+  position: relative;
   align-items: center;
   gap: 5px;
   min-height: 26px;
@@ -146,6 +147,7 @@ p {
 
 .chunk-apply {
   display: inline-flex;
+  position: relative;
   align-items: center;
   justify-content: center;
   width: 22px;
@@ -168,6 +170,43 @@ p {
 
 .chunk-apply.incoming-action .codicon {
   color: var(--incoming-accent);
+}
+
+.chunk-apply.both-action .codicon {
+  color: var(--result-accent);
+}
+
+.action[data-tooltip]::after,
+.chunk-apply[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  z-index: 1000;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: normal;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: #252526;
+  background-image: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%);
+  transition: none;
+}
+
+.action[data-tooltip]:hover::after,
+.action[data-tooltip]:focus-visible::after,
+.chunk-apply[data-tooltip]:hover::after,
+.chunk-apply[data-tooltip]:focus-visible::after {
+  opacity: 1;
 }
 
 #panes {

@@ -6,7 +6,7 @@ import {
   rendererEvalExpression,
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
-const PATCH_VERSION = 45;
+const PATCH_VERSION = 46;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
 /** renderer patch 설치와 snapshot render 를 main process 에서 수행할 CDP expression 으로 만든다. */

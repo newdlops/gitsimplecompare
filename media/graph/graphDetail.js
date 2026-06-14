@@ -120,6 +120,7 @@
     return (
       graphColorForHash(branch?.tipHash) ||
       graphColorForRef(branch?.name) ||
+      window.GscGraphFeatures?.branchColor?.(branch?.name) ||
       graphColorForHash(lastDetail?.hash) ||
       ""
     );

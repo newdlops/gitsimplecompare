@@ -25,7 +25,8 @@
   function button(id, icon, label, title, variant) {
     const cls = variant ? ` ${variant}` : "";
     return (
-      `<button id="${id}" class="action${cls}" type="button" title="${esc(title)}" aria-label="${esc(title)}">` +
+      `<button id="${id}" class="action${cls}" type="button" title="${esc(title)}" ` +
+      `aria-label="${esc(title)}" data-tooltip="${esc(title)}">` +
       `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span>` +
       `<span>${esc(label)}</span></button>`
     );
@@ -102,11 +103,17 @@
       `<div class="chunk-item">` +
       `<span class="chunk-label">Block ${index + 1}</span>` +
       `<button class="chunk-apply current-action" type="button" data-chunk="${index}" data-side="current" ` +
-      `title="${esc(`Apply Current block ${index + 1} to Result`)}" aria-label="${esc(`Apply Current block ${index + 1} to Result`)}">` +
+      `title="${esc(`Apply Current block ${index + 1} to Result`)}" aria-label="${esc(`Apply Current block ${index + 1} to Result`)}" ` +
+      `data-tooltip="${esc(`Apply Current block ${index + 1} to Result`)}">` +
       `<span class="codicon codicon-arrow-right" aria-hidden="true"></span></button>` +
       `<button class="chunk-apply incoming-action" type="button" data-chunk="${index}" data-side="incoming" ` +
-      `title="${esc(`Apply Incoming block ${index + 1} to Result`)}" aria-label="${esc(`Apply Incoming block ${index + 1} to Result`)}">` +
+      `title="${esc(`Apply Incoming block ${index + 1} to Result`)}" aria-label="${esc(`Apply Incoming block ${index + 1} to Result`)}" ` +
+      `data-tooltip="${esc(`Apply Incoming block ${index + 1} to Result`)}">` +
       `<span class="codicon codicon-arrow-left" aria-hidden="true"></span></button>` +
+      `<button class="chunk-apply both-action" type="button" data-chunk="${index}" data-side="both" ` +
+      `title="${esc(`Apply Both block ${index + 1} to Result`)}" aria-label="${esc(`Apply Both block ${index + 1} to Result`)}" ` +
+      `data-tooltip="${esc(`Apply Both block ${index + 1} to Result`)}">` +
+      `<span class="codicon codicon-combine" aria-hidden="true"></span></button>` +
       `<span class="chunk-preview">${esc(chunkPreview(chunk))}</span>` +
       `</div>`
     ).join("") + `</div>`;
@@ -136,7 +143,6 @@
       button("use-both", "combine", "Use Both", "Accept both sides using the standard current-then-incoming policy", "") +
       button("save-result", "save", "Save Result", "Save Result without marking resolved", "") +
       button("resolve-marked", "check", "Resolve Marked", "Save Result and mark this conflict as resolved", "primary") +
-      button("open-native", "git-merge", "Native Merge", "Open VS Code Merge Editor", "") +
       `</div></header>` +
       chunkBar(documentData) +
       `<main id="panes">` +
@@ -187,9 +193,6 @@
       vscode.postMessage({ type: "resolveMarked", content: values().result });
       setStatus("Resolving...");
     });
-    document.getElementById("open-native")?.addEventListener("click", () => {
-      vscode.postMessage({ type: "openMergeEditor" });
-    });
     document.querySelectorAll("[data-chunk][data-side]").forEach((button) => {
       button.addEventListener("click", () =>
         applyChunk(Number(button.dataset.chunk), button.dataset.side)
@@ -210,13 +213,21 @@
       setStatus("Conflict block was already resolved");
       return;
     }
-    const replacement = side === "incoming" ? chunk.incoming : chunk.current;
+    const replacement =
+      side === "incoming" ? chunk.incoming :
+      side === "both" ? joinBoth(chunk.current, chunk.incoming) :
+      chunk.current;
     result.value =
       lines.slice(0, chunk.start).join("") +
       replacement +
       lines.slice(chunk.end).join("");
-    setStatus(`Applied ${side === "incoming" ? "Incoming" : "Current"} block ${index + 1} to Result`);
+    setStatus(`Applied ${side === "incoming" ? "Incoming" : side === "both" ? "Both" : "Current"} block ${index + 1} to Result`);
     renderChunkBarFromResult();
+  }
+
+  /** Current/Incoming chunk 를 보편적인 current-then-incoming 순서로 이어 붙인다. */
+  function joinBoth(current, incoming) {
+    return `${current}${current && incoming && !current.endsWith("\n") ? "\n" : ""}${incoming}`;
   }
 
   /** Result 변경 후 chunk 버튼 바를 현재 marker 상태에 맞게 다시 그린다. */

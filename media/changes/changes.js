@@ -1178,7 +1178,7 @@
       });
       nodes.push({
         label: T.openChanges,
-        onClick: () => openWorkingPath(path, kind),
+        onClick: () => openWorkingPath(path, kind, row.dataset.status),
       });
       nodes.push({ separator: true });
     }
@@ -1476,7 +1476,7 @@
     }
   }
 
-  /** 작업트리 파일 열기: staged/unstaged 모두 native diff 를 연다. */
+  /** 작업트리 파일 열기: 충돌은 resolver, 그 외 staged/unstaged 는 editable diff 로 연다. */
   function openWorkingPath(path, stage, status) {
     vscode.postMessage({ type: "openWorkingChange", path, stage, status });
   }

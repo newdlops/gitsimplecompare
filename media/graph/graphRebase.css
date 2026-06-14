@@ -51,6 +51,26 @@
   background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }
 
+#graph-rebase-squash-option {
+  display: inline-flex;
+  position: relative;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, transparent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#graph-rebase-squash-option input {
+  margin: 0;
+}
+
 .row.rebase-row {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--branch-color, #61afef) 44%, transparent);
   transition:
@@ -239,28 +259,32 @@
 }
 
 #graph-rebase-bar button[data-tooltip]::after,
+#graph-rebase-squash-option[data-tooltip]::after,
 .rebase-action-button[data-tooltip]::after,
 #graph-rebase-menu button[data-tooltip]::after {
   position: absolute;
   z-index: 2100;
-  max-width: 260px;
   padding: 4px 7px;
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   border-radius: 3px;
   opacity: 0;
-  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  white-space: nowrap;
+  white-space: normal;
   content: attr(data-tooltip);
   pointer-events: none;
-  background-color: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background, #1e1e1e));
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  background-color: #252526;
+  background-image: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
   transition: none;
 }
 
 #graph-rebase-bar button[data-tooltip]::after,
+#graph-rebase-squash-option[data-tooltip]::after,
 .rebase-action-button[data-tooltip]::after {
   top: calc(100% + 5px);
   left: 50%;
@@ -275,6 +299,8 @@
 
 #graph-rebase-bar button[data-tooltip]:hover::after,
 #graph-rebase-bar button[data-tooltip]:focus-visible::after,
+#graph-rebase-squash-option[data-tooltip]:hover::after,
+#graph-rebase-squash-option[data-tooltip]:focus-within::after,
 .rebase-action-button[data-tooltip]:hover::after,
 .rebase-action-button[data-tooltip]:focus-visible::after,
 #graph-rebase-menu button[data-tooltip]:hover::after,
