@@ -7,6 +7,18 @@ import { runGit } from "./gitExec";
 import { splitRepositoryName } from "./githubRepository";
 import { fetchPullRequestDetail } from "./pullRequestDetail";
 import type { PullRequestDetailInfo } from "./pullRequestDetail";
+import { fetchPullRequestPreviewFiles } from "./pullRequestPreviewFiles";
+import type { PullRequestPreviewFile } from "./pullRequestPreviewFiles";
+import {
+  buildLocalPullRequestPreview,
+  commitLabels,
+  fetchExistingPullRequestCommits,
+  previewStat,
+} from "./pullRequestPreviewCommits";
+import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
+import { buildPullRequestConversation } from "./pullRequestPreviewConversation";
+import type { PullRequestConversationItem } from "./pullRequestPreviewConversation";
+import { previewTitle } from "./pullRequestPreviewTitle";
 
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 
@@ -106,7 +118,10 @@ export interface StagedPullRequestPreview {
   title: string;
   body: string;
   files: CommitFileChange[];
+  previewFiles: PullRequestPreviewFile[];
   commits: string[];
+  previewCommits: PullRequestPreviewCommit[];
+  conversation: PullRequestConversationItem[];
   stat: string;
   hasStagedChanges: boolean;
   existingPr?: PullRequestInfo;
@@ -236,24 +251,42 @@ export class PullRequestService {
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
     const targetBranch = baseBranch || existingPr?.baseRefName || await this.defaultBaseBranch();
-    const [files, stat, commits, repository, existingPreview] = await Promise.all([
+    const [stagedFiles, repository, existingPreview] = await Promise.all([
       this.stagedFiles(),
-      runGit(["diff", "--cached", "--stat"], this.repoRoot).catch(() => ""),
-      this.previewCommits(targetBranch),
       this.repositoryName().catch(() => undefined),
       this.existingPullRequestPreview(existingPr).catch(() => undefined),
     ]);
-    const generatedBody = previewBody(files, commits, stat);
+    const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, existingPr).catch(() => []);
+    const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, existingPr).catch(() => []);
+    const localPreview = prPreviewFiles.length || prPreviewCommits.length
+      ? { files: [] as PullRequestPreviewFile[], commits: [] as PullRequestPreviewCommit[] }
+      : await buildLocalPullRequestPreview(this.repoRoot, targetBranch, stagedFiles);
+    const previewFiles = prPreviewFiles.length ? prPreviewFiles : localPreview.files;
+    const previewCommits = prPreviewCommits.length ? prPreviewCommits : localPreview.commits;
+    const commits = commitLabels(previewCommits);
+    const stat = previewStat(previewFiles);
+    const generatedBody = previewBody(previewFiles, commits, stat);
+    const body = existingPreview ? existingPreview.body ?? "" : generatedBody;
+    const conversation = await buildPullRequestConversation(
+      this.repoRoot,
+      repository,
+      existingPr,
+      body,
+      currentBranch
+    ).catch(() => [{ kind: "body" as const, author: existingPr?.author || currentBranch, body }]);
     return {
       repository,
       currentBranch,
       targetBranch,
-      title: existingPreview?.title || existingPr?.title || previewTitle(currentBranch, targetBranch, commits, files),
-      body: existingPreview ? existingPreview.body ?? "" : generatedBody,
-      files,
+      title: existingPreview?.title || existingPr?.title || previewTitle(currentBranch, targetBranch, commits, previewFiles),
+      body,
+      files: previewFiles,
+      previewFiles,
       commits,
-      stat: stat.trim(),
-      hasStagedChanges: files.length > 0,
+      previewCommits,
+      conversation,
+      stat,
+      hasStagedChanges: stagedFiles.length > 0 || previewFiles.length > 0,
       existingPr,
     };
   }
@@ -416,15 +449,6 @@ export class PullRequestService {
     });
   }
 
-  /** target branch 이후 HEAD 까지의 커밋 제목을 모의 PR 본문에 넣기 위해 읽는다. */
-  private async previewCommits(targetBranch: string): Promise<string[]> {
-    const out = await runGit(
-      ["log", "--oneline", `${targetBranch}..HEAD`],
-      this.repoRoot
-    ).catch(() => "");
-    return out.split("\n").map((line) => line.trim()).filter(Boolean);
-  }
-
   /**
    * 기존 PR 기준으로 preview 를 연 경우 GitHub 에 저장된 실제 제목/본문을 읽는다.
    * @param existingPr graph PR 목록에서 선택된 기존 PR 정보
@@ -444,6 +468,22 @@ export class PullRequestService {
       "title,body",
     ], this.repoRoot);
     return JSON.parse(out) as GhPullRequestPreview;
+  }
+
+  /**
+   * 기존 PR preview 의 Files changed 탭에 넣을 실제 PR changed files 를 읽는다.
+   * @param repository owner/name 형태의 GitHub 저장소 이름
+   * @param existingPr graph PR 목록에서 선택된 기존 PR 정보
+   * @returns PR 상세 changed files. 조회할 PR 이 없으면 undefined
+   */
+  private async existingPullRequestPreviewFiles(
+    repository: string | undefined,
+    existingPr?: PullRequestInfo
+  ): Promise<PullRequestPreviewFile[]> {
+    if (!repository || !existingPr?.number) {
+      return [];
+    }
+    return fetchPullRequestPreviewFiles(this.repoRoot, repository, existingPr.number);
   }
 
   /** 현재 branch 이름을 반환한다. detached 이면 HEAD 로 표시한다. */
@@ -540,36 +580,4 @@ function previewBody(
     lines.push("", "## Diff stat", "```", stat.trim(), "```");
   }
   return lines.join("\n");
-}
-
-/**
- * staged preview 의 제목을 실제 커밋/파일 정보에서 만든다.
- * @param currentBranch 현재 브랜치 이름
- * @param targetBranch  PR 대상 브랜치 이름
- * @param commits       target 이후 로컬 커밋 목록
- * @param files         staged changed files
- * @returns PR title 초안
- */
-function previewTitle(
-  currentBranch: string,
-  targetBranch: string,
-  commits: string[],
-  files: CommitFileChange[]
-): string {
-  const subject = commitSubject(commits[0]);
-  if (subject) {
-    return subject;
-  }
-  if (files.length === 1) {
-    return `Update ${files[0].path}`;
-  }
-  if (files.length > 1) {
-    return `Update ${files.length} staged files`;
-  }
-  return `${currentBranch} -> ${targetBranch}`;
-}
-
-/** `git log --oneline` 출력에서 해시를 제거한 커밋 제목을 반환한다. */
-function commitSubject(line: string | undefined): string {
-  return (line || "").replace(/^[0-9a-f]{7,40}\s+/i, "").trim();
 }

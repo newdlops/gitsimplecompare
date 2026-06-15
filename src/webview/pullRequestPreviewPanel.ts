@@ -202,18 +202,48 @@ function styles(): string {
     .comment-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
     .body-pre { margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap; font-family: var(--vscode-font-family); line-height: 1.45; }
-    .quick-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .timeline { display: grid; gap: 12px; }
+    .timeline-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
+    .timeline-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
+    .timeline-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
+    .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
     .metric { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
     .metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
     .metric-value { margin-top: 5px; font-weight: 600; overflow-wrap: anywhere; }
     .file-list, .commit-list { display: grid; }
-    .file-row, .commit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--border); }
+    .file-row, .commit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--border); color: inherit; background: transparent; text-align: left; font: inherit; }
+    .commit-row { cursor: pointer; }
+    .commit-row:hover, .commit-row.active { background: var(--vscode-list-hoverBackground); }
     .file-row:first-child, .commit-row:first-child { border-top: 0; }
     .file-name, .commit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-dir, .commit-hash { color: var(--muted); font-size: 12px; }
     .file-row[data-status="A"] .status-icon { color: var(--green); }
     .file-row[data-status="D"] .status-icon { color: var(--red); }
     .file-row[data-status="R"] .status-icon, .file-row[data-status="C"] .status-icon { color: var(--blue); }
+    .review-file { border-top: 1px solid var(--border); }
+    .review-file:first-child { border-top: 0; }
+    .review-file-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
+    .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
+    .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+    .diff-snippet { overflow: auto; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
+    .diff-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); min-height: 20px; }
+    .diff-line.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
+    .diff-line.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
+    .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
+    .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
+    .line-code { padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
+    .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
+    .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
+    .comment-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
+    .comment-body { margin: 0; padding: 9px; white-space: pre-wrap; font-family: var(--vscode-font-family); line-height: 1.4; }
+    .mini-diff { border-top: 1px solid var(--border); max-height: 180px; }
+    .commit-review { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 12px; align-items: start; }
+    .file-tree { padding: 6px 8px 10px; }
+    .tree-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; width: 100%; min-height: 24px; padding: 2px 6px 2px var(--indent, 0); border: 0; border-radius: 4px; color: inherit; background: transparent; text-align: left; font: inherit; }
+    .tree-row:hover { background: var(--vscode-list-hoverBackground); }
+    .tree-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-folder { font-weight: 600; cursor: pointer; }
+    .tree-children.collapsed { display: none; }
     .stat { display: flex; gap: 6px; font-family: var(--vscode-editor-font-family); font-size: 12px; }
     .add { color: var(--green); }
     .del { color: var(--red); }
@@ -222,6 +252,7 @@ function styles(): string {
     @media (max-width: 820px) {
       main { padding: 10px; }
       .content-grid { grid-template-columns: 1fr; }
+      .commit-review { grid-template-columns: 1fr; }
       .quick-stats { grid-template-columns: 1fr; }
       .pr-title { font-size: 18px; }
     }
@@ -235,6 +266,8 @@ function script(): string {
     const content = document.getElementById("content");
     const openPr = document.getElementById("open-pr");
     let activeTab = 'conversation';
+    let activeCommitHash = '';
+    let collapsedFolders = new Set();
     let latestPreview = null;
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     openPr.addEventListener("click", () => vscode.postMessage({ type: "openExistingPr" }));
@@ -245,8 +278,12 @@ function script(): string {
     });
     function render(preview) {
       latestPreview = preview;
-      const files = preview.files || [];
-      const commits = preview.commits || [];
+      const files = reviewFiles(preview);
+      const commits = commitPreviews(preview);
+      const commentCount = files.reduce((sum, file) => sum + ((file.comments || []).length), 0);
+      if (activeTab === 'commits' && commits.length && !commits.some((commit) => commit.hash === activeCommitHash)) {
+        activeCommitHash = commits[0].hash;
+      }
       const additions = files.reduce((sum, file) => sum + (file.additions || 0), 0);
       const deletions = files.reduce((sum, file) => sum + (file.deletions || 0), 0);
       openPr.hidden = !preview.existingPr?.url;
@@ -257,11 +294,14 @@ function script(): string {
           '<section class="quick-stats">' +
             metric('repo', 'Repository', preview.repository || 'unknown') +
             metric('files', 'Changed files', String(files.length)) +
+            metric('comment-discussion', 'Review comments', String(commentCount)) +
             metric('diff', 'Diff summary', '+' + additions + ' / -' + deletions) +
           '</section>' +
           tabContent(preview, files, commits) +
         '</div>';
       bindTabs();
+      bindCommitRows();
+      bindTreeFolders();
     }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
@@ -284,8 +324,9 @@ function script(): string {
     }
     function tabButton(tab, icon, label, count) {
       const active = activeTab === tab;
+      const title = 'Show ' + label;
       return '<button class="tab' + (active ? ' active' : '') + '" type="button" data-tab="' + esc(tab) + '" ' +
-        'aria-selected="' + (active ? 'true' : 'false') + '" title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+        'aria-selected="' + (active ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
         '<span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) +
         (count === '' ? '' : ' <span class="count">' + esc(count) + '</span>') + '</button>';
     }
@@ -294,25 +335,41 @@ function script(): string {
         return '<section class="content-single">' + filesPanel(files) + '</section>';
       }
       if (activeTab === 'commits') {
-        return '<section class="content-single">' + commitsPanel(commits) + '</section>';
+        return '<section class="commit-review">' + commitsPanel(commits) + commitFilesPanel(commits) + '</section>';
       }
       return '<section class="content-grid">' + conversation(preview) +
-        '<div class="side-stack">' + filesPanel(files) + commitsPanel(commits) + '</div></section>';
+        '<div class="side-stack">' + fileTreePanel(files) + commitsPanel(commits) + '</div></section>';
     }
     function bindTabs() {
       content.querySelectorAll('[data-tab]').forEach((button) => {
         button.addEventListener('click', () => {
           activeTab = button.dataset.tab || 'conversation';
+          if (activeTab === 'commits') activeCommitHash = activeCommitHash || (commitPreviews(latestPreview)[0]?.hash || '');
+          if (latestPreview) render(latestPreview);
+        });
+      });
+    }
+    function bindCommitRows() {
+      content.querySelectorAll('[data-commit-hash]').forEach((button) => {
+        button.addEventListener('click', () => {
+          activeTab = 'commits';
+          activeCommitHash = button.dataset.commitHash || '';
+          if (latestPreview) render(latestPreview);
+        });
+      });
+    }
+    function bindTreeFolders() {
+      content.querySelectorAll('[data-folder-key]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.dataset.folderKey || '';
+          if (collapsedFolders.has(key)) collapsedFolders.delete(key); else collapsedFolders.add(key);
           if (latestPreview) render(latestPreview);
         });
       });
     }
     function conversation(preview) {
-      const author = preview.existingPr?.author || preview.currentBranch || 'local';
-      return '<article class="panel">' +
-        '<div class="comment-head"><span class="avatar">' + esc(initial(author)) + '</span><strong>' + esc(author) + '</strong><span>opened this preview into ' + esc(preview.targetBranch) + '</span></div>' +
-        '<pre class="body-pre">' + esc(bodyText(preview)) + '</pre>' +
-      '</article>';
+      const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
+      return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
     }
     function bodyText(preview) {
       if (preview.body) return preview.body;
@@ -320,31 +377,123 @@ function script(): string {
     }
     function filesPanel(files) {
       return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +
-        (files.length ? '<div class="file-list">' + files.map(fileRow).join('') + '</div>' : '<p class="empty">No staged files.</p>') + '</section>';
+        (files.length ? '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>' : '<p class="empty">No changed files.</p>') + '</section>';
     }
     function commitsPanel(commits) {
       return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-git-commit" aria-hidden="true"></span>Commits</span><span class="count">' + esc(commits.length) + '</span></div>' +
         (commits.length ? '<div class="commit-list">' + commits.map(commitRow).join('') + '</div>' : '<p class="empty">No commits ahead of target.</p>') + '</section>';
     }
+    function commitFilesPanel(commits) {
+      const commit = commits.find((item) => item.hash === activeCommitHash) || commits[0];
+      return commit ? filesPanel(commit.files || []) : '<section class="panel"><p class="empty">Select a commit to inspect changed files.</p></section>';
+    }
     function metric(icon, label, value) {
       return '<div class="metric"><div class="metric-label"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) + '</div><div class="metric-value">' + esc(value) + '</div></div>';
     }
-    function fileRow(file) {
+    function reviewFileHtml(file) {
       const path = file.oldPath ? file.oldPath + ' -> ' + file.path : file.path;
-      const slash = path.lastIndexOf('/');
-      const name = slash >= 0 ? path.slice(slash + 1) : path;
-      const dir = slash >= 0 ? path.slice(0, slash) : '';
-      return '<div class="file-row" data-status="' + esc(file.status) + '" title="' + esc(path) + '">' +
+      const comments = file.comments || [];
+      return '<article class="review-file" data-status="' + esc(file.status) + '">' +
+        '<div class="review-file-head" title="' + esc(path) + '">' +
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
-        '<span class="file-name">' + esc(name) + (dir ? '<span class="file-dir"> ' + esc(dir) + '</span>' : '') + '</span>' +
+        '<span class="review-file-title">' + esc(path) + '</span>' +
+        '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
+        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>' +
+        patchHtml(file.patch, false) + commentsHtml(comments) + '</article>';
+    }
+    function patchHtml(patch, compact) {
+      if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
+      const lines = String(patch).split('\\n');
+      const visible = lines.slice(0, compact ? 40 : 180).map(diffLineHtml).join('');
+      const omitted = lines.length > (compact ? 40 : 180)
+        ? '<div class="diff-line"><span class="line-marker">...</span><span class="line-code">Snippet truncated</span></div>' : '';
+      return '<div class="diff-snippet' + (compact ? ' mini-diff' : '') + '">' + visible + omitted + '</div>';
+    }
+    function diffLineHtml(line) {
+      const marker = line.startsWith('+') ? '+' : line.startsWith('-') ? '-' : line.startsWith('@@') ? '@@' : '';
+      const cls = marker === '+' ? ' add' : marker === '-' ? ' del' : marker === '@@' ? ' hunk' : '';
+      const code = marker && marker !== '@@' ? line.slice(1) : line;
+      return '<div class="diff-line' + cls + '"><span class="line-marker">' + esc(marker) + '</span><span class="line-code">' + esc(code || ' ') + '</span></div>';
+    }
+    function commentsHtml(comments) {
+      if (!comments.length) return '';
+      return '<div class="review-comments">' + comments.map(commentHtml).join('') + '</div>';
+    }
+    function commentHtml(comment) {
+      const line = comment.line || comment.originalLine;
+      const where = line ? 'line ' + line : (comment.side || 'review');
+      return '<article class="review-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
+        esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span></div>' +
+        '<pre class="comment-body">' + esc(comment.body || '') + '</pre>' +
+        (comment.diffHunk ? patchHtml(comment.diffHunk, true) : '') + '</article>';
+    }
+    function reviewFiles(preview) {
+      if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
+      return (preview.files || []).map((file) => Object.assign({ comments: [] }, file));
+    }
+    function commitPreviews(preview) {
+      if (preview?.previewCommits?.length) return preview.previewCommits;
+      return (preview?.commits || []).map((line) => {
+        const parts = String(line || '').split(/\\s+/);
+        const hash = /^[0-9a-f]{7,40}$/i.test(parts[0] || '') ? parts.shift() : line;
+        return { hash, shortHash: hash.slice(0, 7), title: parts.join(' ') || line, files: [] };
+      });
+    }
+    function commitRow(commit) {
+      const active = commit.hash === activeCommitHash;
+      const title = 'Show files changed in commit ' + (commit.shortHash || commit.hash);
+      return '<button class="commit-row' + (active ? ' active' : '') + '" type="button" data-commit-hash="' + esc(commit.hash) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
+        '<span class="codicon codicon-git-commit" aria-hidden="true"></span><span class="commit-title">' + esc(commit.title) + '</span><span class="commit-hash">' + esc(commit.shortHash || '') + '</span></button>';
+    }
+    function timelineItem(item) {
+      const title = item.kind === 'body' ? 'opened this pull request' : 'commented';
+      return '<article class="timeline-item"><span class="avatar">' + esc(initial(item.author)) + '</span><div class="timeline-card">' +
+        '<div class="timeline-head"><strong>' + esc(item.author || 'unknown') + '</strong><span>' + esc(title) + '</span>' + (item.createdAt ? '<span>' + esc(formatDate(item.createdAt)) + '</span>' : '') + '</div>' +
+        '<pre class="body-pre">' + esc(item.body || '') + '</pre></div></article>';
+    }
+    function fileTreePanel(files) {
+      return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +
+        (files.length ? '<div class="file-tree">' + treeNodesHtml(buildTree(files), 0) + '</div>' : '<p class="empty">No changed files.</p>') + '</section>';
+    }
+    function buildTree(files) {
+      const root = [];
+      const folders = new Map();
+      files.forEach((file) => {
+        const parts = file.path.split('/').filter(Boolean);
+        let children = root;
+        let current = '';
+        for (let i = 0; i < Math.max(0, parts.length - 1); i++) {
+          current = current ? current + '/' + parts[i] : parts[i];
+          let folder = folders.get(current);
+          if (!folder) {
+            folder = { kind: 'folder', name: parts[i], path: current, children: [] };
+            folders.set(current, folder);
+            children.push(folder);
+          }
+          children = folder.children;
+        }
+        children.push({ kind: 'file', file, name: parts[parts.length - 1] || file.path });
+      });
+      return root;
+    }
+    function treeNodesHtml(nodes, depth) {
+      return nodes.map((node) => {
+        if (node.kind === 'file') return treeFileHtml(node.file, node.name, depth);
+        const collapsed = collapsedFolders.has(node.path);
+        const title = (collapsed ? 'Expand ' : 'Collapse ') + node.path;
+        return '<div class="tree-node"><button class="tree-row tree-folder" type="button" data-folder-key="' + esc(node.path) + '" style="--indent:' + esc(depth * 14) + 'px" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
+          '<span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span><span class="tree-label">' + esc(node.name) + '</span><span></span></button>' +
+          '<div class="tree-children' + (collapsed ? ' collapsed' : '') + '">' + treeNodesHtml(node.children, depth + 1) + '</div></div>';
+      }).join('');
+    }
+    function treeFileHtml(file, name, depth) {
+      return '<div class="tree-row" style="--indent:' + esc(depth * 14) + 'px" title="' + esc(file.path) + '">' +
+        '<span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
     }
-    function commitRow(line) {
-      const parts = String(line || '').split(/\\s+/);
-      const hash = /^[0-9a-f]{7,40}$/i.test(parts[0] || '') ? parts.shift() : '';
-      const title = parts.join(' ') || line;
-      return '<div class="commit-row" title="' + esc(line) + '"><span class="codicon codicon-git-commit" aria-hidden="true"></span>' +
-        '<span class="commit-title">' + esc(title) + '</span><span class="commit-hash">' + esc(hash) + '</span></div>';
+    function formatDate(iso) {
+      const d = new Date(iso || '');
+      return isNaN(d.getTime()) ? '' : d.toLocaleString();
     }
     function statusIcon(status) {
       if (status === 'A') return 'codicon-diff-added';
