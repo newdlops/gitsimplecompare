@@ -231,22 +231,31 @@
     if (!root) {
       return;
     }
-    const prs = overview.pullRequests || [];
-    const previousScroll = root.querySelector(".pr-detail-shell")?.scrollTop || 0;
-    const status = overview.available
-      ? `${prs.length} pull requests`
-      : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
-    root.innerHTML = `<div class="pr-detail-shell">` +
-      `<section class="pr-detail-header">` +
-      `<div class="pr-detail-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
-      `<h2>Pull Requests</h2></div>` +
-      `<div class="pr-detail-meta">${esc(status)}</div>` +
-      `</section>` +
-      `<section class="pr-detail-list">${prs.length ? prs.map(prListCard).join("") : `<p class="pr-empty">${esc(status)}</p>`}${prListFooter()}</section>` +
-      `</div>`;
-    const shell = root.querySelector(".pr-detail-shell");
-    if (shell) { shell.addEventListener("scroll", handlePrListScroll); shell.scrollTop = previousScroll; }
-  }
+	    const prs = overview.pullRequests || [];
+	    const filteredPrs = window.GscGraphPrSearch?.filter?.(prs) || prs;
+	    const previousScroll = root.querySelector(".pr-detail-shell")?.scrollTop || 0;
+	    const status = overview.available
+	      ? `${prs.length} pull requests`
+	      : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
+	    const searchHtml = overview.available ? (window.GscGraphPrSearch?.render?.(prs.length, filteredPrs.length) || "") : "";
+	    root.innerHTML = `<div class="pr-detail-shell">` +
+	      `<section class="pr-detail-header">` +
+	      `<div class="pr-detail-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
+	      `<h2>Pull Requests</h2></div>` +
+	      `<div class="pr-detail-meta">${esc(status)}</div>` +
+	      searchHtml +
+	      `</section>` +
+	      `<section class="pr-detail-list">${filteredPrs.length ? filteredPrs.map(prListCard).join("") : `<p class="pr-empty">${esc(prListEmptyMessage(status))}</p>`}${prListFooter()}</section>` +
+	      `</div>`;
+	    const shell = root.querySelector(".pr-detail-shell");
+	    if (shell) { shell.addEventListener("scroll", handlePrListScroll); shell.scrollTop = previousScroll; }
+	    window.GscGraphPrSearch?.bind?.(root, renderOverviewDetail);
+	  }
+
+	  /** 검색 상태를 고려해 PR 목록 empty 문구를 만든다. */
+	  function prListEmptyMessage(fallback) {
+	    return window.GscGraphPrSearch?.emptyMessage?.(fallback) || fallback;
+	  }
 
   /** PR 목록 drawer 스크롤이 바닥에 가까워지면 다음 PR 페이지를 요청한다. */
   function handlePrListScroll(event) {
@@ -281,12 +290,13 @@
       `tabindex="0" role="button" title="${esc(title)}" aria-label="${esc(title)}">` +
       `<div class="pr-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
       `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></div>` +
-      prMetaHtml(pr) +
-      `<div class="pr-actions">` +
-      detailButton(pr.number) +
-      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
-      `</div>` +
-      `</article>`;
+	      prMetaHtml(pr) +
+	      `<div class="pr-actions">` +
+	      detailButton(pr.number) +
+	      previewButton(pr.number, `Preview pull request #${pr.number}`) +
+	      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
+	      `</div>` +
+	      `</article>`;
   }
 
   /** PR 과 연결된 graph row 중 가장 대표적인 row 로 이동하고 하이라이트한다. */
@@ -555,36 +565,23 @@
     }
   }
 
-  /** PR 번호로 overview 안의 PR 을 찾는다. */
-  function findPr(number) {
-    return (overview.pullRequests || []).find((pr) => Number(pr.number) === Number(number));
-  }
+	  /** PR 번호로 overview 안의 PR 을 찾는다. */
+	  function findPr(number) { return (overview.pullRequests || []).find((pr) => Number(pr.number) === Number(number)); }
 
-  /** detail root 를 반환한다. */
-  function detailRoot() {
-    return window.GscGraphDetailHost?.root || document.getElementById("detail");
-  }
+	  /** detail root 를 반환한다. */
+	  function detailRoot() { return window.GscGraphDetailHost?.root || document.getElementById("detail"); }
 
-  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
-  function prColorClass(number) {
-    const value = Math.abs(Number(number) || 0) % 8;
-    return `pr-color-${value}`;
-  }
+	  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
+	  function prColorClass(number) { return `pr-color-${Math.abs(Number(number) || 0) % 8}`; }
 
-  /** 기존 색상 class 를 지울 때 쓰는 전체 팔레트 목록을 반환한다. */
-  function prColorClasses() {
-    return Array.from({ length: 8 }, (_, index) => `pr-color-${index}`);
-  }
+	  /** 기존 색상 class 를 지울 때 쓰는 전체 팔레트 목록을 반환한다. */
+	  function prColorClasses() { return Array.from({ length: 8 }, (_, index) => `pr-color-${index}`); }
 
-  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
-  function commentCount(pr) {
-    return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : 0;
-  }
+	  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
+	  function commentCount(pr) { return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : 0; }
 
-  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
-  function shortHash(hash) {
-    return String(hash || "").slice(0, 8);
-  }
+	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
+	  function shortHash(hash) { return String(hash || "").slice(0, 8); }
 
   /** CSS selector 에 들어갈 값을 escape 한다. */
   function cssEscape(value) {

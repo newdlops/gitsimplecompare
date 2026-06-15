@@ -129,6 +129,42 @@
   font-size: 12px;
 }
 
+.pr-list-search-row { display: grid; gap: 5px; }
+
+.pr-list-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.pr-list-search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; color: inherit; background: transparent; }
+
+.pr-list-search button {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--vscode-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pr-list-search button:hover { background: var(--vscode-toolbar-hoverBackground); }
+
+.pr-list-search button[hidden] { display: none; }
+
+.pr-list-search-summary { color: var(--vscode-descriptionForeground); font-size: 12px; }
+
 .pr-meta-chips,
 .pr-section-stats {
   display: flex;

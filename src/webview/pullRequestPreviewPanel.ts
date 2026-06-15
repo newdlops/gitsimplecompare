@@ -233,11 +233,13 @@ function script(): string {
     const content = document.getElementById("content");
     const openPr = document.getElementById("open-pr");
     let activeTab = 'conversation';
-    let activeCommitHash = '';
-    let collapsedFolders = new Set();
-    let collapsedFiles = new Set();
-    let latestPreview = null;
-    let pendingTargetBranch = '';
+        let activeCommitHash = '';
+        let collapsedFolders = new Set();
+        let collapsedFiles = new Set();
+        let fileNavMode = 'tree';
+        let filesReviewMode = 'cards';
+        let latestPreview = null;
+        let pendingTargetBranch = '';
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     openPr.addEventListener("click", () => vscode.postMessage({ type: "openExistingPr" }));
     window.addEventListener("message", (event) => {
@@ -277,10 +279,11 @@ function script(): string {
       bindTabs();
       bindCommitRows();
       bindTreeFolders();
-      bindTargetBranch();
-      bindOpenDiffs();
-      bindFileToggles();
-    }
+          bindTargetBranch();
+          bindOpenDiffs();
+          bindFileToggles();
+          bindViewButtons();
+        }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
       const number = pr.number ? ' <span class="pr-number">#' + esc(pr.number) + '</span>' : '';
@@ -362,15 +365,23 @@ function script(): string {
         });
       });
     }
-    function bindFileToggles() {
-      content.querySelectorAll('[data-toggle-file]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const key = button.dataset.toggleFile || '';
-          if (collapsedFiles.has(key)) collapsedFiles.delete(key); else collapsedFiles.add(key);
-          if (latestPreview) render(latestPreview);
-        });
-      });
-    }
+        function bindFileToggles() {
+          content.querySelectorAll('[data-toggle-file]').forEach((button) => {
+            button.addEventListener('click', () => {
+              const key = button.dataset.toggleFile || '';
+              if (collapsedFiles.has(key)) collapsedFiles.delete(key); else collapsedFiles.add(key);
+              if (latestPreview) render(latestPreview);
+            });
+          });
+        }
+        function bindViewButtons() {
+          content.querySelectorAll('[data-file-nav-mode]').forEach((button) => {
+            button.addEventListener('click', () => { fileNavMode = button.dataset.fileNavMode || 'tree'; if (latestPreview) render(latestPreview); });
+          });
+          content.querySelectorAll('[data-files-review-mode]').forEach((button) => {
+            button.addEventListener('click', () => { filesReviewMode = button.dataset.filesReviewMode || 'cards'; if (latestPreview) render(latestPreview); });
+          });
+        }
     function conversation(preview) {
       const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
       return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
@@ -379,10 +390,15 @@ function script(): string {
       if (preview.body) return preview.body;
       return preview.existingPr ? 'No PR body.' : 'No staged PR body generated.';
     }
-    function filesPanel(files) {
-      return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +
-        (files.length ? '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>' : '<p class="empty">No changed files.</p>') + '</section>';
-    }
+        function filesPanel(files) {
+          const body = filesReviewMode === 'continuous'
+            ? '<div class="continuous-diff-list">' + files.map(continuousFileHtml).join('') + '</div>'
+            : '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>';
+          return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
+            viewToggleHtml('files-review-mode', filesReviewMode, [['cards', 'files', 'Show files as collapsible cards'], ['continuous', 'diff', 'Show all files in continuous diff']]) +
+            '<span class="count">' + esc(files.length) + '</span></div></div>' +
+            (files.length ? body : '<p class="empty">No changed files.</p>') + '</section>';
+        }
     function commitsPanel(commits) {
       return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-git-commit" aria-hidden="true"></span>Commits</span><span class="count">' + esc(commits.length) + '</span></div>' +
         (commits.length ? '<div class="commit-list">' + commits.map(commitRow).join('') + '</div>' : '<p class="empty">No commits ahead of target.</p>') + '</section>';
@@ -407,21 +423,35 @@ function script(): string {
     function metric(icon, label, value) {
       return '<div class="metric"><div class="metric-label"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) + '</div><div class="metric-value">' + esc(value) + '</div></div>';
     }
-    function reviewFileHtml(file) {
-      const path = file.oldPath ? file.oldPath + ' -> ' + file.path : file.path;
-      const comments = file.comments || [];
-      const collapsed = collapsedFiles.has(file.path);
-      const toggleTitle = (collapsed ? 'Expand ' : 'Collapse ') + path;
-      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
+        function reviewFileHtml(file) {
+          const path = displayPath(file);
+          const comments = file.comments || [];
+          const collapsed = collapsedFiles.has(file.path);
+          const toggleTitle = (collapsed ? 'Expand ' : 'Collapse ') + path;
+          return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
         '<div class="review-file-head" title="' + esc(path) + '">' +
         '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
         '<span class="review-file-title">' + esc(path) + '</span>' +
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-        '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-        (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false) + commentsHtml(comments) + '</div>') + '</article>';
-    }
+            '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
+            (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false) + commentsHtml(comments) + '</div>') + '</article>';
+        }
+        function continuousFileHtml(file) {
+          const comments = file.comments || [];
+          const collapsed = collapsedFiles.has(file.path);
+          const path = displayPath(file);
+          const toggleTitle = (collapsed ? 'Expand ' : 'Collapse ') + path;
+          return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
+            '<div class="review-file-head" title="' + esc(path) + '">' +
+            '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
+            '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="review-file-title">' + esc(path) + '</span>' +
+            '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
+            '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
+            '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
+            (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch) + commentsHtml(comments) + '</div>') + '</article>';
+        }
     function patchHtml(patch, compact) {
       if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
       const lines = String(patch).split('\\n');
@@ -430,12 +460,26 @@ function script(): string {
         ? '<div class="diff-line"><span class="line-marker">...</span><span class="line-code">Snippet truncated</span></div>' : '';
       return '<div class="diff-snippet' + (compact ? ' mini-diff' : '') + '">' + visible + omitted + '</div>';
     }
-    function diffLineHtml(line) {
-      const marker = line.startsWith('+') ? '+' : line.startsWith('-') ? '-' : line.startsWith('@@') ? '@@' : '';
-      const cls = marker === '+' ? ' add' : marker === '-' ? ' del' : marker === '@@' ? ' hunk' : '';
-      const code = marker && marker !== '@@' ? line.slice(1) : line;
-      return '<div class="diff-line' + cls + '"><span class="line-marker">' + esc(marker) + '</span><span class="line-code">' + esc(code || ' ') + '</span></div>';
-    }
+        function diffLineHtml(line) {
+          const marker = line.startsWith('+') ? '+' : line.startsWith('-') ? '-' : line.startsWith('@@') ? '@@' : '';
+          const cls = marker === '+' ? ' add' : marker === '-' ? ' del' : marker === '@@' ? ' hunk' : '';
+          const code = marker && marker !== '@@' ? line.slice(1) : line;
+          return '<div class="diff-line' + cls + '"><span class="line-marker">' + esc(marker) + '</span><span class="line-code">' + esc(code || ' ') + '</span></div>';
+        }
+        function splitPatchHtml(patch) {
+          if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
+          const lines = String(patch).split('\\n');
+          const visible = lines.slice(0, 260).map(splitDiffLineHtml).join('');
+          const omitted = lines.length > 260 ? '<div class="split-row meta"><span></span><span class="split-code">Snippet truncated</span><span></span><span class="split-code">Snippet truncated</span></div>' : '';
+          return '<div class="split-diff"><div class="split-head"><span>Base</span><span>Changed</span></div>' + visible + omitted + '</div>';
+        }
+        function splitDiffLineHtml(line) {
+          if (line.startsWith('diff --git') || line.startsWith('index ') || line.startsWith('--- ') || line.startsWith('+++ ')) return '<div class="split-row meta"><span></span><span class="split-code">' + esc(line || ' ') + '</span><span></span><span class="split-code">' + esc(line || ' ') + '</span></div>';
+          if (line.startsWith('@@')) return '<div class="split-row hunk"><span></span><span class="split-code">' + esc(line) + '</span><span></span><span class="split-code">' + esc(line) + '</span></div>';
+          if (line.startsWith('+')) return '<div class="split-row add"><span></span><span class="split-code"></span><span class="split-marker">+</span><span class="split-code">' + esc(line.slice(1) || ' ') + '</span></div>';
+          if (line.startsWith('-')) return '<div class="split-row del"><span class="split-marker">-</span><span class="split-code">' + esc(line.slice(1) || ' ') + '</span><span></span><span class="split-code"></span></div>';
+          return '<div class="split-row"><span></span><span class="split-code">' + esc(line || ' ') + '</span><span></span><span class="split-code">' + esc(line || ' ') + '</span></div>';
+        }
     function commentsHtml(comments) {
       if (!comments.length) return '';
       return '<div class="review-comments">' + comments.map(commentHtml).join('') + '</div>';
@@ -473,20 +517,27 @@ function script(): string {
         '<div class="timeline-head"><strong>' + esc(item.author || 'unknown') + '</strong><span>' + esc(title) + '</span>' + (item.createdAt ? '<span>' + esc(formatDate(item.createdAt)) + '</span>' : '') + '</div>' +
         '<div class="markdown-body">' + renderMarkdown(item.body || '') + '</div></div></article>';
     }
-    function fileTreePanel(files) {
-      return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +
-        (files.length ? '<div class="file-tree">' + treeNodesHtml(buildTree(files), 0) + '</div>' : '<p class="empty">No changed files.</p>') + '</section>';
-    }
-    function buildTree(files) {
-      const root = [];
-      const folders = new Map();
-      files.forEach((file) => {
-        const parts = file.path.split('/').filter(Boolean);
-        let children = root;
-        let current = '';
-        for (let i = 0; i < Math.max(0, parts.length - 1); i++) {
-          current = current ? current + '/' + parts[i] : parts[i];
-          let folder = folders.get(current);
+        function fileTreePanel(files) {
+          return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
+            viewToggleHtml('file-nav-mode', fileNavMode, [['tree', 'list-tree', 'View changed files as tree'], ['list', 'list-selection', 'View changed files as list']]) +
+            '<span class="count">' + esc(files.length) + '</span></div></div>' +
+            (files.length ? fileNavHtml(files) : '<p class="empty">No changed files.</p>') + '</section>';
+        }
+        function fileNavHtml(files) {
+          if (fileNavMode === 'list') return '<div class="file-tree list">' + files.map((file) => treeFileHtml(file, displayPath(file), 0)).join('') + '</div>';
+          return '<div class="file-tree">' + treeNodesHtml(buildTree(files), 0) + '</div>';
+        }
+        function buildTree(files) {
+          const base = commonDirectory(files);
+          const root = [];
+          const folders = new Map();
+          files.forEach((file) => {
+            const parts = stripBase(file.path, base).split('/').filter(Boolean);
+            let children = root;
+            let current = base.join('/');
+            for (let i = 0; i < Math.max(0, parts.length - 1); i++) {
+              current = current ? current + '/' + parts[i] : parts[i];
+              let folder = folders.get(current);
           if (!folder) {
             folder = { kind: 'folder', name: parts[i], path: current, children: [] };
             folders.set(current, folder);
@@ -495,9 +546,24 @@ function script(): string {
           children = folder.children;
         }
         children.push({ kind: 'file', file, name: parts[parts.length - 1] || file.path });
-      });
-      return root;
-    }
+          });
+          return root;
+        }
+        function commonDirectory(files) {
+          const dirs = files.map((file) => String(file.path || '').split('/').filter(Boolean).slice(0, -1));
+          if (!dirs.length) return [];
+          const prefix = [];
+          for (let i = 0; i < dirs[0].length; i++) {
+            const segment = dirs[0][i];
+            if (dirs.every((dir) => dir[i] === segment)) prefix.push(segment); else break;
+          }
+          return prefix;
+        }
+        function stripBase(filePath, base) {
+          if (!base.length) return filePath;
+          const prefix = base.join('/') + '/';
+          return filePath.indexOf(prefix) === 0 ? filePath.slice(prefix.length) : filePath;
+        }
     function treeNodesHtml(nodes, depth) {
       return nodes.map((node) => {
         if (node.kind === 'file') return treeFileHtml(node.file, node.name, depth);
@@ -508,22 +574,18 @@ function script(): string {
           '<div class="tree-children' + (collapsed ? ' collapsed' : '') + '">' + treeNodesHtml(node.children, depth + 1) + '</div></div>';
       }).join('');
     }
-    function treeFileHtml(file, name, depth) {
-      return '<div class="tree-row" data-status="' + esc(file.status) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(file.path) + '">' +
-        '<span class="twistie"></span><span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="codicon codicon-file" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
-        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
-    }
-    function formatDate(iso) {
-      const d = new Date(iso || '');
-      return isNaN(d.getTime()) ? '' : d.toLocaleString();
-    }
-    function statusIcon(status) {
-      if (status === 'A') return 'codicon-diff-added';
-      if (status === 'D') return 'codicon-diff-removed';
-      if (status === 'R' || status === 'C') return 'codicon-diff-renamed';
-      if (status === 'U') return 'codicon-warning';
-      return 'codicon-diff-modified';
-    }
+        function treeFileHtml(file, name, depth) {
+          return '<div class="tree-row" data-status="' + esc(file.status) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(file.path) + '">' +
+            '<span class="twistie"></span><span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="codicon codicon-file" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
+            '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
+        }
+            function viewToggleHtml(attr, active, items) { return '<div class="file-view-toggle" role="group" aria-label="Changed files view">' + items.map((item) => viewToggleButton(attr, active, item[0], item[1], item[2])).join('') + '</div>'; }
+        function viewToggleButton(attr, active, mode, icon, title) {
+          return '<button class="file-view-button' + (active === mode ? ' active' : '') + '" type="button" data-' + attr + '="' + esc(mode) + '" aria-pressed="' + (active === mode ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span></button>';
+        }
+            function displayPath(file) { return file.oldPath ? file.oldPath + ' -> ' + file.path : file.path; }
+        function formatDate(iso) { const d = new Date(iso || ''); return isNaN(d.getTime()) ? '' : d.toLocaleString(); }
+        function statusIcon(status) { return status === 'A' ? 'codicon-diff-added' : status === 'D' ? 'codicon-diff-removed' : (status === 'R' || status === 'C') ? 'codicon-diff-renamed' : status === 'U' ? 'codicon-warning' : 'codicon-diff-modified'; }
     ${pullRequestPreviewMarkdownScript()}
     function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }
     function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }

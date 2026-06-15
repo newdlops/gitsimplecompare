@@ -39,8 +39,13 @@ export function pullRequestPreviewStyles(): string {
     .content-single { display: grid; min-width: 0; }
     .side-stack { display: grid; gap: 12px; }
     .panel { min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
-    .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
+        .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .panel-actions { display: inline-flex; align-items: center; gap: 8px; }
+        .file-view-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--border); border-radius: 4px; background: var(--vscode-editor-background); }
+        .file-view-button { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; }
+        .file-view-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+        .file-view-button.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
     .markdown-body { padding: 14px; overflow: auto; line-height: 1.5; }
     .markdown-body :is(h1,h2,h3,p,ul,ol,blockquote,pre) { margin-top: 0; margin-bottom: 10px; }
@@ -61,10 +66,10 @@ export function pullRequestPreviewStyles(): string {
     .commit-row:first-child { border-top: 0; }
     .commit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .commit-hash { color: var(--muted); font-size: 12px; }
-    .review-file { min-width: 0; border-top: 1px solid var(--border); }
-    .review-file:first-child { border-top: 0; }
-    .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
-    .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
+        .review-file { min-width: 0; border-top: 1px solid var(--border); }
+        .review-file:first-child { border-top: 0; }
+        .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
+        .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
     .file-action, .file-toggle { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
     .file-action:hover, .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
     .file-toggle { width: 22px; }
@@ -73,16 +78,28 @@ export function pullRequestPreviewStyles(): string {
     .diff-line { display: inline-grid; grid-template-columns: 28px max-content; width: max-content; min-width: 100%; min-height: 20px; }
     .diff-line.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
     .diff-line.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
-    .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
-    .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
-    .line-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
-    .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
+        .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
+        .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
+        .line-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
+        .continuous-diff-list { display: grid; min-width: 0; }
+        .continuous-file.collapsed .review-file-body, .review-file.collapsed .review-comments { display: none; }
+        .split-diff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow-x: auto; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
+        .split-head, .split-row { display: grid; grid-column: 1 / -1; grid-template-columns: 28px minmax(max-content, 1fr) 28px minmax(max-content, 1fr); min-width: max-content; }
+        .split-head { position: sticky; top: 0; z-index: 1; color: var(--muted); background: var(--subtle); font-family: var(--vscode-font-family); font-weight: 600; }
+        .split-head span { grid-column: span 2; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+        .split-row.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
+        .split-row.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
+        .split-row.hunk, .split-row.meta { color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); }
+        .split-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
+        .split-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; }
+        .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
     .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
     .comment-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
     .comment-body { padding: 9px; line-height: 1.4; }
     .mini-diff { border-top: 1px solid var(--border); max-height: 180px; }
     .commit-review { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 12px; align-items: start; }
-    .file-tree { display: grid; gap: 1px; overflow-x: auto; padding: 6px 8px 10px; }
+        .file-tree { display: grid; gap: 1px; overflow-x: auto; padding: 6px 8px 10px; }
+        .file-tree.list { gap: 0; }
     .tree-row { display: grid; grid-template-columns: 14px 16px 16px minmax(0, 1fr) auto; gap: 6px; align-items: center; width: 100%; min-width: max-content; min-height: 24px; padding: 2px 6px 2px var(--indent, 0); border: 0; border-radius: 4px; color: inherit; background: transparent; text-align: left; font: inherit; }
     .tree-row:hover { background: var(--vscode-list-hoverBackground); }
     .tree-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
