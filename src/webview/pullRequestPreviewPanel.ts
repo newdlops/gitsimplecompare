@@ -189,10 +189,12 @@ function styles(): string {
     .branch-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; color: var(--muted); }
     .branch-flow code { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--blue); background: var(--subtle); font-family: var(--vscode-editor-font-family); font-size: 12px; }
     .tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
-    .tab { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 2px solid transparent; color: var(--muted); }
+    .tab { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font: inherit; cursor: pointer; }
+    .tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
     .tab.active { border-bottom-color: var(--vscode-focusBorder); color: var(--vscode-foreground); font-weight: 600; }
     .count { min-width: 18px; padding: 1px 6px; border-radius: 999px; text-align: center; color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); font-size: 11px; }
     .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+    .content-single { display: grid; }
     .side-stack { display: grid; gap: 12px; }
     .panel { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
     .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
@@ -232,6 +234,8 @@ function script(): string {
     const vscode = acquireVsCodeApi();
     const content = document.getElementById("content");
     const openPr = document.getElementById("open-pr");
+    let activeTab = 'conversation';
+    let latestPreview = null;
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     openPr.addEventListener("click", () => vscode.postMessage({ type: "openExistingPr" }));
     window.addEventListener("message", (event) => {
@@ -240,6 +244,7 @@ function script(): string {
       if (msg.type === "error") content.innerHTML = '<p class="empty">' + esc(msg.message) + '</p>';
     });
     function render(preview) {
+      latestPreview = preview;
       const files = preview.files || [];
       const commits = preview.commits || [];
       const additions = files.reduce((sum, file) => sum + (file.additions || 0), 0);
@@ -254,11 +259,9 @@ function script(): string {
             metric('files', 'Changed files', String(files.length)) +
             metric('diff', 'Diff summary', '+' + additions + ' / -' + deletions) +
           '</section>' +
-          '<section class="content-grid">' +
-            conversation(preview) +
-            '<div class="side-stack">' + filesPanel(files) + commitsPanel(commits) + '</div>' +
-          '</section>' +
+          tabContent(preview, files, commits) +
         '</div>';
+      bindTabs();
     }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
@@ -274,17 +277,46 @@ function script(): string {
     }
     function tabbar(fileCount, commitCount) {
       return '<nav class="tabbar" aria-label="Pull request sections">' +
-        '<div class="tab active"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>Conversation</div>' +
-        '<div class="tab"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed <span class="count">' + esc(fileCount) + '</span></div>' +
-        '<div class="tab"><span class="codicon codicon-git-commit" aria-hidden="true"></span>Commits <span class="count">' + esc(commitCount) + '</span></div>' +
+        tabButton('conversation', 'comment-discussion', 'Conversation', '') +
+        tabButton('files', 'files', 'Files changed', fileCount) +
+        tabButton('commits', 'git-commit', 'Commits', commitCount) +
       '</nav>';
+    }
+    function tabButton(tab, icon, label, count) {
+      const active = activeTab === tab;
+      return '<button class="tab' + (active ? ' active' : '') + '" type="button" data-tab="' + esc(tab) + '" ' +
+        'aria-selected="' + (active ? 'true' : 'false') + '" title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+        '<span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) +
+        (count === '' ? '' : ' <span class="count">' + esc(count) + '</span>') + '</button>';
+    }
+    function tabContent(preview, files, commits) {
+      if (activeTab === 'files') {
+        return '<section class="content-single">' + filesPanel(files) + '</section>';
+      }
+      if (activeTab === 'commits') {
+        return '<section class="content-single">' + commitsPanel(commits) + '</section>';
+      }
+      return '<section class="content-grid">' + conversation(preview) +
+        '<div class="side-stack">' + filesPanel(files) + commitsPanel(commits) + '</div></section>';
+    }
+    function bindTabs() {
+      content.querySelectorAll('[data-tab]').forEach((button) => {
+        button.addEventListener('click', () => {
+          activeTab = button.dataset.tab || 'conversation';
+          if (latestPreview) render(latestPreview);
+        });
+      });
     }
     function conversation(preview) {
       const author = preview.existingPr?.author || preview.currentBranch || 'local';
       return '<article class="panel">' +
         '<div class="comment-head"><span class="avatar">' + esc(initial(author)) + '</span><strong>' + esc(author) + '</strong><span>opened this preview into ' + esc(preview.targetBranch) + '</span></div>' +
-        '<pre class="body-pre">' + esc(preview.body || 'No PR body generated.') + '</pre>' +
+        '<pre class="body-pre">' + esc(bodyText(preview)) + '</pre>' +
       '</article>';
+    }
+    function bodyText(preview) {
+      if (preview.body) return preview.body;
+      return preview.existingPr ? 'No PR body.' : 'No staged PR body generated.';
     }
     function filesPanel(files) {
       return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +

@@ -133,6 +133,11 @@ interface GhCommit {
   oid?: string;
 }
 
+interface GhPullRequestPreview {
+  title?: string;
+  body?: string;
+}
+
 interface GhGraphQlResponse {
   data?: {
     repository?: {
@@ -231,18 +236,20 @@ export class PullRequestService {
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
     const targetBranch = baseBranch || existingPr?.baseRefName || await this.defaultBaseBranch();
-    const [files, stat, commits, repository] = await Promise.all([
+    const [files, stat, commits, repository, existingPreview] = await Promise.all([
       this.stagedFiles(),
       runGit(["diff", "--cached", "--stat"], this.repoRoot).catch(() => ""),
       this.previewCommits(targetBranch),
       this.repositoryName().catch(() => undefined),
+      this.existingPullRequestPreview(existingPr).catch(() => undefined),
     ]);
+    const generatedBody = previewBody(files, commits, stat);
     return {
       repository,
       currentBranch,
       targetBranch,
-      title: existingPr?.title || `${currentBranch} -> ${targetBranch}`,
-      body: previewBody(files, commits, stat),
+      title: existingPreview?.title || existingPr?.title || previewTitle(currentBranch, targetBranch, commits, files),
+      body: existingPreview ? existingPreview.body ?? "" : generatedBody,
       files,
       commits,
       stat: stat.trim(),
@@ -418,6 +425,27 @@ export class PullRequestService {
     return out.split("\n").map((line) => line.trim()).filter(Boolean);
   }
 
+  /**
+   * 기존 PR 기준으로 preview 를 연 경우 GitHub 에 저장된 실제 제목/본문을 읽는다.
+   * @param existingPr graph PR 목록에서 선택된 기존 PR 정보
+   * @returns GitHub PR 의 현재 title/body. 조회 실패 시 호출부가 staged preview 본문으로 fallback 한다.
+   */
+  private async existingPullRequestPreview(
+    existingPr?: PullRequestInfo
+  ): Promise<GhPullRequestPreview | undefined> {
+    if (!existingPr?.number) {
+      return undefined;
+    }
+    const out = await runGh([
+      "pr",
+      "view",
+      String(existingPr.number),
+      "--json",
+      "title,body",
+    ], this.repoRoot);
+    return JSON.parse(out) as GhPullRequestPreview;
+  }
+
   /** 현재 branch 이름을 반환한다. detached 이면 HEAD 로 표시한다. */
   private async currentBranch(): Promise<string> {
     return (await runGit(["branch", "--show-current"], this.repoRoot).catch(() => "")).trim() || "HEAD";
@@ -512,4 +540,36 @@ function previewBody(
     lines.push("", "## Diff stat", "```", stat.trim(), "```");
   }
   return lines.join("\n");
+}
+
+/**
+ * staged preview 의 제목을 실제 커밋/파일 정보에서 만든다.
+ * @param currentBranch 현재 브랜치 이름
+ * @param targetBranch  PR 대상 브랜치 이름
+ * @param commits       target 이후 로컬 커밋 목록
+ * @param files         staged changed files
+ * @returns PR title 초안
+ */
+function previewTitle(
+  currentBranch: string,
+  targetBranch: string,
+  commits: string[],
+  files: CommitFileChange[]
+): string {
+  const subject = commitSubject(commits[0]);
+  if (subject) {
+    return subject;
+  }
+  if (files.length === 1) {
+    return `Update ${files[0].path}`;
+  }
+  if (files.length > 1) {
+    return `Update ${files.length} staged files`;
+  }
+  return `${currentBranch} -> ${targetBranch}`;
+}
+
+/** `git log --oneline` 출력에서 해시를 제거한 커밋 제목을 반환한다. */
+function commitSubject(line: string | undefined): string {
+  return (line || "").replace(/^[0-9a-f]{7,40}\s+/i, "").trim();
 }

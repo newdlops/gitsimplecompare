@@ -473,7 +473,7 @@
       return;
     }
 
-    resizeSummary(summary, shell, detailSummaryHeight);
+    resizeSummary(summary, shell, preferredSummaryHeight(summary, shell));
     detailSplitter.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       const startY = event.clientY;
@@ -512,6 +512,16 @@
     const max = Math.max(SUMMARY_MIN_H, shell.clientHeight - FILES_MIN_H);
     detailSummaryHeight = clamp(height, SUMMARY_MIN_H, max);
     summary.style.flexBasis = detailSummaryHeight + "px";
+  }
+
+  /**
+   * 커밋 메시지/메타 정보가 긴 경우 파일 목록을 최소 높이까지 줄여 상세 내용을 먼저 보이게 한다.
+   * @param summary 실제 상세 내용이 들어 있는 영역
+   * @param shell   상세 패널 전체 높이를 제공하는 컨테이너
+   */
+  function preferredSummaryHeight(summary, shell) {
+    const max = Math.max(SUMMARY_MIN_H, shell.clientHeight - FILES_MIN_H);
+    return clamp(summary.scrollHeight + 2, SUMMARY_MIN_H, max);
   }
 
   /** toolbar/drawer/scroll 이벤트를 한 번만 등록한다. */
