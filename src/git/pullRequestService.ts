@@ -5,6 +5,67 @@ import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import { runGit } from "./gitExec";
 
+/** 그래프에 한 번에 표시할 열린 PR 최대 개수 */
+const PULL_REQUEST_LIMIT = 80;
+
+/** PR 목록 GraphQL 쿼리. gh pr list 의 commits 필드가 과도한 author 연결을 펴지 않도록 필요한 값만 직접 요청한다. */
+const PULL_REQUESTS_QUERY = `
+query($owner: String!, $name: String!, $limit: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(first: $limit, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        number
+        title
+        state
+        url
+        headRefName
+        headRefOid
+        baseRefName
+        author { login }
+        isDraft
+        reviewDecision
+        updatedAt
+        comments(last: 3) {
+          totalCount
+          nodes {
+            author { login }
+            body
+            url
+            createdAt
+          }
+        }
+        commits(first: 100) {
+          nodes {
+            commit { oid }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+}`;
+
+/** PR 하나의 추가 commit OID 페이지를 읽는 GraphQL 쿼리 */
+const PULL_REQUEST_COMMITS_QUERY = `
+query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      commits(first: 100, after: $cursor) {
+        nodes {
+          commit { oid }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}`;
+
 /** PR 댓글 요약 */
 export interface PullRequestCommentInfo {
   author: string;
@@ -67,6 +128,63 @@ interface GhPullRequest {
   reviewDecision?: string;
   updatedAt?: string;
   comments?: GhComment[];
+  commits?: GhCommit[];
+  commentCount?: number;
+  commitHashes?: string[];
+}
+
+interface GhCommit {
+  oid?: string;
+}
+
+interface GhGraphQlResponse {
+  data?: {
+    repository?: {
+      pullRequests?: {
+        nodes?: GhGraphQlPullRequest[];
+      };
+    };
+  };
+}
+
+interface GhGraphQlPullRequest {
+  number?: number;
+  title?: string;
+  state?: string;
+  url?: string;
+  headRefName?: string;
+  headRefOid?: string;
+  baseRefName?: string;
+  author?: { login?: string };
+  isDraft?: boolean;
+  reviewDecision?: string;
+  updatedAt?: string;
+  comments?: {
+    totalCount?: number;
+    nodes?: GhComment[];
+  };
+  commits?: {
+    nodes?: Array<{ commit?: { oid?: string } }>;
+    pageInfo?: GhPageInfo;
+  };
+}
+
+interface GhPageInfo {
+  hasNextPage?: boolean;
+  endCursor?: string;
+}
+
+interface GhCommitPageResponse {
+  data?: {
+    repository?: {
+      pullRequest?: {
+        commits?: {
+          nodes?: Array<{ commit?: { oid?: string } }>;
+          pageInfo?: GhPageInfo;
+        };
+      };
+    };
+  };
 }
 
 interface GhComment {
@@ -81,17 +199,15 @@ export class PullRequestService {
   constructor(public readonly repoRoot: string) {}
 
   /**
-   * gh CLI 로 저장소 PR 목록을 읽고, graph 배지용 head commit 해시를 붙인다.
+   * gh CLI 로 저장소 PR 목록을 읽고, graph 배지용 PR commit 해시들을 붙인다.
    * @param localBranches 현재 로컬 브랜치 상태. current branch/target 추정에 사용한다.
    */
   async getOverview(
     localBranches: LocalBranchStatus[]
   ): Promise<PullRequestOverview> {
     try {
-      const [repository, rawPrs] = await Promise.all([
-        this.repositoryName(),
-        this.listPullRequests(),
-      ]);
+      const repository = await this.repositoryName();
+      const rawPrs = await this.listPullRequests(repository);
       const prs = rawPrs.map((pr) => this.toPullRequestInfo(pr));
       const current = localBranches.find((branch) => branch.current);
       return {
@@ -142,20 +258,30 @@ export class PullRequestService {
     };
   }
 
-  /** gh pr list 를 JSON 으로 호출한다. */
-  private async listPullRequests(): Promise<GhPullRequest[]> {
+  /**
+   * 열린 PR 목록을 GitHub GraphQL 로 가볍게 조회한다.
+   * - `gh pr list --json commits` 는 commit author 연결까지 크게 펼쳐 GraphQL 한도를 넘을 수 있어 사용하지 않는다.
+   * @param repository owner/name 형태의 GitHub 저장소 이름
+   */
+  private async listPullRequests(repository: string): Promise<GhPullRequest[]> {
+    const [owner, name] = splitRepositoryName(repository);
     const out = await runGh([
-      "pr",
-      "list",
-      "--state",
-      "open",
-      "--limit",
-      "80",
-      "--json",
-      "number,title,state,url,headRefName,headRefOid,baseRefName,author,isDraft,reviewDecision,updatedAt,comments",
+      "api",
+      "graphql",
+      "-F",
+      `owner=${owner}`,
+      "-F",
+      `name=${name}`,
+      "-F",
+      `limit=${PULL_REQUEST_LIMIT}`,
+      "-f",
+      `query=${PULL_REQUESTS_QUERY}`,
     ], this.repoRoot);
-    const parsed = JSON.parse(out) as unknown;
-    return Array.isArray(parsed) ? parsed as GhPullRequest[] : [];
+    const parsed = JSON.parse(out) as GhGraphQlResponse;
+    const nodes = parsed.data?.repository?.pullRequests?.nodes || [];
+    const prs = nodes.map(fromGraphQlPullRequest);
+    await this.appendRemainingCommitHashes(owner, name, nodes, prs);
+    return prs;
   }
 
   /** gh PR JSON 을 graph 표시용 타입으로 정규화한다. */
@@ -171,9 +297,72 @@ export class PullRequestService {
       isDraft: Boolean(pr.isDraft),
       reviewDecision: pr.reviewDecision,
       updatedAt: pr.updatedAt,
-      commentCount: pr.comments?.length ?? 0,
+      commentCount: pr.commentCount ?? pr.comments?.length ?? 0,
       comments: normalizeComments(pr.comments),
-      commitHashes: pr.headRefOid ? [pr.headRefOid] : [],
+      commitHashes: normalizeCommitHashes(pr),
+    };
+  }
+
+  /**
+   * 첫 GraphQL 페이지에 담기지 않은 PR commit OID 를 이어 붙인다.
+   * - 대부분의 PR 은 100개 이하라 추가 호출이 없고, 큰 PR 만 순차적으로 더 읽는다.
+   * @param owner GitHub owner
+   * @param name  GitHub repository name
+   * @param nodes 첫 PR 목록 GraphQL node 배열
+   * @param prs   내부 PR 데이터 배열(nodes 와 같은 순서)
+   */
+  private async appendRemainingCommitHashes(
+    owner: string,
+    name: string,
+    nodes: GhGraphQlPullRequest[],
+    prs: GhPullRequest[]
+  ): Promise<void> {
+    for (let index = 0; index < nodes.length; index++) {
+      const prNumber = Number(nodes[index]?.number);
+      if (!Number.isFinite(prNumber)) {
+        continue;
+      }
+      let pageInfo = nodes[index]?.commits?.pageInfo;
+      while (pageInfo?.hasNextPage && pageInfo.endCursor) {
+        const page = await this.listCommitHashPage(owner, name, prNumber, pageInfo.endCursor);
+        prs[index]?.commitHashes?.push(...page.hashes);
+        pageInfo = page.pageInfo;
+      }
+    }
+  }
+
+  /**
+   * PR 하나의 다음 commit OID 페이지를 읽는다.
+   * @param owner  GitHub owner
+   * @param name   GitHub repository name
+   * @param number PR 번호
+   * @param cursor 이전 commit page 의 endCursor
+   */
+  private async listCommitHashPage(
+    owner: string,
+    name: string,
+    number: number,
+    cursor: string
+  ): Promise<{ hashes: string[]; pageInfo?: GhPageInfo }> {
+    const out = await runGh([
+      "api",
+      "graphql",
+      "-F",
+      `owner=${owner}`,
+      "-F",
+      `name=${name}`,
+      "-F",
+      `number=${number}`,
+      "-f",
+      `cursor=${cursor}`,
+      "-f",
+      `query=${PULL_REQUEST_COMMITS_QUERY}`,
+    ], this.repoRoot);
+    const parsed = JSON.parse(out) as GhCommitPageResponse;
+    const commits = parsed.data?.repository?.pullRequest?.commits;
+    return {
+      hashes: (commits?.nodes || []).map((node) => node.commit?.oid || "").filter(Boolean),
+      pageInfo: commits?.pageInfo,
     };
   }
 
@@ -267,6 +456,43 @@ function runGh(args: string[], cwd: string): Promise<string> {
   });
 }
 
+/**
+ * owner/name 형태의 저장소명을 GraphQL 변수로 나눈다.
+ * @param repository gh repo view 가 반환한 nameWithOwner 문자열
+ * @returns owner 와 repository name tuple
+ */
+function splitRepositoryName(repository: string): [string, string] {
+  const [owner, name] = repository.split("/");
+  if (!owner || !name) {
+    throw new Error("GitHub repository name is not available.");
+  }
+  return [owner, name];
+}
+
+/**
+ * 직접 작성한 GraphQL PR node 를 내부 PR JSON 형태로 변환한다.
+ * @param pr GitHub GraphQL pull request node
+ * @returns graph 표시용 정규화 전 PR 데이터
+ */
+function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
+  return {
+    number: pr.number,
+    title: pr.title,
+    state: pr.state,
+    url: pr.url,
+    headRefName: pr.headRefName,
+    headRefOid: pr.headRefOid,
+    baseRefName: pr.baseRefName,
+    author: pr.author,
+    isDraft: pr.isDraft,
+    reviewDecision: pr.reviewDecision,
+    updatedAt: pr.updatedAt,
+    comments: pr.comments?.nodes || [],
+    commentCount: pr.comments?.totalCount ?? pr.comments?.nodes?.length ?? 0,
+    commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
+  };
+}
+
 /** gh 댓글 JSON 을 최신 3개 요약으로 줄인다. */
 function normalizeComments(comments: GhComment[] | undefined): PullRequestCommentInfo[] {
   return (comments || []).slice(-3).map((comment) => ({
@@ -275,6 +501,20 @@ function normalizeComments(comments: GhComment[] | undefined): PullRequestCommen
     url: comment.url,
     createdAt: comment.createdAt,
   }));
+}
+
+/**
+ * gh PR JSON 에 포함된 commit OID 목록을 graph 배지용 해시 목록으로 정규화한다.
+ * - `commits` 필드가 비어 있거나 일부만 내려온 경우에도 headRefOid 를 fallback 으로 포함한다.
+ * @param pr gh CLI 가 반환한 PR JSON
+ * @returns 중복이 제거된 commit hash 배열
+ */
+function normalizeCommitHashes(pr: GhPullRequest): string[] {
+  return Array.from(new Set([
+    ...(pr.commitHashes || []),
+    ...(pr.commits || []).map((commit) => commit.oid || ""),
+    pr.headRefOid || "",
+  ].filter(Boolean)));
 }
 
 /** staged PR preview 의 기본 본문을 만든다. */
