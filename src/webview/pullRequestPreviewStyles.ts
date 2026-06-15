@@ -29,7 +29,17 @@ export function pullRequestPreviewStyles(): string {
     .pr-number { color: var(--muted); font-weight: 400; }
     .branch-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; color: var(--muted); }
     .branch-flow code { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--blue); background: var(--subtle); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .branch-select { height: 24px; border: 1px solid var(--border); border-radius: 4px; color: var(--blue); background: var(--subtle); font: inherit; font-size: 12px; }
+    .branch-combo { display: inline-flex; align-items: center; gap: 5px; }
+    .branch-combo-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .branch-combobox { position: relative; display: inline-grid; grid-template-columns: minmax(160px, 240px) 24px; height: 26px; border: 1px solid var(--border); border-radius: 4px; background: var(--subtle); }
+    .branch-combo-input { min-width: 0; padding: 0 6px; border: 0; color: var(--blue); background: transparent; font: inherit; font-size: 12px; outline: none; }
+    .branch-combo-toggle { display: inline-grid; place-items: center; width: 24px; border: 0; border-left: 1px solid var(--border); color: var(--muted); background: transparent; cursor: pointer; }
+    .branch-combo-toggle:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+    .branch-combo-list { position: absolute; z-index: 60; top: calc(100% + 3px); left: -1px; right: -1px; max-height: 220px; overflow: auto; padding: 3px; border: 1px solid var(--vscode-widget-border); border-radius: 4px; background: var(--vscode-dropdown-background, var(--panel)); box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+    .branch-combo-option { display: block; width: 100%; min-height: 24px; padding: 3px 6px; border: 0; border-radius: 3px; color: inherit; background: transparent; text-align: left; font: inherit; font-size: 12px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .branch-combo-option[hidden], .branch-combo-option[data-filtered="true"] { display: none; }
+    .branch-combo-option:hover, .branch-combo-option.keyboard { background: var(--vscode-list-hoverBackground); }
+    .branch-combo-option.active { color: var(--vscode-list-activeSelectionForeground); background: var(--vscode-list-activeSelectionBackground); }
     .tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
     .tab { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font: inherit; cursor: pointer; }
     .tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }

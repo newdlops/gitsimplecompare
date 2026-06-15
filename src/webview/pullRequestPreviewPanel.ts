@@ -10,6 +10,7 @@ import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
+import { pullRequestPreviewBranchComboboxScript } from "./pullRequestPreviewBranchCombobox";
 import { pullRequestPreviewDiffScript } from "./pullRequestPreviewDiffRenderer";
 import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
@@ -74,6 +75,10 @@ export class PullRequestPreviewPanel {
       undefined,
       this.disposables
     );
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      const file = document.uri.scheme === "file" ? document.uri.fsPath : "";
+      if (file && file.startsWith(`${this.service.repoRoot}/`)) void this.sendPreview();
+    }, undefined, this.disposables);
     this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
   }
 
@@ -307,19 +312,14 @@ function script(): string {
       const source = pendingSourceBranch || preview.sourceBranch || preview.currentBranch;
       const targets = preview.targetBranches || [];
       const selected = pendingTargetBranch || preview.targetBranch;
-      const sourceControl = branchControl('source-branch', 'Change source branch', source, preview.sourceBranches || []);
-      const targetControl = branchControl('target-branch', 'Change target branch', selected, targets);
+      const sourceControl = branchControl('source-branch', 'source', 'from', 'Change source branch', source, preview.sourceBranches || []);
+      const targetControl = branchControl('target-branch', 'target', 'target', 'Change target branch', selected, targets);
       return '<section class="pr-header">' +
         '<div class="title-row"><span class="state-pill ' + stateClass + '"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>' + esc(state) + '</span>' +
         '<h2 class="pr-title">' + esc(preview.title) + number + '</h2></div>' +
-        '<div class="branch-flow"><span class="codicon codicon-git-branch" aria-hidden="true"></span><span>from</span>' + sourceControl +
-        '<span>target</span>' +
+        '<div class="branch-flow"><span class="codicon codicon-git-branch" aria-hidden="true"></span>' + sourceControl +
         '<span class="codicon codicon-arrow-right" aria-hidden="true"></span>' + targetControl + '</div>' +
       '</section>';
-    }
-    function branchControl(id, label, selected, branches) {
-      const values = Array.from(new Set([selected].concat(branches || []))).filter(Boolean);
-      return values.length ? '<select id="' + id + '" class="branch-select" title="' + esc(label) + '" aria-label="' + esc(label) + '">' + values.map((branch) => '<option value="' + esc(branch) + '"' + (branch === selected ? ' selected' : '') + '>' + esc(branch) + '</option>').join('') + '</select>' : '<code>' + esc(selected) + '</code>';
     }
     function tabbar(fileCount, commitCount) {
       return '<nav class="tabbar" aria-label="Pull request sections">' +
@@ -576,6 +576,7 @@ function script(): string {
         function formatDate(iso) { const d = new Date(iso || ''); return isNaN(d.getTime()) ? '' : d.toLocaleString(); }
         function statusIcon(status) { return status === 'A' ? 'codicon-diff-added' : status === 'D' ? 'codicon-diff-removed' : (status === 'R' || status === 'C') ? 'codicon-diff-renamed' : status === 'U' ? 'codicon-warning' : 'codicon-diff-modified'; }
     ${pullRequestPreviewDiffScript()}
+    ${pullRequestPreviewBranchComboboxScript()}
     ${pullRequestPreviewTimelineScript()}
     ${pullRequestPreviewMarkdownScript()}
     function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }

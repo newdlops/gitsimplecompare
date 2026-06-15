@@ -1,5 +1,5 @@
-// PR preview 의 Commits 탭과 staged PR 모의를 위한 commit/file diff 모델.
-// - 기존 PR 은 GitHub commit API 를 사용하고, staged preview 는 로컬 git diff 로 synthetic commit 을 만든다.
+// PR preview 의 Commits 탭과 로컬 PR 모의를 위한 commit/file diff 모델.
+// - 기존 PR 은 GitHub commit API 를 사용하고, 로컬 preview 는 staged/working diff 로 synthetic commit 을 만든다.
 import { CommitFileChange } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import { runGh } from "./ghCli";
@@ -66,7 +66,7 @@ export async function fetchExistingPullRequestCommits(
 }
 
 /**
- * target branch 기준 로컬 HEAD 커밋과 staged synthetic commit 으로 PR preview 를 만든다.
+ * target branch 기준 로컬 source 커밋과 staged/working synthetic commit 으로 PR preview 를 만든다.
  * @param repoRoot git 저장소 루트
  * @param targetBranch PR 대상 브랜치
  * @param sourceRef PR 출발 브랜치/커밋
@@ -79,10 +79,11 @@ export async function buildLocalPullRequestPreview(
   sourceRef: string,
   stagedFiles: CommitFileChange[]
 ): Promise<{ files: PullRequestPreviewFile[]; commits: PullRequestPreviewCommit[] }> {
-  const [baseFiles, commits, stagedPatch] = await Promise.all([
+  const [baseFiles, commits, stagedPatch, workingFiles] = await Promise.all([
     readRangeFiles(repoRoot, targetBranch, sourceRef),
     readLocalCommitSummaries(repoRoot, targetBranch, sourceRef),
     runGit(["diff", "--cached", "--patch", "-M", "--unified=80"], repoRoot).catch(() => ""),
+    readWorkingTreeFiles(repoRoot),
   ]);
   let stagedSyntheticFiles: PullRequestPreviewFile[] = [];
   if (stagedFiles.length) {
@@ -96,7 +97,17 @@ export async function buildLocalPullRequestPreview(
       synthetic: true,
     });
   }
-  return { files: mergePreviewFiles(baseFiles, stagedSyntheticFiles), commits };
+  if (workingFiles.length) {
+    commits.push({
+      hash: "__gsc_working_tree_preview_commit__",
+      shortHash: "working",
+      title: "Working tree changes",
+      author: "Working Tree",
+      files: workingFiles,
+      synthetic: true,
+    });
+  }
+  return { files: mergePreviewFiles(baseFiles, stagedSyntheticFiles, workingFiles), commits };
 }
 
 /**
@@ -222,6 +233,16 @@ async function readRangeFiles(repoRoot: string, targetBranch: string, sourceRef:
     runGit(["diff", "--name-status", "-z", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
     runGit(["diff", "--numstat", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
     runGit(["diff", "--patch", "-M", "--unified=80", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
+  ]);
+  return filesFromDiff(nameStatus, numstat, patch);
+}
+
+/** 저장된 작업트리 변경을 preview 에 반영하기 위해 unstaged diff 를 읽는다. */
+async function readWorkingTreeFiles(repoRoot: string): Promise<PullRequestPreviewFile[]> {
+  const [nameStatus, numstat, patch] = await Promise.all([
+    runGit(["diff", "--name-status", "-z", "-M"], repoRoot).catch(() => ""),
+    runGit(["diff", "--numstat", "-M"], repoRoot).catch(() => ""),
+    runGit(["diff", "--patch", "-M", "--unified=80"], repoRoot).catch(() => ""),
   ]);
   return filesFromDiff(nameStatus, numstat, patch);
 }
