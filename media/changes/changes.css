@@ -666,7 +666,9 @@ body:focus-within .row.selected:hover {
 }
 
 .commit-btn,
-.commit-caret {
+.commit-caret,
+.commit-ai-btn,
+.commit-ai-settings-btn {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -693,13 +695,49 @@ body:focus-within .row.selected:hover {
   border-radius: 0 2px 2px 0;
 }
 
+.commit-ai-btn {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 3px;
+  min-width: 42px;
+  padding: 3px 7px;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.commit-ai-settings-btn {
+  flex: 0 0 26px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.commit-ai-label {
+  white-space: nowrap;
+}
+
 .commit-btn:hover,
-.commit-caret:hover {
+.commit-caret:hover,
+.commit-ai-btn:hover,
+.commit-ai-settings-btn:hover {
   background: var(--vscode-button-hoverBackground);
 }
 
+.commit-ai-btn:disabled,
+.commit-ai-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  background: var(--vscode-button-secondaryBackground);
+}
+
 .commit-btn:focus-visible,
-.commit-caret:focus-visible {
+.commit-caret:focus-visible,
+.commit-ai-btn:focus-visible,
+.commit-ai-settings-btn:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: 1px;
 }

@@ -6,6 +6,7 @@
   "use strict";
 
   const vscode = acquireVsCodeApi();
+  window.__gscVscode = vscode;
   const rootEl = document.getElementById("root");
   const COMMIT_MENU = window.__gscCommitMenu || [];
 
@@ -59,6 +60,7 @@
   state.groups = state.groups || {}; // Staged/Changes 그룹 접힘 상태
   state.folders = state.folders || {}; // 파일 트리 폴더 접힘 상태(kind:path)
   state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
+  state.commitMessageRevision = state.commitMessageRevision || 0;
   const SECTION_IDS = ["repos", "changes", "compare", "stashes"];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
@@ -590,6 +592,7 @@
   /** 전체 화면을 그린다. */
   function render(p) {
     const transient = captureTransientUi();
+    const previousCommitMessageRevision = state.commitMessageRevision || 0;
     closeDropdown();
     lastPayload = p;
     state.visibleSections = normalizeVisibleSections(p.visibleSections);
@@ -640,7 +643,9 @@
     bindEvents();
     applyResize();
     applySelection();
-    restoreTransientUi(transient);
+    restoreTransientUi(transient, previousCommitMessageRevision);
+    state.commitMessageRevision = p.commit?.messageRevision || 0;
+    vscode.setState(state);
   }
 
   /** 렌더 직전 사용자가 조작 중인 일시 상태를 캡처한다. */
@@ -680,7 +685,7 @@
   }
 
   /** 렌더 후 입력 포커스/커서와 스크롤 위치를 되돌린다. */
-  function restoreTransientUi(snapshot) {
+  function restoreTransientUi(snapshot, previousCommitMessageRevision) {
     if (!snapshot) {
       return;
     }
@@ -699,6 +704,17 @@
     }
     const next = document.getElementById(snapshot.focus.id);
     if (!next) {
+      return;
+    }
+    const commitRevision = lastPayload?.commit?.messageRevision || 0;
+    const hasProgrammaticCommitMessage =
+      next.id === "commit-msg" && commitRevision !== previousCommitMessageRevision;
+    if (hasProgrammaticCommitMessage) {
+      next.focus({ preventScroll: true });
+      if (typeof next.setSelectionRange === "function") {
+        const end = next.value.length;
+        next.setSelectionRange(end, end);
+      }
       return;
     }
     if (typeof snapshot.focus.value === "string" && "value" in next) {

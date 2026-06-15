@@ -2,6 +2,11 @@
 // - PR 데이터 생성은 PullRequestService 에 맡기고, 이 파일은 패널 생애주기와 렌더링만 담당한다.
 import * as vscode from "vscode";
 import {
+  isAiCliAuthenticationError,
+  isAiCliConfigurationError,
+} from "../ai/cliRunner";
+import { generateAiPullRequestMessage } from "../ai/messageGenerator";
+import {
   PullRequestInfo,
   PullRequestService,
 } from "../git/pullRequestService";
@@ -10,16 +15,17 @@ import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
-import { pullRequestPreviewBranchComboboxScript } from "./pullRequestPreviewBranchCombobox";
-import { pullRequestPreviewDiffScript } from "./pullRequestPreviewDiffRenderer";
-import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
+import { nonceValue } from "./nonce";
+import { pullRequestPreviewScript } from "./pullRequestPreviewScript";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
-import { pullRequestPreviewTimelineScript } from "./pullRequestPreviewTimeline";
 
 type PreviewMessage =
   | { type: "ready" }
   | { type: "refresh" }
   | { type: "openExistingPr" }
+  | { type: "generatePullRequestMessage" }
+  | { type: "configureAiCli" }
+  | { type: "copyPullRequestMessage"; title: string; body: string }
   | { type: "setPreviewBranch"; role: "source" | "target"; branch: string }
   | { type: "loadCommitFiles"; hash: string }
   | ({ type: "openEditableDiff" } & PullRequestPreviewDiffRequest);
@@ -102,6 +108,18 @@ export class PullRequestPreviewPanel {
       await vscode.env.openExternal(vscode.Uri.parse(this.existingPr.url));
       return;
     }
+    if (msg.type === "generatePullRequestMessage") {
+      await this.generatePullRequestMessage();
+      return;
+    }
+    if (msg.type === "configureAiCli") {
+      await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
+      return;
+    }
+    if (msg.type === "copyPullRequestMessage") {
+      await this.copyPullRequestMessage(msg.title, msg.body);
+      return;
+    }
     if (msg.type === "setPreviewBranch") {
       if (msg.role === "target") {
         this.baseBranch = msg.branch || undefined;
@@ -121,6 +139,25 @@ export class PullRequestPreviewPanel {
     if (msg.type === "loadCommitFiles") {
       await this.sendCommitFiles(msg.hash);
     }
+  }
+
+  /**
+   * 현재 preview 의 PR 제목/본문을 GitHub PR 작성 화면에 붙여넣기 쉬운 형식으로 복사한다.
+   * @param title PR 제목
+   * @param body PR 본문
+   */
+  private async copyPullRequestMessage(title: string, body: string): Promise<void> {
+    const text = [title.trim(), body.trim()].filter(Boolean).join("\n\n");
+    if (!text) {
+      vscode.window.showWarningMessage(
+        vscode.l10n.t("No pull request message is available to copy.")
+      );
+      return;
+    }
+    await vscode.env.clipboard.writeText(text);
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("Pull request message copied to clipboard.")
+    );
   }
 
   /**
@@ -181,9 +218,59 @@ export class PullRequestPreviewPanel {
     }
   }
 
+  /** 현재 preview 기준으로 AI PR 제목/본문을 생성해 웹뷰에 반영한다. */
+  private async generatePullRequestMessage(): Promise<void> {
+    try {
+      const message = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: vscode.l10n.t("Generating AI pull request message..."),
+          cancellable: true,
+        },
+        async (_progress, token) => {
+          const preview = await this.service.getStagedPreview(
+            this.baseBranch,
+            this.existingPr,
+            this.sourceBranch
+          );
+          return generateAiPullRequestMessage(preview, this.service.repoRoot, token);
+        }
+      );
+      this.post({ type: "generatedPullRequestMessage", message });
+    } catch (error) {
+      logError("AI pull request message generation failed", error);
+      const configure = vscode.l10n.t("Configure AI CLI");
+      const login = vscode.l10n.t("Login to AI CLI");
+      const message = vscode.l10n.t(
+        "AI pull request message generation failed: {0}",
+        errText(error)
+      );
+      const choice = isAiCliAuthenticationError(error)
+        ? await vscode.window.showErrorMessage(message, login, configure)
+        : isAiCliConfigurationError(error)
+          ? await vscode.window.showErrorMessage(message, configure)
+          : await vscode.window.showErrorMessage(message);
+      if (choice === login && isAiCliAuthenticationError(error)) {
+        await vscode.commands.executeCommand(
+          "gitSimpleCompare.loginAiCli",
+          error.provider
+        );
+        return;
+      }
+      if (choice === configure) {
+        await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
+      }
+    }
+  }
+
   /** preview 웹뷰 HTML 을 만든다. */
   private html(): string {
     const nonce = nonceValue();
+    const generatePrMessageTitle = vscode.l10n.t(
+      "Generate AI pull request message"
+    );
+    const configureAiCliTitle = vscode.l10n.t("Configure AI CLI");
+    const copyPrMessageTitle = vscode.l10n.t("Copy pull request message");
     const codiconUri = this.panel.webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
@@ -209,6 +296,18 @@ export class PullRequestPreviewPanel {
             aria-label="Refresh staged PR preview" data-tooltip="Refresh staged PR preview">
             <span class="codicon codicon-refresh" aria-hidden="true"></span>
           </button>
+          <button id="generate-pr-message" class="icon-button" type="button" title="${generatePrMessageTitle}"
+            aria-label="${generatePrMessageTitle}" data-tooltip="${generatePrMessageTitle}">
+            <span class="codicon codicon-comment-discussion-sparkle" aria-hidden="true"></span>
+          </button>
+          <button id="configure-ai-cli" class="icon-button" type="button" title="${configureAiCliTitle}"
+            aria-label="${configureAiCliTitle}" data-tooltip="${configureAiCliTitle}">
+            <span class="codicon codicon-settings-gear" aria-hidden="true"></span>
+          </button>
+          <button id="copy-pr-message" class="icon-button" type="button" title="${copyPrMessageTitle}"
+            aria-label="${copyPrMessageTitle}" data-tooltip="${copyPrMessageTitle}">
+            <span class="codicon codicon-copy" aria-hidden="true"></span>
+          </button>
           <button id="open-pr" class="icon-button" type="button" title="Open related pull request"
             aria-label="Open related pull request" data-tooltip="Open related pull request" hidden>
             <span class="codicon codicon-mark-github" aria-hidden="true"></span>
@@ -216,7 +315,7 @@ export class PullRequestPreviewPanel {
         </div>
       </header>
       <main id="content"><p class="placeholder">Loading...</p></main>
-      <script nonce="${nonce}">${script()}</script>
+      <script nonce="${nonce}">${pullRequestPreviewScript()}</script>
     </body></html>`;
   }
 
@@ -234,353 +333,7 @@ export class PullRequestPreviewPanel {
   }
 }
 
-/** nonce 문자열을 만든다. */
-function nonceValue(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let value = "";
-  for (let i = 0; i < 32; i++) {
-    value += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return value;
-}
-
-/** preview 페이지 클라이언트 스크립트를 반환한다. */
-function script(): string {
-  return `
-    const vscode = acquireVsCodeApi();
-    const content = document.getElementById("content");
-    const openPr = document.getElementById("open-pr");
-    let activeTab = 'conversation';
-        let activeCommitHash = '';
-        let collapsedFolders = new Set();
-        let collapsedFiles = new Set();
-        let fileNavMode = 'tree';
-        let filesReviewMode = 'cards';
-        let latestPreview = null;
-        let pendingSourceBranch = '';
-        let pendingTargetBranch = '';
-    document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
-    openPr.addEventListener("click", () => vscode.postMessage({ type: "openExistingPr" }));
-    window.addEventListener("message", (event) => {
-      const msg = event.data;
-      if (msg.type === "preview") {
-        if ((pendingSourceBranch && msg.preview.sourceBranch !== pendingSourceBranch) || (pendingTargetBranch && msg.preview.targetBranch !== pendingTargetBranch)) return;
-        pendingSourceBranch = '';
-        pendingTargetBranch = '';
-        render(msg.preview);
-      }
-      if (msg.type === "commitFiles") applyCommitFiles(msg.hash, msg.files);
-      if (msg.type === "error") content.innerHTML = '<p class="empty">' + esc(msg.message) + '</p>';
-    });
-    function render(preview) {
-      latestPreview = preview;
-      const files = reviewFiles(preview);
-      const commits = commitPreviews(preview);
-      const commentCount = files.reduce((sum, file) => sum + ((file.comments || []).length), 0);
-      if (activeTab === 'commits' && commits.length && !commits.some((commit) => commit.hash === activeCommitHash)) {
-        activeCommitHash = commits[0].hash;
-      }
-      if (activeTab === 'commits') markCommitFilesLoading(commits.find((commit) => commit.hash === activeCommitHash));
-      const additions = files.reduce((sum, file) => sum + (file.additions || 0), 0);
-      const deletions = files.reduce((sum, file) => sum + (file.deletions || 0), 0);
-      openPr.hidden = !preview.existingPr?.url;
-      content.innerHTML =
-        '<div class="pr-page">' +
-          prHeader(preview) +
-          tabbar(files.length, commits.length) +
-          '<section class="quick-stats">' +
-            metric('repo', 'Repository', preview.repository || 'unknown') +
-            metric('files', 'Changed files', String(files.length)) +
-            metric('comment-discussion', 'Review comments', String(commentCount)) +
-            metric('diff', 'Diff summary', '+' + additions + ' / -' + deletions) +
-          '</section>' +
-          tabContent(preview, files, commits) +
-        '</div>';
-      bindTabs();
-      bindCommitRows();
-      bindTreeFolders();
-          bindPreviewBranches();
-          bindOpenDiffs();
-          bindFileToggles();
-          bindViewButtons();
-        }
-    function prHeader(preview) {
-      const pr = preview.existingPr || {};
-      const number = pr.number ? ' <span class="pr-number">#' + esc(pr.number) + '</span>' : '';
-      const state = pr.isDraft ? 'Draft' : (pr.state || (preview.hasStagedChanges ? 'Open' : 'No changes'));
-      const stateClass = pr.isDraft ? 'draft' : (!preview.hasStagedChanges && !pr.state ? 'empty' : '');
-      const source = pendingSourceBranch || preview.sourceBranch || preview.currentBranch;
-      const targets = preview.targetBranches || [];
-      const selected = pendingTargetBranch || preview.targetBranch;
-      const sourceControl = branchControl('source-branch', 'source', 'from', 'Change source branch', source, preview.sourceBranches || []);
-      const targetControl = branchControl('target-branch', 'target', 'target', 'Change target branch', selected, targets);
-      return '<section class="pr-header">' +
-        '<div class="title-row"><span class="state-pill ' + stateClass + '"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>' + esc(state) + '</span>' +
-        '<h2 class="pr-title">' + esc(preview.title) + number + '</h2></div>' +
-        '<div class="branch-flow"><span class="codicon codicon-git-branch" aria-hidden="true"></span>' + sourceControl +
-        '<span class="codicon codicon-arrow-right" aria-hidden="true"></span>' + targetControl + '</div>' +
-      '</section>';
-    }
-    function tabbar(fileCount, commitCount) {
-      return '<nav class="tabbar" aria-label="Pull request sections">' +
-        tabButton('conversation', 'comment-discussion', 'Conversation', '') +
-        tabButton('files', 'files', 'Files changed', fileCount) +
-        tabButton('commits', 'git-commit', 'Commits', commitCount) +
-      '</nav>';
-    }
-    function tabButton(tab, icon, label, count) {
-      const active = activeTab === tab;
-      const title = 'Show ' + label;
-      return '<button class="tab' + (active ? ' active' : '') + '" type="button" data-tab="' + esc(tab) + '" ' +
-        'aria-selected="' + (active ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
-        '<span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) +
-        (count === '' ? '' : ' <span class="count">' + esc(count) + '</span>') + '</button>';
-    }
-    function tabContent(preview, files, commits) {
-      if (activeTab === 'files') {
-        return '<section class="content-single">' + filesPanel(files) + '</section>';
-      }
-      if (activeTab === 'commits') {
-        return '<section class="commit-review">' + commitsPanel(commits) + commitFilesPanel(commits) + '</section>';
-      }
-      return '<section class="content-grid">' + conversation(preview) +
-        '<div class="side-stack">' + fileTreePanel(files) + commitsPanel(commits) + '</div></section>';
-    }
-    function bindTabs() {
-      content.querySelectorAll('[data-tab]').forEach((button) => {
-        button.addEventListener('click', () => {
-          activeTab = button.dataset.tab || 'conversation';
-          if (activeTab === 'commits') activeCommitHash = activeCommitHash || (commitPreviews(latestPreview)[0]?.hash || '');
-          if (latestPreview) render(latestPreview);
-        });
-      });
-    }
-    function bindCommitRows() {
-      content.querySelectorAll('[data-commit-hash]').forEach((button) => {
-        button.addEventListener('click', () => {
-          activeTab = 'commits';
-          activeCommitHash = button.dataset.commitHash || '';
-          if (latestPreview) render(latestPreview);
-        });
-      });
-    }
-    function bindTreeFolders() {
-      content.querySelectorAll('[data-folder-key]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const key = button.dataset.folderKey || '';
-          if (collapsedFolders.has(key)) collapsedFolders.delete(key); else collapsedFolders.add(key);
-          if (latestPreview) render(latestPreview);
-        });
-      });
-    }
-    function bindPreviewBranches() {
-      const source = document.getElementById('source-branch');
-      const target = document.getElementById('target-branch');
-      source?.addEventListener('change', () => { pendingSourceBranch = source.value; if (latestPreview) render(latestPreview); vscode.postMessage({ type: 'setPreviewBranch', role: 'source', branch: source.value }); });
-      target?.addEventListener('change', () => { pendingTargetBranch = target.value; if (latestPreview) render(latestPreview); vscode.postMessage({ type: 'setPreviewBranch', role: 'target', branch: target.value }); });
-    }
-    function bindOpenDiffs() {
-      content.querySelectorAll('[data-open-diff]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const file = findPreviewFile(button.dataset.openDiff || '');
-          if (!file) return;
-          const preferEditable = !latestPreview?.existingPr || latestPreview?.headRef === 'HEAD';
-          const fallbackRef = preferEditable && latestPreview?.sourceBranch === latestPreview?.currentBranch ? ':0' : undefined;
-          vscode.postMessage({
-            type: 'openEditableDiff',
-            path: file.path,
-            oldPath: file.oldPath,
-            status: file.status,
-            baseRef: latestPreview?.targetRef || latestPreview?.targetBranch,
-            headRef: preferEditable ? (latestPreview?.sourceRef || 'HEAD') : (latestPreview?.headRef || latestPreview?.existingPr?.headHash || 'HEAD'),
-            preferEditable,
-            fallbackRef,
-            comments: file.comments || [],
-          });
-        });
-      });
-    }
-        function bindFileToggles() {
-          content.querySelectorAll('[data-toggle-file]').forEach((button) => {
-            button.addEventListener('click', () => {
-              const key = button.dataset.toggleFile || '';
-              if (collapsedFiles.has(key)) collapsedFiles.delete(key); else collapsedFiles.add(key);
-              if (latestPreview) render(latestPreview);
-            });
-          });
-        }
-        function bindViewButtons() {
-          content.querySelectorAll('[data-file-nav-mode]').forEach((button) => {
-            button.addEventListener('click', () => { fileNavMode = button.dataset.fileNavMode || 'tree'; if (latestPreview) render(latestPreview); });
-          });
-          content.querySelectorAll('[data-files-review-mode]').forEach((button) => {
-            button.addEventListener('click', () => { filesReviewMode = button.dataset.filesReviewMode || 'cards'; if (latestPreview) render(latestPreview); });
-          });
-        }
-    function conversation(preview) {
-      const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
-      return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
-    }
-    function bodyText(preview) {
-      if (preview.body) return preview.body;
-      return preview.existingPr ? 'No PR body.' : 'No staged PR body generated.';
-    }
-        function filesPanel(files) {
-          const body = filesReviewMode === 'continuous'
-            ? '<div class="continuous-diff-list">' + files.map(continuousFileHtml).join('') + '</div>'
-            : '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>';
-          return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
-            viewToggleHtml('files-review-mode', filesReviewMode, [['cards', 'files', 'Cards', 'Show files as collapsible cards'], ['continuous', 'diff', 'Diff', 'Show all files in one continuous diff']]) +
-            '<span class="count">' + esc(files.length) + '</span></div></div>' +
-            (files.length ? body : '<p class="empty">No changed files.</p>') + '</section>';
-        }
-    function commitsPanel(commits) {
-      return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-git-commit" aria-hidden="true"></span>Commits</span><span class="count">' + esc(commits.length) + '</span></div>' +
-        (commits.length ? '<div class="commit-list">' + commits.map(commitRow).join('') + '</div>' : '<p class="empty">No commits ahead of target.</p>') + '</section>';
-    }
-    function commitFilesPanel(commits) {
-      const commit = commits.find((item) => item.hash === activeCommitHash) || commits[0];
-      if (commit?.loading) return '<section class="panel"><p class="empty">Loading commit files...</p></section>';
-      return commit ? filesPanel(commit.files || []) : '<section class="panel"><p class="empty">Select a commit to inspect changed files.</p></section>';
-    }
-    function markCommitFilesLoading(commit) {
-      if (!commit || commit.synthetic || (commit.files || []).length || commit.loading) return;
-      commit.loading = true;
-      vscode.postMessage({ type: 'loadCommitFiles', hash: commit.hash });
-    }
-    function applyCommitFiles(hash, files) {
-      const commit = commitPreviews(latestPreview).find((item) => item.hash === hash);
-      if (!commit) return;
-      commit.files = files || [];
-      commit.loading = false;
-      render(latestPreview);
-    }
-    function metric(icon, label, value) {
-      return '<div class="metric"><div class="metric-label"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) + '</div><div class="metric-value">' + esc(value) + '</div></div>';
-    }
-        function reviewFileHtml(file) {
-          const path = displayPath(file);
-          const comments = file.comments || [];
-          const collapsed = collapsedFiles.has(file.path);
-          const toggleTitle = (collapsed ? 'Expand file diff for ' : 'Collapse file diff for ') + path;
-          return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
-        '<div class="review-file-head" title="' + esc(path) + '">' +
-        '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
-        '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
-        '<span class="review-file-title">' + esc(path) + '</span>' +
-        '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
-        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-            '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-            (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments) + '</div>') + '</article>';
-        }
-        function continuousFileHtml(file) {
-          const comments = file.comments || [];
-          const collapsed = collapsedFiles.has(file.path);
-          const path = displayPath(file);
-          const toggleTitle = (collapsed ? 'Expand file diff for ' : 'Collapse file diff for ') + path;
-          return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
-            '<div class="review-file-head" title="' + esc(path) + '">' +
-            '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
-            '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="review-file-title">' + esc(path) + '</span>' +
-            '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
-            '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-            '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-            (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments) + '</div>') + '</article>';
-        }
-    function reviewFiles(preview) {
-      if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
-      return (preview.files || []).map((file) => Object.assign({ comments: [] }, file));
-    }
-    function commitPreviews(preview) {
-      if (preview?.previewCommits?.length) return preview.previewCommits;
-      return (preview?.commits || []).map((line) => {
-        const parts = String(line || '').split(/\\s+/);
-        const hash = /^[0-9a-f]{7,40}$/i.test(parts[0] || '') ? parts.shift() : line;
-        return { hash, shortHash: hash.slice(0, 7), title: parts.join(' ') || line, files: [] };
-      });
-    }
-    function findPreviewFile(path) { return reviewFiles(latestPreview).concat(commitPreviews(latestPreview).flatMap((commit) => commit.files || [])).find((file) => file.path === path); }
-    function commitRow(commit) {
-      const active = commit.hash === activeCommitHash;
-      const title = 'Show files changed in commit ' + (commit.shortHash || commit.hash);
-      return '<button class="commit-row' + (active ? ' active' : '') + '" type="button" data-commit-hash="' + esc(commit.hash) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
-        '<span class="codicon codicon-git-commit" aria-hidden="true"></span><span class="commit-title">' + esc(commit.title) + '</span><span class="commit-hash">' + esc(commit.shortHash || '') + '</span></button>';
-    }
-        function fileTreePanel(files) {
-          return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
-            viewToggleHtml('file-nav-mode', fileNavMode, [['tree', 'list-tree', 'Tree', 'View changed files as tree'], ['list', 'list-selection', 'List', 'View changed files as list']]) +
-            '<span class="count">' + esc(files.length) + '</span></div></div>' +
-            (files.length ? fileNavHtml(files) : '<p class="empty">No changed files.</p>') + '</section>';
-        }
-        function fileNavHtml(files) {
-          if (fileNavMode === 'list') return '<div class="file-tree list">' + files.map((file) => treeFileHtml(file, displayPath(file), 0)).join('') + '</div>';
-          return '<div class="file-tree">' + treeNodesHtml(buildTree(files), 0) + '</div>';
-        }
-        function buildTree(files) {
-          const base = commonDirectory(files);
-          const root = [];
-          const folders = new Map();
-          files.forEach((file) => {
-            const parts = stripBase(file.path, base).split('/').filter(Boolean);
-            let children = root;
-            let current = base.join('/');
-            for (let i = 0; i < Math.max(0, parts.length - 1); i++) {
-              current = current ? current + '/' + parts[i] : parts[i];
-              let folder = folders.get(current);
-          if (!folder) {
-            folder = { kind: 'folder', name: parts[i], path: current, children: [] };
-            folders.set(current, folder);
-            children.push(folder);
-          }
-          children = folder.children;
-        }
-        children.push({ kind: 'file', file, name: parts[parts.length - 1] || file.path });
-          });
-          return root;
-        }
-        function commonDirectory(files) {
-          const dirs = files.map((file) => String(file.path || '').split('/').filter(Boolean).slice(0, -1));
-          if (!dirs.length) return [];
-          const prefix = [];
-          for (let i = 0; i < dirs[0].length; i++) {
-            const segment = dirs[0][i];
-            if (dirs.every((dir) => dir[i] === segment)) prefix.push(segment); else break;
-          }
-          return prefix;
-        }
-        function stripBase(filePath, base) {
-          if (!base.length) return filePath;
-          const prefix = base.join('/') + '/';
-          return filePath.indexOf(prefix) === 0 ? filePath.slice(prefix.length) : filePath;
-        }
-    function treeNodesHtml(nodes, depth) {
-      return nodes.map((node) => {
-        if (node.kind === 'file') return treeFileHtml(node.file, node.name, depth);
-        const collapsed = collapsedFolders.has(node.path);
-        const title = (collapsed ? 'Expand ' : 'Collapse ') + node.path;
-        return '<div class="tree-node"><button class="tree-row tree-folder" type="button" data-folder-key="' + esc(node.path) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
-          '<span class="twistie codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span><span class="codicon ' + (collapsed ? 'codicon-folder' : 'codicon-folder-opened') + '" aria-hidden="true"></span><span></span><span class="tree-label">' + esc(node.name) + '</span><span></span></button>' +
-          '<div class="tree-children' + (collapsed ? ' collapsed' : '') + '">' + treeNodesHtml(node.children, depth + 1) + '</div></div>';
-      }).join('');
-    }
-        function treeFileHtml(file, name, depth) {
-          return '<div class="tree-row" data-status="' + esc(file.status) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(file.path) + '">' +
-            '<span class="twistie"></span><span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="codicon codicon-file" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
-            '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
-        }
-            function viewToggleHtml(attr, active, items) { return '<div class="file-view-toggle" role="group" aria-label="Changed files view">' + items.map((item) => viewToggleButton(attr, active, item[0], item[1], item[2], item[3])).join('') + '</div>'; }
-        function viewToggleButton(attr, active, mode, icon, label, title) {
-          return '<button class="file-view-button' + (active === mode ? ' active' : '') + '" type="button" data-' + attr + '="' + esc(mode) + '" aria-pressed="' + (active === mode ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span><span class="file-view-label">' + esc(label) + '</span></button>';
-        }
-            function displayPath(file) { return file.oldPath ? file.oldPath + ' -> ' + file.path : file.path; }
-        function formatDate(iso) { const d = new Date(iso || ''); return isNaN(d.getTime()) ? '' : d.toLocaleString(); }
-        function statusIcon(status) { return status === 'A' ? 'codicon-diff-added' : status === 'D' ? 'codicon-diff-removed' : (status === 'R' || status === 'C') ? 'codicon-diff-renamed' : status === 'U' ? 'codicon-warning' : 'codicon-diff-modified'; }
-    ${pullRequestPreviewDiffScript()}
-    ${pullRequestPreviewBranchComboboxScript()}
-    ${pullRequestPreviewTimelineScript()}
-    ${pullRequestPreviewMarkdownScript()}
-    function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }
-    function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
-    vscode.postMessage({ type: "ready" });
-  `;
+/** 오류 값을 사용자에게 보여줄 짧은 문자열로 바꾼다. */
+function errText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

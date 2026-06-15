@@ -81,6 +81,24 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "gitSimpleCompare.generateCommitMessage",
+        "title": "%cmd.generateCommitMessage%",
+        "category": "Git Simple Compare",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "gitSimpleCompare.configureAiCli",
+        "title": "%cmd.configureAiCli%",
+        "category": "Git Simple Compare",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "gitSimpleCompare.loginAiCli",
+        "title": "%cmd.loginAiCli%",
+        "category": "Git Simple Compare",
+        "icon": "$(account)"
+      },
+      {
         "command": "gitSimpleCompare.openChangeDiff",
         "title": "%cmd.openChangeDiff%",
         "category": "Git Simple Compare"
@@ -287,6 +305,11 @@
           "command": "gitSimpleCompare.checkoutBranch",
           "when": "view == gitSimpleCompare.changes",
           "group": "navigation@3"
+        },
+        {
+          "command": "gitSimpleCompare.configureAiCli",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@1"
         },
         {
           "command": "gitSimpleCompare.branchSquashMerge",
@@ -514,6 +537,10 @@
           "when": "false"
         },
         {
+          "command": "gitSimpleCompare.loginAiCli",
+          "when": "false"
+        },
+        {
           "command": "gitSimpleCompare.changeComparisonRef",
           "when": "false"
         },
@@ -584,6 +611,153 @@
           ],
           "default": "nativeOverlay",
           "description": "%config.hunkControl.desc%"
+        },
+        "gitSimpleCompare.aiCliProvider": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "claude",
+            "codex"
+          ],
+          "enumDescriptions": [
+            "%config.aiCliProvider.auto%",
+            "%config.aiCliProvider.claude%",
+            "%config.aiCliProvider.codex%"
+          ],
+          "default": "auto",
+          "description": "%config.aiCliProvider.desc%"
+        },
+        "gitSimpleCompare.aiClaudeCommand": {
+          "type": "string",
+          "default": "claude",
+          "description": "%config.aiClaudeCommand.desc%"
+        },
+        "gitSimpleCompare.aiClaudeModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiClaudeModel.desc%"
+        },
+        "gitSimpleCompare.aiClaudeEffort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "enumDescriptions": [
+            "%config.aiEffort.default%",
+            "%config.aiEffort.low%",
+            "%config.aiEffort.medium%",
+            "%config.aiEffort.high%",
+            "%config.aiEffort.xhigh%",
+            "%config.aiEffort.max%"
+          ],
+          "default": "",
+          "description": "%config.aiClaudeEffort.desc%"
+        },
+        "gitSimpleCompare.aiClaudeSystemPrompt": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiClaudeSystemPrompt.desc%"
+        },
+        "gitSimpleCompare.aiClaudeLoginMode": {
+          "type": "string",
+          "enum": [
+            "claudeai",
+            "console",
+            "sso",
+            "setup-token"
+          ],
+          "enumDescriptions": [
+            "%config.aiClaudeLoginMode.claudeai%",
+            "%config.aiClaudeLoginMode.console%",
+            "%config.aiClaudeLoginMode.sso%",
+            "%config.aiClaudeLoginMode.setupToken%"
+          ],
+          "default": "claudeai",
+          "description": "%config.aiClaudeLoginMode.desc%"
+        },
+        "gitSimpleCompare.aiCodexCommand": {
+          "type": "string",
+          "default": "codex",
+          "description": "%config.aiCodexCommand.desc%"
+        },
+        "gitSimpleCompare.aiCodexModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCodexModel.desc%"
+        },
+        "gitSimpleCompare.aiCodexReasoningEffort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "enumDescriptions": [
+            "%config.aiEffort.default%",
+            "%config.aiEffort.low%",
+            "%config.aiEffort.medium%",
+            "%config.aiEffort.high%",
+            "%config.aiEffort.xhigh%",
+            "%config.aiEffort.max%"
+          ],
+          "default": "",
+          "description": "%config.aiCodexReasoningEffort.desc%"
+        },
+        "gitSimpleCompare.aiCodexProfile": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCodexProfile.desc%"
+        },
+        "gitSimpleCompare.aiCodexLoginMode": {
+          "type": "string",
+          "enum": [
+            "browser",
+            "device",
+            "api-key",
+            "access-token"
+          ],
+          "enumDescriptions": [
+            "%config.aiCodexLoginMode.browser%",
+            "%config.aiCodexLoginMode.device%",
+            "%config.aiCodexLoginMode.apiKey%",
+            "%config.aiCodexLoginMode.accessToken%"
+          ],
+          "default": "device",
+          "description": "%config.aiCodexLoginMode.desc%"
+        },
+        "gitSimpleCompare.aiResponseLanguage": {
+          "type": "string",
+          "default": "English",
+          "description": "%config.aiResponseLanguage.desc%"
+        },
+        "gitSimpleCompare.aiCommonInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCommonInstructions.desc%"
+        },
+        "gitSimpleCompare.aiCommitInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCommitInstructions.desc%"
+        },
+        "gitSimpleCompare.aiPullRequestInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiPullRequestInstructions.desc%"
+        },
+        "gitSimpleCompare.aiCliTimeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 10000,
+          "description": "%config.aiCliTimeoutMs.desc%"
         }
       }
     }

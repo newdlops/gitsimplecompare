@@ -29,6 +29,8 @@ import {
   branchSquashMerge,
   undoBranchOperation,
 } from "./branchOperations";
+import { configureAiCli, loginAiCli } from "./aiSettings";
+import { generateCommitMessage } from "./aiMessages";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -182,6 +184,17 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.commit",
       (op?: Parameters<typeof commitChanges>[1]) => commitChanges(deps, op)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.generateCommitMessage",
+      () => generateCommitMessage(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.configureAiCli", () =>
+      configureAiCli(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.loginAiCli",
+      (provider?: "claude" | "codex") => loginAiCli(provider)
     ),
     // 미트볼(...) 메뉴 액션 디스패치
     vscode.commands.registerCommand(

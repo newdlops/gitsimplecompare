@@ -13,6 +13,7 @@ Compare git branches and files with simple, **editable** diffs — right inside 
 6. **Conflict resolution** — during a merge/rebase/cherry-pick/revert, the Conflicts view lists unmerged files with one-click actions (open merge editor, accept ours/theirs, mark resolved) and Continue/Abort.
 7. **Interactive rebase** — edit a rebase plan in a drag-and-drop webview (reorder + pick/reword/squash/fixup/drop). Launch it from the graph ("Rebase from here") or the command palette.
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
+9. **AI messages** — generate commit messages and staged PR titles/bodies by sending prompts to the local Claude Code or Codex CLI.
 
 ## Usage
 
@@ -39,6 +40,16 @@ During a merge/rebase/cherry-pick/revert, the **Conflicts** view appears with th
 
 Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for the first commit, type a message, and commit; the remaining changes stay in your working tree so you can commit them separately. Requires no pre-staged changes (so each commit contains exactly what you select). New (untracked) files are not shown — `git add` them first.
 
+### AI commit and PR messages
+
+The Changes view includes an AI button next to the commit message box. It sends the staged diff to the selected AI CLI, so stage the files or hunks you want summarized first. The staged PR preview also has an AI button that fills the PR title and body.
+
+This feature runs local CLIs non-interactively: `claude -p` for Claude Code and `codex exec` for Codex. Use `Git Simple Compare: Configure AI CLI` or the gear button beside the AI commit button to choose the provider, login/status flow, executable path, model/profile options, reasoning effort, default response language, and extra prompt instructions. Model and reasoning pickers load metadata from the installed provider CLI.
+
+If a browser callback login cannot reach localhost, use a non-callback login method in AI CLI Settings: for Claude Code choose `setup-token`, `console`, or `sso`; for Codex choose `device`, `api-key`, or `access-token`. Then run Login / Status again.
+
+The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button copies the generated/current PR title and body to the clipboard for use on GitHub.
+
 ### The Changes view
 
 - Toggle between **tree** and **list** layout from the view toolbar.
@@ -59,6 +70,22 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | --- | --- | --- |
 | `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
+| `gitSimpleCompare.aiCliProvider` | `auto` | AI CLI provider (`auto`, `claude`, or `codex`) |
+| `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code executable name or absolute path |
+| `gitSimpleCompare.aiClaudeModel` | empty | Claude Code model selected from CLI metadata |
+| `gitSimpleCompare.aiClaudeEffort` | empty | Claude Code reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max`) |
+| `gitSimpleCompare.aiClaudeSystemPrompt` | empty | Optional Claude Code system prompt appended with `--append-system-prompt` |
+| `gitSimpleCompare.aiClaudeLoginMode` | `claudeai` | Claude login method (`claudeai`, `console`, `sso`, or `setup-token`) |
+| `gitSimpleCompare.aiCodexCommand` | `codex` | Codex executable name or absolute path |
+| `gitSimpleCompare.aiCodexModel` | empty | Codex model selected from the CLI model catalog |
+| `gitSimpleCompare.aiCodexReasoningEffort` | empty | Codex reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max` when supported) |
+| `gitSimpleCompare.aiCodexProfile` | empty | Optional Codex config profile passed with `--profile` |
+| `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex login method (`device`, `browser`, `api-key`, or `access-token`) |
+| `gitSimpleCompare.aiResponseLanguage` | `English` | Language for AI-generated messages |
+| `gitSimpleCompare.aiCommonInstructions` | empty | Extra prompt instructions applied to both commit and PR generation |
+| `gitSimpleCompare.aiCommitInstructions` | empty | Extra prompt instructions applied only to commit generation |
+| `gitSimpleCompare.aiPullRequestInstructions` | empty | Extra prompt instructions applied only to PR generation |
+| `gitSimpleCompare.aiCliTimeoutMs` | `120000` | Timeout for AI CLI requests |
 
 ## Development
 
@@ -70,6 +97,10 @@ npm run check-types # type check
 ```
 
 Press `F5` in VS Code to launch the Extension Development Host.
+
+### Coding agents
+
+Codex reads `AGENTS.md` from the repository root. Claude Code reads `CLAUDE.md`; this repository keeps `CLAUDE.md` as a small import of `AGENTS.md` so both agents follow the same project rules. Put personal Claude Code notes in `CLAUDE.local.md`; it is ignored by git.
 
 
 ## License

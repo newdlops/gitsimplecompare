@@ -16,6 +16,7 @@ import type { RepoInfo } from "../commands/shared";
 import { buildCommitMenu, buildScmMenu } from "../commands/scmActions";
 import type { StashView } from "../commands/stash";
 import { FileIconThemeResolver } from "./fileIconTheme";
+import { changesWebviewI18n } from "./changesI18n";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
 import {
   TREE_SECTIONS,
@@ -54,6 +55,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private unstaged: StatusGroups["unstaged"] = [];
   private stashes: StashView[] = [];
   private commitMessage = "";
+  private commitMessageRevision = 0;
   private viewModes: ViewModes;
   private sortKey: SortKey;
   private visibleSections: VisibleSections;
@@ -131,6 +133,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 커밋 메시지를 설정하고 다시 그린다(커밋 후 비우기 등). */
   setCommitMessage(message: string): void {
     this.commitMessage = message;
+    this.commitMessageRevision++;
     this.render();
   }
 
@@ -259,6 +262,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.unstaged = [];
     this.stashes = [];
     this.commitMessage = "";
+    this.commitMessageRevision++;
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
@@ -303,6 +307,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       unstaged: this.unstaged,
       stashes: this.stashes,
       commitMessage: this.commitMessage,
+      commitMessageRevision: this.commitMessageRevision,
       viewModes: this.viewModes,
       sortKey: this.sortKey,
       visibleSections: this.getVisibleSections(),
@@ -391,6 +396,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         this.commitMessage = msg.message;
       }
       void vscode.commands.executeCommand("gitSimpleCompare.commit", msg.op);
+    } else if (msg.type === "generateCommitMessage") {
+      void vscode.commands.executeCommand("gitSimpleCompare.generateCommitMessage");
+    } else if (msg.type === "configureAiCli") {
+      void vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
     } else if (msg.type === "splitCommits") {
       void vscode.commands.executeCommand("gitSimpleCompare.splitCommits", {
         path: msg.path,
@@ -429,6 +438,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     const scriptUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changes.js"), version)
     );
+    const aiScriptUri = webview.asWebviewUri(
+      withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
+    );
     const styleUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
     );
@@ -446,46 +458,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     ].join("; ");
 
     // 웹뷰는 vscode.l10n 을 쓸 수 없으므로 지역화 문자열을 주입한다.
-    const i18n = {
-      repositories: vscode.l10n.t("Repositories"),
-      compareBranches: vscode.l10n.t("Compare Branches"),
-      changes: vscode.l10n.t("Changes"),
-      current: vscode.l10n.t("current"),
-      from: vscode.l10n.t("From:"),
-      to: vscode.l10n.t("To:"),
-	      selectBranch: vscode.l10n.t("(select a branch)"),
-	      compare: vscode.l10n.t("Compare"),
-	      toggleSection: vscode.l10n.t("Toggle section"),
-	      noCompare: vscode.l10n.t("No changes between the selected branches."),
-      noChanges: vscode.l10n.t("No working tree changes."),
-      conflicts: vscode.l10n.t("Conflicts"),
-      noRepos: vscode.l10n.t("No git repository found."),
-      change: vscode.l10n.t("Change branch"),
-      viewAsTree: vscode.l10n.t("View as Tree"),
-      viewAsList: vscode.l10n.t("View as List"),
-      stagedChanges: vscode.l10n.t("Staged Changes"),
-      commitPlaceholder: vscode.l10n.t("Message (Ctrl+Enter to commit)"),
-      commit: vscode.l10n.t("Commit"),
-      splitChanges: vscode.l10n.t("Stage Hunks"),
-      moreActions: vscode.l10n.t("More Actions..."),
-      stage: vscode.l10n.t("Stage Changes"),
-      unstage: vscode.l10n.t("Unstage Changes"),
-      discard: vscode.l10n.t("Discard Changes"),
-      stageAll: vscode.l10n.t("Stage All Changes"),
-      unstageAll: vscode.l10n.t("Unstage All Changes"),
-      discardAll: vscode.l10n.t("Discard All Changes"),
-      openFile: vscode.l10n.t("Open File"),
-      openChanges: vscode.l10n.t("Open Changes"),
-      addToGitignore: vscode.l10n.t("Add to .gitignore"),
-      addToExclude: vscode.l10n.t("Add to .git/info/exclude"),
-      stashes: vscode.l10n.t("Stashes"),
-      noStashes: vscode.l10n.t("No stashes."),
-      stashSelected: vscode.l10n.t("Stash Selected Changes"),
-      applyStash: vscode.l10n.t("Apply Stash"),
-      popStash: vscode.l10n.t("Pop Stash"),
-      dropStash: vscode.l10n.t("Drop Stash"),
-      branchStash: vscode.l10n.t("Create Branch from Stash"),
-    };
+    const i18n = changesWebviewI18n();
 
     // 미트볼(...)·커밋 캐럿 메뉴 구성(라벨은 지역화). 웹뷰가 이 데이터로 드롭다운을 그린다.
     const menu = buildScmMenu();
@@ -508,6 +481,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${aiScriptUri}"></script>
 </body>
 </html>`;
   }
@@ -556,6 +530,7 @@ function mediaVersion(mediaRoot: vscode.Uri): string {
   return String(
     Math.max(
       fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.js")),
+      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesAi.js")),
       fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.css"))
     )
   );

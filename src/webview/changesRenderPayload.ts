@@ -25,6 +25,7 @@ export interface ChangesRenderState {
   unstaged: StatusGroups["unstaged"];
   stashes: StashView[];
   commitMessage: string;
+  commitMessageRevision: number;
   viewModes: ViewModes;
   sortKey: SortKey;
   visibleSections: VisibleSections;
@@ -73,9 +74,11 @@ export function buildChangesRenderPayload(
     },
     commit: {
       message: state.commitMessage,
+      messageRevision: state.commitMessageRevision,
       branch: state.repositories.find((r) => r.root === state.activeRepo)
         ?.branch,
       hasRepo: !!state.activeRepo,
+      hasStagedChanges: state.staged.length > 0,
     },
     stashes: state.stashes.map((s) => ({
       ref: s.ref,
