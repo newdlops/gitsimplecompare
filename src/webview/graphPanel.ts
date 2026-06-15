@@ -4,7 +4,6 @@
 import * as vscode from "vscode";
 import { compactGraphData } from "../graph/graphCompact";
 import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
-import { PullRequestInfo } from "../git/pullRequestService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
 import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
@@ -34,9 +33,10 @@ import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphPro
 import {
   openGraphPullRequest,
   openStagedPullRequestPreview,
+  GraphPullRequestPager,
   sendGraphPullRequestDetail,
-  sendGraphPullRequests,
 } from "./graphPullRequests";
+import { ensureGraphCommitVisible } from "./graphCommitFocus";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -59,7 +59,7 @@ export class GitGraphPanel {
   };
   private lastLocalBranches: LocalBranchStatus[] = [];
   private lastBranchRefs: GraphBranchRef[] = [];
-  private lastPullRequests: PullRequestInfo[] = [];
+  private readonly pullRequests = new GraphPullRequestPager();
 
   /**
    * 패널을 만들거나, 이미 있으면 앞으로 가져온다.
@@ -150,7 +150,7 @@ export class GitGraphPanel {
         });
         this.resetLoadedGraph();
         await this.reloadGraph();
-        void this.sendPullRequests(msg.type);
+        void this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, msg.type, (message) => this.post(message));
       } else if (msg.type === "loadMore") {
         await this.loadNextPage(false);
       } else if (msg.type === "setBranchFilter") {
@@ -170,13 +170,24 @@ export class GitGraphPanel {
         const detail = await this.logService.getCommitDetail(msg.hash);
         this.post({ type: "commitDetail", detail });
       } else if (msg.type === "refreshPullRequests") {
-        await this.sendPullRequests("manual");
+        await this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, "manual", (message) => this.post(message));
+      } else if (msg.type === "loadMorePullRequests") {
+        await this.pullRequests.loadMore(this.logService.repoRoot, this.lastLocalBranches, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequestDetail") {
         await sendGraphPullRequestDetail(this.logService.repoRoot, msg.number, (message) => this.post(message));
+      } else if (msg.type === "ensureCommitVisible") {
+        await ensureGraphCommitVisible({
+          repoRoot: this.logService.repoRoot,
+          requestId: msg.requestId,
+          hashes: msg.hashes,
+          loadedHash: (hashes) => hashes.find((hash) => this.commits.some((commit) => commit.hash === hash)),
+          loadWindow: (hashes) => this.loadCommitWindow(hashes),
+          post: (message) => this.post(message),
+        });
       } else if (msg.type === "openPullRequest") {
-        await openGraphPullRequest(this.lastPullRequests, msg.number);
+        await openGraphPullRequest(this.pullRequests.items, msg.number);
       } else if (msg.type === "previewStagedPullRequest") {
-        openStagedPullRequestPreview(this.logService.repoRoot, this.lastPullRequests, msg.number);
+        openStagedPullRequestPreview(this.logService.repoRoot, this.pullRequests.items, msg.number);
       } else if (isGraphActionMessage(msg)) {
         await handleGraphAction(msg, {
           logService: this.logService,
@@ -331,19 +342,6 @@ export class GitGraphPanel {
   }
 
   /**
-   * GitHub PR 목록을 비동기로 읽어 웹뷰 overlay 로 보낸다.
-   * @param reason OUTPUT 로그에 남길 조회 원인
-   */
-  private async sendPullRequests(reason: string): Promise<void> {
-    this.lastPullRequests = await sendGraphPullRequests(
-      this.logService.repoRoot,
-      this.lastLocalBranches,
-      reason,
-      (message) => this.post(message)
-    );
-  }
-
-  /**
    * 다음 커밋 페이지를 읽어 누적 목록에 붙이고, 현재까지의 그래프를 웹뷰로 보낸다.
    * - git log 는 skip/limit 으로 필요한 페이지만 읽는다.
    * - 레이아웃은 지금까지 로드된 커밋 전체를 기준으로 다시 계산한다. 새 부모 커밋이
@@ -454,6 +452,28 @@ export class GitGraphPanel {
         this.postLoadState(reset);
       }
     }
+  }
+
+  /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
+  private async loadCommitWindow(hashes: string[]): Promise<string | undefined> {
+    const branchFilter = this.currentBranchFilter();
+    const refsList = branchFilter.refs.length ? [branchFilter.refs, []] : [[]];
+    for (const refs of refsList) {
+      for (const hash of hashes) {
+        const commits = await this.logService.getCommitWindowAround(hash, 80, GRAPH_PAGE_SIZE, refs).catch(() => []);
+        const visible = filterCommitRefs(commits, branchFilter);
+        if (!visible.some((commit) => commit.hash === hash)) {
+          continue;
+        }
+        this.loadGeneration++;
+        this.virtualCommits = [];
+        this.commits = visible; this.loading = false; this.exhausted = true;
+        this.post({ type: "graph", data: this.layoutVisibleGraph(), state: this.makeLoadState(true) });
+        logInfo("graph commit window sent", { repoRoot: this.logService.repoRoot, hash, count: visible.length });
+        return hash;
+      }
+    }
+    return undefined;
   }
 
   /** 현재 패널의 누적 커밋/종료 상태를 초기화하고 이전 비동기 로드 결과를 무효화한다. */

@@ -13,7 +13,9 @@ import {
 } from "../graph/graphTypes";
 import { GitBranchRefCache } from "./gitBranchRefCache";
 import { loadLocalOnlyBranchMap } from "./gitLocalOnlyBranches";
-import { parseRefs, parseTrack } from "./gitLogRefs";
+import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
+import { loadCommitWindowAround } from "./gitLogWindow";
+import { parseTrack } from "./gitLogRefs";
 import {
   isUnpushedLocalHead,
   localNameFromRemoteRef,
@@ -29,7 +31,7 @@ export const ONGOING_COMMIT_HASH = "__gsc_virtual_ongoing__";
 export const STAGED_COMMIT_HASH = "__gsc_virtual_staged__";
 
 /** 로그 필드 구분자(제어문자 Unit Separator) */
-const FS = "\x1f";
+const FS = LOG_FIELD_SEPARATOR;
 
 /**
  * 특정 저장소의 로그/상세를 다루는 서비스(저장소 루트 1개에 대응).
@@ -77,14 +79,13 @@ export class GitLogService {
     if (safeSkip === 0) {
       this.invalidateCaches();
     }
-    const format = ["%H", "%P", "%an", "%ae", "%aI", "%D", "%s"].join(FS);
     const refArgs = refs.length > 0 ? refs : ["--branches", "--remotes", "--tags"];
     const out = await runGit(
       [
         "log",
         "--topo-order",
         "--decorate=short",
-        `--pretty=tformat:${format}`,
+        `--pretty=tformat:${gitLogPrettyFormat()}`,
         "-z",
         `-n${safeLimit}`,
         ...(safeSkip > 0 ? [`--skip=${safeSkip}`] : []),
@@ -93,14 +94,29 @@ export class GitLogService {
       this.repoRoot
     );
 
-    const commits = out
-      .split("\0")
-      .filter((entry) => entry.length > 0)
-      .map((entry) => this.parseCommit(entry));
+    const commits = parseGitLogOutput(out);
     if (includeLocalOnlyBranches) {
       await this.attachLocalOnlyBranches(commits);
     }
     return commits;
+  }
+
+  /**
+   * 특정 commit 을 중심으로 graph window 를 읽는다.
+   * - 오래된 PR commit 으로 점프할 때 HEAD 부터 대상까지 모든 중간 페이지를 누적하지 않고,
+   *   대상 위/아래 일부 커밋만 새 graph view 로 렌더링하기 위해 사용한다.
+   * @param hash   중심 commit hash
+   * @param before 중심 commit 위쪽에 포함할 descendant 수
+   * @param after  중심 commit 과 아래쪽 ancestor 수
+   * @param refs   대상 ref 목록. 비면 전체 branch/remote/tag 범위
+   */
+  async getCommitWindowAround(
+    hash: string,
+    before: number,
+    after: number,
+    refs: string[] = []
+  ): Promise<Commit[]> {
+    return loadCommitWindowAround(this.repoRoot, hash, { before, after, refs });
   }
 
   /**
@@ -534,24 +550,6 @@ export class GitLogService {
     } catch {
       return undefined;
     }
-  }
-
-  /**
-   * 로그 한 항목(FS 로 구분된 문자열)을 Commit 으로 파싱한다.
-   * @param entry git log 한 커밋 출력
-   */
-  private parseCommit(entry: string): Commit {
-    const [hash, parentsStr, authorName, authorEmail, dateIso, decoration, subject] =
-      entry.split(FS);
-    return {
-      hash,
-      parents: parentsStr ? parentsStr.split(" ").filter(Boolean) : [],
-      authorName: authorName ?? "",
-      authorEmail: authorEmail ?? "",
-      dateIso: dateIso ?? "",
-      refs: parseRefs(decoration ?? ""),
-      subject: subject ?? "",
-    };
   }
 
   /**

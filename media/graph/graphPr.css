@@ -1,59 +1,15 @@
 /* graph Pull Request POC 스타일. PR row/node 표시와 PR 목록 패널을 graph 기본 스타일과 분리한다. */
-#graph-pr-panel {
-  position: absolute;
-  top: calc(var(--toolbar-height) + 6px);
-  right: 10px;
-  z-index: 1200;
-  box-sizing: border-box;
-  width: min(420px, calc(100vw - 28px));
-  max-height: min(560px, calc(100vh - 80px));
-  overflow: auto;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-  border-radius: 6px;
-  color: var(--vscode-foreground);
-  background: var(--vscode-editorWidget-background, #252526);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
-}
-
 #graph-pr-panel[hidden] {
   display: none;
 }
 
-.pr-panel-header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--vscode-panel-border);
-  background: var(--vscode-editorWidget-background, #252526);
-  font-weight: 600;
-}
-
-.pr-panel-close,
 .pr-actions button,
 .pr-row-button {
   position: relative;
 }
 
-.pr-panel-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  color: var(--vscode-icon-foreground);
-  background: transparent;
-  cursor: pointer;
-}
-
-.pr-panel-close:hover,
 .pr-actions button:hover,
+.pr-icon-action:hover,
 .pr-row-button:hover {
   background: var(--vscode-toolbar-hoverBackground);
 }
@@ -123,13 +79,19 @@
   flex-wrap: wrap;
 }
 
-.pr-actions button {
+.pr-actions button,
+.pr-icon-action {
   height: 24px;
   border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
   border-radius: 3px;
   color: var(--vscode-button-secondaryForeground);
   background: var(--vscode-button-secondaryBackground);
   cursor: pointer;
+}
+
+.pr-icon-action {
+  width: 28px;
+  padding: 0;
 }
 
 .pr-detail-shell {
@@ -167,9 +129,62 @@
   font-size: 12px;
 }
 
+.pr-meta-chips,
+.pr-section-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pr-meta-chip,
+.pr-branch-flow,
+.pr-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 20px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--pr-accent, var(--vscode-panel-border)) 45%, var(--vscode-panel-border));
+  border-radius: 4px;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 9%, transparent);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.pr-branch-flow {
+  max-width: 100%;
+}
+
+.pr-branch-flow span:not(.codicon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-count-chip {
+  color: var(--pr-accent, var(--vscode-charts-purple, #b180d7));
+  font-variant-numeric: tabular-nums;
+}
+
 .pr-detail-list {
   display: grid;
   gap: 0;
+}
+
+.pr-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
 }
 
 .pr-detail-section {
@@ -188,6 +203,13 @@
   font-size: 12px;
   font-weight: 650;
   text-transform: uppercase;
+}
+
+.pr-section-heading > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .pr-file-tree,
@@ -383,8 +405,15 @@
 .pr-actions button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   padding: 0 8px;
+}
+
+.pr-icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pr-hover-card {
@@ -492,6 +521,7 @@
   --pr-accent: var(--vscode-terminal-ansiMagenta, #c586c0);
 }
 
+#detail [data-tooltip]::after,
 #graph-pr-panel [data-tooltip]::after,
 .pr-row-button[data-tooltip]::after {
   content: attr(data-tooltip);
@@ -514,6 +544,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.36);
 }
 
+#detail [data-tooltip]:hover::after,
+#detail [data-tooltip]:focus-visible::after,
 #graph-pr-panel [data-tooltip]:hover::after,
 #graph-pr-panel [data-tooltip]:focus-visible::after,
 .pr-row-button[data-tooltip]:hover::after,

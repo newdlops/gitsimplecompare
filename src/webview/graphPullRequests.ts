@@ -9,30 +9,91 @@ import { ToWebviewMessage } from "./graphProtocol";
 
 type PostGraphMessage = (message: ToWebviewMessage) => void;
 
-/**
- * GitHub PR overview 를 읽어 웹뷰에 보낸다.
- * @param repoRoot      대상 저장소 루트
- * @param localBranches 현재 로컬 브랜치 상태
- * @param reason        OUTPUT 로그에 남길 조회 원인
- * @param post          graph 웹뷰 메시지 전송 함수
- * @returns 다음 open/preview 동작에서 재사용할 PR 목록
- */
-export async function sendGraphPullRequests(
-  repoRoot: string,
-  localBranches: LocalBranchStatus[],
-  reason: string,
-  post: PostGraphMessage
-): Promise<PullRequestInfo[]> {
-  const service = new PullRequestService(repoRoot);
-  const overview = await service.getOverview(localBranches);
-  post({ type: "pullRequestOverview", overview });
-  logInfo("graph pull request overview sent", {
-    repoRoot,
-    reason,
-    available: overview.available,
-    count: overview.pullRequests.length,
-  });
-  return overview.pullRequests;
+/** graph PR 목록의 cursor/누적 상태를 관리한다. */
+export class GraphPullRequestPager {
+  private pullRequests: PullRequestInfo[] = [];
+  private nextCursor: string | undefined;
+  private hasMore = false;
+  private loading = false;
+
+  /** open/preview 동작에서 사용할 현재 누적 PR 목록을 반환한다. */
+  get items(): PullRequestInfo[] {
+    return this.pullRequests;
+  }
+
+  /**
+   * PR 목록을 첫 페이지부터 다시 읽고 기존 누적 상태를 교체한다.
+   * @param repoRoot      대상 저장소 루트
+   * @param localBranches 현재 로컬 브랜치 상태
+   * @param reason        OUTPUT 로그에 남길 조회 원인
+   * @param post          graph 웹뷰 메시지 전송 함수
+   */
+  async refresh(
+    repoRoot: string,
+    localBranches: LocalBranchStatus[],
+    reason: string,
+    post: PostGraphMessage
+  ): Promise<void> {
+    this.pullRequests = [];
+    this.nextCursor = undefined;
+    this.hasMore = false;
+    await this.fetchPage(repoRoot, localBranches, reason, post, undefined);
+  }
+
+  /**
+   * 다음 PR 페이지가 있으면 이어 읽어 기존 목록 뒤에 붙인다.
+   * @param repoRoot      대상 저장소 루트
+   * @param localBranches 현재 로컬 브랜치 상태
+   * @param post          graph 웹뷰 메시지 전송 함수
+   */
+  async loadMore(
+    repoRoot: string,
+    localBranches: LocalBranchStatus[],
+    post: PostGraphMessage
+  ): Promise<void> {
+    if (this.loading || !this.hasMore || !this.nextCursor) {
+      return;
+    }
+    await this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor);
+  }
+
+  /**
+   * GitHub PR 한 페이지를 읽고 누적 목록/커서를 갱신해 웹뷰에 보낸다.
+   * @param repoRoot      대상 저장소 루트
+   * @param localBranches 현재 로컬 브랜치 상태
+   * @param reason        OUTPUT 로그에 남길 조회 원인
+   * @param post          graph 웹뷰 메시지 전송 함수
+   * @param cursor        이어 읽을 GitHub GraphQL cursor
+   */
+  private async fetchPage(
+    repoRoot: string,
+    localBranches: LocalBranchStatus[],
+    reason: string,
+    post: PostGraphMessage,
+    cursor: string | undefined
+  ): Promise<void> {
+    this.loading = true;
+    try {
+      const service = new PullRequestService(repoRoot);
+      const overview = await service.getOverview(localBranches, cursor);
+      this.pullRequests = overview.available
+        ? mergePullRequests(this.pullRequests, overview.pullRequests)
+        : this.pullRequests;
+      this.nextCursor = overview.available ? overview.nextCursor : this.nextCursor;
+      this.hasMore = overview.available ? overview.hasMore : this.hasMore;
+      post({ type: "pullRequestOverview", overview: { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor } });
+      logInfo("graph pull request overview sent", {
+        repoRoot,
+        reason,
+        available: overview.available,
+        pageCount: overview.pullRequests.length,
+        totalCount: this.pullRequests.length,
+        hasMore: this.hasMore,
+      });
+    } finally {
+      this.loading = false;
+    }
+  }
 }
 
 /**
@@ -97,4 +158,19 @@ export function openStagedPullRequestPreview(
     pr?.baseRefName,
     pr
   );
+}
+
+/** PR 번호 기준으로 중복 없이 기존 목록 뒤에 새 페이지를 붙인다. */
+function mergePullRequests(
+  previous: PullRequestInfo[],
+  next: PullRequestInfo[]
+): PullRequestInfo[] {
+  const byNumber = new Map<number, PullRequestInfo>();
+  for (const pr of previous) {
+    byNumber.set(pr.number, pr);
+  }
+  for (const pr of next) {
+    byNumber.set(pr.number, pr);
+  }
+  return Array.from(byNumber.values());
 }

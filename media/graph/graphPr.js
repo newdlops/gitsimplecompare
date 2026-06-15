@@ -7,6 +7,9 @@
   let activeDetail = { kind: "none" };
   let pullRequestDetails = new Map();
   let pendingDetails = new Set();
+  let prListLoading = false;
+  let focusRequestSeq = 0;
+  let pendingFocusRequest;
   let hoverCard;
 
   /** PR UI 이벤트와 웹뷰 메시지 수신을 초기화한다. */
@@ -35,6 +38,7 @@
   function handleMessage(event) {
     const msg = event.data;
     if (msg.type === "pullRequestOverview") {
+      prListLoading = false;
       overview = msg.overview || { available: false, pullRequests: [] };
       if (activeDetail.kind === "overview") {
         renderOverviewDetail();
@@ -54,6 +58,8 @@
       if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) {
         renderPullRequestDetail(activeDetail.number);
       }
+    } else if (msg.type === "commitVisibility") {
+      handleCommitVisibility(msg);
     } else if (msg.type === "graph") {
       hideHoverCard();
       requestAnimationFrame(applyDecorations);
@@ -98,6 +104,11 @@
     const overviewButton = event.target.closest?.("[data-pr-overview]");
     if (overviewButton) {
       showOverviewDetail(false);
+      return;
+    }
+    const loadMore = event.target.closest?.("[data-pr-load-more]");
+    if (loadMore) {
+      loadMorePullRequests();
       return;
     }
     const focus = event.target.closest?.("[data-focus-pr]");
@@ -221,6 +232,7 @@
       return;
     }
     const prs = overview.pullRequests || [];
+    const previousScroll = root.querySelector(".pr-detail-shell")?.scrollTop || 0;
     const status = overview.available
       ? `${prs.length} pull requests`
       : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
@@ -230,8 +242,36 @@
       `<h2>Pull Requests</h2></div>` +
       `<div class="pr-detail-meta">${esc(status)}</div>` +
       `</section>` +
-      `<section class="pr-detail-list">${prs.length ? prs.map(prListCard).join("") : `<p class="pr-empty">${esc(status)}</p>`}</section>` +
+      `<section class="pr-detail-list">${prs.length ? prs.map(prListCard).join("") : `<p class="pr-empty">${esc(status)}</p>`}${prListFooter()}</section>` +
       `</div>`;
+    const shell = root.querySelector(".pr-detail-shell");
+    if (shell) { shell.addEventListener("scroll", handlePrListScroll); shell.scrollTop = previousScroll; }
+  }
+
+  /** PR 목록 drawer 스크롤이 바닥에 가까워지면 다음 PR 페이지를 요청한다. */
+  function handlePrListScroll(event) {
+    if (activeDetail.kind !== "overview" || prListLoading || !overview.hasMore) return;
+    const el = event.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) loadMorePullRequests();
+  }
+
+  /** 다음 PR 페이지를 확장에 요청하고 footer 를 loading 상태로 바꾼다. */
+  function loadMorePullRequests() {
+    if (prListLoading || !overview.hasMore) return;
+    prListLoading = true;
+    const footer = detailRoot()?.querySelector(".pr-list-footer");
+    if (footer) footer.innerHTML = `<span class="codicon codicon-loading" aria-hidden="true"></span><span>Loading more pull requests...</span>`;
+    window.GscGraphPostMessage?.({ type: "loadMorePullRequests" });
+  }
+
+  /** PR 목록 하단의 pagination 상태 HTML 을 만든다. */
+  function prListFooter() {
+    if (prListLoading) return `<div class="pr-list-footer"><span class="codicon codicon-loading" aria-hidden="true"></span><span>Loading more pull requests...</span></div>`;
+    if (overview.hasMore) {
+      return `<div class="pr-list-footer"><button type="button" class="pr-icon-action" data-pr-load-more ${tooltipAttrs("Load more pull requests")}>` +
+        `<span class="codicon codicon-arrow-down" aria-hidden="true"></span></button><span>More pull requests available</span></div>`;
+    }
+    return overview.pullRequests?.length ? `<div class="pr-list-footer"><span class="codicon codicon-check" aria-hidden="true"></span><span>All loaded</span></div>` : "";
   }
 
   /** PR 목록 카드 HTML 을 만든다. */
@@ -255,19 +295,43 @@
     const row = pr ? findPullRequestRow(pr) : null;
     if (!row) {
       clearFocusedPullRequest();
+      if (pr) requestCommitVisibility(prRowHashes(pr));
       return;
     }
     highlightCommitRow(row);
   }
 
   /** commit hash 로 graph row 를 찾아 이동하고 하이라이트한다. */
-  function focusCommitRow(hash) {
+  function focusCommitRow(hash, fromVisibility) {
     const row = findCommitRow(hash);
     if (!row) {
       clearFocusedPullRequest();
+      if (!fromVisibility) requestCommitVisibility([hash]);
       return;
     }
     highlightCommitRow(row);
+  }
+
+  /** graph 에 없는 commit hash 후보를 확장 쪽에서 추가 로드하도록 요청한다. */
+  function requestCommitVisibility(hashes) {
+    const candidates = Array.from(new Set((hashes || []).filter(Boolean)));
+    if (!candidates.length) {
+      return;
+    }
+    const requestId = `pr-focus-${++focusRequestSeq}`;
+    pendingFocusRequest = { requestId, hashes: candidates };
+    window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates });
+  }
+
+  /** 추가 로드 후 발견된 commit 으로 다시 점프한다. */
+  function handleCommitVisibility(msg) {
+    if (!pendingFocusRequest || msg.requestId !== pendingFocusRequest.requestId) {
+      return;
+    }
+    pendingFocusRequest = undefined;
+    if (msg.found && msg.hash) {
+      requestAnimationFrame(() => focusCommitRow(msg.hash, true));
+    }
   }
 
   /** PR 의 head commit 을 우선하고, 없으면 로드된 관련 commit row 를 찾는다. */
@@ -331,7 +395,7 @@
     const detailState = pullRequestDetails.get(Number(number));
     root.innerHTML = `<div class="pr-detail-shell ${prColorClass(pr.number)}">` +
       `<section class="pr-detail-header">` +
-      `<button type="button" class="pr-back-button" data-pr-overview title="Show pull request list" aria-label="Show pull request list">` +
+      `<button type="button" class="pr-back-button" data-pr-overview ${tooltipAttrs("Show pull request list")}>` +
       `<span class="codicon codicon-arrow-left" aria-hidden="true"></span></button>` +
       `<div class="pr-detail-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
       `<h2>#${pr.number} ${esc(pr.title)}</h2></div>` +
@@ -358,11 +422,13 @@
   /** PR 상세 drawer 의 changed files tree 섹션 HTML 을 만든다. */
   function changedFilesSection(state) {
     if (!state) {
-      return `<section class="pr-detail-section"><h3>Changed files <span>...</span></h3>` +
+      return `<section class="pr-detail-section">` +
+        sectionHeading("files", "Changed files", iconCount("files", "...", "Loading changed files")) +
         `<p class="pr-empty">Loading changed files...</p></section>`;
     }
     if (state.status === "error") {
-      return `<section class="pr-detail-section"><h3>Changed files <span>!</span></h3>` +
+      return `<section class="pr-detail-section">` +
+        sectionHeading("files", "Changed files", iconCount("warning", "!", "Changed files failed to load")) +
         `<p class="pr-empty">${esc(state.message || "Failed to load changed files.")}</p></section>`;
     }
     const detail = state.detail || { files: [], fileCount: 0, fileCommentCount: 0 };
@@ -370,8 +436,9 @@
       ? `<p class="pr-empty">Some files or comments were omitted because this PR is very large.</p>`
       : "";
     return `<section class="pr-detail-section pr-files-section">` +
-      `<h3>Changed files <span>${detail.fileCount || detail.files.length}</span></h3>` +
-      `<div class="pr-detail-meta">${detail.fileCommentCount || 0} file comments</div>` +
+      sectionHeading("files", "Changed files",
+        iconCount("files", detail.fileCount || detail.files.length, "Changed files") +
+        iconCount("comment-discussion", detail.fileCommentCount || 0, "File comments")) +
       (window.GscGraphPrFiles?.render?.(detail.files || []) || `<p class="pr-empty">Changed files renderer is unavailable.</p>`) +
       note +
       `</section>`;
@@ -381,7 +448,7 @@
   function relatedCommitsSection(pr) {
     const hashes = prRowHashes(pr);
     return `<section class="pr-detail-section">` +
-      `<h3>Related commits <span>${hashes.length}</span></h3>` +
+      sectionHeading("git-commit", "Related commits", iconCount("git-commit", hashes.length, "Related commits")) +
       (hashes.length ? `<div class="pr-commit-list">${hashes.map(relatedCommitButton).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
       `</section>`;
   }
@@ -393,7 +460,7 @@
     const meta = row?.querySelector?.(".meta")?.textContent || "";
     const title = row ? `Jump to commit ${shortHash(hash)}` : `Commit ${shortHash(hash)} is not loaded in the graph`;
     return `<button type="button" class="pr-commit-item${row ? "" : " unloaded"}" data-focus-commit="${esc(hash)}" ` +
-      `title="${esc(title)}" aria-label="${esc(title)}">` +
+      tooltipAttrs(title) + `>` +
       `<span class="codicon codicon-git-commit" aria-hidden="true"></span>` +
       `<span class="pr-commit-hash">${esc(shortHash(hash))}</span>` +
       `<span class="pr-commit-text"><span>${esc(subject)}</span>${meta ? `<small>${esc(meta)}</small>` : ""}</span>` +
@@ -402,29 +469,56 @@
 
   /** PR 메타 한 줄 HTML 을 만든다. */
   function prMetaHtml(pr) {
-    const review = pr.reviewDecision ? ` · ${pr.reviewDecision}` : "";
-    const draft = pr.isDraft ? " · draft" : "";
-    return `<div class="pr-meta">${esc(pr.state || "OPEN")}${draft}${review} · ` +
-      `${esc(pr.headRefName)} → ${esc(pr.baseRefName)} · comments ${commentCount(pr)}</div>`;
+    return `<div class="pr-meta pr-meta-chips">` +
+      metaChip("git-pull-request", pr.state || "OPEN", `PR state: ${pr.state || "OPEN"}`) +
+      (pr.isDraft ? metaChip("edit", "Draft", "Draft pull request") : "") +
+      (pr.reviewDecision ? metaChip("eye", pr.reviewDecision, `Review decision: ${pr.reviewDecision}`) : "") +
+      `<span class="pr-branch-flow" ${tooltipAttrs(`${pr.headRefName} into ${pr.baseRefName}`)}>` +
+      `<span class="codicon codicon-git-branch" aria-hidden="true"></span><span>${esc(pr.headRefName)}</span>` +
+      `<span class="codicon codicon-arrow-right" aria-hidden="true"></span><span>${esc(pr.baseRefName)}</span></span>` +
+      metaChip("comment-discussion", commentCount(pr), "Total PR comments") +
+      `</div>`;
   }
 
   /** 상세 보기 버튼 HTML 을 만든다. */
   function detailButton(number) {
     const title = `Show pull request #${number} details`;
-    return `<button type="button" data-show-pr="${number}" title="${esc(title)}" aria-label="${esc(title)}">` +
-      `<span class="codicon codicon-list-tree" aria-hidden="true"></span><span>Details</span></button>`;
+    return `<button type="button" class="pr-icon-action" data-show-pr="${number}" ${tooltipAttrs(title)}>` +
+      `<span class="codicon codicon-list-tree" aria-hidden="true"></span></button>`;
   }
 
   /** 브라우저 열기 버튼 HTML 을 만든다. */
   function openButton(number, title) {
-    return `<button type="button" data-open-pr="${number}" title="${esc(title)}" aria-label="${esc(title)}">` +
-      `<span class="codicon codicon-link-external" aria-hidden="true"></span><span>Open</span></button>`;
+    return `<button type="button" class="pr-icon-action" data-open-pr="${number}" ${tooltipAttrs(title)}>` +
+      `<span class="codicon codicon-link-external" aria-hidden="true"></span></button>`;
   }
 
   /** staged PR preview 버튼 HTML 을 만든다. */
   function previewButton(number, title) {
-    return `<button type="button" data-preview-pr="${number}" title="${esc(title)}" aria-label="${esc(title)}">` +
-      `<span class="codicon codicon-preview" aria-hidden="true"></span><span>Preview staged</span></button>`;
+    return `<button type="button" class="pr-icon-action" data-preview-pr="${number}" ${tooltipAttrs(title)}>` +
+      `<span class="codicon codicon-preview" aria-hidden="true"></span></button>`;
+  }
+
+  /** 섹션 제목과 우측 icon count 묶음을 만든다. */
+  function sectionHeading(icon, label, counts) {
+    return `<h3 class="pr-section-heading"><span><span class="codicon codicon-${icon}" aria-hidden="true"></span>${esc(label)}</span>` +
+      `<span class="pr-section-stats">${counts}</span></h3>`;
+  }
+
+  /** 숫자 요약을 아이콘 chip 으로 만든다. */
+  function iconCount(icon, count, title) {
+    return `<span class="pr-count-chip" ${tooltipAttrs(title)}><span class="codicon codicon-${icon}" aria-hidden="true"></span>${esc(count)}</span>`;
+  }
+
+  /** PR 메타 정보를 아이콘 chip 으로 만든다. */
+  function metaChip(icon, value, title) {
+    return `<span class="pr-meta-chip" ${tooltipAttrs(title)}><span class="codicon codicon-${icon}" aria-hidden="true"></span>${esc(value)}</span>`;
+  }
+
+  /** tooltip/title/aria-label 속성을 함께 만든다. */
+  function tooltipAttrs(title) {
+    const value = esc(title);
+    return `title="${value}" data-tooltip="${value}" aria-label="${value}"`;
   }
 
   /** PR chip hover 카드 DOM 을 만들거나 재사용한다. */

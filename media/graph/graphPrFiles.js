@@ -95,7 +95,7 @@
       return (
         `<li class="pr-file-folder" role="treeitem" aria-expanded="${collapsed ? "false" : "true"}">` +
         `<button type="button" class="pr-folder-row" data-pr-file-folder="${esc(node.path)}" ` +
-        `style="--indent:${indent(depth)}px" title="${esc(title)}" aria-label="${esc(title)}">` +
+        `style="--indent:${indent(depth)}px" ${tooltipAttrs(title)}>` +
         `<span class="twistie codicon ${chevron}" aria-hidden="true"></span>` +
         `<span class="codicon ${icon}" aria-hidden="true"></span>` +
         `<span class="path">${esc(node.name)}</span></button>` +
@@ -127,7 +127,7 @@
       return "";
     }
     const title = `${count} file comments`;
-    return `<span class="pr-file-comment-bubble" title="${esc(title)}" aria-label="${esc(title)}">` +
+    return `<span class="pr-file-comment-bubble" ${tooltipAttrs(title)}>` +
       `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span>${count}</span>`;
   }
 
@@ -167,6 +167,12 @@
   /** HTML 특수문자를 escape 한다. */
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  }
+
+  /** tooltip/title/aria-label 속성을 함께 만든다. */
+  function tooltipAttrs(title) {
+    const value = esc(title);
+    return `title="${value}" data-tooltip="${value}" aria-label="${value}"`;
   }
 
   window.GscGraphPrFiles = { render, reset, toggle };

@@ -30,6 +30,7 @@ export type ToWebviewMessage =
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
   | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
   | { type: "pullRequestDetailError"; number: number; message: string }
+  | { type: "commitVisibility"; requestId: string; hash?: string; found: boolean }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
@@ -53,7 +54,9 @@ export type FromWebviewMessage =
   | { type: "push" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
+  | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }
+  | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | { type: "loadMore" }

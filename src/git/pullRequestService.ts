@@ -10,14 +10,14 @@ import type { PullRequestDetailInfo } from "./pullRequestDetail";
 
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 
-/** 그래프에 한 번에 표시할 열린 PR 최대 개수 */
-const PULL_REQUEST_LIMIT = 80;
+/** PR 목록을 한 번에 읽는 페이지 크기 */
+const PULL_REQUEST_PAGE_SIZE = 80;
 
 /** PR 목록 GraphQL 쿼리. gh pr list 의 commits 필드가 과도한 author 연결을 펴지 않도록 필요한 값만 직접 요청한다. */
 const PULL_REQUESTS_QUERY = `
-query($owner: String!, $name: String!, $limit: Int!) {
+query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
-    pullRequests(first: $limit, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: $limit, after: $cursor, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         number
         title
@@ -42,6 +42,10 @@ query($owner: String!, $name: String!, $limit: Int!) {
             endCursor
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -89,6 +93,8 @@ export interface PullRequestOverview {
   currentBranch?: string;
   targetBranch?: string;
   error?: string;
+  hasMore: boolean;
+  nextCursor?: string;
   pullRequests: PullRequestInfo[];
 }
 
@@ -132,6 +138,7 @@ interface GhGraphQlResponse {
     repository?: {
       pullRequests?: {
         nodes?: GhGraphQlPullRequest[];
+        pageInfo?: GhPageInfo;
       };
     };
   };
@@ -185,18 +192,21 @@ export class PullRequestService {
    * @param localBranches 현재 로컬 브랜치 상태. current branch/target 추정에 사용한다.
    */
   async getOverview(
-    localBranches: LocalBranchStatus[]
+    localBranches: LocalBranchStatus[],
+    cursor?: string
   ): Promise<PullRequestOverview> {
     try {
       const repository = await this.repositoryName();
-      const rawPrs = await this.listPullRequests(repository);
-      const prs = rawPrs.map((pr) => this.toPullRequestInfo(pr));
+      const page = await this.listPullRequests(repository, cursor);
+      const prs = page.pullRequests.map((pr) => this.toPullRequestInfo(pr));
       const current = localBranches.find((branch) => branch.current);
       return {
         available: true,
         repository,
         currentBranch: current?.name,
         targetBranch: this.targetBranchFor(current, prs),
+        hasMore: Boolean(page.pageInfo?.hasNextPage),
+        nextCursor: page.pageInfo?.endCursor,
         pullRequests: prs,
       };
     } catch (error) {
@@ -204,6 +214,7 @@ export class PullRequestService {
         available: false,
         currentBranch: localBranches.find((branch) => branch.current)?.name,
         error: error instanceof Error ? error.message : String(error),
+        hasMore: false,
         pullRequests: [],
       };
     }
@@ -255,9 +266,12 @@ export class PullRequestService {
    * - `gh pr list --json commits` 는 commit author 연결까지 크게 펼쳐 GraphQL 한도를 넘을 수 있어 사용하지 않는다.
    * @param repository owner/name 형태의 GitHub 저장소 이름
    */
-  private async listPullRequests(repository: string): Promise<GhPullRequest[]> {
+  private async listPullRequests(
+    repository: string,
+    cursor?: string
+  ): Promise<{ pullRequests: GhPullRequest[]; pageInfo?: GhPageInfo }> {
     const [owner, name] = splitRepositoryName(repository);
-    const out = await runGh([
+    const args = [
       "api",
       "graphql",
       "-F",
@@ -265,15 +279,20 @@ export class PullRequestService {
       "-F",
       `name=${name}`,
       "-F",
-      `limit=${PULL_REQUEST_LIMIT}`,
+      `limit=${PULL_REQUEST_PAGE_SIZE}`,
       "-f",
       `query=${PULL_REQUESTS_QUERY}`,
-    ], this.repoRoot);
+    ];
+    if (cursor) {
+      args.splice(args.length - 2, 0, "-f", `cursor=${cursor}`);
+    }
+    const out = await runGh(args, this.repoRoot);
     const parsed = JSON.parse(out) as GhGraphQlResponse;
-    const nodes = parsed.data?.repository?.pullRequests?.nodes || [];
+    const connection = parsed.data?.repository?.pullRequests;
+    const nodes = connection?.nodes || [];
     const prs = nodes.map(fromGraphQlPullRequest);
     await this.appendRemainingCommitHashes(owner, name, nodes, prs);
-    return prs;
+    return { pullRequests: prs, pageInfo: connection?.pageInfo };
   }
 
   /** gh PR JSON 을 graph 표시용 타입으로 정규화한다. */
