@@ -6,16 +6,28 @@ import {
   PullRequestService,
 } from "../git/pullRequestService";
 import { logError } from "../ui/outputLog";
+import {
+  openPullRequestPreviewDiff,
+  type PullRequestPreviewDiffRequest,
+} from "../ui/pullRequestPreviewDiff";
+import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
+import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
 
 type PreviewMessage =
   | { type: "ready" }
   | { type: "refresh" }
-  | { type: "openExistingPr" };
+  | { type: "openExistingPr" }
+  | { type: "setBaseBranch"; branch: string }
+  | { type: "loadCommitFiles"; hash: string }
+  | ({ type: "openEditableDiff" } & PullRequestPreviewDiffRequest);
 
 /** staged PR preview 웹뷰 패널 */
 export class PullRequestPreviewPanel {
   private static current: PullRequestPreviewPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private lastTargetBranch?: string;
+  private lastTargetRef?: string;
+  private previewRequestSeq = 0;
 
   /**
    * staged PR preview 패널을 만들거나 기존 패널을 재사용한다.
@@ -88,18 +100,69 @@ export class PullRequestPreviewPanel {
     }
     if (msg.type === "openExistingPr" && this.existingPr?.url) {
       await vscode.env.openExternal(vscode.Uri.parse(this.existingPr.url));
+      return;
+    }
+    if (msg.type === "setBaseBranch") {
+      this.baseBranch = msg.branch || undefined;
+      if (this.existingPr?.baseRefName && msg.branch !== this.existingPr.baseRefName) {
+        this.existingPr = undefined;
+      }
+      await this.sendPreview();
+      return;
+    }
+    if (msg.type === "openEditableDiff") {
+      await this.openEditableDiff(msg);
+      return;
+    }
+    if (msg.type === "loadCommitFiles") {
+      await this.sendCommitFiles(msg.hash);
+    }
+  }
+
+  /**
+   * PR preview 파일을 기준 브랜치와 작업트리의 editable diff 로 연 뒤, 오른쪽 파일에 review comment 를 표시한다.
+   * @param msg 웹뷰에서 선택한 파일 경로와 comment 목록
+   */
+  private async openEditableDiff(msg: Extract<PreviewMessage, { type: "openEditableDiff" }>): Promise<void> {
+    try {
+      await openPullRequestPreviewDiff(this.service.repoRoot, {
+        ...msg,
+        baseRef: msg.baseRef || this.lastTargetRef || this.baseBranch || this.lastTargetBranch,
+        headRef: msg.headRef || this.existingPr?.headHash || "HEAD",
+      });
+    } catch (error) {
+      logError("PR preview editable diff open failed", error);
+    }
+  }
+
+  /** Commits 탭에서 선택한 commit 의 파일 변경을 웹뷰에 보낸다. */
+  private async sendCommitFiles(hash: string): Promise<void> {
+    try {
+      this.post({ type: "commitFiles", hash, files: await this.service.getPreviewCommitFiles(hash) });
+    } catch (error) {
+      logError("PR preview commit files failed", error);
+      this.post({ type: "commitFiles", hash, files: [] });
     }
   }
 
   /** staged preview 데이터를 읽어 웹뷰에 보낸다. */
   private async sendPreview(): Promise<void> {
+    const requestSeq = ++this.previewRequestSeq;
     try {
       const preview = await this.service.getStagedPreview(
         this.baseBranch,
         this.existingPr
       );
+      if (requestSeq !== this.previewRequestSeq) {
+        return;
+      }
+      this.lastTargetBranch = preview.targetBranch;
+      this.lastTargetRef = preview.targetRef;
       this.post({ type: "preview", preview });
     } catch (error) {
+      if (requestSeq !== this.previewRequestSeq) {
+        return;
+      }
       logError("staged PR preview failed", error);
       this.post({
         type: "error",
@@ -124,7 +187,7 @@ export class PullRequestPreviewPanel {
       <meta http-equiv="Content-Security-Policy" content="${csp}" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link href="${codiconUri}" rel="stylesheet" />
-      <style nonce="${nonce}">${styles()}</style>
+      <style nonce="${nonce}">${pullRequestPreviewStyles()}</style>
       <title>Staged PR Preview</title></head><body>
       <header class="topbar">
         <div class="topbar-title">
@@ -163,102 +226,6 @@ function nonceValue(): string {
   return value;
 }
 
-/** preview 페이지 스타일을 반환한다. */
-function styles(): string {
-  return `
-    :root { --border: var(--vscode-panel-border); --muted: var(--vscode-descriptionForeground); --panel: var(--vscode-editorWidget-background); --subtle: var(--vscode-sideBar-background); --green: #2ea043; --green-bg: rgba(46, 160, 67, .16); --red: #f85149; --blue: #58a6ff; }
-    body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
-    .topbar-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .topbar-title .codicon { color: var(--green); }
-    h1 { margin: 0; font-size: 14px; font-weight: 600; }
-    main { padding: 16px; }
-    .actions { display: flex; gap: 6px; }
-    .icon-button { position: relative; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
-    .icon-button:hover { background: var(--vscode-button-hoverBackground); }
-    .icon-button[data-tooltip]::after { content: attr(data-tooltip); position: fixed; z-index: 100; top: 40px; right: 10px; max-width: min(420px, calc(100vw - 20px)); padding: 4px 7px; border: 1px solid var(--vscode-widget-border); border-radius: 3px; color: var(--vscode-quickInput-foreground); background: #252526; opacity: 0; pointer-events: none; white-space: normal; overflow-wrap: anywhere; }
-    .icon-button[data-tooltip]:hover::after, .icon-button[data-tooltip]:focus-visible::after { opacity: 1; }
-    .pr-page { max-width: 1080px; margin: 0 auto; display: grid; gap: 12px; }
-    .pr-header { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-    .title-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .state-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: var(--green-bg); color: var(--green); font-weight: 600; white-space: nowrap; }
-    .state-pill.draft { color: var(--vscode-charts-purple); background: color-mix(in srgb, var(--vscode-charts-purple) 18%, transparent); }
-    .state-pill.empty { color: var(--muted); background: var(--subtle); }
-    .pr-title { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; overflow-wrap: anywhere; }
-    .pr-number { color: var(--muted); font-weight: 400; }
-    .branch-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; color: var(--muted); }
-    .branch-flow code { padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--blue); background: var(--subtle); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .tabbar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
-    .tab { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font: inherit; cursor: pointer; }
-    .tab:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
-    .tab.active { border-bottom-color: var(--vscode-focusBorder); color: var(--vscode-foreground); font-weight: 600; }
-    .count { min-width: 18px; padding: 1px 6px; border-radius: 999px; text-align: center; color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); font-size: 11px; }
-    .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
-    .content-single { display: grid; }
-    .side-stack { display: grid; gap: 12px; }
-    .panel { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
-    .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .comment-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
-    .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
-    .body-pre { margin: 0; padding: 14px; overflow: auto; white-space: pre-wrap; font-family: var(--vscode-font-family); line-height: 1.45; }
-    .timeline { display: grid; gap: 12px; }
-    .timeline-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
-    .timeline-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
-    .timeline-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
-    .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-    .metric { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
-    .metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
-    .metric-value { margin-top: 5px; font-weight: 600; overflow-wrap: anywhere; }
-    .file-list, .commit-list { display: grid; }
-    .file-row, .commit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--border); color: inherit; background: transparent; text-align: left; font: inherit; }
-    .commit-row { cursor: pointer; }
-    .commit-row:hover, .commit-row.active { background: var(--vscode-list-hoverBackground); }
-    .file-row:first-child, .commit-row:first-child { border-top: 0; }
-    .file-name, .commit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-dir, .commit-hash { color: var(--muted); font-size: 12px; }
-    .file-row[data-status="A"] .status-icon { color: var(--green); }
-    .file-row[data-status="D"] .status-icon { color: var(--red); }
-    .file-row[data-status="R"] .status-icon, .file-row[data-status="C"] .status-icon { color: var(--blue); }
-    .review-file { border-top: 1px solid var(--border); }
-    .review-file:first-child { border-top: 0; }
-    .review-file-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
-    .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
-    .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
-    .diff-snippet { overflow: auto; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .diff-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); min-height: 20px; }
-    .diff-line.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
-    .diff-line.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
-    .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
-    .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
-    .line-code { padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
-    .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
-    .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
-    .comment-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
-    .comment-body { margin: 0; padding: 9px; white-space: pre-wrap; font-family: var(--vscode-font-family); line-height: 1.4; }
-    .mini-diff { border-top: 1px solid var(--border); max-height: 180px; }
-    .commit-review { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 12px; align-items: start; }
-    .file-tree { padding: 6px 8px 10px; }
-    .tree-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; width: 100%; min-height: 24px; padding: 2px 6px 2px var(--indent, 0); border: 0; border-radius: 4px; color: inherit; background: transparent; text-align: left; font: inherit; }
-    .tree-row:hover { background: var(--vscode-list-hoverBackground); }
-    .tree-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tree-folder { font-weight: 600; cursor: pointer; }
-    .tree-children.collapsed { display: none; }
-    .stat { display: flex; gap: 6px; font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .add { color: var(--green); }
-    .del { color: var(--red); }
-    .empty, .placeholder { margin: 0; padding: 14px; color: var(--muted); }
-    .warning { border-color: var(--vscode-inputValidation-warningBorder, var(--border)); }
-    @media (max-width: 820px) {
-      main { padding: 10px; }
-      .content-grid { grid-template-columns: 1fr; }
-      .commit-review { grid-template-columns: 1fr; }
-      .quick-stats { grid-template-columns: 1fr; }
-      .pr-title { font-size: 18px; }
-    }
-  `;
-}
-
 /** preview 페이지 클라이언트 스크립트를 반환한다. */
 function script(): string {
   return `
@@ -269,11 +236,17 @@ function script(): string {
     let activeCommitHash = '';
     let collapsedFolders = new Set();
     let latestPreview = null;
+    let pendingTargetBranch = '';
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     openPr.addEventListener("click", () => vscode.postMessage({ type: "openExistingPr" }));
     window.addEventListener("message", (event) => {
       const msg = event.data;
-      if (msg.type === "preview") render(msg.preview);
+      if (msg.type === "preview") {
+        if (pendingTargetBranch && msg.preview.targetBranch !== pendingTargetBranch) return;
+        pendingTargetBranch = '';
+        render(msg.preview);
+      }
+      if (msg.type === "commitFiles") applyCommitFiles(msg.hash, msg.files);
       if (msg.type === "error") content.innerHTML = '<p class="empty">' + esc(msg.message) + '</p>';
     });
     function render(preview) {
@@ -284,6 +257,7 @@ function script(): string {
       if (activeTab === 'commits' && commits.length && !commits.some((commit) => commit.hash === activeCommitHash)) {
         activeCommitHash = commits[0].hash;
       }
+      if (activeTab === 'commits') markCommitFilesLoading(commits.find((commit) => commit.hash === activeCommitHash));
       const additions = files.reduce((sum, file) => sum + (file.additions || 0), 0);
       const deletions = files.reduce((sum, file) => sum + (file.deletions || 0), 0);
       openPr.hidden = !preview.existingPr?.url;
@@ -302,17 +276,24 @@ function script(): string {
       bindTabs();
       bindCommitRows();
       bindTreeFolders();
+      bindTargetBranch();
+      bindOpenDiffs();
     }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
       const number = pr.number ? ' <span class="pr-number">#' + esc(pr.number) + '</span>' : '';
       const state = pr.isDraft ? 'Draft' : (pr.state || (preview.hasStagedChanges ? 'Open' : 'No changes'));
       const stateClass = pr.isDraft ? 'draft' : (!preview.hasStagedChanges && !pr.state ? 'empty' : '');
+      const targets = preview.targetBranches || [];
+      const selected = pendingTargetBranch || preview.targetBranch;
+      const targetControl = targets.length
+        ? '<select id="target-branch" class="branch-select" title="Change base branch" aria-label="Change base branch">' + Array.from(new Set([selected].concat(targets))).map((branch) => '<option value="' + esc(branch) + '"' + (branch === selected ? ' selected' : '') + '>' + esc(branch) + '</option>').join('') + '</select>'
+        : '<code>' + esc(preview.targetBranch) + '</code>';
       return '<section class="pr-header">' +
         '<div class="title-row"><span class="state-pill ' + stateClass + '"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>' + esc(state) + '</span>' +
         '<h2 class="pr-title">' + esc(preview.title) + number + '</h2></div>' +
         '<div class="branch-flow"><span class="codicon codicon-git-branch" aria-hidden="true"></span><code>' + esc(preview.currentBranch) + '</code>' +
-        '<span class="codicon codicon-arrow-right" aria-hidden="true"></span><code>' + esc(preview.targetBranch) + '</code></div>' +
+        '<span class="codicon codicon-arrow-right" aria-hidden="true"></span>' + targetControl + '</div>' +
       '</section>';
     }
     function tabbar(fileCount, commitCount) {
@@ -367,6 +348,18 @@ function script(): string {
         });
       });
     }
+    function bindTargetBranch() {
+      const select = document.getElementById('target-branch');
+      select?.addEventListener('change', () => { pendingTargetBranch = select.value; if (latestPreview) render(latestPreview); vscode.postMessage({ type: 'setBaseBranch', branch: select.value }); });
+    }
+    function bindOpenDiffs() {
+      content.querySelectorAll('[data-open-diff]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const file = findPreviewFile(button.dataset.openDiff || '');
+          if (file) vscode.postMessage({ type: 'openEditableDiff', path: file.path, oldPath: file.oldPath, status: file.status, baseRef: latestPreview?.targetRef || latestPreview?.targetBranch, headRef: latestPreview?.headRef || latestPreview?.existingPr?.headHash || 'HEAD', comments: file.comments || [] });
+        });
+      });
+    }
     function conversation(preview) {
       const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
       return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
@@ -385,7 +378,20 @@ function script(): string {
     }
     function commitFilesPanel(commits) {
       const commit = commits.find((item) => item.hash === activeCommitHash) || commits[0];
+      if (commit?.loading) return '<section class="panel"><p class="empty">Loading commit files...</p></section>';
       return commit ? filesPanel(commit.files || []) : '<section class="panel"><p class="empty">Select a commit to inspect changed files.</p></section>';
+    }
+    function markCommitFilesLoading(commit) {
+      if (!commit || commit.synthetic || (commit.files || []).length || commit.loading) return;
+      commit.loading = true;
+      vscode.postMessage({ type: 'loadCommitFiles', hash: commit.hash });
+    }
+    function applyCommitFiles(hash, files) {
+      const commit = commitPreviews(latestPreview).find((item) => item.hash === hash);
+      if (!commit) return;
+      commit.files = files || [];
+      commit.loading = false;
+      render(latestPreview);
     }
     function metric(icon, label, value) {
       return '<div class="metric"><div class="metric-label"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) + '</div><div class="metric-value">' + esc(value) + '</div></div>';
@@ -398,7 +404,8 @@ function script(): string {
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
         '<span class="review-file-title">' + esc(path) + '</span>' +
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
-        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>' +
+        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
+        '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
         patchHtml(file.patch, false) + commentsHtml(comments) + '</article>';
     }
     function patchHtml(patch, compact) {
@@ -424,7 +431,7 @@ function script(): string {
       const where = line ? 'line ' + line : (comment.side || 'review');
       return '<article class="review-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
         esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span></div>' +
-        '<pre class="comment-body">' + esc(comment.body || '') + '</pre>' +
+        '<div class="comment-body markdown-body">' + renderMarkdown(comment.body || '') + '</div>' +
         (comment.diffHunk ? patchHtml(comment.diffHunk, true) : '') + '</article>';
     }
     function reviewFiles(preview) {
@@ -439,6 +446,7 @@ function script(): string {
         return { hash, shortHash: hash.slice(0, 7), title: parts.join(' ') || line, files: [] };
       });
     }
+    function findPreviewFile(path) { return reviewFiles(latestPreview).concat(commitPreviews(latestPreview).flatMap((commit) => commit.files || [])).find((file) => file.path === path); }
     function commitRow(commit) {
       const active = commit.hash === activeCommitHash;
       const title = 'Show files changed in commit ' + (commit.shortHash || commit.hash);
@@ -449,7 +457,7 @@ function script(): string {
       const title = item.kind === 'body' ? 'opened this pull request' : 'commented';
       return '<article class="timeline-item"><span class="avatar">' + esc(initial(item.author)) + '</span><div class="timeline-card">' +
         '<div class="timeline-head"><strong>' + esc(item.author || 'unknown') + '</strong><span>' + esc(title) + '</span>' + (item.createdAt ? '<span>' + esc(formatDate(item.createdAt)) + '</span>' : '') + '</div>' +
-        '<pre class="body-pre">' + esc(item.body || '') + '</pre></div></article>';
+        '<div class="markdown-body">' + renderMarkdown(item.body || '') + '</div></div></article>';
     }
     function fileTreePanel(files) {
       return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><span class="count">' + esc(files.length) + '</span></div>' +
@@ -481,14 +489,14 @@ function script(): string {
         if (node.kind === 'file') return treeFileHtml(node.file, node.name, depth);
         const collapsed = collapsedFolders.has(node.path);
         const title = (collapsed ? 'Expand ' : 'Collapse ') + node.path;
-        return '<div class="tree-node"><button class="tree-row tree-folder" type="button" data-folder-key="' + esc(node.path) + '" style="--indent:' + esc(depth * 14) + 'px" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
-          '<span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span><span class="tree-label">' + esc(node.name) + '</span><span></span></button>' +
+        return '<div class="tree-node"><button class="tree-row tree-folder" type="button" data-folder-key="' + esc(node.path) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
+          '<span class="twistie codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span><span class="codicon ' + (collapsed ? 'codicon-folder' : 'codicon-folder-opened') + '" aria-hidden="true"></span><span></span><span class="tree-label">' + esc(node.name) + '</span><span></span></button>' +
           '<div class="tree-children' + (collapsed ? ' collapsed' : '') + '">' + treeNodesHtml(node.children, depth + 1) + '</div></div>';
       }).join('');
     }
     function treeFileHtml(file, name, depth) {
-      return '<div class="tree-row" style="--indent:' + esc(depth * 14) + 'px" title="' + esc(file.path) + '">' +
-        '<span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
+      return '<div class="tree-row" data-status="' + esc(file.status) + '" style="--indent:' + esc(depth * 16) + 'px" title="' + esc(file.path) + '">' +
+        '<span class="twistie"></span><span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="codicon codicon-file" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
     }
     function formatDate(iso) {
@@ -502,6 +510,7 @@ function script(): string {
       if (status === 'U') return 'codicon-warning';
       return 'codicon-diff-modified';
     }
+    ${pullRequestPreviewMarkdownScript()}
     function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }
     function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
     vscode.postMessage({ type: "ready" });

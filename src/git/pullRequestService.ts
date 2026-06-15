@@ -13,11 +13,15 @@ import {
   buildLocalPullRequestPreview,
   commitLabels,
   fetchExistingPullRequestCommits,
+  fetchLocalCommitPreviewFiles,
   previewStat,
 } from "./pullRequestPreviewCommits";
 import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { buildPullRequestConversation } from "./pullRequestPreviewConversation";
 import type { PullRequestConversationItem } from "./pullRequestPreviewConversation";
+import { previewTargetBranches } from "./pullRequestPreviewBranches";
+import { previewBody } from "./pullRequestPreviewBody";
+import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
 import { previewTitle } from "./pullRequestPreviewTitle";
 
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
@@ -43,6 +47,9 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
         reviewDecision
         updatedAt
         comments(first: 1) {
+          totalCount
+        }
+        files(first: 1) {
           totalCount
         }
         commits(first: 100) {
@@ -95,6 +102,7 @@ export interface PullRequestInfo {
   reviewDecision?: string;
   updatedAt?: string;
   commentCount: number;
+  fileCount: number;
   commitHashes: string[];
 }
 
@@ -115,6 +123,9 @@ export interface StagedPullRequestPreview {
   repository?: string;
   currentBranch: string;
   targetBranch: string;
+  targetRef: string;
+  headRef: string;
+  targetBranches: string[];
   title: string;
   body: string;
   files: CommitFileChange[];
@@ -141,6 +152,7 @@ interface GhPullRequest {
   updatedAt?: string;
   commits?: GhCommit[];
   commentCount?: number;
+  fileCount?: number;
   commitHashes?: string[];
 }
 
@@ -177,6 +189,9 @@ interface GhGraphQlPullRequest {
   reviewDecision?: string;
   updatedAt?: string;
   comments?: {
+    totalCount?: number;
+  };
+  files?: {
     totalCount?: number;
   };
   commits?: {
@@ -251,16 +266,22 @@ export class PullRequestService {
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
     const targetBranch = baseBranch || existingPr?.baseRefName || await this.defaultBaseBranch();
+    const targetRef = await resolvePreviewTargetRef(this.repoRoot, targetBranch);
+    const targetBranches = await previewTargetBranches(this.repoRoot, targetBranch, currentBranch);
+    const effectivePr = baseBranch && existingPr?.baseRefName && baseBranch !== existingPr.baseRefName
+      ? undefined
+      : existingPr;
+    const headRef = effectivePr ? await resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : "HEAD";
     const [stagedFiles, repository, existingPreview] = await Promise.all([
       this.stagedFiles(),
       this.repositoryName().catch(() => undefined),
-      this.existingPullRequestPreview(existingPr).catch(() => undefined),
+      this.existingPullRequestPreview(effectivePr).catch(() => undefined),
     ]);
-    const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, existingPr).catch(() => []);
-    const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, existingPr).catch(() => []);
+    const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, effectivePr).catch(() => []);
+    const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
     const localPreview = prPreviewFiles.length || prPreviewCommits.length
       ? { files: [] as PullRequestPreviewFile[], commits: [] as PullRequestPreviewCommit[] }
-      : await buildLocalPullRequestPreview(this.repoRoot, targetBranch, stagedFiles);
+      : await buildLocalPullRequestPreview(this.repoRoot, targetRef, stagedFiles);
     const previewFiles = prPreviewFiles.length ? prPreviewFiles : localPreview.files;
     const previewCommits = prPreviewCommits.length ? prPreviewCommits : localPreview.commits;
     const commits = commitLabels(previewCommits);
@@ -270,15 +291,18 @@ export class PullRequestService {
     const conversation = await buildPullRequestConversation(
       this.repoRoot,
       repository,
-      existingPr,
+      effectivePr,
       body,
       currentBranch
-    ).catch(() => [{ kind: "body" as const, author: existingPr?.author || currentBranch, body }]);
+    ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || currentBranch, body }]);
     return {
       repository,
       currentBranch,
       targetBranch,
-      title: existingPreview?.title || existingPr?.title || previewTitle(currentBranch, targetBranch, commits, previewFiles),
+      targetRef,
+      headRef,
+      targetBranches,
+      title: existingPreview?.title || effectivePr?.title || previewTitle(currentBranch, targetBranch, commits, previewFiles),
       body,
       files: previewFiles,
       previewFiles,
@@ -287,7 +311,7 @@ export class PullRequestService {
       conversation,
       stat,
       hasStagedChanges: stagedFiles.length > 0 || previewFiles.length > 0,
-      existingPr,
+      existingPr: effectivePr,
     };
   }
 
@@ -299,6 +323,15 @@ export class PullRequestService {
   async getDetail(number: number): Promise<PullRequestDetailInfo> {
     const repository = await this.repositoryName();
     return fetchPullRequestDetail(this.repoRoot, repository, number);
+  }
+
+  /**
+   * PR preview Commits 탭에서 선택한 로컬 commit 의 파일 변경을 지연 조회한다.
+   * @param hash 파일 변경을 읽을 commit hash
+   * @returns 해당 commit 의 changed files
+   */
+  async getPreviewCommitFiles(hash: string): Promise<PullRequestPreviewFile[]> {
+    return fetchLocalCommitPreviewFiles(this.repoRoot, hash);
   }
 
   /**
@@ -350,6 +383,7 @@ export class PullRequestService {
       reviewDecision: pr.reviewDecision,
       updatedAt: pr.updatedAt,
       commentCount: pr.commentCount ?? 0,
+      fileCount: pr.fileCount ?? 0,
       commitHashes: normalizeCommitHashes(pr),
     };
   }
@@ -498,7 +532,7 @@ export class PullRequestService {
       this.repoRoot
     ).catch(() => "")).trim();
     if (upstream) {
-      return upstream.replace(/^[^/]+\//, "");
+      return upstream;
     }
     return await this.resolveCommit(["origin/main"]).then((hash) => hash ? "origin/main" : "main");
   }
@@ -541,6 +575,7 @@ function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,
     commentCount: pr.comments?.totalCount ?? 0,
+    fileCount: pr.files?.totalCount ?? 0,
     commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
   };
 }
@@ -557,27 +592,4 @@ function normalizeCommitHashes(pr: GhPullRequest): string[] {
     ...(pr.commits || []).map((commit) => commit.oid || ""),
     pr.headRefOid || "",
   ].filter(Boolean)));
-}
-
-/** staged PR preview 의 기본 본문을 만든다. */
-function previewBody(
-  files: CommitFileChange[],
-  commits: string[],
-  stat: string
-): string {
-  const lines = [
-    "## Summary",
-    files.length ? `- ${files.length} staged files included.` : "- No staged files yet.",
-    commits.length ? `- ${commits.length} local commits are ahead of the target branch.` : "- No local commits detected against the target branch.",
-    "",
-    "## Staged files",
-    ...files.slice(0, 20).map((file) => `- ${file.status} ${file.path} (+${file.additions}/-${file.deletions})`),
-  ];
-  if (files.length > 20) {
-    lines.push(`- ...and ${files.length - 20} more files`);
-  }
-  if (stat.trim()) {
-    lines.push("", "## Diff stat", "```", stat.trim(), "```");
-  }
-  return lines.join("\n");
 }

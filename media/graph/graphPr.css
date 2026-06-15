@@ -222,6 +222,7 @@
 .pr-file-tree {
   display: grid;
   gap: 1px;
+  overflow-x: auto;
 }
 
 .pr-file-folder {
@@ -235,6 +236,7 @@
   gap: 6px;
   box-sizing: border-box;
   width: 100%;
+  min-width: max-content;
   min-height: 24px;
   padding: 2px 8px 2px var(--indent, 8px);
   border: 0;

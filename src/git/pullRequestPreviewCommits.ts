@@ -42,6 +42,8 @@ interface GhCommitDetail {
   }>;
 }
 
+const COMMIT_DETAIL_CONCURRENCY = 4;
+
 /**
  * 기존 GitHub PR 의 commit 목록을 파일 patch 와 함께 읽는다.
  * @param cwd gh 실행 경로
@@ -58,8 +60,8 @@ export async function fetchExistingPullRequestCommits(
     return [];
   }
   const [owner, name] = splitRepositoryName(repository);
-  return Promise.all(
-    pr.commitHashes.map((hash) => readGithubCommit(cwd, owner, name, hash))
+  return mapLimited(pr.commitHashes, COMMIT_DETAIL_CONCURRENCY, (hash) =>
+    readGithubCommit(cwd, owner, name, hash)
   );
 }
 
@@ -75,12 +77,11 @@ export async function buildLocalPullRequestPreview(
   targetBranch: string,
   stagedFiles: CommitFileChange[]
 ): Promise<{ files: PullRequestPreviewFile[]; commits: PullRequestPreviewCommit[] }> {
-  const [baseFiles, commitHashes, stagedPatch] = await Promise.all([
+  const [baseFiles, commits, stagedPatch] = await Promise.all([
     readRangeFiles(repoRoot, targetBranch),
-    readLocalCommitHashes(repoRoot, targetBranch),
+    readLocalCommitSummaries(repoRoot, targetBranch),
     runGit(["diff", "--cached", "--patch", "-M", "--unified=80"], repoRoot).catch(() => ""),
   ]);
-  const commits = await Promise.all(commitHashes.map((hash) => readLocalCommit(repoRoot, hash)));
   let stagedSyntheticFiles: PullRequestPreviewFile[] = [];
   if (stagedFiles.length) {
     stagedSyntheticFiles = applyPatches(stagedPreviewFiles(stagedFiles), stagedPatch);
@@ -94,6 +95,22 @@ export async function buildLocalPullRequestPreview(
     });
   }
   return { files: mergePreviewFiles(baseFiles, stagedSyntheticFiles), commits };
+}
+
+/**
+ * 로컬 commit 한 건의 changed files 를 lazy load 한다.
+ * @param repoRoot git 저장소 루트
+ * @param hash 파일 변경을 읽을 commit hash
+ * @returns commit 의 파일 변경/patch 목록
+ */
+export async function fetchLocalCommitPreviewFiles(
+  repoRoot: string,
+  hash: string
+): Promise<PullRequestPreviewFile[]> {
+  if (!hash || hash === "__gsc_staged_preview_commit__") {
+    return [];
+  }
+  return readLocalCommitFiles(repoRoot, hash);
 }
 
 /**
@@ -147,30 +164,53 @@ async function readGithubCommit(
   };
 }
 
-/** target..HEAD 커밋 해시 목록을 오래된 순서부터 읽는다. */
-async function readLocalCommitHashes(repoRoot: string, targetBranch: string): Promise<string[]> {
-  const out = await runGit(["log", "--reverse", "--format=%H", `${targetBranch}..HEAD`], repoRoot).catch(() => "");
-  return out.split("\n").map((line) => line.trim()).filter(Boolean);
+/** target..HEAD 커밋 메타 목록을 오래된 순서부터 한 번에 읽는다. */
+async function readLocalCommitSummaries(
+  repoRoot: string,
+  targetBranch: string
+): Promise<PullRequestPreviewCommit[]> {
+  const out = await runGit([
+    "log",
+    "--reverse",
+    "--format=%H%x1f%h%x1f%s%x1f%an%x1f%aI",
+    `${targetBranch}..HEAD`,
+  ], repoRoot).catch(() => "");
+  return out.split("\n")
+    .map(commitSummary)
+    .filter((commit): commit is PullRequestPreviewCommit => Boolean(commit));
 }
 
-/** 로컬 commit 한 건을 파일 patch 와 함께 읽는다. */
-async function readLocalCommit(repoRoot: string, hash: string): Promise<PullRequestPreviewCommit> {
-  const [meta, files] = await Promise.all([
-    runGit(["show", "-s", "--format=%H%x1f%h%x1f%s%x1f%an%x1f%aI", hash], repoRoot),
-    readCommitFiles(repoRoot, hash),
-  ]);
-  const [fullHash, shortHash, title, author, dateIso] = meta.trim().split("\x1f");
-  return { hash: fullHash || hash, shortHash: shortHash || hash.slice(0, 7), title: title || hash, author, dateIso, files };
+/** git log 한 줄을 commit preview 메타로 변환한다. */
+function commitSummary(line: string): PullRequestPreviewCommit | undefined {
+  const [fullHash, shortHash, title, author, dateIso] = line.trim().split("\x1f");
+  if (!fullHash) {
+    return undefined;
+  }
+  return {
+    hash: fullHash,
+    shortHash: shortHash || fullHash.slice(0, 7),
+    title: title || fullHash.slice(0, 12),
+    author,
+    dateIso,
+    files: [],
+  };
 }
 
-/** commit 하나의 변경 파일과 patch 를 읽는다. */
-async function readCommitFiles(repoRoot: string, hash: string): Promise<PullRequestPreviewFile[]> {
-  const [nameStatus, numstat, patch] = await Promise.all([
-    runGit(["diff-tree", "--no-commit-id", "--name-status", "-z", "-M", "-r", hash], repoRoot).catch(() => ""),
-    runGit(["diff-tree", "--no-commit-id", "--numstat", "-M", "-r", hash], repoRoot).catch(() => ""),
-    runGit(["show", "--format=", "--patch", "-M", "--unified=80", hash], repoRoot).catch(() => ""),
-  ]);
-  return filesFromDiff(nameStatus, numstat, patch);
+/** 로컬 commit 한 건의 파일 patch 를 읽는다. */
+async function readLocalCommitFiles(repoRoot: string, hash: string): Promise<PullRequestPreviewFile[]> {
+  const out = await runGit([
+    "show",
+    "--format=",
+    "--patch",
+    "--no-ext-diff",
+    "-M",
+    "--unified=80",
+    hash,
+  ], repoRoot).catch(() => "");
+  if (!out) {
+    return [];
+  }
+  return filesFromPatch(out.replace(/^\n/, ""));
 }
 
 /** target branch 기준 PR 전체 변경 파일을 읽는다. */
@@ -196,6 +236,65 @@ function filesFromDiff(nameStatus: string, numstat: string, patch: string): Pull
     patch: patches.get(file.path),
     comments: [],
   }));
+}
+
+/** patch 본문만으로 commit changed file 목록과 증감 라인을 만든다. */
+function filesFromPatch(patch: string): PullRequestPreviewFile[] {
+  return splitPatchBlocks(patch).map((block) => {
+    const path = pathFromDiffHeader(block[0] || "");
+    const status = patchStatus(block);
+    const rename = renamePaths(block);
+    return {
+      status,
+      path: rename.to || path,
+      oldPath: rename.from,
+      additions: block.filter((line) => line.startsWith("+") && !line.startsWith("+++")).length,
+      deletions: block.filter((line) => line.startsWith("-") && !line.startsWith("---")).length,
+      patch: block.join("\n"),
+      comments: [],
+    };
+  }).filter((file) => file.path);
+}
+
+/** git patch 를 diff --git 블록 단위로 나눈다. */
+function splitPatchBlocks(patch: string): string[][] {
+  const blocks: string[][] = [];
+  let current: string[] = [];
+  for (const line of patch.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      if (current.length) {
+        blocks.push(current);
+      }
+      current = [line];
+    } else if (current.length) {
+      current.push(line);
+    }
+  }
+  if (current.length) {
+    blocks.push(current);
+  }
+  return blocks;
+}
+
+/** patch header 로 파일 상태를 추정한다. */
+function patchStatus(block: string[]): PullRequestPreviewFile["status"] {
+  if (block.some((line) => line.startsWith("new file mode"))) {
+    return "A";
+  }
+  if (block.some((line) => line.startsWith("deleted file mode"))) {
+    return "D";
+  }
+  if (block.some((line) => line.startsWith("rename from "))) {
+    return "R";
+  }
+  return "M";
+}
+
+/** rename patch 의 이전/새 경로를 읽는다. */
+function renamePaths(block: string[]): { from?: string; to?: string } {
+  const from = block.find((line) => line.startsWith("rename from "))?.slice("rename from ".length);
+  const to = block.find((line) => line.startsWith("rename to "))?.slice("rename to ".length);
+  return { from, to };
 }
 
 /** staged 변경 파일에 patch 본문을 붙인다. */
@@ -273,4 +372,31 @@ function firstLine(message: string | undefined): string {
 /** GitHub commit 조회 실패 시 최소 commit 표시를 만든다. */
 function fallbackCommit(hash: string): PullRequestPreviewCommit {
   return { hash, shortHash: hash.slice(0, 7), title: hash.slice(0, 12), files: [] };
+}
+
+/**
+ * 입력 배열을 제한된 동시성으로 변환한다.
+ * @param values 처리할 값 목록
+ * @param concurrency 동시에 실행할 작업 수
+ * @param mapper 값 하나를 결과로 바꾸는 비동기 함수
+ * @returns 입력 순서를 유지한 결과 배열
+ */
+async function mapLimited<T, R>(
+  values: T[],
+  concurrency: number,
+  mapper: (value: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(values.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= values.length) {
+        return;
+      }
+      results[index] = await mapper(values[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
