@@ -235,6 +235,7 @@ function script(): string {
     let activeTab = 'conversation';
     let activeCommitHash = '';
     let collapsedFolders = new Set();
+    let collapsedFiles = new Set();
     let latestPreview = null;
     let pendingTargetBranch = '';
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
@@ -278,6 +279,7 @@ function script(): string {
       bindTreeFolders();
       bindTargetBranch();
       bindOpenDiffs();
+      bindFileToggles();
     }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
@@ -360,6 +362,15 @@ function script(): string {
         });
       });
     }
+    function bindFileToggles() {
+      content.querySelectorAll('[data-toggle-file]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.dataset.toggleFile || '';
+          if (collapsedFiles.has(key)) collapsedFiles.delete(key); else collapsedFiles.add(key);
+          if (latestPreview) render(latestPreview);
+        });
+      });
+    }
     function conversation(preview) {
       const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
       return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
@@ -399,14 +410,17 @@ function script(): string {
     function reviewFileHtml(file) {
       const path = file.oldPath ? file.oldPath + ' -> ' + file.path : file.path;
       const comments = file.comments || [];
-      return '<article class="review-file" data-status="' + esc(file.status) + '">' +
+      const collapsed = collapsedFiles.has(file.path);
+      const toggleTitle = (collapsed ? 'Expand ' : 'Collapse ') + path;
+      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
         '<div class="review-file-head" title="' + esc(path) + '">' +
+        '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
         '<span class="review-file-title">' + esc(path) + '</span>' +
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
         '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-        patchHtml(file.patch, false) + commentsHtml(comments) + '</article>';
+        (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false) + commentsHtml(comments) + '</div>') + '</article>';
     }
     function patchHtml(patch, compact) {
       if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';

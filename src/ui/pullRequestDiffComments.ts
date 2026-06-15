@@ -7,6 +7,7 @@ export interface PullRequestDiffComment {
   body: string;
   line?: number;
   originalLine?: number;
+  createdAt?: string;
 }
 
 let activeDecoration: vscode.TextEditorDecorationType | undefined;
@@ -28,9 +29,15 @@ export function showPullRequestDiffComments(
   }
   activeDecoration = vscode.window.createTextEditorDecorationType({
     after: {
-      margin: "0 0 0 1.25rem",
-      color: new vscode.ThemeColor("descriptionForeground"),
-      fontStyle: "italic",
+      margin: "0 0 0 0.65rem",
+      width: "14px",
+      height: "14px",
+      color: new vscode.ThemeColor("button.foreground"),
+      backgroundColor: new vscode.ThemeColor("button.background"),
+      border: "1px solid",
+      borderColor: new vscode.ThemeColor("focusBorder"),
+      fontWeight: "700",
+      textDecoration: "none; display: inline-block; font-family: codicon; font-size: 12px; line-height: 14px; text-align: center; padding: 0 2px; border-radius: 999px; transform: scale(1.35); transform-origin: center",
     },
     overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.infoForeground"),
     overviewRulerLane: vscode.OverviewRulerLane.Right,
@@ -57,22 +64,59 @@ function applyComments(fileUri: vscode.Uri, comments: PullRequestDiffComment[]):
     if (editor.document.uri.toString() !== fileUri.toString()) {
       continue;
     }
-    editor.setDecorations(activeDecoration, comments.map(commentDecoration));
+    editor.setDecorations(activeDecoration, groupedComments(comments).map(commentDecoration));
   }
 }
 
 /** comment 한 건을 VS Code decoration option 으로 변환한다. */
-function commentDecoration(comment: PullRequestDiffComment): vscode.DecorationOptions {
-  const line = Math.max(0, (comment.line || comment.originalLine || 1) - 1);
-  const text = `${comment.author}: ${firstLine(comment.body)}`;
+function commentDecoration(group: { line: number; comments: PullRequestDiffComment[] }): vscode.DecorationOptions {
   return {
-    range: new vscode.Range(line, Number.MAX_SAFE_INTEGER, line, Number.MAX_SAFE_INTEGER),
-    renderOptions: { after: { contentText: `  [comment] ${text}` } },
+    range: new vscode.Range(group.line, Number.MAX_SAFE_INTEGER, group.line, Number.MAX_SAFE_INTEGER),
+    hoverMessage: hoverMarkdown(group.comments),
+    renderOptions: { after: { contentText: "\ueac7" } },
   };
 }
 
-/** decoration 에 넣을 comment 본문 첫 줄을 만든다. */
-function firstLine(text: string): string {
-  const line = (text || "").replace(/\s+/g, " ").trim();
-  return line.length > 120 ? `${line.slice(0, 117)}...` : line;
+/** 같은 라인의 comment 를 하나의 inlay icon 으로 묶는다. */
+function groupedComments(comments: PullRequestDiffComment[]): Array<{ line: number; comments: PullRequestDiffComment[] }> {
+  const byLine = new Map<number, PullRequestDiffComment[]>();
+  for (const comment of comments) {
+    const line = Math.max(0, (comment.line || comment.originalLine || 1) - 1);
+    const list = byLine.get(line) || [];
+    list.push(comment);
+    byLine.set(line, list);
+  }
+  return Array.from(byLine.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([line, list]) => ({ line, comments: list }));
+}
+
+/** hover 에서 상세 comment 본문을 markdown 으로 보여준다. */
+function hoverMarkdown(comments: PullRequestDiffComment[]): vscode.MarkdownString {
+  const markdown = new vscode.MarkdownString(undefined, true);
+  markdown.supportHtml = false;
+  markdown.isTrusted = false;
+  comments.forEach((comment, index) => {
+    if (index) {
+      markdown.appendMarkdown("\n\n---\n\n");
+    }
+    markdown.appendMarkdown(`**${escapeMarkdown(comment.author || "unknown")}**`);
+    if (comment.createdAt) {
+      markdown.appendMarkdown(`  ${escapeMarkdown(formatDate(comment.createdAt))}`);
+    }
+    markdown.appendMarkdown("\n\n");
+    markdown.appendMarkdown(comment.body?.trim() || "_No comment body._");
+  });
+  return markdown;
+}
+
+/** markdown 제어 문자가 작성자/날짜 표시를 깨지 않도록 escape 한다. */
+function escapeMarkdown(value: string): string {
+  return value.replace(/([\\`*_{}\[\]()#+\-.!|>])/g, "\\$1");
+}
+
+/** GitHub ISO 날짜를 hover 표시용 문자열로 바꾼다. */
+function formatDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }

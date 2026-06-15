@@ -36,9 +36,9 @@ export function pullRequestPreviewStyles(): string {
     .tab.active { border-bottom-color: var(--vscode-focusBorder); color: var(--vscode-foreground); font-weight: 600; }
     .count { min-width: 18px; padding: 1px 6px; border-radius: 999px; text-align: center; color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); font-size: 11px; }
     .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
-    .content-single { display: grid; }
+    .content-single { display: grid; min-width: 0; }
     .side-stack { display: grid; gap: 12px; }
-    .panel { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
+    .panel { min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
     .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
     .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
@@ -55,26 +55,27 @@ export function pullRequestPreviewStyles(): string {
     .metric { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
     .metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
     .metric-value { margin-top: 5px; font-weight: 600; overflow-wrap: anywhere; }
-    .file-list, .commit-list { display: grid; }
+    .file-list, .commit-list { display: grid; min-width: 0; }
     .commit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--border); color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; }
     .commit-row:hover, .commit-row.active { background: var(--vscode-list-hoverBackground); }
     .commit-row:first-child { border-top: 0; }
     .commit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .commit-hash { color: var(--muted); font-size: 12px; }
-    .review-file { border-top: 1px solid var(--border); }
+    .review-file { min-width: 0; border-top: 1px solid var(--border); }
     .review-file:first-child { border-top: 0; }
-    .review-file-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
+    .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
     .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
-    .file-action { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
-    .file-action:hover { background: var(--vscode-toolbar-hoverBackground); }
+    .file-action, .file-toggle { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
+    .file-action:hover, .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
+    .file-toggle { width: 22px; }
     .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
-    .diff-snippet { overflow: auto; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .diff-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); min-height: 20px; }
+    .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
+    .diff-line { display: inline-grid; grid-template-columns: 28px max-content; width: max-content; min-width: 100%; min-height: 20px; }
     .diff-line.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
     .diff-line.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
     .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
     .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
-    .line-code { padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
+    .line-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
     .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
     .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
     .comment-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
