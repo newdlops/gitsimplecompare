@@ -1,7 +1,12 @@
 // git graph 의 브랜치 단위 squash/rebase merge UI 실행 흐름을 담당한다.
 // - graphActions.ts 는 메시지 라우팅만 맡고, 확인/진행 표시/결과 안내는 이 파일로 모은다.
 import * as vscode from "vscode";
+import {
+  materializeBranchSource,
+  type MaterializedBranchSource,
+} from "../git/branchMaterialize";
 import { BranchOperationService, type BranchOperationResult } from "../git/branchOperationService";
+import type { BranchKind } from "../git/gitTypes";
 import { GitLogService } from "../git/gitLogService";
 import { logError, logInfo } from "../ui/outputLog";
 
@@ -21,16 +26,17 @@ interface GraphBranchMergeActionDeps {
 export async function handleBranchMergeAction(
   deps: GraphBranchMergeActionDeps,
   branch: string,
-  action: BranchMergeActionKind
+  action: BranchMergeActionKind,
+  kind: BranchKind = "local"
 ): Promise<void> {
   if (action === "undo") {
     await undoBranchOperation(deps);
     return;
   }
   if (action === "squash") {
-    await squashMergeBranch(deps, branch);
+    await squashMergeBranch(deps, branch, kind);
   } else {
-    await rebaseMergeBranch(deps, branch);
+    await rebaseMergeBranch(deps, branch, kind);
   }
 }
 
@@ -41,7 +47,8 @@ export async function handleBranchMergeAction(
  */
 export async function squashMergeBranch(
   deps: GraphBranchMergeActionDeps,
-  sourceBranch: string
+  sourceBranch: string,
+  sourceKind: BranchKind = "local"
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t("Squash merge branch '{0}' into the current branch?", sourceBranch),
@@ -49,9 +56,7 @@ export async function squashMergeBranch(
   ))) {
     return;
   }
-  await runBranchOperation(deps, sourceBranch, "squash", () =>
-    new BranchOperationService(deps.logService.repoRoot).squashMerge(sourceBranch)
-  );
+  await runBranchOperation(deps, { branch: sourceBranch, kind: sourceKind }, "squash");
 }
 
 /**
@@ -61,7 +66,8 @@ export async function squashMergeBranch(
  */
 export async function rebaseMergeBranch(
   deps: GraphBranchMergeActionDeps,
-  sourceBranch: string
+  sourceBranch: string,
+  sourceKind: BranchKind = "local"
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t(
@@ -72,39 +78,36 @@ export async function rebaseMergeBranch(
   ))) {
     return;
   }
-  await runBranchOperation(deps, sourceBranch, "rebase", () =>
-    new BranchOperationService(deps.logService.repoRoot).rebaseMerge(sourceBranch)
-  );
+  await runBranchOperation(deps, { branch: sourceBranch, kind: sourceKind }, "rebase");
 }
 
 /**
  * 브랜치 작업을 실행하고 성공/실패 양쪽에서 undo 진입점을 제공한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param sourceBranch 작업 대상 source 브랜치
+ * @param source 작업 대상 source 브랜치
  * @param operation 실행할 branch operation 종류
- * @param run 실제 git 작업 함수
  */
 async function runBranchOperation(
   deps: GraphBranchMergeActionDeps,
-  sourceBranch: string,
-  operation: "squash" | "rebase",
-  run: () => Promise<BranchOperationResult>
+  source: { branch: string; kind: BranchKind },
+  operation: "squash" | "rebase"
 ): Promise<void> {
   try {
     logInfo("branch operation started", {
       repoRoot: deps.logService.repoRoot,
       operation,
-      sourceBranch,
+      sourceBranch: source.branch,
+      sourceKind: source.kind,
     });
-    const result = await vscode.window.withProgress(
+    const { result, materialized } = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
         title: operation === "squash"
-          ? vscode.l10n.t("Squash merging branch '{0}'", sourceBranch)
-          : vscode.l10n.t("Rebase merging branch '{0}'", sourceBranch),
+          ? vscode.l10n.t("Squash merging branch '{0}'", source.branch)
+          : vscode.l10n.t("Rebase merging branch '{0}'", source.branch),
         cancellable: false,
       },
-      run
+      () => runMaterializedBranchOperation(deps, source, operation)
     );
     if (result.status === "conflicts") {
       await handleBranchOperationConflicts(deps, result, operation);
@@ -114,7 +117,10 @@ async function runBranchOperation(
       repoRoot: deps.logService.repoRoot,
       operation,
       branch: result.branch,
-      sourceBranch,
+      sourceBranch: result.sourceBranch,
+      originalSourceBranch: source.branch,
+      materializedBranch: materialized.branch,
+      materializedCreated: materialized.created,
       beforeHead: shortHash(result.beforeHead),
       afterHead: shortHash(result.afterHead),
       snapshotRef: result.snapshotRef,
@@ -123,12 +129,42 @@ async function runBranchOperation(
     await offerBranchOperationUndo(
       deps,
       operation === "squash"
-        ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", sourceBranch, result.branch)
-        : vscode.l10n.t("Branch '{0}' rebase-merged into '{1}'.", sourceBranch, result.branch)
+        ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", source.branch, result.branch)
+        : vscode.l10n.t("Branch '{0}' rebase-merged into '{1}'.", source.branch, result.branch)
     );
   } catch (err) {
-    await handleBranchOperationError(deps, err, operation, sourceBranch);
+    await handleBranchOperationError(deps, err, operation, source.branch);
   }
+}
+
+/**
+ * remote source 면 로컬 브랜치를 먼저 만든 뒤 branch operation 을 실행한다.
+ * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
+ * @param source 사용자가 선택한 source 브랜치와 종류
+ * @param operation 실행할 branch operation 종류
+ */
+async function runMaterializedBranchOperation(
+  deps: GraphBranchMergeActionDeps,
+  source: { branch: string; kind: BranchKind },
+  operation: "squash" | "rebase"
+): Promise<{ result: BranchOperationResult; materialized: MaterializedBranchSource }> {
+  const materialized = await materializeBranchSource(
+    deps.logService.repoRoot,
+    source.branch,
+    source.kind
+  );
+  if (materialized.created) {
+    logInfo("branch operation materialized remote branch", {
+      repoRoot: deps.logService.repoRoot,
+      remoteBranch: source.branch,
+      localBranch: materialized.branch,
+    });
+  }
+  const service = new BranchOperationService(deps.logService.repoRoot);
+  const result = operation === "squash"
+    ? await service.squashMerge(materialized.branch)
+    : await service.rebaseMerge(materialized.branch);
+  return { result, materialized };
 }
 
 /**

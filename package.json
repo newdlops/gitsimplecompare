@@ -45,6 +45,24 @@
         "icon": "$(git-branch)"
       },
       {
+        "command": "gitSimpleCompare.branchSquashMerge",
+        "title": "%cmd.branchSquashMerge%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-merge)"
+      },
+      {
+        "command": "gitSimpleCompare.branchRebaseMerge",
+        "title": "%cmd.branchRebaseMerge%",
+        "category": "Git Simple Compare",
+        "icon": "$(repo-forked)"
+      },
+      {
+        "command": "gitSimpleCompare.undoBranchOperation",
+        "title": "%cmd.undoBranchOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(discard)"
+      },
+      {
         "command": "gitSimpleCompare.compareFileWithBranch",
         "title": "%cmd.compareFileWithBranch%",
         "category": "Git Simple Compare",
@@ -269,6 +287,21 @@
           "command": "gitSimpleCompare.checkoutBranch",
           "when": "view == gitSimpleCompare.changes",
           "group": "navigation@3"
+        },
+        {
+          "command": "gitSimpleCompare.branchSquashMerge",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@3"
+        },
+        {
+          "command": "gitSimpleCompare.branchRebaseMerge",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@4"
+        },
+        {
+          "command": "gitSimpleCompare.undoBranchOperation",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@5"
         },
         {
           "command": "gitSimpleCompare.refreshChanges",

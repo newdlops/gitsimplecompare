@@ -22,6 +22,7 @@ interface GraphBranchActionDeps {
 
 type BranchQuickAction =
   | "checkout"
+  | "checkoutRemote"
   | "clone"
   | "cloneCheckout"
   | "squashMerge"
@@ -193,37 +194,45 @@ export async function branchAction(
   kind: BranchKind
 ): Promise<void> {
   if (kind === "remote") {
+    await remoteBranchAction(deps, branch);
     return;
   }
+  const localBranch = await findLocalBranch(deps, branch);
+  const current = Boolean(localBranch?.current);
+  const picks: BranchQuickPickItem[] = [
+    ...(!current ? [{ label: vscode.l10n.t("Checkout Branch"), action: "checkout" as const }] : []),
+    {
+      label: vscode.l10n.t("Clone Branch"),
+      description: vscode.l10n.t("Create a local branch at this branch."),
+      action: "clone",
+    },
+    {
+      label: vscode.l10n.t("Clone and Checkout Branch"),
+      description: vscode.l10n.t("Create a rebase test branch and switch to it."),
+      action: "cloneCheckout",
+    },
+    ...(!current
+      ? [
+          {
+            label: vscode.l10n.t("Squash Merge Branch"),
+            description: vscode.l10n.t("Create one commit on the current branch."),
+            action: "squashMerge" as const,
+          },
+          {
+            label: vscode.l10n.t("Rebase Merge Branch"),
+            description: vscode.l10n.t("Apply clean commits first; show conflict commits last."),
+            action: "rebaseMerge" as const,
+          },
+        ]
+      : []),
+    {
+      label: vscode.l10n.t("Undo Last Branch Operation"),
+      description: vscode.l10n.t("Reset the current branch to the saved snapshot."),
+      action: "undoBranchOperation",
+    },
+  ];
   const pick = await vscode.window.showQuickPick<BranchQuickPickItem>(
-    [
-      { label: vscode.l10n.t("Checkout Branch"), action: "checkout" },
-      {
-        label: vscode.l10n.t("Clone Branch"),
-        description: vscode.l10n.t("Create a local branch at this branch."),
-        action: "clone",
-      },
-      {
-        label: vscode.l10n.t("Clone and Checkout Branch"),
-        description: vscode.l10n.t("Create a rebase test branch and switch to it."),
-        action: "cloneCheckout",
-      },
-      {
-        label: vscode.l10n.t("Squash Merge Branch"),
-        description: vscode.l10n.t("Create one commit on the current branch."),
-        action: "squashMerge",
-      },
-      {
-        label: vscode.l10n.t("Rebase Merge Branch"),
-        description: vscode.l10n.t("Apply clean commits first; show conflict commits last."),
-        action: "rebaseMerge",
-      },
-      {
-        label: vscode.l10n.t("Undo Last Branch Operation"),
-        description: vscode.l10n.t("Reset the current branch to the saved snapshot."),
-        action: "undoBranchOperation",
-      },
-    ],
+    picks,
     { placeHolder: branch }
   );
   if (!pick) {
@@ -234,11 +243,11 @@ export async function branchAction(
     return;
   }
   if (pick.action === "squashMerge") {
-    await handleBranchMergeAction(deps, branch, "squash");
+    await handleBranchMergeAction(deps, branch, "squash", "local");
     return;
   }
   if (pick.action === "rebaseMerge") {
-    await handleBranchMergeAction(deps, branch, "rebase");
+    await handleBranchMergeAction(deps, branch, "rebase", "local");
     return;
   }
   if (pick.action === "undoBranchOperation") {
@@ -246,6 +255,53 @@ export async function branchAction(
     return;
   }
   await cloneBranch(deps, branch, pick.action === "cloneCheckout");
+}
+
+/**
+ * 원격 브랜치 chip 의 빠른 액션 메뉴를 보여준다.
+ * - checkout 은 tracking 로컬 브랜치를 만들고 전환한다.
+ * - squash/rebase merge 는 먼저 같은 이름의 로컬 브랜치를 만든 뒤 현재 브랜치에 병합한다.
+ * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
+ * @param branch 사용자가 클릭한 원격 브랜치 이름
+ */
+async function remoteBranchAction(
+  deps: GraphBranchActionDeps,
+  branch: string
+): Promise<void> {
+  const pick = await vscode.window.showQuickPick<BranchQuickPickItem>(
+    [
+      {
+        label: vscode.l10n.t("Checkout Remote Branch"),
+        description: vscode.l10n.t("Create a local tracking branch and switch to it."),
+        action: "checkoutRemote",
+      },
+      {
+        label: vscode.l10n.t("Squash Merge Branch"),
+        description: vscode.l10n.t("Create a local branch first, then one commit on the current branch."),
+        action: "squashMerge",
+      },
+      {
+        label: vscode.l10n.t("Rebase Merge Branch"),
+        description: vscode.l10n.t("Create a local branch first, then apply clean commits first."),
+        action: "rebaseMerge",
+      },
+    ],
+    { placeHolder: branch }
+  );
+  if (!pick) {
+    return;
+  }
+  if (pick.action === "checkoutRemote") {
+    await checkoutRemoteBranch(deps, branch);
+    return;
+  }
+  if (pick.action === "squashMerge") {
+    await handleBranchMergeAction(deps, branch, "squash", "remote");
+    return;
+  }
+  if (pick.action === "rebaseMerge") {
+    await handleBranchMergeAction(deps, branch, "rebase", "remote");
+  }
 }
 
 /**

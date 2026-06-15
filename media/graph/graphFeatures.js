@@ -161,7 +161,7 @@
           )}" data-branch-name="${safeEsc(
             branch.name
           )}" data-branch-kind="local" aria-label="${safeEsc(
-            `Checkout branch ${branch.name}`
+            `Branch actions for ${branch.name}`
           )}"`;
       return `<span class="${branchClass(branch)}" data-tooltip="${safeEsc(
         branchTitle(branch)
@@ -176,9 +176,9 @@
     const attrs = remote
       ? ` role="button" tabindex="0" data-branch-name="${safeEsc(ref)}" ` +
         `data-branch-kind="remote" data-tooltip="${safeEsc(
-          `Click to checkout this branch: ${ref}`
+          `Click for branch actions: ${ref}`
         )}" ` +
-        `aria-label="${safeEsc(`Checkout remote branch ${ref}`)}"`
+        `aria-label="${safeEsc(`Branch actions for remote branch ${ref}`)}"`
       : "";
     const title = remote ? "" : ` title="${safeEsc(ref)}"`;
     return `<span class="${className}"${branchStyle(ref)}${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
@@ -453,7 +453,7 @@
     } else if (branch) {
       const kind = target.dataset.branchKind || "local";
       if (kind === "remote") {
-        window.GscGraphPostMessage?.({ type: "checkoutRemoteBranch", branch });
+        window.GscGraphPostMessage?.({ type: "branchAction", branch, kind });
         return;
       }
       window.GscGraphPostMessage?.({
@@ -464,7 +464,7 @@
     }
   }
 
-  /** 로컬 브랜치 chip 의 click/keyboard checkout shortcut 을 이벤트 위임으로 연결한다. */
+  /** 로컬 브랜치 chip 의 click/keyboard action menu 를 이벤트 위임으로 연결한다. */
   function attachBranchCheckout(root) {
     if (root.dataset.branchCheckoutBound === "1") {
       return;
@@ -478,7 +478,7 @@
     }, true);
   }
 
-  /** 브랜치 chip 이벤트를 checkoutBranch 웹뷰 메시지로 변환한다. */
+  /** 브랜치 chip 이벤트를 branchAction 웹뷰 메시지로 변환한다. */
   function handleBranchCheckoutEvent(event) {
     const target = eventTargetElement(event)?.closest?.("[data-checkout-branch]");
     if (!target) {
@@ -490,7 +490,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    window.GscGraphPostMessage?.({ type: "checkoutBranch", branch });
+    window.GscGraphPostMessage?.({ type: "branchAction", branch, kind: "local" });
   }
 
   /** 이벤트 target 을 closest 를 호출할 수 있는 Element 로 정규화한다. */

@@ -24,6 +24,11 @@ import { applyLeftToRight } from "./applyChanges";
 import { openDiffFileEditor } from "./diffEditor";
 import { showGraph } from "./showGraph";
 import { checkoutBranch } from "./checkoutBranch";
+import {
+  branchRebaseMerge,
+  branchSquashMerge,
+  undoBranchOperation,
+} from "./branchOperations";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -98,6 +103,15 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.checkoutBranch", () =>
       checkoutBranch(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.branchSquashMerge", () =>
+      branchSquashMerge(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.branchRebaseMerge", () =>
+      branchRebaseMerge(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.undoBranchOperation", () =>
+      undoBranchOperation(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.compareFileWithBranch",

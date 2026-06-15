@@ -72,6 +72,18 @@
           type: "checkoutRemoteBranch",
           branch,
         })),
+        item("Squash Merge Branch", "git-merge", () => ({
+          type: "branchMergeAction",
+          branch,
+          kind: "remote",
+          action: "squash",
+        })),
+        item("Rebase Merge Branch", "repo-forked", () => ({
+          type: "branchMergeAction",
+          branch,
+          kind: "remote",
+          action: "rebase",
+        })),
       ];
     }
 
@@ -87,11 +99,13 @@
         item("Squash Merge Branch", "git-merge", () => ({
           type: "branchMergeAction",
           branch,
+          kind: "local",
           action: "squash",
         })),
         item("Rebase Merge Branch", "repo-forked", () => ({
           type: "branchMergeAction",
           branch,
+          kind: "local",
           action: "rebase",
         }))
       );

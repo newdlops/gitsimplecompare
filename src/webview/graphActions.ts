@@ -161,7 +161,7 @@ async function dispatchGraphAction(
       await branchAction(deps, msg.branch, msg.kind);
       return;
     case "branchMergeAction":
-      await handleBranchMergeAction(deps, msg.branch, msg.action);
+      await handleBranchMergeAction(deps, msg.branch, msg.action, msg.kind ?? "local");
       return;
     case "commitAction":
       await commitAction(deps, msg.hash);
