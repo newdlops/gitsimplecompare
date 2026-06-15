@@ -1,0 +1,13 @@
+/* Changes 커밋 메시지 입력 보강 스타일. */
+.commit-input {
+  min-height: 64px;
+  max-height: 260px;
+  resize: vertical;
+  overflow-y: auto;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.commit-input::placeholder {
+  white-space: normal;
+}

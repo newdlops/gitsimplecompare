@@ -26,6 +26,9 @@ export function changesWebviewI18n(): Record<string, string> {
     viewAsList: vscode.l10n.t("View as List"),
     stagedChanges: vscode.l10n.t("Staged Changes"),
     commitPlaceholder: vscode.l10n.t("Message (Ctrl+Enter to commit)"),
+    commitMultilinePlaceholder: vscode.l10n.t(
+      "Subject, blank line, optional body. Ctrl+Enter to commit."
+    ),
     commit: vscode.l10n.t("Commit"),
     generateCommitMessage: vscode.l10n.t("Generate AI Commit Message"),
     generateCommitMessageShort: vscode.l10n.t("AI"),

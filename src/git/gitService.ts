@@ -355,6 +355,7 @@ export class GitService {
   /**
    * 커밋한다(`git commit -m`).
    * - 스테이징 여부 판단·스마트 커밋은 호출부(명령 레이어)가 담당한다.
+   * - 여러 줄 메시지는 빈 줄 기준 문단으로 나눠 `-m` 을 반복해 subject/body 를 보존한다.
    * @param message 커밋 메시지
    * @param opts amend(마지막 커밋 수정) 여부
    */
@@ -364,7 +365,7 @@ export class GitService {
       args.push("--amend");
     }
     if (message) {
-      args.push("-m", message);
+      args.push(...commitMessageArgs(message));
     } else {
       // 메시지 없이 amend 면 기존 메시지를 유지한다(--no-edit).
       args.push("--no-edit");
@@ -584,4 +585,14 @@ function cloneStatusGroups(groups: StatusGroups): StatusGroups {
     staged: groups.staged.map((item) => ({ ...item })),
     unstaged: groups.unstaged.map((item) => ({ ...item })),
   };
+}
+
+/**
+ * git commit 인자에 넣을 메시지 문단을 만든다.
+ * @param message 사용자가 입력한 전체 커밋 메시지
+ * @returns git commit 에 전달할 `-m <paragraph>` 인자 배열
+ */
+function commitMessageArgs(message: string): string[] {
+  const paragraphs = message.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  return (paragraphs.length ? paragraphs : [message]).flatMap((part) => ["-m", part]);
 }

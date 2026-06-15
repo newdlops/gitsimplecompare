@@ -441,8 +441,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     const aiScriptUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
     );
+    const commitBoxScriptUri = webview.asWebviewUri(
+      withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"), version)
+    );
     const styleUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
+    );
+    const commitBoxStyleUri = webview.asWebviewUri(
+      withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"), version)
     );
     const codiconUri = webview.asWebviewUri(
       withVersion(
@@ -471,6 +477,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${commitBoxStyleUri}" rel="stylesheet" />
   <title>Changes</title>
 </head>
 <body>
@@ -481,6 +488,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>
 </body>
 </html>`;
@@ -531,6 +539,8 @@ function mediaVersion(mediaRoot: vscode.Uri): string {
     Math.max(
       fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.js")),
       fileMtime(vscode.Uri.joinPath(mediaRoot, "changesAi.js")),
+      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js")),
+      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css")),
       fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.css"))
     )
   );

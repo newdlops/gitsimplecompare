@@ -214,6 +214,7 @@
   "New branch name to clone": "복제할 새 브랜치 이름",
   "New branch name to clone and checkout": "복제 후 checkout 할 새 브랜치 이름",
   "Message (Ctrl+Enter to commit)": "메시지 (Ctrl+Enter 로 커밋)",
+  "Subject, blank line, optional body. Ctrl+Enter to commit.": "제목을 입력하고 빈 줄 뒤에 본문을 작성하세요. Ctrl+Enter 로 커밋합니다.",
   "More Actions...": "추가 작업...",
   "Stage Changes": "변경 스테이징",
   "Unstage Changes": "스테이징 해제",
