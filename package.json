@@ -14,11 +14,18 @@
   },
   "homepage": "https://github.com/newdlops/gitsimplecompare#readme",
   "l10n": "./l10n",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#15384A",
+    "theme": "dark"
+  },
+  "markdown": "github",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "SCM Providers",
+    "Visualization",
     "Other"
   ],
   "keywords": [
@@ -26,7 +33,12 @@
     "diff",
     "compare",
     "branch",
-    "merge"
+    "merge",
+    "rebase",
+    "pull-request",
+    "ai",
+    "codex",
+    "claude"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
@@ -251,7 +263,7 @@
         {
           "id": "gitSimpleCompare",
           "title": "%viewContainer.title%",
-          "icon": "$(git-compare)"
+          "icon": "resources/activitybar.svg"
         }
       ]
     },

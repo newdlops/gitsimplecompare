@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Staged pull request preview now starts without a target branch. Select a
+  target branch first to load changed files and commits, avoiding expensive
+  initial diffs when the default base is far from the current branch.
 - **Changes view is now a webview** for richer display: the file list scrolls
   **horizontally** (long paths are no longer truncated) and **+/- line counts
   are colored** (green additions, red deletions) alongside a color-coded status.
@@ -34,6 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Marketplace publishing assets: extension icon, Activity Bar icon, and a
+  publisher checklist for `newdlops.git-simple-compare`.
+- **AI commit and PR messages**: generate commit messages from staged changes
+  and staged PR titles/bodies through local Claude Code or Codex CLI providers.
+- **Staged pull request preview**: inspect PR title/body, changed files, commits,
+  and copy the generated PR message for GitHub.
+- **Branch and PR operations**: branch squash merge, branch rebase merge, PR
+  rebase, squash cherry-pick, and undo support for preserved local changes.
+- **Split changes into commits**: select diff hunks and commit them separately.
 - **Interactive rebase (drag UI)**: from the Git Graph ("Rebase from here") or the
   `Start Interactive Rebase…` command, edit a plan in a webview — drag to reorder
   and choose pick / reword / squash / fixup / drop per commit. Runs

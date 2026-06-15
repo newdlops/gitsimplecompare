@@ -1,5 +1,5 @@
 {
-  "ext.description": "git 브랜치/파일을 간단하게 비교하고, 비교하면서 편집할 수 있는 확장",
+  "ext.description": "git 브랜치 비교, 편집 가능한 diff, 충돌 해결, AI 커밋/PR 메시지를 지원하는 확장",
   "cmd.compareBranches": "브랜치끼리 비교",
   "cmd.checkoutBranch": "브랜치 전환",
   "cmd.branchSquashMerge": "브랜치 Squash Merge",

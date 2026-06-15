@@ -2,6 +2,13 @@
 
 Compare git branches and files with simple, **editable** diffs — right inside VS Code.
 
+Marketplace ID: `newdlops.git-simple-compare`
+
+## Install
+
+- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.git-simple-compare)
+- Command line: `code --install-extension newdlops.git-simple-compare`
+- Manual VSIX: download or build a `.vsix`, then run `code --install-extension git-simple-compare-0.1.0.vsix`
 
 ## Features
 
@@ -101,6 +108,10 @@ Press `F5` in VS Code to launch the Extension Development Host.
 ### Coding agents
 
 Codex reads `AGENTS.md` from the repository root. Claude Code reads `CLAUDE.md`; this repository keeps `CLAUDE.md` as a small import of `AGENTS.md` so both agents follow the same project rules. Put personal Claude Code notes in `CLAUDE.local.md`; it is ignored by git.
+
+## Publishing
+
+Release packaging uses publisher `newdlops`. See [docs/publishing.md](./docs/publishing.md) for the Marketplace checklist.
 
 
 ## License

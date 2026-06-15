@@ -1,5 +1,5 @@
 {
-  "ext.description": "Compare git branches and files with simple, editable diffs.",
+  "ext.description": "Compare git branches, review editable diffs, resolve conflicts, and draft AI commit/PR messages.",
   "cmd.compareBranches": "Compare Branches",
   "cmd.checkoutBranch": "Switch Branch",
   "cmd.branchSquashMerge": "Squash Merge Branch",

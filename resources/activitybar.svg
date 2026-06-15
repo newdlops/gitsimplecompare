@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Git Simple Compare">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 5h4c2.8 0 4.4 1.4 5.6 3.8L18 13.5" stroke-width="1.8"/>
+    <path d="M6 19h4c2.8 0 4.4-1.4 5.6-3.8L18 10.5" stroke-width="1.8"/>
+    <path d="M8.5 12h5.8" stroke-width="1.8"/>
+    <path d="M12.2 9.9l2.1 2.1-2.1 2.1" stroke-width="1.8"/>
+    <circle cx="5" cy="5" r="2.1" stroke-width="1.6"/>
+    <circle cx="5" cy="19" r="2.1" stroke-width="1.6"/>
+    <circle cx="19" cy="12" r="2.4" stroke-width="1.6"/>
+  </g>
+</svg>
