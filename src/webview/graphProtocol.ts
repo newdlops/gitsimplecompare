@@ -11,7 +11,7 @@ import type {
   GraphBranchFilterMode,
   GraphBranchFilterSnapshot,
 } from "./graphBranchFilter";
-import type { PullRequestOverview } from "../git/pullRequestService";
+import type { PullRequestDetailInfo, PullRequestOverview } from "../git/pullRequestService";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
@@ -28,6 +28,8 @@ export type ToWebviewMessage =
   | { type: "branchStatus"; branches: LocalBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
+  | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
+  | { type: "pullRequestDetailError"; number: number; message: string }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
@@ -51,6 +53,7 @@ export type FromWebviewMessage =
   | { type: "push" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
+  | { type: "refreshPullRequestDetail"; number: number }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | { type: "loadMore" }

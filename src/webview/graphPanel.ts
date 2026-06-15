@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import { compactGraphData } from "../graph/graphCompact";
 import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
-import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
+import { PullRequestInfo } from "../git/pullRequestService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
 import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
@@ -31,7 +31,12 @@ import {
   runGraphRebase,
 } from "./graphRebaseActions";
 import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
-import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
+import {
+  openGraphPullRequest,
+  openStagedPullRequestPreview,
+  sendGraphPullRequestDetail,
+  sendGraphPullRequests,
+} from "./graphPullRequests";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -166,10 +171,12 @@ export class GitGraphPanel {
         this.post({ type: "commitDetail", detail });
       } else if (msg.type === "refreshPullRequests") {
         await this.sendPullRequests("manual");
+      } else if (msg.type === "refreshPullRequestDetail") {
+        await sendGraphPullRequestDetail(this.logService.repoRoot, msg.number, (message) => this.post(message));
       } else if (msg.type === "openPullRequest") {
-        await this.openPullRequest(msg.number);
+        await openGraphPullRequest(this.lastPullRequests, msg.number);
       } else if (msg.type === "previewStagedPullRequest") {
-        this.openStagedPullRequestPreview(msg.number);
+        openStagedPullRequestPreview(this.logService.repoRoot, this.lastPullRequests, msg.number);
       } else if (isGraphActionMessage(msg)) {
         await handleGraphAction(msg, {
           logService: this.logService,
@@ -328,41 +335,11 @@ export class GitGraphPanel {
    * @param reason OUTPUT 로그에 남길 조회 원인
    */
   private async sendPullRequests(reason: string): Promise<void> {
-    const service = new PullRequestService(this.logService.repoRoot);
-    const overview = await service.getOverview(this.lastLocalBranches);
-    this.lastPullRequests = overview.pullRequests;
-    this.post({ type: "pullRequestOverview", overview });
-    logInfo("graph pull request overview sent", {
-      repoRoot: this.logService.repoRoot,
+    this.lastPullRequests = await sendGraphPullRequests(
+      this.logService.repoRoot,
+      this.lastLocalBranches,
       reason,
-      available: overview.available,
-      count: overview.pullRequests.length,
-    });
-  }
-
-  /**
-   * PR row/icon 클릭 시 브라우저에서 해당 PR 을 연다.
-   * @param number 열 PR 번호
-   */
-  private async openPullRequest(number: number): Promise<void> {
-    const pr = this.lastPullRequests.find((item) => item.number === number);
-    if (!pr?.url) {
-      vscode.window.showWarningMessage(vscode.l10n.t("Pull request URL is not available."));
-      return;
-    }
-    await vscode.env.openExternal(vscode.Uri.parse(pr.url));
-  }
-
-  /**
-   * 현재 staged 상태를 target branch 로 PR 하는 모의 preview 패널을 연다.
-   * @param number 기존 PR 기준으로 열 경우의 PR 번호
-   */
-  private openStagedPullRequestPreview(number?: number): void {
-    const pr = this.lastPullRequests.find((item) => item.number === number);
-    PullRequestPreviewPanel.createOrShow(
-      new PullRequestService(this.logService.repoRoot),
-      pr?.baseRefName,
-      pr
+      (message) => this.post(message)
     );
   }
 

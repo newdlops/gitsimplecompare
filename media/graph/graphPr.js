@@ -5,6 +5,8 @@
 
   let overview = { available: false, pullRequests: [] };
   let activeDetail = { kind: "none" };
+  let pullRequestDetails = new Map();
+  let pendingDetails = new Set();
   let hoverCard;
 
   /** PR UI 이벤트와 웹뷰 메시지 수신을 초기화한다. */
@@ -40,9 +42,24 @@
         renderPullRequestDetail(activeDetail.number);
       }
       applyDecorations();
+    } else if (msg.type === "pullRequestDetail") {
+      pendingDetails.delete(Number(msg.number));
+      pullRequestDetails.set(Number(msg.number), { status: "ready", detail: msg.detail });
+      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) {
+        renderPullRequestDetail(activeDetail.number);
+      }
+    } else if (msg.type === "pullRequestDetailError") {
+      pendingDetails.delete(Number(msg.number));
+      pullRequestDetails.set(Number(msg.number), { status: "error", message: msg.message });
+      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) {
+        renderPullRequestDetail(activeDetail.number);
+      }
     } else if (msg.type === "graph") {
       hideHoverCard();
       requestAnimationFrame(applyDecorations);
+      if (activeDetail.kind === "pr") {
+        requestAnimationFrame(() => renderPullRequestDetail(activeDetail.number));
+      }
     }
   }
 
@@ -86,6 +103,19 @@
     const focus = event.target.closest?.("[data-focus-pr]");
     if (focus) {
       focusPullRequestRow(Number(focus.dataset.focusPr));
+      return;
+    }
+    const commit = event.target.closest?.("[data-focus-commit]");
+    if (commit) {
+      focusCommitRow(commit.dataset.focusCommit || "");
+      return;
+    }
+    const folder = event.target.closest?.("[data-pr-file-folder]");
+    if (folder) {
+      window.GscGraphPrFiles?.toggle?.(folder.dataset.prFileFolder || "");
+      if (activeDetail.kind === "pr") {
+        renderPullRequestDetail(activeDetail.number);
+      }
     }
   }
 
@@ -223,14 +253,21 @@
   function focusPullRequestRow(number) {
     const pr = findPr(number);
     const row = pr ? findPullRequestRow(pr) : null;
-    clearFocusedPullRequest();
     if (!row) {
+      clearFocusedPullRequest();
       return;
     }
-    row.classList.add("pr-focused-row");
-    const node = document.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
-    node?.classList.add("pr-focused-node");
-    row.scrollIntoView({ block: "center", inline: "nearest" });
+    highlightCommitRow(row);
+  }
+
+  /** commit hash 로 graph row 를 찾아 이동하고 하이라이트한다. */
+  function focusCommitRow(hash) {
+    const row = findCommitRow(hash);
+    if (!row) {
+      clearFocusedPullRequest();
+      return;
+    }
+    highlightCommitRow(row);
   }
 
   /** PR 의 head commit 을 우선하고, 없으면 로드된 관련 commit row 를 찾는다. */
@@ -243,6 +280,20 @@
       }
     }
     return null;
+  }
+
+  /** commit hash 와 일치하는 로드된 graph row 를 찾는다. */
+  function findCommitRow(hash) {
+    return hash ? document.querySelector(`#graph-content .row[data-hash="${cssEscape(hash)}"]`) : null;
+  }
+
+  /** 이미 찾은 graph row 를 PR/commit 이동 결과로 강조한다. */
+  function highlightCommitRow(row) {
+    clearFocusedPullRequest();
+    row.classList.add("pr-focused-row");
+    const node = document.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
+    node?.classList.add("pr-focused-node");
+    row.scrollIntoView({ block: "center", inline: "nearest" });
   }
 
   /** PR row 이동에 사용할 후보 hash 순서를 만든다. */
@@ -267,13 +318,17 @@
       return;
     }
     const pr = findPr(number);
+    if (activeDetail.kind !== "pr" || Number(activeDetail.number) !== Number(number)) {
+      window.GscGraphPrFiles?.reset?.();
+    }
     activeDetail = { kind: "pr", number };
     window.GscGraphDetailHost?.show?.("PR details");
     if (!pr) {
       root.innerHTML = `<p class="placeholder">Pull request #${esc(number)} is not loaded yet.</p>`;
       return;
     }
-    const comments = (pr.comments || []).map(commentHtml).join("");
+    requestPullRequestDetail(number);
+    const detailState = pullRequestDetails.get(Number(number));
     root.innerHTML = `<div class="pr-detail-shell ${prColorClass(pr.number)}">` +
       `<section class="pr-detail-header">` +
       `<button type="button" class="pr-back-button" data-pr-overview title="Show pull request list" aria-label="Show pull request list">` +
@@ -286,15 +341,63 @@
       previewButton(pr.number, `Preview staged content against ${pr.baseRefName || "target branch"}`) +
       `</div>` +
       `</section>` +
-      `<section class="pr-detail-section">` +
-      `<h3>Recent comments <span>${commentCount(pr)}</span></h3>` +
-      (comments ? `<ul class="pr-comments">${comments}</ul>` : `<p class="pr-empty">No comments.</p>`) +
-      `</section>` +
-      `<section class="pr-detail-section">` +
-      `<h3>Related commits <span>${(pr.commitHashes || []).length}</span></h3>` +
-      `<p class="pr-empty">Badges are shown on loaded graph rows that belong to this PR.</p>` +
-      `</section>` +
+      changedFilesSection(detailState) +
+      relatedCommitsSection(pr) +
       `</div>`;
+  }
+
+  /** PR 상세에 필요한 changed files 를 아직 읽지 않았다면 확장에 요청한다. */
+  function requestPullRequestDetail(number) {
+    if (pullRequestDetails.has(Number(number)) || pendingDetails.has(Number(number))) {
+      return;
+    }
+    pendingDetails.add(Number(number));
+    window.GscGraphPostMessage?.({ type: "refreshPullRequestDetail", number: Number(number) });
+  }
+
+  /** PR 상세 drawer 의 changed files tree 섹션 HTML 을 만든다. */
+  function changedFilesSection(state) {
+    if (!state) {
+      return `<section class="pr-detail-section"><h3>Changed files <span>...</span></h3>` +
+        `<p class="pr-empty">Loading changed files...</p></section>`;
+    }
+    if (state.status === "error") {
+      return `<section class="pr-detail-section"><h3>Changed files <span>!</span></h3>` +
+        `<p class="pr-empty">${esc(state.message || "Failed to load changed files.")}</p></section>`;
+    }
+    const detail = state.detail || { files: [], fileCount: 0, fileCommentCount: 0 };
+    const note = detail.filesTruncated || detail.reviewThreadsTruncated
+      ? `<p class="pr-empty">Some files or comments were omitted because this PR is very large.</p>`
+      : "";
+    return `<section class="pr-detail-section pr-files-section">` +
+      `<h3>Changed files <span>${detail.fileCount || detail.files.length}</span></h3>` +
+      `<div class="pr-detail-meta">${detail.fileCommentCount || 0} file comments</div>` +
+      (window.GscGraphPrFiles?.render?.(detail.files || []) || `<p class="pr-empty">Changed files renderer is unavailable.</p>`) +
+      note +
+      `</section>`;
+  }
+
+  /** PR 상세 drawer 의 related commits 리스트 HTML 을 만든다. */
+  function relatedCommitsSection(pr) {
+    const hashes = prRowHashes(pr);
+    return `<section class="pr-detail-section">` +
+      `<h3>Related commits <span>${hashes.length}</span></h3>` +
+      (hashes.length ? `<div class="pr-commit-list">${hashes.map(relatedCommitButton).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
+      `</section>`;
+  }
+
+  /** related commit 한 건을 graph row 이동 버튼으로 만든다. */
+  function relatedCommitButton(hash) {
+    const row = findCommitRow(hash);
+    const subject = row?.dataset.subject || "Commit is not loaded in the graph yet.";
+    const meta = row?.querySelector?.(".meta")?.textContent || "";
+    const title = row ? `Jump to commit ${shortHash(hash)}` : `Commit ${shortHash(hash)} is not loaded in the graph`;
+    return `<button type="button" class="pr-commit-item${row ? "" : " unloaded"}" data-focus-commit="${esc(hash)}" ` +
+      `title="${esc(title)}" aria-label="${esc(title)}">` +
+      `<span class="codicon codicon-git-commit" aria-hidden="true"></span>` +
+      `<span class="pr-commit-hash">${esc(shortHash(hash))}</span>` +
+      `<span class="pr-commit-text"><span>${esc(subject)}</span>${meta ? `<small>${esc(meta)}</small>` : ""}</span>` +
+      `</button>`;
   }
 
   /** PR 메타 한 줄 HTML 을 만든다. */
@@ -303,11 +406,6 @@
     const draft = pr.isDraft ? " · draft" : "";
     return `<div class="pr-meta">${esc(pr.state || "OPEN")}${draft}${review} · ` +
       `${esc(pr.headRefName)} → ${esc(pr.baseRefName)} · comments ${commentCount(pr)}</div>`;
-  }
-
-  /** 댓글 한 건 HTML 을 만든다. */
-  function commentHtml(comment) {
-    return `<li><strong>${esc(comment.author || "comment")}</strong> ${esc(trim(comment.body || "", 180))}</li>`;
   }
 
   /** 상세 보기 버튼 HTML 을 만든다. */
@@ -385,7 +483,12 @@
 
   /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
   function commentCount(pr) {
-    return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : (pr.comments || []).length;
+    return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : 0;
+  }
+
+  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
+  function shortHash(hash) {
+    return String(hash || "").slice(0, 8);
   }
 
   /** CSS selector 에 들어갈 값을 escape 한다. */
@@ -396,11 +499,6 @@
   /** HTML 특수문자를 escape 한다. */
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
-  }
-
-  /** 긴 텍스트를 한 줄 preview 로 줄인다. */
-  function trim(value, max) {
-    return value.length > max ? value.slice(0, max - 1) + "…" : value;
   }
 
   init();

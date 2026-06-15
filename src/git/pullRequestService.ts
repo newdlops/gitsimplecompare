@@ -1,9 +1,14 @@
 // GitHub Pull Request POC 데이터를 읽는 서비스.
 // - git graph UI 가 gh CLI/remote URL/스테이징 diff 해석을 직접 알지 않도록 분리한다.
-import { execFile } from "node:child_process";
 import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
+import { splitRepositoryName } from "./githubRepository";
+import { fetchPullRequestDetail } from "./pullRequestDetail";
+import type { PullRequestDetailInfo } from "./pullRequestDetail";
+
+export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 
 /** 그래프에 한 번에 표시할 열린 PR 최대 개수 */
 const PULL_REQUEST_LIMIT = 80;
@@ -25,14 +30,8 @@ query($owner: String!, $name: String!, $limit: Int!) {
         isDraft
         reviewDecision
         updatedAt
-        comments(last: 3) {
+        comments(first: 1) {
           totalCount
-          nodes {
-            author { login }
-            body
-            url
-            createdAt
-          }
         }
         commits(first: 100) {
           nodes {
@@ -66,14 +65,6 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   }
 }`;
 
-/** PR 댓글 요약 */
-export interface PullRequestCommentInfo {
-  author: string;
-  body: string;
-  url?: string;
-  createdAt?: string;
-}
-
 /** graph 에 표시할 Pull Request 한 건 */
 export interface PullRequestInfo {
   number: number;
@@ -88,7 +79,6 @@ export interface PullRequestInfo {
   reviewDecision?: string;
   updatedAt?: string;
   commentCount: number;
-  comments: PullRequestCommentInfo[];
   commitHashes: string[];
 }
 
@@ -128,7 +118,6 @@ interface GhPullRequest {
   isDraft?: boolean;
   reviewDecision?: string;
   updatedAt?: string;
-  comments?: GhComment[];
   commits?: GhCommit[];
   commentCount?: number;
   commitHashes?: string[];
@@ -162,7 +151,6 @@ interface GhGraphQlPullRequest {
   updatedAt?: string;
   comments?: {
     totalCount?: number;
-    nodes?: GhComment[];
   };
   commits?: {
     nodes?: Array<{ commit?: { oid?: string } }>;
@@ -186,13 +174,6 @@ interface GhCommitPageResponse {
       };
     };
   };
-}
-
-interface GhComment {
-  author?: { login?: string };
-  body?: string;
-  url?: string;
-  createdAt?: string;
 }
 
 /** 저장소 한 개의 GitHub PR POC 조회 서비스 */
@@ -260,6 +241,16 @@ export class PullRequestService {
   }
 
   /**
+   * PR 상세 drawer 에 필요한 changed files 와 파일별 review comment 수를 읽는다.
+   * @param number 조회할 PR 번호
+   * @returns PR 상세 drawer 데이터
+   */
+  async getDetail(number: number): Promise<PullRequestDetailInfo> {
+    const repository = await this.repositoryName();
+    return fetchPullRequestDetail(this.repoRoot, repository, number);
+  }
+
+  /**
    * 열린 PR 목록을 GitHub GraphQL 로 가볍게 조회한다.
    * - `gh pr list --json commits` 는 commit author 연결까지 크게 펼쳐 GraphQL 한도를 넘을 수 있어 사용하지 않는다.
    * @param repository owner/name 형태의 GitHub 저장소 이름
@@ -299,8 +290,7 @@ export class PullRequestService {
       isDraft: Boolean(pr.isDraft),
       reviewDecision: pr.reviewDecision,
       updatedAt: pr.updatedAt,
-      commentCount: pr.commentCount ?? pr.comments?.length ?? 0,
-      comments: normalizeComments(pr.comments),
+      commentCount: pr.commentCount ?? 0,
       commitHashes: normalizeCommitHashes(pr),
     };
   }
@@ -445,32 +435,6 @@ export class PullRequestService {
   }
 }
 
-/** gh CLI 를 실행하고 stdout 을 반환한다. */
-function runGh(args: string[], cwd: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile("gh", args, { cwd, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`gh ${args.join(" ")} failed: ${stderr || error.message}`));
-        return;
-      }
-      resolve(stdout);
-    });
-  });
-}
-
-/**
- * owner/name 형태의 저장소명을 GraphQL 변수로 나눈다.
- * @param repository gh repo view 가 반환한 nameWithOwner 문자열
- * @returns owner 와 repository name tuple
- */
-function splitRepositoryName(repository: string): [string, string] {
-  const [owner, name] = repository.split("/");
-  if (!owner || !name) {
-    throw new Error("GitHub repository name is not available.");
-  }
-  return [owner, name];
-}
-
 /**
  * 직접 작성한 GraphQL PR node 를 내부 PR JSON 형태로 변환한다.
  * @param pr GitHub GraphQL pull request node
@@ -489,20 +453,9 @@ function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
     isDraft: pr.isDraft,
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,
-    comments: pr.comments?.nodes || [],
-    commentCount: pr.comments?.totalCount ?? pr.comments?.nodes?.length ?? 0,
+    commentCount: pr.comments?.totalCount ?? 0,
     commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
   };
-}
-
-/** gh 댓글 JSON 을 최신 3개 요약으로 줄인다. */
-function normalizeComments(comments: GhComment[] | undefined): PullRequestCommentInfo[] {
-  return (comments || []).slice(-3).map((comment) => ({
-    author: comment.author?.login || "",
-    body: comment.body || "",
-    url: comment.url,
-    createdAt: comment.createdAt,
-  }));
 }
 
 /**
