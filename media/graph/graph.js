@@ -32,6 +32,7 @@
   let currentEdges = [];
   let currentLaneCount = 1;
   let selectedHash = null;
+  let detailLabel = "commit details";
   let detailSummaryHeight = 180;
   let loadState = { loadedCount: 0, hasMore: false, loading: false, reset: true };
   let rowColorCache = new WeakMap();
@@ -267,6 +268,7 @@
    * @param detail CommitDetail
    */
   function renderDetail(detail) {
+    setDetailLabel("commit details");
     if (!window.GscGraphDetail?.render) {
       detailEl.innerHTML = `<p class="placeholder">Commit detail renderer is unavailable.</p>`;
       return;
@@ -401,18 +403,21 @@
     document.body.classList.toggle("detail-open", visible);
     document.body.classList.toggle("detail-collapsed", !visible);
     if (toggleDetailBtn) {
-      toggleDetailBtn.title = visible ? "Hide commit details" : "Show commit details";
+      toggleDetailBtn.title = visible ? `Hide ${detailLabel}` : `Show ${detailLabel}`;
       toggleDetailBtn.dataset.tooltip = toggleDetailBtn.title;
-      toggleDetailBtn.setAttribute(
-        "aria-label",
-        visible ? "Hide commit details" : "Show commit details"
-      );
+      toggleDetailBtn.setAttribute("aria-label", toggleDetailBtn.title);
       const icon = toggleDetailBtn.querySelector(".codicon");
       if (icon) {
         icon.classList.toggle("codicon-layout-sidebar-right", visible);
         icon.classList.toggle("codicon-layout-sidebar-right-off", !visible);
       }
     }
+  }
+
+  /** 상세 패널이 현재 보여주는 내용 종류를 toggle button 문구에 반영한다. */
+  function setDetailLabel(label) {
+    detailLabel = label || "details";
+    setDetailVisible(document.body.classList.contains("detail-open"));
   }
 
   /** 메인 그래프/상세 사이 splitter 의 드래그와 키보드 조작을 등록한다. */
@@ -566,6 +571,16 @@
   });
 
   initEvents();
+  window.GscGraphDetailHost = {
+    root: detailEl,
+    show(label) {
+      setDetailLabel(label || "details");
+      setDetailVisible(true);
+    },
+    hide() {
+      setDetailVisible(false);
+    },
+  };
   setDetailVisible(!isDrawerMode());
 
   // 준비 완료를 알려 초기 그래프 데이터를 받는다.

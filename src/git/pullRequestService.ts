@@ -81,6 +81,7 @@ export interface PullRequestInfo {
   state: string;
   url: string;
   headRefName: string;
+  headHash?: string;
   baseRefName: string;
   author: string;
   isDraft: boolean;
@@ -292,6 +293,7 @@ export class PullRequestService {
       state: pr.state || "",
       url: pr.url || "",
       headRefName: pr.headRefName || "",
+      headHash: pr.headRefOid,
       baseRefName: pr.baseRefName || "",
       author: pr.author?.login || "",
       isDraft: Boolean(pr.isDraft),

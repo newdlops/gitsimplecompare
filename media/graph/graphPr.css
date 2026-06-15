@@ -66,6 +66,29 @@
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
+.pr-card[data-focus-pr] {
+  cursor: pointer;
+}
+
+.pr-card[data-focus-pr]:hover,
+.pr-card[data-focus-pr]:focus-visible {
+  outline: 1px solid var(--pr-accent, var(--vscode-focusBorder));
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 10%, transparent);
+}
+
+.row.pr-focused-row {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--vscode-focusBorder) 22%, var(--vscode-list-hoverBackground, transparent));
+}
+
+#graph-content .node.pr-focused-node {
+  stroke: var(--vscode-focusBorder);
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 5px var(--vscode-focusBorder));
+}
+
 .pr-title {
   display: flex;
   align-items: center;
@@ -114,6 +137,120 @@
   padding: 0 0 0 18px;
   color: var(--vscode-descriptionForeground);
   font-size: 12px;
+}
+
+.pr-detail-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pr-detail-header {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.pr-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pr-detail-title h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.pr-detail-meta {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pr-detail-list {
+  display: grid;
+  gap: 0;
+}
+
+.pr-detail-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.pr-detail-section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.pr-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+}
+
+.pr-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+}
+
+.pr-hover-card {
+  position: fixed;
+  z-index: 2300;
+  box-sizing: border-box;
+  max-width: min(380px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--pr-accent, var(--vscode-widget-border, var(--vscode-panel-border)));
+  border-radius: 4px;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background, #252526));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.34);
+  pointer-events: none;
+}
+
+.pr-hover-card[hidden] {
+  display: none;
+}
+
+.pr-hover-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 5px;
+}
+
+.pr-hover-title strong {
+  color: var(--pr-accent, var(--vscode-charts-purple, #b180d7));
+}
+
+.pr-hover-title span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #graph-content .node.pr-node {
