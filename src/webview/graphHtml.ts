@@ -22,6 +22,7 @@ export function buildGraphHtml(
   const colorScriptUri = script(webview, mediaRoot, "graphColors.js");
   const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
   const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
+  const prScriptUri = script(webview, mediaRoot, "graphPr.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
@@ -29,6 +30,7 @@ export function buildGraphHtml(
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
+  const prStyleUri = style(webview, mediaRoot, "graphPr.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
   const detailStyleUri = style(webview, mediaRoot, "graphDetail.css");
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
@@ -51,6 +53,8 @@ export function buildGraphHtml(
   const jumpHeadTitle = vscode.l10n.t("Jump to HEAD");
   const toggleDetailTitle = vscode.l10n.t("Toggle commit details");
   const filterBranchesTitle = vscode.l10n.t("Filter visible branches");
+  const prListTitle = vscode.l10n.t("Show pull requests");
+  const prPreviewTitle = vscode.l10n.t("Preview staged pull request");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -61,6 +65,7 @@ export function buildGraphHtml(
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${compactStyleUri}" rel="stylesheet" />
+  <link href="${prStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
   <link href="${rebaseStyleUri}" rel="stylesheet" />
@@ -91,6 +96,14 @@ export function buildGraphHtml(
 	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">
 	            <span class="codicon codicon-link-external" aria-hidden="true"></span>
 	          </button>
+	          <button id="graph-pr-list" class="icon-button" type="button" title="${prListTitle}"
+	            aria-label="${prListTitle}" data-tooltip="${prListTitle}">
+	            <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
+	          </button>
+	          <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
+	            aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
+	            <span class="codicon codicon-preview" aria-hidden="true"></span>
+	          </button>
 	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
 	            aria-label="${jumpHeadTitle}" data-tooltip="${jumpHeadTitle}">
 	            <span class="codicon codicon-target" aria-hidden="true"></span>
@@ -119,6 +132,7 @@ export function buildGraphHtml(
         </div>
         <span id="load-status" aria-live="polite"></span>
       </div>
+      <section id="graph-pr-panel" aria-label="${prListTitle}" hidden></section>
       <div id="graph" tabindex="0"><div id="graph-content"></div></div>
     </main>
     <div id="main-splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0"
@@ -135,6 +149,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${localColorScriptUri}"></script>
   <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${svgRenderScriptUri}"></script>
+  <script nonce="${nonce}" src="${prScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>

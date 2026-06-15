@@ -263,8 +263,8 @@ interface RefreshDecision {
 
 /**
  * 파일 시스템 이벤트가 Changes refresh 로 이어져야 하는지 판정한다.
- * - 작업 파일 변경은 빠르게 반영하되, git status 가 만지는 `.git/index` 나 빌드 산출물처럼
- *   refresh 자체가 다시 이벤트를 만들 수 있는 경로는 제외해 로딩 루프를 막는다.
+ * - 작업 파일 변경은 빠르게 반영하되, git status 가 만지는 `.git/index`, 빌드 산출물,
+ *   로컬 인덱서 캐시처럼 refresh 자체와 무관한 대량 변경 경로는 제외해 로딩 루프를 막는다.
  * @param source 이벤트를 발생시킨 watcher 종류
  * @param uri    변경된 파일 URI
  */
@@ -300,7 +300,7 @@ function shouldLogIgnoredRefresh(reason: string): boolean {
  */
 function ignoredWorkspaceSegment(path: string): string | undefined {
   const segments = path.split("/");
-  for (const segment of [".git", "node_modules", "dist", "out", ".vscode-test"]) {
+  for (const segment of [".git", "node_modules", "dist", "out", ".vscode-test", ".codeidx", ".zoek-rs", ".lh"]) {
     if (segments.includes(segment)) {
       return segment;
     }

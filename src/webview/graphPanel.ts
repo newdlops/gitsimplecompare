@@ -4,6 +4,7 @@
 import * as vscode from "vscode";
 import { compactGraphData } from "../graph/graphCompact";
 import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
+import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
 import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
@@ -30,6 +31,7 @@ import {
   runGraphRebase,
 } from "./graphRebaseActions";
 import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
+import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -52,6 +54,7 @@ export class GitGraphPanel {
   };
   private lastLocalBranches: LocalBranchStatus[] = [];
   private lastBranchRefs: GraphBranchRef[] = [];
+  private lastPullRequests: PullRequestInfo[] = [];
 
   /**
    * 패널을 만들거나, 이미 있으면 앞으로 가져온다.
@@ -98,12 +101,15 @@ export class GitGraphPanel {
     if (!current || current.logService.repoRoot !== repoRoot) {
       return false;
     }
+    if (current.loading) {
+      logInfo("graph external refresh skipped", { repoRoot, reason, active: "pageLoad" });
+      return true;
+    }
     logInfo("graph external refresh requested", { repoRoot, reason });
     current.resetLoadedGraph();
     void current.reloadGraph();
     return true;
   }
-
   private constructor(
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
@@ -118,7 +124,6 @@ export class GitGraphPanel {
     );
     this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
   }
-
   /** 패널과 리스너를 정리한다. */
   private dispose(): void {
     GitGraphPanel.current = undefined;
@@ -127,7 +132,6 @@ export class GitGraphPanel {
       this.disposables.pop()?.dispose();
     }
   }
-
   /**
    * 웹뷰 메시지를 종류별로 처리한다.
    * @param msg 웹뷰가 보낸 메시지
@@ -141,6 +145,7 @@ export class GitGraphPanel {
         });
         this.resetLoadedGraph();
         await this.reloadGraph();
+        void this.sendPullRequests(msg.type);
       } else if (msg.type === "loadMore") {
         await this.loadNextPage(false);
       } else if (msg.type === "setBranchFilter") {
@@ -159,6 +164,12 @@ export class GitGraphPanel {
       } else if (msg.type === "selectCommit") {
         const detail = await this.logService.getCommitDetail(msg.hash);
         this.post({ type: "commitDetail", detail });
+      } else if (msg.type === "refreshPullRequests") {
+        await this.sendPullRequests("manual");
+      } else if (msg.type === "openPullRequest") {
+        await this.openPullRequest(msg.number);
+      } else if (msg.type === "previewStagedPullRequest") {
+        this.openStagedPullRequestPreview(msg.number);
       } else if (isGraphActionMessage(msg)) {
         await handleGraphAction(msg, {
           logService: this.logService,
@@ -313,6 +324,49 @@ export class GitGraphPanel {
   }
 
   /**
+   * GitHub PR 목록을 비동기로 읽어 웹뷰 overlay 로 보낸다.
+   * @param reason OUTPUT 로그에 남길 조회 원인
+   */
+  private async sendPullRequests(reason: string): Promise<void> {
+    const service = new PullRequestService(this.logService.repoRoot);
+    const overview = await service.getOverview(this.lastLocalBranches);
+    this.lastPullRequests = overview.pullRequests;
+    this.post({ type: "pullRequestOverview", overview });
+    logInfo("graph pull request overview sent", {
+      repoRoot: this.logService.repoRoot,
+      reason,
+      available: overview.available,
+      count: overview.pullRequests.length,
+    });
+  }
+
+  /**
+   * PR row/icon 클릭 시 브라우저에서 해당 PR 을 연다.
+   * @param number 열 PR 번호
+   */
+  private async openPullRequest(number: number): Promise<void> {
+    const pr = this.lastPullRequests.find((item) => item.number === number);
+    if (!pr?.url) {
+      vscode.window.showWarningMessage(vscode.l10n.t("Pull request URL is not available."));
+      return;
+    }
+    await vscode.env.openExternal(vscode.Uri.parse(pr.url));
+  }
+
+  /**
+   * 현재 staged 상태를 target branch 로 PR 하는 모의 preview 패널을 연다.
+   * @param number 기존 PR 기준으로 열 경우의 PR 번호
+   */
+  private openStagedPullRequestPreview(number?: number): void {
+    const pr = this.lastPullRequests.find((item) => item.number === number);
+    PullRequestPreviewPanel.createOrShow(
+      new PullRequestService(this.logService.repoRoot),
+      pr?.baseRefName,
+      pr
+    );
+  }
+
+  /**
    * 다음 커밋 페이지를 읽어 누적 목록에 붙이고, 현재까지의 그래프를 웹뷰로 보낸다.
    * - git log 는 skip/limit 으로 필요한 페이지만 읽는다.
    * - 레이아웃은 지금까지 로드된 커밋 전체를 기준으로 다시 계산한다. 새 부모 커밋이
@@ -338,6 +392,7 @@ export class GitGraphPanel {
     }
 
     const generation = this.loadGeneration;
+    const started = Date.now();
     const skip = this.commits.length;
     const pageLimit = GRAPH_PAGE_SIZE;
     const branchFilter = this.currentBranchFilter();
@@ -351,7 +406,6 @@ export class GitGraphPanel {
       });
       return;
     }
-
     this.loading = true;
     this.postLoadState(reset);
     logInfo("graph page load started", {
@@ -361,7 +415,6 @@ export class GitGraphPanel {
       filterMode: branchFilter.mode,
       refCount: branchFilter.refs.length,
     });
-
     let postedGraph = false;
     try {
       if (reset) {
@@ -375,7 +428,8 @@ export class GitGraphPanel {
       const page = await this.logService.getCommitPage(
         pageLimit + 1,
         skip,
-        branchFilter.refs
+        branchFilter.refs,
+        false
       );
       if (generation !== this.loadGeneration) {
         logInfo("graph page load ignored", {
@@ -385,7 +439,6 @@ export class GitGraphPanel {
         });
         return;
       }
-
       const nextCommits = filterCommitRefs(
         page.slice(0, pageLimit),
         branchFilter
@@ -399,10 +452,24 @@ export class GitGraphPanel {
         state: this.makeLoadState(reset),
       });
       postedGraph = true;
+      const localOnlyStarted = Date.now();
+      void this.logService.attachLocalOnlyBranches(this.commits).then((changedCount) => {
+        if (generation !== this.loadGeneration || changedCount === 0) {
+          return;
+        }
+        this.post({ type: "graph", data: this.layoutVisibleGraph(), state: this.makeLoadState(false) });
+        logInfo("graph local-only markers sent", {
+          repoRoot: this.logService.repoRoot,
+          changedCount,
+          loadedCount: this.commits.length,
+          elapsed: Date.now() - localOnlyStarted,
+        });
+      }).catch((err) => logError("graph local-only markers failed", err, { repoRoot: this.logService.repoRoot }));
       logInfo("graph page load finished", {
         fetchedCount: nextCommits.length,
         loadedCount: this.commits.length,
         hasMore: this.hasMore(),
+        elapsed: Date.now() - started,
       });
     } finally {
       if (!postedGraph && generation === this.loadGeneration) {

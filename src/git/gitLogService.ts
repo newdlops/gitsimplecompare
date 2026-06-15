@@ -61,11 +61,13 @@ export class GitLogService {
    * @param limit 이번 페이지에서 가져올 최대 커밋 수
    * @param skip  이미 로드한 커밋 수(앞에서 건너뛸 개수)
    * @param refs  대상 참조 목록(비면 --all)
+   * @param includeLocalOnlyBranches true 면 로컬 전용 브랜치 표시 메타데이터까지 붙인다.
    */
   async getCommitPage(
     limit: number,
     skip: number,
-    refs: string[] = []
+    refs: string[] = [],
+    includeLocalOnlyBranches = true
   ): Promise<Commit[]> {
     const safeLimit = Math.max(0, Math.floor(limit));
     if (safeLimit === 0) {
@@ -95,7 +97,9 @@ export class GitLogService {
       .split("\0")
       .filter((entry) => entry.length > 0)
       .map((entry) => this.parseCommit(entry));
-    await this.attachLocalOnlyBranches(commits);
+    if (includeLocalOnlyBranches) {
+      await this.attachLocalOnlyBranches(commits);
+    }
     return commits;
   }
 
@@ -374,18 +378,22 @@ export class GitLogService {
    * 현재 페이지 커밋에 upstream 보다 앞선 로컬 브랜치 이름을 붙인다.
    * - 그래프에서 원격 기준점 이후의 로컬 전용 노드를 별도 스타일로 표시하기 위한 메타데이터다.
    * @param commits 이번 그래프 페이지에 포함된 커밋 목록
+   * @returns 로컬 전용 브랜치 메타데이터가 붙은 커밋 수
    */
-  private async attachLocalOnlyBranches(commits: Commit[]): Promise<void> {
+  async attachLocalOnlyBranches(commits: Commit[]): Promise<number> {
     if (!commits.length) {
-      return;
+      return 0;
     }
     const byHash = await this.localOnlyBranchMap().catch(() => new Map<string, string[]>());
+    let changed = 0;
     for (const commit of commits) {
       const branches = byHash.get(commit.hash);
       if (branches?.length) {
         commit.localOnlyBranches = [...branches];
+        changed++;
       }
     }
+    return changed;
   }
 
   /**

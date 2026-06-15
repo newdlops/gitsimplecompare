@@ -3,6 +3,9 @@
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { runGit } from "./gitExec";
 
+/** local-only 계산이 다른 git status/refresh 를 밀어내지 않도록 제한하는 동시 실행 수 */
+const LOCAL_ONLY_BRANCH_CONCURRENCY = 4;
+
 /**
  * 로컬 전용 커밋 범위를 해시별로 묶는다.
  * - upstream 이 살아 있으면 `upstream..local` 을 사용해 해당 브랜치의 ahead 커밋을 표시한다.
@@ -16,21 +19,40 @@ export async function loadLocalOnlyBranchMap(
   branches: LocalBranchStatus[]
 ): Promise<Map<string, string[]>> {
   const result = new Map<string, string[]>();
-  await Promise.all(
-    branches
-      .filter((branch) => shouldInspectBranch(branch))
-      .map(async (branch) => {
-        const args = revListArgsForBranch(branch);
-        const out = await runGit(
-          args,
-          repoRoot
-        ).catch(() => "");
-        for (const hash of out.split("\n").filter(Boolean)) {
-          addBranchName(result, hash, branch.name);
+  const candidates = branches.filter((branch) => shouldInspectBranch(branch));
+  let nextIndex = 0;
+  const workers = Array.from(
+    { length: Math.min(LOCAL_ONLY_BRANCH_CONCURRENCY, candidates.length) },
+    async () => {
+      for (;;) {
+        const branch = candidates[nextIndex++];
+        if (!branch) {
+          return;
         }
-      })
+        await appendLocalOnlyBranch(result, repoRoot, branch);
+      }
+    }
   );
+  await Promise.all(workers);
   return result;
+}
+
+/**
+ * 브랜치 하나의 로컬 전용 커밋을 읽어 결과 맵에 추가한다.
+ * - 브랜치 단위 실패는 전체 그래프 표시를 막지 않도록 빈 결과로 처리한다.
+ * @param map      commit hash → 브랜치 이름 배열 맵
+ * @param repoRoot git 명령을 실행할 저장소 루트
+ * @param branch   검사할 로컬 브랜치 상태
+ */
+async function appendLocalOnlyBranch(
+  map: Map<string, string[]>,
+  repoRoot: string,
+  branch: LocalBranchStatus
+): Promise<void> {
+  const out = await runGit(revListArgsForBranch(branch), repoRoot).catch(() => "");
+  for (const hash of out.split("\n").filter(Boolean)) {
+    addBranchName(map, hash, branch.name);
+  }
 }
 
 /**
