@@ -11,6 +11,7 @@
       window.GscGraphPostMessage?.({
         type: "pullRequestAction",
         number: Number(button.dataset.prOperation),
+        action: button.dataset.prAction || undefined,
       });
     });
   }
@@ -22,11 +23,24 @@
       `<span class="codicon codicon-git-pull-request" aria-hidden="true"></span></button>`;
   }
 
+  /** PR 카드에서 바로 실행할 rebase/squash 버튼 묶음을 만든다. */
+  function directButtons(number) {
+    return operationButton(number, "rebase", "git-pull-request", `Rebase PR #${number} into current branch`) +
+      operationButton(number, "squash", "combine", `Squash cherry-pick PR #${number}`);
+  }
+
+  /** PR 작업 하나를 바로 실행하는 아이콘 버튼 HTML 을 만든다. */
+  function operationButton(number, action, icon, title) {
+    return `<button type="button" class="pr-icon-action" data-pr-operation="${esc(number)}" data-pr-action="${esc(action)}" ` +
+      `title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
+      `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span></button>`;
+  }
+
   /** HTML 특수문자를 escape 한다. */
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
   }
 
-  window.GscGraphPrActions = { button };
+  window.GscGraphPrActions = { button, directButtons };
   init();
 })();

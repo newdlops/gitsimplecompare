@@ -101,6 +101,9 @@
       });
       return;
     }
+    if (event.target.closest?.("[data-pr-operation]")) {
+      return;
+    }
     const overviewButton = event.target.closest?.("[data-pr-overview]");
     if (overviewButton) {
       showOverviewDetail(false);
@@ -292,6 +295,7 @@
       `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></div>` +
 	      prMetaHtml(pr) +
 	      `<div class="pr-actions">` +
+	      (window.GscGraphPrActions?.directButtons?.(pr.number) || "") +
 	      detailButton(pr.number) +
 	      previewButton(pr.number, `Preview pull request #${pr.number}`) +
 	      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
@@ -488,6 +492,7 @@
       `<span class="codicon codicon-git-branch" aria-hidden="true"></span><span>${esc(pr.headRefName)}</span>` +
       `<span class="codicon codicon-arrow-right" aria-hidden="true"></span><span>${esc(pr.baseRefName)}</span></span>` +
       metaChip("files", Number(pr.fileCount) || 0, "Changed files") +
+      metaChip("git-commit", commitCount(pr), "Commits") +
       metaChip("comment-discussion", commentCount(pr), "Total PR comments") +
       `</div>`;
   }
@@ -568,19 +573,16 @@
 
 	  /** PR 번호로 overview 안의 PR 을 찾는다. */
 	  function findPr(number) { return (overview.pullRequests || []).find((pr) => Number(pr.number) === Number(number)); }
-
 	  /** detail root 를 반환한다. */
 	  function detailRoot() { return window.GscGraphDetailHost?.root || document.getElementById("detail"); }
-
 	  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
 	  function prColorClass(number) { return `pr-color-${Math.abs(Number(number) || 0) % 8}`; }
-
 	  /** 기존 색상 class 를 지울 때 쓰는 전체 팔레트 목록을 반환한다. */
 	  function prColorClasses() { return Array.from({ length: 8 }, (_, index) => `pr-color-${index}`); }
-
 	  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
 	  function commentCount(pr) { return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : 0; }
-
+	  /** badge/card 에 표시할 PR 커밋 수를 반환한다. */
+	  function commitCount(pr) { return Array.isArray(pr.commitHashes) ? pr.commitHashes.length : 0; }
 	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
 	  function shortHash(hash) { return String(hash || "").slice(0, 8); }
 
