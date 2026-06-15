@@ -259,29 +259,6 @@
       .join(" ");
   }
 
-  /** 그래프가 처음 열릴 때 HEAD row 가 보이도록 스크롤 위치를 맞춘다. */
-  function focusHead(graphEl, root) {
-    const row = headRow(root);
-    if (row) {
-      graphEl.scrollTop = Math.max(0, row.offsetTop - 60);
-    }
-  }
-
-  /** 사용자가 요청했을 때 HEAD row 로 이동하고 위치를 강조한다. */
-  function jumpToHead(graphEl, root) {
-    const row = headRow(root);
-    if (row) {
-      jumpToHash(graphEl, root, row.dataset.hash);
-    }
-  }
-
-  /** 현재 렌더된 그래프에서 HEAD row 를 찾는다. */
-  function headRow(root) {
-    return Array.from(root.querySelectorAll(".row")).find((item) =>
-      (item.dataset.refs || "").split("\t").includes("HEAD")
-    );
-  }
-
   /** 검색 입력/후보 목록 이벤트를 한 번만 연결한다. */
   function initSearch(graphEl, root) {
     if (searchBound) {
@@ -599,9 +576,7 @@
     bindCommitActions,
     branchColor,
     commitActions,
-    focusHead,
     initSearch,
-    jumpToHead,
     nodeClass,
     refBadge,
     rowColor,

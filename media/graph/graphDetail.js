@@ -65,7 +65,7 @@
       `<section class="commit-summary">` +
       `<h2>${esc(title)}</h2>` +
       metaHtml(detail) +
-      branchHtml(detail.branches || []) +
+      branchHtml(detail.branches || [], detail.loading) +
       authorHtml(detail) +
       `<div class="actions">${actions}</div>` +
       rebaseEditor +
@@ -91,8 +91,10 @@
   }
 
   /** 커밋을 포함하는 브랜치 목록을 chip 형태로 만든다. */
-  function branchHtml(branches) {
-    const chips = branches.length
+  function branchHtml(branches, loading) {
+    const chips = loading
+      ? `<span class="branch-empty"><span class="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"></span> Loading branches...</span>`
+      : branches.length
       ? branches.slice(0, 16).map(branchChipHtml).join("")
       : `<span class="branch-empty">No branch contains this commit</span>`;
     const extra = branches.length > 16
@@ -205,13 +207,14 @@
 
   /** 파일 패널 전체 HTML 을 만든다. */
   function filesPaneHtml(detail) {
+    const count = detail.loading ? "..." : detail.files.length;
     return (
       `<section class="files-pane">` +
       `<div class="files-header"><span class="codicon codicon-files" aria-hidden="true"></span>` +
-      `<span>Changed files</span><span class="count">${detail.files.length}</span>` +
+      `<span>Changed files</span><span class="count">${esc(count)}</span>` +
       fileViewToggleHtml() +
       `</div>` +
-      filesHtml(detail.files || []) +
+      (detail.loading ? `<p class="empty">Loading changed files...</p>` : filesHtml(detail.files || [])) +
       `</section>`
     );
   }

@@ -49,6 +49,7 @@ export interface CommitDetail {
   branches: CommitBranchInfo[];
   files: CommitFileChange[];
   kind?: GraphRowKind;
+  loading?: boolean;
 }
 
 /** Git graph 에 함께 표시할 로컬 브랜치 상태 */

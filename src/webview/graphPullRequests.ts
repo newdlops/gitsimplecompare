@@ -148,12 +148,14 @@ export async function openGraphPullRequest(
  * @param number        기존 PR 기준으로 열 경우의 PR 번호
  */
 export function openStagedPullRequestPreview(
+  extensionUri: vscode.Uri,
   repoRoot: string,
   pullRequests: PullRequestInfo[],
   number?: number
 ): void {
   const pr = pullRequests.find((item) => item.number === number);
   PullRequestPreviewPanel.createOrShow(
+    extensionUri,
     new PullRequestService(repoRoot),
     pr?.baseRefName,
     pr

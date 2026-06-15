@@ -1,5 +1,6 @@
 // graph commit 점프 요청을 처리하는 보조 모듈.
 // - 웹뷰가 요청한 commit 이 아직 로드되지 않았으면 graph 페이지를 더 읽은 뒤 발견 결과를 돌려준다.
+import { getHeadHash } from "../git/gitHead";
 import { logInfo } from "../ui/outputLog";
 import { ToWebviewMessage } from "./graphProtocol";
 
@@ -21,6 +22,10 @@ export async function ensureGraphCommitVisible(
   options: EnsureGraphCommitVisibleOptions
 ): Promise<void> {
   const hashes = Array.from(new Set(options.hashes.filter(Boolean)));
+  if (!hashes.length) {
+    options.post({ type: "commitVisibility", requestId: options.requestId, found: false });
+    return;
+  }
   const found = options.loadedHash(hashes) || await options.loadWindow(hashes);
   options.post({
     type: "commitVisibility",
@@ -34,4 +39,15 @@ export async function ensureGraphCommitVisible(
     found: Boolean(found),
     candidateCount: hashes.length,
   });
+}
+
+/**
+ * 현재 HEAD 가 graph 에 보이도록 보장한다.
+ * @param options graphPanel 상태 접근/메시지 콜백
+ */
+export async function ensureGraphHeadVisible(
+  options: Omit<EnsureGraphCommitVisibleOptions, "hashes">
+): Promise<void> {
+  const headHash = await getHeadHash(options.repoRoot);
+  await ensureGraphCommitVisible({ ...options, hashes: headHash ? [headHash] : [] });
 }

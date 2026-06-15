@@ -12,7 +12,7 @@ export interface CommitWindowOptions {
 }
 
 /**
- * 대상 commit 의 newer descendant 일부와 older ancestor 일부를 합쳐 graph window 를 만든다.
+ * 전체 graph 순서에서 대상 commit 주변 slice 를 읽어 graph window 를 만든다.
  * @param repoRoot 저장소 루트
  * @param hash     중심 commit hash
  * @param options  위/아래 커밋 개수와 대상 ref 범위
@@ -24,55 +24,41 @@ export async function loadCommitWindowAround(
 ): Promise<Commit[]> {
   const before = Math.max(0, Math.floor(options.before));
   const after = Math.max(1, Math.floor(options.after));
-  const [newer, older] = await Promise.all([
-    loadNewerDescendants(repoRoot, hash, before, options.refs || []),
-    loadOlderAncestors(repoRoot, hash, after),
-  ]);
-  return uniqueCommits([...newer.reverse(), ...older]);
+  const refs = refArgs(options.refs || []);
+  const hashes = await loadOrderedHashes(repoRoot, refs);
+  const index = hashes.indexOf(hash);
+  if (index < 0) {
+    return [];
+  }
+  return loadCommitSlice(repoRoot, Math.max(0, index - before), before + after, refs);
 }
 
 /**
- * 대상 commit 위쪽에 그릴 descendant commit 을 읽는다.
+ * 전체 graph topo-order 에서 commit hash 목록만 가볍게 읽는다.
  * @param repoRoot 저장소 루트
- * @param hash     중심 commit hash
- * @param limit    가져올 최대 descendant 수
- * @param refs     대상 ref 범위. 비면 전체 branch/remote/tag 를 사용한다.
+ * @param refs     대상 ref 범위
  */
-async function loadNewerDescendants(
+async function loadOrderedHashes(
   repoRoot: string,
-  hash: string,
+  refs: string[]
+): Promise<string[]> {
+  const out = await runGit(["rev-list", "--topo-order", ...refs], repoRoot);
+  return out.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+/**
+ * 전체 graph topo-order 의 일부 구간을 Commit 객체로 읽는다.
+ * @param repoRoot 저장소 루트
+ * @param skip     graph 순서 앞에서 건너뛸 commit 수
+ * @param limit    읽을 commit 수
+ * @param refs     대상 ref 범위
+ */
+async function loadCommitSlice(
+  repoRoot: string,
+  skip: number,
   limit: number,
   refs: string[]
 ): Promise<Commit[]> {
-  if (limit <= 0) {
-    return [];
-  }
-  const out = await runGit([
-    "log",
-    "--topo-order",
-    "--reverse",
-    "--ancestry-path",
-    "--decorate=short",
-    `--pretty=tformat:${gitLogPrettyFormat()}`,
-    "-z",
-    `-n${limit}`,
-    `${hash}..`,
-    ...refArgs(refs),
-  ], repoRoot).catch(() => "");
-  return parseGitLogOutput(out);
-}
-
-/**
- * 대상 commit 과 그 아래쪽 ancestor commit 을 읽는다.
- * @param repoRoot 저장소 루트
- * @param hash     중심 commit hash
- * @param limit    대상 commit 을 포함해 가져올 최대 ancestor 수
- */
-async function loadOlderAncestors(
-  repoRoot: string,
-  hash: string,
-  limit: number
-): Promise<Commit[]> {
   const out = await runGit([
     "log",
     "--topo-order",
@@ -80,7 +66,8 @@ async function loadOlderAncestors(
     `--pretty=tformat:${gitLogPrettyFormat()}`,
     "-z",
     `-n${limit}`,
-    hash,
+    ...(skip > 0 ? [`--skip=${skip}`] : []),
+    ...refs,
   ], repoRoot);
   return parseGitLogOutput(out);
 }
@@ -91,19 +78,4 @@ async function loadOlderAncestors(
  */
 function refArgs(refs: string[]): string[] {
   return refs.length > 0 ? refs : ["--branches", "--remotes", "--tags"];
-}
-
-/**
- * 여러 경로에서 중복으로 읽힌 commit 을 첫 등장 순서만 남긴다.
- * @param commits 중복 제거 대상 commit 목록
- */
-function uniqueCommits(commits: Commit[]): Commit[] {
-  const seen = new Set<string>();
-  return commits.filter((commit) => {
-    if (!commit.hash || seen.has(commit.hash)) {
-      return false;
-    }
-    seen.add(commit.hash);
-    return true;
-  });
 }

@@ -110,7 +110,7 @@
     }
     syncScrollableWidth(graphWidth);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-    if (state && state.reset) window.GscGraphFeatures?.focusHead(graphEl, graphContentEl);
+    if (state && state.reset) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
     window.GscGraphFeatures?.updateSearchIndex(graphEl, graphContentEl);
 
     renderLoadTail();
@@ -526,7 +526,7 @@
       document.getElementById(id)?.addEventListener("click", () => vscode.postMessage({ type }))
     );
     openRemoteBtn?.addEventListener("click", () => vscode.postMessage({ type: "openRemoteBranch" }));
-    document.getElementById("jump-head")?.addEventListener("click", () => window.GscGraphFeatures?.jumpToHead(graphEl, graphContentEl));
+    document.getElementById("jump-head")?.addEventListener("click", () => window.GscGraphHeadJump?.jumpToHead(graphEl, graphContentEl));
     toggleDetailBtn.addEventListener("click", () => {
       setDetailVisible(!document.body.classList.contains("detail-open"));
     });

@@ -57,6 +57,7 @@ export type FromWebviewMessage =
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
+  | { type: "ensureHeadVisible"; requestId: string }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | { type: "loadMore" }
