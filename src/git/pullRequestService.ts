@@ -255,7 +255,7 @@ export class PullRequestService {
 
   /**
    * 현재 staged 상태를 target branch 로 PR 한다고 가정한 모의 내용을 만든다.
-   * @param baseBranch 명시 target branch. 없으면 현재 PR/base/upstream/main 순서로 추정한다.
+   * @param baseBranch 명시 target branch. 새 staged preview 에서는 없으면 선택 전 상태로 둔다.
    * @param existingPr 기존 PR 이 있으면 제목/본문 힌트에 포함한다.
    * @param sourceBranch 명시 source branch. 없으면 기존 PR head/current branch 순서로 추정한다.
    */
@@ -266,8 +266,12 @@ export class PullRequestService {
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
     const selectedSource = sourceBranch || existingPr?.headRefName || currentBranch;
-    const targetBranch = baseBranch || existingPr?.baseRefName || await this.defaultBaseBranch();
-    const [targetRef, sourceRef] = await Promise.all([resolvePreviewTargetRef(this.repoRoot, targetBranch), resolvePreviewTargetRef(this.repoRoot, selectedSource)]);
+    const targetBranch = baseBranch || existingPr?.baseRefName || "";
+    const hasTargetBranch = Boolean(targetBranch);
+    const [targetRef, sourceRef] = await Promise.all([
+      hasTargetBranch ? resolvePreviewTargetRef(this.repoRoot, targetBranch) : Promise.resolve(""),
+      resolvePreviewTargetRef(this.repoRoot, selectedSource),
+    ]);
     const [targetBranches, sourceBranches] = await Promise.all([previewTargetBranches(this.repoRoot, targetBranch, selectedSource), previewTargetBranches(this.repoRoot, selectedSource, targetBranch)]);
     const effectivePr = (baseBranch && existingPr?.baseRefName && baseBranch !== existingPr.baseRefName)
       || (sourceBranch && existingPr?.headRefName && sourceBranch !== existingPr.headRefName)
@@ -281,22 +285,24 @@ export class PullRequestService {
     ]);
     const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, effectivePr).catch(() => []);
     const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
-    const localPreview = prPreviewFiles.length || prPreviewCommits.length
+    const localPreview = !hasTargetBranch || prPreviewFiles.length || prPreviewCommits.length
       ? { files: [] as PullRequestPreviewFile[], commits: [] as PullRequestPreviewCommit[] }
       : await buildLocalPullRequestPreview(this.repoRoot, targetRef, sourceRef, stagedFiles);
     const previewFiles = prPreviewFiles.length ? prPreviewFiles : localPreview.files;
     const previewCommits = prPreviewCommits.length ? prPreviewCommits : localPreview.commits;
     const commits = commitLabels(previewCommits);
     const stat = previewStat(previewFiles);
-    const generatedBody = previewBody(previewFiles, commits, stat);
+    const generatedBody = hasTargetBranch ? previewBody(previewFiles, commits, stat) : "";
     const body = existingPreview ? existingPreview.body ?? "" : generatedBody;
-    const conversation = await buildPullRequestConversation(
-      this.repoRoot,
-      repository,
-      effectivePr,
-      body,
-      selectedSource
-    ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || selectedSource, body }]);
+    const conversation = hasTargetBranch || effectivePr
+      ? await buildPullRequestConversation(
+        this.repoRoot,
+        repository,
+        effectivePr,
+        body,
+        selectedSource
+      ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || selectedSource, body }])
+      : [];
     return {
       repository,
       currentBranch,
@@ -307,7 +313,7 @@ export class PullRequestService {
       headRef,
       sourceBranches,
       targetBranches,
-      title: existingPreview?.title || effectivePr?.title || previewTitle(selectedSource, targetBranch, commits, previewFiles),
+      title: existingPreview?.title || effectivePr?.title || (hasTargetBranch ? previewTitle(selectedSource, targetBranch, commits, previewFiles) : ""),
       body,
       files: previewFiles,
       previewFiles,
@@ -456,19 +462,6 @@ export class PullRequestService {
     };
   }
 
-  /** 후보 ref 중 실제 commit 으로 해석되는 첫 번째 값을 반환한다. */
-  private async resolveCommit(candidates: string[]): Promise<string | undefined> {
-    for (const ref of candidates) {
-      const hash = await runGit(["rev-parse", "--verify", `${ref}^{commit}`], this.repoRoot)
-        .then((out) => out.trim())
-        .catch(() => "");
-      if (hash) {
-        return hash;
-      }
-    }
-    return undefined;
-  }
-
   /** staged diff 의 파일 목록과 증감 라인을 읽는다. */
   private async stagedFiles(): Promise<CommitFileChange[]> {
     const [nameStatus, numstat] = await Promise.all([
@@ -528,18 +521,6 @@ export class PullRequestService {
   /** 현재 branch 이름을 반환한다. detached 이면 HEAD 로 표시한다. */
   private async currentBranch(): Promise<string> {
     return (await runGit(["branch", "--show-current"], this.repoRoot).catch(() => "")).trim() || "HEAD";
-  }
-
-  /** 현재 branch upstream/base 를 기준으로 PR target branch 를 추정한다. */
-  private async defaultBaseBranch(): Promise<string> {
-    const upstream = (await runGit(
-      ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-      this.repoRoot
-    ).catch(() => "")).trim();
-    if (upstream) {
-      return upstream;
-    }
-    return await this.resolveCommit(["origin/main"]).then((hash) => hash ? "origin/main" : "main");
   }
 
   /** gh repo view 로 owner/name 을 읽는다. */

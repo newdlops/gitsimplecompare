@@ -7,14 +7,14 @@
  */
 export function pullRequestPreviewBranchComboboxScript(): string {
   return `
-    function branchControl(id, role, caption, label, selected, branches) {
+    function branchControl(id, role, caption, label, selected, branches, placeholder) {
       const values = Array.from(new Set([selected].concat(branches || []))).filter(Boolean);
       const listId = id + '-list';
       const options = values.map((branch) => branchOptionHtml(branch, branch === selected)).join('');
       return '<div class="branch-combo" data-branch-combo="' + esc(role) + '">' +
         '<label class="branch-combo-label" for="' + esc(id) + '">' + esc(caption) + '</label>' +
         '<div class="branch-combobox" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="' + esc(listId) + '">' +
-          '<input id="' + esc(id) + '" class="branch-combo-input" type="text" value="' + esc(selected) + '" autocomplete="off" spellcheck="false" title="' + esc(label) + '" aria-label="' + esc(label) + '" data-branch-role="' + esc(role) + '" data-branch-selected="' + esc(selected) + '">' +
+          '<input id="' + esc(id) + '" class="branch-combo-input" type="text" value="' + esc(selected) + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false" title="' + esc(label) + '" aria-label="' + esc(label) + '" data-branch-role="' + esc(role) + '" data-branch-selected="' + esc(selected) + '">' +
           '<button class="branch-combo-toggle" type="button" title="Show branch options" aria-label="Show branch options" data-tooltip="Show branch options" data-branch-toggle="' + esc(role) + '"><span class="codicon codicon-chevron-down" aria-hidden="true"></span></button>' +
           '<div id="' + esc(listId) + '" class="branch-combo-list" role="listbox" hidden>' + options + '</div>' +
         '</div></div>';

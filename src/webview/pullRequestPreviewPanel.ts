@@ -204,7 +204,9 @@ export class PullRequestPreviewPanel {
       this.lastSourceRef = preview.sourceRef;
       this.panel.title = preview.existingPr?.number
         ? vscode.l10n.t("PR #{0} Preview", preview.existingPr.number)
-        : vscode.l10n.t("PR Preview: {0} -> {1}", preview.sourceBranch, preview.targetBranch);
+        : preview.targetBranch
+          ? vscode.l10n.t("PR Preview: {0} -> {1}", preview.sourceBranch, preview.targetBranch)
+          : vscode.l10n.t("PR Preview: select target branch");
       this.post({ type: "preview", preview });
     } catch (error) {
       if (requestSeq !== this.previewRequestSeq) {
@@ -233,6 +235,11 @@ export class PullRequestPreviewPanel {
             this.existingPr,
             this.sourceBranch
           );
+          if (!preview.targetBranch) {
+            throw new Error(vscode.l10n.t(
+              "Select a target branch before generating a pull request message."
+            ));
+          }
           return generateAiPullRequestMessage(preview, this.service.repoRoot, token);
         }
       );

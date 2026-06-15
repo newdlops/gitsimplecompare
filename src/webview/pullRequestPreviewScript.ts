@@ -62,7 +62,7 @@ export function pullRequestPreviewScript(): string {
       const additions = files.reduce((sum, file) => sum + (file.additions || 0), 0);
       const deletions = files.reduce((sum, file) => sum + (file.deletions || 0), 0);
       openPr.hidden = !preview.existingPr?.url;
-      if (copyPrMessage) copyPrMessage.disabled = !(preview.title || preview.body);
+      syncActionButtons(preview);
       content.innerHTML =
         '<div class="pr-page">' +
           prHeader(preview) +
@@ -83,19 +83,32 @@ export function pullRequestPreviewScript(): string {
       bindFileToggles();
       bindViewButtons();
     }
+    function syncActionButtons(preview) {
+      const needsTarget = !preview.targetBranch;
+      const generateTitle = needsTarget ? 'Select a target branch before generating a PR message' : 'Generate AI pull request message';
+      if (generatePrMessage) {
+        generatePrMessage.disabled = needsTarget || !preview.hasStagedChanges;
+        generatePrMessage.title = generateTitle;
+        generatePrMessage.setAttribute('aria-label', generateTitle);
+        generatePrMessage.dataset.tooltip = generateTitle;
+      }
+      if (copyPrMessage) copyPrMessage.disabled = !(preview.title || preview.body);
+    }
     function prHeader(preview) {
       const pr = preview.existingPr || {};
       const number = pr.number ? ' <span class="pr-number">#' + esc(pr.number) + '</span>' : '';
-      const state = pr.isDraft ? 'Draft' : (pr.state || (preview.hasStagedChanges ? 'Open' : 'No changes'));
-      const stateClass = pr.isDraft ? 'draft' : (!preview.hasStagedChanges && !pr.state ? 'empty' : '');
+      const needsTarget = !preview.targetBranch;
+      const state = needsTarget ? 'Select target' : pr.isDraft ? 'Draft' : (pr.state || (preview.hasStagedChanges ? 'Open' : 'No changes'));
+      const stateClass = pr.isDraft ? 'draft' : ((needsTarget || (!preview.hasStagedChanges && !pr.state)) ? 'empty' : '');
       const source = pendingSourceBranch || preview.sourceBranch || preview.currentBranch;
       const targets = preview.targetBranches || [];
       const selected = pendingTargetBranch || preview.targetBranch;
+      const title = preview.title || (needsTarget ? 'Select a target branch' : source + ' -> ' + selected);
       const sourceControl = branchControl('source-branch', 'source', 'from', 'Change source branch', source, preview.sourceBranches || []);
-      const targetControl = branchControl('target-branch', 'target', 'target', 'Change target branch', selected, targets);
+      const targetControl = branchControl('target-branch', 'target', 'target', 'Change target branch', selected, targets, 'Select target branch');
       return '<section class="pr-header">' +
         '<div class="title-row"><span class="state-pill ' + stateClass + '"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>' + esc(state) + '</span>' +
-        '<h2 class="pr-title">' + esc(preview.title) + number + '</h2></div>' +
+        '<h2 class="pr-title">' + esc(title) + number + '</h2></div>' +
         '<div class="branch-flow"><span class="codicon codicon-git-branch" aria-hidden="true"></span>' + sourceControl +
         '<span class="codicon codicon-arrow-right" aria-hidden="true"></span>' + targetControl + '</div>' +
       '</section>';
@@ -117,13 +130,13 @@ export function pullRequestPreviewScript(): string {
     }
     function tabContent(preview, files, commits) {
       if (activeTab === 'files') {
-        return '<section class="content-single">' + filesPanel(files) + '</section>';
+        return '<section class="content-single">' + filesPanel(files, preview) + '</section>';
       }
       if (activeTab === 'commits') {
-        return '<section class="commit-review">' + commitsPanel(commits) + commitFilesPanel(commits) + '</section>';
+        return '<section class="commit-review">' + commitsPanel(commits, preview) + commitFilesPanel(commits, preview) + '</section>';
       }
       return '<section class="content-grid">' + conversation(preview) +
-        '<div class="side-stack">' + fileTreePanel(files) + commitsPanel(commits) + '</div></section>';
+        '<div class="side-stack">' + fileTreePanel(files, preview) + commitsPanel(commits, preview) + '</div></section>';
     }
     function bindTabs() {
       content.querySelectorAll('[data-tab]').forEach((button) => {
@@ -202,25 +215,29 @@ export function pullRequestPreviewScript(): string {
     }
     function bodyText(preview) {
       if (preview.body) return preview.body;
+      if (!preview.targetBranch) return 'Select a target branch to generate a staged PR preview.';
       return preview.existingPr ? 'No PR body.' : 'No staged PR body generated.';
     }
-    function filesPanel(files) {
+    function filesPanel(files, preview) {
+      const emptyText = !preview?.targetBranch ? 'Select a target branch to load changed files.' : 'No changed files.';
       const body = filesReviewMode === 'continuous'
         ? '<div class="continuous-diff-list">' + files.map(continuousFileHtml).join('') + '</div>'
         : '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>';
       return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
         viewToggleHtml('files-review-mode', filesReviewMode, [['cards', 'files', 'Cards', 'Show files as collapsible cards'], ['continuous', 'diff', 'Diff', 'Show all files in one continuous diff']]) +
         '<span class="count">' + esc(files.length) + '</span></div></div>' +
-        (files.length ? body : '<p class="empty">No changed files.</p>') + '</section>';
+        (files.length ? body : '<p class="empty">' + esc(emptyText) + '</p>') + '</section>';
     }
-    function commitsPanel(commits) {
+    function commitsPanel(commits, preview) {
+      const emptyText = !preview?.targetBranch ? 'Select a target branch to load commits.' : 'No commits ahead of target.';
       return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-git-commit" aria-hidden="true"></span>Commits</span><span class="count">' + esc(commits.length) + '</span></div>' +
-        (commits.length ? '<div class="commit-list">' + commits.map(commitRow).join('') + '</div>' : '<p class="empty">No commits ahead of target.</p>') + '</section>';
+        (commits.length ? '<div class="commit-list">' + commits.map(commitRow).join('') + '</div>' : '<p class="empty">' + esc(emptyText) + '</p>') + '</section>';
     }
-    function commitFilesPanel(commits) {
+    function commitFilesPanel(commits, preview) {
+      if (!preview?.targetBranch) return '<section class="panel"><p class="empty">Select a target branch to inspect commit files.</p></section>';
       const commit = commits.find((item) => item.hash === activeCommitHash) || commits[0];
       if (commit?.loading) return '<section class="panel"><p class="empty">Loading commit files...</p></section>';
-      return commit ? filesPanel(commit.files || []) : '<section class="panel"><p class="empty">Select a commit to inspect changed files.</p></section>';
+      return commit ? filesPanel(commit.files || [], preview) : '<section class="panel"><p class="empty">Select a commit to inspect changed files.</p></section>';
     }
     function markCommitFilesLoading(commit) {
       if (!commit || commit.synthetic || (commit.files || []).length || commit.loading) return;
@@ -296,11 +313,12 @@ export function pullRequestPreviewScript(): string {
       return '<button class="commit-row' + (active ? ' active' : '') + '" type="button" data-commit-hash="' + esc(commit.hash) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
         '<span class="codicon codicon-git-commit" aria-hidden="true"></span><span class="commit-title">' + esc(commit.title) + '</span><span class="commit-hash">' + esc(commit.shortHash || '') + '</span></button>';
     }
-    function fileTreePanel(files) {
+    function fileTreePanel(files, preview) {
+      const emptyText = !preview?.targetBranch ? 'Select a target branch to load changed files.' : 'No changed files.';
       return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
         viewToggleHtml('file-nav-mode', fileNavMode, [['tree', 'list-tree', 'Tree', 'View changed files as tree'], ['list', 'list-selection', 'List', 'View changed files as list']]) +
         '<span class="count">' + esc(files.length) + '</span></div></div>' +
-        (files.length ? fileNavHtml(files) : '<p class="empty">No changed files.</p>') + '</section>';
+        (files.length ? fileNavHtml(files) : '<p class="empty">' + esc(emptyText) + '</p>') + '</section>';
     }
     function fileNavHtml(files) {
       if (fileNavMode === 'list') return '<div class="file-tree list">' + files.map((file) => treeFileHtml(file, displayPath(file), 0)).join('') + '</div>';

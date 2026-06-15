@@ -379,6 +379,8 @@
   "Generate AI pull request message": "AI PR 메시지 생성",
   "Generating AI pull request message...": "AI PR 메시지 생성 중...",
   "AI pull request message generation failed: {0}": "AI PR 메시지 생성 실패: {0}",
+  "PR Preview: select target branch": "PR Preview: 타겟 브랜치 선택",
+  "Select a target branch before generating a pull request message.": "PR 메시지를 생성하기 전에 타겟 브랜치를 선택하세요.",
   "No pull request message is available to copy.": "복사할 PR 메시지가 없습니다.",
   "Pull request message copied to clipboard.": "PR 메시지를 클립보드에 복사했습니다.",
   "Copy pull request message": "PR 메시지 복사",
