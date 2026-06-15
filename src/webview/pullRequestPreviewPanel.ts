@@ -10,8 +10,10 @@ import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
+import { pullRequestPreviewDiffScript } from "./pullRequestPreviewDiffRenderer";
 import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
+import { pullRequestPreviewTimelineScript } from "./pullRequestPreviewTimeline";
 
 type PreviewMessage =
   | { type: "ready" }
@@ -436,7 +438,7 @@ function script(): string {
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
             '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-            (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false) + commentsHtml(comments) + '</div>') + '</article>';
+            (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments) + '</div>') + '</article>';
         }
         function continuousFileHtml(file) {
           const comments = file.comments || [];
@@ -450,48 +452,8 @@ function script(): string {
             '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
             '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
             '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-            (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch) + commentsHtml(comments) + '</div>') + '</article>';
+            (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments) + '</div>') + '</article>';
         }
-    function patchHtml(patch, compact) {
-      if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
-      const lines = String(patch).split('\\n');
-      const visible = lines.slice(0, compact ? 40 : 180).map(diffLineHtml).join('');
-      const omitted = lines.length > (compact ? 40 : 180)
-        ? '<div class="diff-line"><span class="line-marker">...</span><span class="line-code">Snippet truncated</span></div>' : '';
-      return '<div class="diff-snippet' + (compact ? ' mini-diff' : '') + '">' + visible + omitted + '</div>';
-    }
-        function diffLineHtml(line) {
-          const marker = line.startsWith('+') ? '+' : line.startsWith('-') ? '-' : line.startsWith('@@') ? '@@' : '';
-          const cls = marker === '+' ? ' add' : marker === '-' ? ' del' : marker === '@@' ? ' hunk' : '';
-          const code = marker && marker !== '@@' ? line.slice(1) : line;
-          return '<div class="diff-line' + cls + '"><span class="line-marker">' + esc(marker) + '</span><span class="line-code">' + esc(code || ' ') + '</span></div>';
-        }
-        function splitPatchHtml(patch) {
-          if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
-          const lines = String(patch).split('\\n');
-          const visible = lines.slice(0, 260).map(splitDiffLineHtml).join('');
-          const omitted = lines.length > 260 ? '<div class="split-row meta"><span></span><span class="split-code">Snippet truncated</span><span></span><span class="split-code">Snippet truncated</span></div>' : '';
-          return '<div class="split-diff"><div class="split-head"><span>Base</span><span>Changed</span></div>' + visible + omitted + '</div>';
-        }
-        function splitDiffLineHtml(line) {
-          if (line.startsWith('diff --git') || line.startsWith('index ') || line.startsWith('--- ') || line.startsWith('+++ ')) return '<div class="split-row meta"><span></span><span class="split-code">' + esc(line || ' ') + '</span><span></span><span class="split-code">' + esc(line || ' ') + '</span></div>';
-          if (line.startsWith('@@')) return '<div class="split-row hunk"><span></span><span class="split-code">' + esc(line) + '</span><span></span><span class="split-code">' + esc(line) + '</span></div>';
-          if (line.startsWith('+')) return '<div class="split-row add"><span></span><span class="split-code"></span><span class="split-marker">+</span><span class="split-code">' + esc(line.slice(1) || ' ') + '</span></div>';
-          if (line.startsWith('-')) return '<div class="split-row del"><span class="split-marker">-</span><span class="split-code">' + esc(line.slice(1) || ' ') + '</span><span></span><span class="split-code"></span></div>';
-          return '<div class="split-row"><span></span><span class="split-code">' + esc(line || ' ') + '</span><span></span><span class="split-code">' + esc(line || ' ') + '</span></div>';
-        }
-    function commentsHtml(comments) {
-      if (!comments.length) return '';
-      return '<div class="review-comments">' + comments.map(commentHtml).join('') + '</div>';
-    }
-    function commentHtml(comment) {
-      const line = comment.line || comment.originalLine;
-      const where = line ? 'line ' + line : (comment.side || 'review');
-      return '<article class="review-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
-        esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span></div>' +
-        '<div class="comment-body markdown-body">' + renderMarkdown(comment.body || '') + '</div>' +
-        (comment.diffHunk ? patchHtml(comment.diffHunk, true) : '') + '</article>';
-    }
     function reviewFiles(preview) {
       if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
       return (preview.files || []).map((file) => Object.assign({ comments: [] }, file));
@@ -510,12 +472,6 @@ function script(): string {
       const title = 'Show files changed in commit ' + (commit.shortHash || commit.hash);
       return '<button class="commit-row' + (active ? ' active' : '') + '" type="button" data-commit-hash="' + esc(commit.hash) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
         '<span class="codicon codicon-git-commit" aria-hidden="true"></span><span class="commit-title">' + esc(commit.title) + '</span><span class="commit-hash">' + esc(commit.shortHash || '') + '</span></button>';
-    }
-    function timelineItem(item) {
-      const title = item.kind === 'body' ? 'opened this pull request' : 'commented';
-      return '<article class="timeline-item"><span class="avatar">' + esc(initial(item.author)) + '</span><div class="timeline-card">' +
-        '<div class="timeline-head"><strong>' + esc(item.author || 'unknown') + '</strong><span>' + esc(title) + '</span>' + (item.createdAt ? '<span>' + esc(formatDate(item.createdAt)) + '</span>' : '') + '</div>' +
-        '<div class="markdown-body">' + renderMarkdown(item.body || '') + '</div></div></article>';
     }
         function fileTreePanel(files) {
           return '<section class="panel"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-list-tree" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
@@ -586,6 +542,8 @@ function script(): string {
             function displayPath(file) { return file.oldPath ? file.oldPath + ' -> ' + file.path : file.path; }
         function formatDate(iso) { const d = new Date(iso || ''); return isNaN(d.getTime()) ? '' : d.toLocaleString(); }
         function statusIcon(status) { return status === 'A' ? 'codicon-diff-added' : status === 'D' ? 'codicon-diff-removed' : (status === 'R' || status === 'C') ? 'codicon-diff-renamed' : status === 'U' ? 'codicon-warning' : 'codicon-diff-modified'; }
+    ${pullRequestPreviewDiffScript()}
+    ${pullRequestPreviewTimelineScript()}
     ${pullRequestPreviewMarkdownScript()}
     function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }
     function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }

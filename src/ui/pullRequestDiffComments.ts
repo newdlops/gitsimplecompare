@@ -7,10 +7,13 @@ export interface PullRequestDiffComment {
   body: string;
   line?: number;
   originalLine?: number;
+  side?: string;
   createdAt?: string;
 }
 
 let activeDecoration: vscode.TextEditorDecorationType | undefined;
+let activeTarget: { uri: vscode.Uri; comments: PullRequestDiffComment[] } | undefined;
+let visibleEditorsListener: vscode.Disposable | undefined;
 
 /**
  * 현재 열리는 editable diff 의 작업 파일에 PR review comment 를 표시한다.
@@ -23,7 +26,8 @@ export function showPullRequestDiffComments(
 ): void {
   activeDecoration?.dispose();
   activeDecoration = undefined;
-  const visible = comments.filter((comment) => comment.line || comment.originalLine);
+  activeTarget = undefined;
+  const visible = comments.filter((comment) => targetLine(comment));
   if (!visible.length) {
     return;
   }
@@ -42,8 +46,11 @@ export function showPullRequestDiffComments(
     overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.infoForeground"),
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
+  activeTarget = { uri: fileUri, comments: visible };
+  ensureVisibleEditorsListener();
   scheduleApply(fileUri, visible, 250);
   scheduleApply(fileUri, visible, 900);
+  scheduleApply(fileUri, visible, 1600);
 }
 
 /** diff editor 가 열린 뒤 보이는 editor 에 decoration 을 적용한다. */
@@ -64,7 +71,7 @@ function applyComments(fileUri: vscode.Uri, comments: PullRequestDiffComment[]):
     if (editor.document.uri.toString() !== fileUri.toString()) {
       continue;
     }
-    editor.setDecorations(activeDecoration, groupedComments(comments).map(commentDecoration));
+    editor.setDecorations(activeDecoration, groupedComments(editor.document.lineCount, comments).map(commentDecoration));
   }
 }
 
@@ -78,10 +85,10 @@ function commentDecoration(group: { line: number; comments: PullRequestDiffComme
 }
 
 /** 같은 라인의 comment 를 하나의 inlay icon 으로 묶는다. */
-function groupedComments(comments: PullRequestDiffComment[]): Array<{ line: number; comments: PullRequestDiffComment[] }> {
+function groupedComments(lineCount: number, comments: PullRequestDiffComment[]): Array<{ line: number; comments: PullRequestDiffComment[] }> {
   const byLine = new Map<number, PullRequestDiffComment[]>();
   for (const comment of comments) {
-    const line = Math.max(0, (comment.line || comment.originalLine || 1) - 1);
+    const line = Math.min(Math.max(0, (targetLine(comment) || 1) - 1), Math.max(0, lineCount - 1));
     const list = byLine.get(line) || [];
     list.push(comment);
     byLine.set(line, list);
@@ -89,6 +96,27 @@ function groupedComments(comments: PullRequestDiffComment[]): Array<{ line: numb
   return Array.from(byLine.entries())
     .sort(([a], [b]) => a - b)
     .map(([line, list]) => ({ line, comments: list }));
+}
+
+/** visible editor 변경 뒤에도 현재 PR comment decoration 을 다시 적용한다. */
+function ensureVisibleEditorsListener(): void {
+  if (visibleEditorsListener) {
+    return;
+  }
+  visibleEditorsListener = vscode.window.onDidChangeVisibleTextEditors(() => {
+    if (activeTarget) {
+      applyComments(activeTarget.uri, activeTarget.comments);
+    }
+  });
+}
+
+/** GitHub comment 의 side 정보를 고려해 표시할 대상 line 을 고른다. */
+function targetLine(comment: PullRequestDiffComment): number | undefined {
+  const side = (comment.side || "").toUpperCase();
+  if (side === "LEFT") {
+    return comment.originalLine || comment.line;
+  }
+  return comment.line || comment.originalLine;
 }
 
 /** hover 에서 상세 comment 본문을 markdown 으로 보여준다. */

@@ -56,6 +56,10 @@ export function pullRequestPreviewStyles(): string {
     .timeline-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
     .timeline-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
     .timeline-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
+    .timeline-head strong { color: var(--vscode-foreground); }
+    .timeline-context { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+    .timeline-context code { padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px; color: var(--blue); background: var(--vscode-textCodeBlock-background); }
+    .timeline-body.muted { padding: 10px 12px; color: var(--muted); font-style: italic; }
     .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
     .metric { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
     .metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
@@ -74,24 +78,27 @@ export function pullRequestPreviewStyles(): string {
     .file-action:hover, .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
     .file-toggle { width: 22px; }
     .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
-    .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-    .diff-line { display: inline-grid; grid-template-columns: 28px max-content; width: max-content; min-width: 100%; min-height: 20px; }
-    .diff-line.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
-    .diff-line.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
-        .diff-line.hunk { color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, transparent); }
-        .line-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
-        .line-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; overflow: visible; }
+    .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; line-height: 20px; }
+    .github-diff { border-top: 1px solid var(--border); }
+    .diff-row { display: grid; grid-template-columns: 52px 52px 24px max-content; width: max-content; min-width: 100%; min-height: 20px; }
+    .diff-row.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
+    .diff-row.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
+    .diff-row.hunk, .diff-row.meta, .diff-row.omitted { color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); }
+    .diff-line-no { padding: 0 8px; border-right: 1px solid color-mix(in srgb, var(--border) 72%, transparent); color: var(--muted); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
+    .diff-marker { padding: 0 7px; color: var(--muted); text-align: center; user-select: none; }
+    .diff-code { min-width: max-content; padding: 0 16px 0 2px; white-space: pre; tab-size: 2; }
+    .diff-row.add .diff-line-no.new, .diff-row.del .diff-line-no.old { color: var(--vscode-foreground); background: color-mix(in srgb, currentColor 7%, transparent); }
+    .diff-comment-row { display: grid; grid-template-columns: 52px 52px 24px minmax(420px, 1fr); width: max-content; min-width: 100%; background: var(--vscode-editor-background); }
+    .diff-comment-row .diff-marker { padding-top: 10px; color: var(--vscode-charts-purple); }
+    .diff-inline-comments { display: grid; gap: 8px; min-width: 0; padding: 8px 12px 10px 0; }
+    .diff-inline-comment { min-width: min(720px, calc(100vw - 220px)); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
+    .tok-keyword { color: var(--vscode-symbolIcon-keywordForeground, #c586c0); }
+    .tok-str { color: var(--vscode-symbolIcon-stringForeground, #ce9178); }
+    .tok-comment { color: var(--vscode-editorCodeLens-foreground, #6a9955); font-style: italic; }
+    .tok-number { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
+    .tok-tag, .tok-attr { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
         .continuous-diff-list { display: grid; min-width: 0; }
         .continuous-file.collapsed .review-file-body, .review-file.collapsed .review-comments { display: none; }
-        .split-diff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow-x: auto; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; }
-        .split-head, .split-row { display: grid; grid-column: 1 / -1; grid-template-columns: 28px minmax(max-content, 1fr) 28px minmax(max-content, 1fr); min-width: max-content; }
-        .split-head { position: sticky; top: 0; z-index: 1; color: var(--muted); background: var(--subtle); font-family: var(--vscode-font-family); font-weight: 600; }
-        .split-head span { grid-column: span 2; padding: 5px 8px; border-bottom: 1px solid var(--border); }
-        .split-row.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
-        .split-row.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
-        .split-row.hunk, .split-row.meta { color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); }
-        .split-marker { padding: 2px 7px; color: var(--muted); text-align: center; user-select: none; }
-        .split-code { min-width: max-content; padding: 2px 10px 2px 0; white-space: pre; }
         .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
     .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
     .comment-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); }
