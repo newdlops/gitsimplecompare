@@ -6,13 +6,13 @@ import { runGit } from "./gitExec";
  * PR preview target branch 후보를 반환한다.
  * @param repoRoot git 저장소 루트
  * @param selected 현재 선택된 target branch
- * @param currentBranch 현재 작업 브랜치
+ * @param excludedBranch 후보에서 제외할 반대쪽 브랜치
  * @returns selected 를 맨 앞에 둔 branch 후보 목록
  */
 export async function previewTargetBranches(
   repoRoot: string,
   selected: string,
-  currentBranch: string
+  excludedBranch: string
 ): Promise<string[]> {
   const out = await runGit([
     "for-each-ref",
@@ -24,7 +24,7 @@ export async function previewTargetBranches(
   const values = out
     .split("\n")
     .map((line) => line.trim())
-    .filter((name) => name && !name.endsWith("/HEAD") && name !== currentBranch)
+    .filter((name) => name && !name.endsWith("/HEAD") && name !== excludedBranch)
     .map((name) => name.replace(/^origin\//, "origin/"));
   return orderedUnique([selected, "main", "master", "origin/main", "origin/master", ...values]);
 }

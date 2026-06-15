@@ -63,6 +63,7 @@ export async function openRefVsWorkingDiff(
   const fileLabel = opts?.fileLabel ?? relPath.slice(relPath.lastIndexOf("/") + 1);
   const rightLabel = opts?.rightLabel ?? vscode.l10n.t("Working Tree");
   const title = makeDiffTitle(ref, rightLabel, fileLabel);
+  refreshBranchContent(left);
   await vscode.commands.executeCommand(
     "vscode.diff",
     left,

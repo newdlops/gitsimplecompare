@@ -43,9 +43,12 @@ export function pullRequestPreviewStyles(): string {
         .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
         .panel-actions { display: inline-flex; align-items: center; gap: 8px; }
         .file-view-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--border); border-radius: 4px; background: var(--vscode-editor-background); }
-        .file-view-button { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; }
+        .file-view-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 22px; height: 22px; padding: 0 6px; border: 0; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; }
         .file-view-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
         .file-view-button.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+        .file-view-label { font-size: 11px; line-height: 1; white-space: nowrap; }
+        .file-view-button[data-tooltip]::after, .file-action[data-tooltip]::after, .file-toggle[data-tooltip]::after { content: attr(data-tooltip); position: fixed; z-index: 100; top: 52px; right: 12px; max-width: min(420px, calc(100vw - 24px)); padding: 4px 7px; border: 1px solid var(--vscode-widget-border); border-radius: 3px; color: var(--vscode-quickInput-foreground); background: #252526; opacity: 0; pointer-events: none; white-space: normal; overflow-wrap: anywhere; font-weight: 400; }
+        .file-view-button[data-tooltip]:hover::after, .file-view-button[data-tooltip]:focus-visible::after, .file-action[data-tooltip]:hover::after, .file-action[data-tooltip]:focus-visible::after, .file-toggle[data-tooltip]:hover::after, .file-toggle[data-tooltip]:focus-visible::after { opacity: 1; }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
     .markdown-body { padding: 14px; overflow: auto; line-height: 1.5; }
     .markdown-body :is(h1,h2,h3,p,ul,ol,blockquote,pre) { margin-top: 0; margin-bottom: 10px; }

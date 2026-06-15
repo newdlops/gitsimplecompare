@@ -69,17 +69,19 @@ export async function fetchExistingPullRequestCommits(
  * target branch 기준 로컬 HEAD 커밋과 staged synthetic commit 으로 PR preview 를 만든다.
  * @param repoRoot git 저장소 루트
  * @param targetBranch PR 대상 브랜치
+ * @param sourceRef PR 출발 브랜치/커밋
  * @param stagedFiles staged 변경 파일
  * @returns 전체 PR files 와 commit 별 files
  */
 export async function buildLocalPullRequestPreview(
   repoRoot: string,
   targetBranch: string,
+  sourceRef: string,
   stagedFiles: CommitFileChange[]
 ): Promise<{ files: PullRequestPreviewFile[]; commits: PullRequestPreviewCommit[] }> {
   const [baseFiles, commits, stagedPatch] = await Promise.all([
-    readRangeFiles(repoRoot, targetBranch),
-    readLocalCommitSummaries(repoRoot, targetBranch),
+    readRangeFiles(repoRoot, targetBranch, sourceRef),
+    readLocalCommitSummaries(repoRoot, targetBranch, sourceRef),
     runGit(["diff", "--cached", "--patch", "-M", "--unified=80"], repoRoot).catch(() => ""),
   ]);
   let stagedSyntheticFiles: PullRequestPreviewFile[] = [];
@@ -167,13 +169,14 @@ async function readGithubCommit(
 /** target..HEAD 커밋 메타 목록을 오래된 순서부터 한 번에 읽는다. */
 async function readLocalCommitSummaries(
   repoRoot: string,
-  targetBranch: string
+  targetBranch: string,
+  sourceRef: string
 ): Promise<PullRequestPreviewCommit[]> {
   const out = await runGit([
     "log",
     "--reverse",
     "--format=%H%x1f%h%x1f%s%x1f%an%x1f%aI",
-    `${targetBranch}..HEAD`,
+    `${targetBranch}..${sourceRef}`,
   ], repoRoot).catch(() => "");
   return out.split("\n")
     .map(commitSummary)
@@ -214,11 +217,11 @@ async function readLocalCommitFiles(repoRoot: string, hash: string): Promise<Pul
 }
 
 /** target branch 기준 PR 전체 변경 파일을 읽는다. */
-async function readRangeFiles(repoRoot: string, targetBranch: string): Promise<PullRequestPreviewFile[]> {
+async function readRangeFiles(repoRoot: string, targetBranch: string, sourceRef: string): Promise<PullRequestPreviewFile[]> {
   const [nameStatus, numstat, patch] = await Promise.all([
-    runGit(["diff", "--name-status", "-z", "-M", `${targetBranch}...HEAD`], repoRoot).catch(() => ""),
-    runGit(["diff", "--numstat", "-M", `${targetBranch}...HEAD`], repoRoot).catch(() => ""),
-    runGit(["diff", "--patch", "-M", "--unified=80", `${targetBranch}...HEAD`], repoRoot).catch(() => ""),
+    runGit(["diff", "--name-status", "-z", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
+    runGit(["diff", "--numstat", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
+    runGit(["diff", "--patch", "-M", "--unified=80", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
   ]);
   return filesFromDiff(nameStatus, numstat, patch);
 }

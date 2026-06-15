@@ -121,11 +121,9 @@ export interface PullRequestOverview {
 /** staged 상태로 PR 을 만들 때의 모의 내용 */
 export interface StagedPullRequestPreview {
   repository?: string;
-  currentBranch: string;
-  targetBranch: string;
-  targetRef: string;
-  headRef: string;
-  targetBranches: string[];
+  currentBranch: string; sourceBranch: string; sourceRef: string;
+  targetBranch: string; targetRef: string; headRef: string;
+  sourceBranches: string[]; targetBranches: string[];
   title: string;
   body: string;
   files: CommitFileChange[];
@@ -259,16 +257,20 @@ export class PullRequestService {
    * 현재 staged 상태를 target branch 로 PR 한다고 가정한 모의 내용을 만든다.
    * @param baseBranch 명시 target branch. 없으면 현재 PR/base/upstream/main 순서로 추정한다.
    * @param existingPr 기존 PR 이 있으면 제목/본문 힌트에 포함한다.
+   * @param sourceBranch 명시 source branch. 없으면 기존 PR head/current branch 순서로 추정한다.
    */
   async getStagedPreview(
     baseBranch?: string,
-    existingPr?: PullRequestInfo
+    existingPr?: PullRequestInfo,
+    sourceBranch?: string
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
+    const selectedSource = sourceBranch || existingPr?.headRefName || currentBranch;
     const targetBranch = baseBranch || existingPr?.baseRefName || await this.defaultBaseBranch();
-    const targetRef = await resolvePreviewTargetRef(this.repoRoot, targetBranch);
-    const targetBranches = await previewTargetBranches(this.repoRoot, targetBranch, currentBranch);
-    const effectivePr = baseBranch && existingPr?.baseRefName && baseBranch !== existingPr.baseRefName
+    const [targetRef, sourceRef] = await Promise.all([resolvePreviewTargetRef(this.repoRoot, targetBranch), resolvePreviewTargetRef(this.repoRoot, selectedSource)]);
+    const [targetBranches, sourceBranches] = await Promise.all([previewTargetBranches(this.repoRoot, targetBranch, selectedSource), previewTargetBranches(this.repoRoot, selectedSource, targetBranch)]);
+    const effectivePr = (baseBranch && existingPr?.baseRefName && baseBranch !== existingPr.baseRefName)
+      || (sourceBranch && existingPr?.headRefName && sourceBranch !== existingPr.headRefName)
       ? undefined
       : existingPr;
     const headRef = effectivePr ? await resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : "HEAD";
@@ -281,7 +283,7 @@ export class PullRequestService {
     const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
     const localPreview = prPreviewFiles.length || prPreviewCommits.length
       ? { files: [] as PullRequestPreviewFile[], commits: [] as PullRequestPreviewCommit[] }
-      : await buildLocalPullRequestPreview(this.repoRoot, targetRef, stagedFiles);
+      : await buildLocalPullRequestPreview(this.repoRoot, targetRef, sourceRef, stagedFiles);
     const previewFiles = prPreviewFiles.length ? prPreviewFiles : localPreview.files;
     const previewCommits = prPreviewCommits.length ? prPreviewCommits : localPreview.commits;
     const commits = commitLabels(previewCommits);
@@ -293,16 +295,19 @@ export class PullRequestService {
       repository,
       effectivePr,
       body,
-      currentBranch
-    ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || currentBranch, body }]);
+      selectedSource
+    ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || selectedSource, body }]);
     return {
       repository,
       currentBranch,
+      sourceBranch: selectedSource,
+      sourceRef,
       targetBranch,
       targetRef,
       headRef,
+      sourceBranches,
       targetBranches,
-      title: existingPreview?.title || effectivePr?.title || previewTitle(currentBranch, targetBranch, commits, previewFiles),
+      title: existingPreview?.title || effectivePr?.title || previewTitle(selectedSource, targetBranch, commits, previewFiles),
       body,
       files: previewFiles,
       previewFiles,

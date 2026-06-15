@@ -3,6 +3,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import type { PullRequestPreviewComment } from "../git/pullRequestPreviewFiles";
+import { refreshBranchContent } from "../providers/branchContentProvider";
 import { openRefVsWorkingDiff } from "./diffPresenter";
 import { makeDiffTitle, makeRefUri } from "../utils/uri";
 import { showPullRequestDiffComments } from "./pullRequestDiffComments";
@@ -14,6 +15,8 @@ export interface PullRequestPreviewDiffRequest {
   status?: string;
   baseRef?: string;
   headRef?: string;
+  preferEditable?: boolean;
+  fallbackRef?: string;
   comments?: PullRequestPreviewComment[];
 }
 
@@ -35,6 +38,21 @@ export async function openPullRequestPreviewDiff(
   const headRef = request.headRef || "HEAD";
   const fileUri = vscode.Uri.file(path.join(repoRoot, relPath));
   const fileLabel = path.basename(relPath);
+  if (request.preferEditable && request.status !== "D" && await exists(fileUri)) {
+    const hasWorkingDiff = !request.fallbackRef || await hasTextDiff(makeRefUri(baseRef, oldPath ?? relPath, repoRoot), fileUri);
+    if (hasWorkingDiff) {
+      await openRefVsWorkingDiff(repoRoot, baseRef, fileUri, relPath, {
+        leftRelPath: oldPath,
+        fileLabel,
+      });
+      showPullRequestDiffComments(fileUri, request.comments || []);
+      return;
+    }
+  }
+  if (request.fallbackRef) {
+    await openRefDiffWithComments(repoRoot, baseRef, request.fallbackRef, relPath, oldPath, fileLabel, request.comments || []);
+    return;
+  }
   if (headRef !== "HEAD") {
     await openRefDiffWithComments(repoRoot, baseRef, headRef, relPath, oldPath, fileLabel, request.comments || []);
     return;
@@ -62,8 +80,24 @@ async function openRefDiffWithComments(
 ): Promise<void> {
   const left = makeRefUri(baseRef, oldPath ?? relPath, repoRoot);
   const right = makeRefUri(headRef, relPath, repoRoot);
+  refreshBranchContent(left);
+  refreshBranchContent(right);
   await vscode.commands.executeCommand("vscode.diff", left, right, makeDiffTitle(baseRef, headRef, fileLabel), { preview: false });
   showPullRequestDiffComments(right, comments);
+}
+
+/** 기준 ref 문서와 작업트리 파일이 실제로 다른지 확인한다. */
+async function hasTextDiff(left: vscode.Uri, right: vscode.Uri): Promise<boolean> {
+  try {
+    refreshBranchContent(left);
+    const [leftDoc, rightBytes] = await Promise.all([
+      vscode.workspace.openTextDocument(left),
+      vscode.workspace.fs.readFile(right),
+    ]);
+    return leftDoc.getText() !== Buffer.from(rightBytes).toString("utf8");
+  } catch {
+    return true;
+  }
 }
 
 /** 저장소 밖 경로나 절대 경로를 걸러낸다. */
