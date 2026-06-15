@@ -4,6 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { detectOperation } from "./conflictService";
 import { GitError, runGit } from "./gitExec";
+import { runStash } from "./stashExec";
 
 const SNAPSHOT_PREFIX = "GSC_PULL_ROLLBACK";
 type LocalChangeBlocker = "none" | "tracked" | "untracked" | "mixed";
@@ -277,12 +278,12 @@ export class PullService {
       String(createdAt),
       encodeURIComponent(branch),
     ].join("|");
-    const args = ["stash", "push"];
+    const args = ["push"];
     if (includeUntracked) {
       args.push("-u");
     }
     args.push("-m", marker);
-    const out = await runGit(args, this.repoRoot);
+    const out = await runStash(args, this.repoRoot);
     if (/No local changes to save/i.test(out)) {
       return undefined;
     }
@@ -297,8 +298,8 @@ export class PullService {
 
   /** stash list 에 남아 있는 pull rollback snapshot 들을 최신순으로 반환한다. */
   private async listPullRollbackSnapshots(): Promise<PullRollbackSnapshot[]> {
-    const out = await runGit(
-      ["stash", "list", "--format=%gd%x1f%gs%x1f%H%x1e"],
+    const out = await runStash(
+      ["list", "--format=%gd%x1f%gs%x1f%H%x1e"],
       this.repoRoot
     ).catch(() => "");
     return out
@@ -393,7 +394,7 @@ export class PullService {
   private async dropSnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
     const currentSnapshot =
       (await this.findSnapshotByHash(snapshot.hash)) ?? snapshot;
-    await runGit(["stash", "drop", currentSnapshot.ref], this.repoRoot);
+    await runStash(["drop", currentSnapshot.ref], this.repoRoot);
   }
 
   /**
@@ -402,7 +403,7 @@ export class PullService {
    * @param snapshot 적용할 rollback snapshot
    */
   private async applySnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
-    await runGit(["stash", "apply", "--index", snapshot.ref], this.repoRoot);
+    await runStash(["apply", "--index", snapshot.ref], this.repoRoot);
   }
 
   /**
@@ -413,7 +414,7 @@ export class PullService {
   private async popSnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
     const currentSnapshot =
       (await this.findSnapshotByHash(snapshot.hash)) ?? snapshot;
-    await runGit(["stash", "pop", "--index", currentSnapshot.ref], this.repoRoot);
+    await runStash(["pop", "--index", currentSnapshot.ref], this.repoRoot);
   }
 
   /** 예상 밖 실패 시 임시 stash 로 숨긴 로컬 변경을 되살린다. 복원 실패는 원인과 함께 다시 던진다. */

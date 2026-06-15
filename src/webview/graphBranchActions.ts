@@ -1,6 +1,7 @@
 // git graph 웹뷰의 브랜치 관련 액션을 처리하는 모듈.
 // - graphActions.ts 는 메시지 라우팅에 집중하고, 브랜치 checkout/create/delete/clone 흐름은 여기로 모은다.
 import * as vscode from "vscode";
+import { GitError } from "../git/gitExec";
 import { GitLogService } from "../git/gitLogService";
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { logInfo } from "../ui/outputLog";
@@ -9,6 +10,7 @@ import {
   isCheckoutConflictError,
   retryCheckoutWithConflicts,
 } from "./graphCheckoutConflicts";
+import { handleBranchMergeAction } from "./graphBranchMergeActions";
 
 export type BranchKind = "local" | "remote";
 
@@ -18,7 +20,13 @@ interface GraphBranchActionDeps {
   refreshGraph: () => Promise<void>;
 }
 
-type BranchQuickAction = "checkout" | "clone" | "cloneCheckout";
+type BranchQuickAction =
+  | "checkout"
+  | "clone"
+  | "cloneCheckout"
+  | "squashMerge"
+  | "rebaseMerge"
+  | "undoBranchOperation";
 
 interface BranchQuickPickItem extends vscode.QuickPickItem {
   action: BranchQuickAction;
@@ -200,6 +208,21 @@ export async function branchAction(
         description: vscode.l10n.t("Create a rebase test branch and switch to it."),
         action: "cloneCheckout",
       },
+      {
+        label: vscode.l10n.t("Squash Merge Branch"),
+        description: vscode.l10n.t("Create one commit on the current branch."),
+        action: "squashMerge",
+      },
+      {
+        label: vscode.l10n.t("Rebase Merge Branch"),
+        description: vscode.l10n.t("Apply clean commits first; show conflict commits last."),
+        action: "rebaseMerge",
+      },
+      {
+        label: vscode.l10n.t("Undo Last Branch Operation"),
+        description: vscode.l10n.t("Reset the current branch to the saved snapshot."),
+        action: "undoBranchOperation",
+      },
     ],
     { placeHolder: branch }
   );
@@ -208,6 +231,18 @@ export async function branchAction(
   }
   if (pick.action === "checkout") {
     await checkoutBranch(deps, branch);
+    return;
+  }
+  if (pick.action === "squashMerge") {
+    await handleBranchMergeAction(deps, branch, "squash");
+    return;
+  }
+  if (pick.action === "rebaseMerge") {
+    await handleBranchMergeAction(deps, branch, "rebase");
+    return;
+  }
+  if (pick.action === "undoBranchOperation") {
+    await handleBranchMergeAction(deps, branch, "undo");
     return;
   }
   await cloneBranch(deps, branch, pick.action === "cloneCheckout");
@@ -226,7 +261,7 @@ export async function deleteBranch(
   kind?: BranchKind
 ): Promise<void> {
   const branch = branchName
-    ? { name: branchName, kind: kind ?? branchKind(branchName) }
+    ? { name: branchName, kind: kind ?? await resolveBranchKind(deps, branchName) }
     : await pickBranch(deps);
   if (!branch) {
     return;
@@ -241,12 +276,43 @@ export async function deleteBranch(
   if (branch.kind === "remote") {
     await deps.logService.deleteRemoteBranch(branch.name);
   } else {
-    await deps.logService.deleteLocalBranch(branch.name);
+    if (!await deleteLocalBranchWithForceFallback(deps, branch.name)) {
+      return;
+    }
   }
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Branch '{0}' deleted.", branch.name)
   );
+}
+
+/**
+ * 로컬 브랜치를 일반 삭제하고, 병합되지 않아 실패한 경우에만 강제 삭제 확인을 한 번 더 받는다.
+ * - PR rebase/squash 검증용 브랜치는 현재 브랜치에 merge 되지 않아 `git branch -d` 가 정상적으로 막을 수 있다.
+ * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
+ * @param branchName 삭제할 로컬 브랜치 이름
+ */
+async function deleteLocalBranchWithForceFallback(
+  deps: GraphBranchActionDeps,
+  branchName: string
+): Promise<boolean> {
+  try {
+    await deps.logService.deleteLocalBranch(branchName);
+    return true;
+  } catch (err) {
+    if (!isUnmergedBranchDeleteError(err)) {
+      throw err;
+    }
+    const ok = await confirm(
+      vscode.l10n.t("Branch '{0}' is not fully merged. Force delete it?", branchName),
+      vscode.l10n.t("Force Delete")
+    );
+    if (!ok) {
+      return false;
+    }
+    await deps.logService.deleteLocalBranch(branchName, true);
+    return true;
+  }
 }
 
 /**
@@ -369,6 +435,32 @@ async function confirm(message: string, label: string): Promise<boolean> {
  */
 function branchKind(name: string): BranchKind {
   return name.includes("/") ? "remote" : "local";
+}
+
+/**
+ * 브랜치 이름만 받은 경우 실제 ref 목록에서 로컬/원격 종류를 해석한다.
+ * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
+ * @param name 종류를 확인할 branch short name
+ * @returns 실제 ref 에서 찾은 종류. 못 찾으면 기존 휴리스틱으로 fallback 한다.
+ */
+async function resolveBranchKind(
+  deps: GraphBranchActionDeps,
+  name: string
+): Promise<BranchKind> {
+  const branches = await deps.logService.getBranches().catch(() => []);
+  return branches.find((branch) => branch.name === name)?.kind ?? branchKind(name);
+}
+
+/**
+ * `git branch -d` 가 병합되지 않은 로컬 브랜치라서 실패했는지 확인한다.
+ * @param err git 삭제 명령에서 발생한 오류
+ * @returns 강제 삭제 재확인을 띄울 수 있는 오류면 true
+ */
+function isUnmergedBranchDeleteError(err: unknown): boolean {
+  if (!(err instanceof GitError)) {
+    return false;
+  }
+  return /not fully merged/i.test(err.stderr);
 }
 
 /**

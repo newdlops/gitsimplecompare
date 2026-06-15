@@ -83,6 +83,18 @@
           branch,
         }))
       );
+      actions.push(
+        item("Squash Merge Branch", "git-merge", () => ({
+          type: "branchMergeAction",
+          branch,
+          action: "squash",
+        })),
+        item("Rebase Merge Branch", "repo-forked", () => ({
+          type: "branchMergeAction",
+          branch,
+          action: "rebase",
+        }))
+      );
     }
     actions.push(
       item("Clone Branch", "git-branch-create", () => ({

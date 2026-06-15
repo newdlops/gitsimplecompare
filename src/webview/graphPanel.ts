@@ -189,6 +189,7 @@ export class GitGraphPanel {
       } else if (isGraphActionMessage(msg)) {
         await handleGraphAction(msg, {
           logService: this.logService,
+          pullRequests: () => this.pullRequests.items,
           refreshCheckout: () => this.refreshAfterCheckoutAction(),
           refreshGraph: () => this.refreshAfterGraphAction(),
         });

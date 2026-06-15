@@ -60,6 +60,7 @@ export type FromWebviewMessage =
   | { type: "ensureHeadVisible"; requestId: string }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
+  | { type: "pullRequestAction"; number: number; action?: "squash" | "rebase" | "undo" }
   | { type: "loadMore" }
   | { type: "selectCommit"; hash: string }
   | { type: "checkoutBranch"; branch: string }
@@ -69,6 +70,7 @@ export type FromWebviewMessage =
   | { type: "cloneBranch"; branch: string; checkout: boolean }
   | { type: "deleteBranch"; branch?: string; kind?: "local" | "remote" }
   | { type: "branchAction"; branch: string; kind: "local" | "remote" }
+  | { type: "branchMergeAction"; branch: string; action: "squash" | "rebase" | "undo" }
   | { type: "commitAction"; hash: string }
   | { type: "undoCommit"; hash: string }
   | { type: "createTag"; hash: string }

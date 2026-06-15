@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitError, runGit } from "./gitExec";
+import { runStash } from "./stashExec";
 import {
   appendIgnoreEntries,
   gitPathArgs,
@@ -382,14 +383,14 @@ export class GitService {
    * @param message stash 메시지(선택)
    */
   async stashPush(paths: string[], message?: string): Promise<void> {
-    const args = ["stash", "push", "-u"];
+    const args = ["push", "-u"];
     if (message) {
       args.push("-m", message);
     }
     if (paths.length) {
       args.push("--", ...paths);
     }
-    await this.run(args);
+    await runStash(args, this.repoRoot);
     this.invalidateStatusCache();
   }
 
@@ -442,37 +443,36 @@ export class GitService {
    * @param ref stash 참조(stash@{n})
    */
   async stashShowFiles(ref: string): Promise<FileChange[]> {
-    const out = await this.run([
-      "stash",
+    const out = await runStash([
       "show",
       "--include-untracked",
       "--name-status",
       "-z",
       ref,
-    ]).catch(() => "");
+    ], this.repoRoot).catch(() => "");
     return parseNameStatusZ(out);
   }
 
   /** stash 를 작업트리에 적용한다(`git stash apply`). */
   async stashApply(ref: string): Promise<void> {
-    await this.run(["stash", "apply", ref]);
+    await runStash(["apply", ref], this.repoRoot);
     this.invalidateStatusCache();
   }
 
   /** stash 를 적용하고 목록에서 제거한다(`git stash pop`). */
   async stashPop(ref: string): Promise<void> {
-    await this.run(["stash", "pop", ref]);
+    await runStash(["pop", ref], this.repoRoot);
     this.invalidateStatusCache();
   }
 
   /** stash 를 버린다(`git stash drop`). */
   async stashDrop(ref: string): Promise<void> {
-    await this.run(["stash", "drop", ref]);
+    await runStash(["drop", ref], this.repoRoot);
   }
 
   /** stash 를 새 브랜치로 펼친다(`git stash branch <name> <ref>`). */
   async stashBranch(name: string, ref: string): Promise<void> {
-    await this.run(["stash", "branch", name, ref]);
+    await runStash(["branch", name, ref], this.repoRoot);
     this.invalidateStatusCache();
   }
 

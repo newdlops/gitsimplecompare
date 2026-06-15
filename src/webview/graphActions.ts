@@ -20,7 +20,12 @@ import {
   createBranch,
   deleteBranch,
 } from "./graphBranchActions";
+import { handleBranchMergeAction } from "./graphBranchMergeActions";
 import { FromWebviewMessage } from "./graphProtocol";
+import {
+  handlePullRequestAction,
+  type GraphPullRequestActionDeps,
+} from "./graphPullRequestActions";
 import {
   fetchAll,
   fetchTags,
@@ -45,6 +50,7 @@ type GraphActionMessage = Extract<
       | "cloneBranch"
       | "deleteBranch"
       | "branchAction"
+      | "branchMergeAction"
       | "commitAction"
       | "undoCommit"
       | "createTag"
@@ -52,12 +58,13 @@ type GraphActionMessage = Extract<
       | "pushTag"
       | "tagAction"
       | "cherryPick"
+      | "pullRequestAction"
       | "copyCommitHash"
       | "copyCommitMessage";
   }
 >;
 
-interface GraphActionDeps {
+interface GraphActionDeps extends GraphPullRequestActionDeps {
   logService: GitLogService;
   refreshCheckout: () => Promise<void>;
   refreshGraph: () => Promise<void>;
@@ -98,6 +105,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "cloneBranch",
   "deleteBranch",
   "branchAction",
+  "branchMergeAction",
   "commitAction",
   "undoCommit",
   "createTag",
@@ -105,6 +113,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "pushTag",
   "tagAction",
   "cherryPick",
+  "pullRequestAction",
   "copyCommitHash",
   "copyCommitMessage",
 ]);
@@ -151,6 +160,9 @@ async function dispatchGraphAction(
     case "branchAction":
       await branchAction(deps, msg.branch, msg.kind);
       return;
+    case "branchMergeAction":
+      await handleBranchMergeAction(deps, msg.branch, msg.action);
+      return;
     case "commitAction":
       await commitAction(deps, msg.hash);
       return;
@@ -171,6 +183,9 @@ async function dispatchGraphAction(
       return;
     case "cherryPick":
       await cherryPick(deps, msg.hash);
+      return;
+    case "pullRequestAction":
+      await handlePullRequestAction(deps, msg.number, msg.action);
       return;
     case "copyCommitHash":
       await vscode.env.clipboard.writeText(msg.hash);

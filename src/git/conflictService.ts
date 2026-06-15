@@ -38,7 +38,7 @@ export async function detectOperation(
   const gitDir = path.resolve(repoRoot, gitDirRaw);
   const has = (name: string): boolean => fs.existsSync(path.join(gitDir, name));
 
-  if (has("rebase-merge") || has("rebase-apply")) {
+  if (has("rebase-merge") || has("rebase-apply") || await hasRef(repoRoot, "REBASE_HEAD")) {
     return "rebase";
   }
   if (has("MERGE_HEAD")) {
@@ -51,6 +51,17 @@ export async function detectOperation(
     return "revert";
   }
   return "none";
+}
+
+/**
+ * 진행 중 작업을 나타내는 특수 ref 가 존재하는지 확인한다.
+ * - 일부 파일 이벤트 타이밍에서는 rebase 디렉터리 감지가 늦을 수 있어 REBASE_HEAD 를 보조 신호로 사용한다.
+ * @param repoRoot 저장소 루트
+ * @param ref 확인할 git ref 이름
+ */
+async function hasRef(repoRoot: string, ref: string): Promise<boolean> {
+  const out = await runGit(["rev-parse", "--verify", ref], repoRoot).catch(() => "");
+  return out.trim().length > 0;
 }
 
 /**

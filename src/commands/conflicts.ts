@@ -3,7 +3,17 @@
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
+import {
+  continuePendingDeferredCommitRebase,
+  dropPendingDeferredCommitRebaseStashAfterResolvedRestore,
+  restorePendingDeferredCommitRebaseAfterAbort,
+} from "../git/deferredCommitRebase";
 import { PullService } from "../git/pullService";
+import {
+  dropPendingPullRequestStashAfterResolvedRestore,
+  finishPendingPullRequestRebaseAfterContinue,
+  restorePendingPullRequestRebaseAfterAbort,
+} from "../git/pullRequestRebaseContinuation";
 import { ConflictsController } from "../providers/conflictsController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
 
@@ -156,6 +166,10 @@ export async function continueOperation(
   await controller.refresh();
   if (continued && operation === "merge") {
     await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
+  } else if (continued && operation === "rebase") {
+    await finishPullRequestRebaseAfterContinue(controller, svc.repoRoot);
+  } else if (continued && operation === "cherry-pick") {
+    await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
   }
 }
 
@@ -179,12 +193,20 @@ export async function abortOperation(
   if (choice !== yes) {
     return;
   }
+  const operation = controller.currentOperation;
+  let aborted = false;
   try {
-    await svc.abortOperation(controller.currentOperation);
+    await svc.abortOperation(operation);
+    aborted = true;
   } catch (err) {
     vscode.window.showErrorMessage(
       vscode.l10n.t("Could not abort: {0}", errorText(err))
     );
+  }
+  if (aborted && operation === "rebase") {
+    await restorePullRequestRebaseAfterAbort(svc.repoRoot);
+  } else if (aborted && operation === "cherry-pick") {
+    await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
   }
   await controller.refresh();
 }
@@ -262,6 +284,8 @@ async function runFileAction(
     reason: "conflictFileAction",
   });
   await dropPullSnapshotAfterResolvedRestore(controller);
+  await dropPullRequestStashAfterResolvedRestore(controller);
+  await dropDeferredCommitRebaseStashAfterResolvedRestore(controller);
 }
 
 /**
@@ -296,6 +320,145 @@ async function restorePullSnapshotAfterContinue(
 }
 
 /**
+ * PR rebase 충돌이 continue 로 해결된 뒤 목적 브랜치 반영과 stash 복원을 마무리한다.
+ * @param controller 충돌 컨트롤러
+ * @param repoRoot   대상 저장소 루트
+ */
+async function finishPullRequestRebaseAfterContinue(
+  controller: ConflictsController,
+  repoRoot: string
+): Promise<void> {
+  let result: Awaited<ReturnType<typeof finishPendingPullRequestRebaseAfterContinue>>;
+  try {
+    result = await finishPendingPullRequestRebaseAfterContinue(repoRoot);
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not finish PR rebase: {0}", errorText(err))
+    );
+    return;
+  }
+  if (result.status === "none" || result.status === "pending") {
+    return;
+  }
+  if (result.status === "completed") {
+    vscode.window.showInformationMessage(
+      result.restoredLocalChanges
+        ? vscode.l10n.t("PR rebase completed and local changes were restored on '{0}'.", result.branch)
+        : vscode.l10n.t("PR rebase completed on '{0}'.", result.branch)
+    );
+  } else if (result.status === "restoreConflicts") {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "PR rebase completed, but restoring preserved local changes caused conflicts."
+      )
+    );
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+  }
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "prRebaseContinue",
+  });
+}
+
+/**
+ * deferred rebase merge 의 현재 cherry-pick 충돌이 해결된 뒤 남은 큐를 이어서 적용한다.
+ * @param controller 충돌 컨트롤러
+ * @param repoRoot   대상 저장소 루트
+ */
+async function finishDeferredCommitRebaseAfterContinue(
+  controller: ConflictsController,
+  repoRoot: string
+): Promise<void> {
+  let result: Awaited<ReturnType<typeof continuePendingDeferredCommitRebase>>;
+  try {
+    result = await continuePendingDeferredCommitRebase(repoRoot);
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not finish rebase merge: {0}", errorText(err))
+    );
+    return;
+  }
+  if (result.status === "none" || result.status === "pending") {
+    return;
+  }
+  if (result.status === "completed") {
+    vscode.window.showInformationMessage(
+      result.restoredLocalChanges
+        ? vscode.l10n.t("Rebase merge completed and local changes were restored on '{0}'.", result.branch)
+        : vscode.l10n.t("Rebase merge completed on '{0}'.", result.branch)
+    );
+  } else if (result.status === "conflicts") {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Rebase merge paused at the next conflict commit. Resolve conflicts, then Continue."
+      )
+    );
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+  } else if (result.status === "restoreConflicts") {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Rebase merge completed, but restoring preserved local changes caused conflicts."
+      )
+    );
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+  }
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "deferredRebaseContinue",
+  });
+}
+
+/**
+ * PR rebase abort 뒤 시작 브랜치와 보존 stash 를 복원한다.
+ * @param repoRoot 대상 저장소 루트
+ */
+async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<void> {
+  let result: Awaited<ReturnType<typeof restorePendingPullRequestRebaseAfterAbort>>;
+  try {
+    result = await restorePendingPullRequestRebaseAfterAbort(repoRoot);
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("PR rebase was aborted, but local changes could not be restored: {0}", errorText(err))
+    );
+    return;
+  }
+  if (result.status !== "restored") {
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("PR rebase aborted and local changes were restored on '{0}'.", result.branch)
+  );
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "prRebaseAbort",
+  });
+}
+
+/**
+ * deferred rebase merge abort 뒤 시작 브랜치와 보존 stash 를 복원한다.
+ * @param repoRoot 대상 저장소 루트
+ */
+async function restoreDeferredCommitRebaseAfterAbort(repoRoot: string): Promise<void> {
+  let result: Awaited<ReturnType<typeof restorePendingDeferredCommitRebaseAfterAbort>>;
+  try {
+    result = await restorePendingDeferredCommitRebaseAfterAbort(repoRoot);
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Rebase merge was aborted, but local changes could not be restored: {0}", errorText(err))
+    );
+    return;
+  }
+  if (result.status !== "restored") {
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Rebase merge aborted and local changes were restored on '{0}'.", result.branch)
+  );
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "deferredRebaseAbort",
+  });
+}
+
+/**
  * stash apply 충돌 해결이 끝났으면 이미 반영된 rollback stash 를 제거한다.
  * @param controller 충돌 컨트롤러
  */
@@ -318,6 +481,54 @@ async function dropPullSnapshotAfterResolvedRestore(
   await controller.refresh();
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "pullSnapshotCleanup",
+  });
+}
+
+/**
+ * PR stash 복원 충돌이 해결된 뒤 이미 적용된 stash 를 제거한다.
+ * @param controller 충돌 컨트롤러
+ */
+async function dropPullRequestStashAfterResolvedRestore(
+  controller: ConflictsController
+): Promise<void> {
+  const svc = controller.current;
+  if (!svc) {
+    return;
+  }
+  const result = await dropPendingPullRequestStashAfterResolvedRestore(svc.repoRoot);
+  if (result.status !== "dropped") {
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("PR preserved stash cleaned on '{0}'.", result.branch)
+  );
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "prStashCleanup",
+  });
+}
+
+/**
+ * deferred rebase merge 의 stash 복원 충돌이 해결된 뒤 이미 적용된 stash 를 제거한다.
+ * @param controller 충돌 컨트롤러
+ */
+async function dropDeferredCommitRebaseStashAfterResolvedRestore(
+  controller: ConflictsController
+): Promise<void> {
+  const svc = controller.current;
+  if (!svc) {
+    return;
+  }
+  const result = await dropPendingDeferredCommitRebaseStashAfterResolvedRestore(svc.repoRoot);
+  if (result.status !== "dropped") {
+    return;
+  }
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Rebase merge preserved stash cleaned on '{0}'.", result.branch)
+  );
+  await controller.refresh();
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "deferredRebaseStashCleanup",
   });
 }
 

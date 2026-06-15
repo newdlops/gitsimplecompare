@@ -413,6 +413,7 @@
       `<div class="pr-actions">` +
       openButton(pr.number, `Open pull request #${pr.number} in browser`) +
       previewButton(pr.number, `Preview staged content against ${pr.baseRefName || "target branch"}`) +
+      (window.GscGraphPrActions?.button?.(pr.number) || "") +
       `</div>` +
       `</section>` +
       changedFilesSection(detailState) +
