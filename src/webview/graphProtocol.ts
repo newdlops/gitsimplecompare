@@ -65,7 +65,7 @@ export type FromWebviewMessage =
   | { type: "ensureHeadVisible"; requestId: string }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
-  | { type: "pullRequestAction"; number: number; action?: "squash" | "rebase" | "undo" }
+  | { type: "pullRequestAction"; number: number; action?: "squash" | "rebase" | "squashRevert" | "rebaseRevert" | "undo" }
   | { type: "loadMore" }
   | { type: "selectCommit"; hash: string }
   | { type: "checkoutBranch"; branch: string }

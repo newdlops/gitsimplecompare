@@ -12,6 +12,15 @@ export function pullRequestCommitHashes(pr: PullRequestInfo): string[] {
 }
 
 /**
+ * PR commit hash 를 revert 적용 순서(최신→오래된 순)로 반환한다.
+ * @param pr 작업 대상 PR 정보
+ * @returns revert 에 사용할 commit hash 목록
+ */
+export function pullRequestRevertCommitHashes(pr: PullRequestInfo): string[] {
+  return [...pullRequestCommitHashes(pr)].reverse();
+}
+
+/**
  * squash commit 제목을 만든다.
  * @param pr 작업 대상 PR 정보
  * @returns squash commit subject
@@ -28,6 +37,28 @@ export function squashTitle(pr: PullRequestInfo): string {
 export function squashBody(pr: PullRequestInfo): string {
   return [
     `Cherry-picked pull request #${pr.number} as a squash commit.`,
+    pr.url ? `Original PR: ${pr.url}` : "",
+    pr.headRefName && pr.baseRefName ? `Source: ${pr.headRefName} -> ${pr.baseRefName}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * PR squash revert commit 제목을 만든다.
+ * @param pr 작업 대상 PR 정보
+ * @returns squash revert commit subject
+ */
+export function squashRevertTitle(pr: PullRequestInfo): string {
+  return `Revert "${singleLineTitle(pr.title || pr.headRefName || `PR #${pr.number}`)}"`;
+}
+
+/**
+ * PR squash revert commit 본문을 만든다.
+ * @param pr 작업 대상 PR 정보
+ * @returns squash revert commit body
+ */
+export function squashRevertBody(pr: PullRequestInfo): string {
+  return [
+    `Reverted pull request #${pr.number} as a squash commit.`,
     pr.url ? `Original PR: ${pr.url}` : "",
     pr.headRefName && pr.baseRefName ? `Source: ${pr.headRefName} -> ${pr.baseRefName}` : "",
   ].filter(Boolean).join("\n");

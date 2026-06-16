@@ -168,7 +168,7 @@ export async function continueOperation(
     await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
   } else if (continued && operation === "rebase") {
     await finishPullRequestRebaseAfterContinue(controller, svc.repoRoot);
-  } else if (continued && operation === "cherry-pick") {
+  } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
     await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
   }
 }
@@ -205,7 +205,7 @@ export async function abortOperation(
   }
   if (aborted && operation === "rebase") {
     await restorePullRequestRebaseAfterAbort(svc.repoRoot);
-  } else if (aborted && operation === "cherry-pick") {
+  } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
     await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
   }
   await controller.refresh();
@@ -382,22 +382,27 @@ async function finishDeferredCommitRebaseAfterContinue(
     return;
   }
   if (result.status === "completed") {
+    const label = deferredOperationLabel(result.operation);
     vscode.window.showInformationMessage(
       result.restoredLocalChanges
-        ? vscode.l10n.t("Rebase merge completed and local changes were restored on '{0}'.", result.branch)
-        : vscode.l10n.t("Rebase merge completed on '{0}'.", result.branch)
+        ? vscode.l10n.t("{0} completed and local changes were restored on '{1}'.", label, result.branch)
+        : vscode.l10n.t("{0} completed on '{1}'.", label, result.branch)
     );
   } else if (result.status === "conflicts") {
+    const label = deferredOperationLabel(result.operation);
     vscode.window.showWarningMessage(
       vscode.l10n.t(
-        "Rebase merge paused at the next conflict commit. Resolve conflicts, then Continue."
+        "{0} paused at the next conflict commit. Resolve conflicts, then Continue.",
+        label
       )
     );
     await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
   } else if (result.status === "restoreConflicts") {
+    const label = deferredOperationLabel(result.operation);
     vscode.window.showWarningMessage(
       vscode.l10n.t(
-        "Rebase merge completed, but restoring preserved local changes caused conflicts."
+        "{0} completed, but restoring preserved local changes caused conflicts.",
+        label
       )
     );
     await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
@@ -406,6 +411,13 @@ async function finishDeferredCommitRebaseAfterContinue(
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "deferredRebaseContinue",
   });
+}
+
+/** deferred queue 작업 종류를 사용자 안내 문구로 변환한다. */
+function deferredOperationLabel(operation: "cherry-pick" | "revert"): string {
+  return operation === "revert"
+    ? vscode.l10n.t("Rebase revert")
+    : vscode.l10n.t("Rebase merge");
 }
 
 /**
@@ -450,8 +462,9 @@ async function restoreDeferredCommitRebaseAfterAbort(repoRoot: string): Promise<
   if (result.status !== "restored") {
     return;
   }
+  const label = deferredOperationLabel(result.operation);
   vscode.window.showInformationMessage(
-    vscode.l10n.t("Rebase merge aborted and local changes were restored on '{0}'.", result.branch)
+    vscode.l10n.t("{0} aborted and local changes were restored on '{1}'.", label, result.branch)
   );
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "deferredRebaseAbort",
@@ -523,8 +536,9 @@ async function dropDeferredCommitRebaseStashAfterResolvedRestore(
   if (result.status !== "dropped") {
     return;
   }
+  const label = deferredOperationLabel(result.operation);
   vscode.window.showInformationMessage(
-    vscode.l10n.t("Rebase merge preserved stash cleaned on '{0}'.", result.branch)
+    vscode.l10n.t("{0} preserved stash cleaned on '{1}'.", label, result.branch)
   );
   await controller.refresh();
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {

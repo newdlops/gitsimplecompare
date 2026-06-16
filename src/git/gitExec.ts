@@ -5,7 +5,11 @@ import { execFile } from "node:child_process";
 
 /** git 명령 실행 중 발생한 오류를 식별하기 위한 전용 에러 타입 */
 export class GitError extends Error {
-  constructor(message: string, public readonly stderr: string) {
+  constructor(
+    message: string,
+    public readonly stderr: string,
+    public readonly stdout = ""
+  ) {
     super(message);
     this.name = "GitError";
   }
@@ -72,7 +76,7 @@ function runGitOnce(
       (error, stdout, stderr) => {
         if (error) {
           reject(
-            new GitError(`git ${args.join(" ")} 실패: ${error.message}`, stderr)
+            new GitError(`git ${args.join(" ")} 실패: ${error.message}`, stderr, stdout)
           );
           return;
         }

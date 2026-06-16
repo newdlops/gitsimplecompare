@@ -8,11 +8,14 @@ import { runGit } from "./gitExec";
 const STATE_GIT_PATH = "gitsimplecompare/deferred-commit-rebase-state.json";
 
 /** 충돌 커밋 후순위 적용을 사용하는 작업 종류 */
-export type PendingDeferredCommitRebaseKind = "pr-rebase" | "branch-rebase";
+export type PendingDeferredCommitRebaseKind = "pr-rebase" | "branch-rebase" | "pr-revert";
+/** deferred queue 에서 각 커밋에 적용할 git 작업 */
+export type PendingDeferredCommitOperation = "cherry-pick" | "revert";
 
 /** 충돌 커밋 후순위 적용 작업을 이어가기 위한 상태 */
 export interface PendingDeferredCommitRebase {
   kind: PendingDeferredCommitRebaseKind;
+  operation: PendingDeferredCommitOperation;
   label: string;
   destinationBranch: string;
   beforeHead: string;
@@ -122,6 +125,7 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
       : 0;
   return {
     kind: item.kind,
+    operation: isOperation(item.operation) ? item.operation : "cherry-pick",
     label: item.label,
     destinationBranch: item.destinationBranch,
     beforeHead: item.beforeHead,
@@ -140,5 +144,14 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
  * @returns 지원하는 deferred rebase kind 면 true
  */
 function isKind(value: unknown): value is PendingDeferredCommitRebaseKind {
-  return value === "pr-rebase" || value === "branch-rebase";
+  return value === "pr-rebase" || value === "branch-rebase" || value === "pr-revert";
+}
+
+/**
+ * 상태 파일의 operation 값이 현재 지원하는 적용 작업인지 확인한다.
+ * @param value JSON 에서 읽은 operation 후보
+ * @returns 지원하는 deferred operation 이면 true
+ */
+function isOperation(value: unknown): value is PendingDeferredCommitOperation {
+  return value === "cherry-pick" || value === "revert";
 }

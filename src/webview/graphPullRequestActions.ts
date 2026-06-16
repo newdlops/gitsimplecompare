@@ -2,12 +2,13 @@
 // - graphActions.ts 는 메시지 라우팅만 맡고, PR squash/rebase/undo 흐름은 이 파일로 분리한다.
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
+import { GitError } from "../git/gitExec";
 import { PullRequestOperationService } from "../git/pullRequestOperationService";
 import type { PullRequestOperationResult } from "../git/pullRequestOperationService";
 import type { PullRequestInfo } from "../git/pullRequestService";
 import { logError, logInfo } from "../ui/outputLog";
 
-export type PullRequestActionKind = "squash" | "rebase" | "undo";
+export type PullRequestActionKind = "squash" | "rebase" | "squashRevert" | "rebaseRevert" | "undo";
 
 export interface GraphPullRequestActionDeps {
   logService: GitLogService;
@@ -47,6 +48,10 @@ export async function handlePullRequestAction(
   }
   if (selected === "squash") {
     await squashPullRequest(deps, pr);
+  } else if (selected === "squashRevert") {
+    await squashRevertPullRequest(deps, pr);
+  } else if (selected === "rebaseRevert") {
+    await rebaseRevertPullRequest(deps, pr);
   } else {
     await rebasePullRequest(deps, pr);
   }
@@ -77,9 +82,21 @@ async function pickPullRequestAction(
       action: "rebase",
     },
     {
+      label: vscode.l10n.t("$(discard) Squash revert PR"),
+      description: vscode.l10n.t("one revert commit"),
+      detail: vscode.l10n.t("Revert the PR commits on the current branch as one commit."),
+      action: "squashRevert",
+    },
+    {
+      label: vscode.l10n.t("$(debug-reverse-continue) Rebase revert PR"),
+      description: vscode.l10n.t("one revert per commit"),
+      detail: vscode.l10n.t("Revert the PR commits on the current branch, preserving commit granularity."),
+      action: "rebaseRevert",
+    },
+    {
       label: vscode.l10n.t("$(discard) Undo last PR operation"),
       description: vscode.l10n.t("reset to saved snapshot"),
-      detail: vscode.l10n.t("Undo the last PR squash cherry-pick or rebase on the current branch."),
+      detail: vscode.l10n.t("Undo the last PR apply or revert operation on the current branch."),
       action: "undo",
     },
   ];
@@ -131,6 +148,83 @@ async function rebasePullRequest(
 }
 
 /**
+ * PR commit 목록을 현재 브랜치에서 squash revert commit 하나로 되돌린다.
+ * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
+ * @param pr 작업 대상 PR 정보
+ */
+async function squashRevertPullRequest(
+  deps: GraphPullRequestActionDeps,
+  pr: PullRequestInfo
+): Promise<void> {
+  const service = new PullRequestOperationService(deps.logService.repoRoot);
+  if (!(await confirmPullRequestRevert(service, pr, "squashRevert"))) {
+    return;
+  }
+  await runPullRequestOperation(deps, pr, "squashRevert", () =>
+    service.squashRevertPullRequest(pr)
+  );
+}
+
+/**
+ * PR commit 목록을 현재 브랜치에서 커밋별 revert commit 으로 되돌린다.
+ * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
+ * @param pr 작업 대상 PR 정보
+ */
+async function rebaseRevertPullRequest(
+  deps: GraphPullRequestActionDeps,
+  pr: PullRequestInfo
+): Promise<void> {
+  const service = new PullRequestOperationService(deps.logService.repoRoot);
+  if (!(await confirmPullRequestRevert(service, pr, "rebaseRevert"))) {
+    return;
+  }
+  await runPullRequestOperation(deps, pr, "rebaseRevert", () =>
+    service.rebaseRevertPullRequest(pr)
+  );
+}
+
+/**
+ * PR revert 실행 전 위험도를 안내하고 사용자의 확인을 받는다.
+ * @param service PR 작업 서비스
+ * @param pr 작업 대상 PR 정보
+ * @param operation 실행할 revert 종류
+ */
+async function confirmPullRequestRevert(
+  service: PullRequestOperationService,
+  pr: PullRequestInfo,
+  operation: "squashRevert" | "rebaseRevert"
+): Promise<boolean> {
+  const label = operation === "squashRevert"
+    ? vscode.l10n.t("Squash Revert")
+    : vscode.l10n.t("Rebase Revert");
+  const outsideCount = await service.countRevertCommitsOutsideCurrentBranch(pr).catch(() => 0);
+  if (outsideCount > 0) {
+    return confirm(
+      vscode.l10n.t(
+        "PR #{0} has {1} commit(s) that are not on the current branch. Reverting it will apply inverse patches to this branch and may remove unrelated changes. Continue?",
+        pr.number,
+        outsideCount
+      ),
+      label
+    );
+  }
+  return confirm(defaultRevertConfirmMessage(operation, pr), label);
+}
+
+/** PR revert 기본 확인 문구를 만든다. */
+function defaultRevertConfirmMessage(
+  operation: "squashRevert" | "rebaseRevert",
+  pr: PullRequestInfo
+): string {
+  return operation === "squashRevert"
+    ? vscode.l10n.t("Squash revert PR #{0} on the current branch?", pr.number)
+    : vscode.l10n.t(
+        "Rebase revert PR #{0} commits on the current branch? This creates one revert commit per PR commit.",
+        pr.number
+      );
+}
+
+/**
  * PR 작업을 실행하고 성공/실패 양쪽에서 undo 진입점을 제공한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
  * @param pr 작업 대상 PR 정보
@@ -140,7 +234,7 @@ async function rebasePullRequest(
 async function runPullRequestOperation(
   deps: GraphPullRequestActionDeps,
   pr: PullRequestInfo,
-  operation: "squash" | "rebase",
+  operation: Exclude<PullRequestActionKind, "undo">,
   run: () => Promise<PullRequestOperationResult>
 ): Promise<void> {
   try {
@@ -148,9 +242,7 @@ async function runPullRequestOperation(
     const result = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: operation === "squash"
-          ? vscode.l10n.t("Squash cherry-picking PR #{0}", pr.number)
-          : vscode.l10n.t("Rebasing PR #{0} into current branch", pr.number),
+        title: progressTitle(operation, pr.number),
         cancellable: false,
       },
       run
@@ -169,18 +261,7 @@ async function runPullRequestOperation(
       await deps.refreshGraph();
       await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
       await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-      vscode.window.showWarningMessage(
-        result.preservedStashHash
-          ? vscode.l10n.t(
-              "PR #{0} rebase paused with conflicts. Resolve them in the Conflicts view, then Continue. Local changes are preserved in stash {1}.",
-              pr.number,
-              result.preservedStashHash
-            )
-          : vscode.l10n.t(
-              "PR #{0} rebase paused with conflicts. Resolve them in the Conflicts view, then Continue.",
-              pr.number
-            )
-      );
+      vscode.window.showWarningMessage(conflictMessage(operation, pr.number, result.preservedStashHash));
       return;
     }
     logInfo("pr operation finished", {
@@ -196,9 +277,7 @@ async function runPullRequestOperation(
     await deps.refreshGraph();
     await offerPullRequestOperationUndo(
       deps,
-      operation === "squash"
-        ? vscode.l10n.t("PR #{0} squash cherry-picked on '{1}'.", pr.number, result.branch)
-        : vscode.l10n.t("PR #{0} rebased into '{1}'.", pr.number, result.branch),
+      successMessage(operation, pr.number, result.branch),
       result.branch
     );
   } catch (err) {
@@ -218,6 +297,67 @@ async function runPullRequestOperation(
     if (pick === undo) {
       await undoPullRequestOperation(deps, undoBranch);
     }
+  }
+}
+
+/** PR 작업 진행 알림 제목을 만든다. */
+function progressTitle(operation: Exclude<PullRequestActionKind, "undo">, number: number): string {
+  switch (operation) {
+    case "squash":
+      return vscode.l10n.t("Squash cherry-picking PR #{0}", number);
+    case "rebase":
+      return vscode.l10n.t("Rebasing PR #{0} into current branch", number);
+    case "squashRevert":
+      return vscode.l10n.t("Squash reverting PR #{0}", number);
+    case "rebaseRevert":
+      return vscode.l10n.t("Rebase reverting PR #{0}", number);
+  }
+}
+
+/** PR 작업 충돌 안내 문구를 만든다. */
+function conflictMessage(
+  operation: Exclude<PullRequestActionKind, "undo">,
+  number: number,
+  preservedStashHash?: string
+): string {
+  if (operation === "squash" || operation === "squashRevert") {
+    const action = operation === "squash" ? "squash cherry-pick" : "squash revert";
+    return vscode.l10n.t(
+      "PR #{0} {1} paused with conflicts. Resolve them in the Conflicts view, then commit the result.",
+      number,
+      action
+    );
+  }
+  const action = operation === "rebase" ? "rebase" : "rebase revert";
+  return preservedStashHash
+    ? vscode.l10n.t(
+        "PR #{0} {1} paused with conflicts. Resolve them in the Conflicts view, then Continue. Local changes are preserved in stash {2}.",
+        number,
+        action,
+        preservedStashHash
+      )
+    : vscode.l10n.t(
+        "PR #{0} {1} paused with conflicts. Resolve them in the Conflicts view, then Continue.",
+        number,
+        action
+      );
+}
+
+/** PR 작업 성공 안내 문구를 만든다. */
+function successMessage(
+  operation: Exclude<PullRequestActionKind, "undo">,
+  number: number,
+  branch: string
+): string {
+  switch (operation) {
+    case "squash":
+      return vscode.l10n.t("PR #{0} squash cherry-picked on '{1}'.", number, branch);
+    case "rebase":
+      return vscode.l10n.t("PR #{0} rebased into '{1}'.", number, branch);
+    case "squashRevert":
+      return vscode.l10n.t("PR #{0} squash reverted on '{1}'.", number, branch);
+    case "rebaseRevert":
+      return vscode.l10n.t("PR #{0} rebase reverted on '{1}'.", number, branch);
   }
 }
 
@@ -305,6 +445,11 @@ function shortHash(hash: string): string {
  * @returns 사용자 표시용 문자열
  */
 function errText(err: unknown): string {
+  if (err instanceof GitError) {
+    return [err.stderr.trim(), err.stdout.trim(), err.message]
+      .filter(Boolean)
+      .join("\n");
+  }
   return err instanceof Error ? err.message : String(err);
 }
 

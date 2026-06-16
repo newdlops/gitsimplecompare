@@ -9,12 +9,14 @@ import {
   writePendingDeferredCommitRebase,
   type PendingDeferredCommitRebase,
   type PendingDeferredCommitRebaseKind,
+  type PendingDeferredCommitOperation,
 } from "./deferredCommitRebaseState";
 import { runStash } from "./stashExec";
 
 /** deferred rebase 실행에 필요한 입력값 */
 export interface DeferredCommitRebaseInput {
   kind: PendingDeferredCommitRebaseKind;
+  operation?: PendingDeferredCommitOperation;
   label: string;
   repoRoot: string;
   commits: string[];
@@ -38,23 +40,24 @@ export interface DeferredCommitRebaseResult {
   preservedStashHash?: string;
   restoredLocalChanges?: boolean;
   conflictKind?: "commit" | "stash";
+  operation?: PendingDeferredCommitOperation;
 }
 
 /** Conflicts 뷰에서 continue 후 deferred rebase 를 이어간 결과 */
 export type DeferredCommitRebaseResumeResult =
   | { status: "none" }
   | { status: "pending" }
-  | { status: "completed"; branch: string; afterHead: string; restoredLocalChanges: boolean }
-  | { status: "conflicts"; branch: string; currentCommit?: string; remainingCount: number }
-  | { status: "restoreConflicts"; branch: string; preservedStashHash?: string };
+  | { status: "completed"; branch: string; afterHead: string; restoredLocalChanges: boolean; operation: PendingDeferredCommitOperation }
+  | { status: "conflicts"; branch: string; currentCommit?: string; remainingCount: number; operation: PendingDeferredCommitOperation }
+  | { status: "restoreConflicts"; branch: string; preservedStashHash?: string; operation: PendingDeferredCommitOperation };
 
 /** deferred rebase abort/stash 정리 결과 */
 export type DeferredCommitRebaseCleanupResult =
   | { status: "none" }
-  | { status: "restored"; branch: string }
-  | { status: "dropped"; branch: string };
+  | { status: "restored"; branch: string; operation: PendingDeferredCommitOperation }
+  | { status: "dropped"; branch: string; operation: PendingDeferredCommitOperation };
 
-type CherryPickApplyResult = "applied" | "skipped" | "conflicts";
+type CommitApplyResult = "applied" | "skipped" | "conflicts";
 
 /**
  * 커밋 목록을 현재 브랜치에 재적용하고, 충돌 커밋은 뒤로 미뤄 마지막에 하나씩 노출한다.
@@ -72,10 +75,11 @@ export async function runDeferredCommitRebase(
   }
   await clearPendingDeferredCommitRebase(input.repoRoot).catch(() => undefined);
   const deferred: string[] = [];
+  const operation = input.operation ?? "cherry-pick";
   for (const commit of commits) {
-    const result = await tryCherryPickCommit(input.repoRoot, commit);
+    const result = await tryApplyCommit(input.repoRoot, commit, operation);
     if (result === "conflicts") {
-      await runGit(["cherry-pick", "--abort"], input.repoRoot);
+      await runGit([operation, "--abort"], input.repoRoot);
       deferred.push(commit);
     }
   }
@@ -131,7 +135,7 @@ export async function restorePendingDeferredCommitRebaseAfterAbort(
     "Deferred rebase merge was aborted, but preserved local changes could not be restored."
   );
   await runGit(["update-ref", "-d", pending.snapshotRef], repoRoot).catch(() => "");
-  return { status: "restored", branch: pending.destinationBranch };
+  return { status: "restored", branch: pending.destinationBranch, operation: pending.operation };
 }
 
 /**
@@ -148,7 +152,7 @@ export async function dropPendingDeferredCommitRebaseStashAfterResolvedRestore(
   if (pending.preservedStashHash) {
     await dropStash(repoRoot, pending.preservedStashHash);
     await clearPendingDeferredCommitRebase(repoRoot);
-    return { status: "dropped", branch: pending.destinationBranch };
+    return { status: "dropped", branch: pending.destinationBranch, operation: pending.operation };
   }
   await clearPendingDeferredCommitRebase(repoRoot);
   return { status: "none" };
@@ -184,6 +188,7 @@ function createPendingState(
 ): PendingDeferredCommitRebase {
   return {
     kind: input.kind,
+    operation: input.operation ?? "cherry-pick",
     label: input.label,
     destinationBranch: input.destinationBranch,
     beforeHead: input.beforeHead,
@@ -207,7 +212,7 @@ async function applyPendingDeferredCommitQueue(
   let state: PendingDeferredCommitRebase = { ...pending, currentCommit: undefined };
   while (state.remainingCommits.length > 0) {
     const [commit, ...remaining] = state.remainingCommits;
-    const result = await tryCherryPickCommit(repoRoot, commit);
+    const result = await tryApplyCommit(repoRoot, commit, state.operation);
     if (result === "conflicts") {
       await writePendingDeferredCommitRebase(repoRoot, {
         ...state,
@@ -219,6 +224,7 @@ async function applyPendingDeferredCommitQueue(
         branch: state.destinationBranch,
         currentCommit: commit,
         remainingCount: remaining.length,
+        operation: state.operation,
       };
     }
     state = { ...state, currentCommit: undefined, remainingCommits: remaining };
@@ -249,6 +255,7 @@ async function finishPendingDeferredCommitRebase(
         status: "restoreConflicts",
         branch: pending.destinationBranch,
         preservedStashHash: pending.preservedStashHash,
+        operation: pending.operation,
       };
     }
     throw err;
@@ -258,30 +265,37 @@ async function finishPendingDeferredCommitRebase(
     branch: pending.destinationBranch,
     afterHead: await currentHead(repoRoot),
     restoredLocalChanges: Boolean(pending.preservedStashHash),
+    operation: pending.operation,
   };
 }
 
 /**
- * cherry-pick 한 커밋을 현재 HEAD 위에 적용한다.
+ * 커밋 하나를 현재 HEAD 위에 적용한다.
  * - 충돌은 호출자가 뒤로 미룰 수 있도록 그대로 남기고 conflicts 로 반환한다.
- * - 이미 적용된 빈 cherry-pick 은 skip 해서 큐 진행을 막지 않는다.
+ * - 이미 적용된 빈 작업은 skip 해서 큐 진행을 막지 않는다.
  * @param repoRoot git 저장소 루트
  * @param commit 적용할 커밋 해시
+ * @param operation 적용할 git 작업
  */
-async function tryCherryPickCommit(
+async function tryApplyCommit(
   repoRoot: string,
-  commit: string
-): Promise<CherryPickApplyResult> {
+  commit: string,
+  operation: PendingDeferredCommitOperation
+): Promise<CommitApplyResult> {
   const env = { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" };
   try {
-    await runGit(["cherry-pick", "--allow-empty", commit], repoRoot, { env });
+    const args =
+      operation === "cherry-pick"
+        ? ["cherry-pick", "--allow-empty", commit]
+        : ["revert", "--no-edit", commit];
+    await runGit(args, repoRoot, { env });
     return "applied";
   } catch (err) {
     if (await hasUnmergedChanges(repoRoot)) {
       return "conflicts";
     }
-    if (isEmptyCherryPickError(err)) {
-      await runGit(["cherry-pick", "--skip"], repoRoot, { env });
+    if (isEmptyCommitApplyError(err)) {
+      await runGit([operation, "--skip"], repoRoot, { env }).catch(() => undefined);
       return "skipped";
     }
     throw err;
@@ -424,6 +438,7 @@ function resumeToRunResult(
       sourceRef: input.sourceRef,
       preservedStashHash: result.preservedStashHash,
       conflictKind: "stash",
+      operation: result.operation,
     };
   }
   if (result.status === "conflicts") {
@@ -438,6 +453,7 @@ function resumeToRunResult(
       deferredCount: result.remainingCount + 1,
       preservedStashHash: input.preservedStashHash,
       conflictKind: "commit",
+      operation: result.operation,
     };
   }
   return {
@@ -449,6 +465,7 @@ function resumeToRunResult(
     sourceRef: input.sourceRef,
     preservedStashHash: input.preservedStashHash,
     conflictKind: "commit",
+    operation: input.operation ?? "cherry-pick",
   };
 }
 
@@ -469,6 +486,7 @@ function finishToRunResult(
     snapshotRef: input.snapshotRef,
     sourceRef: input.sourceRef,
     restoredLocalChanges: result.restoredLocalChanges,
+    operation: result.operation,
   };
 }
 
@@ -493,10 +511,10 @@ async function safeCurrentHead(repoRoot: string, fallback: string): Promise<stri
  * cherry-pick 실패가 이미 적용된 빈 변경을 뜻하는지 확인한다.
  * @param err git 실행 오류
  */
-function isEmptyCherryPickError(err: unknown): boolean {
+function isEmptyCommitApplyError(err: unknown): boolean {
   const text =
     err instanceof GitError
-      ? `${err.message}\n${err.stderr}`
+      ? `${err.message}\n${err.stderr}\n${err.stdout}`
       : err instanceof Error
         ? err.message
         : String(err);
@@ -507,5 +525,10 @@ function isEmptyCherryPickError(err: unknown): boolean {
 
 /** 오류 메시지를 사용자에게 보여줄 짧은 문자열로 만든다. */
 function errText(err: unknown): string {
+  if (err instanceof GitError) {
+    return [err.stderr.trim(), err.stdout.trim(), err.message]
+      .filter(Boolean)
+      .join("\n");
+  }
   return err instanceof Error ? err.message : String(err);
 }

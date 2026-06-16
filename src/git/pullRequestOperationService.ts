@@ -8,8 +8,16 @@ import {
   restorePendingDeferredCommitRebaseLocalChangesForBranch,
   runDeferredCommitRebase,
 } from "./deferredCommitRebase";
-import { runGit } from "./gitExec";
-import { pullRequestCommitHashes, snapshotRefForBranch, squashBody, squashTitle } from "./pullRequestOperationFormat";
+import { GitError, runGit } from "./gitExec";
+import {
+  pullRequestCommitHashes,
+  pullRequestRevertCommitHashes,
+  snapshotRefForBranch,
+  squashBody,
+  squashRevertBody,
+  squashRevertTitle,
+  squashTitle,
+} from "./pullRequestOperationFormat";
 import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestRebaseContinuation";
 import type { PullRequestInfo } from "./pullRequestService";
 import { runStash } from "./stashExec";
@@ -112,7 +120,8 @@ export class PullRequestOperationService {
       const restored = await this.restoreAfterFailedDeferredRebase(
         preserved,
         destinationBranch,
-        snapshotRef
+        snapshotRef,
+        "PR rebase merge failed, but local changes could not be restored."
       );
       if (restored) {
         await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
@@ -122,6 +131,112 @@ export class PullRequestOperationService {
         restored ? undefined : preserved,
         destinationBranch
       );
+    }
+  }
+
+  /**
+   * PR commit 목록을 현재 브랜치에서 커밋별 revert commit 으로 되돌린다.
+   * - revert 는 히스토리 역순으로 수행해야 하므로 PR commit 목록을 최신→오래된 순서로 적용한다.
+   * @param pr graph 에서 선택된 PR 정보
+   * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
+   */
+  async rebaseRevertPullRequest(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+    const commits = pullRequestRevertCommitHashes(pr);
+    if (!commits.length) {
+      throw new Error(`PR #${pr.number} has no commit hashes to revert.`);
+    }
+    await this.assertReadyForPrOperation();
+    const destinationBranch = await this.currentBranch();
+    const beforeHead = await this.currentHead();
+    await this.assertSupportedPullRequestRevertCommits(pr, commits);
+    const snapshotRef = await this.createSnapshot(destinationBranch, beforeHead);
+    const preserved = await this.preserveLocalChanges(`before PR #${pr.number} rebase revert`);
+    try {
+      const result = await runDeferredCommitRebase({
+        kind: "pr-revert",
+        operation: "revert",
+        label: `PR #${pr.number} revert`,
+        repoRoot: this.repoRoot,
+        commits,
+        destinationBranch,
+        beforeHead,
+        snapshotRef,
+        sourceRef: pr.headRefName || pr.headHash,
+        preservedStashHash: preserved?.hash,
+      });
+      return {
+        status: result.status,
+        branch: destinationBranch,
+        beforeHead,
+        afterHead: result.afterHead,
+        snapshotRef,
+        sourceBranch: result.sourceRef,
+        preservedStashHash: result.preservedStashHash,
+      };
+    } catch (err) {
+      const restored = await this.restoreAfterFailedDeferredRebase(
+        preserved,
+        destinationBranch,
+        snapshotRef,
+        "PR rebase revert failed, but local changes could not be restored."
+      );
+      if (restored) {
+        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      }
+      throw this.withPreservedStashNotice(
+        err,
+        restored ? undefined : preserved,
+        destinationBranch
+      );
+    }
+  }
+
+  /**
+   * PR commit 목록을 현재 브랜치에서 하나의 squash revert commit 으로 되돌린다.
+   * @param pr graph 에서 선택된 PR 정보
+   * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
+   */
+  async squashRevertPullRequest(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+    const commits = pullRequestRevertCommitHashes(pr);
+    if (!commits.length) {
+      throw new Error(`PR #${pr.number} has no commit hashes to revert.`);
+    }
+    await this.assertReadyForPrOperation();
+    const branch = await this.currentBranch();
+    const beforeHead = await this.currentHead();
+    await this.assertSupportedPullRequestRevertCommits(pr, commits);
+    if (await this.hasLocalChanges()) {
+      return this.squashRevertWithLocalChanges(pr, commits, branch, beforeHead);
+    }
+    const snapshotRef = await this.createSnapshot(branch, beforeHead);
+    try {
+      await this.applySquashRevert(commits, this.repoRoot);
+      if (!await this.hasPendingChanges()) {
+        throw new Error(`PR #${pr.number} did not produce changes to commit.`);
+      }
+      await runGit(["add", "-A"], this.repoRoot);
+      await this.commitSquashRevert(pr, this.repoRoot);
+      return {
+        status: "completed",
+        branch,
+        beforeHead,
+        afterHead: await this.currentHead(),
+        snapshotRef,
+        sourceBranch: pr.headRefName || pr.headHash,
+      };
+    } catch (err) {
+      if (await this.hasUnmergedChanges()) {
+        return {
+          status: "conflicts",
+          branch,
+          beforeHead,
+          afterHead: beforeHead,
+          snapshotRef,
+          sourceBranch: pr.headRefName || pr.headHash,
+        };
+      }
+      await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      throw err instanceof Error ? err : new Error(String(err));
     }
   }
 
@@ -190,6 +305,23 @@ export class PullRequestOperationService {
     return Boolean(await this.resolveSnapshot(snapshotRef).catch(() => ""));
   }
 
+  /**
+   * PR revert 대상 커밋 중 현재 HEAD 히스토리에 포함되지 않은 커밋 수를 센다.
+   * - 사용자는 이런 PR 도 revert 할 수 있지만, inverse patch 를 현재 브랜치에 적용한다는 경고가 필요하다.
+   * @param pr graph 에서 선택된 PR 정보
+   */
+  async countRevertCommitsOutsideCurrentBranch(pr: PullRequestInfo): Promise<number> {
+    const commits = pullRequestRevertCommitHashes(pr);
+    let count = 0;
+    for (const commit of commits) {
+      const normalized = await this.normalizeCommit(commit);
+      if (!await this.isAncestor(normalized, "HEAD")) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   /** PR 작업 전 진행 중인 git 작업과 로컬 변경이 없는지 확인한다. */
   private async assertReadyForPrOperation(): Promise<void> {
     const operation = await detectOperation(this.repoRoot);
@@ -233,6 +365,37 @@ export class PullRequestOperationService {
     const staged = await runGit(["diff", "--cached", "--quiet"], this.repoRoot).then(() => false, () => true);
     const unstaged = await runGit(["diff", "--quiet"], this.repoRoot).then(() => false, () => true);
     return staged || unstaged;
+  }
+
+  /**
+   * 입력 ref 가 실제 commit 인지 검증하고 전체 해시로 정규화한다.
+   * @param hash 커밋으로 해석할 ref/hash
+   */
+  private async normalizeCommit(hash: string): Promise<string> {
+    return (await runGit(["rev-parse", "--verify", `${hash}^{commit}`], this.repoRoot)).trim();
+  }
+
+  /**
+   * 지정 커밋의 부모 해시 목록을 반환한다.
+   * @param hash 대상 커밋 해시
+   */
+  private async commitParents(hash: string): Promise<string[]> {
+    const out = await runGit(["show", "-s", "--pretty=%P", hash], this.repoRoot);
+    return out.trim().split(/\s+/).filter(Boolean);
+  }
+
+  /**
+   * ancestor 가 target 의 조상인지 확인한다.
+   * @param ancestor 조상이어야 하는 커밋
+   * @param target   기준 커밋/ref
+   */
+  private async isAncestor(ancestor: string, target: string): Promise<boolean> {
+    try {
+      await runGit(["merge-base", "--is-ancestor", ancestor, target], this.repoRoot);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** 현재 로컬 브랜치 이름을 반환한다. detached HEAD 는 PR 작업 대상에서 제외한다. */
@@ -387,6 +550,83 @@ export class PullRequestOperationService {
     }
   }
 
+  /** 로컬 변경이 있는 상태에서 PR squash revert 결과를 임시 worktree 로 계산해 현재 브랜치에 반영한다. */
+  private async squashRevertWithLocalChanges(
+    pr: PullRequestInfo,
+    commits: string[],
+    branch: string,
+    beforeHead: string
+  ): Promise<PullRequestOperationResult> {
+    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    let keepWorktree = false;
+    let snapshotRef = "";
+    try {
+      try {
+        await this.applySquashRevert(commits, worktreePath);
+      } catch (err) {
+        if (await this.hasUnmergedChangesIn(worktreePath)) {
+          keepWorktree = true;
+          throw new Error(
+            `PR #${pr.number} has squash revert conflicts. ` +
+            "The current working tree was not changed. " +
+            `Resolve the conflict in the preserved temporary worktree: ${worktreePath}. ${errText(err)}`
+          );
+        }
+        throw err;
+      }
+      if (!await this.hasPendingChangesIn(worktreePath)) {
+        throw new Error(`PR #${pr.number} did not produce changes to commit.`);
+      }
+      await runGit(["add", "-A"], worktreePath);
+      await this.commitSquashRevert(pr, worktreePath);
+      const afterHead = await this.currentHeadIn(worktreePath);
+      snapshotRef = await this.createSnapshot(branch, beforeHead);
+      await this.assertStillOnBranch(branch);
+      await this.resetCurrentBranchPreservingLocalChanges(
+        afterHead,
+        `PR #${pr.number} squash revert would overwrite local changes, so it was stopped. ` +
+          `The undo snapshot was kept at ${snapshotRef}.`
+      );
+      return {
+        status: "completed",
+        branch,
+        beforeHead,
+        afterHead,
+        snapshotRef,
+        sourceBranch: pr.headRefName || pr.headHash,
+      };
+    } catch (err) {
+      if (snapshotRef) {
+        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      }
+      throw err instanceof Error ? err : new Error(String(err));
+    } finally {
+      if (!keepWorktree) {
+        await this.removeTemporaryWorktree(worktreePath);
+      }
+    }
+  }
+
+  /** PR commit 목록을 현재 index/working tree 에 squash revert 형태로 적용한다. */
+  private async applySquashRevert(commits: string[], cwd: string): Promise<void> {
+    const env = { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" };
+    for (const commit of commits) {
+      try {
+        await runGit(["revert", "--no-commit", commit], cwd, { env });
+      } catch (err) {
+        if (await this.hasUnmergedChangesIn(cwd)) {
+          throw err;
+        }
+        if (isEmptyRevertError(err)) {
+          await runGit(["revert", "--skip"], cwd, { env }).catch(() => undefined);
+          await runGit(["revert", "--abort"], cwd, { env }).catch(() => undefined);
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
   /** PR squash commit 을 만든다. 자동 작업이므로 pre-commit hook 은 실행하지 않는다. */
   private async commitSquash(pr: PullRequestInfo, cwd: string): Promise<void> {
     await runGit(
@@ -394,6 +634,35 @@ export class PullRequestOperationService {
       cwd,
       { env: { GIT_EDITOR: "true", HUSKY: "0" } }
     );
+  }
+
+  /** PR squash revert commit 을 만든다. 자동 작업이므로 pre-commit hook 은 실행하지 않는다. */
+  private async commitSquashRevert(pr: PullRequestInfo, cwd: string): Promise<void> {
+    await runGit(
+      ["commit", "--no-verify", "-m", squashRevertTitle(pr), "-m", squashRevertBody(pr)],
+      cwd,
+      { env: { GIT_EDITOR: "true", HUSKY: "0" } }
+    );
+  }
+
+  /**
+   * PR revert 대상 커밋들이 자동 revert 가능한 형태인지 확인한다.
+   * @param pr 작업 대상 PR 정보
+   * @param commits revert 적용 순서의 커밋 해시 목록
+   */
+  private async assertSupportedPullRequestRevertCommits(
+    pr: PullRequestInfo,
+    commits: string[]
+  ): Promise<void> {
+    for (const commit of commits) {
+      const normalized = await this.normalizeCommit(commit);
+      const parents = await this.commitParents(normalized);
+      if (parents.length > 1) {
+        throw new Error(
+          `PR #${pr.number} contains merge commit ${shortHash(normalized)}. Revert merge commits one by one.`
+        );
+      }
+    }
   }
 
   /** PR 작업 도중 사용자가 다른 브랜치로 이동했으면 현재 브랜치 갱신을 중단한다. */
@@ -472,7 +741,8 @@ export class PullRequestOperationService {
   private async restoreAfterFailedDeferredRebase(
     preserved: PreservedLocalChanges | undefined,
     branch: string,
-    snapshotRef: string
+    snapshotRef: string,
+    restoreFailureMessage: string
   ): Promise<boolean> {
     if (await detectOperation(this.repoRoot) !== "none") {
       return false;
@@ -482,7 +752,7 @@ export class PullRequestOperationService {
     if (preserved) {
       await this.restorePreservedLocalChanges(
         preserved,
-        "PR rebase merge failed, but local changes could not be restored."
+        restoreFailureMessage
       );
     }
     return true;
@@ -538,5 +808,26 @@ export class PullRequestOperationService {
 
 /** 오류 메시지를 사용자에게 보여줄 짧은 문자열로 만든다. */
 function errText(err: unknown): string {
+  if (err instanceof GitError) {
+    return [err.stderr.trim(), err.stdout.trim(), err.message]
+      .filter(Boolean)
+      .join("\n");
+  }
   return err instanceof Error ? err.message : String(err);
+}
+
+/** 긴 커밋 해시를 UI/오류 표시용으로 줄인다. */
+function shortHash(hash: string): string {
+  return hash.slice(0, 10);
+}
+
+/** git revert 가 적용할 변경이 없어서 실패했는지 확인한다. */
+function isEmptyRevertError(err: unknown): boolean {
+  const text =
+    err instanceof GitError
+      ? `${err.message}\n${err.stderr}\n${err.stdout}`
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  return /nothing to commit|nothing added to commit|empty|patch contents already upstream/i.test(text);
 }

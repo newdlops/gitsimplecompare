@@ -16,17 +16,19 @@
     });
   }
 
-  /** PR 단위 cherry-pick/rebase 메뉴를 여는 버튼 HTML 을 만든다. */
+  /** PR 단위 apply/revert 메뉴를 여는 버튼 HTML 을 만든다. */
   function button(number) {
-    const title = `PR cherry-pick/rebase actions for #${number}`;
+    const title = `PR apply/revert actions for #${number}`;
     return `<button type="button" class="pr-icon-action" data-pr-operation="${esc(number)}" title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
       `<span class="codicon codicon-git-pull-request" aria-hidden="true"></span></button>`;
   }
 
-  /** PR 카드에서 바로 실행할 rebase/squash 버튼 묶음을 만든다. */
+  /** PR 카드에서 바로 실행할 apply/revert 버튼 묶음을 만든다. */
   function directButtons(number) {
     return operationButton(number, "rebase", "git-pull-request", `Rebase PR #${number} into current branch`) +
-      operationButton(number, "squash", "combine", `Squash cherry-pick PR #${number}`);
+      operationButton(number, "squash", "combine", `Squash cherry-pick PR #${number}`) +
+      operationButton(number, "rebaseRevert", "debug-reverse-continue", `Rebase revert PR #${number}`) +
+      operationButton(number, "squashRevert", "discard", `Squash revert PR #${number}`);
   }
 
   /** PR 작업 하나를 바로 실행하는 아이콘 버튼 HTML 을 만든다. */
