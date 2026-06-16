@@ -31,6 +31,7 @@ export interface AiCliConfig {
   commonInstructions: string;
   commitInstructions: string;
   pullRequestInstructions: string;
+  rebaseInstructions: string;
   timeoutMs: number;
 }
 
@@ -71,6 +72,7 @@ export function readAiCliConfig(): AiCliConfig {
     commonInstructions: config.get("aiCommonInstructions", "").trim(),
     commitInstructions: config.get("aiCommitInstructions", "").trim(),
     pullRequestInstructions: config.get("aiPullRequestInstructions", "").trim(),
+    rebaseInstructions: config.get("aiRebaseInstructions", "").trim(),
     timeoutMs: normalizeTimeout(config.get("aiCliTimeoutMs", DEFAULT_TIMEOUT_MS)),
   };
 }

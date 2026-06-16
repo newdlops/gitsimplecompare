@@ -37,6 +37,7 @@ type SettingKey =
   | "aiCommonInstructions"
   | "aiCommitInstructions"
   | "aiPullRequestInstructions"
+  | "aiRebaseInstructions"
   | "aiCliTimeoutMs";
 
 /**
@@ -111,7 +112,7 @@ function menuItems(config: AiCliConfig): Array<vscode.QuickPickItem & { id: stri
       id: "prompt",
       label: "$(comment-discussion-sparkle) " + vscode.l10n.t("Prompt Defaults"),
       description: config.responseLanguage,
-      detail: vscode.l10n.t("Language and extra instructions for commit/PR prompts."),
+      detail: vscode.l10n.t("Language and extra instructions for AI prompts."),
     },
     {
       id: "timeout",
@@ -408,7 +409,7 @@ async function configurePromptDefaults(config: AiCliConfig): Promise<void> {
     "aiCommonInstructions",
     vscode.l10n.t("Common prompt instructions"),
     config.commonInstructions,
-    vscode.l10n.t("Applied to both commit and PR prompts.")
+    vscode.l10n.t("Applied to commit, PR, and rebase prompts.")
   );
   await configureString(
     "aiCommitInstructions",
@@ -421,6 +422,12 @@ async function configurePromptDefaults(config: AiCliConfig): Promise<void> {
     vscode.l10n.t("Pull request prompt instructions"),
     config.pullRequestInstructions,
     vscode.l10n.t("Applied only to PR title/body generation.")
+  );
+  await configureString(
+    "aiRebaseInstructions",
+    vscode.l10n.t("Rebase prompt instructions"),
+    config.rebaseInstructions,
+    vscode.l10n.t("Applied only to AI rebase plan generation.")
   );
 }
 

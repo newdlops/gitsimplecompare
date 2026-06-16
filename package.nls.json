@@ -89,9 +89,10 @@
   "config.aiEffort.high": "High reasoning effort.",
   "config.aiEffort.xhigh": "Extra high reasoning effort.",
   "config.aiEffort.max": "Maximum reasoning effort when supported by the provider.",
-  "config.aiResponseLanguage.desc": "Language for AI-generated commit and pull request messages.",
-  "config.aiCommonInstructions.desc": "Extra prompt instructions applied to both commit and pull request message generation.",
+  "config.aiResponseLanguage.desc": "Language for AI-generated commit, pull request, and rebase messages.",
+  "config.aiCommonInstructions.desc": "Extra prompt instructions applied to commit, pull request, and rebase AI generation.",
   "config.aiCommitInstructions.desc": "Extra prompt instructions applied only to commit message generation.",
   "config.aiPullRequestInstructions.desc": "Extra prompt instructions applied only to pull request title/body generation.",
+  "config.aiRebaseInstructions.desc": "Extra prompt instructions applied only to AI rebase plan generation.",
   "config.aiCliTimeoutMs.desc": "Timeout in milliseconds for AI CLI requests."
 }

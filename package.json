@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -764,6 +764,11 @@
           "type": "string",
           "default": "",
           "description": "%config.aiPullRequestInstructions.desc%"
+        },
+        "gitSimpleCompare.aiRebaseInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiRebaseInstructions.desc%"
         },
         "gitSimpleCompare.aiCliTimeoutMs": {
           "type": "number",

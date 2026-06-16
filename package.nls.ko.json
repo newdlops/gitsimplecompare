@@ -89,9 +89,10 @@
   "config.aiEffort.high": "높은 추론 강도",
   "config.aiEffort.xhigh": "매우 높은 추론 강도",
   "config.aiEffort.max": "Provider 가 지원할 때 최대 추론 강도",
-  "config.aiResponseLanguage.desc": "AI 커밋/PR 메시지 생성 언어",
-  "config.aiCommonInstructions.desc": "커밋/PR 메시지 생성에 공통 적용할 추가 프롬프트 지시문",
+  "config.aiResponseLanguage.desc": "AI 커밋/PR/rebase 메시지 생성 언어",
+  "config.aiCommonInstructions.desc": "커밋/PR/rebase AI 생성에 공통 적용할 추가 프롬프트 지시문",
   "config.aiCommitInstructions.desc": "커밋 메시지 생성에만 적용할 추가 프롬프트 지시문",
   "config.aiPullRequestInstructions.desc": "PR 제목/본문 생성에만 적용할 추가 프롬프트 지시문",
+  "config.aiRebaseInstructions.desc": "AI rebase 계획 생성에만 적용할 추가 프롬프트 지시문",
   "config.aiCliTimeoutMs.desc": "AI CLI 요청 timeout(ms)"
 }

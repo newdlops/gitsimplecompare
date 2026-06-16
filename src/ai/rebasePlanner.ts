@@ -154,6 +154,7 @@ function rebasePrompt(
     `- Write messages in ${config.responseLanguage}.`,
     "- Do not run commands or modify files. Use only the supplied context.",
     ...instructionLines(config.commonInstructions),
+    ...instructionLines(config.rebaseInstructions),
     "",
     `Branch: ${request.branch}`,
     `Base: ${request.root ? "root" : request.base || "unknown"}`,
