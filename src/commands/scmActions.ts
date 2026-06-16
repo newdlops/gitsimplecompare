@@ -8,6 +8,9 @@
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
+import { getCurrentPushPlan } from "../git/pushService";
+import { logInfo } from "../ui/outputLog";
+import { confirmPushCurrentPlan } from "../ui/pushConfirmation";
 import { CommandDeps, resolveCompareService } from "./shared";
 import { syncViewContext } from "./viewState";
 import {
@@ -285,14 +288,46 @@ async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
     return;
   }
   const logService = new GitLogService(service.repoRoot);
+  const plan = await getCurrentPushPlan(service.repoRoot);
+  if (!(await confirmPushCurrentPlan(plan))) {
+    logInfo("scm push canceled", {
+      repoRoot: service.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    return;
+  }
   try {
-    await vscode.window.withProgress(
+    logInfo("scm push started", {
+      repoRoot: service.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    const result = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
         title: vscode.l10n.t("Pushing..."),
       },
-      () => logService.pushCurrent()
+      () => logService.pushCurrent(plan)
     );
+    logInfo("scm push completed", {
+      repoRoot: service.repoRoot,
+      mode: result.mode,
+      branch: result.branch,
+      remote: result.remote,
+      upstream: result.upstream,
+      targetUpstream:
+        result.mode === "setUpstream" ? result.targetUpstream : undefined,
+      reason: result.mode === "setUpstream" ? result.reason : undefined,
+    });
   } catch (err) {
     if (isForcePushRequiredError(err)) {
       await showForcePushRequiredMessage(err);

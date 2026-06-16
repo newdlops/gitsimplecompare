@@ -4,8 +4,10 @@ import * as vscode from "vscode";
 import { PullCurrentResult, PullService } from "../git/pullService";
 import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
+import { getCurrentPushPlan } from "../git/pushService";
 import { RemoteBranchService } from "../git/remoteBranchService";
 import { logInfo } from "../ui/outputLog";
+import { confirmPushCurrentPlan } from "../ui/pushConfirmation";
 
 interface GraphSyncActionDeps {
   logService: GitLogService;
@@ -54,10 +56,42 @@ export async function pullCurrent(deps: GraphSyncActionDeps): Promise<void> {
 
 /** 현재 브랜치를 upstream 으로 push 한 뒤 그래프를 갱신한다. */
 export async function pushCurrent(deps: GraphSyncActionDeps): Promise<void> {
+  const plan = await getCurrentPushPlan(deps.logService.repoRoot);
+  if (!(await confirmPushCurrentPlan(plan))) {
+    logInfo("graph push canceled", {
+      repoRoot: deps.logService.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    return;
+  }
   try {
-    await withGraphProgress(vscode.l10n.t("Pushing..."), () =>
-      deps.logService.pushCurrent()
+    logInfo("graph push started", {
+      repoRoot: deps.logService.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    const result = await withGraphProgress(vscode.l10n.t("Pushing..."), () =>
+      deps.logService.pushCurrent(plan)
     );
+    logInfo("graph push completed", {
+      repoRoot: deps.logService.repoRoot,
+      mode: result.mode,
+      branch: result.branch,
+      remote: result.remote,
+      upstream: result.upstream,
+      targetUpstream:
+        result.mode === "setUpstream" ? result.targetUpstream : undefined,
+      reason: result.mode === "setUpstream" ? result.reason : undefined,
+    });
   } catch (err) {
     if (isForcePushRequiredError(err)) {
       await showForcePushRequiredMessage(err);

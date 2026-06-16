@@ -21,6 +21,7 @@ import {
   localNameFromRemoteRef,
   splitRemoteRef,
 } from "./gitRefNames";
+import { PushCurrentPlan, PushCurrentResult, pushCurrentWithAutoUpstream } from "./pushService";
 import { countUntrackedLines } from "./untrackedStats";
 
 /** 빈 트리 오브젝트 해시(루트 커밋의 부모 대용으로 diff 비교에 사용) */
@@ -355,10 +356,11 @@ export class GitLogService {
     this.invalidateCaches();
   }
 
-  /** 현재 브랜치의 커밋을 upstream 으로 push 한다. */
-  async pushCurrent(): Promise<void> {
-    await runGit(["push"], this.repoRoot);
+  /** 현재 브랜치의 커밋을 remote 로 push 한다. upstream 보정 계획은 호출부가 먼저 확인한다. */
+  async pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
+    const result = await pushCurrentWithAutoUpstream(this.repoRoot, plan);
     this.invalidateCaches();
+    return result;
   }
 
   /** 지정 커밋을 현재 브랜치에 cherry-pick 한다. */
