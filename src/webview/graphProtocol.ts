@@ -11,6 +11,10 @@ import type {
   GraphBranchFilterMode,
   GraphBranchFilterSnapshot,
 } from "./graphBranchFilter";
+import type {
+  AiRebasePlanRequest,
+  AiRebasePlanResult,
+} from "../ai/rebasePlanner";
 import type { PullRequestDetailInfo, PullRequestOverview } from "../git/pullRequestService";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
@@ -33,6 +37,7 @@ export type ToWebviewMessage =
   | { type: "commitVisibility"; requestId: string; hash?: string; found: boolean }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
+  | { type: "graphRebaseAiPlan"; result: AiRebasePlanResult }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
   | { type: "graphRebaseOperation"; active: boolean }
   | { type: "graphRebaseClear" }
@@ -83,6 +88,7 @@ export type FromWebviewMessage =
   | { type: "openFileDiff"; hash: string; parent: string; path: string }
   | { type: "openRebaseEditFile"; path: string }
   | { type: "prepareGraphRebase"; hash?: string; onto?: string }
+  | { type: "generateGraphRebaseAiPlan"; plan: AiRebasePlanRequest }
   | { type: "continueGraphRebase"; items?: RebaseItem[]; changedHashes?: string[] }
   | { type: "abortGraphRebase" }
   | {

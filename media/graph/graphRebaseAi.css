@@ -1,0 +1,27 @@
+/* 그래프 rebase AI 계획 버튼과 module chip 스타일. */
+#graph-rebase-ai.loading {
+  opacity: 0.72;
+}
+
+#graph-rebase-ai:disabled {
+  cursor: wait;
+}
+
+.rebase-ai-module {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  max-width: 180px;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-badge-background);
+  border-radius: 999px;
+  color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background);
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -2,7 +2,6 @@
 // - row/node 드래그로 현재 브랜치 rebase 계획을 만들고, row 위 마커/액션 버튼으로 todo 를 편집한다.
 (function () {
   "use strict";
-
   const ACTIONS = [
     { action: "pick", icon: "check", label: "Pick", tooltip: "Pick this commit as-is" },
     { action: "reword", icon: "edit", label: "Reword", tooltip: "Edit this commit message during rebase" },
@@ -12,7 +11,6 @@
     { action: "drop", icon: "trash", label: "Drop", tooltip: "Remove this commit from the rebased branch" },
   ];
   const MESSAGE_ACTIONS = new Set(["reword", "squash"]);
-
   const graphPane = document.getElementById("graph-pane");
   const graphEl = document.getElementById("graph");
   const graphContent = document.getElementById("graph-content");
@@ -585,8 +583,10 @@
 
   window.GscGraphRebaseContext = {
     contextMenuItems,
+    plan: () => plan,
     itemForHash,
     items: () => items,
+    render: renderPlan,
     paused: () => paused,
     requestEditFile,
     continueRebase,

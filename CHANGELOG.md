@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Marketplace publishing assets: extension icon, Activity Bar icon, and a
   publisher checklist for `newdlops.git-simple-compare`.
+- **AI rebase planning**: graph rebase can request an AI plan that reorders
+  commits, improves messages, labels module groups, chunks large histories into
+  multiple AI sessions, and warns before high-token requests.
 - **AI commit and PR messages**: generate commit messages from staged changes
   and staged PR titles/bodies through local Claude Code or Codex CLI providers.
 - **Staged pull request preview**: inspect PR title/body, changed files, commits,

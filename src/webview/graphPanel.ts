@@ -25,6 +25,7 @@ import {
   prepareGraphRebase,
   runGraphRebase,
 } from "./graphRebaseActions";
+import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
@@ -213,6 +214,9 @@ export class GitGraphPanel {
           logService: this.logService,
         });
         this.post({ type: "graphRebasePlan", plan });
+      } else if (msg.type === "generateGraphRebaseAiPlan") {
+        const result = await generateGraphRebaseAiPlan(msg.plan, { logService: this.logService });
+        if (result) this.post({ type: "graphRebaseAiPlan", result });
       } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
         const result = msg.type === "continueGraphRebase"
           ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
