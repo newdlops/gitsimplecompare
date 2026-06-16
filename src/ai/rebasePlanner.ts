@@ -98,7 +98,8 @@ export async function generateAiRebasePlan(
     const response = await runAiCliPrompt(
       rebasePrompt(request, chunks[index], index + 1, chunks.length),
       repoRoot,
-      token
+      token,
+      { timeoutMs: null }
     );
     items.push(...normalizeSessionResult(chunks[index], response.text));
   }

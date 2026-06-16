@@ -17,6 +17,11 @@ export interface AiCliResponse {
   text: string;
 }
 
+/** AI CLI 실행별 옵션. timeoutMs 가 null 이면 시간 제한 없이 취소 토큰만 따른다. */
+export interface AiCliPromptOptions {
+  timeoutMs?: number | null;
+}
+
 /** AI CLI 설정/설치 문제를 UI 에서 구분하기 위한 오류 타입. */
 export class AiCliConfigurationError extends Error {}
 
@@ -47,11 +52,15 @@ const MAX_OUTPUT_CHARS = 200000;
 export async function runAiCliPrompt(
   prompt: string,
   cwd: string,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  options: AiCliPromptOptions = {}
 ): Promise<AiCliResponse> {
   const config = readAiCliConfig();
   const providers = providerOrder(config.provider);
   const notFound: string[] = [];
+  const timeoutMs = options.timeoutMs === null
+    ? undefined
+    : options.timeoutMs ?? config.timeoutMs;
   for (const provider of providers) {
     const command = providerCommand(config, provider, cwd);
     try {
@@ -59,8 +68,9 @@ export async function runAiCliPrompt(
         provider,
         command: command.command,
         cwd,
+        timeoutMs: timeoutMs ?? "none",
       });
-      const text = await runProviderCommand(command, prompt, cwd, config.timeoutMs, token);
+      const text = await runProviderCommand(command, prompt, cwd, timeoutMs, token);
       return { provider, text };
     } catch (error) {
       if (isCommandNotFound(error) && config.provider === "auto") {
@@ -172,14 +182,14 @@ function providerCommand(
  * @param providerCommand 실행할 command/args 정보
  * @param prompt stdin 으로 전달할 프롬프트
  * @param cwd 프로세스 working directory
- * @param timeoutMs 실행 timeout
+ * @param timeoutMs 실행 timeout. undefined 면 timeout 없이 취소 토큰만 사용한다.
  * @param token VS Code 취소 토큰
  */
 function runProviderCommand(
   providerCommand: ProviderCommand,
   prompt: string,
   cwd: string,
-  timeoutMs: number,
+  timeoutMs: number | undefined,
   token: vscode.CancellationToken
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -191,13 +201,15 @@ function runProviderCommand(
     let settled = false;
     let stdout = "";
     let stderr = "";
-    const timeout = setTimeout(() => {
-      finish(
-        new Error(
-          vscode.l10n.t("AI CLI timed out after {0}ms.", String(timeoutMs))
-        )
-      );
-    }, timeoutMs);
+    const timeout = timeoutMs === undefined
+      ? undefined
+      : setTimeout(() => {
+          finish(
+            new Error(
+              vscode.l10n.t("AI CLI timed out after {0}ms.", String(timeoutMs))
+            )
+          );
+        }, timeoutMs);
     const cancelSub = token.onCancellationRequested(() => {
       finish(new Error(vscode.l10n.t("AI CLI request cancelled.")));
     });
@@ -232,7 +244,9 @@ function runProviderCommand(
         return;
       }
       settled = true;
-      clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
       cancelSub.dispose();
       if (!child.killed) {
         child.kill();

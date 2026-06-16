@@ -89,6 +89,7 @@ export type FromWebviewMessage =
   | { type: "openRebaseEditFile"; path: string }
   | { type: "prepareGraphRebase"; hash?: string; onto?: string }
   | { type: "generateGraphRebaseAiPlan"; plan: AiRebasePlanRequest }
+  | { type: "configureAiCli" }
   | { type: "continueGraphRebase"; items?: RebaseItem[]; changedHashes?: string[] }
   | { type: "abortGraphRebase" }
   | {

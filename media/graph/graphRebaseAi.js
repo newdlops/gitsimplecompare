@@ -19,7 +19,12 @@
     patchRender();
     const bar = document.getElementById("graph-rebase-bar");
     const run = document.getElementById("graph-rebase-run");
-    if (!bar || !run || document.getElementById("graph-rebase-ai")) {
+    if (!bar || !run) {
+      updateButton();
+      return;
+    }
+    const settings = ensureSettingsButton(bar, run);
+    if (document.getElementById("graph-rebase-ai")) {
       updateButton();
       return;
     }
@@ -31,8 +36,28 @@
     button.dataset.tooltip = "Ask AI to reorder commits, improve messages, and group files by module";
     button.innerHTML = '<span class="codicon codicon-sparkle" aria-hidden="true"></span><span>AI Plan</span>';
     button.addEventListener("click", requestAiPlan);
-    bar.insertBefore(button, run);
+    bar.insertBefore(button, settings);
     updateButton();
+  }
+
+  /** AI provider/model 설정을 여는 버튼을 rebase bar 에 추가한다. */
+  function ensureSettingsButton(bar, run) {
+    let button = document.getElementById("graph-rebase-ai-settings");
+    if (button) {
+      return button;
+    }
+    button = document.createElement("button");
+    button.id = "graph-rebase-ai-settings";
+    button.type = "button";
+    button.title = "Configure AI model";
+    button.setAttribute("aria-label", "Configure AI model");
+    button.dataset.tooltip = "Choose Claude Code or Codex model and reasoning settings";
+    button.innerHTML = '<span class="codicon codicon-settings-gear" aria-hidden="true"></span>';
+    button.addEventListener("click", () => {
+      window.GscGraphPostMessage?.({ type: "configureAiCli" });
+    });
+    bar.insertBefore(button, run);
+    return button;
   }
 
   /** graph rebase 렌더 이후 module chip 을 다시 붙인다. */

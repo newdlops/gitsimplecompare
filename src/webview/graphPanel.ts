@@ -217,6 +217,8 @@ export class GitGraphPanel {
       } else if (msg.type === "generateGraphRebaseAiPlan") {
         const result = await generateGraphRebaseAiPlan(msg.plan, { logService: this.logService });
         if (result) this.post({ type: "graphRebaseAiPlan", result });
+      } else if (msg.type === "configureAiCli") {
+        await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
       } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
         const result = msg.type === "continueGraphRebase"
           ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
