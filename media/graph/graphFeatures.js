@@ -195,6 +195,9 @@
       actionButton("create-tag", "tag", "Create tag here", "Create Tag", "create-action"),
       actionButton("cherry-pick", "git-pull-request", "Cherry-pick commit", "Cherry-pick"),
     ];
+    if (revertableCurrentBranch(detail)) {
+      actions.push(actionButton("revert-commit", "debug-reverse-continue", "Revert commit on current branch", "Revert"));
+    }
     if (undoableHeadBranch(detail.hash)) {
       actions.push(actionButton("undo-commit", "discard", "Undo latest unpushed commit and keep changes staged.", "Undo Commit"));
     }
@@ -225,8 +228,20 @@
     bind("create-branch", () => ({ type: "createBranch", hash: detail.hash }));
     bind("create-tag", () => ({ type: "createTag", hash: detail.hash }));
     bind("cherry-pick", () => ({ type: "cherryPick", hash: detail.hash }));
+    bind("revert-commit", () => ({
+      type: "revertCommit",
+      hash: detail.hash,
+      parents: detail.parents || [],
+    }));
     bind("undo-commit", () => ({ type: "undoCommit", hash: detail.hash }));
     bind("delete-branch", () => deleteBranchMessage(detail.hash));
+  }
+
+  /** 현재 checkout 된 로컬 브랜치가 이 커밋을 포함하면 revert 액션을 허용한다. */
+  function revertableCurrentBranch(detail) {
+    return !detail.loading && (detail.branches || []).some((branch) =>
+      branch.current && branch.kind === "local"
+    );
   }
 
   /** ongoing/staged 내부 ref 를 가상 커밋 chip 으로 만든다. */

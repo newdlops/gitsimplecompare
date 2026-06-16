@@ -58,6 +58,7 @@ type GraphActionMessage = Extract<
       | "pushTag"
       | "tagAction"
       | "cherryPick"
+      | "revertCommit"
       | "pullRequestAction"
       | "copyCommitHash"
       | "copyCommitMessage";
@@ -113,6 +114,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "pushTag",
   "tagAction",
   "cherryPick",
+  "revertCommit",
   "pullRequestAction",
   "copyCommitHash",
   "copyCommitMessage",
@@ -183,6 +185,9 @@ async function dispatchGraphAction(
       return;
     case "cherryPick":
       await cherryPick(deps, msg.hash);
+      return;
+    case "revertCommit":
+      await revertCommit(deps, msg.hash, msg.parents ?? []);
       return;
     case "pullRequestAction":
       await handlePullRequestAction(deps, msg.number, msg.action);
@@ -380,6 +385,98 @@ async function cherryPick(deps: GraphActionDeps, hash: string): Promise<void> {
   vscode.window.showInformationMessage(
     vscode.l10n.t("Commit '{0}' cherry-picked.", shortHash(hash))
   );
+}
+
+/**
+ * 현재 로컬 브랜치에 포함된 커밋을 revert 해서 새 커밋을 만든다.
+ * @param deps   graph action 실행에 필요한 서비스와 새로고침 함수
+ * @param hash   revert 대상 커밋 해시
+ * @param parents 웹뷰 detail 이 알고 있는 부모 해시 목록
+ */
+async function revertCommit(
+  deps: GraphActionDeps,
+  hash: string,
+  parents: string[]
+): Promise<void> {
+  if (!isRealCommit(hash)) {
+    return;
+  }
+  if (
+    !(await confirm(
+      vscode.l10n.t("Revert commit '{0}' on the current branch?", shortHash(hash)),
+      vscode.l10n.t("Revert")
+    ))
+  ) {
+    return;
+  }
+  const mainline = await pickRevertMainline(deps, hash, parents);
+  if (mainline === null) {
+    return;
+  }
+  const result = await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: vscode.l10n.t("Reverting commit '{0}'", shortHash(hash)),
+      cancellable: false,
+    },
+    () => deps.logService.revertCommitOnCurrentBranch(hash, mainline)
+  );
+  if (result.status === "conflicts") {
+    await deps.refreshGraph();
+    await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Revert paused with conflicts. Resolve them in the Conflicts view, then Continue."
+      )
+    );
+    return;
+  }
+  await deps.refreshGraph();
+  vscode.window.showInformationMessage(
+    vscode.l10n.t(
+      "Commit '{0}' reverted on '{1}'.",
+      shortHash(result.targetHash),
+      result.branch
+    )
+  );
+}
+
+/**
+ * merge commit revert 에 필요한 mainline parent 를 고른다.
+ * @returns parent 번호, 필요 없으면 undefined, 사용자가 취소하면 null
+ */
+async function pickRevertMainline(
+  deps: GraphActionDeps,
+  hash: string,
+  knownParents: string[]
+): Promise<number | undefined | null> {
+  const parents =
+    knownParents.length > 0
+      ? knownParents
+      : await deps.logService.getCommitParents(hash);
+  if (parents.length <= 1) {
+    return undefined;
+  }
+  const pick = await vscode.window.showQuickPick(
+    parents.map((parent, index) => ({
+      label: vscode.l10n.t("Parent {0}", index + 1),
+      description: shortHash(parent),
+      detail: vscode.l10n.t(
+        "Use parent {0} as the mainline for reverting merge commit {1}.",
+        index + 1,
+        shortHash(hash)
+      ),
+      mainline: index + 1,
+    })),
+    {
+      placeHolder: vscode.l10n.t(
+        "Select the mainline parent for merge commit '{0}'",
+        shortHash(hash)
+      ),
+    }
+  );
+  return pick?.mainline ?? null;
 }
 
 /** tag 목록에서 작업 대상을 고른다. */

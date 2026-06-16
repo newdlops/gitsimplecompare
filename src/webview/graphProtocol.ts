@@ -78,6 +78,7 @@ export type FromWebviewMessage =
   | { type: "branchMergeAction"; branch: string; action: "squash" | "rebase" | "undo"; kind?: "local" | "remote" }
   | { type: "commitAction"; hash: string }
   | { type: "undoCommit"; hash: string }
+  | { type: "revertCommit"; hash: string; parents?: string[] }
   | { type: "createTag"; hash: string }
   | { type: "deleteTag"; tag?: string }
   | { type: "pushTag"; tag?: string }

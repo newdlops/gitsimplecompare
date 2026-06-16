@@ -31,6 +31,22 @@ export const ONGOING_COMMIT_HASH = "__gsc_virtual_ongoing__";
 /** index 상태를 나타내는 그래프 전용 가상 커밋 해시 */
 export const STAGED_COMMIT_HASH = "__gsc_virtual_staged__";
 
+/** 커밋 revert 실행 결과 */
+export type RevertCommitResult =
+  | {
+      status: "reverted";
+      branch: string;
+      targetHash: string;
+      beforeHead: string;
+      afterHead: string;
+    }
+  | {
+      status: "conflicts";
+      branch: string;
+      targetHash: string;
+      beforeHead: string;
+    };
+
 /** 로그 필드 구분자(제어문자 Unit Separator) */
 const FS = LOG_FIELD_SEPARATOR;
 
@@ -152,6 +168,19 @@ export class GitLogService {
       branches,
       files,
     };
+  }
+
+  /**
+   * 지정 커밋의 부모 해시 목록을 반환한다.
+   * - merge commit revert 에서 mainline parent 를 고를 때 사용한다.
+   * @param hash 대상 커밋 해시
+   */
+  async getCommitParents(hash: string): Promise<string[]> {
+    if (isVirtualCommitHash(hash)) {
+      return [];
+    }
+    const out = await runGit(["show", "-s", "--pretty=%P", hash], this.repoRoot);
+    return out.trim().split(/\s+/).filter(Boolean);
   }
 
   /**
@@ -370,6 +399,74 @@ export class GitLogService {
   }
 
   /**
+   * 현재 로컬 브랜치에 포함된 커밋을 revert 해서 새 커밋을 만든다.
+   * - detached HEAD 나 현재 브랜치에 포함되지 않은 커밋은 차단한다.
+   * - merge commit 은 호출부가 고른 mainline parent 번호가 필요하다.
+   * @param hash     revert 대상 커밋 해시
+   * @param mainline merge commit revert 에 사용할 mainline parent 번호(1부터 시작)
+   */
+  async revertCommitOnCurrentBranch(
+    hash: string,
+    mainline?: number
+  ): Promise<RevertCommitResult> {
+    if (isVirtualCommitHash(hash)) {
+      throw new Error("Virtual commits cannot be reverted.");
+    }
+    await this.assertReadyForRevert();
+    const branch = (await this.getLocalBranches()).find((item) => item.current);
+    if (!branch) {
+      throw new Error("Only commits on the current local branch can be reverted.");
+    }
+    const targetHash = await this.normalizeCommit(hash);
+    if (!(await this.isAncestor(targetHash, "HEAD"))) {
+      throw new Error("Only commits on the current local branch can be reverted.");
+    }
+    await this.assertValidRevertMainline(targetHash, mainline);
+    const beforeHead = await this.getHeadHash();
+    if (!beforeHead) {
+      throw new Error("Cannot revert because HEAD is unavailable.");
+    }
+    try {
+      await runGit(
+        [
+          "revert",
+          "--no-edit",
+          ...(mainline ? ["-m", String(mainline)] : []),
+          targetHash,
+        ],
+        this.repoRoot,
+        { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" } }
+      );
+    } catch (err) {
+      this.invalidateCaches();
+      if (
+        (await detectOperation(this.repoRoot).catch(() => "none")) === "revert" &&
+        (await this.hasUnmergedChanges())
+      ) {
+        return {
+          status: "conflicts",
+          branch: branch.name,
+          targetHash,
+          beforeHead,
+        };
+      }
+      throw err;
+    }
+    const afterHead = await this.getHeadHash();
+    if (!afterHead) {
+      throw new Error("Revert completed, but the new HEAD could not be read.");
+    }
+    this.invalidateCaches();
+    return {
+      status: "reverted",
+      branch: branch.name,
+      targetHash,
+      beforeHead,
+      afterHead,
+    };
+  }
+
+  /**
    * 현재 로컬 브랜치의 최신 unpushed commit 을 되돌린다.
    * - HEAD 가 요청 해시와 같고, 현재 브랜치가 upstream 보다 앞서 있거나 upstream 이 없는 경우만 허용한다.
    * - --soft reset 을 사용해 커밋 내용은 staged 상태로 남긴다.
@@ -543,6 +640,73 @@ export class GitLogService {
         deletions: 0,
       }))
     );
+  }
+
+  /** revert 시작 전 진행 중인 git 작업이나 unmerged 파일이 없는지 확인한다. */
+  private async assertReadyForRevert(): Promise<void> {
+    const operation = await detectOperation(this.repoRoot);
+    if (operation !== "none") {
+      throw new Error(`Cannot revert while ${operation} is in progress.`);
+    }
+    if (await this.hasUnmergedChanges()) {
+      throw new Error("Resolve unmerged files before reverting a commit.");
+    }
+  }
+
+  /**
+   * merge commit revert 의 mainline parent 번호가 실제 부모 범위 안에 있는지 확인한다.
+   * @param hash     revert 대상 커밋 해시
+   * @param mainline 사용자가 선택한 mainline parent 번호
+   */
+  private async assertValidRevertMainline(
+    hash: string,
+    mainline?: number
+  ): Promise<void> {
+    const parents = await this.getCommitParents(hash);
+    if (parents.length <= 1) {
+      return;
+    }
+    if (
+      !Number.isInteger(mainline) ||
+      !mainline ||
+      mainline < 1 ||
+      mainline > parents.length
+    ) {
+      throw new Error("Reverting a merge commit requires a mainline parent.");
+    }
+  }
+
+  /**
+   * ancestor 가 target 의 조상인지 확인한다.
+   * @param ancestor 조상이어야 하는 커밋
+   * @param target   기준 커밋/ref
+   */
+  private async isAncestor(ancestor: string, target: string): Promise<boolean> {
+    try {
+      await runGit(["merge-base", "--is-ancestor", ancestor, target], this.repoRoot);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** unmerged 파일이 남아 있는지 확인한다. */
+  private async hasUnmergedChanges(): Promise<boolean> {
+    const out = await runGit(
+      ["diff", "--name-only", "--diff-filter=U"],
+      this.repoRoot
+    );
+    return out.trim().length > 0;
+  }
+
+  /**
+   * 입력 ref 가 실제 commit 인지 검증하고 전체 해시로 정규화한다.
+   * @param hash 커밋으로 해석할 ref/hash
+   */
+  private async normalizeCommit(hash: string): Promise<string> {
+    return (
+      await runGit(["rev-parse", "--verify", `${hash}^{commit}`], this.repoRoot)
+    ).trim();
   }
 
   /** 현재 HEAD 해시를 반환한다. 아직 커밋이 없으면 undefined 를 반환한다. */
