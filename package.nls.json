@@ -8,6 +8,7 @@
   "cmd.cleanupPrOperationWorktrees": "Delete PR Operation Temporary Worktrees",
   "cmd.generateCommitMessage": "Generate AI Commit Message",
   "cmd.configureAiCli": "Configure AI CLI",
+  "cmd.configureUserProfile": "Configure Git User Profile",
   "cmd.loginAiCli": "Login to AI CLI",
   "cmd.compareFileWithBranch": "Compare This File with Branch",
   "cmd.compareActiveFileWithBranch": "Compare Active File with Branch",

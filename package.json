@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -109,6 +109,12 @@
         "title": "%cmd.configureAiCli%",
         "category": "Git Simple Compare",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "gitSimpleCompare.configureUserProfile",
+        "title": "%cmd.configureUserProfile%",
+        "category": "Git Simple Compare",
+        "icon": "$(account)"
       },
       {
         "command": "gitSimpleCompare.loginAiCli",
@@ -323,6 +329,11 @@
           "command": "gitSimpleCompare.checkoutBranch",
           "when": "view == gitSimpleCompare.changes",
           "group": "navigation@3"
+        },
+        {
+          "command": "gitSimpleCompare.configureUserProfile",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@0"
         },
         {
           "command": "gitSimpleCompare.configureAiCli",

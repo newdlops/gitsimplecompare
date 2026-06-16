@@ -32,6 +32,7 @@ import {
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
+import { configureUserProfile } from "./userProfile";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -196,6 +197,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.configureAiCli", () =>
       configureAiCli(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.configureUserProfile", () =>
+      configureUserProfile(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loginAiCli",

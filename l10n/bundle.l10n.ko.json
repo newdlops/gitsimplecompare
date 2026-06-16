@@ -462,5 +462,19 @@
   "Delete Tag...": "태그 삭제...",
   "Show Git Output": "Git 출력 보기",
   "Clone...": "클론...",
-  "Initialize Repository...": "저장소 초기화..."
+  "Initialize Repository...": "저장소 초기화...",
+  "Git User Profile": "Git 사용자 프로필",
+  "Choose which Git user profile to edit.": "편집할 Git 사용자 프로필 범위를 선택하세요.",
+  "Global Profile": "전역 프로필",
+  "Applies to all repositories unless a project profile overrides it.": "프로젝트 프로필이 덮어쓰지 않는 한 모든 저장소에 적용됩니다.",
+  "Project Profile": "프로젝트 프로필",
+  "Applies only to the selected repository.": "선택한 저장소에만 적용됩니다.",
+  "global profile": "전역 프로필",
+  "this project": "이 프로젝트",
+  "{0} Git user.name": "{0} Git user.name",
+  "{0} Git user.email": "{0} Git user.email",
+  "Leave empty to unset user.name.": "user.name을 제거하려면 비워 두세요.",
+  "Leave empty to unset user.email.": "user.email을 제거하려면 비워 두세요.",
+  "Git user profile saved for {0}.": "{0}에 Git 사용자 프로필을 저장했습니다.",
+  "Git user profile settings failed: {0}": "Git 사용자 프로필 설정 실패: {0}"
 }

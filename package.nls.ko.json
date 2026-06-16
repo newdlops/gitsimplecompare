@@ -8,6 +8,7 @@
   "cmd.cleanupPrOperationWorktrees": "PR 작업 임시 Worktree 삭제",
   "cmd.generateCommitMessage": "AI 커밋 메시지 생성",
   "cmd.configureAiCli": "AI CLI 설정",
+  "cmd.configureUserProfile": "Git 사용자 프로필 설정",
   "cmd.loginAiCli": "AI CLI 로그인",
   "cmd.compareFileWithBranch": "이 파일을 브랜치와 비교",
   "cmd.compareActiveFileWithBranch": "현재 파일을 브랜치와 비교",
