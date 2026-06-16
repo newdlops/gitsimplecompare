@@ -160,7 +160,7 @@ export async function openPausedRebaseEditFile(
  * @param deps 그래프 패널 의존성
  */
 export async function continueGraphRebase(
-  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
+  deps: Pick<GraphRebaseDeps, "extensionUri" | "logService" | "refreshGraph">,
   items: RebaseItem[] = [],
   changedHashes: string[] = []
 ): Promise<GraphRebaseControlResult> {
@@ -175,8 +175,17 @@ export async function continueGraphRebase(
   if (paused) {
     await saveRebaseEditTempDocuments(repoRoot, paused);
   }
-  const todo = await updateInProgressRebaseTodo(repoRoot, items, changedHashes, paused);
-  if (todo.missingChangedEditHashes.length > 0) {
+  const todo = await updateInProgressRebaseTodo(
+    repoRoot,
+    items,
+    changedHashes,
+    paused,
+    { editorScript: editorScriptPath(deps.extensionUri) }
+  );
+  if (
+    todo.missingChangedEditHashes.length > 0 ||
+    todo.missingChangedFileHashes.length > 0
+  ) {
     vscode.window.showWarningMessage(
       vscode.l10n.t("That commit has already been applied in this rebase. Abort and start a new rebase plan to edit it.")
     );
@@ -186,6 +195,7 @@ export async function continueGraphRebase(
     logInfo("graph rebase todo updated before continue", {
       repoRoot,
       changedHashes: changedHashes.length,
+      missingFileHashes: todo.missingChangedFileHashes.length,
     });
   }
   if (await rebase.amendPausedEditChanges(paused)) {

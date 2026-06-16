@@ -11,6 +11,12 @@ import {
   applyRebaseEditTempFiles,
   cleanupRebaseEditTempFiles,
 } from "./rebaseEditSession";
+import {
+  buildFileExcludeOps,
+  collectHistoryExcludePaths,
+  rebaseFileAmendExecLine,
+  writeTempFileExcludeOps,
+} from "./rebaseFileExcludes";
 
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -215,24 +221,20 @@ export class RebaseService {
     const todoLines: string[] = [];
     const messageQueue: (string | null)[] = [];
     const opFiles: string[] = [];
-    const historyExcludePaths = uniquePaths(
-      items.flatMap((item) => item.historyExcludePaths ?? [])
-    );
+    const historyExcludePaths = collectHistoryExcludePaths(items);
     for (const item of kept) {
       todoLines.push(`${item.action} ${item.hash}`);
       if (item.action === "reword" || item.action === "squash") {
         const msg = item.message && item.message.trim() ? item.message : null;
         messageQueue.push(msg);
       }
-      const excludePaths = uniquePaths([
-        ...historyExcludePaths,
-        ...(item.excludePaths ?? []),
-      ]);
-      if (excludePaths.length) {
-        const opFile = tempPath("ops");
-        fs.writeFileSync(opFile, JSON.stringify({ excludePaths }), "utf8");
+      const excludeOps = buildFileExcludeOps(item, historyExcludePaths);
+      if (excludeOps.length) {
+        const opFile = writeTempFileExcludeOps(excludeOps);
         opFiles.push(opFile);
-        todoLines.push(`exec ${editorCmdForTodo(process.execPath, editorScript)} amend ${quoteArg(opFile)}`);
+        todoLines.push(
+          rebaseFileAmendExecLine(process.execPath, editorScript, opFile)
+        );
       }
     }
 
@@ -327,6 +329,7 @@ export class RebaseService {
    * edit 으로 멈춘 커밋에서 사용자가 수정한 파일을 현재 커밋에 반영한다.
    * - rebase edit 중 VS Code diff 로 바꾼 내용은 우선 작업트리 변경으로 남는다.
    * - Continue 전에 해당 커밋의 변경 파일만 stage 한 뒤 `commit --amend --no-edit` 로 커밋 자체를 갱신한다.
+   * - rebase 중 다른 파일에 충돌 마커가 남아 있을 수 있으므로, 내부 amend 는 hook 검증을 건너뛴다.
    * @param paused 이미 읽어 둔 edit 정지 상태. 없으면 현재 상태를 다시 읽는다.
    * @returns amend 할 staged 변경이 있어 커밋을 갱신했으면 true
    */
@@ -356,7 +359,7 @@ export class RebaseService {
       return false;
     }
     await runGit(
-      ["commit", "--amend", "--no-edit", "--allow-empty"],
+      ["commit", "--amend", "--no-edit", "--allow-empty", "--no-verify"],
       this.repoRoot,
       { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" }
     );
@@ -526,23 +529,6 @@ async function isAncestor(
 function tempPath(kind: string): string {
   const suffix = Math.random().toString(36).slice(2);
   return path.join(os.tmpdir(), `gsc-rebase-${kind}-${suffix}`);
-}
-
-/**
- * rebase todo 의 exec 줄에 넣을 헬퍼 명령 문자열을 만든다.
- * @param nodePath Electron/Node 실행 파일 경로
- * @param editorScript rebaseEditor.js 경로
- */
-function editorCmdForTodo(nodePath: string, editorScript: string): string {
-  return `${quoteArg(nodePath)} ${quoteArg(editorScript)}`;
-}
-
-/**
- * rebase todo 에 안전하게 넣을 shell 인자를 만든다.
- * @param value 인자 문자열
- */
-function quoteArg(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 /**

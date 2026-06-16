@@ -93,8 +93,12 @@
       `<span class="extension-icon codicon codicon-file"></span>` +
       `<span class="name">${esc(fileName)}</span>${dirHtml}${statHtml(file)}` +
       `<span class="file-rewrite-actions">${editButton}` +
-      toggleButton("commit", excluded, "Omit here", "Omitted here", "Remove this file change from only this commit", esc) +
-      toggleButton("history", historyExcluded, "Remove from history", "Removed from history", "Remove this file from every commit in this rebase range", esc) +
+      toggleButton("commit", excluded, "Omit here", "Include here",
+        "Remove this file change from only this commit",
+        "Add this file change back to this commit", esc) +
+      toggleButton("history", historyExcluded, "Remove from history", "Include in history",
+        "Remove this file from every commit in this rebase range",
+        "Add this file back to commits in this rebase range", esc) +
       `</span>` +
       `</div>`
     );
@@ -144,9 +148,10 @@
   }
 
   /** 파일 제외 토글 버튼을 만든다. */
-  function toggleButton(kind, active, inactiveLabel, activeLabel, tooltip, esc) {
+  function toggleButton(kind, active, inactiveLabel, activeLabel, inactiveTooltip, activeTooltip, esc) {
     const label = active ? activeLabel : inactiveLabel;
-    const icon = kind === "history" ? "history" : "exclude";
+    const tooltip = active ? activeTooltip : inactiveTooltip;
+    const icon = active ? "add" : kind === "history" ? "history" : "exclude";
     const activeClass = active ? " active" : "";
     return `<button type="button" data-exclude="${kind}" class="icon-action${activeClass}" ` +
       `aria-pressed="${active ? "true" : "false"}" ${title(`${label}. ${tooltip}`, esc)}>` +

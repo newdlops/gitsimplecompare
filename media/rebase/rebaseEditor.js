@@ -17,10 +17,13 @@ function git(args) {
   });
 }
 
-// 실패해도 다음 fallback 을 시도할 수 있는 git 명령을 실행한다.
-function gitOk(args) {
+// 예상 가능한 fallback 확인용 git 명령은 stderr 를 숨겨 rebase 로그를 어지럽히지 않는다.
+function gitQuietOk(args) {
   try {
-    git(args);
+    cp.execFileSync("git", args, {
+      cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+      stdio: "ignore",
+    });
     return true;
   } catch (err) {
     return false;
@@ -28,12 +31,43 @@ function gitOk(args) {
 }
 
 // 현재 커밋에서 path 변경을 제거하기 위해 부모 커밋의 상태로 되돌린다.
-function restorePathFromParent(path) {
-  if (gitOk(["cat-file", "-e", `HEAD^:${path}`])) {
+function restorePathFromParent(relPath) {
+  const path = String(relPath || "");
+  if (!path) {
+    return;
+  }
+  if (gitQuietOk(["cat-file", "-e", `HEAD^:${path}`])) {
     git(["checkout", "HEAD^", "--", path]);
     return;
   }
-  gitOk(["rm", "-r", "-f", "--", path]);
+  gitQuietOk(["rm", "-r", "-f", "--", path]);
+}
+
+// op 파일의 신/구 포맷을 모두 읽어 파일 제외 작업 배열로 정규화한다.
+function readExcludeOps(file) {
+  const ops = JSON.parse(fs.readFileSync(file, "utf8"));
+  if (Array.isArray(ops.files)) {
+    return ops.files
+      .map((item) => ({
+        path: String(item && item.path ? item.path : ""),
+        oldPath: item && item.oldPath ? String(item.oldPath) : "",
+      }))
+      .filter((item) => item.path);
+  }
+  const paths = Array.isArray(ops.excludePaths) ? ops.excludePaths : [];
+  return paths.map((path) => ({ path: String(path || ""), oldPath: "" })).filter((item) => item.path);
+}
+
+// rename 제외처럼 한 파일 변경이 여러 path 를 건드릴 때 중복 없이 순서대로 되돌린다.
+function restoreFileChange(op) {
+  const paths = [];
+  if (op.oldPath) {
+    paths.push(op.oldPath);
+  }
+  paths.push(op.path);
+  for (const path of Array.from(new Set(paths))) {
+    restorePathFromParent(path);
+  }
 }
 
 // index 에 amend 할 변경이 남아 있는지 확인한다.
@@ -71,13 +105,11 @@ try {
       }
     }
   } else if (mode === "amend") {
-    const ops = JSON.parse(fs.readFileSync(targetFile, "utf8"));
-    const paths = Array.isArray(ops.excludePaths) ? ops.excludePaths : [];
-    for (const path of paths) {
-      restorePathFromParent(String(path));
+    for (const op of readExcludeOps(targetFile)) {
+      restoreFileChange(op);
     }
     if (hasStagedChanges()) {
-      git(["commit", "--amend", "--no-edit", "--allow-empty"]);
+      git(["commit", "--amend", "--no-edit", "--allow-empty", "--no-verify"]);
     }
   }
 } catch (err) {

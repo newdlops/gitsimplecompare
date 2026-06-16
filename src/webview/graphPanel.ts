@@ -221,7 +221,7 @@ export class GitGraphPanel {
         await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
       } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
         const result = msg.type === "continueGraphRebase"
-          ? await continueGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
+          ? await continueGraphRebase({ extensionUri: this.extensionUri, logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
           : await abortGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() });
         if (result.status === "completed" || result.status === "aborted") {
           this.post({ type: "graphRebaseClear" });

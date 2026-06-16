@@ -326,7 +326,6 @@
       openCommitDetails(hash);
     }
   }
-
   /** drawer textarea 에 넣을 rebase 메시지 기본값을 계산한다. */
   function defaultMessage(item, action) {
     const include = document.getElementById("graph-rebase-include-squash")?.checked !== false;
@@ -343,7 +342,6 @@
     }
     window.GscGraphPostMessage?.({ type: "selectCommit", hash });
   }
-
   /** CSS selector 에 넣을 값을 이스케이프한다. */
   function cssEscape(value) {
     return window.CSS?.escape ? window.CSS.escape(value) : String(value).replace(/"/g, '\\"');
@@ -361,6 +359,7 @@
       return;
     }
     item.message = message || "";
+    if (paused || operationActive) changedDuringOperation.add(item.hash);
     if (item.action === "pick") {
       item.action = "reword";
     }
@@ -372,6 +371,7 @@
     const item = itemForHash(hash);
     if (item) {
       togglePath(item, "excludePaths", path);
+      if (paused || operationActive) changedDuringOperation.add(item.hash);
       renderPlan();
     }
   }
@@ -381,6 +381,7 @@
     const enabled = items.some((item) => (item.historyExcludePaths || []).includes(path));
     for (const item of items) {
       setPath(item, "historyExcludePaths", path, !enabled);
+      if (paused || operationActive) changedDuringOperation.add(item.hash);
     }
     renderPlan();
   }
