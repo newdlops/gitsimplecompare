@@ -105,7 +105,7 @@ function normalizeOptions(
 
 /** git index/ref lock 이 다른 git 프로세스에 의해 잡힌 상황인지 확인한다. */
 function isGitLockError(error: GitError): boolean {
-  const text = `${error.message}\n${error.stderr}`;
+  const text = `${error.message}\n${error.stderr}\n${error.stdout}`;
   return (
     /index\.lock/.test(text) ||
     /cannot lock ref/i.test(text) ||

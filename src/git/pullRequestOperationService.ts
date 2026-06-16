@@ -1,7 +1,6 @@
 // PR 단위 cherry-pick/rebase 작업을 담당하는 서비스.
 // - graph UI 는 확인과 결과 안내만 하고, 실제 git 상태 변경은 이 모듈로 모은다.
 import * as fs from "node:fs/promises";
-import * as os from "node:os";
 import * as path from "node:path";
 import { detectOperation, type MergeOperation } from "./conflictService";
 import {
@@ -10,17 +9,24 @@ import {
 } from "./deferredCommitRebase";
 import { GitError, runGit } from "./gitExec";
 import {
+  PULL_REQUEST_OPERATION_COMMANDS,
+  createSnapshotSnowflake,
+  legacySnapshotRefForBranch,
   pullRequestCommitHashes,
   pullRequestRevertCommitHashes,
+  snapshotRefForCommand,
+  snapshotRefForCommandSnowflake,
   snapshotRefForBranch,
   squashBody,
   squashRevertBody,
   squashRevertTitle,
   squashTitle,
+  type PullRequestOperationCommand,
 } from "./pullRequestOperationFormat";
 import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestRebaseContinuation";
 import type { PullRequestInfo } from "./pullRequestService";
-import { runStash } from "./stashExec";
+import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
+import { createPrOperationWorktree, removeTemporaryWorktree } from "./temporaryWorktree";
 
 /** PR 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface PullRequestOperationResult {
@@ -43,6 +49,10 @@ interface PreservedLocalChanges {
   hash: string;
 }
 
+export interface PullRequestOperationOptions {
+  strategy?: "auto" | "worktree";
+}
+
 /** PR 단위 git 작업 서비스 */
 export class PullRequestOperationService {
   constructor(public readonly repoRoot: string) {}
@@ -54,7 +64,10 @@ export class PullRequestOperationService {
    * @param pr graph 에서 선택된 PR 정보
    * @returns undo 가능한 작업 결과
    */
-  async squashCherryPick(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+  async squashCherryPick(
+    pr: PullRequestInfo,
+    options?: PullRequestOperationOptions
+  ): Promise<PullRequestOperationResult> {
     const commits = pullRequestCommitHashes(pr);
     if (!commits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to cherry-pick.`);
@@ -62,10 +75,10 @@ export class PullRequestOperationService {
     await this.assertReadyForPrOperation();
     const branch = await this.currentBranch();
     const beforeHead = await this.currentHead();
-    if (await this.hasLocalChanges()) {
+    if (options?.strategy === "worktree" || await this.hasLocalChanges()) {
       return this.squashCherryPickWithLocalChanges(pr, commits, branch, beforeHead);
     }
-    const snapshotRef = await this.createSnapshot(branch, beforeHead);
+    const snapshotRef = await this.createSnapshot(branch, beforeHead, "squash");
     try {
       await runGit(["cherry-pick", "--no-commit", ...commits], this.repoRoot);
       if (!await this.hasPendingChanges()) {
@@ -85,7 +98,10 @@ export class PullRequestOperationService {
    * @param pr graph 에서 선택된 PR 정보
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
-  async rebasePullRequest(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+  async rebasePullRequest(
+    pr: PullRequestInfo,
+    options?: PullRequestOperationOptions
+  ): Promise<PullRequestOperationResult> {
     const commits = pullRequestCommitHashes(pr);
     if (!commits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to rebase.`);
@@ -93,7 +109,10 @@ export class PullRequestOperationService {
     await this.assertReadyForPrOperation();
     const destinationBranch = await this.currentBranch();
     const beforeHead = await this.currentHead();
-    const snapshotRef = await this.createSnapshot(destinationBranch, beforeHead);
+    if (options?.strategy === "worktree" || await this.hasLocalChanges()) {
+      return this.rebasePullRequestWithLocalChanges(pr, commits, destinationBranch, beforeHead);
+    }
+    const snapshotRef = await this.createSnapshot(destinationBranch, beforeHead, "rebase");
     const preserved = await this.preserveLocalChanges(`before PR #${pr.number} rebase`);
     try {
       const result = await runDeferredCommitRebase({
@@ -124,7 +143,7 @@ export class PullRequestOperationService {
         "PR rebase merge failed, but local changes could not be restored."
       );
       if (restored) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await this.deleteSnapshotRef(destinationBranch, snapshotRef);
       }
       throw this.withPreservedStashNotice(
         err,
@@ -140,7 +159,10 @@ export class PullRequestOperationService {
    * @param pr graph 에서 선택된 PR 정보
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
-  async rebaseRevertPullRequest(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+  async rebaseRevertPullRequest(
+    pr: PullRequestInfo,
+    options?: PullRequestOperationOptions
+  ): Promise<PullRequestOperationResult> {
     const commits = pullRequestRevertCommitHashes(pr);
     if (!commits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to revert.`);
@@ -149,7 +171,10 @@ export class PullRequestOperationService {
     const destinationBranch = await this.currentBranch();
     const beforeHead = await this.currentHead();
     await this.assertSupportedPullRequestRevertCommits(pr, commits);
-    const snapshotRef = await this.createSnapshot(destinationBranch, beforeHead);
+    if (options?.strategy === "worktree" || await this.hasLocalChanges()) {
+      return this.rebaseRevertPullRequestWithLocalChanges(pr, commits, destinationBranch, beforeHead);
+    }
+    const snapshotRef = await this.createSnapshot(destinationBranch, beforeHead, "rebaseRevert");
     const preserved = await this.preserveLocalChanges(`before PR #${pr.number} rebase revert`);
     try {
       const result = await runDeferredCommitRebase({
@@ -181,7 +206,7 @@ export class PullRequestOperationService {
         "PR rebase revert failed, but local changes could not be restored."
       );
       if (restored) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await this.deleteSnapshotRef(destinationBranch, snapshotRef);
       }
       throw this.withPreservedStashNotice(
         err,
@@ -196,7 +221,10 @@ export class PullRequestOperationService {
    * @param pr graph 에서 선택된 PR 정보
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
-  async squashRevertPullRequest(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
+  async squashRevertPullRequest(
+    pr: PullRequestInfo,
+    options?: PullRequestOperationOptions
+  ): Promise<PullRequestOperationResult> {
     const commits = pullRequestRevertCommitHashes(pr);
     if (!commits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to revert.`);
@@ -205,10 +233,10 @@ export class PullRequestOperationService {
     const branch = await this.currentBranch();
     const beforeHead = await this.currentHead();
     await this.assertSupportedPullRequestRevertCommits(pr, commits);
-    if (await this.hasLocalChanges()) {
+    if (options?.strategy === "worktree" || await this.hasLocalChanges()) {
       return this.squashRevertWithLocalChanges(pr, commits, branch, beforeHead);
     }
-    const snapshotRef = await this.createSnapshot(branch, beforeHead);
+    const snapshotRef = await this.createSnapshot(branch, beforeHead, "squashRevert");
     try {
       await this.applySquashRevert(commits, this.repoRoot);
       if (!await this.hasPendingChanges()) {
@@ -235,7 +263,7 @@ export class PullRequestOperationService {
           sourceBranch: pr.headRefName || pr.headHash,
         };
       }
-      await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      await this.deleteSnapshotRef(branch, snapshotRef);
       throw err instanceof Error ? err : new Error(String(err));
     }
   }
@@ -248,7 +276,7 @@ export class PullRequestOperationService {
    */
   async undoLastOperation(branchName?: string): Promise<PullRequestOperationUndoResult> {
     const branch = branchName || await this.currentBranchForUndo();
-    const snapshotRef = snapshotRefForBranch(branch);
+    const snapshotRef = await this.latestSnapshotRefForBranch(branch);
     const restoredHead = await this.resolveSnapshot(snapshotRef);
     const operation = await this.assertReadyForUndo();
     const currentBranch = await this.currentBranch().catch(() => "");
@@ -269,11 +297,11 @@ export class PullRequestOperationService {
           branch,
           "PR operation was undone, but preserved local changes could not be restored."
         );
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await this.deleteSnapshotRef(branch, snapshotRef);
         return { branch, restoredHead };
       }
       await this.updateBranchRef(branch, snapshotRef);
-      await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      await this.deleteSnapshotRef(branch, snapshotRef);
       return { branch, restoredHead };
     }
     await this.abortOperationIfNeeded(operation);
@@ -288,7 +316,7 @@ export class PullRequestOperationService {
       branch,
       "PR operation was undone, but preserved local changes could not be restored."
     );
-    await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+    await this.deleteSnapshotRef(branch, snapshotRef);
     return { branch, restoredHead };
   }
 
@@ -301,8 +329,7 @@ export class PullRequestOperationService {
     if (!branch) {
       return false;
     }
-    const snapshotRef = snapshotRefForBranch(branch);
-    return Boolean(await this.resolveSnapshot(snapshotRef).catch(() => ""));
+    return Boolean(await this.latestSnapshotRefForBranch(branch).catch(() => ""));
   }
 
   /**
@@ -352,7 +379,7 @@ export class PullRequestOperationService {
 
   /** 현재 작업트리나 index 에 커밋되지 않은 변경이 있는지 확인한다. */
   private async hasLocalChanges(): Promise<boolean> {
-    return (await runGit(["status", "--porcelain=v1", "-z"], this.repoRoot)).length > 0;
+    return (await runGit(["-c", "core.fsmonitor=false", "status", "--porcelain=v1", "-z"], this.repoRoot)).length > 0;
   }
 
   /** index 에 unmerged 상태로 남은 파일이 있는지 확인한다. */
@@ -455,11 +482,85 @@ export class PullRequestOperationService {
     return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
   }
 
-  /** 현재 브랜치용 undo snapshot ref 를 생성한다. */
-  private async createSnapshot(branch: string, head: string): Promise<string> {
-    const ref = snapshotRefForBranch(branch);
-    await runGit(["update-ref", ref, head], this.repoRoot);
-    return ref;
+  /** 현재 브랜치와 PR command 용 undo snapshot ref 를 생성한다. */
+  private async createSnapshot(
+    branch: string,
+    head: string,
+    command: PullRequestOperationCommand
+  ): Promise<string> {
+    const snowflake = createSnapshotSnowflake();
+    const snapshotRef = snapshotRefForCommandSnowflake(branch, command, snowflake);
+    try {
+      await runGit(["update-ref", snapshotRef, head], this.repoRoot);
+      await this.updateLatestSnapshotRef(snapshotRefForCommand(branch, command), snapshotRef);
+      await this.updateLatestSnapshotRef(snapshotRefForBranch(branch), snapshotRef);
+      return snapshotRef;
+    } catch (err) {
+      await this.deleteSnapshotRef(branch, snapshotRef);
+      throw err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  /** latest 포인터 ref 가 특정 snowflake snapshot 을 바라보게 갱신한다. */
+  private async updateLatestSnapshotRef(latestRef: string, snapshotRef: string): Promise<void> {
+    await runGit(["symbolic-ref", latestRef, snapshotRef], this.repoRoot);
+  }
+
+  /** 브랜치의 최신 PR operation snapshot ref 를 찾는다. */
+  private async latestSnapshotRefForBranch(branch: string): Promise<string> {
+    const branchLatest = await this.resolvedSnapshotRef(snapshotRefForBranch(branch));
+    if (branchLatest) {
+      return branchLatest;
+    }
+    const commandLatest = (
+      await Promise.all(
+        PULL_REQUEST_OPERATION_COMMANDS.map(async (command) => {
+          const ref = await this.resolvedSnapshotRef(snapshotRefForCommand(branch, command));
+          return ref ? { ref, sortKey: snapshotSortKey(ref) } : undefined;
+        })
+      )
+    )
+      .filter((item): item is { ref: string; sortKey: string } => Boolean(item))
+      .sort((a, b) => b.sortKey.localeCompare(a.sortKey))[0];
+    if (commandLatest) {
+      return commandLatest.ref;
+    }
+    const legacyRef = await this.resolvedSnapshotRef(legacySnapshotRefForBranch(branch));
+    if (legacyRef) {
+      return legacyRef;
+    }
+    throw new Error("No PR operation snapshot is available for the current branch.");
+  }
+
+  /** symbolic latest ref 를 실제 snapshot ref 로 풀고, commit 으로 유효한 경우만 반환한다. */
+  private async resolvedSnapshotRef(ref: string): Promise<string | undefined> {
+    const target = await this.symbolicRefTarget(ref);
+    const snapshotRef = target || ref;
+    return await this.resolveSnapshot(snapshotRef).then(() => snapshotRef, () => undefined);
+  }
+
+  /** symbolic ref 의 target 을 반환한다. 일반 ref 이거나 없으면 undefined 를 반환한다. */
+  private async symbolicRefTarget(ref: string): Promise<string | undefined> {
+    const target = (await runGit(["symbolic-ref", "-q", ref], this.repoRoot).catch(() => "")).trim();
+    return target || undefined;
+  }
+
+  /** snapshot target 과 그 target 을 바라보는 latest 포인터를 정리한다. */
+  private async deleteSnapshotRef(branch: string, snapshotRef: string): Promise<void> {
+    await this.deleteLatestSnapshotRefIfTarget(snapshotRefForBranch(branch), snapshotRef);
+    await Promise.all(
+      PULL_REQUEST_OPERATION_COMMANDS.map((command) =>
+        this.deleteLatestSnapshotRefIfTarget(snapshotRefForCommand(branch, command), snapshotRef)
+      )
+    );
+    await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+  }
+
+  /** latest symbolic ref 가 지정 snapshot target 을 바라볼 때만 latest ref 를 삭제한다. */
+  private async deleteLatestSnapshotRefIfTarget(latestRef: string, snapshotRef: string): Promise<void> {
+    if (await this.symbolicRefTarget(latestRef) === snapshotRef) {
+      await runGit(["symbolic-ref", "-d", latestRef], this.repoRoot).catch(() => "");
+    }
   }
 
   /** undo snapshot ref 가 실제 commit 으로 존재하는지 확인한다. */
@@ -494,7 +595,7 @@ export class PullRequestOperationService {
     failureMessage: string
   ): Promise<void> {
     try {
-      await runGit(["reset", "--keep", targetRef], this.repoRoot);
+      await runGit(["-c", "core.fsmonitor=false", "reset", "--keep", targetRef], this.repoRoot);
     } catch (err) {
       throw new Error(`${failureMessage} ${errText(err)}`);
     }
@@ -530,7 +631,7 @@ export class PullRequestOperationService {
       await runGit(["add", "-A"], worktreePath);
       await this.commitSquash(pr, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
-      snapshotRef = await this.createSnapshot(branch, beforeHead);
+      snapshotRef = await this.createSnapshot(branch, beforeHead, "squash");
       await this.assertStillOnBranch(branch);
       await this.resetCurrentBranchPreservingLocalChanges(
         afterHead,
@@ -540,7 +641,7 @@ export class PullRequestOperationService {
       return { status: "completed", branch, beforeHead, afterHead, snapshotRef };
     } catch (err) {
       if (snapshotRef) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await this.deleteSnapshotRef(branch, snapshotRef);
       }
       throw err instanceof Error ? err : new Error(String(err));
     } finally {
@@ -580,7 +681,7 @@ export class PullRequestOperationService {
       await runGit(["add", "-A"], worktreePath);
       await this.commitSquashRevert(pr, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
-      snapshotRef = await this.createSnapshot(branch, beforeHead);
+      snapshotRef = await this.createSnapshot(branch, beforeHead, "squashRevert");
       await this.assertStillOnBranch(branch);
       await this.resetCurrentBranchPreservingLocalChanges(
         afterHead,
@@ -597,7 +698,117 @@ export class PullRequestOperationService {
       };
     } catch (err) {
       if (snapshotRef) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await this.deleteSnapshotRef(branch, snapshotRef);
+      }
+      throw err instanceof Error ? err : new Error(String(err));
+    } finally {
+      if (!keepWorktree) {
+        await this.removeTemporaryWorktree(worktreePath);
+      }
+    }
+  }
+
+  /** 로컬 변경이 있는 상태에서 PR rebase 결과를 임시 worktree 로 계산해 현재 브랜치에 반영한다. */
+  private async rebasePullRequestWithLocalChanges(
+    pr: PullRequestInfo,
+    commits: string[],
+    branch: string,
+    beforeHead: string
+  ): Promise<PullRequestOperationResult> {
+    return this.replayPullRequestWithLocalChanges({
+      pr,
+      commits,
+      branch,
+      beforeHead,
+      command: "rebase",
+      operation: "cherry-pick",
+      kind: "pr-rebase",
+      actionLabel: "rebase",
+      failureLabel: "rebase",
+    });
+  }
+
+  /** 로컬 변경이 있는 상태에서 PR rebase revert 결과를 임시 worktree 로 계산해 현재 브랜치에 반영한다. */
+  private async rebaseRevertPullRequestWithLocalChanges(
+    pr: PullRequestInfo,
+    commits: string[],
+    branch: string,
+    beforeHead: string
+  ): Promise<PullRequestOperationResult> {
+    return this.replayPullRequestWithLocalChanges({
+      pr,
+      commits,
+      branch,
+      beforeHead,
+      command: "rebaseRevert",
+      operation: "revert",
+      kind: "pr-revert",
+      actionLabel: "rebase revert",
+      failureLabel: "rebase revert",
+    });
+  }
+
+  /** 로컬 변경을 stash 하지 않고 임시 worktree 에서 PR 커밋 재생 결과를 만든다. */
+  private async replayPullRequestWithLocalChanges(input: {
+    pr: PullRequestInfo;
+    commits: string[];
+    branch: string;
+    beforeHead: string;
+    command: PullRequestOperationCommand;
+    operation: "cherry-pick" | "revert";
+    kind: "pr-rebase" | "pr-revert";
+    actionLabel: string;
+    failureLabel: string;
+  }): Promise<PullRequestOperationResult> {
+    const worktreePath = await this.createTemporaryWorktree(input.beforeHead);
+    let keepWorktree = false;
+    let snapshotRef = "";
+    try {
+      const result = await runDeferredCommitRebase({
+        kind: input.kind,
+        operation: input.operation === "revert" ? "revert" : undefined,
+        label: `PR #${input.pr.number}${input.operation === "revert" ? " revert" : ""}`,
+        repoRoot: worktreePath,
+        commits: input.commits,
+        destinationBranch: input.branch,
+        beforeHead: input.beforeHead,
+        snapshotRef: input.beforeHead,
+        sourceRef: input.pr.headRefName || input.pr.headHash,
+      });
+      if (result.status === "conflicts") {
+        keepWorktree = true;
+        throw new Error(
+          `PR #${input.pr.number} ${input.actionLabel} has conflicts. ` +
+            "The current working tree was not changed because local changes are present. " +
+            `Resolve or inspect the preserved temporary worktree: ${worktreePath}.`
+        );
+      }
+      const afterHead = result.afterHead || await this.currentHeadIn(worktreePath);
+      snapshotRef = await this.createSnapshot(input.branch, input.beforeHead, input.command);
+      await this.assertStillOnBranch(input.branch);
+      try {
+        await this.resetCurrentBranchPreservingLocalChanges(
+          afterHead,
+          `PR #${input.pr.number} ${input.failureLabel} result could not be applied to the current working tree. ` +
+            "The replayed result was preserved in a temporary worktree. " +
+            `Temporary worktree: ${worktreePath}. ` +
+            `The undo snapshot was kept at ${snapshotRef}.`
+        );
+      } catch (err) {
+        keepWorktree = true;
+        throw err;
+      }
+      return {
+        status: "completed",
+        branch: input.branch,
+        beforeHead: input.beforeHead,
+        afterHead,
+        snapshotRef,
+        sourceBranch: input.pr.headRefName || input.pr.headHash,
+      };
+    } catch (err) {
+      if (snapshotRef && !keepWorktree) {
+        await this.deleteSnapshotRef(input.branch, snapshotRef);
       }
       throw err instanceof Error ? err : new Error(String(err));
     } finally {
@@ -675,18 +886,12 @@ export class PullRequestOperationService {
 
   /** 임시 worktree 를 만들어 더러운 작업트리를 건드리지 않고 PR 적용 결과를 계산한다. */
   private async createTemporaryWorktree(startPoint: string): Promise<string> {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gsc-pr-operation-"));
-    await fs.rm(dir, { recursive: true, force: true });
-    await runGit(["worktree", "add", "--detach", dir, startPoint], this.repoRoot);
-    return dir;
+    return createPrOperationWorktree(this.repoRoot, startPoint);
   }
 
   /** 임시 worktree 를 제거한다. 제거 실패 시 남은 디렉터리만 한 번 더 정리한다. */
   private async removeTemporaryWorktree(worktreePath: string): Promise<void> {
-    await runGit(["worktree", "remove", "--force", worktreePath], this.repoRoot)
-      .catch(async () => {
-        await fs.rm(worktreePath, { recursive: true, force: true }).catch(() => undefined);
-      });
+    await removeTemporaryWorktree(this.repoRoot, worktreePath);
   }
 
   /** 지정한 worktree 의 HEAD commit hash 를 반환한다. */
@@ -711,13 +916,7 @@ export class PullRequestOperationService {
     if (!await this.hasLocalChanges()) {
       return undefined;
     }
-    const before = await this.topStashHash();
-    await runStash(["push", "--include-untracked", "-m", `Git Simple Compare ${reason}`], this.repoRoot);
-    const after = await this.topStashHash();
-    if (!after || after === before) {
-      return undefined;
-    }
-    return { hash: after };
+    return pushPreservedLocalChangesStash(this.repoRoot, `Git Simple Compare ${reason}`);
   }
 
   /** 보존해 둔 로컬 변경을 다시 적용하고 stash 목록에서 제거한다. */
@@ -779,12 +978,6 @@ export class PullRequestOperationService {
     return next;
   }
 
-  /** stash stack 의 최신 항목 commit hash 를 반환한다. */
-  private async topStashHash(): Promise<string | undefined> {
-    const hash = (await runGit(["rev-parse", "--verify", "stash@{0}"], this.repoRoot).catch(() => "")).trim();
-    return hash || undefined;
-  }
-
   /** stash commit hash 에 대응하는 stash@{n} 참조를 찾는다. */
   private async findStashRef(hash: string): Promise<string | undefined> {
     const list = await runStash(["list", "--format=%gd%x00%H"], this.repoRoot).catch(() => "");
@@ -819,6 +1012,11 @@ function errText(err: unknown): string {
 /** 긴 커밋 해시를 UI/오류 표시용으로 줄인다. */
 function shortHash(hash: string): string {
   return hash.slice(0, 10);
+}
+
+/** snapshot ref 의 snowflake 부분을 최신순 정렬 키로 사용한다. */
+function snapshotSortKey(ref: string): string {
+  return ref.split("/").pop() || "";
 }
 
 /** git revert 가 적용할 변경이 없어서 실패했는지 확인한다. */

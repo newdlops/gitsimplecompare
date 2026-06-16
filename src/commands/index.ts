@@ -29,6 +29,7 @@ import {
   branchSquashMerge,
   undoBranchOperation,
 } from "./branchOperations";
+import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { showSplitCommits } from "./splitCommits";
@@ -114,6 +115,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.undoBranchOperation", () =>
       undoBranchOperation(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.cleanupPrOperationWorktrees",
+      () => cleanupPullRequestOperationWorktrees(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.compareFileWithBranch",

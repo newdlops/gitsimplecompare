@@ -65,7 +65,20 @@ export type FromWebviewMessage =
   | { type: "ensureHeadVisible"; requestId: string }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
-  | { type: "pullRequestAction"; number: number; action?: "squash" | "rebase" | "squashRevert" | "rebaseRevert" | "undo" }
+  | {
+      type: "pullRequestAction";
+      number: number;
+      action?:
+        | "squash"
+        | "rebase"
+        | "squashRevert"
+        | "rebaseRevert"
+        | "squashWorktree"
+        | "rebaseWorktree"
+        | "squashRevertWorktree"
+        | "rebaseRevertWorktree"
+        | "undo";
+    }
   | { type: "loadMore" }
   | { type: "selectCommit"; hash: string }
   | { type: "checkoutBranch"; branch: string }

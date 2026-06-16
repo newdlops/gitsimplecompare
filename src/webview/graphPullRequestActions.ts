@@ -4,11 +4,22 @@ import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { GitError } from "../git/gitExec";
 import { PullRequestOperationService } from "../git/pullRequestOperationService";
-import type { PullRequestOperationResult } from "../git/pullRequestOperationService";
+import type { PullRequestOperationOptions, PullRequestOperationResult } from "../git/pullRequestOperationService";
 import type { PullRequestInfo } from "../git/pullRequestService";
 import { logError, logInfo } from "../ui/outputLog";
 
-export type PullRequestActionKind = "squash" | "rebase" | "squashRevert" | "rebaseRevert" | "undo";
+export type PullRequestActionKind =
+  | "squash"
+  | "rebase"
+  | "squashRevert"
+  | "rebaseRevert"
+  | "squashWorktree"
+  | "rebaseWorktree"
+  | "squashRevertWorktree"
+  | "rebaseRevertWorktree"
+  | "undo";
+
+type PullRequestBaseAction = "squash" | "rebase" | "squashRevert" | "rebaseRevert";
 
 export interface GraphPullRequestActionDeps {
   logService: GitLogService;
@@ -46,14 +57,16 @@ export async function handlePullRequestAction(
     );
     return;
   }
-  if (selected === "squash") {
-    await squashPullRequest(deps, pr);
-  } else if (selected === "squashRevert") {
-    await squashRevertPullRequest(deps, pr);
-  } else if (selected === "rebaseRevert") {
-    await rebaseRevertPullRequest(deps, pr);
+  const baseAction = basePullRequestAction(selected);
+  const options = operationOptionsForAction(selected);
+  if (baseAction === "squash") {
+    await squashPullRequest(deps, pr, options);
+  } else if (baseAction === "squashRevert") {
+    await squashRevertPullRequest(deps, pr, options);
+  } else if (baseAction === "rebaseRevert") {
+    await rebaseRevertPullRequest(deps, pr, options);
   } else {
-    await rebasePullRequest(deps, pr);
+    await rebasePullRequest(deps, pr, options);
   }
 }
 
@@ -76,10 +89,22 @@ async function pickPullRequestAction(
       action: "squash",
     },
     {
+      label: vscode.l10n.t("$(git-commit) Squash cherry-pick PR using Temporary Worktree"),
+      description: vscode.l10n.t("one commit, isolate replay"),
+      detail: vscode.l10n.t("Replay the PR in a temporary worktree, then apply the result to the current branch."),
+      action: "squashWorktree",
+    },
+    {
       label: vscode.l10n.t("$(git-pull-request) Rebase PR into current branch"),
       description: vscode.l10n.t("preserve commits"),
       detail: vscode.l10n.t("Replay PR commits onto the current branch, then fast-forward the current branch."),
       action: "rebase",
+    },
+    {
+      label: vscode.l10n.t("$(git-pull-request) Rebase PR using Temporary Worktree"),
+      description: vscode.l10n.t("preserve commits, isolate replay"),
+      detail: vscode.l10n.t("Replay PR commits in a temporary worktree, then apply the resulting HEAD to the current branch."),
+      action: "rebaseWorktree",
     },
     {
       label: vscode.l10n.t("$(discard) Squash revert PR"),
@@ -88,10 +113,22 @@ async function pickPullRequestAction(
       action: "squashRevert",
     },
     {
+      label: vscode.l10n.t("$(discard) Squash revert PR using Temporary Worktree"),
+      description: vscode.l10n.t("one revert commit, isolate replay"),
+      detail: vscode.l10n.t("Build the squash revert in a temporary worktree, then apply the result to the current branch."),
+      action: "squashRevertWorktree",
+    },
+    {
       label: vscode.l10n.t("$(debug-reverse-continue) Rebase revert PR"),
       description: vscode.l10n.t("one revert per commit"),
       detail: vscode.l10n.t("Revert the PR commits on the current branch, preserving commit granularity."),
       action: "rebaseRevert",
+    },
+    {
+      label: vscode.l10n.t("$(debug-reverse-continue) Rebase revert PR using Temporary Worktree"),
+      description: vscode.l10n.t("one revert per commit, isolate replay"),
+      detail: vscode.l10n.t("Build per-commit reverts in a temporary worktree, then apply the result to the current branch."),
+      action: "rebaseRevertWorktree",
     },
     {
       label: vscode.l10n.t("$(discard) Undo last PR operation"),
@@ -103,6 +140,30 @@ async function pickPullRequestAction(
   return (await vscode.window.showQuickPick(picks, { placeHolder: title }))?.action;
 }
 
+/** worktree variant 를 실제 PR operation 종류로 정규화한다. */
+function basePullRequestAction(action: Exclude<PullRequestActionKind, "undo">): PullRequestBaseAction {
+  switch (action) {
+    case "squashWorktree":
+      return "squash";
+    case "rebaseWorktree":
+      return "rebase";
+    case "squashRevertWorktree":
+      return "squashRevert";
+    case "rebaseRevertWorktree":
+      return "rebaseRevert";
+    case "squash":
+    case "rebase":
+    case "squashRevert":
+    case "rebaseRevert":
+      return action;
+  }
+}
+
+/** action 이름에서 PR operation 실행 전략을 만든다. */
+function operationOptionsForAction(action: Exclude<PullRequestActionKind, "undo">): PullRequestOperationOptions {
+  return action.endsWith("Worktree") ? { strategy: "worktree" } : {};
+}
+
 /**
  * PR commit 목록을 현재 브랜치에 squash commit 하나로 cherry-pick 한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
@@ -110,7 +171,8 @@ async function pickPullRequestAction(
  */
 async function squashPullRequest(
   deps: GraphPullRequestActionDeps,
-  pr: PullRequestInfo
+  pr: PullRequestInfo,
+  options?: PullRequestOperationOptions
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t("Squash cherry-pick PR #{0} into the current branch?", pr.number),
@@ -119,7 +181,7 @@ async function squashPullRequest(
     return;
   }
   await runPullRequestOperation(deps, pr, "squash", () =>
-    new PullRequestOperationService(deps.logService.repoRoot).squashCherryPick(pr)
+    new PullRequestOperationService(deps.logService.repoRoot).squashCherryPick(pr, options)
   );
 }
 
@@ -130,7 +192,8 @@ async function squashPullRequest(
  */
 async function rebasePullRequest(
   deps: GraphPullRequestActionDeps,
-  pr: PullRequestInfo
+  pr: PullRequestInfo,
+  options?: PullRequestOperationOptions
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t(
@@ -143,7 +206,7 @@ async function rebasePullRequest(
     return;
   }
   await runPullRequestOperation(deps, pr, "rebase", () =>
-    new PullRequestOperationService(deps.logService.repoRoot).rebasePullRequest(pr)
+    new PullRequestOperationService(deps.logService.repoRoot).rebasePullRequest(pr, options)
   );
 }
 
@@ -154,14 +217,15 @@ async function rebasePullRequest(
  */
 async function squashRevertPullRequest(
   deps: GraphPullRequestActionDeps,
-  pr: PullRequestInfo
+  pr: PullRequestInfo,
+  options?: PullRequestOperationOptions
 ): Promise<void> {
   const service = new PullRequestOperationService(deps.logService.repoRoot);
   if (!(await confirmPullRequestRevert(service, pr, "squashRevert"))) {
     return;
   }
   await runPullRequestOperation(deps, pr, "squashRevert", () =>
-    service.squashRevertPullRequest(pr)
+    service.squashRevertPullRequest(pr, options)
   );
 }
 
@@ -172,14 +236,15 @@ async function squashRevertPullRequest(
  */
 async function rebaseRevertPullRequest(
   deps: GraphPullRequestActionDeps,
-  pr: PullRequestInfo
+  pr: PullRequestInfo,
+  options?: PullRequestOperationOptions
 ): Promise<void> {
   const service = new PullRequestOperationService(deps.logService.repoRoot);
   if (!(await confirmPullRequestRevert(service, pr, "rebaseRevert"))) {
     return;
   }
   await runPullRequestOperation(deps, pr, "rebaseRevert", () =>
-    service.rebaseRevertPullRequest(pr)
+    service.rebaseRevertPullRequest(pr, options)
   );
 }
 
@@ -234,7 +299,7 @@ function defaultRevertConfirmMessage(
 async function runPullRequestOperation(
   deps: GraphPullRequestActionDeps,
   pr: PullRequestInfo,
-  operation: Exclude<PullRequestActionKind, "undo">,
+  operation: PullRequestBaseAction,
   run: () => Promise<PullRequestOperationResult>
 ): Promise<void> {
   try {
@@ -301,7 +366,7 @@ async function runPullRequestOperation(
 }
 
 /** PR 작업 진행 알림 제목을 만든다. */
-function progressTitle(operation: Exclude<PullRequestActionKind, "undo">, number: number): string {
+function progressTitle(operation: PullRequestBaseAction, number: number): string {
   switch (operation) {
     case "squash":
       return vscode.l10n.t("Squash cherry-picking PR #{0}", number);
@@ -316,7 +381,7 @@ function progressTitle(operation: Exclude<PullRequestActionKind, "undo">, number
 
 /** PR 작업 충돌 안내 문구를 만든다. */
 function conflictMessage(
-  operation: Exclude<PullRequestActionKind, "undo">,
+  operation: PullRequestBaseAction,
   number: number,
   preservedStashHash?: string
 ): string {
@@ -345,7 +410,7 @@ function conflictMessage(
 
 /** PR 작업 성공 안내 문구를 만든다. */
 function successMessage(
-  operation: Exclude<PullRequestActionKind, "undo">,
+  operation: PullRequestBaseAction,
   number: number,
   branch: string
 ): string {

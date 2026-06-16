@@ -5,6 +5,7 @@
   "cmd.branchSquashMerge": "Squash Merge Branch",
   "cmd.branchRebaseMerge": "Rebase Merge Branch",
   "cmd.undoBranchOperation": "Undo Branch Operation",
+  "cmd.cleanupPrOperationWorktrees": "Delete PR Operation Temporary Worktrees",
   "cmd.generateCommitMessage": "Generate AI Commit Message",
   "cmd.configureAiCli": "Configure AI CLI",
   "cmd.loginAiCli": "Login to AI CLI",

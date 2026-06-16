@@ -9,7 +9,7 @@ import {
   runDeferredCommitRebase,
 } from "./deferredCommitRebase";
 import { runGit } from "./gitExec";
-import { runStash } from "./stashExec";
+import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -417,13 +417,7 @@ export class BranchOperationService {
     if (!await this.hasLocalChanges()) {
       return undefined;
     }
-    const before = await this.topStashHash();
-    await runStash(["push", "--include-untracked", "-m", `Git Simple Compare ${reason}`], this.repoRoot);
-    const after = await this.topStashHash();
-    if (!after || after === before) {
-      return undefined;
-    }
-    return { hash: after };
+    return pushPreservedLocalChangesStash(this.repoRoot, `Git Simple Compare ${reason}`);
   }
 
   /** deferred rebase 시작 중 예상치 못하게 실패하면 snapshot 으로 되돌리고 보존 stash 를 복원한다. */
@@ -481,12 +475,6 @@ export class BranchOperationService {
       (next as Error & { undoBranch?: string }).undoBranch = undoBranch;
     }
     return next;
-  }
-
-  /** stash stack 의 최신 항목 commit hash 를 반환한다. */
-  private async topStashHash(): Promise<string | undefined> {
-    const hash = (await runGit(["rev-parse", "--verify", "stash@{0}"], this.repoRoot).catch(() => "")).trim();
-    return hash || undefined;
   }
 
   /** stash commit hash 에 대응하는 stash@{n} 참조를 찾는다. */
