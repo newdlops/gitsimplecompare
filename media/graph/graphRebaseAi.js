@@ -5,6 +5,8 @@
 
   const ACTIONS = new Set(["pick", "reword", "edit", "squash", "fixup", "drop"]);
   let loading = false;
+  let refreshScheduled = false;
+  let renderPatched = false;
 
   /** HTML 특수문자를 이스케이프한다. */
   function esc(text) {
@@ -14,11 +16,11 @@
 
   /** rebase bar 에 AI 계획 버튼을 삽입한다. */
   function injectButton() {
+    patchRender();
     const bar = document.getElementById("graph-rebase-bar");
     const run = document.getElementById("graph-rebase-run");
     if (!bar || !run || document.getElementById("graph-rebase-ai")) {
       updateButton();
-      decorateModules();
       return;
     }
     const button = document.createElement("button");
@@ -31,7 +33,34 @@
     button.addEventListener("click", requestAiPlan);
     bar.insertBefore(button, run);
     updateButton();
-    decorateModules();
+  }
+
+  /** graph rebase 렌더 이후 module chip 을 다시 붙인다. */
+  function patchRender() {
+    const context = window.GscGraphRebaseContext;
+    if (renderPatched || !context?.render) {
+      return;
+    }
+    const originalRender = context.render;
+    context.render = (...args) => {
+      const result = originalRender(...args);
+      scheduleRefresh();
+      return result;
+    };
+    renderPatched = true;
+  }
+
+  /** 여러 DOM 갱신을 한 프레임에 모아 버튼/chip 상태를 갱신한다. */
+  function scheduleRefresh() {
+    if (refreshScheduled) {
+      return;
+    }
+    refreshScheduled = true;
+    window.requestAnimationFrame(() => {
+      refreshScheduled = false;
+      injectButton();
+      decorateModules();
+    });
   }
 
   /** 버튼의 loading 상태를 반영한다. */
@@ -101,7 +130,7 @@
     items.splice(0, items.length, ...ordered);
     context.render?.();
     window.GscGraphDetail?.refresh?.();
-    window.setTimeout(decorateModules, 0);
+    scheduleRefresh();
   }
 
   /** AI 제안 한 건을 기존 item 에 반영한다. */
@@ -148,10 +177,9 @@
       loading = false;
       updateButton();
     } else if (msg.type === "graphRebasePlan" || msg.type === "graph" || msg.type === "graphRebaseOperation") {
-      window.setTimeout(injectButton, 0);
+      window.setTimeout(scheduleRefresh, 0);
     }
   });
-  new MutationObserver(injectButton).observe(document.body, { childList: true, subtree: true });
   window.GscGraphRebaseAi = { injectButton, decorateModules, esc };
-  injectButton();
+  scheduleRefresh();
 })();
