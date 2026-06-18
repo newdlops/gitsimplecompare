@@ -79,6 +79,57 @@
   display: none;
 }
 
+.search-section {
+  padding: 4px 0;
+}
+
+.search-section + .search-section {
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+}
+
+.search-section-title {
+  padding: 5px 8px 4px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.search-note {
+  padding: 4px 8px 7px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.search-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.search-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-button-border, var(--vscode-input-border));
+  border-radius: 3px;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-button-secondaryBackground, transparent);
+  cursor: pointer;
+}
+
+.search-footer button:hover {
+  color: var(--vscode-button-foreground, #fff);
+  background: var(--vscode-button-background);
+}
+
 #graph-branch-filter-menu {
   position: absolute;
   top: 29px;

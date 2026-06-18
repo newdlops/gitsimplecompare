@@ -16,6 +16,8 @@ import type {
   AiRebasePlanResult,
 } from "../ai/rebasePlanner";
 import type { PullRequestDetailInfo, PullRequestOverview } from "../git/pullRequestService";
+import type { PullRequestSearchResult } from "../git/pullRequestSearchService";
+import type { GraphRepositorySearchResult } from "../git/graphSearchService";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
@@ -32,8 +34,12 @@ export type ToWebviewMessage =
   | { type: "branchStatus"; branches: LocalBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
+  | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
+  | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
   | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
   | { type: "pullRequestDetailError"; number: number; message: string }
+  | { type: "graphRepositorySearchResult"; requestId: string; result: GraphRepositorySearchResult }
+  | { type: "graphRepositorySearchError"; requestId: string; query: string; message: string }
   | { type: "commitVisibility"; requestId: string; hash?: string; found: boolean }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
@@ -59,10 +65,13 @@ export type FromWebviewMessage =
   | { type: "push" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
+  | { type: "searchPullRequests"; requestId: string; query: string }
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
   | { type: "ensureHeadVisible"; requestId: string }
+  | { type: "graphRepositorySearch"; requestId: string; query: string }
+  | { type: "fetchGraphSearchRefs"; requestId: string; query: string }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | {

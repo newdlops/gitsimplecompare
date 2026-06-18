@@ -16,6 +16,7 @@ export function buildGraphHtml(
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "graph");
   const scriptUri = script(webview, mediaRoot, "graph.js");
   const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
+  const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
   const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
   const branchFilterScriptUri = script(webview, mediaRoot, "graphBranchFilter.js");
   const contextScriptUri = script(webview, mediaRoot, "graphContextMenu.js");
@@ -153,6 +154,7 @@ export function buildGraphHtml(
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
+  <script nonce="${nonce}" src="${searchScriptUri}"></script>
   <script nonce="${nonce}" src="${headJumpScriptUri}"></script>
   <script nonce="${nonce}" src="${localColorScriptUri}"></script>
   <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>

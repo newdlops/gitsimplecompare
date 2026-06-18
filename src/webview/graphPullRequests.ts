@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { LocalBranchStatus } from "../graph/graphTypes";
 import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
+import { searchPullRequests } from "../git/pullRequestSearchService";
 import { logError, logInfo } from "../ui/outputLog";
 import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
 import { ToWebviewMessage } from "./graphProtocol";
@@ -55,6 +56,38 @@ export class GraphPullRequestPager {
       return;
     }
     await this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor);
+  }
+
+  /**
+   * GitHub repository-wide PR 검색 결과를 읽고 누적 목록에 병합한다.
+   * @param repoRoot 대상 저장소 루트
+   * @param requestId 웹뷰가 최신 검색 응답만 적용하기 위한 요청 ID
+   * @param query 사용자가 입력한 검색어
+   * @param post graph 웹뷰 메시지 전송 함수
+   */
+  async search(
+    repoRoot: string,
+    requestId: string,
+    query: string,
+    post: PostGraphMessage
+  ): Promise<void> {
+    try {
+      const result = await searchPullRequests(repoRoot, query);
+      this.pullRequests = mergePullRequests(this.pullRequests, result.pullRequests);
+      post({ type: "pullRequestSearchResult", requestId, result });
+      logInfo("graph pull request search sent", {
+        repoRoot,
+        requestId,
+        query,
+        matches: result.pullRequests.length,
+        totalCount: result.totalCount,
+        hasMore: result.hasMore,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logError("graph pull request search failed", error, { repoRoot, requestId, query });
+      post({ type: "pullRequestSearchError", requestId, query, message });
+    }
   }
 
   /**

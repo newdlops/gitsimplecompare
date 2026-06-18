@@ -3,19 +3,25 @@
 (function () {
   "use strict";
 
+  const DEBOUNCE_MS = 300;
   let query = "";
   let focusAfterRender = false;
+  let rerender;
+  let debounceTimer = 0;
+  let sequence = 0;
+  let latestRequestId = "";
+  let repositoryState = { status: "idle", query: "", pullRequests: [], hasMore: false, totalCount: 0 };
 
   /** PR 목록 헤더에 들어갈 검색 컨트롤 HTML 을 만든다. */
   function render(total, filtered) {
     const active = hasQuery();
-    const summary = active ? `${filtered} of ${total} loaded matches` : `${total} loaded pull requests`;
+    const summary = active ? searchSummary(total, filtered) : `${total} loaded pull requests`;
     return `<div class="pr-list-search-row">` +
       `<label class="pr-list-search" role="search">` +
       `<span class="codicon codicon-search" aria-hidden="true"></span>` +
       `<input type="search" value="${esc(query)}" data-pr-search-input placeholder="Search pull requests" ` +
-      `title="Search loaded pull requests by number, title, author, branch, or state" ` +
-      `aria-label="Search loaded pull requests by number, title, author, branch, or state" />` +
+      `title="Search all pull requests by number, title, author, branch, or state" ` +
+      `aria-label="Search all pull requests by number, title, author, branch, or state" />` +
       `<button type="button" data-pr-search-clear ${active ? "" : "hidden"} ` +
       tooltipAttrs("Clear pull request search") + `>` +
       `<span class="codicon codicon-close" aria-hidden="true"></span></button></label>` +
@@ -24,6 +30,7 @@
 
   /** 검색 입력/초기화 버튼 이벤트를 현재 drawer DOM 에 연결한다. */
   function bind(root, onChange) {
+    rerender = onChange;
     const input = root.querySelector("[data-pr-search-input]");
     const clear = root.querySelector("[data-pr-search-clear]");
     if (!input) {
@@ -49,7 +56,7 @@
     if (!terms.length) {
       return pullRequests || [];
     }
-    return (pullRequests || []).filter((pr) => {
+    const loaded = (pullRequests || []).filter((pr) => {
       const haystack = normalized([
         `#${pr.number}`,
         pr.number,
@@ -62,11 +69,21 @@
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
     });
+    return mergeByNumber(loaded, repositoryMatches());
   }
 
   /** 검색 결과가 비었을 때 표시할 문구를 만든다. */
   function emptyMessage(fallback) {
-    return hasQuery() ? `No loaded pull requests match "${query.trim()}".` : fallback;
+    if (!hasQuery()) {
+      return fallback;
+    }
+    if (repositoryState.status === "loading") {
+      return `Searching all pull requests for "${query.trim()}"...`;
+    }
+    if (repositoryState.status === "error") {
+      return repositoryState.message || "Pull request search failed.";
+    }
+    return `No pull requests match "${query.trim()}".`;
   }
 
   /** 검색어가 입력된 상태인지 반환한다. */
@@ -78,7 +95,69 @@
   function update(next, onChange) {
     query = String(next || "");
     focusAfterRender = true;
+    scheduleRepositorySearch();
     onChange?.();
+  }
+
+  /** repository-wide PR 검색을 debounce 해서 요청한다. */
+  function scheduleRepositorySearch() {
+    window.clearTimeout(debounceTimer);
+    const trimmed = query.trim();
+    if (!trimmed) {
+      latestRequestId = "";
+      repositoryState = { status: "idle", query: "", pullRequests: [], hasMore: false, totalCount: 0 };
+      return;
+    }
+    latestRequestId = nextRequestId();
+    repositoryState = { status: "loading", query: trimmed, pullRequests: [], hasMore: false, totalCount: 0 };
+    debounceTimer = window.setTimeout(() => {
+      window.GscGraphPostMessage?.({ type: "searchPullRequests", requestId: latestRequestId, query: trimmed });
+    }, DEBOUNCE_MS);
+  }
+
+  /** 현재 repository-wide 검색 결과 중 현재 검색어에 대응하는 PR 목록을 반환한다. */
+  function repositoryMatches() {
+    return repositoryState.query === query.trim() && repositoryState.status === "ready"
+      ? repositoryState.pullRequests || []
+      : [];
+  }
+
+  /** PR 번호로 loaded/search 결과에서 PR 을 찾는다. */
+  function find(number) {
+    return repositoryMatches().find((pr) => Number(pr.number) === Number(number));
+  }
+
+  /** loaded PR 목록과 repository-wide 결과를 합쳐 반환한다. */
+  function all(pullRequests) {
+    return mergeByNumber(pullRequests || [], repositoryMatches());
+  }
+
+  /** 검색 summary 를 만든다. */
+  function searchSummary(total, filtered) {
+    if (repositoryState.query === query.trim() && repositoryState.status === "loading") {
+      return `${filtered} loaded matches, searching all pull requests`;
+    }
+    if (repositoryState.query === query.trim() && repositoryState.status === "error") {
+      return `${filtered} matches, repository search failed`;
+    }
+    const more = repositoryState.hasMore ? "+" : "";
+    const repoCount = repositoryMatches().length;
+    return `${filtered} matches (${repoCount}${more} from repository search, ${total} loaded)`;
+  }
+
+  /** PR 번호 기준으로 중복 없이 목록을 합친다. */
+  function mergeByNumber(a, b) {
+    const byNumber = new Map();
+    for (const pr of [...(a || []), ...(b || [])]) {
+      byNumber.set(Number(pr.number), pr);
+    }
+    return Array.from(byNumber.values());
+  }
+
+  /** 최신 검색 요청 ID 를 만든다. */
+  function nextRequestId() {
+    sequence += 1;
+    return `pr-search-${Date.now()}-${sequence}`;
   }
 
   /** 재렌더링 후 검색 입력에 포커스와 커서를 복원한다. */
@@ -104,5 +183,16 @@
     return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
   }
 
-  window.GscGraphPrSearch = { bind, emptyMessage, filter, hasQuery, render };
+  window.addEventListener("message", (event) => {
+    const msg = event.data || {};
+    if (msg.type === "pullRequestSearchResult" && msg.requestId === latestRequestId) {
+      repositoryState = Object.assign({ status: "ready" }, msg.result || {});
+      rerender?.();
+    } else if (msg.type === "pullRequestSearchError" && msg.requestId === latestRequestId) {
+      repositoryState = { status: "error", query: msg.query || "", pullRequests: [], message: msg.message };
+      rerender?.();
+    }
+  });
+
+  window.GscGraphPrSearch = { all, bind, emptyMessage, filter, find, hasQuery, render };
 })();

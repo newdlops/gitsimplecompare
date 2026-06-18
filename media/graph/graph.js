@@ -111,7 +111,7 @@
     syncScrollableWidth(graphWidth);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     if (state && state.reset) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
-    window.GscGraphFeatures?.updateSearchIndex(graphEl, graphContentEl);
+    window.GscGraphSearch?.update(graphEl, graphContentEl);
 
     renderLoadTail();
     updateLoadStatus();
@@ -527,7 +527,7 @@
   /** toolbar/drawer/scroll 이벤트를 한 번만 등록한다. */
   function initEvents() {
     initMainSplitter();
-    window.GscGraphFeatures?.initSearch(graphEl, graphContentEl);
+    window.GscGraphSearch?.init(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindNavigation(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);
     graphEl.addEventListener("scroll", maybeLoadMore);
@@ -569,7 +569,7 @@
       currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));
       syncScrollableWidth(graphWidth);
       window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-      window.GscGraphFeatures?.updateSearchIndex(graphEl, graphContentEl);
+      window.GscGraphSearch?.update(graphEl, graphContentEl);
     } else if (msg.type === "graphLoadState") {
       applyLoadState(msg.state, true);
     } else if (msg.type === "commitDetail") {

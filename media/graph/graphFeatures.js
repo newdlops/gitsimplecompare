@@ -5,7 +5,6 @@
 
   let localBranches = new Map();
   let localBranchColors = new Map();
-  let searchBound = false;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -274,119 +273,6 @@
       .join(" ");
   }
 
-  /** 검색 입력/후보 목록 이벤트를 한 번만 연결한다. */
-  function initSearch(graphEl, root) {
-    if (searchBound) {
-      return;
-    }
-    const input = document.getElementById("graph-search-input");
-    const results = document.getElementById("graph-search-results");
-    if (!input || !results) {
-      return;
-    }
-    searchBound = true;
-    input.addEventListener("input", () => renderSearchResults(input, results, root));
-    input.addEventListener("focus", () => renderSearchResults(input, results, root));
-    results.addEventListener("click", (event) => {
-      const item = event.target.closest?.("[data-hash]");
-      if (!item) {
-        return;
-      }
-      jumpToHash(graphEl, root, item.dataset.hash);
-      results.hidden = true;
-    });
-    document.addEventListener("click", (event) => {
-      if (!event.target.closest?.("#graph-search")) {
-        results.hidden = true;
-      }
-    });
-  }
-
-  /** 그래프가 다시 그려진 뒤 열려 있는 검색 후보 목록을 현재 row 기준으로 갱신한다. */
-  function updateSearchIndex(graphEl, root) {
-    const input = document.getElementById("graph-search-input");
-    const results = document.getElementById("graph-search-results");
-    if (input && results && input.value.trim()) {
-      renderSearchResults(input, results, root);
-    }
-  }
-
-  /** 검색어에 맞는 commit/hash/branch 후보 목록을 렌더링한다. */
-  function renderSearchResults(input, results, root) {
-    const terms = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) { results.hidden = true; results.innerHTML = ""; return; }
-    const rows = searchCandidates(root, terms).slice(0, 30);
-    results.hidden = false;
-    results.innerHTML = rows.length
-      ? rows.map(searchResultHtml).join("")
-      : '<div class="search-empty">No matches in loaded commits</div>';
-  }
-
-  /** 현재 로드된 row 에서 검색 후보를 만든다. */
-  function searchCandidates(root, terms) {
-    return Array.from(root.querySelectorAll(".row")).flatMap((row) => {
-      const hash = row.dataset.hash || "";
-      const subject = row.dataset.subject || "";
-      const refs = (row.dataset.refs || "").split("\t").filter(Boolean);
-      const commitText = `${hash} ${subject}`.toLowerCase();
-      const matches = [];
-      if (terms.every((term) => commitText.includes(term))) {
-        matches.push({
-          type: "Commit",
-          hash,
-          label: subject || hash,
-          meta: searchMeta(hash, refs),
-        });
-      }
-      refs
-        .filter((ref) => terms.every((term) => ref.toLowerCase().includes(term)))
-        .forEach((ref) => matches.push({
-          type: ref.indexOf("tag:") === 0 ? "Tag" : "Branch",
-          hash,
-          label: ref.replace(/^tag:/, ""),
-          meta: searchMeta(hash, refs),
-        }));
-      return matches;
-    });
-  }
-
-  /** 검색 결과 오른쪽 메타 영역에 표시할 해시와 브랜치 요약을 만든다. */
-  function searchMeta(hash, refs) {
-    const branches = branchRefs(refs);
-    return branches.length
-      ? `${hash.slice(0, 10)} | ${branches.join(", ")}`
-      : `${hash.slice(0, 10)} | no branch ref`;
-  }
-
-  /** HEAD/tag/가상 ref 를 제외하고 사용자 브랜치 ref 만 추린다. */
-  function branchRefs(refs) {
-    return refs.filter((ref) =>
-      ref !== "HEAD" && !isTagRef(ref) && !isVirtualRef(ref)
-    );
-  }
-
-  /** 검색 후보 한 줄 HTML 을 만든다. */
-  function searchResultHtml(item) {
-    const title = `${item.type}: ${item.label} | ${item.meta}`;
-    return `<button class="search-result" type="button" data-hash="${esc(item.hash)}" ` +
-      `title="${esc(title)}" aria-label="${esc(title)}">` +
-      `<span class="search-kind">${esc(item.type)}</span>` +
-      `<span class="search-label">${esc(item.label)}</span>` +
-      `<span class="search-meta">${esc(item.meta)}</span></button>`;
-  }
-
-  /** 검색 후보 선택 시 해당 row 로 이동하고 잠깐 강조한다. */
-  function jumpToHash(graphEl, root, hash) {
-    const row = Array.from(root.querySelectorAll(".row")).find((item) => item.dataset.hash === hash);
-    if (!row) {
-      return;
-    }
-    graphEl.scrollTop = Math.max(0, row.offsetTop - 80);
-    root.querySelectorAll(".search-hit").forEach((item) => item.classList.remove("search-hit"));
-    row.classList.add("search-hit");
-    window.setTimeout(() => row.classList.remove("search-hit"), 2200);
-  }
-
   /** 노드 drag 상태를 custom event 로 흘려보내 후속 기능이 연결될 수 있게 한다. */
   function emitDrag(name, detail) {
     window.dispatchEvent(new CustomEvent(name, { detail }));
@@ -588,11 +474,9 @@
     bindCommitActions,
     branchColor,
     commitActions,
-    initSearch,
     nodeClass,
     refBadge,
     rowColor,
     setLocalBranches,
-    updateSearchIndex,
   };
 })();

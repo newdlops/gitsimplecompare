@@ -3,10 +3,10 @@
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { compactGraphData } from "../graph/graphCompact";
-import { GitLogService, EMPTY_TREE, ONGOING_COMMIT_HASH, STAGED_COMMIT_HASH } from "../git/gitLogService";
+import { GitLogService, EMPTY_TREE, STAGED_COMMIT_HASH } from "../git/gitLogService";
 import { layoutGraph } from "../graph/graphLayout";
 import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
-import { openHeadVsIndexDiff, openRefVsRefDiff, openRefVsWorkingDiff } from "../ui/diffPresenter";
+import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { handleGraphAction, isGraphActionMessage } from "./graphActions";
 import {
@@ -30,6 +30,8 @@ import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphPro
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
+import { fetchRefsForGraphSearch, sendGraphRepositorySearch } from "./graphSearchActions";
+import { openGraphVirtualFileDiff } from "./graphVirtualDiff";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -164,6 +166,8 @@ export class GitGraphPanel {
         await this.commitDetails.send(msg.hash, this.logService, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequests") {
         await this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, "manual", (message) => this.post(message));
+      } else if (msg.type === "searchPullRequests") {
+        await this.pullRequests.search(this.logService.repoRoot, msg.requestId, msg.query, (message) => this.post(message));
       } else if (msg.type === "loadMorePullRequests") {
         await this.pullRequests.loadMore(this.logService.repoRoot, this.lastLocalBranches, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequestDetail") {
@@ -183,6 +187,18 @@ export class GitGraphPanel {
           loadedHash: (hashes) => hashes.find((hash) => this.commits.some((commit) => commit.hash === hash)),
           loadWindow: (hashes) => this.loadCommitWindow(hashes), post: (message) => this.post(message),
         });
+      } else if (msg.type === "graphRepositorySearch") {
+        await sendGraphRepositorySearch({ logService: this.logService, post: (message) => this.post(message) }, msg.requestId, msg.query);
+      } else if (msg.type === "fetchGraphSearchRefs") {
+        await fetchRefsForGraphSearch(
+          {
+            logService: this.logService,
+            post: (message) => this.post(message),
+            refreshGraph: () => this.refreshAfterFetchAction(),
+          },
+          msg.requestId,
+          msg.query
+        );
       } else if (msg.type === "openPullRequest") {
         await openGraphPullRequest(this.pullRequests.items, msg.number);
       } else if (msg.type === "previewStagedPullRequest") {
@@ -195,7 +211,7 @@ export class GitGraphPanel {
           refreshGraph: () => this.refreshAfterGraphAction(),
         });
       } else if (msg.type === "openFileDiff") {
-        if (await this.openVirtualFileDiff(msg.hash, msg.path)) {
+        if (await openGraphVirtualFileDiff(this.logService.repoRoot, msg.hash, msg.path)) {
           return;
         }
         const base = msg.parent && msg.parent.length > 0 ? msg.parent : EMPTY_TREE;
@@ -258,29 +274,6 @@ export class GitGraphPanel {
     }
   }
 
-  /**
-   * ongoing/staged 가상 커밋의 파일 diff 를 실제 의미에 맞게 연다.
-   * @param hash 선택한 그래프 노드 해시
-   * @param path diff 를 열 파일 경로
-   * @returns 가상 커밋으로 처리했으면 true
-   */
-  private async openVirtualFileDiff(hash: string, path: string): Promise<boolean> {
-    if (hash === ONGOING_COMMIT_HASH) {
-      await openRefVsWorkingDiff(
-        this.logService.repoRoot,
-        "HEAD",
-        vscode.Uri.file(`${this.logService.repoRoot}/${path}`),
-        path
-      );
-      return true;
-    }
-    if (hash === STAGED_COMMIT_HASH) {
-      await openHeadVsIndexDiff(this.logService.repoRoot, path);
-      return true;
-    }
-    return false;
-  }
-
   /** git graph action 이후 그래프와 Changes 뷰를 다시 읽는다. */
   private async refreshAfterGraphAction(): Promise<void> {
     this.resetLoadedGraph();
@@ -288,6 +281,12 @@ export class GitGraphPanel {
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: "graphAction",
     });
+  }
+
+  /** 검색에서 명시적으로 fetch 한 뒤 그래프만 최신 ref 기준으로 다시 읽는다. */
+  private async refreshAfterFetchAction(): Promise<void> {
+    this.resetLoadedGraph();
+    await this.reloadGraph();
   }
 
   /** checkout 이후에는 기존 graph 페이지를 재사용해 HEAD/가상 노드만 빠르게 갱신한다. */

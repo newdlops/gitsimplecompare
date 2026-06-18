@@ -189,7 +189,7 @@
   /** commit hash 별 PR 목록 map 을 만든다. */
   function pullRequestsByHash() {
     const map = new Map();
-    for (const pr of overview.pullRequests || []) {
+    for (const pr of window.GscGraphPrSearch?.all?.(overview.pullRequests) || overview.pullRequests || []) {
       for (const hash of pr.commitHashes || []) {
         const list = map.get(hash) || [];
         list.push(pr);
@@ -572,7 +572,7 @@
   }
 
 	  /** PR 번호로 overview 안의 PR 을 찾는다. */
-	  function findPr(number) { return (overview.pullRequests || []).find((pr) => Number(pr.number) === Number(number)); }
+	  function findPr(number) { return window.GscGraphPrSearch?.find?.(number) || (overview.pullRequests || []).find((pr) => Number(pr.number) === Number(number)); }
 	  /** detail root 를 반환한다. */
 	  function detailRoot() { return window.GscGraphDetailHost?.root || document.getElementById("detail"); }
 	  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
