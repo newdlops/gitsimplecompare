@@ -137,6 +137,31 @@
   background: var(--vscode-button-background);
 }
 
+.branch-filter-search {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+}
+
+.branch-filter-search input {
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  outline: none;
+}
+
+.branch-filter-search span:last-child {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .branch-filter-compact {
   display: grid;
   grid-template-columns: 18px 16px minmax(0, 1fr);

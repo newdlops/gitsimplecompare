@@ -33,7 +33,7 @@ const PULL_REQUEST_PAGE_SIZE = 80;
 const PULL_REQUESTS_QUERY = `
 query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
-    pullRequests(first: $limit, after: $cursor, states: OPEN, orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         number
         title

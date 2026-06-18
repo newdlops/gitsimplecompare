@@ -313,13 +313,9 @@
 
   /** 검색어에 맞는 commit/hash/branch 후보 목록을 렌더링한다. */
   function renderSearchResults(input, results, root) {
-    const query = input.value.trim().toLowerCase();
-    if (!query) {
-      results.hidden = true;
-      results.innerHTML = "";
-      return;
-    }
-    const rows = searchCandidates(root, query).slice(0, 30);
+    const terms = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) { results.hidden = true; results.innerHTML = ""; return; }
+    const rows = searchCandidates(root, terms).slice(0, 30);
     results.hidden = false;
     results.innerHTML = rows.length
       ? rows.map(searchResultHtml).join("")
@@ -327,13 +323,14 @@
   }
 
   /** 현재 로드된 row 에서 검색 후보를 만든다. */
-  function searchCandidates(root, query) {
+  function searchCandidates(root, terms) {
     return Array.from(root.querySelectorAll(".row")).flatMap((row) => {
       const hash = row.dataset.hash || "";
       const subject = row.dataset.subject || "";
       const refs = (row.dataset.refs || "").split("\t").filter(Boolean);
+      const commitText = `${hash} ${subject}`.toLowerCase();
       const matches = [];
-      if (hash.toLowerCase().includes(query) || subject.toLowerCase().includes(query)) {
+      if (terms.every((term) => commitText.includes(term))) {
         matches.push({
           type: "Commit",
           hash,
@@ -342,7 +339,7 @@
         });
       }
       refs
-        .filter((ref) => ref.toLowerCase().includes(query))
+        .filter((ref) => terms.every((term) => ref.toLowerCase().includes(term)))
         .forEach((ref) => matches.push({
           type: ref.indexOf("tag:") === 0 ? "Tag" : "Branch",
           hash,

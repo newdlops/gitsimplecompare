@@ -7,6 +7,8 @@
   let menuEl;
   let bound = false;
   let snapshot = { mode: "all", selected: [], compact: true, branches: [] };
+  let branchQuery = "";
+  let focusBranchSearch = false;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -30,6 +32,7 @@
     bound = true;
     buttonEl.addEventListener("click", toggleMenu);
     menuEl.addEventListener("click", handleMenuClick);
+    menuEl.addEventListener("input", handleMenuInput);
     menuEl.addEventListener("change", handleMenuChange);
     document.addEventListener("click", (event) => {
       if (!event.target.closest?.("#graph-branch-filter-button,#graph-branch-filter-menu")) {
@@ -81,6 +84,17 @@
     }
   }
 
+  /** 브랜치 선택 목록 검색어 입력을 처리한다. */
+  function handleMenuInput(event) {
+    const input = event.target.closest?.("[data-branch-filter-search]");
+    if (!input) {
+      return;
+    }
+    branchQuery = input.value || "";
+    focusBranchSearch = true;
+    render();
+  }
+
   /** 체크박스 변경을 필터 상태로 변환해 확장으로 보낸다. */
   function handleMenuChange(event) {
     if (event.target.closest?.("[data-branch-filter-compact]")) {
@@ -94,9 +108,11 @@
 
   /** 현재 체크된 브랜치 이름 목록을 읽는다. */
   function checkedBranches() {
-    return Array.from(
-      menuEl.querySelectorAll("[data-branch-filter-checkbox]:checked")
-    ).map((input) => input.value);
+    const checked = new Map(snapshot.branches.map((branch) => [branch.name, branch.checked]));
+    menuEl.querySelectorAll("[data-branch-filter-checkbox]").forEach((input) => {
+      checked.set(input.value, input.checked);
+    });
+    return snapshot.branches.filter((branch) => checked.get(branch.name)).map((branch) => branch.name);
   }
 
   /** compact graph 체크박스의 현재 값을 읽는다. */
@@ -137,6 +153,9 @@
     buttonEl.title = buttonTitle(checkedCount);
     buttonEl.dataset.tooltip = buttonEl.title;
     menuEl.innerHTML = menuHtml(checkedCount);
+    if (focusBranchSearch) {
+      requestAnimationFrame(focusSearchInput);
+    }
   }
 
   /** 현재 필터 상태를 설명하는 버튼 tooltip 문구를 만든다. */
@@ -149,9 +168,11 @@
 
   /** 필터 popover HTML 을 만든다. */
   function menuHtml(checkedCount) {
-    const branches = snapshot.branches.length
-      ? snapshot.branches.map(branchRowHtml).join("")
-      : '<div class="branch-filter-empty">No branches found</div>';
+    const visibleBranches = filteredBranches();
+    const emptyText = branchQuery.trim() ? "No branches match" : "No branches found";
+    const branches = visibleBranches.length
+      ? visibleBranches.map(branchRowHtml).join("")
+      : `<div class="branch-filter-empty">${esc(emptyText)}</div>`;
     return (
       `<div class="branch-filter-header">` +
         `<span>Visible branches</span>` +
@@ -161,11 +182,22 @@
         shortcutButton("select-all", "Select All", "Show every local and remote branch in the graph", snapshot.mode === "all") +
         shortcutButton("clear-all", "Clear All", "Hide every branch from the graph", snapshot.mode === "custom" && checkedCount === 0) +
       `</div>` +
+      branchSearchHtml(visibleBranches.length) +
       compactToggleHtml() +
       `<div class="branch-filter-list" role="group" aria-label="Visible branches">` +
         branches +
       `</div>`
     );
+  }
+
+  /** 브랜치 선택 목록 검색 입력 HTML 을 만든다. */
+  function branchSearchHtml(visibleCount) {
+    const title = "Search visible branch selection";
+    return `<label class="branch-filter-search" title="${esc(title)}" data-tooltip="${esc(title)}">` +
+      `<span class="codicon codicon-search" aria-hidden="true"></span>` +
+      `<input type="search" data-branch-filter-search value="${esc(branchQuery)}" ` +
+      `placeholder="Search branches" aria-label="${esc(title)}" />` +
+      `<span>${esc(visibleCount)} shown</span></label>`;
   }
 
   /** shortcut 버튼 HTML 을 만든다. */
@@ -208,6 +240,34 @@
     }
     parts.push(branch.kind);
     return parts.join(" | ");
+  }
+
+  /** 현재 검색어에 맞는 브랜치 선택 항목만 반환한다. */
+  function filteredBranches() {
+    const terms = normalized(branchQuery).split(/\s+/).filter(Boolean);
+    if (!terms.length) {
+      return snapshot.branches;
+    }
+    return snapshot.branches.filter((branch) => {
+      const haystack = normalized(`${branch.name} ${branch.kind} ${branch.current ? "current" : ""}`);
+      return terms.every((term) => haystack.includes(term));
+    });
+  }
+
+  /** 렌더링 뒤 브랜치 검색 입력의 포커스와 커서를 복원한다. */
+  function focusSearchInput() {
+    focusBranchSearch = false;
+    const input = menuEl?.querySelector("[data-branch-filter-search]");
+    if (!input) {
+      return;
+    }
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  /** 검색 비교용 문자열로 정규화한다. */
+  function normalized(value) {
+    return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
   }
 
   window.addEventListener("message", (event) => {
