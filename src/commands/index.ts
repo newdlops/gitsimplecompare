@@ -33,6 +33,10 @@ import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { configureUserProfile } from "./userProfile";
+import {
+  toggleBlameDecorator,
+  toggleBlameLineVisible,
+} from "./blame";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -87,6 +91,18 @@ const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.compare.hidden", "compare"],
   ["gitSimpleCompare.toggleSection.stashes.visible", "stashes"],
   ["gitSimpleCompare.toggleSection.stashes.hidden", "stashes"],
+];
+
+const BLAME_DECORATOR_COMMANDS = [
+  "gitSimpleCompare.toggleBlameDecorator",
+  "gitSimpleCompare.toggleBlameDecorator.checked",
+  "gitSimpleCompare.toggleBlameDecorator.unchecked",
+];
+
+const BLAME_LINE_COMMANDS = [
+  "gitSimpleCompare.toggleBlameLineVisible",
+  "gitSimpleCompare.toggleBlameLineVisible.checked",
+  "gitSimpleCompare.toggleBlameLineVisible.unchecked",
 ];
 
 /**
@@ -200,6 +216,14 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.configureUserProfile", () =>
       configureUserProfile(deps)
+    ),
+    ...BLAME_DECORATOR_COMMANDS.map((command) =>
+      vscode.commands.registerCommand(command, () => toggleBlameDecorator(deps))
+    ),
+    ...BLAME_LINE_COMMANDS.map((command) =>
+      vscode.commands.registerCommand(command, () =>
+        toggleBlameLineVisible(deps)
+      )
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loginAiCli",

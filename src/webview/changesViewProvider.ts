@@ -3,7 +3,6 @@
 //   과 동일 성격, 미트볼 ... 메뉴 포함) · Compare Branches(From/To + 브랜치 비교 결과).
 // - 상태를 보관하고 클릭은 등록된 명령/내부 메서드로 위임한다(경계 분리).
 // - 커밋 메시지는 provider 가 보유한다(입력 중엔 저장만, 커밋 후 비우며 다시 그린다).
-import * as fs from "fs";
 import * as vscode from "vscode";
 import { BranchComparison } from "../git/gitTypes";
 import type { StatusGroups } from "../git/gitService";
@@ -18,6 +17,11 @@ import type { StashView } from "../commands/stash";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { changesWebviewI18n } from "./changesI18n";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
+import {
+  makeNonce,
+  resourceVersion,
+  withVersion,
+} from "./webviewResourceVersion";
 import {
   TREE_SECTIONS,
   VISIBLE_SECTIONS,
@@ -434,7 +438,13 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 웹뷰 HTML 을 만든다(CSP + nonce + codicon + 지역화 문자열 주입). */
   private buildHtml(webview: vscode.Webview): string {
     const mediaRoot = vscode.Uri.joinPath(this.extensionUri, "media", "changes");
-    const version = mediaVersion(mediaRoot);
+    const version = resourceVersion([
+      vscode.Uri.joinPath(mediaRoot, "changes.js"),
+      vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
+      vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
+      vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
+      vscode.Uri.joinPath(mediaRoot, "changes.css"),
+    ]);
     const scriptUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changes.js"), version)
     );
@@ -528,52 +538,4 @@ function loadVisibleSections(saved: unknown): VisibleSections {
     result.changes = true;
   }
   return result;
-}
-
-/**
- * 웹뷰 정적 리소스 캐시를 깨기 위한 버전 문자열을 만든다.
- * @param mediaRoot `media/changes` 디렉터리 URI
- */
-function mediaVersion(mediaRoot: vscode.Uri): string {
-  return String(
-    Math.max(
-      fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.js")),
-      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesAi.js")),
-      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js")),
-      fileMtime(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css")),
-      fileMtime(vscode.Uri.joinPath(mediaRoot, "changes.css"))
-    )
-  );
-}
-
-/**
- * URI 에 query 버전을 붙여 VS Code 웹뷰의 정적 리소스 캐시를 회피한다.
- * @param uri 원본 리소스 URI
- * @param version 캐시 구분용 버전 문자열
- */
-function withVersion(uri: vscode.Uri, version: string): vscode.Uri {
-  return uri.with({ query: `v=${version}` });
-}
-
-/**
- * 파일 수정 시각을 읽는다. 실패하면 현재 시각을 써서 캐시에 갇히지 않게 한다.
- * @param uri 로컬 파일 URI
- */
-function fileMtime(uri: vscode.Uri): number {
-  try {
-    return fs.statSync(uri.fsPath).mtimeMs;
-  } catch {
-    return Date.now();
-  }
-}
-
-/** CSP 의 script nonce(1회성 난수 문자열)를 만든다. */
-function makeNonce(): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let text = "";
-  for (let i = 0; i < 32; i++) {
-    text += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return text;
 }

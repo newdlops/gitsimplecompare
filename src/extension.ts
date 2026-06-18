@@ -13,6 +13,7 @@ import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { ConflictsController } from "./providers/conflictsController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
+import { BlameDecoratorController } from "./providers/blameDecoratorController";
 import {
   isAnyDiffOpenInProgress,
   onDidEndDiffOpen,
@@ -71,6 +72,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const conflicts = new ConflictsController(registry, conflictsProvider);
   const hunkCheckboxes = new HunkCheckboxController(registry);
   context.subscriptions.push(hunkCheckboxes.register());
+  const blameDecorations = new BlameDecoratorController(registry);
+  context.subscriptions.push(blameDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri,
     hunkCheckboxes
@@ -84,6 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
     extensionUri: context.extensionUri,
     conflicts,
     hunkCheckboxes,
+    blameDecorations,
   };
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);

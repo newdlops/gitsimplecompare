@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.61",
+  "version": "0.1.62",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -115,6 +115,42 @@
         "title": "%cmd.configureUserProfile%",
         "category": "Git Simple Compare",
         "icon": "$(account)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameDecorator",
+        "title": "%cmd.toggleBlameDecorator%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameDecorator.checked",
+        "title": "%cmd.blameDecorator.checked%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
+        "title": "%cmd.blameDecorator%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameLineVisible",
+        "title": "%cmd.toggleBlameLineVisible%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
+        "title": "%cmd.blameLines.checked%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
+        "title": "%cmd.blameLines%",
+        "category": "Git Simple Compare",
+        "icon": "$(list-ordered)"
       },
       {
         "command": "gitSimpleCompare.loginAiCli",
@@ -361,6 +397,26 @@
           "group": "navigation@4"
         },
         {
+          "command": "gitSimpleCompare.toggleBlameDecorator.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.blame.decorator.enabled",
+          "group": "3_blame@1"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.blame.decorator.enabled",
+          "group": "3_blame@1"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.blame.line.visible",
+          "group": "3_blame@2"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.blame.line.visible",
+          "group": "3_blame@2"
+        },
+        {
           "command": "gitSimpleCompare.toggleSection.repos.visible",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.repos.visible",
           "group": "2_sections@1"
@@ -588,6 +644,22 @@
         {
           "command": "gitSimpleCompare.chooseHunkControlMode"
         },
+        {
+          "command": "gitSimpleCompare.toggleBlameDecorator.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
+          "when": "false"
+        },
         { "command": "gitSimpleCompare.markResolved", "when": "false" },
         { "command": "gitSimpleCompare.takeCurrent", "when": "false" },
         { "command": "gitSimpleCompare.takeIncoming", "when": "false" },
@@ -640,6 +712,11 @@
           ],
           "default": "nativeOverlay",
           "description": "%config.hunkControl.desc%"
+        },
+        "gitSimpleCompare.blameLine.show": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.blameLine.show.desc%"
         },
         "gitSimpleCompare.aiCliProvider": {
           "type": "string",

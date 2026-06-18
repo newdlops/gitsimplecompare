@@ -8,6 +8,7 @@ import { GitServiceRegistry } from "../git/serviceRegistry";
 import { ChangesViewProvider } from "../webview/changesViewProvider";
 import { ConflictsController } from "../providers/conflictsController";
 import { HunkCheckboxController } from "../providers/hunkCheckboxController";
+import type { BlameDecoratorController } from "../providers/blameDecoratorController";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
@@ -20,6 +21,8 @@ export interface CommandDeps {
   conflicts: ConflictsController;
   /** editable diff 라인별 stage 체크박스 컨트롤러 */
   hunkCheckboxes: HunkCheckboxController;
+  /** 활성 에디터 git blame decoration 컨트롤러 */
+  blameDecorations: BlameDecoratorController;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */

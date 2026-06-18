@@ -98,6 +98,7 @@
   "Change branch": "브랜치 변경",
   "View as Tree": "트리로 보기",
   "View as List": "목록으로 보기",
+  "Not committed yet": "아직 커밋되지 않음",
   "Select the base branch (from)": "기준(from) 브랜치를 선택하세요",
   "Select the target branch (to)": "대상(to) 브랜치를 선택하세요",
   "No branches to compare.": "비교할 브랜치가 없습니다.",
