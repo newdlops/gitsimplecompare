@@ -9,6 +9,7 @@ import {
   runDeferredCommitRebase,
 } from "./deferredCommitRebase";
 import { runGit } from "./gitExec";
+import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
@@ -115,6 +116,7 @@ export class BranchOperationService {
         snapshotRef,
         sourceRef: sourceBranch,
         preservedStashHash: preserved?.hash,
+        guardCurrentBranch: true,
       });
       return {
         status: result.status,
@@ -129,6 +131,7 @@ export class BranchOperationService {
       const restored = await this.restoreAfterFailedDeferredRebase(
         preserved,
         branch,
+        beforeHead,
         snapshotRef
       );
       if (restored) {
@@ -340,7 +343,7 @@ export class BranchOperationService {
       await this.commitSquash(sourceBranch, branch, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(branch, beforeHead);
-      await this.assertStillOnBranch(branch);
+      await this.assertStillOnBranch(branch, beforeHead, afterHead);
       await runGit(["reset", "--keep", afterHead], this.repoRoot);
       return { status: "completed", branch, sourceBranch, beforeHead, afterHead, snapshotRef };
     } catch (err) {
@@ -371,12 +374,21 @@ export class BranchOperationService {
     );
   }
 
-  /** 브랜치 작업 도중 사용자가 다른 브랜치로 이동했으면 현재 브랜치 갱신을 중단한다. */
-  private async assertStillOnBranch(branch: string): Promise<void> {
-    const current = await this.currentBranch();
-    if (current !== branch) {
-      throw new Error(`Current branch changed from '${branch}' to '${current}' while branch operation was running.`);
-    }
+  /**
+   * 브랜치 작업 결과를 현재 브랜치에 반영해도 되는지 확인한다.
+   * - 브랜치 이름과 시작 HEAD 를 함께 검증해, 작업 도중 같은 브랜치 ref 가 다른 커밋으로
+   *   이동한 경우 reset 으로 사용자 커밋을 숨기지 않도록 중단한다.
+   * @param branch 작업 시작 시점의 대상 브랜치
+   * @param beforeHead 작업 시작 시점의 대상 브랜치 HEAD
+   * @param targetRef 현재 브랜치에 적용하려는 결과 ref
+   */
+  private async assertStillOnBranch(
+    branch: string,
+    beforeHead: string,
+    targetRef: string
+  ): Promise<void> {
+    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "applying branch operation result");
+    await assertTargetDescendsFrom(this.repoRoot, beforeHead, targetRef, "applying branch operation result");
   }
 
   /** 임시 worktree 를 만들어 더러운 작업트리를 건드리지 않고 squash 결과를 계산한다. */
@@ -424,12 +436,14 @@ export class BranchOperationService {
   private async restoreAfterFailedDeferredRebase(
     preserved: PreservedLocalChanges | undefined,
     branch: string,
+    beforeHead: string,
     snapshotRef: string
   ): Promise<boolean> {
     if (await detectOperation(this.repoRoot) !== "none") {
       return false;
     }
     await this.switchToBranch(branch);
+    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "restoring failed branch operation");
     await runGit(["reset", "--hard", snapshotRef], this.repoRoot);
     if (preserved) {
       await this.restorePreservedLocalChanges(

@@ -25,6 +25,7 @@ import {
 } from "./pullRequestOperationFormat";
 import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestRebaseContinuation";
 import type { PullRequestInfo } from "./pullRequestService";
+import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
 import { createPrOperationWorktree, removeTemporaryWorktree } from "./temporaryWorktree";
 
@@ -125,6 +126,7 @@ export class PullRequestOperationService {
         snapshotRef,
         sourceRef: pr.headRefName || pr.headHash,
         preservedStashHash: preserved?.hash,
+        guardCurrentBranch: true,
       });
       return {
         status: result.status,
@@ -139,6 +141,7 @@ export class PullRequestOperationService {
       const restored = await this.restoreAfterFailedDeferredRebase(
         preserved,
         destinationBranch,
+        beforeHead,
         snapshotRef,
         "PR rebase merge failed, but local changes could not be restored."
       );
@@ -188,6 +191,7 @@ export class PullRequestOperationService {
         snapshotRef,
         sourceRef: pr.headRefName || pr.headHash,
         preservedStashHash: preserved?.hash,
+        guardCurrentBranch: true,
       });
       return {
         status: result.status,
@@ -202,6 +206,7 @@ export class PullRequestOperationService {
       const restored = await this.restoreAfterFailedDeferredRebase(
         preserved,
         destinationBranch,
+        beforeHead,
         snapshotRef,
         "PR rebase revert failed, but local changes could not be restored."
       );
@@ -632,7 +637,7 @@ export class PullRequestOperationService {
       await this.commitSquash(pr, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(branch, beforeHead, "squash");
-      await this.assertStillOnBranch(branch);
+      await this.assertStillOnBranch(branch, beforeHead, afterHead);
       await this.resetCurrentBranchPreservingLocalChanges(
         afterHead,
         `PR #${pr.number} squash cherry-pick would overwrite local changes, so it was stopped. ` +
@@ -682,7 +687,7 @@ export class PullRequestOperationService {
       await this.commitSquashRevert(pr, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(branch, beforeHead, "squashRevert");
-      await this.assertStillOnBranch(branch);
+      await this.assertStillOnBranch(branch, beforeHead, afterHead);
       await this.resetCurrentBranchPreservingLocalChanges(
         afterHead,
         `PR #${pr.number} squash revert would overwrite local changes, so it was stopped. ` +
@@ -785,7 +790,7 @@ export class PullRequestOperationService {
       }
       const afterHead = result.afterHead || await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(input.branch, input.beforeHead, input.command);
-      await this.assertStillOnBranch(input.branch);
+      await this.assertStillOnBranch(input.branch, input.beforeHead, afterHead);
       try {
         await this.resetCurrentBranchPreservingLocalChanges(
           afterHead,
@@ -876,12 +881,21 @@ export class PullRequestOperationService {
     }
   }
 
-  /** PR 작업 도중 사용자가 다른 브랜치로 이동했으면 현재 브랜치 갱신을 중단한다. */
-  private async assertStillOnBranch(branch: string): Promise<void> {
-    const current = await this.currentBranch();
-    if (current !== branch) {
-      throw new Error(`Current branch changed from '${branch}' to '${current}' while PR operation was running.`);
-    }
+  /**
+   * PR 작업 결과를 현재 브랜치에 반영해도 되는지 확인한다.
+   * - 브랜치 이름뿐 아니라 시작 HEAD 가 그대로인지 확인해, 사용자가 다른 브랜치로 갔다가
+   *   돌아온 사이 ref 가 움직인 경우 reset 이 커밋을 고아로 만들지 않게 한다.
+   * @param branch 작업 시작 시점의 대상 브랜치
+   * @param beforeHead 작업 시작 시점의 대상 브랜치 HEAD
+   * @param targetRef 현재 브랜치에 적용하려는 결과 ref
+   */
+  private async assertStillOnBranch(
+    branch: string,
+    beforeHead: string,
+    targetRef: string
+  ): Promise<void> {
+    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "applying PR operation result");
+    await assertTargetDescendsFrom(this.repoRoot, beforeHead, targetRef, "applying PR operation result");
   }
 
   /** 임시 worktree 를 만들어 더러운 작업트리를 건드리지 않고 PR 적용 결과를 계산한다. */
@@ -940,6 +954,7 @@ export class PullRequestOperationService {
   private async restoreAfterFailedDeferredRebase(
     preserved: PreservedLocalChanges | undefined,
     branch: string,
+    beforeHead: string,
     snapshotRef: string,
     restoreFailureMessage: string
   ): Promise<boolean> {
@@ -947,6 +962,7 @@ export class PullRequestOperationService {
       return false;
     }
     await this.switchToBranch(branch);
+    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "restoring failed PR operation");
     await runGit(["reset", "--hard", snapshotRef], this.repoRoot);
     if (preserved) {
       await this.restorePreservedLocalChanges(

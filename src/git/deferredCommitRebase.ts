@@ -12,6 +12,7 @@ import {
   type PendingDeferredCommitOperation,
 } from "./deferredCommitRebaseState";
 import { runStash } from "./stashExec";
+import { assertCurrentBranchHead } from "./refSafety";
 
 /** deferred rebase 실행에 필요한 입력값 */
 export interface DeferredCommitRebaseInput {
@@ -25,6 +26,8 @@ export interface DeferredCommitRebaseInput {
   snapshotRef: string;
   sourceRef?: string;
   preservedStashHash?: string;
+  /** true 면 각 commit 적용 전 대상 브랜치와 HEAD 가 작업 예상 상태인지 확인한다. */
+  guardCurrentBranch?: boolean;
 }
 
 /** deferred rebase 시작 결과 */
@@ -76,20 +79,34 @@ export async function runDeferredCommitRebase(
   await clearPendingDeferredCommitRebase(input.repoRoot).catch(() => undefined);
   const deferred: string[] = [];
   const operation = input.operation ?? "cherry-pick";
+  let operationHead = input.beforeHead;
   for (const commit of commits) {
+    if (input.guardCurrentBranch) {
+      await assertCurrentBranchHead(
+        input.repoRoot,
+        input.destinationBranch,
+        operationHead,
+        `continuing ${input.label} deferred rebase`
+      );
+    }
     const result = await tryApplyCommit(input.repoRoot, commit, operation);
     if (result === "conflicts") {
       await runGit([operation, "--abort"], input.repoRoot);
       deferred.push(commit);
     }
+    operationHead = await currentHead(input.repoRoot);
   }
-  const pending = createPendingState(input, deferred);
+  const pending = createPendingState(input, deferred, operationHead);
   if (!deferred.length) {
     const finish = await finishPendingDeferredCommitRebase(input.repoRoot, pending);
     return resumeToRunResult(input, finish, await safeCurrentHead(input.repoRoot, input.beforeHead));
   }
   await writePendingDeferredCommitRebase(input.repoRoot, pending);
-  const next = await applyPendingDeferredCommitQueue(input.repoRoot, pending);
+  const next = await applyPendingDeferredCommitQueue(
+    input.repoRoot,
+    pending,
+    input.guardCurrentBranch === true
+  );
   return resumeToRunResult(input, next, await safeCurrentHead(input.repoRoot, input.beforeHead));
 }
 
@@ -109,10 +126,12 @@ export async function continuePendingDeferredCommitRebase(
   if (await isConflictState(repoRoot)) {
     return { status: "pending" };
   }
+  const operationHead = await currentHead(repoRoot);
   return applyPendingDeferredCommitQueue(repoRoot, {
     ...pending,
     currentCommit: undefined,
-  });
+    operationHead,
+  }, Boolean(pending.operationHead));
 }
 
 /**
@@ -128,6 +147,14 @@ export async function restorePendingDeferredCommitRebaseAfterAbort(
     return { status: "none" };
   }
   await switchToBranch(repoRoot, pending.destinationBranch);
+  if (pending.operationHead) {
+    await assertCurrentBranchHead(
+      repoRoot,
+      pending.destinationBranch,
+      pending.operationHead,
+      "restoring aborted deferred rebase"
+    );
+  }
   await runGit(["reset", "--hard", pending.snapshotRef], repoRoot);
   await restorePendingLocalChanges(
     repoRoot,
@@ -184,7 +211,8 @@ export async function restorePendingDeferredCommitRebaseLocalChangesForBranch(
  */
 function createPendingState(
   input: DeferredCommitRebaseInput,
-  remainingCommits: string[]
+  remainingCommits: string[],
+  operationHead: string
 ): PendingDeferredCommitRebase {
   return {
     kind: input.kind,
@@ -194,6 +222,7 @@ function createPendingState(
     beforeHead: input.beforeHead,
     snapshotRef: input.snapshotRef,
     sourceRef: input.sourceRef,
+    operationHead,
     remainingCommits,
     preservedStashHash: input.preservedStashHash,
     createdAt: Date.now(),
@@ -207,15 +236,25 @@ function createPendingState(
  */
 async function applyPendingDeferredCommitQueue(
   repoRoot: string,
-  pending: PendingDeferredCommitRebase
+  pending: PendingDeferredCommitRebase,
+  guardCurrentBranch = false
 ): Promise<DeferredCommitRebaseResumeResult> {
   let state: PendingDeferredCommitRebase = { ...pending, currentCommit: undefined };
   while (state.remainingCommits.length > 0) {
     const [commit, ...remaining] = state.remainingCommits;
+    if (guardCurrentBranch && state.operationHead) {
+      await assertCurrentBranchHead(
+        repoRoot,
+        state.destinationBranch,
+        state.operationHead,
+        `continuing ${state.label} deferred rebase`
+      );
+    }
     const result = await tryApplyCommit(repoRoot, commit, state.operation);
     if (result === "conflicts") {
       await writePendingDeferredCommitRebase(repoRoot, {
         ...state,
+        operationHead: await currentHead(repoRoot),
         currentCommit: commit,
         remainingCommits: remaining,
       });
@@ -227,7 +266,12 @@ async function applyPendingDeferredCommitQueue(
         operation: state.operation,
       };
     }
-    state = { ...state, currentCommit: undefined, remainingCommits: remaining };
+    state = {
+      ...state,
+      operationHead: await currentHead(repoRoot),
+      currentCommit: undefined,
+      remainingCommits: remaining,
+    };
     await writePendingDeferredCommitRebase(repoRoot, state);
   }
   return finishPendingDeferredCommitRebase(repoRoot, state);
@@ -242,30 +286,31 @@ async function finishPendingDeferredCommitRebase(
   repoRoot: string,
   pending: PendingDeferredCommitRebase
 ): Promise<DeferredCommitRebaseResumeResult> {
-  await writePendingDeferredCommitRebase(repoRoot, pending);
+  const state = { ...pending, operationHead: await currentHead(repoRoot) };
+  await writePendingDeferredCommitRebase(repoRoot, state);
   try {
     await restorePendingLocalChanges(
       repoRoot,
-      pending,
+      state,
       "Deferred rebase merge completed, but preserved local changes could not be restored."
     );
   } catch (err) {
     if (await hasUnmergedChanges(repoRoot)) {
       return {
         status: "restoreConflicts",
-        branch: pending.destinationBranch,
-        preservedStashHash: pending.preservedStashHash,
-        operation: pending.operation,
+        branch: state.destinationBranch,
+        preservedStashHash: state.preservedStashHash,
+        operation: state.operation,
       };
     }
     throw err;
   }
   return {
     status: "completed",
-    branch: pending.destinationBranch,
+    branch: state.destinationBranch,
     afterHead: await currentHead(repoRoot),
-    restoredLocalChanges: Boolean(pending.preservedStashHash),
-    operation: pending.operation,
+    restoredLocalChanges: Boolean(state.preservedStashHash),
+    operation: state.operation,
   };
 }
 

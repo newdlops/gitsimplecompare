@@ -21,6 +21,7 @@ export interface PendingDeferredCommitRebase {
   beforeHead: string;
   snapshotRef: string;
   sourceRef?: string;
+  operationHead?: string;
   currentCommit?: string;
   remainingCommits: string[];
   preservedStashHash?: string;
@@ -115,6 +116,10 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
     typeof item.currentCommit === "string" && item.currentCommit
       ? item.currentCommit
       : undefined;
+  const operationHead =
+    typeof item.operationHead === "string" && item.operationHead
+      ? item.operationHead
+      : undefined;
   const preservedStashHash =
     typeof item.preservedStashHash === "string" && item.preservedStashHash
       ? item.preservedStashHash
@@ -131,6 +136,7 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
     beforeHead: item.beforeHead,
     snapshotRef: item.snapshotRef,
     sourceRef,
+    operationHead,
     currentCommit,
     remainingCommits,
     preservedStashHash,
