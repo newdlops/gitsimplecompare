@@ -835,27 +835,39 @@
     vscode.setState(state);
   }
 
-  /** 폴더 접기/펼치기 토글을 연결한다. */
+  /** 폴더 접기/펼치기 또는 작업트리 폴더 선택을 연결한다. */
   function bindFolderToggle(el) {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", (e) => {
       if (suppressNextRowClick) {
         suppressNextRowClick = false;
         return;
       }
-      const children = el.nextElementSibling;
-      if (!children || !children.classList.contains("children")) {
+      if (el.closest(".wt-files") && !e.target.closest(".twistie, .icon")) {
+        onWorkingRowClick(e, el);
         return;
       }
-      const collapsed = children.classList.toggle("collapsed");
-      state.folders[el.dataset.folderKey] = collapsed;
-      vscode.setState(state);
-      const twistie = el.querySelector(".twistie");
-      const folderIcon = el.querySelector(".icon");
-      twistie.classList.toggle("codicon-chevron-down", !collapsed);
-      twistie.classList.toggle("codicon-chevron-right", collapsed);
-      folderIcon.classList.toggle("codicon-folder-opened", !collapsed);
-      folderIcon.classList.toggle("codicon-folder", collapsed);
+      toggleFolder(el);
     });
+  }
+
+  /**
+   * 폴더 노드의 접힘 상태를 DOM 과 persisted webview state 에 반영한다.
+   * @param el 접기/펼치기를 수행할 폴더 행
+   */
+  function toggleFolder(el) {
+    const children = el.nextElementSibling;
+    if (!children || !children.classList.contains("children")) {
+      return;
+    }
+    const collapsed = children.classList.toggle("collapsed");
+    state.folders[el.dataset.folderKey] = collapsed;
+    vscode.setState(state);
+    const twistie = el.querySelector(".twistie");
+    const folderIcon = el.querySelector(".icon");
+    twistie.classList.toggle("codicon-chevron-down", !collapsed);
+    twistie.classList.toggle("codicon-chevron-right", collapsed);
+    folderIcon.classList.toggle("codicon-folder-opened", !collapsed);
+    folderIcon.classList.toggle("codicon-folder", collapsed);
   }
 
   /** 아코디언 섹션 헤더 드래그로 섹션 순서를 바꿀 수 있게 연결한다. */
@@ -1007,7 +1019,7 @@
     });
     // 작업트리 변경 파일 → 단일 클릭=선택+비교, Ctrl/Cmd·Shift=다중 선택
     rootEl.querySelectorAll(".wt-files .row.file").forEach((el) => {
-      el.addEventListener("click", (e) => onFileClick(e, el));
+      el.addEventListener("click", (e) => onWorkingRowClick(e, el));
     });
     rootEl.querySelectorAll(".wt-files").forEach(bindMarqueeSelection);
     bindCommitBox();
@@ -1174,7 +1186,7 @@
       row.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         // 선택에 없는 행을 우클릭하면 그 행만 단일 선택으로 바꾼다(VS Code 처럼).
-        if (row.classList.contains("file") && !selection.has(rowKey(row))) {
+        if (!selection.has(rowKey(row))) {
           selection = new Set([rowKey(row)]);
           selAnchor = rowKey(row);
           applySelection();
@@ -1262,7 +1274,7 @@
     return actionPaths(row);
   }
 
-  // ── 다중 선택(작업트리 파일, VS Code 트리처럼 Ctrl/Cmd·Shift 선택) ──
+  // ── 다중 선택(작업트리 파일/폴더, VS Code 트리처럼 Ctrl/Cmd·Shift 선택) ──
 
   let selection = new Set(); // 선택된 행 키("gkey:path") 집합(렌더 간 유지, 사라진 키는 정리)
   let selAnchor = null; // Shift 범위 선택의 기준 키
@@ -1275,15 +1287,17 @@
     return (group ? group.dataset.gkey : "") + ":" + row.dataset.path;
   }
 
-  /** 작업트리 파일 행들을 DOM 순서로(범위 선택/재적용용). */
-  function fileRows() {
-    return Array.from(rootEl.querySelectorAll(".wt-files .row.file"));
+  /** 작업트리에서 선택 가능한 파일/폴더 행들을 DOM 순서로 반환한다. */
+  function selectableRows() {
+    return Array.from(
+      rootEl.querySelectorAll(".wt-files .row.file, .wt-files .row.folder")
+    );
   }
 
   /**
    * 파일 목록에 드래그 사각형 선택을 연결한다.
    * - 실제 드래그로 판단될 때까지 클릭 이벤트를 방해하지 않는다.
-   * - Ctrl/Cmd 를 누른 채 드래그하면 기존 선택에 영역 안 파일을 더한다.
+   * - Ctrl/Cmd 를 누른 채 드래그하면 기존 선택에 영역 안 파일/폴더를 더한다.
    */
   function bindMarqueeSelection(filesEl) {
     filesEl.addEventListener("pointerdown", (e) => {
@@ -1335,7 +1349,7 @@
   }
 
   /**
-   * 현재 포인터 위치에 맞춰 사각형을 그리고, 영역과 겹치는 파일 행을 선택한다.
+   * 현재 포인터 위치에 맞춰 사각형을 그리고, 영역과 겹치는 파일/폴더 행을 선택한다.
    * @param x 현재 포인터 clientX
    * @param y 현재 포인터 clientY
    */
@@ -1351,7 +1365,7 @@
       height: rect.height + "px",
     });
     const hitKeys = [];
-    for (const row of fileRows()) {
+    for (const row of selectableRows()) {
       if (rectsOverlap(rect, row.getBoundingClientRect())) {
         hitKeys.push(rowKey(row));
       }
@@ -1450,7 +1464,7 @@
 
   /** 현재 선택을 DOM 에 반영하고, 더 이상 없는 키는 정리한다. */
   function applySelection() {
-    const rows = fileRows();
+    const rows = selectableRows();
     const present = new Set(rows.map(rowKey));
     for (const k of selection) {
       if (!present.has(k)) {
@@ -1466,7 +1480,7 @@
 
   /** anchor~target 사이 행들을 선택한다(Shift 범위). */
   function selectRange(targetKey) {
-    const keys = fileRows().map(rowKey);
+    const keys = selectableRows().map(rowKey);
     const a = selAnchor ? keys.indexOf(selAnchor) : -1;
     const b = keys.indexOf(targetKey);
     if (a < 0 || b < 0) {
@@ -1478,20 +1492,33 @@
     selection = new Set(keys.slice(lo, hi + 1));
   }
 
-  /** 선택된 행 중 특정 그룹(gkey)의 경로들. */
+  /** 선택된 행 중 특정 그룹(gkey)의 실제 파일 경로들을 중복 없이 반환한다. */
   function selectedPathsOfKind(gkey) {
     const prefix = gkey + ":";
+    const rowsByKey = new Map(
+      selectableRows().map((row) => [rowKey(row), row])
+    );
+    const seen = new Set();
     const out = [];
     for (const k of selection) {
       if (k.startsWith(prefix)) {
-        out.push(k.slice(prefix.length));
+        const row = rowsByKey.get(k);
+        if (!row) {
+          continue;
+        }
+        for (const path of rowPaths(row)) {
+          if (path && !seen.has(path)) {
+            seen.add(path);
+            out.push(path);
+          }
+        }
       }
     }
     return out;
   }
 
-  /** 파일 행 클릭: Ctrl/Cmd=토글, Shift=범위, 일반=단일 선택 + 비교 열기. */
-  function onFileClick(e, row) {
+  /** 작업트리 행 클릭: Ctrl/Cmd=토글, Shift=범위, 파일 일반 클릭=단일 선택 + 비교 열기. */
+  function onWorkingRowClick(e, row) {
     if (suppressNextRowClick) {
       suppressNextRowClick = false;
       e.preventDefault();
@@ -1514,7 +1541,9 @@
       selection = new Set([key]);
       selAnchor = key;
       applySelection();
-      openWorkingPath(row.dataset.path, row.dataset.stage, row.dataset.status);
+      if (row.classList.contains("file")) {
+        openWorkingPath(row.dataset.path, row.dataset.stage, row.dataset.status);
+      }
     }
   }
 
@@ -1531,11 +1560,7 @@
   function actionPaths(row) {
     const group = row.closest(".group");
     const gkey = group ? group.dataset.gkey : "";
-    if (
-      row.classList.contains("file") &&
-      selection.has(rowKey(row)) &&
-      selection.size > 1
-    ) {
+    if (selection.has(rowKey(row)) && selection.size > 1) {
       return selectedPathsOfKind(gkey);
     }
     return rowPaths(row);
