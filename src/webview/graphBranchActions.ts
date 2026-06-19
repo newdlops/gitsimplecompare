@@ -229,7 +229,7 @@ export async function branchAction(
           },
           {
             label: vscode.l10n.t("Rebase Merge Branch"),
-            description: vscode.l10n.t("Preserve git rebase order and pause at conflicts."),
+            description: vscode.l10n.t("Rebase the current branch onto this branch."),
             action: "rebaseMerge" as const,
           },
         ]
@@ -273,7 +273,7 @@ export async function branchAction(
 /**
  * 원격 브랜치 chip 의 빠른 액션 메뉴를 보여준다.
  * - checkout 은 tracking 로컬 브랜치를 만들고 전환한다.
- * - squash/rebase merge 는 먼저 같은 이름의 로컬 브랜치를 만든 뒤 현재 브랜치에 병합한다.
+ * - squash merge 는 먼저 같은 이름의 로컬 브랜치를 만들고, rebase 는 remote ref 를 그대로 target 으로 쓴다.
  * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
  * @param branch 사용자가 클릭한 원격 브랜치 이름
  */
@@ -295,7 +295,7 @@ async function remoteBranchAction(
       },
       {
         label: vscode.l10n.t("Rebase Merge Branch"),
-        description: vscode.l10n.t("Create a local branch first, then preserve git rebase order."),
+        description: vscode.l10n.t("Rebase the current branch onto this remote ref."),
         action: "rebaseMerge",
       },
     ],

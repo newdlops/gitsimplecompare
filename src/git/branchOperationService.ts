@@ -93,40 +93,35 @@ export class BranchOperationService {
   }
 
   /**
-   * source 브랜치의 커밋을 실제 git rebase 로 현재 브랜치 위에 재적용한다.
-   * - source 브랜치를 직접 움직이지 않고 임시 브랜치에서 rebase 한 뒤 현재 브랜치를 fast-forward 한다.
+   * 현재 브랜치를 선택한 target ref 위로 실제 git rebase 한다.
+   * - local/remote target 모두 ref 를 로컬 브랜치로 materialize 하지 않고 commit 으로 resolve 해서 사용한다.
+   * - 결과적으로 사용자가 현재 브랜치에서 `git rebase <target>` 을 실행한 것과 같은 방향으로 동작한다.
    * - 충돌이 나면 Git 이 멈춘 todo 위치 그대로 Conflicts 뷰에 노출한다.
-   * @param sourceBranch 재적용할 로컬 브랜치 이름
+   * @param targetRef rebase 대상 local/remote ref 또는 commit
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
-  async rebaseMerge(sourceBranch: string): Promise<BranchOperationResult> {
+  async rebaseMerge(targetRef: string): Promise<BranchOperationResult> {
     await this.assertReadyForBranchOperation();
-    await this.assertSourceBranch(sourceBranch);
     const branch = await this.currentBranch();
-    this.assertDifferentBranches(branch, sourceBranch);
+    this.assertDifferentBranches(branch, targetRef);
     const beforeHead = await this.currentHead();
-    const commits = await this.branchCommitHashes(sourceBranch);
-    if (!commits.length) {
-      throw new Error(`Branch '${sourceBranch}' has no commits to rebase merge.`);
-    }
-    if (await this.hasLocalChanges()) {
-      return this.rebaseMergeWithLocalChanges(sourceBranch, branch, beforeHead);
-    }
+    const targetHead = await this.resolveCommit(targetRef);
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
-    const preserved = await this.preserveLocalChanges(`before branch '${sourceBranch}' rebase merge`);
+    const preserved = await this.preserveLocalChanges(`before rebase onto '${targetRef}'`);
     try {
       const result = await runBranchRebaseMerge({
         repoRoot: this.repoRoot,
-        sourceBranch,
-        destinationBranch: branch,
+        branch,
+        targetRef,
         beforeHead,
+        targetHead,
         snapshotRef,
         preservedStashHash: preserved?.hash,
       });
       return {
         status: result.status,
         branch,
-        sourceBranch,
+        sourceBranch: targetRef,
         beforeHead,
         afterHead: result.afterHead,
         snapshotRef,
@@ -144,68 +139,6 @@ export class BranchOperationService {
         await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
       }
       throw this.withPreservedStashNotice(err, restored ? undefined : preserved, branch);
-    }
-  }
-
-  /** 로컬 변경이 있을 때 stash 없이 임시 worktree 에서 실제 branch rebase merge 결과를 계산한다. */
-  private async rebaseMergeWithLocalChanges(
-    sourceBranch: string,
-    branch: string,
-    beforeHead: string
-  ): Promise<BranchOperationResult> {
-    const worktreePath = await this.createTemporaryWorktree(sourceBranch);
-    let keepWorktree = false;
-    let snapshotRef = "";
-    try {
-      try {
-        const base = (await runGit(["merge-base", beforeHead, sourceBranch], this.repoRoot)).trim();
-        await runGit(
-          ["rebase", "--onto", beforeHead, base],
-          worktreePath,
-          { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" } }
-        );
-      } catch (err) {
-        if (!await this.hasUnmergedChangesIn(worktreePath)) {
-          throw err;
-        }
-        keepWorktree = true;
-        throw new Error(
-          `Branch '${sourceBranch}' rebase merge has conflicts. ` +
-            "The current working tree was not changed because local changes are present. " +
-            `Resolve or inspect the preserved temporary worktree: ${worktreePath}.`
-        );
-      }
-      const afterHead = await this.currentHeadIn(worktreePath);
-      snapshotRef = await this.createSnapshot(branch, beforeHead);
-      await this.assertStillOnBranch(branch, beforeHead, afterHead);
-      try {
-        await runGit(["reset", "--keep", afterHead], this.repoRoot);
-      } catch (err) {
-        keepWorktree = true;
-        throw new Error(
-          `Branch '${sourceBranch}' rebase merge result could not be applied to the current working tree. ` +
-            "The replayed result was preserved in a temporary worktree. " +
-            `Temporary worktree: ${worktreePath}. ` +
-            `The undo snapshot was kept at ${snapshotRef}. ${errText(err)}`
-        );
-      }
-      return {
-        status: "completed",
-        branch,
-        sourceBranch,
-        beforeHead,
-        afterHead,
-        snapshotRef,
-      };
-    } catch (err) {
-      if (snapshotRef && !keepWorktree) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
-      }
-      throw err instanceof Error ? err : new Error(String(err));
-    } finally {
-      if (!keepWorktree) {
-        await this.removeTemporaryWorktree(worktreePath);
-      }
     }
   }
 
@@ -236,7 +169,10 @@ export class BranchOperationService {
       "Branch operation was undone, but preserved local changes could not be restored."
     );
     await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
-    return { branch, restoredHead };
+    return {
+      branch,
+      restoredHead,
+    };
   }
 
   /**
@@ -296,16 +232,6 @@ export class BranchOperationService {
     }
   }
 
-  /**
-   * source 브랜치가 현재 HEAD 에 비해 가진 고유 커밋 목록을 오래된 순서로 반환한다.
-   * @param sourceBranch 재적용할 브랜치 이름
-   */
-  private async branchCommitHashes(sourceBranch: string): Promise<string[]> {
-    const base = (await runGit(["merge-base", "HEAD", sourceBranch], this.repoRoot)).trim();
-    const out = await runGit(["rev-list", "--reverse", `${base}..${sourceBranch}`], this.repoRoot);
-    return out.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  }
-
   /** 현재 로컬 브랜치 이름을 반환한다. detached HEAD 는 브랜치 작업 대상에서 제외한다. */
   private async currentBranch(): Promise<string> {
     const branch = (await runGit(["symbolic-ref", "--short", "HEAD"], this.repoRoot).catch(() => "")).trim();
@@ -349,6 +275,19 @@ export class BranchOperationService {
     const hash = (await runGit(["rev-parse", "--verify", `${ref}^{commit}`], this.repoRoot).catch(() => "")).trim();
     if (!hash) {
       throw new Error("No branch operation snapshot is available for the current branch.");
+    }
+    return hash;
+  }
+
+  /**
+   * local/remote ref 또는 commit-ish 를 commit hash 로 정규화한다.
+   * @param ref rebase 대상 ref
+   * @returns 전체 commit hash
+   */
+  private async resolveCommit(ref: string): Promise<string> {
+    const hash = (await runGit(["rev-parse", "--verify", `${ref}^{commit}`], this.repoRoot).catch(() => "")).trim();
+    if (!hash) {
+      throw new Error(`Rebase target not found: ${ref}`);
     }
     return hash;
   }

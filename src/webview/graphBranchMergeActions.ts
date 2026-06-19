@@ -23,7 +23,7 @@ interface GraphBranchMergeActionDeps {
 /**
  * 브랜치 context menu/QuickPick 에서 선택한 merge 계열 action 을 처리한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param branch 작업 대상 source 브랜치
+ * @param branch squash source 또는 rebase target 브랜치
  * @param action 실행할 branch operation 종류
  */
 export async function handleBranchMergeAction(
@@ -63,9 +63,9 @@ export async function squashMergeBranch(
 }
 
 /**
- * source 브랜치의 커밋을 현재 브랜치 위에 보존 커밋 형태로 재적용한다.
+ * 현재 브랜치를 선택한 target 브랜치 위로 실제 git rebase 한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param sourceBranch 재적용할 로컬 브랜치 이름
+ * @param sourceBranch rebase 대상 local/remote ref 이름
  */
 export async function rebaseMergeBranch(
   deps: GraphBranchMergeActionDeps,
@@ -74,7 +74,7 @@ export async function rebaseMergeBranch(
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t(
-      "Rebase merge branch '{0}' into the current branch? Git rebase order is preserved and conflicts pause at the current todo.",
+      "Rebase the current branch onto '{0}'? This runs git rebase without creating a local branch for remote targets.",
       sourceBranch
     ),
     vscode.l10n.t("Rebase Merge")
@@ -87,7 +87,7 @@ export async function rebaseMergeBranch(
 /**
  * 브랜치 작업을 실행하고 성공/실패 양쪽에서 undo 진입점을 제공한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param source 작업 대상 source 브랜치
+ * @param source squash source 또는 rebase target 브랜치
  * @param operation 실행할 branch operation 종류
  */
 async function runBranchOperation(
@@ -133,7 +133,7 @@ async function runBranchOperation(
       deps,
       operation === "squash"
         ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", source.branch, result.branch)
-        : vscode.l10n.t("Branch '{0}' rebase-merged into '{1}'.", source.branch, result.branch)
+        : vscode.l10n.t("Current branch '{0}' rebased onto '{1}'.", result.branch, source.branch)
     );
   } catch (err) {
     await handleBranchOperationError(deps, err, operation, source.branch);
@@ -141,9 +141,9 @@ async function runBranchOperation(
 }
 
 /**
- * remote source 면 로컬 브랜치를 먼저 만든 뒤 branch operation 을 실행한다.
+ * squash 는 remote source 를 로컬 브랜치로 만든 뒤 실행하고, rebase 는 target ref 를 그대로 사용한다.
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param source 사용자가 선택한 source 브랜치와 종류
+ * @param source 사용자가 선택한 작업 대상 브랜치와 종류
  * @param operation 실행할 branch operation 종류
  */
 async function runMaterializedBranchOperation(
@@ -151,6 +151,19 @@ async function runMaterializedBranchOperation(
   source: { branch: string; kind: BranchKind },
   operation: "squash" | "rebase"
 ): Promise<{ result: BranchOperationResult; materialized: MaterializedBranchSource }> {
+  const service = new BranchOperationService(deps.logService.repoRoot);
+  if (operation === "rebase") {
+    const result = await service.rebaseMerge(source.branch);
+    return {
+      result,
+      materialized: {
+        branch: source.branch,
+        sourceBranch: source.branch,
+        sourceKind: source.kind,
+        created: false,
+      },
+    };
+  }
   const materialized = await materializeBranchSource(
     deps.logService.repoRoot,
     source.branch,
@@ -163,10 +176,7 @@ async function runMaterializedBranchOperation(
       localBranch: materialized.branch,
     });
   }
-  const service = new BranchOperationService(deps.logService.repoRoot);
-  const result = operation === "squash"
-    ? await service.squashMerge(materialized.branch)
-    : await service.rebaseMerge(materialized.branch);
+  const result = await service.squashMerge(materialized.branch);
   return { result, materialized };
 }
 
@@ -226,7 +236,7 @@ async function handleBranchOperationConflicts(
  * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
  * @param err catch 로 받은 오류
  * @param operation 실패한 branch operation 종류
- * @param sourceBranch 작업 대상 source 브랜치
+ * @param sourceBranch 작업 대상 브랜치
  */
 async function handleBranchOperationError(
   deps: GraphBranchMergeActionDeps,

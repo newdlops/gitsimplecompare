@@ -1,5 +1,6 @@
-// 브랜치 Rebase Merge 를 실제 git rebase 로 수행하고 충돌 후속 처리를 이어받는 모듈.
-// - source 브랜치를 직접 움직이지 않도록 임시 브랜치에서 rebase 한 뒤, 성공하면 destination 을 fast-forward 한다.
+// 브랜치 Rebase Merge 를 실제 `git rebase <target>` 로 수행하고 충돌 후속 처리를 이어받는 모듈.
+// - 선택한 브랜치는 rebase 대상(upstream)으로만 사용하며, remote ref 를 로컬 브랜치로 만들지 않는다.
+// - Git 이 만든 rebase 상태를 그대로 유지해 Continue/Abort 와 그래프 TODO 카드가 같은 흐름을 본다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperation } from "./conflictService";
@@ -18,9 +19,10 @@ const STATE_GIT_PATH = "gitsimplecompare/branch-rebase-merge-state.json";
 
 export interface BranchRebaseMergeInput {
   repoRoot: string;
-  sourceBranch: string;
-  destinationBranch: string;
+  branch: string;
+  targetRef: string;
   beforeHead: string;
+  targetHead: string;
   snapshotRef: string;
   preservedStashHash?: string;
 }
@@ -49,37 +51,36 @@ export type BranchRebaseMergeCleanupResult =
 
 interface PendingBranchRebaseMerge {
   kind: "branch-rebase";
-  destinationBranch: string;
-  sourceBranch: string;
-  temporaryBranch: string;
+  branch: string;
+  targetRef: string;
   beforeHead: string;
+  targetHead: string;
   snapshotRef: string;
   preservedStashHash?: string;
   createdAt: number;
 }
 
 /**
- * source 브랜치를 임시 브랜치에서 실제 git rebase 로 destination 위에 올린다.
- * - rebase 가 끝나면 destination 브랜치를 rebase 결과로 fast-forward 한다.
+ * 현재 브랜치를 선택한 target ref 위로 실제 git rebase 로 올린다.
+ * - local/remote target 모두 ref 를 직접 전달하지 않고 시작 시점 commit hash 로 고정해 사용한다.
  * - 충돌이 나면 Git 의 rebase 상태를 그대로 남기고 pending 상태를 기록해 Continue/Abort 가 이어받게 한다.
- * @param input rebase merge 시작 정보
+ * @param input rebase 시작 정보
  * @returns 완료 또는 충돌 대기 상태
  */
 export async function runBranchRebaseMerge(
   input: BranchRebaseMergeInput
 ): Promise<BranchRebaseMergeResult> {
   await clearPendingBranchRebaseMerge(input.repoRoot).catch(() => undefined);
-  const base = await mergeBase(input.repoRoot, input.beforeHead, input.sourceBranch);
-  const temporaryBranch = temporaryBranchName(input.destinationBranch, input.sourceBranch);
-  await runGit(["switch", "-c", temporaryBranch, input.sourceBranch], input.repoRoot);
-  const pending = pendingState(input, temporaryBranch);
+  await assertCurrentBranchHead(
+    input.repoRoot,
+    input.branch,
+    input.beforeHead,
+    "starting branch rebase merge"
+  );
+  const pending = pendingState(input);
   try {
     await writePendingBranchRebaseMerge(input.repoRoot, pending);
-    await runGit(
-      ["rebase", "--onto", input.beforeHead, base],
-      input.repoRoot,
-      { env: rebaseEnv() }
-    );
+    await runGit(["rebase", input.targetHead], input.repoRoot, { env: rebaseEnv() });
     const rebasedHead = await currentHead(input.repoRoot);
     const result = await completePendingBranchRebaseMerge(input.repoRoot, pending, rebasedHead);
     return resumeToRunResult(input, result, rebasedHead);
@@ -87,8 +88,8 @@ export async function runBranchRebaseMerge(
     if (await isRebaseConflictState(input.repoRoot)) {
       return {
         status: "conflicts",
-        branch: input.destinationBranch,
-        sourceBranch: input.sourceBranch,
+        branch: input.branch,
+        sourceBranch: input.targetRef,
         beforeHead: input.beforeHead,
         afterHead: await safeCurrentHead(input.repoRoot, input.beforeHead),
         snapshotRef: input.snapshotRef,
@@ -102,7 +103,7 @@ export async function runBranchRebaseMerge(
 }
 
 /**
- * 충돌 해결 후 `git rebase --continue` 가 끝난 브랜치 rebase merge 를 destination 에 반영한다.
+ * 충돌 해결 후 `git rebase --continue` 가 끝난 branch rebase merge 를 마무리한다.
  * @param repoRoot git 저장소 루트
  * @returns 후속 처리 결과
  */
@@ -124,7 +125,8 @@ export async function finishPendingBranchRebaseMergeAfterContinue(
 }
 
 /**
- * 브랜치 rebase merge abort 뒤 destination 브랜치와 보존 stash 를 복원한다.
+ * branch rebase merge abort 뒤 현재 브랜치와 보존 stash 를 복원한다.
+ * - `git rebase --abort` 는 호출자가 먼저 실행하므로 여기서는 pending metadata 와 stash 만 정리한다.
  * @param repoRoot git 저장소 루트
  * @returns 복원 결과
  */
@@ -135,16 +137,15 @@ export async function restorePendingBranchRebaseMergeAfterAbort(
   if (!pending || await isRebaseConflictState(repoRoot)) {
     return { status: "none" };
   }
-  await switchToBranch(repoRoot, pending.destinationBranch);
+  await switchToBranch(repoRoot, pending.branch);
   await restorePendingLocalChanges(
     repoRoot,
     pending,
     "Branch rebase merge was aborted, but local changes could not be restored."
   );
   await runGit(["update-ref", "-d", pending.snapshotRef], repoRoot).catch(() => "");
-  await deleteTemporaryBranch(repoRoot, pending.temporaryBranch);
   await clearPendingBranchRebaseMerge(repoRoot);
-  return { status: "restored", branch: pending.destinationBranch };
+  return { status: "restored", branch: pending.branch };
 }
 
 /**
@@ -159,20 +160,19 @@ export async function dropPendingBranchRebaseMergeStashAfterResolvedRestore(
   if (!pending || await isRebaseConflictState(repoRoot)) {
     return { status: "none" };
   }
-  await deleteTemporaryBranch(repoRoot, pending.temporaryBranch).catch(() => undefined);
   if (pending.preservedStashHash) {
     await dropPreservedLocalChangesStash(repoRoot, pending.preservedStashHash);
     await clearPendingBranchRebaseMerge(repoRoot);
-    return { status: "dropped", branch: pending.destinationBranch };
+    return { status: "dropped", branch: pending.branch };
   }
   await clearPendingBranchRebaseMerge(repoRoot);
   return { status: "none" };
 }
 
 /**
- * undo 흐름에서 destination 브랜치에 묶인 보존 stash 를 복원한다.
+ * undo 흐름에서 pending rebase merge 의 보존 stash 를 복원한다.
  * @param repoRoot git 저장소 루트
- * @param branch 복원 대상 destination 브랜치
+ * @param branch 복원 대상 브랜치
  * @param failureMessage stash 복원 실패 시 보여줄 메시지
  */
 export async function restorePendingBranchRebaseMergeLocalChangesForBranch(
@@ -181,40 +181,36 @@ export async function restorePendingBranchRebaseMergeLocalChangesForBranch(
   failureMessage: string
 ): Promise<void> {
   const pending = await readPendingBranchRebaseMerge(repoRoot);
-  if (!pending || pending.destinationBranch !== branch) {
+  if (!pending || pending.branch !== branch) {
     return;
   }
   await restorePendingLocalChanges(repoRoot, pending, failureMessage);
-  await deleteTemporaryBranch(repoRoot, pending.temporaryBranch).catch(() => undefined);
   await clearPendingBranchRebaseMerge(repoRoot);
 }
 
 /**
- * destination 브랜치를 rebase 결과로 fast-forward 하고 보존 stash 를 복원한다.
+ * rebase 완료 후 보존 stash 를 복원하고 pending 상태를 정리한다.
  * @param repoRoot git 저장소 루트
  * @param pending 저장된 rebase merge 상태
- * @param rebasedHead rebase 가 끝난 임시 브랜치 HEAD
+ * @param rebasedHead rebase 가 끝난 현재 브랜치 HEAD
  */
 async function completePendingBranchRebaseMerge(
   repoRoot: string,
   pending: PendingBranchRebaseMerge,
   rebasedHead: string
 ): Promise<BranchRebaseMergeResumeResult> {
-  await switchToBranch(repoRoot, pending.destinationBranch);
   await assertCurrentBranchHead(
     repoRoot,
-    pending.destinationBranch,
-    pending.beforeHead,
+    pending.branch,
+    rebasedHead,
     "completing branch rebase merge"
   );
   await assertTargetDescendsFrom(
     repoRoot,
-    pending.beforeHead,
+    pending.targetHead,
     rebasedHead,
     "completing branch rebase merge"
   );
-  await runGit(["merge", "--ff-only", rebasedHead], repoRoot, { env: { GIT_EDITOR: "true" } });
-  await deleteTemporaryBranch(repoRoot, pending.temporaryBranch).catch(() => undefined);
   try {
     await restorePendingLocalChanges(
       repoRoot,
@@ -225,7 +221,7 @@ async function completePendingBranchRebaseMerge(
     if (await hasUnmergedChanges(repoRoot)) {
       return {
         status: "restoreConflicts",
-        branch: pending.destinationBranch,
+        branch: pending.branch,
         preservedStashHash: pending.preservedStashHash,
       };
     }
@@ -234,8 +230,8 @@ async function completePendingBranchRebaseMerge(
   await clearPendingBranchRebaseMerge(repoRoot);
   return {
     status: "completed",
-    branch: pending.destinationBranch,
-    afterHead: await currentHead(repoRoot),
+    branch: pending.branch,
+    afterHead: rebasedHead,
     restoredLocalChanges: Boolean(pending.preservedStashHash),
   };
 }
@@ -248,8 +244,8 @@ function resumeToRunResult(
 ): BranchRebaseMergeResult {
   return {
     status: result.status === "completed" ? "completed" : "conflicts",
-    branch: input.destinationBranch,
-    sourceBranch: input.sourceBranch,
+    branch: input.branch,
+    sourceBranch: input.targetRef,
     beforeHead: input.beforeHead,
     afterHead: result.status === "completed" ? result.afterHead : fallbackHead,
     snapshotRef: input.snapshotRef,
@@ -258,16 +254,13 @@ function resumeToRunResult(
 }
 
 /** 시작 입력값에서 pending 상태를 만든다. */
-function pendingState(
-  input: BranchRebaseMergeInput,
-  temporaryBranch: string
-): PendingBranchRebaseMerge {
+function pendingState(input: BranchRebaseMergeInput): PendingBranchRebaseMerge {
   return {
     kind: "branch-rebase",
-    destinationBranch: input.destinationBranch,
-    sourceBranch: input.sourceBranch,
-    temporaryBranch,
+    branch: input.branch,
+    targetRef: input.targetRef,
     beforeHead: input.beforeHead,
+    targetHead: input.targetHead,
     snapshotRef: input.snapshotRef,
     preservedStashHash: input.preservedStashHash,
     createdAt: Date.now(),
@@ -320,20 +313,20 @@ function normalizeState(value: unknown): PendingBranchRebaseMerge | undefined {
   const item = value as Record<string, unknown>;
   if (
     item.kind !== "branch-rebase" ||
-    typeof item.destinationBranch !== "string" ||
-    typeof item.sourceBranch !== "string" ||
-    typeof item.temporaryBranch !== "string" ||
+    typeof item.branch !== "string" ||
+    typeof item.targetRef !== "string" ||
     typeof item.beforeHead !== "string" ||
+    typeof item.targetHead !== "string" ||
     typeof item.snapshotRef !== "string"
   ) {
     return undefined;
   }
   return {
     kind: "branch-rebase",
-    destinationBranch: item.destinationBranch,
-    sourceBranch: item.sourceBranch,
-    temporaryBranch: item.temporaryBranch,
+    branch: item.branch,
+    targetRef: item.targetRef,
     beforeHead: item.beforeHead,
+    targetHead: item.targetHead,
     snapshotRef: item.snapshotRef,
     preservedStashHash: typeof item.preservedStashHash === "string" ? item.preservedStashHash : undefined,
     createdAt: typeof item.createdAt === "number" ? item.createdAt : 0,
@@ -354,13 +347,12 @@ async function hasUnmergedChanges(repoRoot: string): Promise<boolean> {
   return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot).catch(() => "")).length > 0;
 }
 
-/** 예상치 못한 시작 실패 뒤 destination 으로 돌아가고 임시 상태를 정리한다. */
+/** 예상치 못한 시작 실패 뒤 원래 브랜치로 돌아가고 pending 상태를 정리한다. */
 async function cleanupFailedStart(
   repoRoot: string,
   pending: PendingBranchRebaseMerge
 ): Promise<void> {
-  await switchToBranch(repoRoot, pending.destinationBranch).catch(() => undefined);
-  await deleteTemporaryBranch(repoRoot, pending.temporaryBranch).catch(() => undefined);
+  await switchToBranch(repoRoot, pending.branch).catch(() => undefined);
   await clearPendingBranchRebaseMerge(repoRoot).catch(() => undefined);
 }
 
@@ -374,11 +366,6 @@ async function restorePendingLocalChanges(
     return;
   }
   await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
-}
-
-/** merge-base 를 계산한다. */
-async function mergeBase(repoRoot: string, a: string, b: string): Promise<string> {
-  return (await runGit(["merge-base", a, b], repoRoot)).trim();
 }
 
 /** 현재 브랜치 이름을 반환한다. detached HEAD 면 빈 문자열이다. */
@@ -404,30 +391,7 @@ async function safeCurrentHead(repoRoot: string, fallback: string): Promise<stri
   return await currentHead(repoRoot).catch(() => fallback);
 }
 
-/** 임시 브랜치를 삭제한다. 이미 없으면 무시한다. */
-async function deleteTemporaryBranch(repoRoot: string, branch: string): Promise<void> {
-  if (await currentBranch(repoRoot) === branch) {
-    return;
-  }
-  await runGit(["branch", "-D", branch], repoRoot).catch(() => undefined);
-}
-
-/** git rebase/cherry-pick 중 hook/editor 로 막히지 않도록 쓰는 환경 변수다. */
+/** git rebase 중 hook/editor 로 막히지 않도록 쓰는 환경 변수다. */
 function rebaseEnv(): Record<string, string> {
   return { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" };
-}
-
-/** 임시 브랜치 이름을 만든다. */
-function temporaryBranchName(destination: string, source: string): string {
-  const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  return `gsc/rebase-merge/${refSlug(destination)}/${refSlug(source)}-${suffix}`;
-}
-
-/** 브랜치 이름 조각에 안전한 문자만 남긴다. */
-function refSlug(value: string): string {
-  const slug = value
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  return slug || "branch";
 }

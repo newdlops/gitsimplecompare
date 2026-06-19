@@ -235,7 +235,7 @@ async function finishBranchRebaseMergeAfterContinue(
       action: "continue",
       phase: "completed",
       title: vscode.l10n.t("Branch rebase merge completed"),
-      detail: vscode.l10n.t("The rebased branch was fast-forwarded into '{0}'.", result.branch),
+      detail: vscode.l10n.t("Current branch '{0}' was rebased.", result.branch),
       active: false,
     }));
   } else if (result.status === "restoreConflicts") {

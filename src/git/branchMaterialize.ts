@@ -1,6 +1,5 @@
-// 원격 브랜치를 브랜치 작업 source 로 사용할 때 필요한 로컬 브랜치 materialize 헬퍼.
-// - branch squash/rebase merge 는 로컬 브랜치를 source 로 다루므로, remote-only 브랜치는
-//   같은 이름의 로컬 브랜치를 먼저 만든 뒤 기존 branch operation 경로를 재사용한다.
+// 원격 브랜치를 squash merge source 로 사용할 때 필요한 로컬 브랜치 materialize 헬퍼.
+// - rebase 는 remote ref 를 target 으로 직접 사용할 수 있으므로 이 경로를 거치지 않는다.
 import type { BranchKind } from "./gitTypes";
 import { runGit } from "./gitExec";
 

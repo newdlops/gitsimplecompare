@@ -28,7 +28,7 @@ export async function branchSquashMerge(deps: CommandDeps): Promise<void> {
 }
 
 /**
- * 현재 브랜치 위에 source 브랜치의 커밋을 실제 git rebase 순서로 재적용한다.
+ * 현재 브랜치를 선택한 target 브랜치 위로 실제 git rebase 한다.
  * - 충돌이 나면 Git 이 멈춘 todo 위치 그대로 Conflicts 뷰로 노출한다.
  * @param deps 명령들이 공유하는 의존성
  */
@@ -89,7 +89,7 @@ export async function undoBranchOperation(deps: CommandDeps): Promise<void> {
 }
 
 /**
- * source 브랜치를 선택하고 실행에 필요한 repoRoot 정보를 함께 반환한다.
+ * squash source 또는 rebase target 브랜치를 선택하고 실행에 필요한 repoRoot 정보를 함께 반환한다.
  * @param deps 명령들이 공유하는 의존성
  * @param operation 실행할 branch operation 종류
  */
@@ -119,14 +119,16 @@ async function pickSourceBranch(
         ? vscode.l10n.t("remote")
         : vscode.l10n.t("local"),
       detail: current
-        ? vscode.l10n.t("Merge into current branch '{0}'.", current)
+        ? operation === "squash"
+          ? vscode.l10n.t("Merge into current branch '{0}'.", current)
+          : vscode.l10n.t("Rebase current branch '{0}' onto this ref.", current)
         : undefined,
       branch,
     })),
     {
       placeHolder: operation === "squash"
         ? vscode.l10n.t("Select a branch to squash merge into the current branch")
-        : vscode.l10n.t("Select a branch to rebase merge into the current branch"),
+        : vscode.l10n.t("Select a branch to rebase the current branch onto"),
     }
   );
   return picked ? { repoRoot: service.repoRoot, branch: picked.branch } : undefined;
@@ -134,7 +136,7 @@ async function pickSourceBranch(
 
 /**
  * 선택된 브랜치 작업을 확인 후 실행하고 결과 상태에 맞게 UI 를 갱신한다.
- * @param picked 선택된 저장소와 source 브랜치
+ * @param picked 선택된 저장소와 작업 대상 브랜치
  * @param operation 실행할 branch operation 종류
  */
 async function runBranchOperation(
@@ -176,14 +178,18 @@ async function runBranchOperation(
 }
 
 /**
- * remote source 면 로컬 브랜치를 먼저 만든 뒤 branch operation 을 실행한다.
- * @param picked 선택된 저장소와 source 브랜치
+ * squash 는 remote source 를 로컬 브랜치로 만든 뒤 실행하고, rebase 는 target ref 를 그대로 사용한다.
+ * @param picked 선택된 저장소와 작업 대상 브랜치
  * @param operation 실행할 branch operation 종류
  */
 async function runMaterializedBranchOperation(
   picked: { repoRoot: string; branch: BranchInfo },
   operation: BranchOperationKind
 ): Promise<BranchOperationResult> {
+  const service = new BranchOperationService(picked.repoRoot);
+  if (operation === "rebase") {
+    return service.rebaseMerge(picked.branch.name);
+  }
   const source = await materializeBranchSource(
     picked.repoRoot,
     picked.branch.name,
@@ -196,10 +202,7 @@ async function runMaterializedBranchOperation(
       localBranch: source.branch,
     });
   }
-  const service = new BranchOperationService(picked.repoRoot);
-  return operation === "squash"
-    ? service.squashMerge(source.branch)
-    : service.rebaseMerge(source.branch);
+  return service.squashMerge(source.branch);
 }
 
 /**
@@ -246,13 +249,13 @@ async function handleBranchOperationResult(
   vscode.window.showInformationMessage(
     operation === "squash"
       ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", result.sourceBranch, result.branch)
-      : vscode.l10n.t("Branch '{0}' rebase-merged into '{1}'.", result.sourceBranch, result.branch)
+      : vscode.l10n.t("Current branch '{0}' rebased onto '{1}'.", result.branch, result.sourceBranch)
   );
 }
 
 /**
  * branch operation 실행 전 사용자 확인을 받는다.
- * @param sourceBranch source 브랜치 이름
+ * @param sourceBranch squash source 또는 rebase target 브랜치 이름
  * @param operation 실행할 branch operation 종류
  */
 async function confirmBranchOperation(
@@ -265,7 +268,7 @@ async function confirmBranchOperation(
   const message = operation === "squash"
     ? vscode.l10n.t("Squash merge branch '{0}' into the current branch?", sourceBranch)
     : vscode.l10n.t(
-        "Rebase merge branch '{0}' into the current branch? Git rebase order is preserved and conflicts pause at the current todo.",
+        "Rebase the current branch onto '{0}'? This runs git rebase without creating a local branch for remote targets.",
         sourceBranch
       );
   return (
