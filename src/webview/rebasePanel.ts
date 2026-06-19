@@ -142,6 +142,11 @@ export class RebasePanel {
         )
       );
       this.dispose();
+    } else if (result.status === "stopped") {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t("Rebase paused at a todo item. Continue, Skip, or Abort after resolving the current Git step.")
+        );
+      this.dispose();
     } else if (result.status === "noop") {
       vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
       this.dispose();

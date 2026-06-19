@@ -29,12 +29,10 @@
     const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
     return String(text == null ? "" : text).replace(/[&<>"]/g, (ch) => map[ch]);
   }
-
   /** 실제 커밋 해시인지 확인한다(가상 working tree/staged 노드는 제외). */
   function isRealHash(hash) {
     return hash && !hash.startsWith("__gsc_virtual_");
   }
-
   /** 현재 rebase 계획에 포함된 해시 집합을 반환한다. */
   function itemHashSet() {
     const hashes = new Set(items.map((item) => item.hash));
@@ -43,7 +41,6 @@
     }
     return hashes;
   }
-
   /** 원본 todo 해시와 rebase 중 새로 생긴 paused 해시를 같은 항목으로 매핑한다. */
   function itemIndexForHash(hash) {
     const direct = items.findIndex((item) => item.hash === hash);
@@ -55,13 +52,11 @@
     }
     return -1;
   }
-
   /** 화면의 row 해시로 현재 rebase todo 항목을 찾는다. */
   function itemForHash(hash) {
     const index = itemIndexForHash(hash);
     return index >= 0 ? items[index] : undefined;
   }
-
   /** 그래프 표시 순서(위=newer)에 맞춘 계획 배열을 반환한다. */
   function visualItems() {
     return [...items].reverse();
@@ -79,7 +74,6 @@
       activeAtStart: Boolean(plan),
     };
   });
-
   /** 드래그 중인 위치에 rebase drop marker 를 보여준다. */
   window.addEventListener("gsc-node-drag", (event) => {
     if (!drag || !plan) {
@@ -120,7 +114,6 @@
     });
     drag = null;
   });
-
   /** 확장에서 받은 rebase 계획/정리 메시지를 처리한다. */
   window.addEventListener("message", (event) => {
     const msg = event.data;
@@ -171,7 +164,6 @@
     ensureBar();
     renderPlan();
   }
-
   /** rebase 계획 모드를 종료하고 DOM 흔적을 제거한다. */
   function clearPlan() {
     plan = null;
@@ -193,7 +185,6 @@
     });
     window.GscGraphDetail?.refresh?.();
   }
-
   /** 상단 rebase 실행 바를 만든다. */
   function ensureBar() {
     if (!plan) {
@@ -212,6 +203,9 @@
       ? `<button id="graph-rebase-continue" type="button" title="Continue rebase" ` +
         `aria-label="Continue rebase" data-tooltip="Save rebase edit files, amend the paused commit, then run git rebase --continue; Git may pause again at the next edit commit or conflicts">` +
         `<span class="codicon codicon-debug-continue" aria-hidden="true"></span><span>Continue</span></button>` +
+        `<button id="graph-rebase-skip" type="button" title="Skip current rebase item" ` +
+        `aria-label="Skip current rebase item" data-tooltip="Run git rebase --skip for the current todo item and continue to the next Git-managed step">` +
+        `<span class="codicon codicon-debug-step-over" aria-hidden="true"></span><span>Skip</span></button>` +
         `<button id="graph-rebase-abort" type="button" title="Abort rebase" ` +
         `aria-label="Abort rebase" data-tooltip="Abort the in-progress rebase and restore the branch to the state before the rebase started">` +
         `<span class="codicon codicon-debug-stop" aria-hidden="true"></span><span>Abort</span></button>`
@@ -230,9 +224,9 @@
     bar.querySelector("#graph-rebase-run")?.addEventListener("click", () => runRebase());
     bar.querySelector("#graph-rebase-cancel")?.addEventListener("click", clearPlan);
     bar.querySelector("#graph-rebase-continue")?.addEventListener("click", continueRebase);
+    bar.querySelector("#graph-rebase-skip")?.addEventListener("click", skipRebase);
     bar.querySelector("#graph-rebase-abort")?.addEventListener("click", abortRebase);
   }
-
   /** 현재 계획을 그래프 row 에 마커/호버 액션으로 반영한다. */
   function renderPlan() {
     if (!plan) {
@@ -556,6 +550,11 @@
     });
   }
 
+  /** 멈춰 있는 rebase 의 현재 todo 항목을 건너뛰도록 요청한다. */
+  function skipRebase() {
+    window.GscGraphPostMessage?.({ type: "skipGraphRebase", items: itemsPayload() });
+  }
+
   /** 멈춰 있는 rebase 를 확장 호스트에 취소하도록 요청한다. */
   function abortRebase() {
     window.GscGraphPostMessage?.({ type: "abortGraphRebase" });
@@ -591,6 +590,7 @@
     paused: () => paused,
     requestEditFile,
     continueRebase,
+    skipRebase,
     abortRebase,
     updateAction,
     updateMessage,

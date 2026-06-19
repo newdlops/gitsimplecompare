@@ -1,6 +1,7 @@
 // rebase 계열 충돌 Continue/Abort 후속 처리를 담당하는 command helper.
 // - conflicts.ts 는 공통 충돌 명령 흐름만 유지하고, PR/branch/deferred rebase 상태 복원은 이 파일로 모은다.
 import * as vscode from "vscode";
+import { ConflictService } from "../git/conflictService";
 import {
   continuePendingDeferredCommitRebase,
   dropPendingDeferredCommitRebaseStashAfterResolvedRestore,
@@ -16,8 +17,10 @@ import {
   finishPendingPullRequestRebaseAfterContinue,
   restorePendingPullRequestRebaseAfterAbort,
 } from "../git/pullRequestRebaseContinuation";
+import { RebaseService } from "../git/rebaseService";
 import { readRebaseTodoProgress, type RebaseTodoProgress } from "../git/rebaseTodoProgress";
 import { ConflictsController } from "../providers/conflictsController";
+import { logInfo } from "../ui/outputLog";
 import { GitGraphPanel } from "../webview/graphPanel";
 import { graphRebaseTodoProgressMessage } from "../webview/graphRebaseTodoProgress";
 
@@ -33,8 +36,74 @@ export async function publishRebaseContinueConflict(
     repoRoot,
     "continue",
     vscode.l10n.t("Rebase paused at todo"),
-    vscode.l10n.t("Resolve the current todo, then Continue. Remaining todo items stay visible here.")
+    vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here.")
   );
+}
+
+/**
+ * 일반 Continue 명령 이후 실제 rebase 상태를 그래프 rebase UI 에 동기화한다.
+ * - 그래프 전용 Continue 가 아닌 경로로 rebase 가 끝나도 남은 todo UI 가 stale 로 보이지 않게 clear 한다.
+ * - 다음 edit/conflict 에서 멈춘 경우에는 progress 카드와 강조 위치를 최신 상태로 갱신한다.
+ * @param repoRoot 대상 저장소 루트
+ */
+export async function publishRebaseContinueState(
+  repoRoot: string
+): Promise<void> {
+  const rebase = new RebaseService(repoRoot);
+  const paused = await rebase.getPausedEditState();
+  if (paused) {
+    const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
+    GitGraphPanel.postOpen(repoRoot, graphRebaseTodoProgressMessage({
+      action: "continue",
+      phase: "paused",
+      title: vscode.l10n.t("Rebase paused at edit commit"),
+      detail: vscode.l10n.t("Edit files for this commit, then Continue."),
+      progress,
+      active: true,
+    }));
+    GitGraphPanel.postOpen(repoRoot, { type: "graphRebasePaused", paused });
+    logInfo("conflicts rebase continue graph state paused", {
+      repoRoot,
+      paused: paused.hash,
+      original: paused.originalHash,
+      progress: Boolean(progress),
+    });
+    return;
+  }
+  const conflicts = new ConflictService(repoRoot);
+  const [operation, conflictFiles] = await Promise.all([
+    conflicts.getOperation().catch(() => "none"),
+    conflicts.listConflicts().catch(() => []),
+  ]);
+  if (operation === "rebase" && conflictFiles.length === 0) {
+    const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
+    GitGraphPanel.postOpen(repoRoot, graphRebaseTodoProgressMessage({
+      action: "continue",
+      phase: "paused",
+      title: vscode.l10n.t("Rebase paused at todo"),
+      detail: vscode.l10n.t("Resolve the current Git rebase step, then Continue, Skip, or Abort."),
+      progress,
+      active: true,
+    }));
+    GitGraphPanel.postOpen(repoRoot, { type: "graphRebaseOperation", active: true });
+    logInfo("conflicts rebase continue graph state stopped", {
+      repoRoot,
+      progress: Boolean(progress),
+    });
+    return;
+  }
+  if (operation === "rebase" || conflictFiles.length > 0) {
+    await publishRebaseContinueConflict(repoRoot);
+    GitGraphPanel.postOpen(repoRoot, { type: "graphRebaseOperation", active: true });
+    logInfo("conflicts rebase continue graph state active", {
+      repoRoot,
+      operation,
+      conflicts: conflictFiles.length,
+    });
+    return;
+  }
+  GitGraphPanel.postOpen(repoRoot, { type: "graphRebaseClear" });
+  logInfo("conflicts rebase continue graph state completed", { repoRoot });
 }
 
 /**
@@ -107,7 +176,7 @@ export async function finishDeferredCommitRebaseAfterContinue(
     const label = deferredOperationLabel(result.operation);
     vscode.window.showWarningMessage(
       vscode.l10n.t(
-        "{0} paused at the next conflict commit. Resolve conflicts, then Continue.",
+        "{0} paused at the next conflict commit. Resolve conflicts, then Continue, Skip, or Abort.",
         label
       )
     );
@@ -174,7 +243,7 @@ async function finishPullRequestRebaseAfterContinue(
         repoRoot,
         "continue",
         vscode.l10n.t("PR rebase paused at todo"),
-        vscode.l10n.t("Resolve the current todo, then Continue. Remaining todo items stay visible here.")
+        vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here.")
       );
     }
     return result.status !== "none";
@@ -220,7 +289,7 @@ async function finishBranchRebaseMergeAfterContinue(
       repoRoot,
       "continue",
       vscode.l10n.t("Branch rebase merge paused"),
-      vscode.l10n.t("Resolve the current todo, then Continue. Remaining todo items stay visible here."),
+      vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here."),
       result.rebaseTodo
     );
     return true;
@@ -371,7 +440,7 @@ async function dropDeferredCommitRebaseStashAfterResolvedRestore(
 /** 진행 중인 rebase todo 를 읽어 그래프 패널의 카드형 progress 에 표시한다. */
 async function publishRebaseTodoProgress(
   repoRoot: string,
-  action: "run" | "continue" | "abort",
+  action: "run" | "continue" | "skip" | "abort",
   title: string,
   detail: string,
   progress?: RebaseTodoProgress

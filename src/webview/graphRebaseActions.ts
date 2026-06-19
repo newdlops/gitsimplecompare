@@ -7,6 +7,11 @@ import {
   listRebaseEditTempPaths,
 } from "../git/rebaseEditSession";
 import { updateInProgressRebaseTodo } from "../git/rebaseTodoEditor";
+import {
+  formatRebaseTodoProgress,
+  readRebaseTodoProgress,
+} from "../git/rebaseTodoProgress";
+import { refreshRebaseMessageQueueForContinue } from "../git/rebaseMessageQueue";
 import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
   RebaseItem,
@@ -17,7 +22,7 @@ import {
   RebaseService,
 } from "../git/rebaseService";
 import { openRefVsWorkingDiff } from "../ui/diffPresenter";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 
 /** 그래프 rebase 실행에 필요한 공유 의존성 */
 export interface GraphRebaseDeps {
@@ -28,7 +33,7 @@ export interface GraphRebaseDeps {
 
 /** paused rebase 의 Continue/Abort UI 처리 결과 */
 export interface GraphRebaseControlResult {
-  status: "completed" | "conflicts" | "failed" | "paused" | "aborted";
+  status: "completed" | "conflicts" | "failed" | "paused" | "aborted" | "stopped";
   message?: string;
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
@@ -76,8 +81,25 @@ export async function runGraphRebase(
   items: RebaseItem[],
   editPath: string | undefined,
   deps: GraphRebaseDeps
-): Promise<RebaseResult> {
-  const service = new RebaseService(deps.logService.repoRoot);
+): Promise<RebaseResult | GraphRebaseControlResult> {
+  const repoRoot = deps.logService.repoRoot;
+  const conflicts = new ConflictService(repoRoot);
+  const operation = await conflicts.getOperation();
+  if (operation === "rebase") {
+    logInfo("graph rebase start adopted existing rebase", {
+      repoRoot,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
+    return readRebaseControlState(deps, "");
+  }
+  if (operation !== "none") {
+    return {
+      status: "failed",
+      message: `Cannot start rebase while ${operation} is in progress.`,
+    };
+  }
+
+  const service = new RebaseService(repoRoot);
   const count = items.filter((item) => item.action !== "drop").length;
   const yes = vscode.l10n.t("Start Rebase");
   const choice = await vscode.window.showWarningMessage(
@@ -93,7 +115,7 @@ export async function runGraphRebase(
   }
 
   logInfo("graph rebase starting", {
-    repoRoot: deps.logService.repoRoot,
+    repoRoot,
     base,
     root,
     onto,
@@ -126,6 +148,18 @@ export async function runGraphRebase(
         "Rebase paused for edit. Change files, then Continue to amend this commit."
       )
     );
+  } else if (result.status === "stopped") {
+    await deps.refreshGraph();
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason: "graphRebaseStopped",
+    });
+    logInfo("graph rebase stopped at todo", {
+      repoRoot: deps.logService.repoRoot,
+      stopped: result.stopped?.hash,
+      original: result.stopped?.originalHash,
+      message: result.message,
+      ...(await rebaseProgressLogDetail(deps.logService.repoRoot)),
+    });
   } else if (result.status === "noop") {
     vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
   } else if (result.message !== "cancelled") {
@@ -168,14 +202,38 @@ export async function continueGraphRebase(
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
-  if (await conflicts.getOperation() !== "rebase") {
+  const operation = await conflicts.getOperation();
+  logInfo("graph rebase continue requested", {
+    repoRoot,
+    operation,
+    items: items.length,
+    changedHashes: changedHashes.length,
+    ...(await rebaseProgressLogDetail(repoRoot)),
+  });
+  if (operation !== "rebase") {
+    logInfo("graph rebase continue skipped", {
+      repoRoot,
+      reason: "noRebaseOperation",
+      operation,
+    });
     await refreshAfterRebaseControl(deps, "graphRebaseContinueNoop");
     return { status: "completed" };
   }
   const rebase = new RebaseService(repoRoot);
   const paused = await rebase.getPausedEditState();
   if (paused) {
+    logInfo("graph rebase continue paused edit detected", {
+      repoRoot,
+      paused: paused.hash,
+      original: paused.originalHash,
+      files: paused.files.length,
+    });
     await saveRebaseEditTempDocuments(repoRoot, paused);
+  } else {
+    logInfo("graph rebase continue paused edit missing", {
+      repoRoot,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
   }
   const todo = await updateInProgressRebaseTodo(
     repoRoot,
@@ -184,6 +242,14 @@ export async function continueGraphRebase(
     paused,
     { editorScript: editorScriptPath(deps.extensionUri) }
   );
+  logInfo("graph rebase todo checked before continue", {
+    repoRoot,
+    changed: todo.changed,
+    changedHashes: changedHashes.length,
+    missingChangedEditHashes: todo.missingChangedEditHashes.length,
+    missingChangedFileHashes: todo.missingChangedFileHashes.length,
+    ...(await rebaseProgressLogDetail(repoRoot)),
+  });
   if (
     todo.missingChangedEditHashes.length > 0 ||
     todo.missingChangedFileHashes.length > 0
@@ -200,18 +266,48 @@ export async function continueGraphRebase(
       missingFileHashes: todo.missingChangedFileHashes.length,
     });
   }
-  if (await rebase.amendPausedEditChanges(paused)) {
+  const messageQueue = await refreshRebaseMessageQueueForContinue(repoRoot, items, {
+    includeCurrent: true,
+  });
+  logInfo("graph rebase message queue refreshed", {
+    repoRoot,
+    action: "continue",
+    active: Boolean(messageQueue),
+    queueLength: messageQueue?.queueLength,
+    items: items.length,
+  });
+  const amended = await rebase.amendPausedEditChanges(paused);
+  if (amended) {
     logInfo("graph rebase edit commit amended", {
       repoRoot,
+      paused: paused?.hash,
+      original: paused?.originalHash,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
+  } else {
+    logInfo("graph rebase edit commit amend skipped", {
+      repoRoot,
+      reason: paused ? "noChanges" : "noPausedEdit",
       paused: paused?.hash,
       original: paused?.originalHash,
     });
   }
   try {
+    logInfo("graph rebase continue running", {
+      repoRoot,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
     await conflicts.continueOperation("rebase");
   } catch (err) {
+    logError("graph rebase continue failed", err, {
+      repoRoot,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
     const state = await readRebaseControlState(deps, "");
     if (state.status === "conflicts") {
+      return state;
+    }
+    if (state.status === "stopped") {
       return state;
     }
     const message = err instanceof Error ? err.message : String(err);
@@ -219,6 +315,62 @@ export async function continueGraphRebase(
     if (state.status === "paused") {
       return { ...state, message };
     }
+    return { status: "failed", message };
+  }
+  return readRebaseControlState(deps, "Rebase completed.");
+}
+
+/**
+ * 그래프 rebase bar/drawer 에서 현재 rebase todo 항목을 건너뛴다.
+ * - skip 뒤에도 Git 이 만든 done/todo 를 다시 읽어 다음 정지 위치나 완료 상태를 UI 에 게시한다.
+ * @param deps 그래프 패널 의존성
+ */
+export async function skipGraphRebase(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
+  items: RebaseItem[] = []
+): Promise<GraphRebaseControlResult> {
+  const repoRoot = deps.logService.repoRoot;
+  const conflicts = new ConflictService(repoRoot);
+  if (await conflicts.getOperation() !== "rebase") {
+    await refreshAfterRebaseControl(deps, "graphRebaseSkipNoop");
+    return { status: "completed" };
+  }
+  const yes = vscode.l10n.t("Skip");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t("Skip the current rebase todo item?"),
+    { modal: true },
+    yes
+  );
+  if (choice !== yes) {
+    return { status: "failed", message: "cancelled" };
+  }
+  logInfo("graph rebase skip running", {
+    repoRoot,
+    ...(await rebaseProgressLogDetail(repoRoot)),
+  });
+  try {
+    const messageQueue = await refreshRebaseMessageQueueForContinue(repoRoot, items, {
+      includeCurrent: false,
+    });
+    logInfo("graph rebase message queue refreshed", {
+      repoRoot,
+      action: "skip",
+      active: Boolean(messageQueue),
+      queueLength: messageQueue?.queueLength,
+      items: items.length,
+    });
+    await conflicts.skipOperation("rebase");
+  } catch (err) {
+    logError("graph rebase skip failed", err, {
+      repoRoot,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
+    const state = await readRebaseControlState(deps, "");
+    if (state.status === "conflicts" || state.status === "paused" || state.status === "stopped") {
+      return state;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(vscode.l10n.t("Rebase skip failed: {0}", message));
     return { status: "failed", message };
   }
   return readRebaseControlState(deps, "Rebase completed.");
@@ -272,17 +424,52 @@ async function readRebaseControlState(
   const rebase = new RebaseService(repoRoot);
   const paused = await rebase.getPausedEditState();
   if (paused) {
+    logInfo("graph rebase continue paused again", {
+      repoRoot,
+      paused: paused.hash,
+      original: paused.originalHash,
+      files: paused.files.length,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
     await refreshAfterRebaseControl(deps, "graphRebaseEditPaused");
     await openPausedEditFile(repoRoot, paused);
     return { status: "paused", paused };
   }
-  const conflicts = await new ConflictService(repoRoot).listConflicts().catch(() => []);
+  const conflictService = new ConflictService(repoRoot);
+  const conflicts = await conflictService.listConflicts().catch(() => []);
   if (conflicts.length > 0) {
     const stopped = await rebase.getStoppedState();
+    logInfo("graph rebase continue stopped with conflicts", {
+      repoRoot,
+      conflicts: conflicts.length,
+      stopped: stopped?.hash,
+      original: stopped?.originalHash,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
     await refreshAfterRebaseControl(deps, "graphRebaseConflict");
     await focusRebaseConflicts(repoRoot);
     return { status: "conflicts", stopped };
   }
+  const operation = await conflictService.getOperation().catch(() => "none");
+  if (operation === "rebase") {
+    const stopped = await rebase.getStoppedState();
+    logInfo("graph rebase continue stopped at todo", {
+      repoRoot,
+      stopped: stopped?.hash,
+      original: stopped?.originalHash,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+    });
+    await refreshAfterRebaseControl(deps, "graphRebaseStopped");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
+    );
+    return { status: "stopped", stopped };
+  }
+  logInfo("graph rebase continue completed", {
+    repoRoot,
+    operation,
+    ...(await rebaseProgressLogDetail(repoRoot)),
+  });
   await refreshAfterRebaseControl(deps, "graphRebaseCompleted");
   if (completedMessage) {
     vscode.window.showInformationMessage(vscode.l10n.t(completedMessage));
@@ -297,6 +484,27 @@ async function refreshAfterRebaseControl(
 ): Promise<void> {
   await deps.refreshGraph();
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
+}
+
+/** rebase continue 전후의 done/todo 진행률을 OUTPUT 로그용 객체로 만든다. */
+async function rebaseProgressLogDetail(repoRoot: string): Promise<Record<string, unknown>> {
+  const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
+  if (!progress) {
+    return { todoActive: false };
+  }
+  return {
+    todoActive: true,
+    todoDone: progress.done,
+    todoRemaining: progress.remaining,
+    todoTotal: progress.total,
+    todoCurrent: progress.currentHash,
+    todoCurrentAction: progress.items.find((item) => item.role === "current")?.action,
+    todoCurrentSubject: progress.currentSubject,
+    todoNext: progress.nextHash,
+    todoNextAction: progress.items.find((item) => item.role === "remaining")?.action,
+    todoNextSubject: progress.nextSubject,
+    todoSummary: formatRebaseTodoProgress(progress),
+  };
 }
 
 /** Continue 직전에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다. */
@@ -366,9 +574,15 @@ async function focusRebaseConflicts(repoRoot: string): Promise<void> {
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "graphRebaseConflict",
   });
+  if (files.length === 0) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
+    );
+    return;
+  }
   vscode.window.showWarningMessage(
     vscode.l10n.t(
-      "Rebase paused due to conflicts. Resolve them in the Conflicts view, then Continue."
+      "Rebase paused due to conflicts. Resolve them in the Conflicts view, then Continue, Skip, or Abort."
     )
   );
 }

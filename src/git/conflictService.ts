@@ -4,6 +4,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
+import {
+  cleanupRebaseMessageQueue,
+  rebaseContinueEditorEnv,
+} from "./rebaseMessageQueue";
 
 /** 진행 중인 git 작업 종류(충돌이 발생할 수 있는 작업들) */
 export type MergeOperation = "none" | "merge" | "rebase" | "cherry-pick" | "revert";
@@ -209,23 +213,41 @@ export class ConflictService {
 
   /**
    * 진행 중인 작업을 이어서 진행한다(`git <op> --continue`).
-   * - 커밋 메시지 편집기를 띄우지 않도록 GIT_EDITOR=true 로 우회한다.
+   * - graph rebase 메시지 큐가 있으면 reword/squash 메시지를 적용하고, 없으면 editor 를 우회한다.
    * @param op 진행 중인 작업 종류
    */
   async continueOperation(op: MergeOperation): Promise<void> {
     if (op === "none") {
       return;
     }
-    const env = { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" };
+    const env = await this.continueEnv(op);
     try {
       await runGit([op, "--continue"], this.repoRoot, env);
+      await this.cleanupMessageQueueIfRebaseDone(op);
     } catch (err) {
       if (op === "rebase" && await this.canSkipEmptyRebaseStep(err)) {
         await runGit(["rebase", "--skip"], this.repoRoot, env);
+        await this.cleanupMessageQueueIfRebaseDone(op);
         return;
       }
       throw err;
     }
+  }
+
+  /**
+   * 진행 중인 rebase/cherry-pick/revert 의 현재 항목을 건너뛴다(`git <op> --skip`).
+   * - merge 에는 skip 개념이 없으므로 잘못 호출되면 명확한 오류를 던진다.
+   * @param op 진행 중인 작업 종류
+   */
+  async skipOperation(op: MergeOperation): Promise<void> {
+    if (op === "none") {
+      return;
+    }
+    if (op === "merge") {
+      throw new Error("Merge operation cannot be skipped.");
+    }
+    await runGit([op, "--skip"], this.repoRoot, await this.continueEnv(op));
+    await this.cleanupMessageQueueIfRebaseDone(op);
   }
 
   /**
@@ -237,6 +259,9 @@ export class ConflictService {
       return;
     }
     await runGit([op, "--abort"], this.repoRoot);
+    if (op === "rebase") {
+      await cleanupRebaseMessageQueue(this.repoRoot);
+    }
   }
 
   /**
@@ -245,6 +270,24 @@ export class ConflictService {
    */
   absPath(rel: string): string {
     return path.join(this.repoRoot, rel);
+  }
+
+  /** continue/skip 에 사용할 editor 환경을 만든다. */
+  private async continueEnv(op: MergeOperation): Promise<Record<string, string>> {
+    if (op === "rebase") {
+      const editorEnv = await rebaseContinueEditorEnv(this.repoRoot);
+      if (editorEnv) {
+        return editorEnv;
+      }
+    }
+    return { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" };
+  }
+
+  /** rebase 가 끝났으면 graph 메시지 큐 상태를 정리한다. */
+  private async cleanupMessageQueueIfRebaseDone(op: MergeOperation): Promise<void> {
+    if (op === "rebase" && await detectOperation(this.repoRoot) !== "rebase") {
+      await cleanupRebaseMessageQueue(this.repoRoot);
+    }
   }
 
   /**

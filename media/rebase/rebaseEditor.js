@@ -5,9 +5,11 @@
 // - VS Code 확장 호스트(Electron)를 ELECTRON_RUN_AS_NODE=1 로 node 처럼 실행해 구동한다.
 const fs = require("fs");
 const cp = require("child_process");
+const path = require("path");
 
 const mode = process.argv[2];
 const targetFile = process.argv[3];
+const MESSAGE_ACTIONS = new Set(["reword", "squash"]);
 
 // git 명령을 현재 rebase 저장소에서 실행한다. 실패하면 rebase 가 멈추도록 예외를 그대로 올린다.
 function git(args) {
@@ -28,6 +30,35 @@ function gitQuietOk(args) {
   } catch (err) {
     return false;
   }
+}
+
+// git metadata 상대 경로를 linked worktree 에서도 유효한 절대 경로로 바꾼다.
+function gitPath(relPath) {
+  const cwd = process.env.GSC_REPO_ROOT || process.cwd();
+  const raw = cp.execFileSync("git", ["rev-parse", "--git-path", relPath], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+  return path.resolve(cwd, raw);
+}
+
+// rebase done 파일의 마지막 commit action 을 읽는다.
+function currentRebaseAction() {
+  for (const dir of ["rebase-merge", "rebase-apply"]) {
+    const donePath = gitPath(`${dir}/done`);
+    if (!fs.existsSync(donePath)) {
+      continue;
+    }
+    const lines = fs.readFileSync(donePath, "utf8").split(/\r?\n/).reverse();
+    for (const line of lines) {
+      const match = /^\s*(pick|reword|edit|squash|fixup|drop)\s+[0-9a-f]{4,40}\b/i.exec(line);
+      if (match) {
+        return match[1].toLowerCase();
+      }
+    }
+  }
+  return "";
 }
 
 // 현재 커밋에서 path 변경을 제거하기 위해 부모 커밋의 상태로 되돌린다.
@@ -89,6 +120,9 @@ try {
     const todo = fs.readFileSync(process.env.GSC_TODO, "utf8");
     fs.writeFileSync(targetFile, todo);
   } else if (mode === "msg") {
+    if (!MESSAGE_ACTIONS.has(currentRebaseAction())) {
+      process.exit(0);
+    }
     // 메시지 큐에서 다음 메시지를 꺼낸다. null 이면 git 기본 메시지를 유지.
     const queueFile = process.env.GSC_MSG_QUEUE;
     let queue = [];

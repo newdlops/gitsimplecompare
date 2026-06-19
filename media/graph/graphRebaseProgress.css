@@ -102,6 +102,7 @@
 .rebase-todo-card.current {
   border-color: color-mix(in srgb, var(--rebase-progress-color) 62%, var(--vscode-panel-border));
   background: color-mix(in srgb, var(--rebase-progress-color) 13%, var(--vscode-list-hoverBackground));
+  box-shadow: inset 3px 0 0 var(--rebase-progress-color);
 }
 
 .rebase-todo-card:hover {
@@ -190,16 +191,45 @@
     inset 0 0 0 1px color-mix(in srgb, var(--rebase-progress-color) 42%, transparent);
 }
 
+.row.rebase-progress-target::after {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid var(--rebase-progress-color);
+  border-radius: 4px;
+  color: var(--rebase-progress-color);
+  background: color-mix(in srgb, var(--rebase-progress-color) 15%, var(--vscode-editor-background));
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-transform: uppercase;
+  content: "Current";
+}
+
 .row.rebase-progress-paused {
   --rebase-progress-color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.row.rebase-progress-paused::after {
+  content: "Paused";
 }
 
 .row.rebase-progress-conflicts {
   --rebase-progress-color: var(--vscode-inputValidation-warningBorder, #cca700);
 }
 
+.row.rebase-progress-conflicts::after {
+  content: "Conflicts";
+}
+
 .row.rebase-progress-failed {
   --rebase-progress-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.row.rebase-progress-failed::after {
+  content: "Failed";
 }
 
 .row.rebase-row.rebase-progress-target {

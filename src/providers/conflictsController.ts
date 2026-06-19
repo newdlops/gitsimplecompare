@@ -13,6 +13,8 @@ export const HAS_CONFLICTS_CONTEXT = "gitSimpleCompare.hasConflicts";
 /** 진행 중 작업(merge/rebase 등)이 있는지를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
 export const OPERATION_IN_PROGRESS_CONTEXT =
   "gitSimpleCompare.operationInProgress";
+/** 진행 중 작업이 rebase 인지를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
+export const OPERATION_IS_REBASE_CONTEXT = "gitSimpleCompare.operationIsRebase";
 /** pull 충돌을 pull 직전 상태로 되돌릴 snapshot 이 있는지를 when 절에서 쓰기 위한 컨텍스트 키 */
 export const PULL_ROLLBACK_AVAILABLE_CONTEXT =
   "gitSimpleCompare.pullRollbackAvailable";
@@ -140,6 +142,11 @@ export class ConflictsController {
       "setContext",
       OPERATION_IN_PROGRESS_CONTEXT,
       operation !== "none"
+    );
+    void vscode.commands.executeCommand(
+      "setContext",
+      OPERATION_IS_REBASE_CONTEXT,
+      operation === "rebase"
     );
     void vscode.commands.executeCommand(
       "setContext",

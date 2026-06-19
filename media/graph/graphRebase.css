@@ -43,12 +43,14 @@
 }
 
 #graph-rebase-cancel,
+#graph-rebase-skip,
 #graph-rebase-abort {
   color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
   background: var(--vscode-button-secondaryBackground, transparent);
 }
 
 #graph-rebase-cancel:hover,
+#graph-rebase-skip:hover,
 #graph-rebase-abort:hover {
   background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }

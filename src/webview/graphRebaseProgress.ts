@@ -9,7 +9,7 @@ import type {
 import type { GraphRebaseControlResult } from "./graphRebaseActions";
 import type { GraphRebaseProgress, ToWebviewMessage } from "./graphProtocol";
 
-export type GraphRebaseProgressAction = "run" | "continue" | "abort";
+export type GraphRebaseProgressAction = "run" | "continue" | "skip" | "abort";
 type GraphRebaseAnyResult = RebaseResult | GraphRebaseControlResult;
 
 /**
@@ -27,7 +27,9 @@ export function graphRebaseStartingProgress(
     ? `${counts.kept} commit(s) will be replayed from ${counts.total} todo item(s).`
     : action === "continue"
       ? "Saving edit changes and running git rebase --continue."
-      : "Running git rebase --abort and restoring the branch state.";
+      : action === "skip"
+        ? "Running git rebase --skip for the current todo item."
+        : "Running git rebase --abort and restoring the branch state.";
   return progressMessage({
     phase: "running",
     action,
@@ -57,6 +59,9 @@ export function graphRebaseResultProgress(
   if (result.status === "conflicts") {
     return stoppedProgress(action, result.stopped, items);
   }
+  if (result.status === "stopped") {
+    return todoStoppedProgress(action, result, items);
+  }
   if (result.status === "failed") {
     return failedProgress(action, result, items);
   }
@@ -81,9 +86,29 @@ function pausedProgress(
     phase: "paused",
     action,
     title: "Paused at edit commit",
-    detail: `${positionText(position, stopped)} Edit files for this commit, then Continue.`,
+    detail: `${positionText(position, stopped)} Edit files for this commit, then Continue or Skip.`,
     hash: stopped.hash,
     originalHash: stopped.originalHash,
+    step: position?.step,
+    total: position?.total ?? todoCounts(items).total,
+    active: true,
+  });
+}
+
+/** 파일 충돌 없이 Git rebase todo 에서 멈춘 상태의 진행 메시지를 만든다. */
+function todoStoppedProgress(
+  action: GraphRebaseProgressAction,
+  result: GraphRebaseAnyResult,
+  items: RebaseItem[]
+): ToWebviewMessage {
+  const position = todoPosition(items, result.stopped?.originalHash || result.stopped?.hash);
+  return progressMessage({
+    phase: "paused",
+    action,
+    title: "Rebase paused at todo",
+    detail: `${positionText(position, result.stopped)} ${result.message || "Resolve the current Git rebase step, then Continue, Skip, or Abort."}`.trim(),
+    hash: result.stopped?.hash,
+    originalHash: result.stopped?.originalHash,
     step: position?.step,
     total: position?.total ?? todoCounts(items).total,
     active: true,
@@ -101,7 +126,7 @@ function stoppedProgress(
     phase: "conflicts",
     action,
     title: "Paused with conflicts",
-    detail: `${positionText(position, stopped)} Resolve conflicts, then Continue.`,
+    detail: `${positionText(position, stopped)} Resolve conflicts, then Continue, Skip, or Abort.`,
     hash: stopped?.hash,
     originalHash: stopped?.originalHash,
     step: position?.step,
@@ -187,6 +212,9 @@ function positionText(
 function actionTitle(action: GraphRebaseProgressAction): string {
   if (action === "continue") {
     return "Continuing rebase";
+  }
+  if (action === "skip") {
+    return "Skipping rebase item";
   }
   return action === "abort" ? "Aborting rebase" : "Starting rebase";
 }

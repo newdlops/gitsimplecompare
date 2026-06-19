@@ -4,7 +4,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
 import { parseNameStatusZ, parseNumstat, parsePorcelainGroups } from "./diffParse";
 import {
@@ -17,7 +17,11 @@ import {
   rebaseFileAmendExecLine,
   writeTempFileExcludeOps,
 } from "./rebaseFileExcludes";
-
+import {
+  cleanupRebaseMessageQueue,
+  initializeRebaseMessageQueue,
+} from "./rebaseMessageQueue";
+import { readRebaseTodoProgress } from "./rebaseTodoProgress";
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** rebase 계획에서 커밋별로 보여줄 변경 파일 한 건 */
@@ -28,7 +32,6 @@ export interface RebaseCommitFile {
   additions: number;
   deletions: number;
 }
-
 /** rebase 대상 커밋 한 건(계획 UI 표시용) */
 export interface RebaseCommit {
   hash: string;
@@ -36,10 +39,8 @@ export interface RebaseCommit {
   body: string;
   files: RebaseCommitFile[];
 }
-
 /** todo 한 줄의 동작 */
 export type RebaseAction = "pick" | "reword" | "edit" | "squash" | "fixup" | "drop";
-
 /** 사용자가 짠 계획 한 항목 */
 export interface RebaseItem {
   hash: string;
@@ -51,15 +52,13 @@ export interface RebaseItem {
   /** 계획 범위 전체 커밋에서 제외할 파일 경로 목록 */
   historyExcludePaths?: string[];
 }
-
 /** rebase 실행 결과 */
 export interface RebaseResult {
-  status: "completed" | "conflicts" | "failed" | "noop" | "paused";
+  status: "completed" | "conflicts" | "failed" | "noop" | "paused" | "stopped";
   message?: string;
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
 }
-
 /** rebase 가 edit todo 에서 멈췄을 때 UI 가 이어받을 상태 */
 export interface RebasePausedState {
   hash: string;
@@ -67,7 +66,6 @@ export interface RebasePausedState {
   parent?: string;
   files: RebaseCommitFile[];
 }
-
 /** rebase 가 충돌/실패로 특정 todo 항목에서 멈춘 위치 */
 export interface RebaseStoppedState {
   /** 현재 HEAD. 충돌 중에는 실패한 커밋 직전의 새 커밋일 수 있다. */
@@ -75,7 +73,6 @@ export interface RebaseStoppedState {
   /** git rebase 상태 파일의 원본 todo 커밋 해시(stopped-sha). */
   originalHash?: string;
 }
-
 /** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
 export interface RebasePlanInfo {
   branch: string;
@@ -89,13 +86,11 @@ export interface RebasePlanInfo {
   baseReason: "upstream" | "selected";
   commits: RebaseCommit[];
 }
-
 /**
  * 한 저장소의 인터랙티브 rebase 를 다루는 서비스.
  */
 export class RebaseService {
   constructor(public readonly repoRoot: string) {}
-
   /**
    * 작업트리가 깨끗한지(추적 파일에 미커밋 변경이 없는지) 확인한다.
    * - 현재 그래프 기반 rebase 는 --autostash 로 미커밋 변경을 보존하므로 필수 검사는 아니다.
@@ -108,7 +103,6 @@ export class RebaseService {
     );
     return out.trim().length === 0;
   }
-
   /**
    * rebase 대상 커밋들을 오래된 것부터(rebase todo 순서로) 반환한다.
    * @param base 편집 대상의 직전 커밋(이 커밋은 포함되지 않음)
@@ -204,7 +198,7 @@ export class RebaseService {
    * - todo 와 메시지 큐를 임시 파일로 만들고, GIT_SEQUENCE_EDITOR/GIT_EDITOR 를
    *   우리 헬퍼 스크립트로 지정해 비대화식으로 주입한다.
    * - staged/unstaged 변경이 있어도 --autostash 로 잠시 보관한 뒤 rebase 를 진행한다.
-   * - 충돌로 멈추면 status="conflicts" 를 반환한다(충돌 뷰가 이어받음).
+   * - 이미 rebase 중이면 새로 시작하지 않고 현재 Git todo 상태를 반환한다.
    * @param base         편집 대상 직전 커밋(rebase 기준점)
    * @param root         true 면 root commit 부터 편집한다.
    * @param items        계획(최종 표시 순서, 오래된 것부터)
@@ -218,6 +212,18 @@ export class RebaseService {
     editorScript: string,
     onto?: string
   ): Promise<RebaseResult> {
+    const active = await detectOperation(this.repoRoot);
+    if (active === "rebase") {
+      const paused = await this.getPausedEditState();
+      const stopped = await this.getStoppedState();
+      if (paused) return { status: "paused", paused };
+      return await this.hasUnmergedFiles()
+        ? { status: "conflicts", stopped }
+        : { status: "stopped", stopped };
+    }
+    if (active !== "none") {
+      return { status: "failed", message: `Cannot start rebase while ${active} is in progress.` };
+    }
     const kept = items.filter((i) => i.action !== "drop");
     if (kept.length === 0) {
       return { status: "noop" };
@@ -228,15 +234,10 @@ export class RebaseService {
     }
 
     const todoLines: string[] = [];
-    const messageQueue: (string | null)[] = [];
     const opFiles: string[] = [];
     const historyExcludePaths = collectHistoryExcludePaths(items);
     for (const item of kept) {
       todoLines.push(`${item.action} ${item.hash}`);
-      if (item.action === "reword" || item.action === "squash") {
-        const msg = item.message && item.message.trim() ? item.message : null;
-        messageQueue.push(msg);
-      }
       const excludeOps = buildFileExcludeOps(item, historyExcludePaths);
       if (excludeOps.length) {
         const opFile = writeTempFileExcludeOps(excludeOps);
@@ -248,20 +249,20 @@ export class RebaseService {
     }
 
     const todoFile = tempPath("todo");
-    const queueFile = tempPath("queue");
     let keepTempFiles = false;
     fs.writeFileSync(todoFile, todoLines.join("\n") + "\n", "utf8");
-    fs.writeFileSync(queueFile, JSON.stringify(messageQueue), "utf8");
 
     // VS Code 확장 호스트의 실행 파일을 node 로 동작시켜 헬퍼를 실행한다.
     const editorCmd = `"${process.execPath}" "${editorScript}"`;
+    const messageEditorEnv = await initializeRebaseMessageQueue(
+      this.repoRoot,
+      kept,
+      editorScript
+    );
     const env: Record<string, string> = {
-      ELECTRON_RUN_AS_NODE: "1",
+      ...messageEditorEnv,
       GIT_SEQUENCE_EDITOR: `${editorCmd} seq`,
-      GIT_EDITOR: `${editorCmd} msg`,
       GSC_TODO: todoFile,
-      GSC_MSG_QUEUE: queueFile,
-      GSC_REPO_ROOT: this.repoRoot,
     };
 
     try {
@@ -281,6 +282,10 @@ export class RebaseService {
         keepTempFiles = true;
         return { status: "paused", paused };
       }
+      if (await detectOperation(this.repoRoot) === "rebase") {
+        keepTempFiles = true;
+        return { status: "stopped", stopped: await this.getStoppedState() };
+      }
       return { status: "completed" };
     } catch (err) {
       // 비정상 종료 시, rebase 가 진행 중이면 충돌로 멈춘 것이다.
@@ -295,7 +300,7 @@ export class RebaseService {
         if (paused) {
           return { status: "paused", paused };
         }
-        return { status: "conflicts", stopped };
+        return { status: "stopped", stopped, message: stopMessage(err) };
       }
       return {
         status: "failed",
@@ -304,7 +309,7 @@ export class RebaseService {
     } finally {
       if (!keepTempFiles) {
         safeUnlink(todoFile);
-        safeUnlink(queueFile);
+        await cleanupRebaseMessageQueue(this.repoRoot);
         for (const opFile of opFiles) {
           safeUnlink(opFile);
         }
@@ -324,14 +329,14 @@ export class RebaseService {
     }
     const [hash, originalHash] = await Promise.all([
       optionalGit(["rev-parse", "HEAD"], this.repoRoot),
-      this.readRebaseStateFile("stopped-sha"),
+      this.currentOriginalHash(),
     ]);
     return hash || originalHash ? { hash, originalHash } : undefined;
   }
 
   /**
    * rebase 가 edit 지점에서 멈춘 상태를 읽는다.
-   * - 충돌이 없고 rebase 작업만 진행 중이면 HEAD 가 사용자가 수정할 커밋이다.
+   * - 충돌이 없더라도 todo 의 현재 action 이 `edit` 일 때만 파일 편집 pause 로 본다.
    * - `.git/rebase-merge/stopped-sha` 는 원래 커밋 해시이므로 그래프 계획의 row 와 다시 연결하는 데 쓴다.
    */
   async getPausedEditState(): Promise<RebasePausedState | undefined> {
@@ -341,8 +346,13 @@ export class RebaseService {
     if (await this.hasUnmergedFiles()) {
       return undefined;
     }
+    const progress = await readRebaseTodoProgress(this.repoRoot).catch(() => undefined);
+    const currentAction = progress?.items.find((item) => item.role === "current")?.action;
+    if (currentAction !== "edit") {
+      return undefined;
+    }
     const hash = (await runGit(["rev-parse", "HEAD"], this.repoRoot)).trim();
-    const originalHash = await this.readRebaseStateFile("stopped-sha");
+    const originalHash = await this.currentOriginalHash();
     const parent = await this.parentOf(hash);
     return {
       hash,
@@ -486,6 +496,12 @@ export class RebaseService {
     return undefined;
   }
 
+  /** rebase 상태 파일이 비어 있을 때 done/todo 진행률에서 원본 todo 해시를 보강한다. */
+  private async currentOriginalHash(): Promise<string | undefined> {
+    return (await this.readRebaseStateFile("stopped-sha")) ??
+      (await readRebaseTodoProgress(this.repoRoot).catch(() => undefined))?.currentHash;
+  }
+
   /**
    * 드래그 drop 대상 커밋을 --onto 로 사용할 수 있는지 판단한다.
    * - 대상이 base 이거나 base..HEAD 재작성 범위 내부면 reorder 의도로 보고 --onto 를 생략한다.
@@ -530,12 +546,7 @@ async function optionalGit(
   args: string[],
   repoRoot: string
 ): Promise<string | undefined> {
-  try {
-    const out = await runGit(args, repoRoot);
-    return out.trim() || undefined;
-  } catch {
-    return undefined;
-  }
+  try { return (await runGit(args, repoRoot)).trim() || undefined; } catch { return undefined; }
 }
 
 /** ancestor 가 target 의 조상인지 확인한다. */
@@ -544,12 +555,7 @@ async function isAncestor(
   target: string,
   repoRoot: string
 ): Promise<boolean> {
-  try {
-    await runGit(["merge-base", "--is-ancestor", ancestor, target], repoRoot);
-    return true;
-  } catch {
-    return false;
-  }
+  try { await runGit(["merge-base", "--is-ancestor", ancestor, target], repoRoot); return true; } catch { return false; }
 }
 
 /** 임시 파일 경로를 만든다(충돌 방지를 위해 난수 접미사 사용). */
@@ -573,6 +579,14 @@ function uniquePaths(paths: string[]): string[] {
     out.push(path);
   }
   return out;
+}
+
+/** rebase 가 충돌 없이 멈춘 이유를 Git stderr/stdout 에서 짧게 뽑는다. */
+function stopMessage(err: unknown): string | undefined {
+  const text = err instanceof GitError
+    ? `${err.stderr}\n${err.stdout}`.trim()
+    : err instanceof Error ? err.message : String(err);
+  return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 4).join(" ");
 }
 
 /** 파일을 조용히 삭제한다(없어도 무시). */

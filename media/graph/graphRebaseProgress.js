@@ -251,7 +251,7 @@
         phase: "paused",
         action: "continue",
         title: "Paused at edit commit",
-        detail: "Edit files for this commit, then Continue.",
+        detail: "Edit files for this commit, then Continue or Skip.",
         hash: paused.hash,
         originalHash: paused.originalHash,
         active: true,
@@ -262,7 +262,7 @@
         phase: "conflicts",
         action: "continue",
         title: "Paused with conflicts",
-        detail: "Resolve conflicts, then Continue.",
+        detail: "Resolve conflicts, then Continue, Skip, or Abort.",
         active: true,
       };
     }

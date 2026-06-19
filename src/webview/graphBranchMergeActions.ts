@@ -208,7 +208,7 @@ async function handleBranchOperationConflicts(
       action: "run",
       phase: "conflicts",
       title: vscode.l10n.t("Branch rebase merge paused"),
-      detail: vscode.l10n.t("Resolve the current todo, then Continue. Remaining todo items stay visible here."),
+      detail: vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here."),
       progress: result.rebaseTodo,
       active: true,
     }));

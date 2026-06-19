@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.63",
+  "version": "0.1.64",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -299,6 +299,12 @@
         "icon": "$(debug-continue)"
       },
       {
+        "command": "gitSimpleCompare.skipOperation",
+        "title": "%cmd.skipOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(debug-step-over)"
+      },
+      {
         "command": "gitSimpleCompare.abortOperation",
         "title": "%cmd.abortOperation%",
         "category": "Git Simple Compare",
@@ -467,12 +473,17 @@
           "group": "navigation@1"
         },
         {
-          "command": "gitSimpleCompare.abortOperation",
-          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
+          "command": "gitSimpleCompare.skipOperation",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationIsRebase",
           "group": "navigation@2"
         },
-        { "command": "gitSimpleCompare.rollbackPull", "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable", "group": "navigation@3" },
-        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@4" }
+        {
+          "command": "gitSimpleCompare.abortOperation",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
+          "group": "navigation@3"
+        },
+        { "command": "gitSimpleCompare.rollbackPull", "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable", "group": "navigation@4" },
+        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@5" }
       ],
       "view/item/context": [
         {
@@ -672,6 +683,10 @@
         {
           "command": "gitSimpleCompare.continueOperation",
           "when": "gitSimpleCompare.operationInProgress"
+        },
+        {
+          "command": "gitSimpleCompare.skipOperation",
+          "when": "gitSimpleCompare.operationIsRebase"
         },
         {
           "command": "gitSimpleCompare.abortOperation",

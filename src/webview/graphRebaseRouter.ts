@@ -7,6 +7,7 @@ import {
   openPausedRebaseEditFile,
   prepareGraphRebase,
   runGraphRebase,
+  skipGraphRebase,
 } from "./graphRebaseActions";
 import type { GraphRebaseControlResult, GraphRebaseDeps } from "./graphRebaseActions";
 import {
@@ -14,6 +15,8 @@ import {
   graphRebaseStartingProgress,
 } from "./graphRebaseProgress";
 import type { GraphRebaseProgressAction } from "./graphRebaseProgress";
+import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
+import { readRebaseTodoProgress } from "../git/rebaseTodoProgress";
 import type { RebaseItem, RebaseResult } from "../git/rebaseService";
 
 type GraphRebaseMessage = Extract<
@@ -21,6 +24,7 @@ type GraphRebaseMessage = Extract<
   | { type: "openRebaseEditFile" }
   | { type: "prepareGraphRebase" }
   | { type: "continueGraphRebase" }
+  | { type: "skipGraphRebase" }
   | { type: "abortGraphRebase" }
   | { type: "runGraphRebase" }
 >;
@@ -42,6 +46,7 @@ export function isGraphRebaseMessage(
     msg.type === "openRebaseEditFile" ||
     msg.type === "prepareGraphRebase" ||
     msg.type === "continueGraphRebase" ||
+    msg.type === "skipGraphRebase" ||
     msg.type === "abortGraphRebase" ||
     msg.type === "runGraphRebase"
   );
@@ -85,6 +90,11 @@ export async function handleGraphRebaseMessage(
     );
     return;
   }
+  if (msg.type === "skipGraphRebase") {
+    const items = msg.items ?? [];
+    await runWithProgress(deps, "skip", items, () => skipGraphRebase(deps, items));
+    return;
+  }
   await runWithProgress(deps, "abort", [], () => abortGraphRebase(deps));
 }
 
@@ -97,28 +107,68 @@ async function runWithProgress(
 ): Promise<void> {
   deps.post(graphRebaseStartingProgress(action, items));
   try {
-    postRebaseResult(deps, action, await task(), items);
+    await postRebaseResult(deps, action, await task(), items);
   } catch (err) {
-    postRebaseResult(deps, action, { status: "failed", message: errText(err) }, items);
+    await postRebaseResult(deps, action, { status: "failed", message: errText(err) }, items);
     throw err;
   }
 }
 
 /** rebase 결과를 진행 배너와 기존 rebase UI 상태 메시지로 함께 보낸다. */
-function postRebaseResult(
+async function postRebaseResult(
   deps: GraphRebaseRouterDeps,
   action: GraphRebaseProgressAction,
   result: RebaseResult | GraphRebaseControlResult,
   items: RebaseItem[]
-): void {
-  deps.post(graphRebaseResultProgress(action, result, items));
+): Promise<void> {
+  if (!(await postGitTodoProgress(deps, action, result))) {
+    deps.post(graphRebaseResultProgress(action, result, items));
+  }
   if (result.status === "completed" || result.status === "aborted" || result.status === "noop") {
     deps.post({ type: "graphRebaseClear" });
   } else if (result.status === "paused" && result.paused) {
     deps.post({ type: "graphRebasePaused", paused: result.paused });
   } else if (result.status === "conflicts") {
     deps.post({ type: "graphRebaseOperation", active: true });
+  } else if (result.status === "stopped") {
+    deps.post({ type: "graphRebaseOperation", active: true });
   }
+}
+
+/** Git 이 만든 rebase done/todo 상태를 진행 카드의 SOT 로 우선 전송한다. */
+async function postGitTodoProgress(
+  deps: GraphRebaseRouterDeps,
+  action: GraphRebaseProgressAction,
+  result: RebaseResult | GraphRebaseControlResult
+): Promise<boolean> {
+  if (
+    result.status !== "paused" &&
+    result.status !== "conflicts" &&
+    result.status !== "stopped"
+  ) {
+    return false;
+  }
+  const progress = await readRebaseTodoProgress(deps.logService.repoRoot).catch(() => undefined);
+  if (!progress) {
+    return false;
+  }
+  const conflicts = result.status === "conflicts";
+  const editPause = result.status === "paused";
+  deps.post(graphRebaseTodoProgressMessage({
+    action,
+    phase: conflicts ? "conflicts" : "paused",
+    title: conflicts
+      ? "Paused with conflicts"
+      : editPause ? "Paused at edit commit" : "Rebase paused at todo",
+    detail: conflicts
+      ? "Resolve conflicts, then Continue, Skip, or Abort."
+      : editPause
+        ? "Edit files for this commit, then Continue or Skip."
+        : result.message || "Resolve the current Git rebase step, then Continue, Skip, or Abort.",
+    progress,
+    active: true,
+  }));
+  return true;
 }
 
 /** 알 수 없는 예외를 진행 배너에 넣을 짧은 문자열로 변환한다. */

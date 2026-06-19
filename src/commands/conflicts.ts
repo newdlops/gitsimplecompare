@@ -4,16 +4,21 @@
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
 import { PullService } from "../git/pullService";
+import { listRebaseEditTempPaths } from "../git/rebaseEditSession";
+import { RebaseService } from "../git/rebaseService";
+import type { RebasePausedState } from "../git/rebaseService";
 import {
   dropRebaseStashesAfterResolvedRestore,
   finishDeferredCommitRebaseAfterContinue,
   finishRebaseAfterContinue,
   publishRebaseContinueConflict,
+  publishRebaseContinueState,
   restoreDeferredCommitRebaseAfterAbort,
   restoreRebaseAfterAbort,
 } from "./rebaseConflictFollowup";
 import { ConflictsController } from "../providers/conflictsController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
+import { logInfo } from "../ui/outputLog";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -154,6 +159,9 @@ export async function continueOperation(
   const operation = controller.currentOperation;
   let continued = false;
   try {
+    if (operation === "rebase") {
+      await amendPausedRebaseEditBeforeContinue(svc.repoRoot);
+    }
     await svc.continueOperation(operation);
     continued = true;
   } catch (err) {
@@ -170,6 +178,7 @@ export async function continueOperation(
     await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
   } else if (continued && operation === "rebase") {
     await finishRebaseAfterContinue(controller, svc.repoRoot);
+    await publishRebaseContinueState(svc.repoRoot);
   } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
     await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
   }
@@ -211,6 +220,50 @@ export async function abortOperation(
     await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
   }
   await controller.refresh();
+}
+
+/**
+ * 진행 중인 rebase 의 현재 todo 항목을 건너뛴다.
+ * - Git 이 만든 rebase 상태를 그대로 유지하고, skip 뒤 다음 정지/완료 상태를 그래프 UI 에 다시 게시한다.
+ * @param controller 충돌 컨트롤러
+ */
+export async function skipOperation(
+  controller: ConflictsController
+): Promise<void> {
+  const svc = controller.current;
+  if (!svc) {
+    return;
+  }
+  const operation = controller.currentOperation;
+  if (operation !== "rebase") {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Skip is only available while a rebase is in progress.")
+    );
+    return;
+  }
+  const yes = vscode.l10n.t("Skip");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t("Skip the current rebase todo item?"),
+    { modal: true },
+    yes
+  );
+  if (choice !== yes) {
+    return;
+  }
+  let skipped = false;
+  try {
+    await svc.skipOperation(operation);
+    skipped = true;
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not skip: {0}", errorText(err))
+    );
+  }
+  await controller.refresh();
+  if (skipped) {
+    await finishRebaseAfterContinue(controller, svc.repoRoot);
+    await publishRebaseContinueState(svc.repoRoot);
+  }
 }
 
 /**
@@ -287,6 +340,55 @@ async function runFileAction(
   });
   await dropPullSnapshotAfterResolvedRestore(controller);
   await dropRebaseStashesAfterResolvedRestore(controller);
+}
+
+/**
+ * rebase edit 정지 상태에서 일반 Continue 버튼을 눌렀을 때도 그래프 rebase 편집 내용을 amend 한다.
+ * - 그래프 전용 Continue 경로와 달리 Conflicts 뷰/명령 팔레트의 Continue 는 git continue 만 실행하므로
+ *   여기서 dirty 임시 문서를 저장하고 paused commit 을 먼저 갱신한다.
+ * @param repoRoot 대상 저장소 루트
+ * @returns amend 로 커밋이 실제 갱신되었으면 true
+ */
+async function amendPausedRebaseEditBeforeContinue(
+  repoRoot: string
+): Promise<boolean> {
+  const service = new RebaseService(repoRoot);
+  const paused = await service.getPausedEditState();
+  if (!paused) {
+    logInfo("conflicts rebase paused edit amend skipped", {
+      repoRoot,
+      reason: "noPausedEdit",
+    });
+    return false;
+  }
+  const savedDocs = await saveRebaseEditTempDocuments(repoRoot, paused);
+  const amended = await service.amendPausedEditChanges(paused);
+  logInfo("conflicts rebase paused edit continue prepared", {
+    repoRoot,
+    paused: paused.hash,
+    original: paused.originalHash,
+    savedDocs,
+    amended,
+  });
+  return amended;
+}
+
+/**
+ * Continue 직전에 VS Code 에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다.
+ * @param repoRoot 대상 저장소 루트
+ * @param paused 현재 rebase edit 정지 상태
+ * @returns 저장한 dirty 문서 수
+ */
+async function saveRebaseEditTempDocuments(
+  repoRoot: string,
+  paused: RebasePausedState
+): Promise<number> {
+  const paths = new Set(listRebaseEditTempPaths(repoRoot, paused));
+  const docs = vscode.workspace.textDocuments.filter(
+    (doc) => doc.isDirty && doc.uri.scheme === "file" && paths.has(doc.uri.fsPath)
+  );
+  await Promise.all(docs.map((doc) => doc.save()));
+  return docs.length;
 }
 
 /**

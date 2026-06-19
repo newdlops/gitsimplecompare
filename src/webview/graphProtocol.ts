@@ -50,7 +50,7 @@ export interface GraphRebaseTodoCard {
 /** 그래프 rebase 진행 상태 배너와 row 강조에 필요한 정보 */
 export interface GraphRebaseProgress {
   phase: GraphRebaseProgressPhase;
-  action: "run" | "continue" | "abort";
+  action: "run" | "continue" | "skip" | "abort";
   title: string;
   detail?: string;
   hash?: string;
@@ -151,6 +151,7 @@ export type FromWebviewMessage =
   | { type: "generateGraphRebaseAiPlan"; plan: AiRebasePlanRequest }
   | { type: "configureAiCli" }
   | { type: "continueGraphRebase"; items?: RebaseItem[]; changedHashes?: string[] }
+  | { type: "skipGraphRebase"; items?: RebaseItem[] }
   | { type: "abortGraphRebase" }
   | {
       type: "runGraphRebase";

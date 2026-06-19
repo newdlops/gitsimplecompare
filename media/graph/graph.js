@@ -3,7 +3,6 @@
 // - 무한 스크롤로 다음 커밋 페이지를 요청하고, 상세 패널/파일 목록 영역 크기 조절을 담당한다.
 (function () {
   "use strict";
-
   const vscode = acquireVsCodeApi();
   window.GscGraphPostMessage = (message) => vscode.postMessage(message);
 
@@ -65,8 +64,10 @@
    * @param state 확장에서 전달한 페이지 로딩 상태
    */
   function renderGraph(data, state) {
+    const resetView = Boolean(state && state.reset);
+    const viewport = resetView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
     applyLoadState(state, false);
-    if (state && state.reset) {
+    if (resetView && !viewport) {
       selectedHash = null;
       graphEl.scrollTop = 0;
     }
@@ -110,7 +111,8 @@
     }
     syncScrollableWidth(graphWidth);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-    if (state && state.reset) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
+    const restored = resetView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
+    if (resetView && !restored) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
     window.GscGraphSearch?.update(graphEl, graphContentEl);
 
     renderLoadTail();
@@ -289,7 +291,7 @@
       return;
     }
     loadState = Object.assign({}, loadState, state);
-    if (state.reset && state.loading) {
+    if (state.reset && state.loading && currentRows.length === 0) {
       selectedHash = null;
       currentRows = [];
       currentLaneCount = 1;

@@ -74,6 +74,7 @@ import {
   openMergeEditor,
   refreshConflicts,
   rollbackPull,
+  skipOperation,
   takeBoth,
   takeCurrent,
   takeIncoming,
@@ -382,6 +383,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.abortOperation", () =>
       abortOperation(deps.conflicts)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.skipOperation", () =>
+      skipOperation(deps.conflicts)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.rollbackPull", () =>
       rollbackPull(deps.conflicts)

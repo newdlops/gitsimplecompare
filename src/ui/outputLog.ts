@@ -126,11 +126,36 @@ export function logError(
   error: unknown,
   detail?: Record<string, unknown>
 ): void {
-  const err =
-    error instanceof Error
-      ? { name: error.name, message: error.message, stack: error.stack }
-      : { message: String(error) };
+  const err = errorDetail(error);
   write("error", message, { ...detail, error: err });
+}
+
+/** Error 객체에 붙은 stderr/stdout 같은 진단 필드까지 로그용 객체로 변환한다. */
+function errorDetail(error: unknown): Record<string, unknown> {
+  if (!(error instanceof Error)) {
+    return { message: String(error) };
+  }
+  const extra = error as Error & {
+    code?: unknown;
+    stderr?: unknown;
+    stdout?: unknown;
+  };
+  return {
+    name: error.name,
+    message: error.message,
+    code: extra.code,
+    stderr: clippedText(extra.stderr),
+    stdout: clippedText(extra.stdout),
+    stack: error.stack,
+  };
+}
+
+/** 긴 git 출력이 OUTPUT 한 줄을 과도하게 키우지 않도록 적당히 자른다. */
+function clippedText(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length === 0) {
+    return undefined;
+  }
+  return value.length > 4000 ? `${value.slice(0, 4000)}...[truncated]` : value;
 }
 
 /** 확장 비활성화 시 OUTPUT 채널 리소스를 해제한다. */
