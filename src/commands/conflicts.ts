@@ -3,17 +3,15 @@
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
-import {
-  continuePendingDeferredCommitRebase,
-  dropPendingDeferredCommitRebaseStashAfterResolvedRestore,
-  restorePendingDeferredCommitRebaseAfterAbort,
-} from "../git/deferredCommitRebase";
 import { PullService } from "../git/pullService";
 import {
-  dropPendingPullRequestStashAfterResolvedRestore,
-  finishPendingPullRequestRebaseAfterContinue,
-  restorePendingPullRequestRebaseAfterAbort,
-} from "../git/pullRequestRebaseContinuation";
+  dropRebaseStashesAfterResolvedRestore,
+  finishDeferredCommitRebaseAfterContinue,
+  finishRebaseAfterContinue,
+  publishRebaseContinueConflict,
+  restoreDeferredCommitRebaseAfterAbort,
+  restoreRebaseAfterAbort,
+} from "./rebaseConflictFollowup";
 import { ConflictsController } from "../providers/conflictsController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
 
@@ -159,15 +157,19 @@ export async function continueOperation(
     await svc.continueOperation(operation);
     continued = true;
   } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not continue: {0}", errorText(err))
-    );
+    if (operation === "rebase" && await publishRebaseContinueConflict(svc.repoRoot)) {
+      continued = true;
+    } else {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Could not continue: {0}", errorText(err))
+      );
+    }
   }
   await controller.refresh();
   if (continued && operation === "merge") {
     await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
   } else if (continued && operation === "rebase") {
-    await finishPullRequestRebaseAfterContinue(controller, svc.repoRoot);
+    await finishRebaseAfterContinue(controller, svc.repoRoot);
   } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
     await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
   }
@@ -204,7 +206,7 @@ export async function abortOperation(
     );
   }
   if (aborted && operation === "rebase") {
-    await restorePullRequestRebaseAfterAbort(svc.repoRoot);
+    await restoreRebaseAfterAbort(svc.repoRoot);
   } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
     await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
   }
@@ -284,8 +286,7 @@ async function runFileAction(
     reason: "conflictFileAction",
   });
   await dropPullSnapshotAfterResolvedRestore(controller);
-  await dropPullRequestStashAfterResolvedRestore(controller);
-  await dropDeferredCommitRebaseStashAfterResolvedRestore(controller);
+  await dropRebaseStashesAfterResolvedRestore(controller);
 }
 
 /**
@@ -320,158 +321,6 @@ async function restorePullSnapshotAfterContinue(
 }
 
 /**
- * PR rebase 충돌이 continue 로 해결된 뒤 목적 브랜치 반영과 stash 복원을 마무리한다.
- * @param controller 충돌 컨트롤러
- * @param repoRoot   대상 저장소 루트
- */
-async function finishPullRequestRebaseAfterContinue(
-  controller: ConflictsController,
-  repoRoot: string
-): Promise<void> {
-  let result: Awaited<ReturnType<typeof finishPendingPullRequestRebaseAfterContinue>>;
-  try {
-    result = await finishPendingPullRequestRebaseAfterContinue(repoRoot);
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not finish PR rebase: {0}", errorText(err))
-    );
-    return;
-  }
-  if (result.status === "none" || result.status === "pending") {
-    return;
-  }
-  if (result.status === "completed") {
-    vscode.window.showInformationMessage(
-      result.restoredLocalChanges
-        ? vscode.l10n.t("PR rebase completed and local changes were restored on '{0}'.", result.branch)
-        : vscode.l10n.t("PR rebase completed on '{0}'.", result.branch)
-    );
-  } else if (result.status === "restoreConflicts") {
-    vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        "PR rebase completed, but restoring preserved local changes caused conflicts."
-      )
-    );
-    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-  }
-  await controller.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "prRebaseContinue",
-  });
-}
-
-/**
- * deferred rebase merge 의 현재 cherry-pick 충돌이 해결된 뒤 남은 큐를 이어서 적용한다.
- * @param controller 충돌 컨트롤러
- * @param repoRoot   대상 저장소 루트
- */
-async function finishDeferredCommitRebaseAfterContinue(
-  controller: ConflictsController,
-  repoRoot: string
-): Promise<void> {
-  let result: Awaited<ReturnType<typeof continuePendingDeferredCommitRebase>>;
-  try {
-    result = await continuePendingDeferredCommitRebase(repoRoot);
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not finish rebase merge: {0}", errorText(err))
-    );
-    return;
-  }
-  if (result.status === "none" || result.status === "pending") {
-    return;
-  }
-  if (result.status === "completed") {
-    const label = deferredOperationLabel(result.operation);
-    vscode.window.showInformationMessage(
-      result.restoredLocalChanges
-        ? vscode.l10n.t("{0} completed and local changes were restored on '{1}'.", label, result.branch)
-        : vscode.l10n.t("{0} completed on '{1}'.", label, result.branch)
-    );
-  } else if (result.status === "conflicts") {
-    const label = deferredOperationLabel(result.operation);
-    vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        "{0} paused at the next conflict commit. Resolve conflicts, then Continue.",
-        label
-      )
-    );
-    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-  } else if (result.status === "restoreConflicts") {
-    const label = deferredOperationLabel(result.operation);
-    vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        "{0} completed, but restoring preserved local changes caused conflicts.",
-        label
-      )
-    );
-    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-  }
-  await controller.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "deferredRebaseContinue",
-  });
-}
-
-/** deferred queue 작업 종류를 사용자 안내 문구로 변환한다. */
-function deferredOperationLabel(operation: "cherry-pick" | "revert"): string {
-  return operation === "revert"
-    ? vscode.l10n.t("Rebase revert")
-    : vscode.l10n.t("Rebase merge");
-}
-
-/**
- * PR rebase abort 뒤 시작 브랜치와 보존 stash 를 복원한다.
- * @param repoRoot 대상 저장소 루트
- */
-async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<void> {
-  let result: Awaited<ReturnType<typeof restorePendingPullRequestRebaseAfterAbort>>;
-  try {
-    result = await restorePendingPullRequestRebaseAfterAbort(repoRoot);
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("PR rebase was aborted, but local changes could not be restored: {0}", errorText(err))
-    );
-    return;
-  }
-  if (result.status !== "restored") {
-    return;
-  }
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("PR rebase aborted and local changes were restored on '{0}'.", result.branch)
-  );
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "prRebaseAbort",
-  });
-}
-
-/**
- * deferred rebase merge abort 뒤 시작 브랜치와 보존 stash 를 복원한다.
- * @param repoRoot 대상 저장소 루트
- */
-async function restoreDeferredCommitRebaseAfterAbort(repoRoot: string): Promise<void> {
-  let result: Awaited<ReturnType<typeof restorePendingDeferredCommitRebaseAfterAbort>>;
-  try {
-    result = await restorePendingDeferredCommitRebaseAfterAbort(repoRoot);
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Rebase merge was aborted, but local changes could not be restored: {0}", errorText(err))
-    );
-    return;
-  }
-  if (result.status !== "restored") {
-    return;
-  }
-  const label = deferredOperationLabel(result.operation);
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("{0} aborted and local changes were restored on '{1}'.", label, result.branch)
-  );
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "deferredRebaseAbort",
-  });
-}
-
-/**
  * stash apply 충돌 해결이 끝났으면 이미 반영된 rollback stash 를 제거한다.
  * @param controller 충돌 컨트롤러
  */
@@ -494,55 +343,6 @@ async function dropPullSnapshotAfterResolvedRestore(
   await controller.refresh();
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "pullSnapshotCleanup",
-  });
-}
-
-/**
- * PR stash 복원 충돌이 해결된 뒤 이미 적용된 stash 를 제거한다.
- * @param controller 충돌 컨트롤러
- */
-async function dropPullRequestStashAfterResolvedRestore(
-  controller: ConflictsController
-): Promise<void> {
-  const svc = controller.current;
-  if (!svc) {
-    return;
-  }
-  const result = await dropPendingPullRequestStashAfterResolvedRestore(svc.repoRoot);
-  if (result.status !== "dropped") {
-    return;
-  }
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("PR preserved stash cleaned on '{0}'.", result.branch)
-  );
-  await controller.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "prStashCleanup",
-  });
-}
-
-/**
- * deferred rebase merge 의 stash 복원 충돌이 해결된 뒤 이미 적용된 stash 를 제거한다.
- * @param controller 충돌 컨트롤러
- */
-async function dropDeferredCommitRebaseStashAfterResolvedRestore(
-  controller: ConflictsController
-): Promise<void> {
-  const svc = controller.current;
-  if (!svc) {
-    return;
-  }
-  const result = await dropPendingDeferredCommitRebaseStashAfterResolvedRestore(svc.repoRoot);
-  if (result.status !== "dropped") {
-    return;
-  }
-  const label = deferredOperationLabel(result.operation);
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("{0} preserved stash cleaned on '{1}'.", label, result.branch)
-  );
-  await controller.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "deferredRebaseStashCleanup",
   });
 }
 

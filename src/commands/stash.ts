@@ -5,6 +5,7 @@
 import * as vscode from "vscode";
 import { CommandDeps } from "./shared";
 import { GitService } from "../git/gitService";
+import { GitError } from "../git/gitExec";
 import { FileChange, StashEntry } from "../git/gitTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logInfo } from "../ui/outputLog";
@@ -23,6 +24,11 @@ function activeService(deps: CommandDeps): GitService | undefined {
 
 /** 짧은 에러 메시지 추출. */
 function errText(e: unknown): string {
+  if (e instanceof GitError) {
+    return [e.stderr.trim(), e.stdout.trim(), e.message]
+      .filter(Boolean)
+      .join("\n");
+  }
   return e instanceof Error ? e.message : String(e);
 }
 

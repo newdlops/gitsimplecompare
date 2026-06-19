@@ -22,7 +22,7 @@ import {
 } from "./graphBranchActions";
 import { renameBranch } from "./graphBranchRename";
 import { handleBranchMergeAction } from "./graphBranchMergeActions";
-import { FromWebviewMessage } from "./graphProtocol";
+import { FromWebviewMessage, ToWebviewMessage } from "./graphProtocol";
 import {
   handlePullRequestAction,
   type GraphPullRequestActionDeps,
@@ -71,6 +71,7 @@ interface GraphActionDeps extends GraphPullRequestActionDeps {
   logService: GitLogService;
   refreshCheckout: () => Promise<void>;
   refreshGraph: () => Promise<void>;
+  post: (message: ToWebviewMessage) => void;
 }
 
 /** 메시지가 graph action 계열인지 확인한다. */

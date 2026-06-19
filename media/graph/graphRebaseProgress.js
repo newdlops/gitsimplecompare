@@ -85,6 +85,7 @@
       `<div class="rebase-progress-title">${esc(current.title)}</div>` +
       `<div class="rebase-progress-detail">${esc(current.detail)}</div>` +
       meterHtml(current) +
+      todoCardsHtml(current) +
       `</div>` +
       `<span class="rebase-progress-label">${esc(labelForPhase(current.phase))}</span>`;
     applyMarks();
@@ -103,6 +104,43 @@
     const label = step > 0 ? `${step} / ${total}` : `${total} todo`;
     return `<div class="rebase-progress-meter" title="${esc(label)}">` +
       `<span style="width: ${width}%"></span><em>${esc(label)}</em></div>`;
+  }
+
+  /** rebase todo 를 카드 리스트로 렌더링한다. */
+  function todoCardsHtml(progress) {
+    const todos = Array.isArray(progress.todos) ? progress.todos : [];
+    if (todos.length === 0) {
+      return "";
+    }
+    const cards = todos.map((todo) => {
+      const role = todo.role === "current" ? "current" : "remaining";
+      const title = todo.hash
+        ? `${shortHash(todo.hash)}${todo.subject ? ` ${todo.subject}` : ""}`
+        : (todo.subject || todo.action || "todo");
+      return `<button type="button" class="rebase-todo-card ${role}" data-hash="${esc(todo.hash || "")}" ` +
+        `title="${esc(title)}" aria-label="${esc(todoLabel(todo))}" data-tooltip="${esc(todoLabel(todo))}">` +
+        `<span class="todo-index">${esc(todo.index)}</span>` +
+        `<span class="todo-meta"><strong>${esc(todo.role === "current" ? "Current" : todo.action)}</strong>` +
+        `<em>${esc(title)}</em></span>` +
+        `</button>`;
+    }).join("");
+    const omitted = Number(progress.omittedTodoCount || 0);
+    const more = omitted > 0
+      ? `<span class="rebase-todo-more" title="${esc(`${omitted} more todo item(s)`)}">+${esc(omitted)} more</span>`
+      : "";
+    return `<div class="rebase-todo-list">${cards}${more}</div>`;
+  }
+
+  /** todo 카드의 접근성/tooltip 라벨을 만든다. */
+  function todoLabel(todo) {
+    const state = todo.role === "current" ? "Current todo" : "Remaining todo";
+    const hash = todo.hash ? shortHash(todo.hash) : "";
+    return `${state} ${todo.index}: ${todo.action || ""} ${hash} ${todo.subject || ""}`.trim();
+  }
+
+  /** 긴 commit hash 를 카드 표시용으로 줄인다. */
+  function shortHash(hash) {
+    return String(hash || "").slice(0, 10);
   }
 
   /** 현재 hash/originalHash 에 대응하는 row 와 node 를 강조한다. */
@@ -257,6 +295,16 @@
         setProgress(fallback);
       }
     }
+  });
+
+  graphPane.addEventListener("click", (event) => {
+    const card = event.target.closest?.(".rebase-todo-card[data-hash]");
+    const hash = card?.dataset?.hash;
+    if (!hash) {
+      return;
+    }
+    const row = graphContent.querySelector(`.row[data-hash="${cssEscape(hash)}"]`);
+    row?.scrollIntoView({ block: "center", inline: "nearest" });
   });
 
   window.GscGraphRebaseProgress = {

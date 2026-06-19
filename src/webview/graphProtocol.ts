@@ -38,6 +38,15 @@ export type GraphRebaseProgressPhase =
   | "cancelled"
   | "noop";
 
+/** 그래프 rebase 진행 상태 배너에 표시할 todo 카드 정보 */
+export interface GraphRebaseTodoCard {
+  role: "current" | "remaining";
+  index: number;
+  action: string;
+  hash?: string;
+  subject?: string;
+}
+
 /** 그래프 rebase 진행 상태 배너와 row 강조에 필요한 정보 */
 export interface GraphRebaseProgress {
   phase: GraphRebaseProgressPhase;
@@ -48,6 +57,8 @@ export interface GraphRebaseProgress {
   originalHash?: string;
   step?: number;
   total?: number;
+  todos?: GraphRebaseTodoCard[];
+  omittedTodoCount?: number;
   active: boolean;
 }
 

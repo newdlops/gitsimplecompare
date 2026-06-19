@@ -229,7 +229,7 @@ export async function branchAction(
           },
           {
             label: vscode.l10n.t("Rebase Merge Branch"),
-            description: vscode.l10n.t("Apply clean commits first; show conflict commits last."),
+            description: vscode.l10n.t("Preserve git rebase order and pause at conflicts."),
             action: "rebaseMerge" as const,
           },
         ]
@@ -295,7 +295,7 @@ async function remoteBranchAction(
       },
       {
         label: vscode.l10n.t("Rebase Merge Branch"),
-        description: vscode.l10n.t("Create a local branch first, then apply clean commits first."),
+        description: vscode.l10n.t("Create a local branch first, then preserve git rebase order."),
         action: "rebaseMerge",
       },
     ],

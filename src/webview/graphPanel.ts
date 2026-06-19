@@ -105,6 +105,21 @@ export class GitGraphPanel {
     void current.reloadGraph();
     return true;
   }
+
+  /**
+   * 이미 열린 그래프 패널이 같은 저장소를 보고 있으면 웹뷰 메시지를 보낸다.
+   * @param repoRoot 대상 저장소 루트
+   * @param message 웹뷰에 보낼 메시지
+   * @returns 메시지를 보냈으면 true
+   */
+  static postOpen(repoRoot: string, message: ToWebviewMessage): boolean {
+    const current = GitGraphPanel.current;
+    if (!current || current.logService.repoRoot !== repoRoot) {
+      return false;
+    }
+    current.post(message);
+    return true;
+  }
   private constructor(
     private readonly panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
@@ -203,6 +218,7 @@ export class GitGraphPanel {
           pullRequests: () => this.pullRequests.items,
           refreshCheckout: () => this.refreshAfterCheckoutAction(),
           refreshGraph: () => this.refreshAfterGraphAction(),
+          post: (message) => this.post(message),
         });
       } else if (msg.type === "openFileDiff") {
         if (await openGraphVirtualFileDiff(this.logService.repoRoot, msg.hash, msg.path)) {

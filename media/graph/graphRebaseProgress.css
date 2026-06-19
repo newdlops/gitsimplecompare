@@ -4,7 +4,7 @@
   --rebase-progress-color: var(--vscode-button-background, #0e639c);
   display: flex;
   flex: 0 0 auto;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   box-sizing: border-box;
   min-height: 42px;
@@ -74,6 +74,88 @@
   font-weight: 700;
   text-align: right;
   text-transform: uppercase;
+}
+
+.rebase-todo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.rebase-todo-card {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  width: min(260px, 100%);
+  min-height: 42px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-list-hoverBackground);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rebase-todo-card.current {
+  border-color: color-mix(in srgb, var(--rebase-progress-color) 62%, var(--vscode-panel-border));
+  background: color-mix(in srgb, var(--rebase-progress-color) 13%, var(--vscode-list-hoverBackground));
+}
+
+.rebase-todo-card:hover {
+  border-color: var(--rebase-progress-color);
+}
+
+.rebase-todo-card .todo-index {
+  display: grid;
+  align-self: stretch;
+  place-items: center;
+  color: var(--rebase-progress-color);
+  background: color-mix(in srgb, var(--rebase-progress-color) 14%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rebase-todo-card .todo-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 7px;
+}
+
+.rebase-todo-card strong,
+.rebase-todo-card em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebase-todo-card strong {
+  color: var(--rebase-progress-color);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.rebase-todo-card em {
+  opacity: 0.86;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.rebase-todo-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 8px;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 6px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
 }
 
 .rebase-progress-meter {

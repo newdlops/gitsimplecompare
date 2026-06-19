@@ -4,10 +4,11 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { detectOperation, type MergeOperation } from "./conflictService";
+import { restorePendingDeferredCommitRebaseLocalChangesForBranch } from "./deferredCommitRebase";
 import {
-  restorePendingDeferredCommitRebaseLocalChangesForBranch,
-  runDeferredCommitRebase,
-} from "./deferredCommitRebase";
+  restorePendingBranchRebaseMergeLocalChangesForBranch,
+  runBranchRebaseMerge,
+} from "./branchRebaseMerge";
 import { runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import {
@@ -24,6 +25,7 @@ export interface BranchOperationResult {
   afterHead: string;
   snapshotRef: string;
   preservedStashHash?: string;
+  rebaseTodo?: import("./rebaseTodoProgress").RebaseTodoProgress;
 }
 
 /** 브랜치 단위 작업 undo 결과 */
@@ -91,8 +93,9 @@ export class BranchOperationService {
   }
 
   /**
-   * source 브랜치의 커밋을 현재 브랜치 위에 보존 커밋 형태로 재적용한다.
-   * - 충돌 없는 커밋을 먼저 cherry-pick 하고, 충돌 커밋은 마지막 큐로 미뤄 Conflicts 뷰에 노출한다.
+   * source 브랜치의 커밋을 실제 git rebase 로 현재 브랜치 위에 재적용한다.
+   * - source 브랜치를 직접 움직이지 않고 임시 브랜치에서 rebase 한 뒤 현재 브랜치를 fast-forward 한다.
+   * - 충돌이 나면 Git 이 멈춘 todo 위치 그대로 Conflicts 뷰에 노출한다.
    * @param sourceBranch 재적용할 로컬 브랜치 이름
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
@@ -107,22 +110,18 @@ export class BranchOperationService {
       throw new Error(`Branch '${sourceBranch}' has no commits to rebase merge.`);
     }
     if (await this.hasLocalChanges()) {
-      return this.rebaseMergeWithLocalChanges(sourceBranch, branch, beforeHead, commits);
+      return this.rebaseMergeWithLocalChanges(sourceBranch, branch, beforeHead);
     }
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
     const preserved = await this.preserveLocalChanges(`before branch '${sourceBranch}' rebase merge`);
     try {
-      const result = await runDeferredCommitRebase({
-        kind: "branch-rebase",
-        label: `branch '${sourceBranch}'`,
+      const result = await runBranchRebaseMerge({
         repoRoot: this.repoRoot,
-        commits,
+        sourceBranch,
         destinationBranch: branch,
         beforeHead,
         snapshotRef,
-        sourceRef: sourceBranch,
         preservedStashHash: preserved?.hash,
-        guardCurrentBranch: true,
       });
       return {
         status: result.status,
@@ -132,6 +131,7 @@ export class BranchOperationService {
         afterHead: result.afterHead,
         snapshotRef,
         preservedStashHash: result.preservedStashHash,
+        rebaseTodo: result.rebaseTodo,
       };
     } catch (err) {
       const restored = await this.restoreAfterFailedDeferredRebase(
@@ -147,28 +147,27 @@ export class BranchOperationService {
     }
   }
 
-  /** 로컬 변경이 있을 때 stash 없이 임시 worktree 에서 branch rebase merge 결과를 계산한다. */
+  /** 로컬 변경이 있을 때 stash 없이 임시 worktree 에서 실제 branch rebase merge 결과를 계산한다. */
   private async rebaseMergeWithLocalChanges(
     sourceBranch: string,
     branch: string,
-    beforeHead: string,
-    commits: string[]
+    beforeHead: string
   ): Promise<BranchOperationResult> {
-    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    const worktreePath = await this.createTemporaryWorktree(sourceBranch);
     let keepWorktree = false;
     let snapshotRef = "";
     try {
-      const result = await runDeferredCommitRebase({
-        kind: "branch-rebase",
-        label: `branch '${sourceBranch}'`,
-        repoRoot: worktreePath,
-        commits,
-        destinationBranch: branch,
-        beforeHead,
-        snapshotRef: beforeHead,
-        sourceRef: sourceBranch,
-      });
-      if (result.status === "conflicts") {
+      try {
+        const base = (await runGit(["merge-base", beforeHead, sourceBranch], this.repoRoot)).trim();
+        await runGit(
+          ["rebase", "--onto", beforeHead, base],
+          worktreePath,
+          { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" } }
+        );
+      } catch (err) {
+        if (!await this.hasUnmergedChangesIn(worktreePath)) {
+          throw err;
+        }
         keepWorktree = true;
         throw new Error(
           `Branch '${sourceBranch}' rebase merge has conflicts. ` +
@@ -176,7 +175,7 @@ export class BranchOperationService {
             `Resolve or inspect the preserved temporary worktree: ${worktreePath}.`
         );
       }
-      const afterHead = result.afterHead || await this.currentHeadIn(worktreePath);
+      const afterHead = await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(branch, beforeHead);
       await this.assertStillOnBranch(branch, beforeHead, afterHead);
       try {
@@ -212,7 +211,7 @@ export class BranchOperationService {
 
   /**
    * 현재 브랜치의 마지막 branch operation 을 시작 전 snapshot 으로 되돌린다.
-   * - rebase merge 가 충돌로 멈춘 경우에는 먼저 해당 cherry-pick 을 abort 한다.
+   * - rebase merge 가 충돌로 멈춘 경우에는 먼저 진행 중인 git 작업을 abort 한다.
    * @param branchName undo 대상 브랜치. 생략하면 현재 브랜치를 사용한다.
    * @returns 복원된 브랜치와 HEAD
    */
@@ -226,6 +225,11 @@ export class BranchOperationService {
       await this.switchToBranch(branch);
     }
     await this.resetCurrentBranchToSnapshot(snapshotRef);
+    await restorePendingBranchRebaseMergeLocalChangesForBranch(
+      this.repoRoot,
+      branch,
+      "Branch operation was undone, but preserved local changes could not be restored."
+    );
     await restorePendingDeferredCommitRebaseLocalChangesForBranch(
       this.repoRoot,
       branch,

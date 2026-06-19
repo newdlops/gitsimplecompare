@@ -9,12 +9,15 @@ import { BranchOperationService, type BranchOperationResult } from "../git/branc
 import type { BranchKind } from "../git/gitTypes";
 import { GitLogService } from "../git/gitLogService";
 import { logError, logInfo } from "../ui/outputLog";
+import type { ToWebviewMessage } from "./graphProtocol";
+import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
 
 export type BranchMergeActionKind = "squash" | "rebase" | "undo";
 
 interface GraphBranchMergeActionDeps {
   logService: GitLogService;
   refreshGraph: () => Promise<void>;
+  post?: (message: ToWebviewMessage) => void;
 }
 
 /**
@@ -71,7 +74,7 @@ export async function rebaseMergeBranch(
 ): Promise<void> {
   if (!(await confirm(
     vscode.l10n.t(
-      "Rebase merge branch '{0}' into the current branch? Clean commits are applied first; conflict commits are shown last.",
+      "Rebase merge branch '{0}' into the current branch? Git rebase order is preserved and conflicts pause at the current todo.",
       sourceBranch
     ),
     vscode.l10n.t("Rebase Merge")
@@ -191,6 +194,14 @@ async function handleBranchOperationConflicts(
   await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
   await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
   if (operation === "rebase") {
+    deps.post?.(graphRebaseTodoProgressMessage({
+      action: "run",
+      phase: "conflicts",
+      title: vscode.l10n.t("Branch rebase merge paused"),
+      detail: vscode.l10n.t("Resolve the current todo, then Continue. Remaining todo items stay visible here."),
+      progress: result.rebaseTodo,
+      active: true,
+    }));
     vscode.window.showWarningMessage(
       result.preservedStashHash
         ? vscode.l10n.t(

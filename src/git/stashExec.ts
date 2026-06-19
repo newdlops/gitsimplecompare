@@ -1,7 +1,11 @@
 // stash 계열 git 명령을 실행하는 공통 헬퍼.
 // - 일부 저장소에서 fsmonitor daemon IPC 가 깨져 있으면 stash apply/pop/push 가 index 쓰기 단계에서
 //   `could not write index` 로 실패할 수 있어, stash 명령에는 fsmonitor 를 명시적으로 끈다.
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { GitError, runGit, type RunGitOptions } from "./gitExec";
+import { gitPathArgs } from "./ignoreRules";
 
 export interface PreservedLocalChangesStash {
   hash: string;
@@ -28,6 +32,50 @@ export function runStash(
       await options?.beforeRetry?.();
     },
   });
+}
+
+/**
+ * 사용자가 선택한 경로만 stash 한다.
+ * - 경로가 많거나 길면 argv 로 직접 넘기지 않고 `--pathspec-from-file` 을 사용해 OS 인자 길이와
+ *   pathspec quoting 문제를 피한다.
+ * - 선택 경로가 있으면 ignored 파일도 명시 선택 대상으로 보존해야 하므로 `--all` 을 사용한다.
+ * - 경로가 없으면 전체 변경을 stash 한다.
+ * @param repoRoot git 저장소 루트
+ * @param paths stash 할 저장소 상대 경로 목록
+ * @param message stash 메시지
+ */
+export async function stashPushPaths(
+  repoRoot: string,
+  paths: string[],
+  message?: string
+): Promise<void> {
+  await refreshIndex(repoRoot);
+  const normalized = gitPathArgs(paths);
+  const includeIgnored = normalized.length > 0;
+  const args = ["push", includeIgnored ? "--all" : "-u", ...messageArgs(message)];
+  if (!normalized.length) {
+    await runStash(args, repoRoot);
+    return;
+  }
+  await runStashPushPathspec(args, normalized, repoRoot);
+}
+
+/** pathspec 파일 방식으로 stash push 를 실행하고 구버전 git 에서는 argv fallback 을 사용한다. */
+async function runStashPushPathspec(
+  args: string[],
+  paths: string[],
+  repoRoot: string
+): Promise<void> {
+  try {
+    await runStashWithPathspecFile(args, paths, repoRoot);
+  } catch (err) {
+    if (!isUnsupportedPathspecFileError(err)) {
+      throw err;
+    }
+    await runStash([...args, "--", ...paths], repoRoot, {
+      env: { GIT_LITERAL_PATHSPECS: "1" },
+    });
+  }
 }
 
 /**
@@ -74,6 +122,36 @@ export async function pushPreservedLocalChangesStash(
     }
     return stashCreatedAfter(repoRoot, before, false);
   }
+}
+
+/** stash push 메시지 인자를 만든다. */
+function messageArgs(message: string | undefined): string[] {
+  return message ? ["-m", message] : [];
+}
+
+/** pathspec 파일을 사용해 stash push 를 실행한다. */
+async function runStashWithPathspecFile(
+  args: string[],
+  paths: string[],
+  repoRoot: string
+): Promise<void> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gsc-stash-pathspec-"));
+  const file = path.join(dir, "paths");
+  try {
+    await fs.writeFile(file, `${paths.join("\0")}\0`, "utf8");
+    await runStash([
+      ...args,
+      `--pathspec-from-file=${file}`,
+      "--pathspec-file-nul",
+    ], repoRoot, { env: { GIT_LITERAL_PATHSPECS: "1" } });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+/** git 이 pathspec-from-file 옵션을 지원하지 않는지 확인한다. */
+function isUnsupportedPathspecFileError(err: unknown): boolean {
+  return /pathspec-from-file|pathspec-file-nul|unknown option/i.test(errText(err));
 }
 
 /**

@@ -28,8 +28,8 @@ export async function branchSquashMerge(deps: CommandDeps): Promise<void> {
 }
 
 /**
- * 현재 브랜치 위에 source 브랜치의 커밋을 보존 커밋 형태로 재적용한다.
- * - 충돌 없는 커밋을 먼저 적용하고, 충돌 커밋은 마지막에 Conflicts 뷰로 노출한다.
+ * 현재 브랜치 위에 source 브랜치의 커밋을 실제 git rebase 순서로 재적용한다.
+ * - 충돌이 나면 Git 이 멈춘 todo 위치 그대로 Conflicts 뷰로 노출한다.
  * @param deps 명령들이 공유하는 의존성
  */
 export async function branchRebaseMerge(deps: CommandDeps): Promise<void> {
@@ -265,7 +265,7 @@ async function confirmBranchOperation(
   const message = operation === "squash"
     ? vscode.l10n.t("Squash merge branch '{0}' into the current branch?", sourceBranch)
     : vscode.l10n.t(
-        "Rebase merge branch '{0}' into the current branch? Clean commits are applied first; conflict commits are shown last.",
+        "Rebase merge branch '{0}' into the current branch? Git rebase order is preserved and conflicts pause at the current todo.",
         sourceBranch
       );
   return (

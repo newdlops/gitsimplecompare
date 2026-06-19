@@ -6,7 +6,7 @@ import * as path from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitError, runGit } from "./gitExec";
-import { runStash } from "./stashExec";
+import { runStash, stashPushPaths } from "./stashExec";
 import {
   appendIgnoreEntries,
   gitPathArgs,
@@ -378,20 +378,13 @@ export class GitService {
 
   /**
    * 지정 경로(없으면 전체)를 stash 한다(`git stash push`).
-   * - 선택 파일만 stash: `git stash push -u [-m msg] -- <paths>`.
-   * - `-u` 로 지정 경로 중 미추적 파일도 포함한다(추적만 있으면 무해).
+   * - 선택 파일은 `--all` 로 ignored 파일까지 포함하고 pathspec 파일로 전달해 긴 경로 목록을 안전하게 처리한다.
+   * - 전체 stash 는 `-u` 로 미추적 파일만 포함해 저장소 전체 ignored 산출물을 쓸어 담지 않는다.
    * @param paths   stash 할 저장소 상대 경로(빈 배열이면 전체 변경)
    * @param message stash 메시지(선택)
    */
   async stashPush(paths: string[], message?: string): Promise<void> {
-    const args = ["push", "-u"];
-    if (message) {
-      args.push("-m", message);
-    }
-    if (paths.length) {
-      args.push("--", ...paths);
-    }
-    await runStash(args, this.repoRoot);
+    await stashPushPaths(this.repoRoot, paths, message);
     this.invalidateStatusCache();
   }
 
