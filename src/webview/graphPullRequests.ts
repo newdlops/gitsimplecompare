@@ -69,10 +69,11 @@ export class GraphPullRequestPager {
     repoRoot: string,
     requestId: string,
     query: string,
+    cursor: string | undefined,
     post: PostGraphMessage
   ): Promise<void> {
     try {
-      const result = await searchPullRequests(repoRoot, query);
+      const result = await searchPullRequests(repoRoot, query, cursor);
       this.pullRequests = mergePullRequests(this.pullRequests, result.pullRequests);
       post({ type: "pullRequestSearchResult", requestId, result });
       logInfo("graph pull request search sent", {

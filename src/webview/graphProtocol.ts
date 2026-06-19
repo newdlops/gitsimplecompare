@@ -65,7 +65,7 @@ export type FromWebviewMessage =
   | { type: "push" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
-  | { type: "searchPullRequests"; requestId: string; query: string }
+  | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }

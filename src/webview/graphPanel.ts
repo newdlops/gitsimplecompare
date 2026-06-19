@@ -167,7 +167,7 @@ export class GitGraphPanel {
       } else if (msg.type === "refreshPullRequests") {
         await this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, "manual", (message) => this.post(message));
       } else if (msg.type === "searchPullRequests") {
-        await this.pullRequests.search(this.logService.repoRoot, msg.requestId, msg.query, (message) => this.post(message));
+        await this.pullRequests.search(this.logService.repoRoot, msg.requestId, msg.query, msg.cursor, (message) => this.post(message));
       } else if (msg.type === "loadMorePullRequests") {
         await this.pullRequests.loadMore(this.logService.repoRoot, this.lastLocalBranches, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequestDetail") {

@@ -10,6 +10,7 @@ export interface PullRequestSearchResult {
   query: string;
   pullRequests: PullRequestInfo[];
   hasMore: boolean;
+  nextCursor?: string;
   totalCount: number;
 }
 
@@ -20,6 +21,7 @@ interface GhSearchResponse {
       nodes?: GhSearchPullRequest[];
       pageInfo?: {
         hasNextPage?: boolean;
+        endCursor?: string;
       };
     };
   };
@@ -52,13 +54,15 @@ interface GhSearchPullRequest {
   };
 }
 
-const PULL_REQUEST_SEARCH_LIMIT = 50;
+const PULL_REQUEST_SEARCH_PAGE_SIZE = 50;
+const PULL_REQUEST_SEARCH_INITIAL_LIMIT = 200;
+const PULL_REQUEST_SEARCH_MORE_LIMIT = 100;
 
 const PULL_REQUEST_SEARCH_QUERY = `
-query($searchQuery: String!, $limit: Int!) {
-  search(query: $searchQuery, type: ISSUE, first: $limit) {
+query($searchQuery: String!, $limit: Int!, $cursor: String) {
+  search(query: $searchQuery, type: ISSUE, first: $limit, after: $cursor) {
     issueCount
-    pageInfo { hasNextPage }
+    pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
         number
@@ -114,7 +118,8 @@ query($owner: String!, $name: String!, $number: Int!) {
  */
 export async function searchPullRequests(
   repoRoot: string,
-  query: string
+  query: string,
+  cursor?: string
 ): Promise<PullRequestSearchResult> {
   const trimmed = query.trim();
   if (!trimmed) {
@@ -123,14 +128,15 @@ export async function searchPullRequests(
   const repository = await repositoryName(repoRoot);
   const [owner, name] = splitRepositoryName(repository);
   const [search, exact] = await Promise.all([
-    searchByText(repoRoot, owner, name, trimmed),
-    searchByNumber(repoRoot, owner, name, trimmed),
+    searchByText(repoRoot, owner, name, trimmed, cursor),
+    cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed),
   ]);
   const pullRequests = mergeByNumber(exact ? [exact, ...search.pullRequests] : search.pullRequests);
   return {
     query,
     pullRequests,
     hasMore: search.hasMore,
+    nextCursor: search.nextCursor,
     totalCount: Math.max(search.totalCount, pullRequests.length),
   };
 }
@@ -140,15 +146,44 @@ async function searchByText(
   repoRoot: string,
   owner: string,
   name: string,
-  query: string
-): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; totalCount: number }> {
+  query: string,
+  cursor: string | undefined
+): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
+  const max = cursor ? PULL_REQUEST_SEARCH_MORE_LIMIT : PULL_REQUEST_SEARCH_INITIAL_LIMIT;
+  const pullRequests: PullRequestInfo[] = [];
+  let nextCursor = cursor;
+  let hasMore = false;
+  let totalCount = 0;
+  do {
+    const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length));
+    pullRequests.push(...page.pullRequests);
+    totalCount = Math.max(totalCount, page.totalCount);
+    nextCursor = page.nextCursor;
+    hasMore = page.hasMore;
+    if (page.pullRequests.length === 0) {
+      break;
+    }
+  } while (hasMore && nextCursor && pullRequests.length < max);
+  return { pullRequests, hasMore, nextCursor, totalCount };
+}
+
+/** GitHub issue search 한 페이지를 읽는다. */
+async function searchPage(
+  repoRoot: string,
+  owner: string,
+  name: string,
+  query: string,
+  cursor: string | undefined,
+  limit: number
+): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
   const out = await runGh([
     "api",
     "graphql",
     "-F",
     `searchQuery=${buildSearchQuery(owner, name, query)}`,
     "-F",
-    `limit=${PULL_REQUEST_SEARCH_LIMIT}`,
+    `limit=${limit}`,
+    ...(cursor ? ["-f", `cursor=${cursor}`] : []),
     "-f",
     `query=${PULL_REQUEST_SEARCH_QUERY}`,
   ], repoRoot);
@@ -156,6 +191,7 @@ async function searchByText(
   return {
     pullRequests: (search?.nodes || []).map(toPullRequestInfo).filter((pr) => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
+    nextCursor: search?.pageInfo?.endCursor,
     totalCount: search?.issueCount ?? 0,
   };
 }
