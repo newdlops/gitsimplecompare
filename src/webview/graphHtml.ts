@@ -33,6 +33,7 @@ export function buildGraphHtml(
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
   const rebaseDetailScriptUri = script(webview, mediaRoot, "graphRebaseDetail.js");
+  const rebaseMovesScriptUri = script(webview, mediaRoot, "graphRebaseMoves.js");
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
@@ -174,6 +175,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseMovesScriptUri}"></script>
   <script nonce="${nonce}" src="${rebasePreviewScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseProgressScriptUri}"></script>

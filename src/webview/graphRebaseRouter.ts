@@ -15,9 +15,15 @@ import {
   graphRebaseStartingProgress,
 } from "./graphRebaseProgress";
 import type { GraphRebaseProgressAction } from "./graphRebaseProgress";
+import {
+  beginGraphRebaseSession,
+  recordGraphRebaseSessionCheckpoint,
+  recordGraphRebaseSessionResult,
+} from "./graphRebaseSession";
 import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
 import { readRebaseTodoProgress } from "../git/rebaseTodoProgress";
 import type { RebaseItem, RebaseResult } from "../git/rebaseService";
+import { logError } from "../ui/outputLog";
 
 type GraphRebaseMessage = Extract<
   FromWebviewMessage,
@@ -71,6 +77,15 @@ export async function handleGraphRebaseMessage(
     return;
   }
   if (msg.type === "runGraphRebase") {
+    await beginGraphRebaseSession(
+      {
+        base: msg.base,
+        root: Boolean(msg.root),
+        onto: msg.onto,
+        items: msg.items,
+      },
+      deps
+    );
     await runWithProgress(deps, "run", msg.items, () =>
       runGraphRebase(
         msg.base,
@@ -106,10 +121,39 @@ async function runWithProgress(
   task: () => Promise<RebaseResult | GraphRebaseControlResult>
 ): Promise<void> {
   deps.post(graphRebaseStartingProgress(action, items));
+  await recordGraphRebaseSessionCheckpoint(
+    deps.logService.repoRoot,
+    action,
+    items
+  ).catch((err) => logError("graph rebase session checkpoint failed", err, {
+    repoRoot: deps.logService.repoRoot,
+    action,
+  }));
   try {
-    await postRebaseResult(deps, action, await task(), items);
+    const result = await task();
+    await recordGraphRebaseSessionResult(
+      deps.logService.repoRoot,
+      action,
+      result,
+      items
+    ).catch((err) => logError("graph rebase session result failed", err, {
+      repoRoot: deps.logService.repoRoot,
+      action,
+      status: result.status,
+    }));
+    await postRebaseResult(deps, action, result, items);
   } catch (err) {
-    await postRebaseResult(deps, action, { status: "failed", message: errText(err) }, items);
+    const failed = { status: "failed" as const, message: errText(err) };
+    await recordGraphRebaseSessionResult(
+      deps.logService.repoRoot,
+      action,
+      failed,
+      items
+    ).catch((recordErr) => logError("graph rebase session failure result failed", recordErr, {
+      repoRoot: deps.logService.repoRoot,
+      action,
+    }));
+    await postRebaseResult(deps, action, failed, items);
     throw err;
   }
 }

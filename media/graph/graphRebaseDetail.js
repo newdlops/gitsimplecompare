@@ -93,6 +93,7 @@
       `<span class="extension-icon codicon codicon-file"></span>` +
       `<span class="name">${esc(fileName)}</span>${dirHtml}${statHtml(file)}` +
       `<span class="file-rewrite-actions">${editButton}` +
+      moveSelectHtml(item, file, esc) +
       toggleButton("commit", excluded, "Omit here", "Include here",
         "Remove this file change from only this commit",
         "Add this file change back to this commit", esc) +
@@ -102,6 +103,11 @@
       `</span>` +
       `</div>`
     );
+  }
+
+  /** 파일 변경을 다른 커밋으로 옮기는 선택 UI 를 만든다. */
+  function moveSelectHtml(item, file, esc) {
+    return window.GscGraphRebaseMoves?.moveSelectHtml?.(item, file, esc) || "";
   }
 
   /** 파일 row 의 editable diff 버튼을 만든다. */
@@ -203,6 +209,7 @@
         window.GscGraphDetail?.refresh?.();
       });
     });
+    window.GscGraphRebaseMoves?.bind?.(section, hash, () => window.GscGraphDetail?.refresh?.());
     section.querySelector('[data-rebase-action="start-edit-rebase"]')?.addEventListener("click", () => {
       document.getElementById("graph-rebase-run")?.click();
     });

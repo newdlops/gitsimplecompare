@@ -139,23 +139,22 @@
   });
   /** rebase 계획 모드에 들어간다. */
   function enterPlan(nextPlan) {
-    plan = nextPlan;
-    paused = null;
-    operationActive = false;
+    plan = nextPlan; paused = null; operationActive = false;
     changedDuringOperation.clear();
-    items = (nextPlan.commits || []).map((commit) => ({
-      hash: commit.hash,
-      action: "pick",
-      message: "",
-      subject: commit.subject,
-      body: commit.body || "",
-      files: commit.files || [], excludePaths: [], historyExcludePaths: [],
-      originalOrder: 0,
-    }));
-    items.forEach((item, index) => {
-      item.originalOrder = index;
+    const commits = nextPlan.commits || [];
+    const commitByHash = new Map(commits.map((commit) => [commit.hash, commit]));
+    const savedItems = Array.isArray(nextPlan.items) && nextPlan.items.length
+      ? nextPlan.items
+      : commits.map((commit) => ({ hash: commit.hash, action: "pick" }));
+    items = savedItems.map((saved) => {
+      const commit = commitByHash.get(saved.hash) || {};
+      return { hash: saved.hash, action: saved.action || "pick", message: saved.message || "",
+        subject: commit.subject || saved.subject || "", body: commit.body || saved.body || "",
+        files: commit.files || saved.files || [], excludePaths: saved.excludePaths || [],
+        historyExcludePaths: saved.historyExcludePaths || [], fileMoves: saved.fileMoves || [], originalOrder: 0 };
     });
-    originalOrder = items.map((item) => item.hash);
+    originalOrder = commits.length ? commits.map((commit) => commit.hash) : items.map((item) => item.hash);
+    items.forEach((item, index) => { const original = originalOrder.indexOf(item.hash); item.originalOrder = original >= 0 ? original : index; });
     if (pendingDrop && itemHashSet().has(pendingDrop.targetHash)) {
       reorderByVisualTarget(pendingDrop.hash, pendingDrop.targetHash, pendingDrop.after);
     }
@@ -451,7 +450,7 @@
   function planDiffersFromGraph() {
     return Boolean(plan?.onto) ||
       items.some((item, index) => item.hash !== originalOrder[index]) ||
-      items.some((item) => item.action !== "pick" || item.excludePaths?.length || item.historyExcludePaths?.length);
+      items.some((item) => item.action !== "pick" || item.excludePaths?.length || item.historyExcludePaths?.length || item.fileMoves?.length);
   }
 
   /** rebase todo 의 현재 순서를 그래프 row 위치로 투영한다. */
@@ -526,7 +525,8 @@
   function itemsPayload() {
     return items.map((item) => ({ hash: item.hash, action: item.action,
       message: item.message || (item.action === "squash" ? window.GscGraphRebaseMessages?.defaultMessage?.(items, item, item.action, document.getElementById("graph-rebase-include-squash")?.checked !== false) || "" : ""),
-      excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [] }));
+      excludePaths: item.excludePaths || [], historyExcludePaths: item.historyExcludePaths || [],
+      fileMoves: item.fileMoves || [], files: item.files || [] }));
   }
 
   /** edit 파일 버튼에서 rebase 시작 또는 paused edit 파일 열기를 요청한다. */
@@ -546,7 +546,7 @@
     window.GscGraphPostMessage?.({
       type: "continueGraphRebase",
       items: itemsPayload(),
-      changedHashes: Array.from(changedDuringOperation),
+      changedHashes: Array.from(new Set([...changedDuringOperation, ...(window.GscGraphRebaseMoves?.changedHashes?.() || [])])),
     });
   }
 

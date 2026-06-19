@@ -75,18 +75,39 @@ function restorePathFromParent(relPath) {
 }
 
 // op 파일의 신/구 포맷을 모두 읽어 파일 제외 작업 배열로 정규화한다.
-function readExcludeOps(file) {
+function readAmendOps(file) {
   const ops = JSON.parse(fs.readFileSync(file, "utf8"));
+  if (ops.version === 2) {
+    return {
+      files: Array.isArray(ops.files) ? ops.files.map(normalizeRestoreOp).filter((item) => item.path) : [],
+      patches: Array.isArray(ops.patches) ? ops.patches.map(normalizePatchOp).filter((item) => item.patchPath) : [],
+    };
+  }
   if (Array.isArray(ops.files)) {
-    return ops.files
-      .map((item) => ({
-        path: String(item && item.path ? item.path : ""),
-        oldPath: item && item.oldPath ? String(item.oldPath) : "",
-      }))
-      .filter((item) => item.path);
+    return { files: ops.files.map(normalizeRestoreOp).filter((item) => item.path), patches: [] };
   }
   const paths = Array.isArray(ops.excludePaths) ? ops.excludePaths : [];
-  return paths.map((path) => ({ path: String(path || ""), oldPath: "" })).filter((item) => item.path);
+  return {
+    files: paths.map((path) => ({ path: String(path || ""), oldPath: "" })).filter((item) => item.path),
+    patches: [],
+  };
+}
+
+// 파일 restore 작업을 안전한 문자열 필드만 남긴 형태로 정규화한다.
+function normalizeRestoreOp(item) {
+  return {
+    path: String(item && item.path ? item.path : ""),
+    oldPath: item && item.oldPath ? String(item.oldPath) : "",
+  };
+}
+
+// target 커밋에 적용할 patch 작업을 정규화한다.
+function normalizePatchOp(item) {
+  const paths = Array.isArray(item && item.paths) ? item.paths : [];
+  return {
+    patchPath: String(item && item.patchPath ? item.patchPath : ""),
+    paths: paths.map((entry) => String(entry || "")).filter(Boolean),
+  };
 }
 
 // rename 제외처럼 한 파일 변경이 여러 path 를 건드릴 때 중복 없이 순서대로 되돌린다.
@@ -98,6 +119,16 @@ function restoreFileChange(op) {
   paths.push(op.path);
   for (const path of Array.from(new Set(paths))) {
     restorePathFromParent(path);
+  }
+}
+
+// 저장해 둔 source commit patch 를 현재 target commit 에 적용하고 관련 경로를 stage 한다.
+function applyMovePatch(op) {
+  git(["apply", "--3way", "--recount", "--binary", op.patchPath]);
+  if (op.paths.length > 0) {
+    git(["add", "-A", "--", ...op.paths]);
+  } else {
+    git(["add", "-A"]);
   }
 }
 
@@ -139,8 +170,12 @@ try {
       }
     }
   } else if (mode === "amend") {
-    for (const op of readExcludeOps(targetFile)) {
+    const ops = readAmendOps(targetFile);
+    for (const op of ops.files) {
       restoreFileChange(op);
+    }
+    for (const op of ops.patches) {
+      applyMovePatch(op);
     }
     if (hasStagedChanges()) {
       git(["commit", "--amend", "--no-edit", "--allow-empty", "--no-verify"]);

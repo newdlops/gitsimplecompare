@@ -455,6 +455,12 @@
   padding: 0;
 }
 
+.rebase-detail-editor .file-move-target {
+  max-width: 124px;
+  height: 22px;
+  font-size: 11px;
+}
+
 .rebase-detail-editor .edit-unavailable {
   display: inline-flex;
   position: relative;

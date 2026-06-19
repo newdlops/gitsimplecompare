@@ -19,6 +19,7 @@ import {
 import type { GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { buildGraphHtml } from "./graphHtml";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
+import { restoreGraphRebaseSession } from "./graphRebaseSession";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
@@ -155,6 +156,12 @@ export class GitGraphPanel {
         });
         this.resetLoadedGraph();
         await this.reloadGraph();
+        await restoreGraphRebaseSession({
+          extensionUri: this.extensionUri,
+          logService: this.logService,
+          refreshGraph: () => this.refreshAfterGraphAction(),
+          post: (message) => this.post(message),
+        });
         void this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, msg.type, (message) => this.post(message));
       } else if (msg.type === "loadMore") {
         await this.loadNextPage(false);

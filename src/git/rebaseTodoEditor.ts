@@ -5,12 +5,14 @@ import * as path from "node:path";
 import { runGit } from "./gitExec";
 import type { RebaseItem, RebasePausedState } from "./rebaseService";
 import {
-  buildFileExcludeOps,
   collectHistoryExcludePaths,
   isRebaseFileAmendExecLine,
-  rebaseFileAmendExecLine,
-  writeTempFileExcludeOps,
 } from "./rebaseFileExcludes";
+import {
+  hasFileRewriteForItem,
+  hasFileRewriteSelection,
+  rebaseFileRewriteExecLine,
+} from "./rebaseFileRewriteOps";
 
 /** rebase todo 동기화 결과 */
 export interface RebaseTodoUpdateResult {
@@ -62,7 +64,7 @@ export async function updateInProgressRebaseTodo(
   const next: string[] = [];
   const pausedItem = paused ? findItemForPaused(items, paused) : undefined;
   const pausedExec = canRewriteFileOps && pausedItem
-    ? fileExcludeExecLine(pausedItem, historyExcludePaths, options)
+    ? await fileExcludeExecLine(repoRoot, pausedItem, items, historyExcludePaths, options)
     : undefined;
   if (pausedExec) {
     next.push(pausedExec);
@@ -99,7 +101,13 @@ export async function updateInProgressRebaseTodo(
     ) {
       index++;
     }
-    const execLine = fileExcludeExecLine(item, historyExcludePaths, options);
+    const execLine = await fileExcludeExecLine(
+      repoRoot,
+      item,
+      items,
+      historyExcludePaths,
+      options
+    );
     if (execLine) {
       next.push(execLine);
     }
@@ -119,7 +127,7 @@ export async function updateInProgressRebaseTodo(
       const item = itemByHash.get(hash);
       return Boolean(
         item &&
-        hasFileExcludeSelection(item) &&
+        hasFileExcludeSelection(item, items) &&
         !pending.has(item.hash) &&
         !isPausedHash(hash, paused)
       );
@@ -198,30 +206,30 @@ function isPausedHash(hash: string, paused?: RebasePausedState): boolean {
  * @param options helper 경로 옵션
  * @returns 제외 작업이 없거나 helper 경로가 없으면 undefined
  */
-function fileExcludeExecLine(
+async function fileExcludeExecLine(
+  repoRoot: string,
   item: RebaseItem,
+  items: RebaseItem[],
   historyExcludePaths: string[],
   options: RebaseTodoUpdateOptions
-): string | undefined {
+): Promise<string | undefined> {
   if (item.action === "drop" || !options.editorScript) {
     return undefined;
   }
-  const ops = buildFileExcludeOps(item, historyExcludePaths);
-  if (ops.length === 0) {
-    return undefined;
-  }
-  const opFile = writeTempFileExcludeOps(ops);
-  return rebaseFileAmendExecLine(
+  return (await rebaseFileRewriteExecLine(
+    repoRoot,
+    item,
+    items,
+    historyExcludePaths,
     options.nodePath ?? process.execPath,
-    options.editorScript,
-    opFile
-  );
+    options.editorScript
+  ))?.line;
 }
 
 /**
  * 사용자가 파일 단위 제외 상태를 선택해 둔 항목인지 확인한다.
  * @param item rebase todo 항목
  */
-function hasFileExcludeSelection(item: RebaseItem): boolean {
-  return Boolean(item.excludePaths?.length || item.historyExcludePaths?.length);
+function hasFileExcludeSelection(item: RebaseItem, items: RebaseItem[]): boolean {
+  return hasFileRewriteForItem(item, items) || hasFileRewriteSelection(item);
 }

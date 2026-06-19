@@ -12,11 +12,9 @@ import {
   cleanupRebaseEditTempFiles,
 } from "./rebaseEditSession";
 import {
-  buildFileExcludeOps,
   collectHistoryExcludePaths,
-  rebaseFileAmendExecLine,
-  writeTempFileExcludeOps,
 } from "./rebaseFileExcludes";
+import { rebaseFileRewriteExecLine } from "./rebaseFileRewriteOps";
 import {
   cleanupRebaseMessageQueue,
   initializeRebaseMessageQueue,
@@ -41,16 +39,20 @@ export interface RebaseCommit {
 }
 /** todo 한 줄의 동작 */
 export type RebaseAction = "pick" | "reword" | "edit" | "squash" | "fixup" | "drop";
+/** 한 커밋의 파일 변경을 다른 커밋으로 옮기는 계획 */
+export interface RebaseFileMove { sourceHash: string; sourcePath: string; sourceOldPath?: string; targetHash: string; }
 /** 사용자가 짠 계획 한 항목 */
 export interface RebaseItem {
   hash: string;
   action: RebaseAction;
+  /** UI 복원과 rename 처리용 파일 목록 */
+  files?: RebaseCommitFile[];
   /** reword/squash 시 사용할 메시지(빈 값이면 git 기본 메시지 유지) */
   message?: string;
-  /** 이 커밋에서 제외할 파일 경로 목록 */
-  excludePaths?: string[];
+  /** 이 커밋에서 제외할 파일 경로 목록 */ excludePaths?: string[];
   /** 계획 범위 전체 커밋에서 제외할 파일 경로 목록 */
   historyExcludePaths?: string[];
+  /** 다른 커밋으로 옮길 파일 변경 목록 */ fileMoves?: RebaseFileMove[];
 }
 /** rebase 실행 결과 */
 export interface RebaseResult {
@@ -85,6 +87,8 @@ export interface RebasePlanInfo {
   onto?: string;
   baseReason: "upstream" | "selected";
   commits: RebaseCommit[];
+  /** 진행 중인 rebase 복원 시 UI action/message/order 를 되살리기 위한 저장된 todo 항목 */
+  items?: RebaseItem[];
 }
 /**
  * 한 저장소의 인터랙티브 rebase 를 다루는 서비스.
@@ -238,13 +242,10 @@ export class RebaseService {
     const historyExcludePaths = collectHistoryExcludePaths(items);
     for (const item of kept) {
       todoLines.push(`${item.action} ${item.hash}`);
-      const excludeOps = buildFileExcludeOps(item, historyExcludePaths);
-      if (excludeOps.length) {
-        const opFile = writeTempFileExcludeOps(excludeOps);
-        opFiles.push(opFile);
-        todoLines.push(
-          rebaseFileAmendExecLine(process.execPath, editorScript, opFile)
-        );
+      const rewrite = await rebaseFileRewriteExecLine(this.repoRoot, item, kept, historyExcludePaths, process.execPath, editorScript);
+      if (rewrite) {
+        opFiles.push(rewrite.opFile);
+        todoLines.push(rewrite.line);
       }
     }
 
