@@ -8,7 +8,10 @@ import {
   readPendingPullRequestRebase,
   type PendingPullRequestRebase,
 } from "./pullRequestOperationState";
-import { runStash } from "./stashExec";
+import {
+  dropPreservedLocalChangesStash,
+  restorePreservedLocalChangesStash,
+} from "./stashExec";
 
 /** 충돌 해결 후 PR rebase 후처리 결과 */
 export type PullRequestRebaseResumeResult =
@@ -104,7 +107,7 @@ export async function dropPendingPullRequestStashAfterResolvedRestore(
     return { status: "none" };
   }
   if (pending.preservedStashHash) {
-    await dropStash(repoRoot, pending.preservedStashHash);
+    await dropPreservedLocalChangesStash(repoRoot, pending.preservedStashHash);
     await clearPendingPullRequestRebase(repoRoot);
     return { status: "dropped", branch: pending.destinationBranch };
   }
@@ -142,29 +145,9 @@ async function restorePendingLocalChanges(
   failureMessage: string
 ): Promise<void> {
   if (pending.preservedStashHash) {
-    await restoreStash(repoRoot, pending.preservedStashHash, failureMessage);
+    await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   }
   await clearPendingPullRequestRebase(repoRoot);
-}
-
-/**
- * stash 를 작업트리에 적용하고 성공하면 stash 목록에서 제거한다.
- * @param repoRoot git 저장소 루트
- * @param hash stash commit hash
- * @param failureMessage 실패 시 사용자에게 보여줄 앞부분 메시지
- */
-async function restoreStash(
-  repoRoot: string,
-  hash: string,
-  failureMessage: string
-): Promise<void> {
-  try {
-    await runStash(["apply", hash], repoRoot);
-    await dropStash(repoRoot, hash);
-  } catch (err) {
-    const ref = await findStashRef(repoRoot, hash);
-    throw new Error(`${failureMessage} Preserved stash: ${ref ?? hash}. ${errText(err)}`);
-  }
 }
 
 /**
@@ -213,37 +196,4 @@ async function switchToBranch(repoRoot: string, branch: string): Promise<void> {
  */
 async function currentHead(repoRoot: string): Promise<string> {
   return (await runGit(["rev-parse", "--verify", "HEAD"], repoRoot)).trim();
-}
-
-/**
- * stash commit hash 에 대응하는 stash@{n} 참조를 찾는다.
- * @param repoRoot git 저장소 루트
- * @param hash stash commit hash
- */
-async function findStashRef(repoRoot: string, hash: string): Promise<string | undefined> {
-  const list = await runStash(["list", "--format=%gd%x00%H"], repoRoot).catch(() => "");
-  for (const line of list.split(/\r?\n/)) {
-    const [ref, itemHash] = line.split("\0");
-    if (itemHash === hash) {
-      return ref;
-    }
-  }
-  return undefined;
-}
-
-/**
- * 지정한 stash commit 을 stash 목록에서 제거한다.
- * @param repoRoot git 저장소 루트
- * @param hash stash commit hash
- */
-async function dropStash(repoRoot: string, hash: string): Promise<void> {
-  const ref = await findStashRef(repoRoot, hash);
-  if (ref) {
-    await runStash(["drop", ref], repoRoot);
-  }
-}
-
-/** 오류 메시지를 사용자에게 보여줄 짧은 문자열로 만든다. */
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

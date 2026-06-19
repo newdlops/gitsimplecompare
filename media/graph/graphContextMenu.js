@@ -111,6 +111,10 @@
       );
     }
     actions.push(
+      item("Rename Branch", "rename", () => ({
+        type: "renameBranch",
+        branch,
+      })),
       item("Clone Branch", "git-branch-create", () => ({
         type: "cloneBranch",
         branch,

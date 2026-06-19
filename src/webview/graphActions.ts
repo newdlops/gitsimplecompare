@@ -20,6 +20,7 @@ import {
   createBranch,
   deleteBranch,
 } from "./graphBranchActions";
+import { renameBranch } from "./graphBranchRename";
 import { handleBranchMergeAction } from "./graphBranchMergeActions";
 import { FromWebviewMessage } from "./graphProtocol";
 import {
@@ -48,6 +49,7 @@ type GraphActionMessage = Extract<
       | "checkoutCommit"
       | "createBranch"
       | "cloneBranch"
+      | "renameBranch"
       | "deleteBranch"
       | "branchAction"
       | "branchMergeAction"
@@ -104,6 +106,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "checkoutCommit",
   "createBranch",
   "cloneBranch",
+  "renameBranch",
   "deleteBranch",
   "branchAction",
   "branchMergeAction",
@@ -155,6 +158,9 @@ async function dispatchGraphAction(
       return;
     case "cloneBranch":
       await cloneBranch(deps, msg.branch, msg.checkout);
+      return;
+    case "renameBranch":
+      await renameBranch(deps, msg.branch);
       return;
     case "deleteBranch":
       await deleteBranch(deps, msg.branch, msg.kind);

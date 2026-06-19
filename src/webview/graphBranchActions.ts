@@ -11,6 +11,7 @@ import {
   retryCheckoutWithConflicts,
 } from "./graphCheckoutConflicts";
 import { handleBranchMergeAction } from "./graphBranchMergeActions";
+import { renameBranch } from "./graphBranchRename";
 
 export type BranchKind = "local" | "remote";
 
@@ -25,6 +26,7 @@ type BranchQuickAction =
   | "checkoutRemote"
   | "clone"
   | "cloneCheckout"
+  | "rename"
   | "squashMerge"
   | "rebaseMerge"
   | "undoBranchOperation";
@@ -211,6 +213,13 @@ export async function branchAction(
       description: vscode.l10n.t("Create a rebase test branch and switch to it."),
       action: "cloneCheckout",
     },
+    {
+      label: vscode.l10n.t("Rename Branch"),
+      description: current
+        ? vscode.l10n.t("Rename the current local branch.")
+        : vscode.l10n.t("Rename this local branch."),
+      action: "rename",
+    },
     ...(!current
       ? [
           {
@@ -240,6 +249,10 @@ export async function branchAction(
   }
   if (pick.action === "checkout") {
     await checkoutBranch(deps, branch);
+    return;
+  }
+  if (pick.action === "rename") {
+    await renameBranch(deps, branch);
     return;
   }
   if (pick.action === "squashMerge") {

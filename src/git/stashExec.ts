@@ -43,6 +43,7 @@ export async function pushPreservedLocalChangesStash(
   repoRoot: string,
   message: string
 ): Promise<PreservedLocalChangesStash | undefined> {
+  await refreshIndex(repoRoot);
   const before = await topStashHash(repoRoot);
   try {
     await runStash(["push", "--include-untracked", "-m", message], repoRoot);
@@ -72,6 +73,63 @@ export async function pushPreservedLocalChangesStash(
       );
     }
     return stashCreatedAfter(repoRoot, before, false);
+  }
+}
+
+/**
+ * PR/branch operation 이 보존해 둔 로컬 변경 stash 를 작업트리에 복원하고 성공하면 제거한다.
+ * - staged 상태까지 강제로 되살리는 `--index` 는 충돌 시 index 단계에서 자주 멈추므로 사용하지 않는다.
+ * - 복원 충돌/실패가 나면 stash 는 삭제하지 않고, 사용자가 직접 적용할 수 있도록 stash ref 를 오류에 포함한다.
+ * @param repoRoot git 저장소 루트
+ * @param hash 보존 stash commit hash
+ * @param failureMessage 실패 시 사용자에게 보여줄 앞부분 메시지
+ */
+export async function restorePreservedLocalChangesStash(
+  repoRoot: string,
+  hash: string,
+  failureMessage: string
+): Promise<void> {
+  try {
+    await runStash(["apply", hash], repoRoot);
+    await dropPreservedLocalChangesStash(repoRoot, hash);
+  } catch (err) {
+    const ref = await findPreservedLocalChangesStashRef(repoRoot, hash);
+    throw new Error(`${failureMessage} Preserved stash: ${ref ?? hash}. ${errText(err)}`);
+  }
+}
+
+/**
+ * 보존 stash commit hash 에 대응하는 현재 stash@{n} ref 를 찾는다.
+ * @param repoRoot git 저장소 루트
+ * @param hash stash commit hash
+ * @returns 현재 stash stack 에서 찾은 ref. 없으면 undefined
+ */
+export async function findPreservedLocalChangesStashRef(
+  repoRoot: string,
+  hash: string
+): Promise<string | undefined> {
+  const list = await runStash(["list", "--format=%gd%x00%H"], repoRoot).catch(() => "");
+  for (const line of list.split(/\r?\n/)) {
+    const [ref, itemHash] = line.split("\0");
+    if (itemHash === hash) {
+      return ref;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 보존 stash 를 commit hash 기준으로 stash 목록에서 제거한다.
+ * @param repoRoot git 저장소 루트
+ * @param hash stash commit hash
+ */
+export async function dropPreservedLocalChangesStash(
+  repoRoot: string,
+  hash: string
+): Promise<void> {
+  const ref = await findPreservedLocalChangesStashRef(repoRoot, hash);
+  if (ref) {
+    await runStash(["drop", ref], repoRoot);
   }
 }
 

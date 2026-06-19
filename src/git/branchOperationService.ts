@@ -10,7 +10,10 @@ import {
 } from "./deferredCommitRebase";
 import { runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
-import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
+import {
+  pushPreservedLocalChangesStash,
+  restorePreservedLocalChangesStash,
+} from "./stashExec";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -103,6 +106,9 @@ export class BranchOperationService {
     if (!commits.length) {
       throw new Error(`Branch '${sourceBranch}' has no commits to rebase merge.`);
     }
+    if (await this.hasLocalChanges()) {
+      return this.rebaseMergeWithLocalChanges(sourceBranch, branch, beforeHead, commits);
+    }
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
     const preserved = await this.preserveLocalChanges(`before branch '${sourceBranch}' rebase merge`);
     try {
@@ -138,6 +144,69 @@ export class BranchOperationService {
         await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
       }
       throw this.withPreservedStashNotice(err, restored ? undefined : preserved, branch);
+    }
+  }
+
+  /** 로컬 변경이 있을 때 stash 없이 임시 worktree 에서 branch rebase merge 결과를 계산한다. */
+  private async rebaseMergeWithLocalChanges(
+    sourceBranch: string,
+    branch: string,
+    beforeHead: string,
+    commits: string[]
+  ): Promise<BranchOperationResult> {
+    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    let keepWorktree = false;
+    let snapshotRef = "";
+    try {
+      const result = await runDeferredCommitRebase({
+        kind: "branch-rebase",
+        label: `branch '${sourceBranch}'`,
+        repoRoot: worktreePath,
+        commits,
+        destinationBranch: branch,
+        beforeHead,
+        snapshotRef: beforeHead,
+        sourceRef: sourceBranch,
+      });
+      if (result.status === "conflicts") {
+        keepWorktree = true;
+        throw new Error(
+          `Branch '${sourceBranch}' rebase merge has conflicts. ` +
+            "The current working tree was not changed because local changes are present. " +
+            `Resolve or inspect the preserved temporary worktree: ${worktreePath}.`
+        );
+      }
+      const afterHead = result.afterHead || await this.currentHeadIn(worktreePath);
+      snapshotRef = await this.createSnapshot(branch, beforeHead);
+      await this.assertStillOnBranch(branch, beforeHead, afterHead);
+      try {
+        await runGit(["reset", "--keep", afterHead], this.repoRoot);
+      } catch (err) {
+        keepWorktree = true;
+        throw new Error(
+          `Branch '${sourceBranch}' rebase merge result could not be applied to the current working tree. ` +
+            "The replayed result was preserved in a temporary worktree. " +
+            `Temporary worktree: ${worktreePath}. ` +
+            `The undo snapshot was kept at ${snapshotRef}. ${errText(err)}`
+        );
+      }
+      return {
+        status: "completed",
+        branch,
+        sourceBranch,
+        beforeHead,
+        afterHead,
+        snapshotRef,
+      };
+    } catch (err) {
+      if (snapshotRef && !keepWorktree) {
+        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+      }
+      throw err instanceof Error ? err : new Error(String(err));
+    } finally {
+      if (!keepWorktree) {
+        await this.removeTemporaryWorktree(worktreePath);
+      }
     }
   }
 
@@ -462,13 +531,7 @@ export class BranchOperationService {
     if (!preserved) {
       return;
     }
-    try {
-      await runStash(["apply", preserved.hash], this.repoRoot);
-      await this.dropStash(preserved.hash);
-    } catch (err) {
-      const ref = await this.findStashRef(preserved.hash);
-      throw new Error(`${failureMessage} Preserved stash: ${ref ?? preserved.hash}. ${errText(err)}`);
-    }
+    await restorePreservedLocalChangesStash(this.repoRoot, preserved.hash, failureMessage);
   }
 
   /** 충돌로 멈춘 작업에서는 사용자의 원래 변경이 어느 stash 에 보존됐는지 오류에 덧붙인다. */
@@ -491,25 +554,6 @@ export class BranchOperationService {
     return next;
   }
 
-  /** stash commit hash 에 대응하는 stash@{n} 참조를 찾는다. */
-  private async findStashRef(hash: string): Promise<string | undefined> {
-    const list = await runStash(["list", "--format=%gd%x00%H"], this.repoRoot).catch(() => "");
-    for (const line of list.split(/\r?\n/)) {
-      const [ref, itemHash] = line.split("\0");
-      if (itemHash === hash) {
-        return ref;
-      }
-    }
-    return undefined;
-  }
-
-  /** 지정한 stash commit 을 stash 목록에서 제거한다. */
-  private async dropStash(hash: string): Promise<void> {
-    const ref = await this.findStashRef(hash);
-    if (ref) {
-      await runStash(["drop", ref], this.repoRoot);
-    }
-  }
 }
 
 /**

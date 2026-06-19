@@ -26,7 +26,10 @@ import {
 import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestRebaseContinuation";
 import type { PullRequestInfo } from "./pullRequestService";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
-import { pushPreservedLocalChangesStash, runStash } from "./stashExec";
+import {
+  pushPreservedLocalChangesStash,
+  restorePreservedLocalChangesStash,
+} from "./stashExec";
 import { createPrOperationWorktree, removeTemporaryWorktree } from "./temporaryWorktree";
 
 /** PR 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
@@ -941,13 +944,7 @@ export class PullRequestOperationService {
     if (!preserved) {
       return;
     }
-    try {
-      await runStash(["apply", preserved.hash], this.repoRoot);
-      await this.dropStash(preserved.hash);
-    } catch (err) {
-      const ref = await this.findStashRef(preserved.hash);
-      throw new Error(`${failureMessage} Preserved stash: ${ref ?? preserved.hash}. ${errText(err)}`);
-    }
+    await restorePreservedLocalChangesStash(this.repoRoot, preserved.hash, failureMessage);
   }
 
   /** deferred rebase 시작 중 예상치 못하게 실패하면 snapshot 으로 되돌리고 보존 stash 를 복원한다. */
@@ -994,25 +991,6 @@ export class PullRequestOperationService {
     return next;
   }
 
-  /** stash commit hash 에 대응하는 stash@{n} 참조를 찾는다. */
-  private async findStashRef(hash: string): Promise<string | undefined> {
-    const list = await runStash(["list", "--format=%gd%x00%H"], this.repoRoot).catch(() => "");
-    for (const line of list.split(/\r?\n/)) {
-      const [ref, itemHash] = line.split("\0");
-      if (itemHash === hash) {
-        return ref;
-      }
-    }
-    return undefined;
-  }
-
-  /** 지정한 stash commit 을 stash 목록에서 제거한다. */
-  private async dropStash(hash: string): Promise<void> {
-    const ref = await this.findStashRef(hash);
-    if (ref) {
-      await runStash(["drop", ref], this.repoRoot);
-    }
-  }
 }
 
 /** 오류 메시지를 사용자에게 보여줄 짧은 문자열로 만든다. */

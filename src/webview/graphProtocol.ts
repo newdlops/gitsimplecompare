@@ -120,6 +120,7 @@ export type FromWebviewMessage =
   | { type: "checkoutCommit"; hash: string }
   | { type: "createBranch"; hash: string }
   | { type: "cloneBranch"; branch: string; checkout: boolean }
+  | { type: "renameBranch"; branch: string }
   | { type: "deleteBranch"; branch?: string; kind?: "local" | "remote" }
   | { type: "branchAction"; branch: string; kind: "local" | "remote" }
   | { type: "branchMergeAction"; branch: string; action: "squash" | "rebase" | "undo"; kind?: "local" | "remote" }
