@@ -13,6 +13,7 @@ import {
   RebasePlanInfo,
   RebasePausedState,
   RebaseResult,
+  RebaseStoppedState,
   RebaseService,
 } from "../git/rebaseService";
 import { openRefVsWorkingDiff } from "../ui/diffPresenter";
@@ -30,6 +31,7 @@ export interface GraphRebaseControlResult {
   status: "completed" | "conflicts" | "failed" | "paused" | "aborted";
   message?: string;
   paused?: RebasePausedState;
+  stopped?: RebaseStoppedState;
 }
 
 /**
@@ -276,9 +278,10 @@ async function readRebaseControlState(
   }
   const conflicts = await new ConflictService(repoRoot).listConflicts().catch(() => []);
   if (conflicts.length > 0) {
+    const stopped = await rebase.getStoppedState();
     await refreshAfterRebaseControl(deps, "graphRebaseConflict");
     await focusRebaseConflicts(repoRoot);
-    return { status: "conflicts" };
+    return { status: "conflicts", stopped };
   }
   await refreshAfterRebaseControl(deps, "graphRebaseCompleted");
   if (completedMessage) {

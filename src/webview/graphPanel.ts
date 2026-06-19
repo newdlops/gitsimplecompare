@@ -18,13 +18,7 @@ import {
 } from "./graphBranchFilter";
 import type { GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { buildGraphHtml } from "./graphHtml";
-import {
-  abortGraphRebase,
-  continueGraphRebase,
-  openPausedRebaseEditFile,
-  prepareGraphRebase,
-  runGraphRebase,
-} from "./graphRebaseActions";
+import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { FromWebviewMessage, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
@@ -221,51 +215,18 @@ export class GitGraphPanel {
           msg.hash,
           msg.path
         );
-      } else if (msg.type === "openRebaseEditFile") {
-        await openPausedRebaseEditFile(msg.path, {
+      } else if (isGraphRebaseMessage(msg)) {
+        await handleGraphRebaseMessage(msg, {
+          extensionUri: this.extensionUri,
           logService: this.logService,
+          refreshGraph: () => this.refreshAfterGraphAction(),
+          post: (message) => this.post(message),
         });
-      } else if (msg.type === "prepareGraphRebase") {
-        const plan = await prepareGraphRebase(msg.hash, msg.onto, {
-          logService: this.logService,
-        });
-        this.post({ type: "graphRebasePlan", plan });
       } else if (msg.type === "generateGraphRebaseAiPlan") {
         const result = await generateGraphRebaseAiPlan(msg.plan, { logService: this.logService });
         if (result) this.post({ type: "graphRebaseAiPlan", result });
       } else if (msg.type === "configureAiCli") {
         await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
-      } else if (msg.type === "continueGraphRebase" || msg.type === "abortGraphRebase") {
-        const result = msg.type === "continueGraphRebase"
-          ? await continueGraphRebase({ extensionUri: this.extensionUri, logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() }, msg.items, msg.changedHashes)
-          : await abortGraphRebase({ logService: this.logService, refreshGraph: () => this.refreshAfterGraphAction() });
-        if (result.status === "completed" || result.status === "aborted") {
-          this.post({ type: "graphRebaseClear" });
-        } else if (result.status === "paused" && result.paused) {
-          this.post({ type: "graphRebasePaused", paused: result.paused });
-        } else if (result.status === "conflicts") {
-          this.post({ type: "graphRebaseOperation", active: true });
-        }
-      } else if (msg.type === "runGraphRebase") {
-        const result = await runGraphRebase(
-          msg.base,
-          Boolean(msg.root),
-          msg.onto,
-          msg.items,
-          msg.editPath,
-          {
-            extensionUri: this.extensionUri,
-            logService: this.logService,
-            refreshGraph: () => this.refreshAfterGraphAction(),
-          }
-        );
-        if (result.status === "completed" || result.status === "noop") {
-          this.post({ type: "graphRebaseClear" });
-        } else if (result.status === "paused" && result.paused) {
-          this.post({ type: "graphRebasePaused", paused: result.paused });
-        } else if (result.status === "conflicts") {
-          this.post({ type: "graphRebaseOperation", active: true });
-        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

@@ -33,6 +33,7 @@ export function buildGraphHtml(
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
   const rebaseDetailScriptUri = script(webview, mediaRoot, "graphRebaseDetail.js");
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
+  const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
@@ -40,6 +41,7 @@ export function buildGraphHtml(
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
   const detailStyleUri = style(webview, mediaRoot, "graphDetail.css");
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
+  const rebaseProgressStyleUri = style(webview, mediaRoot, "graphRebaseProgress.css");
   const rebaseAiStyleUri = style(webview, mediaRoot, "graphRebaseAi.css");
   const codiconStyleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css")
@@ -76,6 +78,7 @@ export function buildGraphHtml(
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
   <link href="${rebaseStyleUri}" rel="stylesheet" />
+  <link href="${rebaseProgressStyleUri}" rel="stylesheet" />
   <link href="${rebaseAiStyleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
@@ -171,6 +174,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
   <script nonce="${nonce}" src="${rebasePreviewScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseProgressScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseAiScriptUri}"></script>
 </body>
 </html>`;

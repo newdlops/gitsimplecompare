@@ -1,0 +1,160 @@
+/* 그래프 rebase 실행 진행도 배너와 멈춤 위치 강조 스타일. */
+
+#graph-rebase-progress {
+  --rebase-progress-color: var(--vscode-button-background, #0e639c);
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 7px 10px 7px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  border-left: 3px solid var(--rebase-progress-color);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+}
+
+#graph-rebase-progress.phase-paused {
+  --rebase-progress-color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+#graph-rebase-progress.phase-conflicts {
+  --rebase-progress-color: var(--vscode-inputValidation-warningBorder, #cca700);
+}
+
+#graph-rebase-progress.phase-failed {
+  --rebase-progress-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+#graph-rebase-progress.phase-completed {
+  --rebase-progress-color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+}
+
+#graph-rebase-progress.phase-aborted,
+#graph-rebase-progress.phase-cancelled,
+#graph-rebase-progress.phase-noop {
+  --rebase-progress-color: var(--vscode-descriptionForeground, #8c8c8c);
+}
+
+#graph-rebase-progress > .codicon {
+  flex: 0 0 auto;
+  color: var(--rebase-progress-color);
+  font-size: 16px;
+}
+
+.rebase-progress-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.rebase-progress-title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebase-progress-detail {
+  overflow: hidden;
+  opacity: 0.78;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebase-progress-label {
+  flex: 0 0 auto;
+  min-width: 72px;
+  color: var(--rebase-progress-color);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.rebase-progress-meter {
+  position: relative;
+  width: min(260px, 100%);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--rebase-progress-color) 18%, transparent);
+}
+
+.rebase-progress-meter span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  background: var(--rebase-progress-color);
+}
+
+.rebase-progress-meter em {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.row.rebase-progress-target {
+  --rebase-progress-color: var(--vscode-button-background, #0e639c);
+  background: color-mix(in srgb, var(--rebase-progress-color) 14%, var(--vscode-list-hoverBackground));
+  box-shadow:
+    inset 3px 0 0 var(--rebase-progress-color),
+    inset 0 0 0 1px color-mix(in srgb, var(--rebase-progress-color) 42%, transparent);
+}
+
+.row.rebase-progress-paused {
+  --rebase-progress-color: var(--vscode-textLink-foreground, #3794ff);
+}
+
+.row.rebase-progress-conflicts {
+  --rebase-progress-color: var(--vscode-inputValidation-warningBorder, #cca700);
+}
+
+.row.rebase-progress-failed {
+  --rebase-progress-color: var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.row.rebase-row.rebase-progress-target {
+  box-shadow:
+    inset 3px 0 0 var(--rebase-progress-color),
+    inset 0 0 0 1px color-mix(in srgb, var(--branch-color, #61afef) 44%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--rebase-progress-color) 32%, transparent);
+}
+
+#graph-content .node.rebase-progress-target-node {
+  stroke: var(--vscode-button-background, #0e639c);
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px var(--vscode-button-background, #0e639c));
+}
+
+#graph-content .node.rebase-progress-paused-node {
+  stroke: var(--vscode-textLink-foreground, #3794ff);
+  filter: drop-shadow(0 0 4px var(--vscode-textLink-foreground, #3794ff));
+}
+
+#graph-content .node.rebase-progress-conflicts-node {
+  stroke: var(--vscode-inputValidation-warningBorder, #cca700);
+  filter: drop-shadow(0 0 4px var(--vscode-inputValidation-warningBorder, #cca700));
+}
+
+#graph-content .node.rebase-progress-failed-node {
+  stroke: var(--vscode-inputValidation-errorBorder, #f14c4c);
+  filter: drop-shadow(0 0 4px var(--vscode-inputValidation-errorBorder, #f14c4c));
+}
+
+@media (max-width: 760px) {
+  #graph-rebase-progress {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .rebase-progress-label {
+    min-width: 0;
+  }
+}

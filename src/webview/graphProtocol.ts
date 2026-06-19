@@ -27,6 +27,30 @@ export interface GraphLoadState {
   reset: boolean;
 }
 
+/** 그래프 rebase 진행 상태 배너의 단계 */
+export type GraphRebaseProgressPhase =
+  | "running"
+  | "paused"
+  | "conflicts"
+  | "failed"
+  | "completed"
+  | "aborted"
+  | "cancelled"
+  | "noop";
+
+/** 그래프 rebase 진행 상태 배너와 row 강조에 필요한 정보 */
+export interface GraphRebaseProgress {
+  phase: GraphRebaseProgressPhase;
+  action: "run" | "continue" | "abort";
+  title: string;
+  detail?: string;
+  hash?: string;
+  originalHash?: string;
+  step?: number;
+  total?: number;
+  active: boolean;
+}
+
 /** 확장 → 웹뷰 메시지 */
 export type ToWebviewMessage =
   | { type: "graph"; data: GraphData; state: GraphLoadState }
@@ -44,6 +68,7 @@ export type ToWebviewMessage =
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
   | { type: "graphRebaseAiPlan"; result: AiRebasePlanResult }
+  | { type: "graphRebaseProgress"; progress: GraphRebaseProgress }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
   | { type: "graphRebaseOperation"; active: boolean }
   | { type: "graphRebaseClear" }

@@ -57,6 +57,7 @@ export interface RebaseResult {
   status: "completed" | "conflicts" | "failed" | "noop" | "paused";
   message?: string;
   paused?: RebasePausedState;
+  stopped?: RebaseStoppedState;
 }
 
 /** rebase 가 edit todo 에서 멈췄을 때 UI 가 이어받을 상태 */
@@ -65,6 +66,14 @@ export interface RebasePausedState {
   originalHash?: string;
   parent?: string;
   files: RebaseCommitFile[];
+}
+
+/** rebase 가 충돌/실패로 특정 todo 항목에서 멈춘 위치 */
+export interface RebaseStoppedState {
+  /** 현재 HEAD. 충돌 중에는 실패한 커밋 직전의 새 커밋일 수 있다. */
+  hash?: string;
+  /** git rebase 상태 파일의 원본 todo 커밋 해시(stopped-sha). */
+  originalHash?: string;
 }
 
 /** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
@@ -278,14 +287,15 @@ export class RebaseService {
       const op = await detectOperation(this.repoRoot);
       if (op === "rebase") {
         keepTempFiles = true;
+        const stopped = await this.getStoppedState();
         if (await this.hasUnmergedFiles()) {
-          return { status: "conflicts" };
+          return { status: "conflicts", stopped };
         }
         const paused = await this.getPausedEditState();
         if (paused) {
           return { status: "paused", paused };
         }
-        return { status: "conflicts" };
+        return { status: "conflicts", stopped };
       }
       return {
         status: "failed",
@@ -300,6 +310,23 @@ export class RebaseService {
         }
       }
     }
+  }
+
+  /**
+   * 진행 중인 rebase 가 현재 어느 todo 항목에서 멈췄는지 읽는다.
+   * - 충돌 중에는 HEAD 가 실패 커밋 자체가 아니라 직전 커밋을 가리킬 수 있으므로,
+   *   `.git/rebase-merge/stopped-sha` 의 원본 해시를 함께 반환해 그래프의 원래 row 와 연결한다.
+   * @returns rebase 가 진행 중이고 위치를 읽을 수 있으면 현재 HEAD/원본 todo 해시
+   */
+  async getStoppedState(): Promise<RebaseStoppedState | undefined> {
+    if (await detectOperation(this.repoRoot) !== "rebase") {
+      return undefined;
+    }
+    const [hash, originalHash] = await Promise.all([
+      optionalGit(["rev-parse", "HEAD"], this.repoRoot),
+      this.readRebaseStateFile("stopped-sha"),
+    ]);
+    return hash || originalHash ? { hash, originalHash } : undefined;
   }
 
   /**
