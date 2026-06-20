@@ -148,7 +148,13 @@ function refreshSectionsForReason(reason: string): RefreshSection[] {
   if (isWorkingOnlyReason(reason)) {
     return ["workingChanges"];
   }
-  return ["repositories", "workingChanges", "stashes", "comparison"];
+  return [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "stashes",
+    "comparison",
+  ];
 }
 
 /** 작업트리 상태만 바뀐 refresh 사유인지 확인한다. */
