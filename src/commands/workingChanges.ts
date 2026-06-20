@@ -43,14 +43,22 @@ export async function refreshWorkingChanges(
     deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
     return;
   }
+  const svc = deps.registry.get(root);
   const vscodeGroups = options.forceGit
     ? undefined
     : await deps.vscodeGitStatus.getStatusGroups(root);
   if (!options.forceGit && vscodeGroups) {
-    deps.changesView.setStatusGroups(vscodeGroups);
+    try {
+      deps.changesView.setStatusGroups(await svc.addStatusStats(vscodeGroups));
+    } catch (error) {
+      logWarn("vscode git status stats fallback failed", {
+        root,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      deps.changesView.setStatusGroups(vscodeGroups);
+    }
     return;
   }
-  const svc = deps.registry.get(root);
   try {
     deps.changesView.setStatusGroups(
       await svc.getStatusGroups({ force: options.forceGit })

@@ -8,6 +8,10 @@ import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitError, runGit } from "./gitExec";
 import { runStash, stashPushPaths } from "./stashExec";
 import {
+  attachParsedStatusStats,
+  attachStatusStats,
+} from "./statusStats";
+import {
   appendIgnoreEntries,
   gitPathArgs,
   parseUnmergedPaths,
@@ -20,7 +24,6 @@ import {
   parsePorcelainGroups,
 } from "./diffParse";
 import { buildWorkingContentWithoutStaged } from "./unstagedView";
-import { countUntrackedLines } from "./untrackedStats";
 
 /** 작업트리 상태를 스테이징/미스테이징 두 그룹으로 나눈 결과 */
 export interface StatusGroups {
@@ -180,6 +183,22 @@ export class GitService {
     this.statusCache = undefined;
   }
 
+  /**
+   * 외부 상태 provider 가 준 파일 목록에 git numstat 기반 +/- 정보를 보강한다.
+   * - VS Code Git API 는 빠른 파일 상태를 주지만 추가/삭제 라인 수는 주지 않는다.
+   * - `git status` 재스캔 없이 diff numstat 만 읽어 Changes 섹션의 +/- 표시를 유지한다.
+   * @param groups staged/unstaged 로 이미 분류된 파일 목록
+   */
+  async addStatusStats(groups: StatusGroups): Promise<StatusGroups> {
+    const value = await attachStatusStats(
+      this.repoRoot,
+      cloneStatusGroups(groups),
+      (args) => this.run(args)
+    );
+    this.statusCache = { at: Date.now(), value };
+    return cloneStatusGroups(value);
+  }
+
   /** 실제 git status/diff 조회를 수행한다. */
   private async readStatusGroups(): Promise<StatusGroups> {
     const [statusOut, stagedNum, unstagedNum] = await Promise.all([
@@ -188,33 +207,12 @@ export class GitService {
       this.run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => ""),
       this.run(["diff", "--numstat", "-z", "-M"]).catch(() => ""),
     ]);
-    const { staged, unstaged } = parsePorcelainGroups(statusOut);
-    const stagedCounts = parseNumstat(stagedNum);
-    const unstagedCounts = parseNumstat(unstagedNum);
-
-    const withStaged = staged.map((c) => {
-      const s = stagedCounts.get(c.path);
-      return { ...c, additions: s?.additions, deletions: s?.deletions };
-    });
-    const withUnstaged = await Promise.all(unstaged.map(async (c) => {
-      const s = unstagedCounts.get(c.path);
-      if (s) {
-        return { ...c, additions: s.additions, deletions: s.deletions };
-      }
-      if (c.status === "A") {
-        const additions = await countUntrackedLines(this.repoRoot, c.path);
-        if (additions === undefined) {
-          return { ...c };
-        }
-        return {
-          ...c,
-          additions,
-          deletions: 0,
-        };
-      }
-      return { ...c, additions: 0, deletions: 0 };
-    }));
-    return { staged: withStaged, unstaged: withUnstaged };
+    return attachParsedStatusStats(
+      this.repoRoot,
+      parsePorcelainGroups(statusOut),
+      stagedNum,
+      unstagedNum
+    );
   }
 
   /**
