@@ -20,11 +20,17 @@ export async function configureRemoteBranch(deps: CommandDeps): Promise<void> {
     repoRoot: service.repoRoot,
     status: result.status,
     upstream:
-      result.status === "configured" || result.status === "published"
+      result.status === "configured" ||
+      result.status === "published" ||
+      result.status === "unset"
         ? result.result.upstream
         : undefined,
   });
-  if (result.status === "configured" || result.status === "published") {
+  if (
+    result.status === "configured" ||
+    result.status === "published" ||
+    result.status === "unset"
+  ) {
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: "remoteBranchConfigured",
     });

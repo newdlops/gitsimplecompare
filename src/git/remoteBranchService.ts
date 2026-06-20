@@ -31,6 +31,12 @@ export interface RemoteBranchSetupResult {
   remoteBranch: string;
 }
 
+/** 현재 로컬 브랜치의 upstream 설정을 해제한 결과 */
+export interface RemoteBranchUnsetResult {
+  branch: string;
+  upstream?: string;
+}
+
 /** 저장소 한 개의 remote branch 웹 URL 계산 서비스 */
 export class RemoteBranchService {
   constructor(private readonly repoRoot: string) {}
@@ -147,6 +153,7 @@ export class RemoteBranchService {
     remote: string,
     remoteBranch: string
   ): Promise<RemoteBranchSetupResult> {
+    const targetBranch = remoteBranch.trim();
     const state = await this.getCurrentBranchRemoteState();
     if (!state.branch) {
       throw new Error("Cannot set a remote branch while HEAD is detached.");
@@ -154,16 +161,50 @@ export class RemoteBranchService {
     if (!state.remotes.includes(remote)) {
       throw new Error(`No git remote found: ${remote}`);
     }
+    await this.assertValidRemoteBranchName(targetBranch);
     await runGit(
-      ["push", "-u", remote, `HEAD:refs/heads/${remoteBranch}`],
+      ["push", "-u", remote, `HEAD:refs/heads/${targetBranch}`],
       this.repoRoot
     );
     return {
       branch: state.branch,
-      upstream: `${remote}/${remoteBranch}`,
+      upstream: `${remote}/${targetBranch}`,
       remote,
-      remoteBranch,
+      remoteBranch: targetBranch,
     };
+  }
+
+  /**
+   * 현재 로컬 브랜치의 upstream 연결만 제거한다.
+   * - 로컬 브랜치와 원격 브랜치는 삭제하지 않고, branch.*.remote/merge 추적 설정만 제거한다.
+   * @returns 해제된 로컬 브랜치와 이전 upstream 정보
+   */
+  async unsetCurrentBranchUpstream(): Promise<RemoteBranchUnsetResult> {
+    const state = await this.getCurrentBranchRemoteState();
+    if (!state.branch) {
+      throw new Error("Cannot set a remote branch while HEAD is detached.");
+    }
+    if (!state.upstream) {
+      throw new Error("No remote branch is connected to the current branch.");
+    }
+    await runGit(["branch", "--unset-upstream", state.branch], this.repoRoot);
+    return {
+      branch: state.branch,
+      upstream: state.upstream,
+    };
+  }
+
+  /**
+   * git 이 허용하는 remote branch short name 인지 확인한다.
+   * - push refspec 의 `refs/heads/<name>` 뒤에 붙일 이름이므로 remote prefix 없는 branch 이름만 받는다.
+   * @param remoteBranch 검사할 원격 브랜치 내부 이름(예: feature/a)
+   */
+  async assertValidRemoteBranchName(remoteBranch: string): Promise<void> {
+    const name = remoteBranch.trim();
+    if (!name) {
+      throw new Error("Remote branch name is required.");
+    }
+    await runGit(["check-ref-format", "--branch", name], this.repoRoot);
   }
 
   /**

@@ -5,6 +5,7 @@ import {
   CurrentRemoteBranchState,
   RemoteBranchService,
   RemoteBranchSetupResult,
+  RemoteBranchUnsetResult,
   RemoteTrackingBranch,
 } from "../git/remoteBranchService";
 import { isForcePushRequiredError, gitErrorText } from "../git/pushErrors";
@@ -15,16 +16,16 @@ export type RemoteBranchSetupReason = "manual" | "pull" | "openRemoteBranch";
 export type PromptRemoteBranchSetupResult =
   | { status: "configured"; result: RemoteBranchSetupResult }
   | { status: "published"; result: RemoteBranchSetupResult }
+  | { status: "unset"; result: RemoteBranchUnsetResult }
   | { status: "canceled" }
   | { status: "unavailable" };
 
-type RemoteBranchPick =
-  | (vscode.QuickPickItem & { action: "set"; branch: RemoteTrackingBranch })
-  | (vscode.QuickPickItem & {
-      action: "publish";
-      remote: string;
-      remoteBranch: string;
-    });
+type RemoteBranchPick = vscode.QuickPickItem & {
+  action?: "set" | "publish" | "publishCustom" | "unset" | "addRemote";
+  branch?: RemoteTrackingBranch;
+  remote?: string;
+  remoteBranch?: string;
+};
 
 /**
  * 현재 브랜치의 원격 브랜치를 설정하는 사용자 흐름을 실행한다.
@@ -50,26 +51,47 @@ export async function promptRemoteBranchSetup(
   }
   const currentBranch = state.branch;
 
-  const picked = await vscode.window.showQuickPick(buildRemoteBranchPicks(state, currentBranch), {
-    placeHolder: setupPlaceHolder(currentBranch, reason),
-    matchOnDescription: true,
-    matchOnDetail: true,
-  });
+  const picked = await vscode.window.showQuickPick(
+    buildRemoteBranchPicks(state, currentBranch, reason),
+    {
+      placeHolder: setupPlaceHolder(currentBranch, reason),
+      matchOnDescription: true,
+      matchOnDetail: true,
+    }
+  );
   if (!picked) {
     return { status: "canceled" };
   }
 
-  if (picked.action === "set") {
+  if (picked.action === "set" && picked.branch) {
     return setExistingRemoteBranch(service, picked.branch.name, repoRoot);
   }
-  return publishCurrentBranch(
-    service,
-    state,
-    currentBranch,
-    picked.remote,
-    picked.remoteBranch,
-    repoRoot
-  );
+  if (picked.action === "publish" && picked.remote && picked.remoteBranch) {
+    return publishCurrentBranch(
+      service,
+      state,
+      currentBranch,
+      picked.remote,
+      picked.remoteBranch,
+      repoRoot
+    );
+  }
+  if (picked.action === "publishCustom" && picked.remote) {
+    return publishCustomRemoteBranch(
+      service,
+      state,
+      currentBranch,
+      picked.remote,
+      repoRoot
+    );
+  }
+  if (picked.action === "unset") {
+    return unsetCurrentUpstream(service, state, currentBranch, repoRoot);
+  }
+  if (picked.action === "addRemote") {
+    return runAddRemoteAction();
+  }
+  return { status: "canceled" };
 }
 
 /**
@@ -126,25 +148,60 @@ async function showNoRemoteMessage(): Promise<PromptRemoteBranchSetupResult> {
  */
 function buildRemoteBranchPicks(
   state: CurrentRemoteBranchState,
-  currentBranch: string
+  currentBranch: string,
+  reason: RemoteBranchSetupReason
 ): RemoteBranchPick[] {
-  const existing = state.remoteBranches.map((branch) => ({
-    label: branch.name,
-    description:
-      branch.name === state.upstream
-        ? vscode.l10n.t("current upstream")
-        : vscode.l10n.t("Use existing remote branch"),
-    detail: vscode.l10n.t(
-      "Set '{0}' as the upstream for '{1}'.",
-      branch.name,
-      currentBranch
-    ),
-    action: "set" as const,
-    branch,
-  }));
+  const picks: RemoteBranchPick[] = [
+    {
+      label: remoteStatusLabel(state, currentBranch),
+      kind: vscode.QuickPickItemKind.Separator,
+    },
+  ];
+  if (reason === "manual" && state.upstream) {
+    picks.push({
+      label: vscode.l10n.t("Unset Current Upstream"),
+      description: state.upstreamGone
+        ? vscode.l10n.t("current upstream is gone")
+        : state.upstream,
+      detail: vscode.l10n.t(
+        "Remove only the local upstream setting. The local branch and remote branch are kept."
+      ),
+      action: "unset",
+      alwaysShow: true,
+    });
+  }
+
+  if (state.remoteBranches.length) {
+    picks.push({
+      label: vscode.l10n.t("Existing remote branches"),
+      kind: vscode.QuickPickItemKind.Separator,
+    });
+  }
+  const existing = [...state.remoteBranches]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((branch) => ({
+      label: branch.name,
+      description:
+        branch.name === state.upstream
+          ? vscode.l10n.t("current upstream")
+          : vscode.l10n.t("Use existing remote branch"),
+      detail: vscode.l10n.t(
+        "Set '{0}' as the upstream for '{1}'.",
+        branch.name,
+        currentBranch
+      ),
+      action: "set" as const,
+      branch,
+    }));
+
+  picks.push(...existing);
+  picks.push({
+    label: vscode.l10n.t("Create or update remote branch"),
+    kind: vscode.QuickPickItemKind.Separator,
+  });
   const publish = state.remotes.map((remote) => ({
     label: `${remote}/${currentBranch}`,
-    description: vscode.l10n.t("Push current branch and set upstream"),
+    description: vscode.l10n.t("Push to same branch name"),
     detail: vscode.l10n.t(
       "Create '{0}' on '{1}' and set it as upstream.",
       currentBranch,
@@ -154,7 +211,54 @@ function buildRemoteBranchPicks(
     remote,
     remoteBranch: currentBranch,
   }));
-  return [...existing, ...publish];
+  const custom = state.remotes.map((remote) => ({
+    label: vscode.l10n.t("{0}/<custom branch name>...", remote),
+    description: vscode.l10n.t("Push to custom branch name"),
+    detail: vscode.l10n.t(
+      "Choose the remote branch name to create or update on '{0}'.",
+      remote
+    ),
+    action: "publishCustom" as const,
+    remote,
+    alwaysShow: true,
+  }));
+  picks.push(...publish, ...custom);
+
+  if (reason === "manual") {
+    picks.push(
+      {
+        label: vscode.l10n.t("Remote repositories"),
+        kind: vscode.QuickPickItemKind.Separator,
+      },
+      {
+        label: vscode.l10n.t("Add Remote..."),
+        description: vscode.l10n.t("Run the built-in Git remote setup command."),
+        action: "addRemote",
+      }
+    );
+  }
+  return picks;
+}
+
+/**
+ * QuickPick 상단 구분선에 표시할 현재 remote/upstream 상태를 만든다.
+ * @param state 현재 브랜치 remote 상태
+ * @param currentBranch 현재 로컬 브랜치 이름
+ */
+function remoteStatusLabel(
+  state: CurrentRemoteBranchState,
+  currentBranch: string
+): string {
+  const upstream = state.upstream
+    ? state.upstreamGone
+      ? vscode.l10n.t("{0} (gone)", state.upstream)
+      : state.upstream
+    : vscode.l10n.t("none");
+  return vscode.l10n.t(
+    "Current branch: {0} / upstream: {1}",
+    currentBranch,
+    upstream
+  );
 }
 
 /**
@@ -214,6 +318,85 @@ async function setExistingRemoteBranch(
 }
 
 /**
+ * 현재 브랜치를 사용자가 입력한 remote branch 이름으로 push 하고 upstream 을 설정한다.
+ * - remote 선택은 QuickPick 에서 끝났으므로 여기서는 branch 이름만 추가로 입력받는다.
+ * @param service remote branch git 서비스
+ * @param state 현재 브랜치 remote 상태
+ * @param currentBranch 현재 로컬 브랜치 이름
+ * @param remote push 대상 remote 이름
+ * @param repoRoot 로그에 남길 저장소 루트
+ */
+async function publishCustomRemoteBranch(
+  service: RemoteBranchService,
+  state: CurrentRemoteBranchState,
+  currentBranch: string,
+  remote: string,
+  repoRoot: string
+): Promise<PromptRemoteBranchSetupResult> {
+  const remoteBranch = await vscode.window.showInputBox({
+    title: vscode.l10n.t("Remote branch name"),
+    prompt: vscode.l10n.t(
+      "Enter the branch name to create or update on '{0}'.",
+      remote
+    ),
+    value: currentBranch,
+    ignoreFocusOut: true,
+    validateInput: (value) =>
+      validateRemoteBranchInput(service, value, remote, currentBranch),
+  });
+  if (remoteBranch === undefined) {
+    return { status: "canceled" };
+  }
+  return publishCurrentBranch(
+    service,
+    state,
+    currentBranch,
+    remote,
+    remoteBranch.trim(),
+    repoRoot
+  );
+}
+
+/**
+ * 원격 브랜치명 입력값을 검증한다.
+ * - 사용자는 remote 를 이미 선택했으므로 `origin/foo` 나 `refs/heads/foo` 같은 전체 ref 대신
+ *   remote 내부 branch 이름만 입력해야 한다.
+ * @param service git branch name 검증을 수행할 서비스
+ * @param value 입력값 원문
+ * @param remote 이미 선택된 remote 이름
+ * @param example 안내에 사용할 기본 브랜치 이름 예시
+ */
+async function validateRemoteBranchInput(
+  service: RemoteBranchService,
+  value: string,
+  remote: string,
+  example: string
+): Promise<string | undefined> {
+  const name = value.trim();
+  if (!name) {
+    return vscode.l10n.t("Remote branch name is required.");
+  }
+  if (name.startsWith(`${remote}/`)) {
+    return vscode.l10n.t(
+      "Enter the branch name without the remote prefix '{0}/'.",
+      remote
+    );
+  }
+  if (name.startsWith("refs/")) {
+    return vscode.l10n.t(
+      "Enter a short branch name, for example '{0}'.",
+      example
+    );
+  }
+  try {
+    await service.assertValidRemoteBranchName(name);
+    return undefined;
+  } catch {
+    return vscode.l10n.t("Remote branch name is not a valid git branch name.");
+  }
+}
+
+/**
  * 현재 브랜치를 push 해서 remote branch 를 만들고 upstream 을 설정한다.
  * @param service remote branch git 서비스
  * @param state 현재 브랜치 remote 상태
@@ -263,6 +446,77 @@ async function publishCurrentBranch(
     }
     throw err;
   }
+}
+
+/**
+ * 현재 브랜치의 upstream 추적 설정을 해제한다.
+ * - 브랜치 삭제가 아니므로 확인 문구에 로컬/원격 브랜치가 유지된다는 점을 명확히 보여준다.
+ * @param service remote branch git 서비스
+ * @param state 현재 브랜치 remote 상태
+ * @param currentBranch 현재 로컬 브랜치 이름
+ * @param repoRoot 로그에 남길 저장소 루트
+ */
+async function unsetCurrentUpstream(
+  service: RemoteBranchService,
+  state: CurrentRemoteBranchState,
+  currentBranch: string,
+  repoRoot: string
+): Promise<PromptRemoteBranchSetupResult> {
+  if (!state.upstream) {
+    return { status: "canceled" };
+  }
+  const confirm = vscode.l10n.t("Unset Upstream");
+  const choice = await vscode.window.showWarningMessage(
+    vscode.l10n.t(
+      "Unset upstream '{0}' from local branch '{1}'?",
+      state.upstream,
+      currentBranch
+    ),
+    {
+      modal: true,
+      detail: vscode.l10n.t(
+        "This does not delete the local branch or remote branch."
+      ),
+    },
+    confirm
+  );
+  if (choice !== confirm) {
+    return { status: "canceled" };
+  }
+  const result = await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: vscode.l10n.t("Unsetting remote branch..."),
+    },
+    () => service.unsetCurrentBranchUpstream()
+  );
+  logInfo("remote branch upstream unset", {
+    repoRoot,
+    branch: result.branch,
+    upstream: result.upstream,
+  });
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Remote branch upstream unset from '{0}'.", result.branch)
+  );
+  return { status: "unset", result };
+}
+
+/**
+ * VS Code 내장 Git 확장의 remote 추가 명령을 실행한다.
+ * - remote 추가 뒤 현재 흐름은 재조회 없이 종료하고, 사용자가 다시 설정 메뉴를 열어 최신 상태를 본다.
+ */
+async function runAddRemoteAction(): Promise<PromptRemoteBranchSetupResult> {
+  try {
+    await vscode.commands.executeCommand("git.addRemote");
+  } catch {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Could not run '{0}'. The built-in Git extension is required.",
+        "git.addRemote"
+      )
+    );
+  }
+  return { status: "unavailable" };
 }
 
 /**
