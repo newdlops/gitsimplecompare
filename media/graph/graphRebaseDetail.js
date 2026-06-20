@@ -37,7 +37,7 @@
       `<option value="${action}"${item.action === action ? " selected" : ""}>${action}</option>`
     ).join("");
     const files = (item.files || detail.files || []).map((file) =>
-      fileRowHtml(item, file, paths, item.action === "edit", isPausedHere, esc)
+      fileRowHtml(item, file, paths, isPausedHere, Boolean(paused), esc)
     ).join("");
     return (
       `<section class="rebase-detail-editor" data-rebase-hash="${esc(detail.hash)}">` +
@@ -75,12 +75,10 @@
   }
 
   /** 변경 파일 한 줄과 제외 버튼을 만든다. */
-  function fileRowHtml(item, file, history, editMode, isPausedHere, esc) {
+  function fileRowHtml(item, file, history, isPausedHere, hasPaused, esc) {
     const excluded = (item.excludePaths || []).includes(file.path);
     const historyExcluded = history.has(file.path);
-    const editButton = editMode
-      ? fileEditButton(file, isPausedHere, esc)
-      : "";
+    const editButton = fileEditButton(file, isPausedHere, item.action === "edit", hasPaused, esc);
     const slash = file.path.lastIndexOf("/");
     const fileName = slash >= 0 ? file.path.slice(slash + 1) : file.path;
     const dir = slash >= 0 ? file.path.slice(0, slash) : "";
@@ -111,14 +109,21 @@
   }
 
   /** 파일 row 의 editable diff 버튼을 만든다. */
-  function fileEditButton(file, isPausedHere, esc) {
+  function fileEditButton(file, isPausedHere, alreadyEdit, hasPaused, esc) {
     if (file.status.startsWith("D")) {
       const tooltip = title("Deleted files cannot be opened as editable working-tree diffs", esc);
       return `<span class="edit-unavailable icon-action" ${tooltip}>` +
         `<span class="codicon codicon-warning" aria-hidden="true"></span></span>`;
     }
+    if (hasPaused && !isPausedHere) {
+      const tooltip = title("Finish the current paused edit before opening another commit file", esc);
+      return `<span class="edit-unavailable icon-action" ${tooltip}>` +
+        `<span class="codicon codicon-lock" aria-hidden="true"></span></span>`;
+    }
     const tooltip = isPausedHere
       ? "Open a temporary editable copy of this historical file; Continue applies it to the paused commit"
+      : alreadyEdit
+      ? "Start rebase and open this file when Git pauses at this edit commit"
       : "Start rebase and open a temporary editable copy of this file when Git pauses here";
     return iconButton("open-edit-file", "edit", tooltip, esc);
   }
@@ -215,7 +220,7 @@
     });
     section.querySelector('[data-rebase-action="open-first-edit-file"]')?.addEventListener("click", () => {
       const path = section.querySelector(".file-row:not([data-deleted])")?.dataset.path || "";
-      openEditFile(path);
+      openEditFile(hash, path);
     });
     section.querySelector('[data-rebase-action="continue-rebase"]')?.addEventListener("click", () => {
       window.GscGraphRebaseContext?.continueRebase?.();
@@ -225,17 +230,17 @@
     });
     section.querySelectorAll('[data-rebase-action="open-edit-file"]').forEach((button) => {
       button.addEventListener("click", () => {
-        openEditFile(button.closest(".file-row")?.dataset.path || "");
+        openEditFile(hash, button.closest(".file-row")?.dataset.path || "");
       });
     });
   }
 
   /** edit 정지 지점의 파일을 확장 호스트에 요청해 editable diff 로 연다. */
-  function openEditFile(path) {
+  function openEditFile(hash, path) {
     if (!path) {
       return;
     }
-    window.GscGraphRebaseContext?.requestEditFile?.(path);
+    window.GscGraphRebaseContext?.requestEditFile?.(hash, path);
   }
 
   /** rebase edit 커밋에서는 중복 changed-files 패널을 숨겨 edit 전용 패널만 남긴다. */

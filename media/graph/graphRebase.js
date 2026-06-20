@@ -522,14 +522,8 @@
     if (!plan) {
       return;
     }
-    window.GscGraphPostMessage?.({
-      type: "runGraphRebase",
-      base: plan.base,
-      root: Boolean(plan.root),
-      onto: plan.onto || "",
-      editPath,
-      items: itemsPayload(),
-    });
+    window.GscGraphPostMessage?.({ type: "runGraphRebase", base: plan.base,
+      root: Boolean(plan.root), onto: plan.onto || "", editPath, items: itemsPayload() });
   }
 
   /** 확장 호스트에 보낼 현재 rebase 계획 payload 를 만든다. */
@@ -541,7 +535,7 @@
   }
 
   /** edit 파일 버튼에서 rebase 시작 또는 paused edit 파일 열기를 요청한다. */
-  function requestEditFile(path) {
+  function requestEditFile(hash, path) {
     if (!path) {
       return;
     }
@@ -549,16 +543,21 @@
       window.GscGraphPostMessage?.({ type: "openRebaseEditFile", path });
       return;
     }
+    const item = itemForHash(hash);
+    if (!item) {
+      return;
+    }
+    if (item.action !== "edit") {
+      setAction(hash, "edit");
+    }
     runRebase(path);
   }
 
   /** 멈춰 있는 rebase 를 확장 호스트에 계속 진행하도록 요청한다. */
   function continueRebase() {
-    window.GscGraphPostMessage?.({
-      type: "continueGraphRebase",
-      items: itemsPayload(),
-      changedHashes: Array.from(new Set([...changedDuringOperation, ...(window.GscGraphRebaseMoves?.changedHashes?.() || [])])),
-    });
+    const changedHashes = Array.from(new Set([...changedDuringOperation,
+      ...(window.GscGraphRebaseMoves?.changedHashes?.() || [])]));
+    window.GscGraphPostMessage?.({ type: "continueGraphRebase", items: itemsPayload(), changedHashes });
   }
 
   /** 멈춰 있는 rebase 의 현재 todo 항목을 건너뛰도록 요청한다. */
@@ -576,36 +575,14 @@
     if (!plan || !itemHashSet().has(hash)) {
       return [];
     }
-    return [
-      ...ACTIONS.map((action) => ({
-        label: action.label,
-        icon: action.icon,
-        title: action.tooltip,
-        run: () => setAction(hash, action.action),
-      })),
-      {
-        label: "Commit details",
-        icon: "comment-discussion",
-        title: "Edit commit message and excluded files",
-        run: () => openCommitDetails(hash),
-      },
-    ];
+    return [...ACTIONS.map((action) => ({ label: action.label, icon: action.icon,
+      title: action.tooltip, run: () => setAction(hash, action.action) })),
+      { label: "Commit details", icon: "comment-discussion",
+        title: "Edit commit message and excluded files", run: () => openCommitDetails(hash) }];
   }
 
-  window.GscGraphRebaseContext = {
-    contextMenuItems,
-    plan: () => plan,
-    itemForHash,
-    items: () => items,
-    render: renderPlan,
-    paused: () => paused,
-    requestEditFile,
-    continueRebase,
-    skipRebase,
-    abortRebase,
-    updateAction,
-    updateMessage,
-    toggleCommitExclude,
-    toggleHistoryExclude,
-  };
+  window.GscGraphRebaseContext = { contextMenuItems, plan: () => plan, itemForHash,
+    items: () => items, render: renderPlan, paused: () => paused, requestEditFile,
+    continueRebase, skipRebase, abortRebase, updateAction, updateMessage,
+    toggleCommitExclude, toggleHistoryExclude };
 })();
