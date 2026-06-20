@@ -497,13 +497,24 @@
       marker.id = "graph-rebase-drop-marker";
       graphContent.appendChild(marker);
     }
-    marker.style.top = `${row.offsetTop + (isAfter(row, y) ? row.offsetHeight : 0)}px`;
+    marker.style.top = `${visualRowTop(row) + (isAfter(row, y) ? row.getBoundingClientRect().height : 0)}px`;
   }
 
   /** drop marker 를 제거한다. */
   function hideDropMarker() {
     marker?.remove();
     marker = null;
+  }
+
+  /**
+   * transform 이 적용된 row 의 현재 화면 위치를 graphContent 내부 좌표로 변환한다.
+   * - rebase preview 로 row 가 translate 된 뒤 다시 드래그할 때 marker 가 원래 offsetTop 에 그려지는 문제를 막는다.
+   * @param row 기준 row 요소
+   */
+  function visualRowTop(row) {
+    const rowRect = row.getBoundingClientRect();
+    const contentRect = graphContent.getBoundingClientRect();
+    return rowRect.top - contentRect.top;
   }
 
   /** 계획을 실행 메시지로 보낸다. */

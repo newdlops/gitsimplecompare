@@ -409,6 +409,7 @@
     const startY = event.clientY;
     const hash = node.dataset.hash || "";
     const dragHandle = handle || node;
+    const baseTransform = node.getAttribute("transform") || "";
     node.classList.add("dragging-node");
     dragHandle.classList.add("dragging-row");
     dragHandle.setPointerCapture?.(event.pointerId);
@@ -417,14 +418,14 @@
     const onMove = (moveEvent) => {
       const dx = moveEvent.clientX - startX;
       const dy = moveEvent.clientY - startY;
-      node.setAttribute("transform", `translate(${dx} ${dy})`);
+      node.setAttribute("transform", joinSvgTransforms(baseTransform, `translate(${dx} ${dy})`));
       emitDrag("gsc-node-drag", { hash, dx, dy });
     };
     const onUp = (upEvent) => {
       const dx = upEvent.clientX - startX;
       const dy = upEvent.clientY - startY;
       node.classList.remove("dragging-node");
-      node.removeAttribute("transform");
+      restoreSvgTransform(node, baseTransform);
       dragHandle.classList.remove("dragging-row");
       dragHandle.releasePointerCapture?.(event.pointerId);
       dragHandle.removeEventListener("pointermove", onMove);
@@ -435,6 +436,29 @@
     dragHandle.addEventListener("pointermove", onMove);
     dragHandle.addEventListener("pointerup", onUp);
     dragHandle.addEventListener("pointercancel", onUp);
+  }
+
+  /**
+   * 기존 SVG transform 과 이번 drag 이동 transform 을 합친다.
+   * - rebase preview 로 이미 translate 된 node 를 다시 드래그할 때 기존 위치를 덮어쓰지 않기 위함이다.
+   * @param base 기존 transform 속성값
+   * @param delta 이번 pointer drag 로 추가할 transform
+   */
+  function joinSvgTransforms(base, delta) {
+    return base ? `${base} ${delta}` : delta;
+  }
+
+  /**
+   * 드래그 종료 후 node transform 을 시작 시점 값으로 되돌린다.
+   * @param node transform 을 복구할 SVG node
+   * @param base 시작 시점 transform 속성값
+   */
+  function restoreSvgTransform(node, base) {
+    if (base) {
+      node.setAttribute("transform", base);
+    } else {
+      node.removeAttribute("transform");
+    }
   }
 
   /** 해시로 SVG 노드를 찾는다. CSS.escape 의존 없이 dataset 을 직접 비교한다. */
