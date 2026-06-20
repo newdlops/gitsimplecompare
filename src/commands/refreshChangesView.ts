@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { refreshActiveComparison } from "./compareBranches";
 import { refreshStashes } from "./stash";
-import { CommandDeps, discoverRepositories } from "./shared";
+import { CommandDeps, RepoInfo, discoverRepositories } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
@@ -72,7 +72,7 @@ async function refreshChangesViewOnce(
         deps.registry.invalidateStatusCaches();
       }
       if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
-        const repositories = await discoverRepositories(deps.registry);
+        const repositories = await discoverRepositoriesForRefresh(deps);
         deps.changesView.setRepositories(repositories);
       }
       const tasks = [
@@ -99,6 +99,22 @@ async function refreshChangesViewOnce(
   );
 }
 
+/**
+ * Changes 뷰에 표시할 저장소 목록을 조회한다.
+ * - VS Code 내장 Git 이 이미 저장소/브랜치를 알고 있으면 그 상태를 재사용해 `rev-parse` 반복 실행을 피한다.
+ * - 내장 Git API 를 사용할 수 없는 환경에서만 기존 CLI 기반 탐색으로 폴백한다.
+ * @param deps 공유 의존성
+ */
+async function discoverRepositoriesForRefresh(
+  deps: CommandDeps
+): Promise<RepoInfo[]> {
+  const vscodeRepos = await deps.vscodeGitStatus.getRepositories();
+  if (vscodeRepos) {
+    return vscodeRepos;
+  }
+  return discoverRepositories(deps.registry);
+}
+
 type RefreshSection =
   | "repositories"
   | "workingChanges"
@@ -117,7 +133,7 @@ function mergeReason(previous: string, reason: string): string {
 
 /**
  * refresh 사유에 따라 필요한 git 조회 범위를 고른다.
- * - 파일 저장/작업트리 변경/hunk stage 는 stash 와 branch comparison 을 다시 읽지 않는다.
+ * - 파일 저장/작업트리 변경/hunk stage/VS Code Git 상태 이벤트는 stash 와 branch comparison 을 다시 읽지 않는다.
  * @param reason refresh 요청 사유
  */
 function refreshSectionsForReason(reason: string): RefreshSection[] {
@@ -139,6 +155,7 @@ function isWorkingOnlyReason(reason: string): boolean {
         part === "filesCreated" ||
         part === "filesDeleted" ||
         part === "filesRenamed" ||
+        part === "vscodeGit:state" ||
         part.includes("conflict") ||
         part.startsWith("hunkCheckbox:") ||
         part.startsWith("editorHunks:")

@@ -9,6 +9,7 @@ import { ChangesViewProvider } from "../webview/changesViewProvider";
 import { ConflictsController } from "../providers/conflictsController";
 import { HunkCheckboxController } from "../providers/hunkCheckboxController";
 import type { BlameDecoratorController } from "../providers/blameDecoratorController";
+import type { VscodeGitStatusProvider } from "../providers/vscodeGitStatusProvider";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
@@ -23,6 +24,8 @@ export interface CommandDeps {
   hunkCheckboxes: HunkCheckboxController;
   /** 활성 에디터 git blame decoration 컨트롤러 */
   blameDecorations: BlameDecoratorController;
+  /** VS Code 내장 Git 확장이 이미 계산한 상태를 재사용하는 어댑터 */
+  vscodeGitStatus: VscodeGitStatusProvider;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */

@@ -30,11 +30,17 @@ function errText(e: unknown): string {
  * @param deps 공유 의존성
  */
 export async function refreshWorkingChanges(deps: CommandDeps): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc) {
+  const root = deps.changesView.getActiveRepo();
+  if (!root) {
     deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
     return;
   }
+  const vscodeGroups = await deps.vscodeGitStatus.getStatusGroups(root);
+  if (vscodeGroups) {
+    deps.changesView.setStatusGroups(vscodeGroups);
+    return;
+  }
+  const svc = deps.registry.get(root);
   try {
     deps.changesView.setStatusGroups(await svc.getStatusGroups());
   } catch {

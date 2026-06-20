@@ -91,6 +91,13 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     view.webview.html = this.buildHtml(view.webview);
     this.lastRenderPayloadJson = "";
     view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
+    view.onDidChangeVisibility(() => {
+      if (view.visible) {
+        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+          reason: "viewVisible",
+        });
+      }
+    });
     view.onDidDispose(() => {
       this.view = undefined;
       this.clearRenderTimer();
@@ -114,6 +121,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 현재 활성 저장소 루트(없으면 undefined). */
   getActiveRepo(): string | undefined {
     return this.activeRepo;
+  }
+
+  /** Changes 웹뷰가 현재 화면에 보이는지 확인한다(자동 git refresh 게이트로 사용). */
+  isVisible(): boolean {
+    return this.view?.visible ?? false;
   }
 
   /** 작업트리 변경(스테이징/미스테이징)을 갱신한다(Changes 섹션). */
@@ -346,6 +358,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   }): void {
     if (msg.type === "ready") {
       this.render();
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason: "viewReady",
+      });
     } else if (msg.type === "selectRepo" && msg.root) {
       this.selectRepo(msg.root);
     } else if (msg.type === "changeRef" && msg.side) {

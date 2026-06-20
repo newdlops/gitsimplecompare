@@ -14,10 +14,7 @@ import { ConflictsController } from "./providers/conflictsController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
-import {
-  isAnyDiffOpenInProgress,
-  onDidEndDiffOpen,
-} from "./providers/diffOpenGate";
+import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
@@ -64,11 +61,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // 4) 충돌 해결 뷰 + 컨트롤러
   const conflictsProvider = new ConflictsTreeProvider();
-  context.subscriptions.push(
-    vscode.window.createTreeView("gitSimpleCompare.conflicts", {
-      treeDataProvider: conflictsProvider,
-    })
-  );
+  const conflictsTree = vscode.window.createTreeView("gitSimpleCompare.conflicts", {
+    treeDataProvider: conflictsProvider,
+  });
+  context.subscriptions.push(conflictsTree);
+  let conflictsVisible = conflictsTree.visible;
   const conflicts = new ConflictsController(registry, conflictsProvider);
   const hunkCheckboxes = new HunkCheckboxController(registry);
   context.subscriptions.push(hunkCheckboxes.register());
@@ -79,6 +76,14 @@ export function activate(context: vscode.ExtensionContext): void {
     hunkCheckboxes
   );
   context.subscriptions.push(nativeDiffOverlay.register());
+  let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
+  const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
+    if (!changesView.isVisible() && !conflictsVisible) {
+      return;
+    }
+    scheduleRefresh(reason);
+  });
+  context.subscriptions.push(vscodeGitStatus);
 
   // 5) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {
@@ -88,6 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
     conflicts,
     hunkCheckboxes,
     blameDecorations,
+    vscodeGitStatus,
   };
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
@@ -99,23 +105,27 @@ export function activate(context: vscode.ExtensionContext): void {
   // 7) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
 
-  // 8) 충돌/작업변경/stash/브랜치 비교를 초기화하고 파일·git 변경 이벤트에 맞춰 갱신한다.
+  // 8) Git 메타데이터/VS Code Git 상태 이벤트에 맞춰 보이는 뷰만 갱신한다.
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   let refreshReason = "startup";
-  let deferredDiffOpenRefresh = false;
   const pendingGraphRefreshRoots = new Set<string>();
   const refreshEverything = (reason: string): void => {
-    logInfo("refresh requested", { reason });
+    const changesVisible = changesView.isVisible();
+    logInfo("refresh requested", { reason, changesVisible, conflictsVisible });
     for (const repoRoot of pendingGraphRefreshRoots) {
       GitGraphPanel.refreshOpen(repoRoot, reason);
     }
     pendingGraphRefreshRoots.clear();
-    void conflicts.refresh();
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason,
-    });
+    if (conflictsVisible) {
+      void conflicts.refresh();
+    }
+    if (changesVisible) {
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason,
+      });
+    }
   };
-  const scheduleRefresh = (reason: string, delay = 180): void => {
+  scheduleRefresh = (reason: string, delay = 180): void => {
     refreshReason = refreshTimer ? `${refreshReason},${reason}` : reason;
     if (refreshTimer) {
       clearTimeout(refreshTimer);
@@ -124,56 +134,38 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshTimer = undefined;
       const reason = refreshReason;
       refreshReason = "scheduled";
-      if (isAnyDiffOpenInProgress() && isWorkingTreeRefreshReason(reason)) {
-        deferredDiffOpenRefresh = true;
-        logInfo("refresh timer skipped", { reason, active: "diffOpen" });
-        return;
-      }
       refreshEverything(reason);
     }, delay);
   };
-  const watchRefresh = (
-    watcher: vscode.FileSystemWatcher,
-    source: "workspace" | "git"
-  ): void => {
+  const watchRefresh = (watcher: vscode.FileSystemWatcher): void => {
     watcher.onDidCreate(
-      (uri) => scheduleRefreshForUri(source, "create", uri),
+      (uri) => scheduleRefreshForGitUri("create", uri),
       undefined,
       context.subscriptions
     );
     watcher.onDidChange(
-      (uri) => scheduleRefreshForUri(source, "change", uri),
+      (uri) => scheduleRefreshForGitUri("change", uri),
       undefined,
       context.subscriptions
     );
     watcher.onDidDelete(
-      (uri) => scheduleRefreshForUri(source, "delete", uri),
+      (uri) => scheduleRefreshForGitUri("delete", uri),
       undefined,
       context.subscriptions
     );
   };
-  void conflicts.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "startup",
-  });
-  const workspaceWatcher = vscode.workspace.createFileSystemWatcher("**/*");
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
     "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**}"
   );
-  const scheduleRefreshForUri = (
-    source: "workspace" | "git",
+  const scheduleRefreshForGitUri = (
     event: "create" | "change" | "delete",
     uri: vscode.Uri
   ): void => {
-    if (source === "workspace" && isAnyDiffOpenInProgress()) {
-      deferredDiffOpenRefresh = true;
-      return;
-    }
-    const decision = shouldRefreshForUri(source, uri);
+    const decision = shouldRefreshForGitUri(uri);
     if (!decision.refresh) {
       if (shouldLogIgnoredRefresh(decision.reason)) {
         logInfo("refresh event ignored", {
-          source,
+          source: "git",
           event,
           path: uri.fsPath,
           reason: decision.reason,
@@ -182,47 +174,26 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     registry.invalidateStatusCaches();
-    if (source === "git") {
-      clearBranchContentCache();
-      const repoRoot = repoRootFromGitUri(uri);
-      if (repoRoot) {
-        pendingGraphRefreshRoots.add(repoRoot);
-      }
+    clearBranchContentCache();
+    const repoRoot = repoRootFromGitUri(uri);
+    if (repoRoot) {
+      pendingGraphRefreshRoots.add(repoRoot);
     }
-    scheduleRefresh(`${source}:${event}:${decision.reason}`);
+    scheduleRefresh(`git:${event}:${decision.reason}`);
   };
-  watchRefresh(workspaceWatcher, "workspace");
-  watchRefresh(gitWatcher, "git");
+  watchRefresh(gitWatcher);
   context.subscriptions.push(
-    workspaceWatcher,
     gitWatcher,
     new vscode.Disposable(() => {
       if (refreshTimer) {
         clearTimeout(refreshTimer);
       }
     }),
-    vscode.workspace.onDidSaveTextDocument(() => {
-      registry.invalidateStatusCaches();
-      scheduleRefresh("documentSaved");
-    }),
-    vscode.workspace.onDidCreateFiles(() => {
-      registry.invalidateStatusCaches();
-      scheduleRefresh("filesCreated");
-    }),
-    vscode.workspace.onDidDeleteFiles(() => {
-      registry.invalidateStatusCaches();
-      scheduleRefresh("filesDeleted");
-    }),
-    vscode.workspace.onDidRenameFiles(() => {
-      registry.invalidateStatusCaches();
-      scheduleRefresh("filesRenamed");
-    }),
-    onDidEndDiffOpen(() => {
-      if (!deferredDiffOpenRefresh) {
-        return;
+    conflictsTree.onDidChangeVisibility((event) => {
+      conflictsVisible = event.visible;
+      if (event.visible) {
+        void conflicts.refresh();
       }
-      deferredDiffOpenRefresh = false;
-      logInfo("diff open refresh skipped", { reason: "deferredWorkspaceEvents" });
     })
   );
 
@@ -266,23 +237,13 @@ interface RefreshDecision {
 }
 
 /**
- * 파일 시스템 이벤트가 Changes refresh 로 이어져야 하는지 판정한다.
- * - 작업 파일 변경은 빠르게 반영하되, git status 가 만지는 `.git/index`, 빌드 산출물,
- *   로컬 인덱서 캐시처럼 refresh 자체와 무관한 대량 변경 경로는 제외해 로딩 루프를 막는다.
- * @param source 이벤트를 발생시킨 watcher 종류
- * @param uri    변경된 파일 URI
+ * `.git` 파일 시스템 이벤트가 refresh 로 이어져야 하는지 판정한다.
+ * - 작업트리 파일 변경은 VS Code 내장 Git 상태 이벤트에 맡기고, 여기서는 ref/HEAD/merge 상태처럼
+ *   그래프와 가상 문서 캐시에 직접 영향을 주는 안정적인 Git 메타데이터만 본다.
+ * @param uri 변경된 `.git` 내부 파일 URI
  */
-function shouldRefreshForUri(
-  source: "workspace" | "git",
-  uri: vscode.Uri
-): RefreshDecision {
+function shouldRefreshForGitUri(uri: vscode.Uri): RefreshDecision {
   const path = uri.fsPath.replace(/\\/g, "/");
-  if (source === "workspace") {
-    const ignored = ignoredWorkspaceSegment(path);
-    return ignored
-      ? { refresh: false, reason: ignored }
-      : { refresh: true, reason: "working-tree-file" };
-  }
   return isStableGitStatePath(path)
     ? { refresh: true, reason: "stable-git-state" }
     : { refresh: false, reason: "volatile-git-state" };
@@ -291,25 +252,10 @@ function shouldRefreshForUri(
 /**
  * 무시한 파일 이벤트 중 OUTPUT 에 남길 가치가 있는 것만 고른다.
  * - `.git`/fsmonitor cookie 는 git/VS Code 가 자주 만드는 정상 이벤트라 로그만 과도해진다.
- * @param reason shouldRefreshForUri 가 반환한 무시 사유
+ * @param reason shouldRefreshForGitUri 가 반환한 무시 사유
  */
 function shouldLogIgnoredRefresh(reason: string): boolean {
-  return reason !== ".git" && reason !== "volatile-git-state";
-}
-
-/**
- * 작업 파일 watcher 에서 무시할 경로 세그먼트를 찾는다.
- * @param path 슬래시(`/`)로 정규화된 절대 경로
- * @returns 무시 사유 또는 undefined
- */
-function ignoredWorkspaceSegment(path: string): string | undefined {
-  const segments = path.split("/");
-  for (const segment of [".git", "node_modules", "dist", "out", ".vscode-test", ".codeidx", ".zoek-rs", ".lh"]) {
-    if (segments.includes(segment)) {
-      return segment;
-    }
-  }
-  return undefined;
+  return reason !== "volatile-git-state";
 }
 
 /**
@@ -332,15 +278,4 @@ function repoRootFromGitUri(uri: vscode.Uri): string | undefined {
   const marker = "/.git/";
   const index = path.indexOf(marker);
   return index >= 0 ? uri.fsPath.slice(0, index) : undefined;
-}
-
-/** diff open 중에는 작업트리 refresh 를 건너뛸 수 있는지 확인한다. */
-function isWorkingTreeRefreshReason(reason: string): boolean {
-  return (
-    reason.includes("working-tree-file") ||
-    reason.includes("documentSaved") ||
-    reason.includes("filesCreated") ||
-    reason.includes("filesDeleted") ||
-    reason.includes("filesRenamed")
-  );
 }
