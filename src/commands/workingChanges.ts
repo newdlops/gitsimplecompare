@@ -14,6 +14,10 @@ import { GitGraphPanel } from "../webview/graphPanel";
 import { openConflictEditor } from "./conflicts";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
+interface RefreshWorkingChangesOptions {
+  forceGit?: boolean;
+}
+
 /** 활성 저장소의 GitService 를 반환한다(없으면 undefined). */
 function activeService(deps: CommandDeps): GitService | undefined {
   const root = deps.changesView.getActiveRepo();
@@ -28,21 +32,29 @@ function errText(e: unknown): string {
 /**
  * 활성 저장소의 작업트리 변경을 staged/unstaged 로 다시 읽어 Changes 섹션을 갱신한다.
  * @param deps 공유 의존성
+ * @param options forceGit 이면 VS Code Git provider 캐시 대신 GitService 로 직접 다시 읽는다.
  */
-export async function refreshWorkingChanges(deps: CommandDeps): Promise<void> {
+export async function refreshWorkingChanges(
+  deps: CommandDeps,
+  options: RefreshWorkingChangesOptions = {}
+): Promise<void> {
   const root = deps.changesView.getActiveRepo();
   if (!root) {
     deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
     return;
   }
-  const vscodeGroups = await deps.vscodeGitStatus.getStatusGroups(root);
-  if (vscodeGroups) {
+  const vscodeGroups = options.forceGit
+    ? undefined
+    : await deps.vscodeGitStatus.getStatusGroups(root);
+  if (!options.forceGit && vscodeGroups) {
     deps.changesView.setStatusGroups(vscodeGroups);
     return;
   }
   const svc = deps.registry.get(root);
   try {
-    deps.changesView.setStatusGroups(await svc.getStatusGroups());
+    deps.changesView.setStatusGroups(
+      await svc.getStatusGroups({ force: options.forceGit })
+    );
   } catch {
     deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
   }
@@ -107,18 +119,19 @@ export async function stageChanges(
   if (!svc) {
     return;
   }
-  try {
-    if (paths && paths.length) {
-      await svc.stage(paths);
-    } else {
-      await svc.stageAll();
+  await runWorkingTreeWrite(
+    deps,
+    svc,
+    "stage",
+    paths,
+    async (targets) => {
+      if (targets.length) {
+        await svc.stage(targets);
+      } else {
+        await svc.stageAll();
+      }
     }
-  } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
-    );
-  }
-  void refreshWorkingChanges(deps);
+  );
 }
 
 /**
@@ -134,18 +147,87 @@ export async function unstageChanges(
   if (!svc) {
     return;
   }
-  try {
-    if (paths && paths.length) {
-      await svc.unstage(paths);
-    } else {
-      await svc.unstageAll();
+  await runWorkingTreeWrite(
+    deps,
+    svc,
+    "unstage",
+    paths,
+    async (targets) => {
+      if (targets.length) {
+        await svc.unstage(targets);
+      } else {
+        await svc.unstageAll();
+      }
     }
+  );
+}
+
+/**
+ * stage/unstage 쓰기 작업을 progress 와 로그로 감싸고, 완료 후 작업트리 목록을 갱신한다.
+ * - 웹뷰가 busy 상태를 해제할 수 있도록 refreshWorkingChanges 까지 기다린 뒤 반환한다.
+ * @param deps 공유 의존성
+ * @param svc 활성 저장소 GitService
+ * @param action 작업 종류
+ * @param paths 대상 경로 목록(undefined/빈 배열이면 해당 작업 전체)
+ * @param run 실제 git 쓰기 작업
+ */
+async function runWorkingTreeWrite(
+  deps: CommandDeps,
+  svc: GitService,
+  action: "stage" | "unstage",
+  paths: string[] | undefined,
+  run: (targets: string[]) => Promise<void>
+): Promise<void> {
+  const targets = uniqueNonEmpty(paths ?? []);
+  const started = Date.now();
+  const title =
+    action === "stage"
+      ? vscode.l10n.t("Staging changes...")
+      : vscode.l10n.t("Unstaging changes...");
+  const gitMessage = vscode.l10n.t("Updating git index...");
+  logInfo("working tree write started", {
+    root: svc.repoRoot,
+    action,
+    paths: targets.length,
+    all: targets.length === 0,
+  });
+  deps.changesView.setWorkingOperation(true, action, targets, "git");
+  try {
+    await vscode.window.withProgress(
+      {
+        location: { viewId: "gitSimpleCompare.changes" },
+        title,
+      },
+      async (progress) => {
+        try {
+          progress.report({ message: gitMessage });
+          await run(targets);
+          deps.changesView.setWorkingOperation(
+            true,
+            action,
+            targets,
+            "refresh"
+          );
+          progress.report({ message: vscode.l10n.t("Refreshing changes...") });
+        } finally {
+          await refreshWorkingChanges(deps, { forceGit: true });
+        }
+      }
+    );
   } catch (e) {
     vscode.window.showErrorMessage(
       vscode.l10n.t("Action failed: {0}", errText(e))
     );
+  } finally {
+    deps.changesView.setWorkingOperation(false, action, targets);
+    logInfo("working tree write finished", {
+      root: svc.repoRoot,
+      action,
+      paths: targets.length,
+      all: targets.length === 0,
+      elapsed: Date.now() - started,
+    });
   }
-  void refreshWorkingChanges(deps);
 }
 
 /**

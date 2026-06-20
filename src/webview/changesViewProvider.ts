@@ -338,6 +338,40 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /** 작업트리 stage/unstage 진행 상태를 웹뷰에 알린다. */
+  setWorkingOperation(
+    active: boolean,
+    action: "stage" | "unstage",
+    paths?: string[],
+    phase?: "git" | "refresh"
+  ): void {
+    void this.view?.webview.postMessage({
+      type: "workingOperation",
+      active,
+      action,
+      paths,
+      phase,
+    });
+  }
+
+  /** 웹뷰에서 요청한 stage/unstage 작업을 실행하고 busy 상태를 정리한다. */
+  private async runWorkingOperation(
+    action: "stage" | "unstage",
+    paths?: string[]
+  ): Promise<void> {
+    this.setWorkingOperation(true, action, paths, "git");
+    try {
+      await vscode.commands.executeCommand(
+        action === "stage"
+          ? "gitSimpleCompare.stage"
+          : "gitSimpleCompare.unstage",
+        paths
+      );
+    } finally {
+      this.setWorkingOperation(false, action, paths);
+    }
+  }
+
   /**
    * 웹뷰 메시지를 처리한다. 동작은 등록된 명령/내부 메서드로 위임한다.
    * @param msg 웹뷰 메시지
@@ -397,9 +431,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         path: msg.path,
       });
     } else if (msg.type === "stage") {
-      void vscode.commands.executeCommand("gitSimpleCompare.stage", msg.paths);
+      void this.runWorkingOperation("stage", msg.paths);
     } else if (msg.type === "unstage") {
-      void vscode.commands.executeCommand("gitSimpleCompare.unstage", msg.paths);
+      void this.runWorkingOperation("unstage", msg.paths);
     } else if (msg.type === "discard") {
       void vscode.commands.executeCommand("gitSimpleCompare.discard", msg.paths);
     } else if (msg.type === "addToGitignore") {
@@ -457,6 +491,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(mediaRoot, "changes.js"),
       vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
       vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
+      vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
       vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
       vscode.Uri.joinPath(mediaRoot, "changes.css"),
     ]);
@@ -468,6 +503,12 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     );
     const commitBoxScriptUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"), version)
+    );
+    const operationScriptUri = webview.asWebviewUri(
+      withVersion(
+        vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
+        version
+      )
     );
     const styleUri = webview.asWebviewUri(
       withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
@@ -512,6 +553,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   )};window.__gscMenu=${JSON.stringify(
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
+  <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>

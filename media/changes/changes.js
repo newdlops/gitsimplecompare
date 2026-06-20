@@ -673,6 +673,7 @@
     bindEvents();
     applyResize();
     applySelection();
+    window.__gscApplyWorkingOperation?.();
     restoreTransientUi(transient, previousCommitMessageRevision);
     state.commitMessageRevision = p.commit?.messageRevision || 0;
     vscode.setState(state);
@@ -1169,7 +1170,7 @@
     rootEl.querySelectorAll(".group-action").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        vscode.postMessage({ type: el.dataset.gact });
+        postWorkingAction(el.dataset.gact);
       });
     });
     // 그룹 헤더 클릭 → 그 그룹만 접기/펼치기(액션 클릭은 제외).
@@ -1207,7 +1208,7 @@
         }
         const paths = actionPaths(row);
         if (paths.length) {
-          vscode.postMessage({ type: el.dataset.act, paths });
+          postWorkingAction(el.dataset.act, paths);
         }
       });
     });
@@ -1247,12 +1248,12 @@
     if (kind === "staged") {
       nodes.push({
         label: T.unstage,
-        onClick: () => vscode.postMessage({ type: "unstage", paths }),
+        onClick: () => postWorkingAction("unstage", paths),
       });
     } else {
       nodes.push({
         label: T.stage,
-        onClick: () => vscode.postMessage({ type: "stage", paths }),
+        onClick: () => postWorkingAction("stage", paths),
       });
       nodes.push({
         label: T.discard,
@@ -1596,6 +1597,19 @@
     return rowPaths(row);
   }
 
+  /** stage/unstage 는 즉시 busy 상태를 표시하고 중복 클릭을 막은 뒤 extension host 로 보낸다. */
+  function postWorkingAction(type, paths) {
+    if (type !== "stage" && type !== "unstage") {
+      vscode.postMessage({ type, paths });
+      return;
+    }
+    if (window.__gscIsWorkingOperationActive?.()) {
+      return;
+    }
+    window.__gscBeginWorkingOperation?.(type, paths);
+    vscode.postMessage({ type, paths });
+  }
+
   // ── 미트볼/커밋 드롭다운(드릴다운) ──
 
   let dropdownEl = null;
@@ -1761,6 +1775,13 @@
   window.addEventListener("message", (event) => {
     if (event.data.type === "render") {
       render(event.data.payload);
+    } else if (event.data.type === "workingOperation") {
+      window.__gscSetWorkingOperation?.(
+        event.data.active,
+        event.data.action,
+        event.data.paths,
+        event.data.phase
+      );
     }
   });
 
