@@ -23,6 +23,20 @@
   color: inherit;
 }
 
+#graph-search select {
+  flex: 0 0 auto;
+  width: 82px;
+  max-width: 28%;
+  height: 22px;
+  margin-left: 4px;
+  padding: 0 18px 0 6px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  font-size: 11px;
+}
+
 .search-icon-button {
   position: relative;
   display: inline-flex;
@@ -103,6 +117,7 @@
 
 .search-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -110,6 +125,19 @@
   border-top: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   color: var(--vscode-descriptionForeground);
   font-size: 11px;
+}
+
+.search-footer > span {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.search-footer-actions {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .search-footer button {

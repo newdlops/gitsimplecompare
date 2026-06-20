@@ -518,7 +518,7 @@
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);
     graphEl.addEventListener("scroll", maybeLoadMore);
     refreshBtn.addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
-    [["fetch-graph", "fetch"], ["pull-graph", "pull"], ["push-graph", "push"], ["force-push-graph", "forcePush"]].forEach(([id, type]) =>
+    [["fetch-graph", "fetch"], ["fetch-tags-graph", "fetchTags"], ["pull-graph", "pull"], ["push-graph", "push"], ["force-push-graph", "forcePush"]].forEach(([id, type]) =>
       document.getElementById(id)?.addEventListener("click", () => vscode.postMessage({ type }))
     );
     window.GscGraphRemote?.bind(openRemoteBtn, (message) => vscode.postMessage(message));

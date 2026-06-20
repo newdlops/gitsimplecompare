@@ -204,7 +204,12 @@ export class GitGraphPanel {
           loadWindow: (hashes) => this.loadCommitWindow(hashes), post: (message) => this.post(message),
         });
       } else if (msg.type === "graphRepositorySearch") {
-        await sendGraphRepositorySearch({ logService: this.logService, post: (message) => this.post(message) }, msg.requestId, msg.query);
+        await sendGraphRepositorySearch(
+          { logService: this.logService, post: (message) => this.post(message) },
+          msg.requestId,
+          msg.query,
+          msg.scope
+        );
       } else if (msg.type === "fetchGraphSearchRefs") {
         await fetchRefsForGraphSearch(
           {
@@ -213,7 +218,9 @@ export class GitGraphPanel {
             refreshGraph: () => this.refreshAfterFetchAction(),
           },
           msg.requestId,
-          msg.query
+          msg.query,
+          msg.scope,
+          msg.target
         );
       } else if (msg.type === "openPullRequest") {
         await openGraphPullRequest(this.pullRequests.items, msg.number);

@@ -7,6 +7,15 @@ import { runGit } from "./gitExec";
 /** repository-wide graph 검색 결과 종류 */
 export type GraphRepositorySearchKind = "commit" | "branch" | "tag" | "hash";
 
+/** repository-wide graph 검색 대상 범위 */
+export type GraphRepositorySearchScope = "all" | "commit" | "branch" | "tag";
+
+/** repository-wide graph 검색 옵션 */
+export interface GraphRepositorySearchOptions {
+  /** commit/hash/branch/tag 중 어떤 종류를 검색할지 지정한다. */
+  scope?: GraphRepositorySearchScope;
+}
+
 /** 웹뷰 검색 목록에 표시할 repository-wide 결과 한 건 */
 export interface GraphRepositorySearchMatch {
   kind: GraphRepositorySearchKind;
@@ -23,6 +32,7 @@ export interface GraphRepositorySearchMatch {
 /** repository-wide graph 검색 응답 */
 export interface GraphRepositorySearchResult {
   query: string;
+  scope: GraphRepositorySearchScope;
   matches: GraphRepositorySearchMatch[];
   skippedCommitSearch: boolean;
   elapsedMs: number;
@@ -47,24 +57,38 @@ export class GraphSearchService {
   /**
    * 검색어에 맞는 repository-wide 결과를 반환한다.
    * @param query 사용자가 graph 검색창에 입력한 원문
+   * @param options 검색 대상 범위. all 이면 commit/hash/branch/tag 를 모두 검색한다.
    * @returns ref/hash/commit message 검색 결과 묶음
    */
-  async search(query: string): Promise<GraphRepositorySearchResult> {
+  async search(
+    query: string,
+    options: GraphRepositorySearchOptions = {}
+  ): Promise<GraphRepositorySearchResult> {
     const started = Date.now();
+    const scope = normalizeScope(options.scope);
     const terms = searchTerms(query);
     if (!terms.length) {
-      return { query, matches: [], skippedCommitSearch: true, elapsedMs: 0 };
+      return {
+        query,
+        scope,
+        matches: [],
+        skippedCommitSearch: scopeAllows(scope, "commit"),
+        elapsedMs: 0,
+      };
     }
-    const commitSearch = shouldSearchCommits(query, terms);
+    const commitSearch = scopeAllows(scope, "commit") && shouldSearchCommits(query, terms);
     const [refs, hashes, commits] = await Promise.all([
-      this.searchRefs(terms),
-      this.searchHashPrefix(query),
+      scopeAllows(scope, "branch") || scopeAllows(scope, "tag")
+        ? this.searchRefs(terms, scope)
+        : Promise.resolve([]),
+      scopeAllows(scope, "hash") ? this.searchHashPrefix(query) : Promise.resolve([]),
       commitSearch ? this.searchCommits(terms) : Promise.resolve([]),
     ]);
     return {
       query,
+      scope,
       matches: uniqueMatches([...refs, ...hashes, ...commits]).slice(0, MAX_TOTAL_MATCHES),
-      skippedCommitSearch: !commitSearch,
+      skippedCommitSearch: scopeAllows(scope, "commit") && !commitSearch,
       elapsedMs: Date.now() - started,
     };
   }
@@ -72,9 +96,13 @@ export class GraphSearchService {
   /**
    * 전체 로컬/원격 branch 와 tag 이름을 검색한다.
    * @param terms 정규화된 검색 단어 목록
+   * @param scope branch/tag 중 어떤 ref 종류를 허용할지 지정한다.
    * @returns 이름이 부분일치하는 ref 결과
    */
-  private async searchRefs(terms: string[]): Promise<GraphRepositorySearchMatch[]> {
+  private async searchRefs(
+    terms: string[],
+    scope: GraphRepositorySearchScope
+  ): Promise<GraphRepositorySearchMatch[]> {
     const format = "%(refname:short)%00%(*objectname)%00%(objectname)%00%(objecttype)%00%(refname)";
     const out = await runGit([
       "for-each-ref",
@@ -87,6 +115,7 @@ export class GraphSearchService {
       .split("\n")
       .map(parseRefLine)
       .filter((match): match is GraphRepositorySearchMatch => Boolean(match))
+      .filter((match) => scopeAllows(scope, match.kind))
       .filter((match) => matchesTerms(`${match.label} ${match.refName} ${match.kind}`, terms))
       .slice(0, MAX_REF_MATCHES);
   }
@@ -202,6 +231,19 @@ function parseCommitLines(out: string): Omit<GraphRepositorySearchMatch, "kind">
 /** 검색어를 대소문자/공백 차이 없는 단어 목록으로 바꾼다. */
 function searchTerms(query: string): string[] {
   return query.toLowerCase().replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+}
+
+/** 외부에서 받은 검색 범위 값을 지원 범위로 정규화한다. */
+function normalizeScope(scope: GraphRepositorySearchScope | undefined): GraphRepositorySearchScope {
+  return scope === "commit" || scope === "branch" || scope === "tag" ? scope : "all";
+}
+
+/** 검색 범위가 특정 결과 종류를 포함하는지 확인한다. */
+function scopeAllows(
+  scope: GraphRepositorySearchScope,
+  kind: GraphRepositorySearchKind
+): boolean {
+  return scope === "all" || scope === kind || (scope === "commit" && kind === "hash");
 }
 
 /** commit message 검색을 실행할 만큼 검색어가 구체적인지 판단한다. */

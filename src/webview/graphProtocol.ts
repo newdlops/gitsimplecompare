@@ -17,7 +17,13 @@ import type {
 } from "../ai/rebasePlanner";
 import type { PullRequestDetailInfo, PullRequestOverview } from "../git/pullRequestService";
 import type { PullRequestSearchResult } from "../git/pullRequestSearchService";
-import type { GraphRepositorySearchResult } from "../git/graphSearchService";
+import type {
+  GraphRepositorySearchResult,
+  GraphRepositorySearchScope,
+} from "../git/graphSearchService";
+
+/** graph 검색에서 명시적으로 최신화할 ref 종류 */
+export type GraphSearchFetchTarget = "refs" | "tags";
 
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
@@ -107,8 +113,14 @@ export type FromWebviewMessage =
   | { type: "refreshPullRequestDetail"; number: number }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
   | { type: "ensureHeadVisible"; requestId: string }
-  | { type: "graphRepositorySearch"; requestId: string; query: string }
-  | { type: "fetchGraphSearchRefs"; requestId: string; query: string }
+  | { type: "graphRepositorySearch"; requestId: string; query: string; scope?: GraphRepositorySearchScope }
+  | {
+      type: "fetchGraphSearchRefs";
+      requestId: string;
+      query: string;
+      scope?: GraphRepositorySearchScope;
+      target?: GraphSearchFetchTarget;
+    }
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | {
@@ -140,8 +152,12 @@ export type FromWebviewMessage =
   | { type: "undoCommit"; hash: string }
   | { type: "revertCommit"; hash: string; parents?: string[] }
   | { type: "createTag"; hash: string }
+  | { type: "checkoutTag"; tag: string }
+  | { type: "createBranchFromTag"; tag: string }
   | { type: "deleteTag"; tag?: string }
+  | { type: "deleteRemoteTag"; tag: string }
   | { type: "pushTag"; tag?: string }
+  | { type: "copyTagName"; tag: string }
   | { type: "tagAction"; tag: string }
   | { type: "cherryPick"; hash: string }
   | { type: "copyCommitHash"; hash: string }

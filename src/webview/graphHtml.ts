@@ -59,6 +59,7 @@ export function buildGraphHtml(
   ].join("; ");
   const refreshGraphTitle = vscode.l10n.t("Refresh graph");
   const fetchTitle = vscode.l10n.t("Fetch");
+  const fetchTagsTitle = vscode.l10n.t("Fetch Tags");
   const pullTitle = vscode.l10n.t("Pull");
   const pushTitle = vscode.l10n.t("Push");
   const forcePushTitle = vscode.l10n.t("Force Push...");
@@ -66,6 +67,7 @@ export function buildGraphHtml(
   const jumpHeadTitle = vscode.l10n.t("Jump to HEAD");
   const toggleDetailTitle = vscode.l10n.t("Toggle commit details");
   const filterBranchesTitle = vscode.l10n.t("Filter visible branches");
+  const searchScopeTitle = vscode.l10n.t("Search scope");
   const prListTitle = vscode.l10n.t("Show pull requests");
   const prPreviewTitle = vscode.l10n.t("Preview staged pull request");
 
@@ -95,13 +97,17 @@ export function buildGraphHtml(
 	            aria-label="${refreshGraphTitle}" data-tooltip="${refreshGraphTitle}">
 	            <span class="codicon codicon-refresh" aria-hidden="true"></span>
 	          </button>
-	          <button id="fetch-graph" class="icon-button" type="button" title="${fetchTitle}"
-	            aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
-	            <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
-	          </button>
-	          <button id="pull-graph" class="icon-button" type="button" title="${pullTitle}"
-	            aria-label="${pullTitle}" data-tooltip="${pullTitle}">
-	            <span class="codicon codicon-repo-pull" aria-hidden="true"></span>
+          <button id="fetch-graph" class="icon-button" type="button" title="${fetchTitle}"
+            aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
+            <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
+          </button>
+          <button id="fetch-tags-graph" class="icon-button" type="button" title="${fetchTagsTitle}"
+            aria-label="${fetchTagsTitle}" data-tooltip="${fetchTagsTitle}">
+            <span class="codicon codicon-tag" aria-hidden="true"></span>
+          </button>
+          <button id="pull-graph" class="icon-button" type="button" title="${pullTitle}"
+            aria-label="${pullTitle}" data-tooltip="${pullTitle}">
+            <span class="codicon codicon-repo-pull" aria-hidden="true"></span>
 	          </button>
 	          <button id="push-graph" class="icon-button" type="button" title="${pushTitle}"
 	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
@@ -135,12 +141,18 @@ export function buildGraphHtml(
         <div id="graph-search" role="search">
           <span class="codicon codicon-search" aria-hidden="true"></span>
           <input id="graph-search-input" type="search" placeholder="${vscode.l10n.t(
-            "Search commits, branches"
+            "Search commits, branches, tags"
           )}" title="${vscode.l10n.t(
-    "Search by commit hash, commit title, or branch name"
+    "Search by commit hash, commit title, branch name, or tag name"
   )}" aria-label="${vscode.l10n.t(
-    "Search by commit hash, commit title, or branch name"
+    "Search by commit hash, commit title, branch name, or tag name"
   )}" />
+          <select id="graph-search-scope" title="${searchScopeTitle}" aria-label="${searchScopeTitle}">
+            <option value="all">${vscode.l10n.t("All")}</option>
+            <option value="commit">${vscode.l10n.t("Commits")}</option>
+            <option value="branch">${vscode.l10n.t("Branches")}</option>
+            <option value="tag">${vscode.l10n.t("Tags")}</option>
+          </select>
           <button id="graph-branch-filter-button" class="search-icon-button" type="button"
             title="${filterBranchesTitle}" aria-label="${filterBranchesTitle}" data-tooltip="${filterBranchesTitle}"
             aria-haspopup="dialog" aria-expanded="false">

@@ -56,8 +56,13 @@
     const tag = ref.dataset.tagName;
     if (tag) {
       return [
+        item("Checkout Tag", "debug-restart", () => ({ type: "checkoutTag", tag })),
+        item("Create Branch from Tag", "git-branch-create", () => ({ type: "createBranchFromTag", tag })),
         item("Push Tag", "cloud-upload", () => ({ type: "pushTag", tag })),
         item("Delete Local Tag", "trash", () => ({ type: "deleteTag", tag })),
+        item("Delete Remote Tag", "trash", () => ({ type: "deleteRemoteTag", tag })),
+        item("Fetch Tags", "repo-fetch", () => ({ type: "fetchTags" })),
+        item("Copy Tag Name", "copy", () => ({ type: "copyTagName", tag })),
       ];
     }
 

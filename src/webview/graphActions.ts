@@ -35,6 +35,16 @@ import {
   pullCurrent,
   pushCurrent,
 } from "./graphSyncActions";
+import {
+  checkoutTag,
+  copyTagName,
+  createBranchFromTag,
+  createTag,
+  deleteRemoteTag,
+  deleteTag,
+  pushTag,
+  tagAction,
+} from "./graphTagActions";
 
 type GraphActionMessage = Extract<
   FromWebviewMessage,
@@ -58,8 +68,12 @@ type GraphActionMessage = Extract<
       | "commitAction"
       | "undoCommit"
       | "createTag"
+      | "checkoutTag"
+      | "createBranchFromTag"
       | "deleteTag"
+      | "deleteRemoteTag"
       | "pushTag"
+      | "copyTagName"
       | "tagAction"
       | "cherryPick"
       | "revertCommit"
@@ -117,8 +131,12 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "commitAction",
   "undoCommit",
   "createTag",
+  "checkoutTag",
+  "createBranchFromTag",
   "deleteTag",
+  "deleteRemoteTag",
   "pushTag",
+  "copyTagName",
   "tagAction",
   "cherryPick",
   "revertCommit",
@@ -185,13 +203,25 @@ async function dispatchGraphAction(
       await undoCommit(deps, msg.hash);
       return;
     case "createTag":
-      await createTag(deps, msg.hash);
+      await createTag(deps, msg.hash, isRealCommit);
+      return;
+    case "checkoutTag":
+      await checkoutTag(deps, msg.tag);
+      return;
+    case "createBranchFromTag":
+      await createBranchFromTag(deps, msg.tag);
       return;
     case "deleteTag":
       await deleteTag(deps, msg.tag);
       return;
+    case "deleteRemoteTag":
+      await deleteRemoteTag(deps, msg.tag);
+      return;
     case "pushTag":
       await pushTag(deps, msg.tag);
+      return;
+    case "copyTagName":
+      await copyTagName(msg.tag);
       return;
     case "tagAction":
       await tagAction(deps, msg.tag);
@@ -306,85 +336,6 @@ async function undoCommit(
   );
 }
 
-/** 선택 커밋에 새 tag 를 만든다. */
-async function createTag(deps: GraphActionDeps, hash: string): Promise<void> {
-  if (!isRealCommit(hash)) {
-    return;
-  }
-  const name = await vscode.window.showInputBox({
-    prompt: vscode.l10n.t("New tag name"),
-    validateInput: (value) =>
-      value.trim() ? undefined : vscode.l10n.t("Tag name is required."),
-  });
-  if (!name) {
-    return;
-  }
-  await deps.logService.createTag(name.trim(), hash);
-  await deps.refreshGraph();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Tag '{0}' created.", name.trim())
-  );
-}
-
-/** tag chip 의 빠른 액션 메뉴를 보여준다. */
-async function tagAction(deps: GraphActionDeps, tag: string): Promise<void> {
-  const pick = await vscode.window.showQuickPick(
-    [
-      { label: vscode.l10n.t("Push Tag"), action: "push" },
-      { label: vscode.l10n.t("Delete Local Tag"), action: "deleteLocal" },
-      { label: vscode.l10n.t("Delete Remote Tag"), action: "deleteRemote" },
-      { label: vscode.l10n.t("Fetch Tags"), action: "fetch" },
-    ],
-    { placeHolder: tag }
-  );
-  if (!pick) {
-    return;
-  }
-  if (pick.action === "push") {
-    await pushTag(deps, tag);
-  } else if (pick.action === "deleteLocal") {
-    await deleteTag(deps, tag);
-  } else if (pick.action === "deleteRemote") {
-    await deleteRemoteTag(deps, tag);
-  } else {
-    await fetchTags(deps);
-  }
-}
-
-/** 로컬 tag 를 삭제한다. tag 를 넘기지 않으면 목록에서 고른다. */
-async function deleteTag(deps: GraphActionDeps, tagName?: string): Promise<void> {
-  const tag = tagName ?? (await pickTag(deps));
-  if (!tag || !(await confirm(vscode.l10n.t("Delete local tag '{0}'?", tag), vscode.l10n.t("Delete")))) {
-    return;
-  }
-  await deps.logService.deleteTag(tag);
-  await deps.refreshGraph();
-  vscode.window.showInformationMessage(vscode.l10n.t("Tag '{0}' deleted.", tag));
-}
-
-/** 원격 tag 삭제를 수행한다. */
-async function deleteRemoteTag(deps: GraphActionDeps, tag: string): Promise<void> {
-  const remote = await pickRemote(deps);
-  if (!remote || !(await confirm(vscode.l10n.t("Delete remote tag '{0}' from '{1}'?", tag, remote), vscode.l10n.t("Delete")))) {
-    return;
-  }
-  await deps.logService.deleteRemoteTag(remote, tag);
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("Remote tag '{0}' deleted.", tag)
-  );
-}
-
-/** tag 를 원격 저장소로 push 한다. tag 를 넘기지 않으면 목록에서 고른다. */
-async function pushTag(deps: GraphActionDeps, tagName?: string): Promise<void> {
-  const tag = tagName ?? (await pickTag(deps));
-  const remote = tag ? await pickRemote(deps) : undefined;
-  if (!tag || !remote) {
-    return;
-  }
-  await deps.logService.pushTag(remote, tag);
-  vscode.window.showInformationMessage(vscode.l10n.t("Tag '{0}' pushed.", tag));
-}
-
 /** 선택 커밋을 현재 브랜치에 cherry-pick 한다. */
 async function cherryPick(deps: GraphActionDeps, hash: string): Promise<void> {
   if (!isRealCommit(hash)) {
@@ -490,28 +441,6 @@ async function pickRevertMainline(
     }
   );
   return pick?.mainline ?? null;
-}
-
-/** tag 목록에서 작업 대상을 고른다. */
-async function pickTag(deps: GraphActionDeps): Promise<string | undefined> {
-  const tags = await deps.logService.getTags();
-  return vscode.window.showQuickPick(tags, {
-    placeHolder: vscode.l10n.t("Select a tag"),
-  });
-}
-
-/** 원격 저장소 목록에서 작업 대상을 고른다. */
-async function pickRemote(deps: GraphActionDeps): Promise<string | undefined> {
-  const remotes = await deps.logService.getRemotes();
-  if (remotes.length === 0) {
-    vscode.window.showWarningMessage(vscode.l10n.t("No git remote found."));
-    return undefined;
-  }
-  return remotes.length === 1
-    ? remotes[0]
-    : vscode.window.showQuickPick(remotes, {
-        placeHolder: vscode.l10n.t("Select a remote"),
-      });
 }
 
 /** 확인이 필요한 파괴적/상태 변경 작업을 모달로 확인한다. */
