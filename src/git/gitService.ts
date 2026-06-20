@@ -130,7 +130,7 @@ export class GitService {
     // 상태(추가/수정/이름변경)와 증감 라인 수를 각각 조회해 합친다.
     const [nameStatus, numstat] = await Promise.all([
       this.run(["diff", "--name-status", "-z", range]),
-      this.run(["diff", "--numstat", "-M", range]),
+      this.run(["diff", "--numstat", "-z", "-M", range]),
     ]);
     const counts = parseNumstat(numstat);
     return parseNameStatusZ(nameStatus).map((change) => {
@@ -149,7 +149,7 @@ export class GitService {
    * - `git status --porcelain -z --untracked-files=all` 로 모든 변경/미추적을 잡는다.
    *   `--untracked-files=all` 이 없으면 새로 생긴 디렉터리가 "newdir/" 한 줄로 접혀
    *   1뎁스 이상 깊은 새 파일이 트리에 안 잡힌다.
-   * - 스테이징은 `git diff --cached --numstat`, 미스테이징은 `git diff --numstat` 로
+   * - 스테이징은 `git diff --cached --numstat -z`, 미스테이징은 `git diff --numstat -z` 로
    *   각각 추가/삭제 라인 수를 병합한다. `git diff`에 나오지 않는 미추적 파일은 파일을
    *   직접 읽어 추가 라인 수를 계산하고 삭제 라인은 0으로 표시한다.
    */
@@ -185,8 +185,8 @@ export class GitService {
     const [statusOut, stagedNum, unstagedNum] = await Promise.all([
       this.run(["status", "--porcelain", "-z", "--untracked-files=all"]),
       // 커밋 0개(HEAD 없음) 등은 빈 출력으로 처리한다.
-      this.run(["diff", "--cached", "--numstat", "-M"]).catch(() => ""),
-      this.run(["diff", "--numstat", "-M"]).catch(() => ""),
+      this.run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => ""),
+      this.run(["diff", "--numstat", "-z", "-M"]).catch(() => ""),
     ]);
     const { staged, unstaged } = parsePorcelainGroups(statusOut);
     const stagedCounts = parseNumstat(stagedNum);

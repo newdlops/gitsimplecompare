@@ -559,7 +559,7 @@ export class GitLogService {
   ): Promise<CommitFileChange[]> {
     return this.getFilesFromDiff(
       ["diff", "--name-status", "-M", "-z", base, hash],
-      ["diff", "--numstat", "-M", base, hash]
+      ["diff", "--numstat", "-z", "-M", base, hash]
     );
   }
 
@@ -576,11 +576,11 @@ export class GitLogService {
       kind === "ongoing"
         ? await this.getFilesFromDiff(
             ["diff", "--name-status", "-M", "-z", base],
-            ["diff", "--numstat", "-M", base]
+            ["diff", "--numstat", "-z", "-M", base]
           )
         : await this.getFilesFromDiff(
             ["diff", "--cached", "--name-status", "-M", "-z", base],
-            ["diff", "--cached", "--numstat", "-M", base]
+            ["diff", "--cached", "--numstat", "-z", "-M", base]
           );
     if (kind === "ongoing") {
       files = [...files, ...(await this.getUntrackedFiles(files))];

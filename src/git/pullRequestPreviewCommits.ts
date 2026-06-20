@@ -223,7 +223,7 @@ async function readLocalCommitFiles(repoRoot: string, hash: string): Promise<Pul
 async function readRangeFiles(repoRoot: string, targetBranch: string, sourceRef: string): Promise<PullRequestPreviewFile[]> {
   const [nameStatus, numstat, patch] = await Promise.all([
     runGit(["diff", "--name-status", "-z", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
-    runGit(["diff", "--numstat", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
+    runGit(["diff", "--numstat", "-z", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
     runGit(["diff", "--patch", "-M", `--unified=${FULL_DIFF_CONTEXT_LINES}`, `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
   ]);
   return filesFromDiff(nameStatus, numstat, patch);

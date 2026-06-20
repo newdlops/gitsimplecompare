@@ -466,7 +466,7 @@ export class PullRequestService {
   private async stagedFiles(): Promise<CommitFileChange[]> {
     const [nameStatus, numstat] = await Promise.all([
       runGit(["diff", "--cached", "--name-status", "-z"], this.repoRoot),
-      runGit(["diff", "--cached", "--numstat"], this.repoRoot),
+      runGit(["diff", "--cached", "--numstat", "-z"], this.repoRoot),
     ]);
     const stats = parseNumstat(numstat);
     return parseNameStatusZ(nameStatus).map((file) => {

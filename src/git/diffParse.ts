@@ -78,12 +78,20 @@ function mapStatusCode(code: string): FileChangeStatus {
 }
 
 /**
- * `git diff --numstat` 출력을 경로별 {추가, 삭제} 라인 수 맵으로 파싱한다.
+ * `git diff --numstat` 또는 `git diff --numstat -z` 출력을 경로별 {추가, 삭제} 라인 수 맵으로 파싱한다.
  * - 바이너리 파일은 "-"로 표시되며 0 으로 처리한다.
+ * - `-z` 출력은 한글/공백/특수문자 경로가 quote 되지 않아 status path 와 안정적으로 매칭된다.
  * - 이름변경 표기("old => new", "{a => b}/c")는 새 경로 기준으로 정규화한다(근사).
  * @param raw git diff --numstat 원문 출력
  */
 export function parseNumstat(
+  raw: string
+): Map<string, { additions: number; deletions: number }> {
+  return raw.includes("\0") ? parseNumstatZ(raw) : parseNumstatLines(raw);
+}
+
+/** 줄 단위 numstat 출력을 파싱한다. */
+function parseNumstatLines(
   raw: string
 ): Map<string, { additions: number; deletions: number }> {
   const map = new Map<string, { additions: number; deletions: number }>();
@@ -100,6 +108,39 @@ export function parseNumstat(
     const deletions = parts[1] === "-" ? 0 : Number(parts[1]) || 0;
     const path = normalizeRenamePath(parts.slice(2).join("\t"));
     map.set(path, { additions, deletions });
+  }
+  return map;
+}
+
+/**
+ * NUL 구분 numstat 출력을 파싱한다.
+ * - 일반 파일: `<add>\t<del>\t<path>\0`
+ * - rename/copy: `<add>\t<del>\t\0<old>\0<new>\0` 이므로 새 경로를 사용한다.
+ */
+function parseNumstatZ(
+  raw: string
+): Map<string, { additions: number; deletions: number }> {
+  const map = new Map<string, { additions: number; deletions: number }>();
+  const tokens = raw.split("\0");
+  for (let index = 0; index < tokens.length; index++) {
+    const header = tokens[index];
+    if (!header) {
+      continue;
+    }
+    const parts = header.split("\t");
+    if (parts.length < 3) {
+      continue;
+    }
+    const additions = parts[0] === "-" ? 0 : Number(parts[0]) || 0;
+    const deletions = parts[1] === "-" ? 0 : Number(parts[1]) || 0;
+    let filePath = parts.slice(2).join("\t");
+    if (!filePath) {
+      index += 2;
+      filePath = tokens[index] || "";
+    }
+    if (filePath) {
+      map.set(normalizeRenamePath(filePath), { additions, deletions });
+    }
   }
   return map;
 }

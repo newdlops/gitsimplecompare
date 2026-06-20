@@ -413,7 +413,7 @@ export class RebaseService {
     const base = (await this.parentOf(hash)) ?? EMPTY_TREE;
     const [nameStatus, numstat] = await Promise.all([
       runGit(["diff", "--name-status", "-M", "-z", base, hash], this.repoRoot),
-      runGit(["diff", "--numstat", "-M", base, hash], this.repoRoot),
+      runGit(["diff", "--numstat", "-z", "-M", base, hash], this.repoRoot),
     ]);
     const counts = parseNumstat(numstat);
     return parseNameStatusZ(nameStatus).map((change) => {

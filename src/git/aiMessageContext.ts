@@ -62,7 +62,7 @@ async function readDiffFiles(
 ): Promise<AiChangeFile[]> {
   const [nameStatus, numstat] = await Promise.all([
     runGit([...baseArgs, "--name-status", "-z", "-M"], repoRoot).catch(() => ""),
-    runGit([...baseArgs, "--numstat", "-M"], repoRoot).catch(() => ""),
+    runGit([...baseArgs, "--numstat", "-z", "-M"], repoRoot).catch(() => ""),
   ]);
   return withCounts(parseNameStatusZ(nameStatus), parseNumstat(numstat));
 }
