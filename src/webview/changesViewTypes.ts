@@ -1,4 +1,5 @@
 import type { ViewMode } from "../providers/changesTreeModel";
+import type { FileHistoryEntry } from "../git/fileHistoryService";
 
 /** 트리/리스트 보기를 가지는 섹션(Repositories 는 제외). */
 export type TreeSection = "compare" | "changes";
@@ -7,6 +8,7 @@ export type TreeSection = "compare" | "changes";
 export const VISIBLE_SECTIONS = [
   "repos",
   "changes",
+  "history",
   "compare",
   "stashes",
 ] as const;
@@ -24,6 +26,14 @@ export type VisibleSections = Record<VisibleSection, boolean>;
 export interface ComparisonDraft {
   from?: string;
   to?: string;
+}
+
+/** 현재 활성 파일의 커밋 히스토리 섹션 상태. */
+export interface FileHistoryView {
+  repoRoot?: string;
+  path?: string;
+  commits: FileHistoryEntry[];
+  message?: string;
 }
 
 /** 트리 섹션 식별자 목록(순회·기본값 생성용). */

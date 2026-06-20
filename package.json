@@ -214,6 +214,16 @@
         "category": "Git Simple Compare"
       },
       {
+        "command": "gitSimpleCompare.toggleSection.history.visible",
+        "title": "%cmd.section.history.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.history.hidden",
+        "title": "%cmd.section.history%",
+        "category": "Git Simple Compare"
+      },
+      {
         "command": "gitSimpleCompare.toggleSection.compare.visible",
         "title": "%cmd.section.compare.checked%",
         "category": "Git Simple Compare"
@@ -456,22 +466,32 @@
         {
           "command": "gitSimpleCompare.toggleSection.compare.visible",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.compare.visible",
-          "group": "2_sections@3"
+          "group": "2_sections@4"
         },
         {
           "command": "gitSimpleCompare.toggleSection.compare.hidden",
           "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.compare.visible",
+          "group": "2_sections@4"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.history.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.history.visible",
+          "group": "2_sections@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.history.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.history.visible",
           "group": "2_sections@3"
         },
         {
           "command": "gitSimpleCompare.toggleSection.stashes.visible",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.stashes.visible",
-          "group": "2_sections@4"
+          "group": "2_sections@5"
         },
         {
           "command": "gitSimpleCompare.toggleSection.stashes.hidden",
           "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.stashes.visible",
-          "group": "2_sections@4"
+          "group": "2_sections@5"
         },
         {
           "command": "gitSimpleCompare.splitCommits",
@@ -621,6 +641,14 @@
         },
         {
           "command": "gitSimpleCompare.toggleSection.changes.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.history.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.history.hidden",
           "when": "false"
         },
         {

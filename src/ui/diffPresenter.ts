@@ -22,6 +22,7 @@ const DIFF_OPTIONS: vscode.TextDocumentShowOptions = {
  * @param relPath  오른쪽(대상) 저장소 상대 경로
  * @param fileLabel 제목에 표시할 파일명(없으면 relPath 사용)
  * @param leftRelPath 왼쪽(기준) 경로가 다를 때 지정(이름변경 대응). 없으면 relPath 사용
+ * @param labels   실제 ref 와 다른 짧은 제목 라벨이 필요할 때 지정
  */
 export async function openRefVsRefDiff(
   repoRoot: string,
@@ -29,11 +30,16 @@ export async function openRefVsRefDiff(
   target: string,
   relPath: string,
   fileLabel?: string,
-  leftRelPath?: string
+  leftRelPath?: string,
+  labels?: { leftLabel?: string; rightLabel?: string }
 ): Promise<void> {
   const left = makeRefUri(base, leftRelPath ?? relPath, repoRoot);
   const right = makeRefUri(target, relPath, repoRoot);
-  const title = makeDiffTitle(base, target, fileLabel ?? relPath);
+  const title = makeDiffTitle(
+    labels?.leftLabel ?? base,
+    labels?.rightLabel ?? target,
+    fileLabel ?? relPath
+  );
   await vscode.commands.executeCommand(
     "vscode.diff",
     left,

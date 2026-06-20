@@ -2,6 +2,7 @@
 // - 단순 재렌더가 아니라 저장소/작업트리/stash/활성 브랜치 비교를 다시 읽는다.
 import * as vscode from "vscode";
 import { refreshActiveComparison } from "./compareBranches";
+import { refreshFileHistory } from "./fileHistory";
 import { refreshStashes } from "./stash";
 import { CommandDeps, RepoInfo, discoverRepositories } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
@@ -80,6 +81,9 @@ async function refreshChangesViewOnce(
         sectionTask(sections, "workingChanges", () =>
           refreshWorkingChanges(deps, { forceGit: forceGitStatus })
         ),
+        sectionTask(sections, "fileHistory", () =>
+          refreshFileHistory(deps, { reason })
+        ),
         sectionTask(sections, "stashes", () => refreshStashes(deps)),
         sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
       ].filter((task): task is RefreshTask => !!task);
@@ -121,6 +125,7 @@ async function discoverRepositoriesForRefresh(
 type RefreshSection =
   | "repositories"
   | "workingChanges"
+  | "fileHistory"
   | "stashes"
   | "comparison";
 

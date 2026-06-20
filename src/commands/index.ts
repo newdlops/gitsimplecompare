@@ -47,6 +47,12 @@ import {
 import { refreshChangesView } from "./refreshChangesView";
 import type { RefreshRequest } from "./refreshChangesView";
 import {
+  openFileHistoryCommit,
+  refreshFileHistory,
+  type FileHistoryRefreshRequest,
+  type OpenFileHistoryCommitArgs,
+} from "./fileHistory";
+import {
   addToExclude,
   addToGitignore,
   commitChanges,
@@ -89,6 +95,8 @@ const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.repos.hidden", "repos"],
   ["gitSimpleCompare.toggleSection.changes.visible", "changes"],
   ["gitSimpleCompare.toggleSection.changes.hidden", "changes"],
+  ["gitSimpleCompare.toggleSection.history.visible", "history"],
+  ["gitSimpleCompare.toggleSection.history.hidden", "history"],
   ["gitSimpleCompare.toggleSection.compare.visible", "compare"],
   ["gitSimpleCompare.toggleSection.compare.hidden", "compare"],
   ["gitSimpleCompare.toggleSection.stashes.visible", "stashes"],
@@ -150,6 +158,14 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.refreshChanges",
       (request?: RefreshRequest) => refreshChangesView(deps, request)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.refreshFileHistory",
+      (request?: FileHistoryRefreshRequest) => refreshFileHistory(deps, request)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openFileHistoryCommit",
+      (arg: OpenFileHistoryCommitArgs) => openFileHistoryCommit(arg)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openChangeDiff",

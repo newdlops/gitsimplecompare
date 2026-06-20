@@ -305,6 +305,11 @@ body.marquee-selecting {
   background: var(--vscode-list-hoverBackground);
 }
 
+.row[role="button"]:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
 /* 다중 선택 강조(VS Code 리스트 선택과 동일 톤). hover 보다 우선. */
 .row.selected,
 .row.selected:hover {
@@ -706,6 +711,79 @@ body:focus-within .row.selected:hover {
   /* 빈 안내 문구도 본문 들여쓰기에 맞춘다. */
   padding: 6px 12px 6px 20px;
   color: var(--vscode-descriptionForeground);
+}
+
+/* ── History(현재 파일의 커밋 목록) ── */
+.history-current-file {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  line-height: 24px;
+  padding: 0 12px 0 20px;
+  color: var(--vscode-foreground);
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
+
+.history-current-file .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-current-file .dir {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-files {
+  overflow-x: hidden;
+}
+
+.history-files .rows {
+  width: auto;
+  min-width: 0;
+}
+
+.history-commit {
+  position: relative;
+  padding-right: 6px;
+}
+
+.history-commit .history-hash {
+  flex: 0 0 auto;
+  margin-right: 7px;
+  color: var(--vscode-gitDecoration-submoduleResourceForeground, var(--vscode-descriptionForeground));
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+
+.history-commit .history-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-commit .history-meta {
+  flex: 0 1 auto;
+  min-width: 48px;
+  max-width: 45%;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.history-commit .stat {
+  margin-left: 8px;
 }
 
 /* ── Stashes(브랜치처럼 펼쳐서 파일 보기) ── */

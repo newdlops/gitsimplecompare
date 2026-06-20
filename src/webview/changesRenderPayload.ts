@@ -11,6 +11,7 @@ import type { StashView } from "../commands/stash";
 import type { FileIconThemeResolver } from "./fileIconTheme";
 import type {
   ComparisonDraft,
+  FileHistoryView,
   ViewModes,
   VisibleSections,
 } from "./changesViewTypes";
@@ -24,6 +25,7 @@ export interface ChangesRenderState {
   staged: StatusGroups["staged"];
   unstaged: StatusGroups["unstaged"];
   stashes: StashView[];
+  fileHistory: FileHistoryView;
   commitMessage: string;
   commitMessageRevision: number;
   viewModes: ViewModes;
@@ -88,6 +90,12 @@ export function buildChangesRenderPayload(
       date: s.relativeDate,
       files: s.files,
     })),
+    history: {
+      repoRoot: state.fileHistory.repoRoot,
+      path: state.fileHistory.path,
+      commits: state.fileHistory.commits,
+      message: state.fileHistory.message,
+    },
     visibleSections: { ...state.visibleSections },
     fileIcons: fileIcons.payloadFor(collectFilePaths(state)),
   };
@@ -103,6 +111,10 @@ function collectFilePaths(state: ChangesRenderState): string[] {
     ...state.staged.map((c) => c.path),
     ...state.unstaged.map((c) => c.path),
     ...state.stashes.flatMap((s) => s.files.map((f) => f.path)),
+    ...(state.fileHistory.path ? [state.fileHistory.path] : []),
+    ...state.fileHistory.commits.flatMap((c) =>
+      c.oldPath ? [c.path, c.oldPath] : [c.path]
+    ),
   ];
 }
 

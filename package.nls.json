@@ -29,6 +29,8 @@
   "cmd.section.repos": "Repositories",
   "cmd.section.changes.checked": "✓ Changes",
   "cmd.section.changes": "Changes",
+  "cmd.section.history.checked": "✓ History",
+  "cmd.section.history": "History",
   "cmd.section.compare.checked": "✓ Compare Branches",
   "cmd.section.compare": "Compare Branches",
   "cmd.section.stashes.checked": "✓ Stashes",

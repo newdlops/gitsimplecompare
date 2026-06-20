@@ -29,6 +29,8 @@
   "cmd.section.repos": "저장소",
   "cmd.section.changes.checked": "✓ 변경 사항",
   "cmd.section.changes": "변경 사항",
+  "cmd.section.history.checked": "✓ 히스토리",
+  "cmd.section.history": "히스토리",
   "cmd.section.compare.checked": "✓ 브랜치 비교",
   "cmd.section.compare": "브랜치 비교",
   "cmd.section.stashes.checked": "✓ Stash 목록",

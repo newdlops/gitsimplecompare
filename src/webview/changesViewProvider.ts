@@ -1,10 +1,10 @@
-// CHANGES 사이드바 뷰를 웹뷰(WebviewView)로 렌더링하는 프로바이더(아코디언 3섹션).
+// CHANGES 사이드바 뷰를 웹뷰(WebviewView)로 렌더링하는 프로바이더(아코디언 섹션).
 //   Repositories(저장소+브랜치) · Changes(커밋 박스 + Staged/Unstaged 그룹, Source Control
-//   과 동일 성격, 미트볼 ... 메뉴 포함) · Compare Branches(From/To + 브랜치 비교 결과).
+//   과 동일 성격, 미트볼 ... 메뉴 포함) · History(현재 파일 커밋) · Compare Branches.
 // - 상태를 보관하고 클릭은 등록된 명령/내부 메서드로 위임한다(경계 분리).
 // - 커밋 메시지는 provider 가 보유한다(입력 중엔 저장만, 커밋 후 비우며 다시 그린다).
 import * as vscode from "vscode";
-import { BranchComparison } from "../git/gitTypes";
+import type { BranchComparison } from "../git/gitTypes";
 import type { StatusGroups } from "../git/gitService";
 import {
   ChangeDiffArgs,
@@ -17,6 +17,8 @@ import type { StashView } from "../commands/stash";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { changesWebviewI18n } from "./changesI18n";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
+import { loadViewModes, loadVisibleSections } from "./changesViewState";
+import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
 import {
   makeNonce,
   resourceVersion,
@@ -26,6 +28,7 @@ import {
   TREE_SECTIONS,
   VISIBLE_SECTIONS,
   type ComparisonDraft,
+  type FileHistoryView,
   type TreeSection,
   type ViewModes,
   type VisibleSection,
@@ -58,6 +61,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private staged: StatusGroups["staged"] = [];
   private unstaged: StatusGroups["unstaged"] = [];
   private stashes: StashView[] = [];
+  private fileHistory: FileHistoryView = { commits: [] };
   private commitMessage = "";
   private commitMessageRevision = 0;
   private viewModes: ViewModes;
@@ -138,6 +142,12 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** stash 목록(+ 각 stash 의 파일)을 갱신한다(Stashes 섹션). */
   setStashes(stashes: StashView[]): void {
     this.stashes = stashes;
+    this.render();
+  }
+
+  /** 현재 활성 에디터 파일의 커밋 히스토리를 갱신한다(History 섹션). */
+  setFileHistory(fileHistory: FileHistoryView): void {
+    this.fileHistory = fileHistory;
     this.render();
   }
 
@@ -322,6 +332,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       staged: this.staged,
       unstaged: this.unstaged,
       stashes: this.stashes,
+      fileHistory: this.fileHistory,
       commitMessage: this.commitMessage,
       commitMessageRevision: this.commitMessageRevision,
       viewModes: this.viewModes,
@@ -376,20 +387,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
    * 웹뷰 메시지를 처리한다. 동작은 등록된 명령/내부 메서드로 위임한다.
    * @param msg 웹뷰 메시지
    */
-  private handleMessage(msg: {
-    type: string;
-    side?: "from" | "to";
-    path?: string;
-    root?: string;
-    section?: string;
-    paths?: string[];
-    message?: string;
-    op?: string;
-    action?: string;
-    ref?: string;
-    stage?: string;
-    status?: string;
-  }): void {
+  private handleMessage(msg: ChangesWebviewMessage): void {
     if (msg.type === "ready") {
       this.render();
       void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
@@ -415,7 +413,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       const change = this.comparison.changes.find((c) => c.path === msg.path);
       if (change) {
         const args: ChangeDiffArgs = { comparison: this.comparison, change };
-        void vscode.commands.executeCommand("gitSimpleCompare.openChangeDiff", args);
+        void vscode.commands.executeCommand(
+          "gitSimpleCompare.openChangeDiff",
+          args
+        );
       }
     } else if (msg.type === "openWorkingChange" && msg.path && this.activeRepo) {
       void vscode.commands.executeCommand("gitSimpleCompare.openWorkingChange", {
@@ -437,7 +438,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     } else if (msg.type === "discard") {
       void vscode.commands.executeCommand("gitSimpleCompare.discard", msg.paths);
     } else if (msg.type === "addToGitignore") {
-      void vscode.commands.executeCommand("gitSimpleCompare.addToGitignore", msg.paths);
+      void vscode.commands.executeCommand(
+        "gitSimpleCompare.addToGitignore",
+        msg.paths
+      );
     } else if (msg.type === "addToExclude") {
       void vscode.commands.executeCommand("gitSimpleCompare.addToExclude", msg.paths);
     } else if (msg.type === "commitMessageChange") {
@@ -450,7 +454,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       }
       void vscode.commands.executeCommand("gitSimpleCompare.commit", msg.op);
     } else if (msg.type === "generateCommitMessage") {
-      void vscode.commands.executeCommand("gitSimpleCompare.generateCommitMessage");
+      void vscode.commands.executeCommand(
+        "gitSimpleCompare.generateCommitMessage"
+      );
     } else if (msg.type === "configureAiCli") {
       void vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
     } else if (msg.type === "splitCommits") {
@@ -481,6 +487,25 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         ref: msg.ref,
         path: msg.path,
       });
+    } else if (
+      msg.type === "openFileHistoryCommit" &&
+      msg.repoRoot &&
+      msg.path &&
+      msg.baseRef &&
+      msg.headRef
+    ) {
+      void vscode.commands.executeCommand(
+        "gitSimpleCompare.openFileHistoryCommit",
+        {
+          repoRoot: msg.repoRoot,
+          path: msg.path,
+          oldPath: msg.oldPath,
+          baseRef: msg.baseRef,
+          headRef: msg.headRef,
+          shortHash: msg.shortHash,
+          title: msg.title,
+        }
+      );
     }
   }
 
@@ -560,39 +585,4 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
 </body>
 </html>`;
   }
-}
-
-/**
- * 저장된 보기 모드를 섹션별 묶음으로 정규화한다.
- * - 구버전(단일 전역 문자열 "tree"/"list")은 두 섹션에 동일하게 적용해 호환한다.
- * - 신버전(섹션별 객체)은 알 수 없는 값이면 "tree" 로 보정한다.
- * @param saved memento 에 저장돼 있던 원본 값(형식 불명)
- */
-function loadViewModes(saved: unknown): ViewModes {
-  if (saved === "tree" || saved === "list") {
-    return { compare: saved, changes: saved };
-  }
-  if (saved && typeof saved === "object") {
-    const s = saved as Partial<ViewModes>;
-    return {
-      compare: s.compare === "list" ? "list" : "tree",
-      changes: s.changes === "list" ? "list" : "tree",
-    };
-  }
-  return { compare: "tree", changes: "tree" };
-}
-
-/** 저장된 아코디언 섹션 표시 상태를 정규화한다. */
-function loadVisibleSections(saved: unknown): VisibleSections {
-  const result = {} as VisibleSections;
-  const raw = saved && typeof saved === "object"
-    ? (saved as Partial<VisibleSections>)
-    : {};
-  for (const section of VISIBLE_SECTIONS) {
-    result[section] = raw[section] !== false;
-  }
-  if (!VISIBLE_SECTIONS.some((section) => result[section])) {
-    result.changes = true;
-  }
-  return result;
 }

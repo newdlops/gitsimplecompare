@@ -1,5 +1,5 @@
-// CHANGES 사이드바 웹뷰 클라이언트 — VS Code Explorer/Source Control 스타일 아코디언 3섹션.
-//   Repositories(저장소+브랜치) · Changes(커밋 박스 + Staged/Unstaged 그룹) · Compare Branches.
+// CHANGES 사이드바 웹뷰 클라이언트 — VS Code Explorer/Source Control 스타일 아코디언.
+//   Repositories · Changes · History · Compare Branches · Stashes.
 // - 섹션 접힘/크기는 vscode.getState/setState 로 보존, 폴더 접힘은 일시적.
 // - 미트볼(...) 메뉴는 window.__gscMenu(provider 가 주입한 트리)로 드릴다운 드롭다운을 그린다.
 (function () {
@@ -44,6 +44,10 @@
       openChanges: "Open Changes",
       addToGitignore: "Add to .gitignore",
       addToExclude: "Add to .git/info/exclude",
+      history: "History",
+      noHistoryFile: "No file is currently open.",
+      noHistory: "No commits for the current file.",
+      openHistoryCommit: "Open File Change",
       stashes: "Stashes",
       noStashes: "No stashes.",
       stashSelected: "Stash Selected Changes",
@@ -62,7 +66,7 @@
   state.folders = state.folders || {}; // 파일 트리 폴더 접힘 상태(kind:path)
   state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
   state.commitMessageRevision = state.commitMessageRevision || 0;
-  const SECTION_IDS = ["repos", "changes", "compare", "stashes"];
+  const SECTION_IDS = ["repos", "changes", "history", "compare", "stashes"];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
   let currentFileIcons = {};
@@ -106,7 +110,13 @@
   const HEADER_H = 22;
   const MIN_SECTION = 48;
   // 크기조절(grow) 대상 섹션의 기본 가중치(비율).
-  const DEFAULT_WEIGHT = { repos: 120, changes: 240, compare: 240, stashes: 120 };
+  const DEFAULT_WEIGHT = {
+    repos: 120,
+    changes: 240,
+    history: 180,
+    compare: 240,
+    stashes: 120,
+  };
 
   /** HTML 특수문자를 이스케이프한다. */
   function esc(text) {
@@ -555,6 +565,66 @@
     return html;
   }
 
+  /** 현재 히스토리 대상 파일을 표시하는 고정 헤더. */
+  function historyCurrentFileHtml(history) {
+    if (!history || !history.path) {
+      return "";
+    }
+    const slash = history.path.lastIndexOf("/");
+    const fileName = slash >= 0 ? history.path.slice(slash + 1) : history.path;
+    const dir = slash >= 0 ? history.path.slice(0, slash) : "";
+    return (
+      `<div class="history-current-file" title="${esc(history.path)}">` +
+      fileIconHtml(history.path) +
+      `<span class="name">${esc(fileName)}</span>` +
+      (dir ? `<span class="dir">${esc(dir)}</span>` : "") +
+      `</div>`
+    );
+  }
+
+  /** 파일 히스토리 커밋 한 줄(클릭 시 부모 ↔ 해당 커밋 diff). */
+  function historyCommitHtml(repoRoot, commit) {
+    const title = `${commit.shortHash || commit.hash} ${commit.title || ""}`.trim();
+    const meta = [commit.author, commit.relativeDate || commit.dateIso]
+      .filter(Boolean)
+      .join(" · ");
+    const tooltip = `${T.openHistoryCommit}: ${title}`;
+    return (
+      `<div class="row file history-commit" role="button" tabindex="0" ` +
+      `data-status="${esc(commit.status)}" data-repo-root="${esc(repoRoot || "")}" ` +
+      `data-path="${esc(commit.path)}" data-old-path="${esc(commit.oldPath || "")}" ` +
+      `data-base-ref="${esc(commit.baseRef)}" data-head-ref="${esc(commit.hash)}" ` +
+      `data-short-hash="${esc(commit.shortHash)}" data-title="${esc(commit.title)}" ` +
+      `title="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
+      `<span class="twistie"></span>` +
+      `<span class="icon codicon ${statusCodicon(commit.status)}"></span>` +
+      `<span class="history-hash">${esc(commit.shortHash || commit.hash.slice(0, 7))}</span>` +
+      `<span class="name history-title">${esc(commit.title)}</span>` +
+      (meta ? `<span class="history-meta">${esc(meta)}</span>` : "") +
+      statHtml(commit) +
+      `</div>`
+    );
+  }
+
+  /** History 섹션 본문(현재 파일 + 관련 커밋 목록). */
+  function historyBody(history) {
+    if (!history || !history.path) {
+      return `<p class="empty">${esc(history?.message || T.noHistoryFile)}</p>`;
+    }
+    let html = historyCurrentFileHtml(history);
+    if (history.message) {
+      return html + `<p class="empty">${esc(history.message)}</p>`;
+    }
+    const commits = history.commits || [];
+    if (!commits.length) {
+      return html + `<p class="empty">${esc(T.noHistory)}</p>`;
+    }
+    const rows = commits
+      .map((commit) => historyCommitHtml(history.repoRoot, commit))
+      .join("");
+    return html + `<div class="files history-files"><div class="rows">${rows}</div></div>`;
+  }
+
   /** stash 안의 파일 한 줄(클릭 시 stash 부모 ↔ stash diff). */
   function stashFileHtml(ref, ch) {
     const slash = ch.path.lastIndexOf("/");
@@ -634,6 +704,7 @@
       countFiles(p.changes.staged) + countFiles(p.changes.unstaged);
     const changesConflictCount =
       countConflicts(p.changes.staged) + countConflicts(p.changes.unstaged);
+    const historyCount = (p.history?.commits || []).length;
     // 트리/리스트 토글은 파일 트리 섹션의 미트볼 메뉴 안에 둔다.
     const sectionHtml = {
       repos: section(
@@ -650,6 +721,13 @@
         changesBody(p.changes, p.commit, p.changes.viewMode),
         sectionActions(),
         changesConflictCount
+      ),
+      history: section(
+        "history",
+        T.history,
+        historyCount,
+        historyBody(p.history),
+        ""
       ),
       compare: section(
         "compare",
@@ -1056,7 +1134,31 @@
     bindCommitBox();
     bindGroupActions();
     bindRowActions();
+    bindHistory();
     bindStashes();
+  }
+
+  /** History 섹션: 커밋 행 클릭/키보드 실행을 커밋 diff 열기로 연결한다. */
+  function bindHistory() {
+    const open = (el) =>
+      post("openFileHistoryCommit", {
+        repoRoot: el.dataset.repoRoot,
+        path: el.dataset.path,
+        oldPath: el.dataset.oldPath || undefined,
+        baseRef: el.dataset.baseRef,
+        headRef: el.dataset.headRef,
+        shortHash: el.dataset.shortHash,
+        title: el.dataset.title,
+      });
+    rootEl.querySelectorAll(".history-commit").forEach((el) => {
+      el.addEventListener("click", () => open(el));
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open(el);
+        }
+      });
+    });
   }
 
   /** Stashes 섹션: 펼치기/접기, 액션 메뉴(...), 파일 클릭(diff), 우클릭 메뉴. */

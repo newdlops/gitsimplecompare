@@ -137,6 +137,19 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshEverything(reason);
     }, delay);
   };
+  const refreshFileHistoryIfVisible = (reason: string): void => {
+    if (!changesView.isVisible()) {
+      return;
+    }
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshFileHistory", {
+      reason,
+    });
+  };
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() =>
+      refreshFileHistoryIfVisible("activeEditor")
+    )
+  );
   type RefreshWatcherHandler = (
     event: "create" | "change" | "delete",
     uri: vscode.Uri
