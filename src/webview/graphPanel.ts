@@ -26,6 +26,7 @@ import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPag
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
 import { fetchRefsForGraphSearch, sendGraphRepositorySearch } from "./graphSearchActions";
+import { sendGraphTagStatus } from "./graphTagStatus";
 import { openGraphVirtualFileDiff } from "./graphVirtualDiff";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
@@ -306,6 +307,7 @@ export class GitGraphPanel {
   /** 브랜치 상태를 먼저 동기화한 뒤 첫 페이지 그래프를 다시 보낸다. */
   private async reloadGraph(): Promise<void> {
     await this.sendBranches();
+    void sendGraphTagStatus(this.logService.repoRoot, (message) => this.post(message));
     await this.sendGraph();
   }
 

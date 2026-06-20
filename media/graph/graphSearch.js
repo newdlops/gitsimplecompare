@@ -135,7 +135,7 @@
         .filter((candidate) => candidate && scopeAllows(scope, candidate.kind))
         .filter((candidate) => terms.every((term) => candidate.searchText.includes(term)))
         .forEach((candidate) => matches.push({
-          type: candidate.kind === "tag" ? "Tag" : "Branch",
+          type: candidate.type,
           hash,
           label: candidate.label,
           meta: searchMeta(hash, refs),
@@ -197,7 +197,7 @@
 
   /** 검색 결과 한 줄 HTML 을 만든다. */
   function searchResultHtml(item) {
-    const type = item.type || kindLabel(item.kind);
+    const type = item.type || kindLabel(item);
     const title = `${type}: ${item.label} | ${item.meta}`;
     return `<button class="search-result" type="button" data-hash="${esc(item.hash)}" ` +
       `title="${esc(title)}" aria-label="${esc(title)}">` +
@@ -235,7 +235,7 @@
   /** 검색 결과 오른쪽 메타 영역에 표시할 해시와 브랜치 요약을 만든다. */
   function searchMeta(hash, refs) {
     const branches = refs.filter((ref) =>
-      ref !== "HEAD" && !ref.startsWith("tag:") && !ref.startsWith("virtual:")
+      ref !== "HEAD" && !ref.startsWith("tag:") && !ref.startsWith("remote-tag:") && !ref.startsWith("virtual:")
     );
     return branches.length
       ? `${hash.slice(0, 10)} | ${branches.join(", ")}`
@@ -243,19 +243,26 @@
   }
 
   /** repository result kind 를 사람이 읽는 레이블로 변환한다. */
-  function kindLabel(kind) {
+  function kindLabel(item) {
+    const kind = item?.kind;
+    if (kind === "tag" && item.tagOrigin === "remote") return "Remote Tag";
+    if (kind === "tag" && item.tagOrigin === "local") return "Local Tag";
     return kind === "branch" ? "Branch" : kind === "tag" ? "Tag" : kind === "hash" ? "Hash" : "Commit";
   }
 
   /** ref 문자열을 검색 후보로 변환한다. */
   function refCandidate(ref) {
+    if (ref.indexOf("remote-tag:") === 0) {
+      const label = ref.slice("remote-tag:".length);
+      return { kind: "tag", type: "Remote Tag", label, searchText: `${label} remote tag`.toLowerCase() };
+    }
     const tag = ref.indexOf("tag:") === 0;
     const label = tag ? ref.replace(/^tag:/, "") : ref;
     const kind = tag ? "tag" : ref === "HEAD" || ref.startsWith("virtual:") ? "" : "branch";
     if (!kind) {
       return undefined;
     }
-    return { kind, label, searchText: `${label} ${kind}`.toLowerCase() };
+    return { kind, type: tag ? "Local Tag" : "Branch", label, searchText: `${label} ${kind}`.toLowerCase() };
   }
 
   /** 현재 검색 범위 select 값을 반환한다. */

@@ -165,6 +165,7 @@
   function buildRow(row, index, leftInset) {
     const el = document.createElement("div");
     const localOnlyBranches = row.localOnlyBranches || [];
+    const displayRefs = window.GscGraphFeatures?.displayRefs?.(row) || row.refs || [];
     el.className =
       "row" +
       (row.hash === selectedHash ? " selected" : "") +
@@ -175,11 +176,11 @@
     el.style.setProperty("--branch-color", rowDisplayColor(row));
     el.dataset.hash = row.hash;
     el.dataset.subject = row.subject || "";
-    el.dataset.refs = (row.refs || []).join("\t");
+    el.dataset.refs = displayRefs.join("\t");
     el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
-    el.title = rowTitle(row);
+    el.title = rowTitle(row, displayRefs);
     const refRenderer = window.GscGraphFeatures && window.GscGraphFeatures.refBadge;
-    const refs = (row.refs || [])
+    const refs = displayRefs
       .map((ref) =>
         refRenderer ? refRenderer(ref, esc) : `<span class="ref${ref === "HEAD" ? " head" : ""}">${esc(ref)}</span>`
       )
@@ -220,8 +221,8 @@
       : window.GscGraphColors?.edgeColor?.(edge, currentRows) || "#abb2bf";
   }
   /** 커밋 row/node hover tooltip 에 표시할 짧은 설명을 만든다. */
-  function rowTitle(row) {
-    const refs = (row.refs || []).filter(Boolean).join(", ");
+  function rowTitle(row, refsOverride) {
+    const refs = (refsOverride || row.refs || []).filter(Boolean).join(", ");
     const localOnlyBranches = (row.localOnlyBranches || []).filter(Boolean).join(", ");
     const subject = row.subject || row.hash;
     const parts = [subject];
@@ -550,6 +551,14 @@
       rowColorCache = new WeakMap();
       localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
       window.GscGraphRemote?.updateButton(openRemoteBtn, msg.branches);
+      graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
+      const graphWidth = graphWidthForLaneCount(currentLaneCount);
+      currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));
+      syncScrollableWidth(graphWidth);
+      window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
+      window.GscGraphSearch?.update(graphEl, graphContentEl);
+    } else if (msg.type === "tagStatus") {
+      window.GscGraphFeatures?.setTagStatus?.(msg.tags);
       graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
       const graphWidth = graphWidthForLaneCount(currentLaneCount);
       currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));

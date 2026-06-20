@@ -55,12 +55,20 @@
   function refMenuItems(ref) {
     const tag = ref.dataset.tagName;
     if (tag) {
+      const target = ref.dataset.tagHash || undefined;
+      const remote = ref.dataset.tagRemote || undefined;
+      const local = ref.dataset.tagLocal === "1";
       return [
-        item("Checkout Tag", "debug-restart", () => ({ type: "checkoutTag", tag })),
-        item("Create Branch from Tag", "git-branch-create", () => ({ type: "createBranchFromTag", tag })),
-        item("Push Tag", "cloud-upload", () => ({ type: "pushTag", tag })),
-        item("Delete Local Tag", "trash", () => ({ type: "deleteTag", tag })),
-        item("Delete Remote Tag", "trash", () => ({ type: "deleteRemoteTag", tag })),
+        item("Checkout Tag", "debug-restart", () => ({ type: "checkoutTag", tag, target })),
+        item("Create Branch from Tag", "git-branch-create", () => ({ type: "createBranchFromTag", tag, target })),
+        ...(local ? [
+          item("Rename Local Tag", "rename", () => ({ type: "renameTag", tag })),
+          item("Push Tag", "cloud-upload", () => ({ type: "pushTag", tag })),
+          item("Delete Local Tag", "trash", () => ({ type: "deleteTag", tag })),
+        ] : []),
+        ...(remote || local ? [
+          item("Delete Remote Tag", "trash", () => ({ type: "deleteRemoteTag", tag, remote })),
+        ] : []),
         item("Fetch Tags", "repo-fetch", () => ({ type: "fetchTags" })),
         item("Copy Tag Name", "copy", () => ({ type: "copyTagName", tag })),
       ];

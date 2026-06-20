@@ -43,6 +43,7 @@ import {
   deleteRemoteTag,
   deleteTag,
   pushTag,
+  renameTag,
   tagAction,
 } from "./graphTagActions";
 
@@ -74,6 +75,7 @@ type GraphActionMessage = Extract<
       | "deleteRemoteTag"
       | "pushTag"
       | "copyTagName"
+      | "renameTag"
       | "tagAction"
       | "cherryPick"
       | "revertCommit"
@@ -137,6 +139,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "deleteRemoteTag",
   "pushTag",
   "copyTagName",
+  "renameTag",
   "tagAction",
   "cherryPick",
   "revertCommit",
@@ -206,16 +209,16 @@ async function dispatchGraphAction(
       await createTag(deps, msg.hash, isRealCommit);
       return;
     case "checkoutTag":
-      await checkoutTag(deps, msg.tag);
+      await checkoutTag(deps, msg.tag, msg.target);
       return;
     case "createBranchFromTag":
-      await createBranchFromTag(deps, msg.tag);
+      await createBranchFromTag(deps, msg.tag, msg.target);
       return;
     case "deleteTag":
       await deleteTag(deps, msg.tag);
       return;
     case "deleteRemoteTag":
-      await deleteRemoteTag(deps, msg.tag);
+      await deleteRemoteTag(deps, msg.tag, msg.remote);
       return;
     case "pushTag":
       await pushTag(deps, msg.tag);
@@ -223,8 +226,11 @@ async function dispatchGraphAction(
     case "copyTagName":
       await copyTagName(msg.tag);
       return;
+    case "renameTag":
+      await renameTag(deps, msg.tag);
+      return;
     case "tagAction":
-      await tagAction(deps, msg.tag);
+      await tagAction(deps, msg.tag, msg.target, msg.remote);
       return;
     case "cherryPick":
       await cherryPick(deps, msg.hash);

@@ -2,6 +2,7 @@
 // - graphActions.ts 는 메시지 라우팅에 집중하고, 태그 생성/checkout/push/delete 흐름은 여기로 모은다.
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
+import { GitTagService, GitTagStatus } from "../git/gitTagService";
 import {
   focusCheckoutConflicts,
   isCheckoutConflictError,
@@ -21,7 +22,8 @@ type TagQuickAction =
   | "deleteLocal"
   | "deleteRemote"
   | "fetch"
-  | "copy";
+  | "copy"
+  | "rename";
 
 interface TagQuickPickItem extends vscode.QuickPickItem {
   action: TagQuickAction;
@@ -65,8 +67,13 @@ export async function createTag(
  */
 export async function tagAction(
   deps: GraphTagActionDeps,
-  tag: string
+  tag: string,
+  target?: string,
+  remote?: string
 ): Promise<void> {
+  const status = await tagStatus(deps, tag);
+  const hasLocal = Boolean(status?.localHash);
+  const hasRemote = Boolean(remote || status?.remoteTargets.length);
   const pick = await vscode.window.showQuickPick<TagQuickPickItem>(
     [
       {
@@ -79,27 +86,36 @@ export async function tagAction(
         description: vscode.l10n.t("Create a local branch at this tag."),
         action: "createBranch",
       },
-      { label: vscode.l10n.t("Push Tag"), action: "push" },
-      { label: vscode.l10n.t("Delete Local Tag"), action: "deleteLocal" },
-      { label: vscode.l10n.t("Delete Remote Tag"), action: "deleteRemote" },
+      ...(hasLocal
+        ? [
+            { label: vscode.l10n.t("Rename Local Tag"), action: "rename" as const },
+            { label: vscode.l10n.t("Push Tag"), action: "push" as const },
+            { label: vscode.l10n.t("Delete Local Tag"), action: "deleteLocal" as const },
+          ]
+        : []),
+      ...(hasRemote
+        ? [{ label: vscode.l10n.t("Delete Remote Tag"), action: "deleteRemote" as const }]
+        : []),
       { label: vscode.l10n.t("Fetch Tags"), action: "fetch" },
       { label: vscode.l10n.t("Copy Tag Name"), action: "copy" },
     ],
-    { placeHolder: tag }
+    { placeHolder: remote ? `${remote}/${tag}` : tag }
   );
   if (!pick) {
     return;
   }
   if (pick.action === "checkout") {
-    await checkoutTag(deps, tag);
+    await checkoutTag(deps, tag, target);
   } else if (pick.action === "createBranch") {
-    await createBranchFromTag(deps, tag);
+    await createBranchFromTag(deps, tag, target);
+  } else if (pick.action === "rename") {
+    await renameTag(deps, tag, status);
   } else if (pick.action === "push") {
     await pushTag(deps, tag);
   } else if (pick.action === "deleteLocal") {
     await deleteTag(deps, tag);
   } else if (pick.action === "deleteRemote") {
-    await deleteRemoteTag(deps, tag);
+    await deleteRemoteTag(deps, tag, remote);
   } else if (pick.action === "fetch") {
     await fetchTags(deps);
   } else {
@@ -115,8 +131,10 @@ export async function tagAction(
  */
 export async function checkoutTag(
   deps: GraphTagActionDeps,
-  tag: string
+  tag: string,
+  target?: string
 ): Promise<void> {
+  const startPoint = target || tag;
   const ok = await confirm(
     vscode.l10n.t("Checkout tag '{0}' as detached HEAD?", tag),
     vscode.l10n.t("Checkout")
@@ -125,7 +143,7 @@ export async function checkoutTag(
     return;
   }
   try {
-    await deps.logService.checkoutCommitDetached(tag);
+    await deps.logService.checkoutCommitDetached(startPoint);
   } catch (err) {
     if (!isCheckoutConflictError(err)) {
       throw err;
@@ -133,8 +151,8 @@ export async function checkoutTag(
     const result = await retryCheckoutWithConflicts(
       err,
       deps.logService.repoRoot,
-      tag,
-      () => deps.logService.checkoutCommitDetached(tag, true)
+      startPoint,
+      () => deps.logService.checkoutCommitDetached(startPoint, true)
     );
     if (result === "cancelled") {
       return;
@@ -160,8 +178,10 @@ export async function checkoutTag(
  */
 export async function createBranchFromTag(
   deps: GraphTagActionDeps,
-  tag: string
+  tag: string,
+  target?: string
 ): Promise<void> {
+  const startPoint = target || tag;
   const name = await vscode.window.showInputBox({
     prompt: vscode.l10n.t("Create branch from tag '{0}'", tag),
     validateInput: (value) =>
@@ -170,7 +190,7 @@ export async function createBranchFromTag(
   if (!name) {
     return;
   }
-  await deps.logService.createBranchAt(name.trim(), tag);
+  await deps.logService.createBranchAt(name.trim(), startPoint);
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Branch '{0}' created.", name.trim())
@@ -205,9 +225,10 @@ export async function deleteTag(
  */
 export async function deleteRemoteTag(
   deps: GraphTagActionDeps,
-  tag: string
+  tag: string,
+  remoteName?: string
 ): Promise<void> {
-  const remote = await pickRemote(deps);
+  const remote = remoteName ?? (await pickRemote(deps));
   if (
     !remote ||
     !(await confirm(
@@ -218,6 +239,7 @@ export async function deleteRemoteTag(
     return;
   }
   await deps.logService.deleteRemoteTag(remote, tag);
+  await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Remote tag '{0}' deleted.", tag)
   );
@@ -238,7 +260,48 @@ export async function pushTag(
     return;
   }
   await deps.logService.pushTag(remote, tag);
+  await deps.refreshGraph();
   vscode.window.showInformationMessage(vscode.l10n.t("Tag '{0}' pushed.", tag));
+}
+
+/**
+ * 로컬 tag 이름을 변경한다.
+ * - 원격 tag 는 git 프로토콜상 rename 이 없어 로컬 tag 만 바꾸고 원격은 별도 push/delete 액션으로 처리한다.
+ * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
+ * @param tag 기존 로컬 tag 이름
+ * @param knownStatus 이미 조회해 둔 tag 상태. 없으면 내부에서 다시 조회한다.
+ */
+export async function renameTag(
+  deps: GraphTagActionDeps,
+  tag: string,
+  knownStatus?: GitTagStatus
+): Promise<void> {
+  const status = knownStatus ?? (await tagStatus(deps, tag));
+  if (!status?.localHash) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Only local tags can be renamed.")
+    );
+    return;
+  }
+  const nextName = await vscode.window.showInputBox({
+    prompt: vscode.l10n.t("Rename tag '{0}'", tag),
+    value: tag,
+    validateInput: (value) =>
+      value.trim() ? undefined : vscode.l10n.t("Tag name is required."),
+  });
+  if (!nextName || nextName.trim() === tag) {
+    return;
+  }
+  await new GitTagService(deps.logService.repoRoot).renameLocalTag(tag, nextName.trim());
+  await deps.refreshGraph();
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Tag '{0}' renamed to '{1}'.", tag, nextName.trim())
+  );
+  if (status.remoteTargets.length > 0) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("Remote tags are unchanged. Push the new tag and delete the old remote tag if needed.")
+    );
+  }
 }
 
 /**
@@ -278,6 +341,20 @@ async function pickRemote(deps: GraphTagActionDeps): Promise<string | undefined>
     : vscode.window.showQuickPick(remotes, {
         placeHolder: vscode.l10n.t("Select a remote"),
       });
+}
+
+/**
+ * tag 의 로컬/원격 상태를 조회한다.
+ * @param deps graph 패널이 제공하는 git service
+ * @param tag 조회할 tag 이름
+ */
+async function tagStatus(
+  deps: GraphTagActionDeps,
+  tag: string
+): Promise<GitTagStatus | undefined> {
+  return (await new GitTagService(deps.logService.repoRoot).getTagStatuses()).find(
+    (item) => item.name === tag
+  );
 }
 
 /**

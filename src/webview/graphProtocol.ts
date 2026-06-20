@@ -21,6 +21,7 @@ import type {
   GraphRepositorySearchResult,
   GraphRepositorySearchScope,
 } from "../git/graphSearchService";
+import type { GitTagStatus } from "../git/gitTagService";
 
 /** graph 검색에서 명시적으로 최신화할 ref 종류 */
 export type GraphSearchFetchTarget = "refs" | "tags";
@@ -74,6 +75,7 @@ export type ToWebviewMessage =
   | { type: "graphLoadState"; state: GraphLoadState }
   | { type: "branchStatus"; branches: LocalBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
+  | { type: "tagStatus"; tags: GitTagStatus[] }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
   | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
   | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
@@ -152,13 +154,14 @@ export type FromWebviewMessage =
   | { type: "undoCommit"; hash: string }
   | { type: "revertCommit"; hash: string; parents?: string[] }
   | { type: "createTag"; hash: string }
-  | { type: "checkoutTag"; tag: string }
-  | { type: "createBranchFromTag"; tag: string }
+  | { type: "checkoutTag"; tag: string; target?: string }
+  | { type: "createBranchFromTag"; tag: string; target?: string }
   | { type: "deleteTag"; tag?: string }
-  | { type: "deleteRemoteTag"; tag: string }
+  | { type: "deleteRemoteTag"; tag: string; remote?: string }
   | { type: "pushTag"; tag?: string }
   | { type: "copyTagName"; tag: string }
-  | { type: "tagAction"; tag: string }
+  | { type: "renameTag"; tag: string }
+  | { type: "tagAction"; tag: string; target?: string; remote?: string }
   | { type: "cherryPick"; hash: string }
   | { type: "copyCommitHash"; hash: string }
   | { type: "copyCommitMessage"; message: string }

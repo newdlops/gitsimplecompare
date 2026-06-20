@@ -3,6 +3,7 @@
 // - ref/hash 검색은 가볍게 처리하고, commit message 검색만 max-count 로 제한한다.
 import { LOG_FIELD_SEPARATOR } from "./gitLogParse";
 import { runGit } from "./gitExec";
+import { GitRemoteTagRef, GitTagService } from "./gitTagService";
 
 /** repository-wide graph 검색 결과 종류 */
 export type GraphRepositorySearchKind = "commit" | "branch" | "tag" | "hash";
@@ -24,6 +25,8 @@ export interface GraphRepositorySearchMatch {
   label: string;
   meta: string;
   refName?: string;
+  tagOrigin?: "local" | "remote";
+  remote?: string;
   subject?: string;
   authorName?: string;
   dateIso?: string;
@@ -104,19 +107,25 @@ export class GraphSearchService {
     scope: GraphRepositorySearchScope
   ): Promise<GraphRepositorySearchMatch[]> {
     const format = "%(refname:short)%00%(*objectname)%00%(objectname)%00%(objecttype)%00%(refname)";
-    const out = await runGit([
-      "for-each-ref",
-      `--format=${format}`,
-      "refs/heads",
-      "refs/remotes",
-      "refs/tags",
-    ], this.repoRoot).catch(() => "");
-    return out
+    const [localRefs, remoteTags] = await Promise.all([
+      runGit([
+        "for-each-ref",
+        `--format=${format}`,
+        "refs/heads",
+        "refs/remotes",
+        "refs/tags",
+      ], this.repoRoot).catch(() => ""),
+      scopeAllows(scope, "tag")
+        ? new GitTagService(this.repoRoot).getRemoteTagRefs()
+        : Promise.resolve([]),
+    ]);
+    return localRefs
       .split("\n")
       .map(parseRefLine)
+      .concat(remoteTags.map(remoteTagMatch))
       .filter((match): match is GraphRepositorySearchMatch => Boolean(match))
       .filter((match) => scopeAllows(scope, match.kind))
-      .filter((match) => matchesTerms(`${match.label} ${match.refName} ${match.kind}`, terms))
+      .filter((match) => matchesTerms(searchableRefText(match), terms))
       .slice(0, MAX_REF_MATCHES);
   }
 
@@ -203,9 +212,35 @@ function parseRefLine(line: string): GraphRepositorySearchMatch | undefined {
     hash,
     shortHash: hash.slice(0, 7),
     label: shortName,
-    meta: kind === "tag" ? "tag" : (objectType === "commit" ? "branch" : objectType || "ref"),
+    meta: kind === "tag" ? "local tag" : (objectType === "commit" ? "branch" : objectType || "ref"),
     refName: fullName,
+    tagOrigin: kind === "tag" ? "local" : undefined,
   };
+}
+
+/** 원격 tag 레코드를 검색 결과로 변환한다. */
+function remoteTagMatch(tag: GitRemoteTagRef): GraphRepositorySearchMatch {
+  return {
+    kind: "tag",
+    hash: tag.hash,
+    shortHash: tag.hash.slice(0, 7),
+    label: `${tag.remote}/${tag.name}`,
+    meta: `remote tag | ${tag.remote}`,
+    refName: `refs/remotes/${tag.remote}/tags/${tag.name}`,
+    tagOrigin: "remote",
+    remote: tag.remote,
+  };
+}
+
+/** ref 검색에서 사용할 통합 검색 문자열을 만든다. */
+function searchableRefText(match: GraphRepositorySearchMatch): string {
+  return [
+    match.label,
+    match.refName,
+    match.kind,
+    match.tagOrigin,
+    match.remote,
+  ].filter(Boolean).join(" ");
 }
 
 /** git log/show 출력 여러 줄을 commit 검색 결과로 변환한다. */

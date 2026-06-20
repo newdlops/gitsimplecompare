@@ -325,6 +325,36 @@ body.resizing {
   text-underline-offset: 2px;
 }
 
+.ref.tag {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ref.tag-local {
+  border-color: var(--vscode-charts-yellow, #d7ba7d);
+  color: var(--vscode-charts-yellow, #d7ba7d);
+  background: color-mix(in srgb, var(--vscode-charts-yellow, #d7ba7d) 14%, var(--vscode-editorWidget-background, #1e1e1e));
+}
+
+.ref.tag-synced {
+  border-color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  background: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 14%, var(--vscode-editorWidget-background, #1e1e1e));
+}
+
+.ref.tag-remote {
+  border-style: dashed;
+  border-color: var(--vscode-charts-blue, #3794ff);
+  color: var(--vscode-charts-blue, #3794ff);
+  background: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 12%, var(--vscode-editorWidget-background, #1e1e1e));
+}
+
+.ref.tag-diverged {
+  border-color: var(--vscode-errorForeground, #f48771);
+  color: var(--vscode-errorForeground, #f48771);
+  background: color-mix(in srgb, var(--vscode-errorForeground, #f48771) 14%, var(--vscode-editorWidget-background, #1e1e1e));
+}
+
 #graph-toolbar .icon-button[data-tooltip]::after,
 .ref[data-tooltip]::after {
   display: none;

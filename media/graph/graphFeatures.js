@@ -5,6 +5,8 @@
 
   let localBranches = new Map();
   let localBranchColors = new Map();
+  let tagStatuses = new Map();
+  let remoteTagsByHash = new Map();
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -107,6 +109,48 @@
     return ref.slice("tag:".length);
   }
 
+  /** ref 문자열이 원격 tag 내부 표기인지 확인한다. */
+  function isRemoteTagRef(ref) {
+    return ref.indexOf("remote-tag:") === 0;
+  }
+
+  /** 원격 tag 내부 표기에서 remote/name 을 분리한다. */
+  function remoteTagInfo(ref) {
+    const raw = ref.slice("remote-tag:".length);
+    const slash = raw.indexOf("/");
+    return slash < 0
+      ? { remote: "", name: raw }
+      : { remote: raw.slice(0, slash), name: raw.slice(slash + 1) };
+  }
+
+  /** 확장에서 받은 tag 상태를 이름/해시 기준으로 찾아볼 수 있게 저장한다. */
+  function setTagStatus(tags) {
+    tagStatuses = new Map();
+    remoteTagsByHash = new Map();
+    (tags || []).forEach((tag) => {
+      tagStatuses.set(tag.name, tag);
+      (tag.remoteTargets || []).forEach((target) => {
+        const refs = remoteTagsByHash.get(target.hash) || [];
+        refs.push({ name: tag.name, remote: target.remote, hash: target.hash });
+        remoteTagsByHash.set(target.hash, refs);
+      });
+    });
+  }
+
+  /** row 에 실제 로컬 ref 와 원격 전용 tag ref 를 합쳐 표시용 ref 목록을 만든다. */
+  function displayRefs(row) {
+    const refs = [...(row.refs || [])];
+    const seen = new Set(refs);
+    (remoteTagsByHash.get(row.hash) || []).forEach((tag) => {
+      const ref = `remote-tag:${tag.remote}/${tag.name}`;
+      if (!seen.has(ref)) {
+        refs.push(ref);
+        seen.add(ref);
+      }
+    });
+    return refs;
+  }
+
   /** 로컬 브랜치 배지의 hover tooltip 내용을 만든다. */
   function branchTitle(branch) {
     const parts = [];
@@ -142,11 +186,29 @@
     }
     if (isTagRef(ref)) {
       const name = tagName(ref);
-      return `<span class="ref tag" role="button" tabindex="0" data-tag-name="${safeEsc(
+      const status = tagStatuses.get(name);
+      const title = localTagTitle(name, status);
+      return `<span class="${localTagClass(status)}" role="button" tabindex="0" data-tag-name="${safeEsc(
         name
-      )}" title="${safeEsc(`tag ${name}`)}" aria-label="${safeEsc(`tag ${name}`)}">` +
+      )}" data-tag-local="1" data-tag-hash="${safeEsc(
+        status?.localHash || ""
+      )}" data-tooltip="${safeEsc(title)}" title="${safeEsc(title)}" aria-label="${safeEsc(title)}">` +
         `<span class="codicon codicon-tag ref-icon" aria-hidden="true"></span>` +
         `<span class="ref-label">${safeEsc(name)}</span></span>`;
+    }
+    if (isRemoteTagRef(ref)) {
+      const info = remoteTagInfo(ref);
+      const target = (tagStatuses.get(info.name)?.remoteTargets || []).find(
+        (item) => item.remote === info.remote
+      );
+      const title = `Remote tag ${info.remote}/${info.name}`;
+      return `<span class="ref tag tag-remote" role="button" tabindex="0" data-tag-name="${safeEsc(
+        info.name
+      )}" data-tag-remote="${safeEsc(info.remote)}" data-tag-hash="${safeEsc(
+        target?.hash || ""
+      )}" data-tooltip="${safeEsc(title)}" title="${safeEsc(title)}" aria-label="${safeEsc(title)}">` +
+        `<span class="codicon codicon-cloud ref-icon" aria-hidden="true"></span>` +
+        `<span class="ref-label">${safeEsc(info.remote)}/${safeEsc(info.name)}</span></span>`;
     }
     if (isVirtualRef(ref)) {
       return virtualBadge(ref, safeEsc);
@@ -181,6 +243,24 @@
       : "";
     const title = remote ? "" : ` title="${safeEsc(ref)}"`;
     return `<span class="${className}"${branchStyle(ref)}${attrs}${title}>${icon}<span class="ref-label">${safeEsc(ref)}</span></span>`;
+  }
+
+  /** 로컬 tag 상태를 CSS class 조합으로 변환한다. */
+  function localTagClass(status) {
+    if (!status || !status.remoteTargets?.length) return "ref tag tag-local";
+    return status.remoteTargets.some((target) => target.hash === status.localHash)
+      ? "ref tag tag-synced"
+      : "ref tag tag-diverged";
+  }
+
+  /** 로컬 tag hover tooltip 내용을 만든다. */
+  function localTagTitle(name, status) {
+    if (!status || !status.remoteTargets?.length) return `Local tag ${name}`;
+    const remotes = status.remoteTargets.map((target) => target.remote).join(", ");
+    const pushed = status.remoteTargets.some((target) => target.hash === status.localHash);
+    return pushed
+      ? `Local and remote tag ${name} | ${remotes}`
+      : `Local tag ${name} differs from remote | ${remotes}`;
   }
 
   /** 커밋 상세 패널에 표시할 액션 버튼 HTML 을 만든다. */
@@ -347,7 +427,12 @@
     event.preventDefault();
     event.stopPropagation();
     if (tag) {
-      window.GscGraphPostMessage?.({ type: "tagAction", tag });
+      window.GscGraphPostMessage?.({
+        type: "tagAction",
+        tag,
+        target: target.dataset.tagHash || undefined,
+        remote: target.dataset.tagRemote || undefined,
+      });
     } else if (branch) {
       const kind = target.dataset.branchKind || "local";
       if (kind === "remote") {
@@ -498,9 +583,11 @@
     bindCommitActions,
     branchColor,
     commitActions,
+    displayRefs,
     nodeClass,
     refBadge,
     rowColor,
     setLocalBranches,
+    setTagStatus,
   };
 })();
