@@ -75,8 +75,11 @@ async function refreshChangesViewOnce(
         const repositories = await discoverRepositoriesForRefresh(deps);
         deps.changesView.setRepositories(repositories);
       }
+      const forceGitStatus = shouldForceGitStatus(reason);
       const tasks = [
-        sectionTask(sections, "workingChanges", () => refreshWorkingChanges(deps)),
+        sectionTask(sections, "workingChanges", () =>
+          refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+        ),
         sectionTask(sections, "stashes", () => refreshStashes(deps)),
         sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
       ].filter((task): task is RefreshTask => !!task);
@@ -156,6 +159,7 @@ function isWorkingOnlyReason(reason: string): boolean {
         part === "filesDeleted" ||
         part === "filesRenamed" ||
         part === "vscodeGit:state" ||
+        part.includes("ignore-rules") ||
         part.includes("conflict") ||
         part.startsWith("hunkCheckbox:") ||
         part.startsWith("editorHunks:")
@@ -170,12 +174,31 @@ function shouldInvalidateStatusCaches(reason: string): boolean {
     reason.split(",").some((part) => {
       const item = part.trim();
       return (
+        item === "command" ||
         item.includes("conflict") ||
+        item.includes("ignore-rules") ||
         item.startsWith("hunkCheckbox:") ||
         item.startsWith("editorHunks:")
       );
     })
   );
+}
+
+/**
+ * 작업트리 상태를 VS Code Git provider 캐시 대신 Git CLI 로 직접 다시 읽어야 하는지 판단한다.
+ * - 사용자가 누른 refresh/뷰 진입/ignore 규칙 변경은 provider 상태가 아직 이전 값일 수 있으므로 강제 조회한다.
+ * @param reason refresh 요청 사유 목록
+ */
+function shouldForceGitStatus(reason: string): boolean {
+  return reason.split(",").some((part) => {
+    const item = part.trim();
+    return (
+      item === "command" ||
+      item === "viewReady" ||
+      item === "viewVisible" ||
+      item.includes("ignore-rules")
+    );
+  });
 }
 
 /** 선택된 section 만 실행 목록에 넣는다. */

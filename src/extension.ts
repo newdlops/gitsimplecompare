@@ -137,25 +137,36 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshEverything(reason);
     }, delay);
   };
-  const watchRefresh = (watcher: vscode.FileSystemWatcher): void => {
+  type RefreshWatcherHandler = (
+    event: "create" | "change" | "delete",
+    uri: vscode.Uri
+  ) => void;
+  /** watcher 의 create/change/delete 이벤트를 같은 refresh handler 에 연결한다. */
+  const watchRefresh = (
+    watcher: vscode.FileSystemWatcher,
+    handler: RefreshWatcherHandler
+  ): void => {
     watcher.onDidCreate(
-      (uri) => scheduleRefreshForGitUri("create", uri),
+      (uri) => handler("create", uri),
       undefined,
       context.subscriptions
     );
     watcher.onDidChange(
-      (uri) => scheduleRefreshForGitUri("change", uri),
+      (uri) => handler("change", uri),
       undefined,
       context.subscriptions
     );
     watcher.onDidDelete(
-      (uri) => scheduleRefreshForGitUri("delete", uri),
+      (uri) => handler("delete", uri),
       undefined,
       context.subscriptions
     );
   };
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**}"
+    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,info/exclude}"
+  );
+  const gitignoreWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/.gitignore"
   );
   const scheduleRefreshForGitUri = (
     event: "create" | "change" | "delete",
@@ -174,16 +185,28 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     registry.invalidateStatusCaches();
-    clearBranchContentCache();
-    const repoRoot = repoRootFromGitUri(uri);
-    if (repoRoot) {
-      pendingGraphRefreshRoots.add(repoRoot);
+    if (decision.reason !== "ignore-rules") {
+      clearBranchContentCache();
+      const repoRoot = repoRootFromGitUri(uri);
+      if (repoRoot) {
+        pendingGraphRefreshRoots.add(repoRoot);
+      }
     }
     scheduleRefresh(`git:${event}:${decision.reason}`);
   };
-  watchRefresh(gitWatcher);
+  const scheduleRefreshForIgnoreUri = (
+    event: "create" | "change" | "delete",
+    uri: vscode.Uri
+  ): void => {
+    logInfo("ignore rules refresh requested", { event, path: uri.fsPath });
+    registry.invalidateStatusCaches();
+    scheduleRefresh(`working-tree-file:${event}:ignore-rules`, 0);
+  };
+  watchRefresh(gitWatcher, scheduleRefreshForGitUri);
+  watchRefresh(gitignoreWatcher, scheduleRefreshForIgnoreUri);
   context.subscriptions.push(
     gitWatcher,
+    gitignoreWatcher,
     new vscode.Disposable(() => {
       if (refreshTimer) {
         clearTimeout(refreshTimer);
@@ -244,6 +267,9 @@ interface RefreshDecision {
  */
 function shouldRefreshForGitUri(uri: vscode.Uri): RefreshDecision {
   const path = uri.fsPath.replace(/\\/g, "/");
+  if (isGitExcludePath(path)) {
+    return { refresh: true, reason: "ignore-rules" };
+  }
   return isStableGitStatePath(path)
     ? { refresh: true, reason: "stable-git-state" }
     : { refresh: false, reason: "volatile-git-state" };
@@ -266,6 +292,14 @@ function isStableGitStatePath(path: string): boolean {
   return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/)/.test(
     path
   );
+}
+
+/**
+ * `.git/info/exclude` 변경인지 확인한다.
+ * @param path 슬래시(`/`)로 정규화된 절대 경로
+ */
+function isGitExcludePath(path: string): boolean {
+  return /\/\.git\/info\/exclude$/.test(path);
 }
 
 /**
