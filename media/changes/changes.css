@@ -786,6 +786,79 @@ body:focus-within .row.selected:hover {
   margin-left: 8px;
 }
 
+.history-item.collapsed .history-details {
+  display: none;
+}
+
+.history-details {
+  padding: 4px 12px 8px 52px;
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
+
+.history-message {
+  box-sizing: border-box;
+  max-height: 220px;
+  margin: 0 0 7px;
+  padding: 6px 7px;
+  overflow: auto;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-input-background));
+  font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  font-size: var(--vscode-font-size);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.history-file-link {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-textLink-foreground, var(--vscode-foreground));
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-file-link:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.history-file-link:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.history-file-link .codicon {
+  flex: 0 0 16px;
+  margin-right: 4px;
+}
+
+.history-file-link .extension-icon {
+  flex: 0 0 16px;
+  margin-right: 5px;
+}
+
+.history-file-link .name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-file-link .stat {
+  margin-left: 8px;
+}
+
 /* ── Stashes(브랜치처럼 펼쳐서 파일 보기) ── */
 .stash {
   display: flex;

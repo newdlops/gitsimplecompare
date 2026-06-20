@@ -18,6 +18,8 @@ export interface FileHistoryEntry {
   baseRef: string;
   /** 커밋 제목 */
   title: string;
+  /** 커밋 전체 메시지(subject + body) */
+  message: string;
   /** 작성자 이름 */
   author: string;
   /** ISO strict 형식 작성 시각 */
@@ -44,6 +46,7 @@ interface LogCommit {
   dateIso: string;
   relativeDate: string;
   title: string;
+  message: string;
 }
 
 interface CommitFileChange {
@@ -94,6 +97,7 @@ export class FileHistoryService {
         shortHash: commit.shortHash,
         baseRef,
         title: commit.title,
+        message: commit.message,
         author: commit.author,
         dateIso: commit.dateIso,
         relativeDate: commit.relativeDate,
@@ -125,15 +129,15 @@ export class FileHistoryService {
         "--follow",
         `--max-count=${Math.max(1, limit)}`,
         "--date=relative",
-        "--format=%H%x1f%h%x1f%P%x1f%an%x1f%aI%x1f%ar%x1f%s",
+        "--format=%H%x1f%h%x1f%P%x1f%an%x1f%aI%x1f%ar%x1f%s%x1f%B%x1e",
         "--",
         relPath,
       ],
       this.repoRoot
     );
     return raw
-      .split("\n")
-      .map(parseLogLine)
+      .split("\x1e")
+      .map(parseLogRecord)
       .filter((entry): entry is LogCommit => !!entry);
   }
 
@@ -233,19 +237,28 @@ function normalizeGitPath(relPath: string): string {
 }
 
 /**
- * 커스텀 구분자 기반 git log 한 줄을 LogCommit 으로 변환한다.
- * @param line `readFollowLog` 가 받은 한 줄
+ * 커스텀 구분자 기반 git log 레코드를 LogCommit 으로 변환한다.
+ * @param record `readFollowLog` 가 받은 한 커밋 레코드
  */
-function parseLogLine(line: string): LogCommit | undefined {
-  if (!line.trim()) {
+function parseLogRecord(record: string): LogCommit | undefined {
+  const text = record.replace(/^\n+/, "").replace(/\n+$/, "");
+  if (!text.trim()) {
     return undefined;
   }
-  const parts = line.split("\x1f");
-  if (parts.length < 7 || !parts[0]) {
+  const parts = text.split("\x1f");
+  if (parts.length < 8 || !parts[0]) {
     return undefined;
   }
-  const [hash, shortHash, parentText, author, dateIso, relativeDate, ...title] =
-    parts;
+  const [
+    hash,
+    shortHash,
+    parentText,
+    author,
+    dateIso,
+    relativeDate,
+    title,
+    ...message
+  ] = parts;
   return {
     hash,
     shortHash,
@@ -253,6 +266,7 @@ function parseLogLine(line: string): LogCommit | undefined {
     author,
     dateIso,
     relativeDate,
-    title: title.join("\x1f"),
+    title,
+    message: message.join("\x1f").trimEnd() || title,
   };
 }

@@ -65,6 +65,7 @@
   state.groups = state.groups || {}; // Staged/Changes 그룹 접힘 상태
   state.folders = state.folders || {}; // 파일 트리 폴더 접힘 상태(kind:path)
   state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
+  state.historyExpanded = state.historyExpanded || {}; // history 커밋 상세 펼침 상태(hash별)
   state.commitMessageRevision = state.commitMessageRevision || 0;
   const SECTION_IDS = ["repos", "changes", "history", "compare", "stashes"];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
@@ -582,27 +583,61 @@
     );
   }
 
-  /** 파일 히스토리 커밋 한 줄(클릭 시 부모 ↔ 해당 커밋 diff). */
+  /** 커밋 메시지 본문을 상세 영역에 표시한다. */
+  function historyMessageHtml(commit) {
+    const message = (commit.message || commit.title || "").trim();
+    return `<pre class="history-message">${esc(message)}</pre>`;
+  }
+
+  /** 히스토리 상세 영역에서 해당 파일 diff 를 여는 링크형 버튼. */
+  function historyFileLinkHtml(repoRoot, commit) {
+    const label = commit.oldPath
+      ? `${commit.oldPath} → ${commit.path}`
+      : commit.path;
+    const tooltip = `${T.openHistoryCommit}: ${label}`;
+    return (
+      `<button class="history-file-link" type="button" ` +
+      `data-repo-root="${esc(repoRoot || "")}" data-path="${esc(commit.path)}" ` +
+      `data-old-path="${esc(commit.oldPath || "")}" ` +
+      `data-base-ref="${esc(commit.baseRef)}" data-head-ref="${esc(commit.hash)}" ` +
+      `data-short-hash="${esc(commit.shortHash)}" data-title="${esc(commit.title)}" ` +
+      `title="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" ` +
+      `aria-label="${esc(tooltip)}">` +
+      `<span class="codicon codicon-diff" aria-hidden="true"></span>` +
+      fileIconHtml(commit.path) +
+      `<span class="name">${esc(label)}</span>` +
+      statHtml(commit) +
+      `</button>`
+    );
+  }
+
+  /** 파일 히스토리 커밋 한 줄(클릭 시 메시지 상세를 펼치고, 상세의 파일 링크가 diff 를 연다). */
   function historyCommitHtml(repoRoot, commit) {
+    const key = commit.hash || `${commit.path}:${commit.shortHash || ""}`;
+    const expanded = !!state.historyExpanded[key];
+    const chevron = expanded ? "codicon-chevron-down" : "codicon-chevron-right";
     const title = `${commit.shortHash || commit.hash} ${commit.title || ""}`.trim();
     const meta = [commit.author, commit.relativeDate || commit.dateIso]
       .filter(Boolean)
       .join(" · ");
-    const tooltip = `${T.openHistoryCommit}: ${title}`;
+    const tooltip = `${T.toggleSection}: ${title}`;
     return (
+      `<div class="history-item${expanded ? "" : " collapsed"}" data-key="${esc(key)}">` +
       `<div class="row file history-commit" role="button" tabindex="0" ` +
-      `data-status="${esc(commit.status)}" data-repo-root="${esc(repoRoot || "")}" ` +
-      `data-path="${esc(commit.path)}" data-old-path="${esc(commit.oldPath || "")}" ` +
-      `data-base-ref="${esc(commit.baseRef)}" data-head-ref="${esc(commit.hash)}" ` +
-      `data-short-hash="${esc(commit.shortHash)}" data-title="${esc(commit.title)}" ` +
-      `title="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
-      `<span class="twistie"></span>` +
+      `data-status="${esc(commit.status)}" data-key="${esc(key)}" ` +
+      `title="${esc(tooltip)}" aria-label="${esc(tooltip)}" ` +
+      `aria-expanded="${expanded ? "true" : "false"}">` +
+      `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="icon codicon ${statusCodicon(commit.status)}"></span>` +
       `<span class="history-hash">${esc(commit.shortHash || commit.hash.slice(0, 7))}</span>` +
       `<span class="name history-title">${esc(commit.title)}</span>` +
       (meta ? `<span class="history-meta">${esc(meta)}</span>` : "") +
       statHtml(commit) +
-      `</div>`
+      `</div>` +
+      `<div class="history-details">` +
+      historyMessageHtml(commit) +
+      historyFileLinkHtml(repoRoot, commit) +
+      `</div></div>`
     );
   }
 
@@ -1138,7 +1173,7 @@
     bindStashes();
   }
 
-  /** History 섹션: 커밋 행 클릭/키보드 실행을 커밋 diff 열기로 연결한다. */
+  /** History 섹션: 커밋 상세 펼침/접기와 상세 파일 링크(diff 열기)를 연결한다. */
   function bindHistory() {
     const open = (el) =>
       post("openFileHistoryCommit", {
@@ -1151,14 +1186,37 @@
         title: el.dataset.title,
       });
     rootEl.querySelectorAll(".history-commit").forEach((el) => {
-      el.addEventListener("click", () => open(el));
+      el.addEventListener("click", () => toggleHistoryItem(el));
       el.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          open(el);
+          toggleHistoryItem(el);
         }
       });
     });
+    rootEl.querySelectorAll(".history-file-link").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        open(el);
+      });
+    });
+  }
+
+  /** History 커밋 상세의 펼침 상태를 토글한다. */
+  function toggleHistoryItem(el) {
+    const item = el.closest(".history-item");
+    const key = item?.dataset.key || el.dataset.key;
+    if (!item || !key) {
+      return;
+    }
+    const expanded = !state.historyExpanded[key];
+    state.historyExpanded[key] = expanded;
+    vscode.setState(state);
+    item.classList.toggle("collapsed", !expanded);
+    el.setAttribute("aria-expanded", expanded ? "true" : "false");
+    const tw = el.querySelector(".twistie");
+    tw.classList.toggle("codicon-chevron-down", expanded);
+    tw.classList.toggle("codicon-chevron-right", !expanded);
   }
 
   /** Stashes 섹션: 펼치기/접기, 액션 메뉴(...), 파일 클릭(diff), 우클릭 메뉴. */
