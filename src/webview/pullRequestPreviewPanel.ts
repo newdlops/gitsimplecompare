@@ -10,7 +10,7 @@ import {
   PullRequestInfo,
   PullRequestService,
 } from "../git/pullRequestService";
-import { logError } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
@@ -38,6 +38,8 @@ export class PullRequestPreviewPanel {
   private lastSourceBranch?: string;
   private lastSourceRef?: string;
   private previewRequestSeq = 0;
+  private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+  private previewRefreshReason = "";
 
   /**
    * staged PR preview 패널을 만들거나 기존 패널을 재사용한다.
@@ -83,16 +85,55 @@ export class PullRequestPreviewPanel {
     );
     vscode.workspace.onDidSaveTextDocument((document) => {
       const file = document.uri.scheme === "file" ? document.uri.fsPath : "";
-      if (file && file.startsWith(`${this.service.repoRoot}/`)) void this.sendPreview();
+      if (file && file.startsWith(`${this.service.repoRoot}/`)) {
+        this.schedulePreviewRefresh("fileSave");
+      }
     }, undefined, this.disposables);
+    const gitWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(
+        this.service.repoRoot,
+        ".git/{index,HEAD,refs/**,packed-refs}"
+      )
+    );
+    gitWatcher.onDidCreate(() => this.schedulePreviewRefresh("gitCreate"), undefined, this.disposables);
+    gitWatcher.onDidChange(() => this.schedulePreviewRefresh("gitChange"), undefined, this.disposables);
+    gitWatcher.onDidDelete(() => this.schedulePreviewRefresh("gitDelete"), undefined, this.disposables);
+    this.disposables.push(gitWatcher);
     this.panel.onDidDispose(() => this.dispose(), undefined, this.disposables);
   }
 
   /** 패널 리소스를 정리한다. */
   private dispose(): void {
+    if (this.previewRefreshTimer) {
+      clearTimeout(this.previewRefreshTimer);
+      this.previewRefreshTimer = undefined;
+    }
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();
     }
+  }
+
+  /**
+   * 저장/스테이징/ref 변경이 짧은 시간에 몰릴 때 preview 재계산을 하나로 합친다.
+   * @param reason refresh 를 예약한 원인
+   */
+  private schedulePreviewRefresh(reason: string): void {
+    this.previewRefreshReason = this.previewRefreshTimer
+      ? `${this.previewRefreshReason},${reason}`
+      : reason;
+    if (this.previewRefreshTimer) {
+      clearTimeout(this.previewRefreshTimer);
+    }
+    this.previewRefreshTimer = setTimeout(() => {
+      const refreshReason = this.previewRefreshReason;
+      this.previewRefreshReason = "";
+      this.previewRefreshTimer = undefined;
+      logInfo("PR preview auto refresh requested", {
+        repoRoot: this.service.repoRoot,
+        reason: refreshReason,
+      });
+      void this.sendPreview();
+    }, 180);
   }
 
   /**

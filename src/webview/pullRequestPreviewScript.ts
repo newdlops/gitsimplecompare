@@ -21,8 +21,11 @@ export function pullRequestPreviewScript(): string {
     let activeCommitHash = '';
     let collapsedFolders = new Set();
     let collapsedFiles = new Set();
+    let expandedDiffContexts = new Map();
+    const savedState = vscode.getState?.() || {};
     let fileNavMode = 'tree';
     let filesReviewMode = 'cards';
+    let diffLayoutMode = savedState.diffLayoutMode === 'split' ? 'split' : 'unified';
     let latestPreview = null;
     let pendingSourceBranch = '';
     let pendingTargetBranch = '';
@@ -82,6 +85,7 @@ export function pullRequestPreviewScript(): string {
       bindOpenDiffs();
       bindFileToggles();
       bindViewButtons();
+      bindContextToggles();
     }
     function syncActionButtons(preview) {
       const needsTarget = !preview.targetBranch;
@@ -208,6 +212,31 @@ export function pullRequestPreviewScript(): string {
       content.querySelectorAll('[data-files-review-mode]').forEach((button) => {
         button.addEventListener('click', () => { filesReviewMode = button.dataset.filesReviewMode || 'cards'; if (latestPreview) render(latestPreview); });
       });
+      content.querySelectorAll('[data-diff-layout-mode]').forEach((button) => {
+        button.addEventListener('click', () => setDiffLayoutMode(button.dataset.diffLayoutMode || 'unified'));
+      });
+    }
+    function setDiffLayoutMode(mode) {
+      diffLayoutMode = mode === 'split' ? 'split' : 'unified';
+      vscode.setState?.(Object.assign({}, vscode.getState?.() || {}, { diffLayoutMode }));
+      if (latestPreview) render(latestPreview);
+    }
+    function bindContextToggles() {
+      content.querySelectorAll('[data-expand-context]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.dataset.expandContext || '';
+          const step = Number(button.dataset.expandStep || 20);
+          if (key) expandedDiffContexts.set(key, (expandedDiffContexts.get(key) || 0) + step);
+          if (latestPreview) render(latestPreview);
+        });
+      });
+      content.querySelectorAll('[data-collapse-context]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const key = button.dataset.collapseContext || '';
+          if (key) expandedDiffContexts.delete(key);
+          if (latestPreview) render(latestPreview);
+        });
+      });
     }
     function conversation(preview) {
       const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
@@ -224,7 +253,8 @@ export function pullRequestPreviewScript(): string {
         ? '<div class="continuous-diff-list">' + files.map(continuousFileHtml).join('') + '</div>'
         : '<div class="file-list">' + files.map(reviewFileHtml).join('') + '</div>';
       return '<section class="panel' + (files.length ? '' : ' warning') + '"><div class="panel-header"><span class="panel-title"><span class="codicon codicon-files" aria-hidden="true"></span>Files changed</span><div class="panel-actions">' +
-        viewToggleHtml('files-review-mode', filesReviewMode, [['cards', 'files', 'Cards', 'Show files as collapsible cards'], ['continuous', 'diff', 'Diff', 'Show all files in one continuous diff']]) +
+        viewToggleHtml('files-review-mode', filesReviewMode, [['cards', 'files', 'Cards', 'Show each file in a separated card'], ['continuous', 'list-flat', 'Stream', 'Show files as one continuous diff stream']], 'Files display mode') +
+        viewToggleHtml('diff-layout-mode', diffLayoutMode, [['unified', 'diff-single', '1 col', 'Show unified one-column diff'], ['split', 'diff-multiple', '2 col', 'Show split two-column diff']], 'Diff layout') +
         '<span class="count">' + esc(files.length) + '</span></div></div>' +
         (files.length ? body : '<p class="empty">' + esc(emptyText) + '</p>') + '</section>';
     }
@@ -278,7 +308,7 @@ export function pullRequestPreviewScript(): string {
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
         '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-        (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments) + '</div>') + '</article>';
+        (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
     }
     function continuousFileHtml(file) {
       const comments = file.comments || [];
@@ -292,7 +322,7 @@ export function pullRequestPreviewScript(): string {
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
         '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-        (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments) + '</div>') + '</article>';
+        (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
     }
     function reviewFiles(preview) {
       if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
@@ -376,7 +406,7 @@ export function pullRequestPreviewScript(): string {
         '<span class="twistie"></span><span class="codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="codicon codicon-file" aria-hidden="true"></span><span class="tree-label">' + esc(name) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span></div>';
     }
-    function viewToggleHtml(attr, active, items) { return '<div class="file-view-toggle" role="group" aria-label="Changed files view">' + items.map((item) => viewToggleButton(attr, active, item[0], item[1], item[2], item[3])).join('') + '</div>'; }
+    function viewToggleHtml(attr, active, items, label) { return '<div class="file-view-toggle" role="group" aria-label="' + esc(label || 'Changed files view') + '">' + items.map((item) => viewToggleButton(attr, active, item[0], item[1], item[2], item[3])).join('') + '</div>'; }
     function viewToggleButton(attr, active, mode, icon, label, title) {
       return '<button class="file-view-button' + (active === mode ? ' active' : '') + '" type="button" data-' + attr + '="' + esc(mode) + '" aria-pressed="' + (active === mode ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '"><span class="codicon codicon-' + icon + '" aria-hidden="true"></span><span class="file-view-label">' + esc(label) + '</span></button>';
     }

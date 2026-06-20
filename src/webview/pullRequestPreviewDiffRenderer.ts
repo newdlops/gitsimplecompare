@@ -7,18 +7,21 @@
  */
 export function pullRequestPreviewDiffScript(): string {
   return `
-    function patchHtml(patch, compact, filePath, comments) {
-      return renderGithubDiff(patch, compact ? 60 : 220, filePath, compact ? ' mini-diff' : '', comments || []);
+    function patchHtml(patch, compact, filePath, comments, layout) {
+      return renderGithubDiff(patch, compact ? 60 : 220, filePath, compact ? ' mini-diff' : '', comments || [], layout || 'unified');
     }
-    function splitPatchHtml(patch, filePath, comments) {
-      return renderGithubDiff(patch, 360, filePath, ' continuous-diff', comments || []);
+    function splitPatchHtml(patch, filePath, comments, layout) {
+      return renderGithubDiff(patch, 360, filePath, ' continuous-diff', comments || [], layout || 'unified');
     }
-    function renderGithubDiff(patch, limit, filePath, extraClass, comments) {
+    function renderGithubDiff(patch, limit, filePath, extraClass, comments, layout) {
       if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
-      const rows = diffRows(String(patch), limit, filePath, comments);
+      const rows = layout === 'split'
+        ? splitDiffRows(String(patch), limit, filePath, comments)
+        : diffRows(String(patch), limit, filePath, comments);
       const omitted = rows.omitted ? diffOmittedRow(rows.omitted) : '';
       const unmatched = rows.unmatched.length ? inlineCommentsHtml(rows.unmatched, 'review') : '';
-      return '<div class="diff-snippet github-diff' + extraClass + '">' + rows.html + omitted + unmatched + '</div>';
+      const layoutClass = layout === 'split' ? ' split-diff' : ' unified-diff';
+      return '<div class="diff-snippet github-diff' + extraClass + layoutClass + '">' + rows.html + omitted + unmatched + '</div>';
     }
     function diffRows(patch, limit, filePath, comments) {
       let oldLine = 0;
@@ -27,11 +30,19 @@ export function pullRequestPreviewDiffScript(): string {
       let html = '';
       const language = languageForPath(filePath);
       const commentState = buildCommentState(comments || []);
-      const lines = patch.split('\\n');
-      for (let index = 0; index < lines.length; index++) {
-        const line = lines[index];
-        if (index === lines.length - 1 && line === '') continue;
-        if (isPatchHeaderLine(line)) continue;
+      const entries = compactPatchEntries(patch, filePath);
+      for (let index = 0; index < entries.length; index++) {
+        if (entries[index].expanded) {
+          html += diffContextRow(entries[index].expanded, entries[index].key, true);
+          continue;
+        }
+        if (entries[index].omitted) {
+          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step);
+          oldLine += entries[index].omitted;
+          newLine += entries[index].omitted;
+          continue;
+        }
+        const line = entries[index].line;
         const hunk = /^@@ -(\\d+)(?:,\\d+)? \\+(\\d+)(?:,\\d+)? @@(.*)$/.exec(line);
         if (hunk) {
           oldLine = Number(hunk[1]);
@@ -44,7 +55,7 @@ export function pullRequestPreviewDiffScript(): string {
           continue;
         }
         if (shown >= limit) {
-          return { html, omitted: patch.split('\\n').length - shown, unmatched: remainingComments(commentState) };
+          return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
         }
         if (line.startsWith('+')) {
           html += codeRowHtml('add', '', newLine, '+', line.slice(1), language);
@@ -65,14 +76,196 @@ export function pullRequestPreviewDiffScript(): string {
       }
       return { html, omitted: 0, unmatched: remainingComments(commentState) };
     }
+    function splitDiffRows(patch, limit, filePath, comments) {
+      let oldLine = 0;
+      let newLine = 0;
+      let shown = 0;
+      let html = '';
+      const language = languageForPath(filePath);
+      const commentState = buildCommentState(comments || []);
+      const entries = compactPatchEntries(patch, filePath);
+      for (let index = 0; index < entries.length; index++) {
+        if (entries[index].expanded) {
+          html += diffContextRow(entries[index].expanded, entries[index].key, true);
+          continue;
+        }
+        if (entries[index].omitted) {
+          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step);
+          oldLine += entries[index].omitted;
+          newLine += entries[index].omitted;
+          continue;
+        }
+        const line = entries[index].line;
+        const hunk = /^@@ -(\\d+)(?:,\\d+)? \\+(\\d+)(?:,\\d+)? @@(.*)$/.exec(line);
+        if (hunk) {
+          oldLine = Number(hunk[1]);
+          newLine = Number(hunk[2]);
+          html += splitMetaRowHtml('hunk', '@@', esc(line));
+          continue;
+        }
+        if (line.startsWith('\\\\ No newline')) {
+          html += splitMetaRowHtml('meta', '', esc(line));
+          continue;
+        }
+        if (shown >= limit) {
+          return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
+        }
+        if (line.startsWith('-')) {
+          const removed = [];
+          while (index < entries.length && entries[index].line?.startsWith('-')) {
+            removed.push({ kind: 'del', no: oldLine, marker: '-', code: entries[index].line.slice(1) });
+            oldLine++;
+            index++;
+          }
+          const added = [];
+          while (index < entries.length && entries[index].line?.startsWith('+')) {
+            added.push({ kind: 'add', no: newLine, marker: '+', code: entries[index].line.slice(1) });
+            newLine++;
+            index++;
+          }
+          index--;
+          const paired = Math.max(removed.length, added.length);
+          for (let i = 0; i < paired; i++) {
+            if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
+            html += splitCodeRowHtml(removed[i], added[i], language);
+            html += lineCommentsHtml(commentState, removed[i]?.no || '', added[i]?.no || '');
+            shown++;
+          }
+          continue;
+        }
+        if (line.startsWith('+')) {
+          const added = { kind: 'add', no: newLine, marker: '+', code: line.slice(1) };
+          html += splitCodeRowHtml(null, added, language);
+          html += lineCommentsHtml(commentState, '', newLine);
+          newLine++;
+        } else {
+          const code = line.startsWith(' ') ? line.slice(1) : line;
+          const oldCell = { kind: 'ctx', no: oldLine, marker: '', code };
+          const newCell = { kind: 'ctx', no: newLine, marker: '', code };
+          html += splitCodeRowHtml(oldCell, newCell, language);
+          html += lineCommentsHtml(commentState, oldLine, newLine);
+          oldLine++;
+          newLine++;
+        }
+        shown++;
+      }
+      return { html, omitted: 0, unmatched: remainingComments(commentState) };
+    }
+    function compactPatchEntries(patch, filePath) {
+      const lines = String(patch || '').split('\\n');
+      const entries = [];
+      let hunkIndex = -1;
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
+        if (index === lines.length - 1 && line === '') continue;
+        if (isPatchHeaderLine(line)) continue;
+        if (/^@@ -\\d+(?:,\\d+)? \\+\\d+(?:,\\d+)? @@/.test(line)) {
+          hunkIndex++;
+          entries.push({ line });
+          const body = [];
+          index++;
+          while (index < lines.length && !/^@@ -\\d+(?:,\\d+)? \\+\\d+(?:,\\d+)? @@/.test(lines[index])) {
+            if (index === lines.length - 1 && lines[index] === '') break;
+            if (!isPatchHeaderLine(lines[index])) body.push(lines[index]);
+            index++;
+          }
+          index--;
+          entries.push(...compactHunkBody(body, filePath, hunkIndex));
+          continue;
+        }
+        entries.push({ line });
+      }
+      return entries;
+    }
+    function compactHunkBody(lines, filePath, hunkIndex) {
+      const out = [];
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
+        if (!isContextLine(line)) {
+          out.push({ line });
+          continue;
+        }
+        const start = index;
+        while (index < lines.length && isContextLine(lines[index])) index++;
+        const run = lines.slice(start, index);
+        index--;
+        out.push(...compactContextRun(run, filePath, hunkIndex, start, start === 0, index === lines.length - 1));
+      }
+      return out;
+    }
+    function compactContextRun(lines, filePath, hunkIndex, start, atStart, atEnd) {
+      const minCollapse = 7;
+      const edge = 3;
+      const expandStep = 20;
+      const key = filePath + ':' + hunkIndex + ':' + start;
+      if (lines.length < minCollapse) {
+        return lines.map((line) => ({ line }));
+      }
+      const expanded = diffContextExpansion(key);
+      if (atStart) {
+        return contextRunWithHidden(lines, key, expandStep, 0, edge + expanded, "start");
+      }
+      if (atEnd) {
+        return contextRunWithHidden(lines, key, expandStep, edge + expanded, 0, "end");
+      }
+      const left = edge + Math.ceil(expanded / 2);
+      const right = edge + Math.floor(expanded / 2);
+      return contextRunWithHidden(lines, key, expandStep, left, right, "middle");
+    }
+    function contextRunWithHidden(lines, key, step, leftCount, rightCount, position) {
+      const left = Math.min(lines.length, Math.max(0, leftCount));
+      const right = Math.min(Math.max(0, lines.length - left), Math.max(0, rightCount));
+      const hidden = Math.max(0, lines.length - left - right);
+      if (!hidden) {
+        return [{ expanded: lines.length, key }, ...lines.map((line) => ({ line }))];
+      }
+      const head = position === 'start' ? [] : lines.slice(0, left).map((line) => ({ line }));
+      const tail = position === 'end' ? [] : lines.slice(lines.length - right).map((line) => ({ line }));
+      return [...head, { omitted: hidden, key, step }, ...tail];
+    }
+    function isContextLine(line) {
+      return !line.startsWith('+') && !line.startsWith('-') && !line.startsWith('\\\\ No newline');
+    }
+    function diffContextExpansion(key) {
+      if (typeof expandedDiffContexts === 'undefined') return 0;
+      if (typeof expandedDiffContexts.get === 'function') {
+        return Number(expandedDiffContexts.get(key) || 0);
+      }
+      return expandedDiffContexts.has?.(key) ? Number.MAX_SAFE_INTEGER : 0;
+    }
+    function remainingEntryLines(entries, start) {
+      return entries.slice(start).reduce((sum, entry) => sum + (entry.omitted || (entry.line && !/^@@ /.test(entry.line) && !entry.line.startsWith('\\\\ No newline') ? 1 : 0)), 0);
+    }
     function codeRowHtml(kind, oldNo, newNo, marker, code, language) {
       return diffRowHtml(kind, oldNo, newNo, marker, highlightCode(code || ' ', language));
     }
     function diffRowHtml(kind, oldNo, newNo, marker, codeHtml) {
       return '<div class="diff-row ' + kind + '"><span class="diff-line-no old">' + esc(oldNo) + '</span><span class="diff-line-no new">' + esc(newNo) + '</span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
     }
+    function splitCodeRowHtml(oldCell, newCell, language) {
+      const kind = oldCell && newCell ? (oldCell.kind === 'ctx' && newCell.kind === 'ctx' ? 'ctx' : 'change') : oldCell ? 'del' : 'add';
+      return '<div class="diff-row split-row ' + kind + '">' +
+        splitCellHtml('old', oldCell, language) + splitCellHtml('new', newCell, language) + '</div>';
+    }
+    function splitCellHtml(side, cell, language) {
+      const kind = cell?.kind || 'empty';
+      const code = cell ? highlightCode(cell.code || ' ', language) : '';
+      return '<span class="diff-line-no ' + side + ' ' + kind + '">' + esc(cell?.no || '') + '</span>' +
+        '<span class="diff-marker ' + side + ' ' + kind + '">' + esc(cell?.marker || '') + '</span>' +
+        '<span class="diff-code ' + side + ' ' + kind + '">' + code + '</span>';
+    }
+    function splitMetaRowHtml(kind, marker, codeHtml) {
+      return '<div class="diff-row split-meta-row ' + kind + '"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
+    }
     function diffOmittedRow(count) {
       return '<div class="diff-row omitted"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + esc(count) + ' lines truncated</span></div>';
+    }
+    function diffContextRow(count, key, expanded, step) {
+      const title = (expanded ? 'Collapse ' : 'Expand ') + count + ' unchanged lines';
+      const attr = expanded ? 'data-collapse-context' : 'data-expand-context';
+      const label = expanded ? 'Collapse unchanged lines' : 'Show ' + Math.min(count, step || 20) + ' more unchanged lines (' + count + ' hidden)';
+      const stepAttr = expanded ? '' : ' data-expand-step="' + esc(Math.min(count, step || 20)) + '"';
+      return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code"><button type="button" class="diff-context-toggle" ' + attr + '="' + esc(key) + '"' + stepAttr + ' title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' + esc(label) + '</button></span></div>';
     }
     function buildCommentState(comments) {
       const byKey = new Map();

@@ -52,7 +52,7 @@ export function pullRequestPreviewStyles(): string {
     .panel { min-width: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); overflow: hidden; }
         .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--subtle); font-weight: 600; }
         .panel-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
-        .panel-actions { display: inline-flex; align-items: center; gap: 8px; }
+        .panel-actions { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
         .file-view-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--border); border-radius: 4px; background: var(--vscode-editor-background); }
         .file-view-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 22px; height: 22px; padding: 0 6px; border: 0; border-radius: 3px; color: var(--muted); background: transparent; cursor: pointer; }
         .file-view-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
@@ -78,7 +78,8 @@ export function pullRequestPreviewStyles(): string {
     .metric { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
     .metric-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
     .metric-value { margin-top: 5px; font-weight: 600; overflow-wrap: anywhere; }
-    .file-list, .commit-list { display: grid; min-width: 0; }
+    .file-list { display: grid; gap: 10px; min-width: 0; padding: 10px; background: var(--vscode-editor-background); }
+    .commit-list { display: grid; min-width: 0; }
     .commit-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 10px; border: 0; border-top: 1px solid var(--border); color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; }
     .commit-row:hover, .commit-row.active { background: var(--vscode-list-hoverBackground); }
     .commit-row:first-child { border-top: 0; }
@@ -86,6 +87,8 @@ export function pullRequestPreviewStyles(): string {
     .commit-hash { color: var(--muted); font-size: 12px; }
         .review-file { min-width: 0; border-top: 1px solid var(--border); }
         .review-file:first-child { border-top: 0; }
+        .file-list .review-file { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
+        .file-list .review-file:first-child { border-top: 1px solid var(--border); }
         .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
         .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
     .file-action, .file-toggle { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
@@ -95,14 +98,25 @@ export function pullRequestPreviewStyles(): string {
     .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; line-height: 20px; }
     .github-diff { border-top: 1px solid var(--border); }
     .diff-row { display: grid; grid-template-columns: 52px 52px 24px max-content; width: max-content; min-width: 100%; min-height: 20px; }
+    .split-diff .diff-row { width: 100%; }
+    .diff-row.split-row { grid-template-columns: 52px 24px minmax(220px, 1fr) 52px 24px minmax(220px, 1fr); }
+    .diff-row.split-meta-row { grid-template-columns: 52px 52px 24px max-content; }
     .diff-row.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
     .diff-row.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
+    .diff-row.split-row.add, .diff-row.split-row.del, .diff-row.split-row.change { background: transparent; }
     .diff-row.hunk, .diff-row.meta, .diff-row.omitted { color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); }
     .diff-line-no { padding: 0 8px; border-right: 1px solid color-mix(in srgb, var(--border) 72%, transparent); color: var(--muted); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
     .diff-marker { padding: 0 7px; color: var(--muted); text-align: center; user-select: none; }
     .diff-code { min-width: max-content; padding: 0 16px 0 2px; white-space: pre; tab-size: 2; }
+    .split-row .diff-code { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+    .split-row .diff-line-no.del, .split-row .diff-marker.del, .split-row .diff-code.del { background: color-mix(in srgb, var(--red) 13%, transparent); }
+    .split-row .diff-line-no.add, .split-row .diff-marker.add, .split-row .diff-code.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
+    .split-row .diff-line-no.empty, .split-row .diff-marker.empty, .split-row .diff-code.empty { background: color-mix(in srgb, var(--muted) 4%, transparent); }
     .diff-row.add .diff-line-no.new, .diff-row.del .diff-line-no.old { color: var(--vscode-foreground); background: color-mix(in srgb, currentColor 7%, transparent); }
+    .diff-context-toggle { display: inline-flex; align-items: center; min-height: 18px; padding: 0 8px; border: 1px solid var(--border); border-radius: 3px; color: var(--blue); background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
+    .diff-context-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
     .diff-comment-row { display: grid; grid-template-columns: 52px 52px 24px minmax(420px, 1fr); width: max-content; min-width: 100%; background: var(--vscode-editor-background); }
+    .split-diff .diff-comment-row { width: 100%; }
     .diff-comment-row .diff-marker { padding-top: 10px; color: var(--vscode-charts-purple); }
     .diff-inline-comments { display: grid; gap: 8px; min-width: 0; padding: 8px 12px 10px 0; }
     .diff-inline-comment { min-width: min(720px, calc(100vw - 220px)); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
@@ -111,7 +125,10 @@ export function pullRequestPreviewStyles(): string {
     .tok-comment { color: var(--vscode-editorCodeLens-foreground, #6a9955); font-style: italic; }
     .tok-number { color: var(--vscode-symbolIcon-numberForeground, #b5cea8); }
     .tok-tag, .tok-attr { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
-        .continuous-diff-list { display: grid; min-width: 0; }
+        .continuous-diff-list { display: grid; min-width: 0; background: var(--vscode-textCodeBlock-background); }
+        .continuous-diff-list .review-file { border-top: 1px solid var(--border); background: transparent; }
+        .continuous-diff-list .review-file:first-child { border-top: 0; }
+        .continuous-diff-list .review-file-head { background: var(--vscode-editor-background); }
         .continuous-file.collapsed .review-file-body, .review-file.collapsed .review-comments { display: none; }
         .review-comments { display: grid; gap: 8px; padding: 10px; border-top: 1px solid var(--border); background: var(--vscode-editor-background); }
     .review-comment { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }

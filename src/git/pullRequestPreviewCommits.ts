@@ -43,6 +43,9 @@ interface GhCommitDetail {
 }
 
 const COMMIT_DETAIL_CONCURRENCY = 4;
+// 로컬 PR preview 는 웹뷰에서 변경 없는 라인을 접어 보여주므로,
+// git diff 단계에서는 충분히 넓은 context 를 받아 반복 펼치기로 전체에 가깝게 확인할 수 있게 한다.
+const FULL_DIFF_CONTEXT_LINES = "100000";
 
 /**
  * 기존 GitHub PR 의 commit 목록을 파일 patch 와 함께 읽는다.
@@ -82,7 +85,7 @@ export async function buildLocalPullRequestPreview(
   const [baseFiles, commits, stagedPatch] = await Promise.all([
     readRangeFiles(repoRoot, targetBranch, sourceRef),
     readLocalCommitSummaries(repoRoot, targetBranch, sourceRef),
-    runGit(["diff", "--cached", "--patch", "-M", "--unified=80"], repoRoot).catch(() => ""),
+    runGit(["diff", "--cached", "--patch", "-M", `--unified=${FULL_DIFF_CONTEXT_LINES}`], repoRoot).catch(() => ""),
   ]);
   let stagedSyntheticFiles: PullRequestPreviewFile[] = [];
   if (stagedFiles.length) {
@@ -207,7 +210,7 @@ async function readLocalCommitFiles(repoRoot: string, hash: string): Promise<Pul
     "--patch",
     "--no-ext-diff",
     "-M",
-    "--unified=80",
+    `--unified=${FULL_DIFF_CONTEXT_LINES}`,
     hash,
   ], repoRoot).catch(() => "");
   if (!out) {
@@ -221,7 +224,7 @@ async function readRangeFiles(repoRoot: string, targetBranch: string, sourceRef:
   const [nameStatus, numstat, patch] = await Promise.all([
     runGit(["diff", "--name-status", "-z", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
     runGit(["diff", "--numstat", "-M", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
-    runGit(["diff", "--patch", "-M", "--unified=80", `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
+    runGit(["diff", "--patch", "-M", `--unified=${FULL_DIFF_CONTEXT_LINES}`, `${targetBranch}...${sourceRef}`], repoRoot).catch(() => ""),
   ]);
   return filesFromDiff(nameStatus, numstat, patch);
 }
