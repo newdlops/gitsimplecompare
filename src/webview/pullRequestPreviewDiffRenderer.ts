@@ -57,14 +57,42 @@ export function pullRequestPreviewDiffScript(): string {
         if (shown >= limit) {
           return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
         }
+        if (line.startsWith('-')) {
+          const removed = [];
+          while (index < entries.length && entries[index].line?.startsWith('-')) {
+            removed.push({ no: oldLine, code: entries[index].line.slice(1) });
+            oldLine++;
+            index++;
+          }
+          const added = [];
+          while (index < entries.length && entries[index].line?.startsWith('+')) {
+            added.push({ no: newLine, code: entries[index].line.slice(1) });
+            newLine++;
+            index++;
+          }
+          index--;
+          const fragments = pairedInlineFragments(removed, added, language);
+          const paired = Math.max(removed.length, added.length);
+          for (let i = 0; i < paired; i++) {
+            if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
+            if (removed[i]) {
+              html += codeRowHtml('del', removed[i].no, '', '-', removed[i].code, language, fragments[i]?.old);
+              html += lineCommentsHtml(commentState, removed[i].no, '');
+              shown++;
+            }
+            if (added[i]) {
+              if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
+              html += codeRowHtml('add', '', added[i].no, '+', added[i].code, language, fragments[i]?.new);
+              html += lineCommentsHtml(commentState, '', added[i].no);
+              shown++;
+            }
+          }
+          continue;
+        }
         if (line.startsWith('+')) {
           html += codeRowHtml('add', '', newLine, '+', line.slice(1), language);
           html += lineCommentsHtml(commentState, '', newLine);
           newLine++;
-        } else if (line.startsWith('-')) {
-          html += codeRowHtml('del', oldLine, '', '-', line.slice(1), language);
-          html += lineCommentsHtml(commentState, oldLine, '');
-          oldLine++;
         } else {
           const code = line.startsWith(' ') ? line.slice(1) : line;
           html += codeRowHtml('ctx', oldLine, newLine, '', code, language);
@@ -125,9 +153,10 @@ export function pullRequestPreviewDiffScript(): string {
           }
           index--;
           const paired = Math.max(removed.length, added.length);
+          const fragments = pairedInlineFragments(removed, added, language);
           for (let i = 0; i < paired; i++) {
             if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
-            html += splitCodeRowHtml(removed[i], added[i], language);
+            html += splitCodeRowHtml(removed[i], added[i], language, fragments[i]);
             html += lineCommentsHtml(commentState, removed[i]?.no || '', added[i]?.no || '');
             shown++;
           }
@@ -236,26 +265,54 @@ export function pullRequestPreviewDiffScript(): string {
     function remainingEntryLines(entries, start) {
       return entries.slice(start).reduce((sum, entry) => sum + (entry.omitted || (entry.line && !/^@@ /.test(entry.line) && !entry.line.startsWith('\\\\ No newline') ? 1 : 0)), 0);
     }
-    function codeRowHtml(kind, oldNo, newNo, marker, code, language) {
-      return diffRowHtml(kind, oldNo, newNo, marker, highlightCode(code || ' ', language));
+    function codeRowHtml(kind, oldNo, newNo, marker, code, language, codeHtml) {
+      return diffRowHtml(kind, oldNo, newNo, marker, codeHtml == null ? highlightCode(code || ' ', language) : codeHtml);
     }
     function diffRowHtml(kind, oldNo, newNo, marker, codeHtml) {
       return '<div class="diff-row ' + kind + '"><span class="diff-line-no old">' + esc(oldNo) + '</span><span class="diff-line-no new">' + esc(newNo) + '</span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
     }
-    function splitCodeRowHtml(oldCell, newCell, language) {
+    function splitCodeRowHtml(oldCell, newCell, language, fragments) {
       const kind = oldCell && newCell ? (oldCell.kind === 'ctx' && newCell.kind === 'ctx' ? 'ctx' : 'change') : oldCell ? 'del' : 'add';
       return '<div class="diff-row split-row ' + kind + '">' +
-        splitCellHtml('old', oldCell, language) + splitCellHtml('new', newCell, language) + '</div>';
+        splitCellHtml('old', oldCell, language, fragments?.old) + splitCellHtml('new', newCell, language, fragments?.new) + '</div>';
     }
-    function splitCellHtml(side, cell, language) {
+    function splitCellHtml(side, cell, language, codeHtml) {
       const kind = cell?.kind || 'empty';
-      const code = cell ? highlightCode(cell.code || ' ', language) : '';
+      const code = cell ? (codeHtml == null ? highlightCode(cell.code || ' ', language) : codeHtml) : '';
       return '<span class="diff-line-no ' + side + ' ' + kind + '">' + esc(cell?.no || '') + '</span>' +
         '<span class="diff-marker ' + side + ' ' + kind + '">' + esc(cell?.marker || '') + '</span>' +
         '<span class="diff-code ' + side + ' ' + kind + '">' + code + '</span>';
     }
     function splitMetaRowHtml(kind, marker, codeHtml) {
       return '<div class="diff-row split-meta-row ' + kind + '"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
+    }
+    function pairedInlineFragments(removed, added, language) {
+      const count = Math.max(removed.length, added.length);
+      const fragments = [];
+      for (let index = 0; index < count; index++) {
+        fragments.push(removed[index] && added[index] ? inlineDiffPair(removed[index].code, added[index].code, language) : undefined);
+      }
+      return fragments;
+    }
+    function inlineDiffPair(oldText, newText, language) {
+      const oldChars = Array.from(String(oldText || ''));
+      const newChars = Array.from(String(newText || ''));
+      const min = Math.min(oldChars.length, newChars.length);
+      let prefix = 0;
+      while (prefix < min && oldChars[prefix] === newChars[prefix]) prefix++;
+      let suffix = 0;
+      while (suffix < min - prefix && oldChars[oldChars.length - 1 - suffix] === newChars[newChars.length - 1 - suffix]) suffix++;
+      return {
+        old: inlineDiffCode(oldChars, prefix, oldChars.length - suffix, language, 'del'),
+        new: inlineDiffCode(newChars, prefix, newChars.length - suffix, language, 'add'),
+      };
+    }
+    function inlineDiffCode(chars, start, end, language, kind) {
+      const before = chars.slice(0, start).join('');
+      const middle = chars.slice(start, end).join('');
+      const after = chars.slice(end).join('');
+      if (!middle) return highlightCode(chars.join('') || ' ', language);
+      return highlightCode(before, language) + '<span class="diff-word ' + kind + '">' + highlightCode(middle || ' ', language) + '</span>' + highlightCode(after, language);
     }
     function diffOmittedRow(count) {
       return '<div class="diff-row omitted"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + esc(count) + ' lines truncated</span></div>';

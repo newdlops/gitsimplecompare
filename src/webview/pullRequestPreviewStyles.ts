@@ -118,6 +118,9 @@ export function pullRequestPreviewStyles(): string {
     .split-row .diff-line-no.add, .split-row .diff-marker.add, .split-row .diff-code.add { background: color-mix(in srgb, var(--green) 14%, transparent); }
     .split-row .diff-line-no.empty, .split-row .diff-marker.empty, .split-row .diff-code.empty { background: color-mix(in srgb, var(--muted) 4%, transparent); }
     .diff-row.add .diff-line-no.new, .diff-row.del .diff-line-no.old { color: var(--vscode-foreground); background: color-mix(in srgb, currentColor 7%, transparent); }
+    .diff-word { border-radius: 2px; font-weight: 700; }
+    .diff-word.add { background: color-mix(in srgb, var(--green) 36%, transparent); }
+    .diff-word.del { background: color-mix(in srgb, var(--red) 34%, transparent); }
     .diff-context-toggle { display: inline-flex; align-items: center; min-height: 18px; padding: 0 8px; border: 1px solid var(--border); border-radius: 3px; color: var(--blue); background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
     .diff-context-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
     .diff-context-actions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
