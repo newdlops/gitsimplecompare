@@ -318,22 +318,6 @@
     statusEl.classList.toggle("loading", loadState.loading);
   }
 
-  /** 현재 브랜치에 upstream remote branch 가 있으면 header 외부 링크 버튼을 활성화한다. */
-  function updateRemoteBranchButton(branches) {
-    if (!openRemoteBtn) {
-      return;
-    }
-    const current = (branches || []).find((branch) => branch.current);
-    const upstream = current && !current.gone ? current.upstream : "";
-    const enabled = Boolean(upstream);
-    openRemoteBtn.hidden = !enabled;
-    openRemoteBtn.disabled = !enabled;
-    const title = enabled ? `Open remote branch ${upstream}` : "No remote branch connected";
-    openRemoteBtn.title = title;
-    openRemoteBtn.setAttribute("aria-label", title);
-    openRemoteBtn.dataset.tooltip = title;
-  }
-
   /**
    * 그래프 마지막에 로딩 표시나 수동 "더 보기" 버튼을 렌더링한다.
    * - 무한 스크롤이 동작하지 않는 상황에서도 사용자가 다음 페이지를 직접 요청할 수 있다.
@@ -537,7 +521,7 @@
     [["fetch-graph", "fetch"], ["pull-graph", "pull"], ["push-graph", "push"]].forEach(([id, type]) =>
       document.getElementById(id)?.addEventListener("click", () => vscode.postMessage({ type }))
     );
-    openRemoteBtn?.addEventListener("click", () => vscode.postMessage({ type: "openRemoteBranch" }));
+    window.GscGraphRemote?.bind(openRemoteBtn, (message) => vscode.postMessage(message));
     document.getElementById("jump-head")?.addEventListener("click", () => window.GscGraphHeadJump?.jumpToHead(graphEl, graphContentEl));
     toggleDetailBtn.addEventListener("click", () => {
       setDetailVisible(!document.body.classList.contains("detail-open"));
@@ -565,7 +549,7 @@
       window.GscGraphFeatures && window.GscGraphFeatures.setLocalBranches(msg.branches);
       rowColorCache = new WeakMap();
       localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
-      updateRemoteBranchButton(msg.branches);
+      window.GscGraphRemote?.updateButton(openRemoteBtn, msg.branches);
       graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
       const graphWidth = graphWidthForLaneCount(currentLaneCount);
       currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));

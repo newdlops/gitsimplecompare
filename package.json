@@ -117,6 +117,12 @@
         "icon": "$(account)"
       },
       {
+        "command": "gitSimpleCompare.configureRemoteBranch",
+        "title": "%cmd.configureRemoteBranch%",
+        "category": "Git Simple Compare",
+        "icon": "$(repo-push)"
+      },
+      {
         "command": "gitSimpleCompare.toggleBlameDecorator",
         "title": "%cmd.toggleBlameDecorator%",
         "category": "Git Simple Compare",
@@ -378,24 +384,29 @@
           "group": "1_ops@0"
         },
         {
-          "command": "gitSimpleCompare.configureAiCli",
+          "command": "gitSimpleCompare.configureRemoteBranch",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@1"
         },
         {
-          "command": "gitSimpleCompare.branchSquashMerge",
+          "command": "gitSimpleCompare.configureAiCli",
           "when": "view == gitSimpleCompare.changes",
-          "group": "1_ops@3"
+          "group": "1_ops@2"
         },
         {
-          "command": "gitSimpleCompare.branchRebaseMerge",
+          "command": "gitSimpleCompare.branchSquashMerge",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@4"
         },
         {
-          "command": "gitSimpleCompare.undoBranchOperation",
+          "command": "gitSimpleCompare.branchRebaseMerge",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@5"
+        },
+        {
+          "command": "gitSimpleCompare.undoBranchOperation",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@6"
         },
         {
           "command": "gitSimpleCompare.refreshChanges",
@@ -465,7 +476,7 @@
         {
           "command": "gitSimpleCompare.splitCommits",
           "when": "view == gitSimpleCompare.changes",
-          "group": "1_ops@2"
+          "group": "1_ops@3"
         },
         {
           "command": "gitSimpleCompare.continueOperation",

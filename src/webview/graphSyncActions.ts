@@ -8,6 +8,10 @@ import { getCurrentPushPlan } from "../git/pushService";
 import { RemoteBranchService } from "../git/remoteBranchService";
 import { logInfo } from "../ui/outputLog";
 import { confirmPushCurrentPlan } from "../ui/pushConfirmation";
+import {
+  ensureRemoteBranchForCurrentBranch,
+  promptRemoteBranchSetup,
+} from "../ui/remoteBranchSetup";
 
 interface GraphSyncActionDeps {
   logService: GitLogService;
@@ -36,11 +40,35 @@ export async function fetchTags(deps: GraphSyncActionDeps): Promise<void> {
  * 현재 브랜치를 pull 한다. 일반 pull 을 먼저 시도하고, 로컬 변경 충돌 시 rollback 선택지를 제공한다.
  */
 export async function pullCurrent(deps: GraphSyncActionDeps): Promise<void> {
+  const remoteReady = await ensureRemoteBranchForCurrentBranch(
+    deps.logService.repoRoot,
+    "pull"
+  );
+  if (!remoteReady) {
+    logInfo("graph pull skipped without remote branch", {
+      repoRoot: deps.logService.repoRoot,
+    });
+    return;
+  }
   const service = new PullService(deps.logService.repoRoot);
   logInfo("graph pull started", { repoRoot: deps.logService.repoRoot });
-  const result = await withGraphProgress(vscode.l10n.t("Pulling..."), () =>
-    service.pullCurrent()
-  );
+  let result: PullCurrentResult;
+  try {
+    result = await withGraphProgress(vscode.l10n.t("Pulling..."), () =>
+      service.pullCurrent()
+    );
+  } catch (err) {
+    const setupAction = await configureRemoteBranchAfterPullTargetError(deps, err);
+    if (setupAction === "notSetupError") {
+      throw err;
+    }
+    if (setupAction === "handled") {
+      return;
+    }
+    result = await withGraphProgress(vscode.l10n.t("Pulling..."), () =>
+      service.pullCurrent()
+    );
+  }
   await deps.refreshGraph();
   await refreshSideViews("graphPull");
   if (result.status === "conflicts") {
@@ -107,14 +135,25 @@ export async function pushCurrent(deps: GraphSyncActionDeps): Promise<void> {
 export async function openRemoteBranch(
   deps: GraphSyncActionDeps
 ): Promise<void> {
-  const link = await new RemoteBranchService(
-    deps.logService.repoRoot
-  ).getCurrentBranchLink();
+  const service = new RemoteBranchService(deps.logService.repoRoot);
+  let link = await service.getCurrentBranchLink();
   if (!link) {
-    vscode.window.showInformationMessage(
-      vscode.l10n.t("No remote branch is connected to the current branch.")
+    const setup = await promptRemoteBranchSetup(
+      deps.logService.repoRoot,
+      "openRemoteBranch"
     );
-    return;
+    if (setup.status !== "configured" && setup.status !== "published") {
+      return;
+    }
+    await deps.refreshGraph();
+    await refreshSideViews("remoteBranchConfigured");
+    link = await service.getCurrentBranchLink();
+    if (!link) {
+      vscode.window.showInformationMessage(
+        vscode.l10n.t("No remote branch is connected to the current branch.")
+      );
+      return;
+    }
   }
   if (link.kind === "unsupported") {
     vscode.window.showWarningMessage(
@@ -129,6 +168,38 @@ export async function openRemoteBranch(
     url: link.url,
   });
   await vscode.env.openExternal(vscode.Uri.parse(link.url));
+}
+
+/**
+ * pull 직전에 upstream 이 정상처럼 보였지만 실제 remote branch 가 사라진 경우 설정 흐름을 연다.
+ * @param deps graph 동기화 의존성
+ * @param err pull target 검증 오류
+ */
+async function configureRemoteBranchAfterPullTargetError(
+  deps: GraphSyncActionDeps,
+  err: unknown
+): Promise<"retry" | "handled" | "notSetupError"> {
+  if (!isPullTargetSetupError(err)) {
+    return "notSetupError";
+  }
+  const setup = await promptRemoteBranchSetup(deps.logService.repoRoot, "pull");
+  if (setup.status !== "configured" && setup.status !== "published") {
+    logInfo("graph pull remote branch setup canceled", {
+      repoRoot: deps.logService.repoRoot,
+    });
+    return "handled";
+  }
+  await deps.refreshGraph();
+  await refreshSideViews("remoteBranchConfigured");
+  return "retry";
+}
+
+/** pull 이 upstream 미설정/삭제 때문에 실패했는지 메시지로 판별한다. */
+function isPullTargetSetupError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /has no upstream configured|Configured upstream '.+' was not found/i.test(
+    message
+  );
 }
 
 /**

@@ -126,6 +126,8 @@ export function buildScmMenu(): MenuNode[] {
     {
       label: t("Remote"),
       submenu: [
+        { id: "configureRemoteBranch", label: t("Set Remote Branch...") },
+        sep,
         { id: "git.addRemote", label: t("Add Remote...") },
         { id: "git.removeRemote", label: t("Remove Remote...") },
       ],
@@ -273,6 +275,9 @@ export async function runScmAction(
       break;
     case "commitAllAmend":
       await commitChanges(deps, "amendAll");
+      break;
+    case "configureRemoteBranch":
+      await vscode.commands.executeCommand("gitSimpleCompare.configureRemoteBranch");
       break;
   }
 }

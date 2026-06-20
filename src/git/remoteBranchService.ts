@@ -7,6 +7,30 @@ export type RemoteBranchLink =
   | { kind: "linked"; upstream: string; url: string }
   | { kind: "unsupported"; upstream: string; remoteUrl: string };
 
+/** 원격 tracking branch 한 개의 이름과 분해된 remote/branch 값 */
+export interface RemoteTrackingBranch {
+  name: string;
+  remote: string;
+  branch: string;
+}
+
+/** 현재 로컬 브랜치가 원격 브랜치와 연결된 상태 */
+export interface CurrentRemoteBranchState {
+  branch?: string;
+  upstream?: string;
+  upstreamGone: boolean;
+  remotes: string[];
+  remoteBranches: RemoteTrackingBranch[];
+}
+
+/** 원격 브랜치를 upstream 으로 설정한 결과 */
+export interface RemoteBranchSetupResult {
+  branch: string;
+  upstream: string;
+  remote: string;
+  remoteBranch: string;
+}
+
 /** 저장소 한 개의 remote branch 웹 URL 계산 서비스 */
 export class RemoteBranchService {
   constructor(private readonly repoRoot: string) {}
@@ -46,18 +70,177 @@ export class RemoteBranchService {
   }
 
   /**
+   * 현재 로컬 브랜치의 원격 연결 상태와 선택 가능한 remote branch 목록을 읽는다.
+   * - UI 는 이 결과만 보고 "기존 upstream 지정" 또는 "push 로 생성" 흐름을 결정한다.
+   */
+  async getCurrentBranchRemoteState(): Promise<CurrentRemoteBranchState> {
+    const branch = await optionalGit(
+      ["symbolic-ref", "--quiet", "--short", "HEAD"],
+      this.repoRoot
+    );
+    const remotes = await this.listRemotes();
+    if (!branch) {
+      return {
+        remotes,
+        upstreamGone: false,
+        remoteBranches: await this.listRemoteBranches(remotes),
+      };
+    }
+    const [upstream, track, remoteBranches] = await Promise.all([
+      optionalGit(
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        this.repoRoot
+      ),
+      optionalGit(
+        [
+          "for-each-ref",
+          "--format=%(upstream:track)",
+          `refs/heads/${branch}`,
+        ],
+        this.repoRoot
+      ),
+      this.listRemoteBranches(remotes),
+    ]);
+    return {
+      branch,
+      upstream,
+      upstreamGone: /\[gone\]/i.test(track ?? ""),
+      remotes,
+      remoteBranches,
+    };
+  }
+
+  /**
+   * 현재 로컬 브랜치가 기존 remote tracking branch 를 upstream 으로 추적하게 설정한다.
+   * @param upstream `origin/main` 같은 remote tracking branch short name
+   */
+  async setCurrentBranchUpstream(
+    upstream: string
+  ): Promise<RemoteBranchSetupResult> {
+    const state = await this.getCurrentBranchRemoteState();
+    if (!state.branch) {
+      throw new Error("Cannot set a remote branch while HEAD is detached.");
+    }
+    const parsed = splitRemoteBranchName(upstream, state.remotes);
+    if (!parsed) {
+      throw new Error(`Invalid remote branch: ${upstream}`);
+    }
+    await runGit(
+      ["branch", "--set-upstream-to", upstream, state.branch],
+      this.repoRoot
+    );
+    return {
+      branch: state.branch,
+      upstream,
+      remote: parsed.remote,
+      remoteBranch: parsed.branch,
+    };
+  }
+
+  /**
+   * 현재 로컬 브랜치를 지정 remote 로 push 하면서 upstream 으로 설정한다.
+   * - remote branch 가 아직 없으면 git push 가 생성한다.
+   * @param remote 원격 저장소 이름
+   * @param remoteBranch 만들거나 갱신할 원격 브랜치 이름
+   */
+  async pushCurrentBranchToRemote(
+    remote: string,
+    remoteBranch: string
+  ): Promise<RemoteBranchSetupResult> {
+    const state = await this.getCurrentBranchRemoteState();
+    if (!state.branch) {
+      throw new Error("Cannot set a remote branch while HEAD is detached.");
+    }
+    if (!state.remotes.includes(remote)) {
+      throw new Error(`No git remote found: ${remote}`);
+    }
+    await runGit(
+      ["push", "-u", remote, `HEAD:refs/heads/${remoteBranch}`],
+      this.repoRoot
+    );
+    return {
+      branch: state.branch,
+      upstream: `${remote}/${remoteBranch}`,
+      remote,
+      remoteBranch,
+    };
+  }
+
+  /**
    * upstream 이름에서 remote 이름을 찾는다.
    * - remote 이름이 경로처럼 겹칠 수 있으므로 가장 긴 prefix 를 우선한다.
    * @param upstream 예: origin/main, upstream/feature/a
    */
   private async remoteNameFor(upstream: string): Promise<string | undefined> {
-    const remotes = (await runGit(["remote"], this.repoRoot))
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .sort((a, b) => b.length - a.length);
+    const remotes = (await this.listRemotes()).sort((a, b) => b.length - a.length);
     return remotes.find((remote) => upstream.startsWith(`${remote}/`));
   }
+
+  /**
+   * 저장소에 등록된 remote 이름 목록을 반환한다.
+   * - remote 가 없는 저장소도 정상 상태이므로 빈 배열로 반환한다.
+   */
+  private async listRemotes(): Promise<string[]> {
+    const out = await optionalGit(["remote"], this.repoRoot);
+    return (out ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  /**
+   * refs/remotes 아래의 remote tracking branch 목록을 반환한다.
+   * - `origin/HEAD` 같은 symbolic 기본 ref 는 사용자가 upstream 으로 고를 수 없으므로 제외한다.
+   * @param remotes 현재 등록된 remote 이름 목록
+   */
+  private async listRemoteBranches(
+    remotes: string[]
+  ): Promise<RemoteTrackingBranch[]> {
+    const out = await optionalGit(
+      ["for-each-ref", "--format=%(refname:short)", "refs/remotes"],
+      this.repoRoot
+    );
+    return (out ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((name) => name && !name.endsWith("/HEAD"))
+      .flatMap((name) => {
+        const parsed = splitRemoteBranchName(name, remotes);
+        return parsed ? [{ name, ...parsed }] : [];
+      });
+  }
+}
+
+/**
+ * remote/branch 형태의 remote tracking branch 이름을 분해한다.
+ * @param name `origin/main` 같은 short name
+ * @param remotes 현재 저장소 remote 이름 목록
+ */
+function splitRemoteBranchName(
+  name: string,
+  remotes: string[]
+): { remote: string; branch: string } | undefined {
+  const remote = [...remotes]
+    .sort((a, b) => b.length - a.length)
+    .find((candidate) => name.startsWith(`${candidate}/`));
+  if (!remote || name.length <= remote.length + 1) {
+    return undefined;
+  }
+  return { remote, branch: name.slice(remote.length + 1) };
+}
+
+/**
+ * 실패할 수 있는 git 조회 명령을 선택적으로 실행한다.
+ * @param args git 인자 배열
+ * @param repoRoot git 저장소 루트
+ */
+async function optionalGit(
+  args: string[],
+  repoRoot: string
+): Promise<string | undefined> {
+  const out = await runGit(args, repoRoot).catch(() => undefined);
+  const text = out?.trim();
+  return text ? text : undefined;
 }
 
 /**

@@ -18,6 +18,7 @@ export function buildGraphHtml(
   const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
   const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
   const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
+  const remoteScriptUri = script(webview, mediaRoot, "graphRemote.js");
   const branchFilterScriptUri = script(webview, mediaRoot, "graphBranchFilter.js");
   const contextScriptUri = script(webview, mediaRoot, "graphContextMenu.js");
   const localColorScriptUri = script(webview, mediaRoot, "graphLocalColors.js");
@@ -161,6 +162,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${searchScriptUri}"></script>
   <script nonce="${nonce}" src="${headJumpScriptUri}"></script>
+  <script nonce="${nonce}" src="${remoteScriptUri}"></script>
   <script nonce="${nonce}" src="${localColorScriptUri}"></script>
   <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${svgRenderScriptUri}"></script>

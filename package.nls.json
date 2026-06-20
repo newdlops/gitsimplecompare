@@ -9,6 +9,7 @@
   "cmd.generateCommitMessage": "Generate AI Commit Message",
   "cmd.configureAiCli": "Configure AI CLI",
   "cmd.configureUserProfile": "Configure Git User Profile",
+  "cmd.configureRemoteBranch": "Set Remote Branch",
   "cmd.toggleBlameDecorator": "Toggle Git Blame Decorator",
   "cmd.toggleBlameLineVisible": "Toggle Git Blame Lines",
   "cmd.blameDecorator.checked": "✓ Git Blame Decorator",

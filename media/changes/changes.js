@@ -8,6 +8,7 @@
   const vscode = acquireVsCodeApi();
   window.__gscVscode = vscode;
   const rootEl = document.getElementById("root");
+  const SCM_MENU = window.__gscMenu || [];
   const COMMIT_MENU = window.__gscCommitMenu || [];
 
   const T = Object.assign(
@@ -426,10 +427,39 @@
     return meatballAction();
   }
 
-  /** 아코디언 미트볼 메뉴 항목을 만든다(섹션별 보기 토글 전용). */
+  /** 아코디언 미트볼 메뉴 항목을 만든다(섹션별 보기 토글 + 상단 Changes 액션). */
   function accordionMenuNodes(sectionId) {
+    const nodes = [];
     const viewNode = viewModeMenuNode(sectionId);
-    return viewNode ? [viewNode] : [];
+    if (viewNode) {
+      nodes.push(viewNode);
+    }
+    if (sectionId === "changes") {
+      const remoteBranchNode = findMenuNode(SCM_MENU, "configureRemoteBranch");
+      if (remoteBranchNode) {
+        if (nodes.length) {
+          nodes.push({ separator: true });
+        }
+        nodes.push(remoteBranchNode);
+      }
+    }
+    return nodes;
+  }
+
+  /** 주입된 SCM 메뉴 트리에서 특정 액션 ID 의 리프 항목을 찾는다. */
+  function findMenuNode(nodes, id) {
+    for (const node of nodes || []) {
+      if (node && node.id === id) {
+        return node;
+      }
+      if (node && node.submenu) {
+        const found = findMenuNode(node.submenu, id);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
   }
 
   /** 파일 트리 섹션의 현재 보기 모드를 뒤집는 메뉴 항목을 만든다. */

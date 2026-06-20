@@ -33,6 +33,7 @@ import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { configureUserProfile } from "./userProfile";
+import { configureRemoteBranch } from "./remoteBranch";
 import {
   toggleBlameDecorator,
   toggleBlameLineVisible,
@@ -217,6 +218,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.configureUserProfile", () =>
       configureUserProfile(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.configureRemoteBranch", () =>
+      configureRemoteBranch(deps)
     ),
     ...BLAME_DECORATOR_COMMANDS.map((command) =>
       vscode.commands.registerCommand(command, () => toggleBlameDecorator(deps))
