@@ -21,7 +21,13 @@ import {
   localNameFromRemoteRef,
   splitRemoteRef,
 } from "./gitRefNames";
-import { PushCurrentPlan, PushCurrentResult, pushCurrentWithAutoUpstream } from "./pushService";
+import {
+  ForcePushMode,
+  PushCurrentPlan,
+  PushCurrentResult,
+  forcePushCurrent,
+  pushCurrentWithAutoUpstream,
+} from "./pushService";
 import { countUntrackedLines } from "./untrackedStats";
 
 /** 빈 트리 오브젝트 해시(루트 커밋의 부모 대용으로 diff 비교에 사용) */
@@ -388,6 +394,16 @@ export class GitLogService {
   /** 현재 브랜치의 커밋을 remote 로 push 한다. upstream 보정 계획은 호출부가 먼저 확인한다. */
   async pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
     const result = await pushCurrentWithAutoUpstream(this.repoRoot, plan);
+    this.invalidateCaches();
+    return result;
+  }
+
+  /** 현재 브랜치의 커밋을 사용자가 고른 force 옵션으로 remote 에 push 한다. */
+  async forcePushCurrent(
+    mode: ForcePushMode,
+    plan?: PushCurrentPlan
+  ): Promise<PushCurrentResult> {
+    const result = await forcePushCurrent(this.repoRoot, mode, plan);
     this.invalidateCaches();
     return result;
   }

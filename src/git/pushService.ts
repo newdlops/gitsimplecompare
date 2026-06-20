@@ -6,6 +6,9 @@ import { runGit } from "./gitExec";
 /** 현재 브랜치 push 가 실제로 실행한 방식 */
 export type PushCurrentMode = "plain" | "setUpstream";
 
+/** force push 실행 시 사용할 안전장치 옵션 */
+export type ForcePushMode = "forceWithLease" | "force";
+
 /** upstream 설정 push 가 필요한 이유 */
 export type PushCurrentSetUpstreamReason =
   | "missingUpstream"
@@ -83,6 +86,34 @@ export async function pushCurrentWithAutoUpstream(
 
   await runGit(
     ["push", "-u", resolved.remote, `HEAD:refs/heads/${resolved.branch}`],
+    repoRoot
+  );
+  return resolved;
+}
+
+/**
+ * 현재 브랜치를 force push 한다.
+ * - 일반 push 와 같은 upstream 보정 계획을 사용하되, 사용자가 고른 force 옵션을 명시적으로 붙인다.
+ * - `forceWithLease` 는 remote 가 마지막 fetch 이후 바뀐 경우 Git 이 거절하게 해 협업 중 덮어쓰기를 줄인다.
+ * @param repoRoot git 저장소 루트 경로
+ * @param mode     `--force-with-lease` 또는 `--force` 선택
+ * @param plan     이미 확인한 push 계획. 없으면 현재 상태를 다시 읽어 계획을 만든다.
+ * @returns 실행한 push 방식과 대상 remote/branch 정보
+ */
+export async function forcePushCurrent(
+  repoRoot: string,
+  mode: ForcePushMode,
+  plan?: PushCurrentPlan
+): Promise<PushCurrentResult> {
+  const resolved = plan ?? (await getCurrentPushPlan(repoRoot));
+  const flag = mode === "forceWithLease" ? "--force-with-lease" : "--force";
+  if (resolved.mode === "plain") {
+    await runGit(["push", flag], repoRoot);
+    return resolved;
+  }
+
+  await runGit(
+    ["push", flag, "-u", resolved.remote, `HEAD:refs/heads/${resolved.branch}`],
     repoRoot
   );
   return resolved;

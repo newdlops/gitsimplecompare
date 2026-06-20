@@ -72,6 +72,10 @@ body.resizing {
   background: var(--vscode-toolbar-hoverBackground);
 }
 
+.icon-button.danger {
+  color: var(--vscode-inputValidation-warningForeground, #cca700);
+}
+
 #graph-toolbar .icon-button[data-tooltip]::after {
   position: absolute;
   top: calc(100% + 6px);

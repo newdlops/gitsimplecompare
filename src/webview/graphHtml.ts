@@ -61,6 +61,7 @@ export function buildGraphHtml(
   const fetchTitle = vscode.l10n.t("Fetch");
   const pullTitle = vscode.l10n.t("Pull");
   const pushTitle = vscode.l10n.t("Push");
+  const forcePushTitle = vscode.l10n.t("Force Push...");
   const openRemoteTitle = vscode.l10n.t("Open Remote Branch");
   const jumpHeadTitle = vscode.l10n.t("Jump to HEAD");
   const toggleDetailTitle = vscode.l10n.t("Toggle commit details");
@@ -105,6 +106,10 @@ export function buildGraphHtml(
 	          <button id="push-graph" class="icon-button" type="button" title="${pushTitle}"
 	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
 	            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
+	          </button>
+	          <button id="force-push-graph" class="icon-button danger" type="button" title="${forcePushTitle}"
+	            aria-label="${forcePushTitle}" data-tooltip="${forcePushTitle}">
+	            <span class="codicon codicon-repo-force-push" aria-hidden="true"></span>
 	          </button>
 	          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${openRemoteTitle}"
 	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">

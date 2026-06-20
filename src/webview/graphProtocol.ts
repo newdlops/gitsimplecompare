@@ -99,6 +99,7 @@ export type FromWebviewMessage =
   | { type: "fetchTags" }
   | { type: "pull" }
   | { type: "push" }
+  | { type: "forcePush" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
   | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }

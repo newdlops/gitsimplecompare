@@ -30,6 +30,7 @@ import {
 import {
   fetchAll,
   fetchTags,
+  forcePushCurrent,
   openRemoteBranch,
   pullCurrent,
   pushCurrent,
@@ -43,6 +44,7 @@ type GraphActionMessage = Extract<
       | "fetchTags"
       | "pull"
       | "push"
+      | "forcePush"
       | "openRemoteBranch"
       | "checkoutBranch"
       | "checkoutRemoteBranch"
@@ -101,6 +103,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "fetchTags",
   "pull",
   "push",
+  "forcePush",
   "openRemoteBranch",
   "checkoutBranch",
   "checkoutRemoteBranch",
@@ -141,6 +144,9 @@ async function dispatchGraphAction(
       return;
     case "push":
       await pushCurrent(deps);
+      return;
+    case "forcePush":
+      await forcePushCurrent(deps);
       return;
     case "openRemoteBranch":
       await openRemoteBranch(deps);

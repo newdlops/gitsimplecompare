@@ -10,7 +10,10 @@ import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
 import { getCurrentPushPlan } from "../git/pushService";
 import { logInfo } from "../ui/outputLog";
-import { confirmPushCurrentPlan } from "../ui/pushConfirmation";
+import {
+  confirmForcePushCurrentPlan,
+  confirmPushCurrentPlan,
+} from "../ui/pushConfirmation";
 import { CommandDeps, resolveCompareService } from "./shared";
 import { syncViewContext } from "./viewState";
 import {
@@ -84,6 +87,7 @@ export function buildScmMenu(): MenuNode[] {
         { id: "git.pullFrom", label: t("Pull from...") },
         sep,
         { id: "git.push", label: t("Push") },
+        { id: "forcePush", label: t("Force Push...") },
         { id: "git.pushTo", label: t("Push to...") },
         { id: "git.pushTags", label: t("Push Tags") },
         sep,
@@ -211,6 +215,11 @@ export async function runScmAction(
 
   if (action === "git.push") {
     await pushCurrentBranch(deps);
+    return;
+  }
+
+  if (action === "forcePush") {
+    await forcePushCurrentBranch(deps);
     return;
   }
 
@@ -350,13 +359,79 @@ async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
 }
 
 /**
+ * Changes 메뉴의 Force Push 를 실행한다.
+ * - 실행 전 모달에서 `--force-with-lease` 또는 `--force` 를 사용자가 직접 고르게 한다.
+ * @param deps 공유 의존성(활성 저장소 탐지/Changes view 갱신)
+ */
+async function forcePushCurrentBranch(deps: CommandDeps): Promise<void> {
+  const service = await resolveCompareService(deps);
+  if (!service) {
+    return;
+  }
+  const logService = new GitLogService(service.repoRoot);
+  const plan = await getCurrentPushPlan(service.repoRoot);
+  const forceMode = await confirmForcePushCurrentPlan(plan);
+  if (!forceMode) {
+    logInfo("scm force push canceled", {
+      repoRoot: service.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    return;
+  }
+  try {
+    logInfo("scm force push started", {
+      repoRoot: service.repoRoot,
+      forceMode,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    const result = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: vscode.l10n.t("Force pushing..."),
+      },
+      () => logService.forcePushCurrent(forceMode, plan)
+    );
+    logInfo("scm force push completed", {
+      repoRoot: service.repoRoot,
+      forceMode,
+      mode: result.mode,
+      branch: result.branch,
+      remote: result.remote,
+      upstream: result.upstream,
+      targetUpstream:
+        result.mode === "setUpstream" ? result.targetUpstream : undefined,
+      reason: result.mode === "setUpstream" ? result.reason : undefined,
+    });
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Force push failed: {0}", gitErrorText(err))
+    );
+    return;
+  }
+  vscode.window.showInformationMessage(vscode.l10n.t("Force push completed."));
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "forcePush",
+  });
+}
+
+/**
  * force push 가 필요할 수 있는 push 거절을 안내한다.
  * @param err git push 오류
  */
 async function showForcePushRequiredMessage(err: unknown): Promise<void> {
   await vscode.window.showWarningMessage(
     vscode.l10n.t(
-      "Push was rejected because the remote branch is not a fast-forward update. Git Simple Compare does not provide force push."
+      "Push was rejected because the remote branch is not a fast-forward update. Use Force Push only if you intend to overwrite the remote branch."
     ),
     { modal: true, detail: gitErrorText(err) }
   );

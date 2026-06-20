@@ -438,7 +438,7 @@ async function publishCurrentBranch(
     if (isForcePushRequiredError(err)) {
       await vscode.window.showWarningMessage(
         vscode.l10n.t(
-          "Push was rejected because the remote branch is not a fast-forward update. Git Simple Compare does not provide force push."
+          "Push was rejected because the remote branch is not a fast-forward update. Use Force Push only if you intend to overwrite the remote branch."
         ),
         { modal: true, detail: gitErrorText(err) }
       );

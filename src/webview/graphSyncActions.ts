@@ -7,7 +7,10 @@ import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
 import { getCurrentPushPlan } from "../git/pushService";
 import { RemoteBranchService } from "../git/remoteBranchService";
 import { logInfo } from "../ui/outputLog";
-import { confirmPushCurrentPlan } from "../ui/pushConfirmation";
+import {
+  confirmForcePushCurrentPlan,
+  confirmPushCurrentPlan,
+} from "../ui/pushConfirmation";
 import {
   ensureRemoteBranchForCurrentBranch,
   promptRemoteBranchSetup,
@@ -131,6 +134,51 @@ export async function pushCurrent(deps: GraphSyncActionDeps): Promise<void> {
   vscode.window.showInformationMessage(vscode.l10n.t("Push completed."));
 }
 
+/** 현재 브랜치를 사용자가 고른 force 옵션으로 push 한 뒤 그래프와 Changes 를 갱신한다. */
+export async function forcePushCurrent(deps: GraphSyncActionDeps): Promise<void> {
+  const plan = await getCurrentPushPlan(deps.logService.repoRoot);
+  const forceMode = await confirmForcePushCurrentPlan(plan);
+  if (!forceMode) {
+    logInfo("graph force push canceled", {
+      repoRoot: deps.logService.repoRoot,
+      mode: plan.mode,
+      branch: plan.branch,
+      remote: plan.remote,
+      upstream: plan.upstream,
+      targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+      reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+    });
+    return;
+  }
+  logInfo("graph force push started", {
+    repoRoot: deps.logService.repoRoot,
+    forceMode,
+    mode: plan.mode,
+    branch: plan.branch,
+    remote: plan.remote,
+    upstream: plan.upstream,
+    targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
+    reason: plan.mode === "setUpstream" ? plan.reason : undefined,
+  });
+  const result = await withGraphProgress(vscode.l10n.t("Force pushing..."), () =>
+    deps.logService.forcePushCurrent(forceMode, plan)
+  );
+  logInfo("graph force push completed", {
+    repoRoot: deps.logService.repoRoot,
+    forceMode,
+    mode: result.mode,
+    branch: result.branch,
+    remote: result.remote,
+    upstream: result.upstream,
+    targetUpstream:
+      result.mode === "setUpstream" ? result.targetUpstream : undefined,
+    reason: result.mode === "setUpstream" ? result.reason : undefined,
+  });
+  await deps.refreshGraph();
+  await refreshSideViews("graphForcePush");
+  vscode.window.showInformationMessage(vscode.l10n.t("Force push completed."));
+}
+
 /** 현재 브랜치에 연결된 upstream remote branch 페이지를 브라우저로 연다. */
 export async function openRemoteBranch(
   deps: GraphSyncActionDeps
@@ -204,13 +252,13 @@ function isPullTargetSetupError(err: unknown): boolean {
 
 /**
  * force push 가 필요할 수 있는 push 거절을 안내한다.
- * - 이 확장은 실수로 원격 기록을 덮어쓰지 않도록 force push 버튼/액션을 제공하지 않는다.
+ * - 실수로 원격 기록을 덮어쓰지 않도록 별도 Force Push 버튼을 쓰게 안내한다.
  * @param err git push 오류
  */
 async function showForcePushRequiredMessage(err: unknown): Promise<void> {
   await vscode.window.showWarningMessage(
     vscode.l10n.t(
-      "Push was rejected because the remote branch is not a fast-forward update. Git Simple Compare does not provide force push."
+      "Push was rejected because the remote branch is not a fast-forward update. Use Force Push only if you intend to overwrite the remote branch."
     ),
     { modal: true, detail: gitErrorText(err) }
   );
