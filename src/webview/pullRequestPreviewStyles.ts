@@ -58,8 +58,8 @@ export function pullRequestPreviewStyles(): string {
         .file-view-button:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
         .file-view-button.active { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
         .file-view-label { font-size: 11px; line-height: 1; white-space: nowrap; }
-        .file-view-button[data-tooltip]::after, .file-action[data-tooltip]::after, .file-toggle[data-tooltip]::after { content: attr(data-tooltip); position: fixed; z-index: 100; top: 52px; right: 12px; max-width: min(420px, calc(100vw - 24px)); padding: 4px 7px; border: 1px solid var(--vscode-widget-border); border-radius: 3px; color: var(--vscode-quickInput-foreground); background: #252526; opacity: 0; pointer-events: none; white-space: normal; overflow-wrap: anywhere; font-weight: 400; }
-        .file-view-button[data-tooltip]:hover::after, .file-view-button[data-tooltip]:focus-visible::after, .file-action[data-tooltip]:hover::after, .file-action[data-tooltip]:focus-visible::after, .file-toggle[data-tooltip]:hover::after, .file-toggle[data-tooltip]:focus-visible::after { opacity: 1; }
+        .file-view-button[data-tooltip]::after, .file-action[data-tooltip]::after, .file-toggle[data-tooltip]::after, .viewed-toggle[data-tooltip]::after { content: attr(data-tooltip); position: fixed; z-index: 100; top: 52px; right: 12px; max-width: min(420px, calc(100vw - 24px)); padding: 4px 7px; border: 1px solid var(--vscode-widget-border); border-radius: 3px; color: var(--vscode-quickInput-foreground); background: #252526; opacity: 0; pointer-events: none; white-space: normal; overflow-wrap: anywhere; font-weight: 400; }
+        .file-view-button[data-tooltip]:hover::after, .file-view-button[data-tooltip]:focus-visible::after, .file-action[data-tooltip]:hover::after, .file-action[data-tooltip]:focus-visible::after, .file-toggle[data-tooltip]:hover::after, .file-toggle[data-tooltip]:focus-visible::after, .viewed-toggle[data-tooltip]:hover::after, .viewed-toggle[data-tooltip]:focus-visible::after { opacity: 1; }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
     .markdown-body { padding: 14px; overflow: auto; line-height: 1.5; }
     .markdown-body :is(h1,h2,h3,p,ul,ol,blockquote,pre) { margin-top: 0; margin-bottom: 10px; }
@@ -89,11 +89,16 @@ export function pullRequestPreviewStyles(): string {
         .review-file:first-child { border-top: 0; }
         .file-list .review-file { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
         .file-list .review-file:first-child { border-top: 1px solid var(--border); }
-        .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
+        .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
         .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
+        .review-file.viewed .review-file-title { color: var(--muted); }
     .file-action, .file-toggle { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
     .file-action:hover, .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
     .file-toggle { width: 22px; }
+    .viewed-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 72px; height: 22px; padding: 0 7px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); background: var(--vscode-button-secondaryBackground); font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
+    .viewed-toggle:hover { color: var(--vscode-foreground); background: var(--vscode-toolbar-hoverBackground); }
+    .viewed-toggle.viewed { color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-button-border, var(--border)); }
+    .viewed-toggle:not(.viewed) .codicon { opacity: .25; }
     .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
     .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; line-height: 20px; }
     .github-diff { border-top: 1px solid var(--border); }
@@ -115,6 +120,7 @@ export function pullRequestPreviewStyles(): string {
     .diff-row.add .diff-line-no.new, .diff-row.del .diff-line-no.old { color: var(--vscode-foreground); background: color-mix(in srgb, currentColor 7%, transparent); }
     .diff-context-toggle { display: inline-flex; align-items: center; min-height: 18px; padding: 0 8px; border: 1px solid var(--border); border-radius: 3px; color: var(--blue); background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
     .diff-context-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
+    .diff-context-actions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
     .diff-comment-row { display: grid; grid-template-columns: 52px 52px 24px minmax(420px, 1fr); width: max-content; min-width: 100%; background: var(--vscode-editor-background); }
     .split-diff .diff-comment-row { width: 100%; }
     .diff-comment-row .diff-marker { padding-top: 10px; color: var(--vscode-charts-purple); }

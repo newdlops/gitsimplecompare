@@ -37,7 +37,7 @@ export function pullRequestPreviewDiffScript(): string {
           continue;
         }
         if (entries[index].omitted) {
-          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step);
+          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step, entries[index].collapsible);
           oldLine += entries[index].omitted;
           newLine += entries[index].omitted;
           continue;
@@ -90,7 +90,7 @@ export function pullRequestPreviewDiffScript(): string {
           continue;
         }
         if (entries[index].omitted) {
-          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step);
+          html += diffContextRow(entries[index].omitted, entries[index].key, false, entries[index].step, entries[index].collapsible);
           oldLine += entries[index].omitted;
           newLine += entries[index].omitted;
           continue;
@@ -203,16 +203,16 @@ export function pullRequestPreviewDiffScript(): string {
       }
       const expanded = diffContextExpansion(key);
       if (atStart) {
-        return contextRunWithHidden(lines, key, expandStep, 0, edge + expanded, "start");
+        return contextRunWithHidden(lines, key, expandStep, 0, edge + expanded, "start", expanded);
       }
       if (atEnd) {
-        return contextRunWithHidden(lines, key, expandStep, edge + expanded, 0, "end");
+        return contextRunWithHidden(lines, key, expandStep, edge + expanded, 0, "end", expanded);
       }
       const left = edge + Math.ceil(expanded / 2);
       const right = edge + Math.floor(expanded / 2);
-      return contextRunWithHidden(lines, key, expandStep, left, right, "middle");
+      return contextRunWithHidden(lines, key, expandStep, left, right, "middle", expanded);
     }
-    function contextRunWithHidden(lines, key, step, leftCount, rightCount, position) {
+    function contextRunWithHidden(lines, key, step, leftCount, rightCount, position, expanded) {
       const left = Math.min(lines.length, Math.max(0, leftCount));
       const right = Math.min(Math.max(0, lines.length - left), Math.max(0, rightCount));
       const hidden = Math.max(0, lines.length - left - right);
@@ -221,7 +221,7 @@ export function pullRequestPreviewDiffScript(): string {
       }
       const head = position === 'start' ? [] : lines.slice(0, left).map((line) => ({ line }));
       const tail = position === 'end' ? [] : lines.slice(lines.length - right).map((line) => ({ line }));
-      return [...head, { omitted: hidden, key, step }, ...tail];
+      return [...head, { omitted: hidden, key, step, collapsible: expanded > 0 }, ...tail];
     }
     function isContextLine(line) {
       return !line.startsWith('+') && !line.startsWith('-') && !line.startsWith('\\\\ No newline');
@@ -260,12 +260,19 @@ export function pullRequestPreviewDiffScript(): string {
     function diffOmittedRow(count) {
       return '<div class="diff-row omitted"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + esc(count) + ' lines truncated</span></div>';
     }
-    function diffContextRow(count, key, expanded, step) {
-      const title = (expanded ? 'Collapse ' : 'Expand ') + count + ' unchanged lines';
-      const attr = expanded ? 'data-collapse-context' : 'data-expand-context';
-      const label = expanded ? 'Collapse unchanged lines' : 'Show ' + Math.min(count, step || 20) + ' more unchanged lines (' + count + ' hidden)';
-      const stepAttr = expanded ? '' : ' data-expand-step="' + esc(Math.min(count, step || 20)) + '"';
-      return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code"><button type="button" class="diff-context-toggle" ' + attr + '="' + esc(key) + '"' + stepAttr + ' title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' + esc(label) + '</button></span></div>';
+    function diffContextRow(count, key, expanded, step, collapsible) {
+      if (expanded) {
+        return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + collapseContextButton(key, count) + '</span></div>';
+      }
+      const next = Math.min(count, step || 20);
+      const title = 'Expand ' + count + ' unchanged lines';
+      const expandButton = '<button type="button" class="diff-context-toggle" data-expand-context="' + esc(key) + '" data-expand-step="' + esc(next) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">Show ' + esc(next) + ' more unchanged lines (' + esc(count) + ' hidden)</button>';
+      const collapseButton = collapsible ? collapseContextButton(key, count) : '';
+      return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code"><span class="diff-context-actions">' + expandButton + collapseButton + '</span></span></div>';
+    }
+    function collapseContextButton(key, count) {
+      const title = 'Collapse ' + count + ' unchanged lines';
+      return '<button type="button" class="diff-context-toggle" data-collapse-context="' + esc(key) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">Collapse unchanged lines</button>';
     }
     function buildCommentState(comments) {
       const byKey = new Map();

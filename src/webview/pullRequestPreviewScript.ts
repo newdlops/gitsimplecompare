@@ -23,6 +23,7 @@ export function pullRequestPreviewScript(): string {
     let collapsedFiles = new Set();
     let expandedDiffContexts = new Map();
     const savedState = vscode.getState?.() || {};
+    let viewedFiles = new Set(Array.isArray(savedState.viewedFiles) ? savedState.viewedFiles : []);
     let fileNavMode = 'tree';
     let filesReviewMode = 'cards';
     let diffLayoutMode = savedState.diffLayoutMode === 'split' ? 'split' : 'unified';
@@ -84,6 +85,7 @@ export function pullRequestPreviewScript(): string {
       bindPreviewBranches();
       bindOpenDiffs();
       bindFileToggles();
+      bindViewedToggles();
       bindViewButtons();
       bindContextToggles();
     }
@@ -205,6 +207,24 @@ export function pullRequestPreviewScript(): string {
         });
       });
     }
+    function bindViewedToggles() {
+      content.querySelectorAll('[data-toggle-viewed-file]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const path = button.dataset.toggleViewedFile || '';
+          const file = findPreviewFile(path) || { path };
+          const key = fileReviewKey(file);
+          if (viewedFiles.has(key)) {
+            viewedFiles.delete(key);
+            collapsedFiles.delete(path);
+          } else {
+            viewedFiles.add(key);
+            collapsedFiles.add(path);
+          }
+          persistReviewState();
+          if (latestPreview) render(latestPreview);
+        });
+      });
+    }
     function bindViewButtons() {
       content.querySelectorAll('[data-file-nav-mode]').forEach((button) => {
         button.addEventListener('click', () => { fileNavMode = button.dataset.fileNavMode || 'tree'; if (latestPreview) render(latestPreview); });
@@ -218,8 +238,11 @@ export function pullRequestPreviewScript(): string {
     }
     function setDiffLayoutMode(mode) {
       diffLayoutMode = mode === 'split' ? 'split' : 'unified';
-      vscode.setState?.(Object.assign({}, vscode.getState?.() || {}, { diffLayoutMode }));
+      persistReviewState();
       if (latestPreview) render(latestPreview);
+    }
+    function persistReviewState() {
+      vscode.setState?.(Object.assign({}, vscode.getState?.() || {}, { diffLayoutMode, viewedFiles: Array.from(viewedFiles) }));
     }
     function bindContextToggles() {
       content.querySelectorAll('[data-expand-context]').forEach((button) => {
@@ -299,30 +322,35 @@ export function pullRequestPreviewScript(): string {
       const path = displayPath(file);
       const comments = file.comments || [];
       const collapsed = collapsedFiles.has(file.path);
-      const toggleTitle = (collapsed ? 'Expand file diff for ' : 'Collapse file diff for ') + path;
-      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
-        '<div class="review-file-head" title="' + esc(path) + '">' +
-        '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
-        '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
-        '<span class="review-file-title">' + esc(path) + '</span>' +
-        '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
-        '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-        '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
+      const viewed = viewedFiles.has(fileReviewKey(file));
+      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + (viewed ? ' viewed' : '') + '" data-status="' + esc(file.status) + '">' +
+        reviewFileHeaderHtml(file, path, comments, collapsed, viewed) +
         (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
     }
     function continuousFileHtml(file) {
       const comments = file.comments || [];
       const collapsed = collapsedFiles.has(file.path);
       const path = displayPath(file);
+      const viewed = viewedFiles.has(fileReviewKey(file));
+      return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + (viewed ? ' viewed' : '') + '" data-status="' + esc(file.status) + '">' +
+        reviewFileHeaderHtml(file, path, comments, collapsed, viewed) +
+        (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
+    }
+    function reviewFileHeaderHtml(file, path, comments, collapsed, viewed) {
       const toggleTitle = (collapsed ? 'Expand file diff for ' : 'Collapse file diff for ') + path;
-      return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
-        '<div class="review-file-head" title="' + esc(path) + '">' +
+      const viewedTitle = (viewed ? 'Mark file as not viewed: ' : 'Mark file as viewed: ') + path;
+      return '<div class="review-file-head" title="' + esc(path) + '">' +
         '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
-        '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span><span class="review-file-title">' + esc(path) + '</span>' +
+        '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
+        '<span class="review-file-title">' + esc(path) + '</span>' +
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-        '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>' +
-        (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
+        '<button class="viewed-toggle' + (viewed ? ' viewed' : '') + '" type="button" data-toggle-viewed-file="' + esc(file.path) + '" aria-pressed="' + (viewed ? 'true' : 'false') + '" title="' + esc(viewedTitle) + '" aria-label="' + esc(viewedTitle) + '" data-tooltip="' + esc(viewedTitle) + '"><span class="codicon codicon-check" aria-hidden="true"></span><span>Viewed</span></button>' +
+        '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>';
+    }
+    function fileReviewKey(file) {
+      const scope = [latestPreview?.repository || '', latestPreview?.existingPr?.number || '', latestPreview?.targetRef || latestPreview?.targetBranch || '', latestPreview?.sourceRef || latestPreview?.sourceBranch || latestPreview?.currentBranch || ''].join('|');
+      return scope + '::' + (file.path || '');
     }
     function reviewFiles(preview) {
       if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
