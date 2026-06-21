@@ -12,6 +12,7 @@ import {
   toWorktreeCommandArg,
 } from "../providers/worktreesTreeProvider";
 import { logError, logInfo } from "../ui/outputLog";
+import { GitGraphPanel } from "../webview/graphPanel";
 import type { CommandDeps } from "./shared";
 
 type WorktreeCreateMode = "existingRef" | "newBranch";
@@ -98,7 +99,7 @@ export async function createWorktree(deps: CommandDeps): Promise<void> {
       startPoint,
       newBranch,
     });
-    await refreshAfterWorktreeChange(deps, "worktreeCreated");
+    await refreshAfterWorktreeChange(deps, group.repoRoot, "worktreeCreated");
     const open = vscode.l10n.t("Open Worktree");
     const choice = await vscode.window.showInformationMessage(
       vscode.l10n.t("Worktree created: {0}", worktreePath),
@@ -196,7 +197,7 @@ export async function renameWorktree(
       oldPath: target.path,
       newPath,
     });
-    await refreshAfterWorktreeChange(deps, "worktreeRenamed");
+    await refreshAfterWorktreeChange(deps, target.repoRoot, "worktreeRenamed");
     vscode.window.showInformationMessage(
       vscode.l10n.t("Worktree renamed to: {0}", newPath)
     );
@@ -457,7 +458,7 @@ async function finishWorktreeRemoval(
     path: target.path,
     force,
   });
-  await refreshAfterWorktreeChange(deps, "worktreeRemoved");
+  await refreshAfterWorktreeChange(deps, target.repoRoot, "worktreeRemoved");
   vscode.window.showInformationMessage(
     vscode.l10n.t("Worktree removed: {0}", target.path)
   );
@@ -466,11 +467,13 @@ async function finishWorktreeRemoval(
 /** worktree 변경 뒤 저장소 탐지/상태 캐시와 관련 뷰를 갱신한다. */
 async function refreshAfterWorktreeChange(
   deps: CommandDeps,
+  repoRoot: string,
   reason: string
 ): Promise<void> {
   deps.registry.invalidateResolveCache();
   deps.registry.invalidateStatusCaches();
   await deps.worktrees.refresh();
+  GitGraphPanel.refreshOpen(repoRoot, reason);
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
 }
 

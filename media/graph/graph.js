@@ -547,6 +547,7 @@
     if (msg.type === "graph") {
       renderGraph(msg.data, msg.state);
     } else if (msg.type === "branchStatus") {
+      window.GscGraphWorktrees?.setWorktrees?.(msg.worktrees);
       window.GscGraphFeatures && window.GscGraphFeatures.setLocalBranches(msg.branches);
       rowColorCache = new WeakMap();
       localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;

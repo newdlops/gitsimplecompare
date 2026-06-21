@@ -65,6 +65,22 @@ export interface LocalBranchStatus {
   subject: string;
 }
 
+/** 그래프 브랜치 배지에 표시할 worktree 점유 상태 */
+export interface WorktreeBranchStatus {
+  /** worktree 가 checkout 중인 로컬 브랜치 이름 */
+  branch: string;
+  /** worktree 루트 절대 경로 */
+  path: string;
+  /** 배지에 짧게 표시할 worktree 폴더명 */
+  name: string;
+  /** main worktree 여부 */
+  isMain: boolean;
+  /** 잠긴 worktree 면 잠금 사유 */
+  locked?: string;
+  /** prune 대상 worktree 면 prune 사유 */
+  prunable?: string;
+}
+
 /** 그래프 행의 종류. 실제 커밋 외에 작업 중 상태를 가상 커밋으로 표현한다. */
 export type GraphRowKind = "commit" | "ongoing" | "staged";
 

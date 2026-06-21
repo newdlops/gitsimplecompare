@@ -1,0 +1,36 @@
+/* graph 브랜치 chip 안에 붙는 worktree 점유 배지 */
+.ref-worktree-badge {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 128px;
+  height: 16px;
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--vscode-charts-blue, #3794ff);
+  border-radius: 3px;
+  color: var(--vscode-charts-blue, #3794ff);
+  background: color-mix(
+    in srgb,
+    var(--vscode-charts-blue, #3794ff) 18%,
+    var(--vscode-editorWidget-background, #1e1e1e)
+  );
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  vertical-align: middle;
+}
+
+.ref-worktree-badge .codicon {
+  flex: 0 0 auto;
+  font-size: 11px;
+}
+
+.ref-worktree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

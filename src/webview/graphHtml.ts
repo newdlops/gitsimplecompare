@@ -16,6 +16,7 @@ export function buildGraphHtml(
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "graph");
   const scriptUri = script(webview, mediaRoot, "graph.js");
   const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
+  const worktreeScriptUri = script(webview, mediaRoot, "graphWorktrees.js");
   const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
   const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
   const remoteScriptUri = script(webview, mediaRoot, "graphRemote.js");
@@ -39,6 +40,7 @@ export function buildGraphHtml(
   const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
+  const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const prStyleUri = style(webview, mediaRoot, "graphPr.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
@@ -79,6 +81,7 @@ export function buildGraphHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${worktreeStyleUri}" rel="stylesheet" />
   <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${prStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
@@ -177,6 +180,7 @@ export function buildGraphHtml(
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
+  <script nonce="${nonce}" src="${worktreeScriptUri}"></script>
   <script nonce="${nonce}" src="${searchScriptUri}"></script>
   <script nonce="${nonce}" src="${headJumpScriptUri}"></script>
   <script nonce="${nonce}" src="${remoteScriptUri}"></script>

@@ -28,6 +28,7 @@ import { GraphCommitDetailSender } from "./graphCommitDetails";
 import { fetchRefsForGraphSearch, sendGraphRepositorySearch } from "./graphSearchActions";
 import { sendGraphTagStatus } from "./graphTagStatus";
 import { openGraphVirtualFileDiff } from "./graphVirtualDiff";
+import { readGraphWorktreeBranchStatus } from "./graphWorktrees";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -318,13 +319,17 @@ export class GitGraphPanel {
 
   /** 로컬 브랜치 현황을 읽어 웹뷰의 그래프 ref 배지 렌더러로 보낸다. */
   private async sendBranches(): Promise<LocalBranchStatus[]> {
-    const [branches, branchRefs] = await Promise.all([
+    const [branches, branchRefs, worktrees] = await Promise.all([
       this.logService.getLocalBranches(),
       this.logService.getBranches(),
+      readGraphWorktreeBranchStatus(this.logService.repoRoot).catch((err) => {
+        logError("graph worktree status failed", err, { repoRoot: this.logService.repoRoot });
+        return [];
+      }),
     ]);
     this.lastLocalBranches = branches;
     this.lastBranchRefs = branchRefs;
-    this.post({ type: "branchStatus", branches });
+    this.post({ type: "branchStatus", branches, worktrees });
     this.post({
       type: "branchFilterOptions",
       filter: buildBranchFilterSnapshot(branchRefs, branches, this.branchFilter),
@@ -332,6 +337,7 @@ export class GitGraphPanel {
     logInfo("graph branch status sent", {
       repoRoot: this.logService.repoRoot,
       branches: branches.length,
+      worktrees: worktrees.length,
       current: branches.find((branch) => branch.current)?.name,
       filterMode: this.branchFilter.mode,
     });
