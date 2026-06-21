@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.66",
+  "version": "0.1.67",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -326,7 +326,37 @@
         "category": "Git Simple Compare",
         "icon": "$(circle-slash)"
       },
-      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" }
+      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" },
+      {
+        "command": "gitSimpleCompare.refreshWorktrees",
+        "title": "%cmd.refreshWorktrees%",
+        "category": "Git Simple Compare",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitSimpleCompare.createWorktree",
+        "title": "%cmd.createWorktree%",
+        "category": "Git Simple Compare",
+        "icon": "$(plus)"
+      },
+      {
+        "command": "gitSimpleCompare.removeWorktree",
+        "title": "%cmd.removeWorktree%",
+        "category": "Git Simple Compare",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "gitSimpleCompare.renameWorktree",
+        "title": "%cmd.renameWorktree%",
+        "category": "Git Simple Compare",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "gitSimpleCompare.openWorktree",
+        "title": "%cmd.openWorktree%",
+        "category": "Git Simple Compare",
+        "icon": "$(go-to-file)"
+      }
     ],
     "viewsContainers": {
       "activitybar": [
@@ -352,6 +382,12 @@
           "icon": "$(git-merge)",
           "contextualTitle": "%viewContainer.title%",
           "when": "gitSimpleCompare.hasConflicts || gitSimpleCompare.operationInProgress"
+        },
+        {
+          "id": "gitSimpleCompare.worktrees",
+          "name": "%view.worktrees.name%",
+          "icon": "$(repo-forked)",
+          "contextualTitle": "%viewContainer.title%"
         }
       ]
     },
@@ -359,6 +395,10 @@
       {
         "view": "gitSimpleCompare.conflicts",
         "contents": "%welcome.conflicts%"
+      },
+      {
+        "view": "gitSimpleCompare.worktrees",
+        "contents": "%welcome.worktrees%"
       }
     ],
     "menus": {
@@ -514,9 +554,59 @@
           "group": "navigation@3"
         },
         { "command": "gitSimpleCompare.rollbackPull", "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable", "group": "navigation@4" },
-        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@5" }
+        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@5" },
+        {
+          "command": "gitSimpleCompare.refreshWorktrees",
+          "when": "view == gitSimpleCompare.worktrees",
+          "group": "navigation@0"
+        },
+        {
+          "command": "gitSimpleCompare.createWorktree",
+          "when": "view == gitSimpleCompare.worktrees",
+          "group": "1_worktrees@1"
+        },
+        {
+          "command": "gitSimpleCompare.removeWorktree",
+          "when": "view == gitSimpleCompare.worktrees && gitSimpleCompare.hasLinkedWorktrees",
+          "group": "1_worktrees@2"
+        },
+        {
+          "command": "gitSimpleCompare.renameWorktree",
+          "when": "view == gitSimpleCompare.worktrees && gitSimpleCompare.hasLinkedWorktrees",
+          "group": "1_worktrees@3"
+        }
       ],
       "view/item/context": [
+        {
+          "command": "gitSimpleCompare.openWorktree",
+          "when": "view == gitSimpleCompare.worktrees && (viewItem == gitSimpleCompare.worktree.main || viewItem == gitSimpleCompare.worktree.linked)",
+          "group": "inline@0"
+        },
+        {
+          "command": "gitSimpleCompare.renameWorktree",
+          "when": "view == gitSimpleCompare.worktrees && viewItem == gitSimpleCompare.worktree.linked",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitSimpleCompare.removeWorktree",
+          "when": "view == gitSimpleCompare.worktrees && viewItem == gitSimpleCompare.worktree.linked",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitSimpleCompare.openWorktree",
+          "when": "view == gitSimpleCompare.worktrees && (viewItem == gitSimpleCompare.worktree.main || viewItem == gitSimpleCompare.worktree.linked)",
+          "group": "1_worktrees@0"
+        },
+        {
+          "command": "gitSimpleCompare.renameWorktree",
+          "when": "view == gitSimpleCompare.worktrees && viewItem == gitSimpleCompare.worktree.linked",
+          "group": "1_worktrees@1"
+        },
+        {
+          "command": "gitSimpleCompare.removeWorktree",
+          "when": "view == gitSimpleCompare.worktrees && viewItem == gitSimpleCompare.worktree.linked",
+          "group": "1_worktrees@2"
+        },
         {
           "command": "gitSimpleCompare.openConflictEditor",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
@@ -730,6 +820,10 @@
         {
           "command": "gitSimpleCompare.abortOperation",
           "when": "gitSimpleCompare.operationInProgress"
+        },
+        {
+          "command": "gitSimpleCompare.openWorktree",
+          "when": "false"
         }
       ]
     },

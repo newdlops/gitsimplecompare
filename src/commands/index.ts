@@ -88,6 +88,13 @@ import {
   takeOurs,
   takeTheirs,
 } from "./conflicts";
+import {
+  createWorktree,
+  openWorktree,
+  refreshWorktrees,
+  removeWorktree,
+  renameWorktree,
+} from "./worktrees";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 
 const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
@@ -357,6 +364,22 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     // 충돌 해결
     vscode.commands.registerCommand("gitSimpleCompare.refreshConflicts", () =>
       refreshConflicts(deps.conflicts)
+    ),
+    // worktree 목록/생성/삭제/명칭 변경
+    vscode.commands.registerCommand("gitSimpleCompare.refreshWorktrees", () =>
+      refreshWorktrees(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.openWorktree", (arg) =>
+      openWorktree(arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.createWorktree", () =>
+      createWorktree(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.removeWorktree", (arg) =>
+      removeWorktree(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.renameWorktree", (arg) =>
+      renameWorktree(deps, arg)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.takeOurs",

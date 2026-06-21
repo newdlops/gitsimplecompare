@@ -11,6 +11,8 @@ import { ChangesViewProvider } from "./webview/changesViewProvider";
 import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
 import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { ConflictsController } from "./providers/conflictsController";
+import { WorktreesTreeProvider } from "./providers/worktreesTreeProvider";
+import { WorktreesController } from "./providers/worktreesController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
@@ -67,6 +69,13 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(conflictsTree);
   let conflictsVisible = conflictsTree.visible;
   const conflicts = new ConflictsController(registry, conflictsProvider);
+  const worktreesProvider = new WorktreesTreeProvider();
+  const worktreesTree = vscode.window.createTreeView("gitSimpleCompare.worktrees", {
+    treeDataProvider: worktreesProvider,
+  });
+  context.subscriptions.push(worktreesTree);
+  let worktreesVisible = worktreesTree.visible;
+  const worktrees = new WorktreesController(registry, worktreesProvider);
   const hunkCheckboxes = new HunkCheckboxController(registry);
   context.subscriptions.push(hunkCheckboxes.register());
   const blameDecorations = new BlameDecoratorController(registry);
@@ -78,7 +87,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(nativeDiffOverlay.register());
   let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
-    if (!changesView.isVisible() && !conflictsVisible) {
+    if (!changesView.isVisible() && !conflictsVisible && !worktreesVisible) {
       return;
     }
     scheduleRefresh(reason);
@@ -91,6 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
     changesView,
     extensionUri: context.extensionUri,
     conflicts,
+    worktrees,
     hunkCheckboxes,
     blameDecorations,
     vscodeGitStatus,
@@ -111,13 +121,21 @@ export function activate(context: vscode.ExtensionContext): void {
   const pendingGraphRefreshRoots = new Set<string>();
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
-    logInfo("refresh requested", { reason, changesVisible, conflictsVisible });
+    logInfo("refresh requested", {
+      reason,
+      changesVisible,
+      conflictsVisible,
+      worktreesVisible,
+    });
     for (const repoRoot of pendingGraphRefreshRoots) {
       GitGraphPanel.refreshOpen(repoRoot, reason);
     }
     pendingGraphRefreshRoots.clear();
     if (conflictsVisible) {
       void conflicts.refresh();
+    }
+    if (worktreesVisible) {
+      void worktrees.refresh();
     }
     if (changesVisible) {
       void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
@@ -176,7 +194,7 @@ export function activate(context: vscode.ExtensionContext): void {
     );
   };
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,info/exclude}"
+    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,worktrees/**,info/exclude}"
   );
   const gitignoreWatcher = vscode.workspace.createFileSystemWatcher(
     "**/.gitignore"
@@ -229,6 +247,12 @@ export function activate(context: vscode.ExtensionContext): void {
       conflictsVisible = event.visible;
       if (event.visible) {
         void conflicts.refresh();
+      }
+    }),
+    worktreesTree.onDidChangeVisibility((event) => {
+      worktreesVisible = event.visible;
+      if (event.visible) {
+        void worktrees.refresh();
       }
     })
   );
@@ -302,7 +326,7 @@ function shouldLogIgnoredRefresh(reason: string): boolean {
  * @param path 슬래시(`/`)로 정규화된 절대 경로
  */
 function isStableGitStatePath(path: string): boolean {
-  return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/)/.test(
+  return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/|worktrees\/)/.test(
     path
   );
 }

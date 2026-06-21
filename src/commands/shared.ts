@@ -7,6 +7,7 @@ import { GitService } from "../git/gitService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { ChangesViewProvider } from "../webview/changesViewProvider";
 import { ConflictsController } from "../providers/conflictsController";
+import { WorktreesController } from "../providers/worktreesController";
 import { HunkCheckboxController } from "../providers/hunkCheckboxController";
 import type { BlameDecoratorController } from "../providers/blameDecoratorController";
 import type { VscodeGitStatusProvider } from "../providers/vscodeGitStatusProvider";
@@ -20,6 +21,8 @@ export interface CommandDeps {
   extensionUri: vscode.Uri;
   /** 충돌 해결 UI 상태 컨트롤러 */
   conflicts: ConflictsController;
+  /** git worktree 목록 UI 상태 컨트롤러 */
+  worktrees: WorktreesController;
   /** editable diff 라인별 stage 체크박스 컨트롤러 */
   hunkCheckboxes: HunkCheckboxController;
   /** 활성 에디터 git blame decoration 컨트롤러 */

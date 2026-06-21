@@ -579,5 +579,22 @@
   "Leave empty to unset user.name.": "user.name을 제거하려면 비워 두세요.",
   "Leave empty to unset user.email.": "user.email을 제거하려면 비워 두세요.",
   "Git user profile saved for {0}.": "{0}에 Git 사용자 프로필을 저장했습니다.",
-  "Git user profile settings failed: {0}": "Git 사용자 프로필 설정 실패: {0}"
+  "Git user profile settings failed: {0}": "Git 사용자 프로필 설정 실패: {0}",
+  "{0} worktree(s)": "Worktree {0}개",
+  "Open Worktree": "Worktree 열기",
+  "detached": "detached",
+  "main": "main",
+  "locked": "잠김",
+  "Creating worktree": "Worktree 생성 중",
+  "Worktree created: {0}": "Worktree 를 만들었습니다: {0}",
+  "Could not create worktree: {0}": "Worktree 를 만들 수 없습니다: {0}",
+  "Remove Worktree": "Worktree 삭제",
+  "Worktree removed: {0}": "Worktree 를 삭제했습니다: {0}",
+  "Could not remove worktree: {0}": "Worktree 를 삭제할 수 없습니다: {0}",
+  "Force Remove": "강제 삭제",
+  "Worktree renamed to: {0}": "Worktree 이름을 변경했습니다: {0}",
+  "Could not rename worktree: {0}": "Worktree 이름을 변경할 수 없습니다: {0}",
+  "No linked worktrees found.": "linked worktree 를 찾지 못했습니다.",
+  "The main worktree cannot be removed or renamed.": "main worktree 는 삭제하거나 이름을 바꿀 수 없습니다.",
+  "Select a repository for worktree action": "Worktree 작업을 실행할 저장소를 선택하세요"
 }
