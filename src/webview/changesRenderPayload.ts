@@ -14,6 +14,7 @@ import type {
   FileHistoryView,
   ViewModes,
   VisibleSections,
+  WorktreeView,
 } from "./changesViewTypes";
 
 /** ChangesViewProvider 의 현재 렌더 관련 상태 묶음. */
@@ -25,6 +26,7 @@ export interface ChangesRenderState {
   staged: StatusGroups["staged"];
   unstaged: StatusGroups["unstaged"];
   stashes: StashView[];
+  worktrees: WorktreeView[];
   fileHistory: FileHistoryView;
   commitMessage: string;
   commitMessageRevision: number;
@@ -89,6 +91,10 @@ export function buildChangesRenderPayload(
       branch: s.branch,
       date: s.relativeDate,
       files: s.files,
+    })),
+    worktrees: state.worktrees.map((w) => ({
+      ...w,
+      activeRepo: w.repoRoot === state.activeRepo,
     })),
     history: {
       repoRoot: state.fileHistory.repoRoot,

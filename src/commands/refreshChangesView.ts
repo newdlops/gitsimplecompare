@@ -6,6 +6,7 @@ import { refreshFileHistory } from "./fileHistory";
 import { refreshStashes } from "./stash";
 import { CommandDeps, RepoInfo, discoverRepositories } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
+import { refreshWorktreesForChangesView } from "./worktreeState";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
 let refreshInFlight = false;
@@ -85,6 +86,9 @@ async function refreshChangesViewOnce(
           refreshFileHistory(deps, { reason })
         ),
         sectionTask(sections, "stashes", () => refreshStashes(deps)),
+        sectionTask(sections, "worktrees", () =>
+          refreshWorktreesForChangesView(deps)
+        ),
         sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
       ].filter((task): task is RefreshTask => !!task);
       const results = await Promise.allSettled(
@@ -127,6 +131,7 @@ type RefreshSection =
   | "workingChanges"
   | "fileHistory"
   | "stashes"
+  | "worktrees"
   | "comparison";
 
 interface RefreshTask {
@@ -153,6 +158,7 @@ function refreshSectionsForReason(reason: string): RefreshSection[] {
     "workingChanges",
     "fileHistory",
     "stashes",
+    "worktrees",
     "comparison",
   ];
 }

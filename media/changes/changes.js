@@ -1,5 +1,5 @@
 // CHANGES 사이드바 웹뷰 클라이언트 — VS Code Explorer/Source Control 스타일 아코디언.
-//   Repositories · Changes · History · Compare Branches · Stashes.
+//   Repositories · Changes · History · Compare Branches · Stashes · Worktrees.
 // - 섹션 접힘/크기는 vscode.getState/setState 로 보존, 폴더 접힘은 일시적.
 // - 미트볼(...) 메뉴는 window.__gscMenu(provider 가 주입한 트리)로 드릴다운 드롭다운을 그린다.
 (function () {
@@ -55,6 +55,7 @@
       popStash: "Pop Stash",
       dropStash: "Drop Stash",
       branchStash: "Create Branch from Stash",
+      worktrees: "Worktrees",
     },
     window.__gscI18n || {}
   );
@@ -67,7 +68,7 @@
   state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
   state.historyExpanded = state.historyExpanded || {}; // history 커밋 상세 펼침 상태(hash별)
   state.commitMessageRevision = state.commitMessageRevision || 0;
-  const SECTION_IDS = ["repos", "changes", "history", "compare", "stashes"];
+  const SECTION_IDS = ["repos", "changes", "history", "compare", "stashes", "worktrees"];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
   let currentFileIcons = {};
@@ -117,6 +118,7 @@
     history: 180,
     compare: 240,
     stashes: 120,
+    worktrees: 140,
   };
 
   /** HTML 특수문자를 이스케이프한다. */
@@ -778,6 +780,13 @@
         stashesBody(p.stashes || []),
         ""
       ),
+      worktrees: section(
+        "worktrees",
+        T.worktrees,
+        (p.worktrees || []).length,
+        window.__gscWorktrees?.body?.(p.worktrees || []) || "",
+        ""
+      ),
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
 
@@ -1171,6 +1180,7 @@
     bindRowActions();
     bindHistory();
     bindStashes();
+    window.__gscWorktrees?.bind?.(rootEl, vscode);
   }
 
   /** History 섹션: 커밋 상세 펼침/접기와 상세 파일 링크(diff 열기)를 연결한다. */

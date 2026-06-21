@@ -5,22 +5,24 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import type { BranchInfo } from "../git/gitTypes";
 import { WorktreeService } from "../git/worktreeService";
-import {
-  type WorktreeCommandArg,
-  type WorktreeNode,
-  type WorktreeRepositoryGroup,
-  toWorktreeCommandArg,
-} from "../providers/worktreesTreeProvider";
 import { logError, logInfo } from "../ui/outputLog";
 import { GitGraphPanel } from "../webview/graphPanel";
 import type { CommandDeps } from "./shared";
+import {
+  readWorkspaceWorktreeGroups,
+  refreshWorktreesForChangesView,
+  toWorktreeCommandArg,
+  type WorktreeCommandArg,
+  type WorktreeRepositoryGroup,
+} from "./worktreeState";
 
 type WorktreeCreateMode = "existingRef" | "newBranch";
-type WorktreeCommandInput = WorktreeCommandArg | WorktreeNode;
+
+type WorktreeCommandInput = WorktreeCommandArg;
 
 /** worktree 트리뷰를 수동으로 새로고침한다. */
 export async function refreshWorktrees(deps: CommandDeps): Promise<void> {
-  await deps.worktrees.refresh();
+  await refreshWorktreesForChangesView(deps);
 }
 
 /**
@@ -217,8 +219,7 @@ export async function renameWorktree(
 async function pickRepository(
   deps: CommandDeps
 ): Promise<WorktreeRepositoryGroup | undefined> {
-  await deps.worktrees.refresh();
-  const groups = deps.worktrees.getState();
+  const groups = await readWorkspaceWorktreeGroups(deps);
   if (!groups.length) {
     vscode.window.showWarningMessage(
       vscode.l10n.t("No git repository found in the open workspace.")
@@ -230,7 +231,7 @@ async function pickRepository(
   }
   const picked = await vscode.window.showQuickPick(
     groups.map((group) => ({
-      label: path.basename(group.worktrees[0]?.path ?? group.repoRoot),
+      label: group.repoName,
       description: group.worktrees[0]?.path ?? group.repoRoot,
       detail: vscode.l10n.t("{0} worktree(s)", group.worktrees.length),
       group,
@@ -371,8 +372,11 @@ async function resolveLinkedWorktree(
   if (normalized?.path) {
     return normalized;
   }
-  await deps.worktrees.refresh();
-  const worktrees = deps.worktrees.getLinkedWorktrees();
+  const worktrees = (await readWorkspaceWorktreeGroups(deps)).flatMap((group) =>
+    group.worktrees
+      .filter((worktree) => !worktree.isMain)
+      .map((worktree) => toWorktreeCommandArg(group.repoRoot, worktree))
+  );
   if (!worktrees.length) {
     vscode.window.showInformationMessage(vscode.l10n.t("No linked worktrees found."));
     return undefined;
@@ -393,13 +397,7 @@ async function resolveLinkedWorktree(
 function normalizeWorktreeInput(
   arg: WorktreeCommandInput | undefined
 ): WorktreeCommandArg | undefined {
-  if (!arg) {
-    return undefined;
-  }
-  if ("kind" in arg && arg.kind === "worktree") {
-    return toWorktreeCommandArg(arg.repoRoot, arg.worktree);
-  }
-  return "path" in arg ? arg : undefined;
+  return arg?.path ? arg : undefined;
 }
 
 /** worktree 제거를 실행하고 관찰 가능한 로그를 남긴다. */
@@ -472,7 +470,7 @@ async function refreshAfterWorktreeChange(
 ): Promise<void> {
   deps.registry.invalidateResolveCache();
   deps.registry.invalidateStatusCaches();
-  await deps.worktrees.refresh();
+  await refreshWorktreesForChangesView(deps);
   GitGraphPanel.refreshOpen(repoRoot, reason);
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
 }

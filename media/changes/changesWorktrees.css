@@ -1,0 +1,101 @@
+/* Changes 웹뷰 Worktrees 섹션. */
+.worktree-list {
+  overflow-x: hidden;
+}
+
+.worktree-row {
+  --row-actions-width: 78px;
+  position: relative;
+  min-width: 0;
+  padding-right: 6px;
+}
+
+.worktree-row:hover,
+.worktree-row:focus-within {
+  padding-right: calc(var(--row-actions-width) + 6px);
+}
+
+.worktree-row .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worktree-row.active-repo .name {
+  font-weight: 600;
+}
+
+.worktree-branch,
+.worktree-head,
+.worktree-repo,
+.worktree-badge {
+  margin-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.worktree-branch {
+  flex: 0 1 40%;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worktree-branch .codicon {
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.worktree-head {
+  flex: 0 0 auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.85em;
+}
+
+.worktree-badge {
+  flex: 0 0 auto;
+  height: 16px;
+  padding: 0 5px;
+  border: 1px solid var(--vscode-badge-background, var(--vscode-panel-border));
+  border-radius: 3px;
+  line-height: 14px;
+}
+
+.worktree-repo {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 35%;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worktree-row-actions {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  z-index: 3;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--row-actions-width);
+  height: 18px;
+  margin-left: 0;
+}
+
+.worktree-action {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.worktree-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

@@ -12,18 +12,12 @@ import {
   ViewMode,
 } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
-import { buildCommitMenu, buildScmMenu } from "../commands/scmActions";
 import type { StashView } from "../commands/stash";
 import { FileIconThemeResolver } from "./fileIconTheme";
-import { changesWebviewI18n } from "./changesI18n";
+import { buildChangesHtml } from "./changesHtml";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
-import {
-  makeNonce,
-  resourceVersion,
-  withVersion,
-} from "./webviewResourceVersion";
 import {
   TREE_SECTIONS,
   VISIBLE_SECTIONS,
@@ -33,6 +27,7 @@ import {
   type ViewModes,
   type VisibleSection,
   type VisibleSections,
+  type WorktreeView,
 } from "./changesViewTypes";
 
 export { VISIBLE_SECTIONS } from "./changesViewTypes";
@@ -61,6 +56,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private staged: StatusGroups["staged"] = [];
   private unstaged: StatusGroups["unstaged"] = [];
   private stashes: StashView[] = [];
+  private worktrees: WorktreeView[] = [];
   private fileHistory: FileHistoryView = { commits: [] };
   private commitMessage = "";
   private commitMessageRevision = 0;
@@ -92,7 +88,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, "media")],
     };
-    view.webview.html = this.buildHtml(view.webview);
+    view.webview.html = buildChangesHtml(this.extensionUri, view.webview);
     this.lastRenderPayloadJson = "";
     view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
     view.onDidChangeVisibility(() => {
@@ -142,6 +138,12 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** stash 목록(+ 각 stash 의 파일)을 갱신한다(Stashes 섹션). */
   setStashes(stashes: StashView[]): void {
     this.stashes = stashes;
+    this.render();
+  }
+
+  /** git worktree 목록을 갱신한다(Worktrees 섹션). */
+  setWorktrees(worktrees: WorktreeView[]): void {
+    this.worktrees = worktrees;
     this.render();
   }
 
@@ -265,7 +267,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     if (this.view) {
       this.clearRenderTimer();
       this.lastRenderPayloadJson = "";
-      this.view.webview.html = this.buildHtml(this.view.webview);
+      this.view.webview.html = buildChangesHtml(
+        this.extensionUri,
+        this.view.webview
+      );
     } else {
       this.render();
     }
@@ -287,11 +292,13 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.staged = [];
     this.unstaged = [];
     this.stashes = [];
+    this.worktrees = [];
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
   }
 
   /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
@@ -332,6 +339,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       staged: this.staged,
       unstaged: this.unstaged,
       stashes: this.stashes,
+      worktrees: this.worktrees,
       fileHistory: this.fileHistory,
       commitMessage: this.commitMessage,
       commitMessageRevision: this.commitMessageRevision,
@@ -482,6 +490,29 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         "gitSimpleCompare.branchStash",
         msg.ref
       );
+    } else if (msg.type === "refreshWorktrees") {
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
+    } else if (msg.type === "openWorktree" && msg.path) {
+      void vscode.commands.executeCommand("gitSimpleCompare.openWorktree", {
+        repoRoot: msg.repoRoot,
+        path: msg.path,
+        isMain: msg.isMain,
+        branch: msg.branch,
+      });
+    } else if (msg.type === "removeWorktree" && msg.repoRoot && msg.path) {
+      void vscode.commands.executeCommand("gitSimpleCompare.removeWorktree", {
+        repoRoot: msg.repoRoot,
+        path: msg.path,
+        isMain: msg.isMain,
+        branch: msg.branch,
+      });
+    } else if (msg.type === "renameWorktree" && msg.repoRoot && msg.path) {
+      void vscode.commands.executeCommand("gitSimpleCompare.renameWorktree", {
+        repoRoot: msg.repoRoot,
+        path: msg.path,
+        isMain: msg.isMain,
+        branch: msg.branch,
+      });
     } else if (msg.type === "openStashFile" && msg.ref && msg.path) {
       void vscode.commands.executeCommand("gitSimpleCompare.openStashFile", {
         ref: msg.ref,
@@ -509,80 +540,4 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  /** 웹뷰 HTML 을 만든다(CSP + nonce + codicon + 지역화 문자열 주입). */
-  private buildHtml(webview: vscode.Webview): string {
-    const mediaRoot = vscode.Uri.joinPath(this.extensionUri, "media", "changes");
-    const version = resourceVersion([
-      vscode.Uri.joinPath(mediaRoot, "changes.js"),
-      vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
-      vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
-      vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
-      vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
-      vscode.Uri.joinPath(mediaRoot, "changes.css"),
-    ]);
-    const scriptUri = webview.asWebviewUri(
-      withVersion(vscode.Uri.joinPath(mediaRoot, "changes.js"), version)
-    );
-    const aiScriptUri = webview.asWebviewUri(
-      withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
-    );
-    const commitBoxScriptUri = webview.asWebviewUri(
-      withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"), version)
-    );
-    const operationScriptUri = webview.asWebviewUri(
-      withVersion(
-        vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
-        version
-      )
-    );
-    const styleUri = webview.asWebviewUri(
-      withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
-    );
-    const commitBoxStyleUri = webview.asWebviewUri(
-      withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"), version)
-    );
-    const codiconUri = webview.asWebviewUri(
-      withVersion(
-        vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css"),
-        version
-      )
-    );
-    const nonce = makeNonce();
-    const csp = [
-      `default-src 'none'`, `img-src data:`,
-      `style-src ${webview.cspSource}`, `font-src ${webview.cspSource} data:`,
-      `script-src 'nonce-${nonce}'`,
-    ].join("; ");
-
-    // 웹뷰는 vscode.l10n 을 쓸 수 없으므로 지역화 문자열을 주입한다.
-    const i18n = changesWebviewI18n();
-
-    // 미트볼(...)·커밋 캐럿 메뉴 구성(라벨은 지역화). 웹뷰가 이 데이터로 드롭다운을 그린다.
-    const menu = buildScmMenu();
-    const commitMenu = buildCommitMenu();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="${csp}" />
-  <link href="${codiconUri}" rel="stylesheet" />
-  <link href="${styleUri}" rel="stylesheet" />
-  <link href="${commitBoxStyleUri}" rel="stylesheet" />
-  <title>Changes</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}">window.__gscI18n=${JSON.stringify(
-    i18n
-  )};window.__gscMenu=${JSON.stringify(
-    menu
-  )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
-  <script nonce="${nonce}" src="${operationScriptUri}"></script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-  <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
-  <script nonce="${nonce}" src="${aiScriptUri}"></script>
-</body>
-</html>`;
-  }
 }

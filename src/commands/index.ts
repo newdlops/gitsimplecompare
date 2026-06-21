@@ -108,6 +108,8 @@ const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.compare.hidden", "compare"],
   ["gitSimpleCompare.toggleSection.stashes.visible", "stashes"],
   ["gitSimpleCompare.toggleSection.stashes.hidden", "stashes"],
+  ["gitSimpleCompare.toggleSection.worktrees.visible", "worktrees"],
+  ["gitSimpleCompare.toggleSection.worktrees.hidden", "worktrees"],
 ];
 
 const BLAME_DECORATOR_COMMANDS = [

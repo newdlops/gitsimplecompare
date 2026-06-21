@@ -19,6 +19,8 @@ export interface ChangesWebviewMessage {
   stage?: string;
   status?: string;
   repoRoot?: string;
+  branch?: string;
+  isMain?: boolean;
   oldPath?: string;
   baseRef?: string;
   headRef?: string;
