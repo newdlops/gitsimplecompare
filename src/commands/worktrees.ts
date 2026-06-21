@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import type { BranchInfo } from "../git/gitTypes";
 import { WorktreeService } from "../git/worktreeService";
-import { logError, logInfo } from "../ui/outputLog";
+import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { GitGraphPanel } from "../webview/graphPanel";
 import type { CommandDeps } from "./shared";
 import {
@@ -32,14 +32,44 @@ export async function refreshWorktrees(deps: CommandDeps): Promise<void> {
 export async function openWorktree(arg?: WorktreeCommandInput): Promise<void> {
   const target = normalizeWorktreeInput(arg);
   if (!target?.path) {
+    logWarn("worktree open skipped: missing target path");
     return;
   }
-  logInfo("worktree open requested", { path: target.path });
-  await vscode.commands.executeCommand(
-    "vscode.openFolder",
-    vscode.Uri.file(target.path),
-    { forceNewWindow: true }
-  );
+  const worktreePath = resolveWorktreeOpenPath(target);
+  if (!(await isDirectory(worktreePath))) {
+    logWarn("worktree open skipped: path is not a directory", {
+      repoRoot: target.repoRoot,
+      path: worktreePath,
+      branch: target.branch,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Worktree path is not available: {0}", worktreePath)
+    );
+    return;
+  }
+
+  try {
+    logInfo("worktree open requested", {
+      repoRoot: target.repoRoot,
+      path: worktreePath,
+      branch: target.branch,
+      forceNewWindow: true,
+    });
+    await vscode.commands.executeCommand(
+      "vscode.openFolder",
+      vscode.Uri.file(worktreePath),
+      true
+    );
+  } catch (err) {
+    logError("worktree open failed", err, {
+      repoRoot: target.repoRoot,
+      path: worktreePath,
+      branch: target.branch,
+    });
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not open worktree: {0}", errorText(err))
+    );
+  }
 }
 
 /**
@@ -400,6 +430,16 @@ function normalizeWorktreeInput(
   return arg?.path ? arg : undefined;
 }
 
+/** worktree 열기 대상 경로를 절대 경로로 정규화한다. */
+function resolveWorktreeOpenPath(target: WorktreeCommandArg): string {
+  const trimmed = target.path.trim();
+  if (path.isAbsolute(trimmed)) {
+    return path.normalize(trimmed);
+  }
+  const baseDir = target.repoRoot || process.cwd();
+  return path.normalize(path.resolve(baseDir, trimmed));
+}
+
 /** worktree 제거를 실행하고 관찰 가능한 로그를 남긴다. */
 async function runRemoveWorktree(
   service: WorktreeService,
@@ -499,6 +539,15 @@ async function pathExists(fsPath: string): Promise<boolean> {
   try {
     await fs.access(fsPath);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 파일 시스템 경로가 실제 디렉터리인지 확인한다. */
+async function isDirectory(fsPath: string): Promise<boolean> {
+  try {
+    return (await fs.stat(fsPath)).isDirectory();
   } catch {
     return false;
   }
