@@ -32,6 +32,7 @@ export function changesWebviewI18n(): Record<string, string> {
     commit: vscode.l10n.t("Commit"),
     generateCommitMessage: vscode.l10n.t("Generate AI Commit Message"),
     generateCommitMessageShort: vscode.l10n.t("AI"),
+    aiCommitGenerating: vscode.l10n.t("Generating AI commit message..."),
     aiCommitRequiresStaged: vscode.l10n.t(
       "Stage changes before generating an AI commit message."
     ),

@@ -30,8 +30,13 @@ export function pullRequestPreviewScript(): string {
     let latestPreview = null;
     let pendingSourceBranch = '';
     let pendingTargetBranch = '';
+    let prMessageGenerationActive = false;
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
-    generatePrMessage?.addEventListener("click", () => vscode.postMessage({ type: "generatePullRequestMessage" }));
+    generatePrMessage?.addEventListener("click", () => {
+      if (generatePrMessage.disabled || prMessageGenerationActive) return;
+      setPrMessageGenerationActive(true);
+      vscode.postMessage({ type: "generatePullRequestMessage" });
+    });
     configureAiCli?.addEventListener("click", () => vscode.postMessage({ type: "configureAiCli" }));
     copyPrMessage?.addEventListener("click", () => {
       if (!latestPreview) return;
@@ -52,6 +57,7 @@ export function pullRequestPreviewScript(): string {
       }
       if (msg.type === "commitFiles") applyCommitFiles(msg.hash, msg.files);
       if (msg.type === "generatedPullRequestMessage") applyGeneratedPullRequestMessage(msg.message);
+      if (msg.type === "aiPullRequestMessageGeneration") setPrMessageGenerationActive(msg.active);
       if (msg.type === "error") content.innerHTML = '<p class="empty">' + esc(msg.message) + '</p>';
     });
     function render(preview) {
@@ -91,14 +97,31 @@ export function pullRequestPreviewScript(): string {
     }
     function syncActionButtons(preview) {
       const needsTarget = !preview.targetBranch;
-      const generateTitle = needsTarget ? 'Select a target branch before generating a PR message' : 'Generate AI pull request message';
+      const generateTitle = prMessageGenerationActive
+        ? 'Generating AI pull request message...'
+        : needsTarget
+          ? 'Select a target branch before generating a PR message'
+          : 'Generate AI pull request message';
       if (generatePrMessage) {
-        generatePrMessage.disabled = needsTarget || !preview.hasStagedChanges;
+        generatePrMessage.disabled = prMessageGenerationActive || needsTarget || !preview.hasStagedChanges;
         generatePrMessage.title = generateTitle;
         generatePrMessage.setAttribute('aria-label', generateTitle);
         generatePrMessage.dataset.tooltip = generateTitle;
+        generatePrMessage.classList.toggle('busy', prMessageGenerationActive);
       }
       if (copyPrMessage) copyPrMessage.disabled = !(preview.title || preview.body);
+    }
+    function setPrMessageGenerationActive(active) {
+      prMessageGenerationActive = !!active;
+      if (latestPreview) syncActionButtons(latestPreview);
+      else if (generatePrMessage) {
+        generatePrMessage.disabled = prMessageGenerationActive;
+        generatePrMessage.classList.toggle('busy', prMessageGenerationActive);
+        const title = prMessageGenerationActive ? 'Generating AI pull request message...' : 'Generate AI pull request message';
+        generatePrMessage.title = title;
+        generatePrMessage.setAttribute('aria-label', title);
+        generatePrMessage.dataset.tooltip = title;
+      }
     }
     function prHeader(preview) {
       const pr = preview.existingPr || {};

@@ -40,6 +40,7 @@ export class PullRequestPreviewPanel {
   private previewRequestSeq = 0;
   private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private previewRefreshReason = "";
+  private pullRequestMessageGenerationInFlight = false;
 
   /**
    * staged PR preview 패널을 만들거나 기존 패널을 재사용한다.
@@ -263,6 +264,15 @@ export class PullRequestPreviewPanel {
 
   /** 현재 preview 기준으로 AI PR 제목/본문을 생성해 웹뷰에 반영한다. */
   private async generatePullRequestMessage(): Promise<void> {
+    if (this.pullRequestMessageGenerationInFlight) {
+      logInfo("AI pull request message generation skipped: already running", {
+        repoRoot: this.service.repoRoot,
+      });
+      this.post({ type: "aiPullRequestMessageGeneration", active: true });
+      return;
+    }
+    this.pullRequestMessageGenerationInFlight = true;
+    this.post({ type: "aiPullRequestMessageGeneration", active: true });
     try {
       const message = await vscode.window.withProgress(
         {
@@ -308,6 +318,9 @@ export class PullRequestPreviewPanel {
       if (choice === configure) {
         await vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
       }
+    } finally {
+      this.pullRequestMessageGenerationInFlight = false;
+      this.post({ type: "aiPullRequestMessageGeneration", active: false });
     }
   }
 

@@ -990,6 +990,10 @@ body:focus-within .row.selected:hover {
   background: var(--vscode-button-secondaryBackground);
 }
 
+.commit-ai-btn.busy .codicon {
+  animation: codicon-spin 1.5s steps(30) infinite;
+}
+
 .commit-btn:focus-visible,
 .commit-caret:focus-visible,
 .commit-ai-btn:focus-visible,

@@ -18,6 +18,7 @@ export function pullRequestPreviewStyles(): string {
     .icon-button { position: relative; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); background: var(--vscode-button-background); cursor: pointer; }
     .icon-button:hover { background: var(--vscode-button-hoverBackground); }
     .icon-button:disabled { cursor: not-allowed; opacity: .55; color: var(--vscode-disabledForeground, var(--muted)); background: var(--vscode-button-secondaryBackground); }
+    .icon-button.busy .codicon { animation: codicon-spin 1.5s steps(30) infinite; }
     .icon-button[data-tooltip]::after { content: attr(data-tooltip); position: fixed; z-index: 100; top: 40px; right: 10px; max-width: min(420px, calc(100vw - 20px)); padding: 4px 7px; border: 1px solid var(--vscode-widget-border); border-radius: 3px; color: var(--vscode-quickInput-foreground); background: #252526; opacity: 0; pointer-events: none; white-space: normal; overflow-wrap: anywhere; }
     .icon-button[data-tooltip]:hover::after, .icon-button[data-tooltip]:focus-visible::after { opacity: 1; }
     .pr-page { max-width: 1080px; margin: 0 auto; display: grid; gap: 12px; }

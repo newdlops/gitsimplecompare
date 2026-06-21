@@ -10,6 +10,8 @@ import { readCommitMessageContext } from "../git/aiMessageContext";
 import { logError, logInfo } from "../ui/outputLog";
 import { CommandDeps, resolveCompareService } from "./shared";
 
+let commitMessageGenerationInFlight = false;
+
 /**
  * 현재 staged 변경을 바탕으로 AI 커밋 메시지를 생성해 입력창에 넣는다.
  * @param deps 명령 공유 의존성
@@ -17,11 +19,17 @@ import { CommandDeps, resolveCompareService } from "./shared";
 export async function generateCommitMessage(
   deps: CommandDeps
 ): Promise<void> {
-  const service = await resolveCompareService(deps);
-  if (!service) {
+  if (commitMessageGenerationInFlight) {
+    logInfo("AI commit message generation skipped: already running");
     return;
   }
+  commitMessageGenerationInFlight = true;
+  deps.changesView.setAiCommitGeneration(true);
   try {
+    const service = await resolveCompareService(deps);
+    if (!service) {
+      return;
+    }
     const message = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -40,9 +48,12 @@ export async function generateCommitMessage(
     });
   } catch (error) {
     logError("AI commit message generation failed", error, {
-      repoRoot: service.repoRoot,
+      repoRoot: deps.changesView.getActiveRepo(),
     });
     await showAiError("AI commit message generation failed: {0}", error);
+  } finally {
+    commitMessageGenerationInFlight = false;
+    deps.changesView.setAiCommitGeneration(false);
   }
 }
 

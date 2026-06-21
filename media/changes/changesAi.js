@@ -9,12 +9,14 @@
     {
       generateCommitMessage: "Generate AI Commit Message",
       generateCommitMessageShort: "AI",
+      aiCommitGenerating: "Generating AI commit message...",
       aiCommitRequiresStaged: "Stage changes before generating an AI commit message.",
       configureAiCli: "Configure AI CLI",
     },
     window.__gscI18n || {}
   );
   let latestPayload = null;
+  let aiCommitGenerationActive = false;
 
   if (!vscode || !rootEl) {
     return;
@@ -60,9 +62,10 @@
       esc(shortLabel) +
       "</span>";
     button.addEventListener("click", () => {
-      if (button.disabled) {
+      if (button.disabled || aiCommitGenerationActive) {
         return;
       }
+      setAiCommitGenerationActive(true);
       vscode.postMessage({ type: "generateCommitMessage" });
     });
     bar.insertBefore(button, bar.firstChild);
@@ -102,13 +105,25 @@
     if (!button) {
       return;
     }
-    const enabled = !!latestPayload?.commit?.hasStagedChanges;
-    const label = enabled ? T.generateCommitMessage : T.aiCommitRequiresStaged;
+    const hasStaged = !!latestPayload?.commit?.hasStagedChanges;
+    const enabled = hasStaged && !aiCommitGenerationActive;
+    const label = aiCommitGenerationActive
+      ? T.aiCommitGenerating
+      : hasStaged
+        ? T.generateCommitMessage
+        : T.aiCommitRequiresStaged;
     button.disabled = !enabled;
     button.classList.toggle("disabled", !enabled);
+    button.classList.toggle("busy", aiCommitGenerationActive);
     button.title = label;
     button.setAttribute("aria-label", label);
     button.setAttribute("data-tooltip", label);
+  }
+
+  /** extension host 의 AI 생성 진행 상태를 버튼 상태에 반영한다. */
+  function setAiCommitGenerationActive(active) {
+    aiCommitGenerationActive = !!active;
+    updateGenerateButtonState();
   }
 
   new MutationObserver(scheduleInject).observe(rootEl, {
@@ -119,6 +134,8 @@
     if (event.data?.type === "render") {
       latestPayload = event.data.payload || null;
       updateGenerateButtonState();
+    } else if (event.data?.type === "aiCommitGeneration") {
+      setAiCommitGenerationActive(event.data.active);
     }
     scheduleInject();
   });

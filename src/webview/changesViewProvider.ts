@@ -373,6 +373,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  /** AI 커밋 메시지 생성 진행 상태를 웹뷰 버튼에 알린다. */
+  setAiCommitGeneration(active: boolean): void {
+    void this.view?.webview.postMessage({
+      type: "aiCommitGeneration",
+      active,
+    });
+  }
+
   /** 웹뷰에서 요청한 stage/unstage 작업을 실행하고 busy 상태를 정리한다. */
   private async runWorkingOperation(
     action: "stage" | "unstage",
