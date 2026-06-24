@@ -60,11 +60,12 @@ export async function updateInProgressRebaseTodo(
   const raw = await fs.readFile(todoPath, "utf8");
   const canRewriteFileOps = Boolean(options.editorScript);
   const historyExcludePaths = collectHistoryExcludePaths(items);
+  const rewriteItems = items.filter((item) => item.action !== "drop");
   const lines = raw.split("\n");
   const next: string[] = [];
   const pausedItem = paused ? findItemForPaused(items, paused) : undefined;
   const pausedExec = canRewriteFileOps && pausedItem
-    ? await fileExcludeExecLine(repoRoot, pausedItem, items, historyExcludePaths, options)
+    ? await fileExcludeExecLine(repoRoot, pausedItem, rewriteItems, historyExcludePaths, options)
     : undefined;
   if (pausedExec) {
     next.push(pausedExec);
@@ -104,7 +105,7 @@ export async function updateInProgressRebaseTodo(
     const execLine = await fileExcludeExecLine(
       repoRoot,
       item,
-      items,
+      rewriteItems,
       historyExcludePaths,
       options
     );
@@ -127,7 +128,7 @@ export async function updateInProgressRebaseTodo(
       const item = itemByHash.get(hash);
       return Boolean(
         item &&
-        hasFileExcludeSelection(item, items) &&
+        hasFileExcludeSelection(item, rewriteItems) &&
         !pending.has(item.hash) &&
         !isPausedHash(hash, paused)
       );

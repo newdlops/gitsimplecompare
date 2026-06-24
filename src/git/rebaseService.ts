@@ -228,21 +228,23 @@ export class RebaseService {
     if (active !== "none") {
       return { status: "failed", message: `Cannot start rebase while ${active} is in progress.` };
     }
-    const kept = items.filter((i) => i.action !== "drop");
-    if (kept.length === 0) {
+    const todoItems = items.slice();
+    if (todoItems.length === 0) {
       return { status: "noop" };
     }
-    // 첫 항목은 squash/fixup 대상이 없으므로 pick 으로 보정한다.
-    if (kept[0].action === "squash" || kept[0].action === "fixup") {
-      kept[0] = { ...kept[0], action: "pick" };
+    // 첫 replay 항목은 squash/fixup 대상이 없으므로 pick 으로 보정한다.
+    const firstKeptIndex = todoItems.findIndex((item) => item.action !== "drop");
+    if (firstKeptIndex >= 0 && (todoItems[firstKeptIndex].action === "squash" || todoItems[firstKeptIndex].action === "fixup")) {
+      todoItems[firstKeptIndex] = { ...todoItems[firstKeptIndex], action: "pick" };
     }
 
     const todoLines: string[] = [];
     const opFiles: string[] = [];
     const historyExcludePaths = collectHistoryExcludePaths(items);
-    for (const item of kept) {
+    const rewriteItems = todoItems.filter((item) => item.action !== "drop");
+    for (const item of todoItems) {
       todoLines.push(`${item.action} ${item.hash}`);
-      const rewrite = await rebaseFileRewriteExecLine(this.repoRoot, item, kept, historyExcludePaths, process.execPath, editorScript);
+      const rewrite = await rebaseFileRewriteExecLine(this.repoRoot, item, rewriteItems, historyExcludePaths, process.execPath, editorScript);
       if (rewrite) {
         opFiles.push(rewrite.opFile);
         todoLines.push(rewrite.line);
@@ -255,11 +257,7 @@ export class RebaseService {
 
     // VS Code 확장 호스트의 실행 파일을 node 로 동작시켜 헬퍼를 실행한다.
     const editorCmd = `"${process.execPath}" "${editorScript}"`;
-    const messageEditorEnv = await initializeRebaseMessageQueue(
-      this.repoRoot,
-      kept,
-      editorScript
-    );
+    const messageEditorEnv = await initializeRebaseMessageQueue(this.repoRoot, todoItems, editorScript);
     const env: Record<string, string> = {
       ...messageEditorEnv,
       GIT_SEQUENCE_EDITOR: `${editorCmd} seq`,

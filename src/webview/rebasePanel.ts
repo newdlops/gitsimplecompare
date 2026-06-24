@@ -112,7 +112,7 @@ export class RebasePanel {
    * @param items 사용자가 짠 계획
    */
   private async runRebase(items: RebaseItem[]): Promise<void> {
-    const count = items.filter((i) => i.action !== "drop").length;
+    const count = items.length;
     const yes = vscode.l10n.t("Start Rebase");
     const choice = await vscode.window.showWarningMessage(
       vscode.l10n.t(

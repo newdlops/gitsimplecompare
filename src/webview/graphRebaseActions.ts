@@ -100,7 +100,7 @@ export async function runGraphRebase(
   }
 
   const service = new RebaseService(repoRoot);
-  const count = items.filter((item) => item.action !== "drop").length;
+  const count = items.length;
   const yes = vscode.l10n.t("Start Rebase");
   const choice = await vscode.window.showWarningMessage(
     vscode.l10n.t(
