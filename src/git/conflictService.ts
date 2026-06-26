@@ -33,6 +33,7 @@ export interface ConflictDocument {
 /**
  * 진행 중인 git 작업 종류를 git 디렉터리의 마커 파일로 판별한다(공유 함수).
  * - ConflictService 와 RebaseService 가 함께 사용한다.
+ * - REBASE_HEAD 는 완료/실패 직후 stale 파일로 남을 수 있으므로 rebase 진행 신호로 쓰지 않는다.
  * @param repoRoot 저장소 루트
  */
 export async function detectOperation(
@@ -42,7 +43,7 @@ export async function detectOperation(
   const gitDir = path.resolve(repoRoot, gitDirRaw);
   const has = (name: string): boolean => fs.existsSync(path.join(gitDir, name));
 
-  if (has("rebase-merge") || has("rebase-apply") || await hasRef(repoRoot, "REBASE_HEAD")) {
+  if (has("rebase-merge") || has("rebase-apply")) {
     return "rebase";
   }
   if (has("MERGE_HEAD")) {
@@ -55,17 +56,6 @@ export async function detectOperation(
     return "revert";
   }
   return "none";
-}
-
-/**
- * 진행 중 작업을 나타내는 특수 ref 가 존재하는지 확인한다.
- * - 일부 파일 이벤트 타이밍에서는 rebase 디렉터리 감지가 늦을 수 있어 REBASE_HEAD 를 보조 신호로 사용한다.
- * @param repoRoot 저장소 루트
- * @param ref 확인할 git ref 이름
- */
-async function hasRef(repoRoot: string, ref: string): Promise<boolean> {
-  const out = await runGit(["rev-parse", "--verify", ref], repoRoot).catch(() => "");
-  return out.trim().length > 0;
 }
 
 /**
