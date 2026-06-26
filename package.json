@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.69",
+  "version": "0.1.70",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {

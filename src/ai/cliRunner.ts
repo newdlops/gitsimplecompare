@@ -9,6 +9,7 @@ import {
   readAiCliConfig,
 } from "./cliConfig";
 import { looksLikeAuthError } from "./cliDiscovery";
+import { prepareAiCliLaunch } from "./cliProcess";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
 /** CLI 실행 결과. */
@@ -185,17 +186,25 @@ function providerCommand(
  * @param timeoutMs 실행 timeout. undefined 면 timeout 없이 취소 토큰만 사용한다.
  * @param token VS Code 취소 토큰
  */
-function runProviderCommand(
+async function runProviderCommand(
   providerCommand: ProviderCommand,
   prompt: string,
   cwd: string,
   timeoutMs: number | undefined,
   token: vscode.CancellationToken
 ): Promise<string> {
+  const launch = await prepareAiCliLaunch(providerCommand.command);
+  if (launch.resolvedCommand && launch.resolvedCommand !== providerCommand.command) {
+    logInfo("AI CLI command resolved", {
+      provider: providerCommand.provider,
+      command: providerCommand.command,
+      resolvedCommand: launch.resolvedCommand,
+    });
+  }
   return new Promise((resolve, reject) => {
-    const child = spawn(providerCommand.command, providerCommand.args, {
+    const child = spawn(launch.command, providerCommand.args, {
       cwd,
-      env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
+      env: launch.env,
       stdio: ["pipe", "pipe", "pipe"],
     });
     let settled = false;

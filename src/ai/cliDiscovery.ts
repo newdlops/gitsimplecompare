@@ -10,6 +10,7 @@ import {
   type AiCodexLoginMode,
   type AiReasoningEffort,
 } from "./cliConfig";
+import { prepareAiCliLaunch } from "./cliProcess";
 
 /** 로그인 상태 조회 결과. */
 export interface AiCliLoginStatus {
@@ -477,13 +478,14 @@ function authStateFromText(text: string): AiCliLoginStatus["state"] {
  * @param spec 실행 명령
  * @param timeoutMs timeout(ms)
  */
-function runCapture(
+async function runCapture(
   spec: CommandSpec,
   timeoutMs: number
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
+  const launch = await prepareAiCliLaunch(spec.command);
   return new Promise((resolve, reject) => {
-    const child = spawn(spec.command, spec.args, {
-      env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
+    const child = spawn(launch.command, spec.args, {
+      env: launch.env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
