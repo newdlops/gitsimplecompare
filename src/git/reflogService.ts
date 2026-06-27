@@ -2,6 +2,11 @@
 // - 그래프 UI 에서 히스토리 복구 후보를 보여주고, 사용자가 브랜치를 만들어 수동 복구할 수 있게 한다.
 import { runGit } from "./gitExec";
 import {
+  directDropSourcesByHash,
+  inheritedDropSourcesByHash,
+  type ReflogDropSource,
+} from "./reflogDropSources";
+import {
   readUnreachableCommitRecords,
   type UnreachableCommitRecord,
 } from "./unreachableCommitService";
@@ -70,11 +75,13 @@ export type ReflogEventKind =
 export interface ReflogEntry {
   hash: string;
   source: ReflogEntrySource;
+  parentHashes?: string[];
   selector: string;
   shortSelector: string;
   message: string;
   dateIso?: string;
   branchSources: ReflogBranchSource[];
+  dropSources: ReflogDropSource[];
   currentRefs: ReflogCurrentRef[];
   checkoutMove?: ReflogCheckoutMove;
   transition: ReflogTransition;
@@ -107,10 +114,16 @@ export async function readReflogEntries(
     runGit(reflogArgs(Math.max(240, safeLimit * 6), "--all"), repoRoot),
   ]);
   const headRecords = parseReflogRecords(headOut);
-  const branchSources = branchSourcesByHash(parseReflogRecords(allOut));
+  const allRecords = parseReflogRecords(allOut);
+  const branchSources = branchSourcesByHash(allRecords);
+  const directDropSources = directDropSourcesByHash(allRecords);
   const headHashes = new Set(headRecords.map((record) => record.hash));
   const objectRecords = (await readUnreachableCommitRecords(repoRoot, safeLimit))
     .filter((record) => !headHashes.has(record.hash));
+  const objectDropSources = inheritedDropSourcesByHash(
+    objectRecords,
+    directDropSources
+  );
   const allHashes = [
     ...headRecords.map((record) => record.hash),
     ...objectRecords.map((record) => record.hash),
@@ -118,8 +131,8 @@ export async function readReflogEntries(
   const currentRefs = await currentRefsByHash(repoRoot, allHashes);
   const existingCommits = await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash));
   return [
-    ...headRecords.map((record, index) => headEntryFromRecord(record, index, headRecords, branchSources, currentRefs, existingCommits)),
-    ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, currentRefs)),
+    ...headRecords.map((record, index) => headEntryFromRecord(record, index, headRecords, branchSources, directDropSources, currentRefs, existingCommits)),
+    ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, objectDropSources, currentRefs)),
   ];
 }
 
@@ -129,6 +142,7 @@ export async function readReflogEntries(
  * @param index           HEAD reflog 안에서의 최신순 위치
  * @param headRecords     fromHash 계산에 쓰는 HEAD reflog 전체 목록
  * @param branchSources   같은 commit 을 관찰한 branch reflog 근거
+ * @param dropSources     이 commit 이 branch tip 에서 밀려난 reflog 근거
  * @param currentRefs     현재 commit 을 포함하는 ref 근거
  * @param existingCommits commit object 존재 여부 캐시
  */
@@ -137,6 +151,7 @@ function headEntryFromRecord(
   index: number,
   headRecords: ParsedReflogRecord[],
   branchSources: Map<string, ReflogBranchSource[]>,
+  dropSources: Map<string, ReflogDropSource[]>,
   currentRefs: Map<string, ReflogCurrentRef[]>,
   existingCommits: Map<string, boolean>
 ): ReflogEntry {
@@ -148,6 +163,7 @@ function headEntryFromRecord(
     ...record,
     source: "head",
     branchSources: sources,
+    dropSources: dropSources.get(record.hash) || [],
     currentRefs: refs,
     checkoutMove,
     transition: {
@@ -165,22 +181,26 @@ function headEntryFromRecord(
  * reflog 에 직접 나타나지 않는 unreachable commit object 를 복구 항목으로 변환한다.
  * @param record        fsck 로 찾은 commit object record
  * @param branchSources 같은 commit 을 관찰한 branch reflog 근거
+ * @param dropSources   이 commit 이 branch 흐름 밖으로 빠진 시점 추정 근거
  * @param currentRefs   현재 commit 을 포함하는 ref 근거
  */
 function unreachableEntryFromRecord(
   record: UnreachableCommitRecord,
   branchSources: Map<string, ReflogBranchSource[]>,
+  dropSources: Map<string, ReflogDropSource[]>,
   currentRefs: Map<string, ReflogCurrentRef[]>
 ): ReflogEntry {
   const refs = currentRefs.get(record.hash) || [];
   return {
     hash: record.hash,
     source: "unreachable",
+    parentHashes: record.parentHashes,
     selector: `unreachable@{${record.dateIso || record.hash.slice(0, 10)}}`,
     shortSelector: `object:${record.hash.slice(0, 10)}`,
     message: record.message || "Unreachable commit object",
     dateIso: record.dateIso,
     branchSources: branchSources.get(record.hash) || [],
+    dropSources: dropSources.get(record.hash) || [],
     currentRefs: refs,
     transition: {
       toHash: record.hash,

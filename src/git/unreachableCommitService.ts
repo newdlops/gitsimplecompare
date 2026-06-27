@@ -9,6 +9,7 @@ const SHOW_CHUNK_SIZE = 200;
 /** fsck 로 찾은 unreachable commit object 의 UI 표시용 메타데이터 */
 export interface UnreachableCommitRecord {
   hash: string;
+  parentHashes: string[];
   timestamp: number;
   dateIso?: string;
   message: string;
@@ -76,7 +77,7 @@ async function readCommitMetadata(
   for (let index = 0; index < hashes.length; index += SHOW_CHUNK_SIZE) {
     const chunk = hashes.slice(index, index + SHOW_CHUNK_SIZE);
     const out = await runGit(
-      ["show", "-s", `--format=%H%x1f%ct%x1f%cI%x1f%s%x00`, ...chunk],
+      ["show", "-s", `--format=%H%x1f%ct%x1f%cI%x1f%P%x1f%s%x00`, ...chunk],
       repoRoot
     );
     records.push(
@@ -91,10 +92,10 @@ async function readCommitMetadata(
 
 /**
  * `git show -s` 의 NUL 구분 record 를 unreachable commit 메타데이터로 변환한다.
- * @param raw `hash FS timestamp FS dateIso FS subject` 형태의 원문
+ * @param raw `hash FS timestamp FS dateIso FS parents FS subject` 형태의 원문
  */
 function parseUnreachableCommitRecord(raw: string): UnreachableCommitRecord | undefined {
-  const [rawHash, rawTimestamp, rawDateIso, rawMessage] = raw.split(FS);
+  const [rawHash, rawTimestamp, rawDateIso, rawParents, rawMessage] = raw.split(FS);
   const hash = rawHash?.trim();
   if (!hash) {
     return undefined;
@@ -102,6 +103,7 @@ function parseUnreachableCommitRecord(raw: string): UnreachableCommitRecord | un
   const timestamp = Number(rawTimestamp);
   return {
     hash,
+    parentHashes: rawParents?.split(" ").map((parent) => parent.trim()).filter(Boolean) || [],
     timestamp: Number.isFinite(timestamp) ? timestamp : 0,
     dateIso: rawDateIso?.trim() || undefined,
     message: rawMessage?.trim() || "Unreachable commit object",

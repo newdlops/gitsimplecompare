@@ -42,6 +42,8 @@ export function buildGraphHtml(
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
   const reflogModelScriptUri = script(webview, mediaRoot, "graphReflogModel.js");
   const reflogDetailScriptUri = script(webview, mediaRoot, "graphReflogDetail.js");
+  const reflogListScriptUri = script(webview, mediaRoot, "graphReflogList.js");
+  const reflogSlotLayoutScriptUri = script(webview, mediaRoot, "graphReflogSlotLayout.js");
   const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
   const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
@@ -216,6 +218,8 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogListScriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogSlotLayoutScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogMarkersScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>

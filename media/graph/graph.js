@@ -177,6 +177,7 @@
     el.style.setProperty("--branch-color", rowDisplayColor(row));
     el.dataset.hash = row.hash;
     el.dataset.subject = row.subject || "";
+    el.dataset.dateIso = row.dateIso || "";
     el.dataset.refs = displayRefs.join("\t");
     el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
     el.title = rowTitle(row, displayRefs);

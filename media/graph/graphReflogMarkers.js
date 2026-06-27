@@ -35,7 +35,8 @@
     clearVirtualLayout(graphContent);
     const svg = graphContent?.querySelector("svg");
     const rowHeight = readRowHeight(graphContent);
-    const slots = layoutSlots(markers || [], commitRows(graphContent).length, rowHeight);
+    const rows = commitRows(graphContent);
+    const slots = window.GscGraphReflogSlotLayout?.layoutSlots?.(markers || [], rows, rowHeight) || [];
     if (!svg || slots.length === 0) {
       return;
     }
@@ -52,53 +53,6 @@
     svg.appendChild(group);
     visible.forEach((marker) => appendVirtualRow(graphContent, x, rowHeight, marker));
     ensureGraphWidth(graphContent, x);
-  }
-
-  /**
-   * reflog 항목을 실제 그래프 row 사이에 끼울 삽입 슬롯으로 변환한다.
-   * @param markers   graphReflog.js 에서 만든 reflog marker 후보
-   * @param rowCount  현재 렌더된 실제 commit row 수
-   * @param rowHeight 현재 graph row 높이
-   */
-  function layoutSlots(markers, rowCount, rowHeight) {
-    let insertedBefore = 0;
-    return markers
-      .map((marker) => markerSlot(marker, rowCount, rowHeight))
-      .filter(Boolean)
-      .sort((a, b) => a.insertAt - b.insertAt || a.marker.index - b.marker.index)
-      .map((slot) => {
-        const insertedIndex = slot.insertAt + insertedBefore++;
-        return {
-          ...slot,
-          marker: {
-            ...slot.marker,
-            y: insertedIndex * rowHeight + rowHeight / 2,
-          },
-        };
-      });
-  }
-
-  /**
-   * 한 reflog marker 를 어느 commit row 앞에 끼울지 계산한다.
-   * @param marker   reflog 이벤트 marker
-   * @param rowCount 현재 렌더된 실제 commit row 수
-   * @param rowHeight 현재 graph row 높이
-   */
-  function markerSlot(marker, rowCount, rowHeight) {
-    if (!marker?.hash) {
-      return undefined;
-    }
-    const fromIndex = rowIndex(marker.fromRow, rowHeight);
-    const toIndex = rowIndex(marker.toRow, rowHeight);
-    let insertAt = rowCount;
-    if (fromIndex != null && toIndex != null && fromIndex !== toIndex) {
-      insertAt = Math.min(fromIndex, toIndex) + 1;
-    } else if (toIndex != null) {
-      insertAt = toIndex + 1;
-    } else if (fromIndex != null) {
-      insertAt = fromIndex + 1;
-    }
-    return { marker, insertAt: Math.min(Math.max(0, insertAt), rowCount) };
   }
 
   /**

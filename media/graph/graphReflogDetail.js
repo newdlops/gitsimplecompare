@@ -134,6 +134,12 @@
     if (entry.source === "unreachable") {
       rows.push(sourceRow("Object scan", "git fsck --no-reflogs --unreachable"));
     }
+    (entry.dropSources || []).forEach((source) => {
+      rows.push(sourceRow(
+        "Dropped by",
+        `${source.name} · ${shortHash(source.fromHash)} -> ${shortHash(source.toHash)}${source.viaHash ? ` · contains ${shortHash(source.viaHash)}` : ""}${source.dateIso ? ` · ${formatDate(source.dateIso)}` : ""}${source.message ? ` · ${source.message}` : ""}`
+      ));
+    });
     const move = entry.checkoutMove;
     if (move?.from || move?.to) {
       rows.push(sourceRow("HEAD checkout", `${move.from || "unknown"} -> ${move.to || "unknown"}`));
@@ -170,6 +176,15 @@
 
   /** HEAD 포인터가 어느 commit 에서 어느 commit 으로 움직였는지 보여준다. */
   function transitionHtml(entry) {
+    if (entry.source === "unreachable") {
+      const parents = (entry.parentHashes || []).map(shortHash).filter(Boolean);
+      const drop = (entry.dropSources || [])[0];
+      return `<section class="reflog-detail-section">` +
+        `<h3>Object Placement</h3>` +
+        sourceRow("Parent", parents.length ? parents.join(", ") : "No visible parent metadata") +
+        sourceRow("Placement", drop ? `Dropped from ${drop.name} at ${formatDate(drop.dateIso)}` : "Estimated by parent or commit date") +
+        `</section>`;
+    }
     const from = shortHash(entry.transition?.fromHash) || "unknown";
     const to = shortHash(entry.hash);
     return `<section class="reflog-detail-section">` +

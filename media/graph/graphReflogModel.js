@@ -115,7 +115,8 @@
     }
     if (state === "object") {
       const origin = originText(entry);
-      return `Git fsck found this commit object outside current refs and HEAD reflog${origin ? `; old reflog evidence links it to ${origin}` : ""}.`;
+      const drop = dropText(entry);
+      return `Git fsck found this commit object outside current refs and HEAD reflog${origin ? `; old reflog evidence links it to ${origin}` : ""}${drop ? `; dropped when ${drop}` : ""}.`;
     }
     return "HEAD moved through this point in local reflog time order.";
   }
@@ -201,6 +202,10 @@
     if (entry?.source === "unreachable") {
       parts.push("found by git fsck as an unreachable commit object");
     }
+    (entry?.dropSources || []).forEach((source) => {
+      const via = source.viaHash ? ` via ${shortHash(source.viaHash)}` : "";
+      parts.push(`dropped by ${source.name}${via}: ${shortHash(source.fromHash)} -> ${shortHash(source.toHash)}${source.message ? ` (${source.message})` : ""}`);
+    });
     if (move?.from || move?.to) {
       parts.push(`HEAD moved ${move.from || "unknown"} -> ${move.to || "unknown"}`);
     }
@@ -220,6 +225,10 @@
     }
     if (entry?.source === "unreachable") {
       parts.push("fsck object");
+    }
+    const drop = dropText(entry);
+    if (drop) {
+      parts.push(`dropped ${drop}`);
     }
     if (move?.from) {
       parts.push(`from ${move.from}`);
@@ -267,7 +276,21 @@
     if (remote.length) {
       return remote.join(", ");
     }
+    const drop = (entry?.dropSources || [])[0];
+    if (drop?.name) {
+      return drop.name;
+    }
     return "";
+  }
+
+  /** drop source 를 짧은 설명으로 만든다. */
+  function dropText(entry) {
+    const source = (entry?.dropSources || [])[0];
+    if (!source) {
+      return "";
+    }
+    const via = source.viaHash ? ` via ${shortHash(source.viaHash)}` : "";
+    return `${source.name}${via} moved ${shortHash(source.fromHash)} -> ${shortHash(source.toHash)}`;
   }
 
   /** raw hash 처럼 보이는 값은 브랜치명으로 표시하지 않기 위해 판별한다. */
@@ -279,6 +302,11 @@
   function shortLabel(value) {
     const text = String(value || "");
     return text.length > 22 ? `${text.slice(0, 19)}...` : text;
+  }
+
+  /** 커밋 해시를 짧게 줄인다. */
+  function shortHash(hash) {
+    return String(hash || "").slice(0, 10);
   }
 
   window.GscGraphReflogModel = {
