@@ -164,6 +164,8 @@
       showInGraph(hash);
     } else if (action === "createBranch") {
       window.GscGraphPostMessage?.({ type: "createBranch", hash });
+    } else if (action === "restoreBranch") {
+      window.GscGraphPostMessage?.({ type: "restoreBranchFromReflog", hash });
     } else if (action === "cherryPick") {
       window.GscGraphPostMessage?.({ type: "cherryPick", hash });
     } else if (action === "checkoutCommit") {
@@ -502,6 +504,7 @@
   window.addEventListener("gsc-reflog-show-in-graph", (event) => showInGraph(event.detail?.hash || ""));
   window.addEventListener("gsc-reflog-select", (event) => showEntryDetail(Number(event.detail?.index)));
   window.addEventListener("gsc-reflog-recover", (event) => window.GscGraphPostMessage?.({ type: "createBranch", hash: cleanHash(event.detail?.hash) }));
+  window.addEventListener("gsc-reflog-restore-branch", (event) => window.GscGraphPostMessage?.({ type: "restoreBranchFromReflog", hash: cleanHash(event.detail?.hash) }));
   observeGraph();
   window.addEventListener("message", (event) => {
     const msg = event.data || {};

@@ -66,6 +66,7 @@
       `<div class="reflog-entry-actions">` +
       entryButton("showInGraph", "target", loaded ? "Show this recovery entry in graph" : "Load and show this recovery entry in graph", entryHash, expired) +
       entryButton("createBranch", "git-branch-create", recoverButtonTitle(entry, canRecover), entryHash, !canRecover) +
+      entryButton("restoreBranch", "history", restoreButtonTitle(entry, canRecover), entryHash, !canRecover) +
       entryButton("cherryPick", "git-pull-request-create", "Cherry-pick this commit onto the current branch", entryHash, expired) +
       entryButton("checkoutCommit", "debug-restart", "Checkout this commit detached", entryHash, expired) +
       entryButton("copyCommitHash", "copy", "Copy commit hash", entryHash) +
@@ -132,6 +133,10 @@
   function recoverButtonTitle(entry, canRecover) {
     if (!canRecover) return entry.recovery?.reason || "This recovery entry is not a branch target";
     return entry?.source === "unreachable" ? "Recover by creating branch at this object" : "Recover by creating branch at this HEAD state";
+  }
+  function restoreButtonTitle(entry, canRecover) {
+    if (!canRecover) return entry.recovery?.reason || "This recovery entry is not a branch target";
+    return "Restore an existing local branch to this recovery entry";
   }
   function shortHash(hash) { return String(hash || "").slice(0, 10); }
   function formatDate(value) {

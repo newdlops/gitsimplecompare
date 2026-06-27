@@ -23,6 +23,7 @@ import {
 import { renameBranch } from "./graphBranchRename";
 import { handleBranchMergeAction } from "./graphBranchMergeActions";
 import { FromWebviewMessage, ToWebviewMessage } from "./graphProtocol";
+import { restoreBranchFromReflog } from "./graphReflogRestoreActions";
 import {
   handlePullRequestAction,
   type GraphPullRequestActionDeps,
@@ -61,6 +62,7 @@ type GraphActionMessage = Extract<
       | "checkoutRemoteBranch"
       | "checkoutCommit"
       | "createBranch"
+      | "restoreBranchFromReflog"
       | "cloneBranch"
       | "renameBranch"
       | "deleteBranch"
@@ -125,6 +127,7 @@ const GRAPH_ACTION_TYPES = new Set<string>([
   "checkoutRemoteBranch",
   "checkoutCommit",
   "createBranch",
+  "restoreBranchFromReflog",
   "cloneBranch",
   "renameBranch",
   "deleteBranch",
@@ -183,6 +186,9 @@ async function dispatchGraphAction(
       return;
     case "createBranch":
       await createBranch(deps, msg.hash, isRealCommit);
+      return;
+    case "restoreBranchFromReflog":
+      await restoreBranchFromReflog(deps, msg.hash, isRealCommit);
       return;
     case "cloneBranch":
       await cloneBranch(deps, msg.branch, msg.checkout);

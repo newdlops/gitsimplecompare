@@ -41,6 +41,7 @@
     const expired = entry.recovery?.kind === "expired";
     const canRecover = Boolean(entry.recovery?.available);
     const recoverTitle = recoverButtonTitle(entry, canRecover);
+    const restoreTitle = restoreButtonTitle(entry, canRecover);
     host.show(entry.source === "unreachable" ? "git object" : "reflog entry");
     host.root.innerHTML =
       `<div class="detail-shell reflog-detail">` +
@@ -51,6 +52,7 @@
       `<div class="actions reflog-detail-actions">` +
       actionButton("showInGraph", "target", "Load and show this reflog entry in graph", "Show in Graph", hash, expired) +
       actionButton("createBranch", "git-branch-create", recoverTitle, "Recover Branch", hash, !canRecover) +
+      actionButton("restoreBranch", "history", restoreTitle, "Restore Branch", hash, !canRecover) +
       actionButton("cherryPick", "git-pull-request-create", "Cherry-pick this commit onto the current branch", "Cherry-pick", hash, expired) +
       actionButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", "Checkout", hash, expired) +
       actionButton("copyCommitHash", "copy", "Copy reflog commit hash", "Copy Hash", hash) +
@@ -113,6 +115,8 @@
           window.dispatchEvent(new CustomEvent("gsc-reflog-show-in-graph", { detail: { hash } }));
         } else if (action === "createBranch") {
           window.GscGraphPostMessage?.({ type: "createBranch", hash });
+        } else if (action === "restoreBranch") {
+          window.GscGraphPostMessage?.({ type: "restoreBranchFromReflog", hash });
         } else if (action === "cherryPick") {
           window.GscGraphPostMessage?.({ type: "cherryPick", hash });
         } else if (action === "checkoutCommit") {
@@ -214,17 +218,17 @@
     }
     if (entry.source === "unreachable") {
       return `<section class="reflog-detail-section">` +
-        `<h3>Recovery Flow</h3>` +
-        sourceRow("1 Inspect", "Show this object in the graph") +
-        sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} before garbage collection`) +
-        sourceRow("3 Apply", "Cherry-pick it onto the current branch when you only need this commit") +
-        `</section>`;
+      `<h3>Recovery Flow</h3>` +
+      sourceRow("1 Inspect", "Show this object in the graph") +
+      sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} before garbage collection`) +
+      sourceRow("3 Restore", "Restore an existing branch to this object when it should become the branch tip") +
+      `</section>`;
     }
     return `<section class="reflog-detail-section">` +
       `<h3>Recovery Flow</h3>` +
       sourceRow("1 Inspect", "Show this HEAD state in the graph") +
       sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} (${relation})`) +
-      sourceRow("3 Continue", "Checkout or rebase only after preserving it") +
+      sourceRow("3 Restore", "Restore an existing branch to this HEAD state after confirming the graph") +
       `</section>`;
   }
 
@@ -254,6 +258,14 @@
     return entry?.source === "unreachable"
       ? "Recover by creating branch at this object"
       : "Recover by creating branch at this HEAD state";
+  }
+
+  /** 기존 브랜치 복구 버튼 tooltip 을 만든다. */
+  function restoreButtonTitle(entry, canRecover) {
+    if (!canRecover) {
+      return entry.recovery?.reason || "This recovery entry is not a branch target";
+    }
+    return "Restore an existing local branch to this recovery entry";
   }
 
   window.GscGraphReflogDetail = { show };

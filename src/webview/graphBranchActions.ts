@@ -15,7 +15,7 @@ import { renameBranch } from "./graphBranchRename";
 
 export type BranchKind = "local" | "remote";
 
-interface GraphBranchActionDeps {
+export interface GraphBranchActionDeps {
   logService: GitLogService;
   refreshCheckout: () => Promise<void>;
   refreshGraph: () => Promise<void>;
