@@ -21,6 +21,7 @@ export async function sendGraphReflog(deps: GraphReflogDeps): Promise<void> {
     logInfo("graph reflog sent", {
       repoRoot: deps.repoRoot,
       entries: entries.length,
+      objects: entries.filter((entry) => entry.source === "unreachable").length,
     });
   } catch (error) {
     logError("graph reflog failed", error, { repoRoot: deps.repoRoot });

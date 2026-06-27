@@ -48,6 +48,11 @@
   stroke: var(--vscode-charts-yellow, #d7ba7d);
 }
 
+#graph-content .reflog-node-shape-object {
+  fill: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 12%, var(--vscode-editor-background));
+  stroke: var(--vscode-editorWarning-foreground, #cca700);
+}
+
 #graph-content .reflog-virtual-node-recoverable .reflog-node-shape {
   stroke-width: 2.6;
 }
@@ -122,6 +127,11 @@
   border-left-color: var(--vscode-charts-yellow, #d7ba7d);
 }
 
+.row.reflog-virtual-row-object {
+  border-left-color: var(--vscode-editorWarning-foreground, #cca700);
+  background: color-mix(in srgb, var(--vscode-editor-background) 90%, var(--vscode-editorWarning-foreground, #cca700));
+}
+
 .row.reflog-virtual-row-recoverable {
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 42%, transparent);
 }
@@ -148,6 +158,13 @@
   border-color: color-mix(in srgb, var(--vscode-textLink-foreground) 62%, transparent);
   color: var(--vscode-textLink-foreground);
   background: color-mix(in srgb, var(--vscode-textLink-foreground) 14%, var(--vscode-editorWidget-background));
+  font-weight: 700;
+}
+
+.reflog-object-ref {
+  border-color: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 64%, transparent);
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  background: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 13%, var(--vscode-editorWidget-background));
   font-weight: 700;
 }
 

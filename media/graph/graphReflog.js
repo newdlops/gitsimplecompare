@@ -94,7 +94,7 @@
     }
     panel.innerHTML =
       `<header>` +
-      `<div><strong>HEAD Reflog</strong><span>${esc(statusText())}</span></div>` +
+      `<div><strong>Reflog Recovery</strong><span>${esc(statusText())}</span></div>` +
       `<div class="reflog-actions">` +
       iconButton("refresh-reflog", "refresh", "Refresh reflog") +
       iconButton("close-reflog", "close", "Close reflog") +
@@ -140,11 +140,12 @@
 
   /** reflog 흐름 상태별 요약 HTML 을 만든다. */
   function summaryHtml() {
-    const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0 };
+    const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0, object: 0 };
     return `<span class="reflog-summary-chip reflog-relation-flow">Branch flow ${esc(counts.flow)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-dropped">Dropped ${esc(counts.dropped)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-timeline">Timeline ${esc(counts.timeline)}</span>` +
-      `<span class="reflog-summary-note">Dropped means unreachable now. Changed means amend/rebase/reset moved history. Missing commits stay on the reflog lane by time.</span>`;
+      `<span class="reflog-summary-chip reflog-relation-object">Objects ${esc(counts.object || 0)}</span>` +
+      `<span class="reflog-summary-note">Dropped comes from reflog. Objects come from git fsck and may disappear after garbage collection.</span>`;
   }
 
   /** reflog 항목 리스트 HTML 을 만든다. */
@@ -171,9 +172,7 @@
     const summary = relationSummary(entry, loaded);
     const expired = entry.recovery?.kind === "expired";
     const canRecover = Boolean(entry.recovery?.available);
-    const recoverTitle = canRecover
-      ? "Recover by creating branch at this HEAD state"
-      : entry.recovery?.reason || "This reflog entry is not a recovery target";
+    const recoverTitle = recoverButtonTitle(entry, canRecover);
     const classes = [
       "reflog-entry",
       `reflog-${flow}`,
@@ -182,7 +181,7 @@
       entryHash === hoverHash ? "graph-hover" : "",
     ].filter(Boolean).join(" ");
     return `<article class="${classes}" data-hash="${esc(entryHash)}" data-flow="${esc(flow)}">` +
-      `<div class="reflog-index"><span class="reflog-timeline-dot" title="${esc(state)}"></span><span>R${esc(index + 1)}</span></div>` +
+      `<div class="reflog-index"><span class="reflog-timeline-dot" title="${esc(state)}"></span><span>${esc(entryCode(entry, index))}</span></div>` +
       `<div class="reflog-main" role="button" tabindex="0" data-reflog-detail="1" data-reflog-index="${esc(index)}" ` +
       `title="${esc(state)}: ${esc(summary)}" aria-label="Show reflog details" data-tooltip="${esc(state)}: ${esc(summary)}">` +
       `<div class="reflog-title"><code>${esc(hash)}</code><strong>${esc(message)}</strong>` +
@@ -190,7 +189,7 @@
       `<span class="reflog-recovery-chip reflog-recovery-${esc(modelRecoveryKind(entry))}">${esc(modelRecoveryLabel(entry))}</span>` +
       `<span class="reflog-event-chip">${esc(event)}</span></div>` +
       `<div class="reflog-meta"><span>${esc(entry.shortSelector || entry.selector)}</span>` +
-      `<span>${esc(date)}</span></div>` +
+      `<span>${esc(date)}</span><span>${esc(sourceLabel(entry))}</span></div>` +
       `<div class="reflog-flow-summary">${esc(summary)}</div>` +
       `<div class="reflog-transition">${esc(transitionText(entry))}</div>` +
       provenanceHtml(entry) +
@@ -198,6 +197,7 @@
       `<div class="reflog-entry-actions">` +
       entryButton("showInGraph", "target", loaded ? "Show this reflog entry in graph" : "Load and show this reflog entry in graph", entryHash, expired) +
       entryButton("createBranch", "git-branch-create", recoverTitle, entryHash, !canRecover) +
+      entryButton("cherryPick", "git-pull-request-create", "Cherry-pick this commit onto the current branch", entryHash, expired) +
       entryButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", entryHash, expired) +
       entryButton("copyCommitHash", "copy", "Copy reflog commit hash", entryHash) +
       `</div>` +
@@ -228,6 +228,8 @@
       showInGraph(hash);
     } else if (action === "createBranch") {
       window.GscGraphPostMessage?.({ type: "createBranch", hash });
+    } else if (action === "cherryPick") {
+      window.GscGraphPostMessage?.({ type: "cherryPick", hash });
     } else if (action === "checkoutCommit") {
       window.GscGraphPostMessage?.({ type: "checkoutCommit", hash });
     } else if (action === "copyCommitHash") {
@@ -339,8 +341,15 @@
     }
     activeHash = cleanHash(entry.hash);
     refreshActiveMarks();
-    render();
+    refreshEntryActiveMarks();
     window.GscGraphReflogDetail?.show?.(entry, index, { loaded: hashLoaded(entry.hash) });
+  }
+
+  /** reflog 목록에서 선택된 항목 표시만 갱신한다. 그래프 row 재배치는 하지 않는다. */
+  function refreshEntryActiveMarks() {
+    panel?.querySelectorAll(".reflog-entry").forEach((entry) => {
+      entry.classList.toggle("graph-active", Boolean(activeHash) && entry.dataset.hash === activeHash);
+    });
   }
 
   /** hash 에 해당하는 row 가 현재 그래프 DOM 에 로드되어 있는지 확인한다. */
@@ -369,6 +378,9 @@
     const remoteBranches = window.GscGraphReflogModel?.branchSourceNames?.(entry, "remote") || [];
     if (remoteBranches.length) {
       chips.push(chipHtml("Remote log", remoteBranches.join(", ")));
+    }
+    if (entry?.source === "unreachable") {
+      chips.push(chipHtml("Object", "git fsck"));
     }
     if (!chips.length) {
       return `<div class="reflog-provenance muted">No branch reflog evidence</div>`;
@@ -409,7 +421,8 @@
     const from = shortHash(entry.transition?.fromHash) || "unknown";
     const to = shortHash(entry.hash);
     const placement = fromLoaded || toLoaded ? "between visible commits" : "off current graph";
-    return `Reflog log R${index + 1}: ${from} -> ${to} | ${modelRecoveryLabel(entry)} | ${eventLabel(entry)} | ${relationSummary(entry, toLoaded)} | ${placement}`;
+    const code = entryCode(entry, index);
+    return `${sourceLabel(entry)} ${code}: ${from} -> ${to} | ${modelRecoveryLabel(entry)} | ${eventLabel(entry)} | ${relationSummary(entry, toLoaded)} | ${placement}`;
   }
 
   /** 가상 branch node 옆에 붙일 상태 라벨을 만든다. */
@@ -452,9 +465,32 @@
 
   /** HEAD 전이를 짧은 텍스트로 표시한다. */
   function transitionText(entry) {
+    if (entry?.source === "unreachable") {
+      return `object ${shortHash(entry.hash)} found outside current refs`;
+    }
     const from = shortHash(entry.transition?.fromHash) || "unknown";
     const to = shortHash(entry.hash);
     return `HEAD ${from} -> ${to}`;
+  }
+
+  /** 항목 출처에 맞는 짧은 번호를 만든다. */
+  function entryCode(entry, index) {
+    return `${entry?.source === "unreachable" ? "O" : "R"}${index + 1}`;
+  }
+
+  /** 항목 출처를 사용자에게 보여줄 짧은 라벨로 바꾼다. */
+  function sourceLabel(entry) {
+    return entry?.source === "unreachable" ? "Unreachable object" : "HEAD reflog";
+  }
+
+  /** 복구 버튼 tooltip 을 항목 출처에 맞게 만든다. */
+  function recoverButtonTitle(entry, canRecover) {
+    if (!canRecover) {
+      return entry.recovery?.reason || "This recovery entry is not a branch target";
+    }
+    return entry?.source === "unreachable"
+      ? "Recover by creating branch at this object"
+      : "Recover by creating branch at this HEAD state";
   }
 
   /** 현재 로드된 그래프에 표시 가능한 reflog 항목 수를 계산한다. */
@@ -464,7 +500,7 @@
 
   /** 현재 렌더된 graph row 중 hash 가 같은 요소를 찾는다. */
   function rowForHash(hash) {
-    return graphContent?.querySelector(`.row[data-hash="${cssEscape(cleanHash(hash))}"]`) || null;
+    return graphContent?.querySelector(`.row[data-hash="${cssEscape(cleanHash(hash))}"]:not([data-reflog-virtual])`) || null;
   }
 
   /** 커밋 해시를 짧게 줄인다. */

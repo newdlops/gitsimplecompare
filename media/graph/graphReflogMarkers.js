@@ -424,7 +424,7 @@
       y: String(topY),
       "text-anchor": "end",
     });
-    text.textContent = "reflog log";
+    text.textContent = "recovery log";
     return text;
   }
 
@@ -443,10 +443,16 @@
     const title = svgEl("title", {});
     title.textContent = marker.title || "Reflog entry";
     nodeGroup.appendChild(title);
-    nodeGroup.addEventListener("click", () => selectMarker(marker));
+    nodeGroup.addEventListener("pointerdown", (event) => event.stopPropagation());
+    nodeGroup.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectMarker(marker);
+    });
     nodeGroup.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        event.stopPropagation();
         selectMarker(marker);
       }
     });
@@ -478,10 +484,16 @@
     row.setAttribute("tabindex", "0");
     row.setAttribute("aria-label", marker.title || "Open reflog virtual commit");
     row.innerHTML = rowHtml(marker);
-    row.addEventListener("click", () => selectMarker(marker));
+    row.addEventListener("pointerdown", (event) => event.stopPropagation());
+    row.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectMarker(marker);
+    });
     row.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
+        event.stopPropagation();
         selectMarker(marker);
       }
     });
@@ -502,7 +514,10 @@
       : marker.recovery === "expired"
         ? "This reflog object is expired"
         : "This commit is already reachable; recovery is not needed";
-    return `<span class="ref virtual reflog-log-ref" title="This row comes from git reflog">reflog log</span>` +
+    const sourceRef = marker.flow === "object"
+      ? `<span class="ref virtual reflog-object-ref" title="This row comes from git fsck">git object</span>`
+      : `<span class="ref virtual reflog-log-ref" title="This row comes from git reflog">reflog log</span>`;
+    return sourceRef +
       `<span class="subject">${esc(marker.subject || marker.event || "HEAD reflog entry")}</span>` +
       `<span class="meta">${esc(shortHash(marker.hash))} · ${esc(marker.event || "Reflog update")}</span>` +
       `<span class="reflog-row-recovery reflog-recovery-${esc(marker.recovery || "reachable")}">${esc(marker.recoveryLabel || "On branch")}</span>` +
@@ -524,7 +539,17 @@
 
   /** 상태별로 서로 다른 reflog 가상 노드 형상을 만든다. */
   function virtualShape(x, y, flow) {
-    const kind = flow === "changed" ? "changed" : flow === "dropped" ? "dropped" : flow === "timeline" ? "timeline" : "flow";
+    const kind = flow === "changed" ? "changed" : flow === "dropped" ? "dropped" : flow === "timeline" ? "timeline" : flow === "object" ? "object" : "flow";
+    if (kind === "object") {
+      return svgEl("rect", {
+        class: `reflog-node-shape reflog-virtual-node-shape reflog-node-shape-${kind}`,
+        x: String(x - 7),
+        y: String(y - 7),
+        width: "14",
+        height: "14",
+        rx: "2",
+      });
+    }
     return svgEl("circle", {
       class: `reflog-node-shape reflog-virtual-node-shape reflog-node-shape-${kind}`,
       cx: String(x),
@@ -558,6 +583,9 @@
     }
     if (String(status || "").startsWith("Dropped")) {
       return "D";
+    }
+    if (String(status || "").startsWith("Unreachable")) {
+      return "O";
     }
     if (String(status || "").startsWith("Branch")) {
       return "F";

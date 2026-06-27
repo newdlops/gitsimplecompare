@@ -5,6 +5,9 @@
 
   /** reflog 항목의 브랜치 흐름 상태를 UI 상태명으로 변환한다. */
   function flowState(entry) {
+    if (entry?.source === "unreachable" || entry?.flowStatus === "unreachable") {
+      return "object";
+    }
     if (entry?.flowStatus === "reachable") {
       return "flow";
     }
@@ -22,6 +25,9 @@
     }
     if (state === "dropped") {
       return loaded ? "Dropped state" : "Dropped state";
+    }
+    if (state === "object") {
+      return loaded ? "Unreachable object" : "Unreachable object";
     }
     return loaded ? "HEAD timeline" : "HEAD timeline";
   }
@@ -47,6 +53,8 @@
         return "Cherry-pick";
       case "branch":
         return "Branch move";
+      case "unreachable":
+        return "Git object";
       default:
         return "Reflog update";
     }
@@ -68,6 +76,8 @@
       case "checkout":
       case "branch":
         return "HEAD or a branch pointer moved.";
+      case "unreachable":
+        return "This commit exists in the local object database but is not reachable from current refs.";
       default:
         return "Git recorded a HEAD update.";
     }
@@ -103,6 +113,10 @@
       const origin = originText(entry);
       return `HEAD moved to a commit that no current branch, remote, or tag contains${origin ? `; reflog links it to ${origin}` : ""}.`;
     }
+    if (state === "object") {
+      const origin = originText(entry);
+      return `Git fsck found this commit object outside current refs and HEAD reflog${origin ? `; old reflog evidence links it to ${origin}` : ""}.`;
+    }
     return "HEAD moved through this point in local reflog time order.";
   }
 
@@ -116,6 +130,9 @@
     }
     if (state === "dropped") {
       return "Recover this HEAD state by creating a branch at the target commit before checkout or rebase.";
+    }
+    if (state === "object") {
+      return "Create a branch at this object before Git garbage collection removes it.";
     }
     return "Use the HEAD transition order and message to decide whether this local point should be recovered.";
   }
@@ -141,6 +158,9 @@
     }
     if (state === "timeline") {
       return "time";
+    }
+    if (state === "object") {
+      return "object";
     }
     if (move?.to && !looksLikeHash(move.to)) {
       return shortLabel(move.to);
@@ -178,6 +198,9 @@
     if (refs.length) {
       parts.push(`currently reachable from ${refs.join(", ")}`);
     }
+    if (entry?.source === "unreachable") {
+      parts.push("found by git fsck as an unreachable commit object");
+    }
     if (move?.from || move?.to) {
       parts.push(`HEAD moved ${move.from || "unknown"} -> ${move.to || "unknown"}`);
     }
@@ -194,6 +217,9 @@
     const move = entry?.checkoutMove;
     if (refs.length) {
       parts.push(`reachable ${refs.join(", ")}`);
+    }
+    if (entry?.source === "unreachable") {
+      parts.push("fsck object");
     }
     if (move?.from) {
       parts.push(`from ${move.from}`);
@@ -212,9 +238,10 @@
   /** 상태별 항목 수를 목록 상단 요약용으로 계산한다. */
   function counts(entries) {
     return (entries || []).reduce((acc, entry) => {
-      acc[flowState(entry)] += 1;
+      const key = flowState(entry);
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
-    }, { flow: 0, dropped: 0, timeline: 0 });
+    }, { flow: 0, dropped: 0, timeline: 0, object: 0 });
   }
 
   /** 표시할 이름 목록을 3개로 제한하고 초과 수를 +N 으로 접는다. */

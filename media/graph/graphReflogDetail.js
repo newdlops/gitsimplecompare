@@ -40,10 +40,8 @@
     const loaded = Boolean(context?.loaded);
     const expired = entry.recovery?.kind === "expired";
     const canRecover = Boolean(entry.recovery?.available);
-    const recoverTitle = canRecover
-      ? "Recover by creating branch at this HEAD state"
-      : entry.recovery?.reason || "This reflog entry is not a recovery target";
-    host.show("reflog entry");
+    const recoverTitle = recoverButtonTitle(entry, canRecover);
+    host.show(entry.source === "unreachable" ? "git object" : "reflog entry");
     host.root.innerHTML =
       `<div class="detail-shell reflog-detail">` +
       `<section class="commit-summary reflog-detail-summary">` +
@@ -53,6 +51,7 @@
       `<div class="actions reflog-detail-actions">` +
       actionButton("showInGraph", "target", "Load and show this reflog entry in graph", "Show in Graph", hash, expired) +
       actionButton("createBranch", "git-branch-create", recoverTitle, "Recover Branch", hash, !canRecover) +
+      actionButton("cherryPick", "git-pull-request-create", "Cherry-pick this commit onto the current branch", "Cherry-pick", hash, expired) +
       actionButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", "Checkout", hash, expired) +
       actionButton("copyCommitHash", "copy", "Copy reflog commit hash", "Copy Hash", hash) +
       `</div>` +
@@ -67,9 +66,10 @@
   /** 상세 상단의 hash, selector, 날짜 메타 정보를 만든다. */
   function metaHtml(entry, index, hash) {
     return `<div class="commit-meta reflog-detail-meta">` +
-      `<span>R${esc(index + 1)}</span>` +
+      `<span>${esc(entry.source === "unreachable" ? "O" : "R")}${esc(index + 1)}</span>` +
       `<span>${esc(hash.slice(0, 10))}</span>` +
       `<span>${esc(entry.shortSelector || entry.selector || "")}</span>` +
+      `<span>${esc(entry.source === "unreachable" ? "Unreachable object" : "HEAD reflog")}</span>` +
       `<span class="commit-date">${esc(formatDate(entry.dateIso))}</span>` +
       `</div>`;
   }
@@ -113,6 +113,8 @@
           window.dispatchEvent(new CustomEvent("gsc-reflog-show-in-graph", { detail: { hash } }));
         } else if (action === "createBranch") {
           window.GscGraphPostMessage?.({ type: "createBranch", hash });
+        } else if (action === "cherryPick") {
+          window.GscGraphPostMessage?.({ type: "cherryPick", hash });
         } else if (action === "checkoutCommit") {
           window.GscGraphPostMessage?.({ type: "checkoutCommit", hash });
         } else if (action === "copyCommitHash") {
@@ -128,6 +130,9 @@
     const currentRefs = window.GscGraphReflogModel?.currentRefNames?.(entry) || [];
     if (currentRefs.length) {
       rows.push(sourceRow("Current flow", currentRefs.join(", ")));
+    }
+    if (entry.source === "unreachable") {
+      rows.push(sourceRow("Object scan", "git fsck --no-reflogs --unreachable"));
     }
     const move = entry.checkoutMove;
     if (move?.from || move?.to) {
@@ -192,6 +197,14 @@
         sourceRow("Action", "Use Show in Graph to inspect the existing branch path") +
         `</section>`;
     }
+    if (entry.source === "unreachable") {
+      return `<section class="reflog-detail-section">` +
+        `<h3>Recovery Flow</h3>` +
+        sourceRow("1 Inspect", "Show this object in the graph") +
+        sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} before garbage collection`) +
+        sourceRow("3 Apply", "Cherry-pick it onto the current branch when you only need this commit") +
+        `</section>`;
+    }
     return `<section class="reflog-detail-section">` +
       `<h3>Recovery Flow</h3>` +
       sourceRow("1 Inspect", "Show this HEAD state in the graph") +
@@ -213,9 +226,19 @@
   /** 원본 reflog 메시지를 상세 섹션으로 만든다. */
   function messageHtml(entry) {
     return `<section class="reflog-detail-section">` +
-      `<h3>Reflog Message</h3>` +
+      `<h3>${entry.source === "unreachable" ? "Commit Subject" : "Reflog Message"}</h3>` +
       `<pre>${esc(entry.message || "")}</pre>` +
       `</section>`;
+  }
+
+  /** 복구 버튼 tooltip 을 항목 출처에 맞게 만든다. */
+  function recoverButtonTitle(entry, canRecover) {
+    if (!canRecover) {
+      return entry.recovery?.reason || "This recovery entry is not a branch target";
+    }
+    return entry?.source === "unreachable"
+      ? "Recover by creating branch at this object"
+      : "Recover by creating branch at this HEAD state";
   }
 
   window.GscGraphReflogDetail = { show };

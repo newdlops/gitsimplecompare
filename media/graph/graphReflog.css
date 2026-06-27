@@ -266,9 +266,16 @@
   --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 10%, transparent);
 }
 
+.reflog-relation-object,
+.reflog-object {
+  --reflog-state-color: var(--vscode-editorWarning-foreground, #cca700);
+  --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 11%, transparent);
+}
+
 .reflog-entry.graph-missing .reflog-graph-state,
 .reflog-entry.reflog-dropped .reflog-graph-state,
-.reflog-entry.reflog-timeline .reflog-graph-state {
+.reflog-entry.reflog-timeline .reflog-graph-state,
+.reflog-entry.reflog-object .reflog-graph-state {
   border-style: dashed;
 }
 
@@ -434,6 +441,13 @@
   border-style: dotted;
   color: var(--vscode-charts-blue, #3794ff);
   background: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 11%, var(--vscode-editor-background));
+}
+
+.reflog-graph-marker-object {
+  border-color: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 68%, transparent);
+  border-style: dashed;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  background: color-mix(in srgb, var(--vscode-editorWarning-foreground, #cca700) 12%, var(--vscode-editor-background));
 }
 
 .row.selected .reflog-graph-marker {

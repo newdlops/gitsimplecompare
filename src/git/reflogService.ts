@@ -1,6 +1,10 @@
 // git reflog 조회 전용 서비스.
 // - 그래프 UI 에서 히스토리 복구 후보를 보여주고, 사용자가 브랜치를 만들어 수동 복구할 수 있게 한다.
 import { runGit } from "./gitExec";
+import {
+  readUnreachableCommitRecords,
+  type UnreachableCommitRecord,
+} from "./unreachableCommitService";
 
 const FS = "\x1f";
 const RS = "\0";
@@ -43,7 +47,10 @@ export interface ReflogRecoveryState {
 }
 
 /** reflog 항목이 현재 브랜치 그래프 흐름과 어떤 관계인지 나타내는 상태 */
-export type ReflogFlowStatus = "reachable" | "dropped" | "detached";
+export type ReflogFlowStatus = "reachable" | "dropped" | "detached" | "unreachable";
+
+/** recovery 패널에 표시하는 항목이 어떤 git 기록에서 왔는지 나타내는 출처 */
+export type ReflogEntrySource = "head" | "unreachable";
 
 /** reflog 메시지를 UI 에서 빠르게 이해할 수 있도록 분류한 이벤트 종류 */
 export type ReflogEventKind =
@@ -56,11 +63,13 @@ export type ReflogEventKind =
   | "pull"
   | "cherryPick"
   | "branch"
+  | "unreachable"
   | "other";
 
 /** 그래프 UI 에 표시할 reflog 한 항목 */
 export interface ReflogEntry {
   hash: string;
+  source: ReflogEntrySource;
   selector: string;
   shortSelector: string;
   message: string;
@@ -99,28 +108,88 @@ export async function readReflogEntries(
   ]);
   const headRecords = parseReflogRecords(headOut);
   const branchSources = branchSourcesByHash(parseReflogRecords(allOut));
-  const currentRefs = await currentRefsByHash(repoRoot, headRecords.map((record) => record.hash));
+  const headHashes = new Set(headRecords.map((record) => record.hash));
+  const objectRecords = (await readUnreachableCommitRecords(repoRoot, safeLimit))
+    .filter((record) => !headHashes.has(record.hash));
+  const allHashes = [
+    ...headRecords.map((record) => record.hash),
+    ...objectRecords.map((record) => record.hash),
+  ];
+  const currentRefs = await currentRefsByHash(repoRoot, allHashes);
   const existingCommits = await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash));
-  return headRecords.map((record, index) => {
-    const sources = branchSources.get(record.hash) || [];
-    const refs = currentRefs.get(record.hash) || [];
-    const checkoutMove = checkoutMoveFromMessage(record.message);
-    const fromHash = headRecords[index + 1]?.hash;
-    return {
-      ...record,
-      branchSources: sources,
-      currentRefs: refs,
-      checkoutMove,
-      transition: {
-        fromHash,
-        toHash: record.hash,
-        changed: Boolean(fromHash && fromHash !== record.hash),
-      },
-      recovery: recoveryStateFor(Boolean(existingCommits.get(record.hash)), refs),
-      flowStatus: flowStatusFor(refs, sources, checkoutMove),
-      eventKind: eventKindFromMessage(record.message),
-    };
-  });
+  return [
+    ...headRecords.map((record, index) => headEntryFromRecord(record, index, headRecords, branchSources, currentRefs, existingCommits)),
+    ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, currentRefs)),
+  ];
+}
+
+/**
+ * HEAD reflog record 를 UI 에서 쓰는 복구 항목으로 변환한다.
+ * @param record          HEAD reflog 원본 record
+ * @param index           HEAD reflog 안에서의 최신순 위치
+ * @param headRecords     fromHash 계산에 쓰는 HEAD reflog 전체 목록
+ * @param branchSources   같은 commit 을 관찰한 branch reflog 근거
+ * @param currentRefs     현재 commit 을 포함하는 ref 근거
+ * @param existingCommits commit object 존재 여부 캐시
+ */
+function headEntryFromRecord(
+  record: ParsedReflogRecord,
+  index: number,
+  headRecords: ParsedReflogRecord[],
+  branchSources: Map<string, ReflogBranchSource[]>,
+  currentRefs: Map<string, ReflogCurrentRef[]>,
+  existingCommits: Map<string, boolean>
+): ReflogEntry {
+  const sources = branchSources.get(record.hash) || [];
+  const refs = currentRefs.get(record.hash) || [];
+  const checkoutMove = checkoutMoveFromMessage(record.message);
+  const fromHash = headRecords[index + 1]?.hash;
+  return {
+    ...record,
+    source: "head",
+    branchSources: sources,
+    currentRefs: refs,
+    checkoutMove,
+    transition: {
+      fromHash,
+      toHash: record.hash,
+      changed: Boolean(fromHash && fromHash !== record.hash),
+    },
+    recovery: recoveryStateFor(Boolean(existingCommits.get(record.hash)), refs),
+    flowStatus: flowStatusFor(refs, sources, checkoutMove),
+    eventKind: eventKindFromMessage(record.message),
+  };
+}
+
+/**
+ * reflog 에 직접 나타나지 않는 unreachable commit object 를 복구 항목으로 변환한다.
+ * @param record        fsck 로 찾은 commit object record
+ * @param branchSources 같은 commit 을 관찰한 branch reflog 근거
+ * @param currentRefs   현재 commit 을 포함하는 ref 근거
+ */
+function unreachableEntryFromRecord(
+  record: UnreachableCommitRecord,
+  branchSources: Map<string, ReflogBranchSource[]>,
+  currentRefs: Map<string, ReflogCurrentRef[]>
+): ReflogEntry {
+  const refs = currentRefs.get(record.hash) || [];
+  return {
+    hash: record.hash,
+    source: "unreachable",
+    selector: `unreachable@{${record.dateIso || record.hash.slice(0, 10)}}`,
+    shortSelector: `object:${record.hash.slice(0, 10)}`,
+    message: record.message || "Unreachable commit object",
+    dateIso: record.dateIso,
+    branchSources: branchSources.get(record.hash) || [],
+    currentRefs: refs,
+    transition: {
+      toHash: record.hash,
+      changed: false,
+    },
+    recovery: recoveryStateFor(true, refs),
+    flowStatus: refs.length > 0 ? "reachable" : "unreachable",
+    eventKind: "unreachable",
+  };
 }
 
 /**
