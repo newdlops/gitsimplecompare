@@ -204,12 +204,14 @@ async function postGitTodoProgress(
     title: conflicts
       ? "Paused with conflicts"
       : editPause ? "Paused at edit commit" : "Rebase paused at todo",
-    detail: conflicts
-      ? "Resolve conflicts, then Continue, Skip, or Abort."
-      : editPause
-        ? "Edit files for this commit, then Continue or Skip."
-        : result.message || "Resolve the current Git rebase step, then Continue, Skip, or Abort.",
+    detail: result.message ||
+      (conflicts
+        ? "Resolve conflicts, then Continue, Skip, or Abort."
+        : editPause
+          ? "Edit files for this commit, then Continue or Skip."
+          : "Resolve the current Git rebase step, then Continue, Skip, or Abort."),
     progress,
+    guidance: resultGuidance(result),
     active: true,
   }));
   return true;
@@ -218,4 +220,13 @@ async function postGitTodoProgress(
 /** 알 수 없는 예외를 진행 배너에 넣을 짧은 문자열로 변환한다. */
 function errText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** control result 의 상세 안내를 Git todo progress 카드로 전달한다. */
+function resultGuidance(
+  result: RebaseResult | GraphRebaseControlResult
+): string[] | undefined {
+  return "guidance" in result && Array.isArray(result.guidance)
+    ? result.guidance
+    : undefined;
 }

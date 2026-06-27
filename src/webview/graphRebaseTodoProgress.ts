@@ -9,6 +9,7 @@ export interface RebaseTodoProgressMessageInput {
   title: string;
   detail: string;
   progress?: RebaseTodoProgress;
+  guidance?: string[];
   active: boolean;
 }
 
@@ -39,7 +40,7 @@ export function graphRebaseTodoProgressMessage(
         subject: item.subject,
       })),
       omittedTodoCount: progress?.omittedItemCount,
-      guidance: progress ? guidanceLines(input.phase) : undefined,
+      guidance: combinedGuidance(input.guidance, progress ? guidanceLines(input.phase) : undefined),
       active: input.active,
     },
   };
@@ -65,4 +66,17 @@ function guidanceLines(phase: GraphRebaseProgress["phase"]): string[] {
     ];
   }
   return [];
+}
+
+/**
+ * 진단 안내와 기본 todo 안내를 중복 없이 합친다.
+ * @param first  진단에서 온 구체 안내
+ * @param second 상태별 기본 안내
+ */
+function combinedGuidance(
+  first: string[] | undefined,
+  second: string[] | undefined
+): string[] | undefined {
+  const lines = [...(first || []), ...(second || [])];
+  return lines.length ? [...new Set(lines)] : undefined;
 }

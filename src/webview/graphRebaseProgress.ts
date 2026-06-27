@@ -57,7 +57,7 @@ export function graphRebaseResultProgress(
     return pausedProgress(action, result.paused, items);
   }
   if (result.status === "conflicts") {
-    return stoppedProgress(action, result.stopped, items);
+    return stoppedProgress(action, result, items);
   }
   if (result.status === "stopped") {
     return todoStoppedProgress(action, result, items);
@@ -111,6 +111,7 @@ function todoStoppedProgress(
     originalHash: result.stopped?.originalHash,
     step: position?.step,
     total: position?.total ?? todoCounts(items).total,
+    guidance: resultGuidance(result),
     active: true,
   });
 }
@@ -118,19 +119,21 @@ function todoStoppedProgress(
 /** 충돌로 멈춘 상태의 진행 메시지를 만든다. */
 function stoppedProgress(
   action: GraphRebaseProgressAction,
-  stopped: RebaseStoppedState | undefined,
+  result: GraphRebaseAnyResult,
   items: RebaseItem[]
 ): ToWebviewMessage {
+  const stopped = result.stopped;
   const position = todoPosition(items, stopped?.originalHash || stopped?.hash);
   return progressMessage({
     phase: "conflicts",
     action,
     title: "Paused with conflicts",
-    detail: `${positionText(position, stopped)} Resolve conflicts, then Continue, Skip, or Abort.`,
+    detail: `${positionText(position, stopped)} ${result.message || "Resolve conflicts, then Continue, Skip, or Abort."}`.trim(),
     hash: stopped?.hash,
     originalHash: stopped?.originalHash,
     step: position?.step,
     total: position?.total ?? todoCounts(items).total,
+    guidance: resultGuidance(result),
     active: true,
   });
 }
@@ -157,6 +160,7 @@ function failedProgress(
     originalHash: stopped?.originalHash,
     step: position?.step,
     total: position?.total ?? todoCounts(items).total,
+    guidance: resultGuidance(result),
     active: !cancelled,
   });
 }
@@ -217,4 +221,11 @@ function actionTitle(action: GraphRebaseProgressAction): string {
     return "Skipping rebase item";
   }
   return action === "abort" ? "Aborting rebase" : "Starting rebase";
+}
+
+/** control result 에 포함된 추가 안내를 progress payload 로 전달한다. */
+function resultGuidance(result: GraphRebaseAnyResult): string[] | undefined {
+  return "guidance" in result && Array.isArray(result.guidance)
+    ? result.guidance
+    : undefined;
 }

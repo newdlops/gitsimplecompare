@@ -6,11 +6,11 @@ import {
   createRebaseEditTempFile,
   listRebaseEditTempPaths,
 } from "../git/rebaseEditSession";
-import { updateInProgressRebaseTodo } from "../git/rebaseTodoEditor";
 import {
-  formatRebaseTodoProgress,
-  readRebaseTodoProgress,
-} from "../git/rebaseTodoProgress";
+  readRebaseContinueDiagnostics,
+  type RebaseContinueDiagnostics,
+} from "../git/rebaseContinueDiagnostics";
+import { updateInProgressRebaseTodo } from "../git/rebaseTodoEditor";
 import { refreshRebaseMessageQueueForContinue } from "../git/rebaseMessageQueue";
 import { EMPTY_TREE, GitLogService } from "../git/gitLogService";
 import {
@@ -23,6 +23,14 @@ import {
 } from "../git/rebaseService";
 import { openRefVsWorkingDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
+import { focusRebaseConflicts } from "./graphRebaseConflictFocus";
+import {
+  rebaseDiagnosticDetail,
+  rebaseDiagnosticGuidance,
+  rebaseDiagnosticLogDetail,
+} from "./graphRebaseDiagnostics";
+import { rebaseProgressLogDetail } from "./graphRebaseProgressLog";
+import { editorScriptPath, refreshAfterRebaseControl } from "./graphRebaseUtils";
 
 /** 그래프 rebase 실행에 필요한 공유 의존성 */
 export interface GraphRebaseDeps {
@@ -35,6 +43,7 @@ export interface GraphRebaseDeps {
 export interface GraphRebaseControlResult {
   status: "completed" | "conflicts" | "failed" | "paused" | "aborted" | "stopped";
   message?: string;
+  guidance?: string[];
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
 }
@@ -271,6 +280,28 @@ export async function continueGraphRebase(
       missingFileHashes: todo.missingChangedFileHashes.length,
     });
   }
+  const preflightDiagnostics = await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined);
+  if (preflightDiagnostics?.markerFiles.length) {
+    const stopped = await rebase.getStoppedState();
+    const detail = rebaseDiagnosticDetail(preflightDiagnostics);
+    logInfo("graph rebase continue blocked by conflict markers", {
+      repoRoot,
+      stopped: stopped?.hash,
+      original: stopped?.originalHash,
+      ...(await rebaseProgressLogDetail(repoRoot)),
+      ...rebaseDiagnosticLogDetail(preflightDiagnostics),
+    });
+    await refreshAfterRebaseControl(deps, "graphRebaseMarkerBlocked");
+    vscode.window.showWarningMessage(
+      detail || vscode.l10n.t("Conflict markers remain. Remove them before Continue.")
+    );
+    return {
+      status: preflightDiagnostics.unmergedFiles.length > 0 ? "conflicts" : "stopped",
+      stopped,
+      message: detail,
+      guidance: rebaseDiagnosticGuidance(preflightDiagnostics),
+    };
+  }
   const messageQueue = await refreshRebaseMessageQueueForContinue(repoRoot, items, {
     includeCurrent: true,
   });
@@ -304,11 +335,13 @@ export async function continueGraphRebase(
     });
     await conflicts.continueOperation("rebase");
   } catch (err) {
+    const diagnostics = await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined);
     logError("graph rebase continue failed", err, {
       repoRoot,
       ...(await rebaseProgressLogDetail(repoRoot)),
+      ...rebaseDiagnosticLogDetail(diagnostics),
     });
-    const state = await readRebaseControlState(deps, "");
+    const state = await readRebaseControlState(deps, "", diagnostics);
     if (state.status === "conflicts") {
       return state;
     }
@@ -318,9 +351,17 @@ export async function continueGraphRebase(
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(vscode.l10n.t("Rebase continue failed: {0}", message));
     if (state.status === "paused") {
-      return { ...state, message };
+      return {
+        ...state,
+        message: state.message || message,
+        guidance: state.guidance || rebaseDiagnosticGuidance(diagnostics),
+      };
     }
-    return { status: "failed", message };
+    return {
+      status: "failed",
+      message: rebaseDiagnosticDetail(diagnostics) || message,
+      guidance: rebaseDiagnosticGuidance(diagnostics),
+    };
   }
   return readRebaseControlState(deps, "Rebase completed.");
 }
@@ -410,20 +451,11 @@ export async function abortGraphRebase(
   return { status: "aborted" };
 }
 
-/** rebaseEditor.js 헬퍼 스크립트의 파일 시스템 경로를 만든다. */
-function editorScriptPath(extensionUri: vscode.Uri): string {
-  return vscode.Uri.joinPath(
-    extensionUri,
-    "media",
-    "rebase",
-    "rebaseEditor.js"
-  ).fsPath;
-}
-
 /** continue 뒤 rebase 의 다음 상태를 읽고 필요한 UI 전환을 수행한다. */
 async function readRebaseControlState(
   deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
-  completedMessage: string
+  completedMessage: string,
+  knownDiagnostics?: RebaseContinueDiagnostics
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const rebase = new RebaseService(repoRoot);
@@ -442,6 +474,10 @@ async function readRebaseControlState(
   }
   const conflictService = new ConflictService(repoRoot);
   const conflicts = await conflictService.listConflicts().catch(() => []);
+  const diagnostics = knownDiagnostics ??
+    (await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined));
+  const diagnosticDetail = rebaseDiagnosticDetail(diagnostics);
+  const diagnosticGuidance = rebaseDiagnosticGuidance(diagnostics);
   if (conflicts.length > 0) {
     const stopped = await rebase.getStoppedState();
     logInfo("graph rebase continue stopped with conflicts", {
@@ -450,10 +486,16 @@ async function readRebaseControlState(
       stopped: stopped?.hash,
       original: stopped?.originalHash,
       ...(await rebaseProgressLogDetail(repoRoot)),
+      ...rebaseDiagnosticLogDetail(diagnostics),
     });
     await refreshAfterRebaseControl(deps, "graphRebaseConflict");
     await focusRebaseConflicts(repoRoot);
-    return { status: "conflicts", stopped };
+    return {
+      status: "conflicts",
+      stopped,
+      message: diagnosticDetail,
+      guidance: diagnosticGuidance,
+    };
   }
   const operation = await conflictService.getOperation().catch(() => "none");
   if (operation === "rebase") {
@@ -463,12 +505,19 @@ async function readRebaseControlState(
       stopped: stopped?.hash,
       original: stopped?.originalHash,
       ...(await rebaseProgressLogDetail(repoRoot)),
+      ...rebaseDiagnosticLogDetail(diagnostics),
     });
     await refreshAfterRebaseControl(deps, "graphRebaseStopped");
     vscode.window.showWarningMessage(
-      vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
+      diagnosticDetail ||
+        vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
     );
-    return { status: "stopped", stopped };
+    return {
+      status: "stopped",
+      stopped,
+      message: diagnosticDetail,
+      guidance: diagnosticGuidance,
+    };
   }
   logInfo("graph rebase continue completed", {
     repoRoot,
@@ -480,36 +529,6 @@ async function readRebaseControlState(
     vscode.window.showInformationMessage(vscode.l10n.t(completedMessage));
   }
   return { status: "completed" };
-}
-
-/** rebase 제어 후 그래프와 Changes 트리를 같은 타이밍에 갱신한다. */
-async function refreshAfterRebaseControl(
-  deps: Pick<GraphRebaseDeps, "refreshGraph">,
-  reason: string
-): Promise<void> {
-  await deps.refreshGraph();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
-}
-
-/** rebase continue 전후의 done/todo 진행률을 OUTPUT 로그용 객체로 만든다. */
-async function rebaseProgressLogDetail(repoRoot: string): Promise<Record<string, unknown>> {
-  const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
-  if (!progress) {
-    return { todoActive: false };
-  }
-  return {
-    todoActive: true,
-    todoDone: progress.done,
-    todoRemaining: progress.remaining,
-    todoTotal: progress.total,
-    todoCurrent: progress.currentHash,
-    todoCurrentAction: progress.items.find((item) => item.role === "current")?.action,
-    todoCurrentSubject: progress.currentSubject,
-    todoNext: progress.nextHash,
-    todoNextAction: progress.items.find((item) => item.role === "remaining")?.action,
-    todoNextSubject: progress.nextSubject,
-    todoSummary: formatRebaseTodoProgress(progress),
-  };
 }
 
 /** Continue 직전에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다. */
@@ -565,29 +584,4 @@ async function openPausedEditFile(
     paused: paused.hash,
     original: paused.originalHash,
   });
-}
-
-/** rebase 충돌이 발생하면 충돌 뷰로 이동한다. */
-async function focusRebaseConflicts(repoRoot: string): Promise<void> {
-  const files = await new ConflictService(repoRoot).listConflicts().catch(() => []);
-  logInfo("graph rebase conflicts detected", {
-    repoRoot,
-    conflicts: files.length,
-  });
-  await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
-  await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "graphRebaseConflict",
-  });
-  if (files.length === 0) {
-    vscode.window.showWarningMessage(
-      vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
-    );
-    return;
-  }
-  vscode.window.showWarningMessage(
-    vscode.l10n.t(
-      "Rebase paused due to conflicts. Resolve them in the Conflicts view, then Continue, Skip, or Abort."
-    )
-  );
 }
