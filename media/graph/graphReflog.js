@@ -41,6 +41,7 @@
     }
     panel.hidden = false;
     button?.classList.add("active");
+    updateToggleButton(true);
     syncGraphMarkers();
     requestReflog();
   }
@@ -52,6 +53,7 @@
     }
     panel.hidden = true;
     button?.classList.remove("active");
+    updateToggleButton(false);
     hoverHash = "";
     activeHash = "";
     clearGraphMarkers();
@@ -73,6 +75,18 @@
     window.GscGraphPostMessage?.({ type: "refreshReflog" });
   }
 
+  /** toolbar reflog 아이콘의 토글 접근성 상태와 tooltip 을 갱신한다. */
+  function updateToggleButton(open) {
+    if (!button) {
+      return;
+    }
+    const title = open ? "Hide reflog recovery" : "Show reflog recovery";
+    button.setAttribute("aria-pressed", open ? "true" : "false");
+    button.setAttribute("aria-label", title);
+    button.title = title;
+    button.dataset.tooltip = title;
+  }
+
   /** reflog 패널을 렌더링한다. */
   function render() {
     if (!panel || panel.hidden) {
@@ -85,7 +99,7 @@
       iconButton("refresh-reflog", "refresh", "Refresh reflog") +
       iconButton("close-reflog", "close", "Close reflog") +
       `</div></header>` +
-      `<div class="reflog-help">Create a branch at a reflog entry before experimenting with checkout or rebase recovery.</div>` +
+      `<div class="reflog-help">${summaryHtml()}</div>` +
       `<div class="reflog-list">${entriesHtml()}</div>`;
     panel.querySelector("#refresh-reflog")?.addEventListener("click", requestReflog);
     panel.querySelector("#close-reflog")?.addEventListener("click", closePanel);
@@ -95,8 +109,20 @@
       entry.addEventListener("focusin", () => setHoverHash(entry.dataset.hash || ""));
       entry.addEventListener("focusout", () => setHoverHash(""));
     });
+    panel.querySelectorAll("[data-reflog-detail]").forEach((target) => {
+      target.addEventListener("click", () => showEntryDetail(Number(target.dataset.reflogIndex)));
+      target.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          showEntryDetail(Number(target.dataset.reflogIndex));
+        }
+      });
+    });
     panel.querySelectorAll("[data-reflog-action]").forEach((action) => {
-      action.addEventListener("click", () => postEntryAction(action));
+      action.addEventListener("click", (event) => {
+        event.stopPropagation();
+        postEntryAction(action);
+      });
     });
     syncGraphMarkers();
   }
@@ -110,6 +136,15 @@
     return visible > 0
       ? `${entries.length} entries, ${visible} on graph`
       : `${entries.length} entries`;
+  }
+
+  /** reflog 흐름 상태별 요약 HTML 을 만든다. */
+  function summaryHtml() {
+    const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0 };
+    return `<span class="reflog-summary-chip reflog-relation-flow">Branch flow ${esc(counts.flow)}</span>` +
+      `<span class="reflog-summary-chip reflog-relation-dropped">Dropped ${esc(counts.dropped)}</span>` +
+      `<span class="reflog-summary-chip reflog-relation-timeline">Timeline ${esc(counts.timeline)}</span>` +
+      `<span class="reflog-summary-note">Dropped and timeline entries are ordered by HEAD reflog time.</span>`;
   }
 
   /** reflog 항목 리스트 HTML 을 만든다. */
@@ -130,20 +165,28 @@
     const message = entry.message || "reflog entry";
     const date = formatDate(entry.dateIso);
     const loaded = hashLoaded(entryHash);
-    const state = loaded ? "On graph" : "Not loaded";
+    const flow = flowState(entry);
+    const state = relationLabel(entry, loaded);
+    const event = eventLabel(entry);
+    const summary = relationSummary(entry, loaded);
     const classes = [
       "reflog-entry",
+      `reflog-${flow}`,
       loaded ? "graph-loaded" : "graph-missing",
       entryHash === activeHash ? "graph-active" : "",
       entryHash === hoverHash ? "graph-hover" : "",
     ].filter(Boolean).join(" ");
-    return `<article class="${classes}" data-hash="${esc(entryHash)}">` +
-      `<div class="reflog-index">${esc(index + 1)}</div>` +
-      `<div class="reflog-main">` +
+    return `<article class="${classes}" data-hash="${esc(entryHash)}" data-flow="${esc(flow)}">` +
+      `<div class="reflog-index"><span class="reflog-timeline-dot" title="${esc(state)}"></span><span>R${esc(index + 1)}</span></div>` +
+      `<div class="reflog-main" role="button" tabindex="0" data-reflog-detail="1" data-reflog-index="${esc(index)}" ` +
+      `title="${esc(state)}: ${esc(summary)}" aria-label="Show reflog details" data-tooltip="${esc(state)}: ${esc(summary)}">` +
       `<div class="reflog-title"><code>${esc(hash)}</code><strong>${esc(message)}</strong>` +
-      `<span class="reflog-graph-state">${esc(state)}</span></div>` +
+      `<span class="reflog-graph-state reflog-relation-${esc(flow)}">${esc(state)}</span>` +
+      `<span class="reflog-event-chip">${esc(event)}</span></div>` +
       `<div class="reflog-meta"><span>${esc(entry.shortSelector || entry.selector)}</span>` +
       `<span>${esc(date)}</span></div>` +
+      `<div class="reflog-flow-summary">${esc(summary)}</div>` +
+      provenanceHtml(entry) +
       `</div>` +
       `<div class="reflog-entry-actions">` +
       entryButton("showInGraph", "target", loaded ? "Show this reflog entry in graph" : "Load and show this reflog entry in graph", entryHash) +
@@ -242,6 +285,7 @@
       row.title = `${row.dataset.originalTitle}${row.dataset.originalTitle ? " | " : ""}${markerTitle(items)}`;
       row.appendChild(markerBadge(first.entry, first.index, items));
       node?.classList.add("reflog-linked-node");
+      window.GscGraphReflogMarkers?.appendNodeShape?.(node, hash, markerTitle(items), flowState(first.entry));
     });
     refreshActiveMarks();
   }
@@ -259,6 +303,7 @@
         delete row.dataset.originalTitle;
       }
     });
+    graphContent.querySelectorAll(".reflog-node-shape").forEach((shape) => shape.remove());
     graphContent.querySelectorAll(".reflog-linked-node,.reflog-active-node,.reflog-hover-node").forEach((node) => {
       node.classList.remove("reflog-linked-node", "reflog-active-node", "reflog-hover-node");
     });
@@ -275,6 +320,9 @@
     graphContent.querySelectorAll(".reflog-active-node,.reflog-hover-node").forEach((node) => {
       node.classList.remove("reflog-active-node", "reflog-hover-node");
     });
+    graphContent.querySelectorAll(".reflog-active-node-shape,.reflog-hover-node-shape").forEach((shape) => {
+      shape.classList.remove("reflog-active-node-shape", "reflog-hover-node-shape");
+    });
     markHash(activeHash, "active");
     markHash(hoverHash, "hover");
   }
@@ -286,6 +334,19 @@
     }
     rowForHash(hash)?.classList.add(`reflog-${kind}-row`);
     nodeForHash(hash)?.classList.add(`reflog-${kind}-node`);
+    graphContent?.querySelector(`.reflog-node-shape[data-hash="${cssEscape(cleanHash(hash))}"]`)?.classList.add(`reflog-${kind}-node-shape`);
+  }
+
+  /** reflog 항목을 오른쪽 상세 패널에 표시한다. */
+  function showEntryDetail(index) {
+    const entry = entries[index];
+    if (!entry) {
+      return;
+    }
+    activeHash = cleanHash(entry.hash);
+    refreshActiveMarks();
+    render();
+    window.GscGraphReflogDetail?.show?.(entry, index, { loaded: hashLoaded(entry.hash) });
   }
 
   /** reflog entries 를 hash 별로 묶어 그래프 badge 하나에 여러 시점을 담는다. */
@@ -306,7 +367,7 @@
   /** 그래프 row 에 붙일 reflog badge 를 만든다. */
   function markerBadge(entry, index, items) {
     const badge = document.createElement("span");
-    badge.className = "reflog-graph-marker";
+    badge.className = `reflog-graph-marker reflog-graph-marker-${flowState(entry)}`;
     badge.textContent = markerLabel(entry, index, items.length);
     badge.title = markerTitle(items);
     return badge;
@@ -315,8 +376,9 @@
   /** row badge 에 표시할 짧은 reflog 시점 라벨을 만든다. */
   function markerLabel(entry, index, count) {
     const suffix = count > 1 ? ` +${count - 1}` : "";
+    const origin = window.GscGraphReflogModel?.graphOriginLabel?.(entry) || "";
     const time = timeLabel(entry.dateIso);
-    return `R${index + 1}${time ? ` ${time}` : ""}${suffix}`;
+    return `${graphFlowLabel(entry)} R${index + 1}${origin ? ` ${origin}` : time ? ` ${time}` : ""}${suffix}`;
   }
 
   /** row badge tooltip 에 표시할 reflog 시점 설명을 만든다. */
@@ -324,7 +386,10 @@
     const lines = items.slice(0, 4).map((item) => {
       const entry = item.entry;
       const selector = entry.shortSelector || entry.selector || `R${item.index + 1}`;
-      return `R${item.index + 1} ${selector}: ${entry.message || "reflog entry"}`;
+      const provenance = window.GscGraphReflogModel?.provenanceText?.(entry) || "";
+      const relation = relationLabel(entry, true);
+      const event = eventLabel(entry);
+      return `R${item.index + 1} ${relation} · ${event} · ${selector}: ${entry.message || "reflog entry"}${provenance ? ` | ${provenance}` : ""}`;
     });
     if (items.length > lines.length) {
       lines.push(`${items.length - lines.length} more reflog entries`);
@@ -335,6 +400,71 @@
   /** hash 에 해당하는 row 가 현재 그래프 DOM 에 로드되어 있는지 확인한다. */
   function hashLoaded(hash) {
     return Boolean(rowForHash(cleanHash(hash)));
+  }
+
+  /** reflog 항목의 브랜치 출처 근거를 HTML 로 만든다. */
+  function provenanceHtml(entry) {
+    const chips = [];
+    const currentRefs = window.GscGraphReflogModel?.currentRefNames?.(entry) || [];
+    if (currentRefs.length) {
+      chips.push(chipHtml("Current flow", currentRefs.join(", ")));
+    }
+    const move = entry.checkoutMove;
+    if (move?.from) {
+      chips.push(chipHtml("Moved from", move.from));
+    }
+    if (move?.to && move.to !== move.from) {
+      chips.push(chipHtml("To", move.to));
+    }
+    const localBranches = window.GscGraphReflogModel?.branchSourceNames?.(entry, "local") || [];
+    if (localBranches.length) {
+      chips.push(chipHtml("Branch log", localBranches.join(", ")));
+    }
+    const remoteBranches = window.GscGraphReflogModel?.branchSourceNames?.(entry, "remote") || [];
+    if (remoteBranches.length) {
+      chips.push(chipHtml("Remote log", remoteBranches.join(", ")));
+    }
+    if (!chips.length) {
+      return `<div class="reflog-provenance muted">No branch reflog evidence</div>`;
+    }
+    return `<div class="reflog-provenance" title="${esc(window.GscGraphReflogModel?.provenanceTitle?.(entry) || "")}">${chips.join("")}</div>`;
+  }
+
+  /** 브랜치 출처 표시용 chip HTML 을 만든다. */
+  function chipHtml(label, value) {
+    return `<span class="reflog-origin-chip"><em>${esc(label)}</em><strong>${esc(value)}</strong></span>`;
+  }
+
+  /** 그래프 badge 에 넣을 짧은 상태 라벨을 만든다. */
+  function graphFlowLabel(entry) {
+    const flow = flowState(entry);
+    if (flow === "flow") {
+      return "Flow";
+    }
+    if (flow === "dropped") {
+      return "Dropped";
+    }
+    return "Time";
+  }
+
+  /** 모델이 아직 로드되지 않은 초기 상태에서도 안전한 flow 상태를 반환한다. */
+  function flowState(entry) {
+    return window.GscGraphReflogModel?.flowState?.(entry) || "timeline";
+  }
+
+  /** 모델의 관계 라벨을 안전하게 호출한다. */
+  function relationLabel(entry, loaded) {
+    return window.GscGraphReflogModel?.relationLabel?.(entry, loaded) || (loaded ? "On graph" : "Timeline");
+  }
+
+  /** 모델의 이벤트 라벨을 안전하게 호출한다. */
+  function eventLabel(entry) {
+    return window.GscGraphReflogModel?.eventLabel?.(entry) || "Reflog update";
+  }
+
+  /** 모델의 관계 설명을 안전하게 호출한다. */
+  function relationSummary(entry, loaded) {
+    return window.GscGraphReflogModel?.relationSummary?.(entry, loaded) || "HEAD reflog entry.";
   }
 
   /** 현재 로드된 그래프에 표시 가능한 reflog 항목 수를 계산한다. */
@@ -405,7 +535,9 @@
     observer.observe(graphContent, { childList: true });
   }
 
+  updateToggleButton(false);
   button?.addEventListener("click", togglePanel);
+  window.addEventListener("gsc-reflog-show-in-graph", (event) => showInGraph(event.detail?.hash || ""));
   observeGraph();
   window.addEventListener("message", (event) => {
     const msg = event.data || {};

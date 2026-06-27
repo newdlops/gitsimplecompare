@@ -40,6 +40,9 @@ export function buildGraphHtml(
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
+  const reflogModelScriptUri = script(webview, mediaRoot, "graphReflogModel.js");
+  const reflogDetailScriptUri = script(webview, mediaRoot, "graphReflogDetail.js");
+  const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
   const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
@@ -209,6 +212,9 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogMarkersScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>

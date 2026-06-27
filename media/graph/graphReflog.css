@@ -49,8 +49,40 @@
 }
 
 .reflog-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   padding: 7px 10px;
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.reflog-summary-chip,
+.reflog-graph-state,
+.reflog-event-chip {
+  --reflog-state-color: var(--vscode-textLink-foreground);
+  --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 10%, transparent);
+}
+
+.reflog-summary-chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 19px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--reflog-state-color) 56%, transparent);
+  border-radius: 3px;
+  color: var(--reflog-state-color);
+  background: var(--reflog-state-bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.reflog-summary-note {
+  min-width: 180px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
 }
 
 .reflog-list {
@@ -79,15 +111,61 @@
 }
 
 .reflog-index {
+  position: relative;
+  display: flex;
+  align-self: stretch;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   color: var(--vscode-descriptionForeground);
   font-size: 11px;
   font-weight: 700;
   text-align: center;
 }
 
+.reflog-index::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+  transform: translateX(-50%);
+}
+
+.reflog-index span {
+  position: relative;
+  z-index: 1;
+}
+
+.reflog-index span:last-child {
+  padding: 0 2px;
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+}
+
+.reflog-timeline-dot {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 2px solid var(--reflog-state-color, var(--vscode-textLink-foreground));
+  border-radius: 50%;
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+}
+
 .reflog-main {
   min-width: 0;
   padding: 6px 8px 6px 0;
+}
+
+.reflog-main[role="button"] {
+  cursor: pointer;
+}
+
+.reflog-main[role="button"]:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 .reflog-title,
@@ -106,6 +184,7 @@
 }
 
 .reflog-title strong {
+  min-width: 0;
   overflow: hidden;
   font-size: 12px;
   font-weight: 600;
@@ -119,21 +198,105 @@
   padding: 0 6px;
   border: 1px solid color-mix(in srgb, var(--vscode-textLink-foreground) 50%, transparent);
   border-radius: 3px;
-  color: var(--vscode-textLink-foreground);
-  background: color-mix(in srgb, var(--vscode-textLink-foreground) 9%, transparent);
+  color: var(--reflog-state-color);
+  background: var(--reflog-state-bg);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
 }
 
-.reflog-entry.graph-missing .reflog-graph-state {
-  border-style: dashed;
+.reflog-event-chip {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 76%, transparent);
+  border-radius: 3px;
   color: var(--vscode-descriptionForeground);
-  background: transparent;
+  background: color-mix(in srgb, var(--vscode-panel-border) 22%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.reflog-relation-flow,
+.reflog-flow {
+  --reflog-state-color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 11%, transparent);
+}
+
+.reflog-relation-dropped,
+.reflog-dropped {
+  --reflog-state-color: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+  --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 12%, transparent);
+}
+
+.reflog-relation-timeline,
+.reflog-timeline {
+  --reflog-state-color: var(--vscode-charts-blue, #3794ff);
+  --reflog-state-bg: color-mix(in srgb, var(--reflog-state-color) 10%, transparent);
+}
+
+.reflog-entry.graph-missing .reflog-graph-state,
+.reflog-entry.reflog-dropped .reflog-graph-state,
+.reflog-entry.reflog-timeline .reflog-graph-state {
+  border-style: dashed;
 }
 
 .reflog-meta span {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflog-flow-summary {
+  overflow: hidden;
+  padding-top: 2px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflog-provenance {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 3px;
+}
+
+.reflog-provenance.muted {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.reflog-origin-chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 240px;
+  align-items: center;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 75%, transparent);
+  border-radius: 3px;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.reflog-origin-chip em {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  color: var(--vscode-descriptionForeground);
+  font-style: normal;
+  background: color-mix(in srgb, var(--vscode-panel-border) 34%, transparent);
+}
+
+.reflog-origin-chip strong {
+  overflow: hidden;
+  padding: 0 6px;
+  color: var(--vscode-foreground);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -192,15 +355,39 @@
 
 .reflog-graph-marker {
   flex: 0 0 auto;
+  max-width: 220px;
   height: 18px;
   padding: 0 6px;
   border: 1px solid color-mix(in srgb, var(--vscode-textLink-foreground) 58%, transparent);
   border-radius: 3px;
+  overflow: hidden;
   color: var(--vscode-textLink-foreground);
   background: color-mix(in srgb, var(--vscode-textLink-foreground) 12%, var(--vscode-editor-background));
   font-size: 11px;
   font-weight: 700;
   line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflog-graph-marker-flow {
+  border-color: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 62%, transparent);
+  color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  background: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 12%, var(--vscode-editor-background));
+}
+
+.reflog-graph-marker-dropped {
+  border-color: color-mix(in srgb, var(--vscode-gitDecoration-deletedResourceForeground, #f48771) 68%, transparent);
+  border-style: dashed;
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+  background: color-mix(in srgb, var(--vscode-gitDecoration-deletedResourceForeground, #f48771) 12%, var(--vscode-editor-background));
+}
+
+.reflog-graph-marker-timeline {
+  border-color: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 64%, transparent);
+  border-style: dotted;
+  color: var(--vscode-charts-blue, #3794ff);
+  background: color-mix(in srgb, var(--vscode-charts-blue, #3794ff) 11%, var(--vscode-editor-background));
 }
 
 .row.selected .reflog-graph-marker {
@@ -216,4 +403,97 @@
 #graph-content .node.reflog-hover-node:not(.rebase-progress-target-node):not(.rebase-progress-todo-node),
 #graph-content .node.reflog-active-node:not(.rebase-progress-target-node):not(.rebase-progress-todo-node) {
   filter: drop-shadow(0 0 6px var(--vscode-textLink-foreground));
+}
+
+#graph-content .reflog-node-shape {
+  fill: none;
+  stroke: var(--vscode-textLink-foreground);
+  stroke-width: 1.8;
+  pointer-events: none;
+}
+
+#graph-content .reflog-node-shape-flow {
+  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+}
+
+#graph-content .reflog-node-shape-dropped {
+  stroke: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+  stroke-dasharray: 4 3;
+}
+
+#graph-content .reflog-node-shape-timeline {
+  stroke: var(--vscode-charts-blue, #3794ff);
+  stroke-dasharray: 2 2;
+}
+
+#graph-content .reflog-hover-node-shape,
+#graph-content .reflog-active-node-shape {
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 5px var(--vscode-textLink-foreground));
+}
+
+.detail-shell.reflog-detail .commit-summary {
+  flex: 1 1 auto;
+}
+
+.reflog-detail-meta {
+  flex-wrap: wrap;
+}
+
+.reflog-detail-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.reflog-detail-explain,
+.reflog-detail-hint {
+  margin: 6px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.reflog-detail-hint {
+  padding-left: 8px;
+  border-left: 2px solid var(--reflog-state-color, var(--vscode-panel-border));
+}
+
+.reflog-detail-section {
+  margin-top: 12px;
+}
+
+.reflog-detail-section h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.reflog-detail-source {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 68%, transparent);
+}
+
+.reflog-detail-source span,
+.reflog-detail-muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+.reflog-detail-source strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reflog-detail-section pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
 }
