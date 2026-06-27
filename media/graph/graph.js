@@ -259,7 +259,7 @@
    */
   function selectCommit(hash) {
     selectedHash = hash;
-    const rows = graphContentEl.querySelectorAll(".row");
+    const rows = graphContentEl.querySelectorAll(".row:not([data-reflog-virtual])");
     rows.forEach((el) => el.classList.toggle("selected", el.dataset.hash === hash));
     vscode.postMessage({ type: "selectCommit", hash: hash });
     if (isDrawerMode()) {

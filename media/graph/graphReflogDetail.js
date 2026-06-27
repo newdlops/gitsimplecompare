@@ -38,6 +38,11 @@
     }
     const hash = cleanHash(entry.hash);
     const loaded = Boolean(context?.loaded);
+    const expired = entry.recovery?.kind === "expired";
+    const canRecover = Boolean(entry.recovery?.available);
+    const recoverTitle = canRecover
+      ? "Recover by creating branch at this HEAD state"
+      : entry.recovery?.reason || "This reflog entry is not a recovery target";
     host.show("reflog entry");
     host.root.innerHTML =
       `<div class="detail-shell reflog-detail">` +
@@ -46,11 +51,13 @@
       metaHtml(entry, index, hash) +
       flowHtml(entry, loaded) +
       `<div class="actions reflog-detail-actions">` +
-      actionButton("showInGraph", "target", "Load and show this reflog entry in graph", "Show in Graph", hash) +
-      actionButton("createBranch", "git-branch-create", "Create branch at this reflog entry", "Create Branch", hash) +
-      actionButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", "Checkout", hash) +
+      actionButton("showInGraph", "target", "Load and show this reflog entry in graph", "Show in Graph", hash, expired) +
+      actionButton("createBranch", "git-branch-create", recoverTitle, "Recover Branch", hash, !canRecover) +
+      actionButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", "Checkout", hash, expired) +
       actionButton("copyCommitHash", "copy", "Copy reflog commit hash", "Copy Hash", hash) +
       `</div>` +
+      transitionHtml(entry) +
+      recoveryHtml(entry) +
       provenanceHtml(entry) +
       messageHtml(entry) +
       `</section></div>`;
@@ -68,9 +75,9 @@
   }
 
   /** 상세 액션 버튼 HTML 을 만든다. */
-  function actionButton(action, icon, title, label, hash) {
+  function actionButton(action, icon, title, label, hash, disabled) {
     return `<button type="button" data-reflog-detail-action="${esc(action)}" data-hash="${esc(hash)}" ` +
-      `title="${esc(title)}" aria-label="${esc(title)}" data-tooltip="${esc(title)}">` +
+      `title="${esc(title)}" aria-label="${esc(title)}" data-tooltip="${esc(title)}" ${disabled ? "disabled" : ""}>` +
       `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span>` +
       `<span>${esc(label)}</span></button>`;
   }
@@ -86,6 +93,7 @@
     return `<div class="reflog-detail-flow-block reflog-${esc(flow)}">` +
       `<div class="reflog-detail-flow">` +
       `<span class="reflog-graph-state reflog-relation-${esc(flow)}">${esc(relation)}</span>` +
+      `<span class="reflog-recovery-chip reflog-recovery-${esc(recoveryKind(entry))}">${esc(recoveryLabel(entry))}</span>` +
       `<span class="reflog-event-chip">${esc(event)}</span>` +
       `</div>` +
       `<p class="reflog-detail-explain">${esc(summary)} ${esc(meaning)}</p>` +
@@ -142,9 +150,64 @@
     return `<div class="reflog-detail-source"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
   }
 
+  /** reflog commit 의 복구 상태 라벨을 만든다. */
+  function recoveryLabel(entry) {
+    const kind = recoveryKind(entry);
+    if (kind === "recoverable") return "Recoverable";
+    if (kind === "expired") return "Expired";
+    return "On branch";
+  }
+
+  /** reflog commit 의 복구 상태 키를 안전하게 반환한다. */
+  function recoveryKind(entry) {
+    return entry?.recovery?.kind || "reachable";
+  }
+
+  /** HEAD 포인터가 어느 commit 에서 어느 commit 으로 움직였는지 보여준다. */
+  function transitionHtml(entry) {
+    const from = shortHash(entry.transition?.fromHash) || "unknown";
+    const to = shortHash(entry.hash);
+    return `<section class="reflog-detail-section">` +
+      `<h3>HEAD Transition</h3>` +
+      sourceRow("Before", from) +
+      sourceRow("After", to) +
+      `</section>`;
+  }
+
+  /** reflog 로 과거 HEAD 상태를 복구하는 흐름을 짧게 표시한다. */
+  function recoveryHtml(entry) {
+    const relation = window.GscGraphReflogModel?.relationLabel?.(entry, false) || "HEAD state";
+    const kind = recoveryKind(entry);
+    if (kind === "expired") {
+      return `<section class="reflog-detail-section">` +
+        `<h3>Recovery Flow</h3>` +
+        sourceRow("Status", "Expired object") +
+        sourceRow("Action", entry.recovery?.reason || "This reflog commit can no longer be recovered.") +
+        `</section>`;
+    }
+    if (kind === "reachable") {
+      return `<section class="reflog-detail-section">` +
+        `<h3>Recovery Flow</h3>` +
+        sourceRow("Status", "Already reachable") +
+        sourceRow("Action", "Use Show in Graph to inspect the existing branch path") +
+        `</section>`;
+    }
+    return `<section class="reflog-detail-section">` +
+      `<h3>Recovery Flow</h3>` +
+      sourceRow("1 Inspect", "Show this HEAD state in the graph") +
+      sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} (${relation})`) +
+      sourceRow("3 Continue", "Checkout or rebase only after preserving it") +
+      `</section>`;
+  }
+
   /** 모델이 없거나 오래된 메시지를 받을 때도 안전한 flow 상태를 반환한다. */
   function flowState(entry) {
     return window.GscGraphReflogModel?.flowState?.(entry) || "timeline";
+  }
+
+  /** 커밋 해시를 상세 뷰에서 읽기 좋은 길이로 줄인다. */
+  function shortHash(hash) {
+    return String(hash || "").slice(0, 10);
   }
 
   /** 원본 reflog 메시지를 상세 섹션으로 만든다. */

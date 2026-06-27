@@ -18,12 +18,12 @@
   function relationLabel(entry, loaded) {
     const state = flowState(entry);
     if (state === "flow") {
-      return loaded ? "Branch flow" : "Reachable";
+      return loaded ? "HEAD flow" : "Reachable HEAD";
     }
     if (state === "dropped") {
-      return loaded ? "Dropped link" : "Dropped";
+      return loaded ? "Dropped state" : "Dropped state";
     }
-    return loaded ? "Loaded timeline" : "Timeline";
+    return loaded ? "HEAD timeline" : "HEAD timeline";
   }
 
   /** reflog 이벤트 종류를 짧은 사람이 읽는 라벨로 바꾼다. */
@@ -34,7 +34,7 @@
       case "amend":
         return "Amended";
       case "rebase":
-        return "Rebase";
+        return "Rebase reorder";
       case "reset":
         return "Reset move";
       case "checkout":
@@ -62,7 +62,7 @@
         return "Change was created at HEAD.";
       case "amend":
       case "rebase":
-        return "History was rewritten around HEAD.";
+        return "HEAD history was replayed, reordered, or rewritten by rebase.";
       case "reset":
         return "HEAD was moved to another commit.";
       case "checkout":
@@ -73,21 +73,37 @@
     }
   }
 
+  /** amend/rebase/reset 처럼 기존 history 를 바꾸는 reflog 이벤트인지 판별한다. */
+  function isHistoryChange(entry) {
+    return entry?.eventKind === "amend" || entry?.eventKind === "rebase" || entry?.eventKind === "reset";
+  }
+
+  /** reflog commit 의 복구 상태 키를 안전하게 반환한다. */
+  function recoveryKind(entry) {
+    return entry?.recovery?.kind || "reachable";
+  }
+
+  /** reflog commit 의 복구 상태 라벨을 만든다. */
+  function recoveryLabel(entry) {
+    const kind = recoveryKind(entry);
+    if (kind === "recoverable") return "Recoverable";
+    if (kind === "expired") return "Expired";
+    return "On branch";
+  }
+
   /** 현재 브랜치 흐름과의 관계를 상세/tooltip 용 문장으로 만든다. */
   function relationSummary(entry, loaded) {
     const state = flowState(entry);
     const refs = currentRefNames(entry).join(", ");
     if (state === "flow") {
       const where = refs ? ` from ${refs}` : "";
-      return `${loaded ? "Visible in the current graph" : "Still reachable"}${where}.`;
+      return `HEAD moved to a commit that is still reachable${where}.`;
     }
     if (state === "dropped") {
       const origin = originText(entry);
-      return `No current branch, remote, or tag contains this commit${origin ? `; reflog links it to ${origin}` : ""}.`;
+      return `HEAD moved to a commit that no current branch, remote, or tag contains${origin ? `; reflog links it to ${origin}` : ""}.`;
     }
-    return loaded
-      ? "Loaded from HEAD reflog time order, with no current branch evidence."
-      : "HEAD-only reflog point, shown by reflog time order.";
+    return "HEAD moved through this point in local reflog time order.";
   }
 
   /** 상세 뷰에서 복구 판단을 돕는 짧은 힌트를 만든다. */
@@ -95,13 +111,13 @@
     const state = flowState(entry);
     if (state === "flow") {
       return loaded
-        ? "This commit is already part of a reachable branch flow."
-        : "Load it into the graph or create a branch only if you need a named recovery point.";
+        ? "This HEAD state is already part of a reachable branch flow."
+        : "Create a branch only if you need a named recovery point.";
     }
     if (state === "dropped") {
-      return "Create a branch here before checkout/rebase if this is a lost commit you want to keep.";
+      return "Recover this HEAD state by creating a branch at the target commit before checkout or rebase.";
     }
-    return "Use time order and the message to decide whether this detached HEAD point should be recovered.";
+    return "Use the HEAD transition order and message to decide whether this local point should be recovered.";
   }
 
   /** 그래프 row badge 에 넣을 가장 짧은 출처 라벨을 고른다. */
@@ -249,6 +265,9 @@
     provenanceText,
     provenanceTitle,
     recoveryHint,
+    recoveryKind,
+    recoveryLabel,
+    isHistoryChange,
     relationLabel,
     relationSummary,
   };

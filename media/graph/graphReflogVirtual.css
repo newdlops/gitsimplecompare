@@ -1,0 +1,189 @@
+/* 그래프 reflog 가상 branch/commit row 스타일. */
+
+#graph-content .reflog-virtual-branch {
+  pointer-events: auto;
+}
+
+#graph-content .reflog-virtual-branch-line {
+  stroke: color-mix(in srgb, var(--vscode-textLink-foreground) 58%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+#graph-content .reflog-virtual-branch-label {
+  fill: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-font-family);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+#graph-content .reflog-virtual-node {
+  cursor: pointer;
+  outline: none;
+  pointer-events: auto;
+}
+
+#graph-content .reflog-node-shape {
+  fill: var(--vscode-editor-background);
+  stroke-width: 2;
+}
+
+#graph-content .reflog-node-shape-flow {
+  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+}
+
+#graph-content .reflog-node-shape-dropped {
+  stroke: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+}
+
+#graph-content .reflog-node-shape-timeline {
+  stroke: var(--vscode-charts-blue, #3794ff);
+}
+
+#graph-content .reflog-node-shape-changed {
+  stroke: var(--vscode-charts-yellow, #d7ba7d);
+}
+
+#graph-content .reflog-virtual-node-recoverable .reflog-node-shape {
+  stroke-width: 2.6;
+}
+
+#graph-content .reflog-virtual-node-expired .reflog-node-shape {
+  stroke: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  stroke-dasharray: 2 2;
+}
+
+#graph-content .reflog-hover-node-shape,
+#graph-content .reflog-active-node-shape,
+#graph-content .reflog-virtual-node:focus-visible .reflog-node-shape {
+  filter: drop-shadow(0 0 4px var(--vscode-focusBorder));
+  stroke-width: 3;
+}
+
+#graph-content .reflog-virtual-node-code {
+  fill: var(--vscode-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 7.5px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+#graph-content .reflog-hover-virtual-node .reflog-virtual-node-code,
+#graph-content .reflog-active-virtual-node .reflog-virtual-node-code {
+  fill: var(--vscode-focusBorder);
+}
+
+.row.reflog-virtual-row {
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 560px;
+  max-width: 760px;
+  height: var(--row-height);
+  padding: 0 8px;
+  border: 0;
+  border-left: 3px solid var(--vscode-textLink-foreground);
+  border-radius: 0;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-editor-background) 90%, var(--vscode-textLink-foreground));
+  box-shadow: none;
+  cursor: pointer;
+  line-height: var(--row-height);
+}
+
+.row.reflog-virtual-row:hover,
+.row.reflog-hover-virtual-row,
+.row.reflog-active-virtual-row {
+  border-color: color-mix(in srgb, var(--vscode-focusBorder) 80%, transparent);
+  background: color-mix(in srgb, var(--vscode-list-hoverBackground) 72%, var(--vscode-editor-background));
+}
+
+.row.reflog-active-virtual-row {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.row.reflog-virtual-row-flow {
+  border-left-color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+}
+
+.row.reflog-virtual-row-dropped {
+  border-left-color: var(--vscode-gitDecoration-deletedResourceForeground, #f48771);
+}
+
+.row.reflog-virtual-row-timeline {
+  border-left-color: var(--vscode-charts-blue, #3794ff);
+}
+
+.row.reflog-virtual-row-changed {
+  border-left-color: var(--vscode-charts-yellow, #d7ba7d);
+}
+
+.row.reflog-virtual-row-recoverable {
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 42%, transparent);
+}
+
+.row.reflog-virtual-row-expired {
+  border-left-color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.row.reflog-virtual-row .subject {
+  flex: 1 1 auto;
+  min-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row.reflog-virtual-row .meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reflog-log-ref {
+  border-color: color-mix(in srgb, var(--vscode-textLink-foreground) 62%, transparent);
+  color: var(--vscode-textLink-foreground);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground) 14%, var(--vscode-editorWidget-background));
+  font-weight: 700;
+}
+
+.reflog-row-recovery {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, currentColor 58%, transparent);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.reflog-row-recover {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.reflog-row-recover:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.reflog-row-recover:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.reflog-row-recover:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}

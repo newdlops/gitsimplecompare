@@ -55,6 +55,7 @@ export function buildGraphHtml(
   const rebaseProgressStyleUri = style(webview, mediaRoot, "graphRebaseProgress.css");
   const rebaseAiStyleUri = style(webview, mediaRoot, "graphRebaseAi.css");
   const reflogStyleUri = style(webview, mediaRoot, "graphReflog.css");
+  const reflogVirtualStyleUri = style(webview, mediaRoot, "graphReflogVirtual.css");
   const codiconStyleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css")
   );
@@ -99,6 +100,7 @@ export function buildGraphHtml(
   <link href="${rebaseProgressStyleUri}" rel="stylesheet" />
   <link href="${rebaseAiStyleUri}" rel="stylesheet" />
   <link href="${reflogStyleUri}" rel="stylesheet" />
+  <link href="${reflogVirtualStyleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
 <body class="detail-open">

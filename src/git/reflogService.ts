@@ -28,6 +28,20 @@ export interface ReflogCheckoutMove {
   to: string;
 }
 
+/** HEAD reflog 한 항목이 나타내는 포인터 이동 전후 commit */
+export interface ReflogTransition {
+  fromHash?: string;
+  toHash: string;
+  changed: boolean;
+}
+
+/** reflog commit 을 UI 에서 복구 대상으로 쓸 수 있는지 나타내는 상태 */
+export interface ReflogRecoveryState {
+  kind: "recoverable" | "reachable" | "expired";
+  available: boolean;
+  reason: string;
+}
+
 /** reflog 항목이 현재 브랜치 그래프 흐름과 어떤 관계인지 나타내는 상태 */
 export type ReflogFlowStatus = "reachable" | "dropped" | "detached";
 
@@ -54,6 +68,8 @@ export interface ReflogEntry {
   branchSources: ReflogBranchSource[];
   currentRefs: ReflogCurrentRef[];
   checkoutMove?: ReflogCheckoutMove;
+  transition: ReflogTransition;
+  recovery: ReflogRecoveryState;
   flowStatus: ReflogFlowStatus;
   eventKind: ReflogEventKind;
 }
@@ -84,15 +100,23 @@ export async function readReflogEntries(
   const headRecords = parseReflogRecords(headOut);
   const branchSources = branchSourcesByHash(parseReflogRecords(allOut));
   const currentRefs = await currentRefsByHash(repoRoot, headRecords.map((record) => record.hash));
-  return headRecords.map((record) => {
+  const existingCommits = await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash));
+  return headRecords.map((record, index) => {
     const sources = branchSources.get(record.hash) || [];
     const refs = currentRefs.get(record.hash) || [];
     const checkoutMove = checkoutMoveFromMessage(record.message);
+    const fromHash = headRecords[index + 1]?.hash;
     return {
       ...record,
       branchSources: sources,
       currentRefs: refs,
       checkoutMove,
+      transition: {
+        fromHash,
+        toHash: record.hash,
+        changed: Boolean(fromHash && fromHash !== record.hash),
+      },
+      recovery: recoveryStateFor(Boolean(existingCommits.get(record.hash)), refs),
       flowStatus: flowStatusFor(refs, sources, checkoutMove),
       eventKind: eventKindFromMessage(record.message),
     };
@@ -187,6 +211,67 @@ async function currentRefsByHash(
     result.set(hash, await currentRefsForHash(repoRoot, hash));
   }
   return result;
+}
+
+/**
+ * reflog commit 객체가 아직 저장소에 남아 있는지 hash 별로 확인한다.
+ * @param repoRoot 저장소 루트
+ * @param hashes   확인할 reflog commit hash 목록
+ */
+async function existingCommitsByHash(
+  repoRoot: string,
+  hashes: string[]
+): Promise<Map<string, boolean>> {
+  const uniqueHashes = Array.from(new Set(hashes.map((hash) => hash.trim()).filter(Boolean)));
+  const result = new Map<string, boolean>();
+  for (const hash of uniqueHashes) {
+    result.set(hash, await commitExists(repoRoot, hash));
+  }
+  return result;
+}
+
+/**
+ * 지정한 hash 가 commit object 로 남아 있는지 확인한다.
+ * @param repoRoot 저장소 루트
+ * @param hash     확인할 commit hash
+ */
+async function commitExists(repoRoot: string, hash: string): Promise<boolean> {
+  try {
+    await runGit(["cat-file", "-e", `${hash}^{commit}`], repoRoot);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 현재 ref 포함 여부와 object 존재 여부로 복구 가능 상태를 만든다.
+ * @param exists      commit object 존재 여부
+ * @param currentRefs 이 commit 을 현재 포함하는 ref 목록
+ */
+function recoveryStateFor(
+  exists: boolean,
+  currentRefs: ReflogCurrentRef[]
+): ReflogRecoveryState {
+  if (!exists) {
+    return {
+      kind: "expired",
+      available: false,
+      reason: "Commit object is no longer available in this repository.",
+    };
+  }
+  if (currentRefs.length > 0) {
+    return {
+      kind: "reachable",
+      available: false,
+      reason: "Commit is already reachable from an existing ref.",
+    };
+  }
+  return {
+    kind: "recoverable",
+    available: true,
+    reason: "Create a branch at this reflog commit to preserve it.",
+  };
 }
 
 /**

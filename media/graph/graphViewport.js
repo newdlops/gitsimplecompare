@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const ROW_SELECTOR = ".row[data-hash]";
+  const ROW_SELECTOR = ".row[data-hash]:not([data-reflog-virtual])";
 
   /** CSS selector 에 넣을 값을 이스케이프한다. */
   function cssEscape(value) {

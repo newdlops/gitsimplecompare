@@ -384,7 +384,7 @@
 
   /** 우클릭 대상에서 commit hash 를 찾는다. row 를 우선하고 SVG node 를 보조로 본다. */
   function commitHashFromTarget(root, target) {
-    const row = target?.closest?.(".row");
+    const row = target?.closest?.(".row:not([data-reflog-virtual])");
     if (row?.dataset.hash) {
       return row.dataset.hash;
     }

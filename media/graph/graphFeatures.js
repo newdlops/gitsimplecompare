@@ -393,6 +393,9 @@
   /** 커밋 행 전체를 노드 drag handle 로 등록한다. */
   function attachRowDrag(root) {
     root.querySelectorAll(".row").forEach((row) => {
+      if (row.dataset.reflogVirtual === "1") {
+        return;
+      }
       if (row.dataset.dragBound === "1") {
         return;
       }
