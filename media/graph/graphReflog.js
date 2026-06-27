@@ -494,10 +494,44 @@
     });
   }
 
+  /**
+   * MutationObserver 가 감지한 변경이 reflog 가상 row 추가/삭제뿐인지 확인한다.
+   * - reflog row 삽입 자체를 다시 graph render 트리거로 보면 높이 복원/삽입이 반복되어 스크롤이 튕긴다.
+   * @param mutations graph-content childList 변경 목록
+   */
+  function reflogOnlyMutations(mutations) {
+    let sawElement = false;
+    return mutations.every((mutation) => {
+      const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
+      return nodes.every((node) => {
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+          return true;
+        }
+        sawElement = true;
+        return isReflogGraphNode(node);
+      });
+    }) && sawElement;
+  }
+
+  /**
+   * reflog renderer 가 직접 추가/삭제하는 graph DOM 인지 판별한다.
+   * @param node MutationObserver 로 들어온 DOM node
+   */
+  function isReflogGraphNode(node) {
+    const element = node;
+    return element.classList?.contains("reflog-virtual-row") ||
+      element.classList?.contains("reflog-virtual-branch") ||
+      Boolean(element.querySelector?.(".reflog-virtual-row,.reflog-virtual-branch"));
+  }
+
   /** 그래프 DOM 교체를 감지해 reflog marker 를 최신 row/node 로 옮긴다. */
   function observeGraph() {
     if (!graphContent) return;
-    const observer = new MutationObserver(scheduleGraphSync);
+    const observer = new MutationObserver((mutations) => {
+      if (!reflogOnlyMutations(mutations)) {
+        scheduleGraphSync();
+      }
+    });
     observer.observe(graphContent, { childList: true });
   }
 
