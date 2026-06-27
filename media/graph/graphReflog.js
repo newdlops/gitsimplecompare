@@ -273,6 +273,7 @@
     if (!graphContent || panel?.hidden || !entries.length) {
       return;
     }
+    const virtualMarkers = [];
     groupedEntries().forEach((items, hash) => {
       const row = rowForHash(hash);
       if (!row) {
@@ -280,13 +281,21 @@
       }
       const node = nodeForHash(hash);
       const first = items[0];
+      const title = markerTitle(items);
       row.classList.add("reflog-linked-row");
       row.dataset.originalTitle = row.dataset.originalTitle || row.title || "";
-      row.title = `${row.dataset.originalTitle}${row.dataset.originalTitle ? " | " : ""}${markerTitle(items)}`;
+      row.title = `${row.dataset.originalTitle}${row.dataset.originalTitle ? " | " : ""}${title}`;
       row.appendChild(markerBadge(first.entry, first.index, items));
-      node?.classList.add("reflog-linked-node");
-      window.GscGraphReflogMarkers?.appendNodeShape?.(node, hash, markerTitle(items), flowState(first.entry));
+      virtualMarkers.push({
+        hash,
+        row,
+        node,
+        index: first.index,
+        flow: flowState(first.entry),
+        title,
+      });
     });
+    window.GscGraphReflogMarkers?.renderVirtualBranch?.(graphContent, virtualMarkers);
     refreshActiveMarks();
   }
 
@@ -303,13 +312,10 @@
         delete row.dataset.originalTitle;
       }
     });
-    graphContent.querySelectorAll(".reflog-node-shape").forEach((shape) => shape.remove());
-    graphContent.querySelectorAll(".reflog-linked-node,.reflog-active-node,.reflog-hover-node").forEach((node) => {
-      node.classList.remove("reflog-linked-node", "reflog-active-node", "reflog-hover-node");
-    });
+    graphContent.querySelectorAll(".reflog-virtual-branch,.reflog-node-shape").forEach((shape) => shape.remove());
   }
 
-  /** active/hover 상태 class 를 row/node 에 반영한다. */
+  /** active/hover 상태 class 를 row/가상 reflog node 에 반영한다. */
   function refreshActiveMarks() {
     if (!graphContent) {
       return;
@@ -317,11 +323,11 @@
     graphContent.querySelectorAll(".reflog-active-row,.reflog-hover-row").forEach((row) => {
       row.classList.remove("reflog-active-row", "reflog-hover-row");
     });
-    graphContent.querySelectorAll(".reflog-active-node,.reflog-hover-node").forEach((node) => {
-      node.classList.remove("reflog-active-node", "reflog-hover-node");
-    });
     graphContent.querySelectorAll(".reflog-active-node-shape,.reflog-hover-node-shape").forEach((shape) => {
       shape.classList.remove("reflog-active-node-shape", "reflog-hover-node-shape");
+    });
+    graphContent.querySelectorAll(".reflog-active-virtual-node,.reflog-hover-virtual-node").forEach((node) => {
+      node.classList.remove("reflog-active-virtual-node", "reflog-hover-virtual-node");
     });
     markHash(activeHash, "active");
     markHash(hoverHash, "hover");
@@ -333,8 +339,9 @@
       return;
     }
     rowForHash(hash)?.classList.add(`reflog-${kind}-row`);
-    nodeForHash(hash)?.classList.add(`reflog-${kind}-node`);
-    graphContent?.querySelector(`.reflog-node-shape[data-hash="${cssEscape(cleanHash(hash))}"]`)?.classList.add(`reflog-${kind}-node-shape`);
+    const virtualNode = graphContent?.querySelector(`.reflog-virtual-node[data-hash="${cssEscape(cleanHash(hash))}"]`);
+    virtualNode?.classList.add(`reflog-${kind}-virtual-node`);
+    virtualNode?.querySelector(".reflog-node-shape")?.classList.add(`reflog-${kind}-node-shape`);
   }
 
   /** reflog 항목을 오른쪽 상세 패널에 표시한다. */

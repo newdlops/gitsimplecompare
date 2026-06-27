@@ -396,13 +396,28 @@
   background: transparent;
 }
 
-#graph-content .node.reflog-linked-node:not(.rebase-progress-target-node):not(.rebase-progress-todo-node) {
-  filter: drop-shadow(0 0 3px var(--vscode-textLink-foreground));
+#graph-content .reflog-virtual-branch {
+  pointer-events: none;
 }
 
-#graph-content .node.reflog-hover-node:not(.rebase-progress-target-node):not(.rebase-progress-todo-node),
-#graph-content .node.reflog-active-node:not(.rebase-progress-target-node):not(.rebase-progress-todo-node) {
-  filter: drop-shadow(0 0 6px var(--vscode-textLink-foreground));
+#graph-content .reflog-virtual-branch-line {
+  stroke: var(--vscode-descriptionForeground);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 3;
+  opacity: 0.82;
+}
+
+#graph-content .reflog-virtual-branch-label,
+#graph-content .reflog-virtual-node-label {
+  fill: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  font-weight: 700;
+  user-select: none;
+}
+
+#graph-content .reflog-virtual-branch-label {
+  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 #graph-content .reflog-node-shape {
@@ -410,6 +425,11 @@
   stroke: var(--vscode-textLink-foreground);
   stroke-width: 1.8;
   pointer-events: none;
+}
+
+#graph-content .reflog-virtual-node-shape {
+  fill: var(--vscode-editor-background);
+  stroke-width: 2;
 }
 
 #graph-content .reflog-node-shape-flow {
@@ -430,6 +450,11 @@
 #graph-content .reflog-active-node-shape {
   stroke-width: 2.4;
   filter: drop-shadow(0 0 5px var(--vscode-textLink-foreground));
+}
+
+#graph-content .reflog-hover-virtual-node .reflog-virtual-node-label,
+#graph-content .reflog-active-virtual-node .reflog-virtual-node-label {
+  fill: var(--vscode-foreground);
 }
 
 .detail-shell.reflog-detail .commit-summary {
