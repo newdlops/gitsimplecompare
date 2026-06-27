@@ -1,5 +1,5 @@
 // rebase continue 가 실패하거나 멈춘 상태를 세부 진단하는 git 서비스.
-// - unmerged index, rebase message 의 conflict 목록, 파일 본문 marker, staged/unstaged 불일치를 분리해 읽는다.
+// - unmerged index, rebase message 의 conflict 목록, unresolved 파일 marker, staged/unstaged 불일치를 분리해 읽는다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperation, type MergeOperation } from "./conflictService";
@@ -26,7 +26,8 @@ const MAX_MARKER_SCAN_BYTES = 2 * 1024 * 1024;
 
 /**
  * 현재 rebase continue 상태를 진단한다.
- * - Git 이 unmerged 로 보는 파일과, 이미 stage 됐지만 본문에 marker 가 남은 파일을 구분한다.
+ * - marker 검사는 Git 이 아직 unmerged 로 보는 파일에만 한정한다.
+ *   사용자가 resolved 로 stage 한 뒤에는 marker 본문을 더 이상 continue 차단 근거로 쓰지 않는다.
  * - rebase message 의 `# Conflicts:` 목록은 index conflict 가 사라진 뒤에도 사용자가 확인해야 할 힌트로 유지한다.
  * @param repoRoot 저장소 루트
  */
@@ -50,15 +51,7 @@ export async function readRebaseContinueDiagnostics(
       .filter((entry) => isUnstagedStatus(entry))
       .map((entry) => entry.path)
   );
-  const markerFiles = await findMarkerFiles(
-    repoRoot,
-    unique([
-      ...unmergedFiles,
-      ...messageConflicts,
-      ...stagedFiles,
-      ...unstagedFiles,
-    ])
-  );
+  const markerFiles = await findMarkerFiles(repoRoot, unmergedFiles);
   return {
     operation,
     unmergedFiles,
@@ -171,7 +164,7 @@ function isUnstagedStatus(entry: StatusEntry): boolean {
 }
 
 /**
- * 후보 파일 본문에 conflict marker 줄이 남아 있는지 찾는다.
+ * 아직 unmerged 인 후보 파일 본문에 conflict marker 줄이 남아 있는지 찾는다.
  * @param repoRoot 저장소 루트
  * @param files    검사할 저장소 상대 경로 목록
  */

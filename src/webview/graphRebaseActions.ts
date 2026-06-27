@@ -280,28 +280,6 @@ export async function continueGraphRebase(
       missingFileHashes: todo.missingChangedFileHashes.length,
     });
   }
-  const preflightDiagnostics = await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined);
-  if (preflightDiagnostics?.markerFiles.length) {
-    const stopped = await rebase.getStoppedState();
-    const detail = rebaseDiagnosticDetail(preflightDiagnostics);
-    logInfo("graph rebase continue blocked by conflict markers", {
-      repoRoot,
-      stopped: stopped?.hash,
-      original: stopped?.originalHash,
-      ...(await rebaseProgressLogDetail(repoRoot)),
-      ...rebaseDiagnosticLogDetail(preflightDiagnostics),
-    });
-    await refreshAfterRebaseControl(deps, "graphRebaseMarkerBlocked");
-    vscode.window.showWarningMessage(
-      detail || vscode.l10n.t("Conflict markers remain. Remove them before Continue.")
-    );
-    return {
-      status: preflightDiagnostics.unmergedFiles.length > 0 ? "conflicts" : "stopped",
-      stopped,
-      message: detail,
-      guidance: rebaseDiagnosticGuidance(preflightDiagnostics),
-    };
-  }
   const messageQueue = await refreshRebaseMessageQueueForContinue(repoRoot, items, {
     includeCurrent: true,
   });

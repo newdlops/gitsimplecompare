@@ -3,7 +3,6 @@
 //   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { assertNoConflictMarkers } from "./conflictMarkers";
 import { runGit } from "./gitExec";
 import {
   cleanupRebaseMessageQueue,
@@ -149,10 +148,11 @@ export class ConflictService {
 
   /**
    * 수동 편집으로 해결한 파일을 스테이징해 "해결됨"으로 표시한다.
+   * - 사용자가 UI 에서 resolved 로 확정한 뒤에는 파일 본문 marker 를 다시 검사하지 않는다.
+   *   Git 과 동일하게 index 의 unmerged entry 해소 여부를 resolved 기준으로 삼는다.
    * @param rel 저장소 상대 경로
    */
   async markResolved(rel: string): Promise<void> {
-    await this.assertResolvedContentHasNoMarkers(rel);
     await runGit(["add", "--", rel], this.repoRoot);
   }
 
@@ -284,16 +284,6 @@ export class ConflictService {
    */
   absPath(rel: string): string {
     return path.join(this.repoRoot, rel);
-  }
-
-  /**
-   * resolved 로 stage 하기 전에 작업 파일 본문에 conflict marker 가 남았는지 확인한다.
-   * - Git 은 marker 텍스트만으로는 충돌을 알 수 없으므로, UI resolved 액션에서 별도 차단한다.
-   * @param rel 저장소 상대 경로
-   */
-  private async assertResolvedContentHasNoMarkers(rel: string): Promise<void> {
-    const content = await fs.promises.readFile(this.absPath(rel), "utf8").catch(() => "");
-    assertNoConflictMarkers(content, rel);
   }
 
   /** continue/skip 에 사용할 editor 환경을 만든다. */

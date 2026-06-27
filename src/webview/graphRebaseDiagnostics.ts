@@ -16,7 +16,7 @@ export function rebaseDiagnosticDetail(
     return `Git index still has unresolved conflict entries: ${shortList(diagnostics.unmergedFiles)}.`;
   }
   if (diagnostics.markerFiles.length > 0) {
-    return `No unmerged index entries remain, but conflict marker text is still in: ${shortList(diagnostics.markerFiles)}.`;
+    return `Conflict marker text is still visible in unresolved files: ${shortList(diagnostics.markerFiles)}.`;
   }
   if (diagnostics.rebaseMessageConflicts.length > 0) {
     return `Git reports all conflicts fixed, but the rebase message still names: ${shortList(diagnostics.rebaseMessageConflicts)}.`;
@@ -48,8 +48,8 @@ export function rebaseDiagnosticGuidance(
     lines.push("Git index has no unresolved conflict entries.");
   }
   if (diagnostics.markerFiles.length > 0) {
-    lines.push(`Conflict marker text remains in: ${shortList(diagnostics.markerFiles)}.`);
-    lines.push("Remove marker blocks manually and stage those files before Continue.");
+    lines.push(`Conflict marker text is visible in unresolved files: ${shortList(diagnostics.markerFiles)}.`);
+    lines.push("After you choose resolved in the UI, Git index state is authoritative for Continue.");
   }
   if (
     diagnostics.rebaseMessageConflicts.length > 0 &&
