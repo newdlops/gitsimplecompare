@@ -85,6 +85,7 @@
       `<div class="rebase-progress-title">${esc(current.title)}</div>` +
       `<div class="rebase-progress-detail">${esc(current.detail)}</div>` +
       meterHtml(current) +
+      guidanceHtml(current) +
       todoCardsHtml(current) +
       `</div>` +
       `<span class="rebase-progress-label">${esc(labelForPhase(current.phase))}</span>`;
@@ -113,7 +114,7 @@
       return "";
     }
     const cards = todos.map((todo) => {
-      const role = todo.role === "current" ? "current" : "remaining";
+      const role = todo.role === "done" ? "done" : todo.role === "current" ? "current" : "remaining";
       const title = todo.hash
         ? `${shortHash(todo.hash)}${todo.subject ? ` ${todo.subject}` : ""}`
         : (todo.subject || todo.action || "todo");
@@ -131,9 +132,22 @@
     return `<div class="rebase-todo-list">${cards}${more}</div>`;
   }
 
+  /** 상태 해석 안내 문장을 렌더링한다. */
+  function guidanceHtml(progress) {
+    const lines = Array.isArray(progress.guidance) ? progress.guidance : [];
+    if (!lines.length) {
+      return "";
+    }
+    return `<div class="rebase-progress-guidance">` +
+      lines.map((line) => `<span>${esc(line)}</span>`).join("") +
+      `</div>`;
+  }
+
   /** todo 카드의 접근성/tooltip 라벨을 만든다. */
   function todoLabel(todo) {
-    const state = todo.role === "current" ? "Current todo" : "Remaining todo";
+    const state = todo.role === "done"
+      ? "Applied todo"
+      : todo.role === "current" ? "Current todo" : "Pending todo";
     const hash = todo.hash ? shortHash(todo.hash) : "";
     return `${state} ${todo.index}: ${todo.action || ""} ${hash} ${todo.subject || ""}`.trim();
   }
@@ -149,6 +163,7 @@
     if (!current) {
       return;
     }
+    markTodoRows(current);
     const hashes = targetHashes(current);
     if (hashes.length === 0) {
       return;
@@ -167,6 +182,22 @@
     }
   }
 
+  /** done/current/remaining todo 역할을 그래프 row 와 node 에 표시한다. */
+  function markTodoRows(progress) {
+    const todos = Array.isArray(progress.todos) ? progress.todos : [];
+    todos.forEach((todo) => {
+      if (!todo.hash) {
+        return;
+      }
+      const role = todo.role === "done" ? "done" : todo.role === "current" ? "current" : "remaining";
+      const escaped = cssEscape(todo.hash);
+      const row = graphContent.querySelector(`.row[data-hash="${escaped}"]`);
+      const node = graphContent.querySelector(`.node[data-hash="${escaped}"]`);
+      row?.classList.add("rebase-progress-todo-row", `rebase-progress-role-${role}`);
+      node?.classList.add("rebase-progress-todo-node", `rebase-progress-role-${role}-node`);
+    });
+  }
+
   /** 이전 진행 강조 클래스를 모두 제거한다. */
   function clearMarks() {
     graphContent.querySelectorAll(".rebase-progress-target").forEach((row) => {
@@ -182,6 +213,14 @@
         "rebase-progress-noop"
       );
     });
+    graphContent.querySelectorAll(".rebase-progress-todo-row").forEach((row) => {
+      row.classList.remove(
+        "rebase-progress-todo-row",
+        "rebase-progress-role-done",
+        "rebase-progress-role-current",
+        "rebase-progress-role-remaining"
+      );
+    });
     graphContent.querySelectorAll(".rebase-progress-target-node").forEach((node) => {
       node.classList.remove(
         "rebase-progress-target-node",
@@ -193,6 +232,14 @@
         "rebase-progress-aborted-node",
         "rebase-progress-cancelled-node",
         "rebase-progress-noop-node"
+      );
+    });
+    graphContent.querySelectorAll(".rebase-progress-todo-node").forEach((node) => {
+      node.classList.remove(
+        "rebase-progress-todo-node",
+        "rebase-progress-role-done-node",
+        "rebase-progress-role-current-node",
+        "rebase-progress-role-remaining-node"
       );
     });
   }

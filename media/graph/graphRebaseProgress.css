@@ -66,6 +66,18 @@
   white-space: nowrap;
 }
 
+.rebase-progress-guidance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-top: 2px;
+}
+
+.rebase-progress-guidance span {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
 .rebase-progress-label {
   flex: 0 0 auto;
   min-width: 72px;
@@ -103,6 +115,15 @@
   border-color: color-mix(in srgb, var(--rebase-progress-color) 62%, var(--vscode-panel-border));
   background: color-mix(in srgb, var(--rebase-progress-color) 13%, var(--vscode-list-hoverBackground));
   box-shadow: inset 3px 0 0 var(--rebase-progress-color);
+}
+
+.rebase-todo-card.done {
+  border-color: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 42%, var(--vscode-panel-border));
+  background: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 10%, var(--vscode-list-hoverBackground));
+}
+
+.rebase-todo-card.remaining {
+  border-style: dashed;
 }
 
 .rebase-todo-card:hover {
@@ -191,6 +212,22 @@
     inset 0 0 0 1px color-mix(in srgb, var(--rebase-progress-color) 42%, transparent);
 }
 
+.row.rebase-progress-todo-row {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+}
+
+.row.rebase-progress-role-done {
+  background: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 10%, transparent);
+}
+
+.row.rebase-progress-role-current {
+  background: color-mix(in srgb, var(--rebase-progress-color) 14%, var(--vscode-list-hoverBackground));
+}
+
+.row.rebase-progress-role-remaining {
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 8%, transparent);
+}
+
 .row.rebase-progress-target::after {
   display: inline-flex;
   flex: 0 0 auto;
@@ -206,6 +243,40 @@
   line-height: 16px;
   text-transform: uppercase;
   content: "Current";
+}
+
+.row.rebase-progress-role-done::after,
+.row.rebase-progress-role-current::after,
+.row.rebase-progress-role-remaining::after {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.row.rebase-progress-role-done::after {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  background: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #89d185) 13%, var(--vscode-editor-background));
+  content: "Applied";
+}
+
+.row.rebase-progress-role-current::after {
+  color: var(--rebase-progress-color);
+  background: color-mix(in srgb, var(--rebase-progress-color) 15%, var(--vscode-editor-background));
+  content: "Current";
+}
+
+.row.rebase-progress-role-remaining::after {
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 10%, var(--vscode-editor-background));
+  content: "Pending";
 }
 
 .row.rebase-progress-paused {
@@ -230,6 +301,12 @@
 
 .row.rebase-progress-failed::after {
   content: "Failed";
+}
+
+.row.rebase-progress-role-current.rebase-progress-paused::after,
+.row.rebase-progress-role-current.rebase-progress-conflicts::after,
+.row.rebase-progress-role-current.rebase-progress-failed::after {
+  content: "Current";
 }
 
 .row.rebase-row.rebase-progress-target {
@@ -258,6 +335,21 @@
 #graph-content .node.rebase-progress-failed-node {
   stroke: var(--vscode-inputValidation-errorBorder, #f14c4c);
   filter: drop-shadow(0 0 4px var(--vscode-inputValidation-errorBorder, #f14c4c));
+}
+
+#graph-content .node.rebase-progress-role-done-node {
+  stroke: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+  stroke-width: 2.6;
+}
+
+#graph-content .node.rebase-progress-role-current-node {
+  stroke-width: 3;
+}
+
+#graph-content .node.rebase-progress-role-remaining-node {
+  stroke: var(--vscode-descriptionForeground);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
 }
 
 @media (max-width: 760px) {

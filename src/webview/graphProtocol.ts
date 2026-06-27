@@ -27,6 +27,7 @@ import type {
   GraphRepositorySearchScope,
 } from "../git/graphSearchService";
 import type { GitTagStatus } from "../git/gitTagService";
+import type { ReflogEntry } from "../git/reflogService";
 
 /** graph 검색에서 명시적으로 최신화할 ref 종류 */
 export type GraphSearchFetchTarget = "refs" | "tags";
@@ -57,7 +58,7 @@ export type GraphRebaseProgressPhase =
 
 /** 그래프 rebase 진행 상태 배너에 표시할 todo 카드 정보 */
 export interface GraphRebaseTodoCard {
-  role: "current" | "remaining";
+  role: "done" | "current" | "remaining";
   index: number;
   action: string;
   hash?: string;
@@ -76,6 +77,7 @@ export interface GraphRebaseProgress {
   total?: number;
   todos?: GraphRebaseTodoCard[];
   omittedTodoCount?: number;
+  guidance?: string[];
   active: boolean;
 }
 
@@ -93,6 +95,7 @@ export type ToWebviewMessage =
   | { type: "pullRequestDetailError"; number: number; message: string }
   | { type: "graphRepositorySearchResult"; requestId: string; result: GraphRepositorySearchResult }
   | { type: "graphRepositorySearchError"; requestId: string; query: string; message: string }
+  | { type: "graphReflog"; entries: ReflogEntry[] }
   | { type: "commitVisibility"; requestId: string; hash?: string; found: boolean }
   | { type: "commitDetail"; detail: CommitDetail }
   | { type: "graphRebasePlan"; plan: RebasePlanInfo }
@@ -120,6 +123,7 @@ export type FromWebviewMessage =
   | { type: "forcePush" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
+  | { type: "refreshReflog" }
   | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }

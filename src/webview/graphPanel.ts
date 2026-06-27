@@ -20,6 +20,7 @@ import { buildGraphHtml } from "./graphHtml";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
 import { restoreGraphRebaseSession } from "./graphRebaseSession";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
+import { sendGraphReflog } from "./graphReflog";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
@@ -193,6 +194,11 @@ export class GitGraphPanel {
         await this.pullRequests.loadMore(this.logService.repoRoot, this.lastLocalBranches, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequestDetail") {
         await sendGraphPullRequestDetail(this.logService.repoRoot, msg.number, (message) => this.post(message));
+      } else if (msg.type === "refreshReflog") {
+        await sendGraphReflog({
+          repoRoot: this.logService.repoRoot,
+          post: (message) => this.post(message),
+        });
       } else if (msg.type === "ensureCommitVisible") {
         await ensureGraphCommitVisible({
           repoRoot: this.logService.repoRoot,

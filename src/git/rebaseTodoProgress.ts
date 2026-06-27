@@ -23,7 +23,7 @@ export interface RebaseTodoProgress {
 }
 
 export interface RebaseTodoProgressItem {
-  role: "current" | "remaining";
+  role: "done" | "current" | "remaining";
   index: number;
   action: string;
   hash?: string;
@@ -49,10 +49,23 @@ export async function readRebaseTodoProgress(
   const done = parseTodoEntries(state.done);
   const remaining = parseTodoEntries(state.todo);
   const currentHash = (await resolveRebaseHead(repoRoot)) || lastCommitHash(done);
+  const currentDoneIndex = currentHash ? findEntryIndexByHash(done, currentHash) : -1;
   const current = currentHash
     ? findEntryByHash(done, currentHash) || { action: "pick", hash: currentHash }
     : done[done.length - 1];
   const next = remaining.find((entry) => Boolean(entry.hash)) || remaining[0];
+  const doneBeforeCurrent = currentDoneIndex >= 0
+    ? done.slice(0, currentDoneIndex)
+    : current ? done.slice(0, -1) : done;
+  const doneItems = doneBeforeCurrent
+    .slice(-Math.min(3, MAX_PROGRESS_ITEMS - 1))
+    .map((entry, index, slice) => ({
+      role: "done" as const,
+      index: doneBeforeCurrent.length - slice.length + index + 1,
+      action: entry.action,
+      hash: entry.hash,
+      subject: entry.subject,
+    }));
   const currentItem = current
     ? [{
         role: "current" as const,
@@ -62,7 +75,8 @@ export async function readRebaseTodoProgress(
         subject: current.subject,
       }]
     : [];
-  const remainingItems = remaining.slice(0, MAX_PROGRESS_ITEMS - currentItem.length).map((entry, index) => ({
+  const remainingLimit = Math.max(0, MAX_PROGRESS_ITEMS - doneItems.length - currentItem.length);
+  const remainingItems = remaining.slice(0, remainingLimit).map((entry, index) => ({
     role: "remaining" as const,
     index: done.length + index + 1,
     action: entry.action,
@@ -77,8 +91,10 @@ export async function readRebaseTodoProgress(
     done: done.length,
     remaining: remaining.length,
     total: done.length + remaining.length,
-    items: [...currentItem, ...remainingItems],
-    omittedItemCount: Math.max(0, remaining.length - remainingItems.length),
+    items: [...doneItems, ...currentItem, ...remainingItems],
+    omittedItemCount:
+      Math.max(0, doneBeforeCurrent.length - doneItems.length) +
+      Math.max(0, remaining.length - remainingItems.length),
   };
 }
 
@@ -169,7 +185,17 @@ function lastCommitHash(entries: RebaseTodoEntry[]): string | undefined {
 
 /** 축약/전체 해시가 같은 todo entry 를 찾는다. */
 function findEntryByHash(entries: RebaseTodoEntry[], hash: string): RebaseTodoEntry | undefined {
-  return entries.find((entry) =>
+  const index = findEntryIndexByHash(entries, hash);
+  return index >= 0 ? entries[index] : undefined;
+}
+
+/**
+ * 축약/전체 해시가 같은 todo entry 의 위치를 찾는다.
+ * @param entries todo entry 목록
+ * @param hash    찾을 커밋 해시
+ */
+function findEntryIndexByHash(entries: RebaseTodoEntry[], hash: string): number {
+  return entries.findIndex((entry) =>
     Boolean(entry.hash) && (hash.startsWith(entry.hash!) || entry.hash!.startsWith(hash))
   );
 }

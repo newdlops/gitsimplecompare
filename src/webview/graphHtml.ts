@@ -40,6 +40,7 @@ export function buildGraphHtml(
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
   const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
+  const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
@@ -50,6 +51,7 @@ export function buildGraphHtml(
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
   const rebaseProgressStyleUri = style(webview, mediaRoot, "graphRebaseProgress.css");
   const rebaseAiStyleUri = style(webview, mediaRoot, "graphRebaseAi.css");
+  const reflogStyleUri = style(webview, mediaRoot, "graphReflog.css");
   const codiconStyleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css")
   );
@@ -74,6 +76,7 @@ export function buildGraphHtml(
   const searchScopeTitle = vscode.l10n.t("Search scope");
   const prListTitle = vscode.l10n.t("Show pull requests");
   const prPreviewTitle = vscode.l10n.t("Preview staged pull request");
+  const reflogTitle = vscode.l10n.t("Show reflog recovery");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -92,6 +95,7 @@ export function buildGraphHtml(
   <link href="${rebaseStyleUri}" rel="stylesheet" />
   <link href="${rebaseProgressStyleUri}" rel="stylesheet" />
   <link href="${rebaseAiStyleUri}" rel="stylesheet" />
+  <link href="${reflogStyleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
 <body class="detail-open">
@@ -131,10 +135,14 @@ export function buildGraphHtml(
 	            aria-label="${prListTitle}" data-tooltip="${prListTitle}">
 	            <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
 	          </button>
-	          <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
-	            aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
-	            <span class="codicon codicon-preview" aria-hidden="true"></span>
-	          </button>
+          <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
+            aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
+            <span class="codicon codicon-preview" aria-hidden="true"></span>
+          </button>
+          <button id="graph-reflog" class="icon-button" type="button" title="${reflogTitle}"
+            aria-label="${reflogTitle}" data-tooltip="${reflogTitle}">
+            <span class="codicon codicon-history" aria-hidden="true"></span>
+          </button>
 	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
 	            aria-label="${jumpHeadTitle}" data-tooltip="${jumpHeadTitle}">
 	            <span class="codicon codicon-target" aria-hidden="true"></span>
@@ -170,6 +178,7 @@ export function buildGraphHtml(
         <span id="load-status" aria-live="polite"></span>
       </div>
       <section id="graph-pr-panel" aria-label="${prListTitle}" hidden></section>
+      <section id="graph-reflog-panel" aria-label="${reflogTitle}" hidden></section>
       <div id="graph" tabindex="0"><div id="graph-content"></div></div>
     </main>
     <div id="main-splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0"
@@ -200,6 +209,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${reflogScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMovesScriptUri}"></script>

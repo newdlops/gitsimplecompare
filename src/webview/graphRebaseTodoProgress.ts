@@ -39,7 +39,30 @@ export function graphRebaseTodoProgressMessage(
         subject: item.subject,
       })),
       omittedTodoCount: progress?.omittedItemCount,
+      guidance: progress ? guidanceLines(input.phase) : undefined,
       active: input.active,
     },
   };
+}
+
+/**
+ * rebase 진행 상태를 해석할 때 필요한 짧은 안내를 만든다.
+ * @param phase 현재 진행 카드 단계
+ */
+function guidanceLines(phase: GraphRebaseProgress["phase"]): string[] {
+  if (phase === "conflicts") {
+    return [
+      "Applied rows are already replayed in the new history.",
+      "Current is the commit Git is applying and where conflicts came from.",
+      "Pending rows have not been replayed yet.",
+    ];
+  }
+  if (phase === "paused") {
+    return [
+      "Applied rows are already replayed.",
+      "Current is the paused todo item.",
+      "Pending rows will replay after Continue.",
+    ];
+  }
+  return [];
 }
