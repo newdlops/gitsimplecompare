@@ -163,6 +163,11 @@ export async function runGraphRebase(
   } else if (result.status === "noop") {
     vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
   } else if (result.message !== "cancelled") {
+    logInfo("graph rebase failed", {
+      repoRoot,
+      status: result.status,
+      message: result.message,
+    });
     vscode.window.showErrorMessage(
       vscode.l10n.t("Rebase failed: {0}", result.message ?? "")
     );

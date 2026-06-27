@@ -14,6 +14,7 @@ import { ConflictsController } from "./providers/conflictsController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
+import { ConflictMarkerDecoratorController } from "./providers/conflictMarkerDecoratorController";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
@@ -69,6 +70,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const conflicts = new ConflictsController(registry, conflictsProvider);
   const hunkCheckboxes = new HunkCheckboxController(registry);
   context.subscriptions.push(hunkCheckboxes.register());
+  const conflictMarkerDecorations = new ConflictMarkerDecoratorController(registry);
+  context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);
   context.subscriptions.push(blameDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(

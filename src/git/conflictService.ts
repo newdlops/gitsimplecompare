@@ -3,7 +3,7 @@
 //   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { GitError, runGit } from "./gitExec";
+import { runGit } from "./gitExec";
 import {
   cleanupRebaseMessageQueue,
   rebaseContinueEditorEnv,
@@ -12,12 +12,24 @@ import {
 /** 진행 중인 git 작업 종류(충돌이 발생할 수 있는 작업들) */
 export type MergeOperation = "none" | "merge" | "rebase" | "cherry-pick" | "revert";
 
-/** 충돌 편집기에 표시할 한쪽 버전 정보 */
-export interface ConflictSide {
+/** 충돌 한쪽 버전이 어느 ref/commit 에서 왔는지 설명하는 정보 */
+export interface ConflictSource {
   label: string;
   ref: string;
   commit?: string;
+  subject?: string;
+}
+
+/** 충돌 편집기에 표시할 한쪽 버전 정보 */
+export interface ConflictSide extends ConflictSource {
   content: string;
+}
+
+/** 충돌 양쪽 버전의 출처 정보 */
+export interface ConflictSources {
+  operation: MergeOperation;
+  current: ConflictSource;
+  incoming: ConflictSource;
 }
 
 /** 충돌 편집기에서 한 파일을 열 때 필요한 전체 데이터 */
@@ -149,8 +161,7 @@ export class ConflictService {
    * @param rel 저장소 상대 경로
    */
   async getConflictDocument(rel: string): Promise<ConflictDocument> {
-    const operation = await this.getOperation();
-    const refs = await this.conflictRefs(operation);
+    const sources = await this.getConflictSources();
     const [current, incoming, result, both] = await Promise.all([
       this.readStage(2, rel),
       this.readStage(3, rel),
@@ -159,21 +170,41 @@ export class ConflictService {
     ]);
     return {
       rel,
+      operation: sources.operation,
+      current: {
+        ...sources.current,
+        content: current,
+      },
+      incoming: {
+        ...sources.incoming,
+        content: incoming,
+      },
+      result,
+      both,
+    };
+  }
+
+  /**
+   * 충돌 Current/Incoming 이 가리키는 ref, 커밋 해시, 커밋 제목을 반환한다.
+   * - decoration/hover 처럼 파일 본문이 필요 없는 UI 에서 가볍게 재사용한다.
+   */
+  async getConflictSources(): Promise<ConflictSources> {
+    const operation = await this.getOperation();
+    const refs = await this.conflictRefs(operation);
+    return {
       operation,
       current: {
         label: "Current",
         ref: refs.current.ref,
         commit: refs.current.commit,
-        content: current,
+        subject: refs.current.subject,
       },
       incoming: {
         label: "Incoming",
         ref: refs.incoming.ref,
         commit: refs.incoming.commit,
-        content: incoming,
+        subject: refs.incoming.subject,
       },
-      result,
-      both,
     };
   }
 
@@ -211,17 +242,8 @@ export class ConflictService {
       return;
     }
     const env = await this.continueEnv(op);
-    try {
-      await runGit([op, "--continue"], this.repoRoot, env);
-      await this.cleanupMessageQueueIfRebaseDone(op);
-    } catch (err) {
-      if (op === "rebase" && await this.canSkipEmptyRebaseStep(err)) {
-        await runGit(["rebase", "--skip"], this.repoRoot, env);
-        await this.cleanupMessageQueueIfRebaseDone(op);
-        return;
-      }
-      throw err;
-    }
+    await runGit([op, "--continue"], this.repoRoot, env);
+    await this.cleanupMessageQueueIfRebaseDone(op);
   }
 
   /**
@@ -294,8 +316,8 @@ export class ConflictService {
    * @param operation 현재 git 작업 종류
    */
   private async conflictRefs(operation: MergeOperation): Promise<{
-    current: { ref: string; commit?: string };
-    incoming: { ref: string; commit?: string };
+    current: { ref: string; commit?: string; subject?: string };
+    incoming: { ref: string; commit?: string; subject?: string };
   }> {
     const incomingRef =
       operation === "merge"
@@ -307,25 +329,36 @@ export class ConflictService {
             : operation === "revert"
               ? "REVERT_HEAD"
               : "theirs";
-    const [currentCommit, incomingCommit] = await Promise.all([
-      this.resolveCommit("HEAD"),
-      this.resolveCommit(incomingRef),
+    const [current, incoming] = await Promise.all([
+      this.describeRef("HEAD"),
+      this.describeRef(incomingRef),
     ]);
     return {
-      current: { ref: "HEAD", commit: currentCommit },
-      incoming: { ref: incomingRef, commit: incomingCommit },
+      current: { ref: "HEAD", ...current },
+      incoming: { ref: incomingRef, ...incoming },
     };
   }
 
   /**
-   * ref 를 커밋 해시로 해석한다. ref 가 없으면 undefined 를 반환해 UI 가 ref 이름만 보여주게 한다.
+   * ref 를 커밋 해시와 제목으로 해석한다. ref 가 없으면 undefined 값으로 UI 가 ref 이름만 보여주게 한다.
    * @param ref git ref 이름
    */
-  private async resolveCommit(ref: string): Promise<string | undefined> {
-    const out = await runGit(["rev-parse", "--verify", ref], this.repoRoot).catch(
+  private async describeRef(
+    ref: string
+  ): Promise<{ commit?: string; subject?: string }> {
+    const commitOut = await runGit(["rev-parse", "--verify", ref], this.repoRoot).catch(
       () => ""
     );
-    return out.split(/\r?\n/).find(Boolean);
+    const commit = commitOut.split(/\r?\n/).find(Boolean);
+    if (!commit) {
+      return {};
+    }
+    const subject = (
+      await runGit(["show", "-s", "--format=%s", commit], this.repoRoot).catch(
+        () => ""
+      )
+    ).trim();
+    return { commit, subject: subject || undefined };
   }
 
   /**
@@ -347,22 +380,6 @@ export class ConflictService {
     return `${current}${needsLineBreak(current, incoming) ? "\n" : ""}${incoming}`;
   }
 
-  /**
-   * rebase --continue 가 "적용할 변경이 없음"으로 실패한 상황인지 판단한다.
-   * - 충돌 파일이 더 남아 있지 않고 staged/unstaged diff 가 모두 비어 있을 때만 skip fallback 을 허용한다.
-   * @param err rebase --continue 실패 오류
-   */
-  private async canSkipEmptyRebaseStep(err: unknown): Promise<boolean> {
-    if (!isEmptyRebaseError(err)) {
-      return false;
-    }
-    const [conflicts, hasStaged, hasUnstaged] = await Promise.all([
-      this.listConflicts().catch(() => ["unknown"]),
-      hasDiff(this.repoRoot, ["diff", "--cached", "--quiet"]),
-      hasDiff(this.repoRoot, ["diff", "--quiet"]),
-    ]);
-    return conflicts.length === 0 && !hasStaged && !hasUnstaged;
-  }
 }
 
 /**
@@ -407,34 +424,4 @@ function acceptBothFromMarkers(raw: string): { changed: boolean; content: string
  */
 function needsLineBreak(left: string, right: string): boolean {
   return Boolean(left && right && !left.endsWith("\n") && !left.endsWith("\r"));
-}
-
-/**
- * rebase continue 실패가 빈 패치/이미 적용된 변경을 의미하는지 확인한다.
- * @param err git 실행 오류
- */
-function isEmptyRebaseError(err: unknown): boolean {
-  const text =
-    err instanceof GitError
-      ? `${err.message}\n${err.stderr}`
-      : err instanceof Error
-        ? err.message
-        : String(err);
-  return /No changes|did you forget to use 'git add'|patch contents already upstream|nothing to commit|empty/i.test(
-    text
-  );
-}
-
-/**
- * git diff --quiet 계열 명령으로 diff 존재 여부를 확인한다.
- * @param repoRoot git 저장소 루트
- * @param args     diff --quiet 인자
- */
-async function hasDiff(repoRoot: string, args: string[]): Promise<boolean> {
-  try {
-    await runGit(args, repoRoot, { retryOnLock: false });
-    return false;
-  } catch {
-    return true;
-  }
 }

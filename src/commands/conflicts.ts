@@ -123,10 +123,12 @@ export async function openMergeEditor(
 }
 
 /**
- * 파일을 Git Simple Compare 커스텀 충돌 편집기로 연다.
+ * 파일을 VS Code 내장 3-way 머지 에디터로 연다.
+ * - 트리 항목에서 직접 호출될 수 있어 repoRoot 를 받으면 해당 저장소 기준 서비스를 만든다.
  * @param controller   충돌 컨트롤러
- * @param extensionUri 확장 루트 URI
+ * @param _extensionUri 확장 루트 URI(명령 시그니처 호환용)
  * @param rel          저장소 상대 경로
+ * @param repoRoot     명령 인자로 전달된 저장소 루트
  */
 export async function openConflictEditor(
   controller: ConflictsController,
