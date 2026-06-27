@@ -33,7 +33,7 @@
   let selectedHash = null;
   let detailLabel = "commit details";
   let detailSummaryHeight = 180;
-  let loadState = { loadedCount: 0, hasMore: false, loading: false, reset: true };
+  let loadState = { loadedCount: 0, hasMore: false, hasMoreBefore: false, loading: false, reset: true };
   let rowColorCache = new WeakMap();
   let localColorResolver = null;
 
@@ -65,7 +65,8 @@
    */
   function renderGraph(data, state) {
     const resetView = Boolean(state && state.reset);
-    const viewport = resetView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
+    const preserveView = resetView || state?.loadDirection === "newer";
+    const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
     applyLoadState(state, false);
     if (resetView && !viewport) {
       selectedHash = null;
@@ -111,7 +112,7 @@
     }
     syncScrollableWidth(graphWidth);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-    const restored = resetView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
+    const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
     if (resetView && !restored) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
     window.GscGraphSearch?.update(graphEl, graphContentEl);
 
@@ -128,7 +129,7 @@
   /** 로딩/더 보기 행이 필요한지에 따라 그래프 내부 캔버스 높이를 계산한다. */
   function graphContentHeight() {
     const bodyHeight = currentRows.length * ROW_H;
-    return bodyHeight + (loadState.loading || loadState.hasMore ? TAIL_H : 0);
+    return bodyHeight + (isLoadingOlder() || loadState.hasMore ? TAIL_H : 0);
   }
 
   /**
@@ -310,8 +311,10 @@
   function updateLoadStatus() {
     const loaded = loadState.loadedCount || currentRows.length;
     if (loadState.loading) {
-      statusEl.textContent = `Loading after ${loaded} commits`;
-    } else if (loadState.hasMore) {
+      statusEl.textContent = loadState.loadDirection === "newer"
+        ? `Loading newer commits before ${loaded} loaded`
+        : `Loading older commits after ${loaded} loaded`;
+    } else if (loadState.hasMore || loadState.hasMoreBefore) {
       statusEl.textContent = `${loaded} commits loaded`;
     } else {
       statusEl.textContent = `${loaded} commits, complete`;
@@ -325,17 +328,15 @@
    */
   function renderLoadTail() {
     const oldTail = graphContentEl.querySelector("#graph-tail");
-    if (oldTail) {
-      oldTail.remove();
-    }
-    if (!loadState.loading && !loadState.hasMore) {
+    oldTail?.remove();
+    if (!isLoadingOlder() && !loadState.hasMore) {
       return;
     }
 
     const tail = document.createElement("div");
     tail.id = "graph-tail";
     tail.style.top = currentRows.length * ROW_H + "px";
-    if (loadState.loading) {
+    if (isLoadingOlder()) {
       tail.innerHTML =
         `<span class="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"></span>` +
         `<span>Loading...</span>`;
@@ -348,34 +349,38 @@
     }
     graphContentEl.appendChild(tail);
 
-    const loadMoreBtn = tail.querySelector("#load-more");
-    if (loadMoreBtn) {
-      loadMoreBtn.addEventListener("click", requestMoreCommits);
-    }
+    tail.querySelector("#load-more")?.addEventListener("click", () => requestMoreCommits("older"));
   }
 
-  /** 스크롤이 하단 가까이에 도달하면 다음 커밋 페이지를 요청한다. */
+  /** 스크롤이 위/아래 끝 가까이에 도달하면 해당 방향의 커밋 페이지를 요청한다. */
   function maybeLoadMore() {
-    if (!loadState.hasMore || loadState.loading) {
+    if (loadState.loading) return;
+    if (loadState.hasMoreBefore && graphEl.scrollTop <= 240) {
+      requestMoreCommits("newer");
       return;
     }
+    if (!loadState.hasMore) return;
     const remaining = graphEl.scrollHeight - graphEl.scrollTop - graphEl.clientHeight;
     if (remaining <= 320) {
-      requestMoreCommits();
+      requestMoreCommits("older");
     }
   }
 
   /** 중복 요청을 막기 위해 로컬 상태를 먼저 loading 으로 바꾸고 확장에 다음 페이지를 요청한다. */
-  function requestMoreCommits() {
-    if (!loadState.hasMore || loadState.loading) {
+  function requestMoreCommits(direction) {
+    const newer = direction === "newer";
+    if (loadState.loading || (newer ? !loadState.hasMoreBefore : !loadState.hasMore)) {
       return;
     }
-    loadState = Object.assign({}, loadState, { loading: true });
+    loadState = Object.assign({}, loadState, { loading: true, loadDirection: newer ? "newer" : "older" });
     updateLoadStatus();
     resizeGraphContent();
     renderLoadTail();
-    vscode.postMessage({ type: "loadMore" });
+    vscode.postMessage({ type: "loadMore", direction: loadState.loadDirection });
   }
+
+  /** 현재 로딩이 하단(older) 페이지 로딩인지 확인한다. */
+  function isLoadingOlder() { return loadState.loading && loadState.loadDirection !== "newer"; }
 
   /** 현재 화면 폭에서 상세 패널을 drawer 로 다룰지 판단한다. */
   function isDrawerMode() {

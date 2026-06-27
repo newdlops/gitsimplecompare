@@ -1,0 +1,30 @@
+/* Pull Request label chip 스타일. GitHub label 색상을 PR 메타 chip 안에서 읽기 쉽게 표시한다. */
+.pr-label-chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  max-width: 180px;
+  min-width: 0;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--pr-label-border, color-mix(in srgb, var(--pr-accent, var(--vscode-panel-border)) 45%, var(--vscode-panel-border)));
+  border-radius: 999px;
+  color: var(--pr-label-foreground, var(--vscode-foreground));
+  background: var(--pr-label-background, color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 14%, transparent));
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 18px;
+}
+
+.pr-label-chip .pr-label-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-label-more {
+  border-color: color-mix(in srgb, var(--vscode-descriptionForeground) 45%, var(--vscode-panel-border));
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 12%, transparent);
+}

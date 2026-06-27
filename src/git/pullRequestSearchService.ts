@@ -4,6 +4,8 @@
 import { runGh } from "./ghCli";
 import { splitRepositoryName } from "./githubRepository";
 import { PullRequestInfo } from "./pullRequestService";
+import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
+import type { GhPullRequestLabels } from "./pullRequestLabels";
 
 /** PR repository-wide 검색 응답 */
 export interface PullRequestSearchResult {
@@ -47,6 +49,7 @@ interface GhSearchPullRequest {
   isDraft?: boolean;
   reviewDecision?: string;
   updatedAt?: string;
+  labels?: GhPullRequestLabels;
   comments?: { totalCount?: number };
   files?: { totalCount?: number };
   commits?: {
@@ -76,6 +79,7 @@ query($searchQuery: String!, $limit: Int!, $cursor: String) {
         isDraft
         reviewDecision
         updatedAt
+${PULL_REQUEST_LABELS_QUERY}
         comments(first: 1) { totalCount }
         files(first: 1) { totalCount }
         commits(first: 100) {
@@ -101,6 +105,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       isDraft
       reviewDecision
       updatedAt
+${PULL_REQUEST_LABELS_QUERY}
       comments(first: 1) { totalCount }
       files(first: 1) { totalCount }
       commits(first: 100) {
@@ -250,6 +255,7 @@ function toPullRequestInfo(pr: GhSearchPullRequest): PullRequestInfo {
     updatedAt: pr.updatedAt,
     commentCount: pr.comments?.totalCount ?? 0,
     fileCount: pr.files?.totalCount ?? 0,
+    labels: normalizePullRequestLabels(pr.labels),
     commitHashes: Array.from(new Set([
       ...(pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
       pr.headRefOid || "",

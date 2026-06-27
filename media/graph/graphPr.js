@@ -488,6 +488,7 @@
       metaChip("git-pull-request", pr.state || "OPEN", `PR state: ${pr.state || "OPEN"}`) +
       (pr.isDraft ? metaChip("edit", "Draft", "Draft pull request") : "") +
       (pr.reviewDecision ? metaChip("eye", pr.reviewDecision, `Review decision: ${pr.reviewDecision}`) : "") +
+      (window.GscGraphPrLabels?.render?.(pr) || "") +
       `<span class="pr-branch-flow" ${tooltipAttrs(`${pr.headRefName} into ${pr.baseRefName}`)}>` +
       `<span class="codicon codicon-git-branch" aria-hidden="true"></span><span>${esc(pr.headRefName)}</span>` +
       `<span class="codicon codicon-arrow-right" aria-hidden="true"></span><span>${esc(pr.baseRefName)}</span></span>` +
@@ -585,7 +586,6 @@
 	  function commitCount(pr) { return Array.isArray(pr.commitHashes) ? pr.commitHashes.length : 0; }
 	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
 	  function shortHash(hash) { return String(hash || "").slice(0, 8); }
-
   /** CSS selector 에 들어갈 값을 escape 한다. */
   function cssEscape(value) {
     return window.CSS?.escape ? window.CSS.escape(String(value)) : String(value).replace(/["\\]/g, "\\$&");

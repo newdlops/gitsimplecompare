@@ -22,8 +22,8 @@
       `<label class="pr-list-search" role="search">` +
       `<span class="codicon codicon-search" aria-hidden="true"></span>` +
       `<input type="search" value="${esc(query)}" data-pr-search-input placeholder="Search pull requests" ` +
-      `title="Search all pull requests by number, title, author, branch, or state" ` +
-      `aria-label="Search all pull requests by number, title, author, branch, or state" />` +
+      `title="Search all pull requests by number, title, author, branch, label, or state" ` +
+      `aria-label="Search all pull requests by number, title, author, branch, label, or state" />` +
       `<button type="button" data-pr-search-clear ${active ? "" : "hidden"} ` +
       tooltipAttrs("Clear pull request search") + `>` +
       `<span class="codicon codicon-close" aria-hidden="true"></span></button></label>` +
@@ -86,6 +86,7 @@
         pr.baseRefName,
         pr.state,
         pr.reviewDecision,
+        window.GscGraphPrLabels?.searchText?.(pr),
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
     });

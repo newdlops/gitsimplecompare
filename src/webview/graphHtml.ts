@@ -28,6 +28,7 @@ export function buildGraphHtml(
   const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
   const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
+  const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
   const prActionsScriptUri = script(webview, mediaRoot, "graphPrActions.js");
   const prScriptUri = script(webview, mediaRoot, "graphPr.js");
@@ -43,6 +44,7 @@ export function buildGraphHtml(
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const prStyleUri = style(webview, mediaRoot, "graphPr.css");
+  const prLabelsStyleUri = style(webview, mediaRoot, "graphPrLabels.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
   const detailStyleUri = style(webview, mediaRoot, "graphDetail.css");
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
@@ -84,6 +86,7 @@ export function buildGraphHtml(
   <link href="${worktreeStyleUri}" rel="stylesheet" />
   <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${prStyleUri}" rel="stylesheet" />
+  <link href="${prLabelsStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
   <link href="${rebaseStyleUri}" rel="stylesheet" />
@@ -188,6 +191,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${svgRenderScriptUri}"></script>
   <script nonce="${nonce}" src="${prFilesScriptUri}"></script>
+  <script nonce="${nonce}" src="${prLabelsScriptUri}"></script>
   <script nonce="${nonce}" src="${prSearchScriptUri}"></script>
   <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
   <script nonce="${nonce}" src="${prScriptUri}"></script>

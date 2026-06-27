@@ -23,6 +23,8 @@ import { previewTargetBranches } from "./pullRequestPreviewBranches";
 import { previewBody } from "./pullRequestPreviewBody";
 import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
 import { previewTitle } from "./pullRequestPreviewTitle";
+import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
+import type { GhPullRequestLabels, PullRequestLabelInfo } from "./pullRequestLabels";
 
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 
@@ -46,6 +48,7 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
         isDraft
         reviewDecision
         updatedAt
+${PULL_REQUEST_LABELS_QUERY}
         comments(first: 1) {
           totalCount
         }
@@ -104,6 +107,7 @@ export interface PullRequestInfo {
   commentCount: number;
   fileCount: number;
   commitHashes: string[];
+  labels?: PullRequestLabelInfo[];
 }
 
 /** graph 웹뷰에 보내는 PR 전체 상태 */
@@ -152,6 +156,7 @@ interface GhPullRequest {
   commentCount?: number;
   fileCount?: number;
   commitHashes?: string[];
+  labels?: PullRequestLabelInfo[];
 }
 
 interface GhCommit {
@@ -186,6 +191,7 @@ interface GhGraphQlPullRequest {
   isDraft?: boolean;
   reviewDecision?: string;
   updatedAt?: string;
+  labels?: GhPullRequestLabels;
   comments?: {
     totalCount?: number;
   };
@@ -396,6 +402,7 @@ export class PullRequestService {
       commentCount: pr.commentCount ?? 0,
       fileCount: pr.fileCount ?? 0,
       commitHashes: normalizeCommitHashes(pr),
+      labels: pr.labels || [],
     };
   }
 
@@ -563,6 +570,7 @@ function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
     commentCount: pr.comments?.totalCount ?? 0,
     fileCount: pr.files?.totalCount ?? 0,
     commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
+    labels: normalizePullRequestLabels(pr.labels),
   };
 }
 

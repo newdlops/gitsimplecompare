@@ -11,6 +11,14 @@ export interface CommitWindowOptions {
   refs?: string[];
 }
 
+/** graph window 가 전체 로그에서 차지하는 위치 정보 */
+export interface CommitWindowResult {
+  commits: Commit[];
+  startIndex: number;
+  targetIndex: number;
+  totalCount: number;
+}
+
 /**
  * 전체 graph 순서에서 대상 commit 주변 slice 를 읽어 graph window 를 만든다.
  * @param repoRoot 저장소 루트
@@ -22,15 +30,31 @@ export async function loadCommitWindowAround(
   hash: string,
   options: CommitWindowOptions
 ): Promise<Commit[]> {
+  return (await loadCommitWindowAroundWithRange(repoRoot, hash, options)).commits;
+}
+
+/**
+ * 전체 graph 순서에서 대상 commit 주변 slice 와 전체 위치 정보를 함께 읽는다.
+ * @param repoRoot 저장소 루트
+ * @param hash     중심 commit hash
+ * @param options  위/아래 커밋 개수와 대상 ref 범위
+ */
+export async function loadCommitWindowAroundWithRange(
+  repoRoot: string,
+  hash: string,
+  options: CommitWindowOptions
+): Promise<CommitWindowResult> {
   const before = Math.max(0, Math.floor(options.before));
   const after = Math.max(1, Math.floor(options.after));
   const refs = refArgs(options.refs || []);
   const hashes = await loadOrderedHashes(repoRoot, refs);
   const index = hashes.indexOf(hash);
   if (index < 0) {
-    return [];
+    return { commits: [], startIndex: 0, targetIndex: -1, totalCount: hashes.length };
   }
-  return loadCommitSlice(repoRoot, Math.max(0, index - before), before + after, refs);
+  const startIndex = Math.max(0, index - before);
+  const commits = await loadCommitSlice(repoRoot, startIndex, before + after, refs);
+  return { commits, startIndex, targetIndex: index, totalCount: hashes.length };
 }
 
 /**

@@ -14,7 +14,6 @@ import {
 import { GitBranchRefCache } from "./gitBranchRefCache";
 import { loadLocalOnlyBranchMap } from "./gitLocalOnlyBranches";
 import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
-import { loadCommitWindowAround } from "./gitLogWindow";
 import { parseTrack } from "./gitLogRefs";
 import {
   isUnpushedLocalHead,
@@ -122,24 +121,6 @@ export class GitLogService {
       await this.attachLocalOnlyBranches(commits);
     }
     return commits;
-  }
-
-  /**
-   * 특정 commit 을 중심으로 graph window 를 읽는다.
-   * - 오래된 PR commit 으로 점프할 때 HEAD 부터 대상까지 모든 중간 페이지를 누적하지 않고,
-   *   대상 위/아래 일부 커밋만 새 graph view 로 렌더링하기 위해 사용한다.
-   * @param hash   중심 commit hash
-   * @param before 중심 commit 위쪽에 포함할 descendant 수
-   * @param after  중심 commit 과 아래쪽 ancestor 수
-   * @param refs   대상 ref 목록. 비면 전체 branch/remote/tag 범위
-   */
-  async getCommitWindowAround(
-    hash: string,
-    before: number,
-    after: number,
-    refs: string[] = []
-  ): Promise<Commit[]> {
-    return loadCommitWindowAround(this.repoRoot, hash, { before, after, refs });
   }
 
   /**

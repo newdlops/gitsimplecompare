@@ -31,11 +31,16 @@ import type { GitTagStatus } from "../git/gitTagService";
 /** graph 검색에서 명시적으로 최신화할 ref 종류 */
 export type GraphSearchFetchTarget = "refs" | "tags";
 
+/** graph 무한 스크롤에서 추가 로드할 방향 */
+export type GraphLoadDirection = "newer" | "older";
+
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
   loadedCount: number;
   hasMore: boolean;
+  hasMoreBefore?: boolean;
   loading: boolean;
+  loadDirection?: GraphLoadDirection;
   reset: boolean;
 }
 
@@ -144,7 +149,7 @@ export type FromWebviewMessage =
         | "rebaseRevertWorktree"
         | "undo";
     }
-  | { type: "loadMore" }
+  | { type: "loadMore"; direction?: GraphLoadDirection }
   | { type: "selectCommit"; hash: string }
   | { type: "checkoutBranch"; branch: string }
   | { type: "checkoutRemoteBranch"; branch: string }
