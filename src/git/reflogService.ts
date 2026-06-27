@@ -47,7 +47,11 @@ export async function readReflogEntries(
  * @param raw `hash FS selector FS shortSelector FS message` 형태의 원문
  */
 function parseReflogEntry(raw: string): ReflogEntry | undefined {
-  const [hash, selector, shortSelector, message] = raw.split(FS);
+  const [rawHash, rawSelector, rawShortSelector, rawMessage] = raw.split(FS);
+  const hash = rawHash?.trim();
+  const selector = rawSelector?.trim();
+  const shortSelector = rawShortSelector?.trim();
+  const message = rawMessage?.trim();
   if (!hash || !selector) {
     return undefined;
   }

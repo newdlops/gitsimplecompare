@@ -128,6 +128,7 @@ export type FromWebviewMessage =
   | { type: "loadMorePullRequests" }
   | { type: "refreshPullRequestDetail"; number: number }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
+  | { type: "showReflogCommit"; requestId: string; hash: string }
   | { type: "ensureHeadVisible"; requestId: string }
   | { type: "graphRepositorySearch"; requestId: string; query: string; scope?: GraphRepositorySearchScope }
   | {

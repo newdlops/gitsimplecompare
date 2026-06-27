@@ -29,6 +29,11 @@
     return window.CSS?.escape ? window.CSS.escape(value) : String(value).replace(/"/g, '\\"');
   }
 
+  /** reflog 에서 온 hash 의 앞뒤 줄바꿈/공백을 제거한다. */
+  function cleanHash(hash) {
+    return String(hash || "").trim();
+  }
+
   /** 패널을 열고 최신 reflog 를 요청한다. */
   function openPanel() {
     if (!panel) {
@@ -120,18 +125,19 @@
 
   /** reflog 항목 한 줄 HTML 을 만든다. */
   function entryHtml(entry, index) {
-    const hash = shortHash(entry.hash);
+    const entryHash = cleanHash(entry.hash);
+    const hash = shortHash(entryHash);
     const message = entry.message || "reflog entry";
     const date = formatDate(entry.dateIso);
-    const loaded = hashLoaded(entry.hash);
+    const loaded = hashLoaded(entryHash);
     const state = loaded ? "On graph" : "Not loaded";
     const classes = [
       "reflog-entry",
       loaded ? "graph-loaded" : "graph-missing",
-      entry.hash === activeHash ? "graph-active" : "",
-      entry.hash === hoverHash ? "graph-hover" : "",
+      entryHash === activeHash ? "graph-active" : "",
+      entryHash === hoverHash ? "graph-hover" : "",
     ].filter(Boolean).join(" ");
-    return `<article class="${classes}" data-hash="${esc(entry.hash)}">` +
+    return `<article class="${classes}" data-hash="${esc(entryHash)}">` +
       `<div class="reflog-index">${esc(index + 1)}</div>` +
       `<div class="reflog-main">` +
       `<div class="reflog-title"><code>${esc(hash)}</code><strong>${esc(message)}</strong>` +
@@ -140,10 +146,10 @@
       `<span>${esc(date)}</span></div>` +
       `</div>` +
       `<div class="reflog-entry-actions">` +
-      entryButton("showInGraph", "target", loaded ? "Show this reflog entry in graph" : "Load and show this reflog entry in graph", entry.hash) +
-      entryButton("createBranch", "git-branch-create", "Create branch at this reflog entry", entry.hash) +
-      entryButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", entry.hash) +
-      entryButton("copyCommitHash", "copy", "Copy reflog commit hash", entry.hash) +
+      entryButton("showInGraph", "target", loaded ? "Show this reflog entry in graph" : "Load and show this reflog entry in graph", entryHash) +
+      entryButton("createBranch", "git-branch-create", "Create branch at this reflog entry", entryHash) +
+      entryButton("checkoutCommit", "debug-restart", "Checkout this reflog commit detached", entryHash) +
+      entryButton("copyCommitHash", "copy", "Copy reflog commit hash", entryHash) +
       `</div>` +
       `</article>`;
   }
@@ -157,14 +163,15 @@
 
   /** reflog 항목 액션 버튼 HTML 을 만든다. */
   function entryButton(action, icon, title, hash) {
+    const clean = cleanHash(hash);
     return `<button class="reflog-entry-button" type="button" data-reflog-action="${esc(action)}" ` +
-      `data-hash="${esc(hash)}" title="${esc(title)}" aria-label="${esc(title)}" data-tooltip="${esc(title)}">` +
+      `data-hash="${esc(clean)}" title="${esc(title)}" aria-label="${esc(title)}" data-tooltip="${esc(title)}">` +
       `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span></button>`;
   }
 
   /** reflog 항목 버튼 클릭을 기존 graph action 메시지로 변환한다. */
   function postEntryAction(button) {
-    const hash = button.dataset.hash || "";
+    const hash = cleanHash(button.dataset.hash);
     if (!hash) {
       return;
     }
@@ -182,6 +189,7 @@
 
   /** reflog 항목이 가리키는 commit 을 그래프에서 보이게 한다. */
   function showInGraph(hash) {
+    hash = cleanHash(hash);
     if (!hash) {
       return;
     }
@@ -190,11 +198,12 @@
     }
     const requestId = `reflog-${++requestSeq}`;
     pendingJump = { requestId, hash };
-    window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: [hash] });
+    window.GscGraphPostMessage?.({ type: "showReflogCommit", requestId, hash });
   }
 
   /** 현재 로드된 그래프 row 로 스크롤하고 reflog 활성 강조를 적용한다. */
   function jumpToHash(hash) {
+    hash = cleanHash(hash);
     const row = rowForHash(hash);
     if (!row || !graphEl) {
       return false;
@@ -208,7 +217,7 @@
 
   /** hover 중인 reflog 항목과 같은 그래프 row/node 를 강조한다. */
   function setHoverHash(hash) {
-    hoverHash = hash || "";
+    hoverHash = cleanHash(hash);
     refreshActiveMarks();
     panel?.querySelectorAll(".reflog-entry").forEach((entry) => {
       entry.classList.toggle("graph-hover", Boolean(hoverHash) && entry.dataset.hash === hoverHash);
@@ -283,12 +292,13 @@
   function groupedEntries() {
     const groups = new Map();
     entries.forEach((entry, index) => {
-      if (!entry.hash) {
+      const hash = cleanHash(entry.hash);
+      if (!hash) {
         return;
       }
-      const group = groups.get(entry.hash) || [];
+      const group = groups.get(hash) || [];
       group.push({ entry, index });
-      groups.set(entry.hash, group);
+      groups.set(hash, group);
     });
     return groups;
   }
@@ -324,7 +334,7 @@
 
   /** hash 에 해당하는 row 가 현재 그래프 DOM 에 로드되어 있는지 확인한다. */
   function hashLoaded(hash) {
-    return Boolean(rowForHash(hash));
+    return Boolean(rowForHash(cleanHash(hash)));
   }
 
   /** 현재 로드된 그래프에 표시 가능한 reflog 항목 수를 계산한다. */
@@ -334,12 +344,12 @@
 
   /** 현재 렌더된 graph row 중 hash 가 같은 요소를 찾는다. */
   function rowForHash(hash) {
-    return graphContent?.querySelector(`.row[data-hash="${cssEscape(hash)}"]`) || null;
+    return graphContent?.querySelector(`.row[data-hash="${cssEscape(cleanHash(hash))}"]`) || null;
   }
 
   /** 현재 렌더된 graph node 중 hash 가 같은 요소를 찾는다. */
   function nodeForHash(hash) {
-    return graphContent?.querySelector(`.node[data-hash="${cssEscape(hash)}"]`) || null;
+    return graphContent?.querySelector(`.node[data-hash="${cssEscape(cleanHash(hash))}"]`) || null;
   }
 
   /** 커밋 해시를 짧게 줄인다. */
@@ -406,7 +416,7 @@
         render();
       }
     } else if (msg.type === "commitVisibility" && pendingJump?.requestId === msg.requestId) {
-      const hash = msg.hash || pendingJump.hash;
+      const hash = cleanHash(msg.hash || pendingJump.hash);
       pendingJump = undefined;
       if (msg.found) {
         window.requestAnimationFrame(() => jumpToHash(hash));

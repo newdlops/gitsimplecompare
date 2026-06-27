@@ -165,7 +165,8 @@ export async function createBranch(
   hash: string,
   isRealCommit: (hash: string) => boolean
 ): Promise<void> {
-  if (!isRealCommit(hash)) {
+  const targetHash = hash.trim();
+  if (!isRealCommit(targetHash)) {
     return;
   }
   const name = await vscode.window.showInputBox({
@@ -176,7 +177,7 @@ export async function createBranch(
   if (!name) {
     return;
   }
-  await deps.logService.createBranchAt(name.trim(), hash);
+  await deps.logService.createBranchAt(name.trim(), targetHash);
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
     vscode.l10n.t("Branch '{0}' created.", name.trim())

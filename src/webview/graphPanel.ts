@@ -21,6 +21,7 @@ import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRou
 import { restoreGraphRebaseSession } from "./graphRebaseSession";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { sendGraphReflog } from "./graphReflog";
+import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
@@ -204,14 +205,22 @@ export class GitGraphPanel {
           repoRoot: this.logService.repoRoot,
           requestId: msg.requestId,
           hashes: msg.hashes,
-          loadedHash: (hashes) => hashes.find((hash) => this.commits.some((commit) => commit.hash === hash)),
+          loadedHash: (hashes) => hashes.map((hash) => hash.trim()).find((hash) => this.commits.some((commit) => commit.hash === hash)),
           loadWindow: (hashes) => this.loadCommitWindow(hashes),
           post: (message) => this.post(message),
+        });
+      } else if (msg.type === "showReflogCommit") {
+        const found = await this.loadReflogCommitWindow(msg.hash.trim());
+        this.post({
+          type: "commitVisibility",
+          requestId: msg.requestId,
+          hash: found,
+          found: Boolean(found),
         });
       } else if (msg.type === "ensureHeadVisible") {
         await ensureGraphHeadVisible({
           repoRoot: this.logService.repoRoot, requestId: msg.requestId,
-          loadedHash: (hashes) => hashes.find((hash) => this.commits.some((commit) => commit.hash === hash)),
+          loadedHash: (hashes) => hashes.map((hash) => hash.trim()).find((hash) => this.commits.some((commit) => commit.hash === hash)),
           loadWindow: (hashes) => this.loadCommitWindow(hashes), post: (message) => this.post(message),
         });
       } else if (msg.type === "graphRepositorySearch") {
@@ -510,14 +519,15 @@ export class GitGraphPanel {
     this.loading = true;
     try {
       for (const hash of hashes) {
+        const targetHash = hash.trim();
         const branchFilter = this.currentBranchFilter();
         const window = await loadCommitWindowAroundWithRange(
           this.logService.repoRoot,
-          hash,
+          targetHash,
           { before: 80, after: GRAPH_PAGE_SIZE, refs: branchFilter.refs }
         ).catch(() => ({ commits: [], startIndex: 0, targetIndex: -1, totalCount: 0 }));
         if (generation !== this.loadGeneration) return undefined;
-        if (!window.commits.some((commit) => commit.hash === hash)) continue;
+        if (!window.commits.some((commit) => commit.hash === targetHash)) continue;
         this.virtualCommits = [];
         this.commits = filterCommitRefs(window.commits, branchFilter);
         this.rangeStartIndex = window.startIndex;
@@ -527,14 +537,48 @@ export class GitGraphPanel {
         this.post({ type: "graph", data: this.layoutVisibleGraph(), state: this.makeLoadState(true) });
         logInfo("graph commit window sent", {
           repoRoot: this.logService.repoRoot,
-          hash,
+          hash: targetHash,
           count: this.commits.length,
           rangeStartIndex: this.rangeStartIndex,
           totalCount: this.rangeTotalCount,
         });
-        return hash;
+        return targetHash;
       }
       return undefined;
+    } finally {
+      if (generation === this.loadGeneration && this.loading) this.loading = false;
+    }
+  }
+
+  /**
+   * reflog commit 을 현재 ref 필터와 무관한 복구용 graph window 로 표시한다.
+   * @param hash reflog 항목이 가리키는 commit hash
+   * @returns 그래프에 표시한 commit hash. Git 이 찾지 못하면 undefined
+   */
+  private async loadReflogCommitWindow(hash: string): Promise<string | undefined> {
+    const targetHash = hash.trim();
+    const generation = ++this.loadGeneration;
+    this.loading = true;
+    try {
+      const window = await loadGraphReflogCommitWindow(
+        this.logService.repoRoot,
+        targetHash,
+        GRAPH_PAGE_SIZE
+      );
+      if (generation !== this.loadGeneration || !window) return undefined;
+      this.virtualCommits = [];
+      this.commits = window.commits;
+      this.rangeStartIndex = 0;
+      this.rangeTotalCount = window.commits.length;
+      this.loading = false;
+      this.exhausted = true;
+      this.post({ type: "graph", data: this.layoutVisibleGraph(), state: this.makeLoadState(true) });
+      logInfo("graph reflog commit window sent", {
+        repoRoot: this.logService.repoRoot,
+        hash: targetHash,
+        count: this.commits.length,
+      });
+      return targetHash;
     } finally {
       if (generation === this.loadGeneration && this.loading) this.loading = false;
     }

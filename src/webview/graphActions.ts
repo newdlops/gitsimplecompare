@@ -242,7 +242,7 @@ async function dispatchGraphAction(
       await handlePullRequestAction(deps, msg.number, msg.action);
       return;
     case "copyCommitHash":
-      await vscode.env.clipboard.writeText(msg.hash);
+      await vscode.env.clipboard.writeText(msg.hash.trim());
       vscode.window.showInformationMessage(vscode.l10n.t("Commit hash copied."));
       return;
     case "copyCommitMessage":
@@ -257,18 +257,19 @@ async function checkoutCommit(
   deps: GraphActionDeps,
   hash: string
 ): Promise<void> {
-  if (!isRealCommit(hash)) {
+  const targetHash = hash.trim();
+  if (!isRealCommit(targetHash)) {
     return;
   }
   const ok = await confirm(
-    vscode.l10n.t("Checkout commit '{0}' as detached HEAD?", shortHash(hash)),
+    vscode.l10n.t("Checkout commit '{0}' as detached HEAD?", shortHash(targetHash)),
     vscode.l10n.t("Checkout")
   );
   if (!ok) {
     return;
   }
   try {
-    await deps.logService.checkoutCommitDetached(hash);
+    await deps.logService.checkoutCommitDetached(targetHash);
   } catch (err) {
     if (!isCheckoutConflictError(err)) {
       throw err;
@@ -276,8 +277,8 @@ async function checkoutCommit(
     const result = await retryCheckoutWithConflicts(
       err,
       deps.logService.repoRoot,
-      hash,
-      () => deps.logService.checkoutCommitDetached(hash, true)
+      targetHash,
+      () => deps.logService.checkoutCommitDetached(targetHash, true)
     );
     if (result === "cancelled") {
       return;
@@ -292,7 +293,7 @@ async function checkoutCommit(
   }
   await deps.refreshGraph();
   vscode.window.showInformationMessage(
-    vscode.l10n.t("Checked out commit '{0}'.", shortHash(hash))
+    vscode.l10n.t("Checked out commit '{0}'.", shortHash(targetHash))
   );
 }
 
