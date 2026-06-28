@@ -234,6 +234,13 @@ body.resizing {
   flex: 0 0 auto;
 }
 
+.row .commit-hash {
+  flex: 0 0 auto;
+  color: var(--vscode-textLink-foreground);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+
 .row .meta {
   flex: 0 0 auto;
   opacity: 0.7;

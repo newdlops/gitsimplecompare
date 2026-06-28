@@ -56,14 +56,49 @@ export async function runGit(
   }
 }
 
+/**
+ * 표준 입력이 필요한 git 명령을 실행하고 표준 출력을 문자열로 반환한다.
+ * - `cat-file --batch-check` 처럼 여러 객체를 한 프로세스에서 확인해야 할 때 사용한다.
+ * - runGit 과 같은 lock 재시도 정책을 공유해 호출부가 git 실행 방식을 신경 쓰지 않게 한다.
+ * @param args git 인자 배열
+ * @param cwd 실행 디렉터리(저장소 경로)
+ * @param input git 프로세스의 stdin 으로 전달할 문자열
+ * @param options 추가 env 또는 lock 재시도 옵션
+ */
+export async function runGitWithInput(
+  args: string[],
+  cwd: string,
+  input: string,
+  options?: Record<string, string> | RunGitOptions
+): Promise<string> {
+  const normalized = normalizeOptions(options);
+  const retryOnLock = normalized.retryOnLock !== false;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await runGitOnce(args, cwd, normalized.env, input);
+    } catch (error) {
+      if (
+        !retryOnLock ||
+        !isRetryableGitError(error) ||
+        attempt >= LOCK_RETRY_DELAYS_MS.length
+      ) {
+        throw error;
+      }
+      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
+      await normalized.beforeRetry?.();
+    }
+  }
+}
+
 /** git 명령 한 번을 실행한다. lock 재시도 루프는 runGit 이 담당한다. */
 function runGitOnce(
   args: string[],
   cwd: string,
-  env?: Record<string, string>
+  env?: Record<string, string>,
+  input?: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(
+    const child = execFile(
       "git",
       args,
       {
@@ -83,6 +118,10 @@ function runGitOnce(
         resolve(stdout);
       }
     );
+    if (input !== undefined && child.stdin) {
+      child.stdin.on("error", () => undefined);
+      child.stdin.end(input);
+    }
   });
 }
 

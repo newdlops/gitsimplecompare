@@ -9,9 +9,12 @@
   const graphContent = document.getElementById("graph-content");
   let entries = [];
   let loading = false;
+  let loadingObjects = false;
+  let objectScan = false;
   let hoverHash = "";
   let activeHash = "";
   let pendingJump;
+  let pendingGraphViewport;
   let requestSeq = 0;
   let syncFrame = 0;
 
@@ -43,7 +46,7 @@
     button?.classList.add("active");
     updateToggleButton(true);
     syncGraphMarkers();
-    requestReflog();
+    requestReflog(false);
   }
 
   /** 패널을 닫는다. */
@@ -69,10 +72,14 @@
   }
 
   /** 확장 호스트에 reflog refresh 를 요청한다. */
-  function requestReflog() {
+  function requestReflog(includeUnreachable) {
+    if (loading) {
+      return;
+    }
     loading = true;
-    render();
-    window.GscGraphPostMessage?.({ type: "refreshReflog" });
+    loadingObjects = Boolean(includeUnreachable);
+    render({ preserveGraphViewport: true, preservePanelScroll: true });
+    window.GscGraphPostMessage?.({ type: "refreshReflog", includeUnreachable: Boolean(includeUnreachable) });
   }
 
   /** toolbar reflog 아이콘의 토글 접근성 상태와 tooltip 을 갱신한다. */
@@ -88,20 +95,23 @@
   }
 
   /** reflog 패널을 렌더링한다. */
-  function render() {
+  function render(options) {
     if (!panel || panel.hidden) {
       return;
     }
+    const panelScroll = options?.preservePanelScroll ? capturePanelScroll() : undefined;
     panel.innerHTML =
       `<header>` +
       `<div><strong>Reflog Recovery</strong><span>${esc(statusText())}</span></div>` +
       `<div class="reflog-actions">` +
       iconButton("refresh-reflog", "refresh", "Refresh reflog") +
+      iconButton("scan-reflog-objects", "search", "Scan unreachable objects") +
       iconButton("close-reflog", "close", "Close reflog") +
       `</div></header>` +
       `<div class="reflog-help">${summaryHtml()}</div>` +
       `<div class="reflog-list">${window.GscGraphReflogList?.entriesHtml?.(entries, { loading, activeHash, hoverHash, hashLoaded }) || ""}</div>`;
-    panel.querySelector("#refresh-reflog")?.addEventListener("click", requestReflog);
+    panel.querySelector("#refresh-reflog")?.addEventListener("click", () => requestReflog(false));
+    panel.querySelector("#scan-reflog-objects")?.addEventListener("click", () => requestReflog(true));
     panel.querySelector("#close-reflog")?.addEventListener("click", closePanel);
     panel.querySelectorAll(".reflog-entry").forEach((entry) => {
       entry.addEventListener("mouseenter", () => setHoverHash(entry.dataset.hash || ""));
@@ -124,13 +134,33 @@
         postEntryAction(action);
       });
     });
-    syncGraphMarkers();
+    syncGraphMarkers({
+      preserveViewport: options?.preserveGraphViewport,
+      viewport: options?.graphViewport,
+    });
+    restorePanelScroll(panelScroll);
+  }
+
+  /** 리플로그 패널을 다시 그리기 전 목록 스크롤 위치를 저장한다. */
+  function capturePanelScroll() {
+    return panel ? { top: panel.scrollTop, left: panel.scrollLeft } : undefined;
+  }
+
+  /** 리플로그 패널 재렌더 이후 기존 목록 스크롤 위치를 복원한다. */
+  function restorePanelScroll(scroll) {
+    if (!panel || !scroll) {
+      return;
+    }
+    const maxTop = Math.max(0, panel.scrollHeight - panel.clientHeight);
+    const maxLeft = Math.max(0, panel.scrollWidth - panel.clientWidth);
+    panel.scrollTop = Math.min(Math.max(0, scroll.top || 0), maxTop);
+    panel.scrollLeft = Math.min(Math.max(0, scroll.left || 0), maxLeft);
   }
 
   /** 현재 패널 상태 문구를 만든다. */
   function statusText() {
     if (loading) {
-      return "Loading HEAD reflog...";
+      return loadingObjects ? "Scanning reflog objects..." : "Loading HEAD reflog...";
     }
     const visible = visibleEntryCount();
     return visible > 0
@@ -141,11 +171,14 @@
   /** reflog 흐름 상태별 요약 HTML 을 만든다. */
   function summaryHtml() {
     const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0, object: 0 };
+    const note = objectScan
+      ? "Objects come from git fsck and may disappear after garbage collection."
+      : "Fast loading reads HEAD reflog only.";
     return `<span class="reflog-summary-chip reflog-relation-flow">Branch flow ${esc(counts.flow)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-dropped">Dropped ${esc(counts.dropped)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-timeline">Timeline ${esc(counts.timeline)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-object">Objects ${esc(counts.object || 0)}</span>` +
-      `<span class="reflog-summary-note">Dropped comes from reflog. Objects come from git fsck and may disappear after garbage collection.</span>`;
+      `<span class="reflog-summary-note">${esc(note)}</span>`;
   }
 
   /** toolbar/panel icon button HTML 을 만든다. */
@@ -197,7 +230,7 @@
     activeHash = hash;
     graphEl.scrollTop = Math.max(0, row.offsetTop - 80);
     refreshActiveMarks();
-    render();
+    render({ preserveGraphViewport: true, preservePanelScroll: true });
     return true;
   }
 
@@ -211,14 +244,27 @@
   }
 
   /** 로드된 그래프에 reflog 전용 가상 branch 와 row 를 다시 붙인다. */
-  function syncGraphMarkers() {
+  function syncGraphMarkers(options) {
+    const viewport = options?.viewport || (options?.preserveViewport ? captureGraphViewport() : undefined);
     clearGraphMarkers();
     if (!graphContent || panel?.hidden || !entries.length) {
+      restoreGraphViewport(viewport);
       return;
     }
     const virtualMarkers = entries.map((entry, index) => eventMarker(entry, index)).filter(Boolean);
     window.GscGraphReflogMarkers?.renderVirtualBranch?.(graphContent, virtualMarkers);
     refreshActiveMarks();
+    restoreGraphViewport(viewport);
+  }
+
+  /** 리플로그 가상 row 를 다시 끼우기 전 그래프 viewport 기준점을 저장한다. */
+  function captureGraphViewport() {
+    return window.GscGraphViewport?.capture?.(graphEl, graphContent) || undefined;
+  }
+
+  /** 리플로그 가상 row 재배치 이후 그래프 viewport 기준점을 복원한다. */
+  function restoreGraphViewport(viewport) {
+    if (viewport) window.GscGraphViewport?.restore?.(graphEl, graphContent, viewport);
   }
 
   /** 이전 reflog 그래프 표시를 모두 제거한다. */
@@ -451,11 +497,32 @@
       return;
     }
     syncFrame = window.requestAnimationFrame(() => {
+      const viewport = pendingGraphViewport || captureGraphViewport();
+      pendingGraphViewport = undefined;
       syncFrame = 0;
       if (!panel?.hidden) {
-        render();
+        render({
+          preserveGraphViewport: true,
+          preservePanelScroll: true,
+          graphViewport: viewport,
+        });
       }
     });
+  }
+
+  /** graph.js 가 DOM 을 바꾸기 전에 현재 그래프 viewport 를 캡처한다. */
+  function captureGraphSyncMessage(event) {
+    const msg = event.data || {};
+    if (!shouldSyncForGraphMessage(msg) || panel?.hidden || !entries.length) {
+      return;
+    }
+    pendingGraphViewport = captureGraphViewport();
+  }
+
+  /** 리플로그 상태/마커를 다시 계산해야 하는 그래프 갱신 메시지인지 확인한다. */
+  function shouldSyncForGraphMessage(msg) {
+    if (msg.type === "graph") return !msg.state?.reset || Boolean(msg.state?.loadDirection);
+    return ["branchStatus", "tagStatus"].includes(msg.type);
   }
 
   /**
@@ -506,13 +573,16 @@
   window.addEventListener("gsc-reflog-recover", (event) => window.GscGraphPostMessage?.({ type: "createBranch", hash: cleanHash(event.detail?.hash) }));
   window.addEventListener("gsc-reflog-restore-branch", (event) => window.GscGraphPostMessage?.({ type: "restoreBranchFromReflog", hash: cleanHash(event.detail?.hash) }));
   observeGraph();
+  window.addEventListener("message", captureGraphSyncMessage, true);
   window.addEventListener("message", (event) => {
     const msg = event.data || {};
     if (msg.type === "graphReflog") {
       entries = Array.isArray(msg.entries) ? msg.entries : [];
       loading = false;
+      loadingObjects = false;
+      objectScan = Boolean(msg.scannedObjects);
       if (!panel?.hidden) {
-        render();
+        render({ preserveGraphViewport: true, preservePanelScroll: true });
       }
     } else if (msg.type === "commitVisibility" && pendingJump?.requestId === msg.requestId) {
       const hash = cleanHash(msg.hash || pendingJump.hash);
@@ -520,8 +590,10 @@
       if (msg.found) {
         window.requestAnimationFrame(() => jumpToHash(hash));
       } else if (!panel?.hidden) {
-        render();
+        render({ preserveGraphViewport: true, preservePanelScroll: true });
       }
+    } else if (shouldSyncForGraphMessage(msg)) {
+      scheduleGraphSync();
     }
   });
 })();

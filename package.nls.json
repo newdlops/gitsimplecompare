@@ -81,6 +81,7 @@
   "config.hunkControl.nativeOverlay": "Show real checkbox controls in the native diff margin.",
   "config.hunkControl.command": "Show no inline controls. Use editor title/context commands for selected lines.",
   "config.blameLine.show.desc": "Show Git blame text before each line in the active editor.",
+  "config.pullRequestComments.show.desc": "Show GitHub pull request review comments in the active editor.",
   "config.aiCliProvider.desc": "AI CLI provider used for commit and pull request message generation.",
   "config.aiCliProvider.auto": "Try Claude Code first, then Codex.",
   "config.aiCliProvider.claude": "Use Claude Code CLI.",

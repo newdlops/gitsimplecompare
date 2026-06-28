@@ -1,6 +1,6 @@
 // git reflog 조회 전용 서비스.
 // - 그래프 UI 에서 히스토리 복구 후보를 보여주고, 사용자가 브랜치를 만들어 수동 복구할 수 있게 한다.
-import { runGit } from "./gitExec";
+import { runGit, runGitWithInput } from "./gitExec";
 import {
   directDropSourcesByHash,
   inheritedDropSourcesByHash,
@@ -24,7 +24,7 @@ export interface ReflogBranchSource {
   kind: "local" | "remote";
 }
 
-/** reflog commit 이 현재 어떤 ref 흐름에서 아직 도달 가능한지 나타내는 근거 */
+/** reflog commit 이 현재 어떤 ref tip 과 정확히 같은지 나타내는 근거 */
 export interface ReflogCurrentRef {
   ref: string;
   name: string;
@@ -98,42 +98,67 @@ interface ParsedReflogRecord {
   dateIso?: string;
 }
 
+/** reflog 조회 범위와 느린 복구 보조 정보를 제어하는 옵션 */
+export interface ReflogReadOptions {
+  limit?: number;
+  includeUnreachable?: boolean;
+}
+
 /**
  * 저장소의 HEAD reflog 를 최신 항목부터 읽는다.
+ * - 기본 경로는 터미널 `git reflog` 처럼 빠르게 보여주기 위해 HEAD reflog 만 읽는다.
+ * - dangling/unreachable object 스캔은 대형 저장소에서 매우 비싸므로 사용자가 명시 요청할 때만 포함한다.
  * @param repoRoot 저장소 루트
- * @param limit    읽을 최대 reflog 항목 수
+ * @param input    읽을 최대 항목 수 또는 조회 옵션
  * @returns reflog 항목 배열
  */
 export async function readReflogEntries(
   repoRoot: string,
-  limit = 80
+  input: number | ReflogReadOptions = 80
 ): Promise<ReflogEntry[]> {
-  const safeLimit = Math.max(1, Math.floor(limit));
-  const [headOut, allOut] = await Promise.all([
+  const options = normalizeReadOptions(input);
+  const safeLimit = options.limit;
+  const [headOut, allOut, currentRefs] = await Promise.all([
     runGit(reflogArgs(safeLimit, "HEAD"), repoRoot),
-    runGit(reflogArgs(Math.max(240, safeLimit * 6), "--all"), repoRoot),
+    options.includeUnreachable
+      ? runGit(reflogArgs(Math.max(240, safeLimit * 6), "--all"), repoRoot)
+      : Promise.resolve(""),
+    options.includeUnreachable
+      ? currentTipRefsByHash(repoRoot)
+      : Promise.resolve(new Map<string, ReflogCurrentRef[]>()),
   ]);
   const headRecords = parseReflogRecords(headOut);
   const allRecords = parseReflogRecords(allOut);
   const branchSources = branchSourcesByHash(allRecords);
   const directDropSources = directDropSourcesByHash(allRecords);
   const headHashes = new Set(headRecords.map((record) => record.hash));
-  const objectRecords = (await readUnreachableCommitRecords(repoRoot, safeLimit))
-    .filter((record) => !headHashes.has(record.hash));
+  const objectRecords = options.includeUnreachable
+    ? (await readUnreachableCommitRecords(repoRoot, safeLimit))
+      .filter((record) => !headHashes.has(record.hash))
+    : [];
   const objectDropSources = inheritedDropSourcesByHash(
     objectRecords,
     directDropSources
   );
-  const allHashes = [
-    ...headRecords.map((record) => record.hash),
-    ...objectRecords.map((record) => record.hash),
-  ];
-  const currentRefs = await currentRefsByHash(repoRoot, allHashes);
-  const existingCommits = await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash));
+  const existingCommits = options.includeUnreachable
+    ? await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash))
+    : assumedExistingCommitsByHash(headRecords.map((record) => record.hash));
   return [
     ...headRecords.map((record, index) => headEntryFromRecord(record, index, headRecords, branchSources, directDropSources, currentRefs, existingCommits)),
     ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, objectDropSources, currentRefs)),
   ];
+}
+
+/**
+ * 호출자가 숫자 limit 만 넘긴 기존 방식과 옵션 객체 방식을 같은 형태로 정규화한다.
+ * @param input limit 숫자 또는 세부 조회 옵션
+ */
+function normalizeReadOptions(input: number | ReflogReadOptions): Required<ReflogReadOptions> {
+  const rawLimit = typeof input === "number" ? input : input.limit ?? 80;
+  return {
+    limit: Math.max(1, Math.floor(rawLimit)),
+    includeUnreachable: typeof input === "object" ? Boolean(input.includeUnreachable) : false,
+  };
 }
 
 /**
@@ -143,7 +168,7 @@ export async function readReflogEntries(
  * @param headRecords     fromHash 계산에 쓰는 HEAD reflog 전체 목록
  * @param branchSources   같은 commit 을 관찰한 branch reflog 근거
  * @param dropSources     이 commit 이 branch tip 에서 밀려난 reflog 근거
- * @param currentRefs     현재 commit 을 포함하는 ref 근거
+ * @param currentRefs     현재 commit 을 tip 으로 가리키는 ref 근거
  * @param existingCommits commit object 존재 여부 캐시
  */
 function headEntryFromRecord(
@@ -172,7 +197,7 @@ function headEntryFromRecord(
       changed: Boolean(fromHash && fromHash !== record.hash),
     },
     recovery: recoveryStateFor(Boolean(existingCommits.get(record.hash)), refs),
-    flowStatus: flowStatusFor(refs, sources, checkoutMove),
+    flowStatus: flowStatusFor(refs, sources),
     eventKind: eventKindFromMessage(record.message),
   };
 }
@@ -182,7 +207,7 @@ function headEntryFromRecord(
  * @param record        fsck 로 찾은 commit object record
  * @param branchSources 같은 commit 을 관찰한 branch reflog 근거
  * @param dropSources   이 commit 이 branch 흐름 밖으로 빠진 시점 추정 근거
- * @param currentRefs   현재 commit 을 포함하는 ref 근거
+ * @param currentRefs   현재 commit 을 tip 으로 가리키는 ref 근거
  */
 function unreachableEntryFromRecord(
   record: UnreachableCommitRecord,
@@ -286,24 +311,48 @@ function branchSourcesByHash(
 }
 
 /**
- * HEAD reflog commit 이 현재 local/remote/tag ref 에서 아직 도달 가능한지 hash 별로 모은다.
+ * 현재 local/remote/tag ref tip 을 hash 별로 묶는다.
+ * - `--contains=<hash>` 를 항목마다 실행하면 대형 저장소에서 reflog 조회보다 훨씬 느려진다.
+ * - 그래서 기본 조회에서는 ref 가 정확히 가리키는 tip 만 한 번에 읽고, ancestor 판정은 그래프 표시/사용자 액션에 맡긴다.
  * @param repoRoot 저장소 루트
- * @param hashes   확인할 reflog commit hash 목록
  */
-async function currentRefsByHash(
-  repoRoot: string,
-  hashes: string[]
-): Promise<Map<string, ReflogCurrentRef[]>> {
-  const uniqueHashes = Array.from(new Set(hashes.map((hash) => hash.trim()).filter(Boolean)));
+async function currentTipRefsByHash(repoRoot: string): Promise<Map<string, ReflogCurrentRef[]>> {
   const result = new Map<string, ReflogCurrentRef[]>();
-  for (const hash of uniqueHashes) {
-    result.set(hash, await currentRefsForHash(repoRoot, hash));
+  try {
+    const out = await runGit([
+      "for-each-ref",
+      "--format=%(objectname)%x1f%(*objectname)%x1f%(refname)%x00",
+      "refs/heads",
+      "refs/remotes",
+      "refs/tags",
+    ], repoRoot, { retryOnLock: false });
+    out.split(RS).forEach((raw) => {
+      const [objectHash, peeledHash, refName] = raw.split(FS);
+      const hash = (peeledHash || objectHash)?.trim();
+      const ref = currentRefFromName(refName?.trim() || "");
+      if (hash && ref) {
+        pushCurrentRef(result, hash, ref);
+      }
+    });
+  } catch {
+    return result;
   }
   return result;
 }
 
 /**
- * reflog commit 객체가 아직 저장소에 남아 있는지 hash 별로 확인한다.
+ * 빠른 기본 조회에서 reflog commit 이 존재한다고 간주하는 캐시를 만든다.
+ * - `git reflog --format=%H` 가 성공했다면 UI 표시와 복구 액션은 우선 가능하다고 보고, 실패는 실제 액션에서 처리한다.
+ * - object 만료 검증은 사용자가 느린 object 스캔을 요청했을 때 batch-check 로 수행한다.
+ * @param hashes HEAD reflog 에서 읽은 commit hash 목록
+ */
+function assumedExistingCommitsByHash(hashes: string[]): Map<string, boolean> {
+  const uniqueHashes = Array.from(new Set(hashes.map((hash) => hash.trim()).filter(Boolean)));
+  return new Map(uniqueHashes.map((hash) => [hash, true]));
+}
+
+/**
+ * reflog commit 객체가 아직 저장소에 남아 있는지 한 번의 batch-check 로 확인한다.
  * @param repoRoot 저장소 루트
  * @param hashes   확인할 reflog commit hash 목록
  */
@@ -312,31 +361,32 @@ async function existingCommitsByHash(
   hashes: string[]
 ): Promise<Map<string, boolean>> {
   const uniqueHashes = Array.from(new Set(hashes.map((hash) => hash.trim()).filter(Boolean)));
-  const result = new Map<string, boolean>();
-  for (const hash of uniqueHashes) {
-    result.set(hash, await commitExists(repoRoot, hash));
+  const result = new Map(uniqueHashes.map((hash) => [hash, true]));
+  if (uniqueHashes.length === 0) {
+    return result;
+  }
+  try {
+    const input = `${uniqueHashes.map((hash) => `${hash}^{commit}`).join("\n")}\n`;
+    const out = await runGitWithInput(
+      ["cat-file", "--batch-check=%(objecttype)"],
+      repoRoot,
+      input,
+      { retryOnLock: false }
+    );
+    const lines = out.split(/\r?\n/);
+    uniqueHashes.forEach((hash, index) => {
+      result.set(hash, lines[index]?.trim() === "commit");
+    });
+  } catch {
+    uniqueHashes.forEach((hash) => result.set(hash, true));
   }
   return result;
 }
 
 /**
- * 지정한 hash 가 commit object 로 남아 있는지 확인한다.
- * @param repoRoot 저장소 루트
- * @param hash     확인할 commit hash
- */
-async function commitExists(repoRoot: string, hash: string): Promise<boolean> {
-  try {
-    await runGit(["cat-file", "-e", `${hash}^{commit}`], repoRoot);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * 현재 ref 포함 여부와 object 존재 여부로 복구 가능 상태를 만든다.
  * @param exists      commit object 존재 여부
- * @param currentRefs 이 commit 을 현재 포함하는 ref 목록
+ * @param currentRefs 이 commit 을 현재 tip 으로 가리키는 ref 목록
  */
 function recoveryStateFor(
   exists: boolean,
@@ -353,43 +403,29 @@ function recoveryStateFor(
     return {
       kind: "reachable",
       available: false,
-      reason: "Commit is already reachable from an existing ref.",
+      reason: "Commit is already the tip of an existing ref.",
     };
   }
   return {
     kind: "recoverable",
     available: true,
-    reason: "Create a branch at this reflog commit to preserve it.",
+    reason: "Create a branch at this reflog commit if you need a named restore point.",
   };
 }
 
 /**
- * 한 commit 을 포함하는 현재 ref 목록을 읽는다.
- * - reflog 에 남아 있지만 어떤 ref 도 포함하지 않으면 브랜치 흐름에서 떨어진 복구 후보로 본다.
- * @param repoRoot 저장소 루트
- * @param hash     확인할 commit hash
+ * hash 별 ref 목록에 현재 ref 를 중복 없이 추가한다.
+ * @param result hash 별 ref 목록
+ * @param hash   ref tip commit hash
+ * @param ref    추가할 ref 정보
  */
-async function currentRefsForHash(
-  repoRoot: string,
-  hash: string
-): Promise<ReflogCurrentRef[]> {
-  try {
-    const out = await runGit([
-      "for-each-ref",
-      `--contains=${hash}`,
-      "--format=%(refname)",
-      "refs/heads",
-      "refs/remotes",
-      "refs/tags",
-    ], repoRoot);
-    const refs = out
-      .split("\n")
-      .map((line) => currentRefFromName(line.trim()))
-      .filter((ref): ref is ReflogCurrentRef => Boolean(ref));
-    return dedupeCurrentRefs(refs).slice(0, 12);
-  } catch {
-    return [];
-  }
+function pushCurrentRef(
+  result: Map<string, ReflogCurrentRef[]>,
+  hash: string,
+  ref: ReflogCurrentRef
+): void {
+  const refs = dedupeCurrentRefs([...(result.get(hash) || []), ref]).slice(0, 12);
+  result.set(hash, refs);
 }
 
 /**
@@ -479,19 +515,17 @@ function checkoutMoveFromMessage(message: string): ReflogCheckoutMove | undefine
 
 /**
  * 현재 ref 포함 여부와 과거 reflog 근거로 브랜치 흐름 관계를 분류한다.
- * @param currentRefs  현재 이 commit 을 포함하는 ref 목록
+ * @param currentRefs  현재 이 commit 을 tip 으로 가리키는 ref 목록
  * @param branchSources 과거 branch reflog 에서 관찰된 근거
- * @param checkoutMove HEAD checkout 이동 근거
  */
 function flowStatusFor(
   currentRefs: ReflogCurrentRef[],
-  branchSources: ReflogBranchSource[],
-  checkoutMove?: ReflogCheckoutMove
+  branchSources: ReflogBranchSource[]
 ): ReflogFlowStatus {
   if (currentRefs.length > 0) {
     return "reachable";
   }
-  if (branchSources.length > 0 || checkoutMove) {
+  if (branchSources.length > 0) {
     return "dropped";
   }
   return "detached";

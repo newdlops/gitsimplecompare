@@ -854,6 +854,11 @@
           "default": false,
           "description": "%config.blameLine.show.desc%"
         },
+        "gitSimpleCompare.pullRequestComments.show": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.pullRequestComments.show.desc%"
+        },
         "gitSimpleCompare.aiCliProvider": {
           "type": "string",
           "enum": [

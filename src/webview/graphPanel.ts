@@ -199,7 +199,7 @@ export class GitGraphPanel {
         await sendGraphReflog({
           repoRoot: this.logService.repoRoot,
           post: (message) => this.post(message),
-        });
+        }, { includeUnreachable: msg.includeUnreachable });
       } else if (msg.type === "ensureCommitVisible") {
         await ensureGraphCommitVisible({
           repoRoot: this.logService.repoRoot,

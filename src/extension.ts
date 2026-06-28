@@ -15,6 +15,7 @@ import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
 import { ConflictMarkerDecoratorController } from "./providers/conflictMarkerDecoratorController";
+import { PullRequestCommentController } from "./providers/pullRequestCommentController";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
@@ -74,6 +75,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);
   context.subscriptions.push(blameDecorations.register());
+  const prCommentDecorations = new PullRequestCommentController(registry);
+  context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri,
     hunkCheckboxes
@@ -123,6 +126,7 @@ export function activate(context: vscode.ExtensionContext): void {
       GitGraphPanel.refreshOpen(repoRoot, reason);
     }
     pendingGraphRefreshRoots.clear();
+    prCommentDecorations.refresh(reason);
     if (conflictsVisible) {
       void conflicts.refresh();
     }

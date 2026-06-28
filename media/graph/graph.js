@@ -190,7 +190,7 @@
     const date = formatDate(row.dateIso);
     const badge = localOnlyBranches.length ? `<span class="local-only-badge" title="${esc(`local only: ${localOnlyBranches.join(", ")}`)}">-local only-</span>` : "";
     el.innerHTML =
-      refs +
+      refs + `<code class="commit-hash" title="${esc(row.hash)}">${esc((row.hash || "").slice(0, 10))}</code>` +
       `<span class="subject">${esc(row.subject)}</span>` +
       `<span class="meta">${esc(row.authorName)} · ${esc(date)}</span>` + badge;
 
