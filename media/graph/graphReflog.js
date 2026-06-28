@@ -1,5 +1,5 @@
 // 그래프 toolbar 의 reflog 복구 패널.
-// - HEAD reflog 를 보여주고, 각 지점에서 브랜치 생성/checkout/hash 복사를 직접 실행한다.
+// - HEAD/branch reflog 를 보여주고, 각 지점에서 브랜치 생성/checkout/hash 복사를 직접 실행한다.
 (function () {
   "use strict";
 
@@ -160,7 +160,7 @@
   /** 현재 패널 상태 문구를 만든다. */
   function statusText() {
     if (loading) {
-      return loadingObjects ? "Scanning reflog objects..." : "Loading HEAD reflog...";
+      return loadingObjects ? "Scanning reflog objects..." : "Loading reflog...";
     }
     const visible = visibleEntryCount();
     return visible > 0
@@ -173,7 +173,7 @@
     const counts = window.GscGraphReflogModel?.counts?.(entries) || { flow: 0, dropped: 0, timeline: 0, object: 0 };
     const note = objectScan
       ? "Objects come from git fsck and may disappear after garbage collection."
-      : "Fast loading reads HEAD reflog only.";
+      : "Fast loading reads HEAD and branch reflogs.";
     return `<span class="reflog-summary-chip reflog-relation-flow">Branch flow ${esc(counts.flow)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-dropped">Dropped ${esc(counts.dropped)}</span>` +
       `<span class="reflog-summary-chip reflog-relation-timeline">Timeline ${esc(counts.timeline)}</span>` +
@@ -364,19 +364,20 @@
       recoveryLabel: modelRecoveryLabel(entry),
       status: virtualStatusLabel(entry, Boolean(row)),
       event: eventLabel(entry),
-      subject: entry.message || "HEAD reflog entry",
+      subject: entry.message || "Reflog entry",
       title: eventMarkerTitle(entry, index, Boolean(rowForHash(fromHash)), Boolean(row)),
     };
   }
 
   /** 가상 HEAD 이벤트 marker tooltip 을 만든다. */
   function eventMarkerTitle(entry, index, fromLoaded, toLoaded) {
-    const from = shortHash(entry.transition?.fromHash) || "unknown";
+    const from = entry.source === "branch" ? (entry.shortSelector || "branch") : shortHash(entry.transition?.fromHash) || "unknown";
     const to = shortHash(entry.hash);
+    const move = entry.source === "branch" ? to : `${from} -> ${to}`;
     const placement = fromLoaded || toLoaded ? "between visible commits" : "off current graph";
     const code = entryCode(entry, index);
     const anchor = objectAnchorText(entry);
-    return `${sourceLabel(entry)} ${code}: ${from} -> ${to} | ${modelRecoveryLabel(entry)} | ${eventLabel(entry)} | ${anchor || relationSummary(entry, toLoaded)} | ${placement}`;
+    return `${sourceLabel(entry)} ${code}: ${move} | ${modelRecoveryLabel(entry)} | ${eventLabel(entry)} | ${anchor || relationSummary(entry, toLoaded)} | ${placement}`;
   }
 
   /** 가상 branch node 옆에 붙일 상태 라벨을 만든다. */
@@ -414,17 +415,17 @@
 
   /** 모델의 관계 설명을 안전하게 호출한다. */
   function relationSummary(entry, loaded) {
-    return window.GscGraphReflogModel?.relationSummary?.(entry, loaded) || "HEAD reflog entry.";
+    return window.GscGraphReflogModel?.relationSummary?.(entry, loaded) || "Reflog entry.";
   }
 
   /** 항목 출처에 맞는 짧은 번호를 만든다. */
   function entryCode(entry, index) {
-    return `${entry?.source === "unreachable" ? "O" : "R"}${index + 1}`;
+    return `${entry?.source === "unreachable" ? "O" : entry?.source === "branch" ? "B" : "R"}${index + 1}`;
   }
 
   /** 항목 출처를 사용자에게 보여줄 짧은 라벨로 바꾼다. */
   function sourceLabel(entry) {
-    return entry?.source === "unreachable" ? "Unreachable object" : "HEAD reflog";
+    return entry?.source === "unreachable" ? "Unreachable object" : entry?.source === "branch" ? "Branch reflog" : "HEAD reflog";
   }
 
   /** object 항목의 drop 근거 중 가장 가까운 항목 하나를 고른다. */

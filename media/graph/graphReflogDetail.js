@@ -68,10 +68,10 @@
   /** 상세 상단의 hash, selector, 날짜 메타 정보를 만든다. */
   function metaHtml(entry, index, hash) {
     return `<div class="commit-meta reflog-detail-meta">` +
-      `<span>${esc(entry.source === "unreachable" ? "O" : "R")}${esc(index + 1)}</span>` +
+      `<span>${esc(entry.source === "unreachable" ? "O" : entry.source === "branch" ? "B" : "R")}${esc(index + 1)}</span>` +
       `<span>${esc(hash.slice(0, 10))}</span>` +
       `<span>${esc(entry.shortSelector || entry.selector || "")}</span>` +
-      `<span>${esc(entry.source === "unreachable" ? "Unreachable object" : "HEAD reflog")}</span>` +
+      `<span>${esc(entry.source === "unreachable" ? "Unreachable object" : entry.source === "branch" ? "Branch reflog" : "HEAD reflog")}</span>` +
       `<span class="commit-date">${esc(formatDate(entry.dateIso))}</span>` +
       `</div>`;
   }
@@ -189,6 +189,13 @@
         sourceRow("Placement", drop ? `Dropped from ${drop.name} at ${formatDate(drop.dateIso)}` : "Estimated by parent or commit date") +
         `</section>`;
     }
+    if (entry.source === "branch") {
+      return `<section class="reflog-detail-section">` +
+      `<h3>Branch Reflog Update</h3>` +
+      sourceRow("Ref", entry.shortSelector || entry.selector || "branch reflog") +
+      sourceRow("After", shortHash(entry.hash)) +
+      `</section>`;
+    }
     const from = shortHash(entry.transition?.fromHash) || "unknown";
     const to = shortHash(entry.hash);
     return `<section class="reflog-detail-section">` +
@@ -200,7 +207,7 @@
 
   /** reflog 로 과거 HEAD 상태를 복구하는 흐름을 짧게 표시한다. */
   function recoveryHtml(entry) {
-    const relation = window.GscGraphReflogModel?.relationLabel?.(entry, false) || "HEAD state";
+    const relation = window.GscGraphReflogModel?.relationLabel?.(entry, false) || "reflog state";
     const kind = recoveryKind(entry);
     if (kind === "expired") {
       return `<section class="reflog-detail-section">` +
@@ -226,9 +233,9 @@
     }
     return `<section class="reflog-detail-section">` +
       `<h3>Recovery Flow</h3>` +
-      sourceRow("1 Inspect", "Show this HEAD state in the graph") +
+      sourceRow("1 Inspect", "Show this reflog state in the graph") +
       sourceRow("2 Preserve", `Recover Branch at ${shortHash(entry.hash)} (${relation})`) +
-      sourceRow("3 Restore", "Restore an existing branch to this HEAD state after confirming the graph") +
+      sourceRow("3 Restore", "Restore an existing branch to this reflog state after confirming the graph") +
       `</section>`;
   }
 
@@ -257,7 +264,7 @@
     }
     return entry?.source === "unreachable"
       ? "Recover by creating branch at this object"
-      : "Recover by creating branch at this HEAD state";
+      : "Recover by creating branch at this reflog state";
   }
 
   /** 기존 브랜치 복구 버튼 tooltip 을 만든다. */

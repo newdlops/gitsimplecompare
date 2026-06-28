@@ -21,7 +21,7 @@
   function relationLabel(entry, loaded) {
     const state = flowState(entry);
     if (state === "flow") {
-      return loaded ? "HEAD flow" : "Reachable HEAD";
+      return loaded ? `${sourcePrefix(entry)} flow` : `Reachable ${sourcePrefix(entry)}`;
     }
     if (state === "dropped") {
       return loaded ? "Dropped state" : "Dropped state";
@@ -29,7 +29,7 @@
     if (state === "object") {
       return loaded ? "Unreachable object" : "Unreachable object";
     }
-    return loaded ? "HEAD timeline" : "HEAD timeline";
+    return `${sourcePrefix(entry)} timeline`;
   }
 
   /** reflog 이벤트 종류를 짧은 사람이 읽는 라벨로 바꾼다. */
@@ -107,18 +107,18 @@
     const refs = currentRefNames(entry).join(", ");
     if (state === "flow") {
       const where = refs ? ` from ${refs}` : "";
-      return `HEAD moved to a commit that is still reachable${where}.`;
+      return `${sourcePrefix(entry)} moved to a commit that is still reachable${where}.`;
     }
     if (state === "dropped") {
       const origin = originText(entry);
-      return `HEAD moved to a commit that no current branch, remote, or tag contains${origin ? `; reflog links it to ${origin}` : ""}.`;
+      return `${sourcePrefix(entry)} moved to a commit that no current branch, remote, or tag contains${origin ? `; reflog links it to ${origin}` : ""}.`;
     }
     if (state === "object") {
       const origin = originText(entry);
       const drop = dropText(entry);
       return `Git fsck found this commit object outside current refs and HEAD reflog${origin ? `; old reflog evidence links it to ${origin}` : ""}${drop ? `; dropped when ${drop}` : ""}.`;
     }
-    return "HEAD moved through this point in local reflog time order.";
+    return `${sourcePrefix(entry)} moved through this point in local reflog time order.`;
   }
 
   /** 상세 뷰에서 복구 판단을 돕는 짧은 힌트를 만든다. */
@@ -126,11 +126,11 @@
     const state = flowState(entry);
     if (state === "flow") {
       return loaded
-        ? "This HEAD state is already part of a reachable branch flow."
+        ? `This ${sourcePrefix(entry)} state is already part of a reachable branch flow.`
         : "Create a branch only if you need a named recovery point.";
     }
     if (state === "dropped") {
-      return "Recover this HEAD state by creating a branch at the target commit before checkout or rebase.";
+      return `Recover this ${sourcePrefix(entry)} state by creating a branch at the target commit before checkout or rebase.`;
     }
     if (state === "object") {
       return "Create a branch at this object before Git garbage collection removes it.";
@@ -296,6 +296,11 @@
   /** raw hash 처럼 보이는 값은 브랜치명으로 표시하지 않기 위해 판별한다. */
   function looksLikeHash(value) {
     return /^[0-9a-f]{7,40}$/i.test(String(value || ""));
+  }
+
+  /** reflog 출처를 짧은 표시명으로 바꾼다. */
+  function sourcePrefix(entry) {
+    return entry?.source === "branch" ? "Branch" : "HEAD";
   }
 
   /** 좁은 그래프 badge 안에서 과하게 긴 라벨을 줄인다. */

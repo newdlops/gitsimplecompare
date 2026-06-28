@@ -1,6 +1,7 @@
 // git reflog 조회 전용 서비스.
 // - 그래프 UI 에서 히스토리 복구 후보를 보여주고, 사용자가 브랜치를 만들어 수동 복구할 수 있게 한다.
 import { runGit, runGitWithInput } from "./gitExec";
+import { visibleBranchReflogRecords } from "./reflogBranchRecords";
 import {
   directDropSourcesByHash,
   inheritedDropSourcesByHash,
@@ -55,7 +56,7 @@ export interface ReflogRecoveryState {
 export type ReflogFlowStatus = "reachable" | "dropped" | "detached" | "unreachable";
 
 /** recovery 패널에 표시하는 항목이 어떤 git 기록에서 왔는지 나타내는 출처 */
-export type ReflogEntrySource = "head" | "unreachable";
+export type ReflogEntrySource = "head" | "branch" | "unreachable";
 
 /** reflog 메시지를 UI 에서 빠르게 이해할 수 있도록 분류한 이벤트 종류 */
 export type ReflogEventKind =
@@ -105,8 +106,8 @@ export interface ReflogReadOptions {
 }
 
 /**
- * 저장소의 HEAD reflog 를 최신 항목부터 읽는다.
- * - 기본 경로는 터미널 `git reflog` 처럼 빠르게 보여주기 위해 HEAD reflog 만 읽는다.
+ * 저장소의 HEAD/branch reflog 를 최신 항목부터 읽는다.
+ * - 기본 경로는 터미널 `git reflog --all` 처럼 빠르게 보여주기 위해 ref 포함 여부 검사는 생략한다.
  * - dangling/unreachable object 스캔은 대형 저장소에서 매우 비싸므로 사용자가 명시 요청할 때만 포함한다.
  * @param repoRoot 저장소 루트
  * @param input    읽을 최대 항목 수 또는 조회 옵션
@@ -118,33 +119,40 @@ export async function readReflogEntries(
 ): Promise<ReflogEntry[]> {
   const options = normalizeReadOptions(input);
   const safeLimit = options.limit;
+  const allLimit = options.includeUnreachable
+    ? Math.max(240, safeLimit * 6)
+    : Math.max(120, safeLimit * 3);
   const [headOut, allOut, currentRefs] = await Promise.all([
     runGit(reflogArgs(safeLimit, "HEAD"), repoRoot),
-    options.includeUnreachable
-      ? runGit(reflogArgs(Math.max(240, safeLimit * 6), "--all"), repoRoot)
-      : Promise.resolve(""),
+    runGit(reflogArgs(allLimit, "--all"), repoRoot),
     options.includeUnreachable
       ? currentTipRefsByHash(repoRoot)
       : Promise.resolve(new Map<string, ReflogCurrentRef[]>()),
   ]);
   const headRecords = parseReflogRecords(headOut);
   const allRecords = parseReflogRecords(allOut);
+  const branchRecords = visibleBranchReflogRecords(allRecords, headRecords, safeLimit * 2);
   const branchSources = branchSourcesByHash(allRecords);
   const directDropSources = directDropSourcesByHash(allRecords);
-  const headHashes = new Set(headRecords.map((record) => record.hash));
+  const reflogRecords = [...headRecords, ...branchRecords];
+  const reflogHashes = new Set(reflogRecords.map((record) => record.hash));
   const objectRecords = options.includeUnreachable
     ? (await readUnreachableCommitRecords(repoRoot, safeLimit))
-      .filter((record) => !headHashes.has(record.hash))
+      .filter((record) => !reflogHashes.has(record.hash))
     : [];
   const objectDropSources = inheritedDropSourcesByHash(
     objectRecords,
     directDropSources
   );
   const existingCommits = options.includeUnreachable
-    ? await existingCommitsByHash(repoRoot, headRecords.map((record) => record.hash))
-    : assumedExistingCommitsByHash(headRecords.map((record) => record.hash));
+    ? await existingCommitsByHash(repoRoot, reflogRecords.map((record) => record.hash))
+    : assumedExistingCommitsByHash(reflogRecords.map((record) => record.hash));
+  const reflogEntries = [
+    ...headRecords.map((record, index) => reflogEntryFromRecord("head", record, index, headRecords, branchSources, directDropSources, currentRefs, existingCommits)),
+    ...branchRecords.map((record, index) => reflogEntryFromRecord("branch", record, index, branchRecords, branchSources, directDropSources, currentRefs, existingCommits)),
+  ].sort((a, b) => entryTime(b) - entryTime(a));
   return [
-    ...headRecords.map((record, index) => headEntryFromRecord(record, index, headRecords, branchSources, directDropSources, currentRefs, existingCommits)),
+    ...reflogEntries,
     ...objectRecords.map((record) => unreachableEntryFromRecord(record, branchSources, objectDropSources, currentRefs)),
   ];
 }
@@ -162,19 +170,21 @@ function normalizeReadOptions(input: number | ReflogReadOptions): Required<Reflo
 }
 
 /**
- * HEAD reflog record 를 UI 에서 쓰는 복구 항목으로 변환한다.
+ * HEAD/branch reflog record 를 UI 에서 쓰는 복구 항목으로 변환한다.
+ * @param source          reflog record 출처
  * @param record          HEAD reflog 원본 record
  * @param index           HEAD reflog 안에서의 최신순 위치
- * @param headRecords     fromHash 계산에 쓰는 HEAD reflog 전체 목록
+ * @param records         HEAD fromHash 계산에 쓰는 reflog 목록
  * @param branchSources   같은 commit 을 관찰한 branch reflog 근거
  * @param dropSources     이 commit 이 branch tip 에서 밀려난 reflog 근거
  * @param currentRefs     현재 commit 을 tip 으로 가리키는 ref 근거
  * @param existingCommits commit object 존재 여부 캐시
  */
-function headEntryFromRecord(
+function reflogEntryFromRecord(
+  source: "head" | "branch",
   record: ParsedReflogRecord,
   index: number,
-  headRecords: ParsedReflogRecord[],
+  records: ParsedReflogRecord[],
   branchSources: Map<string, ReflogBranchSource[]>,
   dropSources: Map<string, ReflogDropSource[]>,
   currentRefs: Map<string, ReflogCurrentRef[]>,
@@ -182,11 +192,11 @@ function headEntryFromRecord(
 ): ReflogEntry {
   const sources = branchSources.get(record.hash) || [];
   const refs = currentRefs.get(record.hash) || [];
-  const checkoutMove = checkoutMoveFromMessage(record.message);
-  const fromHash = headRecords[index + 1]?.hash;
+  const checkoutMove = source === "head" ? checkoutMoveFromMessage(record.message) : undefined;
+  const fromHash = source === "head" ? records[index + 1]?.hash : undefined;
   return {
     ...record,
-    source: "head",
+    source,
     branchSources: sources,
     dropSources: dropSources.get(record.hash) || [],
     currentRefs: refs,
@@ -200,6 +210,12 @@ function headEntryFromRecord(
     flowStatus: flowStatusFor(refs, sources),
     eventKind: eventKindFromMessage(record.message),
   };
+}
+
+/** reflog entry 의 날짜를 정렬 가능한 timestamp 로 변환한다. */
+function entryTime(entry: Pick<ReflogEntry, "dateIso">): number {
+  const value = entry.dateIso ? Date.parse(entry.dateIso) : 0;
+  return Number.isFinite(value) ? value : 0;
 }
 
 /**

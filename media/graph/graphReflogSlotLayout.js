@@ -41,15 +41,20 @@
     const rowCount = rows.length;
     const fromIndex = rowIndex(marker.fromRow, rowHeight);
     const toIndex = rowIndex(marker.toRow, rowHeight);
-    let insertAt = rowCount;
+    let insertAt;
     if (marker.flow === "object") {
-      insertAt = objectInsertAt(marker, rows, rowHeight, rowCount);
+      insertAt = objectInsertAt(marker, rows, rowHeight);
     } else if (fromIndex != null && toIndex != null && fromIndex !== toIndex) {
       insertAt = Math.min(fromIndex, toIndex) + 1;
     } else if (toIndex != null) {
       insertAt = toIndex + 1;
     } else if (fromIndex != null) {
       insertAt = fromIndex + 1;
+    } else {
+      insertAt = dateInsertAt(marker.dateIso, rows);
+    }
+    if (insertAt == null) {
+      return undefined;
     }
     return { marker, insertAt: Math.min(Math.max(0, insertAt), rowCount) };
   }
@@ -59,9 +64,8 @@
    * @param {object} marker object marker
    * @param {Element[]} rows 현재 렌더된 commit row 목록
    * @param {number} rowHeight graph row 높이
-   * @param {number} rowCount commit row 수
    */
-  function objectInsertAt(marker, rows, rowHeight, rowCount) {
+  function objectInsertAt(marker, rows, rowHeight) {
     const parentIndex = minRowIndex(marker.parentRows, rowHeight);
     if (parentIndex != null) {
       return parentIndex;
@@ -70,8 +74,7 @@
     if (dropIndex != null) {
       return dropIndex + 1;
     }
-    const dateIndex = dateInsertAt(marker.dateIso, rows);
-    return dateIndex == null ? rowCount : dateIndex;
+    return dateInsertAt(marker.dateIso, rows);
   }
 
   /**
@@ -88,12 +91,15 @@
 
   /**
    * commit date 기준으로 들어갈 row index 를 추정한다.
+   * - 현재 로드된 날짜 범위보다 오래된 항목은 하단에 붙이지 않는다.
+   * - 무한스크롤로 older commit 이 추가될 때 marker 가 계속 도망가는 경험을 막기 위해,
+   *   실제 날짜 범위 안에 들어왔을 때만 가상 row 를 만든다.
    * @param {string} dateIso object commit date
    * @param {Element[]} rows 현재 렌더된 commit row 목록
    */
   function dateInsertAt(dateIso, rows) {
     const time = Date.parse(dateIso || "");
-    if (!Number.isFinite(time)) {
+    if (!Number.isFinite(time) || !rows.length) {
       return undefined;
     }
     for (let index = 0; index < rows.length; index += 1) {
@@ -102,7 +108,7 @@
         return index;
       }
     }
-    return rows.length;
+    return undefined;
   }
 
   /**

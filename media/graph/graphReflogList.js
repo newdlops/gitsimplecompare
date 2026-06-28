@@ -110,7 +110,7 @@
   function model() { return window.GscGraphReflogModel; }
   function flowState(entry) { return model()?.flowState?.(entry) || "timeline"; }
   function relationLabel(entry, loaded) { return model()?.relationLabel?.(entry, loaded) || (loaded ? "On graph" : "Timeline"); }
-  function relationSummary(entry, loaded) { return model()?.relationSummary?.(entry, loaded) || "HEAD reflog entry."; }
+  function relationSummary(entry, loaded) { return model()?.relationSummary?.(entry, loaded) || "Reflog entry."; }
   function eventLabel(entry) { return model()?.eventLabel?.(entry) || "Reflog update"; }
   function recoveryKind(entry) { return model()?.recoveryKind?.(entry) || "reachable"; }
   function recoveryLabel(entry) { return model()?.recoveryLabel?.(entry) || "On branch"; }
@@ -123,16 +123,17 @@
       if (drop) return `dropped when ${dropLabel(drop)} moved ${shortHash(drop.fromHash)} -> ${shortHash(drop.toHash)}`;
       return parent ? `object ${shortHash(entry.hash)} after parent ${parent}` : `object ${shortHash(entry.hash)} placed by commit date`;
     }
+    if (entry?.source === "branch") return `ref update -> ${shortHash(entry.hash)}`;
     return `HEAD ${shortHash(entry.transition?.fromHash) || "unknown"} -> ${shortHash(entry.hash)}`;
   }
 
-  function entryCode(entry, index) { return `${entry?.source === "unreachable" ? "O" : "R"}${index + 1}`; }
-  function sourceLabel(entry) { return entry?.source === "unreachable" ? "Unreachable object" : "HEAD reflog"; }
+  function entryCode(entry, index) { return `${entry?.source === "unreachable" ? "O" : entry?.source === "branch" ? "B" : "R"}${index + 1}`; }
+  function sourceLabel(entry) { return entry?.source === "unreachable" ? "Unreachable object" : entry?.source === "branch" ? "Branch reflog" : "HEAD reflog"; }
   function firstDropSource(entry) { return Array.isArray(entry?.dropSources) ? entry.dropSources[0] : undefined; }
   function dropLabel(source) { return `${source?.name || "unknown branch"}${source?.viaHash ? ` via ${shortHash(source.viaHash)}` : ""}`; }
   function recoverButtonTitle(entry, canRecover) {
     if (!canRecover) return entry.recovery?.reason || "This recovery entry is not a branch target";
-    return entry?.source === "unreachable" ? "Recover by creating branch at this object" : "Recover by creating branch at this HEAD state";
+    return entry?.source === "unreachable" ? "Recover by creating branch at this object" : "Recover by creating branch at this reflog state";
   }
   function restoreButtonTitle(entry, canRecover) {
     if (!canRecover) return entry.recovery?.reason || "This recovery entry is not a branch target";
