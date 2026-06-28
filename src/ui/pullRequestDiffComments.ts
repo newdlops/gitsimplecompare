@@ -1,18 +1,28 @@
 // PR preview 에서 연 editable diff 오른쪽 파일에 review comment 를 decoration 으로 표시한다.
-// - VS Code comment API thread 를 만들지는 않고, diff 편집 흐름을 방해하지 않는 after decoration 으로 보여준다.
+// - 본문 뒤 여백을 만들지 않고, VS Code CommentThread marker 로 접고 펼칠 수 있게 보여준다.
 import * as vscode from "vscode";
+import { pullRequestCommentMarkdown } from "./pullRequestCommentMarkdown";
 
 export interface PullRequestDiffComment {
   author: string;
   body: string;
+  diffHunk?: string;
   line?: number;
+  startLine?: number;
   originalLine?: number;
+  originalStartLine?: number;
   side?: string;
+  startSide?: string;
   createdAt?: string;
+  url?: string;
 }
+
+const COMMENT_CONTROLLER_ID = "gitSimpleComparePrPreviewComments";
 
 let activeDecoration: vscode.TextEditorDecorationType | undefined;
 let activeTarget: { uri: vscode.Uri; comments: PullRequestDiffComment[] } | undefined;
+let activeCommentController: vscode.CommentController | undefined;
+let activeThreads = new Map<string, vscode.CommentThread>();
 let visibleEditorsListener: vscode.Disposable | undefined;
 
 /**
@@ -27,30 +37,30 @@ export function showPullRequestDiffComments(
   activeDecoration?.dispose();
   activeDecoration = undefined;
   activeTarget = undefined;
+  clearActiveThreads();
   const visible = comments.filter((comment) => targetLine(comment));
   if (!visible.length) {
     return;
   }
-  activeDecoration = vscode.window.createTextEditorDecorationType({
-    after: {
-      margin: "0 0 0 0.65rem",
-      width: "14px",
-      height: "14px",
-      color: new vscode.ThemeColor("button.foreground"),
-      backgroundColor: new vscode.ThemeColor("button.background"),
-      border: "1px solid",
-      borderColor: new vscode.ThemeColor("focusBorder"),
-      fontWeight: "700",
-      textDecoration: "none; display: inline-block; font-family: codicon; font-size: 12px; line-height: 14px; text-align: center; padding: 0 2px; border-radius: 999px; transform: scale(1.35); transform-origin: center",
-    },
-    overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.infoForeground"),
-    overviewRulerLane: vscode.OverviewRulerLane.Right,
-  });
+  activeDecoration = createOverviewDecorationType();
+  ensureCommentController();
   activeTarget = { uri: fileUri, comments: visible };
   ensureVisibleEditorsListener();
   scheduleApply(fileUri, visible, 250);
   scheduleApply(fileUri, visible, 900);
   scheduleApply(fileUri, visible, 1600);
+}
+
+/** 확장 비활성화 시 PR preview comment 표시 리소스를 모두 정리한다. */
+export function disposePullRequestDiffComments(): void {
+  activeDecoration?.dispose();
+  activeDecoration = undefined;
+  activeTarget = undefined;
+  clearActiveThreads();
+  activeCommentController?.dispose();
+  activeCommentController = undefined;
+  visibleEditorsListener?.dispose();
+  visibleEditorsListener = undefined;
 }
 
 /** diff editor 가 열린 뒤 보이는 editor 에 decoration 을 적용한다. */
@@ -71,16 +81,26 @@ function applyComments(fileUri: vscode.Uri, comments: PullRequestDiffComment[]):
     if (editor.document.uri.toString() !== fileUri.toString()) {
       continue;
     }
-    editor.setDecorations(activeDecoration, groupedComments(editor.document.lineCount, comments).map(commentDecoration));
+    const groups = groupedComments(editor.document.lineCount, comments);
+    editor.setDecorations(activeDecoration, groups.map(overviewDecoration));
+    for (const group of groups) {
+      createCollapsedThread(editor, group);
+    }
   }
 }
 
-/** comment 한 건을 VS Code decoration option 으로 변환한다. */
-function commentDecoration(group: { line: number; comments: PullRequestDiffComment[] }): vscode.DecorationOptions {
+/** 본문 뒤 여백 없는 overview ruler 전용 decoration type 을 만든다. */
+function createOverviewDecorationType(): vscode.TextEditorDecorationType {
+  return vscode.window.createTextEditorDecorationType({
+    overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.infoForeground"),
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
+}
+
+/** comment group 을 overview ruler decoration option 으로 변환한다. */
+function overviewDecoration(group: { line: number; comments: PullRequestDiffComment[] }): vscode.DecorationOptions {
   return {
     range: new vscode.Range(group.line, Number.MAX_SAFE_INTEGER, group.line, Number.MAX_SAFE_INTEGER),
-    hoverMessage: hoverMarkdown(group.comments),
-    renderOptions: { after: { contentText: "\ueac7" } },
   };
 }
 
@@ -110,6 +130,46 @@ function ensureVisibleEditorsListener(): void {
   });
 }
 
+/** PR preview diff comment 용 VS Code CommentController 를 필요할 때 만든다. */
+function ensureCommentController(): vscode.CommentController {
+  if (!activeCommentController) {
+    activeCommentController = vscode.comments.createCommentController(
+      COMMENT_CONTROLLER_ID,
+      vscode.l10n.t("GitHub PR Preview Comments")
+    );
+  }
+  return activeCommentController;
+}
+
+/** 같은 라인의 review comment 묶음을 접힌 CommentThread 로 만든다. */
+function createCollapsedThread(
+  editor: vscode.TextEditor,
+  group: { line: number; comments: PullRequestDiffComment[] }
+): void {
+  const key = groupKey(editor.document.uri.toString(), group.line);
+  if (activeThreads.has(key)) {
+    return;
+  }
+  const thread = ensureCommentController().createCommentThread(
+    editor.document.uri,
+    editor.document.lineAt(group.line).range,
+    group.comments.map(toVsCodeComment)
+  );
+  thread.label = vscode.l10n.t("PR review comments");
+  thread.contextValue = "gitSimpleCompare.prPreviewReviewComments";
+  thread.canReply = false;
+  thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+  activeThreads.set(key, thread);
+}
+
+/** 열린 PR preview diff comment thread 를 모두 닫고 정리한다. */
+function clearActiveThreads(): void {
+  for (const thread of activeThreads.values()) {
+    thread.dispose();
+  }
+  activeThreads = new Map<string, vscode.CommentThread>();
+}
+
 /** GitHub comment 의 side 정보를 고려해 표시할 대상 line 을 고른다. */
 function targetLine(comment: PullRequestDiffComment): number | undefined {
   const side = (comment.side || "").toUpperCase();
@@ -119,32 +179,27 @@ function targetLine(comment: PullRequestDiffComment): number | undefined {
   return comment.line || comment.originalLine;
 }
 
-/** hover 에서 상세 comment 본문을 markdown 으로 보여준다. */
-function hoverMarkdown(comments: PullRequestDiffComment[]): vscode.MarkdownString {
-  const markdown = new vscode.MarkdownString(undefined, true);
-  markdown.supportHtml = false;
-  markdown.isTrusted = false;
-  comments.forEach((comment, index) => {
-    if (index) {
-      markdown.appendMarkdown("\n\n---\n\n");
-    }
-    markdown.appendMarkdown(`**${escapeMarkdown(comment.author || "unknown")}**`);
-    if (comment.createdAt) {
-      markdown.appendMarkdown(`  ${escapeMarkdown(formatDate(comment.createdAt))}`);
-    }
-    markdown.appendMarkdown("\n\n");
-    markdown.appendMarkdown(comment.body?.trim() || "_No comment body._");
-  });
-  return markdown;
+/** GitHub review comment 를 VS Code Comment API 객체로 바꾼다. */
+function toVsCodeComment(comment: PullRequestDiffComment): vscode.Comment {
+  return {
+    author: { name: comment.author || "unknown" },
+    body: pullRequestCommentMarkdown(comment),
+    contextValue: "gitSimpleCompare.prPreviewReviewComment",
+    mode: vscode.CommentMode.Preview,
+    timestamp: parseDate(comment.createdAt),
+  };
 }
 
-/** markdown 제어 문자가 작성자/날짜 표시를 깨지 않도록 escape 한다. */
-function escapeMarkdown(value: string): string {
-  return value.replace(/([\\`*_{}\[\]()#+\-.!|>])/g, "\\$1");
-}
-
-/** GitHub ISO 날짜를 hover 표시용 문자열로 바꾼다. */
-function formatDate(value: string): string {
+/** GitHub ISO 날짜를 Comment API timestamp 로 바꾼다. */
+function parseDate(value: string | undefined): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/** CommentThread 를 파일 URI 와 line 으로 중복 없이 찾기 위한 key 를 만든다. */
+function groupKey(uri: string, line: number): string {
+  return `${uri}\0${line}`;
 }

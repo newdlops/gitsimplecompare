@@ -6,6 +6,8 @@ import { splitRepositoryName } from "./githubRepository";
 import { PullRequestInfo } from "./pullRequestService";
 import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
 import type { GhPullRequestLabels } from "./pullRequestLabels";
+import { PULL_REQUEST_COMMENT_COUNTS_QUERY, fetchRemainingReviewThreadCommentCounts, totalPullRequestCommentCount } from "./pullRequestCommentCounts";
+import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
 
 /** PR repository-wide 검색 응답 */
 export interface PullRequestSearchResult {
@@ -37,7 +39,7 @@ interface GhPullRequestNumberResponse {
   };
 }
 
-interface GhSearchPullRequest {
+interface GhSearchPullRequest extends GhPullRequestCommentCounts {
   number?: number;
   title?: string;
   state?: string;
@@ -50,7 +52,6 @@ interface GhSearchPullRequest {
   reviewDecision?: string;
   updatedAt?: string;
   labels?: GhPullRequestLabels;
-  comments?: { totalCount?: number };
   files?: { totalCount?: number };
   commits?: {
     nodes?: Array<{ commit?: { oid?: string } }>;
@@ -80,7 +81,7 @@ query($searchQuery: String!, $limit: Int!, $cursor: String) {
         reviewDecision
         updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
-        comments(first: 1) { totalCount }
+${PULL_REQUEST_COMMENT_COUNTS_QUERY}
         files(first: 1) { totalCount }
         commits(first: 100) {
           nodes { commit { oid } }
@@ -106,7 +107,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       reviewDecision
       updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
-      comments(first: 1) { totalCount }
+${PULL_REQUEST_COMMENT_COUNTS_QUERY}
       files(first: 1) { totalCount }
       commits(first: 100) {
         nodes { commit { oid } }
@@ -193,8 +194,10 @@ async function searchPage(
     `query=${PULL_REQUEST_SEARCH_QUERY}`,
   ], repoRoot);
   const search = (JSON.parse(out) as GhSearchResponse).data?.search;
+  const nodes = search?.nodes || [];
+  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, nodes);
   return {
-    pullRequests: (search?.nodes || []).map(toPullRequestInfo).filter((pr) => pr.number > 0),
+    pullRequests: nodes.map((pr) => toPullRequestInfo(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0)).filter((pr) => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
     nextCursor: search?.pageInfo?.endCursor,
     totalCount: search?.issueCount ?? 0,
@@ -225,7 +228,11 @@ async function searchByNumber(
     `query=${PULL_REQUEST_NUMBER_QUERY}`,
   ], repoRoot).catch(() => "");
   const pr = out ? (JSON.parse(out) as GhPullRequestNumberResponse).data?.repository?.pullRequest : undefined;
-  return pr ? toPullRequestInfo(pr) : undefined;
+  if (!pr) {
+    return undefined;
+  }
+  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [pr]);
+  return toPullRequestInfo(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
 }
 
 /** gh repo view 로 owner/name 을 읽는다. */
@@ -240,7 +247,7 @@ function buildSearchQuery(owner: string, name: string, query: string): string {
 }
 
 /** GraphQL PullRequest node 를 graph PR 타입으로 정규화한다. */
-function toPullRequestInfo(pr: GhSearchPullRequest): PullRequestInfo {
+function toPullRequestInfo(pr: GhSearchPullRequest, extraReviewCommentCount = 0): PullRequestInfo {
   return {
     number: Number(pr.number) || 0,
     title: pr.title || "",
@@ -253,7 +260,7 @@ function toPullRequestInfo(pr: GhSearchPullRequest): PullRequestInfo {
     isDraft: Boolean(pr.isDraft),
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,
-    commentCount: pr.comments?.totalCount ?? 0,
+    commentCount: totalPullRequestCommentCount(pr, extraReviewCommentCount),
     fileCount: pr.files?.totalCount ?? 0,
     labels: normalizePullRequestLabels(pr.labels),
     commitHashes: Array.from(new Set([

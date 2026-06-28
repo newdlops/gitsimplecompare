@@ -1,4 +1,4 @@
-// 활성 에디터에 GitHub PR inline review comment 를 after-line decoration 으로 표시한다.
+// 활성 에디터에 GitHub PR inline review comment 를 접힌 comment thread 로 표시한다.
 // - 데이터 조회는 git 서비스에 맡기고, 이 모듈은 VS Code 에디터 표시와 캐싱만 담당한다.
 import * as vscode from "vscode";
 import {
@@ -7,6 +7,7 @@ import {
   PullRequestReviewCommentService,
 } from "../git/pullRequestReviewComments";
 import { GitServiceRegistry } from "../git/serviceRegistry";
+import { pullRequestCommentMarkdown } from "../ui/pullRequestCommentMarkdown";
 import { logInfo } from "../ui/outputLog";
 
 const EXT_CONFIG_SECTION = "gitSimpleCompare";
@@ -15,7 +16,6 @@ const FULL_SHOW_KEY = `${EXT_CONFIG_SECTION}.${SHOW_KEY}`;
 const REFRESH_DELAY_MS = 220;
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const COMMENT_CONTROLLER_ID = "gitSimpleComparePrReviewComments";
-const SHOW_THREAD_COMMAND = "gitSimpleCompare.showPrEditorCommentThread";
 
 interface PullRequestCommentCacheEntry {
   at: number;
@@ -27,22 +27,16 @@ interface PullRequestCommentGroup {
   comments: PullRequestReviewComment[];
 }
 
-interface ShowThreadCommandPayload {
-  uri: string;
-  line: number;
-}
-
 /**
  * 활성 에디터의 GitHub PR review comment 표시를 관리한다.
- * - 라인 끝에는 작은 comment decoration 을 표시한다.
- * - CommentThread 는 hover action 을 선택했을 때만 만들어, 평소 line comment 표시와 중복되지 않게 한다.
+ * - 코멘트가 있는 라인은 VS Code CommentThread marker 로 표시해 gutter 영역에서 접고 펼치게 한다.
+ * - decoration 은 본문 뒤 여백을 쓰지 않고 overview ruler 표시만 담당한다.
  */
 export class PullRequestCommentController implements vscode.Disposable {
   private readonly decoration: vscode.TextEditorDecorationType;
   private readonly commentController: vscode.CommentController;
   private readonly disposables: vscode.Disposable[] = [];
   private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
-  private readonly activeGroups = new Map<string, PullRequestCommentGroup>();
   private readonly activeThreads = new Map<string, vscode.CommentThread>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private requestSeq = 0;
@@ -65,9 +59,6 @@ export class PullRequestCommentController implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor(() =>
         this.scheduleRefresh("activeEditor")
       ),
-      vscode.window.onDidChangeVisibleTextEditors(() =>
-        this.scheduleRefresh("visibleEditors")
-      ),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (isActiveDocument(document)) {
           void this.invalidateActiveRepoCache().finally(() =>
@@ -79,11 +70,7 @@ export class PullRequestCommentController implements vscode.Disposable {
         if (event.affectsConfiguration(FULL_SHOW_KEY)) {
           this.applyConfiguration("configuration");
         }
-      }),
-      vscode.commands.registerCommand(
-        SHOW_THREAD_COMMAND,
-        (payload: ShowThreadCommandPayload) => this.showThread(payload)
-      )
+      })
     );
     this.applyConfiguration("register");
     return this;
@@ -166,12 +153,14 @@ export class PullRequestCommentController implements vscode.Disposable {
     requestId: number
   ): Promise<void> {
     const editor = vscode.window.activeTextEditor;
-    this.clearVisibleDecorations();
-    this.clearActiveGroups();
     if (!isEnabled() || !editor) {
+      this.clearVisibleDecorations();
+      this.clearActiveGroups();
       return;
     }
     if (editor.document.uri.scheme !== "file") {
+      this.clearVisibleDecorations();
+      this.clearActiveGroups();
       logInfo("pr editor comments skipped", { reason, target: "non-file" });
       return;
     }
@@ -181,6 +170,8 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     if (!service) {
+      this.clearVisibleDecorations();
+      this.clearActiveGroups();
       logInfo("pr editor comments skipped", { reason, target: "no-repo" });
       return;
     }
@@ -194,6 +185,8 @@ export class PullRequestCommentController implements vscode.Disposable {
         return;
       }
       if (!prComments) {
+        this.clearVisibleDecorations();
+        this.clearActiveGroups();
         logInfo("pr editor comments skipped", {
           reason,
           target: "no-active-pr",
@@ -205,6 +198,8 @@ export class PullRequestCommentController implements vscode.Disposable {
         (comment) => normalizeGitPath(comment.path) === relativePath
       );
       if (!fileComments.length) {
+        this.clearVisibleDecorations();
+        this.clearActiveGroups();
         logInfo("pr editor comments skipped", {
           reason,
           target: "no-comments-for-file",
@@ -215,6 +210,8 @@ export class PullRequestCommentController implements vscode.Disposable {
       }
       const groups = groupedComments(editor.document, fileComments);
       if (!groups.length) {
+        this.clearVisibleDecorations();
+        this.clearActiveGroups();
         logInfo("pr editor comments skipped", {
           reason,
           target: "no-display-line",
@@ -294,7 +291,8 @@ export class PullRequestCommentController implements vscode.Disposable {
   }
 
   /**
-   * 계산된 comment group 을 after-line decoration 으로 표시한다.
+   * 계산된 comment group 을 thread marker 와 overview ruler 로 표시한다.
+   * - 이미 존재하는 thread 는 dispose 하지 않고 갱신해, 사용자가 펼친 상태를 refresh 뒤에도 유지한다.
    * @param editor 적용 대상 에디터
    * @param groups 라인별 comment 그룹
    */
@@ -303,16 +301,57 @@ export class PullRequestCommentController implements vscode.Disposable {
     groups: PullRequestCommentGroup[]
   ): void {
     const uri = editor.document.uri.toString();
+    const nextKeys = new Set(groups.map((group) => groupKey(uri, group.line)));
+    this.removeStaleThreads(nextKeys);
+    this.applyVisibleDecorations(editor, groups);
     for (const group of groups) {
-      this.activeGroups.set(groupKey(uri, group.line), group);
+      this.upsertThread(editor, uri, group);
     }
-    editor.setDecorations(
-      this.decoration,
-      groups.map((group) => commentDecoration(editor.document.uri, group))
-    );
   }
 
-  /** 현재 보이는 에디터의 PR comment decoration 을 모두 제거한다. */
+  /**
+   * 이번 refresh 결과에 없는 thread 만 정리한다.
+   * @param nextKeys 유지해야 할 URI/line thread key 목록
+   */
+  private removeStaleThreads(nextKeys: Set<string>): void {
+    for (const [key, thread] of Array.from(this.activeThreads.entries())) {
+      if (nextKeys.has(key)) {
+        continue;
+      }
+      thread.dispose();
+      this.activeThreads.delete(key);
+    }
+  }
+
+  /**
+   * active editor 에는 PR comment overview marker 를, 다른 visible editor 에는 빈 decoration 을 적용한다.
+   * @param editor active editor
+   * @param groups active editor 에 표시할 comment group
+   */
+  private applyVisibleDecorations(
+    editor: vscode.TextEditor,
+    groups: PullRequestCommentGroup[]
+  ): void {
+    const uri = editor.document.uri.toString();
+    for (const visible of vscode.window.visibleTextEditors) {
+      visible.setDecorations(
+        this.decoration,
+        visible.document.uri.toString() === uri
+          ? groups.map((group) => overviewDecoration(group))
+          : []
+      );
+    }
+  }
+
+  /** 현재 활성 comment group 과 펼쳐진 thread 를 모두 정리한다. */
+  private clearActiveGroups(): void {
+    for (const thread of this.activeThreads.values()) {
+      thread.dispose();
+    }
+    this.activeThreads.clear();
+  }
+
+  /** 현재 보이는 에디터의 PR comment overview decoration 을 모두 제거한다. */
   private clearVisibleDecorations(): void {
     for (const editor of vscode.window.visibleTextEditors) {
       editor.setDecorations(this.decoration, []);
@@ -320,94 +359,57 @@ export class PullRequestCommentController implements vscode.Disposable {
   }
 
   /**
-   * hover action 에서 요청한 라인의 CommentThread 를 펼친다.
-   * @param payload hover command link 가 전달한 파일 URI 와 0-base line
+   * comment group 하나를 CommentThread 로 만들거나 기존 thread 를 갱신한다.
+   * - 기존 thread 의 collapsibleState 는 건드리지 않아 펼쳐 둔 thread 가 refresh 로 접히지 않게 한다.
+   * @param editor 적용 대상 에디터
+   * @param uri    thread key 로 사용할 문서 URI 문자열
+   * @param group  같은 줄에 묶인 PR review comment
    */
-  private showThread(payload: ShowThreadCommandPayload | undefined): void {
-    if (!payload || typeof payload.uri !== "string" || typeof payload.line !== "number") {
+  private upsertThread(
+    editor: vscode.TextEditor,
+    uri: string,
+    group: PullRequestCommentGroup
+  ): void {
+    const key = groupKey(uri, group.line);
+    const existing = this.activeThreads.get(key);
+    if (existing) {
+      existing.range = editor.document.lineAt(group.line).range;
+      existing.comments = group.comments.map(toVsCodeComment);
+      existing.label = vscode.l10n.t("PR review comments");
+      existing.contextValue = "gitSimpleCompare.prReviewComments";
+      existing.canReply = false;
       return;
     }
-    const key = groupKey(payload.uri, payload.line);
-    const group = this.activeGroups.get(key);
-    if (!group) {
-      logInfo("pr editor comment thread skipped", {
-        target: "missing-group",
-        uri: payload.uri,
-        line: payload.line,
-      });
-      return;
-    }
-    const editor = vscode.window.visibleTextEditors.find(
-      (candidate) => candidate.document.uri.toString() === payload.uri
-    );
-    if (!editor || payload.line < 0 || payload.line >= editor.document.lineCount) {
-      logInfo("pr editor comment thread skipped", {
-        target: "missing-editor",
-        uri: payload.uri,
-        line: payload.line,
-      });
-      return;
-    }
-    this.activeThreads.get(key)?.dispose();
     const thread = this.commentController.createCommentThread(
       editor.document.uri,
-      editor.document.lineAt(payload.line).range,
+      editor.document.lineAt(group.line).range,
       group.comments.map(toVsCodeComment)
     );
     thread.label = vscode.l10n.t("PR review comments");
     thread.contextValue = "gitSimpleCompare.prReviewComments";
     thread.canReply = false;
-    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
     this.activeThreads.set(key, thread);
-    logInfo("pr editor comment thread opened", {
-      uri: payload.uri,
-      line: payload.line,
-      comments: group.comments.length,
-    });
-  }
-
-  /** 현재 활성 comment group 과 펼쳐진 thread 를 모두 정리한다. */
-  private clearActiveGroups(): void {
-    this.activeGroups.clear();
-    for (const thread of this.activeThreads.values()) {
-      thread.dispose();
-    }
-    this.activeThreads.clear();
   }
 }
 
 /**
- * PR comment line marker 용 decoration type 을 만든다.
- * @returns 라인 끝 comment 아이콘과 overview ruler 표시를 가진 decoration type
+ * PR comment 위치를 overview ruler 에만 표시하는 decoration type 을 만든다.
+ * @returns 본문 여백을 쓰지 않는 overview ruler 전용 decoration type
  */
 function createDecorationType(): vscode.TextEditorDecorationType {
   return vscode.window.createTextEditorDecorationType({
-    after: {
-      margin: "0 0 0 0.65rem",
-      width: "14px",
-      height: "14px",
-      color: new vscode.ThemeColor("button.foreground"),
-      backgroundColor: new vscode.ThemeColor("button.background"),
-      border: "1px solid",
-      borderColor: new vscode.ThemeColor("focusBorder"),
-      fontWeight: "700",
-      textDecoration:
-        "none; display: inline-block; font-family: codicon; font-size: 12px; line-height: 14px; text-align: center; padding: 0 2px; border-radius: 999px; transform: scale(1.35); transform-origin: center",
-    },
     overviewRulerColor: new vscode.ThemeColor("editorOverviewRuler.infoForeground"),
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 }
 
 /**
- * comment group 을 라인 끝 decoration option 으로 변환한다.
+ * comment group 을 overview ruler decoration option 으로 변환한다.
  * @param group 같은 라인의 PR comment 묶음
  * @returns VS Code decoration option
  */
-function commentDecoration(
-  uri: vscode.Uri,
-  group: PullRequestCommentGroup
-): vscode.DecorationOptions {
+function overviewDecoration(group: PullRequestCommentGroup): vscode.DecorationOptions {
   return {
     range: new vscode.Range(
       group.line,
@@ -415,8 +417,6 @@ function commentDecoration(
       group.line,
       Number.MAX_SAFE_INTEGER
     ),
-    hoverMessage: hoverMarkdown(uri, group),
-    renderOptions: { after: { contentText: "\ueac7" } },
   };
 }
 
@@ -472,35 +472,6 @@ function clampLine(lineCount: number, oneBased: number | undefined): number | un
 }
 
 /**
- * hover 에서 comment 본문 요약을 markdown 으로 보여준다.
- * @param comments 같은 라인에 달린 comment 목록
- * @returns hover 에 표시할 MarkdownString
- */
-function hoverMarkdown(
-  uri: vscode.Uri,
-  group: PullRequestCommentGroup
-): vscode.MarkdownString {
-  const markdown = new vscode.MarkdownString(undefined, true);
-  markdown.supportHtml = false;
-  markdown.isTrusted = { enabledCommands: [SHOW_THREAD_COMMAND] };
-  const args = encodeURIComponent(JSON.stringify([{ uri: uri.toString(), line: group.line }]));
-  markdown.appendMarkdown(`[${vscode.l10n.t("Open PR comments")}](command:${SHOW_THREAD_COMMAND}?${args})`);
-  group.comments.forEach((comment, index) => {
-    markdown.appendMarkdown(index ? "\n\n---\n\n" : "\n\n");
-    markdown.appendMarkdown(`**${escapeMarkdown(comment.author || "unknown")}**`);
-    if (comment.createdAt) {
-      markdown.appendMarkdown(`  ${escapeMarkdown(formatDate(comment.createdAt))}`);
-    }
-    markdown.appendMarkdown("\n\n");
-    markdown.appendMarkdown(comment.body?.trim() || `_${vscode.l10n.t("No comment body.")}_`);
-    if (comment.url) {
-      markdown.appendMarkdown(`\n\n[GitHub](${comment.url})`);
-    }
-  });
-  return markdown;
-}
-
-/**
  * GitHub review comment 를 VS Code Comment API 객체로 변환한다.
  * @param comment GitHub inline review comment
  * @returns 읽기 전용 preview comment 객체
@@ -508,27 +479,11 @@ function hoverMarkdown(
 function toVsCodeComment(comment: PullRequestReviewComment): vscode.Comment {
   return {
     author: { name: comment.author || "unknown" },
-    body: commentBodyMarkdown(comment),
+    body: pullRequestCommentMarkdown(comment),
     contextValue: "gitSimpleCompare.prReviewComment",
     mode: vscode.CommentMode.Preview,
     timestamp: parseDate(comment.createdAt),
   };
-}
-
-/**
- * CommentThread 본문용 markdown 을 만든다.
- * @param comment GitHub inline review comment
- * @returns VS Code Comment body 로 사용할 MarkdownString
- */
-function commentBodyMarkdown(comment: PullRequestReviewComment): vscode.MarkdownString {
-  const markdown = new vscode.MarkdownString(undefined, true);
-  markdown.supportHtml = false;
-  markdown.isTrusted = false;
-  markdown.appendMarkdown(comment.body?.trim() || `_${vscode.l10n.t("No comment body.")}_`);
-  if (comment.url) {
-    markdown.appendMarkdown(`\n\n[GitHub](${comment.url})`);
-  }
-  return markdown;
 }
 
 /** GitHub ISO 날짜를 Comment API timestamp 로 바꾼다. */
@@ -543,17 +498,6 @@ function parseDate(value: string | undefined): Date | undefined {
 /** Comment group 을 파일 URI 와 line 으로 찾기 위한 key 를 만든다. */
 function groupKey(uri: string, line: number): string {
   return `${uri}\0${line}`;
-}
-
-/** markdown 제어 문자가 작성자/날짜 표시를 깨지 않도록 escape 한다. */
-function escapeMarkdown(value: string): string {
-  return value.replace(/([\\`*_{}\[\]()#+\-.!|>])/g, "\\$1");
-}
-
-/** GitHub ISO 날짜를 hover 표시용 문자열로 바꾼다. */
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 /** 현재 활성 에디터 문서와 같은 문서인지 확인한다. */

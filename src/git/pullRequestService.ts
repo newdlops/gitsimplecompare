@@ -25,6 +25,8 @@ import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "./pullRequestPre
 import { previewTitle } from "./pullRequestPreviewTitle";
 import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
 import type { GhPullRequestLabels, PullRequestLabelInfo } from "./pullRequestLabels";
+import { PULL_REQUEST_COMMENT_COUNTS_QUERY, fetchRemainingReviewThreadCommentCounts, totalPullRequestCommentCount } from "./pullRequestCommentCounts";
+import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
 
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 
@@ -49,9 +51,7 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
         reviewDecision
         updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
-        comments(first: 1) {
-          totalCount
-        }
+${PULL_REQUEST_COMMENT_COUNTS_QUERY}
         files(first: 1) {
           totalCount
         }
@@ -179,7 +179,7 @@ interface GhGraphQlResponse {
   };
 }
 
-interface GhGraphQlPullRequest {
+interface GhGraphQlPullRequest extends GhPullRequestCommentCounts {
   number?: number;
   title?: string;
   state?: string;
@@ -192,12 +192,7 @@ interface GhGraphQlPullRequest {
   reviewDecision?: string;
   updatedAt?: string;
   labels?: GhPullRequestLabels;
-  comments?: {
-    totalCount?: number;
-  };
-  files?: {
-    totalCount?: number;
-  };
+  files?: { totalCount?: number };
   commits?: {
     nodes?: Array<{ commit?: { oid?: string } }>;
     pageInfo?: GhPageInfo;
@@ -381,6 +376,8 @@ export class PullRequestService {
     const connection = parsed.data?.repository?.pullRequests;
     const nodes = connection?.nodes || [];
     const prs = nodes.map(fromGraphQlPullRequest);
+    const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(this.repoRoot, owner, name, nodes);
+    prs.forEach((pr) => { pr.commentCount = (pr.commentCount || 0) + (extraReviewCommentCounts.get(Number(pr.number)) || 0); });
     await this.appendRemainingCommitHashes(owner, name, nodes, prs);
     return { pullRequests: prs, pageInfo: connection?.pageInfo };
   }
@@ -567,7 +564,7 @@ function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
     isDraft: pr.isDraft,
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,
-    commentCount: pr.comments?.totalCount ?? 0,
+    commentCount: totalPullRequestCommentCount(pr),
     fileCount: pr.files?.totalCount ?? 0,
     commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
     labels: normalizePullRequestLabels(pr.labels),

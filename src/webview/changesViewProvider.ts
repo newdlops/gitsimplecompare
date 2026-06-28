@@ -107,13 +107,16 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   // ---- 상태 API ----
 
   /**
-   * 저장소 목록을 갱신한다. 활성 저장소가 목록에 없으면 첫 저장소로 맞춘다.
+   * 저장소 목록을 갱신한다. 활성 저장소가 목록에 없으면 현재 워크스페이스 repo 를 우선 선택한다.
    * @param repos 저장소 정보 목록(루트 + 브랜치)
+   * @param preferredRoot activeRepo 가 없거나 사라졌을 때 우선 선택할 저장소 루트
    */
-  setRepositories(repos: RepoInfo[]): void {
+  setRepositories(repos: RepoInfo[], preferredRoot?: string): void {
     this.repositories = repos;
     if (!this.activeRepo || !repos.some((r) => r.root === this.activeRepo)) {
-      this.activeRepo = repos[0]?.root;
+      this.activeRepo =
+        repos.find((repo) => repo.root === preferredRoot)?.root ??
+        repos[0]?.root;
     }
     this.render();
   }

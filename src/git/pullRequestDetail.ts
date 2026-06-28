@@ -4,6 +4,7 @@ import { CommitFileChange } from "../graph/graphTypes";
 import { FileChangeStatus } from "./gitTypes";
 import { runGh } from "./ghCli";
 import { splitRepositoryName } from "./githubRepository";
+import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
 
 /** PR 상세에서 한 changed file 의 파일별 리뷰 댓글 수를 함께 표현한다. */
 export interface PullRequestChangedFileInfo extends CommitFileChange {
@@ -13,7 +14,9 @@ export interface PullRequestChangedFileInfo extends CommitFileChange {
 /** PR 상세 drawer 에서 사용하는 changed files 중심 데이터 */
 export interface PullRequestDetailInfo {
   number: number;
+  /** conversation comment 와 file review comment 를 합친 PR 전체 댓글 수 */
   commentCount: number;
+  /** file review thread 에 달린 댓글 수 */
   fileCommentCount: number;
   fileCount: number;
   files: PullRequestChangedFileInfo[];
@@ -174,7 +177,7 @@ export async function fetchPullRequestDetail(
   const fileCommentCount = Array.from(fileCommentCounts.values()).reduce((sum, count) => sum + count, 0);
   return {
     number: pr.number || number,
-    commentCount: pr.comments?.totalCount ?? 0,
+    commentCount: (pr.comments?.totalCount ?? 0) + fileCommentCount,
     fileCommentCount,
     fileCount: pr.files?.totalCount ?? normalizedFiles.length,
     files: normalizedFiles,
@@ -278,7 +281,7 @@ function reviewCommentCountsByPath(threads: GhReviewThread[]): Map<string, numbe
     if (!path) {
       continue;
     }
-    counts.set(path, (counts.get(path) || 0) + (thread.comments?.totalCount || 0));
+    counts.set(path, (counts.get(path) || 0) + reviewThreadCommentCount([thread]));
   }
   return counts;
 }

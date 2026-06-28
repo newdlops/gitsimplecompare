@@ -26,14 +26,22 @@ export interface PullRequestReviewComment {
   author: string;
   /** GitHub markdown 본문 */
   body: string;
+  /** GitHub review comment 가 달린 diff hunk */
+  diffHunk?: string;
   /** 저장소 루트 기준 파일 경로 */
   path: string;
   /** 현재 diff 오른쪽 라인 번호 */
   line?: number;
+  /** 현재 diff 오른쪽 시작 라인 번호 */
+  startLine?: number;
   /** 원본 diff 왼쪽 라인 번호 */
   originalLine?: number;
+  /** 원본 diff 왼쪽 시작 라인 번호 */
+  originalStartLine?: number;
   /** GitHub diff side 값 */
   side?: string;
+  /** GitHub diff start_side 값 */
+  startSide?: string;
   /** 댓글 생성 시각 */
   createdAt?: string;
   /** GitHub 댓글 URL */
@@ -54,10 +62,14 @@ interface GhRepositoryView {
 interface GhReviewComment {
   id?: number | string;
   body?: string;
+  diff_hunk?: string;
   path?: string;
   line?: number | null;
+  start_line?: number | null;
   original_line?: number | null;
+  original_start_line?: number | null;
   side?: string;
+  start_side?: string;
   created_at?: string;
   html_url?: string;
   user?: { login?: string };
@@ -191,10 +203,14 @@ function normalizeReviewComment(
     id: String(comment.id || `${path}:${comment.created_at || ""}:${comment.body || ""}`),
     author: comment.user?.login || "unknown",
     body: comment.body || "",
+    diffHunk: comment.diff_hunk || undefined,
     path,
     line: normalizeLine(comment.line),
+    startLine: normalizeLine(comment.start_line),
     originalLine: normalizeLine(comment.original_line),
+    originalStartLine: normalizeLine(comment.original_start_line),
     side: comment.side,
+    startSide: comment.start_side,
     createdAt: comment.created_at,
     url: comment.html_url,
   };

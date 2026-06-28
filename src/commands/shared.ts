@@ -161,6 +161,35 @@ export async function discoverRepositories(
 }
 
 /**
+ * Repositories 섹션이 처음 열릴 때 우선 선택할 저장소 루트를 찾는다.
+ * - 활성 에디터 파일이 속한 repo 를 먼저 보고, 없으면 현재 워크스페이스 폴더가 가리키는 repo 를 사용한다.
+ * - 후보 목록에 없는 repo 는 선택하지 않아 VS Code Git API 와 CLI 탐색 결과가 엇갈릴 때 첫 repo fallback 을 유지한다.
+ * @param registry GitService 레지스트리
+ * @param repositories 화면에 표시할 저장소 후보 목록
+ * @returns 후보 목록 안에서 현재 작업 컨텍스트에 가장 가까운 저장소 루트
+ */
+export async function resolvePreferredRepositoryRoot(
+  registry: GitServiceRegistry,
+  repositories: RepoInfo[]
+): Promise<string | undefined> {
+  const candidates = new Set(repositories.map((repo) => repo.root));
+  const active = vscode.window.activeTextEditor?.document.uri;
+  if (active?.scheme === "file") {
+    const service = await registry.resolve(dirNameOf(active.fsPath));
+    if (service && candidates.has(service.repoRoot)) {
+      return service.repoRoot;
+    }
+  }
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    const service = await registry.resolve(folder.uri.fsPath);
+    if (service && candidates.has(service.repoRoot)) {
+      return service.repoRoot;
+    }
+  }
+  return undefined;
+}
+
+/**
  * 비교에 사용할 저장소를 정한다.
  * - CHANGES 뷰에서 선택된 활성 저장소를 우선하고, 없으면 워크스페이스에서 탐지한다.
  * @param deps 공유 의존성(활성 저장소는 changesView 가 보유)

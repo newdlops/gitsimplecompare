@@ -12,8 +12,11 @@ export interface PullRequestPreviewComment {
   body: string;
   diffHunk: string;
   line?: number;
+  startLine?: number;
   originalLine?: number;
+  originalStartLine?: number;
   side?: string;
+  startSide?: string;
   createdAt?: string;
   url?: string;
 }
@@ -39,8 +42,11 @@ interface GhReviewComment {
   body?: string;
   diff_hunk?: string;
   line?: number;
+  start_line?: number;
   original_line?: number;
+  original_start_line?: number;
   side?: string;
+  start_side?: string;
   created_at?: string;
   html_url?: string;
   user?: { login?: string };
@@ -187,8 +193,11 @@ function normalizeComment(comment: GhReviewComment): PullRequestPreviewComment {
     body: comment.body || "",
     diffHunk: comment.diff_hunk || "",
     line: comment.line,
+    startLine: comment.start_line,
     originalLine: comment.original_line,
+    originalStartLine: comment.original_start_line,
     side: comment.side,
+    startSide: comment.start_side,
     createdAt: comment.created_at,
     url: comment.html_url,
   };

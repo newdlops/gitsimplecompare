@@ -49,9 +49,8 @@
     } else if (msg.type === "pullRequestDetail") {
       pendingDetails.delete(Number(msg.number));
       pullRequestDetails.set(Number(msg.number), { status: "ready", detail: msg.detail });
-      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) {
-        renderPullRequestDetail(activeDetail.number);
-      }
+      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) { renderPullRequestDetail(activeDetail.number); }
+      applyDecorations();
     } else if (msg.type === "pullRequestDetailError") {
       pendingDetails.delete(Number(msg.number));
       pullRequestDetails.set(Number(msg.number), { status: "error", message: msg.message });
@@ -581,7 +580,7 @@
 	  /** 기존 색상 class 를 지울 때 쓰는 전체 팔레트 목록을 반환한다. */
 	  function prColorClasses() { return Array.from({ length: 8 }, (_, index) => `pr-color-${index}`); }
 	  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
-	  function commentCount(pr) { return Number.isFinite(Number(pr.commentCount)) ? Number(pr.commentCount) : 0; }
+	  function commentCount(pr) { const count = pullRequestDetails.get(Number(pr.number))?.detail?.commentCount ?? pr.commentCount; return Number.isFinite(Number(count)) ? Number(count) : 0; }
 	  /** badge/card 에 표시할 PR 커밋 수를 반환한다. */
 	  function commitCount(pr) { return Array.isArray(pr.commitHashes) ? pr.commitHashes.length : 0; }
 	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */

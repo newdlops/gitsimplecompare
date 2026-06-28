@@ -22,6 +22,7 @@ import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logInfo } from "./ui/outputLog";
+import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
 
 /**
@@ -35,6 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
     workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0,
   });
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
+  context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
 
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();

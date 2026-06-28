@@ -4,7 +4,12 @@ import * as vscode from "vscode";
 import { refreshActiveComparison } from "./compareBranches";
 import { refreshFileHistory } from "./fileHistory";
 import { refreshStashes } from "./stash";
-import { CommandDeps, RepoInfo, discoverRepositories } from "./shared";
+import {
+  CommandDeps,
+  RepoInfo,
+  discoverRepositories,
+  resolvePreferredRepositoryRoot,
+} from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
 import { refreshWorktreesForChangesView } from "./worktreeState";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
@@ -75,7 +80,8 @@ async function refreshChangesViewOnce(
       }
       if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
         const repositories = await discoverRepositoriesForRefresh(deps);
-        deps.changesView.setRepositories(repositories);
+        const preferredRoot = await resolvePreferredRepositoryRoot(deps.registry, repositories);
+        deps.changesView.setRepositories(repositories, preferredRoot);
       }
       const forceGitStatus = shouldForceGitStatus(reason);
       const tasks = [
