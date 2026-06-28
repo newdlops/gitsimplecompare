@@ -40,7 +40,7 @@ export function pullRequestPreviewTimelineScript(): string {
     }
     function conversationBody(item) {
       if (!item.body) return item.kind === 'body' ? '<div class="timeline-body muted">No description provided.</div>' : '';
-      return '<div class="markdown-body timeline-body">' + renderMarkdown(item.body || '') + '</div>';
+      return '<div class="markdown-body timeline-body">' + renderReviewCommentMarkdown(item) + '</div>';
     }
     function shortConversationHash(hash) { return String(hash || '').slice(0, 8); }
   `;

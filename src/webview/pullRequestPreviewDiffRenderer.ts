@@ -376,7 +376,7 @@ export function pullRequestPreviewDiffScript(): string {
       return '<article class="diff-inline-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
         esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span>' +
         (comment.createdAt ? '<span>' + esc(formatDate(comment.createdAt)) + '</span>' : '') + '</div>' +
-        '<div class="comment-body markdown-body">' + renderMarkdown(comment.body || '') + '</div></article>';
+        '<div class="comment-body markdown-body">' + renderReviewCommentMarkdown(comment) + '</div></article>';
     }
     function isPatchHeaderLine(line) {
       return /^(diff --git |index |--- |\\+\\+\\+ |new file mode |deleted file mode |similarity index |rename from |rename to )/.test(line);

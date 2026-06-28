@@ -4,12 +4,16 @@ import { CommitFileChange } from "../graph/graphTypes";
 import { runGh } from "./ghCli";
 import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
+import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
 
 /** Files changed 탭에서 review comment 본문과 위치를 표시하기 위한 데이터 */
 export interface PullRequestPreviewComment {
   id?: number;
+  parentId?: string;
   author: string;
   body: string;
+  bodyText?: string;
+  bodyHtml?: string;
   diffHunk: string;
   line?: number;
   startLine?: number;
@@ -38,8 +42,11 @@ interface GhPullFile {
 
 interface GhReviewComment {
   id?: number;
+  in_reply_to_id?: number | string | null;
   path?: string;
   body?: string;
+  body_text?: string;
+  body_html?: string;
   diff_hunk?: string;
   line?: number;
   start_line?: number;
@@ -107,7 +114,13 @@ async function readReviewComments(
   name: string,
   number: number
 ): Promise<GhReviewComment[]> {
-  return readPaged<GhReviewComment>(cwd, owner, name, `pulls/${number}/comments`);
+  return readPaged<GhReviewComment>(
+    cwd,
+    owner,
+    name,
+    `pulls/${number}/comments`,
+    ["Accept: application/vnd.github-commitcomment.full+json"]
+  );
 }
 
 /**
@@ -122,12 +135,14 @@ async function readPaged<T>(
   cwd: string,
   owner: string,
   name: string,
-  route: string
+  route: string,
+  headers: string[] = []
 ): Promise<T[]> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
     const out = await runGh([
       "api",
+      ...headers.flatMap((header) => ["-H", header]),
       `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
     ], cwd);
     const items = JSON.parse(out) as T[];
@@ -155,6 +170,9 @@ function groupCommentsByPath(
     const list = byPath.get(comment.path) || [];
     list.push(normalizeComment(comment));
     byPath.set(comment.path, list);
+  }
+  for (const [path, list] of byPath) {
+    byPath.set(path, inheritReplyCommentLocations(list));
   }
   return byPath;
 }
@@ -189,8 +207,11 @@ function normalizeFile(
 function normalizeComment(comment: GhReviewComment): PullRequestPreviewComment {
   return {
     id: comment.id,
+    parentId: comment.in_reply_to_id ? String(comment.in_reply_to_id) : undefined,
     author: comment.user?.login || "unknown",
-    body: comment.body || "",
+    body: comment.body || comment.body_text || "",
+    bodyText: comment.body_text || undefined,
+    bodyHtml: comment.body_html || undefined,
     diffHunk: comment.diff_hunk || "",
     line: comment.line,
     startLine: comment.start_line,

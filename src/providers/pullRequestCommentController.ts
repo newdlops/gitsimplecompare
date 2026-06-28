@@ -8,6 +8,11 @@ import {
 } from "../git/pullRequestReviewComments";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { pullRequestCommentMarkdown } from "../ui/pullRequestCommentMarkdown";
+import {
+  groupPullRequestThreadComments,
+  PullRequestThreadGroup,
+} from "../ui/pullRequestCommentThreads";
+import { readStoredGitHubWebCookie } from "../ui/githubWebCookieSecret";
 import { logInfo } from "../ui/outputLog";
 
 const EXT_CONFIG_SECTION = "gitSimpleCompare";
@@ -22,10 +27,7 @@ interface PullRequestCommentCacheEntry {
   data?: ActivePullRequestReviewComments;
 }
 
-interface PullRequestCommentGroup {
-  line: number;
-  comments: PullRequestReviewComment[];
-}
+type PullRequestCommentGroup = PullRequestThreadGroup<PullRequestReviewComment>;
 
 /**
  * 활성 에디터의 GitHub PR review comment 표시를 관리한다.
@@ -42,7 +44,10 @@ export class PullRequestCommentController implements vscode.Disposable {
   private requestSeq = 0;
   private disposed = false;
 
-  constructor(private readonly registry: GitServiceRegistry) {
+  constructor(
+    private readonly registry: GitServiceRegistry,
+    private readonly secrets: vscode.SecretStorage
+  ) {
     this.decoration = createDecorationType();
     this.commentController = vscode.comments.createCommentController(
       COMMENT_CONTROLLER_ID,
@@ -81,6 +86,17 @@ export class PullRequestCommentController implements vscode.Disposable {
    * @param reason refresh 를 요청한 상위 이벤트 이름
    */
   refresh(reason: string): void {
+    this.scheduleRefresh(reason);
+  }
+
+  /**
+   * 저장소별 PR comment 캐시를 모두 비우고 활성 에디터를 다시 읽는다.
+   * - GitHub 웹 쿠키처럼 인증 상태가 바뀐 뒤 TTL 때문에 이전 빈 결과가 유지되지 않도록 한다.
+   * @param reason 캐시 무효화를 일으킨 이벤트 이름
+   */
+  invalidateCache(reason: string): void {
+    this.cache.clear();
+    logInfo("pr editor comments cache invalidated", { reason });
     this.scheduleRefresh(reason);
   }
 
@@ -249,8 +265,8 @@ export class PullRequestCommentController implements vscode.Disposable {
   private async loadComments(
     repoRoot: string
   ): Promise<ActivePullRequestReviewComments | undefined> {
-    const service = new PullRequestReviewCommentService(repoRoot);
-    const branch = await service.getCurrentBranch();
+    const branchService = new PullRequestReviewCommentService(repoRoot);
+    const branch = await branchService.getCurrentBranch();
     if (!branch) {
       return undefined;
     }
@@ -259,6 +275,15 @@ export class PullRequestCommentController implements vscode.Disposable {
     if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
       return cached.data;
     }
+    const [webAccessToken, webCookie] = await Promise.all([
+      readGitHubAuthenticationToken(),
+      readStoredGitHubWebCookie(this.secrets),
+    ]);
+    const service = new PullRequestReviewCommentService(repoRoot, {
+      suggestedChangeset: webAccessToken || webCookie
+        ? { webAccessToken, webCookie }
+        : undefined,
+    });
     const data = await service.getActiveBranchReviewComments(branch);
     this.cache.set(cacheKey, { at: Date.now(), data });
     logInfo("pr editor comments loaded", {
@@ -266,6 +291,10 @@ export class PullRequestCommentController implements vscode.Disposable {
       branch,
       pr: data?.number,
       comments: data?.comments.length ?? 0,
+      suggestedChangesets: data?.comments.reduce((sum, comment) => sum + countSuggestedChangesets(comment), 0) ?? 0,
+      codeSnippets: data?.comments.filter(hasCodeFence).length ?? 0,
+      suggestedChangesetSource: data?.suggestedChangesetStatus?.source,
+      suggestedChangesetReason: data?.suggestedChangesetStatus?.reason,
     });
     return data;
   }
@@ -430,45 +459,7 @@ function groupedComments(
   document: vscode.TextDocument,
   comments: PullRequestReviewComment[]
 ): PullRequestCommentGroup[] {
-  const byLine = new Map<number, PullRequestReviewComment[]>();
-  for (const comment of comments) {
-    const line = clampLine(document.lineCount, targetLine(comment));
-    if (line === undefined) {
-      continue;
-    }
-    const list = byLine.get(line) || [];
-    list.push(comment);
-    byLine.set(line, list);
-  }
-  return Array.from(byLine.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([line, list]) => ({ line, comments: list }));
-}
-
-/**
- * GitHub comment 의 side 정보를 고려해 표시할 대상 line 을 고른다.
- * @param comment GitHub inline review comment
- * @returns 1-base line 번호
- */
-function targetLine(comment: PullRequestReviewComment): number | undefined {
-  const side = (comment.side || "").toUpperCase();
-  if (side === "LEFT") {
-    return comment.originalLine || comment.line;
-  }
-  return comment.line || comment.originalLine;
-}
-
-/**
- * 1-base line 번호를 문서 범위 안의 0-base line 번호로 바꾼다.
- * @param lineCount 문서 전체 라인 수
- * @param oneBased GitHub 가 준 1-base line 번호
- * @returns VS Code 0-base line 번호. line 이 없으면 undefined
- */
-function clampLine(lineCount: number, oneBased: number | undefined): number | undefined {
-  if (!oneBased || lineCount <= 0) {
-    return undefined;
-  }
-  return Math.min(Math.max(0, oneBased - 1), Math.max(0, lineCount - 1));
+  return groupPullRequestThreadComments(document.lineCount, comments);
 }
 
 /**
@@ -521,4 +512,44 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration(EXT_CONFIG_SECTION)
     .get<boolean>(SHOW_KEY, true);
+}
+
+/** GitHub review comment 에서 실제 표시할 suggested changeset 수를 센다. */
+function countSuggestedChangesets(comment: PullRequestReviewComment): number {
+  return (comment.suggestedChangesets?.length || 0)
+    + (hasBodySuggestedChangeset(comment) ? 1 : 0);
+}
+
+/**
+ * GitHub review comment 본문에 suggested changeset 후보가 있는지 빠르게 판별한다.
+ * - 실제 렌더링 파서는 ui 모듈에 두고, 여기서는 OUTPUT 진단용 count 만 계산한다.
+ */
+function hasBodySuggestedChangeset(comment: PullRequestReviewComment): boolean {
+  return /(^|\n)[ \t]*(`{3,}|~{3,})\s*suggestion/i.test(comment.body || "")
+    || /suggest(?:ed)?[-_ ]?changeset|suggest(?:ed)?[-_ ]?change|js-suggest/i.test(comment.bodyHtml || "");
+}
+
+/**
+ * GitHub review comment 본문에 일반 fenced code snippet 이 있는지 판별한다.
+ * - code block 이 섞인 comment 가 잘리는 문제를 재현할 때 OUTPUT 로그로 확인하기 위함이다.
+ */
+function hasCodeFence(comment: PullRequestReviewComment): boolean {
+  return /(^|\n)[ \t]*(`{3,}|~{3,})(?!\s*suggestion\b)/i.test(comment.body || "");
+}
+
+/**
+ * VS Code 가 이미 가진 GitHub authentication session 의 token 을 조용히 읽는다.
+ * - createIfNone 를 쓰지 않아 새 로그인/권한 팝업은 띄우지 않는다.
+ * - token 값은 GitHub 웹 HTML 조회에만 전달하고 로그에는 남기지 않는다.
+ * @returns 사용 가능한 GitHub OAuth token 또는 undefined
+ */
+async function readGitHubAuthenticationToken(): Promise<string | undefined> {
+  try {
+    const session = await vscode.authentication.getSession("github", ["repo"], {
+      silent: true,
+    });
+    return session?.accessToken;
+  } catch {
+    return undefined;
+  }
 }

@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71",
+  "version": "0.1.71010",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -121,6 +121,18 @@
         "title": "%cmd.configureRemoteBranch%",
         "category": "Git Simple Compare",
         "icon": "$(repo-push)"
+      },
+      {
+        "command": "gitSimpleCompare.setGitHubWebCookie",
+        "title": "%cmd.setGitHubWebCookie%",
+        "category": "Git Simple Compare",
+        "icon": "$(key)"
+      },
+      {
+        "command": "gitSimpleCompare.clearGitHubWebCookie",
+        "title": "%cmd.clearGitHubWebCookie%",
+        "category": "Git Simple Compare",
+        "icon": "$(trash)"
       },
       {
         "command": "gitSimpleCompare.toggleBlameDecorator",

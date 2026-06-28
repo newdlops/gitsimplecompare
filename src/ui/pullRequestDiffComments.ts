@@ -2,10 +2,19 @@
 // - 본문 뒤 여백을 만들지 않고, VS Code CommentThread marker 로 접고 펼칠 수 있게 보여준다.
 import * as vscode from "vscode";
 import { pullRequestCommentMarkdown } from "./pullRequestCommentMarkdown";
+import {
+  groupPullRequestThreadComments,
+  PullRequestThreadGroup,
+} from "./pullRequestCommentThreads";
 
 export interface PullRequestDiffComment {
+  id?: number | string;
+  parentId?: string;
   author: string;
   body: string;
+  bodyText?: string;
+  bodyHtml?: string;
+  suggestedChangesets?: string[];
   diffHunk?: string;
   line?: number;
   startLine?: number;
@@ -25,6 +34,8 @@ let activeCommentController: vscode.CommentController | undefined;
 let activeThreads = new Map<string, vscode.CommentThread>();
 let visibleEditorsListener: vscode.Disposable | undefined;
 
+type PullRequestDiffCommentGroup = PullRequestThreadGroup<PullRequestDiffComment>;
+
 /**
  * 현재 열리는 editable diff 의 작업 파일에 PR review comment 를 표시한다.
  * @param fileUri 오른쪽 editable 파일 URI
@@ -38,17 +49,16 @@ export function showPullRequestDiffComments(
   activeDecoration = undefined;
   activeTarget = undefined;
   clearActiveThreads();
-  const visible = comments.filter((comment) => targetLine(comment));
-  if (!visible.length) {
+  if (!comments.length) {
     return;
   }
   activeDecoration = createOverviewDecorationType();
   ensureCommentController();
-  activeTarget = { uri: fileUri, comments: visible };
+  activeTarget = { uri: fileUri, comments };
   ensureVisibleEditorsListener();
-  scheduleApply(fileUri, visible, 250);
-  scheduleApply(fileUri, visible, 900);
-  scheduleApply(fileUri, visible, 1600);
+  scheduleApply(fileUri, comments, 250);
+  scheduleApply(fileUri, comments, 900);
+  scheduleApply(fileUri, comments, 1600);
 }
 
 /** 확장 비활성화 시 PR preview comment 표시 리소스를 모두 정리한다. */
@@ -98,24 +108,15 @@ function createOverviewDecorationType(): vscode.TextEditorDecorationType {
 }
 
 /** comment group 을 overview ruler decoration option 으로 변환한다. */
-function overviewDecoration(group: { line: number; comments: PullRequestDiffComment[] }): vscode.DecorationOptions {
+function overviewDecoration(group: PullRequestDiffCommentGroup): vscode.DecorationOptions {
   return {
     range: new vscode.Range(group.line, Number.MAX_SAFE_INTEGER, group.line, Number.MAX_SAFE_INTEGER),
   };
 }
 
 /** 같은 라인의 comment 를 하나의 inlay icon 으로 묶는다. */
-function groupedComments(lineCount: number, comments: PullRequestDiffComment[]): Array<{ line: number; comments: PullRequestDiffComment[] }> {
-  const byLine = new Map<number, PullRequestDiffComment[]>();
-  for (const comment of comments) {
-    const line = Math.min(Math.max(0, (targetLine(comment) || 1) - 1), Math.max(0, lineCount - 1));
-    const list = byLine.get(line) || [];
-    list.push(comment);
-    byLine.set(line, list);
-  }
-  return Array.from(byLine.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([line, list]) => ({ line, comments: list }));
+function groupedComments(lineCount: number, comments: PullRequestDiffComment[]): PullRequestDiffCommentGroup[] {
+  return groupPullRequestThreadComments(lineCount, comments);
 }
 
 /** visible editor 변경 뒤에도 현재 PR comment decoration 을 다시 적용한다. */
@@ -144,7 +145,7 @@ function ensureCommentController(): vscode.CommentController {
 /** 같은 라인의 review comment 묶음을 접힌 CommentThread 로 만든다. */
 function createCollapsedThread(
   editor: vscode.TextEditor,
-  group: { line: number; comments: PullRequestDiffComment[] }
+  group: PullRequestDiffCommentGroup
 ): void {
   const key = groupKey(editor.document.uri.toString(), group.line);
   if (activeThreads.has(key)) {
@@ -168,15 +169,6 @@ function clearActiveThreads(): void {
     thread.dispose();
   }
   activeThreads = new Map<string, vscode.CommentThread>();
-}
-
-/** GitHub comment 의 side 정보를 고려해 표시할 대상 line 을 고른다. */
-function targetLine(comment: PullRequestDiffComment): number | undefined {
-  const side = (comment.side || "").toUpperCase();
-  if (side === "LEFT") {
-    return comment.originalLine || comment.line;
-  }
-  return comment.line || comment.originalLine;
 }
 
 /** GitHub review comment 를 VS Code Comment API 객체로 바꾼다. */

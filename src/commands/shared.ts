@@ -18,6 +18,8 @@ export interface CommandDeps {
   changesView: ChangesViewProvider;
   /** 확장 루트 URI(웹뷰 미디어 리소스 경로 계산용) */
   extensionUri: vscode.Uri;
+  /** 민감한 사용자 토큰/쿠키를 저장하는 VS Code SecretStorage */
+  secrets: vscode.SecretStorage;
   /** 충돌 해결 UI 상태 컨트롤러 */
   conflicts: ConflictsController;
   /** editable diff 라인별 stage 체크박스 컨트롤러 */
@@ -26,6 +28,8 @@ export interface CommandDeps {
   blameDecorations: BlameDecoratorController;
   /** VS Code 내장 Git 확장이 이미 계산한 상태를 재사용하는 어댑터 */
   vscodeGitStatus: VscodeGitStatusProvider;
+  /** PR comment 캐시를 비우고 활성 에디터 표시를 다시 읽는 hook */
+  refreshPullRequestComments: (reason: string) => void;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */

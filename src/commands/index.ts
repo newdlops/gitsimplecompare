@@ -35,6 +35,10 @@ import { generateCommitMessage } from "./aiMessages";
 import { configureUserProfile } from "./userProfile";
 import { configureRemoteBranch } from "./remoteBranch";
 import {
+  clearGitHubWebCookie,
+  setGitHubWebCookie,
+} from "./githubWebCookie";
+import {
   toggleBlameDecorator,
   toggleBlameLineVisible,
 } from "./blame";
@@ -246,6 +250,12 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.configureRemoteBranch", () =>
       configureRemoteBranch(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.setGitHubWebCookie", () =>
+      setGitHubWebCookie(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.clearGitHubWebCookie", () =>
+      clearGitHubWebCookie(deps)
     ),
     ...BLAME_DECORATOR_COMMANDS.map((command) =>
       vscode.commands.registerCommand(command, () => toggleBlameDecorator(deps))

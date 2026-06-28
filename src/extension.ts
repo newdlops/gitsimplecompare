@@ -77,7 +77,10 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);
   context.subscriptions.push(blameDecorations.register());
-  const prCommentDecorations = new PullRequestCommentController(registry);
+  const prCommentDecorations = new PullRequestCommentController(
+    registry,
+    context.secrets
+  );
   context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri,
@@ -98,10 +101,13 @@ export function activate(context: vscode.ExtensionContext): void {
     registry,
     changesView,
     extensionUri: context.extensionUri,
+    secrets: context.secrets,
     conflicts,
     hunkCheckboxes,
     blameDecorations,
     vscodeGitStatus,
+    refreshPullRequestComments: (reason) =>
+      prCommentDecorations.invalidateCache(reason),
   };
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);

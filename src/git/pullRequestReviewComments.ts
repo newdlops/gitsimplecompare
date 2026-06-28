@@ -3,6 +3,12 @@
 import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
 import { splitRepositoryName } from "./githubRepository";
+import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
+import {
+  PullRequestSuggestedChangesetOptions,
+  PullRequestSuggestedChangesetStatus,
+  readPullRequestSuggestedChangesets,
+} from "./pullRequestSuggestedChangesets";
 
 /** 활성 브랜치에 연결된 PR 과 그 inline review comment 목록 */
 export interface ActivePullRequestReviewComments {
@@ -16,16 +22,26 @@ export interface ActivePullRequestReviewComments {
   headRefName: string;
   /** PR 에 달린 파일별 inline review comment 목록 */
   comments: PullRequestReviewComment[];
+  /** GitHub 웹 HTML 에서 suggested changeset 을 보조 조회한 상태 */
+  suggestedChangesetStatus?: PullRequestSuggestedChangesetStatus;
 }
 
 /** 에디터 라인에 표시할 GitHub inline review comment */
 export interface PullRequestReviewComment {
   /** GitHub review comment id */
   id: string;
+  /** 답글이면 부모 review comment id */
+  parentId?: string;
   /** 댓글 작성자 login */
   author: string;
   /** GitHub markdown 본문 */
   body: string;
+  /** GitHub plain text 본문. raw body 가 비어 있을 때 fallback 으로 사용한다. */
+  bodyText?: string;
+  /** GitHub 렌더링 HTML 본문. raw body 에 없는 suggested changeset fallback 에 사용한다. */
+  bodyHtml?: string;
+  /** GitHub PR files 웹 HTML 에서 읽은 apply 가능한 suggested changeset 코드 */
+  suggestedChangesets?: string[];
   /** GitHub review comment 가 달린 diff hunk */
   diffHunk?: string;
   /** 저장소 루트 기준 파일 경로 */
@@ -61,7 +77,10 @@ interface GhRepositoryView {
 
 interface GhReviewComment {
   id?: number | string;
+  in_reply_to_id?: number | string | null;
   body?: string;
+  body_text?: string;
+  body_html?: string;
   diff_hunk?: string;
   path?: string;
   line?: number | null;
@@ -78,12 +97,21 @@ interface GhReviewComment {
 const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
+/** PR comment 조회에 사용할 선택 인증 정보 */
+export interface PullRequestReviewCommentServiceOptions {
+  /** suggested changeset 웹 HTML 을 읽기 위한 VS Code GitHub OAuth token */
+  suggestedChangeset?: PullRequestSuggestedChangesetOptions;
+}
+
 /**
  * 현재 checkout 된 브랜치의 GitHub PR review comment 를 조회한다.
  * - gh CLI 실행과 GitHub REST pagination 을 한곳에 모아, 에디터 표시 로직과 분리한다.
  */
 export class PullRequestReviewCommentService {
-  constructor(private readonly repoRoot: string) {}
+  constructor(
+    private readonly repoRoot: string,
+    private readonly options: PullRequestReviewCommentServiceOptions = {}
+  ) {}
 
   /**
    * 현재 브랜치 이름을 읽는다.
@@ -114,12 +142,21 @@ export class PullRequestReviewCommentService {
     const repository = await this.repositoryName();
     const [owner, name] = splitRepositoryName(repository);
     const comments = await this.readReviewComments(owner, name, Number(pr.number));
+    const suggested = await readPullRequestSuggestedChangesets(
+      this.repoRoot,
+      owner,
+      name,
+      Number(pr.number),
+      this.options.suggestedChangeset,
+      comments.map((comment) => ({ id: comment.id, url: comment.url }))
+    );
     return {
       number: Number(pr.number),
       title: pr.title || "",
       url: pr.url,
       headRefName: pr.headRefName || currentBranch,
-      comments,
+      comments: attachSuggestedChangesets(comments, suggested.byCommentId),
+      suggestedChangesetStatus: suggested.status,
     };
   }
 
@@ -174,7 +211,7 @@ export class PullRequestReviewCommentService {
       const out = await runGh([
         "api",
         "-H",
-        "Accept: application/vnd.github+json",
+        "Accept: application/vnd.github-commitcomment.full+json",
         `repos/${owner}/${name}/pulls/${number}/comments?per_page=${PAGE_SIZE}&page=${page}`,
       ], this.repoRoot);
       const items = JSON.parse(out) as GhReviewComment[];
@@ -183,7 +220,7 @@ export class PullRequestReviewCommentService {
         break;
       }
     }
-    return all;
+    return inheritReplyCommentLocations(all);
   }
 }
 
@@ -201,8 +238,11 @@ function normalizeReviewComment(
   }
   return {
     id: String(comment.id || `${path}:${comment.created_at || ""}:${comment.body || ""}`),
+    parentId: comment.in_reply_to_id ? String(comment.in_reply_to_id) : undefined,
     author: comment.user?.login || "unknown",
-    body: comment.body || "",
+    body: comment.body || comment.body_text || "",
+    bodyText: comment.body_text || undefined,
+    bodyHtml: comment.body_html || undefined,
     diffHunk: comment.diff_hunk || undefined,
     path,
     line: normalizeLine(comment.line),
@@ -228,6 +268,27 @@ function isReviewComment(
   comment: PullRequestReviewComment | undefined
 ): comment is PullRequestReviewComment {
   return Boolean(comment);
+}
+
+/**
+ * 웹 HTML 에서 읽은 suggested changeset 을 REST comment 에 병합한다.
+ * @param comments REST API 로 읽은 review comment 목록
+ * @param byCommentId comment id 별 suggested changeset 코드
+ * @returns suggested changeset 이 붙은 comment 목록
+ */
+function attachSuggestedChangesets(
+  comments: PullRequestReviewComment[],
+  byCommentId: Map<string, string[]>
+): PullRequestReviewComment[] {
+  if (!byCommentId.size) {
+    return comments;
+  }
+  return comments.map((comment) => {
+    const suggestedChangesets = byCommentId.get(comment.id);
+    return suggestedChangesets?.length
+      ? { ...comment, suggestedChangesets }
+      : comment;
+  });
 }
 
 /** gh pr view 가 현재 브랜치의 PR 을 찾지 못한 오류인지 확인한다. */

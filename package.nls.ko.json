@@ -10,6 +10,8 @@
   "cmd.configureAiCli": "AI CLI 설정",
   "cmd.configureUserProfile": "Git 사용자 프로필 설정",
   "cmd.configureRemoteBranch": "원격 브랜치 설정",
+  "cmd.setGitHubWebCookie": "GitHub 웹 쿠키 설정",
+  "cmd.clearGitHubWebCookie": "GitHub 웹 쿠키 삭제",
   "cmd.toggleBlameDecorator": "Git Blame Decorator 토글",
   "cmd.toggleBlameLineVisible": "Git Blame 라인 표시 토글",
   "cmd.blameDecorator.checked": "✓ Git Blame Decorator",

@@ -8,6 +8,8 @@ export interface PullRequestConversationItem {
   kind: "body" | "comment" | "review" | "review_comment" | "event" | "commit";
   author: string;
   body: string;
+  bodyText?: string;
+  bodyHtml?: string;
   createdAt?: string;
   action?: string;
   state?: string;
@@ -25,6 +27,8 @@ interface PreviewPullRequestRef {
 interface GhIssueComment {
   id?: number;
   body?: string;
+  body_text?: string;
+  body_html?: string;
   created_at?: string;
   html_url?: string;
   user?: { login?: string };
@@ -45,6 +49,8 @@ interface GhTimelineItem extends GhIssueComment {
 interface GhReview {
   id?: number;
   body?: string;
+  body_text?: string;
+  body_html?: string;
   state?: string;
   submitted_at?: string;
   html_url?: string;
@@ -118,7 +124,13 @@ async function readIssueComments(
   name: string,
   number: number
 ): Promise<GhIssueComment[]> {
-  return readPaged<GhIssueComment>(cwd, owner, name, `issues/${number}/comments`);
+  return readPaged<GhIssueComment>(
+    cwd,
+    owner,
+    name,
+    `issues/${number}/comments`,
+    ["Accept: application/vnd.github.full+json"]
+  );
 }
 
 /** PR review 제출 이력을 페이지 단위로 읽는다. */
@@ -128,7 +140,13 @@ async function readReviews(
   name: string,
   number: number
 ): Promise<GhReview[]> {
-  return readPaged<GhReview>(cwd, owner, name, `pulls/${number}/reviews`);
+  return readPaged<GhReview>(
+    cwd,
+    owner,
+    name,
+    `pulls/${number}/reviews`,
+    ["Accept: application/vnd.github.full+json"]
+  );
 }
 
 /** PR inline review comment 를 페이지 단위로 읽는다. */
@@ -138,7 +156,13 @@ async function readReviewComments(
   name: string,
   number: number
 ): Promise<GhReviewComment[]> {
-  return readPaged<GhReviewComment>(cwd, owner, name, `pulls/${number}/comments`);
+  return readPaged<GhReviewComment>(
+    cwd,
+    owner,
+    name,
+    `pulls/${number}/comments`,
+    ["Accept: application/vnd.github-commitcomment.full+json"]
+  );
 }
 
 /**
@@ -147,19 +171,20 @@ async function readReviewComments(
  * @param owner GitHub owner
  * @param name repository 이름
  * @param route repository 하위 API route
+ * @param headers GitHub custom media type 등 요청 헤더 목록
  */
 async function readPaged<T>(
   cwd: string,
   owner: string,
   name: string,
-  route: string
+  route: string,
+  headers: string[] = ["Accept: application/vnd.github+json"]
 ): Promise<T[]> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
     const out = await runGh([
       "api",
-      "-H",
-      "Accept: application/vnd.github+json",
+      ...headers.flatMap((header) => ["-H", header]),
       `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
     ], cwd);
     const items = JSON.parse(out) as T[];
@@ -206,7 +231,9 @@ function normalizeComment(comment: GhIssueComment): PullRequestConversationItem 
   return {
     kind: "comment",
     author: comment.user?.login || "unknown",
-    body: comment.body || "",
+    body: comment.body || comment.body_text || "",
+    bodyText: comment.body_text || undefined,
+    bodyHtml: comment.body_html || undefined,
     createdAt: comment.created_at,
     url: comment.html_url,
   };
@@ -217,7 +244,9 @@ function normalizeReview(review: GhReview): PullRequestConversationItem {
   return {
     kind: "review",
     author: review.user?.login || "unknown",
-    body: review.body || "",
+    body: review.body || review.body_text || "",
+    bodyText: review.body_text || undefined,
+    bodyHtml: review.body_html || undefined,
     action: reviewAction(review.state),
     state: review.state,
     createdAt: review.submitted_at,
@@ -230,7 +259,9 @@ function normalizeReviewComment(comment: GhReviewComment): PullRequestConversati
   return {
     kind: "review_comment",
     author: comment.user?.login || "unknown",
-    body: comment.body || "",
+    body: comment.body || comment.body_text || "",
+    bodyText: comment.body_text || undefined,
+    bodyHtml: comment.body_html || undefined,
     action: "commented on a file",
     path: comment.path,
     line: comment.line || comment.original_line,
