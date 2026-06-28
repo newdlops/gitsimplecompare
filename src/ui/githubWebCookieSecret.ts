@@ -28,7 +28,7 @@ export async function promptAndStoreGitHubWebCookie(
   secrets: vscode.SecretStorage
 ): Promise<boolean> {
   const value = await vscode.window.showInputBox({
-    title: vscode.l10n.t("Set GitHub Web Cookie"),
+    title: vscode.l10n.t("Login GitHub Web Session"),
     prompt: vscode.l10n.t(
       "Paste the github.com Cookie header or a copied cURL request."
     ),
@@ -41,6 +41,25 @@ export async function promptAndStoreGitHubWebCookie(
     return false;
   }
   return storeGitHubWebCookie(secrets, cookie, "manual");
+}
+
+/**
+ * 클립보드에 복사된 GitHub cURL/Cookie 값을 자동으로 읽어 SecretStorage 에 저장한다.
+ * - 사용자가 명령을 직접 실행한 순간에만 클립보드를 읽어 예기치 않은 백그라운드 수집을 피한다.
+ * - 클립보드가 GitHub 웹 세션처럼 보이지 않으면 false 를 반환해 수동 입력 fallback 으로 넘어가게 한다.
+ * @param secrets VS Code 가 제공하는 확장 전용 SecretStorage
+ * @returns 클립보드 값이 유효해서 저장되었으면 true
+ */
+export async function storeGitHubWebCookieFromClipboard(
+  secrets: vscode.SecretStorage
+): Promise<boolean> {
+  const value = await vscode.env.clipboard.readText();
+  const cookie = normalizeCookie(value);
+  if (!cookie || validateCookie(cookie)) {
+    logInfo("github web cookie clipboard skipped", { reason: "noValidCookie" });
+    return false;
+  }
+  return storeGitHubWebCookie(secrets, cookie, "clipboard");
 }
 
 /**
@@ -66,6 +85,18 @@ export async function storeGitHubWebCookie(
     vscode.l10n.t("GitHub web cookie saved for suggested changesets.")
   );
   return true;
+}
+
+/**
+ * GitHub 웹 Cookie 입력값을 저장 전에 검사한다.
+ * - webview 처럼 저장 UI 를 직접 그리는 호출부가 같은 검증 메시지를 재사용하게 한다.
+ * @param value 사용자가 붙여넣은 Cookie 헤더 또는 cURL 요청
+ * @returns 문제가 있으면 오류 메시지, 저장 가능하면 undefined
+ */
+export function validateGitHubWebCookieInput(
+  value: string | undefined
+): string | undefined {
+  return validateCookie(value ?? "");
 }
 
 /**

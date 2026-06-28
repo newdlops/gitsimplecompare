@@ -6,12 +6,20 @@ import {
   PullRequestReviewComment,
   PullRequestReviewCommentService,
 } from "../git/pullRequestReviewComments";
+import type { PullRequestSuggestedChangesetStatus } from "../git/pullRequestSuggestedChangesets";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { pullRequestCommentMarkdown } from "../ui/pullRequestCommentMarkdown";
 import {
   groupPullRequestThreadComments,
   PullRequestThreadGroup,
 } from "../ui/pullRequestCommentThreads";
+import {
+  countAttachedSuggestedChangesets,
+  countBodySuggestedChangeHints,
+  gitHubWebSessionFlowReason,
+  hasCodeFence,
+  suggestedCommentIds,
+} from "./pullRequestCommentDiagnostics";
 import { readStoredGitHubWebCookie } from "../ui/githubWebCookieSecret";
 import { logInfo } from "../ui/outputLog";
 
@@ -21,6 +29,7 @@ const FULL_SHOW_KEY = `${EXT_CONFIG_SECTION}.${SHOW_KEY}`;
 const REFRESH_DELAY_MS = 220;
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const COMMENT_CONTROLLER_ID = "gitSimpleComparePrReviewComments";
+const GITHUB_WEB_SESSION_COMMAND = "gitSimpleCompare.setGitHubWebCookie";
 
 interface PullRequestCommentCacheEntry {
   at: number;
@@ -40,6 +49,7 @@ export class PullRequestCommentController implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
   private readonly activeThreads = new Map<string, vscode.CommentThread>();
+  private readonly webSessionFlowKeys = new Set<string>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private requestSeq = 0;
   private disposed = false;
@@ -96,6 +106,9 @@ export class PullRequestCommentController implements vscode.Disposable {
    */
   invalidateCache(reason: string): void {
     this.cache.clear();
+    if (/githubWebCookie/i.test(reason)) {
+      this.webSessionFlowKeys.clear();
+    }
     logInfo("pr editor comments cache invalidated", { reason });
     this.scheduleRefresh(reason);
   }
@@ -244,6 +257,9 @@ export class PullRequestCommentController implements vscode.Disposable {
         path: relativePath,
         comments: fileComments.length,
         lines: groups.length,
+        suggestedChangesets: countAttachedSuggestedChangesets(fileComments),
+        bodySuggestedChangeHints: countBodySuggestedChangeHints(fileComments),
+        suggestedCommentIds: suggestedCommentIds(fileComments),
       });
     } catch (error) {
       if (requestId !== this.requestSeq) {
@@ -286,17 +302,66 @@ export class PullRequestCommentController implements vscode.Disposable {
     });
     const data = await service.getActiveBranchReviewComments(branch);
     this.cache.set(cacheKey, { at: Date.now(), data });
+    this.openGitHubWebSessionFlowIfNeeded(
+      repoRoot,
+      branch,
+      data?.suggestedChangesetStatus,
+      webCookie
+    );
     logInfo("pr editor comments loaded", {
       repoRoot,
       branch,
       pr: data?.number,
       comments: data?.comments.length ?? 0,
-      suggestedChangesets: data?.comments.reduce((sum, comment) => sum + countSuggestedChangesets(comment), 0) ?? 0,
+      suggestedChangesets: countAttachedSuggestedChangesets(data?.comments || []),
+      bodySuggestedChangeHints: countBodySuggestedChangeHints(data?.comments || []),
+      webSuggestedChangesets: data?.suggestedChangesetStatus?.changesets ?? 0,
+      webSuggestedComments: data?.suggestedChangesetStatus?.comments ?? 0,
       codeSnippets: data?.comments.filter(hasCodeFence).length ?? 0,
       suggestedChangesetSource: data?.suggestedChangesetStatus?.source,
       suggestedChangesetReason: data?.suggestedChangesetStatus?.reason,
     });
     return data;
+  }
+
+  /**
+   * GitHub 웹 suggested changeset 조회가 인증 문제로 실패하면 세션 설정 패널로 사용자를 안내한다.
+   * - 저장 쿠키가 없거나 저장 쿠키가 거절된 경우만 자동으로 열고, 같은 repo/branch/원인은 한 번만 연다.
+   * @param repoRoot 저장소 루트
+   * @param branch 현재 브랜치
+   * @param status suggested changeset 보조 조회 상태
+   * @param webCookie SecretStorage 에 저장된 GitHub 웹 Cookie 헤더
+   */
+  private openGitHubWebSessionFlowIfNeeded(
+    repoRoot: string,
+    branch: string,
+    status: PullRequestSuggestedChangesetStatus | undefined,
+    webCookie: string | undefined
+  ): void {
+    const reason = gitHubWebSessionFlowReason(status, webCookie);
+    if (!reason) {
+      return;
+    }
+    const key = `${repoRoot}\0${branch}\0${reason}`;
+    if (this.webSessionFlowKeys.has(key)) {
+      return;
+    }
+    this.webSessionFlowKeys.add(key);
+    logInfo("github web session flow requested", {
+      repoRoot,
+      branch,
+      reason,
+      suggestedChangesetReason: status?.reason,
+    });
+    void vscode.commands.executeCommand(GITHUB_WEB_SESSION_COMMAND).then(
+      undefined,
+      (error) => logInfo("github web session flow failed", {
+        repoRoot,
+        branch,
+        reason,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    );
   }
 
   /**
@@ -512,29 +577,6 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration(EXT_CONFIG_SECTION)
     .get<boolean>(SHOW_KEY, true);
-}
-
-/** GitHub review comment 에서 실제 표시할 suggested changeset 수를 센다. */
-function countSuggestedChangesets(comment: PullRequestReviewComment): number {
-  return (comment.suggestedChangesets?.length || 0)
-    + (hasBodySuggestedChangeset(comment) ? 1 : 0);
-}
-
-/**
- * GitHub review comment 본문에 suggested changeset 후보가 있는지 빠르게 판별한다.
- * - 실제 렌더링 파서는 ui 모듈에 두고, 여기서는 OUTPUT 진단용 count 만 계산한다.
- */
-function hasBodySuggestedChangeset(comment: PullRequestReviewComment): boolean {
-  return /(^|\n)[ \t]*(`{3,}|~{3,})\s*suggestion/i.test(comment.body || "")
-    || /suggest(?:ed)?[-_ ]?changeset|suggest(?:ed)?[-_ ]?change|js-suggest/i.test(comment.bodyHtml || "");
-}
-
-/**
- * GitHub review comment 본문에 일반 fenced code snippet 이 있는지 판별한다.
- * - code block 이 섞인 comment 가 잘리는 문제를 재현할 때 OUTPUT 로그로 확인하기 위함이다.
- */
-function hasCodeFence(comment: PullRequestReviewComment): boolean {
-  return /(^|\n)[ \t]*(`{3,}|~{3,})(?!\s*suggestion\b)/i.test(comment.body || "");
 }
 
 /**

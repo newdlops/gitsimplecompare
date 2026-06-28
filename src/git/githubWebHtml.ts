@@ -5,10 +5,11 @@ import * as https from "node:https";
 const MAX_HTML_BYTES = 64 * 1024 * 1024;
 const MAX_FRAGMENT_URLS = 120;
 const MAX_FRAGMENT_DEPTH = 2;
+const MAX_REDIRECTS = 5;
 
 /** GitHub 웹 HTML 읽기 성공/실패 결과 */
 export type GitHubWebHtmlRead =
-  | { ok: true; html: string }
+  | { ok: true; html: string; finalUrl: string }
   | { ok: false; reason: string };
 
 /**
@@ -28,9 +29,10 @@ export async function readGitHubWebHtmlWithFragments(
   if (!base.ok) {
     return base;
   }
-  const fragments = await readFragmentHtml(url, base.html, headers);
+  const fragments = await readFragmentHtml(base.finalUrl, base.html, headers);
   return {
     ok: true,
+    finalUrl: base.finalUrl,
     html: [base.html, ...fragments].join("\n"),
   };
 }
@@ -171,10 +173,25 @@ function pullPathPrefix(pathname: string): string | undefined {
 function readText(
   url: string,
   headers: Record<string, string>,
-  requireFullHtml: boolean
+  requireFullHtml: boolean,
+  redirects = 0
 ): Promise<GitHubWebHtmlRead> {
   return new Promise((resolve) => {
     const request = https.get(url, { headers }, (response) => {
+      if (isRedirect(response.statusCode) && response.headers.location) {
+        response.resume();
+        if (redirects >= MAX_REDIRECTS) {
+          resolve({ ok: false, reason: `too many redirects after status ${response.statusCode}` });
+          return;
+        }
+        const nextUrl = redirectedGitHubUrl(url, response.headers.location);
+        if (!nextUrl) {
+          resolve({ ok: false, reason: `unsafe redirect status ${response.statusCode}` });
+          return;
+        }
+        readText(nextUrl, headers, requireFullHtml, redirects + 1).then(resolve);
+        return;
+      }
       if (response.statusCode !== 200) {
         response.resume();
         resolve({ ok: false, reason: `status ${response.statusCode}` });
@@ -200,12 +217,45 @@ function readText(
           resolve({ ok: false, reason: "response was not HTML fragment" });
           return;
         }
-        resolve({ ok: true, html });
+        resolve({ ok: true, html, finalUrl: url });
       });
     });
     request.on("error", (error) => resolve({ ok: false, reason: error.message }));
     request.setTimeout(10000, () => request.destroy(new Error("web html request timed out")));
   });
+}
+
+/**
+ * HTTP status 가 follow 가능한 redirect 인지 확인한다.
+ * @param statusCode 응답 status code
+ * @returns redirect 로 처리할 status 면 true
+ */
+function isRedirect(statusCode: number | undefined): boolean {
+  return typeof statusCode === "number" && statusCode >= 300 && statusCode < 400;
+}
+
+/**
+ * GitHub 인증 헤더를 유지해도 되는 redirect URL 인지 검증한다.
+ * - github.com 내부 이동만 허용해 Cookie/Authorization 헤더가 외부로 나가지 않게 한다.
+ * @param currentUrl 현재 요청 URL
+ * @param location 응답 Location 헤더
+ * @returns 따라갈 absolute URL. 안전하지 않으면 undefined
+ */
+function redirectedGitHubUrl(
+  currentUrl: string,
+  location: string
+): string | undefined {
+  try {
+    const current = new URL(currentUrl);
+    const next = new URL(location, current);
+    if (current.origin !== next.origin || next.hostname !== "github.com") {
+      return undefined;
+    }
+    next.hash = "";
+    return next.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 /** HTML 응답이 GitHub 전체 페이지처럼 보이는지 확인한다. */

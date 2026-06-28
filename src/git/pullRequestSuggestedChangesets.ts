@@ -2,6 +2,7 @@
 // - REST/GraphQL review comment API 에 없는 Copilot suggested changeset 을 보조적으로 읽기 위한 경로다.
 import { runGh } from "./ghCli";
 import { isGitHubHtml, readGitHubWebHtmlWithFragments } from "./githubWebHtml";
+import { parseCopilotSuggestedChangesetPayloads } from "./pullRequestSuggestedChangesetPayload";
 
 const WEB_COOKIE_ENV = "GIT_SIMPLE_COMPARE_GITHUB_COOKIE";
 
@@ -312,6 +313,7 @@ function stripHash(url: URL): URL {
  */
 export function parsePullRequestSuggestedChangesets(html: string): Map<string, string[]> {
   const result = new Map<string, string[]>();
+  mergeSuggestedChangesets(result, parseCopilotSuggestedChangesetPayloads(html));
   const positions = Array.from(html.matchAll(/discussion_r(\d+)/g));
   for (let index = 0; index < positions.length; index++) {
     const id = positions[index][1];
