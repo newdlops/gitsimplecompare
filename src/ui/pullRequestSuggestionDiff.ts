@@ -4,6 +4,7 @@ import {
   EncodedSuggestedChangeRow,
   decodeSuggestedChangeRows,
 } from "../utils/suggestedChangeFormat";
+import { lineNumberedSuggestedChangeRows } from "../utils/suggestedChangeLineNumbers";
 
 /** suggested change 가 달린 GitHub review comment 의 라인/diff 정보 */
 export interface SuggestedChangeDiffInput {
@@ -73,7 +74,7 @@ export function suggestedChangeCodeBlock(
   const encodedRows = decodeSuggestedChangeRows(suggestion);
   if (encodedRows) {
     return {
-      code: formatEncodedSuggestedChangeRows(lineNumberedEncodedRows(encodedRows, input)),
+      code: formatEncodedSuggestedChangeRows(lineNumberedSuggestedChangeRows(encodedRows, input)),
       language: "diff",
     };
   }
@@ -98,144 +99,6 @@ function formatEncodedSuggestedChangeRows(rows: EncodedSuggestedChangeRow[]): st
   return rows
     .map((row) => `${encodedMarker(row)} ${formatLineNumber(row.oldLine, width)} ${formatLineNumber(row.newLine, width)} | ${row.text}`)
     .join("\n");
-}
-
-/**
- * 구조화 row 에 라인 번호가 빠져 있으면 GitHub diff_hunk 를 기준으로 보강한다.
- * - 일부 Copilot payload 는 add/delete/context 정보만 주고 번호를 비운다.
- * - hunk 의 같은 코드 줄을 anchor 로 삼아 old/new 카운터를 복원한다.
- * @param rows 구조화 suggested changeset row
- * @param input GitHub review comment 의 diff metadata
- * @returns 라인 번호가 가능한 만큼 채워진 row 목록
- */
-function lineNumberedEncodedRows(
-  rows: EncodedSuggestedChangeRow[],
-  input: SuggestedChangeDiffInput
-): EncodedSuggestedChangeRow[] {
-  if (rows.every((row) => row.oldLine || row.newLine)) {
-    return rows;
-  }
-  const inferred = inferEncodedRowLineNumbers(rows, input.diffHunk);
-  return inferred || rows;
-}
-
-/**
- * diff_hunk 와 suggested changeset row 를 텍스트 기준으로 맞춰 라인 번호를 추론한다.
- * @param rows 구조화 suggested changeset row
- * @param diffHunk GitHub review comment diff_hunk
- * @returns 추론된 row 목록. anchor 를 찾지 못하면 undefined
- */
-function inferEncodedRowLineNumbers(
-  rows: EncodedSuggestedChangeRow[],
-  diffHunk: string | undefined
-): EncodedSuggestedChangeRow[] | undefined {
-  if (!diffHunk) {
-    return undefined;
-  }
-  const hunkLines = parseDiffHunkLines(diffHunk);
-  const anchor = encodedRowAnchor(rows, hunkLines);
-  if (!anchor || !anchor.line.oldLine || !anchor.line.newLine) {
-    return undefined;
-  }
-  let oldLine = anchor.line.oldLine;
-  let newLine = anchor.line.newLine;
-  for (let index = anchor.rowIndex - 1; index >= 0; index--) {
-    if (rows[index].kind === "context") {
-      oldLine--;
-      newLine--;
-    } else if (rows[index].kind === "delete") {
-      oldLine--;
-    } else {
-      newLine--;
-    }
-  }
-  return rows.map((row) => {
-    const numbered = numberEncodedRow(row, oldLine, newLine);
-    oldLine = numbered.nextOldLine;
-    newLine = numbered.nextNewLine;
-    return numbered.row;
-  });
-}
-
-/**
- * suggested row 하나에 현재 old/new 카운터를 적용한다.
- * @param row 번호를 채울 row
- * @param oldLine 현재 old side 라인 번호
- * @param newLine 현재 new side 라인 번호
- * @returns 번호가 채워진 row 와 다음 카운터
- */
-function numberEncodedRow(
-  row: EncodedSuggestedChangeRow,
-  oldLine: number,
-  newLine: number
-): { row: EncodedSuggestedChangeRow; nextOldLine: number; nextNewLine: number } {
-  if (row.kind === "context") {
-    return {
-      row: { ...row, oldLine: row.oldLine || oldLine, newLine: row.newLine || newLine },
-      nextOldLine: oldLine + 1,
-      nextNewLine: newLine + 1,
-    };
-  }
-  if (row.kind === "delete") {
-    return {
-      row: { ...row, oldLine: row.oldLine || oldLine },
-      nextOldLine: oldLine + 1,
-      nextNewLine: newLine,
-    };
-  }
-  return {
-    row: { ...row, newLine: row.newLine || newLine },
-    nextOldLine: oldLine,
-    nextNewLine: newLine + 1,
-  };
-}
-
-/**
- * suggested changeset row 와 diff_hunk line 중 같은 코드 줄을 찾는다.
- * @param rows suggested changeset row 목록
- * @param hunkLines 파싱된 diff_hunk line 목록
- * @returns 라인 번호 추론에 사용할 anchor
- */
-function encodedRowAnchor(
-  rows: EncodedSuggestedChangeRow[],
-  hunkLines: ParsedDiffLine[]
-): { rowIndex: number; line: ParsedDiffLine } | undefined {
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    const row = rows[rowIndex];
-    const line = hunkLines.find((candidate) =>
-      encodedKindsMatch(row.kind, candidate.type) &&
-      sameCodeText(row.text, candidate.text)
-    );
-    if (line) {
-      return { rowIndex, line };
-    }
-  }
-  return undefined;
-}
-
-/**
- * 구조화 row kind 와 diff_hunk line type 이 같은 의미인지 확인한다.
- * @param rowKind suggested changeset row kind
- * @param lineType diff_hunk line type
- * @returns 같은 종류이면 true
- */
-function encodedKindsMatch(
-  rowKind: EncodedSuggestedChangeRow["kind"],
-  lineType: ParsedDiffLine["type"]
-): boolean {
-  return (rowKind === "add" && lineType === "add") ||
-    (rowKind === "delete" && lineType === "delete") ||
-    (rowKind === "context" && lineType === "context");
-}
-
-/**
- * 줄 끝 공백 차이를 무시하고 코드 텍스트가 같은지 확인한다.
- * @param a 첫 번째 코드 줄
- * @param b 두 번째 코드 줄
- * @returns 같은 코드 줄이면 true
- */
-function sameCodeText(a: string, b: string): boolean {
-  return a.replace(/[ \t]+$/g, "") === b.replace(/[ \t]+$/g, "");
 }
 
 /**

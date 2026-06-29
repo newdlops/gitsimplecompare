@@ -200,16 +200,18 @@ export function pullRequestPreviewMarkdownScript(): string {
     }
     function lineNumberedEncodedRows(rows, comment) {
       if (rows.every((row) => row.oldLine || row.newLine)) return rows;
-      return inferEncodedRowLineNumbers(rows, comment?.diffHunk || comment?.diff_hunk || '') || rows;
+      return inferEncodedRowLineNumbers(rows, comment || {}) || rows;
     }
-    function inferEncodedRowLineNumbers(rows, diffHunk) {
-      if (!diffHunk) return undefined;
-      const hunkLines = parseSuggestedDiffHunk(diffHunk);
-      const anchor = encodedRowAnchor(rows, hunkLines);
-      if (!anchor || !anchor.line.oldLine || !anchor.line.newLine) return undefined;
-      let oldLine = anchor.line.oldLine;
-      let newLine = anchor.line.newLine;
-      for (let index = anchor.rowIndex - 1; index >= 0; index--) {
+    function inferEncodedRowLineNumbers(rows, comment) {
+      const range = reviewCommentRange(comment || {});
+      const hunkLines = parseSuggestedDiffHunk(comment?.diffHunk || comment?.diff_hunk || '');
+      const anchor = encodedRowAnchor(rows, hunkLines, range?.side || 'RIGHT');
+      const startLine = anchor?.lineNo || range?.start;
+      if (!startLine) return undefined;
+      let oldLine = startLine;
+      let newLine = startLine;
+      const anchorIndex = anchor?.rowIndex ?? 0;
+      for (let index = anchorIndex - 1; index >= 0; index--) {
         if (rows[index].kind === 'context') {
           oldLine--;
           newLine--;
@@ -247,20 +249,24 @@ export function pullRequestPreviewMarkdownScript(): string {
         nextNewLine: newLine + 1,
       };
     }
-    function encodedRowAnchor(rows, hunkLines) {
+    function encodedRowAnchor(rows, hunkLines, side) {
       for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
         const row = rows[rowIndex];
+        if (row.kind === 'add') continue;
         const line = hunkLines.find((candidate) =>
-          encodedKindsMatch(row.kind, candidate.type) && sameCodeText(row.text || '', candidate.text || '')
+          lineExistsOnSide(candidate, side) && sameCodeText(row.text || '', candidate.text || '')
         );
-        if (line) return { rowIndex, line };
+        const lineNo = line ? lineNumberOnSide(line, side) : undefined;
+        if (lineNo) return { rowIndex, lineNo };
       }
       return undefined;
     }
-    function encodedKindsMatch(rowKind, lineType) {
-      return (rowKind === 'add' && lineType === 'add') ||
-        (rowKind === 'delete' && lineType === 'delete') ||
-        (rowKind === 'context' && lineType === 'context');
+    function lineExistsOnSide(line, side) {
+      return side === 'LEFT' ? line.type !== 'add' : line.type !== 'delete';
+    }
+    function lineNumberOnSide(line, side) {
+      const value = side === 'LEFT' ? line.oldLine : line.newLine;
+      return numberLine(value);
     }
     function sameCodeText(a, b) {
       return String(a || '').replace(/[ \\t]+$/g, '') === String(b || '').replace(/[ \\t]+$/g, '');
