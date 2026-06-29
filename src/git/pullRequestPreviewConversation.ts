@@ -15,6 +15,12 @@ export interface PullRequestConversationItem {
   state?: string;
   path?: string;
   line?: number;
+  startLine?: number;
+  originalLine?: number;
+  originalStartLine?: number;
+  side?: string;
+  startSide?: string;
+  diffHunk?: string;
   commitId?: string;
   url?: string;
 }
@@ -61,6 +67,11 @@ interface GhReviewComment extends GhIssueComment {
   path?: string;
   line?: number;
   original_line?: number;
+  start_line?: number;
+  original_start_line?: number;
+  side?: string;
+  start_side?: string;
+  diff_hunk?: string;
 }
 
 const PAGE_SIZE = 100;
@@ -265,6 +276,12 @@ function normalizeReviewComment(comment: GhReviewComment): PullRequestConversati
     action: "commented on a file",
     path: comment.path,
     line: comment.line || comment.original_line,
+    startLine: comment.start_line,
+    originalLine: comment.original_line,
+    originalStartLine: comment.original_start_line,
+    side: comment.side,
+    startSide: comment.start_side,
+    diffHunk: comment.diff_hunk,
     createdAt: comment.created_at,
     url: comment.html_url,
   };

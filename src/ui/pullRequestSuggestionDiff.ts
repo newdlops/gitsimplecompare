@@ -1,5 +1,9 @@
 // GitHub suggestion fence 를 VS Code CommentThread 에서 읽기 좋은 diff 코드블록으로 바꾼다.
 // - CommentThread MarkdownString 은 GitHub PR UI 같은 커스텀 CSS 를 줄 수 없으므로 diff syntax highlighting 을 활용한다.
+import {
+  EncodedSuggestedChangeRow,
+  decodeSuggestedChangeRows,
+} from "../utils/suggestedChangeFormat";
 
 /** suggested change 가 달린 GitHub review comment 의 라인/diff 정보 */
 export interface SuggestedChangeDiffInput {
@@ -40,9 +44,23 @@ interface ParsedDiffLine {
   newLine?: number;
 }
 
+interface OriginalSuggestionLine {
+  text: string;
+  lineNo?: number;
+}
+
+interface SuggestedChangeDiffRow {
+  marker: "+" | "-";
+  lineNo?: number;
+  oldLine?: number;
+  newLine?: number;
+  text: string;
+}
+
 /**
  * suggestion fence 내부 코드를 원본/제안 diff 코드블록으로 변환한다.
  * - diff_hunk 와 line metadata 가 있으면 GitHub UI 처럼 삭제/추가 라인을 함께 보여준다.
+ * - CommentThread 의 code block 은 별도 gutter 를 둘 수 없으므로 라인 번호를 diff 본문 앞에 넣는다.
  * - 원본 라인을 계산할 수 없으면 제안 코드만 추가 라인으로 보여준다.
  * @param suggestion suggestion fence 내부 코드
  * @param input GitHub review comment 의 diff/line metadata
@@ -52,28 +70,385 @@ export function suggestedChangeCodeBlock(
   suggestion: string,
   input: SuggestedChangeDiffInput
 ): SuggestedChangeCodeBlock {
+  const encodedRows = decodeSuggestedChangeRows(suggestion);
+  if (encodedRows) {
+    return {
+      code: formatEncodedSuggestedChangeRows(lineNumberedEncodedRows(encodedRows, input)),
+      language: "diff",
+    };
+  }
+  const rows = suggestedChangeDiffRows(suggestion, input);
+  if (!rows.length) {
+    return { code: "", language: "text" };
+  }
+  return {
+    code: formatSuggestedChangeDiffRows(rows),
+    language: "diff",
+  };
+}
+
+/**
+ * GitHub/Copilot 에서 읽은 실제 suggested changeset row 를 code block 문자열로 만든다.
+ * - row kind 가 이미 있으므로 원본 범위를 재추정하지 않아 문맥 줄을 삭제 줄로 오표시하지 않는다.
+ * @param rows 인코딩에서 복원한 diff row 목록
+ * @returns VS Code diff code block 내용
+ */
+function formatEncodedSuggestedChangeRows(rows: EncodedSuggestedChangeRow[]): string {
+  const width = encodedLineNumberWidth(rows);
+  return rows
+    .map((row) => `${encodedMarker(row)} ${formatLineNumber(row.oldLine, width)} ${formatLineNumber(row.newLine, width)} | ${row.text}`)
+    .join("\n");
+}
+
+/**
+ * 구조화 row 에 라인 번호가 빠져 있으면 GitHub diff_hunk 를 기준으로 보강한다.
+ * - 일부 Copilot payload 는 add/delete/context 정보만 주고 번호를 비운다.
+ * - hunk 의 같은 코드 줄을 anchor 로 삼아 old/new 카운터를 복원한다.
+ * @param rows 구조화 suggested changeset row
+ * @param input GitHub review comment 의 diff metadata
+ * @returns 라인 번호가 가능한 만큼 채워진 row 목록
+ */
+function lineNumberedEncodedRows(
+  rows: EncodedSuggestedChangeRow[],
+  input: SuggestedChangeDiffInput
+): EncodedSuggestedChangeRow[] {
+  if (rows.every((row) => row.oldLine || row.newLine)) {
+    return rows;
+  }
+  const inferred = inferEncodedRowLineNumbers(rows, input.diffHunk);
+  return inferred || rows;
+}
+
+/**
+ * diff_hunk 와 suggested changeset row 를 텍스트 기준으로 맞춰 라인 번호를 추론한다.
+ * @param rows 구조화 suggested changeset row
+ * @param diffHunk GitHub review comment diff_hunk
+ * @returns 추론된 row 목록. anchor 를 찾지 못하면 undefined
+ */
+function inferEncodedRowLineNumbers(
+  rows: EncodedSuggestedChangeRow[],
+  diffHunk: string | undefined
+): EncodedSuggestedChangeRow[] | undefined {
+  if (!diffHunk) {
+    return undefined;
+  }
+  const hunkLines = parseDiffHunkLines(diffHunk);
+  const anchor = encodedRowAnchor(rows, hunkLines);
+  if (!anchor || !anchor.line.oldLine || !anchor.line.newLine) {
+    return undefined;
+  }
+  let oldLine = anchor.line.oldLine;
+  let newLine = anchor.line.newLine;
+  for (let index = anchor.rowIndex - 1; index >= 0; index--) {
+    if (rows[index].kind === "context") {
+      oldLine--;
+      newLine--;
+    } else if (rows[index].kind === "delete") {
+      oldLine--;
+    } else {
+      newLine--;
+    }
+  }
+  return rows.map((row) => {
+    const numbered = numberEncodedRow(row, oldLine, newLine);
+    oldLine = numbered.nextOldLine;
+    newLine = numbered.nextNewLine;
+    return numbered.row;
+  });
+}
+
+/**
+ * suggested row 하나에 현재 old/new 카운터를 적용한다.
+ * @param row 번호를 채울 row
+ * @param oldLine 현재 old side 라인 번호
+ * @param newLine 현재 new side 라인 번호
+ * @returns 번호가 채워진 row 와 다음 카운터
+ */
+function numberEncodedRow(
+  row: EncodedSuggestedChangeRow,
+  oldLine: number,
+  newLine: number
+): { row: EncodedSuggestedChangeRow; nextOldLine: number; nextNewLine: number } {
+  if (row.kind === "context") {
+    return {
+      row: { ...row, oldLine: row.oldLine || oldLine, newLine: row.newLine || newLine },
+      nextOldLine: oldLine + 1,
+      nextNewLine: newLine + 1,
+    };
+  }
+  if (row.kind === "delete") {
+    return {
+      row: { ...row, oldLine: row.oldLine || oldLine },
+      nextOldLine: oldLine + 1,
+      nextNewLine: newLine,
+    };
+  }
+  return {
+    row: { ...row, newLine: row.newLine || newLine },
+    nextOldLine: oldLine,
+    nextNewLine: newLine + 1,
+  };
+}
+
+/**
+ * suggested changeset row 와 diff_hunk line 중 같은 코드 줄을 찾는다.
+ * @param rows suggested changeset row 목록
+ * @param hunkLines 파싱된 diff_hunk line 목록
+ * @returns 라인 번호 추론에 사용할 anchor
+ */
+function encodedRowAnchor(
+  rows: EncodedSuggestedChangeRow[],
+  hunkLines: ParsedDiffLine[]
+): { rowIndex: number; line: ParsedDiffLine } | undefined {
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
+    const line = hunkLines.find((candidate) =>
+      encodedKindsMatch(row.kind, candidate.type) &&
+      sameCodeText(row.text, candidate.text)
+    );
+    if (line) {
+      return { rowIndex, line };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 구조화 row kind 와 diff_hunk line type 이 같은 의미인지 확인한다.
+ * @param rowKind suggested changeset row kind
+ * @param lineType diff_hunk line type
+ * @returns 같은 종류이면 true
+ */
+function encodedKindsMatch(
+  rowKind: EncodedSuggestedChangeRow["kind"],
+  lineType: ParsedDiffLine["type"]
+): boolean {
+  return (rowKind === "add" && lineType === "add") ||
+    (rowKind === "delete" && lineType === "delete") ||
+    (rowKind === "context" && lineType === "context");
+}
+
+/**
+ * 줄 끝 공백 차이를 무시하고 코드 텍스트가 같은지 확인한다.
+ * @param a 첫 번째 코드 줄
+ * @param b 두 번째 코드 줄
+ * @returns 같은 코드 줄이면 true
+ */
+function sameCodeText(a: string, b: string): boolean {
+  return a.replace(/[ \t]+$/g, "") === b.replace(/[ \t]+$/g, "");
+}
+
+/**
+ * 구조화 row 의 old/new 라인 번호 컬럼 폭을 계산한다.
+ * @param rows suggested changeset row 목록
+ * @returns 정렬에 필요한 최소 문자 수
+ */
+function encodedLineNumberWidth(rows: EncodedSuggestedChangeRow[]): number {
+  return Math.max(
+    1,
+    ...rows
+      .flatMap((row) => [row.oldLine, row.newLine])
+      .filter((lineNo): lineNo is number => typeof lineNo === "number")
+      .map((lineNo) => String(lineNo).length)
+  );
+}
+
+/**
+ * 구조화 row kind 를 diff code block marker 로 바꾼다.
+ * @param row suggested changeset row
+ * @returns diff marker
+ */
+function encodedMarker(row: EncodedSuggestedChangeRow): "+" | "-" | " " {
+  if (row.kind === "add") {
+    return "+";
+  }
+  return row.kind === "delete" ? "-" : " ";
+}
+
+/**
+ * suggestion fence 와 review comment 위치를 diff row 목록으로 변환한다.
+ * - 삭제 row 는 diff_hunk 에서 선택된 기존 코드와 실제 라인 번호를 사용한다.
+ * - 추가 row 는 suggestion 코드가 적용될 시작 라인부터 이어지는 번호를 부여한다.
+ * @param suggestion suggestion fence 내부 코드
+ * @param input GitHub review comment 의 diff/line metadata
+ * @returns diff 코드블록에 표시할 삭제/추가 row 목록
+ */
+function suggestedChangeDiffRows(
+  suggestion: string,
+  input: SuggestedChangeDiffInput
+): SuggestedChangeDiffRow[] {
   const suggestedLines = splitCodeLines(suggestion);
   const originalLines = selectedOriginalLines(input);
   if (!originalLines.length && !suggestedLines.length) {
-    return { code: "", language: "text" };
+    return [];
   }
-  const diffLines = [
-    ...originalLines.map((line) => `-${line}`),
-    ...suggestedLines.map((line) => `+${line}`),
-  ];
-  return {
-    code: diffLines.join("\n"),
-    language: "diff",
-  };
+  const range = targetRange(input);
+  const deletedRows = originalLines.map((line) => ({
+    marker: "-" as const,
+    lineNo: line.lineNo,
+    oldLine: line.lineNo,
+    text: line.text,
+  }));
+  const addedRows = suggestedLines.map((line, index) => ({
+    marker: "+" as const,
+    lineNo: suggestedLineNumber(range, index),
+    newLine: suggestedLineNumber(range, index),
+    text: line,
+  }));
+  return pairSuggestedChangeRows(deletedRows, addedRows);
+}
+
+/**
+ * 삭제/추가 row 를 사람이 비교하기 쉬운 순서로 섞는다.
+ * - 기존 diff 처럼 삭제를 먼저 전부 나열하면 `- 20` 과 `+ 20` 이 멀어져 읽기 어렵다.
+ * - 같은 lineNo 가 있으면 삭제 row 바로 뒤에 추가 row 를 붙여 같은 라인 변경으로 보이게 한다.
+ * @param deletedRows 기존 코드 row 목록
+ * @param addedRows 제안 코드 row 목록
+ * @returns 같은 라인 번호끼리 붙인 표시 row 목록
+ */
+function pairSuggestedChangeRows(
+  deletedRows: SuggestedChangeDiffRow[],
+  addedRows: SuggestedChangeDiffRow[]
+): SuggestedChangeDiffRow[] {
+  if (hasLineNumbers(deletedRows) && hasLineNumbers(addedRows)) {
+    return pairRowsByLineNumber(deletedRows, addedRows);
+  }
+  return pairRowsByIndex(deletedRows, addedRows);
+}
+
+/**
+ * row 목록에 라인 번호가 하나라도 있는지 확인한다.
+ * @param rows 확인할 diff row 목록
+ * @returns 라인 번호가 있으면 true
+ */
+function hasLineNumbers(rows: SuggestedChangeDiffRow[]): boolean {
+  return rows.some((row) => typeof row.lineNo === "number");
+}
+
+/**
+ * 실제 lineNo 가 같은 삭제/추가 row 를 바로 붙인다.
+ * @param deletedRows 기존 코드 row 목록
+ * @param addedRows 제안 코드 row 목록
+ * @returns lineNo 기준으로 묶은 row 목록
+ */
+function pairRowsByLineNumber(
+  deletedRows: SuggestedChangeDiffRow[],
+  addedRows: SuggestedChangeDiffRow[]
+): SuggestedChangeDiffRow[] {
+  const rows: SuggestedChangeDiffRow[] = [];
+  const addedByLine = new Map<number, SuggestedChangeDiffRow[]>();
+  const used = new Set<SuggestedChangeDiffRow>();
+  for (const row of addedRows) {
+    if (typeof row.lineNo !== "number") {
+      continue;
+    }
+    const list = addedByLine.get(row.lineNo) || [];
+    list.push(row);
+    addedByLine.set(row.lineNo, list);
+  }
+  for (const row of deletedRows) {
+    rows.push(row);
+    const matches = typeof row.lineNo === "number" ? addedByLine.get(row.lineNo) : undefined;
+    if (!matches) {
+      continue;
+    }
+    for (const added of matches) {
+      rows.push(added);
+      used.add(added);
+    }
+  }
+  rows.push(...addedRows.filter((row) => !used.has(row)));
+  return rows;
+}
+
+/**
+ * 라인 번호를 알 수 없을 때 삭제/추가 row 를 순서대로 하나씩 붙인다.
+ * @param deletedRows 기존 코드 row 목록
+ * @param addedRows 제안 코드 row 목록
+ * @returns index 기준으로 섞은 row 목록
+ */
+function pairRowsByIndex(
+  deletedRows: SuggestedChangeDiffRow[],
+  addedRows: SuggestedChangeDiffRow[]
+): SuggestedChangeDiffRow[] {
+  const rows: SuggestedChangeDiffRow[] = [];
+  const max = Math.max(deletedRows.length, addedRows.length);
+  for (let index = 0; index < max; index++) {
+    if (deletedRows[index]) {
+      rows.push(deletedRows[index]);
+    }
+    if (addedRows[index]) {
+      rows.push(addedRows[index]);
+    }
+  }
+  return rows;
+}
+
+/**
+ * diff row 목록을 VS Code diff syntax highlight 가 유지되는 문자열로 바꾼다.
+ * - 줄 맨 앞의 +,- 는 그대로 두고, 그 뒤에 정렬된 라인 번호 컬럼을 둔다.
+ * @param rows 삭제/추가 row 목록
+ * @returns code block 에 넣을 diff 문자열
+ */
+function formatSuggestedChangeDiffRows(rows: SuggestedChangeDiffRow[]): string {
+  const width = lineNumberWidth(rows);
+  return rows
+    .map((row) => `${row.marker} ${formatLineNumber(displayOldLine(row), width)} ${formatLineNumber(displayNewLine(row), width)} | ${row.text}`)
+    .join("\n");
+}
+
+/**
+ * 라인 번호 컬럼 폭을 계산한다.
+ * @param rows 삭제/추가 row 목록
+ * @returns 정렬에 필요한 최소 문자 수
+ */
+function lineNumberWidth(rows: SuggestedChangeDiffRow[]): number {
+  return Math.max(
+    1,
+    ...rows
+      .flatMap((row) => [displayOldLine(row), displayNewLine(row)])
+      .filter((lineNo): lineNo is number => typeof lineNo === "number")
+      .map((lineNo) => String(lineNo).length)
+  );
+}
+
+/**
+ * fallback row 의 old 라인 번호를 고른다.
+ * @param row 표시할 diff row
+ * @returns old side 라인 번호
+ */
+function displayOldLine(row: SuggestedChangeDiffRow): number | undefined {
+  return row.oldLine ?? (row.marker === "-" ? row.lineNo : undefined);
+}
+
+/**
+ * fallback row 의 new 라인 번호를 고른다.
+ * @param row 표시할 diff row
+ * @returns new side 라인 번호
+ */
+function displayNewLine(row: SuggestedChangeDiffRow): number | undefined {
+  return row.newLine ?? (row.marker === "+" ? row.lineNo : undefined);
+}
+
+/**
+ * 라인 번호를 고정 폭 문자열로 만든다.
+ * @param lineNo 표시할 1-base 라인 번호
+ * @param width 라인 번호 컬럼 폭
+ * @returns lineNo 가 없으면 같은 폭의 공백
+ */
+function formatLineNumber(lineNo: number | undefined, width: number): string {
+  return typeof lineNo === "number"
+    ? String(lineNo).padStart(width, " ")
+    : " ".repeat(width);
 }
 
 /**
  * GitHub diff_hunk 에서 comment target range 에 해당하는 기존 코드를 추출한다.
  * - RIGHT side 는 new line 기준으로 context/addition 을, LEFT side 는 old line 기준으로 context/deletion 을 사용한다.
  * @param input GitHub review comment 의 diff/line metadata
- * @returns suggestion 이 대체할 기존 코드 줄 목록
+ * @returns suggestion 이 대체할 기존 코드 줄과 표시 라인 번호 목록
  */
-function selectedOriginalLines(input: SuggestedChangeDiffInput): string[] {
+function selectedOriginalLines(input: SuggestedChangeDiffInput): OriginalSuggestionLine[] {
   if (!input.diffHunk) {
     return [];
   }
@@ -83,7 +458,10 @@ function selectedOriginalLines(input: SuggestedChangeDiffInput): string[] {
   }
   return parseDiffHunkLines(input.diffHunk)
     .filter((line) => lineInRange(line, range))
-    .map((line) => line.text);
+    .map((line) => ({
+      text: line.text,
+      lineNo: displayLineNumber(line, range.side),
+    }));
 }
 
 /**
@@ -131,10 +509,10 @@ function parseDiffHunkLines(hunk: string): ParsedDiffLine[] {
     const prefix = raw[0];
     const text = raw.slice(1);
     if (prefix === "+") {
-      lines.push({ type: "add", text, newLine });
+      lines.push({ type: "add", text, oldLine, newLine });
       newLine++;
     } else if (prefix === "-") {
-      lines.push({ type: "delete", text, oldLine });
+      lines.push({ type: "delete", text, oldLine, newLine });
       oldLine++;
     } else {
       lines.push({ type: "context", text, oldLine, newLine });
@@ -162,6 +540,32 @@ function lineInRange(line: ParsedDiffLine, range: TargetRange): boolean {
     && typeof line.newLine === "number"
     && line.newLine >= range.start
     && line.newLine <= range.end;
+}
+
+/**
+ * diff_hunk 의 old/new 라인 번호 중 comment side 에 맞는 번호를 고른다.
+ * @param line 파싱된 diff line
+ * @param side GitHub comment side
+ * @returns code block 에 표시할 1-base 라인 번호
+ */
+function displayLineNumber(
+  line: ParsedDiffLine,
+  side: TargetRange["side"]
+): number | undefined {
+  return side === "LEFT" ? line.oldLine : line.newLine;
+}
+
+/**
+ * 추가될 suggestion 줄의 표시 라인 번호를 계산한다.
+ * @param range comment target range
+ * @param index suggestion 내부 0-base line index
+ * @returns 적용 위치 기준 1-base 라인 번호
+ */
+function suggestedLineNumber(
+  range: TargetRange | undefined,
+  index: number
+): number | undefined {
+  return range ? range.start + index : undefined;
 }
 
 /** GitHub side 문자열을 RIGHT/LEFT 로 정규화한다. */

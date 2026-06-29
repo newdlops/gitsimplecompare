@@ -67,6 +67,16 @@ export function pullRequestPreviewStyles(): string {
     .markdown-body pre, .markdown-body code { font-family: var(--vscode-editor-font-family); background: var(--vscode-textCodeBlock-background); }
     .markdown-body pre { padding: 10px; overflow: auto; }
     .markdown-body blockquote { padding-left: 10px; border-left: 3px solid var(--border); color: var(--muted); }
+    .suggested-change { display: grid; gap: 6px; margin: 10px 0; }
+    .suggested-change p { margin: 0; }
+    .suggested-change-diff { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 4px; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; line-height: 20px; }
+    .suggested-change-row { display: grid; grid-template-columns: 52px 52px 24px max-content; width: max-content; min-width: 100%; min-height: 20px; }
+    .suggested-change-row.add { color: var(--vscode-foreground); background: color-mix(in srgb, var(--green) 14%, transparent); }
+    .suggested-change-row.del { color: var(--vscode-foreground); background: color-mix(in srgb, var(--red) 13%, transparent); }
+    .suggested-change-line-no { padding: 0 8px; border-right: 1px solid color-mix(in srgb, var(--border) 72%, transparent); color: var(--muted); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
+    .suggested-change-row.add .suggested-change-line-no.new, .suggested-change-row.del .suggested-change-line-no.old { color: var(--vscode-foreground); background: color-mix(in srgb, currentColor 7%, transparent); }
+    .suggested-change-marker { padding: 0 7px; color: var(--muted); text-align: center; user-select: none; }
+    .suggested-change-code { min-width: max-content; padding: 0 16px 0 2px; white-space: pre; tab-size: 2; }
     .timeline { display: grid; gap: 12px; }
     .timeline-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
     .timeline-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }

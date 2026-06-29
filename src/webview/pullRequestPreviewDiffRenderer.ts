@@ -19,7 +19,9 @@ export function pullRequestPreviewDiffScript(): string {
         ? splitDiffRows(String(patch), limit, filePath, comments)
         : diffRows(String(patch), limit, filePath, comments);
       const omitted = rows.omitted ? diffOmittedRow(rows.omitted) : '';
-      const unmatched = rows.unmatched.length ? inlineCommentsHtml(rows.unmatched, 'review') : '';
+      const unmatched = rows.unmatched.length
+        ? inlineCommentsHtml(rows.unmatched, 'review', languageForPath(filePath))
+        : '';
       const layoutClass = layout === 'split' ? ' split-diff' : ' unified-diff';
       return '<div class="diff-snippet github-diff' + extraClass + layoutClass + '">' + rows.html + omitted + unmatched + '</div>';
     }
@@ -77,13 +79,13 @@ export function pullRequestPreviewDiffScript(): string {
             if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
             if (removed[i]) {
               html += codeRowHtml('del', removed[i].no, '', '-', removed[i].code, language, fragments[i]?.old);
-              html += lineCommentsHtml(commentState, removed[i].no, '');
+              html += lineCommentsHtml(commentState, removed[i].no, '', language);
               shown++;
             }
             if (added[i]) {
               if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
               html += codeRowHtml('add', '', added[i].no, '+', added[i].code, language, fragments[i]?.new);
-              html += lineCommentsHtml(commentState, '', added[i].no);
+              html += lineCommentsHtml(commentState, '', added[i].no, language);
               shown++;
             }
           }
@@ -91,12 +93,12 @@ export function pullRequestPreviewDiffScript(): string {
         }
         if (line.startsWith('+')) {
           html += codeRowHtml('add', '', newLine, '+', line.slice(1), language);
-          html += lineCommentsHtml(commentState, '', newLine);
+          html += lineCommentsHtml(commentState, '', newLine, language);
           newLine++;
         } else {
           const code = line.startsWith(' ') ? line.slice(1) : line;
           html += codeRowHtml('ctx', oldLine, newLine, '', code, language);
-          html += lineCommentsHtml(commentState, oldLine, newLine);
+          html += lineCommentsHtml(commentState, oldLine, newLine, language);
           oldLine++;
           newLine++;
         }
@@ -157,7 +159,7 @@ export function pullRequestPreviewDiffScript(): string {
           for (let i = 0; i < paired; i++) {
             if (shown >= limit) return { html, omitted: remainingEntryLines(entries, index), unmatched: remainingComments(commentState) };
             html += splitCodeRowHtml(removed[i], added[i], language, fragments[i]);
-            html += lineCommentsHtml(commentState, removed[i]?.no || '', added[i]?.no || '');
+            html += lineCommentsHtml(commentState, removed[i]?.no || '', added[i]?.no || '', language);
             shown++;
           }
           continue;
@@ -165,14 +167,14 @@ export function pullRequestPreviewDiffScript(): string {
         if (line.startsWith('+')) {
           const added = { kind: 'add', no: newLine, marker: '+', code: line.slice(1) };
           html += splitCodeRowHtml(null, added, language);
-          html += lineCommentsHtml(commentState, '', newLine);
+          html += lineCommentsHtml(commentState, '', newLine, language);
           newLine++;
         } else {
           const code = line.startsWith(' ') ? line.slice(1) : line;
           const oldCell = { kind: 'ctx', no: oldLine, marker: '', code };
           const newCell = { kind: 'ctx', no: newLine, marker: '', code };
           html += splitCodeRowHtml(oldCell, newCell, language);
-          html += lineCommentsHtml(commentState, oldLine, newLine);
+          html += lineCommentsHtml(commentState, oldLine, newLine, language);
           oldLine++;
           newLine++;
         }
@@ -355,28 +357,28 @@ export function pullRequestPreviewDiffScript(): string {
       if (comment.originalLine) keys.push(side === 'RIGHT' ? 'new:' + comment.originalLine : 'old:' + comment.originalLine);
       return keys;
     }
-    function lineCommentsHtml(state, oldNo, newNo) {
+    function lineCommentsHtml(state, oldNo, newNo, language) {
       const items = [];
       if (oldNo) items.push(...(state.byKey.get('old:' + oldNo) || []));
       if (newNo) items.push(...(state.byKey.get('new:' + newNo) || []));
       const unique = items.filter((item) => !state.used.has(item.index));
       unique.forEach((item) => state.used.add(item.index));
-      return unique.length ? inlineCommentsHtml(unique.map((item) => item.comment), newNo || oldNo) : '';
+      return unique.length ? inlineCommentsHtml(unique.map((item) => item.comment), newNo || oldNo, language) : '';
     }
     function remainingComments(state) {
       return state.comments.filter((_, index) => !state.used.has(index));
     }
-    function inlineCommentsHtml(comments, label) {
+    function inlineCommentsHtml(comments, label, language) {
       return '<div class="diff-comment-row"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></span><div class="diff-inline-comments">' +
-        comments.map((comment) => inlineCommentHtml(comment, label)).join('') + '</div></div>';
+        comments.map((comment) => inlineCommentHtml(comment, label, language)).join('') + '</div></div>';
     }
-    function inlineCommentHtml(comment, fallbackLabel) {
+    function inlineCommentHtml(comment, fallbackLabel, language) {
       const line = comment.line || comment.originalLine || fallbackLabel;
       const where = line ? 'line ' + line : 'review';
       return '<article class="diff-inline-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
         esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span>' +
         (comment.createdAt ? '<span>' + esc(formatDate(comment.createdAt)) + '</span>' : '') + '</div>' +
-        '<div class="comment-body markdown-body">' + renderReviewCommentMarkdown(comment) + '</div></article>';
+        '<div class="comment-body markdown-body">' + renderReviewCommentMarkdown(comment, language) + '</div></article>';
     }
     function isPatchHeaderLine(line) {
       return /^(diff --git |index |--- |\\+\\+\\+ |new file mode |deleted file mode |similarity index |rename from |rename to )/.test(line);

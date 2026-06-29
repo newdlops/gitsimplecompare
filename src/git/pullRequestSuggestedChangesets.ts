@@ -3,6 +3,8 @@
 import { runGh } from "./ghCli";
 import { isGitHubHtml, readGitHubWebHtmlWithFragments } from "./githubWebHtml";
 import { parseCopilotSuggestedChangesetPayloads } from "./pullRequestSuggestedChangesetPayload";
+import { suggestedDiffRowsFromBlob } from "./pullRequestSuggestedChangesetHtmlRows";
+import { encodeSuggestedChangeRows } from "../utils/suggestedChangeFormat";
 
 const WEB_COOKIE_ENV = "GIT_SIMPLE_COMPARE_GITHUB_COOKIE";
 
@@ -360,6 +362,11 @@ function mergeSuggestedChangesets(
 function suggestedChangesetsFromBlock(block: string): string[] {
   const suggestions: string[] = [];
   for (const part of elementsByClass(block, "js-suggested-changes-blob").map((item) => item.html)) {
+    const rows = suggestedDiffRowsFromBlob(part);
+    if (rows.some((row) => row.kind !== "context")) {
+      suggestions.push(encodeSuggestedChangeRows(rows));
+      continue;
+    }
     const additions = blobCodeLines(part, "blob-code-addition");
     if (additions.length) {
       suggestions.push(additions.join("\n"));

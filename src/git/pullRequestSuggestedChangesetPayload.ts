@@ -1,5 +1,9 @@
 // GitHub Copilot review partial HTML 안에 들어 있는 suggestion JSON payload 를 파싱한다.
 // - 일부 Copilot suggested changeset 은 DOM diff table 이 아니라 data payload 의 diffEntries 로만 내려온다.
+import {
+  EncodedSuggestedChangeRow,
+  encodeSuggestedChangeRows,
+} from "../utils/suggestedChangeFormat";
 
 /** comment id 별 suggested changeset 코드 */
 export type SuggestedChangesetPayloadMap = Map<string, string[]>;
@@ -19,6 +23,18 @@ interface DiffLinePayload {
   html?: unknown;
   text?: unknown;
   type?: unknown;
+  oldLine?: unknown;
+  oldLineNumber?: unknown;
+  old_lineno?: unknown;
+  originalLine?: unknown;
+  original_line?: unknown;
+  leftLineNumber?: unknown;
+  newLine?: unknown;
+  newLineNumber?: unknown;
+  new_lineno?: unknown;
+  line?: unknown;
+  lineNumber?: unknown;
+  rightLineNumber?: unknown;
 }
 
 /**
@@ -81,9 +97,9 @@ function suggestionPayloads(source: string): JsonValueRange[] {
 /**
  * suggestion payload 에서 실제 제안 코드만 추출한다.
  * - GitHub payload 는 diff line type 을 `ADDITION`/`DELETION`/`CONTEXT` 로 내려준다.
- * - 기존 렌더러는 suggestion 코드만 받으므로 addition 줄을 모아 반환하고, 삭제-only 제안은 빈 문자열로 표현한다.
+ * - 추가 코드만 압축하면 문맥 줄까지 삭제로 보일 수 있어 실제 diff row 를 인코딩해 반환한다.
  * @param value JSON.parse 된 suggestion object
- * @returns suggested changeset 코드 배열
+ * @returns suggested changeset diff row 문자열 배열
  */
 function suggestedChangesetsFromPayload(value: unknown): string[] {
   if (!isRecord(value) || !Array.isArray(value.diffEntries)) {
@@ -100,31 +116,113 @@ function suggestedChangesetsFromPayload(value: unknown): string[] {
 }
 
 /**
- * 파일 하나의 diff entry 에서 addition 줄을 suggested changeset 코드로 만든다.
+ * 파일 하나의 diff entry 에서 suggested changeset diff row 를 만든다.
  * @param value JSON payload 의 diff entry
- * @returns addition code. 삭제-only 제안이면 빈 문자열, 제안이 아니면 undefined
+ * @returns 인코딩된 diff row. 제안이 아니면 undefined
  */
 function suggestedChangesetFromEntry(value: unknown): string | undefined {
   if (!isDiffEntryPayload(value) || !Array.isArray(value.diffLines)) {
     return undefined;
   }
-  const additions: string[] = [];
-  let hasDeletion = false;
+  const rows: EncodedSuggestedChangeRow[] = [];
   for (const line of value.diffLines) {
     if (!isDiffLinePayload(line)) {
       continue;
     }
-    const type = String(line.type || "").toUpperCase();
-    if (type.includes("ADD")) {
-      additions.push(diffLineText(line));
-    } else if (type.includes("DEL")) {
-      hasDeletion = true;
+    const kind = diffLineKind(line);
+    if (!kind) {
+      continue;
+    }
+    rows.push({
+      kind,
+      oldLine: diffOldLine(line, kind),
+      newLine: diffNewLine(line, kind),
+      text: diffLineText(line),
+    });
+  }
+  return rows.some((row) => row.kind !== "context")
+    ? encodeSuggestedChangeRows(rows)
+    : undefined;
+}
+
+/**
+ * Copilot payload 의 diff line type 을 표시 kind 로 바꾼다.
+ * @param line GitHub diff line payload
+ * @returns 추가/삭제/문맥 kind
+ */
+function diffLineKind(line: DiffLinePayload): EncodedSuggestedChangeRow["kind"] | undefined {
+  const type = String(line.type || "").toUpperCase();
+  if (type.includes("ADD")) {
+    return "add";
+  }
+  if (type.includes("DEL") || type.includes("REMOV")) {
+    return "delete";
+  }
+  if (type.includes("CONTEXT") || type.includes("UNCHANGED") || type.includes("EQUAL")) {
+    return "context";
+  }
+  return undefined;
+}
+
+/**
+ * payload 에서 old side 라인 번호를 읽는다.
+ * @param line GitHub diff line payload
+ * @param kind diff row kind
+ * @returns old side 라인 번호
+ */
+function diffOldLine(
+  line: DiffLinePayload,
+  kind: EncodedSuggestedChangeRow["kind"]
+): number | undefined {
+  if (kind === "add") {
+    return undefined;
+  }
+  return firstLineNumber(
+    line.oldLine,
+    line.oldLineNumber,
+    line.old_lineno,
+    line.originalLine,
+    line.original_line,
+    line.leftLineNumber
+  );
+}
+
+/**
+ * payload 에서 new side 라인 번호를 읽는다.
+ * @param line GitHub diff line payload
+ * @param kind diff row kind
+ * @returns new side 라인 번호
+ */
+function diffNewLine(
+  line: DiffLinePayload,
+  kind: EncodedSuggestedChangeRow["kind"]
+): number | undefined {
+  if (kind === "delete") {
+    return undefined;
+  }
+  return firstLineNumber(
+    line.newLine,
+    line.newLineNumber,
+    line.new_lineno,
+    line.line,
+    line.lineNumber,
+    line.rightLineNumber
+  );
+}
+
+/**
+ * 여러 후보 중 첫 번째 유효한 라인 번호를 고른다.
+ * @param values 라인 번호 후보들
+ * @returns 1-base 라인 번호
+ */
+function firstLineNumber(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    const line = Number(value);
+    if (Number.isFinite(line) && line > 0) {
+      return line;
     }
   }
-  if (additions.length) {
-    return additions.join("\n").replace(/(?:\r?\n|\r)+$/g, "");
-  }
-  return hasDeletion ? "" : undefined;
+  return undefined;
 }
 
 /**

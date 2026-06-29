@@ -7,16 +7,17 @@
  */
 export function pullRequestPreviewMarkdownScript(): string {
   return `
-    function renderReviewCommentMarkdown(comment) {
+    function renderReviewCommentMarkdown(comment, fallbackLanguage) {
       const body = String(comment?.body || comment?.bodyText || '').replace(/\\r\\n/g, '\\n');
       const label = reviewCommentRangeLabel(comment);
+      const language = fallbackLanguage || commentLanguage(comment);
       const segments = splitCommentFences(body);
       const parts = [];
       let hasSuggestion = false;
       segments.forEach((segment) => {
         if (segment.kind === 'suggestion') {
           hasSuggestion = true;
-          parts.push(suggestedChangeHtml(segment.value, label));
+          parts.push(suggestedChangeHtml(segment.value, label, comment, language));
         } else if (segment.kind === 'code') {
           parts.push(codeBlockHtml(segment.value));
         } else if (String(segment.value || '').trim()) {
@@ -25,10 +26,15 @@ export function pullRequestPreviewMarkdownScript(): string {
       });
       if (!hasSuggestion) {
         suggestionsFromCommentHtml(comment?.bodyHtml).forEach((suggestion) => {
-          parts.push(suggestedChangeHtml(suggestion, label));
+          parts.push(suggestedChangeHtml(suggestion, label, comment, language));
         });
       }
       return parts.length ? parts.join('') : renderMarkdown(body);
+    }
+    function commentLanguage(comment) {
+      return typeof languageForPath === 'function'
+        ? languageForPath(comment?.path || comment?.filePath || '')
+        : 'plain';
     }
     function renderMarkdown(value) {
       const source = String(value || '').replace(/\\r\\n/g, '\\n');
@@ -145,10 +151,255 @@ export function pullRequestPreviewMarkdownScript(): string {
     function stripTrailingLineBreaks(value) {
       return String(value || '').replace(/(?:\\r?\\n|\\r)+$/g, '');
     }
-    function suggestedChangeHtml(value, label) {
+    function suggestedChangeHtml(value, label, comment, language) {
       const title = 'Suggested changeset' + (label ? ' · ' + label : '');
-      const code = stripTrailingLineBreaks(value) || 'Delete selected lines';
-      return '<div class="suggested-change"><p><strong>' + esc(title) + '</strong></p><pre><code>' + esc(code) + '</code></pre></div>';
+      const rows = suggestedChangeRows(value, comment || {});
+      const body = rows.length
+        ? '<div class="suggested-change-diff">' + suggestedChangeRowsHtml(rows, language || 'plain') + '</div>'
+        : '<pre><code>' + esc('Delete selected lines') + '</code></pre>';
+      return '<div class="suggested-change"><p><strong>' + esc(title) + '</strong></p>' + body + '</div>';
+    }
+    function suggestedChangeRows(value, comment) {
+      const encodedRows = decodeEncodedSuggestedChangeRows(value);
+      if (encodedRows) {
+        return lineNumberedEncodedRows(encodedRows, comment).map(encodedSuggestedChangeRow);
+      }
+      const suggestionLines = codeLines(value);
+      const originalRows = selectedSuggestedOriginalRows(comment);
+      const range = reviewCommentRange(comment || {});
+      const suggestionRows = suggestionLines.map((line, index) => ({
+        kind: 'add',
+        marker: '+',
+        no: range ? range.start + index : '',
+        newNo: range ? range.start + index : '',
+        code: line,
+      }));
+      return pairSuggestedChangeRows(originalRows, suggestionRows);
+    }
+    function decodeEncodedSuggestedChangeRows(value) {
+      const prefix = '\\u001fGSC_SUGGESTED_CHANGE_V1:';
+      const text = String(value || '');
+      if (!text.startsWith(prefix)) return undefined;
+      try {
+        const parsed = JSON.parse(text.slice(prefix.length));
+        return Array.isArray(parsed) ? parsed.filter((row) => row && typeof row.text === 'string') : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    function encodedSuggestedChangeRow(row) {
+      const kind = row.kind === 'delete' ? 'del' : row.kind === 'add' ? 'add' : 'ctx';
+      return {
+        kind,
+        marker: kind === 'del' ? '-' : kind === 'add' ? '+' : '',
+        no: displaySuggestedLineNo(row.oldLine, row.newLine),
+        oldNo: numberLine(row.oldLine) || '',
+        newNo: numberLine(row.newLine) || '',
+        code: row.text || '',
+      };
+    }
+    function lineNumberedEncodedRows(rows, comment) {
+      if (rows.every((row) => row.oldLine || row.newLine)) return rows;
+      return inferEncodedRowLineNumbers(rows, comment?.diffHunk || comment?.diff_hunk || '') || rows;
+    }
+    function inferEncodedRowLineNumbers(rows, diffHunk) {
+      if (!diffHunk) return undefined;
+      const hunkLines = parseSuggestedDiffHunk(diffHunk);
+      const anchor = encodedRowAnchor(rows, hunkLines);
+      if (!anchor || !anchor.line.oldLine || !anchor.line.newLine) return undefined;
+      let oldLine = anchor.line.oldLine;
+      let newLine = anchor.line.newLine;
+      for (let index = anchor.rowIndex - 1; index >= 0; index--) {
+        if (rows[index].kind === 'context') {
+          oldLine--;
+          newLine--;
+        } else if (rows[index].kind === 'delete') {
+          oldLine--;
+        } else {
+          newLine--;
+        }
+      }
+      return rows.map((row) => {
+        const numbered = numberEncodedRow(row, oldLine, newLine);
+        oldLine = numbered.nextOldLine;
+        newLine = numbered.nextNewLine;
+        return numbered.row;
+      });
+    }
+    function numberEncodedRow(row, oldLine, newLine) {
+      if (row.kind === 'context') {
+        return {
+          row: Object.assign({}, row, { oldLine: row.oldLine || oldLine, newLine: row.newLine || newLine }),
+          nextOldLine: oldLine + 1,
+          nextNewLine: newLine + 1,
+        };
+      }
+      if (row.kind === 'delete') {
+        return {
+          row: Object.assign({}, row, { oldLine: row.oldLine || oldLine }),
+          nextOldLine: oldLine + 1,
+          nextNewLine: newLine,
+        };
+      }
+      return {
+        row: Object.assign({}, row, { newLine: row.newLine || newLine }),
+        nextOldLine: oldLine,
+        nextNewLine: newLine + 1,
+      };
+    }
+    function encodedRowAnchor(rows, hunkLines) {
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex];
+        const line = hunkLines.find((candidate) =>
+          encodedKindsMatch(row.kind, candidate.type) && sameCodeText(row.text || '', candidate.text || '')
+        );
+        if (line) return { rowIndex, line };
+      }
+      return undefined;
+    }
+    function encodedKindsMatch(rowKind, lineType) {
+      return (rowKind === 'add' && lineType === 'add') ||
+        (rowKind === 'delete' && lineType === 'delete') ||
+        (rowKind === 'context' && lineType === 'context');
+    }
+    function sameCodeText(a, b) {
+      return String(a || '').replace(/[ \\t]+$/g, '') === String(b || '').replace(/[ \\t]+$/g, '');
+    }
+    function displaySuggestedLineNo(oldNo, newNo) {
+      const oldLine = numberLine(oldNo);
+      const newLine = numberLine(newNo);
+      if (oldLine && newLine && oldLine !== newLine) return oldLine + '→' + newLine;
+      return oldLine || newLine || '';
+    }
+    function pairSuggestedChangeRows(deletedRows, addedRows) {
+      if (hasSuggestedLineNumbers(deletedRows) && hasSuggestedLineNumbers(addedRows)) {
+        return pairSuggestedRowsByLineNumber(deletedRows, addedRows);
+      }
+      return pairSuggestedRowsByIndex(deletedRows, addedRows);
+    }
+    function hasSuggestedLineNumbers(rows) {
+      return rows.some((row) => typeof row.no === 'number');
+    }
+    function pairSuggestedRowsByLineNumber(deletedRows, addedRows) {
+      const rows = [];
+      const addedByLine = new Map();
+      const used = new Set();
+      addedRows.forEach((row) => {
+        if (typeof row.no !== 'number') return;
+        const list = addedByLine.get(row.no) || [];
+        list.push(row);
+        addedByLine.set(row.no, list);
+      });
+      deletedRows.forEach((row) => {
+        rows.push(row);
+        const matches = typeof row.no === 'number' ? addedByLine.get(row.no) : undefined;
+        if (!matches) return;
+        matches.forEach((added) => {
+          rows.push(added);
+          used.add(added);
+        });
+      });
+      addedRows.forEach((row) => { if (!used.has(row)) rows.push(row); });
+      return rows;
+    }
+    function pairSuggestedRowsByIndex(deletedRows, addedRows) {
+      const rows = [];
+      const max = Math.max(deletedRows.length, addedRows.length);
+      for (let index = 0; index < max; index++) {
+        if (deletedRows[index]) rows.push(deletedRows[index]);
+        if (addedRows[index]) rows.push(addedRows[index]);
+      }
+      return rows;
+    }
+    function selectedSuggestedOriginalRows(comment) {
+      const hunk = comment?.diffHunk || comment?.diff_hunk || '';
+      if (!hunk) return [];
+      const range = reviewCommentRange(comment || {});
+      if (!range) return [];
+      return parseSuggestedDiffHunk(hunk)
+        .filter((line) => suggestedDiffLineInRange(line, range))
+        .map((line) => ({
+          kind: 'del',
+          marker: '-',
+          no: range.side === 'LEFT' ? line.oldLine : line.newLine,
+          oldNo: range.side === 'LEFT' ? line.oldLine : line.newLine,
+          newNo: '',
+          code: line.text,
+        }));
+    }
+    function suggestedChangeRowsHtml(rows, language) {
+      if (typeof inlineDiffPair !== 'function') {
+        return rows.map((row) => suggestedChangeRowHtml(row, language)).join('');
+      }
+      const out = [];
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        const next = rows[index + 1];
+        if (row?.kind === 'del' && next?.kind === 'add') {
+          const fragments = inlineDiffPair(row.code, next.code, language);
+          out.push(suggestedChangeRowHtml(row, language, fragments.old));
+          out.push(suggestedChangeRowHtml(next, language, fragments.new));
+          index++;
+          continue;
+        }
+        out.push(suggestedChangeRowHtml(row, language));
+      }
+      return out.join('');
+    }
+    function suggestedChangeRowHtml(row, language, codeHtml) {
+      const kind = row.kind === 'add' ? 'add' : row.kind === 'del' ? 'del' : 'ctx';
+      const code = codeHtml == null
+        ? (typeof highlightCode === 'function' ? highlightCode(row.code || ' ', language) : esc(row.code || ' '))
+        : codeHtml;
+      return '<div class="suggested-change-row ' + kind + '">' +
+        '<span class="suggested-change-line-no old">' + esc(row.oldNo || '') + '</span>' +
+        '<span class="suggested-change-line-no new">' + esc(row.newNo || '') + '</span>' +
+        '<span class="suggested-change-marker">' + esc(row.marker || '') + '</span>' +
+        '<span class="suggested-change-code">' + code + '</span></div>';
+    }
+    function parseSuggestedDiffHunk(hunk) {
+      const lines = [];
+      let oldLine = 0;
+      let newLine = 0;
+      String(hunk || '').split(/\\r?\\n/).forEach((raw) => {
+        const header = /^@@ -(\\d+)(?:,\\d+)? \\+(\\d+)(?:,\\d+)? @@/.exec(raw);
+        if (header) {
+          oldLine = Number(header[1]);
+          newLine = Number(header[2]);
+          return;
+        }
+        if (!raw || raw.startsWith('\\\\')) return;
+        const prefix = raw[0];
+        const text = raw.slice(1);
+        if (prefix === '+') {
+          lines.push({ type: 'add', text, oldLine, newLine });
+          newLine++;
+        } else if (prefix === '-') {
+          lines.push({ type: 'delete', text, oldLine, newLine });
+          oldLine++;
+        } else {
+          lines.push({ type: 'context', text, oldLine, newLine });
+          oldLine++;
+          newLine++;
+        }
+      });
+      return lines;
+    }
+    function suggestedDiffLineInRange(line, range) {
+      if (range.side === 'LEFT') {
+        return line.type !== 'add'
+          && typeof line.oldLine === 'number'
+          && line.oldLine >= range.start
+          && line.oldLine <= range.end;
+      }
+      return line.type !== 'delete'
+        && typeof line.newLine === 'number'
+        && line.newLine >= range.start
+        && line.newLine <= range.end;
+    }
+    function codeLines(value) {
+      const trimmed = stripTrailingLineBreaks(value);
+      return trimmed ? trimmed.split(/\\r?\\n|\\r/) : [];
     }
     function codeBlockHtml(value) {
       return '<pre><code>' + esc(stripTrailingLineBreaks(value)) + '</code></pre>';
@@ -212,7 +463,7 @@ export function pullRequestPreviewMarkdownScript(): string {
       const start = side === 'LEFT'
         ? numberLine(comment.originalStartLine) || numberLine(comment.startLine) || end
         : numberLine(comment.startLine) || numberLine(comment.originalStartLine) || end;
-      return { start: Math.min(start, end), end: Math.max(start, end) };
+      return { side, start: Math.min(start, end), end: Math.max(start, end) };
     }
     function numberLine(value) {
       const line = Number(value);
