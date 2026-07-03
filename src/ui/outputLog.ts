@@ -158,6 +158,15 @@ function clippedText(value: unknown): string | undefined {
   return value.length > 4000 ? `${value.slice(0, 4000)}...[truncated]` : value;
 }
 
+/**
+ * OUTPUT 채널을 사용자에게 표시한다.
+ * - 알림 토스트로는 잘려 보이는 긴 git/훅 출력(예: pre-commit lint 실패)을 전체로 확인하게 한다.
+ * @param preserveFocus true 면 포커스를 편집기에 유지한 채 채널만 드러낸다.
+ */
+export function showOutputLog(preserveFocus = true): void {
+  getChannel().show(preserveFocus);
+}
+
 /** 확장 비활성화 시 OUTPUT 채널 리소스를 해제한다. */
 export function disposeOutputLog(): void {
   channel?.dispose();

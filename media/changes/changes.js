@@ -1174,7 +1174,14 @@
     rootEl.querySelectorAll(".wt-files .row.file").forEach((el) => {
       el.addEventListener("click", (e) => onWorkingRowClick(e, el));
     });
-    rootEl.querySelectorAll(".wt-files").forEach(bindMarqueeSelection);
+    // 파일 트리 끝 너머(그룹 아래 빈 공간)에서도 드래그 선택이 시작되도록 Changes 섹션 본문 전체를
+    // 마퀴 표면으로 삼는다. .wt-files 만 쓰면 행 높이 바깥에서는 selectbox 가 그려지지 않는다.
+    const marqueeSurface = rootEl.querySelector(
+      '.section[data-section="changes"] > .section-body'
+    );
+    if (marqueeSurface) {
+      bindMarqueeSelection(marqueeSurface);
+    }
     bindCommitBox();
     bindGroupActions();
     bindRowActions();
@@ -1508,6 +1515,9 @@
   let selAnchor = null; // Shift 범위 선택의 기준 키
   let suppressNextRowClick = false; // 드래그 선택 후 발생하는 synthetic click 억제
   let marquee = null; // 현재 진행 중인 사각형 드래그 선택 상태
+  // 마퀴 드래그를 시작하면 안 되는(고유 동작이 있는) 요소들. 이 밖의 영역(빈 공간/행 본문)에서는 드래그로 selectbox 를 그린다.
+  const MARQUEE_EXCLUDE_SELECTOR =
+    ".commit-box, .group-header, .header-actions, .row-actions, button, textarea, input, select, a";
 
   /** 행의 선택 키(소속 그룹 + 경로). */
   function rowKey(row) {
@@ -1523,13 +1533,14 @@
   }
 
   /**
-   * 파일 목록에 드래그 사각형 선택을 연결한다.
+   * 파일 목록 표면(Changes 섹션 본문)에 드래그 사각형 선택을 연결한다.
    * - 실제 드래그로 판단될 때까지 클릭 이벤트를 방해하지 않는다.
    * - Ctrl/Cmd 를 누른 채 드래그하면 기존 선택에 영역 안 파일/폴더를 더한다.
+   * - 커밋 박스/헤더/액션 버튼 등 상호작용 요소에서 시작한 드래그는 그 요소의 동작을 위해 제외한다.
    */
   function bindMarqueeSelection(filesEl) {
     filesEl.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest(".row-actions")) {
+      if (e.button !== 0 || e.target.closest(MARQUEE_EXCLUDE_SELECTOR)) {
         return;
       }
       marquee = {

@@ -392,6 +392,7 @@
   "Please enter a commit message first.": "먼저 커밋 메시지를 입력하세요.",
   "There are no staged changes to commit.": "커밋할 스테이징된 변경이 없습니다.",
   "Commit failed: {0}": "커밋 실패: {0}",
+  "Show Output": "출력 보기",
   "Discard changes in '{0}'? This is irreversible.": "'{0}' 의 변경을 버릴까요? 되돌릴 수 없습니다.",
   "Discard changes in {0} file(s)? This is irreversible.": "파일 {0}개의 변경을 버릴까요? 되돌릴 수 없습니다.",
   "Could not run '{0}'. The built-in Git extension is required.": "'{0}' 을(를) 실행할 수 없습니다. 내장 Git 확장이 필요합니다.",
