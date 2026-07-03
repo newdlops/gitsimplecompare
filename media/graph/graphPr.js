@@ -39,7 +39,7 @@
     const msg = event.data;
     if (msg.type === "pullRequestOverview") {
       prListLoading = false;
-      overview = msg.overview || { available: false, pullRequests: [] };
+      overview = mergeOverviewUpdate(overview, msg.overview);
       if (activeDetail.kind === "overview") {
         renderOverviewDetail();
       } else if (activeDetail.kind === "pr") {
@@ -59,13 +59,32 @@
       }
     } else if (msg.type === "commitVisibility") {
       handleCommitVisibility(msg);
-    } else if (msg.type === "graph") {
+    } else if (msg.type === "graph" || msg.type === "branchStatus" || msg.type === "tagStatus") {
+      // graph/branchStatus/tagStatus 는 모두 그래프 row 를 다시 그린다. row 가 재생성되면 PR 배지가
+      // 함께 사라지므로, 이 스크립트가 graph.js 보다 먼저 message 를 받는 점을 이용해 rAF 로 재배치를 예약한다.
       hideHoverCard();
       requestAnimationFrame(applyDecorations);
       if (activeDetail.kind === "pr") {
         requestAnimationFrame(() => renderPullRequestDetail(activeDetail.number));
       }
     }
+  }
+
+  /**
+   * 새 overview 를 반영하되, 조회 실패로 빈 목록이 오면 기존 PR 목록을 유지한다.
+   * - 확장 쪽에서 이미 실패 시 이전 목록을 되돌려 보내지만, 만약을 대비한 웹뷰측 방어로 배지 깜박임을 한 번 더 막는다.
+   * @param current  현재 보유 중인 overview
+   * @param incoming 확장에서 새로 도착한 overview
+   * @returns 화면에 적용할 overview
+   */
+  function mergeOverviewUpdate(current, incoming) {
+    const next = incoming || { available: false, pullRequests: [] };
+    const nextHasPrs = Array.isArray(next.pullRequests) && next.pullRequests.length > 0;
+    const currentHasPrs = Array.isArray(current.pullRequests) && current.pullRequests.length > 0;
+    if (!next.available && !nextHasPrs && currentHasPrs) {
+      return Object.assign({}, current, { available: false, error: next.error });
+    }
+    return next;
   }
 
   /** graph row 안의 PR chip 클릭을 PR 상세 drawer 전환으로 처리한다. */
@@ -236,10 +255,13 @@
 	    const prs = overview.pullRequests || [];
 	    const filteredPrs = window.GscGraphPrSearch?.filter?.(prs) || prs;
 	    const previousScroll = root.querySelector(".pr-detail-shell")?.scrollTop || 0;
+	    // 조회에 실패해도 이전에 읽어 둔 목록이 있으면 계속 보여준다. 실패는 안내 문구로만 덧붙인다.
 	    const status = overview.available
 	      ? `${prs.length} pull requests`
-	      : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
-	    const searchHtml = overview.available ? (window.GscGraphPrSearch?.render?.(prs.length, filteredPrs.length) || "") : "";
+	      : prs.length
+	        ? `${prs.length} pull requests (refresh failed${overview.error ? ": " + overview.error : ""})`
+	        : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
+	    const searchHtml = (overview.available || prs.length) ? (window.GscGraphPrSearch?.render?.(prs.length, filteredPrs.length) || "") : "";
 	    root.innerHTML = `<div class="pr-detail-shell">` +
 	      `<section class="pr-detail-header">` +
 	      `<div class="pr-detail-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +

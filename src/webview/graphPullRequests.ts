@@ -16,6 +16,9 @@ export class GraphPullRequestPager {
   private nextCursor: string | undefined;
   private hasMore = false;
   private loading = false;
+  // 진행 중인 조회를 식별하는 세대 토큰. refresh 는 세대를 올려 이전 조회 결과를 무효화한다.
+  // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
+  private generation = 0;
 
   /** open/preview 동작에서 사용할 현재 누적 PR 목록을 반환한다. */
   get items(): PullRequestInfo[] {
@@ -23,7 +26,9 @@ export class GraphPullRequestPager {
   }
 
   /**
-   * PR 목록을 첫 페이지부터 다시 읽고 기존 누적 상태를 교체한다.
+   * PR 목록을 첫 페이지부터 다시 읽고 성공했을 때만 누적 상태를 교체한다.
+   * - 조회 시작 시점에 기존 목록을 비우지 않는다. 일시적 gh 실패로 배지가 사라졌다 나타나는 깜박임을 막기 위함.
+   * - 세대 토큰을 올려 앞서 진행 중이던 조회 응답은 폐기한다(최신 refresh 우선).
    * @param repoRoot      대상 저장소 루트
    * @param localBranches 현재 로컬 브랜치 상태
    * @param reason        OUTPUT 로그에 남길 조회 원인
@@ -35,10 +40,9 @@ export class GraphPullRequestPager {
     reason: string,
     post: PostGraphMessage
   ): Promise<void> {
-    this.pullRequests = [];
-    this.nextCursor = undefined;
-    this.hasMore = false;
-    await this.fetchPage(repoRoot, localBranches, reason, post, undefined);
+    const generation = ++this.generation;
+    this.loading = true;
+    await this.fetchPage(repoRoot, localBranches, reason, post, undefined, "replace", generation);
   }
 
   /**
@@ -55,7 +59,10 @@ export class GraphPullRequestPager {
     if (this.loading || !this.hasMore || !this.nextCursor) {
       return;
     }
-    await this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor);
+    // loadMore 는 세대를 올리지 않는다. 도중에 refresh 가 시작되면 세대가 어긋나 이 페이지 결과는 폐기된다.
+    const generation = this.generation;
+    this.loading = true;
+    await this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor, "append", generation);
   }
 
   /**
@@ -92,29 +99,46 @@ export class GraphPullRequestPager {
   }
 
   /**
-   * GitHub PR 한 페이지를 읽고 누적 목록/커서를 갱신해 웹뷰에 보낸다.
+   * GitHub PR 한 페이지를 읽고, 성공했을 때만 누적 목록/커서를 갱신해 웹뷰에 보낸다.
+   * - 세대 토큰이 도중에 바뀌면(더 최신 refresh 시작) 응답을 폐기해 stale 결과가 화면을 덮어쓰지 않게 한다.
+   * - `available:false`(gh 실패) 응답이면 기존 누적 목록/커서를 그대로 유지해 그래프 배지가 사라지지 않게 한다.
    * @param repoRoot      대상 저장소 루트
    * @param localBranches 현재 로컬 브랜치 상태
    * @param reason        OUTPUT 로그에 남길 조회 원인
    * @param post          graph 웹뷰 메시지 전송 함수
    * @param cursor        이어 읽을 GitHub GraphQL cursor
+   * @param mode          "replace"=첫 페이지로 목록 교체(refresh), "append"=뒤에 이어붙임(loadMore)
+   * @param generation    이 조회가 속한 세대 토큰
    */
   private async fetchPage(
     repoRoot: string,
     localBranches: LocalBranchStatus[],
     reason: string,
     post: PostGraphMessage,
-    cursor: string | undefined
+    cursor: string | undefined,
+    mode: "replace" | "append",
+    generation: number
   ): Promise<void> {
-    this.loading = true;
     try {
       const service = new PullRequestService(repoRoot);
       const overview = await service.getOverview(localBranches, cursor);
-      this.pullRequests = overview.available
-        ? mergePullRequests(this.pullRequests, overview.pullRequests)
-        : this.pullRequests;
-      this.nextCursor = overview.available ? overview.nextCursor : this.nextCursor;
-      this.hasMore = overview.available ? overview.hasMore : this.hasMore;
+      if (generation !== this.generation) {
+        logInfo("graph pull request overview discarded", {
+          repoRoot,
+          reason,
+          generation,
+          current: this.generation,
+        });
+        return;
+      }
+      if (overview.available) {
+        // 성공 시에만 상태를 갱신한다. replace 는 첫 페이지로 교체, append 는 기존 목록 뒤에 병합한다.
+        this.pullRequests = mode === "replace"
+          ? overview.pullRequests
+          : mergePullRequests(this.pullRequests, overview.pullRequests);
+        this.nextCursor = overview.nextCursor;
+        this.hasMore = overview.hasMore;
+      }
       post({ type: "pullRequestOverview", overview: { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor } });
       logInfo("graph pull request overview sent", {
         repoRoot,
@@ -125,7 +149,10 @@ export class GraphPullRequestPager {
         hasMore: this.hasMore,
       });
     } finally {
-      this.loading = false;
+      // 현재 세대의 조회만 loading 을 해제한다(더 최신 refresh 가 소유권을 가진 경우 건드리지 않음).
+      if (generation === this.generation) {
+        this.loading = false;
+      }
     }
   }
 }
