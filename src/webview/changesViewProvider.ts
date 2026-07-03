@@ -60,6 +60,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private fileHistory: FileHistoryView = { commits: [] };
   private commitMessage = "";
   private commitMessageRevision = 0;
+  private aiCommitGenerating = false;
   private viewModes: ViewModes;
   private sortKey: SortKey;
   private visibleSections: VisibleSections;
@@ -346,6 +347,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       fileHistory: this.fileHistory,
       commitMessage: this.commitMessage,
       commitMessageRevision: this.commitMessageRevision,
+      aiCommitGenerating: this.aiCommitGenerating,
       viewModes: this.viewModes,
       sortKey: this.sortKey,
       visibleSections: this.getVisibleSections(),
@@ -378,10 +380,13 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
 
   /** AI 커밋 메시지 생성 진행 상태를 웹뷰 버튼에 알린다. */
   setAiCommitGeneration(active: boolean): void {
+    this.aiCommitGenerating = active;
+    // 즉각 반영용 직접 메시지 + render payload 동기화(뷰 재생성/메시지 유실에도 버튼이 stuck 되지 않게 한다).
     void this.view?.webview.postMessage({
       type: "aiCommitGeneration",
       active,
     });
+    this.render();
   }
 
   /** 커밋 진행 상태를 웹뷰의 커밋 버튼에 알린다(스피너/비활성). */

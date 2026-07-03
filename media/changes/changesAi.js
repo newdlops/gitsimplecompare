@@ -133,6 +133,9 @@
   window.addEventListener("message", (event) => {
     if (event.data?.type === "render") {
       latestPayload = event.data.payload || null;
+      // 렌더 payload 의 생성 상태를 확정값으로 삼는다. 클릭 시 낙관적으로 켠 상태나 유실된 직접 메시지와
+      // 무관하게, aiGenerating=false 를 담은 렌더가 도착하면 버튼이 반드시 다시 활성화된다(stuck-disabled 방지).
+      aiCommitGenerationActive = !!latestPayload?.commit?.aiGenerating;
       updateGenerateButtonState();
     } else if (event.data?.type === "aiCommitGeneration") {
       setAiCommitGenerationActive(event.data.active);

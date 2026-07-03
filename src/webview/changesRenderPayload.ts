@@ -30,6 +30,7 @@ export interface ChangesRenderState {
   fileHistory: FileHistoryView;
   commitMessage: string;
   commitMessageRevision: number;
+  aiCommitGenerating: boolean;
   viewModes: ViewModes;
   sortKey: SortKey;
   visibleSections: VisibleSections;
@@ -83,6 +84,8 @@ export function buildChangesRenderPayload(
         ?.branch,
       hasRepo: !!state.activeRepo,
       hasStagedChanges: state.staged.length > 0,
+      // AI 커밋 메시지 생성 진행 여부. 매 렌더마다 버튼 상태를 확정 동기화해 stuck-disabled 를 방지한다.
+      aiGenerating: state.aiCommitGenerating,
     },
     stashes: state.stashes.map((s) => ({
       ref: s.ref,
