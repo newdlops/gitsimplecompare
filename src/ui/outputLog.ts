@@ -167,6 +167,30 @@ export function showOutputLog(preserveFocus = true): void {
   getChannel().show(preserveFocus);
 }
 
+/**
+ * git 작업 실패를 OUTPUT 채널에 자세히(stderr/stdout 포함) 기록하고, 사용자에게는
+ * 요약 알림과 함께 "출력 보기" 액션을 보여준다.
+ * - 알림 토스트는 길이가 잘리므로, pre-commit 훅/원격 거절 등 긴 출력의 전체는 OUTPUT 채널에서 확인하게 한다.
+ * @param logLabel OUTPUT 로그에 남길 작업 이름(예: "push failed")
+ * @param error    발생한 오류(GitError 면 stderr/stdout 이 함께 기록된다)
+ * @param message  사용자에게 보여줄 요약 알림 문구(이미 l10n 이 적용된 최종 문자열)
+ * @param detail   OUTPUT 로그에 함께 남길 부가 상태
+ */
+export function showErrorWithOutput(
+  logLabel: string,
+  error: unknown,
+  message: string,
+  detail?: Record<string, unknown>
+): void {
+  logError(logLabel, error, detail);
+  const showOutput = vscode.l10n.t("Show Output");
+  void vscode.window.showErrorMessage(message, showOutput).then((choice) => {
+    if (choice === showOutput) {
+      showOutputLog(false);
+    }
+  });
+}
+
 /** 확장 비활성화 시 OUTPUT 채널 리소스를 해제한다. */
 export function disposeOutputLog(): void {
   channel?.dispose();

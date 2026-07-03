@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
 import { getCurrentPushPlan } from "../git/pushService";
-import { logInfo } from "../ui/outputLog";
+import { logInfo, showErrorWithOutput } from "../ui/outputLog";
 import {
   confirmForcePushCurrentPlan,
   confirmPushCurrentPlan,
@@ -347,7 +347,9 @@ async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
       await showForcePushRequiredMessage(err);
       return;
     }
-    vscode.window.showErrorMessage(
+    showErrorWithOutput(
+      "push failed",
+      err,
       vscode.l10n.t("Push failed: {0}", gitErrorText(err))
     );
     return;
@@ -413,7 +415,9 @@ async function forcePushCurrentBranch(deps: CommandDeps): Promise<void> {
       reason: result.mode === "setUpstream" ? result.reason : undefined,
     });
   } catch (err) {
-    vscode.window.showErrorMessage(
+    showErrorWithOutput(
+      "force push failed",
+      err,
       vscode.l10n.t("Force push failed: {0}", gitErrorText(err))
     );
     return;

@@ -12,7 +12,7 @@ import { CommandDeps } from "./shared";
 import { GitService, IgnoreTarget } from "../git/gitService";
 import { GitGraphPanel } from "../webview/graphPanel";
 import { openConflictEditor } from "./conflicts";
-import { logError, logInfo, logWarn, showOutputLog } from "../ui/outputLog";
+import { logError, logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
 
 interface RefreshWorkingChangesOptions {
   forceGit?: boolean;
@@ -29,17 +29,17 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-// 커밋 실패 요약에서 걸러낼 잡음 라인(execFile 래퍼 + lint-staged/yarn 진행 로그).
-const COMMIT_ERROR_NOISE =
+// git 작업 실패 요약에서 걸러낼 잡음 라인(execFile 래퍼 + lint-staged/yarn 진행 로그).
+const GIT_OP_ERROR_NOISE =
   /^(git .* 실패:|Command failed:|yarn run |\$ |> |warning |husky|\[(STARTED|SUCCESS|SKIPPED|FAILED)\])/i;
 
 /**
- * 커밋 실패 알림용 짧은 요약을 만든다.
+ * git 작업(커밋/stage/discard 등) 실패 알림용 짧은 요약을 만든다.
  * - git/execFile 이 덧붙인 래퍼 문구와 lint-staged 진행 로그를 걷어내고, 실제 실패 이유가 담긴 줄만 남긴다.
- * - 알림 토스트는 길이가 잘리므로 전체 내용은 OUTPUT 채널(showOutputLog)에서 확인하도록 안내한다.
- * @param e 커밋 중 발생한 오류(GitError 면 stderr/stdout 에 pre-commit 훅 출력이 담긴다)
+ * - 알림 토스트는 길이가 잘리므로 전체 내용은 OUTPUT 채널("출력 보기")에서 확인하도록 안내한다.
+ * @param e git 작업 중 발생한 오류(GitError 면 stderr/stdout 에 pre-commit 훅 출력이 담긴다)
  */
-function commitErrorSummary(e: unknown): string {
+function gitOpErrorSummary(e: unknown): string {
   const gitErr = e as { stderr?: unknown; stdout?: unknown };
   const hookOutput = [gitErr?.stderr, gitErr?.stdout]
     .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
@@ -48,7 +48,7 @@ function commitErrorSummary(e: unknown): string {
   const meaningful = source
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !COMMIT_ERROR_NOISE.test(line));
+    .filter((line) => line.length > 0 && !GIT_OP_ERROR_NOISE.test(line));
   const picked = (meaningful.length ? meaningful : [errText(e)]).slice(0, 6).join(" · ");
   return picked.length > 400 ? `${picked.slice(0, 400)}…` : picked;
 }
@@ -247,8 +247,11 @@ async function runWorkingTreeWrite(
       }
     );
   } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
+    showErrorWithOutput(
+      "working tree write failed",
+      e,
+      vscode.l10n.t("Action failed: {0}", gitOpErrorSummary(e)),
+      { action }
     );
   } finally {
     deps.changesView.setWorkingOperation(false, action, targets);
@@ -304,8 +307,10 @@ export async function discardChanges(
   try {
     await svc.discard(targets);
   } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
+    showErrorWithOutput(
+      "discard failed",
+      e,
+      vscode.l10n.t("Action failed: {0}", gitOpErrorSummary(e))
     );
   }
   void refreshWorkingChanges(deps);
@@ -518,19 +523,14 @@ export async function commitChanges(
   } catch (e) {
     // 전체 git/훅 출력(예: pre-commit lint 실패 상세)은 토스트에서 잘리므로 OUTPUT 채널에 남기고,
     // 토스트에는 요약과 함께 "출력 보기" 액션을 제공해 사용자가 실제 실패 원인을 확인하게 한다.
-    logError("commit failed", e, { op });
-    const showOutput = vscode.l10n.t("Show Output");
-    // 뒤따르는 뷰 새로고침을 막지 않도록 알림은 await 하지 않고 액션만 처리한다.
-    void vscode.window
-      .showErrorMessage(
-        vscode.l10n.t("Commit failed: {0}", commitErrorSummary(e)),
-        showOutput
-      )
-      .then((choice) => {
-        if (choice === showOutput) {
-          showOutputLog(false);
-        }
-      });
+    // 전체 git/훅 출력(예: pre-commit lint 실패 상세)은 토스트에서 잘리므로 OUTPUT 채널에 남기고,
+    // 토스트에는 요약과 함께 "출력 보기" 액션을 제공해 사용자가 실제 실패 원인을 확인하게 한다.
+    showErrorWithOutput(
+      "commit failed",
+      e,
+      vscode.l10n.t("Commit failed: {0}", gitOpErrorSummary(e)),
+      { op }
+    );
   }
   if (committed) {
     GitGraphPanel.refreshOpen(svc.repoRoot, "commit");

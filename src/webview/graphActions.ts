@@ -6,7 +6,7 @@ import {
   ONGOING_COMMIT_HASH,
   STAGED_COMMIT_HASH,
 } from "../git/gitLogService";
-import { logError } from "../ui/outputLog";
+import { showErrorWithOutput } from "../ui/outputLog";
 import {
   focusCheckoutConflicts,
   isCheckoutConflictError,
@@ -109,9 +109,12 @@ export async function handleGraphAction(
   try {
     await dispatchGraphAction(msg, deps);
   } catch (err) {
-    logError("graph action failed", err, { type: msg.type });
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Graph action failed: {0}", errText(err))
+    // 전체 git 출력(원격 거절/훅 실패 등)은 토스트에서 잘리므로 OUTPUT 채널에 남기고 "출력 보기" 액션을 제공한다.
+    showErrorWithOutput(
+      "graph action failed",
+      err,
+      vscode.l10n.t("Graph action failed: {0}", errText(err)),
+      { type: msg.type }
     );
   }
 }
