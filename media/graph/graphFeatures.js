@@ -301,19 +301,22 @@
         window.GscGraphPostMessage?.(message())
       );
     };
+    // 시간이 걸리는 액션은 busyId(=버튼 id)를 함께 보내, 확장이 처리하는 동안 해당 버튼에 스피너를 표시하고
+    // 완료/취소 시 해제하게 한다. 즉시 끝나는 복사 액션은 스피너를 붙이지 않는다.
+    const bindBusy = (id, message) => bind(id, () => Object.assign(message(), { busyId: id }));
     bind("copy-hash-inline", () => ({ type: "copyCommitHash", hash: detail.hash }));
     bind("copy-message-inline", () => ({ type: "copyCommitMessage", message: detail.message }));
-    bind("checkout-commit", () => ({ type: "checkoutCommit", hash: detail.hash }));
-    bind("create-branch", () => ({ type: "createBranch", hash: detail.hash }));
-    bind("create-tag", () => ({ type: "createTag", hash: detail.hash }));
-    bind("cherry-pick", () => ({ type: "cherryPick", hash: detail.hash }));
-    bind("revert-commit", () => ({
+    bindBusy("checkout-commit", () => ({ type: "checkoutCommit", hash: detail.hash }));
+    bindBusy("create-branch", () => ({ type: "createBranch", hash: detail.hash }));
+    bindBusy("create-tag", () => ({ type: "createTag", hash: detail.hash }));
+    bindBusy("cherry-pick", () => ({ type: "cherryPick", hash: detail.hash }));
+    bindBusy("revert-commit", () => ({
       type: "revertCommit",
       hash: detail.hash,
       parents: detail.parents || [],
     }));
-    bind("undo-commit", () => ({ type: "undoCommit", hash: detail.hash }));
-    bind("delete-branch", () => deleteBranchMessage(detail.hash));
+    bindBusy("undo-commit", () => ({ type: "undoCommit", hash: detail.hash }));
+    bindBusy("delete-branch", () => deleteBranchMessage(detail.hash));
   }
 
   /** 현재 checkout 된 로컬 브랜치가 이 커밋을 포함하면 revert 액션을 허용한다. */

@@ -49,6 +49,18 @@ const GRAPH_BUSY_BUTTON_IDS: Record<string, string> = {
 };
 
 /**
+ * 웹뷰 버튼이 액션 메시지에 실어 보낸 진행중 표시 대상(버튼 DOM id)을 꺼낸다.
+ * - 커밋 상세 패널의 액션 버튼처럼, 클릭한 버튼이 자기 id 를 busyId 로 보내면 그 버튼에 스피너를 표시한다.
+ * - 툴바 고정 버튼은 busyId 없이 GRAPH_BUSY_BUTTON_IDS 매핑으로 처리한다.
+ * @param msg 웹뷰가 보낸 메시지
+ * @returns 스피너를 표시할 버튼 id. 없으면 undefined
+ */
+function actionBusyId(msg: FromWebviewMessage): string | undefined {
+  const value = (msg as { busyId?: unknown }).busyId;
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/**
  * git 그래프 웹뷰 패널. 동시에 하나만 유지한다(있으면 재사용).
  */
 export class GitGraphPanel {
@@ -263,7 +275,7 @@ export class GitGraphPanel {
       } else if (msg.type === "previewStagedPullRequest") {
         openStagedPullRequestPreview(this.extensionUri, this.logService.repoRoot, this.pullRequests.items, msg.number);
       } else if (isGraphActionMessage(msg)) {
-        await this.withBusyMaybe(GRAPH_BUSY_BUTTON_IDS[msg.type], () =>
+        await this.withBusyMaybe(actionBusyId(msg) ?? GRAPH_BUSY_BUTTON_IDS[msg.type], () =>
           handleGraphAction(msg, {
             logService: this.logService,
             pullRequests: () => this.pullRequests.items,
