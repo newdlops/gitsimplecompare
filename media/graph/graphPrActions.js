@@ -12,6 +12,9 @@
         type: "pullRequestAction",
         number: Number(button.dataset.prOperation),
         action: button.dataset.prAction || undefined,
+        // 직접 실행 버튼은 자기 id 를 busyId 로 보내, 확장이 작업 동안 해당 버튼에 스피너를 표시하게 한다.
+        // menu(...) 버튼은 id 가 없어 busyId 가 비고, quick pick 을 여는 동안 스피너가 돌지 않는다.
+        busyId: button.id || undefined,
       });
     });
   }
@@ -33,7 +36,8 @@
 
   /** PR 작업 하나를 바로 실행하는 아이콘 버튼 HTML 을 만든다. */
   function operationButton(number, action, icon, title) {
-    return `<button type="button" class="pr-icon-action" data-pr-operation="${esc(number)}" data-pr-action="${esc(action)}" ` +
+    return `<button type="button" id="pr-op-${esc(number)}-${esc(action)}" class="pr-icon-action" ` +
+      `data-pr-operation="${esc(number)}" data-pr-action="${esc(action)}" ` +
       `title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
       `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span></button>`;
   }

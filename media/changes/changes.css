@@ -990,8 +990,17 @@ body:focus-within .row.selected:hover {
   background: var(--vscode-button-secondaryBackground);
 }
 
-.commit-ai-btn.busy .codicon {
+.commit-ai-btn.busy .codicon,
+.commit-btn.busy .codicon {
   animation: codicon-spin 1.5s steps(30) infinite;
+}
+
+/* 커밋 진행중: 버튼을 비활성으로 보이게 하되 스피너는 계속 돌게 둔다. */
+.commit-btn.busy,
+.commit-btn:disabled,
+.commit-caret:disabled {
+  cursor: default;
+  opacity: 0.8;
 }
 
 .commit-btn:focus-visible,

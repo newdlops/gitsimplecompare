@@ -14,6 +14,20 @@
   background: var(--vscode-toolbar-hoverBackground);
 }
 
+/* 작업 진행중 PR 조작 버튼: 스피너를 강조색으로 두고 완료까지 중복 클릭을 막는다. */
+.pr-icon-action.is-busy {
+  color: var(--vscode-progressBar-background, var(--vscode-icon-foreground));
+  cursor: default;
+}
+
+.pr-icon-action.is-busy:hover {
+  background: transparent;
+}
+
+.pr-icon-action:disabled {
+  cursor: default;
+}
+
 .pr-card {
   display: grid;
   gap: 6px;

@@ -384,6 +384,24 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  /** 커밋 진행 상태를 웹뷰의 커밋 버튼에 알린다(스피너/비활성). */
+  private setCommitInProgress(active: boolean): void {
+    void this.view?.webview.postMessage({
+      type: "commitOperation",
+      active,
+    });
+  }
+
+  /** 웹뷰에서 요청한 커밋을 실행하고, 그 동안 커밋 버튼에 진행중 상태를 표시한다. */
+  private async runCommit(op?: string): Promise<void> {
+    this.setCommitInProgress(true);
+    try {
+      await vscode.commands.executeCommand("gitSimpleCompare.commit", op);
+    } finally {
+      this.setCommitInProgress(false);
+    }
+  }
+
   /** 웹뷰에서 요청한 stage/unstage 작업을 실행하고 busy 상태를 정리한다. */
   private async runWorkingOperation(
     action: "stage" | "unstage",
@@ -471,7 +489,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       if (msg.message !== undefined) {
         this.commitMessage = msg.message;
       }
-      void vscode.commands.executeCommand("gitSimpleCompare.commit", msg.op);
+      void this.runCommit(msg.op);
     } else if (msg.type === "generateCommitMessage") {
       void vscode.commands.executeCommand(
         "gitSimpleCompare.generateCommitMessage"

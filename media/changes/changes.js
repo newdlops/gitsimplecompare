@@ -1284,6 +1284,9 @@
   // ── 커밋 박스 ──
 
   /** 커밋 입력/버튼/캐럿을 연결한다. */
+  // 커밋 진행 상태. extension host 의 commitOperation 메시지로 갱신되며, 재렌더 후에도 다시 반영한다.
+  let commitInProgress = false;
+
   function bindCommitBox() {
     const ta = document.getElementById("commit-msg");
     if (ta) {
@@ -1314,10 +1317,34 @@
         }
       });
     }
+    // 재렌더로 버튼이 새로 만들어졌을 수 있으므로 현재 진행 상태를 다시 반영한다.
+    reflectCommitBusy();
   }
 
-  /** 현재 메시지로 커밋을 요청한다. */
+  /** 커밋 버튼/캐럿에 진행중 스피너(.busy)와 비활성 상태를 반영한다. */
+  function reflectCommitBusy() {
+    const btn = document.getElementById("commit-btn");
+    if (btn) {
+      btn.classList.toggle("busy", commitInProgress);
+      btn.disabled = commitInProgress;
+    }
+    const caret = document.getElementById("commit-caret");
+    if (caret) {
+      caret.disabled = commitInProgress;
+    }
+  }
+
+  /** extension host 의 커밋 진행 상태를 버튼에 반영한다. */
+  function setCommitInProgress(active) {
+    commitInProgress = !!active;
+    reflectCommitBusy();
+  }
+
+  /** 현재 메시지로 커밋을 요청한다. 진행 중이면 중복 실행을 막는다. */
   function doCommit(op) {
+    if (commitInProgress) {
+      return;
+    }
     const ta = document.getElementById("commit-msg");
     vscode.postMessage({ type: "commit", op, message: ta ? ta.value : "" });
   }
@@ -1952,6 +1979,8 @@
         event.data.paths,
         event.data.phase
       );
+    } else if (event.data.type === "commitOperation") {
+      setCommitInProgress(event.data.active);
     }
   });
 
