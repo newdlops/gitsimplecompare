@@ -104,6 +104,7 @@ export type ToWebviewMessage =
   | { type: "graphRebasePaused"; paused: RebasePausedState }
   | { type: "graphRebaseOperation"; active: boolean }
   | { type: "graphRebaseClear" }
+  | { type: "graphBusy"; key: string; busy: boolean }
   | { type: "error"; message: string };
 
 /** 웹뷰 → 확장 메시지 */

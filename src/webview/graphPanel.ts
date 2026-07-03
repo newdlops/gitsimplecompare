@@ -37,6 +37,18 @@ import { layoutGraphData } from "./graphLayoutData";
 const GRAPH_PAGE_SIZE = 300;
 
 /**
+ * git action 메시지 타입 → 진행중 스피너를 표시할 툴바 버튼 DOM id 매핑.
+ * - 여기 있는 툴바 버튼만 작업 중 스피너/비활성화 처리한다(row 컨텍스트 메뉴 액션은 제외).
+ */
+const GRAPH_BUSY_BUTTON_IDS: Record<string, string> = {
+  fetch: "fetch-graph",
+  fetchTags: "fetch-tags-graph",
+  pull: "pull-graph",
+  push: "push-graph",
+  forcePush: "force-push-graph",
+};
+
+/**
  * git 그래프 웹뷰 패널. 동시에 하나만 유지한다(있으면 재사용).
  */
 export class GitGraphPanel {
@@ -162,14 +174,16 @@ export class GitGraphPanel {
           reason: msg.type,
         });
         this.resetLoadedGraph();
-        await this.reloadGraph();
+        await this.withBusy("refresh-graph", () => this.reloadGraph());
         await restoreGraphRebaseSession({
           extensionUri: this.extensionUri,
           logService: this.logService,
           refreshGraph: () => this.refreshAfterGraphAction(),
           post: (message) => this.post(message),
         });
-        void this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, msg.type, (message) => this.post(message));
+        void this.withBusy("graph-pr-list", () =>
+          this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, msg.type, (message) => this.post(message))
+        );
       } else if (msg.type === "loadMore") {
         await this.loadNextPage(false, msg.direction || "older");
       } else if (msg.type === "setBranchFilter") {
@@ -188,7 +202,9 @@ export class GitGraphPanel {
       } else if (msg.type === "selectCommit") {
         await this.commitDetails.send(msg.hash, this.logService, (message) => this.post(message));
       } else if (msg.type === "refreshPullRequests") {
-        await this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, "manual", (message) => this.post(message));
+        await this.withBusy("graph-pr-list", () =>
+          this.pullRequests.refresh(this.logService.repoRoot, this.lastLocalBranches, "manual", (message) => this.post(message))
+        );
       } else if (msg.type === "searchPullRequests") {
         await this.pullRequests.search(this.logService.repoRoot, msg.requestId, msg.query, msg.cursor, (message) => this.post(message));
       } else if (msg.type === "loadMorePullRequests") {
@@ -247,13 +263,15 @@ export class GitGraphPanel {
       } else if (msg.type === "previewStagedPullRequest") {
         openStagedPullRequestPreview(this.extensionUri, this.logService.repoRoot, this.pullRequests.items, msg.number);
       } else if (isGraphActionMessage(msg)) {
-        await handleGraphAction(msg, {
-          logService: this.logService,
-          pullRequests: () => this.pullRequests.items,
-          refreshCheckout: () => this.refreshAfterCheckoutAction(),
-          refreshGraph: () => this.refreshAfterGraphAction(),
-          post: (message) => this.post(message),
-        });
+        await this.withBusyMaybe(GRAPH_BUSY_BUTTON_IDS[msg.type], () =>
+          handleGraphAction(msg, {
+            logService: this.logService,
+            pullRequests: () => this.pullRequests.items,
+            refreshCheckout: () => this.refreshAfterCheckoutAction(),
+            refreshGraph: () => this.refreshAfterGraphAction(),
+            post: (message) => this.post(message),
+          })
+        );
       } else if (msg.type === "openFileDiff") {
         if (await openGraphVirtualFileDiff(this.logService.repoRoot, msg.hash, msg.path)) {
           return;
@@ -638,6 +656,25 @@ export class GitGraphPanel {
    */
   private postLoadState(reset: boolean, direction?: GraphLoadDirection): void {
     this.post({ type: "graphLoadState", state: this.makeLoadState(reset && !this.loading, direction) });
+  }
+
+  /**
+   * 지정한 툴바 버튼에 진행중 스피너를 켠 채 비동기 작업을 실행하고, 끝나면(성공/실패 무관) 스피너를 끈다.
+   * @param key 스피너를 표시할 버튼 DOM id
+   * @param fn  진행 상태를 표시할 비동기 작업
+   */
+  private async withBusy<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    this.post({ type: "graphBusy", key, busy: true });
+    try {
+      return await fn();
+    } finally {
+      this.post({ type: "graphBusy", key, busy: false });
+    }
+  }
+
+  /** key 가 있을 때만 진행중 스피너로 감싸고, 없으면 그대로 실행한다(툴바 외 액션 지원). */
+  private withBusyMaybe<T>(key: string | undefined, fn: () => Promise<T>): Promise<T> {
+    return key ? this.withBusy(key, fn) : fn();
   }
 
   /** 타입이 보장된 메시지를 웹뷰로 전송한다. */

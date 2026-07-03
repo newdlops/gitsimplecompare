@@ -574,6 +574,8 @@
       window.GscGraphSearch?.update(graphEl, graphContentEl);
     } else if (msg.type === "graphLoadState") {
       applyLoadState(msg.state, true);
+    } else if (msg.type === "graphBusy") {
+      setButtonBusy(msg.key, msg.busy);
     } else if (msg.type === "commitDetail") {
       renderDetail(msg.detail);
     } else if (msg.type === "error") {
@@ -581,6 +583,42 @@
       setDetailVisible(true);
     }
   });
+
+  // 작업 진행중 스피너로 바꾼 버튼의 원래 아이콘 class 를 보관한다(복원용).
+  const buttonBusyIcons = new Map();
+
+  /**
+   * 툴바 버튼에 작업 진행중 상태를 반영한다.
+   * - busy 면 아이콘을 회전 스피너(codicon-loading + spin)로 바꾸고 버튼을 비활성화해 중복 실행을 막는다.
+   * - 끝나면 원래 아이콘/활성 상태로 되돌린다.
+   * @param id   대상 버튼 DOM id
+   * @param busy 진행중 여부
+   */
+  function setButtonBusy(id, busy) {
+    const button = document.getElementById(id);
+    const icon = button?.querySelector(".codicon");
+    if (!button || !icon) {
+      return;
+    }
+    if (busy) {
+      if (!buttonBusyIcons.has(id)) {
+        buttonBusyIcons.set(id, icon.className);
+      }
+      icon.className = "codicon codicon-loading codicon-modifier-spin";
+      button.classList.add("is-busy");
+      button.setAttribute("aria-busy", "true");
+      button.disabled = true;
+    } else {
+      const original = buttonBusyIcons.get(id);
+      if (original !== undefined) {
+        icon.className = original;
+        buttonBusyIcons.delete(id);
+      }
+      button.classList.remove("is-busy");
+      button.removeAttribute("aria-busy");
+      button.disabled = false;
+    }
+  }
 
   initEvents();
   window.GscGraphDetailHost = {

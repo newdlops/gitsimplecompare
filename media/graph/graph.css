@@ -72,6 +72,20 @@ body.resizing {
   background: var(--vscode-toolbar-hoverBackground);
 }
 
+/* 작업 진행중 버튼: 스피너를 강조색으로 보이게 하고, 비활성 동안 중복 클릭을 막는다. */
+.icon-button.is-busy {
+  color: var(--vscode-progressBar-background, var(--vscode-icon-foreground));
+  cursor: default;
+}
+
+.icon-button.is-busy:hover {
+  background: transparent;
+}
+
+.icon-button:disabled {
+  cursor: default;
+}
+
 .icon-button.danger {
   color: var(--vscode-inputValidation-warningForeground, #cca700);
 }
