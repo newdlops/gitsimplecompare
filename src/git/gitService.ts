@@ -50,6 +50,9 @@ export class GitService {
   private statusCache:
     | { at: number; value: StatusGroups; promise?: Promise<StatusGroups> }
     | undefined;
+  // 이 서비스로 마지막 git 상태 변경(commit/stage/unstage/discard 등)을 한 시각.
+  // 직후 짧은 동안은 VS Code 내장 Git 캐시가 뒤처지므로, 새로고침이 CLI 로 강제 조회하도록 신호로 쓴다.
+  private lastMutationAt = 0;
 
   constructor(public readonly repoRoot: string) {}
 
@@ -178,9 +181,19 @@ export class GitService {
     }
   }
 
-  /** 작업트리 상태 캐시를 무효화한다. */
+  /** 작업트리 상태 캐시를 무효화한다. 모든 git 상태 변경이 이 지점을 지나므로 변경 시각도 함께 기록한다. */
   invalidateStatusCache(): void {
     this.statusCache = undefined;
+    this.lastMutationAt = Date.now();
+  }
+
+  /**
+   * 최근 withinMs 밀리초 안에 이 서비스로 git 상태를 바꿨는지 확인한다.
+   * - true 면 VS Code 내장 Git 캐시가 아직 뒤처졌을 수 있으니, 호출부는 CLI 로 강제 조회해야 한다.
+   * @param withinMs 최근으로 간주할 시간 창(ms)
+   */
+  mutatedRecently(withinMs: number): boolean {
+    return this.lastMutationAt > 0 && Date.now() - this.lastMutationAt < withinMs;
   }
 
   /**

@@ -11,9 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Activate on startup** (`onStartupFinished`): the extension now activates
   shortly after window startup (without slowing startup down) instead of only
-  when its sidebar is first opened, so PR review comments and the change badge
-  update on their own without manually triggering a refresh. The built-in Git
-  status is warmed up on startup (reading its cache only, no extra scan).
+  when its sidebar is first opened, so PR review comments appear on their own
+  without manually triggering a refresh.
 - **PR squash cherry-pick / revert** commit subjects now end with the PR number
   (e.g. `Cherry-Pick "…" #123`, `Revert "…" #123`), linking the commit back to
   its pull request.
@@ -48,10 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Activity Bar change badge**: the Changes view shows a numeric badge with the
-  active repository's working-tree change count (staged + unstaged) on the
-  Git Simple Compare icon, updating live. (VS Code can only badge a webview view
-  after it has been rendered, so the count shows once the Changes view is open.)
 - **Git Graph PR details — changed files**: toggle the changed-files list between
   **tree** and flat **list**, and **click a file to open its diff** (PR base ↔
   head) in a diff editor.
@@ -98,11 +93,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Commit / AI busy spinner**: while committing or generating an AI message, the
   button now shows a rotating loading spinner instead of spinning its own check /
   sparkle icon (the glyph is swapped to `codicon-loading` for the duration).
-- **Staged list lingering after commit**: after a commit finishes, the staged
-  files now clear right away instead of staying until VS Code's built-in Git
-  caught up. The post-commit refresh re-reads status via the Git CLI (the commit
-  is done through our own CLI, so the built-in Git cache can still be stale), and
-  the commit button's spinner stays until that refresh completes.
+- **Changed-files list flicker/lingering after commit**: after a commit, the
+  file list no longer flickers (clear → briefly reappear → clear) or lingers.
+  Because our own Git CLI performs the commit/stage/unstage, VS Code's built-in
+  Git cache lags briefly behind reality; for a short window after any Git state
+  change (commit, stage, unstage, discard, checkout, …) the working-tree status
+  is now read via the Git CLI, so no follow-up refresh can momentarily read the
+  stale cache. The commit button's spinner also stays until the refresh completes.
 
 ## [0.1.0]
 
