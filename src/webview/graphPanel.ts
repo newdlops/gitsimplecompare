@@ -23,7 +23,7 @@ import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { sendGraphReflog } from "./graphReflog";
 import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
-import { openGraphPullRequest, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
+import { openGraphPullRequest, openGraphPullRequestFileDiff, openStagedPullRequestPreview, GraphPullRequestPager, sendGraphPullRequestDetail } from "./graphPullRequests";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
 import { fetchRefsForGraphSearch, sendGraphRepositorySearch } from "./graphSearchActions";
@@ -274,6 +274,12 @@ export class GitGraphPanel {
         await openGraphPullRequest(this.pullRequests.items, msg.number);
       } else if (msg.type === "previewStagedPullRequest") {
         openStagedPullRequestPreview(this.extensionUri, this.logService.repoRoot, this.pullRequests.items, msg.number);
+      } else if (msg.type === "openPullRequestFileDiff") {
+        await openGraphPullRequestFileDiff(this.logService.repoRoot, this.pullRequests.items, msg.number, {
+          path: msg.path,
+          oldPath: msg.oldPath,
+          status: msg.status,
+        });
       } else if (isGraphActionMessage(msg)) {
         await this.withBusyMaybe(actionBusyId(msg) ?? GRAPH_BUSY_BUTTON_IDS[msg.type], () =>
           handleGraphAction(msg, {

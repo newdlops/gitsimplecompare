@@ -88,13 +88,33 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(nativeDiffOverlay.register());
   let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
+  // 뷰가 숨겨져 있어도 액티비티바 배지 숫자만 SCM 처럼 갱신한다.
+  // - 내장 Git 캐시만 읽으므로 추가 `git status` 스캔을 유발하지 않는다.
+  // - 활성 저장소가 아직 없으면(뷰 최초 표시 전) 첫 저장소를 기준으로 한다.
+  const updateHiddenChangeBadge = async (): Promise<void> => {
+    const root =
+      changesView.getActiveRepo() ??
+      (await vscodeGitStatus.getRepositories())?.[0]?.root;
+    const groups = root
+      ? await vscodeGitStatus.getStatusGroups(root)
+      : undefined;
+    // 저장소가 없거나 상태를 못 읽어도 0 으로 확정한다: 배지를 지우고, 시작 시 로딩 스피너도 확실히 끝낸다.
+    changesView.setWorkingChangeBadge(
+      groups ? groups.staged.length + groups.unstaged.length : 0
+    );
+  };
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
     if (!changesView.isVisible() && !conflictsVisible) {
+      void updateHiddenChangeBadge();
       return;
     }
     scheduleRefresh(reason);
   });
   context.subscriptions.push(vscodeGitStatus);
+  // 사이드바를 따로 조작하지 않아도 시작 직후 배지가 최신이 되도록 내장 Git API 를 미리 준비하고
+  // 초기 변경 수를 한 번 반영한다. ensureReady 는 내장 Git 상태 캐시만 읽어 추가 git 스캔을 만들지
+  // 않으며, 이 시점에 저장소 감시가 시작돼 이후 변경 이벤트가 배지를 실시간으로 갱신한다.
+  void vscodeGitStatus.ensureReady().then(() => updateHiddenChangeBadge());
 
   // 5) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {

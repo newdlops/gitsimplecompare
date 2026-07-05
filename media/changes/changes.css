@@ -990,6 +990,13 @@ body:focus-within .row.selected:hover {
   background: var(--vscode-button-secondaryBackground);
 }
 
+/* 작업중: 버튼 본래 아이콘(check/sparkle)을 그대로 돌리면 "아이콘이 회전"해 보이므로,
+   글리프를 로딩 스피너(codicon-loading)로 바꾼 뒤 회전시켜 제대로 된 스피너로 보이게 한다. */
+.commit-ai-btn.busy .codicon::before,
+.commit-btn.busy .codicon::before {
+  content: "\eb19";
+}
+
 .commit-ai-btn.busy .codicon,
 .commit-btn.busy .codicon {
   animation: codicon-spin 1.5s steps(30) infinite;

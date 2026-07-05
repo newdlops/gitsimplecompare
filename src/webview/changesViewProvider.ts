@@ -324,6 +324,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       return;
     }
+    // 액티비티바 배지는 payload dedup 여부와 무관하게 항상 현재 작업트리 변경 수로 맞춘다.
+    this.applyBadge(this.staged.length + this.unstaged.length);
     const payload = buildChangesRenderPayload(this.renderState(), this.fileIcons);
     const payloadJson = JSON.stringify(payload);
     if (payloadJson === this.lastRenderPayloadJson) {
@@ -331,6 +333,33 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
     this.lastRenderPayloadJson = payloadJson;
     void this.view.webview.postMessage({ type: "render", payload });
+  }
+
+  /**
+   * 액티비티바 컨테이너 아이콘에 뜨는 뷰 배지를 갱신한다(VS Code Source Control 방식).
+   * - 자식 뷰 배지는 컨테이너 아이콘으로 롤업되므로, 작업트리 변경 수를 그대로 노출한다.
+   * - 0 이면 배지를 지운다. 뷰가 아직 생성되지 않았으면(this.view 없음) 무시한다.
+   * @param count 표시할 작업트리 변경 파일 수(staged + unstaged)
+   */
+  private applyBadge(count: number): void {
+    // 웹뷰 뷰가 렌더된 뒤에만 배지를 설정할 수 있다(VS Code 제약). 뷰가 열려 있으면 액티비티바 아이콘에 반영된다.
+    if (!this.view) {
+      return;
+    }
+    this.view.badge =
+      count > 0
+        ? { value: count, tooltip: vscode.l10n.t("{0} changes", count) }
+        : undefined;
+  }
+
+  /**
+   * 뷰가 숨겨져 있을 때도(단, 한 번 렌더된 뒤) 아이콘 배지 숫자를 갱신하기 위한 외부 진입점.
+   * - 숨김 중에는 전체 refresh 가 게이트되어 staged/unstaged 가 갱신되지 않으므로,
+   *   호출자가 내장 Git 캐시에서 읽은 최신 변경 수를 직접 넘겨준다.
+   * @param count 표시할 작업트리 변경 파일 수
+   */
+  setWorkingChangeBadge(count: number): void {
+    this.applyBadge(count);
   }
 
   /** payload builder 에 넘길 provider 상태 스냅샷을 만든다. */

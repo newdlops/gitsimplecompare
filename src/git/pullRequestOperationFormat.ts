@@ -35,11 +35,12 @@ export function pullRequestRevertCommitHashes(pr: PullRequestInfo): string[] {
 
 /**
  * squash commit 제목을 만든다.
+ * - GitHub squash merge 관례처럼 제목 끝에 PR 번호(#number)를 붙여 커밋과 PR 을 연결한다.
  * @param pr 작업 대상 PR 정보
  * @returns squash commit subject
  */
 export function squashTitle(pr: PullRequestInfo): string {
-  return `Cherry-Pick "${singleLineTitle(pr.title || pr.headRefName || `PR #${pr.number}`)}"`;
+  return `Cherry-Pick "${singleLineTitle(pr.title || pr.headRefName || `PR #${pr.number}`)}" #${pr.number}`;
 }
 
 /**
@@ -57,11 +58,12 @@ export function squashBody(pr: PullRequestInfo): string {
 
 /**
  * PR squash revert commit 제목을 만든다.
+ * - squash cherry-pick 과 동일하게 제목 끝에 PR 번호(#number)를 붙여 커밋과 PR 을 연결한다.
  * @param pr 작업 대상 PR 정보
  * @returns squash revert commit subject
  */
 export function squashRevertTitle(pr: PullRequestInfo): string {
-  return `Revert "${singleLineTitle(pr.title || pr.headRefName || `PR #${pr.number}`)}"`;
+  return `Revert "${singleLineTitle(pr.title || pr.headRefName || `PR #${pr.number}`)}" #${pr.number}`;
 }
 
 /**

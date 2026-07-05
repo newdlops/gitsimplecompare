@@ -99,11 +99,15 @@
     renderPullRequestDetail(Number(target.dataset.prNumber));
   }
 
-  /** 상세 drawer 내부 PR 버튼 클릭을 처리한다. */
+  /**
+   * 상세 drawer 내부 PR 버튼 클릭을 처리한다.
+   * - 카드 전체가 data-show-pr 이므로, 내부의 구체적 컨트롤을 먼저 검사하고
+   *   카드 본문(상세 열기)은 맨 마지막 fallback 으로 둔다. 순서를 바꾸면 내부 버튼 클릭이
+   *   카드의 data-show-pr 로 새어 상세가 잘못 열린다.
+   */
   function handleDetailClick(event) {
-    const show = event.target.closest?.("[data-show-pr]");
-    if (show) {
-      renderPullRequestDetail(Number(show.dataset.showPr));
+    if (event.target.closest?.("[data-pr-operation]")) {
+      // 직접 실행/메뉴 버튼은 문서 레벨 graphPrActions 리스너가 처리한다.
       return;
     }
     const open = event.target.closest?.("[data-open-pr]");
@@ -119,9 +123,6 @@
       });
       return;
     }
-    if (event.target.closest?.("[data-pr-operation]")) {
-      return;
-    }
     const overviewButton = event.target.closest?.("[data-pr-overview]");
     if (overviewButton) {
       showOverviewDetail(false);
@@ -132,14 +133,14 @@
       loadMorePullRequests();
       return;
     }
-    const focus = event.target.closest?.("[data-focus-pr]");
-    if (focus) {
-      focusPullRequestRow(Number(focus.dataset.focusPr));
-      return;
-    }
     const commit = event.target.closest?.("[data-focus-commit]");
     if (commit) {
       focusCommitRow(commit.dataset.focusCommit || "");
+      return;
+    }
+    const focus = event.target.closest?.("[data-focus-pr]");
+    if (focus) {
+      focusPullRequestRow(Number(focus.dataset.focusPr));
       return;
     }
     const folder = event.target.closest?.("[data-pr-file-folder]");
@@ -148,10 +149,42 @@
       if (activeDetail.kind === "pr") {
         renderPullRequestDetail(activeDetail.number);
       }
+      return;
+    }
+    const fileDiff = event.target.closest?.("[data-pr-file-diff]");
+    if (fileDiff) {
+      openPullRequestFileDiff(fileDiff);
+      return;
+    }
+    const viewMode = event.target.closest?.("[data-pr-view-mode]");
+    if (viewMode) {
+      window.GscGraphPrFiles?.setMode?.(viewMode.dataset.prViewMode || "tree");
+      if (activeDetail.kind === "pr") {
+        renderPullRequestDetail(activeDetail.number);
+      }
+      return;
+    }
+    const show = event.target.closest?.("[data-show-pr]");
+    if (show) {
+      renderPullRequestDetail(Number(show.dataset.showPr));
     }
   }
 
-  /** PR 목록 카드의 키보드 activation 을 graph row 이동으로 처리한다. */
+  /** 변경 파일 행 클릭을 현재 PR 기준 diff 열기 메시지로 전달한다. */
+  function openPullRequestFileDiff(el) {
+    if (activeDetail.kind !== "pr") {
+      return;
+    }
+    window.GscGraphPostMessage?.({
+      type: "openPullRequestFileDiff",
+      number: Number(activeDetail.number),
+      path: el.dataset.path || "",
+      oldPath: el.dataset.oldPath || undefined,
+      status: el.dataset.status || undefined,
+    });
+  }
+
+  /** 상세 drawer li(카드 본문/파일 행)의 키보드 activation 을 처리한다(버튼은 자체 click 으로 처리). */
   function handleDetailKeydown(event) {
     if (event.key !== "Enter" && event.key !== " ") {
       return;
@@ -159,12 +192,18 @@
     if (event.target.closest?.("button")) {
       return;
     }
-    const focus = event.target.closest?.("[data-focus-pr]");
-    if (!focus) {
+    const fileDiff = event.target.closest?.("[data-pr-file-diff]");
+    if (fileDiff) {
+      event.preventDefault();
+      openPullRequestFileDiff(fileDiff);
+      return;
+    }
+    const show = event.target.closest?.("[data-show-pr]");
+    if (!show) {
       return;
     }
     event.preventDefault();
-    focusPullRequestRow(Number(focus.dataset.focusPr));
+    renderPullRequestDetail(Number(show.dataset.showPr));
   }
 
   /** chip hover/focus 시 PR 간략 상세 카드를 표시한다. */
@@ -309,15 +348,15 @@
 
   /** PR 목록 카드 HTML 을 만든다. */
   function prListCard(pr) {
-    const title = `Jump to pull request #${pr.number} row`;
-    return `<article class="pr-card ${prColorClass(pr.number)}" data-focus-pr="${pr.number}" ` +
+    const title = `Show pull request #${pr.number} details`;
+    return `<article class="pr-card ${prColorClass(pr.number)}" data-show-pr="${pr.number}" ` +
       `tabindex="0" role="button" title="${esc(title)}" aria-label="${esc(title)}">` +
       `<div class="pr-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
       `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></div>` +
 	      prMetaHtml(pr) +
 	      `<div class="pr-actions">` +
 	      (window.GscGraphPrActions?.directButtons?.(pr.number) || "") +
-	      detailButton(pr.number) +
+	      rowJumpButton(pr.number) +
 	      previewButton(pr.number, `Preview pull request #${pr.number}`) +
 	      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
 	      `</div>` +
@@ -473,11 +512,29 @@
       : "";
     return `<section class="pr-detail-section pr-files-section">` +
       sectionHeading("files", "Changed files",
+        (detail.files && detail.files.length ? filesViewToggle() : "") +
         iconCount("files", detail.fileCount || detail.files.length, "Changed files") +
         iconCount("comment-discussion", detail.fileCommentCount || 0, "File comments")) +
       (window.GscGraphPrFiles?.render?.(detail.files || []) || `<p class="pr-empty">Changed files renderer is unavailable.</p>`) +
       note +
       `</section>`;
+  }
+
+  /** 변경 파일 트리/리스트 보기 토글 버튼 묶음 HTML 을 만든다. */
+  function filesViewToggle() {
+    const mode = window.GscGraphPrFiles?.getMode?.() || "tree";
+    return `<span class="pr-view-toggle" role="group" aria-label="Changed files view">` +
+      viewToggleButton("tree", "list-tree", "View changed files as tree", mode) +
+      viewToggleButton("list", "list-selection", "View changed files as list", mode) +
+      `</span>`;
+  }
+
+  /** 트리/리스트 토글 버튼 한 개 HTML 을 만든다(현재 모드면 active 표시). */
+  function viewToggleButton(value, icon, title, activeMode) {
+    const isActive = activeMode === value;
+    return `<button type="button" class="pr-icon-action${isActive ? " active" : ""}" ` +
+      `data-pr-view-mode="${value}" aria-pressed="${isActive ? "true" : "false"}" ${tooltipAttrs(title)}>` +
+      `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`;
   }
 
   /** PR 상세 drawer 의 related commits 리스트 HTML 을 만든다. */
@@ -519,11 +576,11 @@
       `</div>`;
   }
 
-  /** 상세 보기 버튼 HTML 을 만든다. */
-  function detailButton(number) {
-    const title = `Show pull request #${number} details`;
-    return `<button type="button" class="pr-icon-action" data-show-pr="${number}" ${tooltipAttrs(title)}>` +
-      `<span class="codicon codicon-list-tree" aria-hidden="true"></span></button>`;
+  /** 그래프에서 이 PR 의 커밋 row 로 이동하는 버튼 HTML 을 만든다(카드 본문 클릭은 상세를 연다). */
+  function rowJumpButton(number) {
+    const title = `Jump to pull request #${number} row in the graph`;
+    return `<button type="button" class="pr-icon-action" data-focus-pr="${number}" ${tooltipAttrs(title)}>` +
+      `<span class="codicon codicon-target" aria-hidden="true"></span></button>`;
   }
 
   /** 브라우저 열기 버튼 HTML 을 만든다. */

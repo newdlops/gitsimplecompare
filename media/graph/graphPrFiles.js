@@ -4,10 +4,22 @@
   "use strict";
 
   let collapsedFolders = new Set();
+  // 트리/리스트 보기 모드. PR 을 바꿔도 유지되도록 reset() 에서는 건드리지 않는다.
+  let mode = "tree";
 
-  /** PR 이 바뀔 때 이전 파일 트리 접기 상태를 초기화한다. */
+  /** PR 이 바뀔 때 이전 파일 트리 접기 상태를 초기화한다(보기 모드는 유지). */
   function reset() {
     collapsedFolders = new Set();
+  }
+
+  /** 변경 파일 보기 모드를 설정한다(tree | list). */
+  function setMode(next) {
+    mode = next === "list" ? "list" : "tree";
+  }
+
+  /** 현재 보기 모드를 반환한다(토글 버튼 active 표시에 사용). */
+  function getMode() {
+    return mode;
   }
 
   /** 폴더 path 를 기준으로 접기/펼치기 상태를 전환한다. */
@@ -22,10 +34,16 @@
     }
   }
 
-  /** changed files 를 tree HTML 로 렌더링한다. */
+  /** changed files 를 현재 보기 모드(tree/list)에 맞춰 HTML 로 렌더링한다. */
   function render(files) {
     if (!files || !files.length) {
       return `<p class="pr-empty">No changed files.</p>`;
+    }
+    if (mode === "list") {
+      // 리스트 모드: 폴더 그룹 없이 전체 경로(이름변경은 old -> new)를 한 줄씩 보여준다.
+      return `<ul class="pr-file-tree list" role="tree">` +
+        files.map((file) => fileHtml(file, 0, displayPath(file))).join("") +
+        `</ul>`;
     }
     const tree = buildTree(files);
     return `<ul class="pr-file-tree" role="tree">${treeNodesHtml(tree.nodes, 0)}</ul>`;
@@ -105,12 +123,14 @@
     }).join("");
   }
 
-  /** changed file 한 줄 HTML 을 만든다. */
+  /** changed file 한 줄 HTML 을 만든다(클릭/Enter 로 base↔head diff 를 연다). */
   function fileHtml(file, depth, label) {
-    const title = displayPath(file);
+    const title = `Open diff: ${displayPath(file)}`;
     return (
-      `<li class="pr-file-row" role="treeitem" data-status="${esc(file.status)}" ` +
-      `style="--indent:${indent(depth)}px" title="${esc(title)}">` +
+      `<li class="pr-file-row" role="treeitem" tabindex="0" data-pr-file-diff="1" ` +
+      `data-path="${esc(file.path)}" data-status="${esc(file.status)}"` +
+      (file.oldPath ? ` data-old-path="${esc(file.oldPath)}"` : "") +
+      ` style="--indent:${indent(depth)}px" title="${esc(title)}">` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(file.status)}" aria-hidden="true"></span>` +
       `<span class="extension-icon codicon codicon-file" aria-hidden="true"></span>` +
@@ -175,5 +195,5 @@
     return `title="${value}" data-tooltip="${value}" aria-label="${value}"`;
   }
 
-  window.GscGraphPrFiles = { render, reset, toggle };
+  window.GscGraphPrFiles = { render, reset, toggle, setMode, getMode };
 })();

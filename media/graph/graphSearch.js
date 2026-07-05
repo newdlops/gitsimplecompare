@@ -38,13 +38,17 @@
     });
   }
 
-  /** 그래프가 다시 그려진 뒤 열려 있는 검색 후보 목록을 현재 row 기준으로 갱신한다. */
+  /**
+   * 그래프가 다시 그려지거나 검색 결과가 도착했을 때, "이미 열려 있는" 후보 목록만 현재 상태로 갱신한다.
+   * - 목록이 닫혀 있으면(사용자가 바깥 클릭/항목 선택으로 닫음) 다시 열지 않는다.
+   *   그래야 입력에 텍스트가 남아 있는 동안 그래프가 주기적으로 다시 그려져도 목록이 간헐적으로 되살아나지 않는다.
+   */
   function update(graph, root) {
     graphEl = graph || graphEl;
     rootEl = root || rootEl;
     const input = document.getElementById("graph-search-input");
     const results = document.getElementById("graph-search-results");
-    if (input && results && input.value.trim()) {
+    if (input && results && input.value.trim() && !results.hidden) {
       render(input, results);
     }
   }

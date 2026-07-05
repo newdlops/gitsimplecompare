@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Activate on startup** (`onStartupFinished`): the extension now activates
+  shortly after window startup (without slowing startup down) instead of only
+  when its sidebar is first opened, so PR review comments and the change badge
+  update on their own without manually triggering a refresh. The built-in Git
+  status is warmed up on startup (reading its cache only, no extra scan).
+- **PR squash cherry-pick / revert** commit subjects now end with the PR number
+  (e.g. `Cherry-Pick "…" #123`, `Revert "…" #123`), linking the commit back to
+  its pull request.
+- **Git Graph PR list card**: clicking the card body now opens the PR **details**
+  drawer (previously it jumped to the PR's commit row). A dedicated button on the
+  card still jumps to the PR's row in the graph.
 - Staged pull request preview now starts without a target branch. Select a
   target branch first to load changed files and commits, avoiding expensive
   initial diffs when the default base is far from the current branch.
@@ -37,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Activity Bar change badge**: the Changes view shows a numeric badge with the
+  active repository's working-tree change count (staged + unstaged) on the
+  Git Simple Compare icon, updating live. (VS Code can only badge a webview view
+  after it has been rendered, so the count shows once the Changes view is open.)
+- **Git Graph PR details — changed files**: toggle the changed-files list between
+  **tree** and flat **list**, and **click a file to open its diff** (PR base ↔
+  head) in a diff editor.
 - Marketplace publishing assets: extension icon, Activity Bar icon, and a
   publisher checklist for `newdlops.git-simple-compare`.
 - **AI rebase planning**: graph rebase can request an AI plan that reorders
@@ -70,6 +88,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the working file with the branch version (applied as an undoable editor edit).
 - **Localization**: English is the default UI language, with full Korean
   translations applied automatically when VS Code's display language is `ko`.
+
+### Fixed
+
+- **Graph search dropdown re-appearing**: the branch/commit/tag search results
+  list no longer pops back up on its own while text remains in the search box.
+  Periodic graph redraws now only refresh the list if it is already open, instead
+  of re-opening one you dismissed.
+- **Commit / AI busy spinner**: while committing or generating an AI message, the
+  button now shows a rotating loading spinner instead of spinning its own check /
+  sparkle icon (the glyph is swapped to `codicon-loading` for the duration).
 
 ## [0.1.0]
 

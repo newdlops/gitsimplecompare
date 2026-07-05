@@ -4,7 +4,12 @@ import * as vscode from "vscode";
 import { LocalBranchStatus } from "../graph/graphTypes";
 import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
 import { searchPullRequests } from "../git/pullRequestSearchService";
+import {
+  resolvePreviewHeadRef,
+  resolvePreviewTargetRef,
+} from "../git/pullRequestPreviewTarget";
 import { logError, logInfo } from "../ui/outputLog";
+import { openPullRequestPreviewDiff } from "../ui/pullRequestPreviewDiff";
 import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
 import { ToWebviewMessage } from "./graphProtocol";
 
@@ -200,6 +205,53 @@ export async function openGraphPullRequest(
     return;
   }
   await vscode.env.openExternal(vscode.Uri.parse(pr.url));
+}
+
+/**
+ * PR 상세 drawer 의 변경 파일 하나를 base↔head diff 로 연다.
+ * - GitHub ref 이름(main 등)을 로컬 git ref 로 해석한 뒤, PR preview 의 diff 표현 모듈을 재사용한다
+ *   (작업트리 파일이 있으면 editable, 없으면 ref↔ref 가상 diff 로 fallback).
+ * @param repoRoot     대상 저장소 루트
+ * @param pullRequests 마지막으로 조회한 PR 목록(base/head ref 조회용)
+ * @param number       파일이 속한 PR 번호
+ * @param file         열 파일 정보(경로 / 상태 / 이름변경 원본 경로)
+ */
+export async function openGraphPullRequestFileDiff(
+  repoRoot: string,
+  pullRequests: PullRequestInfo[],
+  number: number,
+  file: { path: string; oldPath?: string; status?: string }
+): Promise<void> {
+  if (!file.path) {
+    return;
+  }
+  const pr = pullRequests.find((item) => item.number === number);
+  if (!pr) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Pull request #{0} is not loaded.", number)
+    );
+    return;
+  }
+  const baseRef = await resolvePreviewTargetRef(repoRoot, pr.baseRefName);
+  const headRef = await resolvePreviewHeadRef(
+    repoRoot,
+    pr.headRefName,
+    pr.headHash
+  );
+  await openPullRequestPreviewDiff(repoRoot, {
+    path: file.path,
+    oldPath: file.oldPath,
+    status: file.status,
+    baseRef,
+    headRef,
+  });
+  logInfo("graph pull request file diff opened", {
+    repoRoot,
+    number,
+    path: file.path,
+    baseRef,
+    headRef,
+  });
 }
 
 /**

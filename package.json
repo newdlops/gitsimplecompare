@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71019",
+  "version": "0.1.71021",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -40,7 +40,9 @@
     "codex",
     "claude"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [

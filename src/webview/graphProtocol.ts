@@ -142,6 +142,13 @@ export type FromWebviewMessage =
   | { type: "openPullRequest"; number: number }
   | { type: "previewStagedPullRequest"; number?: number }
   | {
+      type: "openPullRequestFileDiff";
+      number: number;
+      path: string;
+      oldPath?: string;
+      status?: string;
+    }
+  | {
       type: "pullRequestAction";
       number: number;
       action?:

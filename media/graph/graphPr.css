@@ -36,12 +36,12 @@
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-.pr-card[data-focus-pr] {
+.pr-card[data-show-pr] {
   cursor: pointer;
 }
 
-.pr-card[data-focus-pr]:hover,
-.pr-card[data-focus-pr]:focus-visible {
+.pr-card[data-show-pr]:hover,
+.pr-card[data-show-pr]:focus-visible {
   outline: 1px solid var(--pr-accent, var(--vscode-focusBorder));
   outline-offset: -1px;
   background: color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 10%, transparent);
@@ -220,6 +220,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 변경 파일 트리/리스트 보기 토글 */
+.pr-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pr-view-toggle .pr-icon-action {
+  width: 24px;
+  height: 20px;
+}
+
+.pr-view-toggle .pr-icon-action.active {
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-activeBackground, var(--vscode-list-activeSelectionBackground));
+  border-color: var(--pr-accent, var(--vscode-focusBorder));
+}
+
 .pr-detail-list {
   display: grid;
   gap: 0;
@@ -306,6 +324,17 @@
 .pr-folder-row:focus-visible,
 .pr-commit-item:hover,
 .pr-commit-item:focus-visible {
+  outline: none;
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* 변경 파일 행: 클릭/Enter 로 diff 를 여므로 hover/focus 어포던스를 준다. */
+.pr-file-row {
+  cursor: pointer;
+}
+
+.pr-file-row:hover,
+.pr-file-row:focus-visible {
   outline: none;
   background: var(--vscode-list-hoverBackground);
 }
