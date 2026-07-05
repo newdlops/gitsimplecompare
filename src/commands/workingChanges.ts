@@ -535,7 +535,9 @@ export async function commitChanges(
   if (committed) {
     GitGraphPanel.refreshOpen(svc.repoRoot, "commit");
   }
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+  // 커밋 후 staged 목록이 실제로 비워진 것을 확인한 뒤 버튼 스피너가 꺼지도록 refresh 완료까지 기다린다.
+  // (reason "commit"/"commitAttempt" 는 VS Code Git 캐시 대신 CLI 로 강제 재조회 — refreshChangesView 참고)
+  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: committed ? "commit" : "commitAttempt",
   });
 }

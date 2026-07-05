@@ -198,6 +198,8 @@ function shouldInvalidateStatusCaches(reason: string): boolean {
       const item = part.trim();
       return (
         item === "command" ||
+        item === "commit" ||
+        item === "commitAttempt" ||
         item.includes("conflict") ||
         item.includes("ignore-rules") ||
         item.startsWith("hunkCheckbox:") ||
@@ -210,6 +212,8 @@ function shouldInvalidateStatusCaches(reason: string): boolean {
 /**
  * 작업트리 상태를 VS Code Git provider 캐시 대신 Git CLI 로 직접 다시 읽어야 하는지 판단한다.
  * - 사용자가 누른 refresh/뷰 진입/ignore 규칙 변경은 provider 상태가 아직 이전 값일 수 있으므로 강제 조회한다.
+ * - 커밋(commit)은 이 확장이 자체 CLI 로 수행하므로 VS Code 내장 Git 캐시가 아직 커밋 전 staged 목록을
+ *   그대로 들고 있을 수 있다. 강제 조회해야 커밋 직후 staged 가 즉시 비워진다.
  * @param reason refresh 요청 사유 목록
  */
 function shouldForceGitStatus(reason: string): boolean {
@@ -217,6 +221,8 @@ function shouldForceGitStatus(reason: string): boolean {
     const item = part.trim();
     return (
       item === "command" ||
+      item === "commit" ||
+      item === "commitAttempt" ||
       item === "viewReady" ||
       item === "viewVisible" ||
       item.includes("ignore-rules")

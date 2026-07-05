@@ -98,6 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Commit / AI busy spinner**: while committing or generating an AI message, the
   button now shows a rotating loading spinner instead of spinning its own check /
   sparkle icon (the glyph is swapped to `codicon-loading` for the duration).
+- **Staged list lingering after commit**: after a commit finishes, the staged
+  files now clear right away instead of staying until VS Code's built-in Git
+  caught up. The post-commit refresh re-reads status via the Git CLI (the commit
+  is done through our own CLI, so the built-in Git cache can still be stale), and
+  the commit button's spinner stays until that refresh completes.
 
 ## [0.1.0]
 
