@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71022",
+  "version": "0.1.71024",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -51,6 +51,53 @@
         "title": "%cmd.compareBranches%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.selectExplorerComparison",
+        "title": "%cmd.selectExplorerComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.compareLocalWithRemote",
+        "title": "%cmd.compareLocalWithRemote%",
+        "category": "Git Simple Compare",
+        "icon": "$(cloud)"
+      },
+      {
+        "command": "gitSimpleCompare.comparePullRequest",
+        "title": "%cmd.comparePullRequest%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "gitSimpleCompare.showExplorerComparison",
+        "title": "%cmd.showExplorerComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "gitSimpleCompare.hideExplorerComparison",
+        "title": "%cmd.hideExplorerComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "gitSimpleCompare.refreshExplorerComparison",
+        "title": "%cmd.refreshExplorerComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitSimpleCompare.clearExplorerComparison",
+        "title": "%cmd.clearExplorerComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "gitSimpleCompare.openComparisonDiff",
+        "title": "%cmd.openComparisonDiff%",
+        "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.checkoutBranch",
@@ -407,16 +454,60 @@
           "contextualTitle": "%viewContainer.title%",
           "when": "gitSimpleCompare.hasConflicts || gitSimpleCompare.operationInProgress"
         }
+      ],
+      "explorer": [
+        {
+          "id": "gitSimpleCompare.comparisonExplorer",
+          "name": "%view.comparison.name%",
+          "icon": "$(git-compare)",
+          "visibility": "collapsed",
+          "order": 10,
+          "when": "gitSimpleCompare.explorerComparison.enabled"
+        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "gitSimpleCompare.conflicts",
         "contents": "%welcome.conflicts%"
+      },
+      {
+        "view": "gitSimpleCompare.comparisonExplorer",
+        "contents": "%welcome.comparison%"
       }
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "gitSimpleCompare.showExplorerComparison",
+          "when": "(view == workbench.explorer.fileView || view == tabManagerExplorer) && !gitSimpleCompare.explorerComparison.enabled",
+          "group": "navigation@90"
+        },
+        {
+          "command": "gitSimpleCompare.hideExplorerComparison",
+          "when": "(view == workbench.explorer.fileView || view == tabManagerExplorer) && gitSimpleCompare.explorerComparison.enabled",
+          "group": "navigation@90"
+        },
+        {
+          "command": "gitSimpleCompare.selectExplorerComparison",
+          "when": "view == gitSimpleCompare.comparisonExplorer",
+          "group": "navigation@0"
+        },
+        {
+          "command": "gitSimpleCompare.refreshExplorerComparison",
+          "when": "view == gitSimpleCompare.comparisonExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.hideExplorerComparison",
+          "when": "view == gitSimpleCompare.comparisonExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitSimpleCompare.clearExplorerComparison",
+          "when": "view == gitSimpleCompare.comparisonExplorer",
+          "group": "1_comparison@1"
+        },
         {
           "command": "gitSimpleCompare.showGraph",
           "when": "view == gitSimpleCompare.changes",
@@ -761,6 +852,10 @@
         },
         {
           "command": "gitSimpleCompare.openChangeDiff",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.openComparisonDiff",
           "when": "false"
         },
         {

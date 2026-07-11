@@ -47,6 +47,7 @@ interface GhSearchPullRequest extends GhPullRequestCommentCounts {
   headRefName?: string;
   headRefOid?: string;
   baseRefName?: string;
+  baseRefOid?: string;
   author?: { login?: string };
   isDraft?: boolean;
   reviewDecision?: string;
@@ -76,6 +77,7 @@ query($searchQuery: String!, $limit: Int!, $cursor: String) {
         headRefName
         headRefOid
         baseRefName
+        baseRefOid
         author { login }
         isDraft
         reviewDecision
@@ -102,6 +104,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       headRefName
       headRefOid
       baseRefName
+      baseRefOid
       author { login }
       isDraft
       reviewDecision
@@ -256,6 +259,7 @@ function toPullRequestInfo(pr: GhSearchPullRequest, extraReviewCommentCount = 0)
     headRefName: pr.headRefName || "",
     headHash: pr.headRefOid,
     baseRefName: pr.baseRefName || "",
+    baseHash: pr.baseRefOid,
     author: pr.author?.login || "",
     isDraft: Boolean(pr.isDraft),
     reviewDecision: pr.reviewDecision,

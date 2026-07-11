@@ -1,0 +1,340 @@
+// 비교 명령의 VS Code 사용자 상호작용과 diff 표시를 모은 표현 모듈.
+// - 도메인 조회/상태 적용은 comparisonDecorations에 남기고 PR 선택, 알림, 포커스,
+//   파일 열기처럼 VS Code UI에 직접 닿는 책임만 이 경계에서 처리한다.
+import * as vscode from "vscode";
+import {
+  isSafeComparisonPath,
+  type ComparisonService,
+  type ComparisonSnapshot,
+} from "../git/comparisonService";
+import type { PullRequestInfo } from "../git/pullRequestService";
+import type { FileChange } from "../git/gitTypes";
+import {
+  openRefVsRefDiff,
+  openRefVsWorkingDiff,
+} from "../ui/diffPresenter";
+import {
+  logInfo,
+  logWarn,
+  showErrorWithOutput,
+} from "../ui/outputLog";
+import type { CommandDeps } from "./shared";
+
+/** 전용 Explorer TreeView 진행 표시와 포커스에 사용할 view id. */
+export const COMPARISON_VIEW_ID = "gitSimpleCompare.comparisonExplorer";
+
+/** 비교 완료 후 사용자의 시선을 옮길 뷰. */
+export type ComparisonViewFocus = "changes" | "explorer" | "none";
+
+/** openComparisonDiff 명령이 받는 직렬화 가능한 가벼운 인자. */
+export interface OpenComparisonDiffArgs {
+  /** provider가 전체 snapshot 복제 없이 현재 비교를 찾는 저장소 루트. */
+  repoRoot?: string;
+  /** provider가 현재 변경 항목을 찾는 저장소 상대 경로. */
+  path?: string;
+  /** 구버전/직접 호출 호환용 비교 스냅샷. */
+  comparison?: ComparisonSnapshot;
+  /** 구버전/직접 호출 호환용 파일 변경. */
+  change?: FileChange;
+}
+
+/**
+ * Explorer 전용 트리의 변경 파일을 정확한 ref diff 또는 편집 가능한 작업파일 diff로 연다.
+ * - target이 현재 HEAD면 오른쪽 작업파일을 사용하고, 그 외에는 ref↔ref 읽기 전용 diff를 연다.
+ * - rename/copy는 왼쪽 base에서 oldPath를 사용해 이전 파일과 새 파일을 매칭한다.
+ * @param deps 클릭 시점의 활성 비교를 찾는 controller 의존성
+ * @param args provider가 전달한 저장소/경로 키 또는 구형 전체 인자
+ */
+export async function openComparisonDiff(
+  deps: CommandDeps,
+  args: OpenComparisonDiffArgs | undefined
+): Promise<void> {
+  const resolved = resolveComparisonDiffArgs(deps, args);
+  if (!resolved) {
+    logWarn("comparison diff open skipped", { reason: "missing-arguments" });
+    return;
+  }
+  const { comparison, change } = resolved;
+  if (!comparison.diffAvailable) {
+    logWarn("comparison diff open skipped", {
+      reason: "refs-unavailable",
+      kind: comparison.kind,
+      repoRoot: comparison.repoRoot,
+      baseRef: comparison.baseRef,
+      targetRef: comparison.targetRef,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "The comparison files are available, but its Git refs are not present locally. Fetch the pull request or remote branch and refresh the comparison."
+      )
+    );
+    return;
+  }
+
+  const leftRelPath =
+    change.status === "R" || change.status === "C"
+      ? change.oldPath ?? change.path
+      : change.path;
+  const fileLabel = change.path.slice(change.path.lastIndexOf("/") + 1);
+  logInfo("comparison diff open requested", {
+    kind: comparison.kind,
+    repoRoot: comparison.repoRoot,
+    baseRef: comparison.baseRef,
+    targetRef: comparison.targetRef,
+    path: change.path,
+    leftPath: leftRelPath,
+  });
+
+  if (comparison.targetMatchesHead && change.status !== "D") {
+    const fileUri = vscode.Uri.joinPath(
+      vscode.Uri.file(comparison.repoRoot),
+      ...change.path.split("/")
+    );
+    if (await resourceExists(fileUri)) {
+      await openRefVsWorkingDiff(
+        comparison.repoRoot,
+        comparison.baseRef,
+        fileUri,
+        change.path,
+        {
+          leftRelPath,
+          fileLabel,
+          leftLabel: comparison.baseLabel,
+          rightLabel: comparison.targetLabel,
+        }
+      );
+      return;
+    }
+  }
+  await openRefVsRefDiff(
+    comparison.repoRoot,
+    comparison.baseRef,
+    comparison.targetRef,
+    change.path,
+    fileLabel,
+    leftRelPath,
+    {
+      leftLabel: comparison.baseLabel,
+      rightLabel: comparison.targetLabel,
+    }
+  );
+}
+
+/**
+ * GitHub PR overview를 불러 사용자에게 번호/제목/브랜치 방향을 보여 준다.
+ * @param service PR overview 및 changed-files를 제공하는 비교 서비스
+ * @returns 선택한 PR, 취소·오류·빈 목록이면 undefined
+ */
+export async function pickPullRequest(
+  service: ComparisonService
+): Promise<PullRequestInfo | undefined> {
+  let overview;
+  try {
+    overview = await vscode.window.withProgress(
+      {
+        location: { viewId: COMPARISON_VIEW_ID },
+        title: vscode.l10n.t("Loading pull requests..."),
+      },
+      () => service.listPullRequests()
+    );
+  } catch (error) {
+    reportComparisonError(error, "pullRequest:list", service.repoRoot);
+    return undefined;
+  }
+  if (!overview.available) {
+    reportComparisonError(
+      new Error(overview.error || "GitHub pull requests are unavailable."),
+      "pullRequest:list",
+      service.repoRoot
+    );
+    return undefined;
+  }
+  if (overview.pullRequests.length === 0) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("No pull requests were found for this repository.")
+    );
+    logInfo("pull request comparison selection skipped", {
+      repoRoot: service.repoRoot,
+      reason: "empty",
+    });
+    return undefined;
+  }
+  if (overview.hasMore) {
+    logWarn("pull request comparison list truncated", {
+      repoRoot: service.repoRoot,
+      shown: overview.pullRequests.length,
+    });
+  }
+
+  const picked = await vscode.window.showQuickPick(
+    overview.pullRequests.map((pullRequest) => ({
+      label: `$(git-pull-request) #${pullRequest.number} ${pullRequest.title}`,
+      description: `${pullRequest.baseRefName} ← ${pullRequest.headRefName}`,
+      detail: pullRequest.author
+        ? vscode.l10n.t("{0} by @{1}", pullRequest.state, pullRequest.author)
+        : pullRequest.state,
+      pullRequest,
+    })),
+    {
+      title: vscode.l10n.t("Compare Pull Request"),
+      placeHolder: vscode.l10n.t("Select a pull request to decorate in Explorer"),
+      matchOnDescription: true,
+      matchOnDetail: true,
+      ignoreFocusOut: true,
+    }
+  );
+  if (!picked) {
+    logInfo("pull request comparison selection cancelled", {
+      repoRoot: service.repoRoot,
+    });
+  }
+  return picked?.pullRequest;
+}
+
+/**
+ * 비교 명령 실패를 OUTPUT에 상세히 남기고 사용자에게 요약과 출력 열기를 제공한다.
+ * @param error git/gh/UI 조회에서 발생한 오류
+ * @param kind 로그에서 실패 모드를 구분할 문자열
+ * @param repoRoot 알고 있는 경우 추가할 저장소 경로
+ */
+export function reportComparisonError(
+  error: unknown,
+  kind: string,
+  repoRoot?: string
+): void {
+  const reason = error instanceof Error ? error.message : String(error);
+  showErrorWithOutput(
+    "comparison command failed",
+    error,
+    vscode.l10n.t("Unable to update the comparison: {0}", reason),
+    { kind, repoRoot }
+  );
+}
+
+/**
+ * 성공한 비교가 비었거나 GitHub API 상한으로 잘렸을 때 명확한 안내를 보여 준다.
+ * @param snapshot 파일 수와 truncated 플래그를 포함한 스냅샷
+ */
+export function notifyComparisonResult(snapshot: ComparisonSnapshot): void {
+  if (snapshot.changes.length === 0) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "{0} ↔ {1}: no changed files.",
+        snapshot.baseLabel,
+        snapshot.targetLabel
+      )
+    );
+  }
+  if (snapshot.truncated) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "GitHub returned a truncated pull request file list. Showing the first {0} files.",
+        snapshot.changes.length
+      )
+    );
+  }
+  if (snapshot.changes.length === 0) {
+    return;
+  }
+  if (!snapshot.diffAvailable) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "Editor gutter markers require both comparison refs to be available locally. Fetch the target ref and refresh the comparison."
+      )
+    );
+    return;
+  }
+  if (!snapshot.targetMatchesHead) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "Editor gutter markers will appear after the target ({0}) is checked out. The Explorer file list remains available.",
+        snapshot.targetLabel
+      )
+    );
+    return;
+  }
+  if (!isEditorGutterEnabled()) {
+    vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "VS Code's scm.diffDecorations setting must be All or Gutter to show comparison markers beside line numbers."
+      )
+    );
+  }
+}
+
+/**
+ * 사용자 SCM 설정이 라인 번호 오른쪽 native Quick Diff lane을 포함하는지 확인한다.
+ * @returns `all` 또는 `gutter`이면 true
+ */
+function isEditorGutterEnabled(): boolean {
+  const mode = vscode.workspace
+    .getConfiguration("scm")
+    .get<string>("diffDecorations", "all");
+  return mode === "all" || mode === "gutter";
+}
+
+/**
+ * 스냅샷 적용 후 요청된 뷰를 드러낸다.
+ * - 자동 새로고침은 none을 넘겨 사용자 포커스를 벗어나지 않게 한다.
+ * @param focus Changes 웹뷰, Explorer 비교 트리, 포커스 유지 중 하나
+ */
+export async function focusComparisonView(
+  focus: ComparisonViewFocus
+): Promise<void> {
+  if (focus === "none") {
+    return;
+  }
+  const command =
+    focus === "changes"
+      ? "gitSimpleCompare.changes.focus"
+      : `${COMPARISON_VIEW_ID}.focus`;
+  try {
+    await vscode.commands.executeCommand(command);
+  } catch (error) {
+    logWarn("comparison view focus failed", {
+      focus,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * provider의 가벼운 repoRoot/path 인자를 현재 controller 스냅샷과 FileChange로 해석한다.
+ * @param deps 활성 비교 controller를 포함한 명령 의존성
+ * @param args command 호출 인자
+ * @returns 검증된 비교/파일 쌍, 현재 선택과 일치하지 않으면 undefined
+ */
+function resolveComparisonDiffArgs(
+  deps: CommandDeps,
+  args: OpenComparisonDiffArgs | undefined
+): { comparison: ComparisonSnapshot; change: FileChange } | undefined {
+  if (
+    args?.comparison &&
+    args.change &&
+    isSafeComparisonPath(args.change.path) &&
+    (!args.change.oldPath || isSafeComparisonPath(args.change.oldPath))
+  ) {
+    return { comparison: args.comparison, change: args.change };
+  }
+  if (!args?.repoRoot || !args.path || !isSafeComparisonPath(args.path)) {
+    return undefined;
+  }
+  const comparison = deps.comparison.getComparison(false);
+  if (!comparison || comparison.repoRoot !== args.repoRoot) {
+    return undefined;
+  }
+  const change = comparison.changes.find((item) => item.path === args.path);
+  return change ? { comparison, change } : undefined;
+}
+
+/**
+ * 비교 대상 작업파일이 실제로 존재하는지 확인한다.
+ * @param uri 저장소 안의 작업파일 URI
+ * @returns stat에 성공하면 true
+ */
+async function resourceExists(uri: vscode.Uri): Promise<boolean> {
+  return vscode.workspace.fs.stat(uri).then(
+    () => true,
+    () => false
+  );
+}

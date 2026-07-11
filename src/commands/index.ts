@@ -100,6 +100,18 @@ import {
   renameWorktree,
 } from "./worktrees";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
+import {
+  clearExplorerComparison,
+  compareLocalWithRemote,
+  comparePullRequest,
+  ComparisonFocus,
+  hideExplorerComparison,
+  OpenComparisonDiffArgs,
+  openComparisonDiff,
+  refreshExplorerComparison,
+  selectExplorerComparison,
+  showExplorerComparison,
+} from "./comparisonDecorations";
 
 const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.repos.visible", "repos"],
@@ -136,13 +148,50 @@ const BLAME_LINE_COMMANDS = [
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
+    // provider/controller가 파일·git 이벤트 새로고침을 요청하면 같은 명령 경로로 합친다.
+    deps.comparison.onDidRequestRefresh((request) => {
+      void refreshExplorerComparison(deps, request.reason, false);
+    }),
     ...SECTION_TOGGLE_COMMANDS.map(([command, section]) =>
       vscode.commands.registerCommand(command, () =>
         toggleVisibleSection(deps, section)
       )
     ),
-    vscode.commands.registerCommand("gitSimpleCompare.compareBranches", () =>
-      compareBranches(deps)
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.compareBranches",
+      (focus?: ComparisonFocus) => compareBranches(deps, focus)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.selectExplorerComparison",
+      () => selectExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.compareLocalWithRemote",
+      () => compareLocalWithRemote(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.comparePullRequest",
+      () => comparePullRequest(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.showExplorerComparison",
+      () => showExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.hideExplorerComparison",
+      () => hideExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.refreshExplorerComparison",
+      () => refreshExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.clearExplorerComparison",
+      () => clearExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openComparisonDiff",
+      (args: OpenComparisonDiffArgs) => openComparisonDiff(deps, args)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.checkoutBranch", () =>
       checkoutBranch(deps)

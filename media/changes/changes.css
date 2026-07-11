@@ -680,6 +680,9 @@ body:focus-within .row.selected:hover {
 .row[data-status="D"] .icon {
   color: var(--vscode-gitDecoration-deletedResourceForeground);
 }
+.row[data-status="D"] .name {
+  text-decoration: line-through;
+}
 .row[data-status="R"] .name,
 .row[data-status="R"] .icon,
 .row[data-status="C"] .name,

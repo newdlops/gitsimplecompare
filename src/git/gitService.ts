@@ -30,13 +30,11 @@ export interface StatusGroups {
   staged: FileChange[];
   unstaged: FileChange[];
 }
-
 /** 작업트리 상태 조회 캐시 정책. */
 export interface StatusGroupOptions {
   force?: boolean;
   maxCacheAgeMs?: number;
 }
-
 export type { IgnoreTarget, UntrackResult } from "./ignoreRules";
 
 // GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
@@ -135,7 +133,7 @@ export class GitService {
       diffBase === "threeDot" ? `${base}...${target}` : `${base}..${target}`;
     // 상태(추가/수정/이름변경)와 증감 라인 수를 각각 조회해 합친다.
     const [nameStatus, numstat] = await Promise.all([
-      this.run(["diff", "--name-status", "-z", range]),
+      this.run(["diff", "--name-status", "-z", "-M", range]),
       this.run(["diff", "--numstat", "-z", "-M", range]),
     ]);
     const counts = parseNumstat(numstat);

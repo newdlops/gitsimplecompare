@@ -2,35 +2,68 @@
 // - 두 브랜치를 고른 뒤 변경 파일 목록을 트리뷰에 채우고, 각 파일은 클릭 시 diff 로 연다.
 // - 실제 git 호출은 GitService, 선택 UI 는 quickPick, diff 표시는 diffPresenter 에 위임한다.
 import * as vscode from "vscode";
+import type { ComparisonSnapshot } from "../git/comparisonService";
 import { BranchComparison, DiffBase } from "../git/gitTypes";
 import { GitService } from "../git/gitService";
 import { pickBaseAndTarget, pickBranch } from "../ui/quickPick";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
+import { logInfo } from "../ui/outputLog";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 import {
   CommandDeps,
+  createComparisonService,
   readConfig,
   resolveCompareService,
 } from "./shared";
+import {
+  applyComparisonSnapshot,
+  ComparisonFocus,
+  reportComparisonError,
+  runAndApplyComparison,
+} from "./comparisonDecorations";
 
 /**
  * "브랜치끼리 비교" 명령 본문.
  * - 작업 저장소 탐지 → 브랜치 목록 조회 → base/target 선택 → 비교 적용의 순서.
  * @param deps 공유 의존성(레지스트리/트리)
+ * @param focus 명령 완료 후 드러낼 Changes/Explorer 뷰. 기본은 Changes 뷰
  */
-export async function compareBranches(deps: CommandDeps): Promise<void> {
+export async function compareBranches(
+  deps: CommandDeps,
+  focus: ComparisonFocus = "changes"
+): Promise<void> {
   const service = await resolveCompareService(deps);
   if (!service) {
+    logInfo("branch comparison skipped", { reason: "no-repository" });
     return;
   }
 
   const config = readConfig();
   // 진행 표시와 함께 브랜치 목록을 읽는다(원격 포함 여부는 설정을 따른다).
-  const branches = await vscode.window.withProgress(
-    { location: { viewId: "gitSimpleCompare.changes" } },
-    () => service.listBranches(config.includeRemoteBranches)
-  );
+  let branches;
+  try {
+    branches = await vscode.window.withProgress(
+      {
+        location: {
+          viewId:
+            focus === "explorer"
+              ? "gitSimpleCompare.comparisonExplorer"
+              : "gitSimpleCompare.changes",
+        },
+        title: vscode.l10n.t("Loading branches..."),
+      },
+      () => service.listBranches(config.includeRemoteBranches)
+    );
+  } catch (error) {
+    reportComparisonError(error, "branches:list", service.repoRoot);
+    return;
+  }
   if (branches.length < 2) {
+    logInfo("branch comparison skipped", {
+      reason: "not-enough-branches",
+      repoRoot: service.repoRoot,
+      branches: branches.length,
+    });
     vscode.window.showWarningMessage(
       vscode.l10n.t("Not enough branches to compare (at least 2 required).")
     );
@@ -40,6 +73,9 @@ export async function compareBranches(deps: CommandDeps): Promise<void> {
   const current = branches.find((b) => b.isCurrent)?.name;
   const picked = await pickBaseAndTarget(branches, current);
   if (!picked) {
+    logInfo("branch comparison selection cancelled", {
+      repoRoot: service.repoRoot,
+    });
     return;
   }
   await applyComparison(
@@ -47,7 +83,8 @@ export async function compareBranches(deps: CommandDeps): Promise<void> {
     service,
     picked.base.name,
     picked.target.name,
-    config.diffBase
+    config.diffBase,
+    focus
   );
 }
 
@@ -63,6 +100,9 @@ export async function changeComparisonRef(
 ): Promise<void> {
   const side = typeof sideArg === "string" ? sideArg : sideArg?.side;
   if (!side) {
+    logInfo("branch comparison ref change skipped", {
+      reason: "missing-side",
+    });
     return;
   }
   const comparison = deps.changesView.getComparison();
@@ -74,11 +114,17 @@ export async function changeComparisonRef(
   }
 
   const config = readConfig();
-  const branches = await service.listBranches(config.includeRemoteBranches);
+  let branches;
+  try {
+    branches = await service.listBranches(config.includeRemoteBranches);
+  } catch (error) {
+    reportComparisonError(error, "branches:list", service.repoRoot);
+    return;
+  }
   const draft = deps.changesView.getDraft();
   const currentRef = comparison
     ? side === "from"
-      ? comparison.base
+      ? comparison.sourceBase ?? comparison.base
       : comparison.target
     : side === "from"
     ? draft.from
@@ -90,14 +136,28 @@ export async function changeComparisonRef(
 
   const picked = await pickBranch(branches, placeholder, currentRef);
   if (!picked) {
+    logInfo("branch comparison ref change cancelled", {
+      repoRoot: service.repoRoot,
+      side,
+    });
     return;
   }
 
   if (comparison) {
     // 활성 비교가 있으면 한쪽만 바꿔 즉시 재비교한다.
-    const base = side === "from" ? picked.name : comparison.base;
+    const base =
+      side === "from"
+        ? picked.name
+        : comparison.sourceBase ?? comparison.base;
     const target = side === "to" ? picked.name : comparison.target;
-    await applyComparison(deps, service, base, target, comparison.diffBase);
+    await applyComparison(
+      deps,
+      service,
+      base,
+      target,
+      comparison.diffBase,
+      "changes"
+    );
   } else {
     // 비교 전이면 초안만 갱신한다(아래 Compare 로 실행).
     deps.changesView.setDraft(side, picked.name);
@@ -112,6 +172,11 @@ export async function changeComparisonRef(
 export async function runComparison(deps: CommandDeps): Promise<void> {
   const draft = deps.changesView.getDraft();
   if (!draft.from || !draft.to) {
+    logInfo("draft branch comparison skipped", {
+      reason: "incomplete-draft",
+      hasFrom: !!draft.from,
+      hasTo: !!draft.to,
+    });
     vscode.window.showWarningMessage(
       vscode.l10n.t("Select both From and To branches first.")
     );
@@ -126,7 +191,8 @@ export async function runComparison(deps: CommandDeps): Promise<void> {
     service,
     draft.from,
     draft.to,
-    readConfig().diffBase
+    readConfig().diffBase,
+    "changes"
   );
 }
 
@@ -141,15 +207,41 @@ export async function refreshActiveComparison(
 ): Promise<void> {
   const comparison = deps.changesView.getComparison();
   if (!comparison) {
+    logInfo("active comparison refresh skipped", {
+      reason: "no-comparison",
+    });
     return;
   }
-  const service = deps.registry.get(comparison.repoRoot);
-  const changes = await service.listChanges(
-    comparison.base,
-    comparison.target,
-    comparison.diffBase
+  const service = createComparisonService(deps, comparison.repoRoot);
+  const explorerSnapshot = deps.comparison.getComparison(true);
+  const syncController = Boolean(
+    explorerSnapshot &&
+      snapshotMatchesComparison(explorerSnapshot, comparison)
   );
-  deps.changesView.setComparison({ ...comparison, changes });
+  const snapshot =
+    explorerSnapshot && syncController
+      ? await deps.comparison.refreshWith(
+          (current) => service.refresh(current),
+          "changesView",
+          { includeDisabled: true }
+        )
+      : await service.compareRefs(
+          comparison.sourceBase ?? comparison.base,
+          comparison.target,
+          comparison.diffBase
+        );
+  // refresh 도중 사용자가 비교를 바꾸거나 지우면 controller가 오래된 결과를 버린다.
+  if (!snapshot) {
+    return;
+  }
+  await applyComparisonSnapshot(deps, snapshot, {
+    source: "refreshActiveComparison",
+    focus: "none",
+    notify: false,
+    reveal: false,
+    // syncController=true 경로는 refreshWith가 이미 generation 검증 후 적용했다.
+    syncController: false,
+  });
 }
 
 /**
@@ -160,31 +252,48 @@ export async function refreshActiveComparison(
  * @param base     기준(from) 브랜치
  * @param target   대상(to) 브랜치
  * @param diffBase 비교 기준(two/three dot)
+ * @param focus    성공 후 드러낼 Changes/Explorer 뷰
  */
 async function applyComparison(
   deps: CommandDeps,
   service: GitService,
   base: string,
   target: string,
-  diffBase: DiffBase
+  diffBase: DiffBase,
+  focus: ComparisonFocus
 ): Promise<void> {
-  const changes = await service.listChanges(base, target, diffBase);
-  const comparison: BranchComparison = {
-    repoRoot: service.repoRoot,
-    base,
-    target,
-    diffBase,
-    changes,
-  };
-  deps.changesView.setComparison(comparison);
+  const comparisonService = createComparisonService(deps, service.repoRoot);
+  await runAndApplyComparison(
+    deps,
+    {
+      source: "compareBranches",
+      kind: "branches",
+      progressTitle: vscode.l10n.t("Comparing {0} with {1}...", base, target),
+      focus,
+    },
+    () => comparisonService.compareRefs(base, target, diffBase)
+  );
+}
 
-  if (changes.length === 0) {
-    vscode.window.showInformationMessage(
-      vscode.l10n.t("{0} ↔ {1}: no changed files.", base, target)
-    );
-  }
-  // 트리뷰를 화면에 드러내 사용자 시선을 옮긴다(From/To 헤더가 상단에 보인다).
-  await vscode.commands.executeCommand("gitSimpleCompare.changes.focus");
+/**
+ * Changes 웹뷰의 호환 비교가 controller에 보관된 스냅샷과 같은지 확인한다.
+ * - clearExplorerComparison 후나 다른 저장소 비교를 보는 중에 Changes 자동 새로고침이
+ *   의도치 않게 Explorer 선택을 복원하지 않도록 하는 게이트다.
+ * @param snapshot controller에 보관된 비교 스냅샷
+ * @param comparison Changes 웹뷰에 보이는 호환 비교
+ * @returns 저장소, 양쪽 ref, diff 기준이 모두 같으면 true
+ */
+function snapshotMatchesComparison(
+  snapshot: ComparisonSnapshot,
+  comparison: BranchComparison
+): boolean {
+  return (
+    snapshot.repoRoot === comparison.repoRoot &&
+    snapshot.baseRef === comparison.base &&
+    snapshot.sourceBaseRef === (comparison.sourceBase ?? comparison.base) &&
+    snapshot.targetRef === comparison.target &&
+    snapshot.diffBase === comparison.diffBase
+  );
 }
 
 /**
@@ -198,6 +307,14 @@ export async function openChangeDiff(args: ChangeDiffArgs): Promise<void> {
     return;
   }
   const { comparison, change } = args;
+  if (comparison.diffAvailable === false) {
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "The comparison files are available, but its Git refs are not present locally. Fetch the pull request or remote branch and refresh the comparison."
+      )
+    );
+    return;
+  }
   const leftRelPath =
     change.status === "R" || change.status === "C"
       ? change.oldPath ?? change.path
@@ -210,6 +327,10 @@ export async function openChangeDiff(args: ChangeDiffArgs): Promise<void> {
     comparison.target,
     change.path,
     fileLabel,
-    leftRelPath
+    leftRelPath,
+    {
+      leftLabel: comparison.baseLabel,
+      rightLabel: comparison.targetLabel,
+    }
   );
 }

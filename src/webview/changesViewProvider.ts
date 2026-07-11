@@ -181,6 +181,15 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     return this.comparison;
   }
 
+  /** 현재 비교 결과를 지우고 Compare 섹션을 브랜치 선택 초안 상태로 되돌린다. */
+  clearComparison(): void {
+    if (!this.comparison) {
+      return;
+    }
+    this.comparison = undefined;
+    this.render();
+  }
+
   /** 비교 전 초안(from/to)을 반환한다. */
   getDraft(): ComparisonDraft {
     return this.draft;
@@ -300,6 +309,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.render();
+    void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");

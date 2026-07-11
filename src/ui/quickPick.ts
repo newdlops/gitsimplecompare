@@ -70,7 +70,9 @@ export async function pickBaseAndTarget(
   }
   const target = await pickBranch(
     branches,
-    vscode.l10n.t("Pick the TO branch — changes are shown relative to FROM"),
+    vscode.l10n.t(
+      "Pick the TO branch — choose the current branch for editor gutter markers"
+    ),
     currentName,
     vscode.l10n.t("Compare Branches (2/2): choose TO (target) — FROM is {0}", base.name)
   );

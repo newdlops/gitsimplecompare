@@ -10,6 +10,8 @@ import { ConflictsController } from "../providers/conflictsController";
 import { HunkCheckboxController } from "../providers/hunkCheckboxController";
 import type { BlameDecoratorController } from "../providers/blameDecoratorController";
 import type { VscodeGitStatusProvider } from "../providers/vscodeGitStatusProvider";
+import { ComparisonService } from "../git/comparisonService";
+import type { ComparisonController } from "../providers/comparisonController";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
@@ -30,6 +32,8 @@ export interface CommandDeps {
   vscodeGitStatus: VscodeGitStatusProvider;
   /** PR comment 캐시를 비우고 활성 에디터 표시를 다시 읽는 hook */
   refreshPullRequestComments: (reason: string) => void;
+  /** Explorer/탭/전용 트리가 공유하는 비교 스냅샷과 표시 토글 컨트롤러 */
+  comparison: ComparisonController;
 }
 
 /** 사용자 설정에서 읽어온 확장 동작 옵션 */
@@ -206,6 +210,37 @@ export async function resolveCompareService(
     return deps.registry.get(active);
   }
   return resolveWorkspaceService(deps.registry);
+}
+
+/**
+ * 명령이 선택한 저장소에 대한 ComparisonService 를 만든다.
+ * - 레지스트리의 GitService 를 주입해 기존 상태 캐시와 git 실행 규칙을
+ *   그대로 공유한다. PR/원격 서비스는 도메인 레이어 내부에서 조립된다.
+ * @param deps 저장소별 GitService 레지스트리를 포함한 명령 의존성
+ * @param repoRoot 비교할 git 저장소의 절대 경로
+ * @returns 같은 저장소에 바인딩된 비교 도메인 서비스
+ */
+export function createComparisonService(
+  deps: CommandDeps,
+  repoRoot: string
+): ComparisonService {
+  return new ComparisonService(repoRoot, {
+    git: deps.registry.get(repoRoot),
+  });
+}
+
+/**
+ * 현재 UI 문맥에서 저장소를 고른 뒤 ComparisonService 로 변환한다.
+ * - Changes 뷰의 활성 저장소, 활성 파일, 워크스페이스 순의 기존 탐지
+ *   규칙을 재사용해 브랜치/PR/원격 비교가 항상 같은 저장소를 보게 한다.
+ * @param deps 명령 공유 의존성
+ * @returns 선택된 저장소의 비교 서비스, 저장소가 없으면 undefined
+ */
+export async function resolveComparisonService(
+  deps: CommandDeps
+): Promise<ComparisonService | undefined> {
+  const git = await resolveCompareService(deps);
+  return git ? createComparisonService(deps, git.repoRoot) : undefined;
 }
 
 /**

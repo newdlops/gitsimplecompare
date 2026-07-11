@@ -57,8 +57,12 @@ export function buildChangesRenderPayload(
     })),
     compare: {
       mode: state.comparison ? ("comparison" as const) : ("draft" as const),
-      from: state.comparison ? state.comparison.base : state.draft.from ?? "",
-      to: state.comparison ? state.comparison.target : state.draft.to ?? "",
+      from: state.comparison
+        ? state.comparison.baseLabel ?? state.comparison.base
+        : state.draft.from ?? "",
+      to: state.comparison
+        ? state.comparison.targetLabel ?? state.comparison.target
+        : state.draft.to ?? "",
       viewMode: state.viewModes.compare,
       nodes: state.comparison
         ? buildNodes(

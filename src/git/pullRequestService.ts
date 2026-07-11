@@ -7,8 +7,8 @@ import { runGit } from "./gitExec";
 import { splitRepositoryName } from "./githubRepository";
 import { fetchPullRequestDetail } from "./pullRequestDetail";
 import type { PullRequestDetailInfo } from "./pullRequestDetail";
-import { fetchPullRequestPreviewFiles } from "./pullRequestPreviewFiles";
-import type { PullRequestPreviewFile } from "./pullRequestPreviewFiles";
+import { fetchPullRequestChangedFiles, fetchPullRequestPreviewFiles } from "./pullRequestPreviewFiles";
+import type { PullRequestChangedFilesResult, PullRequestPreviewFile } from "./pullRequestPreviewFiles";
 import {
   buildLocalPullRequestPreview,
   commitLabels,
@@ -27,12 +27,9 @@ import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullReq
 import type { GhPullRequestLabels, PullRequestLabelInfo } from "./pullRequestLabels";
 import { PULL_REQUEST_COMMENT_COUNTS_QUERY, fetchRemainingReviewThreadCommentCounts, totalPullRequestCommentCount } from "./pullRequestCommentCounts";
 import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
-
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
-
 /** PR 목록을 한 번에 읽는 페이지 크기 */
 const PULL_REQUEST_PAGE_SIZE = 80;
-
 /** PR 목록 GraphQL 쿼리. gh pr list 의 commits 필드가 과도한 author 연결을 펴지 않도록 필요한 값만 직접 요청한다. */
 const PULL_REQUESTS_QUERY = `
 query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
@@ -46,6 +43,7 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
         headRefName
         headRefOid
         baseRefName
+        baseRefOid
         author { login }
         isDraft
         reviewDecision
@@ -90,7 +88,6 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
     }
   }
 }`;
-
 /** graph 에 표시할 Pull Request 한 건 */
 export interface PullRequestInfo {
   number: number;
@@ -100,6 +97,8 @@ export interface PullRequestInfo {
   headRefName: string;
   headHash?: string;
   baseRefName: string;
+  /** GitHub가 보고한 base branch tip commit OID */
+  baseHash?: string;
   author: string;
   isDraft: boolean;
   reviewDecision?: string;
@@ -109,7 +108,6 @@ export interface PullRequestInfo {
   commitHashes: string[];
   labels?: PullRequestLabelInfo[];
 }
-
 /** graph 웹뷰에 보내는 PR 전체 상태 */
 export interface PullRequestOverview {
   available: boolean;
@@ -148,6 +146,7 @@ interface GhPullRequest {
   headRefName?: string;
   headRefOid?: string;
   baseRefName?: string;
+  baseRefOid?: string;
   author?: { login?: string };
   isDraft?: boolean;
   reviewDecision?: string;
@@ -187,6 +186,7 @@ interface GhGraphQlPullRequest extends GhPullRequestCommentCounts {
   headRefName?: string;
   headRefOid?: string;
   baseRefName?: string;
+  baseRefOid?: string;
   author?: { login?: string };
   isDraft?: boolean;
   reviewDecision?: string;
@@ -338,6 +338,18 @@ export class PullRequestService {
   }
 
   /**
+   * Explorer 비교 표시에 필요한 PR changed files 만 읽는다.
+   * - 상세/preview 경로와 달리 review comment API 를 호출하지 않으므로 파일 장식을
+   *   갱신할 때 댓글 본문이나 patch 데이터를 함께 내려받지 않는다.
+   * @param number 조회할 GitHub Pull Request 번호
+   * @returns 상태·이전 경로·라인 증감이 정규화된 파일 목록과 API 상한 도달 여부
+   */
+  async getChangedFiles(number: number): Promise<PullRequestChangedFilesResult> {
+    const repository = await this.repositoryName();
+    return fetchPullRequestChangedFiles(this.repoRoot, repository, number);
+  }
+
+  /**
    * PR preview Commits 탭에서 선택한 로컬 commit 의 파일 변경을 지연 조회한다.
    * @param hash 파일 변경을 읽을 commit hash
    * @returns 해당 commit 의 changed files
@@ -392,6 +404,7 @@ export class PullRequestService {
       headRefName: pr.headRefName || "",
       headHash: pr.headRefOid,
       baseRefName: pr.baseRefName || "",
+      baseHash: pr.baseRefOid,
       author: pr.author?.login || "",
       isDraft: Boolean(pr.isDraft),
       reviewDecision: pr.reviewDecision,
@@ -560,6 +573,7 @@ function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
     headRefName: pr.headRefName,
     headRefOid: pr.headRefOid,
     baseRefName: pr.baseRefName,
+    baseRefOid: pr.baseRefOid,
     author: pr.author,
     isDraft: pr.isDraft,
     reviewDecision: pr.reviewDecision,

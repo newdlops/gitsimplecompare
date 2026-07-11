@@ -80,7 +80,15 @@ export type DiffBase = "twoDot" | "threeDot";
 export interface BranchComparison {
   repoRoot: string;
   base: string;
+  /** three-dot 비교에서 merge-base로 바꾸기 전 사용자가 선택한 기준 ref */
+  sourceBase?: string;
   target: string;
+  /** UI 에 실제 ref 대신 표시할 짧은 기준 라벨(PR/원격 비교에서 사용) */
+  baseLabel?: string;
+  /** UI 에 실제 ref 대신 표시할 짧은 대상 라벨(PR/원격 비교에서 사용) */
+  targetLabel?: string;
+  /** false면 비교 파일 목록은 있지만 양쪽 git ref가 로컬에 없어 파일 diff를 열 수 없다. */
+  diffAvailable?: boolean;
   diffBase: DiffBase;
   changes: FileChange[];
 }
