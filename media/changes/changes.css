@@ -418,82 +418,6 @@ body:focus-within .row.selected:hover {
   color: var(--vscode-charts-green, var(--vscode-gitDecoration-addedResourceForeground));
 }
 
-/* ── Compare Branches ── */
-.ref {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 22px;
-  line-height: 22px;
-  /* From/To 행도 본문이므로 .row 와 동일한 들여쓰기를 적용한다. */
-  padding: 0 8px 0 20px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.ref:hover {
-  background: var(--vscode-list-hoverBackground);
-}
-
-.ref .icon {
-  flex: 0 0 16px;
-  color: var(--vscode-icon-foreground, var(--vscode-foreground));
-}
-
-.ref .label {
-  color: var(--vscode-descriptionForeground);
-}
-
-.ref .value.empty {
-  color: var(--vscode-descriptionForeground);
-  font-style: italic;
-}
-
-.ref .actions {
-  margin-left: auto;
-  opacity: 0;
-}
-
-.ref:hover .actions {
-  opacity: 1;
-}
-
-.action {
-  padding: 0 3px;
-  border-radius: 4px;
-  color: var(--vscode-icon-foreground, var(--vscode-foreground));
-}
-
-.action:hover {
-  background: var(--vscode-toolbar-hoverBackground);
-}
-
-#compare {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: calc(100% - 24px);
-  margin: 6px 12px 2px;
-  padding: 3px 14px;
-  border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: 2px;
-  cursor: pointer;
-  color: var(--vscode-button-foreground);
-  background: var(--vscode-button-background);
-  font-family: inherit;
-  font-size: inherit;
-}
-
-#compare:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-#compare:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
-  outline-offset: 2px;
-}
-
 /* ── 파일 트리(Compare 는 가로 스크롤) ── */
 .files {
   overflow-x: auto;
@@ -1113,10 +1037,16 @@ body:focus-within .row.selected:hover {
   border-radius: 4px;
   font-size: 14px;
   color: var(--vscode-icon-foreground, var(--vscode-foreground));
+  cursor: pointer;
 }
 
 .row-action:hover {
   background: var(--vscode-toolbar-hoverBackground);
+}
+
+.row-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 .wt-files .row-actions {

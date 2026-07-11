@@ -12,7 +12,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 ## Features
 
-1. **Compare branches** — pick two local/remote branches, browse the changed files in a tree (or flat list), and open each file's diff.
+1. **Compare branches** — pick one branch to compare with the current checkout and review native editor line markers; an advanced command keeps explicit FROM/TO comparison available.
 2. **Compare a file with a branch** — right-click a file in the Explorer to diff it against a specific branch version.
 3. **Compare the active file with a branch** — diff the currently open file against a branch version from the editor title bar or context menu.
 4. **Edit while comparing** — in file-vs-branch diffs the working-tree side stays editable. You can also **apply the whole left (branch) version to the right (working) file in one click**.
@@ -24,7 +24,8 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 ## Usage
 
-- Command Palette (`Cmd/Ctrl+Shift+P`) → `Git Simple Compare: Compare Branches`
+- Command Palette (`Cmd/Ctrl+Shift+P`) → `Git Simple Compare: Compare with Current Checkout...`
+- For arbitrary refs → `Git Simple Compare: Compare Any Two Branches (Advanced)...`
 - Explorer → right-click a file → `Compare This File with Branch`
 - Editor → right-click (or tab right-click) → `Compare Active File with Branch`
 - Editor title bar → comparison icon

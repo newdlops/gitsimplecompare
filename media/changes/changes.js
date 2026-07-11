@@ -57,6 +57,7 @@
       branchStash: "Create Branch from Stash",
       worktrees: "Worktrees",
     },
+    window.__gscCompare?.defaults || {},
     window.__gscI18n || {}
   );
 
@@ -300,11 +301,15 @@
   /**
    * 행 hover 시 노출되는 인라인 액션 묶음 HTML.
    * - 파일이면 "파일 열기"(편집 화면) 아이콘을 먼저 둔다.
-   * - staged → unstage, unstaged → discard + stage. compare 는 액션 없음.
+   * - compare 파일은 일반 편집기 클릭과 별개로 명시적인 diff 액션을 제공한다.
+   * - staged → unstage, unstaged → discard + stage.
    * @param kind   compare/staged/unstaged
    * @param isFile 파일 행이면 true(폴더면 false)
    */
   function rowActionsHtml(kind, isFile) {
+    if (kind === "compare") {
+      return window.__gscCompare.rowActionsHtml(T, esc, isFile);
+    }
     if (kind !== "staged" && kind !== "unstaged") {
       return "";
     }
@@ -329,11 +334,11 @@
   }
 
   /** 노드(폴더/파일)를 재귀 HTML 로(들여쓰기는 .children 중첩). kind: compare/staged/unstaged. */
-  function nodeHtml(node, viewMode, kind) {
+  function nodeHtml(node, viewMode, kind, gutter) {
     if (node.kind === "folder") {
       const conflictCount = countConflicts(node.children);
       const children = node.children
-        .map((c) => nodeHtml(c, viewMode, kind))
+        .map((c) => nodeHtml(c, viewMode, kind, gutter))
         .join("");
       const key = folderKey(kind, node.path);
       const collapsed = !!state.folders[key];
@@ -362,15 +367,30 @@
     const dirHtml =
       viewMode === "list" && dir ? `<span class="dir">${esc(dir)}</span>` : "";
     const conflicted = hasConflict(node);
-    const title = conflicted ? `${ch.path} - ${T.conflicts}` : ch.path;
+    const title =
+      kind === "compare"
+        ? `${window.__gscCompare.fileActionLabel(T, ch, gutter)}: ${ch.path}`
+        : conflicted
+          ? `${ch.path} - ${T.conflicts}`
+          : ch.path;
+    const compareRowAttrs =
+      kind === "compare"
+        ? ` role="group" aria-label="${esc(ch.path)}"`
+        : "";
+    const compareNameAttrs =
+      kind === "compare"
+        ? ` role="button" tabindex="0" title="${esc(title)}" aria-label="${esc(
+            title
+          )}"`
+        : "";
     return (
       `<div class="row file${conflicted ? " conflict" : ""}" data-status="${esc(ch.status)}" ` +
       `data-path="${esc(ch.path)}" data-stage="${esc(kind)}" ` +
-      `title="${esc(title)}">` +
+      `title="${esc(title)}"${compareRowAttrs}>` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(ch.status)}"></span>` +
       fileIconHtml(ch.path) +
-      `<span class="name">${esc(fileName)}</span>` +
+      `<span class="name"${compareNameAttrs}>${esc(fileName)}</span>` +
       dirHtml +
       statHtml(ch) +
       (conflicted ? conflictBadgeHtml(0) : "") +
@@ -385,46 +405,14 @@
   }
 
   /** 노드 배열을 가로 스크롤 가능한 파일 트리로 감싼다. kind 로 행 액션/클릭 동작을 구분한다. */
-  function fileTree(nodes, viewMode, kind, extraClass, emptyText) {
+  function fileTree(nodes, viewMode, kind, extraClass, emptyText, gutter) {
     if (!nodes.length) {
       return `<p class="empty">${esc(emptyText)}</p>`;
     }
-    const rows = nodes.map((n) => nodeHtml(n, viewMode, kind)).join("");
+    const rows = nodes
+      .map((n) => nodeHtml(n, viewMode, kind, gutter))
+      .join("");
     return `<div class="files ${extraClass}"><div class="rows">${rows}</div></div>`;
-  }
-
-  /** Compare Branches 섹션 본문(From/To + draft 면 Compare + 비교 결과 트리). */
-  function compareBody(compare, viewMode) {
-    const refRow = (side, value) => {
-      const isEmpty = !value;
-      const label = side === "from" ? T.from : T.to;
-      const icon = side === "from" ? "codicon-git-commit" : "codicon-target";
-      const shown = isEmpty ? T.selectBranch : value;
-      return (
-        `<div class="ref" data-side="${side}" title="${esc(T.change)}">` +
-        `<span class="icon codicon ${icon}"></span>` +
-        `<span class="label">${esc(label)}</span>` +
-        `<span class="value${isEmpty ? " empty" : ""}">${esc(shown)}</span>` +
-        `<span class="actions"><span class="action codicon codicon-edit" ` +
-        `title="${esc(T.change)}"></span></span></div>`
-      );
-    };
-    let html = refRow("from", compare.from) + refRow("to", compare.to);
-    if (compare.mode === "draft") {
-      html +=
-        `<button id="compare" type="button" title="${esc(T.compare)}" ` +
-        `aria-label="${esc(T.compare)}"><span class="codicon codicon-git-compare">` +
-        `</span>${esc(T.compare)}</button>`;
-    } else {
-      html += fileTree(
-        compare.nodes,
-        viewMode,
-        "compare",
-        "compare-files",
-        T.noCompare
-      );
-    }
-    return html;
   }
 
   /** 헤더 우측 미트볼(...) 버튼 HTML. */
@@ -770,7 +758,11 @@
         "compare",
         T.compareBranches,
         compareCount,
-        compareBody(p.compare, p.compare.viewMode),
+        window.__gscCompare.render(p.compare, p.compare.viewMode, {
+          strings: T,
+          escape: esc,
+          fileTree,
+        }),
         p.compare.mode === "comparison" ? sectionActions() : ""
       ),
       stashes: section(
@@ -1151,25 +1143,8 @@
         vscode.postMessage({ type: "selectRepo", root: el.dataset.root })
       );
     });
-    rootEl.querySelectorAll(".ref").forEach((el) => {
-      el.addEventListener("click", () =>
-        vscode.postMessage({ type: "changeRef", side: el.dataset.side })
-      );
-    });
-    const compareBtn = document.getElementById("compare");
-    if (compareBtn) {
-      compareBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        vscode.postMessage({ type: "runCompare" });
-      });
-    }
+    window.__gscCompare.bind(rootEl, vscode);
     rootEl.querySelectorAll(".row.folder").forEach(bindFolderToggle);
-    // 비교 결과 파일 → 브랜치 diff
-    rootEl.querySelectorAll(".compare-files .row.file").forEach((el) => {
-      el.addEventListener("click", () =>
-        vscode.postMessage({ type: "openDiff", path: el.dataset.path })
-      );
-    });
     // 작업트리 변경 파일 → 단일 클릭=선택+비교, Ctrl/Cmd·Shift=다중 선택
     rootEl.querySelectorAll(".wt-files .row.file").forEach((el) => {
       el.addEventListener("click", (e) => onWorkingRowClick(e, el));
@@ -1410,9 +1385,19 @@
           vscode.postMessage({ type: "openFile", path: row.dataset.path });
           return;
         }
+        if (el.dataset.act === "openCompareDiff") {
+          vscode.postMessage({ type: "openDiff", path: row.dataset.path });
+          return;
+        }
         const paths = actionPaths(row);
         if (paths.length) {
           postWorkingAction(el.dataset.act, paths);
+        }
+      });
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          el.click();
         }
       });
     });

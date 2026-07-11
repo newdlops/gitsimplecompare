@@ -90,6 +90,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const syncComparisonView = (): void => {
     const status = comparisonTreeProvider.getStatus();
     comparisonTree.description = status.description;
+    comparisonTree.message = status.message;
     void vscode.commands.executeCommand(
       "setContext",
       "gitSimpleCompare.explorerComparison.enabled",
@@ -100,6 +101,11 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       "gitSimpleCompare.explorerComparison.hasComparison",
       status.hasComparison
     );
+    void vscode.commands.executeCommand(
+      "setContext",
+      "gitSimpleCompare.explorerComparison.gutterState",
+      status.gutterState
+    );
   };
   context.subscriptions.push(
     comparisonTreeProvider.onDidChangeStatus(syncComparisonView)
@@ -109,9 +115,13 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   // 4) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
   const changesView = new ChangesViewProvider(
     context.extensionUri,
-    context.globalState
+    context.globalState,
+    () => comparison.enabled
   );
   context.subscriptions.push(
+    comparison.onDidChangeComparison(() =>
+      changesView.refreshComparisonStatus()
+    ),
     vscode.window.registerWebviewViewProvider(
       ChangesViewProvider.viewId,
       changesView,
@@ -197,7 +207,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     pendingGraphRefreshRoots.clear();
     prCommentDecorations.refresh(reason);
     if (reason.split(",").some((part) => part.trim().startsWith("vscodeGit:"))) {
-      void refreshComparisonIdentity(comparison, reason).catch((error) => {
+      void refreshComparisonIdentity(comparison, changesView, reason).catch((error) => {
         logError("comparison identity refresh failed", error, { reason });
       });
     }
@@ -343,6 +353,11 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
         logInfo("file icon theme changed");
         changesView.refresh();
       }
+      if (event.affectsConfiguration("scm.diffDecorations")) {
+        logInfo("editor gutter setting changed");
+        comparisonTreeProvider.refresh("scm.diffDecorations");
+        changesView.refresh();
+      }
     }),
     vscode.window.onDidChangeActiveColorTheme(() => {
       logInfo("color theme changed");
@@ -417,10 +432,12 @@ function shouldRefreshExplorerComparison(reason: string): boolean {
  * - base/target ref가 움직였거나 localRemote 모드에서 HEAD가 바뀌면 전체 비교 refresh를 요청한다.
  * - 명시적 브랜치/PR 비교의 checkout만 바뀌면 파일 목록은 유지하고 Quick Diff gate만 갱신한다.
  * @param controller 활성 비교 상태 controller
+ * @param changesView 기존 Changes 비교 카드의 HEAD 일치 상태를 함께 갱신할 provider
  * @param reason 진단 로그와 후속 refresh에 전달할 이벤트 원인
  */
 async function refreshComparisonIdentity(
   controller: ComparisonController,
+  changesView: ChangesViewProvider,
   reason: string
 ): Promise<void> {
   const before = controller.getComparison(false);
@@ -453,7 +470,7 @@ async function refreshComparisonIdentity(
   if (!headChanged) {
     return;
   }
-  controller.setSnapshot({
+  const updated: ComparisonSnapshot = {
     ...current,
     targetMatchesHead: Boolean(
       identity.targetHash && identity.targetHash === identity.headHash
@@ -463,11 +480,43 @@ async function refreshComparisonIdentity(
     resolvedTargetHash: identity.targetHash,
     resolvedHeadHash: identity.headHash,
     updatedAt: new Date().toISOString(),
-  });
+  };
+  controller.setSnapshot(updated);
+  syncChangesComparisonIdentity(changesView, current, updated);
   logInfo("comparison HEAD identity refreshed", {
     reason,
     repoRoot: current.repoRoot,
     targetMatchesHead: identity.targetHash === identity.headHash,
+  });
+}
+
+/**
+ * controller의 HEAD gate만 바뀐 경우 같은 비교를 보여 주는 Changes 카드도 함께 갱신한다.
+ * - 저장소/ref/diff 기준이 모두 같을 때만 적용해 사용자가 막 선택한 다른 비교를 덮지 않는다.
+ * @param changesView 갱신할 Changes 웹뷰 provider
+ * @param before identity 조회를 시작할 때의 controller 스냅샷
+ * @param after 최신 HEAD identity가 반영된 controller 스냅샷
+ */
+function syncChangesComparisonIdentity(
+  changesView: ChangesViewProvider,
+  before: ComparisonSnapshot,
+  after: ComparisonSnapshot
+): void {
+  const visible = changesView.getComparison();
+  if (
+    !visible ||
+    visible.repoRoot !== before.repoRoot ||
+    visible.base !== before.baseRef ||
+    (visible.sourceBase ?? visible.base) !== before.sourceBaseRef ||
+    visible.target !== before.targetRef ||
+    visible.diffBase !== before.diffBase
+  ) {
+    return;
+  }
+  changesView.setComparison({
+    ...visible,
+    diffAvailable: after.diffAvailable,
+    targetMatchesHead: after.targetMatchesHead,
   });
 }
 

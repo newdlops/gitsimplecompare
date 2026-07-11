@@ -10,21 +10,29 @@ import { ComparisonController } from "./comparisonController";
 import {
   comparisonChangeTooltip,
   comparisonChangeUri,
+  comparisonFileOpenTitle,
   getComparisonStatusPresentation,
   makeComparisonDiffCommandArgs,
 } from "./comparisonFileDecorations";
-import { OPEN_COMPARISON_DIFF_COMMAND } from "./comparisonScmProvider";
-
+import {
+  editorGutterSettingAllowsMarkers,
+  OPEN_COMPARISON_DIFF_COMMAND,
+  OPEN_COMPARISON_FILE_COMMAND,
+} from "./comparisonScmProvider";
 /** package.json 의 Explorer 컨테이너 view id 와 공유하는 식별자. */
 export const COMPARISON_EXPLORER_VIEW_ID =
   "gitSimpleCompare.comparisonExplorer";
-
 /** 삭제 글자 뒤에 붙여 시각적 취소선을 만드는 Unicode combining long stroke overlay. */
 const COMBINING_STRIKE = "\u0336";
-
 /** 폴더 노드가 상태 요약을 빠르게 표시하도록 보관하는 상태별 개수. */
 export type ComparisonStatusCounts = Partial<Record<FileChangeStatus, number>>;
-
+/** Comparison Explorer가 지속적으로 보여 줄 편집기 gutter 상태. */
+export type ComparisonGutterState =
+  | "none"
+  | "active"
+  | "refsUnavailable"
+  | "targetNotCurrent"
+  | "settingHidden";
 /** 폴더/파일 노드가 공유하는 트리 식별 정보. */
 interface ComparisonExplorerNodeBase {
   /** 노드 종류. */
@@ -34,7 +42,6 @@ interface ComparisonExplorerNodeBase {
   /** getParent/reveal 에 사용할 상위 폴더 노드. */
   parent?: ComparisonExplorerFolderNode;
 }
-
 /** 비교 트리의 폴더 노드. */
 export interface ComparisonExplorerFolderNode
   extends ComparisonExplorerNodeBase {
@@ -48,14 +55,14 @@ export interface ComparisonExplorerFolderNode
   /** 모든 하위 파일 상태별 개수. */
   statusCounts: ComparisonStatusCounts;
 }
-
 /** 비교 트리의 파일 노드. */
 export interface ComparisonExplorerFileNode extends ComparisonExplorerNodeBase {
   kind: "file";
+  /** inline/context 명령이 현재 비교 저장소를 검증할 때 사용하는 루트. */
+  repoRoot: string;
   /** git 서비스가 계산한 파일 변경 정보. */
   change: FileChange;
 }
-
 /** TreeDataProvider 가 다루는 폴더/파일 노드 합집합. */
 export type ComparisonExplorerNode =
   | ComparisonExplorerFolderNode
@@ -71,6 +78,10 @@ export interface ComparisonExplorerStatus {
   kind?: ComparisonKind;
   /** `base → target` 형태의 짧은 설명. */
   description?: string;
+  /** 트리 상단에 지속 표시할 gutter 사용 가능 여부. */
+  gutterState: ComparisonGutterState;
+  /** gutter를 볼 수 없거나 사용하는 방법을 설명하는 메시지. */
+  message?: string;
   /** 현재 트리에 표시되는 변경 파일 수. */
   changeCount: number;
   /** 현재 트리에 표시되는 삭제 ghost 수. */
@@ -103,13 +114,10 @@ export class ComparisonExplorerTreeProvider
   private comparison: ComparisonSnapshot | undefined;
   private roots: ComparisonExplorerNode[] = [];
   private disposed = false;
-
   /** VS Code 가 트리 전체/일부를 다시 요청하도록 알리는 이벤트. */
   readonly onDidChangeTreeData = this.treeChangeEmitter.event;
-
   /** TreeView description/welcome 상태를 갱신할 통합 계층용 이벤트. */
   readonly onDidChangeStatus = this.statusChangeEmitter.event;
-
   /**
    * controller 이벤트를 구독하고 초기 트리 상태를 구성한다.
    * @param controller 활성 비교와 Explorer 토글을 관리하는 controller
@@ -124,20 +132,27 @@ export class ComparisonExplorerTreeProvider
       hasComparison: controller.hasComparison,
     });
   }
-
   /**
    * 현재 controller/트리 상태의 직렬화 가능한 요약을 반환한다.
    * @returns view description, 빈 상태 문구, 진단 로그에 사용할 요약
    */
   getStatus(): ComparisonExplorerStatus {
     const comparison = this.comparison;
+    const gutterState = comparison
+      ? comparisonGutterState(comparison)
+      : "none";
     return {
       enabled: this.controller.enabled,
       hasComparison: this.controller.hasComparison,
       kind: comparison?.kind,
       description: comparison
-        ? comparisonDescription(comparison)
+        ? comparisonDescription(comparison, gutterState)
         : undefined,
+      gutterState,
+      message:
+        comparison && comparison.changes.length > 0
+          ? comparisonGutterMessage(gutterState)
+          : undefined,
       changeCount: comparison?.changes.length ?? 0,
       deletedCount:
         comparison?.changes.filter((change) => change.status === "D").length ??
@@ -145,7 +160,6 @@ export class ComparisonExplorerTreeProvider
       truncated: comparison?.truncated ?? false,
     };
   }
-
   /**
    * 내부 snapshot/tree 를 controller 의 최신 상태로 다시 만들고 전체 갱신을 알린다.
    * @param reason 활성화/토글/새 snapshot 같은 재구성 원인
@@ -153,7 +167,6 @@ export class ComparisonExplorerTreeProvider
   refresh(reason = "manual"): void {
     this.rebuild(reason);
   }
-
   /**
    * 트리 노드를 VS Code TreeItem 표현으로 변환한다.
    * @param element 폴더 또는 파일 노드
@@ -164,7 +177,6 @@ export class ComparisonExplorerTreeProvider
       ? this.makeFolderTreeItem(element)
       : this.makeFileTreeItem(element);
   }
-
   /**
    * 루트 또는 폴더의 자식 노드를 반환한다.
    * @param element 생략하면 트리 루트, 지정하면 해당 폴더/파일
@@ -176,7 +188,6 @@ export class ComparisonExplorerTreeProvider
     }
     return element.kind === "folder" ? element.children : [];
   }
-
   /**
    * TreeView.reveal 이 폴더 계층을 따라갈 수 있도록 노드 부모를 반환한다.
    * @param element 부모를 찾을 트리 노드
@@ -187,7 +198,6 @@ export class ComparisonExplorerTreeProvider
   ): ComparisonExplorerFolderNode | undefined {
     return element.parent;
   }
-
   /**
    * controller 구독과 provider 이벤트 emitter 를 해제한다.
    */
@@ -214,7 +224,10 @@ export class ComparisonExplorerTreeProvider
     }
     this.comparison = this.controller.getComparison(false);
     this.roots = this.comparison
-      ? buildComparisonTree(this.comparison.changes)
+      ? buildComparisonTree(
+          this.comparison.changes,
+          this.comparison.repoRoot
+        )
       : [];
     const status = this.getStatus();
     this.treeChangeEmitter.fire(undefined);
@@ -227,6 +240,7 @@ export class ComparisonExplorerTreeProvider
       changes: status.changeCount,
       deleted: status.deletedCount,
       truncated: status.truncated,
+      gutterState: status.gutterState,
     });
   }
 
@@ -272,6 +286,16 @@ export class ComparisonExplorerTreeProvider
     const fileName = path.posix.basename(change.path);
     const presentation = getComparisonStatusPresentation(change.status);
     const deleted = change.status === "D";
+    const editable = Boolean(
+      comparison?.targetMatchesHead &&
+      comparison.diffAvailable &&
+      !deleted
+    );
+    const actionTitle = comparisonFileOpenTitle(
+      comparison,
+      deleted,
+      editorGutterSettingAllowsMarkers()
+    );
     const visibleLabel = deleted ? combiningStrike(fileName) : fileName;
     const item = new vscode.TreeItem(
       visibleLabel,
@@ -284,21 +308,25 @@ export class ComparisonExplorerTreeProvider
     item.iconPath = vscode.ThemeIcon.File;
     item.description = fileDescription(change, presentation.badge);
     item.tooltip = comparison
-      ? comparisonChangeTooltip(comparison, change)
+      ? `${comparisonChangeTooltip(comparison, change)}\n${actionTitle}`
       : `${presentation.label}: ${change.path}`;
-    item.contextValue = `gitSimpleCompare.comparisonFile.${change.status}`;
+    item.contextValue = editable
+      ? "gitSimpleCompare.comparisonFile.editable"
+      : "gitSimpleCompare.comparisonFile.readonly";
     item.accessibilityInformation = {
       label: vscode.l10n.t(
         "{0}, {1}, {2}",
         fileName,
         presentation.label,
-        change.path
+        `${change.path}, ${actionTitle}`
       ),
     };
     if (comparison) {
       item.command = {
-        command: OPEN_COMPARISON_DIFF_COMMAND,
-        title: vscode.l10n.t("Open Comparison Diff"),
+        command: editable
+          ? OPEN_COMPARISON_FILE_COMMAND
+          : OPEN_COMPARISON_DIFF_COMMAND,
+        title: actionTitle,
         arguments: [makeComparisonDiffCommandArgs(comparison, change)],
       };
     }
@@ -323,10 +351,12 @@ export function combiningStrike(label: string): string {
 /**
  * 변경 경로 배열을 폴더/파일 계층으로 변환한다.
  * @param changes ComparisonSnapshot 의 파일 변경 목록
+ * @param repoRoot 파일 노드의 inline/context 명령 검증에 넣을 저장소 루트
  * @returns 폴더 우선, 이름순으로 정렬된 루트 노드 배열
  */
 export function buildComparisonTree(
-  changes: FileChange[]
+  changes: FileChange[],
+  repoRoot = ""
 ): ComparisonExplorerNode[] {
   const root: MutableFolder = {
     name: "",
@@ -339,7 +369,7 @@ export function buildComparisonTree(
   )) {
     insertChange(root, change);
   }
-  return materializeChildren(root, undefined);
+  return materializeChildren(root, undefined, repoRoot);
 }
 
 /**
@@ -375,20 +405,23 @@ function insertChange(root: MutableFolder, change: FileChange): void {
  * 가변 폴더의 자식을 parent 링크와 상태 집계가 있는 공개 노드로 변환한다.
  * @param folder 변환할 가변 폴더
  * @param parent 만들어진 자식들이 참조할 상위 공개 폴더
+ * @param repoRoot 만들어지는 파일 노드에 보존할 비교 저장소 루트
  * @returns 정렬된 폴더/파일 노드
  */
 function materializeChildren(
   folder: MutableFolder,
-  parent: ComparisonExplorerFolderNode | undefined
+  parent: ComparisonExplorerFolderNode | undefined,
+  repoRoot: string
 ): ComparisonExplorerNode[] {
   const folderNodes = [...folder.folders.values()]
     .sort((left, right) => left.name.localeCompare(right.name))
-    .map((mutable) => materializeFolder(mutable, parent));
+    .map((mutable) => materializeFolder(mutable, parent, repoRoot));
   const fileNodes: ComparisonExplorerFileNode[] = folder.files
     .sort((left, right) => left.path.localeCompare(right.path))
     .map((change) => ({
       kind: "file",
       path: change.path,
+      repoRoot,
       change,
       parent,
     }));
@@ -399,11 +432,13 @@ function materializeChildren(
  * 가변 폴더 하나를 재귀 공개 노드로 변환하고 하위 상태 수를 계산한다.
  * @param mutable 변환할 내부 폴더
  * @param parent 상위 공개 폴더
+ * @param repoRoot 하위 파일 명령이 현재 비교를 검증할 저장소 루트
  * @returns 자식/집계/parent 링크를 가진 폴더 노드
  */
 function materializeFolder(
   mutable: MutableFolder,
-  parent: ComparisonExplorerFolderNode | undefined
+  parent: ComparisonExplorerFolderNode | undefined,
+  repoRoot: string
 ): ComparisonExplorerFolderNode {
   const node: ComparisonExplorerFolderNode = {
     kind: "folder",
@@ -414,7 +449,7 @@ function materializeFolder(
     changeCount: 0,
     statusCounts: {},
   };
-  node.children = materializeChildren(mutable, node);
+  node.children = materializeChildren(mutable, node, repoRoot);
   const changes = collectNodeChanges(node);
   node.changeCount = changes.length;
   node.statusCounts = countStatuses(changes);
@@ -493,10 +528,66 @@ function fileDescription(change: FileChange, badge: string): string {
  * @param comparison 활성 비교 snapshot
  * @returns `base → target` 형식의 설명
  */
-function comparisonDescription(comparison: ComparisonSnapshot): string {
+function comparisonDescription(
+  comparison: ComparisonSnapshot,
+  gutterState: ComparisonGutterState
+): string {
   const base = comparison.baseLabel || comparison.baseRef;
   const target = comparison.targetLabel || comparison.targetRef;
-  return `${base} → ${target}`;
+  const mode =
+    gutterState === "active"
+      ? vscode.l10n.t("Line markers on")
+      : gutterState === "refsUnavailable"
+      ? vscode.l10n.t("File list only")
+      : gutterState === "settingHidden"
+      ? vscode.l10n.t("Line markers hidden")
+      : vscode.l10n.t("Diff only");
+  return `${base} → ${target} · ${mode}`;
+}
+
+/**
+ * 비교 스냅샷과 VS Code 설정을 사용해 Explorer의 지속 gutter 상태를 계산한다.
+ * @param comparison 현재 활성 비교
+ * @returns refs/checkout/설정까지 구분한 상태 값
+ */
+function comparisonGutterState(
+  comparison: ComparisonSnapshot
+): ComparisonGutterState {
+  if (!comparison.diffAvailable) {
+    return "refsUnavailable";
+  }
+  if (!comparison.targetMatchesHead) {
+    return "targetNotCurrent";
+  }
+  return editorGutterSettingAllowsMarkers() ? "active" : "settingHidden";
+}
+
+/**
+ * Explorer 파일 목록 위에 표시할 gutter 상태 설명을 만든다.
+ * @param state 계산된 gutter 상태
+ * @returns 사용자에게 다음 동작을 알려 주는 번역 문자열
+ */
+function comparisonGutterMessage(state: ComparisonGutterState): string {
+  switch (state) {
+    case "active":
+      return vscode.l10n.t(
+        "Open a changed file to see line markers. Use the Diff button for side-by-side view."
+      );
+    case "refsUnavailable":
+      return vscode.l10n.t(
+        "File list only: comparison refs are not available locally. Fetch them, then refresh."
+      );
+    case "targetNotCurrent":
+      return vscode.l10n.t(
+        "Diff only: this comparison does not target the current checkout."
+      );
+    case "settingHidden":
+      return vscode.l10n.t(
+        "Line markers are hidden by VS Code's scm.diffDecorations setting."
+      );
+    case "none":
+      return "";
+  }
 }
 
 /**

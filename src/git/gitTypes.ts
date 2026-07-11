@@ -79,6 +79,8 @@ export type DiffBase = "twoDot" | "threeDot";
  */
 export interface BranchComparison {
   repoRoot: string;
+  /** 비교 원본 종류. Changes 웹뷰가 브랜치 전용 해결 액션을 구분할 때 사용한다. */
+  kind?: "branches" | "localRemote" | "pullRequest";
   base: string;
   /** three-dot 비교에서 merge-base로 바꾸기 전 사용자가 선택한 기준 ref */
   sourceBase?: string;
@@ -89,6 +91,8 @@ export interface BranchComparison {
   targetLabel?: string;
   /** false면 비교 파일 목록은 있지만 양쪽 git ref가 로컬에 없어 파일 diff를 열 수 없다. */
   diffAvailable?: boolean;
+  /** true면 TO가 현재 HEAD와 같아 작업트리 편집기 gutter를 정확히 표시할 수 있다. */
+  targetMatchesHead?: boolean;
   diffBase: DiffBase;
   changes: FileChange[];
 }

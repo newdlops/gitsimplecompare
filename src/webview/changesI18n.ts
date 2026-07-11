@@ -16,6 +16,31 @@ export function changesWebviewI18n(): Record<string, string> {
     to: vscode.l10n.t("To:"),
     selectBranch: vscode.l10n.t("(select a branch)"),
     compare: vscode.l10n.t("Compare"),
+    compareWithCurrent: vscode.l10n.t("Compare with Current Checkout..."),
+    compareWithCurrentTooltip: vscode.l10n.t(
+      "Choose one branch to compare with the current working tree"
+    ),
+    advancedComparison: vscode.l10n.t("Advanced branch comparison"),
+    compareAdvanced: vscode.l10n.t("Compare Selected FROM and TO"),
+    gutterReadyTitle: vscode.l10n.t("Line markers ready"),
+    gutterReadyDetail: vscode.l10n.t(
+      "Open a changed file to see changes beside line numbers."
+    ),
+    gutterOffTitle: vscode.l10n.t("Line markers unavailable"),
+    gutterComparisonHidden: vscode.l10n.t(
+      "Comparison markers are turned off. Show them to use line markers."
+    ),
+    gutterTargetNotCurrent: vscode.l10n.t(
+      "This comparison does not target the current checkout, so files open as side-by-side diffs."
+    ),
+    gutterRefsUnavailable: vscode.l10n.t(
+      "The comparison refs are not available locally. Fetch them, then refresh."
+    ),
+    gutterSettingHidden: vscode.l10n.t(
+      "VS Code's scm.diffDecorations setting is hiding line markers."
+    ),
+    openGutterSettings: vscode.l10n.t("Open Line Marker Settings"),
+    showLineMarkers: vscode.l10n.t("Show Line Markers"),
     toggleSection: vscode.l10n.t("Toggle section"),
     noCompare: vscode.l10n.t("No changes between the selected branches."),
     noChanges: vscode.l10n.t("No working tree changes."),
@@ -53,6 +78,12 @@ export function changesWebviewI18n(): Record<string, string> {
     discardAll: vscode.l10n.t("Discard All Changes"),
     openFile: vscode.l10n.t("Open File"),
     openChanges: vscode.l10n.t("Open Changes"),
+    openFileWithMarkers: vscode.l10n.t("Open File with Comparison Markers"),
+    openFileMarkersHidden: vscode.l10n.t("Open File (line markers hidden)"),
+    comparisonUnavailable: vscode.l10n.t(
+      "Comparison file unavailable locally"
+    ),
+    openComparisonDiff: vscode.l10n.t("Open Comparison Diff"),
     addToGitignore: vscode.l10n.t("Add to .gitignore"),
     addToExclude: vscode.l10n.t("Add to .git/info/exclude"),
     history: vscode.l10n.t("History"),

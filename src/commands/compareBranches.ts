@@ -1,11 +1,18 @@
 // 기능 1: 브랜치(로컬/원격)끼리 변경점 비교.
-// - 두 브랜치를 고른 뒤 변경 파일 목록을 트리뷰에 채우고, 각 파일은 클릭 시 diff 로 연다.
+// - 기본은 현재 checkout과 기준 브랜치 하나를 비교하고, 고급 모드만 FROM/TO를 직접 고른다.
 // - 실제 git 호출은 GitService, 선택 UI 는 quickPick, diff 표시는 diffPresenter 에 위임한다.
 import * as vscode from "vscode";
-import type { ComparisonSnapshot } from "../git/comparisonService";
+import {
+  resolveComparisonRefIdentity,
+  type ComparisonSnapshot,
+} from "../git/comparisonService";
 import { BranchComparison, DiffBase } from "../git/gitTypes";
 import { GitService } from "../git/gitService";
-import { pickBaseAndTarget, pickBranch } from "../ui/quickPick";
+import {
+  pickBaseAndTarget,
+  pickBranch,
+  pickComparisonBranchForCurrent,
+} from "../ui/quickPick";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logInfo } from "../ui/outputLog";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
@@ -24,13 +31,17 @@ import {
 
 /**
  * "브랜치끼리 비교" 명령 본문.
- * - 작업 저장소 탐지 → 브랜치 목록 조회 → base/target 선택 → 비교 적용의 순서.
+ * - 기본은 비교 기준 브랜치 하나만 고르고 현재 checkout을 편집 가능한 TO로 고정한다.
+ * - 고급 항목을 고른 경우에만 임의 FROM/TO 두 브랜치를 순서대로 선택한다.
  * @param deps 공유 의존성(레지스트리/트리)
  * @param focus 명령 완료 후 드러낼 Changes/Explorer 뷰. 기본은 Changes 뷰
+ * @param mode current는 한 브랜치만, advanced는 FROM/TO를 모두 고른다
+ * @returns 선택 취소 또는 비교 적용이 끝나면 완료되는 Promise
  */
 export async function compareBranches(
   deps: CommandDeps,
-  focus: ComparisonFocus = "changes"
+  focus: ComparisonFocus = "changes",
+  mode: "current" | "advanced" = "current"
 ): Promise<void> {
   const service = await resolveCompareService(deps);
   if (!service) {
@@ -58,34 +69,149 @@ export async function compareBranches(
     reportComparisonError(error, "branches:list", service.repoRoot);
     return;
   }
-  if (branches.length < 2) {
+  if (branches.length === 0) {
     logInfo("branch comparison skipped", {
-      reason: "not-enough-branches",
+      reason: "no-branches",
       repoRoot: service.repoRoot,
-      branches: branches.length,
     });
     vscode.window.showWarningMessage(
-      vscode.l10n.t("Not enough branches to compare (at least 2 required).")
+      vscode.l10n.t("No branches to compare.")
     );
     return;
   }
-
-  const current = branches.find((b) => b.isCurrent)?.name;
-  const picked = await pickBaseAndTarget(branches, current);
-  if (!picked) {
-    logInfo("branch comparison selection cancelled", {
+  if (mode === "advanced") {
+    if (branches.length < 2) {
+      vscode.window.showWarningMessage(
+        vscode.l10n.t("Not enough branches to compare (at least 2 required).")
+      );
+      return;
+    }
+    const current = branches.find((branch) => branch.isCurrent)?.name;
+    const picked = await pickBaseAndTarget(branches, current);
+    if (!picked) {
+      logInfo("advanced branch comparison selection cancelled", {
+        repoRoot: service.repoRoot,
+      });
+      return;
+    }
+    await applyComparison(
+      deps,
+      service,
+      picked.base.name,
+      picked.target.name,
+      config.diffBase,
+      focus,
+      "compareBranchesAdvanced"
+    );
+    return;
+  }
+  let current = branches.find((branch) => branch.isCurrent)?.name;
+  if (!current) {
+    try {
+      current = await service.getCurrentBranch();
+    } catch (error) {
+      reportComparisonError(error, "branches:current", service.repoRoot);
+      return;
+    }
+  }
+  const selectedIdentity = await resolveComparisonRefIdentity(
+    service.repoRoot,
+    current,
+    current
+  );
+  if (!selectedIdentity.headHash) {
+    logInfo("current checkout comparison skipped", {
+      reason: "unresolved-head",
       repoRoot: service.repoRoot,
+      current,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("The current checkout could not be resolved to a commit.")
+    );
+    return;
+  }
+  const candidates = branches.filter((branch) => branch.name !== current);
+  if (candidates.length === 0) {
+    logInfo("current checkout comparison skipped", {
+      reason: "no-other-branch",
+      repoRoot: service.repoRoot,
+      current,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "No other branch is available to compare with the current checkout."
+      )
+    );
+    return;
+  }
+  const base = await pickComparisonBranchForCurrent(branches, current);
+  if (!base) {
+    logInfo("current checkout comparison selection cancelled", {
+      repoRoot: service.repoRoot,
+      current,
     });
     return;
   }
+  const latestCheckout = await Promise.all([
+    service.getCurrentBranch(),
+    resolveComparisonRefIdentity(service.repoRoot, current, current),
+  ]).catch((error) => {
+    reportComparisonError(error, "branches:current-recheck", service.repoRoot);
+    return undefined;
+  });
+  if (!latestCheckout) {
+    return;
+  }
+  const [latestCurrent, latestIdentity] = latestCheckout;
+  if (
+    latestCurrent !== current ||
+    latestIdentity.headHash !== selectedIdentity.headHash
+  ) {
+    logInfo("current checkout comparison selection expired", {
+      repoRoot: service.repoRoot,
+      selectedCurrent: current,
+      latestCurrent,
+      selectedHead: selectedIdentity.headHash,
+      latestHead: latestIdentity.headHash,
+    });
+    const retry = vscode.l10n.t("Compare Again");
+    const action = await vscode.window.showInformationMessage(
+      vscode.l10n.t(
+        "The current checkout changed while selecting. Choose the comparison branch again."
+      ),
+      retry
+    );
+    if (action === retry) {
+      await compareBranches(deps, focus, "current");
+    }
+    return;
+  }
+  // detached HEAD는 선택 이후 다른 checkout으로 움직여도 결과 ref가 바뀌지 않도록 commit으로 고정한다.
+  const target = current === "HEAD" ? selectedIdentity.headHash : current;
   await applyComparison(
     deps,
     service,
-    picked.base.name,
-    picked.target.name,
+    base.name,
+    target,
     config.diffBase,
-    focus
+    focus,
+    "compareCurrentCheckout",
+    current === "HEAD" ? "HEAD" : undefined
   );
+}
+
+/**
+ * 임의의 FROM/TO 두 브랜치를 고르는 고급 비교 명령이다.
+ * - 사용자가 선택한 방향을 그대로 유지하며, TO가 현재 checkout일 때만 native gutter가 켜진다.
+ * @param deps 공유 의존성
+ * @param focus 완료 후 표시할 Changes/Explorer 뷰
+ * @returns 선택 취소 또는 비교 적용이 끝나면 완료되는 Promise
+ */
+export async function compareBranchesAdvanced(
+  deps: CommandDeps,
+  focus: ComparisonFocus = "changes"
+): Promise<void> {
+  await compareBranches(deps, focus, "advanced");
 }
 
 /**
@@ -230,8 +356,18 @@ export async function refreshActiveComparison(
           comparison.target,
           comparison.diffBase
         );
-  // refresh 도중 사용자가 비교를 바꾸거나 지우면 controller가 오래된 결과를 버린다.
+  // controller refresh 세대와 ChangesView 객체 동일성 검사를 함께 써서,
+  // refresh 도중 사용자가 비교를 바꾸거나 지우면 오래된 결과를 버린다.
   if (!snapshot) {
+    return;
+  }
+  if (deps.changesView.getComparison() !== comparison) {
+    logInfo("active comparison refresh result skipped", {
+      reason: "comparison-changed",
+      repoRoot: comparison.repoRoot,
+      base: comparison.sourceBase ?? comparison.base,
+      target: comparison.target,
+    });
     return;
   }
   await applyComparisonSnapshot(deps, snapshot, {
@@ -247,12 +383,16 @@ export async function refreshActiveComparison(
 /**
  * 주어진 기준/대상으로 변경 목록을 조회해 트리에 반영하는 공통 로직.
  * - compareBranches 와 changeComparisonRef 가 공유한다(재사용).
+ * - 기본 비교는 선택 브랜치→현재 checkout, 고급 비교는 사용자가 선택한 방향을 보존한다.
  * @param deps     공유 의존성
  * @param service  대상 저장소의 GitService
  * @param base     기준(from) 브랜치
  * @param target   대상(to) 브랜치
  * @param diffBase 비교 기준(two/three dot)
  * @param focus    성공 후 드러낼 Changes/Explorer 뷰
+ * @param source 기본 현재 비교와 고급 비교를 로그/동시 실행 세대에서 구분할 이름
+ * @param targetLabel target을 commit으로 고정해도 UI에 유지할 표시 이름
+ * @returns 비교 적용이 끝나면 완료되는 Promise
  */
 async function applyComparison(
   deps: CommandDeps,
@@ -260,18 +400,24 @@ async function applyComparison(
   base: string,
   target: string,
   diffBase: DiffBase,
-  focus: ComparisonFocus
+  focus: ComparisonFocus,
+  source: "compareCurrentCheckout" | "compareBranchesAdvanced" =
+    "compareBranchesAdvanced",
+  targetLabel?: string
 ): Promise<void> {
   const comparisonService = createComparisonService(deps, service.repoRoot);
   await runAndApplyComparison(
     deps,
     {
-      source: "compareBranches",
+      source,
       kind: "branches",
       progressTitle: vscode.l10n.t("Comparing {0} with {1}...", base, target),
       focus,
     },
-    () => comparisonService.compareRefs(base, target, diffBase)
+    () =>
+      comparisonService.compareRefs(base, target, diffBase, {
+        target: targetLabel,
+      })
   );
 }
 

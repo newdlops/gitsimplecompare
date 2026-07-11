@@ -22,6 +22,8 @@ export interface ChangesRenderState {
   repositories: RepoInfo[];
   activeRepo?: string;
   comparison?: BranchComparison;
+  comparisonEnabled: boolean;
+  gutterSettingEnabled: boolean;
   draft: ComparisonDraft;
   staged: StatusGroups["staged"];
   unstaged: StatusGroups["unstaged"];
@@ -64,6 +66,13 @@ export function buildChangesRenderPayload(
         ? state.comparison.targetLabel ?? state.comparison.target
         : state.draft.to ?? "",
       viewMode: state.viewModes.compare,
+      gutter: state.comparison
+        ? comparisonGutterStatus(
+            state.comparison,
+            state.comparisonEnabled,
+            state.gutterSettingEnabled
+          )
+        : undefined,
       nodes: state.comparison
         ? buildNodes(
             state.comparison.changes,
@@ -111,6 +120,43 @@ export function buildChangesRenderPayload(
     },
     visibleSections: { ...state.visibleSections },
     fileIcons: fileIcons.payloadFor(collectFilePaths(state)),
+  };
+}
+
+/**
+ * Changes 웹뷰가 표시할 편집기 gutter 상태와 가능한 해결 액션을 계산한다.
+ * @param comparison 현재 비교의 ref/HEAD 가용성
+ * @param comparisonEnabled Explorer/SCM 비교 표시 토글이 켜져 있는지 여부
+ * @param gutterSettingEnabled VS Code 설정이 gutter 표시를 허용하는지 여부
+ * @returns ready 또는 첫 차단 원인과 현재 비교 재선택 가능 여부
+ */
+function comparisonGutterStatus(
+  comparison: BranchComparison,
+  comparisonEnabled: boolean,
+  gutterSettingEnabled: boolean
+) {
+  let state:
+    | "active"
+    | "comparisonHidden"
+    | "refsUnavailable"
+    | "targetNotCurrent"
+    | "settingHidden" = "active";
+  if (!comparisonEnabled) {
+    state = "comparisonHidden";
+  } else if (comparison.diffAvailable === false) {
+    state = "refsUnavailable";
+  } else if (!comparison.targetMatchesHead) {
+    state = "targetNotCurrent";
+  } else if (!gutterSettingEnabled) {
+    state = "settingHidden";
+  }
+  return {
+    state,
+    diffAvailable: comparison.diffAvailable !== false,
+    canShowComparison: state === "comparisonHidden",
+    canCompareCurrent:
+      comparison.kind === "branches" && state === "targetNotCurrent",
+    canOpenSettings: state === "settingHidden",
   };
 }
 

@@ -27,6 +27,10 @@ export const COMPARISON_RESOURCE_GROUP_ID = "comparisonChanges";
 export const OPEN_COMPARISON_DIFF_COMMAND =
   "gitSimpleCompare.openComparisonDiff";
 
+/** 비교 파일을 일반 작업파일 편집기로 여는 명령 식별자. */
+export const OPEN_COMPARISON_FILE_COMMAND =
+  "gitSimpleCompare.openComparisonFile";
+
 /** status 정렬에서 사용자에게 익숙한 변경 종류 순서를 정의한다. */
 const STATUS_ORDER: FileChangeStatus[] = [
   "A",
@@ -39,6 +43,18 @@ const STATUS_ORDER: FileChangeStatus[] = [
   "X",
   "B",
 ];
+
+/**
+ * VS Code 설정이 라인 번호 옆 native Quick Diff 표시를 허용하는지 확인한다.
+ * - provider 등록 가능 여부와 별개로 사용자가 `none`/`overview`를 선택하면 gutter는 숨겨진다.
+ * @returns `scm.diffDecorations`가 all 또는 gutter면 true
+ */
+export function editorGutterSettingAllowsMarkers(): boolean {
+  const mode = vscode.workspace
+    .getConfiguration("scm")
+    .get<string>("diffDecorations", "all");
+  return mode === "all" || mode === "gutter";
+}
 
 /**
  * ComparisonController 의 상태를 SCM/Quick Diff 표면에 투영한다.

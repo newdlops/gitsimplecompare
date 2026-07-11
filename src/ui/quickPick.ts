@@ -49,6 +49,42 @@ function rankByActive(a: BranchInfo, b: BranchInfo, activeName: string): number 
 }
 
 /**
+ * 현재 checkout은 편집 대상으로 고정하고 비교 기준 브랜치 하나만 고르게 한다.
+ * - 사용자가 FROM/TO나 Quick Diff 제약을 몰라도 gutter가 가능한 방향을 만든다.
+ * @param branches 로컬/원격 비교 후보
+ * @param currentName 현재 checkout된 브랜치 이름 또는 detached HEAD의 `HEAD`
+ * @returns 선택한 비교 기준 브랜치, 취소하면 undefined
+ */
+export async function pickComparisonBranchForCurrent(
+  branches: BranchInfo[],
+  currentName: string
+): Promise<BranchInfo | undefined> {
+  const items: BranchQuickPickItem[] = branches
+    .filter((branch) => branch.name !== currentName)
+    .map((branch) => {
+      const item = toQuickPickItem(branch);
+      return {
+        ...item,
+        detail: vscode.l10n.t(
+          "{0} → current working tree ({1})",
+          branch.name,
+          currentName
+        ),
+      };
+    });
+  const picked = await vscode.window.showQuickPick(items, {
+    title: vscode.l10n.t("Compare with Current Checkout: {0}", currentName),
+    placeHolder: vscode.l10n.t(
+      "Select the branch to compare against the current working tree"
+    ),
+    matchOnDescription: true,
+    matchOnDetail: true,
+    ignoreFocusOut: true,
+  });
+  return picked?.branch;
+}
+
+/**
  * 기준(base)·대상(target) 두 브랜치를 순서대로 고른다.
  * - 첫 선택을 base, 두 번째 선택을 target 으로 한다. 어느 한쪽이라도 취소하면 중단.
  * @param branches   선택 후보
@@ -62,19 +98,26 @@ export async function pickBaseAndTarget(
   const base = await pickBranch(
     branches,
     vscode.l10n.t("Pick the FROM branch — the base you compare against"),
-    currentName,
+    undefined,
     vscode.l10n.t("Compare Branches (1/2): choose FROM (base)")
   );
   if (!base) {
     return undefined;
   }
+  // 같은 ref끼리의 무의미한 비교를 막고, 현재 브랜치는 TO 선택에서만 맨 위에 둔다.
+  const targetCandidates = branches.filter(
+    (branch) => branch.name !== base.name
+  );
   const target = await pickBranch(
-    branches,
+    targetCandidates,
     vscode.l10n.t(
       "Pick the TO branch — choose the current branch for editor gutter markers"
     ),
     currentName,
-    vscode.l10n.t("Compare Branches (2/2): choose TO (target) — FROM is {0}", base.name)
+    vscode.l10n.t(
+      "Compare Branches (2/2): choose TO (target) — FROM is {0}",
+      base.name
+    )
   );
   if (!target) {
     return undefined;

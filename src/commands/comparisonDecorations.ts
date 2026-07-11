@@ -22,12 +22,17 @@ import {
 
 export {
   openComparisonDiff,
+  openComparisonFile,
   reportComparisonError,
   type OpenComparisonDiffArgs,
 } from "./comparisonPresentation";
 
 /** 편집기 gutter/Explorer 비교 선택기가 제공하는 상위 비교 방식. */
-type ExplorerComparisonMode = "branches" | "localRemote" | "pullRequest";
+type ExplorerComparisonMode =
+  | "branches"
+  | "branchesAdvanced"
+  | "localRemote"
+  | "pullRequest";
 
 /** 비교 완료 후 사용자의 시선을 옮길 뷰. */
 export type ComparisonFocus = "changes" | "explorer" | "none";
@@ -55,7 +60,7 @@ export interface ComparisonRunOptions extends ComparisonApplyOptions {
 }
 
 /**
- * 편집기 gutter와 Explorer에 적용할 비교 방식(브랜치/현재-upstream/PR)을 먼저 고르게 한다.
+ * 편집기 gutter와 Explorer에 적용할 비교 방식(현재 중심/고급 브랜치/upstream/PR)을 고르게 한다.
  * - 브랜치 모드는 기존 명령을 Explorer 포커스 인수로 재사용해
  *   브랜치 picker 규칙이 두 곳으로 나뉘지 않게 한다.
  * @param deps 비교 서비스·controller·Changes 뷰를 포함한 명령 의존성
@@ -68,9 +73,18 @@ export async function selectExplorerComparison(
   >(
     [
       {
-        label: `$(git-branch) ${vscode.l10n.t("Branches")}`,
-        description: vscode.l10n.t("Compare any two local or remote branches"),
+        label: `$(git-branch) ${vscode.l10n.t("Current Checkout and Branch")}`,
+        description: vscode.l10n.t(
+          "Choose one branch to compare with the current working tree"
+        ),
         mode: "branches",
+      },
+      {
+        label: `$(git-compare) ${vscode.l10n.t("Any Two Branches (Advanced)")}`,
+        description: vscode.l10n.t(
+          "Choose FROM and TO explicitly; line markers require TO to be current"
+        ),
+        mode: "branchesAdvanced",
       },
       {
         label: `$(cloud) ${vscode.l10n.t("Current Branch and Upstream")}`,
@@ -103,6 +117,12 @@ export async function selectExplorerComparison(
     case "branches":
       await vscode.commands.executeCommand(
         "gitSimpleCompare.compareBranches",
+        "explorer" satisfies ComparisonFocus
+      );
+      return;
+    case "branchesAdvanced":
+      await vscode.commands.executeCommand(
+        "gitSimpleCompare.compareBranchesAdvanced",
         "explorer" satisfies ComparisonFocus
       );
       return;
@@ -171,20 +191,26 @@ export async function comparePullRequest(
  * - 이전 스냅샷이 있으면 git 조회 없이 복원하고, 없으면 비교 방식 선택을
  *   이어서 실행해 빈 토글만 켜지는 경우를 줄인다.
  * @param deps 표시 상태를 가진 controller 의존성
+ * @param revealView true면 완료 후 Comparison Explorer로 포커스를 옮긴다
  */
-export async function showExplorerComparison(deps: CommandDeps): Promise<void> {
+export async function showExplorerComparison(
+  deps: CommandDeps,
+  revealView = true
+): Promise<void> {
   deps.comparison.setEnabled(true, "showExplorerComparison");
   logInfo("explorer comparison show command", {
     hasComparison: deps.comparison.hasComparison,
   });
   if (!deps.comparison.hasComparison) {
     await selectExplorerComparison(deps);
-    if (!deps.comparison.hasComparison) {
+    if (!deps.comparison.hasComparison && revealView) {
       await focusComparisonView("explorer");
     }
     return;
   }
-  await focusComparisonView("explorer");
+  if (revealView) {
+    await focusComparisonView("explorer");
+  }
 }
 
 /**
@@ -383,12 +409,14 @@ function syncSnapshotToChangesView(
 ): void {
   const comparison: BranchComparison = {
     repoRoot: snapshot.repoRoot,
+    kind: snapshot.kind,
     base: snapshot.baseRef,
     sourceBase: snapshot.sourceBaseRef,
     target: snapshot.targetRef,
     baseLabel: snapshot.baseLabel,
     targetLabel: snapshot.targetLabel,
     diffAvailable: snapshot.diffAvailable,
+    targetMatchesHead: snapshot.targetMatchesHead,
     diffBase: snapshot.diffBase,
     changes: snapshot.changes,
   };

@@ -6,6 +6,7 @@ import { CommandDeps } from "./shared";
 import {
   changeComparisonRef,
   compareBranches,
+  compareBranchesAdvanced,
   openChangeDiff,
   runComparison,
 } from "./compareBranches";
@@ -108,6 +109,7 @@ import {
   hideExplorerComparison,
   OpenComparisonDiffArgs,
   openComparisonDiff,
+  openComparisonFile,
   refreshExplorerComparison,
   selectExplorerComparison,
   showExplorerComparison,
@@ -162,6 +164,22 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       (focus?: ComparisonFocus) => compareBranches(deps, focus)
     ),
     vscode.commands.registerCommand(
+      "gitSimpleCompare.compareBranchesAdvanced",
+      (focus?: ComparisonFocus) => compareBranchesAdvanced(deps, focus)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.compareCurrentCheckoutInExplorer",
+      () => compareBranches(deps, "explorer")
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openGutterSettings",
+      () =>
+        vscode.commands.executeCommand(
+          "workbench.action.openSettings",
+          "@id:scm.diffDecorations"
+        )
+    ),
+    vscode.commands.registerCommand(
       "gitSimpleCompare.selectExplorerComparison",
       () => selectExplorerComparison(deps)
     ),
@@ -175,7 +193,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.showExplorerComparison",
-      () => showExplorerComparison(deps)
+      (revealView?: boolean) => showExplorerComparison(deps, revealView)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.hideExplorerComparison",
@@ -192,6 +210,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.openComparisonDiff",
       (args: OpenComparisonDiffArgs) => openComparisonDiff(deps, args)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openComparisonFile",
+      (args: OpenComparisonDiffArgs) => openComparisonFile(deps, args)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.checkoutBranch", () =>
       checkoutBranch(deps)

@@ -1,6 +1,8 @@
 {
   "ext.description": "Compare git branches, review editable diffs, resolve conflicts, and draft AI commit/PR messages.",
-  "cmd.compareBranches": "Compare Branches",
+  "cmd.compareBranches": "Compare with Current Checkout...",
+  "cmd.compareBranchesAdvanced": "Compare Any Two Branches (Advanced)...",
+  "cmd.openGutterSettings": "Configure Editor Line Markers...",
   "cmd.selectExplorerComparison": "Select Editor Gutter Comparison...",
   "cmd.compareLocalWithRemote": "Compare Current Branch with Upstream",
   "cmd.comparePullRequest": "Compare Pull Request...",
@@ -9,6 +11,7 @@
   "cmd.refreshExplorerComparison": "Refresh Editor Comparison Markers",
   "cmd.clearExplorerComparison": "Clear Editor Comparison",
   "cmd.openComparisonDiff": "Open Comparison Diff",
+  "cmd.openComparisonFile": "Open Comparison File",
   "cmd.checkoutBranch": "Switch Branch",
   "cmd.branchSquashMerge": "Squash Merge Branch",
   "cmd.branchRebaseMerge": "Rebase Merge Branch",

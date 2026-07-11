@@ -1,6 +1,8 @@
 {
   "ext.description": "git 브랜치 비교, 편집 가능한 diff, 충돌 해결, AI 커밋/PR 메시지를 지원하는 확장",
-  "cmd.compareBranches": "브랜치끼리 비교",
+  "cmd.compareBranches": "현재 체크아웃과 비교...",
+  "cmd.compareBranchesAdvanced": "임의의 두 브랜치 비교(고급)...",
+  "cmd.openGutterSettings": "편집기 라인 표시 설정...",
   "cmd.selectExplorerComparison": "편집기 Gutter 비교 선택...",
   "cmd.compareLocalWithRemote": "현재 브랜치와 Upstream 비교",
   "cmd.comparePullRequest": "Pull Request 비교...",
@@ -9,6 +11,7 @@
   "cmd.refreshExplorerComparison": "편집기 비교 라인 표시 새로고침",
   "cmd.clearExplorerComparison": "편집기 비교 지우기",
   "cmd.openComparisonDiff": "비교 Diff 열기",
+  "cmd.openComparisonFile": "비교 파일 열기",
   "cmd.checkoutBranch": "브랜치 전환",
   "cmd.branchSquashMerge": "브랜치 Squash Merge",
   "cmd.branchRebaseMerge": "브랜치 Rebase Merge",

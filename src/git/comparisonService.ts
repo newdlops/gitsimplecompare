@@ -73,6 +73,14 @@ export interface ComparisonServiceDependencies {
   pullRequests?: PullRequestService;
 }
 
+/** 브랜치 ref와 별도로 사용자에게 보여 줄 비교 양쪽 이름. */
+export interface ComparisonRefLabels {
+  /** 실제 merge-base/hash 대신 표시할 기준 쪽 이름. */
+  base?: string;
+  /** 고정 commit hash 대신 표시할 대상 쪽 이름. */
+  target?: string;
+}
+
 /** 비교 스냅샷 생성에 공통으로 필요한 내부 값 */
 interface SnapshotInput {
   kind: ComparisonKind;
@@ -135,12 +143,14 @@ export class ComparisonService {
    * @param base 기준이 되는 왼쪽 git ref
    * @param target 비교 대상인 오른쪽 git ref
    * @param diffBase 두 끝점을 직접 비교할지, 공통 조상에서 비교할지 정하는 방식
+   * @param labels ref를 hash로 고정해도 UI에는 브랜치/HEAD 이름을 유지할 선택 라벨
    * @returns Explorer/에디터/Tab 장식이 함께 소비할 브랜치 비교 스냅샷
    */
   async compareRefs(
     base: string,
     target: string,
-    diffBase: DiffBase
+    diffBase: DiffBase,
+    labels: ComparisonRefLabels = {}
   ): Promise<ComparisonSnapshot> {
     const baseRef = requiredRef(base, "base");
     const targetRef = requiredRef(target, "target");
@@ -153,8 +163,8 @@ export class ComparisonService {
       baseRef: effectiveBase.ref,
       sourceBaseRef: baseRef,
       targetRef,
-      baseLabel: baseRef,
-      targetLabel: targetRef,
+      baseLabel: labels.base ?? baseRef,
+      targetLabel: labels.target ?? targetRef,
       diffBase,
       changes,
       diffAvailable: effectiveBase.resolved ? undefined : false,
@@ -259,7 +269,8 @@ export class ComparisonService {
         return this.compareRefs(
           snapshot.sourceBaseRef || snapshot.baseRef,
           snapshot.targetRef,
-          snapshot.diffBase
+          snapshot.diffBase,
+          { base: snapshot.baseLabel, target: snapshot.targetLabel }
         );
       case "localRemote":
         return this.compareUpstream(snapshot.diffBase);

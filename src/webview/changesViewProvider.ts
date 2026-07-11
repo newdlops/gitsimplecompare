@@ -13,6 +13,8 @@ import {
 } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
 import type { StashView } from "../commands/stash";
+import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
+import { logError } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
@@ -29,25 +31,17 @@ import {
   type VisibleSections,
   type WorktreeView,
 } from "./changesViewTypes";
-
 export { VISIBLE_SECTIONS } from "./changesViewTypes";
-export type {
-  ComparisonDraft,
-  TreeSection,
-  VisibleSection,
-} from "./changesViewTypes";
-
+export type { ComparisonDraft, TreeSection, VisibleSection } from "./changesViewTypes";
 /** 보기 모드/정렬을 세션 간 유지하기 위한 저장 키 */
 const VIEW_MODE_STATE = "gitSimpleCompare.viewMode";
 const SORT_KEY_STATE = "gitSimpleCompare.sortKey";
 const VISIBLE_SECTIONS_STATE = "gitSimpleCompare.visibleSections";
-
 /**
  * CHANGES 웹뷰 뷰 프로바이더.
  */
 export class ChangesViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = "gitSimpleCompare.changes";
-
   private view?: vscode.WebviewView;
   private repositories: RepoInfo[] = [];
   private activeRepo?: string;
@@ -67,10 +61,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private readonly fileIcons = new FileIconThemeResolver();
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   private lastRenderPayloadJson = "";
-
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly memento: vscode.Memento
+    private readonly memento: vscode.Memento,
+    private readonly comparisonEnabled: () => boolean = () => true
   ) {
     this.viewModes = loadViewModes(memento.get(VIEW_MODE_STATE));
     this.sortKey = memento.get<SortKey>(SORT_KEY_STATE, "path");
@@ -78,7 +72,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       memento.get(VISIBLE_SECTIONS_STATE)
     );
   }
-
   /**
    * 웹뷰 뷰가 생성/표시될 때 호출된다(숨겼다 다시 열면 재호출될 수 있다).
    * @param view 해석할 웹뷰 뷰
@@ -104,9 +97,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.clearRenderTimer();
     });
   }
-
   // ---- 상태 API ----
-
   /**
    * 저장소 목록을 갱신한다. 활성 저장소가 목록에 없으면 현재 워크스페이스 repo 를 우선 선택한다.
    * @param repos 저장소 정보 목록(루트 + 브랜치)
@@ -121,66 +112,55 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
     this.render();
   }
-
   /** 현재 활성 저장소 루트(없으면 undefined). */
   getActiveRepo(): string | undefined {
     return this.activeRepo;
   }
-
   /** Changes 웹뷰가 현재 화면에 보이는지 확인한다(자동 git refresh 게이트로 사용). */
   isVisible(): boolean {
     return this.view?.visible ?? false;
   }
-
   /** 작업트리 변경(스테이징/미스테이징)을 갱신한다(Changes 섹션). */
   setStatusGroups(groups: StatusGroups): void {
     this.staged = groups.staged;
     this.unstaged = groups.unstaged;
     this.render();
   }
-
   /** stash 목록(+ 각 stash 의 파일)을 갱신한다(Stashes 섹션). */
   setStashes(stashes: StashView[]): void {
     this.stashes = stashes;
     this.render();
   }
-
   /** git worktree 목록을 갱신한다(Worktrees 섹션). */
   setWorktrees(worktrees: WorktreeView[]): void {
     this.worktrees = worktrees;
     this.render();
   }
-
   /** 현재 활성 에디터 파일의 커밋 히스토리를 갱신한다(History 섹션). */
   setFileHistory(fileHistory: FileHistoryView): void {
     this.fileHistory = fileHistory;
     this.render();
   }
-
   /** 현재 커밋 메시지(명령 레이어가 커밋 시 읽는다). */
   getCommitMessage(): string {
     return this.commitMessage;
   }
-
   /** 커밋 메시지를 설정하고 다시 그린다(커밋 후 비우기 등). */
   setCommitMessage(message: string): void {
     this.commitMessage = message;
     this.commitMessageRevision++;
     this.render();
   }
-
   /** 비교 컨텍스트를 교체하고 다시 그린다. */
   setComparison(comparison: BranchComparison): void {
     this.comparison = comparison;
     this.activeRepo = comparison.repoRoot;
     this.render();
   }
-
   /** 현재 비교 컨텍스트를 반환한다(없으면 undefined). */
   getComparison(): BranchComparison | undefined {
     return this.comparison;
   }
-
   /** 현재 비교 결과를 지우고 Compare 섹션을 브랜치 선택 초안 상태로 되돌린다. */
   clearComparison(): void {
     if (!this.comparison) {
@@ -189,23 +169,19 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.comparison = undefined;
     this.render();
   }
-
   /** 비교 전 초안(from/to)을 반환한다. */
   getDraft(): ComparisonDraft {
     return this.draft;
   }
-
   /** 초안의 한쪽 브랜치를 설정하고 다시 그린다. */
   setDraft(side: "from" | "to", ref: string): void {
     this.draft[side] = ref;
     this.render();
   }
-
   /** 특정 섹션의 보기 모드. */
   getViewMode(section: TreeSection): ViewMode {
     return this.viewModes[section];
   }
-
   /**
    * 툴바 토글/컨텍스트 키용 대표 보기 모드.
    * - 모든 트리 섹션이 tree 면 "tree", 하나라도 list 면 "list" 로 본다.
@@ -216,17 +192,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       ? "tree"
       : "list";
   }
-
   /** 현재 정렬 기준. */
   getSortKey(): SortKey {
     return this.sortKey;
   }
-
   /** 아코디언 섹션 표시 상태를 반환한다(view/title 메뉴 체크 상태와 payload 공용). */
   getVisibleSections(): VisibleSections {
     return { ...this.visibleSections };
   }
-
   /** 아코디언 섹션 표시를 토글한다. 마지막으로 보이는 섹션은 숨기지 않는다. */
   toggleVisibleSection(section: VisibleSection): void {
     if (this.visibleSections[section]) {
@@ -241,7 +214,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     void this.memento.update(VISIBLE_SECTIONS_STATE, this.visibleSections);
     this.render();
   }
-
   /** 특정 섹션의 보기 모드를 바꾸고(변경 시) 저장·재렌더한다. */
   setViewMode(section: TreeSection, mode: ViewMode): void {
     if (mode !== this.viewModes[section]) {
@@ -250,7 +222,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.render();
     }
   }
-
   /** 모든 트리 섹션을 같은 모드로 맞춘다(상단 툴바의 전역 토글). */
   setAllViewModes(mode: ViewMode): void {
     let changed = false;
@@ -265,7 +236,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.render();
     }
   }
-
   /** 정렬 기준을 바꾸고(변경 시) 다시 그린다. */
   setSortKey(key: SortKey): void {
     if (key !== this.sortKey) {
@@ -274,7 +244,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.render();
     }
   }
-
   /** 강제로 다시 그린다. */
   refresh(): void {
     if (this.view) {
@@ -288,9 +257,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.render();
     }
   }
-
+  /** 비교 controller 토글만 바뀐 경우 웹뷰 문서를 재생성하지 않고 상태 배너만 다시 그린다. */
+  refreshComparisonStatus(): void {
+    this.render();
+  }
   // ---- 내부 구현 ----
-
   /**
    * 저장소를 전환한다. 브랜치가 다르므로 비교/초안/작업변경을 초기화하고 다시 읽는다.
    * @param root 새 활성 저장소 루트
@@ -314,7 +285,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
   }
-
   /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
   private render(): void {
     if (!this.view) {
@@ -328,7 +298,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.postRender();
     }, 16);
   }
-
   /** 현재 상태로 렌더 payload 를 만들어 변경이 있을 때만 웹뷰로 보낸다. */
   private postRender(): void {
     if (!this.view) {
@@ -342,13 +311,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.lastRenderPayloadJson = payloadJson;
     void this.view.webview.postMessage({ type: "render", payload });
   }
-
   /** payload builder 에 넘길 provider 상태 스냅샷을 만든다. */
   private renderState() {
     return {
       repositories: this.repositories,
       activeRepo: this.activeRepo,
       comparison: this.comparison,
+      comparisonEnabled: this.comparisonEnabled(),
+      gutterSettingEnabled: editorGutterSettingAllowsMarkers(),
       draft: this.draft,
       staged: this.staged,
       unstaged: this.unstaged,
@@ -363,7 +333,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       visibleSections: this.getVisibleSections(),
     };
   }
-
   /** 예약된 렌더 타이머를 취소한다. */
   private clearRenderTimer(): void {
     if (this.renderTimer) {
@@ -371,7 +340,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.renderTimer = undefined;
     }
   }
-
   /** 작업트리 stage/unstage 진행 상태를 웹뷰에 알린다. */
   setWorkingOperation(
     active: boolean,
@@ -387,7 +355,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       phase,
     });
   }
-
   /** AI 커밋 메시지 생성 진행 상태를 웹뷰 버튼에 알린다. */
   setAiCommitGeneration(active: boolean): void {
     this.aiCommitGenerating = active;
@@ -398,7 +365,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     });
     this.render();
   }
-
   /** 커밋 진행 상태를 웹뷰의 커밋 버튼에 알린다(스피너/비활성). */
   private setCommitInProgress(active: boolean): void {
     void this.view?.webview.postMessage({
@@ -406,7 +372,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       active,
     });
   }
-
   /** 웹뷰에서 요청한 커밋을 실행하고, 그 동안 커밋 버튼에 진행중 상태를 표시한다. */
   private async runCommit(op?: string): Promise<void> {
     this.setCommitInProgress(true);
@@ -454,6 +419,12 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       );
     } else if (msg.type === "runCompare") {
       void vscode.commands.executeCommand("gitSimpleCompare.runComparison");
+    } else if (msg.type === "compareCurrentBranch") {
+      void vscode.commands.executeCommand("gitSimpleCompare.compareBranches");
+    } else if (msg.type === "openGutterSettings") {
+      void vscode.commands.executeCommand("gitSimpleCompare.openGutterSettings");
+    } else if (msg.type === "showComparisonMarkers") {
+      void vscode.commands.executeCommand("gitSimpleCompare.showExplorerComparison", false);
     } else if (msg.type === "toggleViewMode" && msg.section) {
       // 섹션 헤더의 트리/리스트 토글 — 해당 섹션만 뒤집는다(다른 섹션과 독립).
       // 토글 후 툴바 컨텍스트 키도 갱신하도록 명령에 위임한다.
@@ -461,6 +432,48 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         "gitSimpleCompare.toggleSectionViewMode",
         msg.section
       );
+    } else if (
+      msg.type === "openComparisonFile" &&
+      msg.path &&
+      this.comparison
+    ) {
+      const comparison = this.comparison;
+      const change = comparison.changes.find((item) => item.path === msg.path);
+      if (!change) {
+        return;
+      }
+      const args: ChangeDiffArgs = { comparison, change };
+      // 명령 등록 누락·열기 실패도 boolean false와 같은 fallback 경로로 합쳐
+      // 웹뷰 이벤트 Promise가 처리되지 않은 rejection으로 남지 않게 한다.
+      void Promise.resolve(
+        vscode.commands.executeCommand<boolean>(
+          "gitSimpleCompare.openComparisonFile",
+          { repoRoot: comparison.repoRoot, path: change.path }
+        )
+      )
+        .catch((error) => {
+          logError("comparison working file command failed", error, {
+            repoRoot: comparison.repoRoot,
+            path: change.path,
+          });
+          return false;
+        })
+        .then(async (handled) => {
+          if (handled) {
+            return;
+          }
+          try {
+            await vscode.commands.executeCommand(
+              "gitSimpleCompare.openChangeDiff",
+              args
+            );
+          } catch (error) {
+            logError("comparison diff fallback failed", error, {
+              repoRoot: comparison.repoRoot,
+              path: change.path,
+            });
+          }
+        });
     } else if (msg.type === "openDiff" && msg.path && this.comparison) {
       const change = this.comparison.changes.find((c) => c.path === msg.path);
       if (change) {

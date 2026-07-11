@@ -1,0 +1,167 @@
+/* Changes 웹뷰의 Compare Branches 섹션 전용 스타일. */
+
+.ref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 8px 0 20px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ref:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.ref:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.ref .icon {
+  flex: 0 0 16px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.ref .label {
+  color: var(--vscode-descriptionForeground);
+}
+
+.ref .value.empty {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.ref .actions {
+  margin-left: auto;
+  opacity: 0;
+}
+
+.ref:hover .actions {
+  opacity: 1;
+}
+
+.action {
+  padding: 0 3px;
+  border-radius: 4px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+#compare,
+#compare-current {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: calc(100% - 24px);
+  margin: 6px 12px 2px;
+  padding: 3px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+#compare:hover,
+#compare-current:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+#compare {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+#compare:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+#compare:focus-visible,
+#compare-current:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.compare-advanced-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 12px 2px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.gutter-status {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 6px;
+  margin: 5px 10px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--vscode-inputValidation-infoBorder);
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-textBlockQuote-background);
+}
+
+.gutter-status.active {
+  border-left-color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.gutter-status > .codicon {
+  margin-top: 2px;
+}
+
+.gutter-status.active > .codicon {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.gutter-status-copy {
+  min-width: 0;
+}
+
+.gutter-status-copy strong,
+.gutter-status-copy span {
+  display: block;
+  white-space: normal;
+}
+
+.gutter-status-copy strong {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+.gutter-status-action {
+  grid-column: 2;
+  justify-self: start;
+  margin: 3px 0 0;
+  padding: 0;
+  border: 0;
+  color: var(--vscode-textLink-foreground);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.gutter-status-action:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.gutter-status-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.compare-files .row.file .name[role="button"]:focus-visible {
+  border-radius: 2px;
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}

@@ -22,11 +22,13 @@ export function buildChangesHtml(
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "changes");
   const version = resourceVersion([
     vscode.Uri.joinPath(mediaRoot, "changes.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesCompare.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesCompare.css"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
     vscode.Uri.joinPath(mediaRoot, "changes.css"),
   ]);
@@ -35,6 +37,9 @@ export function buildChangesHtml(
   );
   const aiScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
+  );
+  const compareScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesCompare.js"), version)
   );
   const commitBoxScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"), version)
@@ -50,6 +55,9 @@ export function buildChangesHtml(
   );
   const styleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
+  );
+  const compareStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesCompare.css"), version)
   );
   const worktreesStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"), version)
@@ -82,6 +90,7 @@ export function buildChangesHtml(
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${compareStyleUri}" rel="stylesheet" />
   <link href="${commitBoxStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
   <title>Changes</title>
@@ -95,6 +104,7 @@ export function buildChangesHtml(
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
+  <script nonce="${nonce}" src="${compareScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>

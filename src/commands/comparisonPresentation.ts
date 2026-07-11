@@ -9,6 +9,7 @@ import {
 } from "../git/comparisonService";
 import type { PullRequestInfo } from "../git/pullRequestService";
 import type { FileChange } from "../git/gitTypes";
+import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
 import {
   openRefVsRefDiff,
   openRefVsWorkingDiff,
@@ -118,6 +119,78 @@ export async function openComparisonDiff(
       rightLabel: comparison.targetLabel,
     }
   );
+}
+
+/**
+ * Compare Changes 파일을 일반 작업파일 편집기로 열어 native Quick Diff gutter를 표시한다.
+ * - target이 현재 HEAD가 아니거나 삭제/로컬 ref 부재 상태면 줄 좌표가 정확하지 않으므로
+ *   기존 ref diff 열기로 안전하게 되돌린다.
+ * @param deps 클릭 시점의 활성 비교를 찾는 controller 의존성
+ * @param args provider가 전달한 저장소/경로 키 또는 비교 트리 파일 노드
+ * @returns 일반 파일 또는 fallback diff를 열었으면 true, 현재 비교를 찾지 못했으면 false
+ */
+export async function openComparisonFile(
+  deps: CommandDeps,
+  args: OpenComparisonDiffArgs | undefined
+): Promise<boolean> {
+  const resolved = resolveComparisonDiffArgs(deps, args);
+  if (!resolved) {
+    logWarn("comparison working file open skipped", {
+      reason: "missing-arguments",
+    });
+    return false;
+  }
+  const { comparison, change } = resolved;
+  const editable =
+    comparison.targetMatchesHead &&
+    comparison.diffAvailable &&
+    change.status !== "D";
+  if (!editable) {
+    logInfo("comparison working file fell back to diff", {
+      repoRoot: comparison.repoRoot,
+      path: change.path,
+      status: change.status,
+      targetMatchesHead: comparison.targetMatchesHead,
+      diffAvailable: comparison.diffAvailable,
+    });
+    await openComparisonDiff(deps, args);
+    return true;
+  }
+
+  const fileUri = vscode.Uri.joinPath(
+    vscode.Uri.file(comparison.repoRoot),
+    ...change.path.split("/")
+  );
+  if (!(await resourceExists(fileUri))) {
+    logInfo("comparison working file fell back to diff", {
+      repoRoot: comparison.repoRoot,
+      path: change.path,
+      reason: "file-missing",
+    });
+    await openComparisonDiff(deps, args);
+    return true;
+  }
+  try {
+    // vscode.open 을 사용하면 텍스트는 Quick Diff gutter가 있는 일반 편집기로,
+    // 이미지·바이너리는 각 파일에 맞는 custom editor로 자연스럽게 열린다.
+    await vscode.commands.executeCommand("vscode.open", fileUri, {
+      preview: false,
+    });
+    logInfo("comparison working file opened with editor gutter", {
+      repoRoot: comparison.repoRoot,
+      path: change.path,
+      baseRef: comparison.resolvedBaseHash || comparison.baseRef,
+      targetRef: comparison.targetRef,
+    });
+  } catch (error) {
+    logWarn("comparison working file open failed; falling back to diff", {
+      repoRoot: comparison.repoRoot,
+      path: change.path,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await openComparisonDiff(deps, args);
+  }
+  return true;
 }
 
 /**
@@ -245,32 +318,31 @@ export function notifyComparisonResult(snapshot: ComparisonSnapshot): void {
     return;
   }
   if (!snapshot.targetMatchesHead) {
+    const sourceMatchesHead = Boolean(
+      snapshot.kind === "branches" &&
+        snapshot.diffBase === "threeDot" &&
+        snapshot.resolvedSourceBaseHash &&
+        snapshot.resolvedSourceBaseHash === snapshot.resolvedHeadHash
+    );
     vscode.window.showInformationMessage(
-      vscode.l10n.t(
-        "Editor gutter markers will appear after the target ({0}) is checked out. The Explorer file list remains available.",
-        snapshot.targetLabel
-      )
+      sourceMatchesHead
+        ? vscode.l10n.t(
+            "Three-dot comparison preserves FROM to TO. Choose the current checkout as TO to show editor gutter markers."
+          )
+        : vscode.l10n.t(
+            "Editor gutter markers will appear after the target ({0}) is checked out. The Explorer file list remains available.",
+            snapshot.targetLabel
+          )
     );
     return;
   }
-  if (!isEditorGutterEnabled()) {
+  if (!editorGutterSettingAllowsMarkers()) {
     vscode.window.showInformationMessage(
       vscode.l10n.t(
         "VS Code's scm.diffDecorations setting must be All or Gutter to show comparison markers beside line numbers."
       )
     );
   }
-}
-
-/**
- * 사용자 SCM 설정이 라인 번호 오른쪽 native Quick Diff lane을 포함하는지 확인한다.
- * @returns `all` 또는 `gutter`이면 true
- */
-function isEditorGutterEnabled(): boolean {
-  const mode = vscode.workspace
-    .getConfiguration("scm")
-    .get<string>("diffDecorations", "all");
-  return mode === "all" || mode === "gutter";
 }
 
 /**
