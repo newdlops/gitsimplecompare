@@ -11,11 +11,12 @@ export function pullRequestPreviewBranchComboboxScript(): string {
       const values = Array.from(new Set([selected].concat(branches || []))).filter(Boolean);
       const listId = id + '-list';
       const options = values.map((branch) => branchOptionHtml(branch, branch === selected)).join('');
+      const toggleTitle = branchToggleTooltip(role, false);
       return '<div class="branch-combo" data-branch-combo="' + esc(role) + '">' +
         '<label class="branch-combo-label" for="' + esc(id) + '">' + esc(caption) + '</label>' +
         '<div class="branch-combobox" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="' + esc(listId) + '">' +
           '<input id="' + esc(id) + '" class="branch-combo-input" type="text" value="' + esc(selected) + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false" title="' + esc(label) + '" aria-label="' + esc(label) + '" data-branch-role="' + esc(role) + '" data-branch-selected="' + esc(selected) + '">' +
-          '<button class="branch-combo-toggle" type="button" title="Show branch options" aria-label="Show branch options" data-tooltip="Show branch options" data-branch-toggle="' + esc(role) + '"><span class="codicon codicon-chevron-down" aria-hidden="true"></span></button>' +
+          '<button class="branch-combo-toggle" type="button" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '" aria-expanded="false" data-branch-toggle="' + esc(role) + '"><span class="codicon codicon-chevron-down" aria-hidden="true"></span></button>' +
           '<div id="' + esc(listId) + '" class="branch-combo-list" role="listbox" hidden>' + options + '</div>' +
         '</div></div>';
     }
@@ -87,11 +88,27 @@ export function pullRequestPreviewBranchComboboxScript(): string {
       filterBranchOptions(combo);
       combo.querySelector('.branch-combo-list')?.removeAttribute('hidden');
       combo.querySelector('.branch-combobox')?.setAttribute('aria-expanded', 'true');
+      syncBranchToggleTooltip(combo, true);
     }
     function closeBranchCombo(combo) {
       combo.querySelector('.branch-combo-list')?.setAttribute('hidden', '');
       combo.querySelector('.branch-combobox')?.setAttribute('aria-expanded', 'false');
+      syncBranchToggleTooltip(combo, false);
       combo.querySelectorAll('.branch-combo-option.keyboard').forEach((item) => item.classList.remove('keyboard'));
+    }
+    /** 브랜치 역할과 펼침 상태를 조합해 토글 버튼이 실행할 다음 동작을 설명한다. */
+    function branchToggleTooltip(role, expanded) {
+      return (expanded ? 'Hide ' : 'Show ') + String(role || 'branch') + ' branch options';
+    }
+    /** 브랜치 목록의 열림 상태를 hover 툴팁과 스크린리더 상태에 함께 반영한다. */
+    function syncBranchToggleTooltip(combo, expanded) {
+      const toggle = combo.querySelector('.branch-combo-toggle');
+      if (!toggle) return;
+      const tooltip = branchToggleTooltip(combo.dataset.branchCombo || 'branch', expanded);
+      toggle.title = tooltip;
+      toggle.setAttribute('aria-label', tooltip);
+      toggle.setAttribute('data-tooltip', tooltip);
+      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
     function isBranchComboOpen(combo) {
       return !combo.querySelector('.branch-combo-list')?.hasAttribute('hidden');

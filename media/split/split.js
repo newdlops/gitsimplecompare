@@ -43,6 +43,14 @@
       saveWorkingFile: "Save Working File",
       selected: "selected",
       selectedOnly: "Selected",
+      showAllChanges: "Show All Changes",
+      showSelectedChangesOnly: "Show Selected Changes Only",
+      refreshChangesTooltip: "Refresh Changes",
+      selectAllCurrentFile: "Select All Changes in Current File",
+      clearSelectionCurrentFile: "Clear Selection in Current File",
+      openCurrentFileEditableDiff: "Open Current File in Editable Diff",
+      discardSelectedChanges: "Discard Selected Changes",
+      stageSelectedChanges: "Stage Selected Changes",
       selectedSummary: "{0} selected",
       stageSelected: "Stage Selected",
       staged: "Staged",
@@ -79,6 +87,17 @@
   /** 간단한 지역화 포맷터. */
   function fmt(template, value) {
     return String(template).replace("{0}", String(value));
+  }
+
+  /** 선택 항목 전용 필터 버튼의 현재 동작을 hover/스크린리더에 같은 문구로 반영한다. */
+  function syncSelectedOnlyButtonTooltip() {
+    const tooltip = selectedOnly
+      ? T.showAllChanges
+      : T.showSelectedChangesOnly;
+    selectedOnlyBtn.title = tooltip;
+    selectedOnlyBtn.setAttribute("aria-label", tooltip);
+    selectedOnlyBtn.setAttribute("data-tooltip", tooltip);
+    selectedOnlyBtn.setAttribute("aria-pressed", selectedOnly ? "true" : "false");
   }
 
   /** 변경 라인 체크박스 HTML. */
@@ -877,6 +896,7 @@
   selectedOnlyBtn.addEventListener("click", () => {
     selectedOnly = !selectedOnly;
     selectedOnlyBtn.classList.toggle("active", selectedOnly);
+    syncSelectedOnlyButtonTooltip();
     render(currentFiles);
   });
   selectFileBtn.addEventListener("click", () => setActiveFileSelection(true));
@@ -947,5 +967,6 @@
     }
   });
 
+  syncSelectedOnlyButtonTooltip();
   vscode.postMessage({ type: "ready" });
 })();

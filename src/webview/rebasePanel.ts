@@ -2,6 +2,7 @@
 // - 패널 생애주기와 메시지 라우팅만 담당하고, 실제 rebase 실행은 RebaseService 에 위임한다.
 // - 충돌로 멈추면 충돌 뷰(기능 3)가 이어받도록 새로고침 명령을 호출한다(경계 분리).
 import * as vscode from "vscode";
+import { instantTooltipResources } from "./instantTooltipResources";
 import { RebaseItem, RebaseService } from "../git/rebaseService";
 import { RebaseFromWebview, RebaseToWebview } from "./rebaseProtocol";
 
@@ -177,6 +178,7 @@ export class RebasePanel {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "rebase.css")
     );
+    const tooltipResources = instantTooltipResources(webview, extensionUri);
     const nonce = makeNonce();
     const csp = [
       `default-src 'none'`,
@@ -190,6 +192,7 @@ export class RebasePanel {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Interactive Rebase</title>
 </head>
 <body>
@@ -216,6 +219,7 @@ export class RebasePanel {
       "Cancel"
     )}</button>
   </footer>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

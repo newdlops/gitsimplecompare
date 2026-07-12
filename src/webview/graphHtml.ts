@@ -1,6 +1,7 @@
 // git graph 웹뷰의 HTML/CSP/리소스 URI 생성을 담당하는 모듈.
 // - 패널 생애주기와 메시지 처리는 graphPanel.ts 에 남기고, 정적인 UI 조립만 이 파일로 분리한다.
 import * as vscode from "vscode";
+import { instantTooltipResources } from "./instantTooltipResources";
 
 /**
  * git graph 웹뷰 HTML 을 만든다.
@@ -61,6 +62,7 @@ export function buildGraphHtml(
   const codiconStyleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css")
   );
+  const tooltipResources = instantTooltipResources(webview, extensionUri);
   const nonce = makeNonce();
   const csp = [
     `default-src 'none'`,
@@ -103,6 +105,7 @@ export function buildGraphHtml(
   <link href="${rebaseAiStyleUri}" rel="stylesheet" />
   <link href="${reflogStyleUri}" rel="stylesheet" />
   <link href="${reflogVirtualStyleUri}" rel="stylesheet" />
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
 <body class="detail-open">
@@ -147,7 +150,8 @@ export function buildGraphHtml(
             <span class="codicon codicon-preview" aria-hidden="true"></span>
           </button>
           <button id="graph-reflog" class="icon-button" type="button" title="${reflogTitle}"
-            aria-label="${reflogTitle}" data-tooltip="${reflogTitle}">
+            aria-label="${reflogTitle}" data-tooltip="${reflogTitle}"
+            aria-controls="graph-reflog-panel" aria-expanded="false">
             <span class="codicon codicon-history" aria-hidden="true"></span>
           </button>
 	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
@@ -155,7 +159,8 @@ export function buildGraphHtml(
 	            <span class="codicon codicon-target" aria-hidden="true"></span>
 	          </button>
 	          <button id="toggle-detail" class="icon-button" type="button" title="${toggleDetailTitle}"
-	            aria-label="${toggleDetailTitle}" data-tooltip="${toggleDetailTitle}">
+	            aria-label="${toggleDetailTitle}" data-tooltip="${toggleDetailTitle}"
+              aria-controls="detail" aria-expanded="true">
 	            <span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span>
 	          </button>
         </div>
@@ -197,6 +202,7 @@ export function buildGraphHtml(
     )}</p></div>
   </div>
   <div id="drawer-backdrop"></div>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreeScriptUri}"></script>

@@ -183,6 +183,60 @@
   outline-offset: 2px;
 }
 
+/* Compare 영역의 버튼형 컨트롤은 native title과 함께 즉시 표시되는 공용 툴팁을 제공한다. */
+.ref[data-tooltip],
+#compare[data-tooltip],
+#compare-current[data-tooltip],
+.gutter-status-action[data-tooltip],
+.compare-reset-action[data-tooltip],
+.compare-files .row-action[data-tooltip] {
+  position: relative;
+}
+
+.ref[data-tooltip]::after,
+#compare[data-tooltip]::after,
+#compare-current[data-tooltip]::after,
+.gutter-status-action[data-tooltip]::after,
+.compare-reset-action[data-tooltip]::after,
+.compare-files .row-action[data-tooltip]::after {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1000;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 4px 7px;
+  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  opacity: 0;
+  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-align: left;
+  white-space: normal;
+  content: attr(data-tooltip);
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, #252526);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.ref[data-tooltip]:hover::after,
+.ref[data-tooltip]:focus-visible::after,
+#compare[data-tooltip]:hover::after,
+#compare[data-tooltip]:focus-visible::after,
+#compare-current[data-tooltip]:hover::after,
+#compare-current[data-tooltip]:focus-visible::after,
+.gutter-status-action[data-tooltip]:hover::after,
+.gutter-status-action[data-tooltip]:focus-visible::after,
+.compare-reset-action[data-tooltip]:hover::after,
+.compare-reset-action[data-tooltip]:focus-visible::after,
+.compare-files .row-action[data-tooltip]:hover::after,
+.compare-files .row-action[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
 .compare-files .row.file .name[role="button"]:focus-visible {
   border-radius: 2px;
   outline: 1px solid var(--vscode-focusBorder);

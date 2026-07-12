@@ -277,6 +277,10 @@
 
   /** graph tooltip 이벤트를 문서 레벨 위임으로 연결한다. */
   function initTooltips() {
+    // 공용 즉시 tooltip 모듈이 먼저 로드되면 graph 전용 overlay를 중복 등록하지 않는다.
+    if (window.GscInstantTooltip) {
+      return;
+    }
     document.addEventListener("mouseover", (event) => {
       const target = tooltipTarget(event);
       if (!target || target === activeTooltipTarget) {

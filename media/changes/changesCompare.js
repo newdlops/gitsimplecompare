@@ -44,11 +44,11 @@
       return "";
     }
     return (
-      `<span class="row-actions"><span class="row-action codicon codicon-diff" ` +
-      `data-act="openCompareDiff" role="button" tabindex="0" ` +
+      `<span class="row-actions"><button class="row-action codicon codicon-diff" ` +
+      `type="button" data-act="openCompareDiff" ` +
       `title="${escape(strings.openComparisonDiff)}" data-tooltip="${escape(
         strings.openComparisonDiff
-      )}" aria-label="${escape(strings.openComparisonDiff)}"></span></span>`
+      )}" aria-label="${escape(strings.openComparisonDiff)}"></button></span>`
     );
   }
 
@@ -152,7 +152,8 @@
   function actionButton(id, label, escape, tooltip = label) {
     return (
       `<button id="${id}" class="gutter-status-action" type="button" ` +
-      `title="${escape(tooltip)}" aria-label="${escape(tooltip)}">` +
+      `title="${escape(tooltip)}" data-tooltip="${escape(tooltip)}" ` +
+      `aria-label="${escape(tooltip)}">` +
       `${escape(label)}</button>`
     );
   }
@@ -170,11 +171,11 @@
     const label = side === "from" ? strings.from : strings.to;
     const icon = side === "from" ? "codicon-git-commit" : "codicon-target";
     const shown = isEmpty ? strings.selectBranch : value;
+    const tooltip = `${strings.change}: ${label} ${shown}`;
     return (
       `<div class="ref" data-side="${side}" role="button" tabindex="0" ` +
-      `title="${escape(strings.change)}" aria-label="${escape(
-        `${strings.change}: ${label} ${shown}`
-      )}">` +
+      `title="${escape(tooltip)}" data-tooltip="${escape(tooltip)}" ` +
+      `aria-label="${escape(tooltip)}">` +
       `<span class="icon codicon ${icon}"></span>` +
       `<span class="label">${escape(label)}</span>` +
       `<span class="value${isEmpty ? " empty" : ""}">${escape(shown)}</span>` +
@@ -196,7 +197,8 @@
       return (
         `<button id="compare-current" type="button" title="${escape(
           strings.compareWithCurrentTooltip
-        )}" aria-label="${escape(strings.compareWithCurrentTooltip)}">` +
+        )}" data-tooltip="${escape(strings.compareWithCurrentTooltip)}" ` +
+        `aria-label="${escape(strings.compareWithCurrentTooltip)}">` +
         `<span class="codicon codicon-git-compare"></span>${escape(
           strings.compareWithCurrent
         )}</button>` +
@@ -206,7 +208,8 @@
         refRow(strings, escape, "to", compare.to) +
         `<button id="compare" type="button" title="${escape(
           strings.compareAdvanced
-        )}" aria-label="${escape(strings.compareAdvanced)}">` +
+        )}" data-tooltip="${escape(strings.compareAdvanced)}" ` +
+        `aria-label="${escape(strings.compareAdvanced)}">` +
         `<span class="codicon codicon-git-compare"></span>${escape(
           strings.compareAdvanced
         )}</button>`
@@ -218,6 +221,7 @@
       gutterStatusHtml(strings, escape, compare.gutter) +
       `<button id="reset-comparison" class="compare-reset-action" type="button" ` +
       `title="${escape(strings.resetComparisonTooltip)}" ` +
+      `data-tooltip="${escape(strings.resetComparisonTooltip)}" ` +
       `aria-label="${escape(strings.resetComparisonTooltip)}">` +
       `<span class="codicon codicon-clear-all"></span>${escape(
         strings.resetComparison

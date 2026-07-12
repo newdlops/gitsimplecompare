@@ -1,0 +1,39 @@
+/* 모든 Git Simple Compare 웹뷰에서 공유하는 지연 없는 tooltip overlay. */
+.gsc-instant-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 4px 7px;
+  border: 1px solid
+    var(--vscode-widget-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
+  border-radius: 3px;
+  color: var(
+    --vscode-editorHoverWidget-foreground,
+    var(--vscode-quickInput-foreground, var(--vscode-foreground))
+  );
+  background: var(
+    --vscode-editorHoverWidget-background,
+    var(--vscode-editorWidget-background, #252526)
+  );
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.36);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.gsc-instant-tooltip[hidden] {
+  display: none;
+}
+
+/* 공용 overlay가 보이는 동안 기존 ::after tooltip을 숨겨 같은 문구가 두 번 뜨지 않게 한다. */
+.gsc-instant-tooltip-source[data-tooltip]::after {
+  display: none !important;
+}

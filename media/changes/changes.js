@@ -22,6 +22,8 @@
       selectBranch: "(select a branch)",
       compare: "Compare",
       toggleSection: "Toggle section",
+      collapseSection: "Collapse {0}",
+      expandSection: "Expand {0}",
       noCompare: "No changes between the selected branches.",
       noChanges: "No working tree changes.",
       conflicts: "Conflicts",
@@ -78,6 +80,34 @@
   let draggingSectionId = null;
   let suppressHeaderClick = false;
   const isCollapsed = (id) => !!state.collapsed[id];
+
+  /**
+   * disclosure 컨트롤의 현재 펼침 상태를 지역화된 다음 동작 tooltip 으로 바꾼다.
+   * @param {string} label 사용자가 구분할 수 있는 섹션 또는 그룹 이름
+   * @param {boolean} expanded 현재 본문이 펼쳐져 있으면 true
+   * @returns {string} 클릭했을 때 수행될 Collapse/Expand 동작 문구
+   */
+  function disclosureTooltip(label, expanded) {
+    const template = expanded ? T.collapseSection : T.expandSection;
+    return String(template).replace("{0}", label);
+  }
+
+  /**
+   * 접기/펼치기 컨트롤의 tooltip, 접근성 이름, aria-expanded 를 한 번에 동기화한다.
+   * @param {HTMLElement | null} control 상태를 반영할 button 또는 동등한 컨트롤
+   * @param {boolean} expanded 컨트롤이 담당하는 본문이 현재 펼쳐져 있는지 여부
+   */
+  function syncDisclosureControl(control, expanded) {
+    if (!control) {
+      return;
+    }
+    const label = control.dataset.disclosureLabel || control.textContent?.trim() || "Section";
+    const tooltip = disclosureTooltip(label, expanded);
+    control.title = tooltip;
+    control.dataset.tooltip = tooltip;
+    control.setAttribute("aria-label", tooltip);
+    control.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
   function toggleSection(id) {
     state.collapsed[id] = !state.collapsed[id];
     vscode.setState(state);
@@ -260,6 +290,8 @@
 
   /** 섹션(헤더 + 본문) HTML. actionsHtml 은 헤더 우측 인라인 액션(hover 노출). */
   function section(id, title, count, bodyHtml, actionsHtml, conflictCount) {
+    const expanded = !isCollapsed(id);
+    const tooltip = disclosureTooltip(title, expanded);
     const countHtml = count ? `<span class="count">${count}</span>` : "";
     const conflictHtml = conflictCount ? conflictBadgeHtml(conflictCount) : "";
     const actions = actionsHtml
@@ -267,10 +299,12 @@
       : "";
     return (
       `<div class="section${conflictCount ? " has-conflicts" : ""}" data-section="${id}">` +
-      `<div class="section-header">` +
+      `<button class="section-header" type="button" data-disclosure-label="${esc(title)}" ` +
+      `aria-controls="section-body-${esc(id)}" aria-expanded="${expanded ? "true" : "false"}" ` +
+      `title="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
       `<span class="twistie codicon codicon-chevron-down"></span>` +
-      `<span class="title">${esc(title)}</span>${countHtml}${conflictHtml}</div>${actions}` +
-      `<div class="section-body">${bodyHtml}</div></div>`
+      `<span class="title">${esc(title)}</span>${countHtml}${conflictHtml}</button>${actions}` +
+      `<div id="section-body-${esc(id)}" class="section-body">${bodyHtml}</div></div>`
     );
   }
 
@@ -316,19 +350,19 @@
     let html = "";
     if (isFile) {
       html +=
-        `<span class="row-action codicon codicon-go-to-file" data-act="openFile" ` +
-        `title="${esc(T.openFile)}"></span>`;
+        `<button class="row-action codicon codicon-go-to-file" type="button" data-act="openFile" ` +
+        `title="${esc(T.openFile)}" aria-label="${esc(T.openFile)}"></button>`;
     }
     if (kind === "staged") {
       html +=
-        `<span class="row-action codicon codicon-remove" data-act="unstage" ` +
-        `title="${esc(T.unstage)}"></span>`;
+        `<button class="row-action codicon codicon-remove" type="button" data-act="unstage" ` +
+        `title="${esc(T.unstage)}" aria-label="${esc(T.unstage)}"></button>`;
     } else {
       html +=
-        `<span class="row-action codicon codicon-discard" data-act="discard" ` +
-        `title="${esc(T.discard)}"></span>` +
-        `<span class="row-action codicon codicon-add" data-act="stage" ` +
-        `title="${esc(T.stage)}"></span>`;
+        `<button class="row-action codicon codicon-discard" type="button" data-act="discard" ` +
+        `title="${esc(T.discard)}" aria-label="${esc(T.discard)}"></button>` +
+        `<button class="row-action codicon codicon-add" type="button" data-act="stage" ` +
+        `title="${esc(T.stage)}" aria-label="${esc(T.stage)}"></button>`;
     }
     return `<span class="row-actions">${html}</span>`;
   }
@@ -404,22 +438,42 @@
     return `${kind}:${path}`;
   }
 
-  /** 노드 배열을 가로 스크롤 가능한 파일 트리로 감싼다. kind 로 행 액션/클릭 동작을 구분한다. */
-  function fileTree(nodes, viewMode, kind, extraClass, emptyText, gutter) {
+  /**
+   * 노드 배열을 가로 스크롤 가능한 파일 트리로 감싸고 필요하면 disclosure 연결용 id를 부여한다.
+   * @param {Array} nodes 렌더링할 폴더/파일 노드 배열
+   * @param {string} viewMode tree 또는 list 보기 모드
+   * @param {string} kind compare/staged/unstaged 동작 구분값
+   * @param {string} extraClass 파일 트리 루트에 추가할 CSS class
+   * @param {string} emptyText 노드가 없을 때 표시할 안내 문구
+   * @param {object | undefined} gutter 비교 파일의 gutter 상태
+   * @param {string | undefined} elementId aria-controls가 가리킬 선택적 DOM id
+   * @returns {string} 파일 트리 또는 빈 상태 HTML
+   */
+  function fileTree(
+    nodes,
+    viewMode,
+    kind,
+    extraClass,
+    emptyText,
+    gutter,
+    elementId
+  ) {
+    const idAttribute = elementId ? ` id="${esc(elementId)}"` : "";
     if (!nodes.length) {
-      return `<p class="empty">${esc(emptyText)}</p>`;
+      return `<p${idAttribute} class="empty">${esc(emptyText)}</p>`;
     }
     const rows = nodes
       .map((n) => nodeHtml(n, viewMode, kind, gutter))
       .join("");
-    return `<div class="files ${extraClass}"><div class="rows">${rows}</div></div>`;
+    return `<div${idAttribute} class="files ${extraClass}"><div class="rows">${rows}</div></div>`;
   }
 
   /** 헤더 우측 미트볼(...) 버튼 HTML. */
   function meatballAction() {
     return (
       `<button class="header-action meatball codicon codicon-ellipsis" type="button" ` +
-      `aria-label="${esc(T.moreActions)}" data-tooltip="${esc(T.moreActions)}"></button>`
+      `title="${esc(T.moreActions)}" aria-label="${esc(T.moreActions)}" ` +
+      `data-tooltip="${esc(T.moreActions)}" aria-haspopup="menu" aria-expanded="false"></button>`
     );
   }
 
@@ -514,29 +568,44 @@
     const count = countFiles(nodes);
     const conflictCount = countConflicts(nodes);
     const collapsed = !!state.groups[kind];
+    const expanded = !collapsed;
     const chevron = collapsed ? "codicon-chevron-right" : "codicon-chevron-down";
+    const tooltip = disclosureTooltip(title, expanded);
+    const bodyId = `changes-group-files-${kind}`;
     let actions;
     if (kind === "staged") {
       actions =
-        `<span class="group-action codicon codicon-remove" data-gact="unstage" ` +
-        `title="${esc(T.unstageAll)}"></span>`;
+        `<button class="group-action codicon codicon-remove" type="button" data-gact="unstage" ` +
+        `title="${esc(T.unstageAll)}" aria-label="${esc(T.unstageAll)}"></button>`;
     } else {
       actions =
-        `<span class="group-action codicon codicon-discard" data-gact="discard" ` +
-        `title="${esc(T.discardAll)}"></span>` +
-        `<span class="group-action codicon codicon-add" data-gact="stage" ` +
-        `title="${esc(T.stageAll)}"></span>`;
+        `<button class="group-action codicon codicon-discard" type="button" data-gact="discard" ` +
+        `title="${esc(T.discardAll)}" aria-label="${esc(T.discardAll)}"></button>` +
+        `<button class="group-action codicon codicon-add" type="button" data-gact="stage" ` +
+        `title="${esc(T.stageAll)}" aria-label="${esc(T.stageAll)}"></button>`;
     }
     return (
       `<div class="group${collapsed ? " collapsed" : ""}${conflictCount ? " has-conflicts" : ""}" ` +
       `data-gkey="${kind}">` +
-      `<div class="group-header" title="${esc(`${T.toggleSection}: ${title}`)}">` +
+      `<div class="group-header">` +
+      `<button class="group-toggle" type="button" data-disclosure-label="${esc(title)}" ` +
+      `aria-controls="${esc(bodyId)}" aria-expanded="${expanded ? "true" : "false"}" ` +
+      `title="${esc(tooltip)}" ` +
+      `data-tooltip="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
       `<span class="twistie codicon ${chevron}"></span>` +
       `<span class="group-title">${esc(title)}</span>` +
       `<span class="count">${count}</span>` +
       (conflictCount ? conflictBadgeHtml(conflictCount) : "") +
-      `<span class="group-actions">${actions}</span></div>` +
-      fileTree(nodes, viewMode, kind, kind + "-files wt-files", "") +
+      `</button><span class="group-actions">${actions}</span></div>` +
+      fileTree(
+        nodes,
+        viewMode,
+        kind,
+        kind + "-files wt-files",
+        "",
+        undefined,
+        bodyId
+      ) +
       `</div>`
     );
   }
@@ -682,8 +751,9 @@
       `<span class="icon codicon codicon-archive"></span>` +
       `<span class="name">${esc(s.message)}</span>` +
       (meta ? `<span class="stash-meta">${esc(meta)}</span>` : "") +
-      `<span class="row-actions"><span class="row-action codicon codicon-ellipsis" ` +
-      `data-act="stashMenu" title="${esc(T.moreActions)}"></span></span>` +
+      `<span class="row-actions"><button class="row-action codicon codicon-ellipsis" ` +
+      `type="button" data-act="stashMenu" title="${esc(T.moreActions)}" ` +
+      `aria-label="${esc(T.moreActions)}"></button></span>` +
       `</div>` +
       `<div class="children stash-files">${files}</div></div>`
     );
@@ -892,6 +962,7 @@
       const tw = sec.querySelector(".section-header .twistie");
       tw.classList.toggle("codicon-chevron-down", !collapsed);
       tw.classList.toggle("codicon-chevron-right", collapsed);
+      syncDisclosureControl(sec.querySelector(":scope > .section-header"), !collapsed);
     });
   }
 
@@ -1353,22 +1424,29 @@
       });
     });
     // 그룹 헤더 클릭 → 그 그룹만 접기/펼치기(액션 클릭은 제외).
-    rootEl.querySelectorAll(".group-header").forEach((gh) => {
-      gh.addEventListener("click", (e) => {
-        if (e.target.closest(".group-actions")) {
-          return;
-        }
-        const group = gh.closest(".group");
-        const key = group.dataset.gkey;
-        const collapsed = !state.groups[key];
-        state.groups[key] = collapsed;
-        vscode.setState(state);
-        group.classList.toggle("collapsed", collapsed);
-        const tw = gh.querySelector(".twistie");
-        tw.classList.toggle("codicon-chevron-down", !collapsed);
-        tw.classList.toggle("codicon-chevron-right", collapsed);
-      });
+    rootEl.querySelectorAll(".group-toggle").forEach((toggle) => {
+      toggle.addEventListener("click", () => toggleChangesGroup(toggle));
     });
+  }
+
+  /**
+   * Staged/Changes 그룹의 접힘 상태와 아이콘, tooltip, aria-expanded 를 함께 갱신한다.
+   * @param {HTMLElement} toggle 사용자가 누른 그룹 disclosure button
+   */
+  function toggleChangesGroup(toggle) {
+    const group = toggle.closest(".group");
+    if (!group) {
+      return;
+    }
+    const key = group.dataset.gkey;
+    const collapsed = !state.groups[key];
+    state.groups[key] = collapsed;
+    vscode.setState(state);
+    group.classList.toggle("collapsed", collapsed);
+    const tw = toggle.querySelector(".twistie");
+    tw?.classList.toggle("codicon-chevron-down", !collapsed);
+    tw?.classList.toggle("codicon-chevron-right", collapsed);
+    syncDisclosureControl(toggle, !collapsed);
   }
 
   /** 파일/폴더 행 hover 액션(파일 열기 / stage·unstage·discard). 다중 선택 시 선택 전체에 적용. */
@@ -1392,12 +1470,6 @@
         const paths = actionPaths(row);
         if (paths.length) {
           postWorkingAction(el.dataset.act, paths);
-        }
-      });
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          el.click();
         }
       });
     });
@@ -1833,6 +1905,7 @@
   /** 열린 드롭다운을 닫고 리스너를 정리한다. */
   function closeDropdown() {
     if (dropdownEl) {
+      dropdownEl.__anchor?.setAttribute("aria-expanded", "false");
       dropdownEl.remove();
       dropdownEl = null;
     }
@@ -1844,7 +1917,21 @@
   function menuDivider() {
     const d = document.createElement("div");
     d.className = "menu-sep";
+    d.setAttribute("role", "separator");
     return d;
+  }
+
+  /**
+   * div 기반 menuitem 이 Enter/Space 키로도 마우스 클릭과 같은 동작을 수행하게 한다.
+   * @param {HTMLElement} item 키보드 활성화를 연결할 메뉴 항목
+   */
+  function bindMenuItemKeyboard(item) {
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        item.click();
+      }
+    });
   }
 
   /** 앵커(헤더 버튼) 아래에 드롭다운을 연다. */
@@ -1866,7 +1953,9 @@
     closeDropdown();
     dropdownEl = document.createElement("div");
     dropdownEl.className = "menu";
+    dropdownEl.setAttribute("role", "menu");
     dropdownEl.__anchor = place.anchor || null;
+    dropdownEl.__anchor?.setAttribute("aria-expanded", "true");
     document.body.appendChild(dropdownEl);
 
     const reposition = () =>
@@ -1881,6 +1970,8 @@
       if (stack.length > 1) {
         const back = document.createElement("div");
         back.className = "menu-item menu-back";
+        back.setAttribute("role", "menuitem");
+        back.tabIndex = 0;
         back.title = top.title || "";
         back.innerHTML =
           `<span class="codicon codicon-chevron-left"></span>` +
@@ -1891,6 +1982,7 @@
           renderTop();
           reposition();
         });
+        bindMenuItemKeyboard(back);
         dropdownEl.appendChild(back);
         dropdownEl.appendChild(menuDivider());
       }
@@ -1902,6 +1994,11 @@
         const hasSub = !!(node.submenu && node.submenu.length);
         const item = document.createElement("div");
         item.className = "menu-item";
+        item.setAttribute("role", "menuitem");
+        item.tabIndex = 0;
+        if (hasSub) {
+          item.setAttribute("aria-haspopup", "menu");
+        }
         item.title = node.label || "";
         item.innerHTML =
           `<span class="menu-check codicon ${
@@ -1925,8 +2022,10 @@
             closeDropdown();
           }
         });
+        bindMenuItemKeyboard(item);
         dropdownEl.appendChild(item);
       }
+      dropdownEl.querySelector('[role="menuitem"]')?.focus();
     };
     renderTop();
     reposition();

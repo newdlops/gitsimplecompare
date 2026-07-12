@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71031",
+  "version": "0.1.71034",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -84,13 +84,15 @@
       },
       {
         "command": "gitSimpleCompare.showExplorerComparison",
-        "title": "%cmd.showExplorerComparison%",
+        "title": "%cmd.showExplorerComparison.tooltip%",
+        "shortTitle": "%cmd.showExplorerComparison%",
         "category": "Git Simple Compare",
         "icon": "$(eye)"
       },
       {
         "command": "gitSimpleCompare.hideExplorerComparison",
-        "title": "%cmd.hideExplorerComparison%",
+        "title": "%cmd.hideExplorerComparison.tooltip%",
+        "shortTitle": "%cmd.hideExplorerComparison%",
         "category": "Git Simple Compare",
         "icon": "$(eye-closed)"
       },
@@ -102,13 +104,15 @@
       },
       {
         "command": "gitSimpleCompare.clearExplorerComparison",
-        "title": "%cmd.clearExplorerComparison%",
+        "title": "%cmd.clearExplorerComparison.tooltip%",
+        "shortTitle": "%cmd.clearExplorerComparison%",
         "category": "Git Simple Compare",
         "icon": "$(clear-all)"
       },
       {
         "command": "gitSimpleCompare.swapBranchComparison",
-        "title": "%cmd.swapBranchComparison%",
+        "title": "%cmd.swapBranchComparison.tooltip%",
+        "shortTitle": "%cmd.swapBranchComparison%",
         "category": "Git Simple Compare",
         "icon": "$(arrow-swap)",
         "enablement": "gitSimpleCompare.explorerComparison.enabled && gitSimpleCompare.explorerComparison.canSwap"
@@ -127,25 +131,29 @@
       },
       {
         "command": "gitSimpleCompare.checkoutBranch",
-        "title": "%cmd.checkoutBranch%",
+        "title": "%cmd.checkoutBranch.tooltip%",
+        "shortTitle": "%cmd.checkoutBranch%",
         "category": "Git Simple Compare",
         "icon": "$(git-branch)"
       },
       {
         "command": "gitSimpleCompare.branchSquashMerge",
-        "title": "%cmd.branchSquashMerge%",
+        "title": "%cmd.branchSquashMerge.tooltip%",
+        "shortTitle": "%cmd.branchSquashMerge%",
         "category": "Git Simple Compare",
         "icon": "$(git-merge)"
       },
       {
         "command": "gitSimpleCompare.branchRebaseMerge",
-        "title": "%cmd.branchRebaseMerge%",
+        "title": "%cmd.branchRebaseMerge.tooltip%",
+        "shortTitle": "%cmd.branchRebaseMerge%",
         "category": "Git Simple Compare",
         "icon": "$(repo-forked)"
       },
       {
         "command": "gitSimpleCompare.undoBranchOperation",
-        "title": "%cmd.undoBranchOperation%",
+        "title": "%cmd.undoBranchOperation.tooltip%",
+        "shortTitle": "%cmd.undoBranchOperation%",
         "category": "Git Simple Compare",
         "icon": "$(discard)"
       },
@@ -163,13 +171,15 @@
       },
       {
         "command": "gitSimpleCompare.compareActiveFileWithBranch",
-        "title": "%cmd.compareActiveFileWithBranch%",
+        "title": "%cmd.compareActiveFileWithBranch.tooltip%",
+        "shortTitle": "%cmd.compareActiveFileWithBranch%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
       },
       {
         "command": "gitSimpleCompare.refreshChanges",
-        "title": "%cmd.refreshChanges%",
+        "title": "%cmd.refreshChanges.tooltip%",
+        "shortTitle": "%cmd.refreshChanges%",
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
@@ -181,19 +191,22 @@
       },
       {
         "command": "gitSimpleCompare.configureAiCli",
-        "title": "%cmd.configureAiCli%",
+        "title": "%cmd.configureAiCli.tooltip%",
+        "shortTitle": "%cmd.configureAiCli%",
         "category": "Git Simple Compare",
         "icon": "$(settings-gear)"
       },
       {
         "command": "gitSimpleCompare.configureUserProfile",
-        "title": "%cmd.configureUserProfile%",
+        "title": "%cmd.configureUserProfile.tooltip%",
+        "shortTitle": "%cmd.configureUserProfile%",
         "category": "Git Simple Compare",
         "icon": "$(account)"
       },
       {
         "command": "gitSimpleCompare.configureRemoteBranch",
-        "title": "%cmd.configureRemoteBranch%",
+        "title": "%cmd.configureRemoteBranch.tooltip%",
+        "shortTitle": "%cmd.configureRemoteBranch%",
         "category": "Git Simple Compare",
         "icon": "$(repo-push)"
       },
@@ -217,13 +230,15 @@
       },
       {
         "command": "gitSimpleCompare.toggleBlameDecorator.checked",
-        "title": "%cmd.blameDecorator.checked%",
+        "title": "%cmd.blameDecorator.checked.tooltip%",
+        "shortTitle": "%cmd.blameDecorator.checked%",
         "category": "Git Simple Compare",
         "icon": "$(git-commit)"
       },
       {
         "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
-        "title": "%cmd.blameDecorator%",
+        "title": "%cmd.blameDecorator.tooltip%",
+        "shortTitle": "%cmd.blameDecorator%",
         "category": "Git Simple Compare",
         "icon": "$(git-commit)"
       },
@@ -235,13 +250,15 @@
       },
       {
         "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
-        "title": "%cmd.blameLines.checked%",
+        "title": "%cmd.blameLines.checked.tooltip%",
+        "shortTitle": "%cmd.blameLines.checked%",
         "category": "Git Simple Compare",
         "icon": "$(list-ordered)"
       },
       {
         "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
-        "title": "%cmd.blameLines%",
+        "title": "%cmd.blameLines.tooltip%",
+        "shortTitle": "%cmd.blameLines%",
         "category": "Git Simple Compare",
         "icon": "$(list-ordered)"
       },
@@ -264,104 +281,123 @@
       },
       {
         "command": "gitSimpleCompare.viewAsTree",
-        "title": "%cmd.viewAsTree%",
+        "title": "%cmd.viewAsTree.tooltip%",
+        "shortTitle": "%cmd.viewAsTree%",
         "category": "Git Simple Compare",
         "icon": "$(list-tree)"
       },
       {
         "command": "gitSimpleCompare.viewAsList",
-        "title": "%cmd.viewAsList%",
+        "title": "%cmd.viewAsList.tooltip%",
+        "shortTitle": "%cmd.viewAsList%",
         "category": "Git Simple Compare",
         "icon": "$(list-flat)"
       },
       {
         "command": "gitSimpleCompare.changeSortOrder",
-        "title": "%cmd.changeSortOrder%",
+        "title": "%cmd.changeSortOrder.tooltip%",
+        "shortTitle": "%cmd.changeSortOrder%",
         "category": "Git Simple Compare",
         "icon": "$(sort-precedence)"
       },
       {
         "command": "gitSimpleCompare.toggleSection.repos.visible",
-        "title": "%cmd.section.repos.checked%",
+        "title": "%cmd.section.repos.checked.tooltip%",
+        "shortTitle": "%cmd.section.repos.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.repos.hidden",
-        "title": "%cmd.section.repos%",
+        "title": "%cmd.section.repos.tooltip%",
+        "shortTitle": "%cmd.section.repos%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.changes.visible",
-        "title": "%cmd.section.changes.checked%",
+        "title": "%cmd.section.changes.checked.tooltip%",
+        "shortTitle": "%cmd.section.changes.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.changes.hidden",
-        "title": "%cmd.section.changes%",
+        "title": "%cmd.section.changes.tooltip%",
+        "shortTitle": "%cmd.section.changes%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.history.visible",
-        "title": "%cmd.section.history.checked%",
+        "title": "%cmd.section.history.checked.tooltip%",
+        "shortTitle": "%cmd.section.history.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.history.hidden",
-        "title": "%cmd.section.history%",
+        "title": "%cmd.section.history.tooltip%",
+        "shortTitle": "%cmd.section.history%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.compare.visible",
-        "title": "%cmd.section.compare.checked%",
+        "title": "%cmd.section.compare.checked.tooltip%",
+        "shortTitle": "%cmd.section.compare.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.compare.hidden",
-        "title": "%cmd.section.compare%",
+        "title": "%cmd.section.compare.tooltip%",
+        "shortTitle": "%cmd.section.compare%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.stashes.visible",
-        "title": "%cmd.section.stashes.checked%",
+        "title": "%cmd.section.stashes.checked.tooltip%",
+        "shortTitle": "%cmd.section.stashes.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.stashes.hidden",
-        "title": "%cmd.section.stashes%",
+        "title": "%cmd.section.stashes.tooltip%",
+        "shortTitle": "%cmd.section.stashes%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.worktrees.visible",
-        "title": "%cmd.section.worktrees.checked%",
+        "title": "%cmd.section.worktrees.checked.tooltip%",
+        "shortTitle": "%cmd.section.worktrees.checked%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.toggleSection.worktrees.hidden",
-        "title": "%cmd.section.worktrees%",
+        "title": "%cmd.section.worktrees.tooltip%",
+        "shortTitle": "%cmd.section.worktrees%",
         "category": "Git Simple Compare"
       },
       {
         "command": "gitSimpleCompare.applyLeftToRight",
-        "title": "%cmd.applyLeftToRight%",
+        "title": "%cmd.applyLeftToRight.tooltip%",
+        "shortTitle": "%cmd.applyLeftToRight%",
         "category": "Git Simple Compare",
         "icon": "$(arrow-right)"
       },
       {
         "command": "gitSimpleCompare.openDiffFileEditor",
-        "title": "%cmd.openDiffFileEditor%",
+        "title": "%cmd.openDiffFileEditor.tooltip%",
+        "shortTitle": "%cmd.openDiffFileEditor%",
         "category": "Git Simple Compare",
         "icon": "$(go-to-file)",
         "enablement": "gitSimpleCompare.activeExtensionDiff"
       },
       {
         "command": "gitSimpleCompare.stageSelectedLines",
-        "title": "%cmd.stageSelectedLines%",
+        "title": "%cmd.stageSelectedLines.tooltip%",
+        "shortTitle": "%cmd.stageSelectedLines%",
         "category": "Git Simple Compare",
         "icon": "$(arrow-swap)"
       },
       {
         "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
-        "title": "%cmd.toggleSelectedLineCheckbox%",
+        "title": "%cmd.toggleSelectedLineCheckbox.tooltip%",
+        "shortTitle": "%cmd.toggleSelectedLineCheckbox%",
         "category": "Git Simple Compare",
         "icon": "$(checklist)"
       },
@@ -373,32 +409,36 @@
       },
       {
         "command": "gitSimpleCompare.showGraph",
-        "title": "%cmd.showGraph%",
+        "title": "%cmd.showGraph.tooltip%",
+        "shortTitle": "%cmd.showGraph%",
         "category": "Git Simple Compare",
         "icon": "$(graph)"
       },
       {
         "command": "gitSimpleCompare.splitCommits",
-        "title": "%cmd.splitCommits%",
+        "title": "%cmd.splitCommits.tooltip%",
+        "shortTitle": "%cmd.splitCommits%",
         "category": "Git Simple Compare",
         "icon": "$(split-horizontal)"
       },
       {
         "command": "gitSimpleCompare.refreshConflicts",
-        "title": "%cmd.refreshConflicts%",
+        "title": "%cmd.refreshConflicts.tooltip%",
+        "shortTitle": "%cmd.refreshConflicts%",
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
-      { "command": "gitSimpleCompare.takeCurrent", "title": "%cmd.takeCurrent%", "category": "Git Simple Compare", "icon": "$(arrow-left)" },
-      { "command": "gitSimpleCompare.takeIncoming", "title": "%cmd.takeIncoming%", "category": "Git Simple Compare", "icon": "$(arrow-right)" },
-      { "command": "gitSimpleCompare.takeBoth", "title": "%cmd.takeBoth%", "category": "Git Simple Compare", "icon": "$(combine)" },
+      { "command": "gitSimpleCompare.takeCurrent", "title": "%cmd.takeCurrent.tooltip%", "shortTitle": "%cmd.takeCurrent%", "category": "Git Simple Compare", "icon": "$(arrow-left)" },
+      { "command": "gitSimpleCompare.takeIncoming", "title": "%cmd.takeIncoming.tooltip%", "shortTitle": "%cmd.takeIncoming%", "category": "Git Simple Compare", "icon": "$(arrow-right)" },
+      { "command": "gitSimpleCompare.takeBoth", "title": "%cmd.takeBoth.tooltip%", "shortTitle": "%cmd.takeBoth%", "category": "Git Simple Compare", "icon": "$(combine)" },
       {
         "command": "gitSimpleCompare.markResolved",
-        "title": "%cmd.markResolved%",
+        "title": "%cmd.markResolved.tooltip%",
+        "shortTitle": "%cmd.markResolved%",
         "category": "Git Simple Compare",
         "icon": "$(check)"
       },
-      { "command": "gitSimpleCompare.openConflictEditor", "title": "%cmd.openConflictEditor%", "category": "Git Simple Compare", "icon": "$(git-merge)" },
+      { "command": "gitSimpleCompare.openConflictEditor", "title": "%cmd.openConflictEditor.tooltip%", "shortTitle": "%cmd.openConflictEditor%", "category": "Git Simple Compare", "icon": "$(git-merge)" },
       {
         "command": "gitSimpleCompare.openMergeEditor",
         "title": "%cmd.openMergeEditor%",
@@ -407,44 +447,51 @@
       },
       {
         "command": "gitSimpleCompare.continueOperation",
-        "title": "%cmd.continueOperation%",
+        "title": "%cmd.continueOperation.tooltip%",
+        "shortTitle": "%cmd.continueOperation%",
         "category": "Git Simple Compare",
         "icon": "$(debug-continue)"
       },
       {
         "command": "gitSimpleCompare.skipOperation",
-        "title": "%cmd.skipOperation%",
+        "title": "%cmd.skipOperation.tooltip%",
+        "shortTitle": "%cmd.skipOperation%",
         "category": "Git Simple Compare",
         "icon": "$(debug-step-over)"
       },
       {
         "command": "gitSimpleCompare.abortOperation",
-        "title": "%cmd.abortOperation%",
+        "title": "%cmd.abortOperation.tooltip%",
+        "shortTitle": "%cmd.abortOperation%",
         "category": "Git Simple Compare",
         "icon": "$(circle-slash)"
       },
-      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" },
+      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull.tooltip%", "shortTitle": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" },
       {
         "command": "gitSimpleCompare.refreshWorktrees",
-        "title": "%cmd.refreshWorktrees%",
+        "title": "%cmd.refreshWorktrees.tooltip%",
+        "shortTitle": "%cmd.refreshWorktrees%",
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
       {
         "command": "gitSimpleCompare.createWorktree",
-        "title": "%cmd.createWorktree%",
+        "title": "%cmd.createWorktree.tooltip%",
+        "shortTitle": "%cmd.createWorktree%",
         "category": "Git Simple Compare",
         "icon": "$(plus)"
       },
       {
         "command": "gitSimpleCompare.removeWorktree",
-        "title": "%cmd.removeWorktree%",
+        "title": "%cmd.removeWorktree.tooltip%",
+        "shortTitle": "%cmd.removeWorktree%",
         "category": "Git Simple Compare",
         "icon": "$(trash)"
       },
       {
         "command": "gitSimpleCompare.renameWorktree",
-        "title": "%cmd.renameWorktree%",
+        "title": "%cmd.renameWorktree.tooltip%",
+        "shortTitle": "%cmd.renameWorktree%",
         "category": "Git Simple Compare",
         "icon": "$(edit)"
       },
@@ -929,6 +976,9 @@
           "when": "false"
         }
       ]
+    },
+    "configurationDefaults": {
+      "workbench.hover.delay": 0
     },
     "configuration": {
       "title": "Git Simple Compare",

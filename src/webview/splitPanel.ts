@@ -1,6 +1,7 @@
 // 작업 변경을 hunk 단위로 골라 선택한 부분만 stage 하는 웹뷰 패널 모듈.
 // - 패널 생애주기와 메시지 라우팅만 담당하고, 실제 hunk stage 는 DiffHunkService 에 위임한다.
 import * as vscode from "vscode";
+import { instantTooltipResources } from "./instantTooltipResources";
 import {
   DiffFile,
   DiffHunkService,
@@ -259,6 +260,7 @@ export class SplitPanel {
     const codiconUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
+    const tooltipResources = instantTooltipResources(webview, this.extensionUri);
     const nonce = makeNonce();
     const csp = [
       `default-src 'none'`,
@@ -287,6 +289,20 @@ export class SplitPanel {
       saveWorkingFile: vscode.l10n.t("Save Working File"),
       selected: vscode.l10n.t("selected"),
       selectedOnly: vscode.l10n.t("Selected"),
+      showAllChanges: vscode.l10n.t("Show All Changes"),
+      showSelectedChangesOnly: vscode.l10n.t("Show Selected Changes Only"),
+      refreshChangesTooltip: vscode.l10n.t("Refresh Changes"),
+      selectAllCurrentFile: vscode.l10n.t(
+        "Select All Changes in Current File"
+      ),
+      clearSelectionCurrentFile: vscode.l10n.t(
+        "Clear Selection in Current File"
+      ),
+      openCurrentFileEditableDiff: vscode.l10n.t(
+        "Open Current File in Editable Diff"
+      ),
+      discardSelectedChanges: vscode.l10n.t("Discard Selected Changes"),
+      stageSelectedChanges: vscode.l10n.t("Stage Selected Changes"),
       selectedSummary: vscode.l10n.t("{0} selected"),
       stageSelected: vscode.l10n.t("Stage Selected"),
       staged: vscode.l10n.t("Staged"),
@@ -304,6 +320,7 @@ export class SplitPanel {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Editable Diff</title>
 </head>
 <body>
@@ -321,15 +338,15 @@ export class SplitPanel {
 	          "Filter"
 	        )}" />
       </label>
-      <button id="selected-only" class="secondary" type="button" title="${vscode.l10n.t(
-        "Selected"
-      )}">
+      <button id="selected-only" class="secondary" type="button"
+        title="${i18n.showSelectedChangesOnly}" aria-label="${i18n.showSelectedChangesOnly}"
+        data-tooltip="${i18n.showSelectedChangesOnly}" aria-pressed="false">
         <span class="codicon codicon-list-selection"></span>
         <span>${vscode.l10n.t("Selected")}</span>
       </button>
-      <button id="refresh" class="icon secondary" type="button" title="${vscode.l10n.t(
-        "Refresh"
-      )}">
+      <button id="refresh" class="icon secondary" type="button"
+        title="${i18n.refreshChangesTooltip}" aria-label="${i18n.refreshChangesTooltip}"
+        data-tooltip="${i18n.refreshChangesTooltip}">
         <span class="codicon codicon-refresh"></span>
       </button>
     </div>
@@ -349,24 +366,24 @@ export class SplitPanel {
           <div id="active-meta"></div>
         </div>
         <div class="hunk-actions">
-          <button id="select-file" class="secondary" type="button" title="${vscode.l10n.t(
+          <button id="select-file" class="secondary" type="button"
+            title="${i18n.selectAllCurrentFile}" aria-label="${i18n.selectAllCurrentFile}"
+            data-tooltip="${i18n.selectAllCurrentFile}">${vscode.l10n.t(
             "All"
-          )}">${vscode.l10n.t(
-            "All"
           )}</button>
-          <button id="clear-file" class="secondary" type="button" title="${vscode.l10n.t(
-            "Clear"
-          )}">${vscode.l10n.t(
+          <button id="clear-file" class="secondary" type="button"
+            title="${i18n.clearSelectionCurrentFile}" aria-label="${i18n.clearSelectionCurrentFile}"
+            data-tooltip="${i18n.clearSelectionCurrentFile}">${vscode.l10n.t(
             "Clear"
           )}</button>
-          <button id="open-file" class="secondary" type="button" title="${vscode.l10n.t(
-            "Open Editable Diff"
-          )}">${vscode.l10n.t(
+          <button id="open-file" class="secondary" type="button"
+            title="${i18n.openCurrentFileEditableDiff}" aria-label="${i18n.openCurrentFileEditableDiff}"
+            data-tooltip="${i18n.openCurrentFileEditableDiff}">${vscode.l10n.t(
             "Open Editable Diff"
           )}</button>
-          <button id="save-working-file" class="secondary" type="button" title="${vscode.l10n.t(
-            "Save Working File"
-          )}" disabled>
+          <button id="save-working-file" class="secondary" type="button"
+            title="${i18n.saveWorkingFile}" aria-label="${i18n.saveWorkingFile}"
+            data-tooltip="${i18n.saveWorkingFile}" disabled>
             <span class="codicon codicon-save"></span>
             <span>${vscode.l10n.t("Save Working File")}</span>
           </button>
@@ -378,20 +395,21 @@ export class SplitPanel {
   <footer class="commitbar">
     <span id="selection-summary"></span>
     <span id="notice"></span>
-    <button id="discard" class="secondary" type="button" title="${vscode.l10n.t(
-      "Discard Selected"
-    )}" disabled>
+    <button id="discard" class="secondary" type="button"
+      title="${i18n.discardSelectedChanges}" aria-label="${i18n.discardSelectedChanges}"
+      data-tooltip="${i18n.discardSelectedChanges}" disabled>
       <span class="codicon codicon-discard"></span>
       <span>${vscode.l10n.t("Discard Selected")}</span>
     </button>
-    <button id="commit" type="button" title="${vscode.l10n.t(
-      "Stage Selected"
-    )}" disabled>
+    <button id="commit" type="button"
+      title="${i18n.stageSelectedChanges}" aria-label="${i18n.stageSelectedChanges}"
+      data-tooltip="${i18n.stageSelectedChanges}" disabled>
       <span class="codicon codicon-add"></span>
       <span>${vscode.l10n.t("Stage Selected")}</span>
     </button>
   </footer>
   <script nonce="${nonce}">window.__gscSplitI18n=${JSON.stringify(i18n)};</script>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

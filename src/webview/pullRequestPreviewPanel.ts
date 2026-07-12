@@ -16,6 +16,7 @@ import {
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
 import { nonceValue } from "./nonce";
+import { instantTooltipResources } from "./instantTooltipResources";
 import { pullRequestPreviewScript } from "./pullRequestPreviewScript";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
 
@@ -58,7 +59,11 @@ export class PullRequestPreviewPanel {
       "gitSimpleCompare.prPreview",
       vscode.l10n.t("Staged PR Preview"),
       vscode.ViewColumn.Active,
-      { enableScripts: true, retainContextWhenHidden: true }
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
+      }
     );
     new PullRequestPreviewPanel(
       panel,
@@ -327,11 +332,17 @@ export class PullRequestPreviewPanel {
   /** preview 웹뷰 HTML 을 만든다. */
   private html(): string {
     const nonce = nonceValue();
+    const tooltipResources = instantTooltipResources(
+      this.panel.webview,
+      this.extensionUri
+    );
     const generatePrMessageTitle = vscode.l10n.t(
       "Generate AI pull request message"
     );
     const configureAiCliTitle = vscode.l10n.t("Configure AI CLI");
-    const copyPrMessageTitle = vscode.l10n.t("Copy pull request message");
+    const noPrMessageTitle = vscode.l10n.t(
+      "No pull request message to copy"
+    );
     const codiconUri = this.panel.webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
@@ -345,6 +356,7 @@ export class PullRequestPreviewPanel {
       <meta http-equiv="Content-Security-Policy" content="${csp}" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link href="${codiconUri}" rel="stylesheet" />
+      <link href="${tooltipResources.styleUri}" rel="stylesheet" />
       <style nonce="${nonce}">${pullRequestPreviewStyles()}</style>
       <title>Staged PR Preview</title></head><body>
       <header class="topbar">
@@ -365,8 +377,8 @@ export class PullRequestPreviewPanel {
             aria-label="${configureAiCliTitle}" data-tooltip="${configureAiCliTitle}">
             <span class="codicon codicon-settings-gear" aria-hidden="true"></span>
           </button>
-          <button id="copy-pr-message" class="icon-button" type="button" title="${copyPrMessageTitle}"
-            aria-label="${copyPrMessageTitle}" data-tooltip="${copyPrMessageTitle}">
+          <button id="copy-pr-message" class="icon-button" type="button" title="${noPrMessageTitle}"
+            aria-label="${noPrMessageTitle}" data-tooltip="${noPrMessageTitle}" disabled>
             <span class="codicon codicon-copy" aria-hidden="true"></span>
           </button>
           <button id="open-pr" class="icon-button" type="button" title="Open related pull request"
@@ -376,6 +388,7 @@ export class PullRequestPreviewPanel {
         </div>
       </header>
       <main id="content"><p class="placeholder">Loading...</p></main>
+      <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
       <script nonce="${nonce}">${pullRequestPreviewScript()}</script>
     </body></html>`;
   }

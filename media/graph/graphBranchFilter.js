@@ -152,6 +152,7 @@
     buttonEl.dataset.activeCount = snapshot.mode === "all" ? "" : String(checkedCount);
     buttonEl.title = buttonTitle(checkedCount);
     buttonEl.dataset.tooltip = buttonEl.title;
+    buttonEl.setAttribute("aria-label", buttonEl.title);
     menuEl.innerHTML = menuHtml(checkedCount);
     if (focusBranchSearch) {
       requestAnimationFrame(focusSearchInput);

@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { buildCommitMenu, buildScmMenu } from "../commands/scmActions";
 import { changesWebviewI18n } from "./changesI18n";
+import { instantTooltipResources } from "./instantTooltipResources";
 import {
   makeNonce,
   resourceVersion,
@@ -71,6 +72,7 @@ export function buildChangesHtml(
       version
     )
   );
+  const tooltipResources = instantTooltipResources(webview, extensionUri);
   const nonce = makeNonce();
   const csp = [
     `default-src 'none'`,
@@ -93,6 +95,7 @@ export function buildChangesHtml(
   <link href="${compareStyleUri}" rel="stylesheet" />
   <link href="${commitBoxStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Changes</title>
 </head>
 <body>
@@ -102,6 +105,7 @@ export function buildChangesHtml(
   )};window.__gscMenu=${JSON.stringify(
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
   <script nonce="${nonce}" src="${compareScriptUri}"></script>

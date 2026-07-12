@@ -46,6 +46,8 @@ export function changesWebviewI18n(): Record<string, string> {
     openGutterSettings: vscode.l10n.t("Open Line Marker Settings"),
     showLineMarkers: vscode.l10n.t("Show Line Markers"),
     toggleSection: vscode.l10n.t("Toggle section"),
+    collapseSection: vscode.l10n.t("Collapse {0}"),
+    expandSection: vscode.l10n.t("Expand {0}"),
     noCompare: vscode.l10n.t("No changes between the selected branches."),
     noChanges: vscode.l10n.t("No working tree changes."),
     conflicts: vscode.l10n.t("Conflicts"),

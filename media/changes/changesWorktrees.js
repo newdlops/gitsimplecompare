@@ -54,7 +54,7 @@
   /** hover title 에서 경로/브랜치/상태를 확인할 수 있는 설명을 만든다. */
   function worktreeTitle(worktree) {
     const lines = [
-      `${T.pathLabel}: ${worktree.path}`,
+      `${T.openWorktree}: ${worktree.path}`,
       worktree.branch ? `${T.branchLabel}: ${worktree.branch}` : T.detached,
       worktree.head ? `${T.headLabel}: ${worktree.head}` : undefined,
       worktree.repoName ? `${T.repositoryLabel}: ${worktree.repoName}` : undefined,
@@ -91,11 +91,13 @@
     const labels = statusLabels(worktree);
     const branch = worktree.branch || T.detached;
     const head = shortHead(worktree.head);
+    const openLabel = `${T.openWorktree}: ${worktree.path}`;
     return (
       `<div class="row worktree-row${worktree.activeRepo ? " active-repo" : ""}" ` +
       `role="button" tabindex="0" data-repo-root="${dataAttr(worktree.repoRoot)}" ` +
       `data-path="${dataAttr(worktree.path)}" data-is-main="${worktree.isMain ? "true" : "false"}" ` +
-      `data-branch="${dataAttr(worktree.branch)}" title="${esc(worktreeTitle(worktree))}">` +
+      `data-branch="${dataAttr(worktree.branch)}" title="${esc(worktreeTitle(worktree))}" ` +
+      `aria-label="${esc(openLabel)}">` +
       `<span class="icon codicon ${worktree.isMain ? "codicon-repo" : "codicon-repo-forked"}"></span>` +
       `<span class="name">${esc(worktree.name || worktree.path)}</span>` +
       `<span class="worktree-branch"><span class="codicon codicon-git-branch"></span>${esc(branch)}</span>` +

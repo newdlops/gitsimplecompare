@@ -4,6 +4,7 @@
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
 import { logError, logInfo } from "../ui/outputLog";
+import { instantTooltipResources } from "./instantTooltipResources";
 
 type ConflictPanelMessage =
   | { type: "ready" }
@@ -163,6 +164,7 @@ export class ConflictPanel {
     const codiconStyleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
+    const tooltipResources = instantTooltipResources(webview, this.extensionUri);
     const nonce = makeNonce();
     const csp = [
       `default-src 'none'`,
@@ -178,10 +180,12 @@ export class ConflictPanel {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Resolve Conflict</title>
 </head>
 <body>
   <div id="app"></div>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

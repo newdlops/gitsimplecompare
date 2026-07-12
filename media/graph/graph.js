@@ -399,6 +399,7 @@
       toggleDetailBtn.title = visible ? `Hide ${detailLabel}` : `Show ${detailLabel}`;
       toggleDetailBtn.dataset.tooltip = toggleDetailBtn.title;
       toggleDetailBtn.setAttribute("aria-label", toggleDetailBtn.title);
+      toggleDetailBtn.setAttribute("aria-expanded", visible ? "true" : "false");
       const icon = toggleDetailBtn.querySelector(".codicon");
       if (icon) {
         icon.classList.toggle("codicon-layout-sidebar-right", visible);

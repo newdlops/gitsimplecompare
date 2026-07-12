@@ -47,10 +47,15 @@ export class ConflictsTreeProvider
     item.resourceUri = uri;
     item.iconPath = new vscode.ThemeIcon("git-merge");
     item.contextValue = "gitSimpleCompare.conflict";
-    item.tooltip = vscode.l10n.t(
+    const tooltip = vscode.l10n.t(
       "Conflicted: {0}\nOpen conflict editor to use Current, Incoming, Both, or Resolve Marked.",
       rel
     );
+    item.tooltip = tooltip;
+    item.accessibilityInformation = {
+      label: tooltip.replace(/\n/g, ". "),
+      role: "treeitem",
+    };
     item.command = {
       command: "gitSimpleCompare.openConflictEditor",
       title: vscode.l10n.t("Resolve Conflict"),

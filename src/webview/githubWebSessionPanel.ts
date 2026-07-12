@@ -10,6 +10,7 @@ import {
 } from "../ui/githubWebCookieSecret";
 import { logError, logInfo } from "../ui/outputLog";
 import { nonceValue } from "./nonce";
+import { instantTooltipResources } from "./instantTooltipResources";
 
 type GitHubWebSessionMessage =
   | { type: "ready" }
@@ -31,10 +32,12 @@ export class GitHubWebSessionPanel {
 
   /**
    * GitHub 웹 세션 설정 패널을 열거나 이미 열린 패널을 앞으로 가져온다.
+   * @param extensionUri 공용 웹뷰 미디어 리소스를 찾을 확장 루트 URI
    * @param secrets Cookie 헤더를 저장할 VS Code SecretStorage
    * @param onDidSessionChange 저장/삭제 뒤 PR comment 캐시를 새로고침하는 콜백
    */
   static createOrShow(
+    extensionUri: vscode.Uri,
     secrets: vscode.SecretStorage,
     onDidSessionChange: (reason: string) => void
   ): void {
@@ -48,10 +51,15 @@ export class GitHubWebSessionPanel {
       "gitSimpleCompare.githubWebSession",
       vscode.l10n.t("GitHub Web Session"),
       vscode.ViewColumn.Active,
-      { enableScripts: true, retainContextWhenHidden: true }
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
+      }
     );
     GitHubWebSessionPanel.current = new GitHubWebSessionPanel(
       panel,
+      extensionUri,
       secrets,
       onDidSessionChange
     );
@@ -60,11 +68,13 @@ export class GitHubWebSessionPanel {
   /**
    * 패널을 초기화하고 webview 메시지 수신기를 연결한다.
    * @param panel VS Code webview 패널
+   * @param extensionUri 공용 웹뷰 미디어 리소스를 찾을 확장 루트 URI
    * @param secrets Cookie 헤더를 저장할 VS Code SecretStorage
    * @param onDidSessionChange 저장/삭제 뒤 호출할 새로고침 콜백
    */
   private constructor(
     private readonly panel: vscode.WebviewPanel,
+    private readonly extensionUri: vscode.Uri,
     private readonly secrets: vscode.SecretStorage,
     private readonly onDidSessionChange: (reason: string) => void
   ) {
@@ -212,10 +222,12 @@ export class GitHubWebSessionPanel {
   /** GitHub 웹 세션 설정 UI 의 HTML 을 만든다. */
   private html(): string {
     const nonce = nonceValue();
+    const webview = this.panel.webview;
+    const tooltipResources = instantTooltipResources(webview, this.extensionUri);
     const csp = [
       "default-src 'none'",
-      `style-src 'nonce-${nonce}'`,
-      `script-src 'nonce-${nonce}'`,
+      `style-src ${webview.cspSource} 'nonce-${nonce}'`,
+      `script-src ${webview.cspSource} 'nonce-${nonce}'`,
     ].join("; ");
     const openGitHub = vscode.l10n.t("Open GitHub");
     const useClipboard = vscode.l10n.t("Use Clipboard");
@@ -228,6 +240,7 @@ export class GitHubWebSessionPanel {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(vscode.l10n.t("GitHub Web Session"))}</title>
+  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <style nonce="${nonce}">${styles()}</style>
 </head>
 <body>
@@ -260,6 +273,7 @@ export class GitHubWebSessionPanel {
       <p id="status" class="status" role="status"></p>
     </section>
   </main>
+  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}">${script()}</script>
 </body>
 </html>`;

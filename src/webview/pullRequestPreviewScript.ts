@@ -101,6 +101,8 @@ export function pullRequestPreviewScript(): string {
         ? 'Generating AI pull request message...'
         : needsTarget
           ? 'Select a target branch before generating a PR message'
+          : !preview.hasStagedChanges
+            ? 'Stage changes before generating an AI pull request message'
           : 'Generate AI pull request message';
       if (generatePrMessage) {
         generatePrMessage.disabled = prMessageGenerationActive || needsTarget || !preview.hasStagedChanges;
@@ -109,7 +111,16 @@ export function pullRequestPreviewScript(): string {
         generatePrMessage.dataset.tooltip = generateTitle;
         generatePrMessage.classList.toggle('busy', prMessageGenerationActive);
       }
-      if (copyPrMessage) copyPrMessage.disabled = !(preview.title || preview.body);
+      if (copyPrMessage) {
+        const canCopy = !!(preview.title || preview.body);
+        const copyTitle = canCopy
+          ? 'Copy pull request message'
+          : 'No pull request message to copy';
+        copyPrMessage.disabled = !canCopy;
+        copyPrMessage.title = copyTitle;
+        copyPrMessage.setAttribute('aria-label', copyTitle);
+        copyPrMessage.dataset.tooltip = copyTitle;
+      }
     }
     function setPrMessageGenerationActive(active) {
       prMessageGenerationActive = !!active;

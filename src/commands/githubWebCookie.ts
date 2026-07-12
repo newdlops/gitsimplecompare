@@ -12,6 +12,7 @@ import { GitHubWebSessionPanel } from "../webview/githubWebSessionPanel";
  */
 export function setGitHubWebCookie(deps: CommandDeps): void {
   GitHubWebSessionPanel.createOrShow(
+    deps.extensionUri,
     deps.secrets,
     (reason) => deps.refreshPullRequestComments(reason)
   );

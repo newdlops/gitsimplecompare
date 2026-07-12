@@ -88,7 +88,7 @@
       return;
     }
     const title = open ? "Hide reflog recovery" : "Show reflog recovery";
-    button.setAttribute("aria-pressed", open ? "true" : "false");
+    button.setAttribute("aria-expanded", open ? "true" : "false");
     button.setAttribute("aria-label", title);
     button.title = title;
     button.dataset.tooltip = title;
