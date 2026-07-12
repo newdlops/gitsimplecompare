@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71030",
+  "version": "0.1.71031",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -105,6 +105,13 @@
         "title": "%cmd.clearExplorerComparison%",
         "category": "Git Simple Compare",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "gitSimpleCompare.swapBranchComparison",
+        "title": "%cmd.swapBranchComparison%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-swap)",
+        "enablement": "gitSimpleCompare.explorerComparison.enabled && gitSimpleCompare.explorerComparison.canSwap"
       },
       {
         "command": "gitSimpleCompare.openComparisonDiff",
@@ -492,6 +499,16 @@
           "command": "gitSimpleCompare.hideExplorerComparison",
           "when": "(view == workbench.explorer.fileView || view == tabManagerExplorer) && gitSimpleCompare.explorerComparison.enabled && gitSimpleCompare.explorerComparison.hasComparison",
           "group": "navigation@90"
+        },
+        {
+          "command": "gitSimpleCompare.swapBranchComparison",
+          "when": "(view == workbench.explorer.fileView || view == tabManagerExplorer) && gitSimpleCompare.explorerComparison.enabled && gitSimpleCompare.explorerComparison.canSwap",
+          "group": "1_comparison@1"
+        },
+        {
+          "command": "gitSimpleCompare.clearExplorerComparison",
+          "when": "(view == workbench.explorer.fileView || view == tabManagerExplorer) && gitSimpleCompare.explorerComparison.hasComparison",
+          "group": "1_comparison@2"
         },
         {
           "command": "gitSimpleCompare.showGraph",

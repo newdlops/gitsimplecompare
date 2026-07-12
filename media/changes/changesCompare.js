@@ -26,6 +26,7 @@
     openGutterSettings: "Open Line Marker Settings",
     showLineMarkers: "Show Line Markers",
     openFileWithMarkers: "Open File with Comparison Markers",
+    openDeletedFileWithMarkers: "Open Deleted File with Red Line Markers",
     openFileMarkersHidden: "Open File (line markers hidden)",
     comparisonUnavailable: "Comparison file unavailable locally",
     openComparisonDiff: "Open Comparison Diff",
@@ -63,8 +64,10 @@
     if (gutter && gutter.diffAvailable === false) {
       return strings.comparisonUnavailable;
     }
+    if (change.status === "D") {
+      return strings.openDeletedFileWithMarkers;
+    }
     if (
-      change.status === "D" ||
       markerState === "targetNotCurrent" ||
       markerState === "comparisonHidden"
     ) {

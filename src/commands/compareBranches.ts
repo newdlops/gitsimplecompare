@@ -213,6 +213,54 @@ export async function compareBranchesAdvanced(
 }
 
 /**
+ * Explorer 옵션 메뉴에서 현재 브랜치 비교의 FROM과 TO 방향을 서로 바꿔 다시 계산한다.
+ * - three-dot snapshot의 baseRef는 merge-base일 수 있으므로 사용자가 고른 원래 FROM인
+ *   sourceBaseRef를 새 TO로 사용해야 방향과 파일 상태가 정확히 뒤집힌다.
+ * - 서비스의 compareRefs와 공통 적용 경로를 재사용해 Explorer, 거터, Tab Manager,
+ *   Changes 웹뷰가 한 스냅샷으로 함께 갱신되게 한다.
+ * @param deps 비교 controller, 서비스 registry, Changes 웹뷰를 포함한 명령 의존성
+ */
+export async function swapBranchComparison(deps: CommandDeps): Promise<void> {
+  const current = deps.comparison.getComparison(false);
+  if (!current || current.kind !== "branches") {
+    logInfo("branch comparison swap skipped", {
+      reason: current ? "unsupported-kind" : "no-active-comparison",
+      kind: current?.kind,
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t("Only an active branch comparison can swap FROM and TO.")
+    );
+    return;
+  }
+
+  const nextBase = current.targetRef;
+  const nextTarget = current.sourceBaseRef || current.baseRef;
+  const service = createComparisonService(deps, current.repoRoot);
+  logInfo("branch comparison swap started", {
+    repoRoot: current.repoRoot,
+    from: current.sourceBaseRef || current.baseRef,
+    to: current.targetRef,
+    nextFrom: nextBase,
+    nextTo: nextTarget,
+    diffBase: current.diffBase,
+  });
+  await runAndApplyComparison(
+    deps,
+    {
+      source: "swapBranchComparison",
+      kind: "branches",
+      progressTitle: vscode.l10n.t("Swapping comparison FROM and TO..."),
+      focus: "explorer",
+    },
+    () =>
+      service.compareRefs(nextBase, nextTarget, current.diffBase, {
+        base: current.targetLabel,
+        target: current.baseLabel,
+      })
+  );
+}
+
+/**
  * 트리 상단의 From/To 헤더를 클릭(또는 인라인 편집)했을 때 한쪽 브랜치만 바꿔 재비교한다.
  * - 활성 비교가 없으면 일반 "브랜치끼리 비교"로 넘긴다.
  * @param deps 공유 의존성

@@ -14,6 +14,7 @@ import {
   openRefVsRefDiff,
   openRefVsWorkingDiff,
 } from "../ui/diffPresenter";
+import { makeDeletedComparisonPreviewUri } from "../utils/uri";
 import {
   logInfo,
   logWarn,
@@ -120,8 +121,8 @@ export async function openComparisonDiff(
 
 /**
  * Compare Changes 파일을 일반 작업파일 편집기로 열어 native Quick Diff gutter를 표시한다.
- * - target이 현재 HEAD가 아니거나 삭제/로컬 ref 부재 상태면 줄 좌표가 정확하지 않으므로
- *   기존 ref diff 열기로 안전하게 되돌린다.
+ * - 삭제 파일은 기준 ref의 읽기 전용 일반 문서로 열어 실제 삭제 라인마다 빨간 거터를 표시한다.
+ * - target이 현재 HEAD가 아니거나 로컬 ref가 없으면 기존 ref diff 열기로 안전하게 되돌린다.
  * @param deps 클릭 시점의 활성 비교를 찾는 controller 의존성
  * @param args provider가 전달한 저장소/경로 키 또는 비교 트리 파일 노드
  * @returns 일반 파일 또는 fallback diff를 열었으면 true, 현재 비교를 찾지 못했으면 false
@@ -138,10 +139,49 @@ export async function openComparisonFile(
     return false;
   }
   const { comparison, change } = resolved;
+  if (change.status === "D") {
+    if (!comparison.diffAvailable) {
+      logInfo("deleted comparison preview fell back to diff", {
+        repoRoot: comparison.repoRoot,
+        path: change.path,
+        reason: "refs-unavailable",
+      });
+      await openComparisonDiff(deps, args);
+      return true;
+    }
+    const originalRef = comparison.resolvedBaseHash || comparison.baseRef;
+    const originalPath = change.oldPath || change.path;
+    const previewUri = makeDeletedComparisonPreviewUri(
+      originalRef,
+      originalPath,
+      comparison.repoRoot
+    );
+    try {
+      const document = await vscode.workspace.openTextDocument(previewUri);
+      await vscode.window.showTextDocument(document, {
+        preview: false,
+        preserveFocus: false,
+      });
+      logInfo("deleted comparison file opened with red gutter", {
+        repoRoot: comparison.repoRoot,
+        path: change.path,
+        originalPath,
+        baseRef: originalRef,
+        lines: document.lineCount,
+      });
+    } catch (error) {
+      logWarn("deleted comparison preview failed; falling back to diff", {
+        repoRoot: comparison.repoRoot,
+        path: change.path,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await openComparisonDiff(deps, args);
+    }
+    return true;
+  }
   const editable =
     comparison.targetMatchesHead &&
-    comparison.diffAvailable &&
-    change.status !== "D";
+    comparison.diffAvailable;
   if (!editable) {
     logInfo("comparison working file fell back to diff", {
       repoRoot: comparison.repoRoot,

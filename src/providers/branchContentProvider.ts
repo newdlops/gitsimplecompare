@@ -8,7 +8,7 @@ import { parseRefUri } from "../utils/uri";
 
 const changeEmitter = new vscode.EventEmitter<vscode.Uri>();
 const contentCache = new Map<string, Promise<string>>();
-const knownUris = new Map<string, vscode.Uri>();
+const knownUris = new Map<string, Map<string, vscode.Uri>>();
 const INDEX_DEPENDENT_REFS = [":0", ":unstaged"];
 
 /** provider 캐시에 사용할 ref/path 키를 만든다. nonce 는 재사용 방해 요소라 제외한다. */
@@ -22,15 +22,51 @@ function cachePath(relPath: string): string {
 }
 
 /**
+ * 같은 ref/path 내용을 공유하면서 fragment 등 identity가 다른 가상 문서를 모두 기억한다.
+ * - 일반 diff 문서와 삭제 미리보기가 동시에 열려도 캐시는 하나만 쓰고 갱신 이벤트는 각각 보낸다.
+ * @param key repoRoot/ref/path로 만든 내용 캐시 키
+ * @param uri VS Code가 실제로 연 가상 문서 URI
+ */
+function rememberKnownUri(key: string, uri: vscode.Uri): void {
+  let identities = knownUris.get(key);
+  if (!identities) {
+    identities = new Map<string, vscode.Uri>();
+    knownUris.set(key, identities);
+  }
+  identities.set(uri.toString(), uri);
+}
+
+/**
+ * 하나의 내용 캐시 키를 공유하는 모든 열린 URI identity에 변경 이벤트를 보낸다.
+ * @param key repoRoot/ref/path로 만든 내용 캐시 키
+ * @returns 이벤트를 받은 URI가 하나 이상이면 true
+ */
+function fireKnownUris(key: string): boolean {
+  const identities = knownUris.get(key);
+  if (!identities?.size) {
+    return false;
+  }
+  for (const uri of identities.values()) {
+    changeEmitter.fire(uri);
+  }
+  return true;
+}
+
+/**
  * 가상 ref 문서의 내용을 다시 읽도록 VS Code 에 알린다.
  * - `:0`, `:unstaged` 처럼 index/working tree 에 따라 변하는 문서는 stable URI 를 유지하되
  *   이 이벤트로 열린 diff 탭의 내용을 갱신한다.
- * @param uri 갱신할 가상 문서 URI
+ * - 같은 내용을 공유하는 일반 diff/삭제 미리보기 URI가 있으면 모두 함께 갱신한다.
+ * @param uri 갱신할 ref/repoRoot/path를 식별하는 가상 문서 URI
  */
 export function refreshBranchContent(uri: vscode.Uri): void {
   const { ref, repoRoot, path } = parseRefUri(uri);
   if (ref && repoRoot) {
-    contentCache.delete(cacheKey(ref, repoRoot, path));
+    const key = cacheKey(ref, repoRoot, path);
+    rememberKnownUri(key, uri);
+    contentCache.delete(key);
+    fireKnownUris(key);
+    return;
   }
   changeEmitter.fire(uri);
 }
@@ -52,11 +88,9 @@ export function refreshIndexDependentBranchContent(
   for (const ref of INDEX_DEPENDENT_REFS) {
     const key = cacheKey(ref, repoRoot, path);
     contentCache.delete(key);
-    const uri = knownUris.get(key);
-    if (!uri) {
+    if (!fireKnownUris(key)) {
       continue;
     }
-    changeEmitter.fire(uri);
     refreshed.push(ref);
   }
   if (refreshed.length) {
@@ -71,8 +105,10 @@ export function refreshIndexDependentBranchContent(
 /** git ref/index 변경처럼 모든 가상 문서 내용이 바뀔 수 있는 이벤트에서 캐시를 비운다. */
 export function clearBranchContentCache(): void {
   contentCache.clear();
-  for (const uri of knownUris.values()) {
-    changeEmitter.fire(uri);
+  for (const identities of knownUris.values()) {
+    for (const uri of identities.values()) {
+      changeEmitter.fire(uri);
+    }
   }
 }
 
@@ -104,7 +140,7 @@ export class BranchContentProvider
     // path 는 항상 "/" 로 시작하므로 앞 슬래시를 떼어 저장소 상대 경로로 만든다.
     const relative = path.replace(/^\//, "");
     const key = cacheKey(ref, repoRoot, path);
-    knownUris.set(key, uri);
+    rememberKnownUri(key, uri);
     const cached = contentCache.get(key);
     const promise =
       cached ??

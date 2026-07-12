@@ -22,7 +22,10 @@ import {
   type ComparisonSnapshot,
 } from "./git/comparisonService";
 import { registerComparisonFileDecorations } from "./providers/comparisonFileDecorations";
-import { ComparisonScmProvider } from "./providers/comparisonScmProvider";
+import {
+  ComparisonScmProvider,
+  DeletedComparisonGutterController,
+} from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
@@ -71,8 +74,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
 
   // 3) 선택한 브랜치/원격/PR 비교를 Explorer, 탭, SCM Quick Diff 에 함께 투영
   const comparisonScm = new ComparisonScmProvider(comparison);
+  const deletedComparisonGutter = new DeletedComparisonGutterController();
   context.subscriptions.push(
     comparisonScm,
+    deletedComparisonGutter,
     registerComparisonFileDecorations(comparison)
   );
   /** 기본 Explorer와 Tab Manager의 토글 버튼 조건을 controller 상태에 동기화한다. */
@@ -86,6 +91,11 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       "setContext",
       "gitSimpleCompare.explorerComparison.hasComparison",
       comparison.hasComparison
+    );
+    void vscode.commands.executeCommand(
+      "setContext",
+      "gitSimpleCompare.explorerComparison.canSwap",
+      comparison.peekComparison(true)?.kind === "branches"
     );
   };
   context.subscriptions.push(

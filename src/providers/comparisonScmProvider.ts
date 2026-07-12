@@ -6,7 +6,10 @@ import * as vscode from "vscode";
 import type { ComparisonSnapshot } from "../git/comparisonService";
 import type { FileChange, FileChangeStatus } from "../git/gitTypes";
 import { logInfo } from "../ui/outputLog";
-import { makeRefUri } from "../utils/uri";
+import {
+  isDeletedComparisonPreviewUri,
+  makeRefUri,
+} from "../utils/uri";
 import { ComparisonController } from "./comparisonController";
 import {
   comparisonChangeTooltip,
@@ -50,6 +53,141 @@ export function editorGutterSettingAllowsMarkers(): boolean {
     .getConfiguration("scm")
     .get<string>("diffDecorations", "all");
   return mode === "all" || mode === "gutter";
+}
+
+/**
+ * 삭제된 파일의 기준 버전 미리보기에 빨간 세로 막대 거터를 표시한다.
+ * - 삭제 파일은 대상 작업트리 문서와 줄 좌표가 없어 native Quick Diff가 화살표 한 개만
+ *   그릴 수 있으므로, 삭제 전 가상 문서의 모든 실제 라인에 별도 decoration을 적용한다.
+ * - 일반 ref diff 문서는 전용 URI fragment가 없으므로 이 controller의 영향을 받지 않는다.
+ */
+export class DeletedComparisonGutterController implements vscode.Disposable {
+  private readonly decorationType: vscode.TextEditorDecorationType;
+  private readonly subscriptions: vscode.Disposable[];
+  private lastRenderSignature = "";
+  private disposed = false;
+
+  /**
+   * 삭제 거터 장식과 visible editor/document 이벤트 구독을 만들고 현재 편집기를 즉시 동기화한다.
+   */
+  constructor() {
+    this.decorationType = vscode.window.createTextEditorDecorationType({
+      isWholeLine: true,
+      gutterIconPath: makeDeletedGutterBarIcon("#f14c4c"),
+      gutterIconSize: "contain",
+      overviewRulerColor: new vscode.ThemeColor(
+        "gitDecoration.deletedResourceForeground"
+      ),
+      overviewRulerLane: vscode.OverviewRulerLane.Left,
+      light: {
+        gutterIconPath: makeDeletedGutterBarIcon("#c42b1c"),
+      },
+      dark: {
+        gutterIconPath: makeDeletedGutterBarIcon("#f14c4c"),
+      },
+    });
+    this.subscriptions = [
+      vscode.window.onDidChangeVisibleTextEditors(() => {
+        this.synchronizeVisibleEditors("visibleEditorsChanged");
+      }),
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        if (isDeletedComparisonPreviewUri(event.document.uri)) {
+          this.synchronizeVisibleEditors("previewDocumentChanged");
+        }
+      }),
+    ];
+    this.synchronizeVisibleEditors("activation");
+    logInfo("deleted comparison gutter controller activated");
+  }
+
+  /**
+   * 이벤트 구독과 decoration type을 해제해 열린 편집기에 남은 빨간 막대를 제거한다.
+   */
+  dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    for (const subscription of this.subscriptions) {
+      subscription.dispose();
+    }
+    this.decorationType.dispose();
+    this.lastRenderSignature = "";
+    logInfo("deleted comparison gutter controller disposed");
+  }
+
+  /**
+   * 현재 보이는 모든 편집기를 검사해 삭제 미리보기에는 라인별 빨간 막대를, 나머지에는 빈 장식을 적용한다.
+   * - signature가 바뀔 때만 로그를 남겨 탭 포커스 이동으로 OUTPUT 채널이 과도하게 쌓이지 않게 한다.
+   * @param reason visible editor 변경이나 가상 문서 갱신처럼 재계산을 일으킨 원인
+   */
+  private synchronizeVisibleEditors(reason: string): void {
+    if (this.disposed) {
+      return;
+    }
+    const rendered: string[] = [];
+    let decoratedLines = 0;
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (!isDeletedComparisonPreviewUri(editor.document.uri)) {
+        editor.setDecorations(this.decorationType, []);
+        continue;
+      }
+      const ranges = deletedPreviewLineRanges(editor.document);
+      editor.setDecorations(this.decorationType, ranges);
+      decoratedLines += ranges.length;
+      rendered.push(`${editor.document.uri.toString()}:${ranges.length}`);
+    }
+    rendered.sort();
+    const signature = rendered.join("|");
+    if (signature === this.lastRenderSignature) {
+      return;
+    }
+    this.lastRenderSignature = signature;
+    logInfo("deleted comparison gutter refreshed", {
+      reason,
+      visiblePreviews: rendered.length,
+      decoratedLines,
+    });
+  }
+}
+
+/**
+ * 삭제 전 가상 문서에서 실제 파일 내용에 대응하는 라인 범위를 만든다.
+ * - 마지막 개행 때문에 VS Code가 추가하는 빈 sentinel line은 삭제 내용이 아니므로 제외한다.
+ * - 빈 파일은 표시할 삭제 라인이 없으므로 빈 배열을 반환한다.
+ * @param document 삭제 전 파일 내용을 가진 읽기 전용 텍스트 문서
+ * @returns 각 삭제 라인 시작점에 거터 아이콘을 그릴 zero-width range 목록
+ */
+function deletedPreviewLineRanges(document: vscode.TextDocument): vscode.Range[] {
+  if (document.lineCount === 1 && document.lineAt(0).text.length === 0) {
+    return [];
+  }
+  let lineCount = document.lineCount;
+  if (lineCount > 1 && document.lineAt(lineCount - 1).text.length === 0) {
+    lineCount--;
+  }
+  const ranges: vscode.Range[] = [];
+  for (let line = 0; line < lineCount; line++) {
+    const position = new vscode.Position(line, 0);
+    ranges.push(new vscode.Range(position, position));
+  }
+  return ranges;
+}
+
+/**
+ * 편집기 glyph gutter에 표시할 짧은 빨간 세로 막대를 data URI SVG로 만든다.
+ * - 외부 파일을 읽지 않아 확장 패키징 방식과 무관하게 동일한 아이콘을 사용할 수 있다.
+ * @param color 밝은/어두운 테마에 맞춘 CSS 색상
+ * @returns TextEditorDecorationType.gutterIconPath에 전달할 SVG URI
+ */
+function makeDeletedGutterBarIcon(color: string): vscode.Uri {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="6" height="16" viewBox="0 0 6 16">' +
+    `<rect x="1" y="0" width="4" height="16" fill="${color}"/>` +
+    "</svg>";
+  return vscode.Uri.parse(
+    `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`
+  );
 }
 
 /**

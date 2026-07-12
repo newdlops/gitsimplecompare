@@ -83,6 +83,9 @@ export function changesWebviewI18n(): Record<string, string> {
     openFile: vscode.l10n.t("Open File"),
     openChanges: vscode.l10n.t("Open Changes"),
     openFileWithMarkers: vscode.l10n.t("Open File with Comparison Markers"),
+    openDeletedFileWithMarkers: vscode.l10n.t(
+      "Open Deleted File with Red Line Markers"
+    ),
     openFileMarkersHidden: vscode.l10n.t("Open File (line markers hidden)"),
     comparisonUnavailable: vscode.l10n.t(
       "Comparison file unavailable locally"

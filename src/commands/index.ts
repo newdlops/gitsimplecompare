@@ -9,6 +9,7 @@ import {
   compareBranchesAdvanced,
   openChangeDiff,
   runComparison,
+  swapBranchComparison,
 } from "./compareBranches";
 import {
   compareActiveFileWithBranch,
@@ -202,6 +203,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.clearExplorerComparison",
       () => clearExplorerComparison(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.swapBranchComparison",
+      () => swapBranchComparison(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openComparisonDiff",
