@@ -21,6 +21,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 7. **Interactive rebase** — edit a rebase plan in a drag-and-drop webview (reorder + pick/reword/squash/fixup/drop). Launch it from the graph ("Rebase from here") or the command palette.
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
 9. **AI messages** — generate commit messages and staged PR titles/bodies by sending prompts to the local Claude Code or Codex CLI.
+10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
 
 ## Usage
 
@@ -57,6 +58,12 @@ This feature runs local CLIs non-interactively: `claude -p` for Claude Code and 
 If a browser callback login cannot reach localhost, use a non-callback login method in AI CLI Settings: for Claude Code choose `setup-token`, `console`, or `sso`; for Codex choose `device`, `api-key`, or `access-token`. Then run Login / Status again.
 
 The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button copies the generated/current PR title and body to the clipboard for use on GitHub.
+
+### Commit hooks and failed checks
+
+Click the shield beside the commit button to manage the repository's traditional file-based commit hooks. The panel honors `core.hooksPath`, linked worktrees, and Husky's `.husky/_` layout. Git 2.55+ configured hooks declared through `hook.*` are not listed or changed. Safe toggles change only a regular Unix hook's executable bit; tracked/visible working-tree hooks, Husky proxy hooks, symbolic links, Windows hooks, and existing `.disabled` files remain open-for-editing but are not renamed or toggled.
+
+When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, pre-commit, Husky, and file-check output is shown below the commit box. Click a reported file to open its line, fix and stage it, then choose **Retry commit**. **Show full output** opens the unabridged process output in the `Git Simple Compare` OUTPUT channel.
 
 ### The Changes view
 
@@ -102,6 +109,7 @@ npm install
 npm run compile     # bundle
 npm run watch       # incremental build
 npm run check-types # type check
+npm test            # hook parser and temporary-repository integration tests
 ```
 
 Press `F5` in VS Code to launch the Extension Development Host.

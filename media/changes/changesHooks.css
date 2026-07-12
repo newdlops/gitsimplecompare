@@ -1,0 +1,407 @@
+/* Changes 커밋 박스 안의 commit hook 관리 패널과 실패 진단 카드 스타일. */
+.commit-hooks-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+}
+
+.commit-hooks-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.commit-hooks-btn[aria-expanded="true"] {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.commit-hooks-count {
+  min-width: 10px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.commit-hooks-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.commit-hooks-manager,
+.commit-failure-card {
+  overflow: hidden;
+  border: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  background: var(--vscode-sideBar-background);
+}
+
+.hook-manager-header,
+.failure-header {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 5px 0 7px;
+  background: var(--vscode-sideBarSectionHeader-background);
+}
+
+.hook-manager-title,
+.failure-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hook-manager-actions {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: auto;
+}
+
+.hook-icon-button,
+#failure-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--vscode-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+.hook-icon-button:hover:not(:disabled),
+#failure-dismiss:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.hook-icon-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.hook-framework,
+.hook-badge,
+.failure-badge {
+  overflow: hidden;
+  max-width: 110px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hook-framework {
+  margin-left: 3px;
+}
+
+.hook-directory {
+  overflow: hidden;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hook-config-origin {
+  display: block;
+  overflow: hidden;
+  padding: 0 8px 5px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hook-scope-note {
+  padding: 0 8px 5px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.hook-shared {
+  display: flex;
+  gap: 5px;
+  padding: 5px 8px;
+  color: var(--vscode-editorWarning-foreground);
+  background: var(--vscode-inputValidation-warningBackground);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.hook-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.hook-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 29px;
+  padding: 2px 5px 2px 8px;
+  border-top: 1px solid transparent;
+}
+
+.hook-row + .hook-row {
+  border-top-color: var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border));
+}
+
+.hook-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.hook-status {
+  flex: 0 0 auto;
+  color: var(--vscode-descriptionForeground);
+}
+
+.hook-row.enabled .hook-status {
+  color: var(--vscode-testing-iconPassed, var(--vscode-gitDecoration-addedResourceForeground));
+}
+
+.hook-row .codicon-warning {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.hook-open {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 1px;
+  border: 0;
+  color: var(--vscode-foreground);
+  background: transparent;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hook-open:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.hook-badge.tracked {
+  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.hook-row-actions {
+  flex: 0 0 auto;
+}
+
+.hook-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 68px;
+  height: 23px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.hook-toggle:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.hook-toggle:disabled {
+  opacity: 0.52;
+  cursor: default;
+}
+
+.hook-empty {
+  padding: 9px 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
+
+.hook-empty.warning {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.commit-failure-card {
+  border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-editorError-foreground));
+  background: var(--vscode-inputValidation-errorBackground, var(--vscode-sideBar-background));
+}
+
+.failure-header {
+  gap: 5px;
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-foreground));
+}
+
+.failure-header > .codicon-error {
+  color: var(--vscode-editorError-foreground);
+}
+
+.failure-header #failure-dismiss {
+  margin-left: auto;
+}
+
+.failure-summary {
+  padding: 7px 8px;
+  color: var(--vscode-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.failure-list {
+  overflow-y: auto;
+  max-height: 220px;
+  border-top: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-panel-border));
+  border-bottom: 1px solid var(--vscode-inputValidation-errorBorder, var(--vscode-panel-border));
+}
+
+.failure-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  color: var(--vscode-foreground);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+button.failure-item {
+  cursor: pointer;
+}
+
+button.failure-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.failure-item + .failure-item {
+  border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, transparent);
+}
+
+.failure-item > .codicon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--vscode-editorError-foreground);
+}
+
+.failure-item.severity-warning > .codicon {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.failure-item.severity-info > .codicon {
+  color: var(--vscode-editorInfo-foreground);
+}
+
+.failure-item-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.failure-location {
+  overflow: hidden;
+  color: var(--vscode-textLink-foreground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failure-message {
+  color: var(--vscode-foreground);
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.failure-empty,
+.failure-truncated {
+  padding: 5px 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.failure-actions {
+  display: flex;
+  gap: 5px;
+  padding: 6px 8px 8px;
+}
+
+.failure-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 25px;
+  padding: 3px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.failure-actions button:first-child {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.failure-actions button:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.failure-actions button:first-child:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.failure-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.commit-hooks-btn:focus-visible,
+.hook-icon-button:focus-visible,
+.hook-open:focus-visible,
+.hook-toggle:focus-visible,
+button.failure-item:focus-visible,
+.failure-actions button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}

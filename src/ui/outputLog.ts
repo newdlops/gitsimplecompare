@@ -168,6 +168,32 @@ export function showOutputLog(preserveFocus = true): void {
 }
 
 /**
+ * hook/외부 프로세스의 여러 줄 원문을 자르지 않고 OUTPUT 채널에 별도 블록으로 남긴다.
+ * - 일반 logError 는 재현 메타데이터 한 줄을 위해 stderr/stdout 을 줄이지만,
+ *   이 함수는 사용자가 "전체 출력"에서 실제 lint 결과를 모두 확인하도록 원문을 보존한다.
+ * @param label 블록 시작/끝에 표시할 작업 이름
+ * @param output stdout/stderr 에서 수집한 전체 텍스트
+ * @param detail 저장소/명령/단계처럼 블록을 구분할 메타데이터
+ */
+export function logOutputBlock(
+  label: string,
+  output: string,
+  detail?: Record<string, unknown>
+): void {
+  if (!output.trim()) {
+    return;
+  }
+  const outputChannel = getChannel();
+  outputChannel.appendLine(
+    `[${timestamp()}] [ERROR] ${label} begin${formatDetail(detail)}`
+  );
+  outputChannel.append(output.endsWith("\n") ? output : `${output}\n`);
+  outputChannel.appendLine(
+    `[${timestamp()}] [ERROR] ${label} end`
+  );
+}
+
+/**
  * git 작업 실패를 OUTPUT 채널에 자세히(stderr/stdout 포함) 기록하고, 사용자에게는
  * 요약 알림과 함께 "출력 보기" 액션을 보여준다.
  * - 알림 토스트는 길이가 잘리므로, pre-commit 훅/원격 거절 등 긴 출력의 전체는 OUTPUT 채널에서 확인하게 한다.

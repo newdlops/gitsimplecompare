@@ -17,11 +17,11 @@ import {
 import { CommandDeps, resolveCompareService } from "./shared";
 import { syncViewContext } from "./viewState";
 import {
-  commitChanges,
   discardChanges,
   stageChanges,
   unstageChanges,
 } from "./workingChanges";
+import { commitChanges } from "./commit";
 
 /** 미트볼 메뉴 노드(리프 액션 / 하위 메뉴 / 구분선). */
 export interface MenuNode {

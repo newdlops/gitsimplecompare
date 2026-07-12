@@ -26,4 +26,8 @@ export interface ChangesWebviewMessage {
   headRef?: string;
   shortHash?: string;
   title?: string;
+  hookName?: string;
+  enabled?: boolean;
+  line?: number;
+  column?: number;
 }

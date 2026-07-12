@@ -2,6 +2,8 @@
 // - provider 상태 보관과 payload 변환을 분리해 렌더 최적화/중복 스킵을 쉽게 한다.
 import type { BranchComparison } from "../git/gitTypes";
 import type { StatusGroups } from "../git/gitService";
+import type { CommitFailureReport } from "../git/commitHookFailure";
+import type { CommitHooksSnapshot } from "../git/commitHookService";
 import {
   SortKey,
   buildNodes,
@@ -33,6 +35,8 @@ export interface ChangesRenderState {
   commitMessage: string;
   commitMessageRevision: number;
   aiCommitGenerating: boolean;
+  commitHooks?: CommitHooksSnapshot;
+  commitFailure?: CommitFailureReport;
   viewModes: ViewModes;
   sortKey: SortKey;
   visibleSections: VisibleSections;
@@ -99,6 +103,8 @@ export function buildChangesRenderPayload(
       hasStagedChanges: state.staged.length > 0,
       // AI 커밋 메시지 생성 진행 여부. 매 렌더마다 버튼 상태를 확정 동기화해 stuck-disabled 를 방지한다.
       aiGenerating: state.aiCommitGenerating,
+      hooks: state.commitHooks,
+      failure: state.commitFailure,
     },
     stashes: state.stashes.map((s) => ({
       ref: s.ref,

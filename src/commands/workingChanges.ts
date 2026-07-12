@@ -10,7 +10,6 @@ import {
 } from "../ui/diffPresenter";
 import { CommandDeps } from "./shared";
 import { GitService, IgnoreTarget } from "../git/gitService";
-import { GitGraphPanel } from "../webview/graphPanel";
 import { openConflictEditor } from "./conflicts";
 import { logError, logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
 
@@ -475,76 +474,4 @@ function uniqueNonEmpty(paths: string[]): string[] {
     out.push(path);
   }
   return out;
-}
-
-/**
- * 커밋한다. 스마트 커밋: 스테이징된 변경이 없으면 추적 변경 전체를 스테이징해 커밋한다.
- * @param deps 공유 의존성
- * @param op   커밋 종류:
- *   - commit       스마트 커밋(스테이징 없으면 전체 스테이징 후 커밋)
- *   - staged       스테이징된 것만 커밋
- *   - all          전체 스테이징 후 커밋
- *   - amend*       위와 동일하되 마지막 커밋을 수정(--amend)
- */
-export async function commitChanges(
-  deps: CommandDeps,
-  op:
-    | "commit"
-    | "staged"
-    | "all"
-    | "amend"
-    | "amendStaged"
-    | "amendAll" = "commit"
-): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc) {
-    return;
-  }
-  let committed = false;
-  const amend = op.startsWith("amend");
-  const message = deps.changesView.getCommitMessage().trim();
-  if (!message && !amend) {
-    vscode.window.showWarningMessage(
-      vscode.l10n.t("Please enter a commit message first.")
-    );
-    return;
-  }
-  try {
-    const { staged } = await svc.getStatusGroups();
-    if ((op === "staged" || op === "amendStaged") && staged.length === 0) {
-      vscode.window.showWarningMessage(
-        vscode.l10n.t("There are no staged changes to commit.")
-      );
-      return;
-    }
-    const stageAllFirst =
-      op === "all" ||
-      op === "amendAll" ||
-      ((op === "commit" || op === "amend") && staged.length === 0);
-    if (stageAllFirst) {
-      await svc.stageAll();
-    }
-    await svc.commit(message, { amend });
-    committed = true;
-    deps.changesView.setCommitMessage("");
-  } catch (e) {
-    // 전체 git/훅 출력(예: pre-commit lint 실패 상세)은 토스트에서 잘리므로 OUTPUT 채널에 남기고,
-    // 토스트에는 요약과 함께 "출력 보기" 액션을 제공해 사용자가 실제 실패 원인을 확인하게 한다.
-    // 전체 git/훅 출력(예: pre-commit lint 실패 상세)은 토스트에서 잘리므로 OUTPUT 채널에 남기고,
-    // 토스트에는 요약과 함께 "출력 보기" 액션을 제공해 사용자가 실제 실패 원인을 확인하게 한다.
-    showErrorWithOutput(
-      "commit failed",
-      e,
-      vscode.l10n.t("Commit failed: {0}", gitOpErrorSummary(e)),
-      { op }
-    );
-  }
-  if (committed) {
-    GitGraphPanel.refreshOpen(svc.repoRoot, "commit");
-  }
-  // 커밋 후 staged 목록이 실제로 비워진 것을 확인한 뒤 버튼 스피너가 꺼지도록 refresh 완료까지 기다린다.
-  // (reason "commit"/"commitAttempt" 는 VS Code Git 캐시 대신 CLI 로 강제 재조회 — refreshChangesView 참고)
-  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: committed ? "commit" : "commitAttempt",
-  });
 }

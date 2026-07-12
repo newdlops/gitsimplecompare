@@ -26,9 +26,11 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesCompare.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesHooks.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesHooks.css"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.css"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
     vscode.Uri.joinPath(mediaRoot, "changes.css"),
@@ -51,6 +53,9 @@ export function buildChangesHtml(
       version
     )
   );
+  const hooksScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesHooks.js"), version)
+  );
   const worktreesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"), version)
   );
@@ -65,6 +70,9 @@ export function buildChangesHtml(
   );
   const commitBoxStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"), version)
+  );
+  const hooksStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesHooks.css"), version)
   );
   const codiconUri = webview.asWebviewUri(
     withVersion(
@@ -94,6 +102,7 @@ export function buildChangesHtml(
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${compareStyleUri}" rel="stylesheet" />
   <link href="${commitBoxStyleUri}" rel="stylesheet" />
+  <link href="${hooksStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
   <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Changes</title>
@@ -112,6 +121,7 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>
+  <script nonce="${nonce}" src="${hooksScriptUri}"></script>
 </body>
 </html>`;
 }

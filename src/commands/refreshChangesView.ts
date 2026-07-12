@@ -12,6 +12,7 @@ import {
 } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
 import { refreshWorktreesForChangesView } from "./worktreeState";
+import { refreshCommitHooks } from "./commitHooks";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
 let refreshInFlight = false;
@@ -95,6 +96,7 @@ async function refreshChangesViewOnce(
         sectionTask(sections, "worktrees", () =>
           refreshWorktreesForChangesView(deps)
         ),
+        sectionTask(sections, "commitHooks", () => refreshCommitHooks(deps)),
         sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
       ].filter((task): task is RefreshTask => !!task);
       const results = await Promise.allSettled(
@@ -138,6 +140,7 @@ type RefreshSection =
   | "fileHistory"
   | "stashes"
   | "worktrees"
+  | "commitHooks"
   | "comparison";
 
 interface RefreshTask {
@@ -156,6 +159,9 @@ function mergeReason(previous: string, reason: string): string {
  * @param reason refresh 요청 사유
  */
 function refreshSectionsForReason(reason: string): RefreshSection[] {
+  if (isCommitHooksOnlyReason(reason)) {
+    return ["commitHooks"];
+  }
   if (isWorkingOnlyReason(reason)) {
     return ["workingChanges"];
   }
@@ -165,8 +171,19 @@ function refreshSectionsForReason(reason: string): RefreshSection[] {
     "fileHistory",
     "stashes",
     "worktrees",
+    "commitHooks",
     "comparison",
   ];
+}
+
+/**
+ * hook 파일 watcher에서만 온 refresh인지 확인해 다른 Git 조회를 생략한다.
+ * @param reason 쉼표로 합쳐질 수 있는 refresh 원인 문자열
+ * @returns 모든 원인이 commit-hooks watcher이면 true
+ */
+function isCommitHooksOnlyReason(reason: string): boolean {
+  const parts = reason.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length > 0 && parts.every((part) => part.includes("commit-hooks"));
 }
 
 /** 작업트리 상태만 바뀐 refresh 사유인지 확인한다. */

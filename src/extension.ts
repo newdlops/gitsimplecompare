@@ -270,10 +270,13 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     );
   };
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,worktrees/**,info/exclude}"
+    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,worktrees/**,info/exclude,hooks/**}"
   );
   const gitignoreWatcher = vscode.workspace.createFileSystemWatcher(
     "**/.gitignore"
+  );
+  const commonHooksWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/{.husky/**,.githooks/**}"
   );
   const scheduleRefreshForGitUri = (
     event: "create" | "change" | "delete",
@@ -292,7 +295,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       return;
     }
     registry.invalidateStatusCaches();
-    if (decision.reason !== "ignore-rules") {
+    if (
+      decision.reason !== "ignore-rules" &&
+      decision.reason !== "commit-hooks"
+    ) {
       clearBranchContentCache();
       const repoRoot = repoRootFromGitUri(uri);
       if (repoRoot) {
@@ -311,9 +317,14 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   };
   watchRefresh(gitWatcher, scheduleRefreshForGitUri);
   watchRefresh(gitignoreWatcher, scheduleRefreshForIgnoreUri);
+  watchRefresh(commonHooksWatcher, (event, uri) => {
+    logInfo("commit hooks refresh requested", { event, path: uri.fsPath });
+    scheduleRefresh(`custom-hook:${event}:commit-hooks`, 0);
+  });
   context.subscriptions.push(
     gitWatcher,
     gitignoreWatcher,
+    commonHooksWatcher,
     new vscode.Disposable(() => {
       if (refreshTimer) {
         clearTimeout(refreshTimer);
@@ -383,6 +394,9 @@ interface RefreshDecision {
  */
 function shouldRefreshForGitUri(uri: vscode.Uri): RefreshDecision {
   const path = uri.fsPath.replace(/\\/g, "/");
+  if (/\/\.git\/hooks\//.test(path)) {
+    return { refresh: true, reason: "commit-hooks" };
+  }
   if (isGitExcludePath(path)) {
     return { refresh: true, reason: "ignore-rules" };
   }

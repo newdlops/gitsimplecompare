@@ -1,25 +1,21 @@
-// CHANGES 사이드바 뷰를 웹뷰(WebviewView)로 렌더링하는 프로바이더(아코디언 섹션).
-//   Repositories(저장소+브랜치) · Changes(커밋 박스 + Staged/Unstaged 그룹, Source Control
-//   과 동일 성격, 미트볼 ... 메뉴 포함) · History(현재 파일 커밋) · Compare Branches.
-// - 상태를 보관하고 클릭은 등록된 명령/내부 메서드로 위임한다(경계 분리).
-// - 커밋 메시지는 provider 가 보유한다(입력 중엔 저장만, 커밋 후 비우며 다시 그린다).
+// CHANGES 웹뷰 상태/커밋 메시지를 보관하고 클릭은 하위 명령에 위임해 렌더 생명주기에 집중한다.
 import * as vscode from "vscode";
 import type { BranchComparison } from "../git/gitTypes";
 import type { StatusGroups } from "../git/gitService";
-import {
-  ChangeDiffArgs,
-  SortKey,
-  ViewMode,
-} from "../providers/changesTreeModel";
+import type { CommitFailureReport } from "../git/commitHookFailure";
+import type { CommitHooksSnapshot } from "../git/commitHookService";
+import { ChangeDiffArgs, SortKey, ViewMode } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
 import type { StashView } from "../commands/stash";
 import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
-import { logError } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
 import { buildChangesRenderPayload } from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
+import { routeCommitHookMessage } from "./changesCommitHookMessages";
+import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
 import {
   TREE_SECTIONS,
   VISIBLE_SECTIONS,
@@ -55,6 +51,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private commitMessage = "";
   private commitMessageRevision = 0;
   private aiCommitGenerating = false;
+  private commitHooks?: CommitHooksSnapshot;
+  private commitFailure?: CommitFailureReport;
   private viewModes: ViewModes;
   private sortKey: SortKey;
   private visibleSections: VisibleSections;
@@ -97,18 +95,22 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.clearRenderTimer();
     });
   }
-  // ---- 상태 API ----
   /**
    * 저장소 목록을 갱신한다. 활성 저장소가 목록에 없으면 현재 워크스페이스 repo 를 우선 선택한다.
    * @param repos 저장소 정보 목록(루트 + 브랜치)
    * @param preferredRoot activeRepo 가 없거나 사라졌을 때 우선 선택할 저장소 루트
    */
   setRepositories(repos: RepoInfo[], preferredRoot?: string): void {
+    const previousRoot = this.activeRepo;
     this.repositories = repos;
     if (!this.activeRepo || !repos.some((r) => r.root === this.activeRepo)) {
       this.activeRepo =
         repos.find((repo) => repo.root === preferredRoot)?.root ??
         repos[0]?.root;
+    }
+    if (previousRoot !== this.activeRepo) {
+      this.commitHooks = undefined;
+      this.commitFailure = undefined;
     }
     this.render();
   }
@@ -151,11 +153,37 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.commitMessageRevision++;
     this.render();
   }
+  /** 활성 저장소에서 조회한 commit hook 관리 상태를 설정하고 다시 그린다. */
+  setCommitHooks(snapshot: CommitHooksSnapshot | undefined): void {
+    if (snapshot && snapshot.repoRoot !== this.activeRepo) {
+      logInfo("commit hooks result skipped", {
+        resultRoot: snapshot.repoRoot,
+        activeRoot: this.activeRepo,
+        reason: "stale-repository",
+      });
+      return;
+    }
+    this.commitHooks = snapshot;
+    this.render();
+  }
+  /** 마지막 commit/hook 실패 보고서를 설정하거나 지우고 다시 그린다. */
+  setCommitFailure(report: CommitFailureReport | undefined): void {
+    this.commitFailure = report;
+    this.render();
+  }
   /** 비교 컨텍스트를 교체하고 다시 그린다. */
   setComparison(comparison: BranchComparison): void {
+    const repoChanged = this.activeRepo !== comparison.repoRoot;
+    if (repoChanged) {
+      this.commitHooks = undefined;
+      this.commitFailure = undefined;
+    }
     this.comparison = comparison;
     this.activeRepo = comparison.repoRoot;
     this.render();
+    if (repoChanged) {
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshCommitHooks");
+    }
   }
   /** 현재 비교 컨텍스트를 반환한다(없으면 undefined). */
   getComparison(): BranchComparison | undefined {
@@ -277,11 +305,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.worktrees = [];
     this.commitMessage = "";
     this.commitMessageRevision++;
+    this.commitHooks = undefined;
+    this.commitFailure = undefined;
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshCommitHooks");
   }
   /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
   private render(): void {
@@ -326,6 +357,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       commitMessage: this.commitMessage,
       commitMessageRevision: this.commitMessageRevision,
       aiCommitGenerating: this.aiCommitGenerating,
+      commitHooks: this.commitHooks,
+      commitFailure: this.commitFailure,
       viewModes: this.viewModes,
       sortKey: this.sortKey,
       visibleSections: this.getVisibleSections(),
@@ -363,46 +396,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     });
     this.render();
   }
-  /** 커밋 진행 상태를 웹뷰의 커밋 버튼에 알린다(스피너/비활성). */
-  private setCommitInProgress(active: boolean): void {
-    void this.view?.webview.postMessage({
-      type: "commitOperation",
-      active,
-    });
-  }
-  /** 웹뷰에서 요청한 커밋을 실행하고, 그 동안 커밋 버튼에 진행중 상태를 표시한다. */
-  private async runCommit(op?: string): Promise<void> {
-    this.setCommitInProgress(true);
-    try {
-      await vscode.commands.executeCommand("gitSimpleCompare.commit", op);
-    } finally {
-      this.setCommitInProgress(false);
-    }
-  }
-
-  /** 웹뷰에서 요청한 stage/unstage 작업을 실행하고 busy 상태를 정리한다. */
-  private async runWorkingOperation(
-    action: "stage" | "unstage",
-    paths?: string[]
-  ): Promise<void> {
-    this.setWorkingOperation(true, action, paths, "git");
-    try {
-      await vscode.commands.executeCommand(
-        action === "stage"
-          ? "gitSimpleCompare.stage"
-          : "gitSimpleCompare.unstage",
-        paths
-      );
-    } finally {
-      this.setWorkingOperation(false, action, paths);
-    }
-  }
-
   /**
    * 웹뷰 메시지를 처리한다. 동작은 등록된 명령/내부 메서드로 위임한다.
    * @param msg 웹뷰 메시지
    */
   private handleMessage(msg: ChangesWebviewMessage): void {
+    if (routeCommitHookMessage(msg, this.view?.webview)) {
+      return;
+    }
     if (msg.type === "ready") {
       this.render();
       void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
@@ -497,9 +498,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         path: msg.path,
       });
     } else if (msg.type === "stage") {
-      void this.runWorkingOperation("stage", msg.paths);
+      void runWorkingTreeOperation(this, "stage", msg.paths);
     } else if (msg.type === "unstage") {
-      void this.runWorkingOperation("unstage", msg.paths);
+      void runWorkingTreeOperation(this, "unstage", msg.paths);
     } else if (msg.type === "discard") {
       void vscode.commands.executeCommand("gitSimpleCompare.discard", msg.paths);
     } else if (msg.type === "addToGitignore") {
@@ -517,7 +518,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       if (msg.message !== undefined) {
         this.commitMessage = msg.message;
       }
-      void this.runCommit(msg.op);
+      void runCommitOperation(this.view?.webview, msg.op);
     } else if (msg.type === "generateCommitMessage") {
       void vscode.commands.executeCommand(
         "gitSimpleCompare.generateCommitMessage"
@@ -596,5 +597,4 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       );
     }
   }
-
 }

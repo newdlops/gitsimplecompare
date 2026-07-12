@@ -1399,6 +1399,7 @@
       return;
     }
     const ta = document.getElementById("commit-msg");
+    setCommitInProgress(true);
     vscode.postMessage({ type: "commit", op, message: ta ? ta.value : "" });
   }
 
@@ -2018,7 +2019,13 @@
             node.onClick();
             closeDropdown();
           } else if (node.id) {
-            vscode.postMessage({ type: "scmAction", action: node.id });
+            const commitOperation =
+              window.__gscCommitOperationForMenuId?.(node.id);
+            if (commitOperation) {
+              doCommit(commitOperation);
+            } else {
+              vscode.postMessage({ type: "scmAction", action: node.id });
+            }
             closeDropdown();
           }
         });
@@ -2079,5 +2086,4 @@
     }
   });
 
-  vscode.postMessage({ type: "ready" });
 })();

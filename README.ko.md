@@ -23,6 +23,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 7. **인터랙티브 rebase** — 드래그 앤 드롭 웹뷰에서 rebase 계획을 편집합니다(순서 변경 + pick/reword/squash/fixup/drop). 그래프의 "이 커밋부터 rebase" 또는 명령 팔레트로 실행합니다.
 8. **변경을 여러 커밋으로 분할** — diff hunk 를 개별 선택해 따로 커밋하고, 나머지는 반복합니다(`git add -p` GUI).
 9. **AI 메시지 생성** — 로컬 Claude Code 또는 Codex CLI 에 프롬프트를 보내 커밋 메시지와 staged PR 제목/본문을 생성합니다.
+10. **파일 기반 커밋 hook 관리** — 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하고, lint/파일 검사 실패를 클릭 가능한 파일·행 진단과 재시도 UI로 보여줍니다.
 
 ## 사용 방법
 
@@ -53,6 +54,12 @@ Marketplace ID: `newdlops.git-simple-compare`
 브라우저 callback 로그인이 localhost 에 도달하지 못하면 AI CLI 설정에서 callback 을 쓰지 않는 로그인 방식으로 바꾸세요. Claude Code 는 `setup-token`, `console`, 또는 `sso`, Codex 는 `device`, `api-key`, 또는 `access-token` 을 선택한 뒤 로그인 / 상태를 다시 실행하면 됩니다.
 
 커밋 메시지 AI 버튼은 staged 변경이 있을 때만 활성화됩니다. PR preview 에서는 복사 버튼으로 생성된/현재 PR 제목과 본문을 GitHub 에 붙여넣기 좋은 형식으로 클립보드에 복사할 수 있습니다.
+
+### 커밋 hook과 검사 실패
+
+커밋 버튼 옆 방패 버튼을 누르면 현재 저장소의 전통적인 파일 기반 커밋 hook을 관리할 수 있습니다. `core.hooksPath`, linked worktree, Husky의 `.husky/_` 구조를 반영합니다. Git 2.55+의 `hook.*` 설정형 hook은 목록에 표시하거나 변경하지 않습니다. 안전한 토글은 Unix 일반 hook 파일의 실행 비트만 바꿉니다. 추적/미추적 작업트리 hook, Husky proxy, 심볼릭 링크, Windows hook, 기존 `.disabled` 파일은 열어 편집할 수 있지만 이름을 옮기거나 토글하지 않습니다.
+
+커밋 hook이 커밋을 거부하면 ESLint, TypeScript, Ruff, Prettier, pre-commit, Husky와 일반 파일 검사 출력을 커밋 입력창 아래에 표시합니다. 보고된 파일을 클릭해 해당 행을 열고 수정·스테이징한 뒤 **커밋 다시 시도**를 누를 수 있습니다. **전체 출력 보기**는 생략하지 않은 프로세스 출력을 `Git Simple Compare` OUTPUT 채널에서 엽니다.
 
 ### 좌→우 반영
 
@@ -92,6 +99,7 @@ npm install
 npm run compile     # 번들
 npm run watch       # 변경 감지 빌드
 npm run check-types # 타입 검사
+npm test            # hook 파서 및 임시 저장소 통합 테스트
 ```
 
 VS Code 에서 `F5` 를 누르면 Extension Development Host 가 실행됩니다.

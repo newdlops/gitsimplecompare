@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Local commit hook management and failure diagnostics**: manage standard
+  file-based commit hooks from the Changes commit box (including `core.hooksPath`, linked
+  worktrees, and Husky), and open lint/file-check failures directly at their
+  reported file and line before retrying the commit. Full hook output remains
+  available in the Git Simple Compare OUTPUT channel. Git 2.55+ `hook.*`
+  configured hooks are intentionally outside this manager's scope. Safe toggles
+  use Unix executable bits and never rename hook files.
 - **Git Graph PR details — changed files**: toggle the changed-files list between
   **tree** and flat **list**, and **click a file to open its diff** (PR base ↔
   head) in a diff editor.

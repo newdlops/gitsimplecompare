@@ -61,6 +61,73 @@ export function changesWebviewI18n(): Record<string, string> {
       "Subject, blank line, optional body. Ctrl+Enter to commit."
     ),
     commit: vscode.l10n.t("Commit"),
+    commitHooks: vscode.l10n.t("File-based Commit Hooks"),
+    manageCommitHooks: vscode.l10n.t("Manage file-based commit hooks"),
+    activeCommitHooks: vscode.l10n.t("{0} file hooks active"),
+    refreshCommitHooks: vscode.l10n.t("Refresh file-based commit hooks"),
+    openCommitHooksFolder: vscode.l10n.t("Open hooks folder"),
+    createCommitHook: vscode.l10n.t("Create commit hook"),
+    noCommitHooks: vscode.l10n.t("No file-based commit hooks found."),
+    fileBasedHookScope: vscode.l10n.t(
+      "Traditional hook files only. Hooks configured with hook.* are not shown."
+    ),
+    hookDirectory: vscode.l10n.t("Hook directory: {0}"),
+    hookConfigOrigin: vscode.l10n.t("Configured by {0}"),
+    sharedHookPath: vscode.l10n.t(
+      "This hook path may be shared by multiple repositories."
+    ),
+    hookPathUnavailable: vscode.l10n.t(
+      "The configured hook path is not a directory. Hooks are disabled."
+    ),
+    hookStateUnavailable: vscode.l10n.t(
+      "Commit hook status is unavailable. Refresh to try again."
+    ),
+    enabledHook: vscode.l10n.t("Enabled"),
+    disabledHook: vscode.l10n.t("Disabled"),
+    notExecutableHook: vscode.l10n.t("Not executable"),
+    missingHookEntrypoint: vscode.l10n.t(
+      "The Git hook entrypoint is missing or not executable"
+    ),
+    conflictingHookFiles: vscode.l10n.t(
+      "Active and disabled files both exist"
+    ),
+    trackedHook: vscode.l10n.t("Tracked"),
+    worktreeHook: vscode.l10n.t("Untracked"),
+    trackedHookToggleBlocked: vscode.l10n.t(
+      "Tracked hooks cannot be toggled here because that would change the working tree."
+    ),
+    worktreeHookToggleBlocked: vscode.l10n.t(
+      "This untracked hook cannot be toggled here because Commit All could include it."
+    ),
+    proxyHookToggleBlocked: vscode.l10n.t(
+      "Husky proxy hooks must be enabled or disabled through Husky."
+    ),
+    symbolicHookToggleBlocked: vscode.l10n.t(
+      "Symbolic-link hooks can be opened but are not toggled here."
+    ),
+    platformHookToggleBlocked: vscode.l10n.t(
+      "Safe hook toggling is unavailable on this platform."
+    ),
+    renamedHookToggleBlocked: vscode.l10n.t(
+      "Hooks already renamed to .disabled can be opened but are not renamed here."
+    ),
+    enableCommitHook: vscode.l10n.t("Enable {0}"),
+    disableCommitHook: vscode.l10n.t("Disable {0}"),
+    openCommitHook: vscode.l10n.t("Open {0}"),
+    commitChecksFailed: vscode.l10n.t("Commit checks failed"),
+    commitFailedDetails: vscode.l10n.t("Commit failed"),
+    retryCommit: vscode.l10n.t("Retry commit"),
+    dismissCommitFailure: vscode.l10n.t("Dismiss commit failure"),
+    showFullOutput: vscode.l10n.t("Show full output"),
+    openFailureLocation: vscode.l10n.t("Open {0} at line {1}"),
+    noFailureLocations: vscode.l10n.t(
+      "The check did not report a file location. See the full output for details."
+    ),
+    failureItemsTruncated: vscode.l10n.t(
+      "Some failures are hidden. See the full output."
+    ),
+    hookFramework: vscode.l10n.t("Managed by {0}"),
+    updatingCommitHooks: vscode.l10n.t("Updating commit hooks..."),
     generateCommitMessage: vscode.l10n.t("Generate AI Commit Message"),
     generateCommitMessageShort: vscode.l10n.t("AI"),
     aiCommitGenerating: vscode.l10n.t("Generating AI commit message..."),
