@@ -21,9 +21,6 @@ import {
 } from "../ui/outputLog";
 import type { CommandDeps } from "./shared";
 
-/** 전용 Explorer TreeView 진행 표시와 포커스에 사용할 view id. */
-export const COMPARISON_VIEW_ID = "gitSimpleCompare.comparisonExplorer";
-
 /** 비교 완료 후 사용자의 시선을 옮길 뷰. */
 export type ComparisonViewFocus = "changes" | "explorer" | "none";
 
@@ -205,7 +202,7 @@ export async function pickPullRequest(
   try {
     overview = await vscode.window.withProgress(
       {
-        location: { viewId: COMPARISON_VIEW_ID },
+        location: vscode.ProgressLocation.Window,
         title: vscode.l10n.t("Loading pull requests..."),
       },
       () => service.listPullRequests()
@@ -330,7 +327,7 @@ export function notifyComparisonResult(snapshot: ComparisonSnapshot): void {
             "Three-dot comparison preserves FROM to TO. Choose the current checkout as TO to show editor gutter markers."
           )
         : vscode.l10n.t(
-            "Editor gutter markers will appear after the target ({0}) is checked out. The Explorer file list remains available.",
+            "Editor gutter markers will appear after the target ({0}) is checked out. Comparison badges and side-by-side Diff remain available.",
             snapshot.targetLabel
           )
     );
@@ -347,21 +344,17 @@ export function notifyComparisonResult(snapshot: ComparisonSnapshot): void {
 
 /**
  * 스냅샷 적용 후 요청된 뷰를 드러낸다.
- * - 자동 새로고침은 none을 넘겨 사용자 포커스를 벗어나지 않게 한다.
- * @param focus Changes 웹뷰, Explorer 비교 트리, 포커스 유지 중 하나
+ * - 별도 Comparison TreeView가 없으므로 explorer/none은 현재 위치를 유지한다.
+ * @param focus Changes 웹뷰를 열거나 현재 포커스를 유지하는 선택값
  */
 export async function focusComparisonView(
   focus: ComparisonViewFocus
 ): Promise<void> {
-  if (focus === "none") {
+  if (focus !== "changes") {
     return;
   }
-  const command =
-    focus === "changes"
-      ? "gitSimpleCompare.changes.focus"
-      : `${COMPARISON_VIEW_ID}.focus`;
   try {
-    await vscode.commands.executeCommand(command);
+    await vscode.commands.executeCommand("gitSimpleCompare.changes.focus");
   } catch (error) {
     logWarn("comparison view focus failed", {
       focus,

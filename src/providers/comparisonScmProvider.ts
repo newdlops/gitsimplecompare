@@ -27,10 +27,6 @@ export const COMPARISON_RESOURCE_GROUP_ID = "comparisonChanges";
 export const OPEN_COMPARISON_DIFF_COMMAND =
   "gitSimpleCompare.openComparisonDiff";
 
-/** 비교 파일을 일반 작업파일 편집기로 여는 명령 식별자. */
-export const OPEN_COMPARISON_FILE_COMMAND =
-  "gitSimpleCompare.openComparisonFile";
-
 /** status 정렬에서 사용자에게 익숙한 변경 종류 순서를 정의한다. */
 const STATUS_ORDER: FileChangeStatus[] = [
   "A",

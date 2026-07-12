@@ -13,7 +13,6 @@ import {
   resolveComparisonService,
 } from "./shared";
 import {
-  COMPARISON_VIEW_ID,
   focusComparisonView,
   notifyComparisonResult,
   pickPullRequest,
@@ -41,7 +40,7 @@ export type ComparisonFocus = "changes" | "explorer" | "none";
 export interface ComparisonApplyOptions {
   /** OUTPUT 로그에 남겨 어느 명령이 상태를 바꿘는지 식별하는 값. */
   source: string;
-  /** 성공 후 포커스할 뷰. 생략하면 Explorer 비교 뷰를 사용한다. */
+  /** 성공 후 포커스할 뷰. explorer는 현재 Explorer 위치를 그대로 유지한다. */
   focus?: ComparisonFocus;
   /** 빈 결과/PR 잘림 안내를 표시할지 여부. 기본값은 true. */
   notify?: boolean;
@@ -191,25 +190,14 @@ export async function comparePullRequest(
  * - 이전 스냅샷이 있으면 git 조회 없이 복원하고, 없으면 비교 방식 선택을
  *   이어서 실행해 빈 토글만 켜지는 경우를 줄인다.
  * @param deps 표시 상태를 가진 controller 의존성
- * @param revealView true면 완료 후 Comparison Explorer로 포커스를 옮긴다
  */
-export async function showExplorerComparison(
-  deps: CommandDeps,
-  revealView = true
-): Promise<void> {
+export async function showExplorerComparison(deps: CommandDeps): Promise<void> {
   deps.comparison.setEnabled(true, "showExplorerComparison");
   logInfo("explorer comparison show command", {
     hasComparison: deps.comparison.hasComparison,
   });
   if (!deps.comparison.hasComparison) {
     await selectExplorerComparison(deps);
-    if (!deps.comparison.hasComparison && revealView) {
-      await focusComparisonView("explorer");
-    }
-    return;
-  }
-  if (revealView) {
-    await focusComparisonView("explorer");
   }
 }
 
@@ -262,7 +250,7 @@ export async function refreshExplorerComparison(
   try {
     const refreshed = await vscode.window.withProgress(
       {
-        location: { viewId: COMPARISON_VIEW_ID },
+        location: vscode.ProgressLocation.Window,
         title: vscode.l10n.t("Refreshing Explorer comparison..."),
       },
       () =>
@@ -299,7 +287,7 @@ export async function refreshExplorerComparison(
 
 /**
  * Explorer 장식에서 사용하는 선택 스냅샷을 완전히 제거한다.
- * - 표시 토글은 유지해 비교 뷰가 welcome 안내와 재선택 액션을 보여 준다.
+ * - 표시 토글은 유지하되 hasComparison 컨텍스트를 내려 Explorer 켜기 버튼이 재선택을 연다.
  * - controller와 Changes 웹뷰를 함께 비워 두 UI가 서로 다른 비교를 가리키지 않게 한다.
  * @param deps 비교 controller 의존성
  */
@@ -330,7 +318,7 @@ export async function runAndApplyComparison(
   try {
     const snapshot = await vscode.window.withProgress(
       {
-        location: { viewId: COMPARISON_VIEW_ID },
+        location: vscode.ProgressLocation.Window,
         title: options.progressTitle,
       },
       load

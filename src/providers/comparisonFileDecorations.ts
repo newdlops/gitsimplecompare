@@ -164,33 +164,6 @@ export function comparisonChangeTooltip(
 }
 
 /**
- * Comparison Explorer 파일의 기본 클릭이 현재 상태에서 수행할 동작 이름을 만든다.
- * - ref가 없으면 안내만 가능하고, 현재 HEAD가 아니거나 삭제 파일이면 Diff를 연다.
- * - 작업파일을 열 수 있어도 VS Code 설정이 gutter를 숨기면 그 사실을 제목에 명시한다.
- * @param comparison 활성 비교의 ref/HEAD 가용성. 없으면 안전한 Diff 제목을 사용한다
- * @param deleted 작업트리에 대상 파일이 없는 삭제 변경인지 여부
- * @param gutterEnabled VS Code 설정이 라인 표시를 허용하는지 여부
- * @returns command title, tooltip, 접근성 이름에서 재사용할 지역화된 동작명
- */
-export function comparisonFileOpenTitle(
-  comparison:
-    | Pick<ComparisonSnapshot, "diffAvailable" | "targetMatchesHead">
-    | undefined,
-  deleted: boolean,
-  gutterEnabled: boolean
-): string {
-  if (comparison?.diffAvailable === false) {
-    return vscode.l10n.t("Comparison file unavailable locally");
-  }
-  if (!comparison?.targetMatchesHead || deleted) {
-    return vscode.l10n.t("Open Comparison Diff");
-  }
-  return gutterEnabled
-    ? vscode.l10n.t("Open File with Comparison Markers")
-    : vscode.l10n.t("Open File (line markers hidden)");
-}
-
-/**
  * 비교 diff 열기 명령에 전달할 독립 인자 객체를 만든다.
  * - 전체 snapshot 대신 저장소/경로 키만 전달해 대형 PR도 resource 수에 선형 메모리만 쓴다.
  * @param comparison 클릭 시점의 비교

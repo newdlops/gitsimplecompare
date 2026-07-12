@@ -160,6 +160,29 @@
   outline-offset: 2px;
 }
 
+.compare-reset-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 12px 6px;
+  padding: 2px 0;
+  border: 0;
+  color: var(--vscode-textLink-foreground);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.compare-reset-action:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.compare-reset-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
 .compare-files .row.file .name[role="button"]:focus-visible {
   border-radius: 2px;
   outline: 1px solid var(--vscode-focusBorder);

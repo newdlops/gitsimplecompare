@@ -10,6 +10,8 @@
       "Choose one branch to compare with the current working tree",
     advancedComparison: "Advanced branch comparison",
     compareAdvanced: "Compare Selected FROM and TO",
+    resetComparison: "Reset Comparison",
+    resetComparisonTooltip: "Clear the current comparison and choose again",
     gutterReadyTitle: "Line markers ready",
     gutterReadyDetail: "Open a changed file to see changes beside line numbers.",
     gutterOffTitle: "Line markers unavailable",
@@ -211,6 +213,12 @@
       refRow(strings, escape, "from", compare.from) +
       refRow(strings, escape, "to", compare.to) +
       gutterStatusHtml(strings, escape, compare.gutter) +
+      `<button id="reset-comparison" class="compare-reset-action" type="button" ` +
+      `title="${escape(strings.resetComparisonTooltip)}" ` +
+      `aria-label="${escape(strings.resetComparisonTooltip)}">` +
+      `<span class="codicon codicon-clear-all"></span>${escape(
+        strings.resetComparison
+      )}</button>` +
       fileTree(
         compare.nodes,
         viewMode,
@@ -254,6 +262,7 @@
       "showComparisonMarkers"
     );
     bindMessageButton(root, vscode, "compare", "runCompare", true);
+    bindMessageButton(root, vscode, "reset-comparison", "resetComparison");
     root.querySelectorAll(".compare-files .row.file").forEach((element) => {
       const open = () =>
         vscode.postMessage({

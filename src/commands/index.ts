@@ -168,10 +168,6 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       (focus?: ComparisonFocus) => compareBranchesAdvanced(deps, focus)
     ),
     vscode.commands.registerCommand(
-      "gitSimpleCompare.compareCurrentCheckoutInExplorer",
-      () => compareBranches(deps, "explorer")
-    ),
-    vscode.commands.registerCommand(
       "gitSimpleCompare.openGutterSettings",
       () =>
         vscode.commands.executeCommand(
@@ -193,7 +189,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.showExplorerComparison",
-      (revealView?: boolean) => showExplorerComparison(deps, revealView)
+      () => showExplorerComparison(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.hideExplorerComparison",

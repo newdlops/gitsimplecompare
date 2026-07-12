@@ -161,12 +161,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   getComparison(): BranchComparison | undefined {
     return this.comparison;
   }
-  /** 현재 비교 결과를 지우고 Compare 섹션을 브랜치 선택 초안 상태로 되돌린다. */
+  /** 현재 비교와 From/To 초안을 모두 지워 처음 브랜치 선택 상태로 되돌린다. */
   clearComparison(): void {
-    if (!this.comparison) {
-      return;
-    }
     this.comparison = undefined;
+    this.draft = {};
     this.render();
   }
   /** 비교 전 초안(from/to)을 반환한다. */
@@ -424,7 +422,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     } else if (msg.type === "openGutterSettings") {
       void vscode.commands.executeCommand("gitSimpleCompare.openGutterSettings");
     } else if (msg.type === "showComparisonMarkers") {
-      void vscode.commands.executeCommand("gitSimpleCompare.showExplorerComparison", false);
+      void vscode.commands.executeCommand("gitSimpleCompare.showExplorerComparison");
+    } else if (msg.type === "resetComparison") {
+      void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
     } else if (msg.type === "toggleViewMode" && msg.section) {
       // 섹션 헤더의 트리/리스트 토글 — 해당 섹션만 뒤집는다(다른 섹션과 독립).
       // 토글 후 툴바 컨텍스트 키도 갱신하도록 명령에 위임한다.

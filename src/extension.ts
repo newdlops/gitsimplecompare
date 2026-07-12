@@ -21,10 +21,6 @@ import {
   resolveComparisonRefIdentity,
   type ComparisonSnapshot,
 } from "./git/comparisonService";
-import {
-  ComparisonExplorerTreeProvider,
-  COMPARISON_EXPLORER_VIEW_ID,
-} from "./providers/comparisonExplorerTreeProvider";
 import { registerComparisonFileDecorations } from "./providers/comparisonFileDecorations";
 import { ComparisonScmProvider } from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
@@ -48,7 +44,7 @@ export interface GitSimpleCompareApi {
 
 /**
  * 확장이 활성화될 때 호출된다.
- * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/트리뷰/명령/추적기를 등록한 뒤
+ * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/명령/추적기를 등록한 뒤
  *   모든 Disposable 을 context.subscriptions 에 모아 자동 정리되게 한다.
  * @param context VS Code 확장 컨텍스트
  */
@@ -74,43 +70,28 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   );
 
   // 3) 선택한 브랜치/원격/PR 비교를 Explorer, 탭, SCM Quick Diff 에 함께 투영
-  const comparisonTreeProvider = new ComparisonExplorerTreeProvider(comparison);
-  const comparisonTree = vscode.window.createTreeView(
-    COMPARISON_EXPLORER_VIEW_ID,
-    { treeDataProvider: comparisonTreeProvider, showCollapseAll: true }
-  );
   const comparisonScm = new ComparisonScmProvider(comparison);
   context.subscriptions.push(
-    comparisonTreeProvider,
-    comparisonTree,
     comparisonScm,
     registerComparisonFileDecorations(comparison)
   );
-  /** 비교 토글/선택 상태를 Explorer 뷰 설명과 package.json when 컨텍스트에 동기화한다. */
-  const syncComparisonView = (): void => {
-    const status = comparisonTreeProvider.getStatus();
-    comparisonTree.description = status.description;
-    comparisonTree.message = status.message;
+  /** 기본 Explorer와 Tab Manager의 토글 버튼 조건을 controller 상태에 동기화한다. */
+  const syncComparisonContext = (): void => {
     void vscode.commands.executeCommand(
       "setContext",
       "gitSimpleCompare.explorerComparison.enabled",
-      status.enabled
+      comparison.enabled
     );
     void vscode.commands.executeCommand(
       "setContext",
       "gitSimpleCompare.explorerComparison.hasComparison",
-      status.hasComparison
-    );
-    void vscode.commands.executeCommand(
-      "setContext",
-      "gitSimpleCompare.explorerComparison.gutterState",
-      status.gutterState
+      comparison.hasComparison
     );
   };
   context.subscriptions.push(
-    comparisonTreeProvider.onDidChangeStatus(syncComparisonView)
+    comparison.onDidChangeComparison(syncComparisonContext)
   );
-  syncComparisonView();
+  syncComparisonContext();
 
   // 4) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
   const changesView = new ChangesViewProvider(
@@ -355,7 +336,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       if (event.affectsConfiguration("scm.diffDecorations")) {
         logInfo("editor gutter setting changed");
-        comparisonTreeProvider.refresh("scm.diffDecorations");
         changesView.refresh();
       }
     }),

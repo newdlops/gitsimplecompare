@@ -22,6 +22,10 @@ export function changesWebviewI18n(): Record<string, string> {
     ),
     advancedComparison: vscode.l10n.t("Advanced branch comparison"),
     compareAdvanced: vscode.l10n.t("Compare Selected FROM and TO"),
+    resetComparison: vscode.l10n.t("Reset Comparison"),
+    resetComparisonTooltip: vscode.l10n.t(
+      "Clear the current comparison and choose again"
+    ),
     gutterReadyTitle: vscode.l10n.t("Line markers ready"),
     gutterReadyDetail: vscode.l10n.t(
       "Open a changed file to see changes beside line numbers."

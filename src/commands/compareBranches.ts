@@ -55,12 +55,10 @@ export async function compareBranches(
   try {
     branches = await vscode.window.withProgress(
       {
-        location: {
-          viewId:
-            focus === "explorer"
-              ? "gitSimpleCompare.comparisonExplorer"
-              : "gitSimpleCompare.changes",
-        },
+        location:
+          focus === "explorer"
+            ? vscode.ProgressLocation.Window
+            : { viewId: "gitSimpleCompare.changes" },
         title: vscode.l10n.t("Loading branches..."),
       },
       () => service.listBranches(config.includeRemoteBranches)

@@ -7,6 +7,10 @@ import * as vscode from "vscode";
 /** 가상 문서 식별용 커스텀 스킴 이름 */
 export const COMPARE_SCHEME = "gitsimplecompare";
 
+/** 삭제 전 파일을 일반 편집기로 여는 전용 미리보기 URI fragment. */
+export const DELETED_COMPARISON_PREVIEW_FRAGMENT =
+  "deleted-comparison-preview";
+
 /** URI query 에 직렬화되는 페이로드 구조 */
 interface RefUriPayload {
   ref: string;
@@ -36,6 +40,38 @@ export function makeRefUri(
     path: fsPath.startsWith("/") ? fsPath : `/${fsPath}`,
     query: JSON.stringify(payload),
   });
+}
+
+/**
+ * 비교에서 완전히 삭제된 파일의 기준 버전을 읽기 전용 미리보기 URI로 만든다.
+ * - 일반 ref 문서와 fragment를 달리해 diff 편집기의 왼쪽 문서와 identity가 충돌하지 않는다.
+ * - BranchContentProvider는 fragment와 무관하게 같은 ref/path 캐시를 재사용할 수 있다.
+ * @param ref 삭제되기 전 내용을 가진 기준 ref 또는 고정 commit hash
+ * @param fsPath 기준 ref에서 읽을 저장소 상대 파일 경로
+ * @param repoRoot 파일이 속한 저장소 루트 절대 경로
+ * @returns 빨간 삭제 거터 전용으로 식별 가능한 읽기 전용 가상 문서 URI
+ */
+export function makeDeletedComparisonPreviewUri(
+  ref: string,
+  fsPath: string,
+  repoRoot: string
+): vscode.Uri {
+  return makeRefUri(ref, fsPath, repoRoot).with({
+    fragment: DELETED_COMPARISON_PREVIEW_FRAGMENT,
+  });
+}
+
+/**
+ * 주어진 URI가 삭제 파일 전체를 보여 주는 비교 미리보기인지 판별한다.
+ * - scheme과 fragment를 함께 검사해 다른 확장 문서나 일반 branch diff를 잘못 장식하지 않는다.
+ * @param uri 현재 보이는 텍스트 편집기의 문서 URI
+ * @returns 삭제 비교 미리보기면 true
+ */
+export function isDeletedComparisonPreviewUri(uri: vscode.Uri): boolean {
+  return (
+    uri.scheme === COMPARE_SCHEME &&
+    uri.fragment === DELETED_COMPARISON_PREVIEW_FRAGMENT
+  );
 }
 
 /**
