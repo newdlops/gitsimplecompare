@@ -33,9 +33,7 @@ export type { ComparisonDraft, TreeSection, VisibleSection } from "./changesView
 const VIEW_MODE_STATE = "gitSimpleCompare.viewMode";
 const SORT_KEY_STATE = "gitSimpleCompare.sortKey";
 const VISIBLE_SECTIONS_STATE = "gitSimpleCompare.visibleSections";
-/**
- * CHANGES 웹뷰 뷰 프로바이더.
- */
+/** CHANGES 웹뷰의 상태, 메시지 라우팅, 렌더 생명주기를 관리하는 프로바이더. */
 export class ChangesViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = "gitSimpleCompare.changes";
   private view?: vscode.WebviewView;
@@ -84,10 +82,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.lastRenderPayloadJson = "";
     view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
     view.onDidChangeVisibility(() => {
-      if (view.visible) {
-        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-          reason: "viewVisible",
-        });
+      if (view.visible && vscode.window.state.focused) {
+        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "viewVisible" });
+      } else if (view.visible) {
+        logInfo("changes refresh deferred", { reason: "window-unfocused:viewVisible" });
       }
     });
     view.onDidDispose(() => {
@@ -117,6 +115,10 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 현재 활성 저장소 루트(없으면 undefined). */
   getActiveRepo(): string | undefined {
     return this.activeRepo;
+  }
+  /** 전체 refresh가 workspace를 다시 탐색하지 않도록 마지막 저장소 목록의 복사본을 반환한다. */
+  getRepositories(): RepoInfo[] {
+    return this.repositories.map((repo) => ({ ...repo }));
   }
   /** Changes 웹뷰가 현재 화면에 보이는지 확인한다(자동 git refresh 게이트로 사용). */
   isVisible(): boolean {
@@ -406,9 +408,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     }
     if (msg.type === "ready") {
       this.render();
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-        reason: "viewReady",
-      });
+      if (vscode.window.state.focused) {
+        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "viewReady" });
+      } else {
+        logInfo("changes refresh deferred", { reason: "window-unfocused:viewReady" });
+      }
     } else if (msg.type === "selectRepo" && msg.root) {
       this.selectRepo(msg.root);
     } else if (msg.type === "changeRef" && msg.side) {
@@ -576,13 +580,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         ref: msg.ref,
         path: msg.path,
       });
-    } else if (
-      msg.type === "openFileHistoryCommit" &&
-      msg.repoRoot &&
-      msg.path &&
-      msg.baseRef &&
-      msg.headRef
-    ) {
+    } else if (msg.type === "openFileHistoryCommit" && msg.repoRoot &&
+      msg.path && msg.baseRef && msg.headRef) {
       void vscode.commands.executeCommand(
         "gitSimpleCompare.openFileHistoryCommit",
         {

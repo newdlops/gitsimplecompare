@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logInfo } from "../ui/outputLog";
-import { parseRefUri } from "../utils/uri";
+import { COMPARE_SCHEME, parseRefUri } from "../utils/uri";
 
 const changeEmitter = new vscode.EventEmitter<vscode.Uri>();
 const contentCache = new Map<string, Promise<string>>();
@@ -53,6 +53,39 @@ function fireKnownUris(key: string): boolean {
 }
 
 /**
+ * 닫힌 가상 문서 URI를 추적 목록과 내용 캐시에서 제거한다.
+ * - VS Code가 문서를 닫은 뒤에도 URI를 계속 기억하면 ref 변경 때 이미 사라진 탭까지
+ *   onDidChange를 보내고 파일 본문 문자열도 세션 끝까지 보관하게 된다.
+ * - 같은 ref/path를 다른 fragment 문서가 공유 중이면 그 identity와 캐시는 유지한다.
+ * @param uri 닫힌 텍스트 문서 URI
+ * @returns 실제로 추적 중이던 identity를 제거했으면 true
+ */
+export function releaseBranchContentDocument(uri: vscode.Uri): boolean {
+  if (uri.scheme !== COMPARE_SCHEME) {
+    return false;
+  }
+  const { ref, repoRoot, path } = parseRefUri(uri);
+  if (!ref || !repoRoot) {
+    return false;
+  }
+  const key = cacheKey(ref, repoRoot, path);
+  const identities = knownUris.get(key);
+  if (!identities?.delete(uri.toString())) {
+    return false;
+  }
+  if (identities.size === 0) {
+    knownUris.delete(key);
+    contentCache.delete(key);
+  }
+  logInfo("branch content document released", {
+    ref,
+    path: path.replace(/^\//, ""),
+    remainingIdentities: identities.size,
+  });
+  return true;
+}
+
+/**
  * 가상 ref 문서의 내용을 다시 읽도록 VS Code 에 알린다.
  * - `:0`, `:unstaged` 처럼 index/working tree 에 따라 변하는 문서는 stable URI 를 유지하되
  *   이 이벤트로 열린 diff 탭의 내용을 갱신한다.
@@ -63,7 +96,6 @@ export function refreshBranchContent(uri: vscode.Uri): void {
   const { ref, repoRoot, path } = parseRefUri(uri);
   if (ref && repoRoot) {
     const key = cacheKey(ref, repoRoot, path);
-    rememberKnownUri(key, uri);
     contentCache.delete(key);
     fireKnownUris(key);
     return;
@@ -102,14 +134,55 @@ export function refreshIndexDependentBranchContent(
   return refreshed;
 }
 
-/** git ref/index 변경처럼 모든 가상 문서 내용이 바뀔 수 있는 이벤트에서 캐시를 비운다. */
-export function clearBranchContentCache(): void {
-  contentCache.clear();
-  for (const identities of knownUris.values()) {
+/**
+ * git ref/index 변경처럼 가상 문서 내용이 바뀔 수 있는 이벤트에서 캐시를 비운다.
+ * - repoRoot가 있으면 해당 저장소 문서만 무효화해, 다른 workspace 저장소의 열린 diff를
+ *   불필요하게 다시 읽고 렌더하지 않는다.
+ * @param repoRoot 변경된 저장소 루트. 없으면 모든 저장소를 무효화한다.
+ */
+export function clearBranchContentCache(repoRoot?: string): void {
+  for (const key of [...contentCache.keys()]) {
+    if (shouldClearCacheKey(key, repoRoot)) {
+      contentCache.delete(key);
+    }
+  }
+  for (const [key, identities] of knownUris) {
+    if (!shouldClearCacheKey(key, repoRoot)) {
+      continue;
+    }
     for (const uri of identities.values()) {
       changeEmitter.fire(uri);
     }
   }
+}
+
+/**
+ * 확장 비활성화 때 모듈 전역 가상 문서 상태를 조용히 비운다.
+ * - change 이벤트는 보내지 않고 큰 파일 본문과 URI identity 참조만 해제한다.
+ */
+export function disposeBranchContentCache(): void {
+  contentCache.clear();
+  knownUris.clear();
+}
+
+/**
+ * 전역/저장소별 무효화에서 실제로 지울 캐시 키인지 판정한다.
+ * - 저장소가 지정된 ref 변경 이벤트는 내용이 절대 바뀌지 않는 full commit hash 문서를 유지한다.
+ * - workspace 교체처럼 저장소가 지정되지 않은 전역 정리는 모든 키를 지운다.
+ * @param key repoRoot/ref/path 캐시 키
+ * @param repoRoot 선택적 변경 저장소 루트
+ */
+function shouldClearCacheKey(key: string, repoRoot?: string): boolean {
+  if (!repoRoot) {
+    return true;
+  }
+  if (!key.startsWith(`${repoRoot}\0`)) {
+    return false;
+  }
+  const refStart = repoRoot.length + 1;
+  const refEnd = key.indexOf("\0", refStart);
+  const ref = refEnd >= 0 ? key.slice(refStart, refEnd) : "";
+  return !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i.test(ref);
 }
 
 /**

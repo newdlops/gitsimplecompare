@@ -1,12 +1,7 @@
 // 활성 에디터에 GitHub PR inline review comment 를 접힌 comment thread 로 표시한다.
-// - 데이터 조회는 git 서비스에 맡기고, 이 모듈은 VS Code 에디터 표시와 캐싱만 담당한다.
+// - 데이터 조회/캐싱은 전용 로더에 맡기고, 이 모듈은 VS Code 에디터 표시와 refresh 생명주기만 담당한다.
 import * as vscode from "vscode";
-import {
-  ActivePullRequestReviewComments,
-  PullRequestReviewComment,
-  PullRequestReviewCommentService,
-} from "../git/pullRequestReviewComments";
-import type { PullRequestSuggestedChangesetStatus } from "../git/pullRequestSuggestedChangesets";
+import { PullRequestReviewComment } from "../git/pullRequestReviewComments";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { pullRequestCommentMarkdown } from "../ui/pullRequestCommentMarkdown";
 import {
@@ -16,25 +11,16 @@ import {
 import {
   countAttachedSuggestedChangesets,
   countBodySuggestedChangeHints,
-  gitHubWebSessionFlowReason,
-  hasCodeFence,
   suggestedCommentIds,
 } from "./pullRequestCommentDiagnostics";
-import { readStoredGitHubWebCookie } from "../ui/githubWebCookieSecret";
 import { logInfo } from "../ui/outputLog";
+import { PullRequestCommentCache } from "./pullRequestCommentCache";
 
 const EXT_CONFIG_SECTION = "gitSimpleCompare";
 const SHOW_KEY = "pullRequestComments.show";
 const FULL_SHOW_KEY = `${EXT_CONFIG_SECTION}.${SHOW_KEY}`;
 const REFRESH_DELAY_MS = 220;
-const CACHE_TTL_MS = 2 * 60 * 1000;
 const COMMENT_CONTROLLER_ID = "gitSimpleComparePrReviewComments";
-const GITHUB_WEB_SESSION_COMMAND = "gitSimpleCompare.setGitHubWebCookie";
-
-interface PullRequestCommentCacheEntry {
-  at: number;
-  data?: ActivePullRequestReviewComments;
-}
 
 type PullRequestCommentGroup = PullRequestThreadGroup<PullRequestReviewComment>;
 
@@ -47,17 +33,17 @@ export class PullRequestCommentController implements vscode.Disposable {
   private readonly decoration: vscode.TextEditorDecorationType;
   private readonly commentController: vscode.CommentController;
   private readonly disposables: vscode.Disposable[] = [];
-  private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
+  private readonly commentCache: PullRequestCommentCache;
   private readonly activeThreads = new Map<string, vscode.CommentThread>();
-  private readonly webSessionFlowKeys = new Set<string>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private requestSeq = 0;
   private disposed = false;
 
   constructor(
     private readonly registry: GitServiceRegistry,
-    private readonly secrets: vscode.SecretStorage
+    secrets: vscode.SecretStorage
   ) {
+    this.commentCache = new PullRequestCommentCache(secrets);
     this.decoration = createDecorationType();
     this.commentController = vscode.comments.createCommentController(
       COMMENT_CONTROLLER_ID,
@@ -74,6 +60,11 @@ export class PullRequestCommentController implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor(() =>
         this.scheduleRefresh("activeEditor")
       ),
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) {
+          this.scheduleRefresh("windowFocused");
+        }
+      }),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (isActiveDocument(document)) {
           void this.invalidateActiveRepoCache().finally(() =>
@@ -105,11 +96,7 @@ export class PullRequestCommentController implements vscode.Disposable {
    * @param reason 캐시 무효화를 일으킨 이벤트 이름
    */
   invalidateCache(reason: string): void {
-    this.cache.clear();
-    if (/githubWebCookie/i.test(reason)) {
-      this.webSessionFlowKeys.clear();
-    }
-    logInfo("pr editor comments cache invalidated", { reason });
+    this.commentCache.invalidate(reason);
     this.scheduleRefresh(reason);
   }
 
@@ -127,6 +114,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       this.refreshTimer = undefined;
     }
     this.requestSeq++;
+    this.commentCache.dispose();
     this.clearVisibleDecorations();
     this.clearActiveGroups();
     this.decoration.dispose();
@@ -158,7 +146,7 @@ export class PullRequestCommentController implements vscode.Disposable {
    * @param reason refresh 를 예약한 이벤트 이름
    */
   private scheduleRefresh(reason: string): void {
-    if (!isEnabled() || this.disposed) {
+    if (!isEnabled() || this.disposed || !vscode.window.state.focused) {
       return;
     }
     const requestId = ++this.requestSeq;
@@ -181,6 +169,11 @@ export class PullRequestCommentController implements vscode.Disposable {
     reason: string,
     requestId: number
   ): Promise<void> {
+    // 백그라운드 창은 원격 PR 조회를 시작하지 않는다. 기존 thread/decorations 는 보존하고,
+    // 창이 다시 포커스되면 onDidChangeWindowState 경로가 최신 상태를 예약한다.
+    if (!vscode.window.state.focused) {
+      return;
+    }
     const editor = vscode.window.activeTextEditor;
     if (!isEnabled() || !editor) {
       this.clearVisibleDecorations();
@@ -195,7 +188,11 @@ export class PullRequestCommentController implements vscode.Disposable {
     }
 
     const service = await this.registry.resolve(dirname(editor.document.uri.fsPath));
-    if (requestId !== this.requestSeq || !isEnabled()) {
+    if (
+      requestId !== this.requestSeq ||
+      !isEnabled() ||
+      !vscode.window.state.focused
+    ) {
       return;
     }
     if (!service) {
@@ -209,8 +206,12 @@ export class PullRequestCommentController implements vscode.Disposable {
       service.toRepoRelative(editor.document.uri.fsPath)
     );
     try {
-      const prComments = await this.loadComments(service.repoRoot);
-      if (requestId !== this.requestSeq || !isEnabled()) {
+      const prComments = await this.commentCache.load(service.repoRoot);
+      if (
+        requestId !== this.requestSeq ||
+        !isEnabled() ||
+        !vscode.window.state.focused
+      ) {
         return;
       }
       if (!prComments) {
@@ -274,97 +275,6 @@ export class PullRequestCommentController implements vscode.Disposable {
   }
 
   /**
-   * 저장소별 현재 브랜치 PR comment 를 캐시와 함께 읽는다.
-   * @param repoRoot 저장소 루트
-   * @returns 활성 PR comment 데이터. PR 이 없으면 undefined
-   */
-  private async loadComments(
-    repoRoot: string
-  ): Promise<ActivePullRequestReviewComments | undefined> {
-    const branchService = new PullRequestReviewCommentService(repoRoot);
-    const branch = await branchService.getCurrentBranch();
-    if (!branch) {
-      return undefined;
-    }
-    const cacheKey = `${repoRoot}\0${branch}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-      return cached.data;
-    }
-    const [webAccessToken, webCookie] = await Promise.all([
-      readGitHubAuthenticationToken(),
-      readStoredGitHubWebCookie(this.secrets),
-    ]);
-    const service = new PullRequestReviewCommentService(repoRoot, {
-      suggestedChangeset: webAccessToken || webCookie
-        ? { webAccessToken, webCookie }
-        : undefined,
-    });
-    const data = await service.getActiveBranchReviewComments(branch);
-    this.cache.set(cacheKey, { at: Date.now(), data });
-    this.openGitHubWebSessionFlowIfNeeded(
-      repoRoot,
-      branch,
-      data?.suggestedChangesetStatus,
-      webCookie
-    );
-    logInfo("pr editor comments loaded", {
-      repoRoot,
-      branch,
-      pr: data?.number,
-      comments: data?.comments.length ?? 0,
-      suggestedChangesets: countAttachedSuggestedChangesets(data?.comments || []),
-      bodySuggestedChangeHints: countBodySuggestedChangeHints(data?.comments || []),
-      webSuggestedChangesets: data?.suggestedChangesetStatus?.changesets ?? 0,
-      webSuggestedComments: data?.suggestedChangesetStatus?.comments ?? 0,
-      codeSnippets: data?.comments.filter(hasCodeFence).length ?? 0,
-      suggestedChangesetSource: data?.suggestedChangesetStatus?.source,
-      suggestedChangesetReason: data?.suggestedChangesetStatus?.reason,
-    });
-    return data;
-  }
-
-  /**
-   * GitHub 웹 suggested changeset 조회가 인증 문제로 실패하면 세션 설정 패널로 사용자를 안내한다.
-   * - 저장 쿠키가 없거나 저장 쿠키가 거절된 경우만 자동으로 열고, 같은 repo/branch/원인은 한 번만 연다.
-   * @param repoRoot 저장소 루트
-   * @param branch 현재 브랜치
-   * @param status suggested changeset 보조 조회 상태
-   * @param webCookie SecretStorage 에 저장된 GitHub 웹 Cookie 헤더
-   */
-  private openGitHubWebSessionFlowIfNeeded(
-    repoRoot: string,
-    branch: string,
-    status: PullRequestSuggestedChangesetStatus | undefined,
-    webCookie: string | undefined
-  ): void {
-    const reason = gitHubWebSessionFlowReason(status, webCookie);
-    if (!reason) {
-      return;
-    }
-    const key = `${repoRoot}\0${branch}\0${reason}`;
-    if (this.webSessionFlowKeys.has(key)) {
-      return;
-    }
-    this.webSessionFlowKeys.add(key);
-    logInfo("github web session flow requested", {
-      repoRoot,
-      branch,
-      reason,
-      suggestedChangesetReason: status?.reason,
-    });
-    void vscode.commands.executeCommand(GITHUB_WEB_SESSION_COMMAND).then(
-      undefined,
-      (error) => logInfo("github web session flow failed", {
-        repoRoot,
-        branch,
-        reason,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    );
-  }
-
-  /**
    * 활성 파일의 저장소 캐시를 무효화한다.
    * - 저장 후 GitHub comment line 과 작업 파일의 관계가 바뀔 수 있으므로 다음 refresh 에서 다시 읽는다.
    */
@@ -377,11 +287,7 @@ export class PullRequestCommentController implements vscode.Disposable {
     if (!service) {
       return;
     }
-    for (const key of Array.from(this.cache.keys())) {
-      if (key.startsWith(`${service.repoRoot}\0`)) {
-        this.cache.delete(key);
-      }
-    }
+    this.commentCache.invalidateRepository(service.repoRoot);
   }
 
   /**
@@ -577,21 +483,4 @@ function isEnabled(): boolean {
   return vscode.workspace
     .getConfiguration(EXT_CONFIG_SECTION)
     .get<boolean>(SHOW_KEY, true);
-}
-
-/**
- * VS Code 가 이미 가진 GitHub authentication session 의 token 을 조용히 읽는다.
- * - createIfNone 를 쓰지 않아 새 로그인/권한 팝업은 띄우지 않는다.
- * - token 값은 GitHub 웹 HTML 조회에만 전달하고 로그에는 남기지 않는다.
- * @returns 사용 가능한 GitHub OAuth token 또는 undefined
- */
-async function readGitHubAuthenticationToken(): Promise<string | undefined> {
-  try {
-    const session = await vscode.authentication.getSession("github", ["repo"], {
-      silent: true,
-    });
-    return session?.accessToken;
-  } catch {
-    return undefined;
-  }
 }

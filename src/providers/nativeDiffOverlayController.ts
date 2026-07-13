@@ -63,6 +63,11 @@ export class NativeDiffOverlayController {
       vscode.window.onDidChangeVisibleTextEditors(() =>
         this.scheduleRender("visibleEditors")
       ),
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) {
+          this.scheduleRender("windowFocused", 0);
+        }
+      }),
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (this.shouldRenderForDocumentChange(event.document.uri)) {
           this.scheduleRender("documentChanged", 350);
@@ -83,7 +88,8 @@ export class NativeDiffOverlayController {
 
   /** 짧은 debounce 뒤 renderer overlay 를 다시 그린다. */
   scheduleRender(reason: string, delay = 80): void {
-    if (this.disposed) {
+    // 백그라운드 창은 기존 overlay를 보존하고, 포커스를 되찾을 때 최신 snapshot을 한 번 그린다.
+    if (this.disposed || !vscode.window.state.focused) {
       return;
     }
     if (this.renderTimer) {
@@ -97,7 +103,7 @@ export class NativeDiffOverlayController {
 
   /** 현재 설정/active diff 상태를 보고 overlay 를 주입하거나 제거한다. */
   private async render(reason: string): Promise<void> {
-    if (this.disposed) {
+    if (this.disposed || !vscode.window.state.focused) {
       return;
     }
     if (this.hunkCheckboxes.mode() !== "nativeOverlay") {

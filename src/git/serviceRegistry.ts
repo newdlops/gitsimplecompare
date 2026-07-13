@@ -45,10 +45,13 @@ export class GitServiceRegistry {
     return this.get(root);
   }
 
-  /** 모든 저장소의 작업트리 상태 캐시를 무효화한다. */
+  /**
+   * 모든 저장소의 작업트리 상태 캐시를 수동적으로 무효화한다.
+   * - watcher/전체 refresh가 호출하는 경로이므로 각 GitService에 실제 mutation 시각은 기록하지 않는다.
+   */
   invalidateStatusCaches(): void {
     for (const service of this.cache.values()) {
-      service.invalidateStatusCache();
+      service.invalidateStatusCache(false);
     }
   }
 

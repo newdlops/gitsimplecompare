@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71035",
+  "version": "0.1.71036",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1185,8 +1185,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/commitHookFailure.test.ts test/commitHookService.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/commitHookFailure.test.js out-test/commitHookService.test.js",
+    "pretest": "esbuild test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {

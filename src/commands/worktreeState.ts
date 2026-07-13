@@ -58,7 +58,10 @@ export async function refreshWorktreesForChangesView(
 export async function readWorkspaceWorktreeGroups(
   deps: CommandDeps
 ): Promise<WorktreeRepositoryGroup[]> {
-  const repositories = await discoverRepositories(deps.registry);
+  const knownRepositories = deps.changesView.getRepositories();
+  const repositories = knownRepositories.length
+    ? knownRepositories
+    : await discoverRepositories(deps.registry);
   const activeRepo = deps.changesView.getActiveRepo();
   repositories.sort((a, b) => {
     if (a.root === activeRepo) {
@@ -72,14 +75,21 @@ export async function readWorkspaceWorktreeGroups(
 
   const groups: WorktreeRepositoryGroup[] = [];
   const seenRepositoryKeys = new Set<string>();
+  const coveredWorktreeRoots = new Set<string>();
   for (const repo of repositories) {
+    if (coveredWorktreeRoots.has(normalizeWorktreeRoot(repo.root))) {
+      continue;
+    }
     try {
       const worktrees = await new WorktreeService(repo.root).listWorktrees();
-      const repositoryKey = worktrees[0]?.path ?? repo.root;
+      const repositoryKey = normalizeWorktreeRoot(worktrees[0]?.path ?? repo.root);
       if (seenRepositoryKeys.has(repositoryKey)) {
         continue;
       }
       seenRepositoryKeys.add(repositoryKey);
+      for (const worktree of worktrees) {
+        coveredWorktreeRoots.add(normalizeWorktreeRoot(worktree.path));
+      }
       groups.push({
         repoRoot: repo.root,
         repoName: path.basename(worktrees[0]?.path ?? repo.root) || repo.root,
@@ -92,6 +102,18 @@ export async function readWorkspaceWorktreeGroups(
     }
   }
   return groups;
+}
+
+/**
+ * worktree 루트 경로를 중복 판정용 문자열로 정규화한다.
+ * - 첫 `git worktree list` 결과에 포함된 linked worktree가 뒤의 workspace repository 후보로
+ *   다시 나타나도 Git 명령 실행 전에 건너뛸 수 있게 한다.
+ * @param root worktree 절대 경로
+ * @returns 플랫폼 경로 규칙을 반영한 비교 키
+ */
+function normalizeWorktreeRoot(root: string): string {
+  const normalized = path.resolve(root);
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
 }
 
 /** TreeItem/webview command 에 전달할 안전한 POJO 인자를 만든다. */

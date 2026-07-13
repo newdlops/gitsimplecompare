@@ -6,6 +6,8 @@ import { GitServiceRegistry } from "./git/serviceRegistry";
 import {
   BranchContentProvider,
   clearBranchContentCache,
+  disposeBranchContentCache,
+  releaseBranchContentDocument,
 } from "./providers/branchContentProvider";
 import { ChangesViewProvider } from "./webview/changesViewProvider";
 import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
@@ -34,6 +36,13 @@ import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
+import {
+  addRefreshReasons,
+  repoRootFromGitPath,
+  shouldLogIgnoredRefresh,
+  shouldRefreshExplorerComparison,
+  shouldRefreshForGitPath,
+} from "./utils/extensionRefreshPolicy";
 
 /** 다른 확장이 활성 Explorer 비교 결과를 선택적으로 재사용하는 공개 API. */
 export interface GitSimpleCompareApi {
@@ -57,6 +66,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   });
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
+  context.subscriptions.push(new vscode.Disposable(disposeBranchContentCache));
 
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();
@@ -69,7 +79,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     vscode.workspace.registerTextDocumentContentProvider(
       COMPARE_SCHEME,
       contentProvider
-    )
+    ),
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      releaseBranchContentDocument(document.uri);
+    })
   );
 
   // 3) 선택한 브랜치/원격/PR 비교를 Explorer, 탭, SCM Quick Diff 에 함께 투영
@@ -183,8 +196,12 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
 
   // 9) Git 메타데이터/VS Code Git 상태 이벤트에 맞춰 보이는 뷰만 갱신한다.
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-  let refreshReason = "startup";
+  const pendingRefreshReasons = new Set<string>();
+  let refreshDeferredLogged = false;
   const pendingGraphRefreshRoots = new Set<string>();
+  const pendingBranchCacheRoots = new Set<string>();
+  let pendingStatusCacheInvalidation = false;
+  let pendingClearAllBranchContent = false;
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
     logInfo("refresh requested", {
@@ -192,6 +209,20 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       changesVisible,
       conflictsVisible,
     });
+    if (pendingStatusCacheInvalidation) {
+      registry.invalidateStatusCaches();
+      pendingStatusCacheInvalidation = false;
+    }
+    if (pendingClearAllBranchContent) {
+      clearBranchContentCache();
+      pendingClearAllBranchContent = false;
+      pendingBranchCacheRoots.clear();
+    } else {
+      for (const repoRoot of pendingBranchCacheRoots) {
+        clearBranchContentCache(repoRoot);
+      }
+      pendingBranchCacheRoots.clear();
+    }
     for (const repoRoot of pendingGraphRefreshRoots) {
       GitGraphPanel.refreshOpen(repoRoot, reason);
     }
@@ -220,15 +251,36 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     }
   };
   scheduleRefresh = (reason: string, delay = 180): void => {
-    refreshReason = refreshTimer ? `${refreshReason},${reason}` : reason;
+    addRefreshReasons(pendingRefreshReasons, reason);
     if (refreshTimer) {
       clearTimeout(refreshTimer);
+      refreshTimer = undefined;
+    }
+    if (!vscode.window.state.focused) {
+      if (!refreshDeferredLogged) {
+        refreshDeferredLogged = true;
+        logInfo("refresh deferred", {
+          reason: "window-unfocused",
+          pendingReasons: pendingRefreshReasons.size,
+        });
+      }
+      return;
     }
     refreshTimer = setTimeout(() => {
       refreshTimer = undefined;
-      const reason = refreshReason;
-      refreshReason = "scheduled";
-      refreshEverything(reason);
+      if (!vscode.window.state.focused) {
+        if (!refreshDeferredLogged) {
+          refreshDeferredLogged = true;
+          logInfo("refresh deferred", {
+            reason: "window-unfocused-before-run",
+            pendingReasons: pendingRefreshReasons.size,
+          });
+        }
+        return;
+      }
+      const mergedReason = [...pendingRefreshReasons].join(",");
+      pendingRefreshReasons.clear();
+      refreshEverything(mergedReason || "scheduled");
     }, delay);
   };
   const refreshFileHistoryIfVisible = (reason: string): void => {
@@ -282,7 +334,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     event: "create" | "change" | "delete",
     uri: vscode.Uri
   ): void => {
-    const decision = shouldRefreshForGitUri(uri);
+    const decision = shouldRefreshForGitPath(uri.fsPath);
     if (!decision.refresh) {
       if (shouldLogIgnoredRefresh(decision.reason)) {
         logInfo("refresh event ignored", {
@@ -294,15 +346,17 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       return;
     }
-    registry.invalidateStatusCaches();
+    pendingStatusCacheInvalidation = true;
     if (
       decision.reason !== "ignore-rules" &&
       decision.reason !== "commit-hooks"
     ) {
-      clearBranchContentCache();
-      const repoRoot = repoRootFromGitUri(uri);
+      const repoRoot = repoRootFromGitPath(uri.fsPath);
       if (repoRoot) {
+        pendingBranchCacheRoots.add(repoRoot);
         pendingGraphRefreshRoots.add(repoRoot);
+      } else {
+        pendingClearAllBranchContent = true;
       }
     }
     scheduleRefresh(`git:${event}:${decision.reason}`);
@@ -312,7 +366,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     uri: vscode.Uri
   ): void => {
     logInfo("ignore rules refresh requested", { event, path: uri.fsPath });
-    registry.invalidateStatusCaches();
+    pendingStatusCacheInvalidation = true;
     scheduleRefresh(`working-tree-file:${event}:ignore-rules`, 0);
   };
   watchRefresh(gitWatcher, scheduleRefreshForGitUri);
@@ -330,6 +384,17 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
         clearTimeout(refreshTimer);
       }
     }),
+    vscode.window.onDidChangeWindowState((state) => {
+      if (!state.focused ||
+        (pendingRefreshReasons.size === 0 && !changesView.isVisible())) {
+        return;
+      }
+      refreshDeferredLogged = false;
+      logInfo("deferred refresh resumed", {
+        pendingReasons: pendingRefreshReasons.size,
+      });
+      scheduleRefresh("windowFocused", 0);
+    }),
     conflictsTree.onDidChangeVisibility((event) => {
       conflictsVisible = event.visible;
       if (event.visible) {
@@ -342,8 +407,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       registry.invalidateResolveCache();
-      registry.invalidateStatusCaches();
-      clearBranchContentCache();
+      pendingStatusCacheInvalidation = true;
+      pendingClearAllBranchContent = true;
       scheduleRefresh("workspaceFolders", 0);
     })
   );
@@ -379,56 +444,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
  */
 export function deactivate(): void {
   // 정리할 추가 리소스 없음.
-}
-
-interface RefreshDecision {
-  refresh: boolean;
-  reason: string;
-}
-
-/**
- * `.git` 파일 시스템 이벤트가 refresh 로 이어져야 하는지 판정한다.
- * - 작업트리 파일 변경은 VS Code 내장 Git 상태 이벤트에 맡기고, 여기서는 ref/HEAD/merge 상태처럼
- *   그래프와 가상 문서 캐시에 직접 영향을 주는 안정적인 Git 메타데이터만 본다.
- * @param uri 변경된 `.git` 내부 파일 URI
- */
-function shouldRefreshForGitUri(uri: vscode.Uri): RefreshDecision {
-  const path = uri.fsPath.replace(/\\/g, "/");
-  if (/\/\.git\/hooks\//.test(path)) {
-    return { refresh: true, reason: "commit-hooks" };
-  }
-  if (isGitExcludePath(path)) {
-    return { refresh: true, reason: "ignore-rules" };
-  }
-  return isStableGitStatePath(path)
-    ? { refresh: true, reason: "stable-git-state" }
-    : { refresh: false, reason: "volatile-git-state" };
-}
-
-/**
- * 무시한 파일 이벤트 중 OUTPUT 에 남길 가치가 있는 것만 고른다.
- * - `.git`/fsmonitor cookie 는 git/VS Code 가 자주 만드는 정상 이벤트라 로그만 과도해진다.
- * @param reason shouldRefreshForGitUri 가 반환한 무시 사유
- */
-function shouldLogIgnoredRefresh(reason: string): boolean {
-  return reason !== "volatile-git-state";
-}
-
-/**
- * Explorer 비교 스냅샷 자체를 다시 읽어야 하는 전역 새로고침인지 판정한다.
- * - 작업파일/ignore/VS Code Git status 이벤트는 Quick Diff가 문서 변경을 직접 반영하므로 제외한다.
- * - VS Code Git 상태는 위의 identity 경로가 따로 처리하므로 여기서는 전체 refresh에서 제외한다.
- * @param reason extension refresh scheduler가 합친 상태 변경 원인
- * @returns 숨겨진 Changes 뷰 대신 비교 controller를 갱신해야 하면 true
- */
-function shouldRefreshExplorerComparison(reason: string): boolean {
-  return reason.split(",").some((part) => {
-    const value = part.trim();
-    return (
-      value.includes("stable-git-state") ||
-      value === "workspaceFolders"
-    );
-  });
 }
 
 /**
@@ -467,7 +482,7 @@ async function refreshComparisonIdentity(
   if (refsChanged || (headChanged && before.kind === "localRemote")) {
     // linked worktree처럼 .git 파일 watcher가 직접 잡지 못한 ref 이동도 이미 열린
     // 가상 문서가 이전 commit 내용을 재사용하지 않도록 전체 캐시를 먼저 비운다.
-    clearBranchContentCache();
+    clearBranchContentCache(current.repoRoot);
     controller.requestRefresh(`identity:${reason}`);
     return;
   }
@@ -522,34 +537,4 @@ function syncChangesComparisonIdentity(
     diffAvailable: after.diffAvailable,
     targetMatchesHead: after.targetMatchesHead,
   });
-}
-
-/**
- * `.git` 내부 이벤트 중 refresh 가치가 있는 안정적인 상태 파일인지 확인한다.
- * @param path 슬래시(`/`)로 정규화된 절대 경로
- */
-function isStableGitStatePath(path: string): boolean {
-  return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/|worktrees\/)/.test(
-    path
-  );
-}
-
-/**
- * `.git/info/exclude` 변경인지 확인한다.
- * @param path 슬래시(`/`)로 정규화된 절대 경로
- */
-function isGitExcludePath(path: string): boolean {
-  return /\/\.git\/info\/exclude$/.test(path);
-}
-
-/**
- * `.git` 내부 파일 이벤트에서 저장소 루트 경로를 꺼낸다.
- * @param uri `.git/HEAD` 또는 `.git/refs/**` 아래에서 발생한 파일 이벤트 URI
- * @returns 저장소 루트 절대 경로, `.git` 내부 이벤트가 아니면 undefined
- */
-function repoRootFromGitUri(uri: vscode.Uri): string | undefined {
-  const path = uri.fsPath.replace(/\\/g, "/");
-  const marker = "/.git/";
-  const index = path.indexOf(marker);
-  return index >= 0 ? uri.fsPath.slice(0, index) : undefined;
 }

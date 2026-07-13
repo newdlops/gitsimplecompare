@@ -27,34 +27,25 @@ export const ACTIVE_STAGED_HUNK_DIFF_CONTEXT =
  * @returns 등록된 리스너들을 정리하는 Disposable
  */
 export function registerActiveDiffTracker(): vscode.Disposable {
+  let lastSignature = "";
   const update = (): void => {
     const tab = vscode.window.tabGroups.activeTabGroup?.activeTab;
     const hunkTarget = hunkDiffTargetFromTab(tab);
-    void vscode.commands.executeCommand(
-      "setContext",
-      ACTIVE_DIFF_CONTEXT,
-      isApplicableDiff(tab)
-    );
-    void vscode.commands.executeCommand(
-      "setContext",
-      ACTIVE_EXTENSION_DIFF_CONTEXT,
-      isExtensionDiff(tab)
-    );
-    void vscode.commands.executeCommand(
-      "setContext",
-      ACTIVE_HEAD_WORKING_DIFF_CONTEXT,
-      isHunkDiffTab(tab)
-    );
-    void vscode.commands.executeCommand(
-      "setContext",
-      ACTIVE_UNSTAGED_HUNK_DIFF_CONTEXT,
-      hunkTarget?.stage === "unstaged"
-    );
-    void vscode.commands.executeCommand(
-      "setContext",
-      ACTIVE_STAGED_HUNK_DIFF_CONTEXT,
-      hunkTarget?.stage === "staged"
-    );
+    const contexts: [string, boolean][] = [
+      [ACTIVE_DIFF_CONTEXT, isApplicableDiff(tab)],
+      [ACTIVE_EXTENSION_DIFF_CONTEXT, isExtensionDiff(tab)],
+      [ACTIVE_HEAD_WORKING_DIFF_CONTEXT, isHunkDiffTab(tab)],
+      [ACTIVE_UNSTAGED_HUNK_DIFF_CONTEXT, hunkTarget?.stage === "unstaged"],
+      [ACTIVE_STAGED_HUNK_DIFF_CONTEXT, hunkTarget?.stage === "staged"],
+    ];
+    const signature = contexts.map(([, enabled]) => Number(enabled)).join("");
+    if (signature === lastSignature) {
+      return;
+    }
+    lastSignature = signature;
+    for (const [key, enabled] of contexts) {
+      void vscode.commands.executeCommand("setContext", key, enabled);
+    }
   };
 
   update(); // 활성화 직후 현재 상태를 한 번 반영

@@ -36,24 +36,19 @@ export interface StatusGroupOptions {
   maxCacheAgeMs?: number;
 }
 export type { IgnoreTarget, UntrackResult } from "./ignoreRules";
-
 // GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
 export { GitError } from "./gitExec";
-
 /**
  * 특정 저장소 루트에 묶인 git 작업 단위.
  * - 인스턴스는 repoRoot 하나에 대응한다. 여러 저장소를 다룰 땐 루트별로 생성한다.
  */
 export class GitService {
-  private statusCache:
-    | { at: number; value: StatusGroups; promise?: Promise<StatusGroups> }
-    | undefined;
+  private statusCache?: { at: number; value: StatusGroups; promise?: Promise<StatusGroups> };
   // 이 서비스로 마지막 git 상태 변경(commit/stage/unstage/discard 등)을 한 시각.
   // 직후 짧은 동안은 VS Code 내장 Git 캐시가 뒤처지므로, 새로고침이 CLI 로 강제 조회하도록 신호로 쓴다.
   private lastMutationAt = 0;
 
   constructor(public readonly repoRoot: string) {}
-
   /**
    * 주어진 경로가 속한 git 저장소의 루트를 찾는다.
    * - 파일/폴더 어느 쪽이든 그 위치를 기준으로 `git rev-parse --show-toplevel` 실행.
@@ -179,10 +174,15 @@ export class GitService {
     }
   }
 
-  /** 작업트리 상태 캐시를 무효화한다. 모든 git 상태 변경이 이 지점을 지나므로 변경 시각도 함께 기록한다. */
-  invalidateStatusCache(): void {
+  /**
+   * 작업트리 상태 캐시를 무효화한다.
+   * - 실제 index/작업트리 변경만 mutation 시각을 기록하고, watcher의 수동적 무효화는
+   *   false를 받아 후속 refresh가 불필요하게 Git CLI를 강제 실행하지 않게 한다.
+   * @param markMutation 이 서비스가 실제 Git 상태를 변경한 직후인지 여부
+   */
+  invalidateStatusCache(markMutation = true): void {
     this.statusCache = undefined;
-    this.lastMutationAt = Date.now();
+    if (markMutation) this.lastMutationAt = Date.now();
   }
 
   /**
