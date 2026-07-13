@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  RefreshDrain,
   addRefreshReasons,
+  changesRefreshSections,
   repoRootFromGitPath,
+  shouldForceChangesGitStatus,
+  shouldInvalidateChangesStatus,
   shouldLogIgnoredRefresh,
   shouldRefreshExplorerComparison,
+  shouldRefreshPullRequestComments,
   shouldRefreshForGitPath,
 } from "../src/utils/extensionRefreshPolicy";
 
@@ -53,3 +58,123 @@ test("Git 메타데이터 경로에서 저장소 루트를 복원한다", () => 
   );
   assert.equal(repoRootFromGitPath("/repo/src/file.ts"), undefined);
 });
+
+test("refresh 원인별로 Changes의 최소 조회 영역만 선택한다", () => {
+  assert.deepEqual(changesRefreshSections("vscodeGit:state"), [
+    "workingChanges",
+  ]);
+  assert.deepEqual(changesRefreshSections("windowFocused"), [
+    "workingChanges",
+  ]);
+  assert.deepEqual(changesRefreshSections("git:change:commit-hooks"), [
+    "commitHooks",
+  ]);
+  assert.deepEqual(changesRefreshSections("commit"), [
+    "workingChanges",
+    "fileHistory",
+    "comparison",
+  ]);
+  assert.deepEqual(changesRefreshSections("vscodeGit:identity"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "comparison",
+  ]);
+  assert.deepEqual(changesRefreshSections("checkoutBranch"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "comparison",
+  ]);
+  assert.deepEqual(changesRefreshSections("branchOperationCompleted"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "comparison",
+  ]);
+  assert.deepEqual(
+    changesRefreshSections(
+      "git:change:stable-git-state,git:change:commit-hooks"
+    ),
+    [
+      "repositories",
+      "workingChanges",
+      "fileHistory",
+      "commitHooks",
+      "comparison",
+    ]
+  );
+  assert.equal(changesRefreshSections("command").length, 7);
+});
+
+test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
+  assert.equal(shouldInvalidateChangesStatus("commit"), true);
+  assert.equal(shouldInvalidateChangesStatus("checkoutBranch"), true);
+  assert.equal(shouldInvalidateChangesStatus("branchOperationCompleted"), true);
+  assert.equal(shouldInvalidateChangesStatus("vscodeGit:state"), false);
+  assert.equal(shouldForceChangesGitStatus("commit"), true);
+  assert.equal(shouldForceChangesGitStatus("windowFocused"), true);
+  assert.equal(shouldForceChangesGitStatus("checkoutBranch"), true);
+  assert.equal(shouldForceChangesGitStatus("branchOperationConflicts"), true);
+  assert.equal(
+    shouldForceChangesGitStatus("git:change:stable-git-state"),
+    true
+  );
+  assert.equal(shouldForceChangesGitStatus("vscodeGit:state"), false);
+  assert.equal(shouldForceChangesGitStatus("vscodeGit:identity"), true);
+  assert.equal(shouldRefreshPullRequestComments("vscodeGit:state"), false);
+  assert.equal(shouldRefreshPullRequestComments("vscodeGit:identity"), true);
+  assert.equal(
+    shouldRefreshPullRequestComments("git:change:stable-git-state"),
+    true
+  );
+});
+
+test("실행 중 들어온 refresh는 queued 보정 pass까지 모두 끝날 때 완료된다", async () => {
+  const gates = [deferred<void>(), deferred<void>()];
+  const reasons: string[] = [];
+  const drain = new RefreshDrain(async (reason) => {
+    reasons.push(reason);
+    await gates[reasons.length - 1].promise;
+  });
+  let firstDone = false;
+  let secondDone = false;
+  const first = drain.request("vscodeGit:state").then(() => {
+    firstDone = true;
+  });
+  const second = drain.request("commit,commit").then(() => {
+    secondDone = true;
+  });
+
+  await nextTurn();
+  assert.deepEqual(reasons, ["vscodeGit:state"]);
+  assert.equal(firstDone, false);
+  assert.equal(secondDone, false);
+
+  gates[0].resolve();
+  await nextTurn();
+  assert.deepEqual(reasons, ["vscodeGit:state", "commit"]);
+  assert.equal(firstDone, false);
+  assert.equal(secondDone, false);
+
+  gates[1].resolve();
+  await Promise.all([first, second]);
+  assert.equal(firstDone, true);
+  assert.equal(secondDone, true);
+});
+
+/** 테스트에서 비동기 실행을 원하는 시점까지 멈추기 위한 수동 Promise를 만든다. */
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+/** queue의 Promise continuation이 실행될 수 있도록 이벤트 루프를 한 번 양보한다. */
+function nextTurn(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}

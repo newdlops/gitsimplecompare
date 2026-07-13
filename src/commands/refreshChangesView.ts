@@ -14,11 +14,18 @@ import { refreshWorkingChanges } from "./workingChanges";
 import { refreshWorktreesForChangesView } from "./worktreeState";
 import { refreshCommitHooks } from "./commitHooks";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
+import {
+  ChangesRefreshSection,
+  RefreshDrain,
+  changesRefreshSections,
+  shouldForceChangesGitStatus,
+  shouldInvalidateChangesStatus,
+} from "../utils/extensionRefreshPolicy";
 
-let refreshInFlight = false;
-let refreshPending = false;
-let refreshPendingReason = "";
 let refreshSequence = 0;
+let refreshCoordinator:
+  | { deps: CommandDeps; drain: RefreshDrain }
+  | undefined;
 
 export interface RefreshRequest {
   reason?: string;
@@ -36,23 +43,42 @@ export async function refreshChangesView(
   request: RefreshRequest = {}
 ): Promise<void> {
   const reason = request.reason ?? "command";
-  if (refreshInFlight) {
-    refreshPending = true;
-    refreshPendingReason = mergeReason(refreshPendingReason, reason);
+  const drain = changesRefreshDrain(deps);
+  if (drain.isRunning()) {
     logInfo("changes refresh queued", { reason });
-    return;
   }
+  await drain.request(reason);
+}
+
+/**
+ * 현재 활성화의 공유 refresh drain을 반환한다.
+ * - 확장 재활성화로 CommandDeps 인스턴스가 바뀌면 이전 모듈 상태를 재사용하지 않고 새 queue를 만든다.
+ * @param deps 현재 확장 활성화에서 공유하는 명령 의존성
+ * @returns 겹친 refresh를 직렬화하고 호출자 완료를 보장하는 drain
+ */
+function changesRefreshDrain(deps: CommandDeps): RefreshDrain {
+  if (!refreshCoordinator || refreshCoordinator.deps !== deps) {
+    refreshCoordinator = {
+      deps,
+      drain: new RefreshDrain((reason) => runChangesRefreshPass(deps, reason)),
+    };
+  }
+  return refreshCoordinator.drain;
+}
+
+/**
+ * 합쳐진 원인으로 실제 Changes refresh 한 pass를 실행하고 오류를 사용자/OUTPUT에 보고한다.
+ * @param deps 공유 의존성
+ * @param reason 이 pass에 포함된 중복 제거 원인 문자열
+ */
+async function runChangesRefreshPass(
+  deps: CommandDeps,
+  reason: string
+): Promise<void> {
   const runId = ++refreshSequence;
-  refreshInFlight = true;
   logInfo("changes refresh started", { runId, reason });
   try {
-    let currentReason = reason;
-    do {
-      refreshPending = false;
-      refreshPendingReason = "";
-      await refreshChangesViewOnce(deps, currentReason);
-      currentReason = refreshPendingReason || reason;
-    } while (refreshPending);
+    await refreshChangesViewOnce(deps, reason);
     logInfo("changes refresh finished", { runId });
   } catch (error) {
     logError("changes refresh failed", error, { runId, reason });
@@ -61,8 +87,6 @@ export async function refreshChangesView(
         "Git Simple Compare refresh failed. See the Git Simple Compare output for details."
       )
     );
-  } finally {
-    refreshInFlight = false;
   }
 }
 
@@ -74,9 +98,9 @@ async function refreshChangesViewOnce(
   await vscode.window.withProgress(
     { location: { viewId: "gitSimpleCompare.changes" } },
     async () => {
-      const sections = refreshSectionsForReason(reason);
+      const sections = changesRefreshSections(reason);
       logInfo("changes refresh scoped", { reason, sections });
-      if (shouldInvalidateStatusCaches(reason)) {
+      if (shouldInvalidateChangesStatus(reason)) {
         deps.registry.invalidateStatusCaches();
       }
       if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
@@ -84,7 +108,7 @@ async function refreshChangesViewOnce(
         const preferredRoot = await resolvePreferredRepositoryRoot(deps.registry, repositories);
         deps.changesView.setRepositories(repositories, preferredRoot);
       }
-      const forceGitStatus = shouldForceGitStatus(reason);
+      const forceGitStatus = shouldForceChangesGitStatus(reason);
       const tasks = [
         sectionTask(sections, "workingChanges", () =>
           refreshWorkingChanges(deps, { forceGit: forceGitStatus })
@@ -134,127 +158,15 @@ async function discoverRepositoriesForRefresh(
   return discoverRepositories(deps.registry);
 }
 
-type RefreshSection =
-  | "repositories"
-  | "workingChanges"
-  | "fileHistory"
-  | "stashes"
-  | "worktrees"
-  | "commitHooks"
-  | "comparison";
-
 interface RefreshTask {
-  section: RefreshSection;
+  section: ChangesRefreshSection;
   run: () => Promise<void>;
-}
-
-/** refresh 사유를 합쳐 pending refresh 가 어떤 범위를 봐야 하는지 보존한다. */
-function mergeReason(previous: string, reason: string): string {
-  return previous ? `${previous},${reason}` : reason;
-}
-
-/**
- * refresh 사유에 따라 필요한 git 조회 범위를 고른다.
- * - 파일 저장/작업트리 변경/hunk stage/VS Code Git 상태 이벤트는 stash 와 branch comparison 을 다시 읽지 않는다.
- * @param reason refresh 요청 사유
- */
-function refreshSectionsForReason(reason: string): RefreshSection[] {
-  if (isCommitHooksOnlyReason(reason)) {
-    return ["commitHooks"];
-  }
-  if (isWorkingOnlyReason(reason)) {
-    return ["workingChanges"];
-  }
-  return [
-    "repositories",
-    "workingChanges",
-    "fileHistory",
-    "stashes",
-    "worktrees",
-    "commitHooks",
-    "comparison",
-  ];
-}
-
-/**
- * hook 파일 watcher에서만 온 refresh인지 확인해 다른 Git 조회를 생략한다.
- * @param reason 쉼표로 합쳐질 수 있는 refresh 원인 문자열
- * @returns 모든 원인이 commit-hooks watcher이면 true
- */
-function isCommitHooksOnlyReason(reason: string): boolean {
-  const parts = reason.split(",").map((part) => part.trim()).filter(Boolean);
-  return parts.length > 0 && parts.every((part) => part.includes("commit-hooks"));
-}
-
-/** 작업트리 상태만 바뀐 refresh 사유인지 확인한다. */
-function isWorkingOnlyReason(reason: string): boolean {
-  const parts = reason.split(",").map((part) => part.trim()).filter(Boolean);
-  return (
-    parts.length > 0 &&
-    parts.every(
-      (part) =>
-        part.includes("working-tree-file") ||
-        part === "documentSaved" ||
-        part === "filesCreated" ||
-        part === "filesDeleted" ||
-        part === "filesRenamed" ||
-        part === "vscodeGit:state" ||
-        part.includes("ignore-rules") ||
-        part.includes("conflict") ||
-        part.startsWith("hunkCheckbox:") ||
-        part.startsWith("editorHunks:")
-    )
-  );
-}
-
-/** 직접 git index 를 바꾸는 명령은 watcher 를 기다리지 않고 status cache 를 먼저 비운다. */
-function shouldInvalidateStatusCaches(reason: string): boolean {
-  return (
-    reason === "command" ||
-    reason.split(",").some((part) => {
-      const item = part.trim();
-      return (
-        item === "command" ||
-        item === "commit" ||
-        item === "commitAttempt" ||
-        item.includes("conflict") ||
-        item.includes("ignore-rules") ||
-        item.startsWith("hunkCheckbox:") ||
-        item.startsWith("editorHunks:")
-      );
-    })
-  );
-}
-
-/**
- * 작업트리 상태를 VS Code Git provider 캐시 대신 Git CLI 로 직접 다시 읽어야 하는지 판단한다.
- * - 사용자가 누른 refresh/뷰 진입/ignore 규칙 변경은 provider 상태가 아직 이전 값일 수 있으므로 강제 조회한다.
- * - 커밋(commit)은 이 확장이 자체 CLI 로 수행하므로 VS Code 내장 Git 캐시가 아직 커밋 전 staged 목록을
- *   그대로 들고 있을 수 있다. 강제 조회해야 커밋 직후 staged 가 즉시 비워진다.
- * - ref/HEAD 등 안정 상태 변경(stable-git-state: 커밋으로 인한 브랜치 ref 이동, checkout, 브랜치 조작 등)도
- *   내장 Git 캐시가 뒤처질 수 있다. 커밋 직후 `.git/refs/**` 변경 감시가 트리거하는 후속 refresh 가
- *   강제 조회하지 않으면, 방금 갱신한 staged/배지 숫자를 stale 캐시로 되돌려 버린다.
- * @param reason refresh 요청 사유 목록
- */
-function shouldForceGitStatus(reason: string): boolean {
-  return reason.split(",").some((part) => {
-    const item = part.trim();
-    return (
-      item === "command" ||
-      item === "commit" ||
-      item === "commitAttempt" ||
-      item === "viewReady" ||
-      item === "viewVisible" ||
-      item.includes("ignore-rules") ||
-      item.includes("stable-git-state")
-    );
-  });
 }
 
 /** 선택된 section 만 실행 목록에 넣는다. */
 function sectionTask(
-  sections: RefreshSection[],
-  section: RefreshSection,
+  sections: ChangesRefreshSection[],
+  section: ChangesRefreshSection,
   run: () => Promise<void>
 ): RefreshTask | undefined {
   return sections.includes(section) ? { section, run } : undefined;

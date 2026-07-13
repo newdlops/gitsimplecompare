@@ -41,6 +41,7 @@ import {
   repoRootFromGitPath,
   shouldLogIgnoredRefresh,
   shouldRefreshExplorerComparison,
+  shouldRefreshPullRequestComments,
   shouldRefreshForGitPath,
 } from "./utils/extensionRefreshPolicy";
 
@@ -117,10 +118,16 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   syncComparisonContext();
 
   // 4) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
+  let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
+  /** 상태 이벤트마다 즉시 generation을 올려 debounce 중간의 두 번째 Git 전환도 stale 조회를 무효화한다. */
+  const invalidateStatusCachesForRefresh = (): void => {
+    registry.invalidateStatusCaches();
+  };
   const changesView = new ChangesViewProvider(
     context.extensionUri,
     context.globalState,
-    () => comparison.enabled
+    () => comparison.enabled,
+    (reason) => scheduleRefresh(reason, 0)
   );
   context.subscriptions.push(
     comparison.onDidChangeComparison(() =>
@@ -157,15 +164,15 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     hunkCheckboxes
   );
   context.subscriptions.push(nativeDiffOverlay.register());
-  let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
     if (
       !changesView.isVisible() &&
       !conflictsVisible &&
-      !comparison.enabled
+      !(comparison.enabled && reason === "vscodeGit:identity")
     ) {
       return;
     }
+    invalidateStatusCachesForRefresh();
     scheduleRefresh(reason);
   });
   context.subscriptions.push(vscodeGitStatus);
@@ -198,9 +205,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingRefreshReasons = new Set<string>();
   let refreshDeferredLogged = false;
+  let refreshBurstStartedAt: number | undefined;
+  const refreshMaxWaitMs = 600;
   const pendingGraphRefreshRoots = new Set<string>();
   const pendingBranchCacheRoots = new Set<string>();
-  let pendingStatusCacheInvalidation = false;
   let pendingClearAllBranchContent = false;
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
@@ -209,10 +217,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       changesVisible,
       conflictsVisible,
     });
-    if (pendingStatusCacheInvalidation) {
-      registry.invalidateStatusCaches();
-      pendingStatusCacheInvalidation = false;
-    }
     if (pendingClearAllBranchContent) {
       clearBranchContentCache();
       pendingClearAllBranchContent = false;
@@ -227,8 +231,14 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       GitGraphPanel.refreshOpen(repoRoot, reason);
     }
     pendingGraphRefreshRoots.clear();
-    prCommentDecorations.refresh(reason);
-    if (reason.split(",").some((part) => part.trim().startsWith("vscodeGit:"))) {
+    if (shouldRefreshPullRequestComments(reason)) {
+      prCommentDecorations.refresh(reason);
+    }
+    if (
+      reason
+        .split(",")
+        .some((part) => part.trim() === "vscodeGit:identity")
+    ) {
       void refreshComparisonIdentity(comparison, changesView, reason).catch((error) => {
         logError("comparison identity refresh failed", error, { reason });
       });
@@ -266,6 +276,14 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       return;
     }
+    const now = Date.now();
+    refreshBurstStartedAt ??= now;
+    // trailing debounce가 파일 이벤트 폭주 동안 끝없이 밀리지 않도록 첫 요청부터 최대 대기 시간을 둔다.
+    const remainingMaxWait = Math.max(
+      0,
+      refreshMaxWaitMs - (now - refreshBurstStartedAt)
+    );
+    const boundedDelay = Math.min(Math.max(0, delay), remainingMaxWait);
     refreshTimer = setTimeout(() => {
       refreshTimer = undefined;
       if (!vscode.window.state.focused) {
@@ -280,8 +298,9 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       const mergedReason = [...pendingRefreshReasons].join(",");
       pendingRefreshReasons.clear();
+      refreshBurstStartedAt = undefined;
       refreshEverything(mergedReason || "scheduled");
-    }, delay);
+    }, boundedDelay);
   };
   const refreshFileHistoryIfVisible = (reason: string): void => {
     if (!changesView.isVisible()) {
@@ -346,7 +365,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       return;
     }
-    pendingStatusCacheInvalidation = true;
+    invalidateStatusCachesForRefresh();
     if (
       decision.reason !== "ignore-rules" &&
       decision.reason !== "commit-hooks"
@@ -366,7 +385,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     uri: vscode.Uri
   ): void => {
     logInfo("ignore rules refresh requested", { event, path: uri.fsPath });
-    pendingStatusCacheInvalidation = true;
+    invalidateStatusCachesForRefresh();
     scheduleRefresh(`working-tree-file:${event}:ignore-rules`, 0);
   };
   watchRefresh(gitWatcher, scheduleRefreshForGitUri);
@@ -385,15 +404,26 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
     }),
     vscode.window.onDidChangeWindowState((state) => {
-      if (!state.focused ||
-        (pendingRefreshReasons.size === 0 && !changesView.isVisible())) {
+      if (!state.focused) {
+        return;
+      }
+      const hadDeferredReason = pendingRefreshReasons.size > 0;
+      // Git API가 없거나 auto refresh가 꺼진 환경도 외부 편집/git add를 놓치지 않도록, 보이는 Changes는
+      // 포커스 복귀 때 workingChanges 한 영역만 CLI SoT로 확인한다. 정책에서 History/stash 등은 제외된다.
+      if (changesView.isVisible()) {
+        addRefreshReasons(pendingRefreshReasons, "windowFocused");
+      }
+      if (pendingRefreshReasons.size === 0) {
         return;
       }
       refreshDeferredLogged = false;
-      logInfo("deferred refresh resumed", {
-        pendingReasons: pendingRefreshReasons.size,
-      });
-      scheduleRefresh("windowFocused", 0);
+      logInfo(
+        hadDeferredReason
+          ? "deferred refresh resumed"
+          : "focus status refresh scheduled",
+        { pendingReasons: pendingRefreshReasons.size }
+      );
+      scheduleRefresh("", 0);
     }),
     conflictsTree.onDidChangeVisibility((event) => {
       conflictsVisible = event.visible;
@@ -407,7 +437,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       registry.invalidateResolveCache();
-      pendingStatusCacheInvalidation = true;
+      invalidateStatusCachesForRefresh();
       pendingClearAllBranchContent = true;
       scheduleRefresh("workspaceFolders", 0);
     })

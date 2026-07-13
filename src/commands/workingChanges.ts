@@ -12,14 +12,10 @@ import { CommandDeps } from "./shared";
 import { GitService, IgnoreTarget } from "../git/gitService";
 import { openConflictEditor } from "./conflicts";
 import { logError, logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
-
-interface RefreshWorkingChangesOptions {
-  forceGit?: boolean;
-}
-
-// 우리 CLI 로 git 상태를 바꾼 직후, VS Code 내장 Git 캐시가 따라잡기 전까지 CLI 로 강제 조회하는 시간 창(ms).
-// 이 동안은 non-forced 새로고침도 CLI 를 읽어, 커밋 직후 목록이 사라졌다 다시 생겼다 하는 깜박임을 막는다.
-const WORKING_STATUS_MUTATION_WINDOW_MS = 3000;
+import {
+  refreshWorkingStatus,
+  type RefreshWorkingChangesOptions,
+} from "./workingStatusRefresh";
 
 /** 활성 저장소의 GitService 를 반환한다(없으면 undefined). */
 function activeService(deps: CommandDeps): GitService | undefined {
@@ -65,37 +61,7 @@ export async function refreshWorkingChanges(
   deps: CommandDeps,
   options: RefreshWorkingChangesOptions = {}
 ): Promise<void> {
-  const root = deps.changesView.getActiveRepo();
-  if (!root) {
-    deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
-    return;
-  }
-  const svc = deps.registry.get(root);
-  // 최근 우리 CLI 로 상태를 바꿨다면(commit/stage/unstage/discard 등) 내장 Git 캐시가 아직 커밋 전 상태를
-  // 들고 있을 수 있으므로 CLI 로 강제 조회한다. 이 창이 없으면 non-forced 새로고침이 stale 캐시를 읽어
-  // 목록이 사라졌다 다시 생겼다 하는 깜박임(UI≠실제 git 상태)이 발생한다.
-  const force =
-    options.forceGit || svc.mutatedRecently(WORKING_STATUS_MUTATION_WINDOW_MS);
-  const vscodeGroups = force
-    ? undefined
-    : await deps.vscodeGitStatus.getStatusGroups(root);
-  if (!force && vscodeGroups) {
-    try {
-      deps.changesView.setStatusGroups(await svc.addStatusStats(vscodeGroups));
-    } catch (error) {
-      logWarn("vscode git status stats fallback failed", {
-        root,
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      deps.changesView.setStatusGroups(vscodeGroups);
-    }
-    return;
-  }
-  try {
-    deps.changesView.setStatusGroups(await svc.getStatusGroups({ force }));
-  } catch {
-    deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
-  }
+  await refreshWorkingStatus(deps, options);
 }
 
 /**

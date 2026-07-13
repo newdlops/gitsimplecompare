@@ -60,7 +60,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly memento: vscode.Memento,
-    private readonly comparisonEnabled: () => boolean = () => true
+    private readonly comparisonEnabled: () => boolean,
+    private readonly requestRefresh: (reason: string) => void
   ) {
     this.viewModes = loadViewModes(memento.get(VIEW_MODE_STATE));
     this.sortKey = memento.get<SortKey>(SORT_KEY_STATE, "path");
@@ -82,10 +83,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.lastRenderPayloadJson = "";
     view.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
     view.onDidChangeVisibility(() => {
-      if (view.visible && vscode.window.state.focused) {
-        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "viewVisible" });
-      } else if (view.visible) {
-        logInfo("changes refresh deferred", { reason: "window-unfocused:viewVisible" });
+      if (view.visible) {
+        this.requestRefresh("viewVisible");
       }
     });
     view.onDidDispose(() => {
@@ -407,12 +406,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (msg.type === "ready") {
+      this.lastRenderPayloadJson = "";
       this.render();
-      if (vscode.window.state.focused) {
-        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "viewReady" });
-      } else {
-        logInfo("changes refresh deferred", { reason: "window-unfocused:viewReady" });
-      }
+      this.requestRefresh("viewReady");
     } else if (msg.type === "selectRepo" && msg.root) {
       this.selectRepo(msg.root);
     } else if (msg.type === "changeRef" && msg.side) {

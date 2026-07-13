@@ -7,10 +7,7 @@ import { readFile, rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitError, runGit } from "./gitExec";
 import { runStash, stashPushPaths } from "./stashExec";
-import {
-  attachParsedStatusStats,
-  attachStatusStats,
-} from "./statusStats";
+import { attachParsedStatusStats, attachStatusStats } from "./statusStats";
 import {
   appendIgnoreEntries,
   gitPathArgs,
@@ -24,17 +21,13 @@ import {
   parsePorcelainGroups,
 } from "./diffParse";
 import { buildWorkingContentWithoutStaged } from "./unstagedView";
-
-/** 작업트리 상태를 스테이징/미스테이징 두 그룹으로 나눈 결과 */
-export interface StatusGroups {
-  staged: FileChange[];
-  unstaged: FileChange[];
-}
-/** 작업트리 상태 조회 캐시 정책. */
-export interface StatusGroupOptions {
-  force?: boolean;
-  maxCacheAgeMs?: number;
-}
+import {
+  cloneStatusGroups,
+  StatusCache,
+  type StatusGroupOptions,
+  type StatusGroups,
+} from "./statusCache";
+export type { StatusGroupOptions, StatusGroups } from "./statusCache";
 export type { IgnoreTarget, UntrackResult } from "./ignoreRules";
 // GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
 export { GitError } from "./gitExec";
@@ -43,7 +36,7 @@ export { GitError } from "./gitExec";
  * - 인스턴스는 repoRoot 하나에 대응한다. 여러 저장소를 다룰 땐 루트별로 생성한다.
  */
 export class GitService {
-  private statusCache?: { at: number; value: StatusGroups; promise?: Promise<StatusGroups> };
+  private readonly statusCache = new StatusCache<StatusGroups>(cloneStatusGroups);
   // 이 서비스로 마지막 git 상태 변경(commit/stage/unstage/discard 등)을 한 시각.
   // 직후 짧은 동안은 VS Code 내장 Git 캐시가 뒤처지므로, 새로고침이 CLI 로 강제 조회하도록 신호로 쓴다.
   private lastMutationAt = 0;
@@ -151,27 +144,24 @@ export class GitService {
    * - 스테이징은 `git diff --cached --numstat -z`, 미스테이징은 `git diff --numstat -z` 로
    *   각각 추가/삭제 라인 수를 병합한다. `git diff`에 나오지 않는 미추적 파일은 파일을
    *   직접 읽어 추가 라인 수를 계산하고 삭제 라인은 0으로 표시한다.
+   * - includeStats=false 면 porcelain 목록만 한 번 읽어 UI가 SoT 상태를 먼저 반영하게 한다.
+   * @param options 강제 조회, 캐시 유효 시간, 라인 통계 포함 여부
+   * @returns authoritative porcelain 상태를 기준으로 분류한 작업트리 변경 그룹
    */
   async getStatusGroups(options: StatusGroupOptions = {}): Promise<StatusGroups> {
     const maxAge = options.maxCacheAgeMs ?? 1000;
-    if (!options.force && this.statusCache) {
-      if (this.statusCache.promise) {
-        return this.statusCache.promise.then(cloneStatusGroups);
-      }
-      if (Date.now() - this.statusCache.at <= maxAge) {
-        return cloneStatusGroups(this.statusCache.value);
+    const includeStats = options.includeStats ?? true;
+    const detailLevel = includeStats ? 1 : 0;
+    if (!options.force) {
+      const cached = this.statusCache.get(maxAge, detailLevel);
+      if (cached) {
+        return cached;
       }
     }
-    const promise = this.readStatusGroups();
-    this.statusCache = { at: Date.now(), value: emptyStatusGroups(), promise };
-    try {
-      const value = await promise;
-      this.statusCache = { at: Date.now(), value };
-      return cloneStatusGroups(value);
-    } catch (error) {
-      this.statusCache = undefined;
-      throw error;
-    }
+    return this.statusCache.read(
+      () => this.readStatusGroups(includeStats),
+      detailLevel
+    );
   }
 
   /**
@@ -181,8 +171,27 @@ export class GitService {
    * @param markMutation 이 서비스가 실제 Git 상태를 변경한 직후인지 여부
    */
   invalidateStatusCache(markMutation = true): void {
-    this.statusCache = undefined;
+    this.statusCache.invalidate();
     if (markMutation) this.lastMutationAt = Date.now();
+  }
+
+  /**
+   * 현재 작업트리 status 캐시의 무효화 세대를 반환한다.
+   * - provider 기반 비동기 조회는 시작 시 이 값을 저장하고, UI 반영 직전에 현재 여부를 검사해
+   *   commit/stage 뒤에 늦게 도착한 과거 결과가 화면을 되돌리지 않게 한다.
+   * @returns 마지막 수동/자동 invalidate 횟수를 반영한 generation 토큰
+   */
+  getStatusGeneration(): number {
+    return this.statusCache.getGeneration();
+  }
+
+  /**
+   * 비동기 status 조회가 시작된 세대가 아직 유효한지 확인한다.
+   * @param generation 조회 시작 때 getStatusGeneration 으로 저장한 토큰
+   * @returns 조회 도중 status 캐시가 invalidate 되지 않았다면 true
+   */
+  isStatusGenerationCurrent(generation: number): boolean {
+    return this.statusCache.isGenerationCurrent(generation);
   }
 
   /**
@@ -197,7 +206,7 @@ export class GitService {
   /**
    * 외부 상태 provider 가 준 파일 목록에 git numstat 기반 +/- 정보를 보강한다.
    * - VS Code Git API 는 빠른 파일 상태를 주지만 추가/삭제 라인 수는 주지 않는다.
-   * - `git status` 재스캔 없이 diff numstat 만 읽어 Changes 섹션의 +/- 표시를 유지한다.
+   * - `git status` 재스캔 없이 +/-를 붙이되 provider 결과는 authoritative 캐시에 저장하지 않는다.
    * @param groups staged/unstaged 로 이미 분류된 파일 목록
    */
   async addStatusStats(groups: StatusGroups): Promise<StatusGroups> {
@@ -206,14 +215,21 @@ export class GitService {
       cloneStatusGroups(groups),
       (args) => this.run(args)
     );
-    this.statusCache = { at: Date.now(), value };
     return cloneStatusGroups(value);
   }
 
-  /** 실제 git status/diff 조회를 수행한다. */
-  private async readStatusGroups(): Promise<StatusGroups> {
+  /**
+   * authoritative git status 를 읽고 요청된 경우 diff 통계까지 병합한다.
+   * @param includeStats true면 staged/unstaged numstat과 미추적 파일 라인 수도 계산한다
+   * @returns porcelain 기준 상태 그룹과 선택적으로 보강된 라인 통계
+   */
+  private async readStatusGroups(includeStats: boolean): Promise<StatusGroups> {
+    const status = this.run(["status", "--porcelain", "-z", "--untracked-files=all"]);
+    if (!includeStats) {
+      return parsePorcelainGroups(await status);
+    }
     const [statusOut, stagedNum, unstagedNum] = await Promise.all([
-      this.run(["status", "--porcelain", "-z", "--untracked-files=all"]),
+      status,
       // 커밋 0개(HEAD 없음) 등은 빈 출력으로 처리한다.
       this.run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => ""),
       this.run(["diff", "--numstat", "-z", "-M"]).catch(() => ""),
@@ -571,22 +587,6 @@ export class GitService {
   private run(args: string[]): Promise<string> {
     return runGit(args, this.repoRoot);
   }
-}
-
-/** 빈 작업트리 상태 객체를 만든다. */
-function emptyStatusGroups(): StatusGroups {
-  return { staged: [], unstaged: [] };
-}
-
-/**
- * 캐시된 status 결과를 호출자가 실수로 변형하지 못하도록 얕게 복사한다.
- * @param groups 캐시에 보관된 작업트리 상태
- */
-function cloneStatusGroups(groups: StatusGroups): StatusGroups {
-  return {
-    staged: groups.staged.map((item) => ({ ...item })),
-    unstaged: groups.unstaged.map((item) => ({ ...item })),
-  };
 }
 
 /**

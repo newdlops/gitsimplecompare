@@ -37,6 +37,7 @@ export class PullRequestCommentController implements vscode.Disposable {
   private readonly activeThreads = new Map<string, vscode.CommentThread>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private requestSeq = 0;
+  private refreshDeferred = false;
   private disposed = false;
 
   constructor(
@@ -61,7 +62,9 @@ export class PullRequestCommentController implements vscode.Disposable {
         this.scheduleRefresh("activeEditor")
       ),
       vscode.window.onDidChangeWindowState((state) => {
-        if (state.focused) {
+        // 포커스 자체로 Git/GitHub 조회를 반복하지 않고, 백그라운드에서 놓친 실제 요청만 재개한다.
+        if (state.focused && this.refreshDeferred) {
+          this.refreshDeferred = false;
           this.scheduleRefresh("windowFocused");
         }
       }),
@@ -109,6 +112,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     this.disposed = true;
+    this.refreshDeferred = false;
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = undefined;
@@ -131,6 +135,7 @@ export class PullRequestCommentController implements vscode.Disposable {
   private applyConfiguration(reason: string): void {
     if (!isEnabled()) {
       this.requestSeq++;
+      this.refreshDeferred = false;
       this.clearVisibleDecorations();
       this.clearActiveGroups();
       logInfo("pr editor comments disabled", { reason });
@@ -146,9 +151,18 @@ export class PullRequestCommentController implements vscode.Disposable {
    * @param reason refresh 를 예약한 이벤트 이름
    */
   private scheduleRefresh(reason: string): void {
-    if (!isEnabled() || this.disposed || !vscode.window.state.focused) {
+    if (!isEnabled() || this.disposed) {
       return;
     }
+    if (!vscode.window.state.focused) {
+      this.refreshDeferred = true;
+      if (this.refreshTimer) {
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = undefined;
+      }
+      return;
+    }
+    this.refreshDeferred = false;
     const requestId = ++this.requestSeq;
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
@@ -172,6 +186,7 @@ export class PullRequestCommentController implements vscode.Disposable {
     // 백그라운드 창은 원격 PR 조회를 시작하지 않는다. 기존 thread/decorations 는 보존하고,
     // 창이 다시 포커스되면 onDidChangeWindowState 경로가 최신 상태를 예약한다.
     if (!vscode.window.state.focused) {
+      this.refreshDeferred = true;
       return;
     }
     const editor = vscode.window.activeTextEditor;
@@ -188,10 +203,13 @@ export class PullRequestCommentController implements vscode.Disposable {
     }
 
     const service = await this.registry.resolve(dirname(editor.document.uri.fsPath));
+    if (!vscode.window.state.focused) {
+      this.refreshDeferred = true;
+      return;
+    }
     if (
       requestId !== this.requestSeq ||
-      !isEnabled() ||
-      !vscode.window.state.focused
+      !isEnabled()
     ) {
       return;
     }
@@ -207,10 +225,13 @@ export class PullRequestCommentController implements vscode.Disposable {
     );
     try {
       const prComments = await this.commentCache.load(service.repoRoot);
+      if (!vscode.window.state.focused) {
+        this.refreshDeferred = true;
+        return;
+      }
       if (
         requestId !== this.requestSeq ||
-        !isEnabled() ||
-        !vscode.window.state.focused
+        !isEnabled()
       ) {
         return;
       }

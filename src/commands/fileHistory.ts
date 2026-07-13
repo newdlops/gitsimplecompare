@@ -197,6 +197,9 @@ function shouldForceHistoryReload(reason: string, force?: boolean): boolean {
     .some(
       (part) =>
         part === "command" ||
+        part === "commit" ||
+        part === "checkoutBranch" ||
+        part.startsWith("branchOperation") ||
         part === "workspaceFolders" ||
         part.startsWith("git:") ||
         part.startsWith("commit:") ||

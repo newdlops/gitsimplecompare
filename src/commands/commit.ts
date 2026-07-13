@@ -77,7 +77,11 @@ async function commitChangesOnce(
   let committed = false;
   let commitAttempted = false;
   try {
-    const { staged } = await service.getStatusGroups();
+    // 커밋 정책에는 staged 존재 여부만 필요하므로 numstat 두 프로세스 없이 porcelain SoT만 읽는다.
+    const { staged } = await service.getStatusGroups({
+      force: true,
+      includeStats: false,
+    });
     if (requiresExistingStage(operation) && staged.length === 0) {
       vscode.window.showWarningMessage(
         vscode.l10n.t("There are no staged changes to commit.")

@@ -35,7 +35,7 @@ interface VscodeGitRepository {
 
 /** VS Code Git 이 유지하는 저장소 상태 캐시. */
 interface VscodeGitRepositoryState {
-  readonly HEAD?: { name?: string };
+  readonly HEAD?: { name?: string; commit?: string };
   readonly indexChanges: VscodeGitChange[];
   readonly workingTreeChanges: VscodeGitChange[];
   readonly untrackedChanges: VscodeGitChange[];
@@ -83,6 +83,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     VscodeGitRepository,
     vscode.Disposable[]
   >();
+  private readonly repositoryIdentities = new Map<VscodeGitRepository, string>();
 
   constructor(private readonly onDidChange: (reason: string) => void) {}
 
@@ -158,6 +159,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       }
     }
     this.repositoryDisposables.clear();
+    this.repositoryIdentities.clear();
   }
 
   /** 내장 Git 확장을 활성화하고 저장소 상태 이벤트를 연결한다. */
@@ -209,8 +211,15 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     if (this.repositoryDisposables.has(repo)) {
       return;
     }
+    this.repositoryIdentities.set(repo, repositoryIdentity(repo));
     const disposable = repo.state.onDidChange(() => {
-      this.onDidChange("vscodeGit:state");
+      const previous = this.repositoryIdentities.get(repo);
+      const current = repositoryIdentity(repo);
+      this.repositoryIdentities.set(repo, current);
+      // 파일/index 변화는 가벼운 Changes 갱신만, HEAD/branch 이동은 비교 identity 갱신까지 요청한다.
+      this.onDidChange(
+        previous !== current ? "vscodeGit:identity" : "vscodeGit:state"
+      );
     });
     this.repositoryDisposables.set(repo, [disposable]);
   }
@@ -228,6 +237,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       disposable.dispose();
     }
     this.repositoryDisposables.delete(repo);
+    this.repositoryIdentities.delete(repo);
   }
 
   /**
@@ -338,6 +348,16 @@ function uniqueChanges(changes: FileChange[]): FileChange[] {
     out.push(change);
   }
   return out;
+}
+
+/**
+ * 저장소의 branch/HEAD 이동만 작업트리 상태 이벤트와 구분할 수 있는 signature를 만든다.
+ * - commit hash가 제공되는 VS Code Git API에서는 같은 branch의 새 commit도 identity 변화로 잡는다.
+ * @param repo VS Code Git API 저장소 객체
+ * @returns branch 이름과 HEAD commit을 결합한 비교 문자열
+ */
+function repositoryIdentity(repo: VscodeGitRepository): string {
+  return `${repo.state.HEAD?.name ?? ""}\0${repo.state.HEAD?.commit ?? ""}`;
 }
 
 /**
