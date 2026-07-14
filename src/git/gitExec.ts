@@ -21,7 +21,11 @@ export interface RunGitOptions {
   beforeRetry?: () => Promise<void>;
 }
 
+/** Git stdin으로 전달할 수 있는 UTF-8 문자열 또는 원본 바이트 입력이다. */
+export type GitInput = string | Uint8Array;
+
 const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
+const MAX_GIT_BUFFER_BYTES = 128 * 1024 * 1024;
 
 /**
  * git 명령을 실행하고 표준 출력을 문자열로 반환한다.
@@ -62,13 +66,13 @@ export async function runGit(
  * - runGit 과 같은 lock 재시도 정책을 공유해 호출부가 git 실행 방식을 신경 쓰지 않게 한다.
  * @param args git 인자 배열
  * @param cwd 실행 디렉터리(저장소 경로)
- * @param input git 프로세스의 stdin 으로 전달할 문자열
+ * @param input git 프로세스의 stdin 으로 전달할 문자열 또는 원본 바이트
  * @param options 추가 env 또는 lock 재시도 옵션
  */
 export async function runGitWithInput(
   args: string[],
   cwd: string,
-  input: string,
+  input: GitInput,
   options?: Record<string, string> | RunGitOptions
 ): Promise<string> {
   const normalized = normalizeOptions(options);
@@ -90,12 +94,46 @@ export async function runGitWithInput(
   }
 }
 
+/**
+ * git 표준 출력을 UTF-8 변환 없이 원본 Buffer로 반환한다.
+ * - `git diff --binary`처럼 text hunk에도 임의 바이트가 포함될 수 있는 출력은 문자열로 읽으면
+ *   잘못된 UTF-8이 U+FFFD로 치환되므로 snapshot이나 재적용 경로에서 반드시 이 함수를 사용한다.
+ * - 실패 stderr/stdout만 진단 문자열로 변환하며 성공 출력은 한 바이트도 재인코딩하지 않는다.
+ * @param args git 인자 배열
+ * @param cwd 실행 디렉터리(저장소 경로)
+ * @param options 추가 env 또는 lock 재시도 옵션
+ * @returns git stdout 원본 바이트
+ */
+export async function runGitBuffer(
+  args: string[],
+  cwd: string,
+  options?: Record<string, string> | RunGitOptions
+): Promise<Buffer> {
+  const normalized = normalizeOptions(options);
+  const retryOnLock = normalized.retryOnLock !== false;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await runGitBufferOnce(args, cwd, normalized.env);
+    } catch (error) {
+      if (
+        !retryOnLock ||
+        !isRetryableGitError(error) ||
+        attempt >= LOCK_RETRY_DELAYS_MS.length
+      ) {
+        throw error;
+      }
+      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
+      await normalized.beforeRetry?.();
+    }
+  }
+}
+
 /** git 명령 한 번을 실행한다. lock 재시도 루프는 runGit 이 담당한다. */
 function runGitOnce(
   args: string[],
   cwd: string,
   env?: Record<string, string>,
-  input?: string
+  input?: GitInput
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = execFile(
@@ -103,7 +141,7 @@ function runGitOnce(
       args,
       {
         cwd,
-        maxBuffer: 128 * 1024 * 1024, // 128MB
+        maxBuffer: MAX_GIT_BUFFER_BYTES,
         windowsHide: true,
         encoding: "utf8",
         env: env ? { ...process.env, ...env } : undefined,
@@ -122,6 +160,50 @@ function runGitOnce(
       child.stdin.on("error", () => undefined);
       child.stdin.end(input);
     }
+  });
+}
+
+/**
+ * stdout encoding을 지정하지 않고 git 명령을 한 번 실행한다.
+ * - Buffer 출력이 필요한 공개 함수도 문자열 실행과 같은 GitError/retry 판정을 공유하도록
+ *   실패 출력만 UTF-8 진단 텍스트로 바꾼다.
+ * @param args git 인자 배열
+ * @param cwd 실행 디렉터리
+ * @param env 기존 process.env에 덮어쓸 선택 환경
+ * @returns 성공 stdout 원본 Buffer
+ */
+function runGitBufferOnce(
+  args: string[],
+  cwd: string,
+  env?: Record<string, string>
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "git",
+      args,
+      {
+        cwd,
+        maxBuffer: MAX_GIT_BUFFER_BYTES,
+        windowsHide: true,
+        encoding: null,
+        env: env ? { ...process.env, ...env } : undefined,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          const stderrText = stderr.toString("utf8");
+          const stdoutText = stdout.toString("utf8");
+          reject(
+            new GitError(
+              `git ${args.join(" ")} 실패: ${error.message}`,
+              stderrText,
+              stdoutText
+            )
+          );
+          return;
+        }
+        resolve(stdout);
+      }
+    );
   });
 }
 
