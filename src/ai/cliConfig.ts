@@ -19,11 +19,13 @@ export interface AiCliConfig {
   provider: AiCliProvider;
   claudeCommand: string;
   claudeModel: string;
+  claudeCommitPlanModel: string;
   claudeEffort: AiReasoningEffort;
   claudeSystemPrompt: string;
   claudeLoginMode: AiClaudeLoginMode;
   codexCommand: string;
   codexModel: string;
+  codexCommitPlanModel: string;
   codexReasoningEffort: AiReasoningEffort;
   codexProfile: string;
   codexLoginMode: AiCodexLoginMode;
@@ -54,6 +56,7 @@ export function readAiCliConfig(): AiCliConfig {
     provider: normalizeProvider(config.get("aiCliProvider", "auto")),
     claudeCommand: config.get("aiClaudeCommand", "claude").trim() || "claude",
     claudeModel: config.get("aiClaudeModel", "").trim(),
+    claudeCommitPlanModel: config.get("aiClaudeCommitPlanModel", "").trim(),
     claudeEffort: normalizeReasoningEffort(config.get("aiClaudeEffort", "")),
     claudeSystemPrompt: config.get("aiClaudeSystemPrompt", "").trim(),
     claudeLoginMode: normalizeClaudeLoginMode(
@@ -61,6 +64,7 @@ export function readAiCliConfig(): AiCliConfig {
     ),
     codexCommand: config.get("aiCodexCommand", "codex").trim() || "codex",
     codexModel: config.get("aiCodexModel", "").trim(),
+    codexCommitPlanModel: config.get("aiCodexCommitPlanModel", "").trim(),
     codexReasoningEffort: normalizeReasoningEffort(
       config.get("aiCodexReasoningEffort", "")
     ),

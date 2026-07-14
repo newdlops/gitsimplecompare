@@ -49,7 +49,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 변경 파일 뷰의 커밋 메시지 입력창 옆 AI 버튼으로 커밋 메시지를 생성할 수 있습니다. 선택한 AI CLI 에 staged diff 를 보내므로, 요약할 파일이나 hunk 를 먼저 스테이징해야 합니다. staged PR preview 에도 PR 제목/본문을 채우는 AI 버튼이 있습니다.
 
-이 기능은 로컬 CLI 를 비대화식으로 실행합니다. Claude Code 는 `claude -p`, Codex 는 `codex exec` 경로를 사용합니다. `Git Simple Compare: AI CLI 설정` 명령이나 커밋 AI 버튼 옆 gear 버튼에서 provider, 로그인/상태 흐름, 실행 파일 경로, 모델/profile 옵션, 추론 강도, 기본 응답 언어, 추가 프롬프트 지시문, timeout 을 설정할 수 있습니다. 모델과 추론 강도 선택기는 설치된 provider CLI metadata 를 불러옵니다.
+이 기능은 로컬 CLI 를 비대화식으로 실행합니다. Claude Code 는 `claude -p`, Codex 는 `codex exec` 경로를 사용합니다. `Git Simple Compare: AI CLI 설정` 명령이나 커밋 AI 버튼 옆 gear 버튼에서 provider, 로그인/상태 흐름, 실행 파일 경로, 모델/profile 옵션, 추론 강도, 기본 응답 언어, 추가 프롬프트 지시문, timeout 을 설정할 수 있습니다. 모델과 추론 강도 선택기는 설치된 provider CLI metadata 를 불러옵니다. **커밋 플랜 모델** 그룹에서는 AI Plan에만 사용할 모델을 provider별로 따로 고를 수 있으며, 비워 두면 해당 provider의 일반 모델을 상속합니다. Provider 추론 강도와 profile 설정은 계속 적용되고, CLI metadata에서 현재 추론 강도를 지원하지 않는다고 확인된 모델을 고르면 picker가 경고합니다.
 
 브라우저 callback 로그인이 localhost 에 도달하지 못하면 AI CLI 설정에서 callback 을 쓰지 않는 로그인 방식으로 바꾸세요. Claude Code 는 `setup-token`, `console`, 또는 `sso`, Codex 는 `device`, `api-key`, 또는 `access-token` 을 선택한 뒤 로그인 / 상태를 다시 실행하면 됩니다.
 
@@ -78,11 +78,13 @@ UI 기본 언어는 **영어**입니다. VS Code 표시 언어를 한국어(`ko`
 | `gitSimpleCompare.aiCliProvider` | `auto` | AI CLI provider (`auto`, `claude`, `codex`) |
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code 실행 파일 이름 또는 절대 경로 |
 | `gitSimpleCompare.aiClaudeModel` | 빈 값 | CLI metadata 에서 선택한 Claude Code 모델 |
+| `gitSimpleCompare.aiClaudeCommitPlanModel` | 빈 값 | AI Plan 전용 Claude Code 모델. 비우면 `aiClaudeModel`, 다시 CLI 기본값 상속 |
 | `gitSimpleCompare.aiClaudeEffort` | 빈 값 | Claude Code 추론 강도 (`low`, `medium`, `high`, `xhigh`, `max`) |
 | `gitSimpleCompare.aiClaudeSystemPrompt` | 빈 값 | `--append-system-prompt` 로 추가할 Claude Code 시스템 프롬프트 |
 | `gitSimpleCompare.aiClaudeLoginMode` | `claudeai` | Claude 로그인 방식 (`claudeai`, `console`, `sso`, `setup-token`) |
 | `gitSimpleCompare.aiCodexCommand` | `codex` | Codex 실행 파일 이름 또는 절대 경로 |
 | `gitSimpleCompare.aiCodexModel` | 빈 값 | CLI model catalog 에서 선택한 Codex 모델 |
+| `gitSimpleCompare.aiCodexCommitPlanModel` | 빈 값 | AI Plan 전용 Codex 모델. 비우면 `aiCodexModel`, 다시 CLI 기본값 상속 |
 | `gitSimpleCompare.aiCodexReasoningEffort` | 빈 값 | Codex 추론 강도 (`low`, `medium`, `high`, `xhigh`, 지원 시 `max`) |
 | `gitSimpleCompare.aiCodexProfile` | 빈 값 | `--profile` 로 전달할 Codex config profile |
 | `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex 로그인 방식 (`device`, `browser`, `api-key`, `access-token`) |

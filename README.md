@@ -57,7 +57,7 @@ For a larger change set, enable **AI Plan** beside the commit button or run `Git
 
 AI Plan prepares the complete commit chain privately, runs normal commit hooks for each prepared commit, then publishes the branch only after a final state check. Hooks can detect this provisional phase through `GIT_SIMPLE_COMPARE_AI_PLAN_PROVISIONAL=1` and should defer irreversible notifications or deployments when it is set. Git hook side effects outside the repository cannot be rolled back if a later hook or concurrency check stops the plan.
 
-This feature runs local CLIs non-interactively: `claude -p` for Claude Code and `codex exec` for Codex. Use `Git Simple Compare: Configure AI CLI` or the gear button beside the AI commit button to choose the provider, login/status flow, executable path, model/profile options, reasoning effort, default response language, and extra prompt instructions. Model and reasoning pickers load metadata from the installed provider CLI.
+This feature runs local CLIs non-interactively: `claude -p` for Claude Code and `codex exec` for Codex. Use `Git Simple Compare: Configure AI CLI` or the gear button beside the AI commit button to choose the provider, login/status flow, executable path, model/profile options, reasoning effort, default response language, and extra prompt instructions. Model and reasoning pickers load metadata from the installed provider CLI. The **Commit Plan Models** group lets each provider use a separate model only for AI Plan; leaving it empty inherits that provider's general model. Provider reasoning and profile settings still apply, and the picker warns when CLI metadata explicitly marks the selected model as incompatible with the configured reasoning effort.
 
 If a browser callback login cannot reach localhost, use a non-callback login method in AI CLI Settings: for Claude Code choose `setup-token`, `console`, or `sso`; for Codex choose `device`, `api-key`, or `access-token`. Then run Login / Status again.
 
@@ -92,11 +92,13 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | `gitSimpleCompare.aiCliProvider` | `auto` | AI CLI provider (`auto`, `claude`, or `codex`) |
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code executable name or absolute path |
 | `gitSimpleCompare.aiClaudeModel` | empty | Claude Code model selected from CLI metadata |
+| `gitSimpleCompare.aiClaudeCommitPlanModel` | empty | Claude Code model used only for AI Plan; empty inherits `aiClaudeModel`, then the CLI default |
 | `gitSimpleCompare.aiClaudeEffort` | empty | Claude Code reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max`) |
 | `gitSimpleCompare.aiClaudeSystemPrompt` | empty | Optional Claude Code system prompt appended with `--append-system-prompt` |
 | `gitSimpleCompare.aiClaudeLoginMode` | `claudeai` | Claude login method (`claudeai`, `console`, `sso`, or `setup-token`) |
 | `gitSimpleCompare.aiCodexCommand` | `codex` | Codex executable name or absolute path |
 | `gitSimpleCompare.aiCodexModel` | empty | Codex model selected from the CLI model catalog |
+| `gitSimpleCompare.aiCodexCommitPlanModel` | empty | Codex model used only for AI Plan; empty inherits `aiCodexModel`, then the CLI default |
 | `gitSimpleCompare.aiCodexReasoningEffort` | empty | Codex reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max` when supported) |
 | `gitSimpleCompare.aiCodexProfile` | empty | Optional Codex config profile passed with `--profile` |
 | `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex login method (`device`, `browser`, `api-key`, or `access-token`) |

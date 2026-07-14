@@ -4,11 +4,16 @@ import { spawn } from "child_process";
 import * as vscode from "vscode";
 import {
   AI_CLI_PROVIDER_LABELS,
-  AiCliConfig,
   AiCliProvider,
   readAiCliConfig,
 } from "./cliConfig";
+import {
+  aiCliProviderOrder,
+  buildAiCliProviderCommand,
+  type AiCliProviderCommand,
+} from "./cliCommand";
 import { looksLikeAuthError } from "./cliDiscovery";
+import { type AiCliModelPurpose } from "./cliModelSelection";
 import { prepareAiCliLaunch } from "./cliProcess";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 
@@ -21,6 +26,8 @@ export interface AiCliResponse {
 /** AI CLI 실행별 옵션. timeoutMs 가 null 이면 시간 제한 없이 취소 토큰만 따른다. */
 export interface AiCliPromptOptions {
   timeoutMs?: number | null;
+  /** 기능별 전용 모델을 선택할 목적. 생략하면 기존 일반 모델을 사용한다. */
+  modelPurpose?: AiCliModelPurpose;
 }
 
 /** AI CLI 설정/설치 문제를 UI 에서 구분하기 위한 오류 타입. */
@@ -36,12 +43,6 @@ export class AiCliAuthenticationError extends Error {
   }
 }
 
-interface ProviderCommand {
-  provider: AiCliProvider;
-  command: string;
-  args: string[];
-}
-
 const MAX_OUTPUT_CHARS = 200000;
 
 /**
@@ -49,6 +50,8 @@ const MAX_OUTPUT_CHARS = 200000;
  * @param prompt CLI 로 전달할 사용자 프롬프트
  * @param cwd CLI 를 실행할 저장소 루트
  * @param token VS Code 취소 토큰
+ * @param options timeout과 기능별 모델 목적을 덮어쓸 실행 옵션
+ * @returns 실제 응답한 provider와 정리 전 원문 응답
  */
 export async function runAiCliPrompt(
   prompt: string,
@@ -57,18 +60,28 @@ export async function runAiCliPrompt(
   options: AiCliPromptOptions = {}
 ): Promise<AiCliResponse> {
   const config = readAiCliConfig();
-  const providers = providerOrder(config.provider);
+  const providers = aiCliProviderOrder(config.provider);
+  const modelPurpose = options.modelPurpose ?? "general";
   const notFound: string[] = [];
   const timeoutMs = options.timeoutMs === null
     ? undefined
     : options.timeoutMs ?? config.timeoutMs;
   for (const provider of providers) {
-    const command = providerCommand(config, provider, cwd);
+    const command = buildAiCliProviderCommand(
+      config,
+      provider,
+      cwd,
+      modelPurpose
+    );
     try {
       logInfo("AI CLI prompt requested", {
         provider,
         command: command.command,
         cwd,
+        model: command.model || "not explicitly set",
+        modelSource: command.modelSource,
+        modelPurpose,
+        reasoningEffort: command.reasoningEffort || "not explicitly set",
         timeoutMs: timeoutMs ?? "none",
       });
       const text = await runProviderCommand(command, prompt, cwd, timeoutMs, token);
@@ -111,74 +124,6 @@ export function isAiCliAuthenticationError(
 }
 
 /**
- * provider 설정에서 실제 시도 순서를 만든다.
- * @param provider 설정된 provider
- */
-function providerOrder(provider: AiCliProvider): AiCliProvider[] {
-  if (provider === "claude" || provider === "codex") {
-    return [provider];
-  }
-  return ["claude", "codex"];
-}
-
-/**
- * provider 별 CLI 인자를 구성한다.
- * @param config 정규화된 AI CLI 설정
- * @param provider 실행할 provider
- * @param cwd 현재 저장소 루트
- */
-function providerCommand(
-  config: AiCliConfig,
-  provider: AiCliProvider,
-  cwd: string
-): ProviderCommand {
-  if (provider === "claude") {
-    const args = [
-      "-p",
-      "--output-format",
-      "text",
-      "--no-session-persistence",
-      "--tools",
-      "",
-    ];
-    if (config.claudeModel) {
-      args.push("--model", config.claudeModel);
-    }
-    if (config.claudeEffort) {
-      args.push("--effort", config.claudeEffort);
-    }
-    if (config.claudeSystemPrompt) {
-      args.push("--append-system-prompt", config.claudeSystemPrompt);
-    }
-    return { provider, command: config.claudeCommand, args };
-  }
-
-  const args = [
-    "exec",
-    "--sandbox",
-    "read-only",
-    "--color",
-    "never",
-    "-C",
-    cwd,
-  ];
-  if (config.codexReasoningEffort) {
-    args.push(
-      "-c",
-      `model_reasoning_effort="${config.codexReasoningEffort}"`
-    );
-  }
-  if (config.codexModel) {
-    args.push("--model", config.codexModel);
-  }
-  if (config.codexProfile) {
-    args.push("--profile", config.codexProfile);
-  }
-  args.push("-");
-  return { provider: "codex", command: config.codexCommand, args };
-}
-
-/**
  * child_process.spawn 으로 CLI 를 실행하고 stdout 을 모은다.
  * @param providerCommand 실행할 command/args 정보
  * @param prompt stdin 으로 전달할 프롬프트
@@ -187,7 +132,7 @@ function providerCommand(
  * @param token VS Code 취소 토큰
  */
 async function runProviderCommand(
-  providerCommand: ProviderCommand,
+  providerCommand: AiCliProviderCommand,
   prompt: string,
   cwd: string,
   timeoutMs: number | undefined,

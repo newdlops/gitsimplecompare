@@ -67,7 +67,8 @@ export async function generateAiCommitPlan(
     const response = await runAiCliPrompt(
       prompt,
       context.repoRoot,
-      token
+      token,
+      { modelPurpose: "commitPlan" }
     );
     throwIfCancelled(token);
 

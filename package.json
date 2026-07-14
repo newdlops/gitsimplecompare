@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71038",
+  "version": "0.1.71039",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1061,6 +1061,11 @@
           "default": "",
           "description": "%config.aiClaudeModel.desc%"
         },
+        "gitSimpleCompare.aiClaudeCommitPlanModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiClaudeCommitPlanModel.desc%"
+        },
         "gitSimpleCompare.aiClaudeEffort": {
           "type": "string",
           "enum": [
@@ -1113,6 +1118,11 @@
           "type": "string",
           "default": "",
           "description": "%config.aiCodexModel.desc%"
+        },
+        "gitSimpleCompare.aiCodexCommitPlanModel": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCodexCommitPlanModel.desc%"
         },
         "gitSimpleCompare.aiCodexReasoningEffort": {
           "type": "string",
@@ -1197,8 +1207,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
+    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {
