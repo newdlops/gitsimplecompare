@@ -53,6 +53,8 @@ export interface CommitFailureReport {
 
 interface ParseOptions {
   activeHooks?: readonly CommitHookName[];
+  /** 호출자가 실패한 명령이 실제 `git commit`임을 확인했을 때 조용한 custom hook 추론에 사용한다. */
+  commitCommandFailed?: boolean;
   operation?: CommitOperation;
   occurredAt?: string;
 }
@@ -79,7 +81,7 @@ const HOOK_SIGNAL =
  * GitError 또는 임의 오류에서 stdout/stderr 를 꺼내 구조화된 commit 실패 보고서를 만든다.
  * @param error git commit 중 throw 된 오류
  * @param repoRoot 파일 경로를 상대 경로로 정규화할 저장소 루트
- * @param options 활성 hook 후보, 원래 커밋 종류, 실패 시각
+ * @param options 활성 hook 후보, 직접 commit 실패 여부, 원래 커밋 종류와 실패 시각
  * @returns Changes 웹뷰에 직렬화 가능한 실패 보고서
  */
 export function buildCommitFailureReport(
@@ -95,7 +97,7 @@ export function buildCommitFailureReport(
  * 이미 추출된 commit 실패 텍스트를 도구 독립적인 진단 목록으로 변환한다.
  * @param output git/hook 이 stdout 또는 stderr 로 남긴 전체 텍스트
  * @param repoRoot 상대/절대 파일 위치를 검증할 저장소 루트
- * @param options 활성 hook 후보와 Retry 메타데이터
+ * @param options 활성 hook 후보, 직접 commit 실패 여부와 Retry 메타데이터
  * @returns 파일 위치, 요약, hook 추론 결과가 포함된 보고서
  */
 export function parseCommitFailureOutput(
@@ -154,7 +156,8 @@ export function parseCommitFailureOutput(
   const silentCommitExit =
     blockingHooks.length > 0 &&
     lines.length <= 2 &&
-    /^(git commit .*실패:|Command failed: git commit)/i.test(text);
+    (options.commitCommandFailed === true ||
+      /^(git commit .*실패:|Command failed: git commit)/i.test(text));
   const validationOutput = Boolean(
     explicitHook ||
       checkName ||
