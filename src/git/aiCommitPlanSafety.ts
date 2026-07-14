@@ -56,6 +56,8 @@ export interface CommitPlanProgress {
   phase: CommitPlanProgressPhase;
   current: number;
   total: number;
+  /** commit 단계에서 현재 그룹 시작과 private 준비 완료를 명시적으로 구분한다. */
+  step?: "started" | "completed";
   message?: string;
   paths?: string[];
 }
@@ -70,6 +72,7 @@ export interface ExecutedCommitPlanGroup {
   hash: string;
   message: string;
   paths: string[];
+  hookAdjustedPaths?: string[];
 }
 
 /** 전체 계획이 성공했을 때 호출자에게 반환하는 HEAD와 생성 커밋 목록이다. */

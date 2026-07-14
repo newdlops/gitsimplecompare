@@ -34,6 +34,9 @@ const OBJECT_ID_LENGTHS: Readonly<Record<string, number>> = {
   sha256: 64,
 };
 
+/** hook formatter override로 허용하는 일반 파일 mode다. */
+const HOOK_OVERRIDE_MODES = new Set(["100644", "100755"]);
+
 /** `ls-files --stage`가 반환할 수 있는 정상 stage 0 mode다. */
 const INDEX_ENTRY_MODES = new Set([
   "100644",
@@ -42,18 +45,20 @@ const INDEX_ENTRY_MODES = new Set([
   "160000",
 ]);
 
-/** private/임시 index가 실제 저장소 fsmonitor daemon과 섞이지 않게 하는 command-scope 설정이다. */
+/** private/임시 index가 실제 저장소 성능 shortcut과 섞이지 않게 하는 command-scope 안전 설정이다. */
 const COMMIT_PLAN_GIT_OVERRIDES = Object.freeze({
   "core.fsmonitor": "false",
+  "core.ignorestat": "false",
 });
 
 /**
  * AI 커밋 플랜의 임시 index/private GIT_DIR 명령에 공통 안전 설정을 주입한다.
  * - 실제 저장소가 builtin fsmonitor를 켠 경우 private GIT_DIR마다 별도 daemon이 시작될 수 있고,
  *   `update-index`가 그 IPC를 무기한 기다리는 문제가 있어 이 격리 흐름에서는 반드시 끈다.
+ * - ignorestat의 CE_VALID가 실제 worktree 차이를 숨기면 hook이 scope 밖 내용을 stage할 수 있어 함께 끈다.
  * - command-scope 환경은 commit hook이 실행한 자식 Git에도 상속되어 같은 교착을 막는다.
  * @param env GIT_INDEX_FILE/GIT_DIR처럼 호출 목적에 필요한 기존 환경
- * @returns 기존 환경과 fsmonitor 비활성화 override가 합쳐진 새 객체
+ * @returns 기존 환경과 fsmonitor/ignorestat 비활성화 override가 합쳐진 새 객체
  */
 export function commitPlanGitEnvironment<T extends Record<string, string>>(
   env: T
@@ -178,6 +183,75 @@ export async function applyCommitPlanFilesToIndex(
     repoRoot,
     input,
     { env }
+  );
+}
+
+/**
+ * 선택 index의 assume-unchanged/skip-worktree 상태를 포함한 path별 tag를 읽는다.
+ * - `ls-files -v`의 정상 entry는 `H`, skip-worktree는 `S`, assume-unchanged는 소문자 tag다.
+ * - hook override 전후 tag를 비교해 actual-index sibling의 숨은 flags 손실을 막는 데 사용한다.
+ * @param repoRoot Git 저장소 루트
+ * @param env 검사할 GIT_INDEX_FILE 환경
+ * @returns exact path를 key로 하는 한 글자 index tag map
+ */
+export async function readCommitPlanIndexTags(
+  repoRoot: string,
+  env: Record<string, string>
+): Promise<ReadonlyMap<string, string>> {
+  const raw = await runGit(["ls-files", "-v", "-z"], repoRoot, { env });
+  const tags = new Map<string, string>();
+  for (const record of raw.split("\0")) {
+    if (!record) {
+      continue;
+    }
+    const tag = record[0];
+    const filePath = record[1] === " " ? record.slice(2) : "";
+    if (!filePath || tags.has(filePath)) {
+      throw invalidCommitPlan("Git returned invalid index flag metadata.");
+    }
+    tags.set(filePath, tag);
+  }
+  return tags;
+}
+
+/**
+ * hook이 승인된 그룹의 일반 파일 내용을 바꾼 최종 entry를 prepared/publish index에 반영한다.
+ * - private tree 검증을 통과한 존재하는 entry만 받으며 삭제 mutation은 이 경계에서 만들지 않는다.
+ * - 호출부 실수로 비정상 mode/OID/path가 들어오면 index를 쓰기 전에 명시적으로 거부한다.
+ * @param repoRoot Git 저장소 루트
+ * @param env 수정할 prepared 또는 publish용 GIT_INDEX_FILE 환경
+ * @param entries hook 이후 commit tree에서 검증한 mode/OID/path 목록
+ */
+export async function applyCommitPlanEntryOverridesToIndex(
+  repoRoot: string,
+  env: Record<string, string>,
+  entries: readonly CommitPlanIndexEntry[]
+): Promise<void> {
+  const additions = new Map<string, CommitPlanIndexEntry>();
+  for (const entry of entries) {
+    if (
+      !entry.path ||
+      entry.path.includes("\0") ||
+      !HOOK_OVERRIDE_MODES.has(entry.mode) ||
+      !Object.values(OBJECT_ID_LENGTHS).includes(entry.oid.length) ||
+      !/^[0-9a-f]+$/.test(entry.oid) ||
+      additions.has(entry.path)
+    ) {
+      throw invalidCommitPlan("A hook returned an invalid prepared Git index entry.");
+    }
+    additions.set(entry.path, entry);
+  }
+  const input = [...additions.values()]
+    .map((entry) => `${entry.mode} ${entry.oid}\t${entry.path}\0`)
+    .join("");
+  if (!input) {
+    return;
+  }
+  await runGitWithInput(
+    ["update-index", "-z", "--index-info"],
+    repoRoot,
+    input,
+    { env: withGitConfigOverrides(env, { "core.ignorestat": "false" }) }
   );
 }
 

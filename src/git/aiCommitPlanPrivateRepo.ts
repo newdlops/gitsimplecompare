@@ -27,11 +27,15 @@ interface PrivateGitEnvironment extends Record<string, string> {
   GIT_SIMPLE_COMPARE_AI_PLAN_PROVISIONAL: "1";
 }
 
-/** private commit 한 건의 검증된 hash/tree 결과다. */
+/** private commit 한 건의 검증된 hash/tree와 안전한 hook blob 교체 결과다. */
 export interface PrivateCommitResult {
   hash: string;
   tree: string;
+  hookEntryOverrides: CommitPlanIndexEntry[];
 }
+
+/** formatter hook이 내용만 바꿔도 안전하게 허용할 일반 파일 mode다. */
+const HOOK_EDITABLE_MODES = new Set(["100644", "100755"]);
 
 /**
  * 실제 저장소의 objects/config/hooks만 공유하고 HEAD/index는 임시 파일로 격리한 commit transaction이다.
@@ -107,7 +111,7 @@ export class AiCommitPlanPrivateRepo {
   /**
    * destination index를 private parent tree에서 시작해 한 그룹 entry만 반영하고 일반 commit을 만든다.
    * - `update-index --index-info -z` stdin을 사용해 path 수/길이가 argv에 들어가지 않는다.
-   * - commit 직전 기대 tree와 생성 commit tree가 다르면 hook의 미승인 staging으로 보고 거부한다.
+   * - hook이 현재 그룹의 일반 파일 내용만 바꾼 경우 새 blob을 반환하고, 다른 path/type 변경은 거부한다.
    * @param group 검증된 message와 exact current path 목록
    * @param files group path에 대응하는 status/rename 메타데이터
    * @param sourceEntries 실행 시작에 고정한 최종 source index entry map
@@ -132,22 +136,23 @@ export class AiCommitPlanPrivateRepo {
     );
     await this.assertDestinationHasChanges(group);
     const expectedTree = await writeCommitPlanIndexTree(this.repoRoot, this.env);
+    const unsafeHookPaths = await this.readWorktreeMismatchPaths(files);
     await runGit(["commit", "-m", group.message], this.repoRoot, {
       env: this.env,
       retryOnLock: false,
     });
     const createdHead = await this.readPrivateHead();
     await this.assertCommitParent(createdHead, parent);
-    this.currentHead = createdHead;
     const actualTree = await this.readCommitTree(createdHead);
-    if (actualTree !== expectedTree) {
-      throw new AiCommitPlanError(
-        "commit-tree-mismatch",
-        "A commit hook staged changes outside the approved AI commit plan group. The real branch was not changed."
-      );
-    }
     await this.assertCommitEffects(createdHead, parent, files, sourceEntries);
-    return { hash: createdHead, tree: actualTree };
+    const hookEntryOverrides = await this.readAllowedHookEntryOverrides(
+      expectedTree,
+      actualTree,
+      files,
+      unsafeHookPaths
+    );
+    this.currentHead = createdHead;
+    return { hash: createdHead, tree: actualTree, hookEntryOverrides };
   }
 
   /**
@@ -186,6 +191,89 @@ export class AiCommitPlanPrivateRepo {
         `AI commit plan group would be empty: ${group.paths.join(", ")}`
       );
     }
+  }
+
+  /**
+   * hook 직전 실제 worktree가 prepared index와 다른 현재 그룹 path를 찾는다.
+   * - staged 파일에 별도 unstaged 편집이 있거나 실행 중 사용자가 파일을 바꾼 경우를 기록한다.
+   * - 해당 path의 hook blob 변경을 허용하면 승인하지 않은 worktree 내용까지 `git add`될 수 있어 이후 거부한다.
+   * @param files 현재 그룹이 소유한 context 파일
+   * @returns prepared index와 worktree 내용/mode가 다른 current path 집합
+   */
+  private async readWorktreeMismatchPaths(
+    files: readonly CommitPlanFile[]
+  ): Promise<ReadonlySet<string>> {
+    // index-info로 만든 entry는 stat 정보가 비어 있어 내용이 같아도 diff-files가 modified로 볼 수 있다.
+    // 다른 그룹의 실제 변경 때문에 refresh가 non-zero여도, 일치한 현재 그룹 entry의 stat 갱신은 보존한다.
+    await runGit(["update-index", "--refresh"], this.repoRoot, {
+      env: this.env,
+      retryOnLock: false,
+    }).catch(() => undefined);
+    const raw = await runGit(
+      ["diff-files", "--name-only", "--no-renames", "-z"],
+      this.repoRoot,
+      { env: this.env }
+    );
+    const groupPaths = new Set(files.map((file) => file.path));
+    return new Set(
+      raw.split("\0").filter((filePath) => groupPaths.has(filePath))
+    );
+  }
+
+  /**
+   * hook 전 prepared tree와 생성 commit tree를 비교해 현재 그룹의 안전한 blob 교체만 추출한다.
+   * - 일반 파일의 mode/존재 여부를 유지한 `M`만 허용해 삭제, 추가, symlink/gitlink, chmod를 차단한다.
+   * - hook 직전 worktree가 prepared 내용과 달랐던 path는 staged 범위 밖 내용 유입 가능성이 있어 차단한다.
+   * @param expectedTree hook 직전 private index tree
+   * @param actualTree hook을 거쳐 생성된 commit tree
+   * @param files 현재 승인 그룹의 exact current path 메타데이터
+   * @param unsafeHookPaths hook 전에 worktree와 prepared index가 달랐던 path
+   * @returns publish index에 안전하게 반영할 hook 생성 entry 목록
+   */
+  private async readAllowedHookEntryOverrides(
+    expectedTree: string,
+    actualTree: string,
+    files: readonly CommitPlanFile[],
+    unsafeHookPaths: ReadonlySet<string>
+  ): Promise<CommitPlanIndexEntry[]> {
+    if (actualTree === expectedTree) {
+      return [];
+    }
+    const raw = await runGit(
+      [
+        "diff-tree", "--no-commit-id", "--raw", "--full-index",
+        "--no-renames", "-r", "-z", expectedTree, actualTree,
+      ],
+      this.repoRoot,
+      { env: this.env }
+    );
+    const allowedPaths = new Set(files.map((file) => file.path));
+    const parsed = parseHookTreeEntryOverrides(raw);
+    const rejected = parsed.filter(
+      ({ entry, safeContentChange }) =>
+        !safeContentChange ||
+        !allowedPaths.has(entry.path) ||
+        unsafeHookPaths.has(entry.path)
+    );
+    if (parsed.length === 0 || rejected.length > 0) {
+      const paths = rejected
+        .map(({ entry, safeContentChange }) => {
+          if (!entry.path) {
+            return "(unparseable hook change)";
+          }
+          if (unsafeHookPaths.has(entry.path)) {
+            return `${entry.path} (worktree differed before hook)`;
+          }
+          return safeContentChange ? entry.path : `${entry.path} (non-content change)`;
+        })
+        .filter(Boolean);
+      const detail = paths.length > 0 ? ` Changed paths: ${paths.slice(0, 8).join(", ")}.` : "";
+      throw new AiCommitPlanError(
+        "commit-tree-mismatch",
+        `A commit hook changed content outside the safe current AI plan group.${detail} The real branch and Git index were not changed.`
+      );
+    }
+    return parsed.map(({ entry }) => entry);
   }
 
   /**
@@ -415,4 +503,47 @@ function samePathSet(
     }
   }
   return true;
+}
+
+/** hook tree raw diff 한 건과 내용 교체 안전 판정을 함께 보관한다. */
+interface ParsedHookTreeOverride {
+  entry: CommitPlanIndexEntry;
+  safeContentChange: boolean;
+}
+
+/**
+ * `diff-tree --raw -z`를 hook이 만든 최종 entry 목록으로 파싱한다.
+ * - `--no-renames` 출력은 `<header>\0<path>\0` 쌍이므로 특수문자 path도 문자열 분할로 보존한다.
+ * - 파싱이 불완전한 record도 안전하지 않은 항목으로 남겨 호출자가 tree 불일치를 반드시 거부하게 한다.
+ * @param raw expected tree와 actual tree 사이의 NUL raw diff
+ * @returns 새 mode/OID/path와 일반 파일 내용-only 변경 여부
+ */
+function parseHookTreeEntryOverrides(raw: string): ParsedHookTreeOverride[] {
+  const tokens = raw.split("\0");
+  if (tokens.at(-1) === "") {
+    tokens.pop();
+  }
+  const results: ParsedHookTreeOverride[] = [];
+  for (let index = 0; index < tokens.length; index += 2) {
+    const header = tokens[index] ?? "";
+    const filePath = tokens[index + 1] ?? "";
+    const match = /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])$/.exec(
+      header
+    );
+    const oldMode = match?.[1] ?? "";
+    const newMode = match?.[2] ?? "";
+    const newOid = match?.[4] ?? "";
+    const status = match?.[5] ?? "";
+    results.push({
+      entry: { path: filePath, mode: newMode, oid: newOid },
+      safeContentChange:
+        tokens.length % 2 === 0 &&
+        Boolean(match) &&
+        Boolean(filePath) &&
+        status === "M" &&
+        oldMode === newMode &&
+        HOOK_EDITABLE_MODES.has(newMode),
+    });
+  }
+  return results;
 }

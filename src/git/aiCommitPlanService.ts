@@ -1,5 +1,6 @@
 // 검증된 AI 계획을 private HEAD에서 일반 커밋으로 만든 뒤 실제 branch에 한 번만 publish한다.
 // - 실행 중 실제 HEAD/index는 그대로여서 hook 실패나 외부 변경을 rollback으로 덮을 수 없다.
+import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import type { CommitPlanContext, CommitPlanGroup } from "../ai/commitPlanModel";
 import { detectOperation } from "./conflictService";
@@ -10,6 +11,7 @@ import {
   readAiCommitPlanIndexFingerprint,
 } from "./aiCommitPlanContext";
 import {
+  applyCommitPlanEntryOverridesToIndex,
   applyFrozenBinaryDiffToIndex,
   assertCommitPlanSourceEntries,
   cleanupCommitPlanIndex,
@@ -17,6 +19,7 @@ import {
   commitPlanFilesForPaths,
   copyRealIndexToSibling,
   readCommitPlanIndexSnapshot,
+  readCommitPlanIndexTags,
   writeCommitPlanIndexTree,
 } from "./aiCommitPlanIndexEntries";
 import { publishAiCommitPlan } from "./aiCommitPlanIndexLock";
@@ -36,6 +39,7 @@ import {
   type ExecutableCommitPlan,
   type FrozenCommitPlanInput,
   type GitFenceState,
+  type CommitPlanIndexEntry,
 } from "./aiCommitPlanSafety";
 
 export { AiCommitPlanError } from "./aiCommitPlanSafety";
@@ -45,9 +49,10 @@ export type {
   ExecutableCommitPlan,
 } from "./aiCommitPlanSafety";
 
-/** frozen source에서 entry map과 object format zero OID를 함께 보관한다. */
+/** frozen source와 staged hook 결과를 설치할 actual-index sibling 경로를 함께 보관한다. */
 interface FrozenExecutionInput extends FrozenCommitPlanInput {
   zeroOid: string;
+  publishIndexPath: string;
 }
 
 /**
@@ -116,12 +121,12 @@ export class AiCommitPlanService {
       );
     } finally {
       await privateRepo?.dispose();
-      cleanupCommitPlanIndex(frozen.indexPath);
+      cleanupFrozenExecutionInput(frozen);
     }
   }
 
   /**
-   * frozen entry를 그룹별 private commit으로 만들고 최종 tree가 source 전체와 같을 때 publish한다.
+   * frozen entry를 그룹별 private commit으로 만들고 안전한 hook blob을 반영한 최종 tree만 publish한다.
    * @param context scope와 전체 파일 메타데이터
    * @param groups 검증된 계획 그룹
    * @param frozen source index/tree/entry snapshot
@@ -140,6 +145,7 @@ export class AiCommitPlanService {
   ): Promise<CommitPlanExecutionResult> {
     const filesByPath = new Map(context.files.map((file) => [file.path, file]));
     const executed: ExecutedCommitPlanGroup[] = [];
+    const hookEntryOverrides: CommitPlanIndexEntry[] = [];
     let finalTree = "";
     for (let index = 0; index < groups.length; index++) {
       const group = groups[index];
@@ -147,6 +153,7 @@ export class AiCommitPlanService {
         phase: "commit",
         current: index,
         total: groups.length,
+        step: "started",
         message: group.message,
         paths: [...group.paths],
       });
@@ -167,32 +174,38 @@ export class AiCommitPlanService {
         `after private commit group ${index + 1}`
       );
       finalTree = commit.tree;
+      hookEntryOverrides.push(...commit.hookEntryOverrides);
       executed.push({
         hash: commit.hash,
         message: group.message,
         paths: [...group.paths],
+        hookAdjustedPaths: commit.hookEntryOverrides.map((entry) => entry.path),
       });
       await reportCommitPlanProgress(onProgress, {
         phase: "commit",
         current: index + 1,
         total: groups.length,
+        step: "completed",
         message: group.message,
         paths: [...group.paths],
       });
     }
-    if (finalTree !== frozen.tree) {
-      throw new AiCommitPlanError(
-        "commit-tree-mismatch",
-        "The private AI commits do not reproduce the complete frozen source tree. The real branch was not changed."
-      );
-    }
+    await prepareCommitPlanPublishIndexes(
+      this.repoRoot,
+      frozen,
+      hookEntryOverrides,
+      finalTree
+    );
+    const installIndex = context.scope === "all" || hookEntryOverrides.length > 0;
+    const finalIndexBytes = installIndex
+      ? await readFile(frozen.publishIndexPath)
+      : undefined;
     await assertExecutionFence(this.repoRoot, initial, "before final publication");
     await publishAiCommitPlan(this.repoRoot, {
-      scope: context.scope,
       original: initial,
       finalHead: privateRepo.head,
       finalTree,
-      sourceIndexPath: frozen.indexPath,
+      finalIndexBytes,
     });
     await reportCommitPlanProgress(onProgress, {
       phase: "complete",
@@ -282,8 +295,12 @@ async function freezeCommitPlanInput(
   const indexPath = context.scope === "all"
     ? await copyRealIndexToSibling(repoRoot)
     : tempIndexPath();
+  let publishIndexPath = indexPath;
   const env = commitPlanGitEnvironment({ GIT_INDEX_FILE: indexPath });
   try {
+    if (context.scope === "staged") {
+      publishIndexPath = await copyRealIndexToSibling(repoRoot);
+    }
     let binaryDiff: Uint8Array;
     if (context.scope === "staged") {
       await initializeIndex(repoRoot, context.head!, env);
@@ -316,13 +333,96 @@ async function freezeCommitPlanInput(
     assertCommitPlanSourceEntries(context.files, indexSnapshot.entries);
     return {
       indexPath,
+      publishIndexPath,
       tree,
       entries: indexSnapshot.entries,
       zeroOid: indexSnapshot.zeroOid,
     };
   } catch (error) {
     cleanupCommitPlanIndex(indexPath);
+    if (publishIndexPath !== indexPath) {
+      cleanupCommitPlanIndex(publishIndexPath);
+    }
     throw error;
+  }
+}
+
+/**
+ * 검증된 hook blob 교체를 승인 source와 실제-index sibling에 반영하고 최종 private tree를 재검증한다.
+ * - source index는 HEAD 기반의 완전한 tree라 전체 OID 비교로 누락된 변경을 잡는다.
+ * - staged publish sibling은 실제 index flags/확장을 보존하며 hook이 바꾼 entry만 교체한다.
+ * @param repoRoot Git 저장소 루트
+ * @param frozen 승인 source index와 publish용 actual-index sibling
+ * @param overrides 그룹별 hook 검증을 통과한 일반 파일 entry
+ * @param finalTree 마지막 private commit의 root tree OID
+ */
+async function prepareCommitPlanPublishIndexes(
+  repoRoot: string,
+  frozen: FrozenExecutionInput,
+  overrides: readonly CommitPlanIndexEntry[],
+  finalTree: string
+): Promise<void> {
+  const sourceEnv = commitPlanGitEnvironment({ GIT_INDEX_FILE: frozen.indexPath });
+  if (overrides.length > 0) {
+    await assertIndexEntryOverrides(repoRoot, sourceEnv, overrides, false);
+    await applyCommitPlanEntryOverridesToIndex(repoRoot, sourceEnv, overrides);
+    await assertIndexEntryOverrides(repoRoot, sourceEnv, overrides, true);
+    if (frozen.publishIndexPath !== frozen.indexPath) {
+      const publishEnv = commitPlanGitEnvironment({
+        GIT_INDEX_FILE: frozen.publishIndexPath,
+      });
+      await assertIndexEntryOverrides(repoRoot, publishEnv, overrides, false);
+      await applyCommitPlanEntryOverridesToIndex(repoRoot, publishEnv, overrides);
+      await assertIndexEntryOverrides(repoRoot, publishEnv, overrides, true);
+    }
+  }
+  const preparedTree = await writeCommitPlanIndexTree(repoRoot, sourceEnv);
+  if (preparedTree !== finalTree) {
+    throw new AiCommitPlanError(
+      "commit-tree-mismatch",
+      "The private AI commits do not reproduce the approved source plus safe hook changes. The real branch and Git index were not changed."
+    );
+  }
+}
+
+/**
+ * prepared/publish index의 hook path가 정상 flag와 기대 mode/OID를 유지하는지 확인한다.
+ * - assume-unchanged/skip-worktree path는 update-index가 flag를 잃을 수 있어 hook 자동수정을 보수적으로 거부한다.
+ * @param repoRoot Git 저장소 루트
+ * @param env 검사할 source 또는 actual-index sibling 환경
+ * @param overrides 기대하는 hook 생성 entry
+ * @param requireFinalOid true면 hook 이후 exact OID까지 같아야 한다
+ */
+async function assertIndexEntryOverrides(
+  repoRoot: string,
+  env: Record<string, string>,
+  overrides: readonly CommitPlanIndexEntry[],
+  requireFinalOid: boolean
+): Promise<void> {
+  const [actual, tags] = await Promise.all([
+    readCommitPlanIndexSnapshot(repoRoot, env).then((snapshot) => snapshot.entries),
+    readCommitPlanIndexTags(repoRoot, env),
+  ]);
+  for (const expected of overrides) {
+    const entry = actual.get(expected.path);
+    if (
+      entry?.mode !== expected.mode ||
+      tags.get(expected.path) !== "H" ||
+      (requireFinalOid && entry.oid !== expected.oid)
+    ) {
+      throw new AiCommitPlanError(
+        "commit-tree-mismatch",
+        `The prepared Git index could not retain a safe unflagged hook change for ${expected.path}.`
+      );
+    }
+  }
+}
+
+/** frozen source와 별도 staged publish sibling을 중복 없이 정리한다. */
+function cleanupFrozenExecutionInput(frozen: FrozenExecutionInput): void {
+  cleanupCommitPlanIndex(frozen.indexPath);
+  if (frozen.publishIndexPath !== frozen.indexPath) {
+    cleanupCommitPlanIndex(frozen.publishIndexPath);
   }
 }
 

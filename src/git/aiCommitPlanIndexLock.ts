@@ -3,22 +3,16 @@
 import {
   lstat,
   open,
-  readFile,
   rename,
   unlink,
   type FileHandle,
 } from "node:fs/promises";
-import type { CommitPlanScope } from "../ai/commitPlanModel";
 import { detectOperation } from "./conflictService";
 import {
   readAiCommitPlanHeadRef,
   readAiCommitPlanIndexFingerprint,
 } from "./aiCommitPlanContext";
-import {
-  commitPlanGitEnvironment,
-  resolveRealGitIndexPath,
-  writeCommitPlanIndexTree,
-} from "./aiCommitPlanIndexEntries";
+import { resolveRealGitIndexPath } from "./aiCommitPlanIndexEntries";
 import { runGit } from "./gitExec";
 import {
   AiCommitPlanError,
@@ -30,11 +24,10 @@ import {
 
 /** 실제 branch publish와 index 마무리에 필요한 불변 입력이다. */
 export interface PublishAiCommitPlanInput {
-  scope: CommitPlanScope;
   original: GitFenceState;
   finalHead: string;
   finalTree: string;
-  sourceIndexPath: string;
+  finalIndexBytes?: Buffer;
 }
 
 /** O_EXCL로 직접 만든 실제 index lock과 소유권 identity다. */
@@ -60,10 +53,10 @@ interface FileSystemError {
 /**
  * private 최종 commit을 원래 exact branch ref에 CAS publish하고 index를 scope 정책대로 마무리한다.
  * - 실제 index.lock 획득 뒤 original HEAD OID/ref, semantic index, operation을 모두 재검증한다.
- * - staged는 실제 index 바이트/flags를 전혀 바꾸지 않고 lock을 해제한다.
+ * - staged는 보통 실제 index를 유지하되 hook이 blob을 고쳤다면 actual-index sibling을 원자 설치한다.
  * - all은 actual index에서 출발한 frozen source 전체 bytes를 설치해 net-zero path까지 reconcile한다.
  * @param repoRoot 실제 Git 작업트리 루트
- * @param input 원래 fence, private 최종 commit/tree, frozen source entry
+ * @param input 원래 fence, private 최종 commit/tree, 선택적으로 설치할 검증된 index 바이트
  */
 export async function publishAiCommitPlan(
   repoRoot: string,
@@ -77,9 +70,8 @@ export async function publishAiCommitPlan(
   try {
     lock = await acquireRealIndexLock(indexPath);
     await assertFenceWhileLocked(repoRoot, input.original);
-    if (input.scope === "all") {
-      const finalBytes = await readVerifiedFrozenIndex(repoRoot, input);
-      await writeBytesToOwnedLock(lock, finalBytes);
+    if (input.finalIndexBytes) {
+      await writeBytesToOwnedLock(lock, input.finalIndexBytes);
     }
     await assertOwnedLockPath(lock);
     await updateExactBranchRef(
@@ -89,7 +81,7 @@ export async function publishAiCommitPlan(
       input.original.head!
     );
     refPublished = true;
-    if (input.scope === "all") {
+    if (input.finalIndexBytes) {
       await assertOwnedLockPath(lock);
       await rename(lock.lockPath, lock.indexPath);
     } else {
@@ -123,31 +115,9 @@ function assertPublishInput(input: PublishAiCommitPlanInput): void {
   if (!input.finalHead || !input.finalTree) {
     throw invalidCommitPlan("The private AI commit transaction has no final commit tree.");
   }
-}
-
-/**
- * actual index snapshot에서 시작해 검증된 frozen source index 전체 bytes를 읽는다.
- * - source는 actual index sibling이라 split-index의 상대 sharedindex 참조가 publish 뒤에도 유효하다.
- * - publish 직전 tree를 다시 계산해 private 최종 commit 전체와 정확히 일치하는지 확인한다.
- * @param repoRoot 실제 작업트리 루트
- * @param input frozen source index 경로와 기대 final tree
- * @returns tree 검증을 통과한 final index 전체 바이트
- */
-async function readVerifiedFrozenIndex(
-  repoRoot: string,
-  input: PublishAiCommitPlanInput
-): Promise<Buffer> {
-  const env = commitPlanGitEnvironment({
-    GIT_INDEX_FILE: input.sourceIndexPath,
-  });
-  const tree = await writeCommitPlanIndexTree(repoRoot, env);
-  if (tree !== input.finalTree) {
-    throw new AiCommitPlanError(
-      "commit-tree-mismatch",
-      "The frozen final Git index does not match the approved AI commit plan tree."
-    );
+  if (input.finalIndexBytes && input.finalIndexBytes.byteLength === 0) {
+    throw invalidCommitPlan("The prepared final Git index is empty.");
   }
-  return readFile(input.sourceIndexPath);
 }
 
 /**

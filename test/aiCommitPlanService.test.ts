@@ -144,7 +144,8 @@ test("staged 부분 변경을 보존하며 계획 순서대로 여러 일반 커
     );
     assert.equal(await runGit(["diff", "--cached"], root), "");
     assert.match(await runGit(["status", "--porcelain"], root), /^ M partial\.txt/m);
-    assert.equal(progress.at(-1)?.phase, "complete");
+    assert.deepEqual(progress.map(({ phase, current, step }) => `${phase}:${current}:${step ?? ""}`),
+      ["validate:0:", "commit:0:started", "commit:1:completed", "commit:1:started", "commit:2:completed", "complete:2:"]);
   });
 });
 
