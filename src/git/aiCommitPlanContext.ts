@@ -6,6 +6,7 @@ import { parseNameStatusZ, parseNumstat, parsePorcelainGroups } from "./diffPars
 import { runGit, runGitBuffer } from "./gitExec";
 import {
   cleanupCommitPlanIndex,
+  commitPlanGitEnvironment,
   copyRealIndexToSibling,
 } from "./aiCommitPlanIndexEntries";
 import {
@@ -294,7 +295,7 @@ async function readAllDiff(
   status: WorkingStatus
 ): Promise<DiffSnapshotData> {
   const indexPath = await copyRealIndexToSibling(repoRoot);
-  const env = { GIT_INDEX_FILE: indexPath };
+  const env = commitPlanGitEnvironment({ GIT_INDEX_FILE: indexPath });
   try {
     await runGit(["add", "-A"], repoRoot, { env });
     return await readCachedDiff(repoRoot, head, status, env);

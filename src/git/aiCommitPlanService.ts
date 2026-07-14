@@ -13,6 +13,7 @@ import {
   applyFrozenBinaryDiffToIndex,
   assertCommitPlanSourceEntries,
   cleanupCommitPlanIndex,
+  commitPlanGitEnvironment,
   commitPlanFilesForPaths,
   copyRealIndexToSibling,
   readCommitPlanIndexSnapshot,
@@ -281,7 +282,7 @@ async function freezeCommitPlanInput(
   const indexPath = context.scope === "all"
     ? await copyRealIndexToSibling(repoRoot)
     : tempIndexPath();
-  const env = { GIT_INDEX_FILE: indexPath };
+  const env = commitPlanGitEnvironment({ GIT_INDEX_FILE: indexPath });
   try {
     let binaryDiff: Uint8Array;
     if (context.scope === "staged") {

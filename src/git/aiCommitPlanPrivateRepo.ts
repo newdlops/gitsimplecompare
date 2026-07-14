@@ -6,6 +6,7 @@ import * as path from "node:path";
 import type { CommitPlanFile, CommitPlanGroup } from "../ai/commitPlanModel";
 import {
   applyCommitPlanFilesToIndex,
+  commitPlanGitEnvironment,
   writeCommitPlanIndexTree,
 } from "./aiCommitPlanIndexEntries";
 import { runGit } from "./gitExec";
@@ -70,14 +71,14 @@ export class AiCommitPlanPrivateRepo {
     const commonDir = await resolveCommonGitDir(repoRoot);
     const gitDir = await mkdtemp(path.join(tmpdir(), "gsc-ai-plan-gitdir-"));
     const indexPath = tempIndexPath();
-    const env: PrivateGitEnvironment = {
+    const env: PrivateGitEnvironment = commitPlanGitEnvironment({
       GIT_DIR: gitDir,
       GIT_COMMON_DIR: commonDir,
       GIT_WORK_TREE: repoRoot,
       GIT_INDEX_FILE: indexPath,
       // post-commit을 포함한 hook이 provisional 실행을 감지해 외부 부작용을 skip/defer할 수 있게 한다.
       GIT_SIMPLE_COMPARE_AI_PLAN_PROVISIONAL: "1",
-    };
+    });
     try {
       await runGit(["init", "--bare", "--quiet", gitDir], repoRoot, {
         retryOnLock: false,

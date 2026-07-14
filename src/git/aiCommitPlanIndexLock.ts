@@ -15,6 +15,7 @@ import {
   readAiCommitPlanIndexFingerprint,
 } from "./aiCommitPlanContext";
 import {
+  commitPlanGitEnvironment,
   resolveRealGitIndexPath,
   writeCommitPlanIndexTree,
 } from "./aiCommitPlanIndexEntries";
@@ -136,7 +137,9 @@ async function readVerifiedFrozenIndex(
   repoRoot: string,
   input: PublishAiCommitPlanInput
 ): Promise<Buffer> {
-  const env = { GIT_INDEX_FILE: input.sourceIndexPath };
+  const env = commitPlanGitEnvironment({
+    GIT_INDEX_FILE: input.sourceIndexPath,
+  });
   const tree = await writeCommitPlanIndexTree(repoRoot, env);
   if (tree !== input.finalTree) {
     throw new AiCommitPlanError(

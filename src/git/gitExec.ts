@@ -28,6 +28,31 @@ const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
 const MAX_GIT_BUFFER_BYTES = 128 * 1024 * 1024;
 
 /**
+ * 기존 Git command-scope 설정을 보존하면서 새 `-c key=value` 상당 override를 환경에 덧붙인다.
+ * - `GIT_CONFIG_COUNT/KEY_n/VALUE_n`은 hook을 포함한 자식 Git 프로세스에도 상속되므로,
+ *   임시 index/private GIT_DIR처럼 모든 중첩 Git 호출에 같은 안전 설정이 필요한 흐름에서 사용한다.
+ * - process 환경이나 호출자가 이미 주입한 command-scope 항목 뒤에 추가해 기존 설정을 덮어 없애지 않는다.
+ * @param env runGit에 전달할 기존 환경 변수
+ * @param overrides 가장 높은 command scope에 순서대로 추가할 Git 설정 key/value
+ * @returns 기존 환경과 Git 설정 override가 합쳐진 새 객체
+ */
+export function withGitConfigOverrides<T extends Record<string, string>>(
+  env: T,
+  overrides: Readonly<Record<string, string>>
+): T & Record<string, string> {
+  const inheritedCount = gitConfigCount(env.GIT_CONFIG_COUNT);
+  const result: Record<string, string> = { ...env };
+  let index = inheritedCount;
+  for (const [key, value] of Object.entries(overrides)) {
+    result[`GIT_CONFIG_KEY_${index}`] = key;
+    result[`GIT_CONFIG_VALUE_${index}`] = value;
+    index++;
+  }
+  result.GIT_CONFIG_COUNT = String(index);
+  return result as T & Record<string, string>;
+}
+
+/**
  * git 명령을 실행하고 표준 출력을 문자열로 반환한다.
  * - 대용량 출력(git show / git log 전체)도 받을 수 있도록 버퍼 한도를 넉넉히 둔다.
  * - 실패 시 GitError 로 감싸 던진다(호출부가 종류를 구분할 수 있게).
@@ -222,6 +247,24 @@ function normalizeOptions(
     return options as RunGitOptions;
   }
   return { env: options as Record<string, string> };
+}
+
+/**
+ * 호출 환경 또는 현재 process에 이미 설정된 Git command-scope 항목 개수를 안전하게 읽는다.
+ * @param explicit 호출자가 env에 직접 넣은 GIT_CONFIG_COUNT. 없으면 process 환경 값을 사용한다.
+ * @returns 새 override를 덧붙일 첫 index
+ * @throws 음수·소수·비숫자처럼 Git이 해석할 수 없는 count면 조기에 오류
+ */
+function gitConfigCount(explicit: string | undefined): number {
+  const raw = explicit ?? process.env.GIT_CONFIG_COUNT;
+  if (raw === undefined || raw === "") {
+    return 0;
+  }
+  const count = Number(raw);
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error(`Invalid GIT_CONFIG_COUNT: ${raw}`);
+  }
+  return count;
 }
 
 /** git index/ref lock 이 다른 git 프로세스에 의해 잡힌 상황인지 확인한다. */

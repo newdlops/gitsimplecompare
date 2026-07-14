@@ -4,7 +4,11 @@ import { constants as fsConstants } from "node:fs";
 import { copyFile } from "node:fs/promises";
 import * as path from "node:path";
 import type { CommitPlanFile } from "../ai/commitPlanModel";
-import { runGit, runGitWithInput } from "./gitExec";
+import {
+  runGit,
+  runGitWithInput,
+  withGitConfigOverrides,
+} from "./gitExec";
 import { safeUnlink } from "./gitPatchApply";
 import {
   AiCommitPlanError,
@@ -38,6 +42,25 @@ const INDEX_ENTRY_MODES = new Set([
   "160000",
 ]);
 
+/** private/임시 index가 실제 저장소 fsmonitor daemon과 섞이지 않게 하는 command-scope 설정이다. */
+const COMMIT_PLAN_GIT_OVERRIDES = Object.freeze({
+  "core.fsmonitor": "false",
+});
+
+/**
+ * AI 커밋 플랜의 임시 index/private GIT_DIR 명령에 공통 안전 설정을 주입한다.
+ * - 실제 저장소가 builtin fsmonitor를 켠 경우 private GIT_DIR마다 별도 daemon이 시작될 수 있고,
+ *   `update-index`가 그 IPC를 무기한 기다리는 문제가 있어 이 격리 흐름에서는 반드시 끈다.
+ * - command-scope 환경은 commit hook이 실행한 자식 Git에도 상속되어 같은 교착을 막는다.
+ * @param env GIT_INDEX_FILE/GIT_DIR처럼 호출 목적에 필요한 기존 환경
+ * @returns 기존 환경과 fsmonitor 비활성화 override가 합쳐진 새 객체
+ */
+export function commitPlanGitEnvironment<T extends Record<string, string>>(
+  env: T
+): T & Record<string, string> {
+  return withGitConfigOverrides(env, COMMIT_PLAN_GIT_OVERRIDES);
+}
+
 /**
  * 실제 index의 raw snapshot을 linked-worktree/split-index 호환 sibling 임시 경로에 복제한다.
  * - actual index 경로는 반드시 Git `rev-parse --git-path index`로 찾는다.
@@ -59,7 +82,7 @@ export async function copyRealIndexToSibling(
       throw error;
     }
     await runGit(["read-tree", "--empty"], repoRoot, {
-      env: { GIT_INDEX_FILE: indexPath },
+      env: commitPlanGitEnvironment({ GIT_INDEX_FILE: indexPath }),
     });
   }
   return indexPath;
