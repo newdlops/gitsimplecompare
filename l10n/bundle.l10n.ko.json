@@ -902,5 +902,20 @@
   "The commit plan is incomplete or no longer matches the current changes. Review every commit message and file assignment.": "커밋 플랜이 불완전하거나 현재 변경과 더 이상 일치하지 않습니다. 모든 커밋 메시지와 파일 배정을 검토하세요.",
   "File/directory transition paths must stay in one commit. Move {0} and {1} into the same group.": "파일과 디렉터리가 서로 바뀌는 경로는 한 커밋에 있어야 합니다. {0}과(와) {1}을(를) 같은 그룹으로 옮기세요.",
   "The AI commit plan could not be completed safely. Refresh the repository state and review the plan before trying again.": "AI 커밋 플랜을 안전하게 완료하지 못했습니다. 저장소 상태를 새로고치고 플랜을 검토한 뒤 다시 시도하세요.",
-  "Unknown commit plan error.": "알 수 없는 커밋 플랜 오류입니다."
+  "Unknown commit plan error.": "알 수 없는 커밋 플랜 오류입니다.",
+  "Commit execution progress": "커밋 실행 진행 상태",
+  "{0} / {1} prepared": "{0} / {1} 준비됨",
+  "Preparing commit {0} of {1}...": "커밋 {1}개 중 {0}번째 준비 중...",
+  "Pending": "대기 중",
+  "Prepared": "준비됨",
+  "Hook failed": "Hook 실패",
+  "Failed": "실패",
+  "Complete": "완료",
+  "Commit hook failed": "커밋 hook 실패",
+  "Commit {0} hook failed": "{0}번째 커밋 hook 실패",
+  "Commit plan execution failed": "커밋 플랜 실행 실패",
+  "Commit {0} failed": "{0}번째 커밋 실패",
+  "No additional failure details were reported.": "추가 실패 정보가 보고되지 않았습니다.",
+  "Some failure details were omitted. See the Git Simple Compare output for the full process output.": "일부 실패 정보는 생략했습니다. 전체 프로세스 출력은 Git Simple Compare 출력에서 확인하세요.",
+  "The real branch and Git index were preserved.": "실제 브랜치와 Git 인덱스는 보존되었습니다."
 }

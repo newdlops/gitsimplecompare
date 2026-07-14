@@ -12,6 +12,7 @@ import {
 /** HTML 생성에 필요한 버전 적용 웹뷰 리소스 묶음. */
 interface CommitPlanResources {
   scriptUri: vscode.Uri;
+  executionScriptUri: vscode.Uri;
   styleUri: vscode.Uri;
   codiconUri: vscode.Uri;
   tooltipScriptUri: vscode.Uri;
@@ -51,6 +52,10 @@ function commitPlanResources(
 ): CommitPlanResources {
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "commit-plan");
   const scriptFile = vscode.Uri.joinPath(mediaRoot, "commitPlan.js");
+  const executionScriptFile = vscode.Uri.joinPath(
+    mediaRoot,
+    "commitPlanExecution.js"
+  );
   const styleFile = vscode.Uri.joinPath(mediaRoot, "commitPlan.css");
   const codiconFile = vscode.Uri.joinPath(
     extensionUri,
@@ -58,10 +63,17 @@ function commitPlanResources(
     "codicons",
     "codicon.css"
   );
-  const version = resourceVersion([scriptFile, styleFile]);
+  const version = resourceVersion([
+    scriptFile,
+    executionScriptFile,
+    styleFile,
+  ]);
   const tooltip = instantTooltipResources(webview, extensionUri);
   return {
     scriptUri: webview.asWebviewUri(withVersion(scriptFile, version)),
+    executionScriptUri: webview.asWebviewUri(
+      withVersion(executionScriptFile, version)
+    ),
     styleUri: webview.asWebviewUri(withVersion(styleFile, version)),
     codiconUri: webview.asWebviewUri(withVersion(codiconFile, version)),
     tooltipScriptUri: tooltip.scriptUri,
@@ -123,6 +135,27 @@ function commitPlanI18n() {
     generating: vscode.l10n.t("Generating AI commit plan..."),
     executing: vscode.l10n.t("Executing AI commit plan..."),
     completed: vscode.l10n.t("AI commit plan completed."),
+    executionTitle: vscode.l10n.t("Commit execution progress"),
+    preparedCount: vscode.l10n.t("{0} / {1} prepared"),
+    preparingCommit: vscode.l10n.t("Preparing commit {0} of {1}..."),
+    pendingState: vscode.l10n.t("Pending"),
+    preparedState: vscode.l10n.t("Prepared"),
+    hookFailedState: vscode.l10n.t("Hook failed"),
+    failedState: vscode.l10n.t("Failed"),
+    completeState: vscode.l10n.t("Complete"),
+    hookFailureTitle: vscode.l10n.t("Commit hook failed"),
+    hookFailureAtCommit: vscode.l10n.t("Commit {0} hook failed"),
+    executionFailureTitle: vscode.l10n.t("Commit plan execution failed"),
+    executionFailureAtCommit: vscode.l10n.t("Commit {0} failed"),
+    noFailureDetails: vscode.l10n.t(
+      "No additional failure details were reported."
+    ),
+    failureItemsTruncated: vscode.l10n.t(
+      "Some failure details were omitted. See the Git Simple Compare output for the full process output."
+    ),
+    branchPreserved: vscode.l10n.t(
+      "The real branch and Git index were preserved."
+    ),
     messageRequired: vscode.l10n.t("Every commit needs a message."),
     fileRequired: vscode.l10n.t("Every commit needs at least one file."),
     unassignedFiles: vscode.l10n.t(
@@ -155,6 +188,7 @@ ${headHtml(resources, csp, title)}
   <main>
     ${promptHtml(i18n)}
     <section id="notice" class="notice" role="status" aria-live="polite" hidden></section>
+    ${executionStatusHtml(i18n)}
     <section id="warnings" class="warnings" aria-label="${htmlAttribute(
       i18n.warnings
     )}" hidden></section>
@@ -165,9 +199,31 @@ ${headHtml(resources, csp, title)}
     i18n
   )};</script>
   <script nonce="${nonce}" src="${resources.tooltipScriptUri}"></script>
+  <script nonce="${nonce}" src="${resources.executionScriptUri}"></script>
   <script nonce="${nonce}" src="${resources.scriptUri}"></script>
 </body>
 </html>`;
+}
+
+/**
+ * 준비된 커밋 수와 현재 hook 실패를 한곳에서 확인할 실행 상태 영역을 만든다.
+ * @param i18n 제목과 진행 상태를 설명할 지역화 문자열
+ * @returns 진행률, 스크린리더 안내, 실패 상세 mount 지점을 포함한 section HTML
+ */
+function executionStatusHtml(i18n: CommitPlanI18n): string {
+  return `<section id="execution-status" class="execution-status"
+    aria-labelledby="execution-title" hidden>
+  <div class="execution-header">
+    <h2 id="execution-title">${htmlText(i18n.executionTitle)}</h2>
+    <span id="execution-count" class="execution-count"></span>
+  </div>
+  <div id="execution-bar" class="execution-bar" role="progressbar"
+    aria-labelledby="execution-title" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+    <span class="execution-bar-fill"></span>
+  </div>
+  <p id="execution-live" class="execution-live" aria-live="polite" aria-atomic="true"></p>
+  <div id="execution-failure" class="execution-failure" role="alert" hidden></div>
+</section>`;
 }
 
 /**

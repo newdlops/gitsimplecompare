@@ -12,6 +12,14 @@ import {
   AiCommitPlanService,
   type CommitPlanExecutionResult,
 } from "../git/aiCommitPlanService";
+import {
+  buildCommitFailureReport,
+  commitFailureOutput,
+} from "../git/commitHookFailure";
+import {
+  CommitHookService,
+  type CommitHookName,
+} from "../git/commitHookService";
 import { makeRefUri } from "../utils/uri";
 import {
   openHeadVsIndexDiff,
@@ -20,8 +28,10 @@ import {
 import {
   logError,
   logInfo,
+  logOutputBlock,
   showErrorWithOutput,
 } from "../ui/outputLog";
+import { presentCommitPlanExecutionFailure } from "../webview/commitPlanExecutionPresentation";
 import { CommitPlanPanel } from "../webview/commitPlanPanel";
 import type {
   CommitPlanOperation,
@@ -117,6 +127,7 @@ function createPanelActions(
   repoRoot: string,
   operation: AiCommitPlanOperation
 ): CommitPlanPanelActions {
+  let activeExecutionHooks: CommitHookName[] = [];
   return {
     generate: (context, prompt, intent, token) =>
       generateAiCommitPlan(
@@ -134,7 +145,8 @@ function createPanelActions(
       });
       return context;
     },
-    execute: async (context, result) => {
+    execute: async (context, result, onProgress) => {
+      activeExecutionHooks = [];
       const lease = tryAcquireRepoMutation(context.repoRoot, "AI commit plan");
       if (!lease) {
         logInfo("AI commit plan execution skipped", {
@@ -151,11 +163,13 @@ function createPanelActions(
       const started = Date.now();
       let execution: CommitPlanExecutionResult;
       try {
+        activeExecutionHooks = await enabledCommitHooks(context.repoRoot);
         logInfo("AI commit plan execution started", {
           repoRoot: context.repoRoot,
           scope: context.scope,
           groups: result.groups.length,
           files: context.files.length,
+          activeHooks: activeExecutionHooks.length,
         });
         execution = await new AiCommitPlanService(context.repoRoot).execute(
           context,
@@ -164,10 +178,12 @@ function createPanelActions(
             logInfo("AI commit plan execution progress", {
               repoRoot: context.repoRoot,
               phase: progress.phase,
+              step: progress.step,
               current: progress.current,
               total: progress.total,
               files: progress.paths?.length ?? 0,
             });
+            return onProgress(progress);
           }
         );
       } finally {
@@ -176,6 +192,10 @@ function createPanelActions(
       logInfo("AI commit plan execution completed", {
         repoRoot: context.repoRoot,
         groups: execution.commits.length,
+        hookAdjustedFiles: execution.commits.reduce(
+          (count, commit) => count + (commit.hookAdjustedPaths?.length ?? 0),
+          0
+        ),
         head: execution.head,
         elapsed: Date.now() - started,
       });
@@ -194,7 +214,66 @@ function createPanelActions(
     reportError: (error, failedOperation) =>
       reportPanelError(error, failedOperation, deps.changesView.getActiveRepo()),
     formatError: errorText,
+    formatExecutionFailure: (error) =>
+      formatAiCommitPlanExecutionFailure(error, repoRoot, activeExecutionHooks),
   };
+}
+
+/**
+ * AI 플랜 실행 오류의 hook 출력을 공용 파서로 구조화하고 웹뷰에는 제한된 진단만 전달한다.
+ * - stdout/stderr 원문은 OUTPUT에 별도 블록으로 남겨 웹뷰 데이터 크기와 민감 정보 노출을 줄인다.
+ * @param error private git commit 또는 안전 검증에서 발생한 원본 오류
+ * @param repoRoot hook 경로와 진단 파일 위치를 검증할 저장소 루트
+ * @param activeHooks 실행 직전에 고정해 둔 활성 commit hook 이름
+ * @returns 패널 실패 카드에 직렬화할 크기 제한 presentation
+ */
+function formatAiCommitPlanExecutionFailure(
+  error: unknown,
+  repoRoot: string,
+  activeHooks: readonly CommitHookName[]
+) {
+  const report = buildCommitFailureReport(error, repoRoot, {
+    activeHooks,
+    commitCommandFailed: isGitCommitFailure(error),
+  });
+  const output = commitFailureOutput(error);
+  logInfo("AI commit plan failure diagnostics parsed", {
+    repoRoot,
+    likelyHook: report.likelyHook,
+    hook: report.hookName,
+    check: report.checkName,
+    items: report.items.length,
+    outputLines: report.outputLines,
+    truncated: report.truncated,
+  });
+  logOutputBlock("AI commit plan process output", output, {
+    repoRoot,
+    likelyHook: report.likelyHook,
+  });
+  return presentCommitPlanExecutionFailure(report);
+}
+
+/**
+ * 실행 직전 활성 commit hook을 고정해 실패 hook이 자신을 변경해도 원래 실행 후보를 보존한다.
+ * @param repoRoot 곧 private commit을 실행할 저장소 루트
+ * @returns 조회 실패 시 빈 목록, 성공하면 활성 표준 commit hook 이름 목록
+ */
+async function enabledCommitHooks(repoRoot: string): Promise<CommitHookName[]> {
+  return new CommitHookService(repoRoot)
+    .inspect()
+    .then((snapshot) =>
+      snapshot.hooks.filter((hook) => hook.enabled).map((hook) => hook.name)
+    )
+    .catch(() => []);
+}
+
+/**
+ * 저수준 GitError 메시지에서 실패한 하위 명령이 `git commit`인지 보수적으로 확인한다.
+ * @param error AI 플랜 실행 중 throw 된 원본 값
+ * @returns hook 추론에 사용할 수 있는 직접 commit 실패이면 true
+ */
+function isGitCommitFailure(error: unknown): boolean {
+  return error instanceof Error && /^git commit(?:\s|$)/i.test(error.message);
 }
 
 /**

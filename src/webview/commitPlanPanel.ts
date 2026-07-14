@@ -7,9 +7,11 @@ import type {
   CommitPlanResult,
 } from "../ai/commitPlanModel";
 import { buildCommitPlanHtml } from "./commitPlanHtml";
+import { presentCommitPlanExecutionProgress } from "./commitPlanExecutionPresentation";
 import {
   commitPlanContextPaths,
   commitPlanErrorText,
+  type CommitPlanExecutionFailure,
   type CommitPlanFromWebview,
   type CommitPlanLaunchOptions,
   type CommitPlanOperation,
@@ -336,8 +338,17 @@ export class CommitPlanPanel {
       operation: "execute",
       message: vscode.l10n.t("Executing AI commit plan..."),
     });
+    this.post({ type: "executionStarted", total: result.groups.length });
     try {
-      const completion = await this.actions.execute(this.context, result);
+      const completion = await this.actions.execute(
+        this.context,
+        result,
+        (progress) =>
+          this.post({
+            type: "executionProgress",
+            progress: presentCommitPlanExecutionProgress(progress),
+          })
+      );
       this.result = result;
       if (completion?.context) {
         this.context = completion.context;
@@ -462,6 +473,14 @@ export class CommitPlanPanel {
     operation: CommitPlanOperation,
     error: unknown
   ): Promise<void> {
+    let failure: CommitPlanExecutionFailure | undefined;
+    if (operation === "execute") {
+      try {
+        failure = await this.actions.formatExecutionFailure(error);
+      } catch {
+        // 진단 파싱 실패 시에도 원래 실행 오류와 안전한 한 줄 메시지는 반드시 표시한다.
+      }
+    }
     try {
       await this.actions.reportError(error, operation);
     } catch {
@@ -472,6 +491,7 @@ export class CommitPlanPanel {
       operation,
       message:
         this.actions.formatError(error) || commitPlanErrorText(error),
+      failure,
     });
   }
 

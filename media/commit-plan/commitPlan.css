@@ -488,6 +488,45 @@ body.busy .execute .codicon {
   }
 }
 
+.execution-status {
+  margin-top: 12px; padding: 12px; border: 1px solid var(--vscode-panel-border);
+  border-left: 3px solid var(--vscode-progressBar-background); border-radius: 4px;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+.execution-status[data-execution-state="failed"] { border-left-color: var(--vscode-inputValidation-errorBorder); }
+.execution-status[data-execution-state="complete"] { border-left-color: var(--vscode-testing-iconPassed, var(--vscode-progressBar-background)); }
+
+.execution-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.execution-count, .group-execution-state {
+  padding: 2px 8px; border-radius: 999px; color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background); font-size: .84em; font-weight: 600; white-space: nowrap;
+}
+.execution-bar { height: 5px; margin-top: 10px; border-radius: 999px; background: var(--vscode-widget-border, var(--vscode-panel-border)); overflow: hidden; }
+.execution-bar-fill { display: block; width: var(--execution-progress, 0); height: 100%; background: var(--vscode-testing-iconPassed, var(--vscode-progressBar-background)); transition: width .2s ease; }
+.execution-live { min-height: 1.45em; margin-top: 8px; color: var(--vscode-descriptionForeground); }
+
+.commit-group[data-execution-state] { transition: border-color .16s ease, box-shadow .16s ease; }
+.commit-group[data-execution-state] .group-heading { flex: 1; flex-wrap: wrap; }
+.commit-group[data-execution-state="active"],
+.commit-group[data-execution-state="preparing"] { border-color: var(--vscode-focusBorder); box-shadow: inset 3px 0 var(--vscode-progressBar-background); }
+.commit-group[data-execution-state="prepared"],
+.commit-group[data-execution-state="complete"] { border-color: var(--vscode-testing-iconPassed, var(--vscode-panel-border)); }
+.commit-group[data-execution-state="failed"], .commit-group[data-execution-state="hookFailed"] { border-color: var(--vscode-inputValidation-errorBorder); box-shadow: inset 3px 0 var(--vscode-inputValidation-errorBorder); }
+.group-execution-state { margin-left: auto; }
+.group-execution-state[data-state="active"], .group-execution-state[data-state="preparing"] { color: var(--vscode-button-foreground); background: var(--vscode-progressBar-background); }
+.group-execution-state[data-state="prepared"], .group-execution-state[data-state="complete"] { color: var(--vscode-button-foreground); background: var(--vscode-testing-iconPassed, var(--vscode-badge-background)); }
+.group-execution-state[data-state="failed"], .group-execution-state[data-state="hookFailed"] { color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground)); background: var(--vscode-inputValidation-errorBackground, var(--vscode-editorWidget-background)); }
+
+.execution-failure { margin-top: 10px; padding: 11px 12px; border: 1px solid var(--vscode-inputValidation-errorBorder); border-radius: 3px; color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground)); background: var(--vscode-inputValidation-errorBackground, var(--vscode-editorWidget-background)); }
+.execution-failure h3 { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.execution-failure-identity { color: var(--vscode-descriptionForeground); font-size: .9em; font-weight: 600; }
+.execution-failure-summary, .execution-failure-preserved { margin-top: 5px; white-space: pre-wrap; }
+.execution-failure-preserved { color: var(--vscode-descriptionForeground); font-size: .9em; }
+.execution-failure-diagnostics { margin: 8px 0 0; padding-left: 20px; color: var(--vscode-foreground); }
+.execution-failure-diagnostics li { overflow-wrap: anywhere; }
+.execution-failure-diagnostics li + li { margin-top: 5px; }
+.execution-failure pre { max-height: 180px; margin: 8px 0 0; padding: 8px; overflow: auto; border: 1px solid var(--vscode-panel-border); color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-editor-font-family); font-size: .88em; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 @media (max-width: 680px) {
   body {
     min-width: 320px;
@@ -538,4 +577,7 @@ body.busy .execute .codicon {
   body.busy .execute .codicon {
     animation: none;
   }
+
+  .execution-bar-fill, .commit-group[data-execution-state] { transition: none; }
+  .group-execution-state .codicon-modifier-spin { animation: none; }
 }

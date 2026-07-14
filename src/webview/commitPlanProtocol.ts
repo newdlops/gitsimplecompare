@@ -9,6 +9,18 @@ import {
   type CommitPlanResult,
 } from "../ai/commitPlanModel";
 import type * as vscode from "vscode";
+import type {
+  CommitPlanExecutionFailure,
+  CommitPlanExecutionProgress,
+} from "./commitPlanExecutionPresentation";
+
+export type {
+  CommitPlanExecutionFailure,
+  CommitPlanExecutionFailureItem,
+  CommitPlanExecutionProgress,
+  CommitPlanExecutionProgressPhase,
+  CommitPlanExecutionProgressStep,
+} from "./commitPlanExecutionPresentation";
 
 /** 웹뷰 입력이 지나치게 커져 extension host 를 압박하지 않도록 두는 상한. */
 export const COMMIT_PLAN_LIMITS = Object.freeze({
@@ -56,6 +68,11 @@ export interface CommitPlanExecutionResult {
   context?: CommitPlanContext;
 }
 
+/** 패널이 실행 중인 그룹 상태를 즉시 전달받을 때 사용하는 진행 콜백이다. */
+export type CommitPlanExecutionProgressCallback = (
+  progress: CommitPlanExecutionProgress
+) => void | PromiseLike<void>;
+
 /** 패널이 명령/AI/git 계층에 위임하는 액션 계약. */
 export interface CommitPlanPanelActions {
   /**
@@ -82,10 +99,12 @@ export interface CommitPlanPanelActions {
    * 사용자가 편집하고 승인한 계획을 순서대로 실행한다.
    * @param context 계획이 만들어진 Git 변경 컨텍스트
    * @param result 실행 직전에 검증된 커밋 그룹과 경고
+   * @param onProgress private 커밋 준비와 hook 검증 진행률을 웹뷰로 전달할 콜백
    */
   execute(
     context: CommitPlanContext,
-    result: CommitPlanResult
+    result: CommitPlanResult,
+    onProgress: CommitPlanExecutionProgressCallback
   ): Promise<void | CommitPlanExecutionResult>;
 
   /**
@@ -114,6 +133,15 @@ export interface CommitPlanPanelActions {
    * @returns 웹뷰 오류 배너에 표시할 안전한 문자열
    */
   formatError(error: unknown): string;
+
+  /**
+   * 실행 오류의 hook/Git 출력을 웹뷰용 제한된 진단 데이터로 변환한다.
+   * @param error AI 커밋 플랜 실행 중 발생한 원본 오류
+   * @returns raw 출력 없이 크기가 제한된 실패 표시 데이터
+   */
+  formatExecutionFailure(
+    error: unknown
+  ): CommitPlanExecutionFailure | Promise<CommitPlanExecutionFailure>;
 }
 
 /** extension host 가 웹뷰로 보내는 타입이 보장된 상태 메시지. */
@@ -135,8 +163,15 @@ export type CommitPlanToWebview =
       operation: "refresh" | "generate" | "execute";
       message: string;
     }
+  | { type: "executionStarted"; total: number }
+  | { type: "executionProgress"; progress: CommitPlanExecutionProgress }
   | { type: "idle" }
-  | { type: "error"; operation: CommitPlanOperation; message: string }
+  | {
+      type: "error";
+      operation: CommitPlanOperation;
+      message: string;
+      failure?: CommitPlanExecutionFailure;
+    }
   | { type: "completed"; message: string };
 
 /** 웹뷰가 extension host 로 요청할 수 있는 제한된 액션 메시지. */
