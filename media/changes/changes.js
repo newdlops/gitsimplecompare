@@ -1399,8 +1399,12 @@
       return;
     }
     const ta = document.getElementById("commit-msg");
+    const request = { op, message: ta ? ta.value : "" };
+    if (window.__gscTryAiCommitPlan?.(request)) {
+      return;
+    }
     setCommitInProgress(true);
-    vscode.postMessage({ type: "commit", op, message: ta ? ta.value : "" });
+    vscode.postMessage({ type: "commit", ...request });
   }
 
   /** 커밋 캐럿(▼) 드롭다운: 커밋 변형 + Stage/Unstage/Discard All + Stash(주입 메뉴). */

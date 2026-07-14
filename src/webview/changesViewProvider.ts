@@ -15,6 +15,7 @@ import { buildChangesRenderPayload } from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
 import { routeCommitHookMessage } from "./changesCommitHookMessages";
+import { routeChangesAiMessage } from "./changesAiMessages";
 import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
 import {
   TREE_SECTIONS,
@@ -405,6 +406,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     if (routeCommitHookMessage(msg, this.view?.webview)) {
       return;
     }
+    if (routeChangesAiMessage(msg)) {
+      return;
+    }
     if (msg.type === "ready") {
       this.lastRenderPayloadJson = "";
       this.render();
@@ -519,12 +523,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         this.commitMessage = msg.message;
       }
       void runCommitOperation(this.view?.webview, msg.op);
-    } else if (msg.type === "generateCommitMessage") {
-      void vscode.commands.executeCommand(
-        "gitSimpleCompare.generateCommitMessage"
-      );
-    } else if (msg.type === "configureAiCli") {
-      void vscode.commands.executeCommand("gitSimpleCompare.configureAiCli");
     } else if (msg.type === "splitCommits") {
       void vscode.commands.executeCommand("gitSimpleCompare.splitCommits", {
         path: msg.path,

@@ -1,0 +1,79 @@
+/* Changes 커밋 박스의 AI 플랜 모드 토글과 요청별 프롬프트 스타일. */
+.commit-ai-plan-mode-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--vscode-button-border, transparent);
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  justify-content: center;
+  min-height: 26px;
+  padding: 2px 7px;
+}
+
+.commit-ai-plan-mode-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.commit-ai-plan-mode-btn.active {
+  background: var(--vscode-button-secondaryBackground);
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.commit-ai-plan-mode-btn:focus-visible,
+.commit-ai-plan-prompt:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.commit-ai-plan-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.commit-ai-plan-prompt-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.commit-ai-plan-prompt-label {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.commit-ai-plan-prompt {
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  box-sizing: border-box;
+  color: var(--vscode-input-foreground);
+  font: inherit;
+  max-height: 120px;
+  min-height: 42px;
+  padding: 5px 7px;
+  resize: vertical;
+  width: 100%;
+}
+
+.commit-ai-plan-prompt::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.commit-bar.ai-plan-mode .commit-btn {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 300px) {
+  .commit-ai-plan-label {
+    display: none;
+  }
+
+  .commit-ai-plan-mode-btn {
+    padding-inline: 6px;
+  }
+}

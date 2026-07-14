@@ -13,7 +13,9 @@ export interface ChangesWebviewMessage {
   section?: string;
   paths?: string[];
   message?: string;
+  prompt?: string;
   op?: string;
+  autoGenerate?: boolean;
   action?: string;
   ref?: string;
   stage?: string;

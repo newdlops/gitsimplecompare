@@ -135,6 +135,22 @@ export function changesWebviewI18n(): Record<string, string> {
       "Stage changes before generating an AI commit message."
     ),
     configureAiCli: vscode.l10n.t("Configure AI CLI"),
+    aiCommitPlanMode: vscode.l10n.t("AI Plan"),
+    enableAiCommitPlanMode: vscode.l10n.t("Enable AI commit plan mode"),
+    disableAiCommitPlanMode: vscode.l10n.t("Disable AI commit plan mode"),
+    aiCommitPlanPrompt: vscode.l10n.t(
+      "Additional AI plan instructions (optional)"
+    ),
+    aiCommitPlanPromptPlaceholder: vscode.l10n.t(
+      "For example: keep tests with implementation; separate docs."
+    ),
+    aiCommitPlanIntentPlaceholder: vscode.l10n.t(
+      "Overall change intent (optional). Ctrl+Enter to plan commits."
+    ),
+    createAiCommitPlan: vscode.l10n.t("Create AI Commit Plan"),
+    aiCommitPlanAmendUnsupported: vscode.l10n.t(
+      "AI plan mode is not available for amend commits."
+    ),
     splitChanges: vscode.l10n.t("Stage Hunks"),
     moreActions: vscode.l10n.t("More Actions..."),
     stage: vscode.l10n.t("Stage Changes"),

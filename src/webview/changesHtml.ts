@@ -25,11 +25,13 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changes.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesAiPlan.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesAiPlan.css"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.css"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.css"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
@@ -40,6 +42,9 @@ export function buildChangesHtml(
   );
   const aiScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
+  );
+  const aiPlanScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesAiPlan.js"), version)
   );
   const compareScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCompare.js"), version)
@@ -70,6 +75,9 @@ export function buildChangesHtml(
   );
   const commitBoxStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"), version)
+  );
+  const aiPlanStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesAiPlan.css"), version)
   );
   const hooksStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesHooks.css"), version)
@@ -102,6 +110,7 @@ export function buildChangesHtml(
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${compareStyleUri}" rel="stylesheet" />
   <link href="${commitBoxStyleUri}" rel="stylesheet" />
+  <link href="${aiPlanStyleUri}" rel="stylesheet" />
   <link href="${hooksStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
   <link href="${tooltipResources.styleUri}" rel="stylesheet" />
@@ -121,6 +130,7 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>
+  <script nonce="${nonce}" src="${aiPlanScriptUri}"></script>
   <script nonce="${nonce}" src="${hooksScriptUri}"></script>
 </body>
 </html>`;

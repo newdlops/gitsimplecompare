@@ -171,13 +171,15 @@ export async function openHeadVsWorkingTreeDiff(
  * index 에 올라간 파일 버전을 HEAD 와 비교한다(양쪽 읽기 전용).
  * - staged 목록에서 파일을 열 때 사용해, 부분 stage 된 변화만 정확히 보여준다.
  * @param repoRoot 저장소 루트
- * @param relPath  저장소 상대 경로
+ * @param relPath index 쪽 현재 저장소 상대 경로
+ * @param leftRelPath rename 이전처럼 HEAD 쪽 경로가 다를 때 사용할 선택 경로
  */
 export async function openHeadVsIndexDiff(
   repoRoot: string,
-  relPath: string
+  relPath: string,
+  leftRelPath?: string
 ): Promise<void> {
-  const left = makeRefUri("HEAD", relPath, repoRoot);
+  const left = makeRefUri("HEAD", leftRelPath ?? relPath, repoRoot);
   const right = makeRefUri(":0", relPath, repoRoot);
   const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
   const title = makeDiffTitle("HEAD", vscode.l10n.t("Index"), fileLabel);
