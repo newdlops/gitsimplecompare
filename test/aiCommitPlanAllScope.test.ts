@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { test } from "node:test";
@@ -12,7 +12,12 @@ import {
   AiCommitPlanError,
   AiCommitPlanService,
 } from "../src/git/aiCommitPlanService";
-import { runGit, runGitBuffer } from "../src/git/gitExec";
+import { AiCommitPlanPrivateRepo } from "../src/git/aiCommitPlanPrivateRepo";
+import {
+  runGit,
+  runGitBuffer,
+  withGitConfigOverrides,
+} from "../src/git/gitExec";
 
 process.env.GIT_CONFIG_NOSYSTEM = "1";
 process.env.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : "/dev/null";
@@ -329,6 +334,106 @@ test("split-index 저장소에서도 sibling source snapshot을 publish하고 cl
       ""
     );
   });
+});
+
+test("private Git 환경은 저장소의 builtin fsmonitor 설정을 command scope에서 끈다", async () => {
+  await withRepo(async (root) => {
+    await put(root, "tracked.txt", "base\n");
+    await commitAll(root);
+    await runGit(["config", "core.fsmonitor", "true"], root);
+
+    const privateRepo = await AiCommitPlanPrivateRepo.create(
+      root,
+      await head(root)
+    );
+    try {
+      assert.equal(
+        (
+          await runGit(["config", "--bool", "core.fsmonitor"], root, {
+            env: privateRepo.env,
+          })
+        ).trim(),
+        "false"
+      );
+    } finally {
+      await privateRepo.dispose();
+    }
+  });
+});
+
+test(
+  "fsmonitor hook 저장소에서도 private 다중 commit과 hook 자식 Git이 교착 없이 끝난다",
+  { skip: process.platform === "win32" },
+  async () => {
+    await withRepo(async (root) => {
+      await put(root, "first.txt", "base first\n");
+      await put(root, "second.txt", "base second\n");
+      await commitAll(root);
+      await put(root, "first.txt", "planned first\n");
+      await put(root, "second.txt", "planned second\n");
+      await runGit(["add", "first.txt", "second.txt"], root);
+      const context = await readAiCommitPlanContext(root, "staged");
+
+      const gitDir = path.join(root, ".git");
+      const fsmonitorHook = path.join(gitDir, "fsmonitor-test.sh");
+      const invokedMarker = path.join(root, "fsmonitor-invoked.marker");
+      await writeFile(
+        fsmonitorHook,
+        [
+          "#!/bin/sh",
+          'if [ "$GIT_SIMPLE_COMPARE_AI_PLAN_PROVISIONAL" = "1" ]; then',
+          '  touch "$GIT_WORK_TREE/fsmonitor-invoked.marker"',
+          "fi",
+          "exit 1",
+          "",
+        ].join("\n"),
+        "utf8"
+      );
+      await chmod(fsmonitorHook, 0o755);
+      const preCommitHook = path.join(gitDir, "hooks", "pre-commit");
+      await writeFile(
+        preCommitHook,
+        '#!/bin/sh\ntest "$(git config --get core.fsmonitor)" = "false"\n',
+        "utf8"
+      );
+      await chmod(preCommitHook, 0o755);
+      await runGit(["config", "core.fsmonitor", fsmonitorHook], root);
+
+      const result = await new AiCommitPlanService(root).execute(context, {
+        groups: [
+          { message: "feat: update first", paths: ["first.txt"] },
+          { message: "feat: update second", paths: ["second.txt"] },
+        ],
+        warnings: [],
+      });
+
+      assert.equal(result.commits.length, 2);
+      await assert.rejects(
+        readFile(invokedMarker, "utf8"),
+        (error: unknown) =>
+          typeof error === "object" &&
+          error !== null &&
+          (error as { code?: unknown }).code === "ENOENT"
+      );
+    });
+  }
+);
+
+test("Git command-scope override는 기존 슬롯 뒤에 추가되어 마지막 값을 우선한다", () => {
+  const env = withGitConfigOverrides(
+    {
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "core.fsmonitor",
+      GIT_CONFIG_VALUE_0: "true",
+    },
+    { "core.fsmonitor": "false" }
+  );
+
+  assert.equal(env.GIT_CONFIG_COUNT, "2");
+  assert.equal(env.GIT_CONFIG_KEY_0, "core.fsmonitor");
+  assert.equal(env.GIT_CONFIG_VALUE_0, "true");
+  assert.equal(env.GIT_CONFIG_KEY_1, "core.fsmonitor");
+  assert.equal(env.GIT_CONFIG_VALUE_1, "false");
 });
 
 test("linked worktree의 per-worktree index sibling에서 all 계획을 안전하게 publish한다", async () => {
