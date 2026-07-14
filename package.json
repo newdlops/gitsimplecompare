@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71037",
+  "version": "0.1.71038",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -188,6 +188,13 @@
         "title": "%cmd.generateCommitMessage%",
         "category": "Git Simple Compare",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "gitSimpleCompare.openAiCommitPlan",
+        "title": "%cmd.openAiCommitPlan.tooltip%",
+        "shortTitle": "%cmd.openAiCommitPlan%",
+        "category": "Git Simple Compare",
+        "icon": "$(checklist)"
       },
       {
         "command": "gitSimpleCompare.configureAiCli",
@@ -598,6 +605,11 @@
           "group": "1_ops@2"
         },
         {
+          "command": "gitSimpleCompare.openAiCommitPlan",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@3"
+        },
+        {
           "command": "gitSimpleCompare.branchSquashMerge",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@4"
@@ -700,7 +712,7 @@
         {
           "command": "gitSimpleCompare.splitCommits",
           "when": "view == gitSimpleCompare.changes",
-          "group": "1_ops@3"
+          "group": "1_ops@7"
         },
         {
           "command": "gitSimpleCompare.refreshWorktrees",
@@ -1185,8 +1197,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
+    "pretest": "esbuild test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {

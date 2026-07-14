@@ -20,7 +20,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 6. **Conflict resolution** — during a merge/rebase/cherry-pick/revert, the Conflicts view lists unmerged files with one-click actions (open merge editor, accept ours/theirs, mark resolved) and Continue/Abort.
 7. **Interactive rebase** — edit a rebase plan in a drag-and-drop webview (reorder + pick/reword/squash/fixup/drop). Launch it from the graph ("Rebase from here") or the command palette.
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
-9. **AI messages** — generate commit messages and staged PR titles/bodies by sending prompts to the local Claude Code or Codex CLI.
+9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
 
 ## Usage
@@ -52,6 +52,10 @@ Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for 
 ### AI commit and PR messages
 
 The Changes view includes an AI button next to the commit message box. It sends the staged diff to the selected AI CLI, so stage the files or hunks you want summarized first. The staged PR preview also has an AI button that fills the PR title and body.
+
+For a larger change set, enable **AI Plan** beside the commit button or run `Git Simple Compare: AI Commit Plan`. Add optional instructions such as “keep tests with implementation” or “separate documentation,” then review the proposed commit messages and file groups. You can edit messages, reorder commits, and move files between groups before approving execution. The panel clearly shows whether the plan covers staged changes only or all staged, unstaged, and untracked changes; it rechecks the snapshot before committing and leaves newer edits untouched.
+
+AI Plan prepares the complete commit chain privately, runs normal commit hooks for each prepared commit, then publishes the branch only after a final state check. Hooks can detect this provisional phase through `GIT_SIMPLE_COMPARE_AI_PLAN_PROVISIONAL=1` and should defer irreversible notifications or deployments when it is set. Git hook side effects outside the repository cannot be rolled back if a later hook or concurrency check stops the plan.
 
 This feature runs local CLIs non-interactively: `claude -p` for Claude Code and `codex exec` for Codex. Use `Git Simple Compare: Configure AI CLI` or the gear button beside the AI commit button to choose the provider, login/status flow, executable path, model/profile options, reasoning effort, default response language, and extra prompt instructions. Model and reasoning pickers load metadata from the installed provider CLI.
 
@@ -97,7 +101,7 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | `gitSimpleCompare.aiCodexProfile` | empty | Optional Codex config profile passed with `--profile` |
 | `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex login method (`device`, `browser`, `api-key`, or `access-token`) |
 | `gitSimpleCompare.aiResponseLanguage` | `English` | Language for AI-generated messages |
-| `gitSimpleCompare.aiCommonInstructions` | empty | Extra prompt instructions applied to both commit and PR generation |
+| `gitSimpleCompare.aiCommonInstructions` | empty | Extra prompt instructions applied to commit plans, commit messages, and PR generation |
 | `gitSimpleCompare.aiCommitInstructions` | empty | Extra prompt instructions applied only to commit generation |
 | `gitSimpleCompare.aiPullRequestInstructions` | empty | Extra prompt instructions applied only to PR generation |
 | `gitSimpleCompare.aiCliTimeoutMs` | `120000` | Timeout for AI CLI requests |
