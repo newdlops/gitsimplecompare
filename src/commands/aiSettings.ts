@@ -409,7 +409,9 @@ async function configurePromptDefaults(config: AiCliConfig): Promise<void> {
     "aiCommonInstructions",
     vscode.l10n.t("Common prompt instructions"),
     config.commonInstructions,
-    vscode.l10n.t("Applied to commit, PR, and rebase prompts.")
+    vscode.l10n.t(
+      "Applied to commit plans, commit and PR messages, and rebase plans."
+    )
   );
   await configureString(
     "aiCommitInstructions",

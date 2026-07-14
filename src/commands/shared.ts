@@ -42,6 +42,63 @@ export interface CompareConfig {
   includeRemoteBranches: boolean;
 }
 
+/** 저장소 쓰기 작업 하나가 보유하는 process-local 배타 lease. */
+export interface RepoMutationLease {
+  /** 로그와 충돌 안내에 사용할 현재 작업 이름. */
+  operation: string;
+  /** 같은 lease가 아직 현재 소유자일 때만 잠금을 해제한다. 여러 번 호출해도 안전하다. */
+  release(): void;
+}
+
+/**
+ * VS Code extension host 안에서 같은 저장소의 index/HEAD 쓰기를 직렬화하는 상태표다.
+ * Git 자체의 외부 프로세스 경쟁은 서비스 계층의 snapshot fence가 담당하고, 이 표는
+ * Changes 버튼과 AI 플랜처럼 확장 내부에서 쉽게 생기는 경합을 사용자 동작 전에 막는다.
+ */
+const activeRepoMutations = new Map<
+  string,
+  { operation: string; owner: symbol }
+>();
+
+/**
+ * 저장소 쓰기 lease를 즉시 얻는다. 이미 다른 작업이 실행 중이면 기다리지 않고 반환한다.
+ * @param repoRoot GitService가 정규화한 저장소 절대 경로
+ * @param operation 로그와 사용자 안내에 쓸 짧은 작업 이름
+ * @returns 획득한 lease, 또는 동일 저장소가 사용 중이면 undefined
+ */
+export function tryAcquireRepoMutation(
+  repoRoot: string,
+  operation: string
+): RepoMutationLease | undefined {
+  if (activeRepoMutations.has(repoRoot)) {
+    return undefined;
+  }
+  const owner = Symbol(operation);
+  activeRepoMutations.set(repoRoot, { operation, owner });
+  let released = false;
+  return {
+    operation,
+    release: () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      if (activeRepoMutations.get(repoRoot)?.owner === owner) {
+        activeRepoMutations.delete(repoRoot);
+      }
+    },
+  };
+}
+
+/**
+ * 저장소를 현재 점유한 확장 내부 쓰기 작업 이름을 조회한다.
+ * @param repoRoot 확인할 저장소 절대 경로
+ * @returns 점유 작업 이름, 비어 있으면 undefined
+ */
+export function activeRepoMutation(repoRoot: string): string | undefined {
+  return activeRepoMutations.get(repoRoot)?.operation;
+}
+
 /**
  * 확장 설정(gitSimpleCompare.*)을 읽어 정규화된 객체로 반환한다.
  * - 설정 키가 한곳에 모여 있어 추후 옵션 추가 시 이 함수만 손대면 된다.

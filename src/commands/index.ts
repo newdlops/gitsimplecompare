@@ -34,6 +34,7 @@ import {
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
+import { openAiCommitPlan, type OpenAiCommitPlanArgs } from "./aiCommitPlan";
 import { commitChanges } from "./commit";
 import {
   createCommitHook,
@@ -355,6 +356,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.generateCommitMessage",
       () => generateCommitMessage(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.openAiCommitPlan",
+      (args?: OpenAiCommitPlanArgs) => openAiCommitPlan(deps, args)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.configureAiCli", () =>
       configureAiCli(deps)

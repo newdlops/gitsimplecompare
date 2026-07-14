@@ -14,7 +14,11 @@ import {
   logOutputBlock,
   showErrorWithOutput,
 } from "../ui/outputLog";
-import type { CommandDeps } from "./shared";
+import {
+  activeRepoMutation,
+  type CommandDeps,
+  tryAcquireRepoMutation,
+} from "./shared";
 
 const COMMIT_OPERATIONS: readonly CommitOperation[] = [
   "commit",
@@ -74,6 +78,44 @@ async function commitChangesOnce(
     return;
   }
 
+  const lease = tryAcquireRepoMutation(service.repoRoot, "commit");
+  if (!lease) {
+    logInfo("commit command skipped", {
+      root: service.repoRoot,
+      operation,
+      reason: "repo-write-active",
+      activeOperation: activeRepoMutation(service.repoRoot),
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Another Git write operation is already running for this repository."
+      )
+    );
+    return;
+  }
+
+  try {
+    await runCommitWithLease(deps, service, operation, amend, message);
+  } finally {
+    lease.release();
+  }
+}
+
+/**
+ * 저장소 쓰기 lease가 확보된 상태에서 stage 정책, commit, 실패 진단과 새로고침을 실행한다.
+ * @param deps Changes 상태와 서비스 레지스트리를 제공하는 공유 의존성
+ * @param service 현재 활성 저장소의 Git 서비스
+ * @param operation 검증된 commit/staged/all/amend 계열 정책
+ * @param amend 기존 HEAD를 수정하는 커밋인지 여부
+ * @param message 사용자가 입력한 커밋 메시지
+ */
+async function runCommitWithLease(
+  deps: CommandDeps,
+  service: GitService,
+  operation: CommitOperation,
+  amend: boolean,
+  message: string
+): Promise<void> {
   let committed = false;
   let commitAttempted = false;
   try {

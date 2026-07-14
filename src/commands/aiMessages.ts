@@ -50,7 +50,7 @@ export async function generateCommitMessage(
     logError("AI commit message generation failed", error, {
       repoRoot: deps.changesView.getActiveRepo(),
     });
-    await showAiError("AI commit message generation failed: {0}", error);
+    await showAiCommandError("AI commit message generation failed: {0}", error);
   } finally {
     commitMessageGenerationInFlight = false;
     deps.changesView.setAiCommitGeneration(false);
@@ -62,7 +62,10 @@ export async function generateCommitMessage(
  * @param template 지역화 메시지 템플릿
  * @param error 원본 오류
  */
-async function showAiError(template: string, error: unknown): Promise<void> {
+export async function showAiCommandError(
+  template: string,
+  error: unknown
+): Promise<void> {
   const configure = vscode.l10n.t("Configure AI CLI");
   const login = vscode.l10n.t("Login to AI CLI");
   const message = vscode.l10n.t(template, errText(error));

@@ -8,7 +8,11 @@ import {
   openHeadVsIndexDiff,
   openHeadVsRemainingUnstagedDiff,
 } from "../ui/diffPresenter";
-import { CommandDeps } from "./shared";
+import {
+  activeRepoMutation,
+  CommandDeps,
+  tryAcquireRepoMutation,
+} from "./shared";
 import { GitService, IgnoreTarget } from "../git/gitService";
 import { openConflictEditor } from "./conflicts";
 import { logError, logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
@@ -183,6 +187,21 @@ async function runWorkingTreeWrite(
   run: (targets: string[]) => Promise<void>
 ): Promise<void> {
   const targets = uniqueNonEmpty(paths ?? []);
+  const lease = tryAcquireRepoMutation(svc.repoRoot, action);
+  if (!lease) {
+    logInfo("working tree write skipped", {
+      root: svc.repoRoot,
+      action,
+      reason: "repo-write-active",
+      activeOperation: activeRepoMutation(svc.repoRoot),
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Another Git write operation is already running for this repository."
+      )
+    );
+    return;
+  }
   const started = Date.now();
   const title =
     action === "stage"
@@ -227,6 +246,7 @@ async function runWorkingTreeWrite(
     );
   } finally {
     deps.changesView.setWorkingOperation(false, action, targets);
+    lease.release();
     logInfo("working tree write finished", {
       root: svc.repoRoot,
       action,
@@ -276,6 +296,20 @@ export async function discardChanges(
   if (!choice) {
     return;
   }
+  const lease = tryAcquireRepoMutation(svc.repoRoot, "discard");
+  if (!lease) {
+    logInfo("discard skipped", {
+      root: svc.repoRoot,
+      reason: "repo-write-active",
+      activeOperation: activeRepoMutation(svc.repoRoot),
+    });
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Another Git write operation is already running for this repository."
+      )
+    );
+    return;
+  }
   try {
     await svc.discard(targets);
   } catch (e) {
@@ -284,6 +318,8 @@ export async function discardChanges(
       e,
       vscode.l10n.t("Action failed: {0}", gitOpErrorSummary(e))
     );
+  } finally {
+    lease.release();
   }
   void refreshWorkingChanges(deps);
 }
