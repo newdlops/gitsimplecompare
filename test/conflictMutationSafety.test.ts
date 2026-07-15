@@ -393,6 +393,53 @@ test(
   }
 );
 
+test(
+  "해결 뒤 native Result 저장은 실행 mode를 보존하고 index를 변경하지 않는다",
+  { skip: process.platform === "win32" },
+  async () => {
+    await withRepo(async (repoRoot) => {
+      const rel = "resolved-script.sh";
+      await stageExecutableText(repoRoot, rel, "#!/bin/sh\necho staged\n");
+      const stagedBefore = await git(repoRoot, ["show", `:${rel}`]);
+      const service = new ConflictService(repoRoot);
+      const baseline = await service.getWorkingResult(rel, true);
+
+      await service.writeWorkingContent(
+        rel,
+        "#!/bin/sh\necho edited\n",
+        baseline.version
+      );
+
+      assert.equal(await readFile(path.join(repoRoot, rel), "utf8"), "#!/bin/sh\necho edited\n");
+      assert.notEqual((await lstat(path.join(repoRoot, rel))).mode & 0o100, 0);
+      assert.equal(await git(repoRoot, ["show", `:${rel}`]), stagedBefore);
+    });
+  }
+);
+
+test(
+  "해결 뒤 native Result 저장은 symlink target을 따라 쓰지 않는다",
+  { skip: process.platform === "win32" },
+  async () => {
+    await withRepo(async (repoRoot) => {
+      const rel = "resolved-link";
+      const victim = path.join(repoRoot, "victim.txt");
+      await writeFile(victim, "must remain\n", "utf8");
+      await symlink("victim.txt", path.join(repoRoot, rel));
+      const service = new ConflictService(repoRoot);
+      const baseline = await service.getWorkingResult(rel, true);
+
+      await assert.rejects(
+        service.writeWorkingContent(rel, "unsafe overwrite\n", baseline.version),
+        /not available|regular file/i
+      );
+
+      assert.equal(await readFile(victim, "utf8"), "must remain\n");
+      assert.equal(await readlink(path.join(repoRoot, rel)), "victim.txt");
+    });
+  }
+);
+
 test("삭제 side claim 뒤 생긴 외부 파일은 commit 정리에서 삭제하지 않는다", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-conflict-absent-cas-"));
   const target = path.join(directory, "appeared-later.txt");
