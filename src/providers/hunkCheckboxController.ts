@@ -8,7 +8,7 @@ import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { activeHunkDiffTarget, activeHunkWorkingModifiedUri, refreshHunkDiffDocuments, type ActiveHunkDiffTarget } from "./hunkDiffContext";
 import { CheckboxLine, CheckboxSide, checkboxLineSides, checkboxLines } from "./hunkCheckboxLines";
-import { activeTargetForModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
+import { activeTargetForModifiedUri, isVisibleHunkModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
 import { checkboxLinesForDisplayedDiff, lineIdsForVisibleChange } from "./hunkVisibleLineMap";
 import { isAnyDiffOpenInProgress } from "./diffOpenGate";
 
@@ -75,7 +75,7 @@ export class HunkCheckboxController {
       vscode.window.tabGroups.onDidChangeTabGroups(() => this.requestRender()),
       vscode.window.onDidChangeActiveTextEditor(() => this.requestRender()),
       vscode.window.onDidChangeVisibleTextEditors(() => this.requestRender()),
-      vscode.workspace.onDidSaveTextDocument(() => this.refresh()),
+      vscode.workspace.onDidSaveTextDocument((document) => isVisibleHunkModifiedUri(document.uri) && this.refresh()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(`gitSimpleCompare.${MODE_CONFIG}`)) {
           this.requestRender();

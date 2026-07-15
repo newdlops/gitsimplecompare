@@ -61,6 +61,16 @@ export function visibleHunkTargets(): ActiveHunkDiffTarget[] {
   );
 }
 
+/**
+ * 저장된 문서가 현재 보이는 editable diff 중 modified 문서인지 확인한다.
+ * @param uri 저장 이벤트가 전달한 문서 URI
+ * @returns 이 문서의 hunk Git 좌표 캐시를 무효화해야 하면 true
+ */
+export function isVisibleHunkModifiedUri(uri: vscode.Uri): boolean {
+  const key = uri.toString();
+  return visibleHunkTargets().some((target) => target.modified.toString() === key);
+}
+
 /** active diff target 을 파일 조회용 target 으로 변환한다. */
 export function targetToFileTarget(
   target: ActiveHunkDiffTarget
