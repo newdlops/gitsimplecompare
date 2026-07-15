@@ -118,7 +118,7 @@
   "cmd.markResolved": "해결됨으로 표시",
   "cmd.markResolved.tooltip": "선택한 충돌 파일을 스테이징하여 해결됨으로 표시",
   "cmd.openConflictEditor": "충돌 해결",
-  "cmd.openConflictEditor.tooltip": "커밋 출처와 rebase 영향을 보여 주는 충돌 편집기 열기",
+  "cmd.openConflictEditor.tooltip": "커밋 출처와 rebase 영향을 보여 주는 네이티브 충돌 오버레이 열기",
   "cmd.openMergeEditor": "네이티브 머지 에디터 열기",
   "cmd.openMergeEditor.tooltip": "이 충돌을 VS Code 네이티브 머지 에디터로 열기",
   "cmd.continueOperation": "계속 진행",

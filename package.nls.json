@@ -118,7 +118,7 @@
   "cmd.markResolved": "Mark Resolved",
   "cmd.markResolved.tooltip": "Stage the selected conflict file and mark it as resolved",
   "cmd.openConflictEditor": "Resolve Conflict",
-  "cmd.openConflictEditor.tooltip": "Open the contextual conflict editor with commit sources and rebase impact",
+  "cmd.openConflictEditor.tooltip": "Open the native conflict overlay with commit sources and rebase impact",
   "cmd.openMergeEditor": "Open Native Merge Editor",
   "cmd.openMergeEditor.tooltip": "Open this conflict in VS Code's native merge editor",
   "cmd.continueOperation": "Continue",
