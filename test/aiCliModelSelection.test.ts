@@ -9,10 +9,12 @@ import {
 import {
   isKnownUnsupportedAiReasoningEffort,
   selectAiCliModel,
+  selectAiCliReasoningEffort,
   type AiCliConcreteProvider,
   type AiCliModelPurpose,
   type AiCliModelSelection,
   type AiCliModelSettings,
+  type AiCliReasoningEffortSettings,
 } from "../src/ai/cliModelSelection";
 
 const BASE_SETTINGS: AiCliModelSettings = {
@@ -27,10 +29,20 @@ const COMMAND_CONFIG: AiCliProviderCommandConfig = {
   ...BASE_SETTINGS,
   claudeCommand: "claude-custom",
   claudeEffort: "high",
+  claudeCommitPlanEffort: "medium",
   claudeSystemPrompt: "system guidance",
   codexCommand: "codex-custom",
   codexReasoningEffort: "xhigh",
+  codexCommitPlanReasoningEffort: "high",
   codexProfile: "work",
+};
+
+/** 전용값, 일반값, CLI 기본값 사이의 추론 강도 우선순위를 검증할 공통 설정. */
+const REASONING_SETTINGS: AiCliReasoningEffortSettings = {
+  claudeEffort: "high",
+  claudeCommitPlanEffort: "medium",
+  codexReasoningEffort: "xhigh",
+  codexCommitPlanReasoningEffort: "low",
 };
 
 interface SelectionCase {
@@ -172,12 +184,56 @@ test("metadata 지원 목록에 없는 추론 강도만 비호환으로 확정�
   assert.equal(isKnownUnsupportedAiReasoningEffort("", ["high"]), false);
 });
 
+test("커밋 플랜 전용 추론 강도가 provider 일반 설정보다 우선한다", () => {
+  assert.deepEqual(
+    selectAiCliReasoningEffort(REASONING_SETTINGS, "claude", "commitPlan"),
+    { effort: "medium", source: "commitPlan" }
+  );
+  assert.deepEqual(
+    selectAiCliReasoningEffort(REASONING_SETTINGS, "codex", "commitPlan"),
+    { effort: "low", source: "commitPlan" }
+  );
+});
+
+test("커밋 플랜 전용 추론 강도가 비면 provider 일반 설정을 상속한다", () => {
+  assert.deepEqual(
+    selectAiCliReasoningEffort(
+      { ...REASONING_SETTINGS, claudeCommitPlanEffort: "  " },
+      "claude",
+      "commitPlan"
+    ),
+    { effort: "high", source: "general" }
+  );
+});
+
+test("일반 요청은 커밋 플랜 전용 추론 강도를 무시한다", () => {
+  assert.deepEqual(
+    selectAiCliReasoningEffort(REASONING_SETTINGS, "codex", "general"),
+    { effort: "xhigh", source: "general" }
+  );
+});
+
+test("전용 및 일반 추론 강도가 모두 비면 CLI 기본값을 사용한다", () => {
+  assert.deepEqual(
+    selectAiCliReasoningEffort(
+      {
+        ...REASONING_SETTINGS,
+        claudeEffort: "",
+        claudeCommitPlanEffort: "",
+      },
+      "claude",
+      "commitPlan"
+    ),
+    { effort: "", source: "cliDefault" }
+  );
+});
+
 test("auto provider 순서는 Claude와 Codex를 각각 한 번씩 시도한다", () => {
   assert.deepEqual(aiCliProviderOrder("auto"), ["claude", "codex"]);
   assert.deepEqual(aiCliProviderOrder("codex"), ["codex"]);
 });
 
-test("Claude 플랜 command는 전용 모델과 기존 provider effort를 함께 쓴다", () => {
+test("Claude 플랜 command는 전용 모델과 전용 effort를 함께 쓴다", () => {
   const command = buildAiCliProviderCommand(
     COMMAND_CONFIG,
     "claude",
@@ -187,11 +243,12 @@ test("Claude 플랜 command는 전용 모델과 기존 provider effort를 함께
 
   assert.equal(command.command, "claude-custom");
   assert.equal(command.modelSource, "commitPlan");
-  assert.equal(command.reasoningEffort, "high");
+  assert.equal(command.reasoningEffort, "medium");
+  assert.equal(command.reasoningEffortSource, "commitPlan");
   assert.deepEqual(command.args.slice(6, 8), ["--model", "claude-plan"]);
   assert.deepEqual(
     command.args.slice(command.args.indexOf("--effort"), -2),
-    ["--effort", "high"]
+    ["--effort", "medium"]
   );
   assert.deepEqual(command.args.slice(-2), [
     "--append-system-prompt",
@@ -199,9 +256,13 @@ test("Claude 플랜 command는 전용 모델과 기존 provider effort를 함께
   ]);
 });
 
-test("Claude 플랜이 일반 모델을 상속하면 기존 effort도 argv에 유지한다", () => {
+test("Claude 플랜 전용 값이 비면 일반 모델과 effort를 함께 상속한다", () => {
   const command = buildAiCliProviderCommand(
-    { ...COMMAND_CONFIG, claudeCommitPlanModel: "" },
+    {
+      ...COMMAND_CONFIG,
+      claudeCommitPlanModel: "",
+      claudeCommitPlanEffort: "",
+    },
     "claude",
     "/workspace/repo",
     "commitPlan"
@@ -209,10 +270,41 @@ test("Claude 플랜이 일반 모델을 상속하면 기존 effort도 argv에 �
 
   assert.equal(command.modelSource, "general");
   assert.equal(command.reasoningEffort, "high");
+  assert.equal(command.reasoningEffortSource, "general");
   assert.ok(command.args.includes("claude-general"));
   assert.deepEqual(
     command.args.slice(command.args.indexOf("--effort"), -2),
     ["--effort", "high"]
+  );
+});
+
+test("전용 및 일반 effort가 모두 비면 provider CLI 인자를 생략한다", () => {
+  const config = {
+    ...COMMAND_CONFIG,
+    claudeEffort: "",
+    claudeCommitPlanEffort: "",
+    codexReasoningEffort: "",
+    codexCommitPlanReasoningEffort: "",
+  };
+  const claude = buildAiCliProviderCommand(
+    config,
+    "claude",
+    "/workspace/repo",
+    "commitPlan"
+  );
+  const codex = buildAiCliProviderCommand(
+    config,
+    "codex",
+    "/workspace/repo",
+    "commitPlan"
+  );
+
+  assert.equal(claude.reasoningEffortSource, "cliDefault");
+  assert.equal(claude.args.includes("--effort"), false);
+  assert.equal(codex.reasoningEffortSource, "cliDefault");
+  assert.equal(
+    codex.args.some((argument) => argument.startsWith("model_reasoning_effort=")),
+    false
   );
 });
 
@@ -226,7 +318,8 @@ test("Codex 플랜 command는 Codex 전용 모델과 profile을 독립적으로 
 
   assert.equal(command.command, "codex-custom");
   assert.equal(command.model, "codex-plan");
-  assert.equal(command.reasoningEffort, "xhigh");
+  assert.equal(command.reasoningEffort, "high");
+  assert.equal(command.reasoningEffortSource, "commitPlan");
   assert.deepEqual(command.args, [
     "exec",
     "--sandbox",
@@ -236,7 +329,7 @@ test("Codex 플랜 command는 Codex 전용 모델과 profile을 독립적으로 
     "-C",
     "/workspace/repo",
     "-c",
-    'model_reasoning_effort="xhigh"',
+    'model_reasoning_effort="high"',
     "--model",
     "codex-plan",
     "--profile",
@@ -255,6 +348,7 @@ test("일반 Codex command는 기존 모델과 reasoning 설정을 바꾸지 않
 
   assert.equal(command.modelSource, "general");
   assert.equal(command.reasoningEffort, "xhigh");
+  assert.equal(command.reasoningEffortSource, "general");
   assert.ok(command.args.includes('model_reasoning_effort="xhigh"'));
   assert.deepEqual(
     command.args.slice(command.args.indexOf("--model"), -3),

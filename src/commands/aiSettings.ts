@@ -18,9 +18,13 @@ import { logError, logInfo } from "../ui/outputLog";
 import { CommandDeps, resolveCompareService } from "./shared";
 import {
   formatReasoningEffort,
-  pickAiModelOnly,
+  pickAiConcreteProvider,
   pickModelAndReasoning,
 } from "./aiSettingsPickers";
+import {
+  commitPlanSettingsSummary,
+  configureAiCommitPlanSettings,
+} from "./aiCommitPlanSettings";
 
 type SettingKey =
   | "aiCliProvider"
@@ -28,12 +32,14 @@ type SettingKey =
   | "aiClaudeModel"
   | "aiClaudeCommitPlanModel"
   | "aiClaudeEffort"
+  | "aiClaudeCommitPlanEffort"
   | "aiClaudeSystemPrompt"
   | "aiClaudeLoginMode"
   | "aiCodexCommand"
   | "aiCodexModel"
   | "aiCodexCommitPlanModel"
   | "aiCodexReasoningEffort"
+  | "aiCodexCommitPlanReasoningEffort"
   | "aiCodexProfile"
   | "aiCodexLoginMode"
   | "aiResponseLanguage"
@@ -65,8 +71,8 @@ export async function configureAiCli(deps: CommandDeps): Promise<void> {
       await configureClaude(config);
     } else if (picked.id === "codex") {
       await configureCodex(config);
-    } else if (picked.id === "commitPlanModels") {
-      await configureCommitPlanModel(config);
+    } else if (picked.id === "commitPlanSettings") {
+      await configureAiCommitPlanSettings(config, updateConfig);
     } else if (picked.id === "prompt") {
       await configurePromptDefaults(config);
     } else if (picked.id === "timeout") {
@@ -114,12 +120,11 @@ function menuItems(config: AiCliConfig): Array<vscode.QuickPickItem & { id: stri
         : `${config.codexCommand} / ${config.codexLoginMode} / ${formatReasoningEffort(config.codexReasoningEffort)}`,
     },
     {
-      id: "commitPlanModels",
-      label: "$(git-commit) " + vscode.l10n.t("Commit Plan Models"),
-      description: `Claude: ${config.claudeCommitPlanModel || vscode.l10n.t("General model")} / ` +
-        `Codex: ${config.codexCommitPlanModel || vscode.l10n.t("General model")}`,
+      id: "commitPlanSettings",
+      label: "$(git-commit) " + vscode.l10n.t("Commit Plan Settings"),
+      description: commitPlanSettingsSummary(config),
       detail: vscode.l10n.t(
-        "Choose models used only for AI commit plans. Provider reasoning and profile settings still apply."
+        "Choose models and reasoning effort used only for AI commit plans. Empty values inherit general AI settings; profile settings still apply."
       ),
     },
     {
@@ -240,48 +245,6 @@ async function configureCodex(config: AiCliConfig): Promise<void> {
 }
 
 /**
- * AI 커밋 플랜에만 사용할 provider별 모델을 CLI metadata에서 선택해 저장한다.
- * - 빈 값을 고르면 기존 일반 provider 모델을 동적으로 상속해 기존 사용자 동작을 유지한다.
- * - 현재 provider 추론 강도를 지원하지 않는다고 metadata에 표시된 모델은 저장 전에 경고한다.
- * @param config 현재 일반 모델과 커밋 플랜 전용 모델이 담긴 AI CLI 설정
- */
-async function configureCommitPlanModel(config: AiCliConfig): Promise<void> {
-  const provider = await pickConcreteProvider(
-    config.provider === "auto" ? undefined : config.provider
-  );
-  if (!provider) {
-    return;
-  }
-  const claude = provider === "claude";
-  const current = claude
-    ? config.claudeCommitPlanModel
-    : config.codexCommitPlanModel;
-  const general = (claude ? config.claudeModel : config.codexModel) ||
-    vscode.l10n.t("CLI default model");
-  const providerLabel = AI_CLI_PROVIDER_LABELS[provider];
-  const picked = await pickAiModelOnly(provider, current, {
-    title: claude
-      ? vscode.l10n.t("Claude Code commit plan model")
-      : vscode.l10n.t("Codex commit plan model"),
-    emptyLabel: vscode.l10n.t("Use general AI model"),
-    emptyDetail: vscode.l10n.t(
-      "Inherit the general {0} model ({1}). The provider reasoning setting remains in effect.",
-      providerLabel,
-      general
-    ),
-    reasoningEffort: claude
-      ? config.claudeEffort
-      : config.codexReasoningEffort,
-  });
-  if (picked !== undefined) {
-    await updateConfig(
-      claude ? "aiClaudeCommitPlanModel" : "aiCodexCommitPlanModel",
-      picked
-    );
-  }
-}
-
-/**
  * Claude Code 로그인 방식을 선택한다.
  * @param current 현재 로그인 방식
  */
@@ -364,7 +327,7 @@ async function pickCodexLoginMode(
  * @param config 현재 AI CLI 설정
  */
 async function configureLogin(config: AiCliConfig): Promise<void> {
-  const provider = await pickConcreteProvider(
+  const provider = await pickAiConcreteProvider(
     config.provider === "auto" ? undefined : config.provider
   );
   if (!provider) {
@@ -405,7 +368,7 @@ async function configureLogin(config: AiCliConfig): Promise<void> {
 export async function loginAiCli(
   provider?: Exclude<AiCliProvider, "auto">
 ): Promise<void> {
-  const target = provider ?? await pickConcreteProvider();
+  const target = provider ?? await pickAiConcreteProvider();
   if (!target) {
     return;
   }
@@ -424,30 +387,6 @@ export async function loginAiCli(
   }
   terminal.show();
   terminal.sendText(loginCommandText(target, override));
-}
-
-/**
- * Claude/Codex 중 하나를 선택한다.
- * @param current 현재 선택값
- */
-async function pickConcreteProvider(
-  current?: Exclude<AiCliProvider, "auto">
-): Promise<Exclude<AiCliProvider, "auto"> | undefined> {
-  const items: Array<vscode.QuickPickItem & { value: Exclude<AiCliProvider, "auto"> }> = [
-    {
-      label: "$(claude) Claude Code",
-      description: current === "claude" ? vscode.l10n.t("Current") : undefined,
-      value: "claude",
-    },
-    {
-      label: "$(openai) Codex",
-      description: current === "codex" ? vscode.l10n.t("Current") : undefined,
-      value: "codex",
-    },
-  ];
-  return (await vscode.window.showQuickPick(items, {
-    title: vscode.l10n.t("Choose AI CLI provider"),
-  }))?.value;
 }
 
 /**
@@ -473,7 +412,7 @@ async function configurePromptDefaults(config: AiCliConfig): Promise<void> {
     "aiCommitInstructions",
     vscode.l10n.t("Commit prompt instructions"),
     config.commitInstructions,
-    vscode.l10n.t("Applied only to commit message generation.")
+    vscode.l10n.t("Applied to standalone and planned commit messages.")
   );
   await configureString(
     "aiPullRequestInstructions",

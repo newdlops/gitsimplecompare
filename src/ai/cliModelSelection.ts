@@ -1,4 +1,4 @@
-// AI CLI 작업 목적과 provider에 맞는 모델 설정을 선택하는 순수 모듈.
+// AI CLI 작업 목적과 provider에 맞는 모델 및 추론 강도 설정을 선택하는 순수 모듈.
 // - VS Code 설정 API와 CLI 실행에 의존하지 않아 설정 호환성 규칙을 독립적으로 검증할 수 있다.
 
 /** AI CLI 모델을 선택할 때 구분하는 요청 목적이다. */
@@ -15,17 +15,37 @@ export interface AiCliModelSettings {
   codexCommitPlanModel: string;
 }
 
-/** 최종 모델이 선택된 설정 계층이다. */
-export type AiCliModelSource = "commitPlan" | "general" | "cliDefault";
+/** provider별 일반 추론 강도와 커밋 플랜 전용 추론 강도의 원본 설정이다. */
+export interface AiCliReasoningEffortSettings {
+  claudeEffort: string;
+  claudeCommitPlanEffort: string;
+  codexReasoningEffort: string;
+  codexCommitPlanReasoningEffort: string;
+}
+
+/** 최종 모델 또는 추론 강도가 선택된 설정 계층이다. */
+export type AiCliSettingSource = "commitPlan" | "general" | "cliDefault";
 
 /** CLI 인자에 전달할 모델과 그 값을 결정한 설정 계층이다. */
 export interface AiCliModelSelection {
   model: string;
-  source: AiCliModelSource;
+  source: AiCliSettingSource;
+}
+
+/** CLI 인자에 전달할 추론 강도와 그 값을 결정한 설정 계층이다. */
+export interface AiCliReasoningEffortSelection {
+  effort: string;
+  source: AiCliSettingSource;
 }
 
 /** provider 한 곳의 일반/커밋 플랜 모델 후보를 묶은 내부 구조다. */
 interface ProviderModelSettings {
+  general: string;
+  commitPlan: string;
+}
+
+/** provider 한 곳의 일반/커밋 플랜 추론 강도 후보를 묶은 내부 구조다. */
+interface ProviderReasoningEffortSettings {
   general: string;
   commitPlan: string;
 }
@@ -53,6 +73,31 @@ export function selectAiCliModel(
     return { model: models.general, source: "general" };
   }
   return { model: "", source: "cliDefault" };
+}
+
+/**
+ * provider와 요청 목적에 맞는 AI CLI 추론 강도를 우선순위대로 선택한다.
+ * - 일반 요청은 provider의 일반 설정만 사용하고, 비어 있으면 CLI 기본값에 맡긴다.
+ * - 커밋 플랜은 전용 설정을 먼저 사용하고, 비어 있으면 일반 설정을 동적으로 상속한다.
+ * - provider별 값을 독립적으로 읽어 auto fallback 때 다른 provider의 effort가 섞이지 않게 한다.
+ * @param settings provider별 일반/커밋 플랜 추론 강도 원본 설정
+ * @param provider auto 해석 뒤 실제 실행할 Claude 또는 Codex provider
+ * @param purpose 일반 AI 요청인지 커밋 플랜 요청인지 나타내는 목적
+ * @returns 정규화한 추론 강도와 값을 선택한 설정 계층
+ */
+export function selectAiCliReasoningEffort(
+  settings: AiCliReasoningEffortSettings,
+  provider: AiCliConcreteProvider,
+  purpose: AiCliModelPurpose
+): AiCliReasoningEffortSelection {
+  const efforts = providerReasoningEfforts(settings, provider);
+  if (purpose === "commitPlan" && efforts.commitPlan) {
+    return { effort: efforts.commitPlan, source: "commitPlan" };
+  }
+  if (efforts.general) {
+    return { effort: efforts.general, source: "general" };
+  }
+  return { effort: "", source: "cliDefault" };
 }
 
 /**
@@ -91,6 +136,28 @@ function providerModels(
   return {
     general: normalizeModel(settings.codexModel),
     commitPlan: normalizeModel(settings.codexCommitPlanModel),
+  };
+}
+
+/**
+ * 전체 설정에서 지정 provider의 추론 강도 후보만 읽어 정규화한다.
+ * @param settings provider별 일반/커밋 플랜 추론 강도 원본 설정
+ * @param provider 후보를 읽을 실제 AI CLI provider
+ * @returns 앞뒤 공백을 제거한 일반/커밋 플랜 추론 강도 후보
+ */
+function providerReasoningEfforts(
+  settings: AiCliReasoningEffortSettings,
+  provider: AiCliConcreteProvider
+): ProviderReasoningEffortSettings {
+  if (provider === "claude") {
+    return {
+      general: settings.claudeEffort.trim(),
+      commitPlan: settings.claudeCommitPlanEffort.trim(),
+    };
+  }
+  return {
+    general: settings.codexReasoningEffort.trim(),
+    commitPlan: settings.codexCommitPlanReasoningEffort.trim(),
   };
 }
 

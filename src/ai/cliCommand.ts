@@ -3,23 +3,24 @@
 // - 실제 프로세스 실행과 오류 처리는 cliRunner가 담당하고 이 모듈은 실행 명세만 반환한다.
 import {
   selectAiCliModel,
+  selectAiCliReasoningEffort,
   type AiCliConcreteProvider,
   type AiCliModelPurpose,
   type AiCliModelSelection,
   type AiCliModelSettings,
-  type AiCliModelSource,
+  type AiCliReasoningEffortSettings,
+  type AiCliSettingSource,
 } from "./cliModelSelection";
 
 /** 사용자가 설정할 수 있는 auto를 포함한 AI CLI provider 선택값. */
 export type AiCliProviderSelection = "auto" | AiCliConcreteProvider;
 
 /** provider command 조립에 필요한 설정만 추린 재사용 가능한 입력 타입. */
-export interface AiCliProviderCommandConfig extends AiCliModelSettings {
+export interface AiCliProviderCommandConfig extends AiCliModelSettings,
+  AiCliReasoningEffortSettings {
   claudeCommand: string;
-  claudeEffort: string;
   claudeSystemPrompt: string;
   codexCommand: string;
-  codexReasoningEffort: string;
   codexProfile: string;
 }
 
@@ -29,16 +30,18 @@ export interface AiCliProviderCommand {
   command: string;
   args: string[];
   model: string;
-  modelSource: AiCliModelSource;
+  modelSource: AiCliSettingSource;
   reasoningEffort: string;
+  reasoningEffortSource: AiCliSettingSource;
 }
 
 /** provider별 command builder가 공유하는 모델과 추론 강도 선택 결과. */
 interface ProviderModelArguments {
   model: string;
-  modelSource: AiCliModelSource;
+  modelSource: AiCliSettingSource;
   modelArgs: string[];
   reasoningEffort: string;
+  reasoningEffortSource: AiCliSettingSource;
 }
 
 /**
@@ -90,8 +93,8 @@ export function aiCliModelArguments(
 }
 
 /**
- * 일반/커밋 플랜 모델 우선순위와 기존 provider 추론 설정을 한 번에 적용한다.
- * @param config provider별 일반 및 커밋 플랜 모델과 일반 추론 강도 설정
+ * 일반/커밋 플랜 모델 및 추론 강도 우선순위를 한 번에 적용한다.
+ * @param config provider별 일반 및 커밋 플랜 모델과 추론 강도 설정
  * @param provider 실제 command를 만들 Claude Code 또는 Codex provider
  * @param modelPurpose 일반 모델 또는 커밋 플랜 전용 모델을 고를 목적
  * @returns 모델명, `--model` argv, 설정 계층과 적용 가능한 추론 강도
@@ -102,14 +105,17 @@ function providerModelArguments(
   modelPurpose: AiCliModelPurpose
 ): ProviderModelArguments {
   const selection = selectAiCliModel(config, provider, modelPurpose);
-  const generalEffort = provider === "claude"
-    ? config.claudeEffort
-    : config.codexReasoningEffort;
+  const reasoning = selectAiCliReasoningEffort(
+    config,
+    provider,
+    modelPurpose
+  );
   return {
     model: selection.model,
     modelSource: selection.source,
     modelArgs: aiCliModelArguments(selection),
-    reasoningEffort: generalEffort.trim(),
+    reasoningEffort: reasoning.effort,
+    reasoningEffortSource: reasoning.source,
   };
 }
 
@@ -145,6 +151,7 @@ function buildClaudeCommand(
     model: model.model,
     modelSource: model.modelSource,
     reasoningEffort: model.reasoningEffort,
+    reasoningEffortSource: model.reasoningEffortSource,
   };
 }
 
@@ -184,5 +191,6 @@ function buildCodexCommand(
     model: model.model,
     modelSource: model.modelSource,
     reasoningEffort: model.reasoningEffort,
+    reasoningEffortSource: model.reasoningEffortSource,
   };
 }

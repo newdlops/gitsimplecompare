@@ -82,6 +82,7 @@ export async function runAiCliPrompt(
         modelSource: command.modelSource,
         modelPurpose,
         reasoningEffort: command.reasoningEffort || "not explicitly set",
+        reasoningEffortSource: command.reasoningEffortSource,
         timeoutMs: timeoutMs ?? "none",
       });
       const text = await runProviderCommand(command, prompt, cwd, timeoutMs, token);
