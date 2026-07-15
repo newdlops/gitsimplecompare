@@ -544,10 +544,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.openConflictEditor",
       (arg: string | { root?: string; path?: string }) =>
         typeof arg === "string"
-          ? openConflictEditor(deps.conflicts, deps.extensionUri, arg)
+          ? openConflictEditor(deps.conflicts, deps.conflictOverlay, arg)
           : openConflictEditor(
               deps.conflicts,
-              deps.extensionUri,
+              deps.conflictOverlay,
               arg?.path ?? "",
               arg?.root
             )

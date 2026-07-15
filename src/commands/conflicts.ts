@@ -18,9 +18,9 @@ import {
   restoreRebaseAfterAbort,
 } from "./rebaseConflictFollowup";
 import { ConflictsController } from "../providers/conflictsController";
+import type { ConflictEditorOverlayController } from "../providers/conflictEditorOverlayController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
 import { logInfo } from "../ui/outputLog";
-import { ConflictPanel } from "../webview/conflictPanel";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -125,17 +125,17 @@ export async function openMergeEditor(
 }
 
 /**
- * 파일을 commit/rebase 문맥이 보강된 충돌 해결 패널로 연다.
+ * 파일을 commit/rebase 문맥 overlay가 붙는 native VS Code 편집기로 연다.
  * - 트리 항목에서 직접 호출될 수 있어 repoRoot 를 받으면 해당 저장소 기준 서비스를 만든다.
- * - 내장 merge editor는 패널 안의 보조 액션과 별도 명령으로 계속 사용할 수 있다.
+ * - regular text만 실제 파일로 열고 특수 파일은 안전한 읽기 전용 가상 문서로 연다.
  * @param controller   충돌 컨트롤러
- * @param extensionUri 확장 루트 URI
+ * @param overlay      native conflict session/overlay 컨트롤러
  * @param rel          저장소 상대 경로
  * @param repoRoot     명령 인자로 전달된 저장소 루트
  */
 export async function openConflictEditor(
   controller: ConflictsController,
-  extensionUri: vscode.Uri,
+  overlay: ConflictEditorOverlayController,
   rel: string,
   repoRoot?: string
 ): Promise<void> {
@@ -146,7 +146,7 @@ export async function openConflictEditor(
   if (!svc) {
     return;
   }
-  await ConflictPanel.createOrShow(extensionUri, svc, rel, () => controller.refresh());
+  await overlay.open(svc, rel, () => controller.refresh());
 }
 
 /**

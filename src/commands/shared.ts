@@ -12,6 +12,7 @@ import type { BlameDecoratorController } from "../providers/blameDecoratorContro
 import type { VscodeGitStatusProvider } from "../providers/vscodeGitStatusProvider";
 import { ComparisonService } from "../git/comparisonService";
 import type { ComparisonController } from "../providers/comparisonController";
+import type { ConflictEditorOverlayController } from "../providers/conflictEditorOverlayController";
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
@@ -24,6 +25,8 @@ export interface CommandDeps {
   secrets: vscode.SecretStorage;
   /** 충돌 해결 UI 상태 컨트롤러 */
   conflicts: ConflictsController;
+  /** native conflict Result 문서와 안전한 overlay session 컨트롤러 */
+  conflictOverlay: ConflictEditorOverlayController;
   /** editable diff 라인별 stage 체크박스 컨트롤러 */
   hunkCheckboxes: HunkCheckboxController;
   /** 활성 에디터 git blame decoration 컨트롤러 */

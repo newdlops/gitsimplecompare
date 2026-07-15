@@ -86,7 +86,7 @@ export async function openWorkingChange(deps: CommandDeps, arg: {
   if (arg.status === "U") {
     await openConflictEditor(
       deps.conflicts,
-      deps.extensionUri,
+      deps.conflictOverlay,
       arg.path,
       arg.root
     );

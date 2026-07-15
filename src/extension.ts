@@ -17,6 +17,13 @@ import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
 import { ConflictMarkerDecoratorController } from "./providers/conflictMarkerDecoratorController";
+import {
+  CONFLICT_OVERLAY_SCHEME,
+  CONFLICT_READONLY_SCHEME,
+  ConflictEditorOverlayController,
+} from "./providers/conflictEditorOverlayController";
+import { ConflictOverlayCodeLensProvider } from "./providers/conflictOverlayCodeLensProvider";
+import { ConflictEditorActions } from "./commands/conflictEditorActions";
 import { PullRequestCommentController } from "./providers/pullRequestCommentController";
 import { ComparisonController } from "./providers/comparisonController";
 import {
@@ -148,9 +155,26 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(conflictsTree);
   let conflictsVisible = conflictsTree.visible;
   const conflicts = new ConflictsController(registry, conflictsProvider);
+  context.subscriptions.push(conflicts);
+  const conflictOverlay = new ConflictEditorOverlayController(conflicts);
+  context.subscriptions.push(conflictOverlay.register());
+  const conflictActions = new ConflictEditorActions(conflictOverlay);
+  context.subscriptions.push(
+    conflictActions.register(),
+    vscode.languages.registerCodeLensProvider(
+      [
+        { scheme: CONFLICT_OVERLAY_SCHEME },
+        { scheme: CONFLICT_READONLY_SCHEME },
+      ],
+      new ConflictOverlayCodeLensProvider(conflictOverlay)
+    )
+  );
   const hunkCheckboxes = new HunkCheckboxController(registry);
   context.subscriptions.push(hunkCheckboxes.register());
-  const conflictMarkerDecorations = new ConflictMarkerDecoratorController(registry);
+  const conflictMarkerDecorations = new ConflictMarkerDecoratorController(
+    registry,
+    conflictOverlay
+  );
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);
   context.subscriptions.push(blameDecorations.register());
@@ -161,7 +185,9 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri,
-    hunkCheckboxes
+    hunkCheckboxes,
+    conflictOverlay,
+    conflictActions
   );
   context.subscriptions.push(nativeDiffOverlay.register());
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
@@ -184,6 +210,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     extensionUri: context.extensionUri,
     secrets: context.secrets,
     conflicts,
+    conflictOverlay,
     hunkCheckboxes,
     blameDecorations,
     vscodeGitStatus,
