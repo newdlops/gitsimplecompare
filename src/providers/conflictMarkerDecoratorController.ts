@@ -330,23 +330,35 @@ interface RoleHovers {
  * @param sources git 작업 상태와 Current/Incoming ref 메타데이터
  */
 function createHovers(sources: ConflictSources | undefined): RoleHovers {
-  const currentText = sideHoverText("Current / Ours", sources?.current, "HEAD");
+  const rebase = sources?.operation === "rebase";
+  const replay = rebase && sources?.incoming.ref === "REBASE_HEAD";
+  const currentRole = rebase
+    ? vscode.l10n.t("Current / Ours · new base plus commits already replayed")
+    : vscode.l10n.t("Current / Ours");
+  const incomingRole = replay
+    ? vscode.l10n.t("Incoming / Theirs · commit currently being replayed")
+    : rebase
+      ? vscode.l10n.t("Incoming / Theirs · active nested operation during rebase")
+    : vscode.l10n.t("Incoming / Theirs");
+  const currentText = sideHoverText(currentRole, sources?.current, "HEAD");
   const incomingText = sideHoverText(
-    "Incoming / Theirs",
+    incomingRole,
     sources?.incoming,
     "theirs"
   );
-  const baseText = "Base section\nCommon ancestor from diff3 conflict markers.";
+  const baseText = replay
+    ? vscode.l10n.t("Base section\nOriginal parent snapshot for the replayed patch.")
+    : vscode.l10n.t("Base section\nCommon ancestor from diff3 conflict markers.");
   return {
     current: plainHover(currentText),
     base: plainHover(baseText),
     incoming: plainHover(incomingText),
-    currentMarker: plainHover(`Conflict block starts\n${currentText}`),
-    baseMarker: plainHover(`Base section starts\n${baseText}`),
+    currentMarker: plainHover(vscode.l10n.t("Conflict block starts\n{0}", currentText)),
+    baseMarker: plainHover(vscode.l10n.t("Base section starts\n{0}", baseText)),
     incomingMarker: plainHover(
-      `Incoming / Theirs section starts\n${incomingText}`
+      vscode.l10n.t("Incoming / Theirs section starts\n{0}", incomingText)
     ),
-    endMarker: plainHover("Conflict block ends"),
+    endMarker: plainHover(vscode.l10n.t("Conflict block ends")),
   };
 }
 
@@ -369,7 +381,14 @@ function sideHoverText(
   if (side?.subject) {
     pieces.push(side.subject);
   }
-  return pieces.filter(Boolean).join(" · ");
+  const identity = pieces.filter(Boolean).join(" · ");
+  const fileHash = shortHash(side?.fileCommit);
+  if (!fileHash || side?.fileCommit === side?.commit) return identity;
+  return `${identity}\n${vscode.l10n.t(
+    "This file was last changed by {0} {1}",
+    fileHash,
+    side?.fileSubject || ""
+  )}`;
 }
 
 /**

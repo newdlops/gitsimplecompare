@@ -48,7 +48,7 @@ export class ConflictsTreeProvider
     item.iconPath = new vscode.ThemeIcon("git-merge");
     item.contextValue = "gitSimpleCompare.conflict";
     const tooltip = vscode.l10n.t(
-      "Conflicted: {0}\nOpen conflict editor to use Current, Incoming, Both, or Resolve Marked.",
+      "Conflicted: {0}\nOpen the contextual editor to inspect commit sources, rebase impact, and the editable Result.",
       rel
     );
     item.tooltip = tooltip;

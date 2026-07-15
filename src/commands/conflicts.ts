@@ -3,6 +3,7 @@
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
+import { tryAcquireConflictMutation } from "../git/conflictMutationCoordinator";
 import { PullService } from "../git/pullService";
 import { listRebaseEditTempPaths } from "../git/rebaseEditSession";
 import { RebaseService } from "../git/rebaseService";
@@ -19,6 +20,7 @@ import {
 import { ConflictsController } from "../providers/conflictsController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
 import { logInfo } from "../ui/outputLog";
+import { ConflictPanel } from "../webview/conflictPanel";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -123,16 +125,17 @@ export async function openMergeEditor(
 }
 
 /**
- * 파일을 VS Code 내장 3-way 머지 에디터로 연다.
+ * 파일을 commit/rebase 문맥이 보강된 충돌 해결 패널로 연다.
  * - 트리 항목에서 직접 호출될 수 있어 repoRoot 를 받으면 해당 저장소 기준 서비스를 만든다.
+ * - 내장 merge editor는 패널 안의 보조 액션과 별도 명령으로 계속 사용할 수 있다.
  * @param controller   충돌 컨트롤러
- * @param _extensionUri 확장 루트 URI(명령 시그니처 호환용)
+ * @param extensionUri 확장 루트 URI
  * @param rel          저장소 상대 경로
  * @param repoRoot     명령 인자로 전달된 저장소 루트
  */
 export async function openConflictEditor(
   controller: ConflictsController,
-  _extensionUri: vscode.Uri,
+  extensionUri: vscode.Uri,
   rel: string,
   repoRoot?: string
 ): Promise<void> {
@@ -143,7 +146,7 @@ export async function openConflictEditor(
   if (!svc) {
     return;
   }
-  await openMergeEditorUri(vscode.Uri.file(svc.absPath(rel)));
+  await ConflictPanel.createOrShow(extensionUri, svc, rel, () => controller.refresh());
 }
 
 /**
@@ -158,31 +161,37 @@ export async function continueOperation(
   if (!svc) {
     return;
   }
-  const operation = controller.currentOperation;
-  let continued = false;
+  const release = acquireConflictMutationOrNotify(svc.repoRoot);
+  if (!release) return;
   try {
-    if (operation === "rebase") {
-      await amendPausedRebaseEditBeforeContinue(svc.repoRoot);
-    }
-    await svc.continueOperation(operation);
-    continued = true;
-  } catch (err) {
-    if (operation === "rebase" && await publishRebaseContinueConflict(svc.repoRoot)) {
+    const operation = controller.currentOperation;
+    let continued = false;
+    try {
+      if (operation === "rebase") {
+        await amendPausedRebaseEditBeforeContinue(svc.repoRoot);
+      }
+      await svc.continueOperation(operation);
       continued = true;
-    } else {
-      vscode.window.showErrorMessage(
-        vscode.l10n.t("Could not continue: {0}", errorText(err))
-      );
+    } catch (err) {
+      if (operation === "rebase" && await publishRebaseContinueConflict(svc.repoRoot)) {
+        continued = true;
+      } else {
+        vscode.window.showErrorMessage(
+          vscode.l10n.t("Could not continue: {0}", errorText(err))
+        );
+      }
     }
-  }
-  await controller.refresh();
-  if (continued && operation === "merge") {
-    await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
-  } else if (continued && operation === "rebase") {
-    await finishRebaseAfterContinue(controller, svc.repoRoot);
-    await publishRebaseContinueState(svc.repoRoot);
-  } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
-    await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
+    await controller.refresh();
+    if (continued && operation === "merge") {
+      await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
+    } else if (continued && operation === "rebase") {
+      await finishRebaseAfterContinue(controller, svc.repoRoot);
+      await publishRebaseContinueState(svc.repoRoot);
+    } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
+      await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
+    }
+  } finally {
+    release();
   }
 }
 
@@ -206,22 +215,28 @@ export async function abortOperation(
   if (choice !== yes) {
     return;
   }
-  const operation = controller.currentOperation;
-  let aborted = false;
+  const release = acquireConflictMutationOrNotify(svc.repoRoot);
+  if (!release) return;
   try {
-    await svc.abortOperation(operation);
-    aborted = true;
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not abort: {0}", errorText(err))
-    );
+    const operation = controller.currentOperation;
+    let aborted = false;
+    try {
+      await svc.abortOperation(operation);
+      aborted = true;
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Could not abort: {0}", errorText(err))
+      );
+    }
+    if (aborted && operation === "rebase") {
+      await restoreRebaseAfterAbort(svc.repoRoot);
+    } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
+      await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
+    }
+    await controller.refresh();
+  } finally {
+    release();
   }
-  if (aborted && operation === "rebase") {
-    await restoreRebaseAfterAbort(svc.repoRoot);
-  } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
-    await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
-  }
-  await controller.refresh();
 }
 
 /**
@@ -252,19 +267,25 @@ export async function skipOperation(
   if (choice !== yes) {
     return;
   }
-  let skipped = false;
+  const release = acquireConflictMutationOrNotify(svc.repoRoot);
+  if (!release) return;
   try {
-    await svc.skipOperation(operation);
-    skipped = true;
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not skip: {0}", errorText(err))
-    );
-  }
-  await controller.refresh();
-  if (skipped) {
-    await finishRebaseAfterContinue(controller, svc.repoRoot);
-    await publishRebaseContinueState(svc.repoRoot);
+    let skipped = false;
+    try {
+      await svc.skipOperation(operation);
+      skipped = true;
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Could not skip: {0}", errorText(err))
+      );
+    }
+    await controller.refresh();
+    if (skipped) {
+      await finishRebaseAfterContinue(controller, svc.repoRoot);
+      await publishRebaseContinueState(svc.repoRoot);
+    }
+  } finally {
+    release();
   }
 }
 
@@ -298,20 +319,26 @@ export async function rollbackPull(
   if (choice !== yes) {
     return;
   }
+  const release = acquireConflictMutationOrNotify(svc.repoRoot);
+  if (!release) return;
   try {
-    await service.rollbackLatestPull();
-    vscode.window.showInformationMessage(
-      vscode.l10n.t("Pull was rolled back to the pre-pull state.")
-    );
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Could not rollback pull: {0}", errorText(err))
-    );
+    try {
+      await service.rollbackLatestPull();
+      vscode.window.showInformationMessage(
+        vscode.l10n.t("Pull was rolled back to the pre-pull state.")
+      );
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Could not rollback pull: {0}", errorText(err))
+      );
+    }
+    await controller.refresh();
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason: "pullRollback",
+    });
+  } finally {
+    release();
   }
-  await controller.refresh();
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "pullRollback",
-  });
 }
 
 /**
@@ -323,25 +350,54 @@ export async function rollbackPull(
 async function runFileAction(
   controller: ConflictsController,
   rel: string,
-  action: (svc: NonNullable<ConflictsController["current"]>) => Promise<void>
+  action: (svc: NonNullable<ConflictsController["current"]>) => Promise<void | string | undefined>
 ): Promise<void> {
   const svc = controller.current;
   if (!svc || !rel) {
     return;
   }
+  const release = acquireConflictMutationOrNotify(svc.repoRoot);
+  if (!release) return;
   try {
-    await action(svc);
-  } catch (err) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errorText(err))
+    try {
+      const recoveryPath = await action(svc);
+      if (recoveryPath) {
+        void vscode.window.showWarningMessage(
+          vscode.l10n.t(
+            "Conflict Result was applied, but a concurrent edit to the previous file was preserved at {0}. Review it before continuing.",
+            recoveryPath
+          )
+        );
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Action failed: {0}", errorText(err))
+      );
+    }
+    await controller.refresh();
+    await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason: "conflictFileAction",
+    });
+    await dropPullSnapshotAfterResolvedRestore(controller);
+    await dropRebaseStashesAfterResolvedRestore(controller);
+  } finally {
+    release();
+  }
+}
+
+/**
+ * 충돌 mutation 공용 lease를 얻고 이미 사용 중이면 사용자에게 재시도를 안내한다.
+ * @param repoRoot 대상 저장소 루트
+ * @returns 성공 시 finally에서 호출할 release 함수
+ */
+function acquireConflictMutationOrNotify(repoRoot: string): (() => void) | undefined {
+  const release = tryAcquireConflictMutation(repoRoot);
+  if (!release) {
+    void vscode.window.showInformationMessage(
+      vscode.l10n.t("A conflict action is still running. Try again when it finishes.")
     );
   }
-  await controller.refresh();
-  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "conflictFileAction",
-  });
-  await dropPullSnapshotAfterResolvedRestore(controller);
-  await dropRebaseStashesAfterResolvedRestore(controller);
+  return release;
 }
 
 /**
