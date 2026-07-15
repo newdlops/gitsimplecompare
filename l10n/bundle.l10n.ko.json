@@ -1118,5 +1118,11 @@
   "Commit {0} failed": "{0}번째 커밋 실패",
   "No additional failure details were reported.": "추가 실패 정보가 보고되지 않았습니다.",
   "Some failure details were omitted. See the Git Simple Compare output for the full process output.": "일부 실패 정보는 생략했습니다. 전체 프로세스 출력은 Git Simple Compare 출력에서 확인하세요.",
-  "The real branch and Git index were preserved.": "실제 브랜치와 Git 인덱스는 보존되었습니다."
+  "The real branch and Git index were preserved.": "실제 브랜치와 Git 인덱스는 보존되었습니다.",
+  "The Result changed again after the last save. Reload the on-disk Result or keep your edits for an explicit overwrite?": "마지막 저장 뒤 Result가 다시 변경되었습니다. 디스크의 Result를 다시 불러오거나, 명시적으로 덮어쓰기 위해 내 편집을 유지하세요.",
+  "The Result changed while reloading. Review the editor before saving.": "Result를 다시 불러오는 동안 내용이 변경되었습니다. 저장하기 전에 편집기를 검토하세요.",
+  "The merge editor did not become active. The safe conflict Result editor remains available.": "병합 편집기가 활성화되지 않았습니다. 안전한 충돌 Result 편집기는 계속 사용할 수 있습니다.",
+  "This file is conflicted again. Reopen the conflict editor before saving.": "이 파일에 다시 충돌이 발생했습니다. 저장하기 전에 충돌 편집기를 다시 여세요.",
+  "Conflict path parent is not a directory.": "충돌 경로의 상위 항목이 디렉터리가 아닙니다.",
+  "Conflict path parent changed during resolution.": "충돌을 해결하는 동안 경로의 상위 디렉터리가 변경되었습니다."
 }
