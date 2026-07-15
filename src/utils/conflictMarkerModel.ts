@@ -34,6 +34,13 @@ export interface ConflictMarkerScan {
   markers: Array<{ line: number; kind: ConflictMarkerKind }>;
 }
 
+/** stale-safe block 선택을 editor의 최소 교체 범위로 적용하기 위한 offset edit다. */
+export interface ConflictBlockEdit {
+  startOffset: number;
+  endOffset: number;
+  replacement: string;
+}
+
 interface TextLine {
   line: number;
   start: number;
@@ -53,6 +60,7 @@ interface ParsedBlock extends ConflictMarkerBlock {
 /** 공개 scan 결과에서 block만 mutation용 offset을 포함한 내부 타입으로 바꾼다. */
 interface ParsedConflictMarkerScan extends Omit<ConflictMarkerScan, "blocks"> {
   blocks: ParsedBlock[];
+  valid: boolean;
 }
 
 type Section = "outside" | "current" | "base" | "incoming";
@@ -87,19 +95,44 @@ export function applyConflictBlockChoice(
   blockId: string,
   choice: ConflictBlockChoice
 ): string | undefined {
-  const parsed = parseConflictMarkers(raw);
-  const block = parsed.blocks.find((item) => item.id === blockId);
-  if (!block) {
-    return undefined;
-  }
+  const edit = conflictBlockChoiceEdit(raw, blockId, choice);
+  return edit
+    ? `${raw.slice(0, edit.startOffset)}${edit.replacement}${raw.slice(edit.endOffset)}`
+    : undefined;
+}
+
+/** 완결 block을 다시 찾고 주변 동시 편집을 건드리지 않는 최소 offset edit를 계산한다. */
+export function conflictBlockChoiceEdit(
+  raw: string,
+  blockId: string,
+  choice: ConflictBlockChoice
+): ConflictBlockEdit | undefined {
+  const block = parseConflictMarkers(raw).blocks.find((item) => item.id === blockId);
+  if (!block) return undefined;
   const current = raw.slice(block.currentStart, block.currentEnd);
   const incoming = raw.slice(block.incomingStart, block.incomingEnd);
-  const replacement = choice === "current"
-    ? current
-    : choice === "incoming"
-      ? incoming
-      : `${current}${incoming}`;
-  return `${raw.slice(0, block.startOffset)}${replacement}${raw.slice(block.endOffset)}`;
+  return {
+    startOffset: block.startOffset,
+    endOffset: block.endOffset,
+    replacement: choice === "current"
+      ? current
+      : choice === "incoming"
+        ? incoming
+        : `${current}${incoming}`,
+  };
+}
+
+/** 모든 marker block에서 Base/marker를 버리고 Current 다음 Incoming 본문만 남긴다. */
+export function acceptAllConflictBlocks(raw: string): string | undefined {
+  const parsed = parseConflictMarkers(raw);
+  if (!parsed.valid || parsed.blocks.length === 0) return undefined;
+  let result = raw;
+  for (const block of [...parsed.blocks].reverse()) {
+    const replacement = raw.slice(block.currentStart, block.currentEnd) +
+      raw.slice(block.incomingStart, block.incomingEnd);
+    result = `${result.slice(0, block.startOffset)}${replacement}${result.slice(block.endOffset)}`;
+  }
+  return result;
 }
 
 /** 내부 offset을 노출하지 않는 직렬화 가능한 block으로 줄인다. */
@@ -117,6 +150,7 @@ function publicBlock(block: ParsedBlock): ConflictMarkerBlock {
 function parseConflictMarkers(raw: string): ParsedConflictMarkerScan {
   const scan: ParsedConflictMarkerScan = {
     blocks: [],
+    valid: true,
     current: [],
     base: [],
     incoming: [],
@@ -165,10 +199,12 @@ function parseConflictMarkers(raw: string): ParsedConflictMarkerScan {
       continue;
     }
     if (marker) {
+      scan.valid = false;
       section = "outside";
       active = undefined;
     }
   }
+  if (section !== "outside") scan.valid = false;
   populateLineGroups(scan);
   return scan;
 }

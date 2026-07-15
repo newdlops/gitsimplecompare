@@ -1,7 +1,9 @@
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { nativeConflictOverlayRendererScript } from "../src/providers/nativeConflictOverlayPatch";
+import { rendererPatchScript } from "../src/providers/nativeDiffOverlayPatch";
 import {
+  acceptAllConflictBlocks,
   applyConflictBlockChoice,
   scanConflictMarkers,
 } from "../src/utils/conflictMarkerModel";
@@ -85,6 +87,10 @@ describe("conflict marker model", () => {
     const scan = scanConflictMarkers(raw);
 
     assert.equal(scan.blocks.length, 2);
+    assert.equal(
+      acceptAllConflictBlocks(raw),
+      "top\na1\nb1\nmiddle\na2\nb2\nbottom"
+    );
     const first = applyConflictBlockChoice(raw, scan.blocks[0].id, "incoming");
     assert.ok(first?.includes("b1\nmiddle\n<<<<<<< a"));
     const rescanned = scanConflictMarkers(first!);
@@ -109,6 +115,7 @@ describe("conflict marker model", () => {
       assert.equal(scan.blocks.length, 0, raw);
       assert.deepEqual(scan.markers, [], raw);
       assert.equal(applyConflictBlockChoice(raw, "0:5", "both"), undefined);
+      assert.equal(acceptAllConflictBlocks(raw), undefined);
     }
   });
 
@@ -129,5 +136,13 @@ describe("native conflict renderer patch", () => {
     assert.match(script, /aria-busy/);
     assert.match(script, /data-gsc-paint-key/);
     assert.match(script, /overscroll-behavior:contain/);
+  });
+
+  it("emits a syntactically valid hunk renderer with full teardown", () => {
+    const script = rendererPatchScript();
+    assert.doesNotThrow(() => new Function(script));
+    assert.match(script, /function teardown\(\)/);
+    assert.match(script, /removeEventListener/);
+    assert.match(script, /data-gsc-diff-relative/);
   });
 });

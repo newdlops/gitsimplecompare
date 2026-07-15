@@ -22,7 +22,7 @@ import {
 } from "../ui/conflictActionMessages";
 import { openMergeEditorUri } from "../ui/mergePresenter";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
-import { applyConflictBlockChoice } from "../utils/conflictMarkerModel";
+import { conflictBlockChoiceEdit } from "../utils/conflictMarkerModel";
 
 const VALID_ACTIONS = new Set<ConflictOverlayActionPayload["action"]>([
   "acceptCurrent",
@@ -132,8 +132,8 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
       const document = this.overlay.textDocument(session);
       if (!document || document.version !== args.editorVersion) return;
       const raw = document.getText();
-      const next = applyConflictBlockChoice(raw, args.blockId, args.choice);
-      if (next === undefined || document.version !== args.editorVersion) {
+      const blockEdit = conflictBlockChoiceEdit(raw, args.blockId, args.choice);
+      if (!blockEdit || document.version !== args.editorVersion) {
         void vscode.window.showInformationMessage(
           vscode.l10n.t("Conflict block changed. Use the refreshed controls and try again.")
         );
@@ -142,11 +142,24 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
       const edit = new vscode.WorkspaceEdit();
       edit.replace(
         document.uri,
-        new vscode.Range(document.positionAt(0), document.positionAt(raw.length)),
-        next
+        new vscode.Range(
+          document.positionAt(blockEdit.startOffset),
+          document.positionAt(blockEdit.endOffset)
+        ),
+        blockEdit.replacement
       );
       if (!await vscode.workspace.applyEdit(edit)) {
         throw new Error(vscode.l10n.t("Could not apply the selected conflict block."));
+      }
+      const expected = `${raw.slice(0, blockEdit.startOffset)}` +
+        `${blockEdit.replacement}${raw.slice(blockEdit.endOffset)}`;
+      const current = this.overlay.textDocument(session);
+      if (
+        current !== document || current.getText() !== expected ||
+        !vscode.window.state.focused || vscode.window.activeTextEditor?.document !== document
+      ) {
+        this.warnConcurrentBuffer(session, args.editorVersion);
+        return;
       }
       logInfo("native conflict block applied", {
         repoRoot: session.service.repoRoot,
@@ -255,7 +268,8 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
     const session = context.session;
     const document = this.overlay.textDocument(session);
     if (!document) return;
-    const editorVersion = document.version;
+    const editorVersion = context.editorVersion;
+    if (!this.overlay.isActionCurrent(context, editorVersion)) return;
     const dirty = document.isDirty;
     if (dirty) {
       const discard = vscode.l10n.t("Discard and Reload");
@@ -283,6 +297,7 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
     if (session.virtual || session.document.resultState.kind !== "text") return;
     const document = this.overlay.textDocument(session);
     if (!document) return;
+    if (!this.overlay.isActionCurrent(context, context.editorVersion)) return;
     if (document.isDirty) {
       const save = vscode.l10n.t("Save and Open");
       const discard = vscode.l10n.t("Open Without Saving");
@@ -292,8 +307,8 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
         save,
         discard
       );
-      if (!choice || !this.overlay.isActionCurrent(context, document.version)) return;
-      const version = document.version;
+      if (!choice || !this.overlay.isActionCurrent(context, context.editorVersion)) return;
+      const version = context.editorVersion;
       const prepared = choice === save
         ? await this.overlay.saveNativeDocument(session, version, context)
         : await this.overlay.replaceBufferAndSave(
@@ -309,9 +324,32 @@ export class ConflictEditorActions implements ConflictOverlayActionHandler {
         return;
       }
     }
+    const preparedDocument = this.overlay.textDocument(session);
+    if (
+      !preparedDocument || preparedDocument.isDirty || !vscode.window.state.focused ||
+      vscode.window.activeTextEditor?.document !== preparedDocument
+    ) return;
+    const preparedVersion = preparedDocument.version;
+    const expectedSource = session.document.sourceVersion;
+    const expectedResult = session.document.resultVersion;
     const opened = await openMergeEditorUri(
       vscode.Uri.file(session.service.absPath(session.rel)),
-      false
+      false,
+      true,
+      async () => {
+        const latest = await session.service.getConflictDocument(session.rel, true);
+        const valid = this.overlay.textDocument(session) === preparedDocument &&
+          preparedDocument.version === preparedVersion && !preparedDocument.isDirty &&
+          vscode.window.state.focused && vscode.window.activeTextEditor?.document === preparedDocument &&
+          latest.sourceVersion === expectedSource && latest.resultVersion === expectedResult &&
+          latest.resultState.kind === "text";
+        if (!valid) {
+          void vscode.window.showInformationMessage(
+            vscode.l10n.t("Conflict context changed. Use the refreshed controls and try again.")
+          );
+        }
+        return valid;
+      }
     );
     if (opened && this.overlay.isCurrent(session)) {
       this.overlay.suspend(session, "openMergeEditor");
