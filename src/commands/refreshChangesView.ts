@@ -20,6 +20,7 @@ import {
   changesRefreshSections,
   shouldForceChangesGitStatus,
   shouldInvalidateChangesStatus,
+  shouldShowChangesRefreshProgress,
 } from "../utils/extensionRefreshPolicy";
 
 let refreshSequence = 0;
@@ -80,6 +81,7 @@ async function runChangesRefreshPass(
   try {
     await refreshChangesViewOnce(deps, reason);
     logInfo("changes refresh finished", { runId });
+    scheduleDeferredReadyRefresh(deps, reason);
   } catch (error) {
     logError("changes refresh failed", error, { runId, reason });
     vscode.window.showErrorMessage(
@@ -90,56 +92,78 @@ async function runChangesRefreshPass(
   }
 }
 
+/**
+ * 웹뷰 최초 표시의 저장소/working 상태가 그려진 뒤 부가 섹션을 별도 silent pass로 예약한다.
+ * @param deps 같은 activation의 refresh drain을 찾기 위한 명령 의존성
+ * @param reason 방금 완료한 pass에 합쳐진 refresh 원인
+ */
+function scheduleDeferredReadyRefresh(deps: CommandDeps, reason: string): void {
+  const reasons = new Set(
+    reason.split(",").map((item) => item.trim()).filter(Boolean)
+  );
+  if (!reasons.has("viewReady") || reasons.has("viewReadyDeferred")) return;
+  void changesRefreshDrain(deps).request("viewReadyDeferred").catch((error) => {
+    logWarn("deferred Changes sections refresh failed", {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
 /** 실제 git 조회를 한 번 수행한다. 겹친 호출은 refreshChangesView 가 직렬화한다. */
 async function refreshChangesViewOnce(
   deps: CommandDeps,
   reason: string
 ): Promise<void> {
-  await vscode.window.withProgress(
-    { location: { viewId: "gitSimpleCompare.changes" } },
-    async () => {
-      const sections = changesRefreshSections(reason);
-      logInfo("changes refresh scoped", { reason, sections });
-      if (shouldInvalidateChangesStatus(reason)) {
-        deps.registry.invalidateStatusCaches();
-      }
-      if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
-        const repositories = await discoverRepositoriesForRefresh(deps);
-        const preferredRoot = await resolvePreferredRepositoryRoot(deps.registry, repositories);
-        deps.changesView.setRepositories(repositories, preferredRoot);
-      }
-      const forceGitStatus = shouldForceChangesGitStatus(reason);
-      const tasks = [
-        sectionTask(sections, "workingChanges", () =>
-          refreshWorkingChanges(deps, { forceGit: forceGitStatus })
-        ),
-        sectionTask(sections, "fileHistory", () =>
-          refreshFileHistory(deps, { reason })
-        ),
-        sectionTask(sections, "stashes", () => refreshStashes(deps)),
-        sectionTask(sections, "worktrees", () =>
-          refreshWorktreesForChangesView(deps)
-        ),
-        sectionTask(sections, "commitHooks", () => refreshCommitHooks(deps)),
-        sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
-      ].filter((task): task is RefreshTask => !!task);
-      const results = await Promise.allSettled(
-        tasks.map((task) => timedRefreshSection(task.section, task.run))
-      );
-      results.forEach((result, index) => {
-        if (result.status === "rejected") {
-          const section = tasks[index]?.section ?? "unknown";
-          logWarn("changes refresh section failed", {
-            section,
-            reason:
-              result.reason instanceof Error
-                ? result.reason.message
-                : String(result.reason),
-          });
-        }
-      });
+  const refresh = async (): Promise<void> => {
+    const sections = changesRefreshSections(reason);
+    logInfo("changes refresh scoped", { reason, sections });
+    if (shouldInvalidateChangesStatus(reason)) {
+      deps.registry.invalidateStatusCaches();
     }
-  );
+    if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
+      const repositories = await discoverRepositoriesForRefresh(deps);
+      const preferredRoot = await resolvePreferredRepositoryRoot(deps.registry, repositories);
+      deps.changesView.setRepositories(repositories, preferredRoot);
+    }
+    const forceGitStatus = shouldForceChangesGitStatus(reason);
+    const tasks = [
+      sectionTask(sections, "workingChanges", () =>
+        refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+      ),
+      sectionTask(sections, "fileHistory", () =>
+        refreshFileHistory(deps, { reason })
+      ),
+      sectionTask(sections, "stashes", () => refreshStashes(deps)),
+      sectionTask(sections, "worktrees", () =>
+        refreshWorktreesForChangesView(deps)
+      ),
+      sectionTask(sections, "commitHooks", () => refreshCommitHooks(deps)),
+      sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
+    ].filter((task): task is RefreshTask => !!task);
+    const results = await Promise.allSettled(
+      tasks.map((task) => timedRefreshSection(task.section, task.run))
+    );
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        const section = tasks[index]?.section ?? "unknown";
+        logWarn("changes refresh section failed", {
+          section,
+          reason:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
+        });
+      }
+    });
+  };
+  if (shouldShowChangesRefreshProgress(reason)) {
+    await vscode.window.withProgress(
+      { location: { viewId: "gitSimpleCompare.changes" } },
+      refresh
+    );
+  } else {
+    await refresh();
+  }
 }
 
 /**

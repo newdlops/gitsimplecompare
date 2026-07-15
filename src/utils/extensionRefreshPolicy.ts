@@ -233,6 +233,7 @@ export function shouldInvalidateChangesStatus(reason: string): boolean {
     (item) =>
       item === "command" ||
       item === "commit" ||
+      item === "commitResult" ||
       item === "commitAttempt" ||
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
@@ -247,7 +248,7 @@ export function shouldInvalidateChangesStatus(reason: string): boolean {
 /**
  * VS Code Git 상태 스냅샷 대신 실제 Git CLI 상태를 우선 읽어야 하는 원인인지 판정한다.
  * - 커밋/ref 이동 직후에는 내장 Git 확장의 indexChanges가 이전 HEAD 기준으로 남을 수 있어 CLI가 SoT다.
- * - 뷰 최초 표시와 수동 새로고침도 화면이 오래 숨겨져 있었을 수 있으므로 한 번은 실제 상태를 확인한다.
+ * - 수동 새로고침과 자체 mutation 직후에는 stale provider 대신 실제 상태를 확인한다.
  * @param reason 단일 또는 합쳐진 새로고침 원인
  * @returns Git CLI의 porcelain 상태를 강제 조회해야 하면 true
  */
@@ -256,10 +257,8 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
     (item) =>
       item === "command" ||
       item === "commit" ||
+      item === "commitResult" ||
       item === "commitAttempt" ||
-      item === "viewReady" ||
-      item === "viewVisible" ||
-      item === "windowFocused" ||
       item === "vscodeGit:identity" ||
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
@@ -269,6 +268,18 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
       item.startsWith("hunkCheckbox:") ||
       item.startsWith("editorHunks:") ||
       item.includes("stable-git-state")
+  );
+}
+
+/**
+ * Changes 뷰 전체에 진행 표시를 띄울 명시적 refresh인지 판정한다.
+ * - 자동 Git/포커스/저장 이벤트는 데이터를 조용히 맞춰 잦은 loading 깜빡임을 만들지 않는다.
+ * @param reason 단일 또는 합쳐진 새로고침 원인
+ * @returns 최초 웹뷰 준비나 사용자의 수동 전체 refresh면 true
+ */
+export function shouldShowChangesRefreshProgress(reason: string): boolean {
+  return splitRefreshReasons(reason).some(
+    (item) => item === "command" || item === "viewReady"
   );
 }
 
@@ -283,13 +294,29 @@ function sectionsForRefreshReason(
   if (reason.includes("commit-hooks")) {
     return ["commitHooks"];
   }
+  if (reason === "viewReady") {
+    return ["repositories", "workingChanges"];
+  }
+  if (reason === "viewReadyDeferred") {
+    return [
+      "fileHistory",
+      "stashes",
+      "worktrees",
+      "commitHooks",
+      "comparison",
+    ];
+  }
   if (isWorkingTreeRefreshReason(reason)) {
     return ["workingChanges"];
   }
   if (reason === "commitAttempt") {
     return ["workingChanges"];
   }
-  if (reason === "commit" || reason.startsWith("commit:")) {
+  if (
+    reason === "commit" ||
+    reason === "commitResult" ||
+    reason.startsWith("commit:")
+  ) {
     return ["workingChanges", "fileHistory", "comparison"];
   }
   if (

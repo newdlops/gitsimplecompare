@@ -11,6 +11,7 @@ import {
   shouldRefreshExplorerComparison,
   shouldRefreshPullRequestComments,
   shouldRefreshForGitPath,
+  shouldShowChangesRefreshProgress,
 } from "../src/utils/extensionRefreshPolicy";
 
 test("stable Git 상태와 고빈도 임시 파일을 구분한다", () => {
@@ -59,15 +60,44 @@ test("Git 메타데이터 경로에서 저장소 루트를 복원한다", () => 
   assert.equal(repoRootFromGitPath("/repo/src/file.ts"), undefined);
 });
 
-test("refresh 원인별로 Changes의 최소 조회 영역만 선택한다", () => {
+test("refresh 원인별로 정확성에 필요한 Changes 조회 영역을 선택한다", () => {
+  assert.deepEqual(changesRefreshSections("viewReady"), [
+    "repositories",
+    "workingChanges",
+  ]);
+  assert.deepEqual(changesRefreshSections("viewReadyDeferred"), [
+    "fileHistory",
+    "stashes",
+    "worktrees",
+    "commitHooks",
+    "comparison",
+  ]);
+  assert.equal(
+    changesRefreshSections("viewReady,viewReadyDeferred").length,
+    7
+  );
   assert.deepEqual(changesRefreshSections("vscodeGit:state"), [
     "workingChanges",
   ]);
   assert.deepEqual(changesRefreshSections("windowFocused"), [
     "workingChanges",
   ]);
+  assert.deepEqual(changesRefreshSections("viewVisible"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "stashes",
+    "worktrees",
+    "commitHooks",
+    "comparison",
+  ]);
   assert.deepEqual(changesRefreshSections("git:change:commit-hooks"), [
     "commitHooks",
+  ]);
+  assert.deepEqual(changesRefreshSections("commitResult"), [
+    "workingChanges",
+    "fileHistory",
+    "comparison",
   ]);
   assert.deepEqual(changesRefreshSections("commit"), [
     "workingChanges",
@@ -109,11 +139,17 @@ test("refresh 원인별로 Changes의 최소 조회 영역만 선택한다", () 
 
 test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
   assert.equal(shouldInvalidateChangesStatus("commit"), true);
+  assert.equal(shouldInvalidateChangesStatus("commitResult"), true);
   assert.equal(shouldInvalidateChangesStatus("checkoutBranch"), true);
   assert.equal(shouldInvalidateChangesStatus("branchOperationCompleted"), true);
   assert.equal(shouldInvalidateChangesStatus("vscodeGit:state"), false);
+  assert.equal(shouldInvalidateChangesStatus("viewReadyDeferred"), false);
   assert.equal(shouldForceChangesGitStatus("commit"), true);
-  assert.equal(shouldForceChangesGitStatus("windowFocused"), true);
+  assert.equal(shouldForceChangesGitStatus("commitResult"), true);
+  assert.equal(shouldForceChangesGitStatus("windowFocused"), false);
+  assert.equal(shouldForceChangesGitStatus("viewReady"), false);
+  assert.equal(shouldForceChangesGitStatus("viewReadyDeferred"), false);
+  assert.equal(shouldForceChangesGitStatus("viewVisible"), false);
   assert.equal(shouldForceChangesGitStatus("checkoutBranch"), true);
   assert.equal(shouldForceChangesGitStatus("branchOperationConflicts"), true);
   assert.equal(
@@ -128,6 +164,20 @@ test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
     shouldRefreshPullRequestComments("git:change:stable-git-state"),
     true
   );
+});
+
+test("초기·수동 refresh만 표시하고 자동 전체 복구와 commit 보정은 조용히 실행한다", () => {
+  assert.equal(shouldShowChangesRefreshProgress("command"), true);
+  assert.equal(shouldShowChangesRefreshProgress("viewReady"), true);
+  assert.equal(
+    shouldShowChangesRefreshProgress("vscodeGit:state, command"),
+    true
+  );
+  assert.equal(shouldShowChangesRefreshProgress("viewVisible"), false);
+  assert.equal(shouldShowChangesRefreshProgress("viewReadyDeferred"), false);
+  assert.equal(shouldShowChangesRefreshProgress("windowFocused"), false);
+  assert.equal(shouldShowChangesRefreshProgress("commitResult"), false);
+  assert.equal(shouldShowChangesRefreshProgress("documentSaved"), false);
 });
 
 test("실행 중 들어온 refresh는 queued 보정 pass까지 모두 끝날 때 완료된다", async () => {
