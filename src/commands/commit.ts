@@ -8,8 +8,10 @@ import {
 } from "../git/commitHookFailure";
 import { CommitHookService } from "../git/commitHookService";
 import type { GitService } from "../git/gitService";
+import { hasStagedChanges } from "../git/stagedChangesProbe";
 import { GitGraphPanel } from "../webview/graphPanel";
 import {
+  logError,
   logInfo,
   logOutputBlock,
   showErrorWithOutput,
@@ -118,24 +120,39 @@ async function runCommitWithLease(
 ): Promise<void> {
   let committed = false;
   let commitAttempted = false;
+  const commandStartedAt = Date.now();
   try {
-    // 커밋 정책에는 staged 존재 여부만 필요하므로 numstat 두 프로세스 없이 porcelain SoT만 읽는다.
-    const { staged } = await service.getStatusGroups({
-      force: true,
-      includeStats: false,
+    // 커밋 정책에는 staged 존재 여부만 필요하므로 전체 status/untracked 탐색을 피한다.
+    const preflightStartedAt = Date.now();
+    const probeStaged = operation !== "all" && operation !== "amendAll";
+    const hasStaged = probeStaged
+      ? await hasStagedChanges(service.repoRoot)
+      : false;
+    logInfo("commit preflight finished", {
+      root: service.repoRoot,
+      operation,
+      hasStaged,
+      probeSkipped: !probeStaged,
+      durationMs: Date.now() - preflightStartedAt,
     });
-    if (requiresExistingStage(operation) && staged.length === 0) {
+    if (requiresExistingStage(operation) && !hasStaged) {
       vscode.window.showWarningMessage(
         vscode.l10n.t("There are no staged changes to commit.")
       );
       return;
     }
     deps.changesView.setCommitFailure(undefined);
-    if (shouldStageAll(operation, staged.length)) {
+    if (shouldStageAll(operation, hasStaged)) {
       await service.stageAll();
     }
     commitAttempted = true;
+    const gitCommitStartedAt = Date.now();
     await service.commit(message, { amend });
+    logInfo("git commit finished", {
+      root: service.repoRoot,
+      operation,
+      durationMs: Date.now() - gitCommitStartedAt,
+    });
     committed = true;
     if (deps.changesView.getActiveRepo() === service.repoRoot) {
       deps.changesView.setCommitMessage("");
@@ -180,10 +197,23 @@ async function runCommitWithLease(
     );
   }
 
-  // 커밋 성공/실패 뒤 index 상태와 hook 목록을 CLI 에서 확정한 후 버튼 busy 상태가 끝나게 한다.
-  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: committed ? "commit" : "commitAttempt",
-  });
+  // 실제 commit이 끝났으면 버튼 busy를 먼저 풀고, working/HEAD 의존 화면은 백그라운드에서 맞춘다.
+  const refreshReason = committed ? "commitResult" : "commitAttempt";
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: refreshReason,
+  }).then(
+    () => logInfo("commit follow-up refresh finished", {
+      root: service.repoRoot,
+      operation,
+      reason: refreshReason,
+      totalDurationMs: Date.now() - commandStartedAt,
+    }),
+    (error) => logError("commit follow-up refresh failed", error, {
+      root: service.repoRoot,
+      operation,
+      reason: refreshReason,
+    })
+  );
 }
 
 /**
@@ -219,17 +249,17 @@ function requiresExistingStage(operation: CommitOperation): boolean {
 /**
  * 선택한 commit 정책과 현재 staged 개수로 `git add -A` 선행 여부를 계산한다.
  * @param operation 정규화된 commit 종류
- * @param stagedCount 현재 staged 파일 수
+ * @param hasStaged 현재 staged 변경 존재 여부
  * @returns 전체 stage 가 필요하면 true
  */
 function shouldStageAll(
   operation: CommitOperation,
-  stagedCount: number
+  hasStaged: boolean
 ): boolean {
   return (
     operation === "all" ||
     operation === "amendAll" ||
-    ((operation === "commit" || operation === "amend") && stagedCount === 0)
+    ((operation === "commit" || operation === "amend") && !hasStaged)
   );
 }
 
