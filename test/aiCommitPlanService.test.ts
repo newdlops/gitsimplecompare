@@ -483,47 +483,6 @@ test("그룹 사이 외부 staging을 감지하면 실제 index와 이미 만든
   });
 });
 
-test("active merge/rebase/cherry-pick/revert marker는 context와 execute 모두 거부한다", async () => {
-  await withRepo(async (root) => {
-    await put(root, "base.txt", "base\n");
-    await commitAll(root);
-    await put(root, "planned.txt", "planned\n");
-    const context = await readAiCommitPlanContext(root, "all");
-    const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], root)).trim();
-    const gitDir = path.resolve(root, gitDirRaw);
-    const markers = ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"];
-
-    for (const marker of markers) {
-      const markerPath = path.join(gitDir, marker);
-      await writeFile(markerPath, `${await head(root)}\n`, "utf8");
-      await assert.rejects(
-        readAiCommitPlanContext(root, "all"),
-        (error: unknown) =>
-          error instanceof AiCommitPlanError && error.code === "active-operation"
-      );
-      await rm(markerPath, { force: true });
-    }
-    const rebaseDir = path.join(gitDir, "rebase-merge");
-    await mkdir(rebaseDir, { recursive: true });
-    await assert.rejects(
-      readAiCommitPlanContext(root, "all"),
-      (error: unknown) =>
-        error instanceof AiCommitPlanError && error.code === "active-operation"
-    );
-    await rm(rebaseDir, { recursive: true, force: true });
-
-    await writeFile(path.join(gitDir, "MERGE_HEAD"), `${await head(root)}\n`, "utf8");
-    await assert.rejects(
-      new AiCommitPlanService(root).execute(context, {
-        groups: [{ message: "feat: planned", paths: ["planned.txt"] }],
-        warnings: [],
-      }),
-      (error: unknown) =>
-        error instanceof AiCommitPlanError && error.code === "active-operation"
-    );
-  });
-});
-
 test("hook이 private index에 계획 밖 파일을 stage하면 실제 branch/index를 바꾸지 않는다", async (context) => {
   if (process.platform === "win32") {
     context.skip("executable shell hook test is Unix-specific");

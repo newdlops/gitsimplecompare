@@ -6,7 +6,6 @@ import type { CommitPlanContext, CommitPlanGroup } from "../ai/commitPlanModel";
 import { detectOperation } from "./conflictService";
 import {
   readAiCommitPlanBinaryDiff,
-  readAiCommitPlanContext,
   readAiCommitPlanHeadRef,
   readAiCommitPlanIndexFingerprint,
 } from "./aiCommitPlanContext";
@@ -68,7 +67,7 @@ export class AiCommitPlanService {
 
   /**
    * 계획 path를 검증하고 frozen source entry로 private 일반 커밋들을 만든 뒤 한 번에 publish한다.
-   * - 각 그룹 전후 actual HEAD OID/ref, semantic index, active operation fence를 검사한다.
+   * - 각 hook/commit 직전과 최종 actual index lock 내부에서 HEAD/ref/index/operation fence를 검사한다.
    * - hook은 private HEAD/index에서 실행되며 승인 그룹 밖 tree 변경은 publish 전에 거부한다.
    * - 최종 actual index.lock 안에서 원래 exact branch ref를 old-value CAS로 한 번만 이동한다.
    * @param context AI 요청을 만들 때 읽은 저장소 변경 snapshot
@@ -88,8 +87,6 @@ export class AiCommitPlanService {
       current: 0,
       total: groups.length,
     });
-    await this.assertSnapshot(context);
-
     const initial = await readFenceState(this.repoRoot);
     assertCommitPlanFence(
       initial,
@@ -106,7 +103,6 @@ export class AiCommitPlanService {
     );
     let privateRepo: AiCommitPlanPrivateRepo | undefined;
     try {
-      await assertExecutionFence(this.repoRoot, initial, "frozen source capture");
       privateRepo = await AiCommitPlanPrivateRepo.create(
         this.repoRoot,
         initial.head!
@@ -168,11 +164,6 @@ export class AiCommitPlanService {
         frozen.entries,
         frozen.zeroOid
       );
-      await assertExecutionFence(
-        this.repoRoot,
-        initial,
-        `after private commit group ${index + 1}`
-      );
       finalTree = commit.tree;
       hookEntryOverrides.push(...commit.hookEntryOverrides);
       executed.push({
@@ -200,7 +191,6 @@ export class AiCommitPlanService {
     const finalIndexBytes = installIndex
       ? await readFile(frozen.publishIndexPath)
       : undefined;
-    await assertExecutionFence(this.repoRoot, initial, "before final publication");
     await publishAiCommitPlan(this.repoRoot, {
       original: initial,
       finalHead: privateRepo.head,
@@ -232,34 +222,6 @@ export class AiCommitPlanService {
     }
   }
 
-  /**
-   * context를 다시 수집해 AI 요청 뒤 HEAD/ref/index/선택 범위가 바뀌지 않았는지 확인한다.
-   * @param context AI 요청 시점 snapshot과 branch
-   */
-  private async assertSnapshot(context: CommitPlanContext): Promise<void> {
-    let current: CommitPlanContext;
-    try {
-      current = await readAiCommitPlanContext(this.repoRoot, context.scope);
-    } catch (error) {
-      if (
-        error instanceof AiCommitPlanError &&
-        (error.code === "active-operation" || error.code === "unsupported-head")
-      ) {
-        throw error;
-      }
-      throw new AiCommitPlanError(
-        "stale-snapshot",
-        "Changes can no longer be matched to the AI commit plan. Generate the plan again.",
-        error
-      );
-    }
-    if (current.snapshot !== context.snapshot || current.branch !== context.branch) {
-      throw new AiCommitPlanError(
-        "stale-snapshot",
-        "Changes were modified after the AI commit plan was created. Generate the plan again."
-      );
-    }
-  }
 }
 
 /**

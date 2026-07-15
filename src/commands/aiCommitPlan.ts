@@ -199,7 +199,7 @@ function createPanelActions(
         head: execution.head,
         elapsed: Date.now() - started,
       });
-      await refreshAfterAiCommitPlan(deps, context.repoRoot);
+      refreshAfterAiCommitPlan(deps, context.repoRoot);
       return {
         message: vscode.l10n.t(
           "Created {0} planned commit(s).",
@@ -260,10 +260,7 @@ function formatAiCommitPlanExecutionFailure(
  */
 async function enabledCommitHooks(repoRoot: string): Promise<CommitHookName[]> {
   return new CommitHookService(repoRoot)
-    .inspect()
-    .then((snapshot) =>
-      snapshot.hooks.filter((hook) => hook.enabled).map((hook) => hook.name)
-    )
+    .enabledEntrypoints()
     .catch(() => []);
 }
 
@@ -282,16 +279,20 @@ function isGitCommitFailure(error: unknown): boolean {
  * @param deps 활성 Changes 뷰와 GitService 레지스트리를 가진 명령 의존성
  * @param repoRoot 방금 AI 플랜 커밋을 적용한 저장소
  */
-async function refreshAfterAiCommitPlan(
+function refreshAfterAiCommitPlan(
   deps: CommandDeps,
   repoRoot: string
-): Promise<void> {
+): void {
   try {
     deps.registry.get(repoRoot).invalidateStatusCache();
     if (deps.changesView.getActiveRepo() === repoRoot) {
       deps.changesView.setCommitMessage("");
-      await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-        reason: "commit",
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason: "commitResult",
+      }).then(undefined, (error) => {
+        logError("AI commit plan post-commit Changes refresh failed", error, {
+          repoRoot,
+        });
       });
     }
   } catch (error) {

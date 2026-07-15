@@ -467,3 +467,84 @@ test("linked worktree의 per-worktree index sibling에서 all 계획을 안전�
     }
   });
 });
+
+test("마지막 그룹 완료 뒤 외부 staging은 최종 lock fence에서 publish를 거부한다", async () => {
+  await withRepo(async (root) => {
+    await put(root, "planned.txt", "base\n");
+    await commitAll(root);
+    const originalHead = await head(root);
+    await put(root, "planned.txt", "planned\n");
+    const context = await readAiCommitPlanContext(root, "all");
+    let stagedAfterLastGroup = false;
+
+    await assert.rejects(
+      new AiCommitPlanService(root).execute(
+        context,
+        oneGroupPlan("feat: unpublished private commit", ["planned.txt"]),
+        async (progress) => {
+          if (
+            progress.phase !== "commit" ||
+            progress.step !== "completed" ||
+            stagedAfterLastGroup
+          ) {
+            return;
+          }
+          stagedAfterLastGroup = true;
+          await put(root, "external-final.txt", "external final index content\n");
+          await runGit(["add", "external-final.txt"], root);
+        }
+      ),
+      (error: unknown) =>
+        error instanceof AiCommitPlanError && error.code === "concurrent-change"
+    );
+
+    assert.equal(stagedAfterLastGroup, true);
+    assert.equal(await head(root), originalHead);
+    assert.equal(await runGit(["log", "-1", "--format=%s"], root), "base\n");
+    assert.equal(
+      await runGit(["show", ":external-final.txt"], root),
+      "external final index content\n"
+    );
+  });
+});
+
+test("active merge/rebase/cherry-pick/revert marker는 context와 execute 모두 거부한다", async () => {
+  await withRepo(async (root) => {
+    await put(root, "base.txt", "base\n");
+    await commitAll(root);
+    await put(root, "planned.txt", "planned\n");
+    const context = await readAiCommitPlanContext(root, "all");
+    const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], root)).trim();
+    const gitDir = path.resolve(root, gitDirRaw);
+    const markers = ["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"];
+
+    for (const marker of markers) {
+      const markerPath = path.join(gitDir, marker);
+      await writeFile(markerPath, `${await head(root)}\n`, "utf8");
+      await assert.rejects(
+        readAiCommitPlanContext(root, "all"),
+        (error: unknown) =>
+          error instanceof AiCommitPlanError && error.code === "active-operation"
+      );
+      await rm(markerPath, { force: true });
+    }
+    const rebaseDir = path.join(gitDir, "rebase-merge");
+    await mkdir(rebaseDir, { recursive: true });
+    await assert.rejects(
+      readAiCommitPlanContext(root, "all"),
+      (error: unknown) =>
+        error instanceof AiCommitPlanError && error.code === "active-operation"
+    );
+    await rm(rebaseDir, { recursive: true, force: true });
+
+    await writeFile(path.join(gitDir, "MERGE_HEAD"), `${await head(root)}\n`, "utf8");
+    await assert.rejects(
+      new AiCommitPlanService(root).execute(
+        context,
+        oneGroupPlan("feat: planned", ["planned.txt"])
+      ),
+      (error: unknown) =>
+        error instanceof AiCommitPlanError && error.code === "active-operation"
+    );
+  });
+});
