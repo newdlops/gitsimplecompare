@@ -149,6 +149,31 @@ test("staged 부분 변경을 보존하며 계획 순서대로 여러 일반 커
   });
 });
 
+test("플랜의 여러 줄 커밋 메시지를 subject와 body까지 그대로 기록한다", async () => {
+  await withRepo(async (root) => {
+    await put(root, "message.txt", "before\n");
+    await commitAll(root);
+    await put(root, "message.txt", "after\n");
+    await runGit(["add", "message.txt"], root);
+    const context = await readAiCommitPlanContext(root, "commit");
+    const message = [
+      "feat: improve planned messages",
+      "",
+      "Explain the non-obvious behavior in a concise body.",
+    ].join("\n");
+
+    await new AiCommitPlanService(root).execute(context, {
+      groups: [{ message, paths: ["message.txt"] }],
+      warnings: [],
+    });
+
+    assert.equal(
+      (await runGit(["log", "-1", "--format=%B"], root)).trimEnd(),
+      message
+    );
+  });
+});
+
 test("all 범위는 미추적 파일 내용을 snapshot과 실제 다중 커밋에 포함한다", async () => {
   await withRepo(async (root) => {
     await put(root, "tracked.txt", "before\n");

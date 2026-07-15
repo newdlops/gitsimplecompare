@@ -10,6 +10,7 @@ import type {
 import type { StagedPullRequestPreview } from "../git/pullRequestService";
 import { readAiCliConfig } from "./cliConfig";
 import { runAiCliPrompt } from "./cliRunner";
+import { commitMessageGuidelines } from "./commitMessageGuidance";
 import { logInfo } from "../ui/outputLog";
 
 /** AI가 생성한 PR 제목/본문 묶음. */
@@ -106,10 +107,7 @@ function commitPrompt(context: AiCommitMessageContext): string {
     "Generate one git commit message for the change below.",
     "Rules:",
     "- Return only the commit message, no markdown fences.",
-    "- Prefer Conventional Commits when the intent is clear.",
-    "- Use an imperative, concise first line under 72 characters.",
-    "- Add a short body only when it clarifies non-obvious behavior.",
-    `- Write in ${config.responseLanguage}.`,
+    ...commitMessageGuidelines(config.responseLanguage),
     "- Do not run commands or modify files. Use only the supplied context.",
     ...instructionLines(config.commonInstructions),
     ...instructionLines(config.commitInstructions),

@@ -34,7 +34,7 @@ interface CommitPlanLogContext extends Record<string, unknown> {
 
 /**
  * 현재 설정의 AI CLI로 변경 파일 분할 계획을 생성하고 검증한다.
- * - 공통 AI 지시문과 응답 언어만 기본 적용하며 커밋 메시지 전용 지시문은 섞지 않는다.
+ * - 단독 커밋 메시지 생성과 같은 품질 규칙 및 커밋 전용 지시문을 각 플랜 메시지에 적용한다.
  * - CancellationToken을 CLI 실행까지 전달하고 응답 파싱 전에도 취소 상태를 다시 확인한다.
  * @param context 동일 요청 동안 변하지 않는 git 변경 컨텍스트
  * @param options 일회성 추가 프롬프트와 사용자의 커밋 의도
@@ -61,6 +61,7 @@ export async function generateAiCommitPlan(
     const prompt = buildCommitPlanPrompt(context, {
       responseLanguage: config.responseLanguage,
       commonInstructions: config.commonInstructions,
+      commitInstructions: config.commitInstructions,
       extraPrompt: options.extraPrompt,
       commitIntent: options.commitIntent,
     });
