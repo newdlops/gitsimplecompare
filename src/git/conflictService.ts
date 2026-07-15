@@ -220,12 +220,15 @@ export class ConflictService {
    * - Result 는 실제 작업 파일이므로 사용자가 편집하고 Resolve Marked 로 스테이징할 대상이다.
    * @param rel 저장소 상대 경로
    */
-  async getConflictDocument(rel: string): Promise<ConflictDocument> {
+  async getConflictDocument(
+    rel: string,
+    fullResult = false
+  ): Promise<ConflictDocument> {
     const operation = await this.getOperation();
     const [sources, context, contents] = await Promise.all([
       this.getConflictSources(rel, operation),
       readConflictOperationContext(this.repoRoot, operation, rel),
-      this.content.readDocument(rel),
+      this.content.readDocument(rel, fullResult),
     ]);
     return {
       rel,
@@ -305,6 +308,15 @@ export class ConflictService {
     );
   }
 
+  /** 해결된 native virtual 문서의 내용을 index 변경 없이 no-follow CAS로 저장한다. */
+  async writeWorkingContent(
+    rel: string,
+    content: string,
+    expectedVersion?: string
+  ): Promise<string | undefined> {
+    return this.content.writeWorkingContent(rel, content, expectedVersion);
+  }
+
   /** 패널 load 이후 작업트리 Result가 외부에서 바뀌었는지 비교할 version을 읽는다. */
   async getConflictResultVersion(rel: string): Promise<string> {
     return this.content.readUnresolvedResultVersion(rel);
@@ -314,8 +326,11 @@ export class ConflictService {
    * 해결 mutation 뒤 작업트리 Result의 실제 종류와 표시 내용을 다시 읽는다.
    * @param rel 저장소 상대 경로
    */
-  async getWorkingResult(rel: string): Promise<ConflictWorkingResult> {
-    return this.content.readResult(rel);
+  async getWorkingResult(
+    rel: string,
+    fullResult = false
+  ): Promise<ConflictWorkingResult> {
+    return this.content.readResult(rel, fullResult);
   }
 
   /**

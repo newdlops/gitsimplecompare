@@ -95,7 +95,10 @@ export class ConflictContentService {
    * @param rel 저장소 상대 충돌 경로
    * @returns source commit 정보가 제외된 콘텐츠 문서
    */
-  async readDocument(rel: string): Promise<ConflictContentDocument> {
+  async readDocument(
+    rel: string,
+    fullResult = false
+  ): Promise<ConflictContentDocument> {
     this.assertRelativePath(rel);
     const [entries, forcedBinary] = await Promise.all([
       this.readUnmergedStages(rel),
@@ -107,7 +110,10 @@ export class ConflictContentService {
       this.readStage(2, entries, forcedBinary),
       this.readStage(3, entries, forcedBinary),
       this.readWorkingResult(
-        rel, forcedBinary, true, [...entries.values()].some((entry) => entry.mode === "160000")
+        rel,
+        forcedBinary,
+        !fullResult,
+        [...entries.values()].some((entry) => entry.mode === "160000")
       ),
     ]);
     const both = this.bothPreview(current, incoming, result);
@@ -129,9 +135,16 @@ export class ConflictContentService {
    * @param rel 저장소 상대 경로
    * @returns 해소된 파일의 현재 표시 상태
    */
-  async readResult(rel: string): Promise<ConflictWorkingResult> {
+  async readResult(
+    rel: string,
+    fullResult = false
+  ): Promise<ConflictWorkingResult> {
     this.assertRelativePath(rel);
-    return this.readWorkingResult(rel, await this.isDiffDisabled(rel));
+    return this.readWorkingResult(
+      rel,
+      await this.isDiffDisabled(rel),
+      !fullResult
+    );
   }
 
   /**
@@ -250,6 +263,41 @@ export class ConflictContentService {
         const mode = await resolveConflictRegularFileMode(this.repoRoot, entries, claim.snapshot.mode);
         await claim.install({ kind: "regular", buffer, mode });
         if (markResolved) await this.stageExactBuffer(rel, buffer, mode, indexEnv);
+      });
+    } catch (error) {
+      await this.rollbackClaim(claim, error);
+    }
+    return claim?.commit();
+  }
+
+  /**
+   * 이미 해결된 native virtual 문서의 일반 파일 내용을 index 변경 없이 CAS 저장한다.
+   * - leaf를 먼저 격리하고 symlink/nonfile 전이를 거부해 VS Code save가 링크 대상을 따라가지 않는다.
+   * @param rel 저장소 상대 경로
+   * @param content 저장할 UTF-8 text
+   * @param expectedVersion 편집기가 마지막으로 읽은 작업트리 version
+   * @returns 좁은 동시 writer 경합으로 원본을 보존한 recovery 경로
+   */
+  async writeWorkingContent(
+    rel: string,
+    content: string,
+    expectedVersion?: string
+  ): Promise<string | undefined> {
+    this.assertRelativePath(rel);
+    const absolute = await this.safeWorkingPath(rel);
+    const buffer = Buffer.from(content, "utf8");
+    let claim: ConflictWorktreeClaim | undefined;
+    try {
+      claim = await claimConflictWorkingLeaf(absolute, expectedVersion);
+      if (claim.snapshot.kind !== "regular" && claim.snapshot.kind !== "absent") {
+        throw new Error("Manual Result editing is not available for symlink, directory, or other non-regular file conflicts.");
+      }
+      const executable = claim.snapshot.kind === "regular" &&
+        claim.snapshot.mode !== undefined && (claim.snapshot.mode & 0o100) !== 0;
+      await claim.install({
+        kind: "regular",
+        buffer,
+        mode: executable ? "100755" : "100644",
       });
     } catch (error) {
       await this.rollbackClaim(claim, error);
