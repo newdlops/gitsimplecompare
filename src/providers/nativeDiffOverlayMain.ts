@@ -62,9 +62,11 @@ export function mainEvalExpression(
       function chooseWindows(all) {
         var candidates = all.filter(isCandidate);
         var matched = candidates.filter(matchesWorkspace);
-        if (matched.length) return matched;
         var focused = candidates.filter(function (w) { try { return w.isFocused && w.isFocused(); } catch (_) { return false; } });
-        if (focused.length) return focused;
+        var focusedMatched = focused.filter(matchesWorkspace);
+        if (focusedMatched.length) return [focusedMatched[0]];
+        if (matched.length) return [matched[0]];
+        if (focused.length) return [focused[0]];
         return candidates.length ? [candidates[0]] : [];
       }
       async function ensureWindow(w) {

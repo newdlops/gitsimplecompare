@@ -3,6 +3,11 @@
 import { HunkCheckboxController } from "./hunkCheckboxController";
 import { rememberHunkContextLine } from "./hunkContextLineStore";
 import { logInfo, logWarn } from "../ui/outputLog";
+import type {
+  ConflictOverlayAction,
+  ConflictOverlayActionHandler,
+  ConflictOverlayActionPayload,
+} from "./conflictOverlayProtocol";
 
 interface OverlayEventPayload {
   type?: string;
@@ -14,6 +19,10 @@ interface OverlayEventPayload {
   marker?: string;
   text?: string;
   checked?: boolean;
+  action?: string;
+  sessionId?: string;
+  revision?: number;
+  editorVersion?: number;
 }
 
 /** renderer checkbox/contextmenu 이벤트를 hunk checkbox controller 호출로 변환한다. */
@@ -21,7 +30,10 @@ export class NativeDiffOverlayEvents {
   private lastToggleKey = "";
   private lastToggleAt = 0;
 
-  constructor(private readonly hunkCheckboxes: HunkCheckboxController) {}
+  constructor(
+    private readonly hunkCheckboxes: HunkCheckboxController,
+    private readonly conflictActions?: ConflictOverlayActionHandler
+  ) {}
 
   /**
    * renderer binding payload 를 처리한다.
@@ -30,6 +42,10 @@ export class NativeDiffOverlayEvents {
   handle(payload: string): void {
     try {
       const parsed = JSON.parse(payload) as OverlayEventPayload;
+      if (parsed.type === "conflictAction") {
+        this.handleConflictAction(parsed);
+        return;
+      }
       const visibleSide =
         parsed.side === "original" || parsed.side === "modified"
           ? parsed.side
@@ -53,6 +69,32 @@ export class NativeDiffOverlayEvents {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  /** renderer의 conflict button payload를 좁혀 versioned host action handler로 전달한다. */
+  private handleConflictAction(parsed: OverlayEventPayload): void {
+    if (
+      !this.conflictActions || !parsed.uri || !parsed.sessionId ||
+      !isConflictAction(parsed.action) ||
+      typeof parsed.revision !== "number" || !Number.isInteger(parsed.revision) ||
+      typeof parsed.editorVersion !== "number" || !Number.isInteger(parsed.editorVersion)
+    ) {
+      logWarn("native conflict overlay payload ignored", {
+        uri: parsed.uri,
+        action: parsed.action,
+        sessionId: parsed.sessionId,
+      });
+      return;
+    }
+    const payload: ConflictOverlayActionPayload = {
+      type: "conflictAction",
+      action: parsed.action,
+      uri: parsed.uri,
+      sessionId: parsed.sessionId,
+      revision: parsed.revision,
+      editorVersion: parsed.editorVersion,
+    };
+    this.conflictActions.handleRendererAction(payload);
   }
 
   /** context menu 가 열린 visible row 를 저장한다. */
@@ -130,4 +172,17 @@ export class NativeDiffOverlayEvents {
       this.hunkCheckboxes.toggle(parsed.uri, parsed.lineIds, parsed.checked, side);
     }
   }
+}
+
+/** wire 문자열이 허용된 conflict action인지 확인한다. */
+function isConflictAction(value: string | undefined): value is ConflictOverlayAction {
+  return [
+    "acceptCurrent",
+    "acceptIncoming",
+    "acceptBoth",
+    "markResolved",
+    "openMergeEditor",
+    "reload",
+    "showDetails",
+  ].includes(value ?? "");
 }
