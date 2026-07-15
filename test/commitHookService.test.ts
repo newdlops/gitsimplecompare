@@ -98,6 +98,35 @@ test("기본 .git/hooks에서 sample을 제외하고 active hook만 조회한다
   });
 });
 
+test("실제 effective hooks 경로의 실행 가능한 표준 entrypoint만 빠르게 조회한다", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("executable entrypoint filtering is Unix-specific");
+    return;
+  }
+  await withRepo(async (root) => {
+    await git(root, ["config", "core.hooksPath", ".githooks"]);
+    const hooks = path.join(root, ".githooks");
+    await writeHook(path.join(hooks, "commit-msg"));
+    await writeHook(path.join(hooks, "pre-commit"));
+    await writeHook(path.join(hooks, "post-commit.sample"));
+    await writeHook(path.join(hooks, "post-rewrite"));
+    await chmod(path.join(hooks, "post-rewrite"), 0o644);
+
+    const service = new CommitHookService(root);
+    assert.deepEqual(await service.enabledEntrypoints(), [
+      "pre-commit",
+      "commit-msg",
+    ]);
+
+    await chmod(path.join(hooks, "post-rewrite"), 0o755);
+    assert.deepEqual(await service.enabledEntrypoints(), [
+      "pre-commit",
+      "commit-msg",
+      "post-rewrite",
+    ]);
+  });
+});
+
 test("local hook 내용을 유지하며 실행 비트로 비활성화하고 다시 활성화한다", async (context) => {
   if (process.platform === "win32") {
     context.skip("safe executable-bit toggling is Unix-specific");
@@ -203,12 +232,21 @@ test("Husky v9 entrypoint와 사용자 .husky hook 경로를 분리한다", asyn
   await withRepo(async (root) => {
     await git(root, ["config", "core.hooksPath", ".husky/_"]);
     const userHook = path.join(root, ".husky", "pre-commit");
+    const userMessageHook = path.join(root, ".husky", "commit-msg");
     const wrapper = path.join(root, ".husky", "_", "pre-commit");
     await writeHook(
       path.join(root, ".husky", "_", "h"),
       'hook="$(dirname "$0")/../$(basename "$0")"\n[ ! -f "$hook" ] || sh -e "$hook" "$@"'
     );
     await writeHook(wrapper, '. "$(dirname "$0")/h"');
+    await writeHook(
+      path.join(root, ".husky", "_", "prepare-commit-msg"),
+      '. "$(dirname "$0")/h"'
+    );
+    await writeHook(
+      path.join(root, ".husky", "_", "commit-msg"),
+      '. "$(dirname "$0")/h"'
+    );
     await writeFile(userHook, "echo checked\n", "utf8");
     if (process.platform !== "win32") {
       await chmod(userHook, 0o644);
@@ -220,8 +258,22 @@ test("Husky v9 entrypoint와 사용자 .husky hook 경로를 분리한다", asyn
     assert.equal(snapshot.effectiveDirectory, path.join(root, ".husky", "_"));
     assert.equal(snapshot.hooks[0]?.path, userHook);
     assert.equal(snapshot.hooks[0]?.state, "enabled");
+    assert.deepEqual(await service.enabledEntrypoints(), ["pre-commit"]);
+
+    await writeFile(userMessageHook, "echo validate message\n", "utf8");
+    if (process.platform !== "win32") {
+      await chmod(userMessageHook, 0o644);
+    }
+    assert.deepEqual(await service.enabledEntrypoints(), [
+      "pre-commit",
+      "commit-msg",
+    ]);
+    await unlink(userMessageHook);
+    assert.deepEqual(await service.enabledEntrypoints(), ["pre-commit"]);
+
     if (process.platform !== "win32") {
       await chmod(wrapper, 0o644);
+      assert.deepEqual(await service.enabledEntrypoints(), []);
       assert.equal(
         (await service.inspect()).hooks[0]?.state,
         "entrypointMissing"
@@ -245,6 +297,7 @@ test("symlink 별칭으로 지정한 Husky v9 경로도 사용자 hook을 관리
       'n=$(basename "$0")\ns=$(dirname "$(dirname "$0")")/$n\n[ ! -f "$s" ] && exit 0\nsh -e "$s" "$@"'
     );
     await writeHook(path.join(runtime, "pre-commit"), '. "$(dirname "$0")/h"');
+    await writeHook(path.join(runtime, "commit-msg"), '. "$(dirname "$0")/h"');
     await writeFile(
       path.join(root, "pre-commit"),
       `printf ran > "${marker}"\n`,
@@ -258,6 +311,10 @@ test("symlink 별칭으로 지정한 Husky v9 경로도 사용자 hook을 관리
     assert.equal(snapshot.directory, root);
     assert.equal(snapshot.hooks[0]?.path, path.join(root, "pre-commit"));
     assert.equal(snapshot.hooks[0]?.state, "enabled");
+    assert.deepEqual(
+      await new CommitHookService(root).enabledEntrypoints(),
+      ["pre-commit"]
+    );
     await writeFile(path.join(root, "staged.txt"), "staged\n", "utf8");
     await git(root, ["add", "staged.txt"]);
     await git(root, ["commit", "-q", "-m", "exercise alias hook"]);

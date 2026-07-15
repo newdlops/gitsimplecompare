@@ -2,7 +2,7 @@
 // - Git 실행 경로 해석은 runGit 으로 통일하고, 실제 hook 파일 조작만 Node 파일 API 로 수행한다.
 // - hook 내용을 해석하거나 이름을 옮기지 않는다. 안전한 일반 파일만 실행 비트로 전환한다.
 import { constants as fsConstants } from "node:fs";
-import { mkdir, open } from "node:fs/promises";
+import { mkdir, open, realpath } from "node:fs/promises";
 import * as path from "node:path";
 import {
   commitHooksDirectoryExists,
@@ -14,6 +14,7 @@ import {
 import { commitHookGitState } from "./commitHookWorktreeState";
 import {
   resolveCommitHookDirectory,
+  resolveEffectiveHooksPath,
   type ResolvedHookDirectory,
 } from "./commitHookPaths";
 
@@ -183,6 +184,41 @@ export class CommitHookService {
   }
 
   /**
+   * 곧 실행될 표준 commit hook entrypoint 이름만 한 번의 Git 경로 조회와 병렬 lstat로 읽는다.
+   * - UI 관리 상태·tracked/worktree 검사는 생략하고, 실패 진단에 필요한 실제 실행 후보만 고정한다.
+   * @returns Git이 현재 실행할 수 있는 표준 commit hook 이름 목록
+   */
+  async enabledEntrypoints(): Promise<CommitHookName[]> {
+    const directory = await resolveEffectiveHooksPath(this.repoRoot);
+    const [canonicalDirectory, states] = await Promise.all([
+      realpath(directory).catch(() => directory),
+      Promise.all(
+        COMMIT_HOOK_NAMES.map((name) =>
+          readHookFileState(path.join(directory, name))
+        )
+      ),
+    ]);
+    const huskyLayout =
+      isHuskyProxyDirectory(directory) ||
+      isHuskyProxyDirectory(canonicalDirectory);
+    const proxyFiles = huskyLayout
+      ? await Promise.all([
+          readHookFileState(path.join(directory, "h")),
+          ...COMMIT_HOOK_NAMES.map((name) =>
+            readHookFileState(path.join(path.dirname(directory), name))
+          ),
+        ])
+      : undefined;
+    const hasHuskyDispatcher = proxyFiles?.[0]?.exists === true;
+    return COMMIT_HOOK_NAMES.filter(
+      (_name, index) =>
+        states[index]?.exists &&
+        states[index]?.executable &&
+        (!hasHuskyDispatcher || proxyFiles?.[index + 1]?.exists)
+    );
+  }
+
+  /**
    * 기존 hook 을 활성화 또는 비활성화한다.
    * - 외부 편집과 경합해도 내용을 잃지 않도록 Unix 일반 파일의 실행 비트만 변경한다.
    * - Husky proxy, symlink, Windows, 기존 `.disabled` 이름은 안전상 UI 토글을 허용하지 않는다.
@@ -326,6 +362,18 @@ export class CommitHookService {
     };
   }
 
+}
+
+/**
+ * Git의 effective hook 경로가 Husky v9 dispatcher 디렉터리 형태인지 확인한다.
+ * @param directory lexical 경로 또는 symlink를 해석한 실제 hook 디렉터리
+ * @returns 마지막 두 segment가 `.husky/_`이면 true
+ */
+function isHuskyProxyDirectory(directory: string): boolean {
+  return (
+    path.basename(directory) === "_" &&
+    path.basename(path.dirname(directory)) === ".husky"
+  );
 }
 
 /**

@@ -168,7 +168,7 @@ export function parseHooksPathConfig(output: string): HookPathConfig {
  * @param repoRoot `git rev-parse --git-path hooks` 를 실행할 저장소
  * @returns 정규화된 절대 hook 디렉터리
  */
-async function resolveEffectiveHooksPath(repoRoot: string): Promise<string> {
+export async function resolveEffectiveHooksPath(repoRoot: string): Promise<string> {
   const raw = (await runGit(["rev-parse", "--git-path", "hooks"], repoRoot)).trim();
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(repoRoot, raw);
 }
