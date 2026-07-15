@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71043",
+  "version": "0.1.71044",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -448,7 +448,8 @@
       { "command": "gitSimpleCompare.openConflictEditor", "title": "%cmd.openConflictEditor.tooltip%", "shortTitle": "%cmd.openConflictEditor%", "category": "Git Simple Compare", "icon": "$(git-merge)" },
       {
         "command": "gitSimpleCompare.openMergeEditor",
-        "title": "%cmd.openMergeEditor%",
+        "title": "%cmd.openMergeEditor.tooltip%",
+        "shortTitle": "%cmd.openMergeEditor%",
         "category": "Git Simple Compare",
         "icon": "$(git-merge)"
       },
@@ -759,19 +760,9 @@
           "group": "inline@0"
         },
         {
-          "command": "gitSimpleCompare.takeCurrent",
+          "command": "gitSimpleCompare.openMergeEditor",
           "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
-          "group": "inline@1"
-        },
-        {
-          "command": "gitSimpleCompare.takeIncoming",
-          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
-          "group": "inline@2"
-        },
-        {
-          "command": "gitSimpleCompare.markResolved",
-          "when": "view == gitSimpleCompare.conflicts && viewItem == gitSimpleCompare.conflict",
-          "group": "inline@3"
+          "group": "1_open@2"
         },
         {
           "command": "gitSimpleCompare.takeCurrent",
@@ -1249,8 +1240,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
+    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMutationSafety.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMutationSafety.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/statusCache.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {
