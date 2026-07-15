@@ -7,7 +7,7 @@ import {
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
 
-const PATCH_VERSION = 2;
+const PATCH_VERSION = 4;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 
 /** conflict renderer patch 설치와 snapshot render를 한 main-process expression으로 만든다. */
@@ -44,7 +44,7 @@ export function conflictOverlayCleanupExpression(
     hints,
     `
       var out = [];
-      var cleanupExpr = 'window.__gscNativeConflictOverlay&&window.__gscNativeConflictOverlay.render(null)';
+      var cleanupExpr = '(function(){if(window.__gscNativeConflictOverlay)return window.__gscNativeConflictOverlay.render(null);document.querySelectorAll(".gsc-native-conflict-overlay").forEach(function(n){n.remove();});return "cleaned-fallback";})()';
       for (var i = 0; i < wins.length; i++) {
         out.push(await evalWindow(wins[i], cleanupExpr));
       }
@@ -144,20 +144,14 @@ export function nativeConflictOverlayRendererScript(): string {
 
       function activeEditorHost() {
         var groups = Array.prototype.slice.call(document.querySelectorAll('.editor-group-container.active,.editor-group-container.active-group'));
-        var roots = groups.length ? groups : Array.prototype.slice.call(document.querySelectorAll('.editor-group-container'));
-        for (var i = 0; i < roots.length; i++) {
-          if (!isVisible(roots[i])) continue;
-          var editors = Array.prototype.slice.call(roots[i].querySelectorAll('.editor-instance .monaco-editor')).filter(function (node) {
+        if (groups.length !== 1 || !isVisible(groups[0])) return null;
+        var editors = Array.prototype.slice.call(groups[0].querySelectorAll('.editor-instance .monaco-editor.focused')).filter(function (node) {
             if (!isVisible(node)) return false;
             if (node.closest('.ij-find-overlay')) return false;
             return !node.closest('.monaco-diff-editor') || !!node.closest('.editor.modified');
-          });
-          var focused = editors.filter(function (node) { return node.classList.contains('focused'); });
-          var chosen = focused.length ? focused[focused.length - 1] : editors[editors.length - 1];
-          if (chosen) return chosen.querySelector('.overflow-guard') || chosen;
-        }
-        var fallback = Array.prototype.slice.call(document.querySelectorAll('.editor-instance .monaco-editor')).filter(isVisible);
-        return fallback.length ? (fallback[fallback.length - 1].querySelector('.overflow-guard') || fallback[fallback.length - 1]) : null;
+        });
+        if (editors.length !== 1) return null;
+        return editors[0].querySelector('.overflow-guard') || editors[0];
       }
 
       function ensureRelative(host) {
@@ -395,6 +389,8 @@ export function nativeConflictOverlayRendererScript(): string {
             }
             cleanup();
             if (state.observer) { try { state.observer.disconnect(); } catch (_) {} state.observer = null; }
+            var style = document.getElementById(STYLE_ID);
+            if (style) { try { style.remove(); } catch (_) {} }
             state.lastPaint = 'paint:none';
             return 'cleaned';
           }
@@ -402,14 +398,7 @@ export function nativeConflictOverlayRendererScript(): string {
           ensureObserver();
           schedulePaint();
           scheduleFollowUps();
-          return new Promise(function (resolve) {
-            setTimeout(function () {
-              if (!document.querySelector('.' + ROOT_CLASS)) {
-                try { paint(); } catch (_) {}
-              }
-              resolve('render-scheduled:conflict:last=' + state.lastPaint);
-            }, 90);
-          });
+          return 'render-scheduled:conflict:last=' + state.lastPaint;
         }
       };
       return 'gsc-native-conflict-installed:' + VERSION;

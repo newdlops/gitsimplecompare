@@ -4,6 +4,7 @@
 export interface NativeOverlayWorkspaceHints {
   paths: string[];
   names: string[];
+  windowId?: number;
 }
 
 /**
@@ -29,6 +30,7 @@ export function mainEvalExpression(
       var BW = req('electron').BrowserWindow;
       var workspacePaths = ${JSON.stringify(hints.paths)};
       var workspaceNames = ${JSON.stringify(hints.names)};
+      var pinnedWindowId = ${JSON.stringify(hints.windowId ?? 0)};
       var wins = chooseWindows(BW.getAllWindows());
       if (!wins.length) return 'no-target-window';
 
@@ -61,23 +63,35 @@ export function mainEvalExpression(
       }
       function chooseWindows(all) {
         var candidates = all.filter(isCandidate);
-        var matched = candidates.filter(matchesWorkspace);
+        if (pinnedWindowId) {
+          var pinned = candidates.filter(function (w) { return w.id === pinnedWindowId; });
+          return pinned.length ? [pinned[0]] : [];
+        }
         var focused = candidates.filter(function (w) { try { return w.isFocused && w.isFocused(); } catch (_) { return false; } });
         var focusedMatched = focused.filter(matchesWorkspace);
         if (focusedMatched.length) return [focusedMatched[0]];
-        if (matched.length) return [matched[0]];
         if (focused.length) return [focused[0]];
-        return candidates.length ? [candidates[0]] : [];
+        return [];
       }
       async function ensureWindow(w) {
         var debuggerApi = w.webContents.debugger;
+        if (!global.__gscNativeDiffOverlayListeners) global.__gscNativeDiffOverlayListeners = new Map();
+        if (!global.__gscNativeDiffOverlayReadyWindows) global.__gscNativeDiffOverlayReadyWindows = new Set();
+        var previous = global.__gscNativeDiffOverlayListeners.get(w.id);
         var attached = false;
         try { attached = debuggerApi.isAttached(); } catch (_) {}
-        if (!attached) debuggerApi.attach('1.3');
+        if (attached && previous && global.__gscNativeDiffOverlayReadyWindows.has(w.id)) return debuggerApi;
+        if (!attached) {
+          debuggerApi.attach('1.3');
+          if (!global.__gscNativeDiffOverlayOwnedDebuggers) global.__gscNativeDiffOverlayOwnedDebuggers = new Set();
+          global.__gscNativeDiffOverlayOwnedDebuggers.add(w.id);
+        }
         await debuggerApi.sendCommand('Runtime.enable');
-        try { await debuggerApi.sendCommand('Runtime.addBinding', { name: ${JSON.stringify(binding)} }); } catch (_) {}
-        if (!global.__gscNativeDiffOverlayListeners) global.__gscNativeDiffOverlayListeners = new Map();
-        var previous = global.__gscNativeDiffOverlayListeners.get(w.id);
+        try {
+          await debuggerApi.sendCommand('Runtime.addBinding', { name: ${JSON.stringify(binding)} });
+        } catch (error) {
+          if (!/already|exists|duplicate/i.test(String(error && (error.message || error)))) throw error;
+        }
         if (previous) {
           try { debuggerApi.removeListener('message', previous); } catch (_) {}
         }
@@ -92,7 +106,27 @@ export function mainEvalExpression(
         };
         debuggerApi.on('message', bridge);
         global.__gscNativeDiffOverlayListeners.set(w.id, bridge);
+        global.__gscNativeDiffOverlayReadyWindows.add(w.id);
         return debuggerApi;
+      }
+      function releaseWindow(w) {
+        try {
+          var debuggerApi = w.webContents.debugger;
+          var listeners = global.__gscNativeDiffOverlayListeners;
+          var bridge = listeners && listeners.get(w.id);
+          if (bridge) debuggerApi.removeListener('message', bridge);
+          if (listeners) listeners.delete(w.id);
+          var ready = global.__gscNativeDiffOverlayReadyWindows;
+          if (ready) ready.delete(w.id);
+          var owned = global.__gscNativeDiffOverlayOwnedDebuggers;
+          if (owned && owned.has(w.id)) {
+            owned.delete(w.id);
+            if (debuggerApi.isAttached()) debuggerApi.detach();
+          }
+          return 'released:' + w.id;
+        } catch (error) {
+          return 'release-err:' + w.id + ':' + String(error && (error.message || error)).slice(0, 300);
+        }
       }
       async function evalWindow(w, expression) {
         try {
@@ -116,6 +150,21 @@ export function mainEvalExpression(
       ${body}
     })()
   `;
+}
+
+/** renderer cleanup이 끝난 창의 debugger bridge/listener를 main process에서 해제한다. */
+export function overlayBridgeReleaseExpression(
+  hints: NativeOverlayWorkspaceHints
+): string {
+  return mainEvalExpression(
+    "gscNativeDiffOverlayEvent",
+    hints,
+    `
+      var out = [];
+      for (var i = 0; i < wins.length; i++) out.push(releaseWindow(wins[i]));
+      return out.join('|');
+    `
+  );
 }
 
 /**

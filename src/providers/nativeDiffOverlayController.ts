@@ -5,8 +5,14 @@ import WebSocket = require("ws");
 import { HunkCheckboxController } from "./hunkCheckboxController";
 import { cleanupExpression, injectionExpression, rendererPatchScript } from "./nativeDiffOverlayPatch";
 import { shouldRepaintSameSnapshot, snapshotSignature, workspaceHints } from "./nativeDiffOverlaySupport";
-import { NativeDiffInitialPaintRetry } from "./nativeDiffOverlayRetry";
+import {
+  NativeDiffInitialPaintRetry,
+  NativeOverlayConnectionRetry,
+  NativeOverlayRenderDrain,
+  waitAtMost,
+} from "./nativeDiffOverlayRetry";
 import { NativeDiffOverlayEvents } from "./nativeDiffOverlayEvents";
+import { NativeDiffOverlaySurfaceState } from "./nativeDiffOverlaySurfaceState";
 import type { ConflictEditorOverlayController } from "./conflictEditorOverlayController";
 import type { ConflictOverlayActionHandler } from "./conflictOverlayProtocol";
 import {
@@ -22,6 +28,10 @@ import {
   findCurrentVSCodeMainPid,
   findInspectorWebSocketUrlForPid,
 } from "./nativeDiffOverlayInspector";
+import {
+  overlayBridgeReleaseExpression,
+  type NativeOverlayWorkspaceHints,
+} from "./nativeDiffOverlayMain";
 
 const MAIN_BINDING = "gscNativeDiffOverlayEvent";
 
@@ -38,19 +48,37 @@ export class NativeDiffOverlayController {
   private requestId = 1;
   private readonly pending = new Map<number, PendingRequest>();
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
-  private renderQueue: Promise<void> = Promise.resolve();
+  private readonly renderDrain = new NativeOverlayRenderDrain();
+  private readonly connectionRetry = new NativeOverlayConnectionRetry();
+  private readonly lifetimeAbort = new AbortController();
   private disposed = false;
+  private shutdownPromise: Promise<void> | undefined;
+  private targetWindowId: number | undefined;
+  // 이 activation이 실제 renderer를 열기 전에는 startup cleanup만을 위해 CDP를 켜지 않는다.
+  private rendererSurfaceStateKnown = false;
+  private diffSurfaceMayExist = false;
+  private conflictSurfaceMayExist = false;
+  private readonly persistedSurfaces: NativeDiffOverlaySurfaceState;
+  private connectionRetryAfter = 0;
+  private surfaceRetryCount = 0;
   private lastRenderSignature = "";
   private readonly initialPaintRetry = new NativeDiffInitialPaintRetry();
   private readonly rendererEvents: NativeDiffOverlayEvents;
 
   constructor(
     private readonly globalStorageUri: vscode.Uri,
+    surfaceState: vscode.Memento,
     private readonly hunkCheckboxes: HunkCheckboxController,
     private readonly conflictOverlay?: ConflictEditorOverlayController,
     conflictActions?: ConflictOverlayActionHandler
   ) {
     this.rendererEvents = new NativeDiffOverlayEvents(hunkCheckboxes, conflictActions);
+    this.persistedSurfaces = new NativeDiffOverlaySurfaceState(surfaceState);
+    if (this.persistedSurfaces.needsRecovery()) {
+      this.rendererSurfaceStateKnown = true;
+      this.diffSurfaceMayExist = true;
+      this.conflictSurfaceMayExist = true;
+    }
   }
   /** overlay 갱신에 필요한 VS Code 이벤트를 등록한다. */
   register(): vscode.Disposable {
@@ -83,7 +111,11 @@ export class NativeDiffOverlayController {
           this.scheduleRender("documentChanged", 350);
         }
       }),
-      vscode.workspace.onDidSaveTextDocument(() => this.scheduleRender("save")),
+      vscode.workspace.onDidSaveTextDocument((document) => {
+        if (this.shouldRenderForDocumentChange(document.uri)) {
+          this.scheduleRender("save");
+        }
+      }),
       onDidEndDiffOpen(() => this.scheduleRender("diffOpenFinished", 0)),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration("gitSimpleCompare.hunkControlMode")) {
@@ -107,9 +139,14 @@ export class NativeDiffOverlayController {
     }
     this.renderTimer = setTimeout(() => {
       this.renderTimer = undefined;
-      this.renderQueue = this.renderQueue
-        .catch(() => undefined)
-        .then(() => this.render(reason));
+      this.renderDrain.enqueue(
+        reason,
+        (nextReason) => this.render(nextReason),
+        (error, failedReason) =>
+          logError("native editor overlay snapshot refresh failed", error, {
+            reason: failedReason,
+          })
+      );
     }, delay);
   }
 
@@ -148,14 +185,27 @@ export class NativeDiffOverlayController {
     }
     try {
       await this.ensureConnected();
+      if (this.disposed || !vscode.window.state.focused) return;
+      if (!this.rendererSurfaceStateKnown) {
+        // 이전 extension host가 남긴 DOM은 첫 실제 사용 때만 한 번 정리 대상으로 간주한다.
+        this.rendererSurfaceStateKnown = true;
+        this.diffSurfaceMayExist = true;
+        this.conflictSurfaceMayExist = true;
+      }
       let succeeded = true;
       if (snapshots.length) {
+        // shutdown cleanup가 주입 응답보다 먼저 시작돼도 surface 가능성을 놓치지 않는다.
+        this.diffSurfaceMayExist = true;
+        void this.persistedSurfaces.persist(true);
         try {
           if (!vscode.window.state.focused) return;
           const result = await this.evaluateMain(
-            injectionExpression(rendererPatchScript(), snapshots, workspaceHints()),
+            injectionExpression(rendererPatchScript(), snapshots, this.hints()),
             8000
           );
+          this.captureTargetWindow(result);
+          if (this.disposed) return;
+          this.diffSurfaceMayExist = true;
           this.hunkCheckboxes.setNativeOverlayAvailable(true);
           this.initialPaintRetry.schedule(
             signature,
@@ -177,19 +227,27 @@ export class NativeDiffOverlayController {
         }
       } else {
         this.hunkCheckboxes.setNativeOverlayAvailable(false);
-        await this.cleanupSurface(cleanupExpression(workspaceHints()), "diff", reason);
+        if (!await this.cleanupSurface(cleanupExpression(this.hints()), "diff", reason)) {
+          succeeded = false;
+        }
       }
+      if (this.disposed) return;
       if (conflictSnapshot) {
+        this.conflictSurfaceMayExist = true;
+        void this.persistedSurfaces.persist(true);
         try {
           if (!vscode.window.state.focused) return;
           const result = await this.evaluateMain(
             conflictOverlayInjectionExpression(
               nativeConflictOverlayRendererScript(),
               conflictSnapshot,
-              workspaceHints()
+              this.hints()
             ),
             8000
           );
+          this.captureTargetWindow(result);
+          if (this.disposed) return;
+          this.conflictSurfaceMayExist = true;
           logInfo("native conflict overlay rendered", {
             reason,
             uri: conflictSnapshot.uri,
@@ -204,18 +262,33 @@ export class NativeDiffOverlayController {
           });
         }
       } else {
-        await this.cleanupSurface(
-          conflictOverlayCleanupExpression(workspaceHints()),
+        if (!await this.cleanupSurface(
+          conflictOverlayCleanupExpression(this.hints()),
           "conflict",
           reason
-        );
+        )) succeeded = false;
       }
       this.lastRenderSignature = succeeded ? signature : "";
+      if (succeeded) {
+        this.surfaceRetryCount = 0;
+      } else if (this.surfaceRetryCount < 3) {
+        this.surfaceRetryCount++;
+        this.scheduleRender(`surfaceRetry:${this.surfaceRetryCount}`, 350);
+      }
     } catch (error) {
       this.hunkCheckboxes.setNativeOverlayAvailable(false);
       this.lastRenderSignature = "";
       logError("native editor overlay connection failed", error, { reason });
+      if (/no-target-window/i.test(error instanceof Error ? error.message : String(error))) {
+        this.targetWindowId = undefined;
+      }
       this.closeSocket();
+      if (!this.disposed) {
+        this.connectionRetry.schedule(
+          this.connectionRetryAfter - Date.now(),
+          () => this.scheduleRender("connectionRetry", 0)
+        );
+      }
     }
   }
 
@@ -231,32 +304,67 @@ export class NativeDiffOverlayController {
   }
 
   /** renderer에 남아 있는 모든 editor overlay를 제거한다. */
-  private async cleanupRenderer(reason: string): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
+  private async cleanupRenderer(reason: string, connectIfNeeded = true): Promise<boolean> {
+    if (!this.diffSurfaceMayExist && !this.conflictSurfaceMayExist) return true;
+    if (this.ws?.readyState !== WebSocket.OPEN && !connectIfNeeded) {
+      return false;
     }
-    await this.cleanupSurface(cleanupExpression(workspaceHints()), "diff", reason);
-    await this.cleanupSurface(
-      conflictOverlayCleanupExpression(workspaceHints()),
+    try {
+      if (this.ws?.readyState !== WebSocket.OPEN) await this.ensureConnected();
+    } catch (error) {
+      logWarn("native overlay cleanup connection failed", {
+        reason,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+    const diff = await this.cleanupSurface(cleanupExpression(this.hints()), "diff", reason);
+    const conflict = await this.cleanupSurface(
+      conflictOverlayCleanupExpression(this.hints()),
       "conflict",
       reason
     );
+    let released = false;
+    try {
+      const result = await this.evaluateMain(overlayBridgeReleaseExpression(this.hints()), 2500);
+      released = !/release-err:/.test(String(result ?? ""));
+      logInfo("native overlay debugger bridge released", { reason, result: String(result ?? "") });
+    } catch (error) {
+      logWarn("native overlay debugger bridge release failed", {
+        reason,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    const surfacesCleaned = diff && conflict;
+    if (surfacesCleaned) {
+      this.diffSurfaceMayExist = false;
+      this.conflictSurfaceMayExist = false;
+      await this.persistedSurfaces.persist(false);
+    }
+    return surfacesCleaned && released;
   }
 
   /** 한 renderer surface의 cleanup 실패를 다른 overlay 정리와 분리해 관찰 가능하게 남긴다. */
-  private async cleanupSurface(
-    expression: string,
-    surface: "diff" | "conflict",
-    reason: string
-  ): Promise<void> {
+  private async cleanupSurface(expression: string, surface: "diff" | "conflict", reason: string): Promise<boolean> {
+    if (
+      (surface === "diff" && !this.diffSurfaceMayExist) ||
+      (surface === "conflict" && !this.conflictSurfaceMayExist)
+    ) {
+      return true;
+    }
     try {
-      await this.evaluateMain(expression, 2500);
+      const result = await this.evaluateMain(expression, 2500);
+      this.captureTargetWindow(result);
+      if (surface === "diff") this.diffSurfaceMayExist = false;
+      else this.conflictSurfaceMayExist = false;
       logInfo(`native ${surface} overlay cleaned`, { reason });
+      return true;
     } catch (error) {
       logWarn(`native ${surface} overlay cleanup failed`, {
         reason,
         error: error instanceof Error ? error.message : String(error),
       });
+      return false;
     }
   }
 
@@ -269,9 +377,18 @@ export class NativeDiffOverlayController {
       await this.connectPromise;
       return;
     }
+    if (Date.now() < this.connectionRetryAfter) {
+      throw new Error("Native overlay inspector reconnect is cooling down.");
+    }
     this.connectPromise = this.connect();
     try {
       await this.connectPromise;
+      this.connectionRetryAfter = 0;
+      this.connectionRetry.clear();
+    } catch (error) {
+      // inspector가 허용되지 않는 환경에서 키 입력마다 전체 port scan을 반복하지 않는다.
+      this.connectionRetryAfter = Date.now() + 15_000;
+      throw error;
     } finally {
       this.connectPromise = undefined;
     }
@@ -280,12 +397,14 @@ export class NativeDiffOverlayController {
   /** 실제 CDP socket 연결 절차. ensureConnected 가 동시 호출을 단일화한다. */
   private async connect(): Promise<void> {
     this.closeSocket();
-    const pid = findCurrentVSCodeMainPid(this.globalStorageUri.fsPath);
+    const pid = await findCurrentVSCodeMainPid(this.globalStorageUri.fsPath);
     if (!pid) {
       throw new Error("Could not identify the current VS Code main process.");
     }
+    if (this.disposed) throw new Error("Native overlay controller was disposed.");
     armInspector(pid);
-    const wsUrl = await findInspectorWebSocketUrlForPid(pid);
+    const wsUrl = await findInspectorWebSocketUrlForPid(pid, this.lifetimeAbort.signal);
+    if (this.disposed) throw new Error("Native overlay controller was disposed.");
     if (!wsUrl) {
       throw new Error(`Could not find inspector WebSocket for VS Code PID ${pid}.`);
     }
@@ -304,6 +423,10 @@ export class NativeDiffOverlayController {
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
+    if (this.disposed) {
+      try { ws.terminate(); } catch { /* 무시 */ }
+      throw new Error("Native overlay controller was disposed.");
+    }
     this.ws = ws;
     ws.on("message", (data) => this.onCdpMessage(data));
     ws.on("close", () => {
@@ -400,19 +523,51 @@ export class NativeDiffOverlayController {
     }
   }
 
-  /** 타이머/socket/pending 요청을 정리한다. */
-  private dispose(): void {
-    if (this.disposed) return;
+  /** 타이머를 멈추고 renderer DOM/debugger bridge 정리가 끝날 때까지 기다린다. */
+  async shutdown(): Promise<void> {
+    if (this.shutdownPromise) return this.shutdownPromise;
     this.disposed = true;
+    this.lifetimeAbort.abort();
     if (this.renderTimer) {
       clearTimeout(this.renderTimer);
       this.renderTimer = undefined;
     }
+    this.renderDrain.clear();
+    this.connectionRetry.clear();
     this.initialPaintRetry.clear();
-    this.renderQueue = this.renderQueue
+    // 진행 중 injection 뒤에 cleanup을 연결해 두 작업이 엇갈리지 않게 하되 reload 대기는 2초로 제한한다.
+    const cleanup = this.renderDrain.completion()
       .catch(() => undefined)
-      .then(() => this.cleanupRenderer("dispose"))
+      .then(() => this.cleanupRenderer("dispose", false))
+      .then(() => this.removeMainBinding());
+    this.shutdownPromise = waitAtMost(cleanup, 2000)
       .finally(() => this.closeSocket());
+    return this.shutdownPromise;
+  }
+
+  /** VS Code Disposable 계약에서는 비동기 shutdown을 시작하고 deactivate가 별도로 await한다. */
+  private dispose(): void {
+    void this.shutdown();
+  }
+
+  /** 첫 renderer 응답의 BrowserWindow id를 이후 render/cleanup 대상으로 고정한다. */
+  private captureTargetWindow(result: unknown): void {
+    const match = /(?:^|[,|])ok:(\d+):/.exec(String(result ?? ""));
+    if (match && this.targetWindowId === undefined) this.targetWindowId = Number(match[1]);
+  }
+
+  /** 현재 extension host가 처음 선택한 renderer 창 id를 workspace 힌트에 결합한다. */
+  private hints(): NativeOverlayWorkspaceHints {
+    return { ...workspaceHints(), windowId: this.targetWindowId };
+  }
+
+  /** main process에 남은 renderer-event binding을 지원되는 CDP에서 best-effort로 제거한다. */
+  private async removeMainBinding(): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    await this.cdpRequest("Runtime.removeBinding", { name: MAIN_BINDING }, 1500)
+      .catch((error) => logWarn("native overlay main binding removal failed", {
+        error: error instanceof Error ? error.message : String(error),
+      }));
   }
 
   /** CDP socket 을 닫고 대기 중인 요청을 실패시킨다. */

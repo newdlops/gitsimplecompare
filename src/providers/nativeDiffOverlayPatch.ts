@@ -6,7 +6,8 @@ import {
   rendererEvalExpression,
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
-const PATCH_VERSION = 46;
+import { nativeDiffOverlayLifecycleScript } from "./nativeDiffOverlayLifecycle";
+const PATCH_VERSION = 48;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
 /** renderer patch 설치와 snapshot render 를 main process 에서 수행할 CDP expression 으로 만든다. */
@@ -41,7 +42,7 @@ export function cleanupExpression(hints: NativeOverlayWorkspaceHints): string {
     hints,
     `
       var out = [];
-      var cleanupExpr = 'window.__gscNativeDiffOverlay&&window.__gscNativeDiffOverlay.render(null)';
+      var cleanupExpr = '(function(){if(window.__gscNativeDiffOverlay)return window.__gscNativeDiffOverlay.render(null);document.querySelectorAll(".gsc-native-diff-overlay-layer,.gsc-native-diff-checkbox-wrap").forEach(function(n){n.remove();});return "cleaned-fallback";})()';
       for (var i = 0; i < wins.length; i++) {
         var item = await evalWindow(wins[i], cleanupExpr);
         out.push(item);
@@ -57,137 +58,7 @@ export function rendererPatchScript(): string {
       var VERSION = ${PATCH_VERSION};
       var BINDING = ${JSON.stringify(RENDERER_BINDING)};
       var STYLE_ID = 'gsc-native-diff-overlay-style';
-      var state = window.__gscNativeDiffOverlayState || {
-        snapshot: null,
-        localChecked: Object.create(null),
-        frame: 0,
-        generation: 0,
-        scrollTargets: [],
-        observedTargets: [],
-        repaintTimers: [],
-        viewportTimer: 0,
-        resizeBound: false,
-        documentScrollBound: false
-      };
-      state.scrollTargets = state.scrollTargets || [];
-      state.observedTargets = state.observedTargets || [];
-      window.__gscNativeDiffOverlayState = state;
-      function ensureStyle() {
-        var style = document.getElementById(STYLE_ID);
-        if (style && style.getAttribute('data-gsc-version') === String(VERSION)) return;
-        if (!style) style = document.createElement('style');
-        style.id = STYLE_ID;
-        style.setAttribute('data-gsc-version', String(VERSION));
-        style.textContent = [
-          '.gsc-native-diff-overlay-layer{position:absolute;left:0;top:0;width:22px;height:100%;z-index:80;pointer-events:none;}',
-          '.gsc-native-diff-checkbox-wrap{width:16px;display:flex;align-items:center;justify-content:center;pointer-events:auto;}',
-          '.gsc-native-diff-checkbox-row{position:absolute;left:2px;z-index:200;}',
-          '.gsc-native-diff-checkbox{width:13px;height:13px;margin:0;padding:0;cursor:pointer;accent-color:var(--vscode-focusBorder);}',
-          '.gsc-native-diff-checkbox:focus{outline:1px solid var(--vscode-focusBorder);outline-offset:1px;}'
-        ].join('\\n');
-        if (!style.parentNode) document.head.appendChild(style);
-      }
-      function cleanup() {
-        Array.prototype.slice.call(document.querySelectorAll('.gsc-native-diff-overlay-layer')).forEach(function (el) {
-          try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
-        });
-        Array.prototype.slice.call(document.querySelectorAll('.gsc-native-diff-checkbox-wrap')).forEach(function (el) {
-          try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
-        });
-      }
-      function schedulePaint() {
-        if (state.frame) return;
-        state.frame = requestAnimationFrame(function () {
-          state.frame = 0;
-          paint();
-        });
-      }
-      function scheduleViewportPaint() {
-        if (state.viewportTimer) return;
-        state.viewportTimer = setTimeout(function () {
-          state.viewportTimer = 0;
-          schedulePaint();
-        }, 48);
-      }
-      function clearFollowUpPaints() {
-        (state.repaintTimers || []).forEach(function (timer) { try { clearTimeout(timer); } catch (_) {} });
-        state.repaintTimers = [];
-      }
-      function scheduleFollowUpPaints() {
-        clearFollowUpPaints();
-        [120, 420, 1100, 2400].forEach(function (delay) {
-          state.repaintTimers.push(setTimeout(schedulePaint, delay));
-        });
-      }
-      function bindViewportEvents() {
-        state.scrollTargets = (state.scrollTargets || []).filter(function (target) {
-          return target && target.isConnected;
-        });
-        var scrollTargets = Array.prototype.slice.call(document.querySelectorAll('.monaco-scrollable-element')).filter(function (target) {
-          if (!target || !target.querySelector) return false;
-          return !!target.querySelector('.editor.original,.editor.modified,.monaco-diff-editor,.margin-view-overlays');
-        });
-        scrollTargets.forEach(function (target) {
-          if (state.scrollTargets.indexOf(target) >= 0) return;
-          state.scrollTargets.push(target);
-          target.addEventListener('scroll', scheduleViewportPaint, { passive: true });
-          target.addEventListener('wheel', scheduleViewportPaint, { passive: true });
-        });
-        if (!state.resizeBound) {
-          state.resizeBound = true;
-          window.addEventListener('resize', schedulePaint, { passive: true });
-        }
-        if (!state.documentScrollBound) {
-          state.documentScrollBound = true;
-          document.addEventListener('scroll', function (event) {
-            var target = event && event.target;
-            if (!target || !target.closest) {
-              scheduleViewportPaint();
-              return;
-            }
-            if (target.closest('.monaco-diff-editor,.editor.original,.editor.modified,.margin-view-overlays')) {
-              scheduleViewportPaint();
-            }
-          }, true);
-        }
-      }
-      function isOverlayNode(node) {
-        return !!(
-          node &&
-          node.nodeType === 1 &&
-          (
-            (node.classList && node.classList.contains('gsc-native-diff-overlay-layer')) ||
-            (node.classList && node.classList.contains('gsc-native-diff-checkbox-wrap')) ||
-            (node.closest && node.closest('.gsc-native-diff-overlay-layer,.gsc-native-diff-checkbox-wrap'))
-          )
-        );
-      }
-      function mutationIsOverlayOnly(mutation) {
-        if (isOverlayNode(mutation.target)) return true;
-        if (mutation.type !== 'childList') return false;
-        var nodes = Array.prototype.slice.call(mutation.addedNodes || []).concat(Array.prototype.slice.call(mutation.removedNodes || []));
-        return !!nodes.length && nodes.every(isOverlayNode);
-      }
-	      function observeEditorDom(editorDom) {
-	        if (!editorDom || typeof MutationObserver === 'undefined') return;
-	        state.observedTargets = (state.observedTargets || []).filter(function (target) { return target && target.isConnected; });
-	        var targets = [editorDom.querySelector('.margin-view-overlays'), editorDom.querySelector('.view-lines')].filter(Boolean);
-        targets.forEach(function (target) {
-          if (state.observedTargets.indexOf(target) >= 0) return;
-          state.observedTargets.push(target);
-          var observer = new MutationObserver(function (mutations) {
-            for (var i = 0; i < mutations.length; i++) {
-              if (!mutationIsOverlayOnly(mutations[i])) {
-                scheduleViewportPaint();
-                return;
-              }
-            }
-          });
-          try {
-            observer.observe(target, { childList: true, subtree: false, attributes: true, attributeFilter: ['style', 'class', 'data-line-number'] });
-          } catch (_) {}
-        });
-	      }
+      ${nativeDiffOverlayLifecycleScript()}
       function findEditorDom(side) {
         var selector = side === 'original' ? '.editor.original' : '.editor.modified';
         return Array.prototype.slice.call(document.querySelectorAll(selector)).filter(isVisibleNode)[0] || null;
@@ -254,13 +125,6 @@ export function rendererPatchScript(): string {
         });
         return map;
       }
-      function ensureRelative(host) {
-        try {
-          if (window.getComputedStyle(host).position === 'static') {
-            host.style.position = 'relative';
-          }
-        } catch (_) {}
-      }
       function createCheckboxWrap(snapshot, line, marker) {
         var wrap = document.createElement('span');
         wrap.className = 'gsc-native-diff-checkbox-wrap';
@@ -272,6 +136,7 @@ export function rendererPatchScript(): string {
         var action = snapshot.action === 'unstage' ? 'Unstage' : 'Stage';
         input.setAttribute('aria-label', action + (line.side === 'original' ? ' this deleted line' : ' this added line'));
         input.title = input.getAttribute('aria-label');
+        input.setAttribute('data-tooltip', input.getAttribute('aria-label'));
         input.setAttribute('data-line-ids', lineIds.join('\\u0000'));
         input.setAttribute('data-visible-side', line.side || '');
         input.setAttribute('data-visible-line', String(line.line || ''));
@@ -492,14 +357,14 @@ export function rendererPatchScript(): string {
         var started = (window.performance && performance.now) ? performance.now() : Date.now();
         var snapshots = normalizeSnapshots(state.snapshot);
         if (!snapshots.length) {
-          cleanup();
+          cleanupDom();
           state.lastPaint = 'paint:none';
           state.lastPaintGeneration = state.generation || 0;
           return state.lastPaint;
         }
         ensureStyle();
         bindViewportEvents();
-        cleanup();
+        cleanupDom();
         var placed = 0;
         var details = [];
         snapshots.forEach(function (snapshot, snapshotIndex) {
@@ -519,7 +384,7 @@ export function rendererPatchScript(): string {
           });
         });
         if (!details.length) {
-          cleanup();
+          cleanupDom();
           state.lastPaint = 'paint:no-editor';
           state.lastPaintGeneration = state.generation || 0;
           return state.lastPaint;
@@ -543,7 +408,7 @@ export function rendererPatchScript(): string {
           var generation = state.generation;
           state.snapshot = snapshot || null;
           if (!snapshot) {
-            cleanup();
+            teardown();
             return 'cleaned';
           }
           ensureStyle();

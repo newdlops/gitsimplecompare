@@ -62,6 +62,8 @@ export interface GitSimpleCompareApi {
   getComparison(): ComparisonSnapshot | undefined;
 }
 
+let activeNativeDiffOverlay: NativeDiffOverlayController | undefined;
+
 /**
  * 확장이 활성화될 때 호출된다.
  * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/명령/추적기를 등록한 뒤
@@ -184,11 +186,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   );
   context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
-    context.globalStorageUri,
-    hunkCheckboxes,
-    conflictOverlay,
-    conflictActions
+    context.globalStorageUri, context.workspaceState,
+    hunkCheckboxes, conflictOverlay, conflictActions
   );
+  activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
     if (
@@ -497,10 +498,12 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
 
 /**
  * 확장이 비활성화될 때 호출된다.
- * - 모든 리소스는 context.subscriptions 로 정리되므로 별도 처리는 없다.
+ * - renderer에 주입된 native DOM과 debugger bridge는 비동기 정리가 끝날 때까지 기다린다.
  */
-export function deactivate(): void {
-  // 정리할 추가 리소스 없음.
+export async function deactivate(): Promise<void> {
+  const overlay = activeNativeDiffOverlay;
+  activeNativeDiffOverlay = undefined;
+  await overlay?.shutdown();
 }
 
 /**

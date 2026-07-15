@@ -1,6 +1,6 @@
 // VS Code main process inspector를 찾고 CDP target URL을 준비하는 transport 보조 모듈.
 // - renderer overlay의 UI 상태와 분리해 프로세스 탐색/HTTP probe/SIGUSR1 절차만 담당한다.
-import { execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import * as http from "node:http";
 import * as path from "node:path";
 import WebSocket = require("ws");
@@ -13,10 +13,10 @@ interface ProcessRow {
 }
 
 /** 현재 extension host가 속한 VS Code main process pid를 찾는다. */
-export function findCurrentVSCodeMainPid(
+export async function findCurrentVSCodeMainPid(
   globalStorageFsPath: string
-): number | undefined {
-  const rows = listProcessRows();
+): Promise<number | undefined> {
+  const rows = await listProcessRows();
   const byPid = new Map(rows.map((row) => [row.pid, row]));
   const mainRows = rows.filter((row) => isVSCodeMainProcess(row.command));
   const userDataDir = deriveUserDataDirHint(globalStorageFsPath);
@@ -56,24 +56,42 @@ export function armInspector(pid: number): void {
 
 /** main process pid와 일치하는 inspector WebSocket URL을 찾는다. */
 export async function findInspectorWebSocketUrlForPid(
-  pid: number
+  pid: number,
+  signal?: AbortSignal
 ): Promise<string | undefined> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    await sleep(attempt === 0 ? 500 : 350 * attempt);
-    for (let port = 9229; port <= 9249; port++) {
-      const url = await inspectorUrlForPort(port, pid);
-      if (url) return url;
+    if (!await sleep(attempt === 0 ? 500 : 350 * attempt, signal)) return undefined;
+    const targetGroups = await Promise.all(
+      Array.from({ length: 21 }, (_, index) => 9229 + index)
+        .map((port) => inspectorUrlsForPort(port, signal))
+    );
+    if (signal?.aborted) return undefined;
+    // HTTP port 탐색만 병렬화하고 실제 debugger target 연결은 순차 처리해 다른 Node inspector와의 경합을 줄인다.
+    const urls = [...new Set(targetGroups.flat())];
+    for (const url of urls) {
+      if (signal?.aborted) return undefined;
+      try {
+        if (await probeProcessPid(url, signal) === pid) return url;
+      } catch {
+        /* 다음 target 검사 */
+      }
     }
+    if (signal?.aborted) return undefined;
     armInspector(pid);
   }
   return undefined;
 }
 
 /** `ps`로 프로세스 테이블을 읽는다. */
-function listProcessRows(): ProcessRow[] {
+async function listProcessRows(): Promise<ProcessRow[]> {
   try {
-    const out = execFileSync("ps", ["-Ao", "pid=,ppid=,command="], {
-      encoding: "utf8",
+    const out = await new Promise<string>((resolve, reject) => {
+      execFile("ps", ["-Ao", "pid=,ppid=,command="], {
+        encoding: "utf8",
+      }, (error, stdout) => {
+        if (error) reject(error);
+        else resolve(stdout);
+      });
     });
     return out.split(/\r?\n/).flatMap((line) => {
       const match = /^\s*(\d+)\s+(\d+)\s+(.+)$/.exec(line);
@@ -112,74 +130,151 @@ function commandHasUserDataDir(command: string, userDataDir: string): boolean {
   );
 }
 
-/** 한 포트의 inspector target 목록에서 원하는 pid를 찾는다. */
-async function inspectorUrlForPort(
+/** 한 포트의 inspector target 목록에서 WebSocket URL만 안전하게 추출한다. */
+async function inspectorUrlsForPort(
   port: number,
-  pid: number
-): Promise<string | undefined> {
+  signal?: AbortSignal
+): Promise<string[]> {
   let targets: any[];
   try {
-    targets = JSON.parse(await httpGet(`http://127.0.0.1:${port}/json/list`));
+    targets = JSON.parse(await httpGet(
+      `http://127.0.0.1:${port}/json/list`,
+      signal
+    ));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(targets)) return [];
+  return targets
+    .map((target) => safeInspectorWebSocketUrl(
+      String(target?.webSocketDebuggerUrl || ""),
+      port
+    ))
+    .filter((url): url is string => !!url);
+}
+
+/** localhost의 예상 포트로 돌아오는 inspector WebSocket URL만 허용한다. */
+function safeInspectorWebSocketUrl(value: string, expectedPort: number): string | undefined {
+  try {
+    const url = new URL(value);
+    const localHost =
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "localhost" ||
+      url.hostname === "[::1]";
+    return url.protocol === "ws:" && localHost && url.port === String(expectedPort)
+      ? value
+      : undefined;
   } catch {
     return undefined;
   }
-  for (const target of targets) {
-    const wsUrl = String(target?.webSocketDebuggerUrl || "");
-    if (!wsUrl) continue;
-    try {
-      if (await probeProcessPid(wsUrl) === pid) return wsUrl;
-    } catch {
-      /* 다음 target 검사 */
-    }
-  }
-  return undefined;
 }
 
-/** HTTP GET을 timeout과 함께 실행한다. */
-function httpGet(url: string): Promise<string> {
+/** HTTP GET을 absolute timeout, abort, 응답 크기 제한과 함께 실행한다. */
+function httpGet(url: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    const req = http.get(url, { timeout: 1000 }, (res) => {
+    if (signal?.aborted) {
+      reject(new Error("inspector HTTP probe cancelled"));
+      return;
+    }
+    let settled = false;
+    let req: http.ClientRequest | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (error?: Error, body?: string): void => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      if (error) {
+        try { req?.destroy(); } catch { /* 무시 */ }
+        reject(error);
+      } else {
+        resolve(body ?? "");
+      }
+    };
+    const onAbort = (): void =>
+      finish(new Error("inspector HTTP probe cancelled"));
+    timer = setTimeout(
+      () => finish(new Error("inspector HTTP probe timed out")),
+      500
+    );
+    signal?.addEventListener("abort", onAbort, { once: true });
+    req = http.get(url, (res) => {
       let body = "";
-      res.on("data", (chunk) => { body += String(chunk); });
-      res.on("end", () => resolve(body));
+      res.on("data", (chunk) => {
+        body += String(chunk);
+        if (Buffer.byteLength(body, "utf8") > 256 * 1024) {
+          finish(new Error("inspector HTTP response was too large"));
+        }
+      });
+      res.on("end", () => finish(undefined, body));
     });
-    req.on("error", reject);
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("timeout"));
-    });
+    req.on("error", (error) =>
+      finish(error instanceof Error ? error : new Error(String(error)))
+    );
   });
 }
 
-/** inspector target의 process.pid 값을 읽는다. */
-function probeProcessPid(wsUrl: string): Promise<number> {
+/** inspector target의 process.pid 값을 읽고 shutdown signal이 오면 즉시 연결을 끝낸다. */
+function probeProcessPid(wsUrl: string, signal?: AbortSignal): Promise<number> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
     const id = 1;
+    let settled = false;
+    const finish = (error?: Error, pid?: number): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      try { ws.close(); } catch { /* 무시 */ }
+      if (error) reject(error);
+      else resolve(pid ?? 0);
+    };
+    const onAbort = (): void => finish(new Error("pid probe cancelled"));
     const timer = setTimeout(() => {
-      ws.close();
-      reject(new Error("pid probe timed out"));
-    }, 900);
+      finish(new Error("pid probe timed out"));
+    }, 600);
+    if (signal?.aborted) {
+      finish(new Error("pid probe cancelled"));
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
     ws.once("open", () => ws.send(JSON.stringify({
       id,
       method: "Runtime.evaluate",
       params: { expression: "process.pid", returnByValue: true },
     })));
     ws.on("message", (data) => {
-      const message = JSON.parse(String(data));
+      let message: any;
+      try {
+        message = JSON.parse(String(data));
+      } catch {
+        finish(new Error("inspector pid probe returned invalid JSON"));
+        return;
+      }
       if (message.id !== id) return;
-      clearTimeout(timer);
-      ws.close();
-      resolve(Number(message.result?.result?.value));
+      finish(undefined, Number(message.result?.result?.value));
     });
     ws.once("error", (error) => {
-      clearTimeout(timer);
-      reject(error instanceof Error ? error : new Error(String(error)));
+      finish(error instanceof Error ? error : new Error(String(error)));
     });
   });
 }
 
-/** Promise 기반 짧은 대기다. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** inspector 재시도 대기를 shutdown signal로 중단할 수 있게 만든다. */
+function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, ms);
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
