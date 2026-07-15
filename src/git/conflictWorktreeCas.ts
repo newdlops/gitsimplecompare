@@ -41,7 +41,7 @@ export async function readConflictWorkingLeaf(
     const target = await fs.promises.readlink(absolute, { encoding: "buffer" });
     return {
       kind: "symlink",
-      version: hashWorkingResult("symlink", stat.mode, target),
+      version: hashWorkingResult("symlink", stat.mode, target, stat),
       mode: stat.mode,
       buffer: target,
       identity: stat,
@@ -65,7 +65,7 @@ export async function readConflictWorkingLeaf(
     const buffer = await handle.readFile();
     return {
       kind: "regular",
-      version: hashWorkingResult("file", opened.mode, buffer),
+      version: hashWorkingResult("file", opened.mode, buffer, opened),
       mode: opened.mode,
       buffer,
       identity: opened,
@@ -85,12 +85,18 @@ export async function claimConflictWorkingLeaf(
   absolute: string,
   expectedVersion?: string
 ): Promise<ConflictWorktreeClaim> {
+  const parentFence = await captureParentDirectory(path.dirname(absolute));
   const transactionDir = await fs.promises.mkdtemp(
     path.join(path.dirname(absolute), ".gsc-conflict-")
   );
+  await assertParentDirectory(parentFence).catch(async (error) => {
+    await fs.promises.rmdir(transactionDir).catch(() => undefined);
+    throw error;
+  });
   const originalPath = path.join(transactionDir, "original");
   let moved = false;
   try {
+    await assertParentDirectory(parentFence);
     await fs.promises.rename(absolute, originalPath);
     moved = true;
   } catch (error) {
@@ -98,6 +104,11 @@ export async function claimConflictWorkingLeaf(
       await fs.promises.rmdir(transactionDir).catch(() => undefined);
       throw error;
     }
+  }
+  if (moved) {
+    await assertParentDirectory(parentFence).catch(() => {
+      throw recoveryError(transactionDir);
+    });
   }
   let snapshot: ConflictWorkingLeafSnapshot;
   try {
@@ -111,6 +122,7 @@ export async function claimConflictWorkingLeaf(
     throw error;
   }
   if (snapshot.kind === "nonfile" || (expectedVersion !== undefined && snapshot.version !== expectedVersion)) {
+    await assertParentDirectory(parentFence);
     const restored = await restoreOriginal(absolute, originalPath, snapshot);
     if (restored) await fs.promises.rmdir(transactionDir).catch(() => undefined);
     if (!restored) throw recoveryError(transactionDir);
@@ -119,7 +131,7 @@ export async function claimConflictWorkingLeaf(
     }
     throw staleResultError();
   }
-  return createClaim(absolute, transactionDir, originalPath, snapshot);
+  return createClaim(absolute, transactionDir, originalPath, snapshot, parentFence);
 }
 
 /** 검증된 quarantine과 새 desired leaf의 생애주기를 묶은 claim 구현을 만든다. */
@@ -127,7 +139,8 @@ function createClaim(
   absolute: string,
   transactionDir: string,
   originalPath: string,
-  snapshot: ConflictWorkingLeafSnapshot
+  snapshot: ConflictWorkingLeafSnapshot,
+  parentFence: ParentDirectoryFence
 ): ConflictWorktreeClaim {
   const desiredPath = path.join(transactionDir, "desired");
   let desiredIdentity: fs.Stats | undefined;
@@ -136,6 +149,7 @@ function createClaim(
   return {
     snapshot,
     async install(desired): Promise<void> {
+      await assertParentDirectory(parentFence);
       if (desired.kind === "absent") return;
       if (desired.kind === "regular") {
         const createMode = desiredWorktreeMode(snapshot, desired.mode);
@@ -145,18 +159,32 @@ function createClaim(
           if (snapshot.kind === "regular") await handle.chmod(createMode);
           await handle.sync();
           desiredIdentity = await handle.stat();
-          installedVersion = hashWorkingResult("file", desiredIdentity.mode, desired.buffer);
+          installedVersion = hashWorkingResult(
+            "file",
+            desiredIdentity.mode,
+            desired.buffer,
+            desiredIdentity
+          );
         } finally {
           await handle.close();
         }
+        await assertParentDirectory(parentFence);
         await fs.promises.link(desiredPath, absolute);
+        await assertParentDirectory(parentFence);
         installedIdentity = desiredIdentity;
       } else {
         await fs.promises.symlink(desired.target, desiredPath);
         desiredIdentity = await fs.promises.lstat(desiredPath);
+        await assertParentDirectory(parentFence);
         await fs.promises.symlink(desired.target, absolute);
+        await assertParentDirectory(parentFence);
         installedIdentity = await fs.promises.lstat(absolute);
-        installedVersion = hashWorkingResult("symlink", installedIdentity.mode, desired.target);
+        installedVersion = hashWorkingResult(
+          "symlink",
+          installedIdentity.mode,
+          desired.target,
+          installedIdentity
+        );
       }
     },
     async commit(): Promise<string | undefined> {
@@ -170,6 +198,9 @@ function createClaim(
       return originalRemoved && directoryRemoved ? undefined : transactionDir;
     },
     async rollback(): Promise<void> {
+      await assertParentDirectory(parentFence).catch(() => {
+        throw recoveryError(transactionDir);
+      });
       const current = await lstatIfPresent(absolute).catch(() => {
         throw recoveryError(transactionDir);
       });
@@ -184,6 +215,41 @@ function createClaim(
       await cleanupKnown(transactionDir, desiredPath, desiredIdentity);
     },
   };
+}
+
+/** claim이 시작된 실제 parent directory의 inode와 canonical 경로를 고정한 fence다. */
+interface ParentDirectoryFence {
+  lexicalPath: string;
+  realPath: string;
+  dev: number;
+  ino: number;
+}
+
+/** leaf 격리 전에 parent directory의 canonical path와 inode identity를 캡처한다. */
+async function captureParentDirectory(parent: string): Promise<ParentDirectoryFence> {
+  const [realPath, stat] = await Promise.all([
+    fs.promises.realpath(parent),
+    fs.promises.stat(parent),
+  ]);
+  if (!stat.isDirectory()) throw new Error("Conflict path parent is not a directory.");
+  return { lexicalPath: parent, realPath, dev: stat.dev, ino: stat.ino };
+}
+
+/** await 경계마다 parent가 같은 canonical directory인지 다시 확인해 symlink 교체를 거부한다. */
+async function assertParentDirectory(fence: ParentDirectoryFence): Promise<void> {
+  let realPath: string;
+  let stat: fs.Stats;
+  try {
+    [realPath, stat] = await Promise.all([
+      fs.promises.realpath(fence.lexicalPath),
+      fs.promises.stat(fence.lexicalPath),
+    ]);
+  } catch {
+    throw new Error("Conflict path parent changed during resolution.");
+  }
+  if (!stat.isDirectory() || realPath !== fence.realPath || stat.dev !== fence.dev || stat.ino !== fence.ino) {
+    throw new Error("Conflict path parent changed during resolution.");
+  }
 }
 
 /** 원본 일반 파일 권한을 보존하면서 Git owner-executable bit만 선택 stage mode에 맞춘다. */

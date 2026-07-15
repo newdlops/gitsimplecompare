@@ -1,9 +1,10 @@
 // 충돌 파일의 index stage와 작업트리 내용을 원본 보존 방식으로 읽고 적용한다.
 // - commit/operation 의미는 다루지 않고, mode/OID/바이트/경로 안전성과 해결 mutation만 책임진다.
 // - 모든 경로 인자는 literal pathspec으로 취급해 특수 파일명이 다른 파일까지 확장되지 않게 한다.
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { unmergedSourceVersion } from "./conflictContentIdentity";
+import { readConflictOperationEpoch } from "./conflictOperationEpoch";
+import { assertConflictRelativePath, resolveSafeConflictWorkingPath } from "./conflictPathSafety";
 import { resolveConflictRegularFileMode } from "./conflictFileMode";
 import { withConflictIndexTransaction } from "./conflictIndexTransaction";
 import {
@@ -13,6 +14,8 @@ import {
   type ConflictWorktreeClaim,
 } from "./conflictWorktreeCas";
 import { runGit, runGitBuffer, runGitWithInput } from "./gitExec";
+import { acceptAllConflictBlocks } from "../utils/conflictMarkerModel";
+import { decodeUtf8 } from "../utils/textEncoding";
 
 /** 충돌 stage나 작업 파일 내용을 UI가 안전하게 다룰 수 있도록 분류한 종류다. */
 export type ConflictContentKind =
@@ -74,13 +77,6 @@ interface UnmergedStageEntry extends IndexEntry {
   stage: 1 | 2 | 3;
 }
 
-/** marker 기반 Accept Both 파싱 결과다. */
-interface BothParseResult {
-  valid: boolean;
-  changed: boolean;
-  content: string;
-}
-
 const MAX_CONFLICT_TEXT_BYTES = 512 * 1024;
 const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 
@@ -100,9 +96,10 @@ export class ConflictContentService {
     fullResult = false
   ): Promise<ConflictContentDocument> {
     this.assertRelativePath(rel);
-    const [entries, forcedBinary] = await Promise.all([
+    const [entries, forcedBinary, operationEpoch] = await Promise.all([
       this.readUnmergedStages(rel),
       this.isDiffDisabled(rel),
+      readConflictOperationEpoch(this.repoRoot),
     ]);
     this.assertStillConflicted(entries);
     const [base, current, incoming, result] = await Promise.all([
@@ -123,7 +120,7 @@ export class ConflictContentService {
       incoming,
       result: result.content,
       resultState: result.state,
-      sourceVersion: unmergedSourceVersion(entries),
+      sourceVersion: unmergedSourceVersion(entries, operationEpoch),
       resultVersion: result.version,
       both: both.content,
       bothAvailable: both.available,
@@ -215,8 +212,9 @@ export class ConflictContentService {
       this.isDiffDisabled(rel),
     ]);
     this.assertStillConflicted(entries);
-    this.assertSourceVersion(entries, expectedSourceVersion);
-    const sourceVersion = expectedSourceVersion ?? unmergedSourceVersion(entries);
+    const actualSourceVersion = await this.sourceVersion(entries);
+    this.assertSourceVersion(actualSourceVersion, expectedSourceVersion);
+    const sourceVersion = expectedSourceVersion ?? actualSourceVersion;
     const [current, incoming, result] = await Promise.all([
       this.readStage(2, entries, forcedBinary, false),
       this.readStage(3, entries, forcedBinary, false),
@@ -229,11 +227,11 @@ export class ConflictContentService {
       throw new Error("Accept Both requires a text working-tree Result.");
     }
     this.assertMatchingVersion(result.version, expectedVersion);
-    const parsed = acceptBothFromMarkers(result.content);
-    if (!parsed.valid || !parsed.changed) {
+    const combined = acceptAllConflictBlocks(result.content);
+    if (combined === undefined || combined === result.content) {
       throw new Error("Accept Both requires complete conflict marker blocks.");
     }
-    return this.writeResolvedContent(rel, parsed.content, true, result.version, sourceVersion);
+    return this.writeResolvedContent(rel, combined, true, result.version, sourceVersion);
   }
 
   /**
@@ -288,6 +286,9 @@ export class ConflictContentService {
     const buffer = Buffer.from(content, "utf8");
     let claim: ConflictWorktreeClaim | undefined;
     try {
+      if ((await this.readUnmergedStages(rel)).size > 0) {
+        throw new Error("This file is conflicted again. Reopen the conflict editor before saving.");
+      }
       claim = await claimConflictWorkingLeaf(absolute, expectedVersion);
       if (claim.snapshot.kind !== "regular" && claim.snapshot.kind !== "absent") {
         throw new Error("Manual Result editing is not available for symlink, directory, or other non-regular file conflicts.");
@@ -299,6 +300,9 @@ export class ConflictContentService {
         buffer,
         mode: executable ? "100755" : "100644",
       });
+      if ((await this.readUnmergedStages(rel)).size > 0) {
+        throw new Error("This file is conflicted again. Reopen the conflict editor before saving.");
+      }
     } catch (error) {
       await this.rollbackClaim(claim, error);
     }
@@ -455,19 +459,15 @@ export class ConflictContentService {
     ) {
       return { available: false, content: "" };
     }
-    const parsed = acceptBothFromMarkers(result.content);
-    return parsed.valid && parsed.changed
-      ? { available: true, content: parsed.content }
+    const combined = acceptAllConflictBlocks(result.content);
+    return combined !== undefined && combined !== result.content
+      ? { available: true, content: combined }
       : { available: false, content: "" };
   }
 
   /** 경로가 저장소 밖으로 탈출하거나 절대 경로가 되는 것을 거부한다. */
   private assertRelativePath(rel: string): void {
-    const root = path.resolve(this.repoRoot);
-    const absolute = path.resolve(root, rel);
-    if (!rel || path.isAbsolute(rel) || (absolute !== root && !absolute.startsWith(`${root}${path.sep}`))) {
-      throw new Error("Conflict path must stay inside the repository.");
-    }
+    assertConflictRelativePath(this.repoRoot, rel);
   }
 
   /** unmerged stage가 사라진 stale action을 삭제 side로 오인하지 않게 막는다. */
@@ -477,10 +477,10 @@ export class ConflictContentService {
 
   /** 표시 당시 stage 1/2/3와 현재 unmerged index가 다르면 오래된 side 선택을 거부한다. */
   private assertSourceVersion(
-    entries: Map<1 | 2 | 3, UnmergedStageEntry>,
+    actualVersion: string,
     expectedVersion: string | undefined
   ): void {
-    if (expectedVersion !== undefined && unmergedSourceVersion(entries) !== expectedVersion) {
+    if (expectedVersion !== undefined && actualVersion !== expectedVersion) {
       throw new Error("The conflict sources changed outside this editor. Reload it before resolving.");
     }
   }
@@ -497,14 +497,22 @@ export class ConflictContentService {
   ): Promise<T> {
     const initial = await this.readUnmergedStages(rel);
     this.assertStillConflicted(initial);
-    this.assertSourceVersion(initial, expectedSourceVersion);
-    const pinnedVersion = expectedSourceVersion ?? unmergedSourceVersion(initial);
+    const initialVersion = await this.sourceVersion(initial);
+    this.assertSourceVersion(initialVersion, expectedSourceVersion);
+    const pinnedVersion = expectedSourceVersion ?? initialVersion;
     return withConflictIndexTransaction(this.repoRoot, publishIndex, async ({ indexEnv }) => {
       const entries = await this.readUnmergedStages(rel, indexEnv);
       this.assertStillConflicted(entries);
-      this.assertSourceVersion(entries, pinnedVersion);
+      this.assertSourceVersion(await this.sourceVersion(entries), pinnedVersion);
       return action(entries, indexEnv);
     });
+  }
+
+  /** unmerged stage와 현재 Git operation epoch를 묶어 stale/ABA 방지 source version을 만든다. */
+  private async sourceVersion(
+    entries: Map<1 | 2 | 3, UnmergedStageEntry>
+  ): Promise<string> {
+    return unmergedSourceVersion(entries, await readConflictOperationEpoch(this.repoRoot));
   }
 
   /** 실제/예상 version이 다르면 호출자가 reload 또는 overwrite를 선택하도록 mutation을 중단한다. */
@@ -584,65 +592,6 @@ export class ConflictContentService {
 
   /** 저장소 루트 자체의 symlink는 허용하되 하위 부모 symlink를 통한 다른 경로 쓰기는 막는다. */
   private async safeWorkingPath(rel: string): Promise<string> {
-    const absolute = this.absPath(rel);
-    const lexicalRoot = path.resolve(this.repoRoot);
-    const lexicalParent = path.dirname(absolute);
-    const [root, parent] = await Promise.all([
-      fs.promises.realpath(this.repoRoot),
-      fs.promises.realpath(lexicalParent),
-    ]);
-    const expectedParent = path.resolve(
-      root,
-      path.relative(lexicalRoot, lexicalParent)
-    );
-    if (parent !== expectedParent) {
-      throw new Error("Conflict path parent contains a symbolic link.");
-    }
-    return absolute;
+    return resolveSafeConflictWorkingPath(this.repoRoot, rel);
   }
-}
-
-/** NUL과 잘못된 UTF-8을 binary로 분류하면서 유효 text만 원문으로 반환한다. */
-function decodeUtf8(buffer: Buffer): string | undefined {
-  if (buffer.includes(0)) return undefined;
-  try {
-    new TextDecoder("utf-8", { fatal: true }).decode(buffer);
-    return buffer.toString("utf8");
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * 정상 종료된 conflict marker 블록만 Current → Incoming 순서로 합친다.
- * @param raw 작업트리 전체 text
- * @returns 불완전/중첩 marker 여부와 변환 결과
- */
-function acceptBothFromMarkers(raw: string): BothParseResult {
-  const lines = raw.match(/[^\n]*\n|[^\n]+/g) ?? [];
-  const out: string[] = [];
-  let mode: "normal" | "current" | "base" | "incoming" = "normal";
-  let completed = 0;
-  for (const line of lines) {
-    if (mode === "normal") {
-      if (line.startsWith("<<<<<<<")) mode = "current";
-      else out.push(line);
-      continue;
-    }
-    if (line.startsWith("<<<<<<<")) return { valid: false, changed: false, content: raw };
-    if (mode === "current" && line.startsWith("|||||||")) {
-      mode = "base";
-    } else if ((mode === "current" || mode === "base") && line.startsWith("=======")) {
-      mode = "incoming";
-    } else if (mode === "incoming" && line.startsWith(">>>>>>>")) {
-      mode = "normal";
-      completed++;
-    } else if (line.startsWith("|||||||") || line.startsWith("=======") || line.startsWith(">>>>>>>")) {
-      return { valid: false, changed: false, content: raw };
-    } else if (mode !== "base") {
-      out.push(line);
-    }
-  }
-  const valid = mode === "normal" && completed > 0;
-  return { valid, changed: valid, content: valid ? out.join("") : raw };
 }

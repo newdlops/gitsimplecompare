@@ -15,6 +15,9 @@ const LOCALIZED_CONFLICT_ERRORS = new Set([
   "Another Git process is updating the index. Try the conflict action again.",
   "The Git index lock changed during conflict resolution. The index was not published.",
   "Conflict path parent contains a symbolic link.",
+  "Conflict path parent is not a directory.",
+  "Conflict path parent changed during resolution.",
+  "This file is conflicted again. Reopen the conflict editor before saving.",
 ]);
 const RECOVERY_ERROR_PREFIX =
   "The conflict file changed again. Recovery files were preserved at ";
