@@ -9,24 +9,14 @@ import {
 } from "../git/conflictService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logInfo } from "../ui/outputLog";
+import {
+  scanConflictMarkers,
+  type ConflictMarkerKind,
+  type ConflictMarkerScan,
+} from "../utils/conflictMarkerModel";
+import type { ConflictEditorOverlayController } from "./conflictEditorOverlayController";
 
 const REFRESH_DELAY_MS = 120;
-
-type ConflictSection = "outside" | "current" | "base" | "incoming";
-type MarkerKind = "current-start" | "base-start" | "incoming-start" | "block-end";
-
-interface MarkerLine {
-  line: number;
-  kind: MarkerKind;
-}
-
-interface ConflictLineGroups {
-  blocks: number;
-  current: number[];
-  base: number[];
-  incoming: number[];
-  markers: MarkerLine[];
-}
 
 interface ConflictDecorations {
   current: vscode.TextEditorDecorationType;
@@ -47,7 +37,10 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
   private requestSeq = 0;
   private disposed = false;
 
-  constructor(private readonly registry: GitServiceRegistry) {}
+  constructor(
+    private readonly registry: GitServiceRegistry,
+    private readonly conflictOverlay?: ConflictEditorOverlayController
+  ) {}
 
   /**
    * 활성/보이는 문서 변경 이벤트를 등록하고 현재 에디터에 decoration 을 적용한다.
@@ -134,11 +127,14 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       if (requestId !== this.requestSeq || this.disposed) {
         return;
       }
-      if (editor.document.uri.scheme !== "file") {
+      if (
+        editor.document.uri.scheme !== "file" &&
+        !this.conflictOverlay?.ownsUri(editor.document.uri)
+      ) {
         continue;
       }
-      const groups = collectConflictLines(editor.document);
-      if (groups.blocks === 0) {
+      const groups = scanConflictMarkers(editor.document.getText());
+      if (groups.blocks.length === 0) {
         continue;
       }
       await this.applyEditorDecorations(editor, groups, reason, requestId);
@@ -155,15 +151,18 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
    */
   private async applyEditorDecorations(
     editor: vscode.TextEditor,
-    groups: ConflictLineGroups,
+    groups: ConflictMarkerScan,
     reason: string,
     requestId: number
   ): Promise<void> {
-    const service = await this.registry.resolve(dirname(editor.document.uri.fsPath));
+    const conflictSession = this.conflictOverlay?.sessionForUri(editor.document.uri);
+    const service = conflictSession
+      ? undefined
+      : await this.registry.resolve(dirname(editor.document.uri.fsPath));
     if (requestId !== this.requestSeq || this.disposed) {
       return;
     }
-    if (!service) {
+    if (!service && !conflictSession) {
       logInfo("conflict marker decorators skipped", {
         reason,
         target: "no-repo",
@@ -172,10 +171,11 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       return;
     }
 
-    const rel = service.toRepoRelative(editor.document.uri.fsPath);
+    const repoRoot = conflictSession?.service.repoRoot ?? service!.repoRoot;
+    const rel = conflictSession?.rel ?? service!.toRepoRelative(editor.document.uri.fsPath);
     let sources: ConflictSources | undefined;
     try {
-      sources = await new ConflictService(service.repoRoot).getConflictSources();
+      sources = await new ConflictService(repoRoot).getConflictSources();
     } catch (error) {
       logInfo("conflict marker metadata unavailable", {
         reason,
@@ -207,7 +207,7 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     logInfo("conflict marker decorators applied", {
       reason,
       path: rel,
-      blocks: groups.blocks,
+      blocks: groups.blocks.length,
       currentLines: groups.current.length,
       baseLines: groups.base.length,
       incomingLines: groups.incoming.length,
@@ -231,54 +231,6 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     editor.setDecorations(this.decorations.incoming, []);
     editor.setDecorations(this.decorations.marker, []);
   }
-}
-
-/**
- * conflict marker 구조를 line number 그룹으로 파싱한다.
- * @param document marker 를 검사할 VS Code 텍스트 문서
- * @returns 역할별 line number 묶음
- */
-function collectConflictLines(document: vscode.TextDocument): ConflictLineGroups {
-  const groups: ConflictLineGroups = {
-    blocks: 0,
-    current: [],
-    base: [],
-    incoming: [],
-    markers: [],
-  };
-  let section: ConflictSection = "outside";
-  for (let line = 0; line < document.lineCount; line++) {
-    const text = document.lineAt(line).text;
-    if (text.startsWith("<<<<<<<")) {
-      groups.blocks++;
-      groups.markers.push({ line, kind: "current-start" });
-      section = "current";
-      continue;
-    }
-    if (section === "current" && text.startsWith("|||||||")) {
-      groups.markers.push({ line, kind: "base-start" });
-      section = "base";
-      continue;
-    }
-    if ((section === "current" || section === "base") && text.startsWith("=======")) {
-      groups.markers.push({ line, kind: "incoming-start" });
-      section = "incoming";
-      continue;
-    }
-    if (section === "incoming" && text.startsWith(">>>>>>>")) {
-      groups.markers.push({ line, kind: "block-end" });
-      section = "outside";
-      continue;
-    }
-    if (section === "current") {
-      groups.current.push(line);
-    } else if (section === "base") {
-      groups.base.push(line);
-    } else if (section === "incoming") {
-      groups.incoming.push(line);
-    }
-  }
-  return groups;
 }
 
 /** 역할별 decoration type 을 만든다. */
@@ -428,7 +380,7 @@ function lineOptions(
  */
 function markerOptions(
   document: vscode.TextDocument,
-  markers: MarkerLine[],
+  markers: ConflictMarkerScan["markers"],
   hovers: RoleHovers
 ): vscode.DecorationOptions[] {
   return markers.map((marker) => ({
@@ -443,7 +395,7 @@ function markerOptions(
  * @param hovers 역할별 hover 묶음
  */
 function markerHover(
-  kind: MarkerKind,
+  kind: ConflictMarkerKind,
   hovers: RoleHovers
 ): vscode.MarkdownString {
   if (kind === "current-start") {
