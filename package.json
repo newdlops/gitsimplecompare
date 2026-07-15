@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71041",
+  "version": "0.1.71042",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1066,6 +1066,27 @@
           "default": "",
           "description": "%config.aiClaudeCommitPlanModel.desc%"
         },
+        "gitSimpleCompare.aiClaudeCommitPlanEffort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "enumDescriptions": [
+            "%config.aiCommitPlanEffort.inherit%",
+            "%config.aiEffort.low%",
+            "%config.aiEffort.medium%",
+            "%config.aiEffort.high%",
+            "%config.aiEffort.xhigh%",
+            "%config.aiEffort.max%"
+          ],
+          "default": "",
+          "description": "%config.aiClaudeCommitPlanEffort.desc%"
+        },
         "gitSimpleCompare.aiClaudeEffort": {
           "type": "string",
           "enum": [
@@ -1123,6 +1144,27 @@
           "type": "string",
           "default": "",
           "description": "%config.aiCodexCommitPlanModel.desc%"
+        },
+        "gitSimpleCompare.aiCodexCommitPlanReasoningEffort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "enumDescriptions": [
+            "%config.aiCommitPlanEffort.inherit%",
+            "%config.aiEffort.low%",
+            "%config.aiEffort.medium%",
+            "%config.aiEffort.high%",
+            "%config.aiEffort.xhigh%",
+            "%config.aiEffort.max%"
+          ],
+          "default": "",
+          "description": "%config.aiCodexCommitPlanReasoningEffort.desc%"
         },
         "gitSimpleCompare.aiCodexReasoningEffort": {
           "type": "string",
