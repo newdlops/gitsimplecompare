@@ -54,8 +54,9 @@ function guidanceLines(phase: GraphRebaseProgress["phase"]): string[] {
   if (phase === "conflicts") {
     return [
       "Applied rows are already replayed in the new history.",
-      "Current is the commit Git is applying and where conflicts came from.",
-      "Pending rows have not been replayed yet.",
+      "Current / Ours is the new base plus commits already replayed.",
+      "Incoming / Theirs is stage 3 from the replayed commit or an active nested rebase operation.",
+      "Result resolves this step; pending rows may still change the file.",
     ];
   }
   if (phase === "paused") {

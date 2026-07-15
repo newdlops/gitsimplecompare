@@ -2,6 +2,7 @@
 // - 웹뷰 패널은 메시지 라우팅만 하고, 기준점 계산/실행/충돌 이동은 이 모듈이 담당한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
+import { runConflictMutation } from "../git/conflictMutationCoordinator";
 import {
   createRebaseEditTempFile,
   listRebaseEditTempPaths,
@@ -107,7 +108,6 @@ export async function runGraphRebase(
       message: `Cannot start rebase while ${operation} is in progress.`,
     };
   }
-
   const service = new RebaseService(repoRoot);
   const count = items.length;
   const yes = vscode.l10n.t("Start Rebase");
@@ -122,66 +122,71 @@ export async function runGraphRebase(
   if (choice !== yes) {
     return { status: "failed", message: "cancelled" };
   }
-
-  logInfo("graph rebase starting", {
-    repoRoot,
-    base,
-    root,
-    onto,
-    items: items.length,
-  });
-  const result = await service.start(
-    base,
-    root,
-    items,
-    editorScriptPath(deps.extensionUri),
-    onto
-  );
-  if (result.status === "completed") {
-    await deps.refreshGraph();
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason: "graphRebaseCompleted",
-    });
-    vscode.window.showInformationMessage(vscode.l10n.t("Rebase completed."));
-  } else if (result.status === "conflicts") {
-    await deps.refreshGraph();
-    await focusRebaseConflicts(deps.logService.repoRoot);
-  } else if (result.status === "paused" && result.paused) {
-    await deps.refreshGraph();
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason: "graphRebaseEditPaused",
-    });
-    await openPausedEditFile(deps.logService.repoRoot, result.paused, editPath);
-    vscode.window.showInformationMessage(
-      vscode.l10n.t(
-        "Rebase paused for edit. Change files, then Continue to amend this commit."
-      )
-    );
-  } else if (result.status === "stopped") {
-    await deps.refreshGraph();
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason: "graphRebaseStopped",
-    });
-    logInfo("graph rebase stopped at todo", {
-      repoRoot: deps.logService.repoRoot,
-      stopped: result.stopped?.hash,
-      original: result.stopped?.originalHash,
-      message: result.message,
-      ...(await rebaseProgressLogDetail(deps.logService.repoRoot)),
-    });
-  } else if (result.status === "noop") {
-    vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
-  } else if (result.message !== "cancelled") {
-    logInfo("graph rebase failed", {
+  return runConflictMutation(repoRoot, async () => {
+    const latestOperation = await conflicts.getOperation();
+    if (latestOperation !== "none") {
+      return { status: "failed", message: `Cannot start rebase while ${latestOperation} is in progress.` };
+    }
+    logInfo("graph rebase starting", {
       repoRoot,
-      status: result.status,
-      message: result.message,
+      base,
+      root,
+      onto,
+      items: items.length,
     });
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Rebase failed: {0}", result.message ?? "")
+    const result = await service.start(
+      base,
+      root,
+      items,
+      editorScriptPath(deps.extensionUri),
+      onto
     );
-  }
-  return result;
+    if (result.status === "completed") {
+      await deps.refreshGraph();
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason: "graphRebaseCompleted",
+      });
+      vscode.window.showInformationMessage(vscode.l10n.t("Rebase completed."));
+    } else if (result.status === "conflicts") {
+      await deps.refreshGraph();
+      await focusRebaseConflicts(deps.logService.repoRoot);
+    } else if (result.status === "paused" && result.paused) {
+      await deps.refreshGraph();
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason: "graphRebaseEditPaused",
+      });
+      await openPausedEditFile(deps.logService.repoRoot, result.paused, editPath);
+      vscode.window.showInformationMessage(
+        vscode.l10n.t(
+          "Rebase paused for edit. Change files, then Continue to amend this commit."
+        )
+      );
+    } else if (result.status === "stopped") {
+      await deps.refreshGraph();
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+        reason: "graphRebaseStopped",
+      });
+      logInfo("graph rebase stopped at todo", {
+        repoRoot: deps.logService.repoRoot,
+        stopped: result.stopped?.hash,
+        original: result.stopped?.originalHash,
+        message: result.message,
+        ...(await rebaseProgressLogDetail(deps.logService.repoRoot)),
+      });
+    } else if (result.status === "noop") {
+      vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
+    } else if (result.message !== "cancelled") {
+      logInfo("graph rebase failed", {
+        repoRoot,
+        status: result.status,
+        message: result.message,
+      });
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Rebase failed: {0}", result.message ?? "")
+      );
+    }
+    return result;
+  });
 }
 
 /**
@@ -213,6 +218,17 @@ export async function continueGraphRebase(
   deps: Pick<GraphRebaseDeps, "extensionUri" | "logService" | "refreshGraph">,
   items: RebaseItem[] = [],
   changedHashes: string[] = []
+): Promise<GraphRebaseControlResult> {
+  return runConflictMutation(deps.logService.repoRoot, () =>
+    continueGraphRebaseLocked(deps, items, changedHashes)
+  );
+}
+
+/** 공용 저장소 lease 안에서 graph rebase continue의 전체 준비/실행 단계를 수행한다. */
+async function continueGraphRebaseLocked(
+  deps: Pick<GraphRebaseDeps, "extensionUri" | "logService" | "refreshGraph">,
+  items: RebaseItem[],
+  changedHashes: string[]
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
@@ -353,6 +369,16 @@ export async function skipGraphRebase(
   deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
   items: RebaseItem[] = []
 ): Promise<GraphRebaseControlResult> {
+  return runConflictMutation(deps.logService.repoRoot, () =>
+    skipGraphRebaseLocked(deps, items)
+  );
+}
+
+/** 공용 저장소 lease 안에서 graph rebase skip의 확인/queue/실행 단계를 수행한다. */
+async function skipGraphRebaseLocked(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">,
+  items: RebaseItem[]
+): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
   if (await conflicts.getOperation() !== "rebase") {
@@ -406,6 +432,15 @@ export async function skipGraphRebase(
  * @param deps 그래프 패널 의존성
  */
 export async function abortGraphRebase(
+  deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">
+): Promise<GraphRebaseControlResult> {
+  return runConflictMutation(deps.logService.repoRoot, () =>
+    abortGraphRebaseLocked(deps)
+  );
+}
+
+/** 공용 저장소 lease 안에서 graph rebase abort 확인과 복구를 끝까지 수행한다. */
+async function abortGraphRebaseLocked(
   deps: Pick<GraphRebaseDeps, "logService" | "refreshGraph">
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
