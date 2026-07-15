@@ -19,15 +19,27 @@ export const OPERATION_IS_REBASE_CONTEXT = "gitSimpleCompare.operationIsRebase";
 export const PULL_ROLLBACK_AVAILABLE_CONTEXT =
   "gitSimpleCompare.pullRollbackAvailable";
 
+/** 트리/컨텍스트 키까지 반영이 끝난 충돌 상태 snapshot이다. */
+export interface ConflictsRefreshSnapshot {
+  repoRoot: string;
+  conflicts: string[];
+  operation: MergeOperation;
+}
+
 /**
  * 충돌 해결 UI 의 상태를 관리하는 컨트롤러.
  * - 명령 핸들러는 이 컨트롤러의 메서드/서비스를 통해 동작한다.
  */
-export class ConflictsController {
+export class ConflictsController implements vscode.Disposable {
   private service?: ConflictService;
   private operation: MergeOperation = "none";
   private refreshing = false;
   private pendingRefresh = false;
+  private readonly onDidRefreshEmitter =
+    new vscode.EventEmitter<ConflictsRefreshSnapshot>();
+
+  /** index 기반 충돌 목록이 UI까지 반영된 뒤 발생하는 이벤트다. */
+  readonly onDidRefresh = this.onDidRefreshEmitter.event;
 
   constructor(
     private readonly registry: GitServiceRegistry,
@@ -42,6 +54,11 @@ export class ConflictsController {
   /** 현재 진행 중인 git 작업 종류. */
   get currentOperation(): MergeOperation {
     return this.operation;
+  }
+
+  /** refresh 구독자를 정리한다. */
+  dispose(): void {
+    this.onDidRefreshEmitter.dispose();
   }
 
   /**
@@ -77,6 +94,11 @@ export class ConflictsController {
       this.operation = "none";
       this.provider.setState("", []);
       this.updateContext([], "none", false);
+      this.onDidRefreshEmitter.fire({
+        repoRoot: "",
+        conflicts: [],
+        operation: "none",
+      });
       return;
     }
 
@@ -92,6 +114,7 @@ export class ConflictsController {
     this.operation = operation;
     this.provider.setState(repoRoot, conflicts);
     this.updateContext(conflicts, operation, Boolean(snapshot));
+    this.onDidRefreshEmitter.fire({ repoRoot, conflicts, operation });
     logInfo("conflicts refreshed", {
       repoRoot,
       count: conflicts.length,
