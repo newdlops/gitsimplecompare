@@ -116,15 +116,19 @@ export class ConflictResultSaveCoordinator {
     expectedEditorVersion: number,
     fence?: Pick<TrustedConflictActionContext, "sourceVersion" | "resultVersion">
   ): Promise<boolean> {
-    const document = this.overlay.textDocument(session);
-    if (!document || document.version !== expectedEditorVersion) return false;
+    const document = this.activeDocument(session, expectedEditorVersion);
+    if (!document) return false;
+    const expectedContent = document.getText();
     session.allowBusySave = true;
     session.pendingSaveFence = fence && {
       sourceVersion: fence.sourceVersion,
       resultVersion: fence.resultVersion,
     };
     try {
-      return await document.save();
+      const saved = await document.save();
+      const current = this.activeDocument(session, expectedEditorVersion);
+      return saved && current === document && !document.isDirty &&
+        document.getText() === expectedContent;
     } finally {
       session.allowBusySave = false;
       session.pendingSaveFence = undefined;
@@ -138,8 +142,8 @@ export class ConflictResultSaveCoordinator {
     content: string,
     fence?: Pick<TrustedConflictActionContext, "sourceVersion" | "resultVersion">
   ): Promise<boolean> {
-    const document = this.overlay.textDocument(session);
-    if (!document || document.version !== expectedEditorVersion) return false;
+    const document = this.activeDocument(session, expectedEditorVersion);
+    if (!document) return false;
     const raw = document.getText();
     if (raw !== content) {
       const edit = new vscode.WorkspaceEdit();
@@ -150,8 +154,8 @@ export class ConflictResultSaveCoordinator {
       );
       if (!await vscode.workspace.applyEdit(edit)) return false;
     }
-    const current = this.overlay.textDocument(session);
-    return current
+    const current = this.activeDocument(session);
+    return current === document && current.getText() === content
       ? this.saveNativeDocument(session, current.version, fence)
       : false;
   }
@@ -166,9 +170,71 @@ export class ConflictResultSaveCoordinator {
       refresh
     ).then((choice) => {
       if (choice === refresh && this.overlay.isCurrent(session)) {
-        void this.overlay.refreshSession(session, "reloadStaleSave", true)
-          .catch(() => undefined);
+        void this.recoverBaseline(session).catch((error) => {
+          logError("native conflict stale save baseline recovery failed", error, {
+            repoRoot: session.service.repoRoot,
+            rel: session.rel,
+          });
+          void vscode.window.showErrorMessage(localizeConflictActionError(error));
+        });
       }
     });
+  }
+
+  /** dirty Result의 보존/폐기를 먼저 확인한 뒤 resolved/unresolved 기준선을 올바르게 복구한다. */
+  private async recoverBaseline(session: TrustedConflictEditorSession): Promise<void> {
+    const document = this.activeDocument(session);
+    if (!document || !session.baselineStale) return;
+    const editorVersion = document.version;
+    let keepDirty = false;
+    if (document.isDirty) {
+      const discard = vscode.l10n.t("Discard and Reload");
+      const keep = vscode.l10n.t("Keep My Result");
+      const choice = await vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          "The Result changed again after the last save. Reload the on-disk Result or keep your edits for an explicit overwrite?"
+        ),
+        { modal: true },
+        discard,
+        keep
+      );
+      if (!this.activeDocument(session, editorVersion) || !session.baselineStale) return;
+      if (choice !== discard && choice !== keep) return;
+      keepDirty = choice === keep;
+    }
+    const refreshed = session.resolved
+      ? await this.overlay.publishResolvedResult(session, "recoverStaleSave")
+      : await this.overlay.refreshSession(session, "recoverStaleSave", true);
+    if (!refreshed || !this.overlay.isCurrent(session)) return;
+    if (keepDirty || !document.isDirty) return;
+    const current = this.activeDocument(session, editorVersion);
+    if (!current) return;
+    const synchronized = await this.replaceBufferAndSave(
+      session,
+      editorVersion,
+      session.content,
+      {
+        sourceVersion: session.document.sourceVersion,
+        resultVersion: session.document.resultVersion,
+      }
+    );
+    if (!synchronized) {
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t("The Result changed while reloading. Review the editor before saving.")
+      );
+    }
+  }
+
+  /** action 보조 저장이 현재 focused native Result 문서에만 적용되도록 object/version을 검증한다. */
+  private activeDocument(
+    session: TrustedConflictEditorSession,
+    expectedVersion?: number
+  ): vscode.TextDocument | undefined {
+    const document = this.overlay.textDocument(session);
+    const active = vscode.window.activeTextEditor?.document;
+    if (!vscode.window.state.focused || !document || active !== document) return undefined;
+    return expectedVersion === undefined || document.version === expectedVersion
+      ? document
+      : undefined;
   }
 }

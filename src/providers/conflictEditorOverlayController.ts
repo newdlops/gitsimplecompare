@@ -5,29 +5,16 @@ import { ConflictService, type ConflictDocument } from "../git/conflictService";
 import { logError, logInfo } from "../ui/outputLog";
 import type { ConflictOverlayActionPayload, ConflictOverlaySnapshot } from "./conflictOverlayProtocol";
 import type { ConflictsController, ConflictsRefreshSnapshot } from "./conflictsController";
-import {
-  ConflictReadonlyContentProvider,
-  ConflictResultFileSystemProvider,
-  type ConflictResultResource,
-  type ConflictResultResourceHost,
-} from "./conflictResultDocumentProvider";
+import { ConflictReadonlyContentProvider, ConflictResultFileSystemProvider,
+  type ConflictResultResource, type ConflictResultResourceHost } from "./conflictResultDocumentProvider";
 import { watchConflictResultFile } from "./conflictResultWatcher";
 import { ConflictResultSaveCoordinator } from "./conflictResultSaveCoordinator";
 import { virtualConflictDocumentText } from "./conflictSessionDocument";
-import {
-  applyConflictDocument,
-  applyConflictWorkingResult,
-  applyStaleSavedBaseline,
-  createConflictEditorSession,
-} from "./conflictEditorSessionState";
-import {
-  buildConflictCodeLensState,
-  isConflictActionCurrent,
-  trustedConflictActionContext,
-  trustedConflictBlockSession,
-  type ConflictCodeLensState,
-  type TrustedConflictActionContext,
-} from "./conflictEditorSessionAccess";
+import { applyConflictDocument, applyConflictWorkingResult,
+  applyStaleSavedBaseline, createConflictEditorSession } from "./conflictEditorSessionState";
+import { buildConflictCodeLensState, isConflictActionCurrent,
+  trustedConflictActionContext, trustedConflictBlockSession,
+  type ConflictCodeLensState, type TrustedConflictActionContext } from "./conflictEditorSessionAccess";
 
 export type { ConflictCodeLensState, TrustedConflictActionContext } from "./conflictEditorSessionAccess";
 
@@ -114,6 +101,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     onDidMutate: () => Promise<void>
   ): Promise<void> {
     const document = await service.getConflictDocument(rel, true);
+    if (this.disposed) return;
     this.invalidateSameConflictSessions(service.repoRoot, rel);
     await this.openLoadedSession(service, rel, onDidMutate, document);
   }
@@ -154,10 +142,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   ): TrustedConflictActionContext | undefined {
     const session = this.sessions.get(payload.uri);
     return trustedConflictActionContext(
-      session,
-      session && this.textDocument(session),
-      payload,
-      vscode.window.state.focused,
+      session, session && this.textDocument(session), payload, vscode.window.state.focused,
       vscode.window.activeTextEditor?.document.uri.toString()
     );
   }
@@ -171,10 +156,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   }): TrustedConflictEditorSession | undefined {
     const session = this.sessions.get(args.uri);
     return trustedConflictBlockSession(
-      session,
-      session && this.textDocument(session),
-      args,
-      vscode.window.state.focused,
+      session, session && this.textDocument(session), args, vscode.window.state.focused,
       vscode.window.activeTextEditor?.document.uri.toString()
     );
   }
@@ -185,11 +167,8 @@ implements vscode.Disposable, ConflictResultResourceHost {
     editorVersion?: number
   ): boolean {
     return isConflictActionCurrent(
-      context,
-      this.sessions.get(context.session.uri.toString()),
-      this.textDocument(context.session),
-      editorVersion,
-      vscode.window.state.focused,
+      context, this.sessions.get(context.session.uri.toString()),
+      this.textDocument(context.session), editorVersion, vscode.window.state.focused,
       vscode.window.activeTextEditor?.document.uri.toString()
     );
   }
@@ -325,7 +304,6 @@ implements vscode.Disposable, ConflictResultResourceHost {
   markResolved(session: TrustedConflictEditorSession, reason: string): void {
     if (!this.isCurrent(session)) return;
     session.resolved = true;
-    session.busy = false;
     session.pendingRefreshReason = undefined;
     session.revision++;
     session.watcher?.dispose();
@@ -396,12 +374,22 @@ implements vscode.Disposable, ConflictResultResourceHost {
         }
       }
     );
-    const textDocument = await vscode.workspace.openTextDocument(session.uri);
-    await vscode.window.showTextDocument(textDocument, {
-      preview: false,
-      preserveFocus: false,
-      viewColumn: vscode.ViewColumn.Active,
-    });
+    try {
+      const textDocument = await vscode.workspace.openTextDocument(session.uri);
+      if (!this.isCurrent(session)) return;
+      await vscode.window.showTextDocument(textDocument, {
+        preview: false,
+        preserveFocus: false,
+        viewColumn: vscode.ViewColumn.Active,
+      });
+      if (!this.isCurrent(session)) return;
+    } catch (error) {
+      session.watcher?.dispose();
+      if (this.sessions.get(session.uri.toString()) === session) {
+        this.sessions.delete(session.uri.toString());
+      }
+      throw error;
+    }
     this.fireUiChanged("opened");
     logInfo("native conflict editor opened", {
       repoRoot: service.repoRoot,
@@ -511,12 +499,22 @@ implements vscode.Disposable, ConflictResultResourceHost {
   /** ConflictsController가 index를 갱신하면 같은 저장소 session을 다시 검증한다. */
   private onConflictsRefreshed(snapshot: ConflictsRefreshSnapshot): void {
     for (const session of this.sessions.values()) {
-      if (session.service.repoRoot !== snapshot.repoRoot || session.resolved) continue;
+      if (session.service.repoRoot !== snapshot.repoRoot) continue;
+      if (session.resolved) {
+        if (snapshot.conflicts.includes(session.rel) && !session.suspended) {
+          session.suspended = true;
+          session.revision++;
+          this.fireUiChanged("resolvedSessionReconflicted");
+        }
+        continue;
+      }
       session.refreshGeneration++;
       if (!snapshot.conflicts.includes(session.rel)) {
         void this.publishResolvedResult(session, "conflictsRefreshResolved")
-          .then((published) => {
-            if (published && this.isCurrent(session)) {
+          .then(async (published) => {
+            if (!published || !this.isCurrent(session)) return;
+            const latest = await session.service.listConflicts();
+            if (this.isCurrent(session) && !latest.includes(session.rel)) {
               this.markResolved(session, "conflictsRefreshResolved");
             }
           })
@@ -548,7 +546,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   /** 같은 repo/path의 이전 native 문서를 stale 안내로 바꾸고 command 권한을 폐기한다. */
   private invalidateSameConflictSessions(repoRoot: string, rel: string): void {
     for (const session of this.sessions.values()) {
-      if (session.service.repoRoot !== repoRoot || session.rel !== rel || session.resolved) continue;
+      if (session.service.repoRoot !== repoRoot || session.rel !== rel) continue;
       const timer = this.refreshTimers.get(session.uri.toString());
       if (timer) clearTimeout(timer);
       this.refreshTimers.delete(session.uri.toString());
@@ -595,6 +593,4 @@ implements vscode.Disposable, ConflictResultResourceHost {
 }
 
 /** unknown error를 로그/분기에 사용할 문자열로 정규화한다. */
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error); }

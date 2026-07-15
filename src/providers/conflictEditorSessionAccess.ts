@@ -109,7 +109,10 @@ export function isConflictActionCurrent(
   activeUri: string | undefined
 ): boolean {
   return currentSession === context.session && !context.session.resolved &&
-    !context.session.suspended && windowFocused && !!document &&
+    !context.session.suspended && context.session.busy && windowFocused && !!document &&
+    context.session.revision === context.revision + 1 &&
+    context.session.document.sourceVersion === context.sourceVersion &&
+    context.session.document.resultVersion === context.resultVersion &&
     (editorVersion === undefined || document.version === editorVersion) &&
     activeUri === context.session.uri.toString();
 }
