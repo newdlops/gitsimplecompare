@@ -3,6 +3,17 @@
 //   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  describeFileSource,
+  readConflictOperationContext,
+  type ConflictOperationContext,
+} from "./conflictContextService";
+import {
+  ConflictContentService,
+  type ConflictContentKind,
+  type ConflictResultState,
+  type ConflictWorkingResult,
+} from "./conflictContentService";
 import { runGit } from "./gitExec";
 import {
   cleanupRebaseMessageQueue,
@@ -18,10 +29,20 @@ export interface ConflictSource {
   ref: string;
   commit?: string;
   subject?: string;
+  fileCommit?: string;
+  fileSubject?: string;
 }
+
+export type { ConflictContentKind, ConflictResultState } from "./conflictContentService";
 
 /** 충돌 편집기에 표시할 한쪽 버전 정보 */
 export interface ConflictSide extends ConflictSource {
+  stage: 1 | 2 | 3;
+  exists: boolean;
+  kind: ConflictContentKind;
+  oid?: string;
+  mode?: string;
+  truncated?: boolean;
   content: string;
 }
 
@@ -36,10 +57,16 @@ export interface ConflictSources {
 export interface ConflictDocument {
   rel: string;
   operation: MergeOperation;
+  context: ConflictOperationContext;
+  base: ConflictSide;
   current: ConflictSide;
   incoming: ConflictSide;
   result: string;
+  resultState: ConflictResultState;
+  sourceVersion: string;
+  resultVersion: string;
   both: string;
+  bothAvailable: boolean;
 }
 
 /**
@@ -74,7 +101,11 @@ export async function detectOperation(
  * 한 저장소의 충돌 상태를 다루는 서비스(저장소 루트 1개에 대응).
  */
 export class ConflictService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly content: ConflictContentService;
+
+  constructor(public readonly repoRoot: string) {
+    this.content = new ConflictContentService(repoRoot);
+  }
 
   /**
    * 현재 충돌(unmerged) 상태인 파일들의 저장소 상대 경로 목록을 반환한다.
@@ -92,20 +123,28 @@ export class ConflictService {
    * 한 파일을 "우리쪽(--ours)" 버전으로 확정하고 스테이징한다.
    * - merge 에서는 현재 브랜치(HEAD), rebase 에서는 베이스 쪽을 뜻함에 주의.
    * @param rel 저장소 상대 경로
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
-  async takeOurs(rel: string): Promise<void> {
-    await runGit(["checkout", "--ours", "--", rel], this.repoRoot);
-    await runGit(["add", "--", rel], this.repoRoot);
+  async takeOurs(
+    rel: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
+    return this.content.takeStage(rel, 2, expectedVersion, expectedSourceVersion);
   }
 
   /**
    * 한 파일을 "상대쪽(--theirs)" 버전으로 확정하고 스테이징한다.
    * - merge 에서는 병합 대상, rebase 에서는 재적용되는 커밋 쪽을 뜻함에 주의.
    * @param rel 저장소 상대 경로
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
-  async takeTheirs(rel: string): Promise<void> {
-    await runGit(["checkout", "--theirs", "--", rel], this.repoRoot);
-    await runGit(["add", "--", rel], this.repoRoot);
+  async takeTheirs(
+    rel: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
+    return this.content.takeStage(rel, 3, expectedVersion, expectedSourceVersion);
   }
 
   /**
@@ -113,13 +152,18 @@ export class ConflictService {
    * - 편집기에서 전달한 내용이 있으면 그 내용을 결과 파일로 쓰고, 없으면 git stage 2(--ours)를 그대로 쓴다.
    * @param rel     저장소 상대 경로
    * @param content 사용자가 Current 패널에서 편집한 내용
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
-  async acceptCurrent(rel: string, content?: string): Promise<void> {
+  async acceptCurrent(
+    rel: string,
+    content?: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
     if (content === undefined) {
-      await this.takeOurs(rel);
-      return;
+      return this.takeOurs(rel, expectedVersion, expectedSourceVersion);
     }
-    await this.writeResolvedContent(rel, content, true);
+    return this.writeResolvedContent(rel, content, true, expectedVersion, expectedSourceVersion);
   }
 
   /**
@@ -127,23 +171,33 @@ export class ConflictService {
    * - 편집기에서 전달한 내용이 있으면 그 내용을 결과 파일로 쓰고, 없으면 git stage 3(--theirs)를 그대로 쓴다.
    * @param rel     저장소 상대 경로
    * @param content 사용자가 Incoming 패널에서 편집한 내용
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
-  async acceptIncoming(rel: string, content?: string): Promise<void> {
+  async acceptIncoming(
+    rel: string,
+    content?: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
     if (content === undefined) {
-      await this.takeTheirs(rel);
-      return;
+      return this.takeTheirs(rel, expectedVersion, expectedSourceVersion);
     }
-    await this.writeResolvedContent(rel, content, true);
+    return this.writeResolvedContent(rel, content, true, expectedVersion, expectedSourceVersion);
   }
 
   /**
    * Current 와 Incoming 을 모두 보존하는 보편적인 Accept Both 결과를 만든 뒤 해결로 표시한다.
-   * - conflict marker 가 있으면 각 충돌 블록에서 current 내용을 먼저, incoming 내용을 뒤에 둔다.
-   * - marker 가 없으면 stage 2 전체와 stage 3 전체를 순서대로 이어 붙이는 안전한 fallback 을 사용한다.
+   * - 완전한 conflict marker 블록에서만 current 내용을 먼저, incoming 내용을 뒤에 둔다.
+   * - marker가 없거나 불완전하면 파일 전체를 임의로 결합하지 않고 사용자가 직접 판별하도록 거부한다.
    * @param rel 저장소 상대 경로
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
-  async acceptBoth(rel: string): Promise<void> {
-    await this.writeResolvedContent(rel, await this.buildBothResult(rel), true);
+  async acceptBoth(
+    rel: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
+    return this.content.acceptBoth(rel, expectedVersion, expectedSourceVersion);
   }
 
   /**
@@ -152,8 +206,12 @@ export class ConflictService {
    *   Git 과 동일하게 index 의 unmerged entry 해소 여부를 resolved 기준으로 삼는다.
    * @param rel 저장소 상대 경로
    */
-  async markResolved(rel: string): Promise<void> {
-    await runGit(["add", "--", rel], this.repoRoot);
+  async markResolved(
+    rel: string,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<void> {
+    await this.content.markResolved(rel, expectedVersion, expectedSourceVersion);
   }
 
   /**
@@ -163,26 +221,25 @@ export class ConflictService {
    * @param rel 저장소 상대 경로
    */
   async getConflictDocument(rel: string): Promise<ConflictDocument> {
-    const sources = await this.getConflictSources();
-    const [current, incoming, result, both] = await Promise.all([
-      this.readStage(2, rel),
-      this.readStage(3, rel),
-      fs.promises.readFile(this.absPath(rel), "utf8").catch(() => ""),
-      this.buildBothResult(rel),
+    const operation = await this.getOperation();
+    const [sources, context, contents] = await Promise.all([
+      this.getConflictSources(rel, operation),
+      readConflictOperationContext(this.repoRoot, operation, rel),
+      this.content.readDocument(rel),
     ]);
     return {
       rel,
-      operation: sources.operation,
-      current: {
-        ...sources.current,
-        content: current,
-      },
-      incoming: {
-        ...sources.incoming,
-        content: incoming,
-      },
-      result,
-      both,
+      operation,
+      context,
+      base: { label: "Base", ref: "index stage 1", ...contents.base },
+      current: { ...sources.current, ...contents.current },
+      incoming: { ...sources.incoming, ...contents.incoming },
+      result: contents.result,
+      resultState: contents.resultState,
+      sourceVersion: contents.sourceVersion,
+      resultVersion: contents.resultVersion,
+      both: contents.both,
+      bothAvailable: contents.bothAvailable,
     };
   }
 
@@ -190,9 +247,20 @@ export class ConflictService {
    * 충돌 Current/Incoming 이 가리키는 ref, 커밋 해시, 커밋 제목을 반환한다.
    * - decoration/hover 처럼 파일 본문이 필요 없는 UI 에서 가볍게 재사용한다.
    */
-  async getConflictSources(): Promise<ConflictSources> {
-    const operation = await this.getOperation();
+  async getConflictSources(
+    rel?: string,
+    knownOperation?: MergeOperation
+  ): Promise<ConflictSources> {
+    const operation = knownOperation ?? await this.getOperation();
     const refs = await this.conflictRefs(operation);
+    const [currentFile, incomingFile] = rel
+      ? await Promise.all([
+          describeFileSource(this.repoRoot, refs.current.fileRef, rel),
+          refs.incoming.fileRef
+            ? describeFileSource(this.repoRoot, refs.incoming.fileRef, rel)
+            : Promise.resolve(undefined),
+        ])
+      : [];
     return {
       operation,
       current: {
@@ -200,12 +268,16 @@ export class ConflictService {
         ref: refs.current.ref,
         commit: refs.current.commit,
         subject: refs.current.subject,
+        fileCommit: currentFile?.commit,
+        fileSubject: currentFile?.subject,
       },
       incoming: {
         label: "Incoming",
         ref: refs.incoming.ref,
         commit: refs.incoming.commit,
         subject: refs.incoming.subject,
+        fileCommit: incomingFile?.commit,
+        fileSubject: incomingFile?.subject,
       },
     };
   }
@@ -215,16 +287,35 @@ export class ConflictService {
    * @param rel          저장소 상대 경로
    * @param content      저장할 result 내용
    * @param markResolved true 면 저장 직후 git add 로 해결 처리한다
+   * @returns 동시 편집 원본을 별도 보존했으면 recovery 경로
    */
   async writeResolvedContent(
     rel: string,
     content: string,
-    markResolved = false
-  ): Promise<void> {
-    await fs.promises.writeFile(this.absPath(rel), content, "utf8");
-    if (markResolved) {
-      await this.markResolved(rel);
-    }
+    markResolved = false,
+    expectedVersion?: string,
+    expectedSourceVersion?: string
+  ): Promise<string | undefined> {
+    return this.content.writeResolvedContent(
+      rel,
+      content,
+      markResolved,
+      expectedVersion,
+      expectedSourceVersion
+    );
+  }
+
+  /** 패널 load 이후 작업트리 Result가 외부에서 바뀌었는지 비교할 version을 읽는다. */
+  async getConflictResultVersion(rel: string): Promise<string> {
+    return this.content.readUnresolvedResultVersion(rel);
+  }
+
+  /**
+   * 해결 mutation 뒤 작업트리 Result의 실제 종류와 표시 내용을 다시 읽는다.
+   * @param rel 저장소 상대 경로
+   */
+  async getWorkingResult(rel: string): Promise<ConflictWorkingResult> {
+    return this.content.readResult(rel);
   }
 
   /**
@@ -283,7 +374,7 @@ export class ConflictService {
    * @param rel 저장소 상대 경로
    */
   absPath(rel: string): string {
-    return path.join(this.repoRoot, rel);
+    return this.content.absPath(rel);
   }
 
   /** continue/skip 에 사용할 editor 환경을 만든다. */
@@ -305,40 +396,59 @@ export class ConflictService {
   }
 
   /**
-   * git index 의 충돌 stage 내용을 읽는다.
-   * @param stage 2 는 ours/current, 3 은 theirs/incoming
-   * @param rel   저장소 상대 경로
-   */
-  private async readStage(stage: 2 | 3, rel: string): Promise<string> {
-    return runGit(["show", `:${stage}:${rel}`], this.repoRoot).catch(() => "");
-  }
-
-  /**
    * 진행 중 작업에 맞춰 Current/Incoming 의 ref 와 커밋 해시를 계산한다.
    * @param operation 현재 git 작업 종류
    */
   private async conflictRefs(operation: MergeOperation): Promise<{
-    current: { ref: string; commit?: string; subject?: string };
-    incoming: { ref: string; commit?: string; subject?: string };
+    current: { ref: string; fileRef: string; commit?: string; subject?: string };
+    incoming: { ref: string; fileRef?: string; commit?: string; subject?: string };
   }> {
-    const incomingRef =
-      operation === "merge"
-        ? "MERGE_HEAD"
-        : operation === "rebase"
-          ? "REBASE_HEAD"
-          : operation === "cherry-pick"
-            ? "CHERRY_PICK_HEAD"
-            : operation === "revert"
-              ? "REVERT_HEAD"
-              : "theirs";
     const [current, incoming] = await Promise.all([
       this.describeRef("HEAD"),
-      this.describeRef(incomingRef),
+      this.incomingConflictRef(operation),
     ]);
     return {
-      current: { ref: "HEAD", ...current },
-      incoming: { ref: incomingRef, ...incoming },
+      current: { ref: "HEAD", fileRef: "HEAD", ...current },
+      incoming,
     };
+  }
+
+  /**
+   * operation 안에서 실제 stage 3를 만든 활성 ref를 찾는다.
+   * - rebase-merges의 merge todo나 exec가 시작한 nested Git 작업은 REBASE_HEAD보다
+   *   MERGE_HEAD/CHERRY_PICK_HEAD/REVERT_HEAD가 실제 Incoming 출처이므로 우선한다.
+   */
+  private async incomingConflictRef(operation: MergeOperation): Promise<{
+    ref: string;
+    fileRef?: string;
+    commit?: string;
+    subject?: string;
+  }> {
+    if (operation === "revert") {
+      return { ref: "reverse side of REVERT_HEAD", ...await this.describeRef("REVERT_HEAD") };
+    }
+    if (operation !== "rebase") {
+      const ref = operation === "merge"
+        ? "MERGE_HEAD"
+        : operation === "cherry-pick"
+          ? "CHERRY_PICK_HEAD"
+          : "theirs";
+      return { ref, fileRef: ref, ...await this.describeRef(ref) };
+    }
+    const [merge, cherryPick, revert, replay] = await Promise.all([
+      this.describeRef("MERGE_HEAD"),
+      this.describeRef("CHERRY_PICK_HEAD"),
+      this.describeRef("REVERT_HEAD"),
+      this.describeRef("REBASE_HEAD"),
+    ]);
+    if (merge.commit) return { ref: "MERGE_HEAD", fileRef: "MERGE_HEAD", ...merge };
+    if (cherryPick.commit) {
+      return { ref: "CHERRY_PICK_HEAD", fileRef: "CHERRY_PICK_HEAD", ...cherryPick };
+    }
+    if (revert.commit) {
+      return { ref: "reverse side of REVERT_HEAD", ...revert };
+    }
+    return { ref: "REBASE_HEAD", fileRef: "REBASE_HEAD", ...replay };
   }
 
   /**
@@ -363,67 +473,4 @@ export class ConflictService {
     return { commit, subject: subject || undefined };
   }
 
-  /**
-   * Accept Both 결과를 만든다.
-   * @param rel 저장소 상대 경로
-   */
-  private async buildBothResult(rel: string): Promise<string> {
-    const raw = await fs.promises.readFile(this.absPath(rel), "utf8").catch(
-      () => ""
-    );
-    const fromMarkers = acceptBothFromMarkers(raw);
-    if (fromMarkers.changed) {
-      return fromMarkers.content;
-    }
-    const [current, incoming] = await Promise.all([
-      this.readStage(2, rel),
-      this.readStage(3, rel),
-    ]);
-    return `${current}${needsLineBreak(current, incoming) ? "\n" : ""}${incoming}`;
-  }
-
-}
-
-/**
- * conflict marker 가 들어 있는 작업 파일에서 "Accept Both" 결과를 만든다.
- * @param raw conflict marker 를 포함한 파일 내용
- */
-function acceptBothFromMarkers(raw: string): { changed: boolean; content: string } {
-  const lines = raw.match(/[^\n]*\n|[^\n]+/g) ?? [];
-  const out: string[] = [];
-  let mode: "normal" | "current" | "base" | "incoming" = "normal";
-  let changed = false;
-  for (const line of lines) {
-    if (line.startsWith("<<<<<<<")) {
-      mode = "current";
-      changed = true;
-      continue;
-    }
-    if (mode === "current" && line.startsWith("|||||||")) {
-      mode = "base";
-      continue;
-    }
-    if ((mode === "current" || mode === "base") && line.startsWith("=======")) {
-      mode = "incoming";
-      continue;
-    }
-    if (mode === "incoming" && line.startsWith(">>>>>>>")) {
-      mode = "normal";
-      continue;
-    }
-    if (mode === "base") {
-      continue;
-    }
-    out.push(line);
-  }
-  return { changed, content: changed ? out.join("") : raw };
-}
-
-/**
- * 두 문자열을 이어 붙일 때 줄바꿈을 하나 보강해야 하는지 판단한다.
- * @param left  앞쪽 문자열
- * @param right 뒤쪽 문자열
- */
-function needsLineBreak(left: string, right: string): boolean {
-  return Boolean(left && right && !left.endsWith("\n") && !left.endsWith("\r"));
 }
