@@ -911,7 +911,7 @@
   "Unknown commit plan error.": "알 수 없는 커밋 플랜 오류입니다.",
   "Commit execution progress": "커밋 실행 진행 상태",
   "{0} / {1} prepared": "{0} / {1} 준비됨",
-  "Preparing commit {0} of {1}...": "커밋 {1}개 중 {0}번째 준비 중...",
+  "Preparing commit {0} of {1}": "커밋 {1}개 중 {0}번째 준비 중",
   "Pending": "대기 중",
   "Prepared": "준비됨",
   "Hook failed": "Hook 실패",

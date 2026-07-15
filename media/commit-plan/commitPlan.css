@@ -498,9 +498,12 @@ body.busy .execute .codicon {
 
 .execution-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .execution-count, .group-execution-state {
-  padding: 2px 8px; border-radius: 999px; color: var(--vscode-badge-foreground);
-  background: var(--vscode-badge-background); font-size: .84em; font-weight: 600; white-space: nowrap;
+  box-sizing: border-box; display: inline-flex; flex: 0 0 auto; align-items: center;
+  justify-content: center; gap: 4px; max-width: 100%; padding: 2px 8px; border-radius: 999px;
+  color: var(--vscode-badge-foreground); background: var(--vscode-badge-background);
+  font-size: .84em; font-weight: 600; text-align: center; white-space: normal; overflow-wrap: anywhere;
 }
+.group-execution-state-label { min-width: 0; overflow-wrap: anywhere; }
 .execution-bar { height: 5px; margin-top: 10px; border-radius: 999px; background: var(--vscode-widget-border, var(--vscode-panel-border)); overflow: hidden; }
 .execution-bar-fill { display: block; width: var(--execution-progress, 0); height: 100%; background: var(--vscode-testing-iconPassed, var(--vscode-progressBar-background)); transition: width .2s ease; }
 .execution-live { min-height: 1.45em; margin-top: 8px; color: var(--vscode-descriptionForeground); }

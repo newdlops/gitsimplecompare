@@ -137,7 +137,7 @@ function commitPlanI18n() {
     completed: vscode.l10n.t("AI commit plan completed."),
     executionTitle: vscode.l10n.t("Commit execution progress"),
     preparedCount: vscode.l10n.t("{0} / {1} prepared"),
-    preparingCommit: vscode.l10n.t("Preparing commit {0} of {1}..."),
+    preparingCommit: vscode.l10n.t("Preparing commit {0} of {1}"),
     pendingState: vscode.l10n.t("Pending"),
     preparedState: vscode.l10n.t("Prepared"),
     hookFailedState: vscode.l10n.t("Hook failed"),
