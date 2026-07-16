@@ -275,11 +275,11 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
  * Changes 뷰 전체에 진행 표시를 띄울 명시적 refresh인지 판정한다.
  * - 자동 Git/포커스/저장 이벤트는 데이터를 조용히 맞춰 잦은 loading 깜빡임을 만들지 않는다.
  * @param reason 단일 또는 합쳐진 새로고침 원인
- * @returns 최초 웹뷰 준비나 사용자의 수동 전체 refresh면 true
+ * @returns 사용자가 요청한 수동 전체 refresh가 포함되면 true
  */
 export function shouldShowChangesRefreshProgress(reason: string): boolean {
   return splitRefreshReasons(reason).some(
-    (item) => item === "command" || item === "viewReady"
+    (item) => item === "command"
   );
 }
 
@@ -295,16 +295,22 @@ function sectionsForRefreshReason(
     return ["commitHooks"];
   }
   if (reason === "viewReady") {
-    return ["repositories", "workingChanges"];
-  }
-  if (reason === "viewReadyDeferred") {
+    // stash는 메타데이터만 읽고 상세 파일/worktree/hook 검사는 제외해 첫 pass를 짧게 유지한다.
     return [
+      "repositories",
+      "workingChanges",
       "fileHistory",
       "stashes",
-      "worktrees",
-      "commitHooks",
       "comparison",
     ];
+  }
+  if (reason === "viewReadyDeferred") {
+    // file history/stash metadata/기존 비교만 늦게 채우고 worktree·hook 상세 검사는 사용자 요청까지 미룬다.
+    return ["fileHistory", "stashes", "comparison"];
+  }
+  if (reason === "viewVisible") {
+    // retainContextWhenHidden 재노출은 저장소 identity/working state만 맞추고 부가 Git 명령은 반복하지 않는다.
+    return ["repositories", "workingChanges"];
   }
   if (isWorkingTreeRefreshReason(reason)) {
     return ["workingChanges"];

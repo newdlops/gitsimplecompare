@@ -64,18 +64,22 @@ test("refresh 원인별로 정확성에 필요한 Changes 조회 영역을 선�
   assert.deepEqual(changesRefreshSections("viewReady"), [
     "repositories",
     "workingChanges",
+    "fileHistory",
+    "stashes",
+    "comparison",
   ]);
   assert.deepEqual(changesRefreshSections("viewReadyDeferred"), [
     "fileHistory",
     "stashes",
-    "worktrees",
-    "commitHooks",
     "comparison",
   ]);
-  assert.equal(
-    changesRefreshSections("viewReady,viewReadyDeferred").length,
-    7
-  );
+  assert.deepEqual(changesRefreshSections("viewReady,viewReadyDeferred"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "stashes",
+    "comparison",
+  ]);
   assert.deepEqual(changesRefreshSections("vscodeGit:state"), [
     "workingChanges",
   ]);
@@ -85,11 +89,6 @@ test("refresh 원인별로 정확성에 필요한 Changes 조회 영역을 선�
   assert.deepEqual(changesRefreshSections("viewVisible"), [
     "repositories",
     "workingChanges",
-    "fileHistory",
-    "stashes",
-    "worktrees",
-    "commitHooks",
-    "comparison",
   ]);
   assert.deepEqual(changesRefreshSections("git:change:commit-hooks"), [
     "commitHooks",
@@ -166,9 +165,9 @@ test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
   );
 });
 
-test("초기·수동 refresh만 표시하고 자동 전체 복구와 commit 보정은 조용히 실행한다", () => {
+test("수동 refresh만 표시하고 초기·자동 복구와 commit 보정은 조용히 실행한다", () => {
   assert.equal(shouldShowChangesRefreshProgress("command"), true);
-  assert.equal(shouldShowChangesRefreshProgress("viewReady"), true);
+  assert.equal(shouldShowChangesRefreshProgress("viewReady"), false);
   assert.equal(
     shouldShowChangesRefreshProgress("vscodeGit:state, command"),
     true

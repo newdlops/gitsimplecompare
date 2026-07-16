@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Activate on startup** (`onStartupFinished`): the extension now activates
-  shortly after window startup (without slowing startup down) instead of only
-  when its sidebar is first opened, so PR review comments appear on their own
-  without manually triggering a refresh.
+- **Faster startup and Changes cold start**: startup activation now registers
+  providers and restored-editor support without eagerly starting remote or
+  expensive Git data work. The Changes shell and working state render first;
+  PR comments, stash files, worktrees, and commit-hook details load later when
+  they are actually needed.
 - **PR squash cherry-pick / revert** commit subjects now end with the PR number
   (e.g. `Cherry-Pick "…" #123`, `Revert "…" #123`), linking the commit back to
   its pull request.

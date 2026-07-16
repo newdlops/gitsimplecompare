@@ -8,6 +8,7 @@ import {
   CommandDeps,
   RepoInfo,
   discoverRepositories,
+  repositoryPathKey,
   resolvePreferredRepositoryRoot,
 } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
@@ -81,7 +82,6 @@ async function runChangesRefreshPass(
   try {
     await refreshChangesViewOnce(deps, reason);
     logInfo("changes refresh finished", { runId });
-    scheduleDeferredReadyRefresh(deps, reason);
   } catch (error) {
     logError("changes refresh failed", error, { runId, reason });
     vscode.window.showErrorMessage(
@@ -92,23 +92,6 @@ async function runChangesRefreshPass(
   }
 }
 
-/**
- * 웹뷰 최초 표시의 저장소/working 상태가 그려진 뒤 부가 섹션을 별도 silent pass로 예약한다.
- * @param deps 같은 activation의 refresh drain을 찾기 위한 명령 의존성
- * @param reason 방금 완료한 pass에 합쳐진 refresh 원인
- */
-function scheduleDeferredReadyRefresh(deps: CommandDeps, reason: string): void {
-  const reasons = new Set(
-    reason.split(",").map((item) => item.trim()).filter(Boolean)
-  );
-  if (!reasons.has("viewReady") || reasons.has("viewReadyDeferred")) return;
-  void changesRefreshDrain(deps).request("viewReadyDeferred").catch((error) => {
-    logWarn("deferred Changes sections refresh failed", {
-      reason: error instanceof Error ? error.message : String(error),
-    });
-  });
-}
-
 /** 실제 git 조회를 한 번 수행한다. 겹친 호출은 refreshChangesView 가 직렬화한다. */
 async function refreshChangesViewOnce(
   deps: CommandDeps,
@@ -117,12 +100,14 @@ async function refreshChangesViewOnce(
   const refresh = async (): Promise<void> => {
     const sections = changesRefreshSections(reason);
     logInfo("changes refresh scoped", { reason, sections });
+    // 조회할 영역이 없는 단순 render handshake는 Git 작업을 만들지 않는다.
+    if (sections.length === 0) return;
     if (shouldInvalidateChangesStatus(reason)) {
       deps.registry.invalidateStatusCaches();
     }
     if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
-      const repositories = await discoverRepositoriesForRefresh(deps);
-      const preferredRoot = await resolvePreferredRepositoryRoot(deps.registry, repositories);
+      const repositories = await discoverRepositoriesForRefresh(deps, reason);
+      const preferredRoot = resolvePreferredRepositoryRoot(repositories);
       deps.changesView.setRepositories(repositories, preferredRoot);
     }
     const forceGitStatus = shouldForceChangesGitStatus(reason);
@@ -168,18 +153,35 @@ async function refreshChangesViewOnce(
 
 /**
  * Changes 뷰에 표시할 저장소 목록을 조회한다.
- * - VS Code 내장 Git 이 이미 저장소/브랜치를 알고 있으면 그 상태를 재사용해 `rev-parse` 반복 실행을 피한다.
- * - 내장 Git API 를 사용할 수 없는 환경에서만 기존 CLI 기반 탐색으로 폴백한다.
+ * - VS Code 내장 Git 이 이미 저장소/브랜치를 알고 있으면 그 상태를 즉시 재사용해 `rev-parse` 반복 실행을 피한다.
+ * - 내장 Git이 아직 활성화/스캔 중이면 기다리지 않고 기존 CLI 기반 탐색으로 폴백한다.
+ * - 최초 viewReady에서는 Git API의 부분 scan이 활성 파일 저장소를 빠뜨리지 않도록 workspace 결과와 병합한다.
  * @param deps 공유 의존성
+ * @param reason 저장소 조회를 요청한 refresh 원인
+ * @returns 현재 작업 컨텍스트에서 사용할 중복 없는 저장소 목록
  */
 async function discoverRepositoriesForRefresh(
-  deps: CommandDeps
+  deps: CommandDeps,
+  reason: string
 ): Promise<RepoInfo[]> {
   const vscodeRepos = await deps.vscodeGitStatus.getRepositories();
-  if (vscodeRepos) {
+  const firstView = reason
+    .split(",")
+    .some((part) => part.trim() === "viewReady");
+  if (vscodeRepos && !firstView) {
     return vscodeRepos;
   }
-  return discoverRepositories(deps.registry);
+  const workspaceRepos = await discoverRepositories(deps.registry);
+  if (!vscodeRepos) {
+    return workspaceRepos;
+  }
+  const merged = new Map(
+    vscodeRepos.map((repo) => [repositoryPathKey(repo.root), repo])
+  );
+  for (const repo of workspaceRepos) {
+    merged.set(repositoryPathKey(repo.root), repo);
+  }
+  return [...merged.values()];
 }
 
 interface RefreshTask {
