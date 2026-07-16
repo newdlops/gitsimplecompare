@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   providers and restored-editor support without eagerly starting remote or
   expensive Git data work. The Changes shell and working state render first;
   PR comments, stash files, worktrees, and commit-hook details load later when
-  they are actually needed.
+  they are actually needed. Local file changes now use an independent fast
+  refresh lane, run status alongside repository discovery, coalesce background
+  stats work, and patch only the Changes section instead of rebuilding the
+  complete webview.
 - **PR squash cherry-pick / revert** commit subjects now end with the PR number
   (e.g. `Cherry-Pick "…" #123`, `Revert "…" #123`), linking the commit back to
   its pull request.
