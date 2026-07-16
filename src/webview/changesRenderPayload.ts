@@ -44,6 +44,9 @@ export interface ChangesRenderState {
 
 /** Changes 웹뷰 JS 가 받는 render 메시지 payload. */
 export type ChangesRenderPayload = ReturnType<typeof buildChangesRenderPayload>;
+export type WorkingChangesRenderPayload = ReturnType<
+  typeof buildWorkingChangesRenderPayload
+>;
 
 /**
  * provider 상태를 웹뷰 렌더 payload 로 변환한다.
@@ -94,19 +97,7 @@ export function buildChangesRenderPayload(
         state.sortKey
       ),
     },
-    commit: {
-      message: state.commitMessage,
-      messageRevision: state.commitMessageRevision,
-      repoRoot: state.activeRepo,
-      branch: state.repositories.find((r) => r.root === state.activeRepo)
-        ?.branch,
-      hasRepo: !!state.activeRepo,
-      hasStagedChanges: state.staged.length > 0,
-      // AI 커밋 메시지 생성 진행 여부. 매 렌더마다 버튼 상태를 확정 동기화해 stuck-disabled 를 방지한다.
-      aiGenerating: state.aiCommitGenerating,
-      hooks: state.commitHooks,
-      failure: state.commitFailure,
-    },
+    commit: buildCommitPayload(state),
     stashes: state.stashes.map((s) => ({
       ref: s.ref,
       hash: s.hash,
@@ -126,6 +117,59 @@ export function buildChangesRenderPayload(
     },
     visibleSections: { ...state.visibleSections },
     fileIcons: fileIcons.payloadFor(collectFilePaths(state)),
+  };
+}
+
+/**
+ * staged/unstaged 변경만 바뀐 빠른 경로에서 Changes 섹션에 필요한 최소 payload를 만든다.
+ * - 비교, History, stash, worktree를 다시 buildNodes/직렬화하지 않고 로컬 DOM만 교체할 수 있게 한다.
+ * @param state provider가 보관 중인 현재 상태
+ * @param fileIcons 현재 파일 아이콘 테마 해석기
+ * @returns Changes 노드, staged 존재 여부, 해당 경로 아이콘만 포함한 delta
+ */
+export function buildWorkingChangesRenderPayload(
+  state: ChangesRenderState,
+  fileIcons: FileIconThemeResolver
+) {
+  const paths = [
+    ...state.staged.map((change) => change.path),
+    ...state.unstaged.map((change) => change.path),
+  ];
+  return {
+    changes: {
+      viewMode: state.viewModes.changes,
+      staged: buildNodes(state.staged, state.viewModes.changes, state.sortKey),
+      unstaged: buildNodes(
+        state.unstaged,
+        state.viewModes.changes,
+        state.sortKey
+      ),
+    },
+    // Changes 본문에는 커밋 입력창도 포함되므로 사용자가 입력한 최신 메시지와 hook/진행 상태를 함께 보낸다.
+    commit: buildCommitPayload(state),
+    fileIcons: fileIcons.payloadFor(paths),
+  };
+}
+
+/**
+ * 전체 렌더와 로컬 부분 렌더가 공유할 커밋 박스 payload를 만든다.
+ * - 부분 렌더가 Changes 본문을 교체할 때 포커스를 잃은 입력값도 과거 full payload로 되돌아가지 않게 한다.
+ * @param state provider가 보관하는 최신 커밋 메시지, hook, staged 상태
+ * @returns 웹뷰 커밋 박스가 즉시 복원할 전체 상태
+ */
+function buildCommitPayload(state: ChangesRenderState) {
+  return {
+    message: state.commitMessage,
+    messageRevision: state.commitMessageRevision,
+    repoRoot: state.activeRepo,
+    branch: state.repositories.find((repo) => repo.root === state.activeRepo)
+      ?.branch,
+    hasRepo: !!state.activeRepo,
+    hasStagedChanges: state.staged.length > 0,
+    // AI 커밋 메시지 생성 진행 여부. 매 렌더마다 버튼 상태를 확정 동기화해 stuck-disabled 를 방지한다.
+    aiGenerating: state.aiCommitGenerating,
+    hooks: state.commitHooks,
+    failure: state.commitFailure,
   };
 }
 

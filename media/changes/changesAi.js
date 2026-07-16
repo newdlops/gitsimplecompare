@@ -137,6 +137,17 @@
       // 무관하게, aiGenerating=false 를 담은 렌더가 도착하면 버튼이 반드시 다시 활성화된다(stuck-disabled 방지).
       aiCommitGenerationActive = !!latestPayload?.commit?.aiGenerating;
       updateGenerateButtonState();
+    } else if (event.data?.type === "workingRender") {
+      // Changes 본문 부분 교체 뒤에도 최신 staged/생성 상태로 AI 버튼을 다시 만들고 활성도를 맞춘다.
+      latestPayload = Object.assign({}, latestPayload || {}, {
+        commit: Object.assign(
+          {},
+          latestPayload?.commit || {},
+          event.data.payload?.commit || {}
+        ),
+      });
+      aiCommitGenerationActive = !!latestPayload.commit?.aiGenerating;
+      updateGenerateButtonState();
     } else if (event.data?.type === "aiCommitGeneration") {
       setAiCommitGenerationActive(event.data.active);
     }

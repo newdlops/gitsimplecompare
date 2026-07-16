@@ -806,6 +806,83 @@
     vscode.setState(state);
   }
 
+  /**
+   * 로컬 staged/unstaged delta만 받아 Changes 섹션 본문을 교체한다.
+   * - History/Compare/Stash DOM과 스크롤은 그대로 두어 큰 보조 섹션의 HTML 생성·이벤트 재연결을 피한다.
+   * @param {object} delta host가 보낸 Changes 노드, commit 상태, 파일 아이콘 delta
+   */
+  function renderWorkingChanges(delta) {
+    if (!lastPayload) {
+      return;
+    }
+    const sectionEl = rootEl.querySelector('.section[data-section="changes"]');
+    const body = sectionEl?.querySelector(":scope > .section-body");
+    const header = sectionEl?.querySelector(":scope > .section-header");
+    if (!sectionEl || !body || !header) {
+      render({
+        ...lastPayload,
+        changes: delta.changes,
+        commit: { ...lastPayload.commit, ...delta.commit },
+      });
+      return;
+    }
+    const transient = captureTransientUi();
+    const previousCommitMessageRevision = state.commitMessageRevision || 0;
+    closeDropdown();
+    lastPayload = {
+      ...lastPayload,
+      changes: delta.changes,
+      commit: { ...lastPayload.commit, ...delta.commit },
+    };
+    currentFileIcons = Object.assign(
+      {},
+      currentFileIcons,
+      (delta.fileIcons && delta.fileIcons.icons) || {}
+    );
+    loadFileIconFonts(delta.fileIcons && delta.fileIcons.fonts);
+    const count =
+      countFiles(delta.changes.staged) + countFiles(delta.changes.unstaged);
+    const conflicts =
+      countConflicts(delta.changes.staged) + countConflicts(delta.changes.unstaged);
+    syncChangesSectionHeader(sectionEl, header, count, conflicts);
+    body.innerHTML = changesBody(
+      delta.changes,
+      lastPayload.commit,
+      delta.changes.viewMode
+    );
+    applyFileIconGlyphStyles();
+    body.querySelectorAll(".row.folder").forEach(bindFolderToggle);
+    body.querySelectorAll(".wt-files .row.file").forEach((el) => {
+      el.addEventListener("click", (event) => onWorkingRowClick(event, el));
+    });
+    bindMarqueeSelection(body);
+    bindCommitBox(body);
+    bindGroupActions(body);
+    bindRowActions(body);
+    applyResize();
+    applySelection();
+    window.__gscApplyWorkingOperation?.();
+    restoreTransientUi(transient, previousCommitMessageRevision);
+    state.commitMessageRevision = lastPayload.commit?.messageRevision || 0;
+    vscode.setState(state);
+  }
+
+  /** Changes 섹션 header의 파일 수와 충돌 배지를 delta 결과에 맞게 갱신한다. */
+  function syncChangesSectionHeader(sectionEl, header, count, conflicts) {
+    header.querySelector(":scope > .count")?.remove();
+    header.querySelector(":scope > .conflict-badge")?.remove();
+    if (count) {
+      const countEl = document.createElement("span");
+      countEl.className = "count";
+      countEl.textContent = String(count);
+      header.querySelector(":scope > .title")?.insertAdjacentElement("afterend", countEl);
+    }
+    if (conflicts) {
+      header.insertAdjacentHTML("beforeend", conflictBadgeHtml(conflicts));
+    }
+    sectionEl.classList.toggle("has-conflicts", conflicts > 0);
+  }
+
   /** 렌더 직전 사용자가 조작 중인 일시 상태를 캡처한다. */
   function captureTransientUi() {
     const active = document.activeElement;
@@ -1261,8 +1338,8 @@
   // 커밋 진행 상태. extension host 의 commitOperation 메시지로 갱신되며, 재렌더 후에도 다시 반영한다.
   let commitInProgress = false;
 
-  function bindCommitBox() {
-    const ta = document.getElementById("commit-msg");
+  function bindCommitBox(scope = document) {
+    const ta = scope.querySelector("#commit-msg");
     if (ta) {
       autoGrow(ta);
       ta.addEventListener("input", () => {
@@ -1276,11 +1353,11 @@
         }
       });
     }
-    const btn = document.getElementById("commit-btn");
+    const btn = scope.querySelector("#commit-btn");
     if (btn) {
       btn.addEventListener("click", () => doCommit("commit"));
     }
-    const caret = document.getElementById("commit-caret");
+    const caret = scope.querySelector("#commit-caret");
     if (caret) {
       caret.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1342,15 +1419,15 @@
   // ── 그룹/행 인라인 액션 ──
 
   /** 그룹 헤더의 전체 stage/unstage/discard 액션(경로 없이 → 전체). */
-  function bindGroupActions() {
-    rootEl.querySelectorAll(".group-action").forEach((el) => {
+  function bindGroupActions(scope = rootEl) {
+    scope.querySelectorAll(".group-action").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         postWorkingAction(el.dataset.gact);
       });
     });
     // 그룹 헤더 클릭 → 그 그룹만 접기/펼치기(액션 클릭은 제외).
-    rootEl.querySelectorAll(".group-toggle").forEach((toggle) => {
+    scope.querySelectorAll(".group-toggle").forEach((toggle) => {
       toggle.addEventListener("click", () => toggleChangesGroup(toggle));
     });
   }
@@ -1376,8 +1453,8 @@
   }
 
   /** 파일/폴더 행 hover 액션(파일 열기 / stage·unstage·discard). 다중 선택 시 선택 전체에 적용. */
-  function bindRowActions() {
-    rootEl.querySelectorAll(".row-action").forEach((el) => {
+  function bindRowActions(scope = rootEl) {
+    scope.querySelectorAll(".row-action").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         // stash 의 ... 메뉴는 changesStashes 모듈이 disclosure 상태와 함께 처리한다.
@@ -1400,7 +1477,7 @@
       });
     });
     // 작업트리 행 우클릭 → 컨텍스트 메뉴(파일 열기/변경 비교/stage·unstage·discard)
-    rootEl.querySelectorAll(".wt-files .row").forEach((row) => {
+    scope.querySelectorAll(".wt-files .row").forEach((row) => {
       row.addEventListener("contextmenu", (e) => {
         e.preventDefault();
         // 선택에 없는 행을 우클릭하면 그 행만 단일 선택으로 바꾼다(VS Code 처럼).
@@ -1999,6 +2076,8 @@
   window.addEventListener("message", (event) => {
     if (event.data.type === "render") {
       render(event.data.payload);
+    } else if (event.data.type === "workingRender") {
+      renderWorkingChanges(event.data.payload);
     } else if (event.data.type === "workingOperation") {
       window.__gscSetWorkingOperation?.(
         event.data.active,

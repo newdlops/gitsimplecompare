@@ -2,20 +2,25 @@
 import * as vscode from "vscode";
 import type { BranchComparison } from "../git/gitTypes";
 import type { StatusGroups } from "../git/gitService";
+import { statusGroupsRenderSignature } from "../git/statusCache";
 import type { CommitFailureReport } from "../git/commitHookFailure";
 import type { CommitHooksSnapshot } from "../git/commitHookService";
 import { ChangeDiffArgs, SortKey, ViewMode } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
-import type { StashFilesLoadResult, StashView } from "../commands/stash";
+import type { StashView } from "../commands/stash";
 import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
 import { logError, logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
-import { buildChangesRenderPayload } from "./changesRenderPayload";
+import {
+  buildChangesRenderPayload,
+  buildWorkingChangesRenderPayload,
+} from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
 import { routeCommitHookMessage } from "./changesCommitHookMessages";
 import { routeChangesAiMessage } from "./changesAiMessages";
+import { routeChangesStashMessage } from "./changesStashMessages";
 import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
 import {
   TREE_SECTIONS,
@@ -44,6 +49,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private draft: ComparisonDraft = {};
   private staged: StatusGroups["staged"] = [];
   private unstaged: StatusGroups["unstaged"] = [];
+  private statusRenderSignature = "";
   private stashes: StashView[] = [];
   private worktrees: WorktreeView[] = [];
   private fileHistory: FileHistoryView = { commits: [] };
@@ -107,6 +113,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         repos[0]?.root;
     }
     if (previousRoot !== this.activeRepo) {
+      this.comparison = undefined;
+      this.draft = {};
+      this.staged = [];
+      this.unstaged = [];
+      this.statusRenderSignature = "";
+      this.stashes = [];
+      this.commitMessage = "";
+      this.commitMessageRevision++;
       this.commitHooks = undefined;
       this.commitFailure = undefined;
     }
@@ -126,8 +140,19 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   }
   /** 작업트리 변경(스테이징/미스테이징)을 갱신한다(Changes 섹션). */
   setStatusGroups(groups: StatusGroups): void {
+    const signature = statusGroupsRenderSignature(groups);
+    if (signature === this.statusRenderSignature) {
+      logInfo("working status render skipped", { reason: "same-snapshot" });
+      return;
+    }
+    this.statusRenderSignature = signature;
     this.staged = groups.staged;
     this.unstaged = groups.unstaged;
+    if (this.view && this.lastRenderPayloadJson) {
+      const payload = buildWorkingChangesRenderPayload(this.renderState(), this.fileIcons);
+      void this.view.webview.postMessage({ type: "workingRender", payload });
+      return;
+    }
     this.render();
   }
   /** stash 목록(+ 각 stash 의 파일)을 갱신한다(Stashes 섹션). */
@@ -301,6 +326,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.draft = {};
     this.staged = [];
     this.unstaged = [];
+    this.statusRenderSignature = "";
     this.stashes = [];
     this.commitMessage = "";
     this.commitMessageRevision++;
@@ -403,6 +429,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (routeChangesAiMessage(msg)) {
+      return;
+    }
+    if (routeChangesStashMessage(msg, this.view?.webview)) {
       return;
     }
     if (msg.type === "ready") {
@@ -526,33 +555,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       });
     } else if (msg.type === "scmAction" && msg.action) {
       void vscode.commands.executeCommand("gitSimpleCompare.scmAction", msg.action);
-    } else if (msg.type === "stashSelected") {
-      void vscode.commands.executeCommand("gitSimpleCompare.stashSelected", msg.paths);
-    } else if (msg.type === "loadStashFiles" && msg.ref) {
-      const load = vscode.commands.executeCommand<StashFilesLoadResult | undefined>(
-        "gitSimpleCompare.loadStashFiles", msg.ref);
-      void Promise.resolve(load)
-        .catch((error) => {
-          logError("stash files command failed", error, { ref: msg.ref });
-          return undefined;
-        })
-        .then((result) => void this.view?.webview.postMessage({
-          type: "stashFilesLoadComplete", ref: msg.ref, stashKey: msg.stashKey, result,
-        }));
-    } else if (msg.type === "applyStash" && msg.ref) {
-      void vscode.commands.executeCommand("gitSimpleCompare.applyStash", msg.ref);
-    } else if (msg.type === "popStash" && msg.ref) {
-      void vscode.commands.executeCommand("gitSimpleCompare.popStash", msg.ref);
-    } else if (msg.type === "dropStash" && msg.ref) {
-      void vscode.commands.executeCommand("gitSimpleCompare.dropStash", {
-        ref: msg.ref,
-        message: msg.message,
-      });
-    } else if (msg.type === "branchStash" && msg.ref) {
-      void vscode.commands.executeCommand(
-        "gitSimpleCompare.branchStash",
-        msg.ref
-      );
     } else if (msg.type === "refreshWorktrees") {
       void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
     } else if (msg.type === "openWorktree" && msg.path) {
@@ -575,11 +577,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
         path: msg.path,
         isMain: msg.isMain,
         branch: msg.branch,
-      });
-    } else if (msg.type === "openStashFile" && msg.ref && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.openStashFile", {
-        ref: msg.ref,
-        path: msg.path,
       });
     } else if (msg.type === "openFileHistoryCommit" && msg.repoRoot &&
       msg.path && msg.baseRef && msg.headRef) {

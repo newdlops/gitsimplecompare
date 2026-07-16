@@ -527,6 +527,14 @@
     if (event.data?.type === "render") {
       latestCommit = event.data.payload?.commit || null;
       scheduleRender();
+    } else if (event.data?.type === "workingRender") {
+      // 부분 렌더가 커밋 박스 DOM을 교체하므로 최신 commit delta를 보존한 뒤 hook UI를 다시 주입한다.
+      latestCommit = Object.assign(
+        {},
+        latestCommit || {},
+        event.data.payload?.commit || {}
+      );
+      scheduleRender();
     } else if (event.data?.type === "commitOperation") {
       commitBusy = !!event.data.active;
       reflectCommitBusy();

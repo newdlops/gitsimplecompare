@@ -278,6 +278,21 @@ export function statusGroupsSignature(groups: StatusGroups): string {
 }
 
 /**
+ * 웹뷰 렌더 결과가 달라지는 파일 identity와 +/- 통계를 함께 포함한 fingerprint를 만든다.
+ * - provider 이벤트가 같은 snapshot을 반복해도 전체 tree 조립, JSON 직렬화, DOM 교체를 건너뛸 수 있다.
+ * @param groups staged/unstaged 작업 상태와 선택적 라인 통계
+ * @returns 배열 순서에는 무관하고 표시 값 변화에는 민감한 안정적인 문자열
+ */
+export function statusGroupsRenderSignature(groups: StatusGroups): string {
+  return [
+    ...groups.staged.map((item) => renderStatusItemSignature("S", item)),
+    ...groups.unstaged.map((item) => renderStatusItemSignature("W", item)),
+  ]
+    .sort()
+    .join("\n");
+}
+
+/**
  * 상태 항목 하나를 충돌 없는 fingerprint 레코드로 직렬화한다.
  * @param bucket staged(S) 또는 working(W) 구분
  * @param item Git 파일 상태와 경로
@@ -285,6 +300,16 @@ export function statusGroupsSignature(groups: StatusGroups): string {
  */
 function statusItemSignature(bucket: "S" | "W", item: FileChange): string {
   return `${bucket}\0${item.status}\0${item.path}\0${item.oldPath ?? ""}`;
+}
+
+/** 상태 identity에 웹뷰가 표시할 additions/deletions까지 붙인 fingerprint 레코드를 만든다. */
+function renderStatusItemSignature(
+  bucket: "S" | "W",
+  item: FileChange
+): string {
+  return `${statusItemSignature(bucket, item)}\0${item.additions ?? ""}\0${
+    item.deletions ?? ""
+  }`;
 }
 
 /**

@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { GitService, type StatusGroups } from "../src/git/gitService";
+import { detectRepositoryIdentity } from "../src/git/repositoryDiscovery";
 import {
   StatusCache,
   StatusSourceFence,
+  statusGroupsRenderSignature,
   statusGroupsSignature,
   statusRefreshFreshness,
 } from "../src/git/statusCache";
@@ -41,6 +43,18 @@ function deferred<T>(): Deferred<T> {
 function cloneLabel(value: { label: string }): { label: string } {
   return { ...value };
 }
+
+test("커밋이 없는 저장소도 결합 identity 탐색의 fallback으로 보존한다", async () => {
+  const root = mkdtempSync(join(tmpdir(), "gsc-unborn-repo-"));
+  try {
+    execFileSync("git", ["init", "-q", root]);
+    const identity = await detectRepositoryIdentity(root);
+    assert.equal(realpathSync(identity?.root ?? ""), realpathSync(root));
+    assert.equal(identity?.branch, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("invalidate 원인과 무관하게 generation을 증가시킨다", () => {
   const cache = new StatusCache(cloneLabel);
@@ -199,6 +213,26 @@ test("status fingerprint는 통계와 provider 배열 순서에 영향받지 않
     ],
   };
   assert.equal(statusGroupsSignature(first), statusGroupsSignature(reordered));
+});
+
+test("렌더 fingerprint는 순서에는 무관하고 라인 통계 변경은 감지한다", () => {
+  const first: StatusGroups = {
+    staged: [{ status: "M", path: "a.ts", additions: 3, deletions: 1 }],
+    unstaged: [{ status: "A", path: "b.ts", additions: 7, deletions: 0 }],
+  };
+  const reordered: StatusGroups = {
+    staged: [{ status: "M", path: "a.ts", additions: 3, deletions: 1 }],
+    unstaged: [{ status: "A", path: "b.ts", additions: 7, deletions: 0 }],
+  };
+  assert.equal(
+    statusGroupsRenderSignature(first),
+    statusGroupsRenderSignature(reordered)
+  );
+  reordered.unstaged[0].additions = 8;
+  assert.notEqual(
+    statusGroupsRenderSignature(first),
+    statusGroupsRenderSignature(reordered)
+  );
 });
 
 test("provider는 CLI 상태와 수렴하기 전까지 fence를 통과하지 못한다", () => {
