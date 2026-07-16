@@ -25,7 +25,10 @@ export async function showSplitCommits(
   if (!service) {
     return;
   }
-  const path = focus?.path ?? (await service.getStatusGroups()).unstaged[0]?.path;
+  // 첫 미스테이징 경로만 필요하므로 +/- 통계 보강은 생략해 diff 진입을 빠르게 연다.
+  const path = focus?.path ?? (
+    await service.getStatusGroups({ includeStats: false })
+  ).unstaged[0]?.path;
   if (!path) {
     vscode.window.showInformationMessage(
       vscode.l10n.t("No unstaged changes found.")

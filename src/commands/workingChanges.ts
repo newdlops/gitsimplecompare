@@ -272,7 +272,8 @@ export async function discardChanges(
   }
   let targets = paths;
   if (!targets || !targets.length) {
-    const { unstaged } = await svc.getStatusGroups();
+    // 확인 대화상자에는 경로만 필요하므로 numstat/미추적 파일 line I/O를 기다리지 않는다.
+    const { unstaged } = await svc.getStatusGroups({ includeStats: false });
     targets = unstaged.map((c) => c.path);
   }
   if (!targets.length) {

@@ -21,7 +21,16 @@ interface WorkingStatusRefreshState {
   requestId: number;
   readonly providerFence: StatusSourceFence;
   statsTimer?: ReturnType<typeof setTimeout>;
+  statsRunning?: Promise<void>;
+  pendingStats?: StatusStatsRequest;
   lastApplied?: StatusGroups;
+}
+
+/** 실행 중 numstat 뒤에 합쳐 둘 최신 통계 보강 요청. */
+interface StatusStatsRequest {
+  request: WorkingStatusRequest;
+  groups: StatusGroups;
+  source: string;
 }
 
 /** refresh 한 번의 비동기 최신성 검사에 필요한 불변 토큰. */
@@ -289,8 +298,45 @@ function scheduleStatusStats(
   }
   request.state.statsTimer = setTimeout(() => {
     request.state.statsTimer = undefined;
-    void enrichStatusStats(request, groups, source);
+    enqueueStatusStats({ request, groups, source });
   }, STATUS_STATS_DEBOUNCE_MS);
+}
+
+/**
+ * 저장소별 numstat 작업을 한 번에 하나만 실행하고, 겹친 이벤트는 가장 최신 요청 하나로 합친다.
+ * - read-only Git 프로세스도 무제한으로 겹치면 status tail latency가 늘어나므로 로컬 목록을 우선한다.
+ * @param stats debounce를 통과한 최신성 토큰, 상태 목록, source 묶음
+ */
+function enqueueStatusStats(stats: StatusStatsRequest): void {
+  const state = stats.request.state;
+  if (state.statsRunning) {
+    state.pendingStats = stats;
+    logInfo("working status stats coalesced", {
+      root: stats.request.root,
+      requestId: stats.request.requestId,
+    });
+    return;
+  }
+  startStatusStats(stats);
+}
+
+/**
+ * 통계 보강 하나를 시작하고 완료 직후 대기 중인 최신 요청만 이어서 실행한다.
+ * @param stats 실제 addStatusStats를 실행할 요청
+ */
+function startStatusStats(stats: StatusStatsRequest): void {
+  const state = stats.request.state;
+  const running = enrichStatusStats(stats.request, stats.groups, stats.source);
+  state.statsRunning = running;
+  void running.finally(() => {
+    if (state.statsRunning !== running) return;
+    state.statsRunning = undefined;
+    const pending = state.pendingStats;
+    state.pendingStats = undefined;
+    if (pending && isCurrentRequest(pending.request, "stats-queued")) {
+      startStatusStats(pending);
+    }
+  });
 }
 
 /**
@@ -414,4 +460,6 @@ function cancelPendingStats(state: WorkingStatusRefreshState): void {
     clearTimeout(state.statsTimer);
     state.statsTimer = undefined;
   }
+  // 실행 중인 read-only Git은 강제 종료하지 않되, 아직 시작하지 않은 과거 요청은 최신 요청으로 대체한다.
+  state.pendingStats = undefined;
 }
