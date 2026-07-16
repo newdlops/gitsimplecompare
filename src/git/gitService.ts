@@ -43,21 +43,6 @@ export class GitService {
 
   constructor(public readonly repoRoot: string) {}
   /**
-   * 주어진 경로가 속한 git 저장소의 루트를 찾는다.
-   * - 파일/폴더 어느 쪽이든 그 위치를 기준으로 `git rev-parse --show-toplevel` 실행.
-   * @param cwd 탐색 시작 디렉터리(파일이면 그 파일의 디렉터리를 넘긴다)
-   * @returns 저장소 루트 절대 경로, 저장소가 아니면 undefined
-   */
-  static async detectRepoRoot(cwd: string): Promise<string | undefined> {
-    try {
-      const out = await runGit(["rev-parse", "--show-toplevel"], cwd);
-      return out.trim() || undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
    * 현재 체크아웃된 브랜치 이름을 반환한다.
    * - 분리된 HEAD 상태면 "HEAD" 가 반환될 수 있다.
    */

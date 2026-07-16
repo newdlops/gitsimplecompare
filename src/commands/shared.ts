@@ -211,25 +211,21 @@ export async function discoverRepositories(
     searchPaths.push(folder.uri.fsPath);
   }
   // multi-root workspace의 rev-parse와 브랜치 조회는 서로 독립이므로 병렬 실행해 합산 지연을 피한다.
-  const services = await Promise.all(
-    [...new Set(searchPaths)].map((searchPath) => registry.resolve(searchPath))
+  const identities = await Promise.all(
+    [...new Set(searchPaths)].map((searchPath) =>
+      registry.resolveWithBranch(searchPath)
+    )
   );
-  const roots = [
-    ...new Set(
-      services
-        .filter((service): service is GitService => !!service)
-        .map((service) => service.repoRoot)
-    ),
-  ];
-  return Promise.all(
-    roots.map(async (root): Promise<RepoInfo> => {
-      try {
-        return { root, branch: await registry.get(root).getCurrentBranch() };
-      } catch {
-        return { root, branch: "" };
-      }
-    })
-  );
+  const repositories = new Map<string, RepoInfo>();
+  for (const identity of identities) {
+    if (!identity) continue;
+    const root = identity.service.repoRoot;
+    repositories.set(repositoryPathKey(root), {
+      root,
+      branch: identity.branch,
+    });
+  }
+  return [...repositories.values()];
 }
 
 /**
