@@ -52,6 +52,7 @@
 
   let latestCommit = null;
   let managerExpanded = false;
+  let requestedHookRepo = "";
   let commitBusy = false;
   let pendingHookName = "";
   let refreshing = false;
@@ -120,6 +121,7 @@
     if (!box || !bar || !latestCommit) {
       return;
     }
+    requestExpandedManagerState();
     renderManageButton(bar);
     box.querySelector(".commit-hooks-stack")?.remove();
 
@@ -146,16 +148,40 @@
   }
 
   /**
+   * 펼쳐 둔 hook 관리 패널에서 저장소가 바뀌면 새 저장소 상태를 한 번 자동 요청한다.
+   * - 같은 저장소의 실패를 render마다 무한 재시도하지 않고, 사용자가 refresh 버튼으로 다시 시도할 수 있게 한다.
+   * @returns 반환값 없이 저장소별 최초 요청이 필요할 때만 host 메시지를 전송한다
+   */
+  function requestExpandedManagerState() {
+    const repoRoot = latestCommit?.repoRoot || "";
+    if (
+      !managerExpanded ||
+      !latestCommit?.hasRepo ||
+      latestCommit?.hooks ||
+      refreshing ||
+      requestedHookRepo === repoRoot
+    ) {
+      return;
+    }
+    requestedHookRepo = repoRoot;
+    refreshing = true;
+    vscode.postMessage({ type: "refreshCommitHooks" });
+  }
+
+  /**
    * 커밋 바에 활성 파일 hook 개수와 펼침 상태를 표시하는 관리 버튼을 만든다.
    * @param {Element} bar 버튼을 삽입할 커밋 toolbar 요소
    * @returns {void} 기존 관리 버튼을 교체해 중복 생성을 막는다.
    */
   function renderManageButton(bar) {
     document.getElementById("commit-hooks-btn")?.remove();
+    const loaded = !!latestCommit?.hooks;
     const hooks = latestCommit?.hooks?.hooks || [];
     const active = hooks.filter((hook) => hook.enabled).length;
     const detail = format(T.activeCommitHooks, active);
-    const tooltip = `${T.manageCommitHooks} · ${detail}`;
+    const tooltip = loaded
+      ? `${T.manageCommitHooks} · ${detail}`
+      : T.manageCommitHooks;
     const button = document.createElement("button");
     button.id = "commit-hooks-btn";
     button.className = "commit-hooks-btn";
@@ -166,9 +192,15 @@
     button.setAttribute("aria-expanded", managerExpanded ? "true" : "false");
     button.innerHTML =
       '<span class="codicon codicon-shield" aria-hidden="true"></span>' +
-      `<span class="commit-hooks-count">${active}</span>`;
+      (loaded ? `<span class="commit-hooks-count">${active}</span>` : "");
     button.addEventListener("click", () => {
       managerExpanded = !managerExpanded;
+      // 초기 화면에서는 고비용 hook 검사를 생략하고, 사용자가 관리 패널을 실제로 열 때 한 번만 요청한다.
+      if (managerExpanded && !latestCommit?.hooks && !refreshing) {
+        requestedHookRepo = latestCommit?.repoRoot || "";
+        refreshing = true;
+        vscode.postMessage({ type: "refreshCommitHooks" });
+      }
       renderHookUi();
     });
     const commitButton = document.getElementById("commit-btn");

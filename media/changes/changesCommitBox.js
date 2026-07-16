@@ -69,16 +69,25 @@
     window.requestAnimationFrame(enhanceCommitMessageInput);
   }
 
+  /**
+   * 변경 웹뷰를 구성하는 모든 일반 script가 실행된 직후 host에 최초 상태를 요청한다.
+   * - 이 파일 뒤의 AI/Hook script도 설치되어야 하므로 파싱 완료 신호인 DOMContentLoaded까지 기다린다.
+   * - 캐시 등으로 DOM 파싱이 이미 끝난 뒤 실행된 경우에는 현재 script 실행을 마친 다음 microtask에서 알린다.
+   * @returns {void} host에 ready 메시지를 한 번 전송한다.
+   */
+  function announceReady() {
+    window.__gscVscode?.postMessage({ type: "ready" });
+  }
+
   new MutationObserver(scheduleEnhance).observe(rootEl, {
     childList: true,
     subtree: true,
   });
   window.addEventListener("message", scheduleEnhance);
-  // 마지막 보강 script까지 설치된 load 시점에 최초 상태를 요청해 hook 모듈도 첫 render를 받게 한다.
-  window.addEventListener(
-    "load",
-    () => window.__gscVscode?.postMessage({ type: "ready" }),
-    { once: true }
-  );
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", announceReady, { once: true });
+  } else {
+    queueMicrotask(announceReady);
+  }
   scheduleEnhance();
 })();
