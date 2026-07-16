@@ -17,6 +17,14 @@ export type ChangesRefreshSection =
   | "commitHooks"
   | "comparison";
 
+/** 로컬 작업 상태와 부가 정보를 서로 막지 않게 분리한 Changes 새로고침 lane. */
+export interface ChangesRefreshLanes {
+  /** 저장소 identity와 staged/unstaged 목록처럼 사용자 입력에 즉시 반응해야 하는 영역. */
+  local: ChangesRefreshSection[];
+  /** History, stash, worktree, hook, 비교처럼 로컬 목록과 독립적으로 조회 가능한 영역. */
+  auxiliary: ChangesRefreshSection[];
+}
+
 /** 새로고침 pass 하나에 포함된 요청을 실제 실행 함수로 넘기는 계약. */
 export type RefreshPassRunner = (reason: string) => Promise<void>;
 
@@ -126,6 +134,43 @@ export class RefreshDrain {
 }
 
 /**
+ * Changes 뷰가 숨겨진 동안 놓친 저장소 목록 변경을 재노출 시 한 번만 복구하는 상태 경계다.
+ * - retainContextWhenHidden 웹뷰는 다시 열려도 ready가 재발생하지 않으므로 viewVisible 이유를 조건부로 승격한다.
+ * - 일반 파일 변경은 저장소 탐색을 필요로 하지 않아 dirty 상태를 만들지 않는다.
+ */
+export class HiddenRepositoryRefreshFence {
+  private pending = false;
+
+  /**
+   * 숨겨진 뷰가 저장소 목록을 바꿀 수 있는 새로고침 이유를 놓쳤음을 기록한다.
+   * @param reason Git provider, workspace, watcher가 만든 단일 또는 합쳐진 이유
+   * @param visible Changes 웹뷰의 현재 가시성
+   */
+  mark(reason: string, visible: boolean): void {
+    if (
+      !visible &&
+      reason.trim() &&
+      changesRefreshSections(reason).includes("repositories")
+    ) {
+      this.pending = true;
+    }
+  }
+
+  /**
+   * 재노출 이유를 저장소 탐색 포함 이유로 승격하고 pending 상태를 소비한다.
+   * @param reason ChangesViewProvider가 요청한 viewVisible 또는 다른 이유
+   * @returns 저장소 복구가 필요하면 viewVisibleRepositories, 아니면 원래 이유
+   */
+  consumeVisibilityReason(reason: string): string {
+    if (reason !== "viewVisible" || !this.pending) {
+      return reason;
+    }
+    this.pending = false;
+    return "viewVisibleRepositories";
+  }
+}
+
+/**
  * `.git` 파일 시스템 이벤트가 refresh로 이어져야 하는지 판정한다.
  * - ref/HEAD/merge 상태와 ignore/hook처럼 화면 데이터에 영향을 주는 경로만 통과시킨다.
  * @param fsPath 변경된 `.git` 내부 파일의 절대 경로
@@ -223,6 +268,25 @@ export function changesRefreshSections(
 }
 
 /**
+ * 새로고침 원인에 필요한 영역을 로컬 상태 lane과 보조 정보 lane으로 나눈다.
+ * - 두 lane은 별도 RefreshDrain에서 실행할 수 있어 느린 History/stash 조회가 파일 저장·stage 결과를 막지 않는다.
+ * - 저장소 탐색은 활성 저장소 선택에 영향을 주므로 workingChanges와 같은 local lane에 둔다.
+ * @param reason 단일 또는 쉼표로 합쳐진 새로고침 원인
+ * @returns 원래 고정 순서를 유지한 local/auxiliary 영역 목록
+ */
+export function changesRefreshLanes(reason: string): ChangesRefreshLanes {
+  const sections = changesRefreshSections(reason);
+  return {
+    local: sections.filter(
+      (section) => section === "repositories" || section === "workingChanges"
+    ),
+    auxiliary: sections.filter(
+      (section) => section !== "repositories" && section !== "workingChanges"
+    ),
+  };
+}
+
+/**
  * refresh 전에 GitService 작업 상태 캐시를 무효화해야 하는지 판정한다.
  * - 이 확장이 index를 직접 바꾸는 명령은 watcher 도착을 기다리지 않고 다음 CLI 조회가 새 상태를 읽게 한다.
  * @param reason 단일 또는 합쳐진 새로고침 원인
@@ -240,6 +304,7 @@ export function shouldInvalidateChangesStatus(reason: string): boolean {
       item.startsWith("branchOperation") ||
       item.includes("conflict") ||
       item.includes("ignore-rules") ||
+      isDirectLocalFileRefreshReason(item) ||
       item.startsWith("hunkCheckbox:") ||
       item.startsWith("editorHunks:")
   );
@@ -265,6 +330,7 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
       item.startsWith("branchOperation") ||
       item.includes("ignore-rules") ||
       item.includes("conflict") ||
+      isDirectLocalFileRefreshReason(item) ||
       item.startsWith("hunkCheckbox:") ||
       item.startsWith("editorHunks:") ||
       item.includes("stable-git-state")
@@ -309,8 +375,12 @@ function sectionsForRefreshReason(
     return ["fileHistory", "stashes", "comparison"];
   }
   if (reason === "viewVisible") {
-    // retainContextWhenHidden 재노출은 저장소 identity/working state만 맞추고 부가 Git 명령은 반복하지 않는다.
-    return ["repositories", "workingChanges"];
+    // 저장소 추가/삭제는 별도 workspace/Git 이벤트가 담당하므로 재노출은 로컬 상태만 즉시 맞춘다.
+    return ["workingChanges"];
+  }
+  if (reason === "viewVisibleRepositories") {
+    // 숨김 중 놓친 목록과 로컬 상태를 복구하고, root가 바뀌었을 수 있어 stash 메타데이터도 새 root로 맞춘다.
+    return ["repositories", "workingChanges", "stashes"];
   }
   if (isWorkingTreeRefreshReason(reason)) {
     return ["workingChanges"];
@@ -344,7 +414,7 @@ function sectionsForRefreshReason(
     reason === "vscodeGit:repositoryClosed" ||
     reason === "vscodeGit:enablement"
   ) {
-    return ["repositories", "workingChanges"];
+    return ["repositories", "workingChanges", "stashes"];
   }
   // 과거 버전이 만든 synthetic focus 원인이 들어와도 전체 History/stash 재조사를 하지 않는다.
   if (reason === "windowFocused") {
@@ -370,6 +440,20 @@ function isWorkingTreeRefreshReason(reason: string): boolean {
     reason.includes("conflict") ||
     reason.startsWith("hunkCheckbox:") ||
     reason.startsWith("editorHunks:")
+  );
+}
+
+/**
+ * 내장 Git provider를 기다리지 않고 실제 porcelain 상태를 확인해야 하는 workspace 파일 이벤트인지 판정한다.
+ * @param reason 쉼표가 제거된 단일 refresh 원인
+ * @returns 저장·생성·삭제·이름 변경 이벤트면 true
+ */
+function isDirectLocalFileRefreshReason(reason: string): boolean {
+  return (
+    reason === "documentSaved" ||
+    reason === "filesCreated" ||
+    reason === "filesDeleted" ||
+    reason === "filesRenamed"
   );
 }
 

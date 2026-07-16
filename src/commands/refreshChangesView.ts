@@ -18,16 +18,22 @@ import { logError, logInfo, logWarn } from "../ui/outputLog";
 import {
   ChangesRefreshSection,
   RefreshDrain,
-  changesRefreshSections,
+  changesRefreshLanes,
   shouldForceChangesGitStatus,
   shouldInvalidateChangesStatus,
   shouldShowChangesRefreshProgress,
 } from "../utils/extensionRefreshPolicy";
 
 let refreshSequence = 0;
-let refreshCoordinator:
-  | { deps: CommandDeps; drain: RefreshDrain }
-  | undefined;
+type ChangesRefreshLane = "local" | "auxiliary";
+
+interface ChangesRefreshCoordinator {
+  deps: CommandDeps;
+  local: RefreshDrain;
+  auxiliary: RefreshDrain;
+}
+
+let refreshCoordinator: ChangesRefreshCoordinator | undefined;
 
 export interface RefreshRequest {
   reason?: string;
@@ -45,45 +51,89 @@ export async function refreshChangesView(
   request: RefreshRequest = {}
 ): Promise<void> {
   const reason = request.reason ?? "command";
-  const drain = changesRefreshDrain(deps);
-  if (drain.isRunning()) {
-    logInfo("changes refresh queued", { reason });
+  const refresh = () => requestChangesRefreshLanes(deps, reason);
+  if (shouldShowChangesRefreshProgress(reason)) {
+    await vscode.window.withProgress(
+      { location: { viewId: "gitSimpleCompare.changes" } },
+      refresh
+    );
+    return;
   }
-  await drain.request(reason);
+  await refresh();
 }
 
 /**
- * 현재 활성화의 공유 refresh drain을 반환한다.
- * - 확장 재활성화로 CommandDeps 인스턴스가 바뀌면 이전 모듈 상태를 재사용하지 않고 새 queue를 만든다.
+ * 원인에 필요한 local/auxiliary lane을 각각 요청하고 두 결과를 함께 기다린다.
+ * - 느린 History/stash/comparison pass가 실행 중이어도 local lane은 별도 drain에서 즉시 진행한다.
+ * - 저장소 탐색이 포함된 pass만 auxiliary lane이 새 활성 저장소 확정을 기다린다.
  * @param deps 현재 확장 활성화에서 공유하는 명령 의존성
- * @returns 겹친 refresh를 직렬화하고 호출자 완료를 보장하는 drain
+ * @param reason 단일 또는 합쳐진 새로고침 원인
  */
-function changesRefreshDrain(deps: CommandDeps): RefreshDrain {
-  if (!refreshCoordinator || refreshCoordinator.deps !== deps) {
-    refreshCoordinator = {
-      deps,
-      drain: new RefreshDrain((reason) => runChangesRefreshPass(deps, reason)),
-    };
-  }
-  return refreshCoordinator.drain;
-}
-
-/**
- * 합쳐진 원인으로 실제 Changes refresh 한 pass를 실행하고 오류를 사용자/OUTPUT에 보고한다.
- * @param deps 공유 의존성
- * @param reason 이 pass에 포함된 중복 제거 원인 문자열
- */
-async function runChangesRefreshPass(
+async function requestChangesRefreshLanes(
   deps: CommandDeps,
   reason: string
 ): Promise<void> {
+  const lanes = changesRefreshLanes(reason);
+  const coordinator = changesRefreshCoordinator(deps);
+  const requestLane = (
+    lane: ChangesRefreshLane,
+    sections: ChangesRefreshSection[]
+  ): Promise<void> => {
+    if (!sections.length) return Promise.resolve();
+    const drain = coordinator[lane];
+    if (drain.isRunning()) {
+      logInfo("changes refresh queued", { reason, lane });
+    }
+    return drain.request(reason);
+  };
+  const local = requestLane("local", lanes.local);
+  const waitForRepositorySelection = lanes.local.includes("repositories");
+  const auxiliary = lanes.auxiliary.length
+    ? waitForRepositorySelection
+      ? local.then(() => requestLane("auxiliary", lanes.auxiliary))
+      : requestLane("auxiliary", lanes.auxiliary)
+    : Promise.resolve();
+  await Promise.all([local, auxiliary]);
+}
+
+/**
+ * 현재 활성화가 공유할 local/auxiliary refresh drain을 반환한다.
+ * @param deps 현재 확장 활성화에서 공유하는 명령 의존성
+ * @returns 서로 독립적으로 요청을 합치고 완료를 보장하는 두 drain
+ */
+function changesRefreshCoordinator(deps: CommandDeps): ChangesRefreshCoordinator {
+  if (!refreshCoordinator || refreshCoordinator.deps !== deps) {
+    refreshCoordinator = {
+      deps,
+      local: new RefreshDrain((reason) =>
+        runChangesRefreshPass(deps, reason, "local")
+      ),
+      auxiliary: new RefreshDrain((reason) =>
+        runChangesRefreshPass(deps, reason, "auxiliary")
+      ),
+    };
+  }
+  return refreshCoordinator;
+}
+
+/**
+ * 합쳐진 원인으로 한 lane의 실제 Changes refresh pass를 실행하고 오류를 사용자/OUTPUT에 보고한다.
+ * @param deps 공유 의존성
+ * @param reason 이 pass에 포함된 중복 제거 원인 문자열
+ * @param lane 로컬 작업 상태 또는 보조 정보 실행 lane
+ */
+async function runChangesRefreshPass(
+  deps: CommandDeps,
+  reason: string,
+  lane: ChangesRefreshLane
+): Promise<void> {
   const runId = ++refreshSequence;
-  logInfo("changes refresh started", { runId, reason });
+  logInfo("changes refresh started", { runId, reason, lane });
   try {
-    await refreshChangesViewOnce(deps, reason);
-    logInfo("changes refresh finished", { runId });
+    await refreshChangesViewOnce(deps, reason, lane);
+    logInfo("changes refresh finished", { runId, lane });
   } catch (error) {
-    logError("changes refresh failed", error, { runId, reason });
+    logError("changes refresh failed", error, { runId, reason, lane });
     vscode.window.showErrorMessage(
       vscode.l10n.t(
         "Git Simple Compare refresh failed. See the Git Simple Compare output for details."
@@ -92,63 +142,95 @@ async function runChangesRefreshPass(
   }
 }
 
-/** 실제 git 조회를 한 번 수행한다. 겹친 호출은 refreshChangesView 가 직렬화한다. */
+/** 실제 Git 조회를 한 lane에서 수행한다. 같은 lane의 겹친 호출만 RefreshDrain이 합친다. */
 async function refreshChangesViewOnce(
   deps: CommandDeps,
-  reason: string
+  reason: string,
+  lane: ChangesRefreshLane
 ): Promise<void> {
-  const refresh = async (): Promise<void> => {
-    const sections = changesRefreshSections(reason);
-    logInfo("changes refresh scoped", { reason, sections });
-    // 조회할 영역이 없는 단순 render handshake는 Git 작업을 만들지 않는다.
-    if (sections.length === 0) return;
-    if (shouldInvalidateChangesStatus(reason)) {
+  const sections = changesRefreshLanes(reason)[lane];
+  logInfo("changes refresh scoped", { reason, lane, sections });
+  if (sections.length === 0) return;
+  const initialRoot = deps.changesView.getActiveRepo();
+  if (lane === "local" && shouldInvalidateChangesStatus(reason)) {
+    if (initialRoot && !sections.includes("repositories")) {
+      deps.registry.invalidateStatusCache(initialRoot);
+    } else {
       deps.registry.invalidateStatusCaches();
     }
-    if (sections.includes("repositories") || !deps.changesView.getActiveRepo()) {
-      const repositories = await discoverRepositoriesForRefresh(deps, reason);
-      const preferredRoot = resolvePreferredRepositoryRoot(repositories);
-      deps.changesView.setRepositories(repositories, preferredRoot);
-    }
-    const forceGitStatus = shouldForceChangesGitStatus(reason);
-    const tasks = [
-      sectionTask(sections, "workingChanges", () =>
-        refreshWorkingChanges(deps, { forceGit: forceGitStatus })
-      ),
-      sectionTask(sections, "fileHistory", () =>
-        refreshFileHistory(deps, { reason })
-      ),
-      sectionTask(sections, "stashes", () => refreshStashes(deps)),
-      sectionTask(sections, "worktrees", () =>
-        refreshWorktreesForChangesView(deps)
-      ),
-      sectionTask(sections, "commitHooks", () => refreshCommitHooks(deps)),
-      sectionTask(sections, "comparison", () => refreshActiveComparison(deps)),
-    ].filter((task): task is RefreshTask => !!task);
-    const results = await Promise.allSettled(
-      tasks.map((task) => timedRefreshSection(task.section, task.run))
-    );
-    results.forEach((result, index) => {
-      if (result.status === "rejected") {
-        const section = tasks[index]?.section ?? "unknown";
-        logWarn("changes refresh section failed", {
-          section,
-          reason:
-            result.reason instanceof Error
-              ? result.reason.message
-              : String(result.reason),
-        });
-      }
-    });
-  };
-  if (shouldShowChangesRefreshProgress(reason)) {
-    await vscode.window.withProgress(
-      { location: { viewId: "gitSimpleCompare.changes" } },
-      refresh
-    );
-  } else {
-    await refresh();
   }
+  const forceGitStatus = shouldForceChangesGitStatus(reason);
+  const shouldDiscover =
+    sections.includes("repositories") || !deps.changesView.getActiveRepo();
+  const repositoryLoad = shouldDiscover
+    ? discoverRepositoriesForRefresh(deps, reason)
+    : undefined;
+  // 이미 활성 저장소가 있으면 느린 multi-root 탐색과 현재 저장소 status를 동시에 시작한다.
+  let prefetchedWorking =
+    repositoryLoad && initialRoot && sections.includes("workingChanges")
+      ? timedRefreshSection("workingChanges", () =>
+          refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+        )
+      : undefined;
+  // repositoryLoad가 먼저 실패해도 이미 시작한 status Promise가 unhandled rejection으로 남지 않게 한다.
+  void prefetchedWorking?.catch(() => undefined);
+  if (repositoryLoad) {
+    const repositories = await repositoryLoad;
+    const preferredRoot = resolvePreferredRepositoryRoot(repositories);
+    deps.changesView.setRepositories(repositories, preferredRoot);
+  }
+  const activeRoot = deps.changesView.getActiveRepo();
+  if (initialRoot && activeRoot !== initialRoot) {
+    // 자동 저장소 전환은 수동 selectRepo와 같은 경계로 Explorer/SCM 비교 세대도 함께 무효화한다.
+    deps.comparison.clearComparison("changesRepositoryChanged");
+  }
+  if (prefetchedWorking && activeRoot !== initialRoot) {
+    // 탐색 결과 활성 저장소가 달라졌다면 잠깐 적용됐을 수 있는 이전 목록을 지우고 새 root를 즉시 조회한다.
+    deps.changesView.setStatusGroups({ staged: [], unstaged: [] });
+    observeSupersededWorkingPrefetch(prefetchedWorking, initialRoot);
+    prefetchedWorking = undefined;
+  }
+  const tasks = [
+    sections.includes("workingChanges")
+      ? prefetchedWorking
+        ? promisedSectionTask("workingChanges", prefetchedWorking)
+        : sectionTask("workingChanges", () =>
+            refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+          )
+      : undefined,
+    sections.includes("fileHistory")
+      ? sectionTask("fileHistory", () => refreshFileHistory(deps, { reason }))
+      : undefined,
+    sections.includes("stashes")
+      ? sectionTask("stashes", () => refreshStashes(deps))
+      : undefined,
+    sections.includes("worktrees")
+      ? sectionTask("worktrees", () => refreshWorktreesForChangesView(deps))
+      : undefined,
+    sections.includes("commitHooks")
+      ? sectionTask("commitHooks", () => refreshCommitHooks(deps))
+      : undefined,
+    sections.includes("comparison")
+      ? sectionTask("comparison", () => refreshActiveComparison(deps))
+      : undefined,
+  ].filter((task): task is RefreshTask => !!task);
+  const results = await Promise.allSettled(
+    tasks.map((task) =>
+      task.promise ?? timedRefreshSection(task.section, task.run)
+    )
+  );
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      const section = tasks[index]?.section ?? "unknown";
+      logWarn("changes refresh section failed", {
+        section,
+        reason:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      });
+    }
+  });
 }
 
 /**
@@ -187,15 +269,40 @@ async function discoverRepositoriesForRefresh(
 interface RefreshTask {
   section: ChangesRefreshSection;
   run: () => Promise<void>;
+  promise?: Promise<void>;
 }
 
-/** 선택된 section 만 실행 목록에 넣는다. */
+/** 실행할 section과 지연 실행 함수를 task로 묶는다. */
 function sectionTask(
-  sections: ChangesRefreshSection[],
   section: ChangesRefreshSection,
   run: () => Promise<void>
-): RefreshTask | undefined {
-  return sections.includes(section) ? { section, run } : undefined;
+): RefreshTask {
+  return { section, run };
+}
+
+/** 이미 병렬 시작한 section Promise를 나머지 task와 같은 완료/오류 처리 경로로 묶는다. */
+function promisedSectionTask(
+  section: ChangesRefreshSection,
+  promise: Promise<void>
+): RefreshTask {
+  return { section, run: () => promise, promise };
+}
+
+/**
+ * 저장소 탐색 중 활성 root가 바뀌어 폐기한 status prefetch의 오류를 unhandled rejection 없이 기록한다.
+ * @param promise 이전 활성 저장소에서 이미 시작한 status 조회
+ * @param root 조회 시작 당시 활성 저장소
+ */
+function observeSupersededWorkingPrefetch(
+  promise: Promise<void>,
+  root: string | undefined
+): void {
+  void promise.catch((error) => {
+    logWarn("superseded working status prefetch failed", {
+      root,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
 
 /**
