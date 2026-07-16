@@ -18,6 +18,7 @@ export interface ChangesWebviewMessage {
   autoGenerate?: boolean;
   action?: string;
   ref?: string;
+  stashKey?: string;
   stage?: string;
   status?: string;
   repoRoot?: string;

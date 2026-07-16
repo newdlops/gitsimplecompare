@@ -97,6 +97,7 @@ export function buildChangesRenderPayload(
     commit: {
       message: state.commitMessage,
       messageRevision: state.commitMessageRevision,
+      repoRoot: state.activeRepo,
       branch: state.repositories.find((r) => r.root === state.activeRepo)
         ?.branch,
       hasRepo: !!state.activeRepo,
@@ -112,7 +113,6 @@ export function buildChangesRenderPayload(
       message: s.message,
       branch: s.branch,
       date: s.relativeDate,
-      files: s.files,
     })),
     worktrees: state.worktrees.map((w) => ({
       ...w,
@@ -175,7 +175,7 @@ function collectFilePaths(state: ChangesRenderState): string[] {
     ...(state.comparison?.changes.map((c) => c.path) ?? []),
     ...state.staged.map((c) => c.path),
     ...state.unstaged.map((c) => c.path),
-    ...state.stashes.flatMap((s) => s.files.map((f) => f.path)),
+    // 대형 stash 를 펼쳐도 수천 경로의 테마 아이콘 해석이 extension host 를 다시 막지 않게 제외한다.
     ...(state.fileHistory.path ? [state.fileHistory.path] : []),
     ...state.fileHistory.commits.flatMap((c) =>
       c.oldPath ? [c.path, c.oldPath] : [c.path]

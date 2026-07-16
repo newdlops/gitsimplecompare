@@ -6,7 +6,7 @@ import type { CommitFailureReport } from "../git/commitHookFailure";
 import type { CommitHooksSnapshot } from "../git/commitHookService";
 import { ChangeDiffArgs, SortKey, ViewMode } from "../providers/changesTreeModel";
 import type { RepoInfo } from "../commands/shared";
-import type { StashView } from "../commands/stash";
+import type { StashFilesLoadResult, StashView } from "../commands/stash";
 import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
 import { logError, logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
@@ -183,9 +183,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.comparison = comparison;
     this.activeRepo = comparison.repoRoot;
     this.render();
-    if (repoChanged) {
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshCommitHooks");
-    }
+    // 저장소가 바뀐 hook 상태는 관리 패널을 펼칠 때 지연 조회한다.
   }
   /** 현재 비교 컨텍스트를 반환한다(없으면 undefined). */
   getComparison(): BranchComparison | undefined {
@@ -304,7 +302,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.staged = [];
     this.unstaged = [];
     this.stashes = [];
-    this.worktrees = [];
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.commitHooks = undefined;
@@ -312,9 +309,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
+    // stash 메타데이터만 새 저장소 기준으로 바꾸고, workspace 공용 worktree 목록은 보존한다.
     void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshCommitHooks");
   }
   /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
   private render(): void {
@@ -532,6 +528,17 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       void vscode.commands.executeCommand("gitSimpleCompare.scmAction", msg.action);
     } else if (msg.type === "stashSelected") {
       void vscode.commands.executeCommand("gitSimpleCompare.stashSelected", msg.paths);
+    } else if (msg.type === "loadStashFiles" && msg.ref) {
+      const load = vscode.commands.executeCommand<StashFilesLoadResult | undefined>(
+        "gitSimpleCompare.loadStashFiles", msg.ref);
+      void Promise.resolve(load)
+        .catch((error) => {
+          logError("stash files command failed", error, { ref: msg.ref });
+          return undefined;
+        })
+        .then((result) => void this.view?.webview.postMessage({
+          type: "stashFilesLoadComplete", ref: msg.ref, stashKey: msg.stashKey, result,
+        }));
     } else if (msg.type === "applyStash" && msg.ref) {
       void vscode.commands.executeCommand("gitSimpleCompare.applyStash", msg.ref);
     } else if (msg.type === "popStash" && msg.ref) {

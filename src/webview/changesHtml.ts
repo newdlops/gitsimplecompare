@@ -28,6 +28,7 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesAiPlan.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesStashes.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
@@ -63,6 +64,9 @@ export function buildChangesHtml(
   );
   const worktreesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"), version)
+  );
+  const stashesScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesStashes.js"), version)
   );
   const styleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
@@ -127,6 +131,7 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
   <script nonce="${nonce}" src="${compareScriptUri}"></script>
+  <script nonce="${nonce}" src="${stashesScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>

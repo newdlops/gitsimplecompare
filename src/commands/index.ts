@@ -85,6 +85,7 @@ import {
   applyStash,
   branchStash,
   dropStash,
+  loadStashFilesForView,
   openStashFile,
   popStash,
   refreshStashes,
@@ -396,6 +397,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     // Stash: 목록 새로고침 / 선택 파일 stash / apply·pop·drop·branch / 파일 보기
     vscode.commands.registerCommand("gitSimpleCompare.refreshStashes", () =>
       refreshStashes(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.loadStashFiles",
+      (ref: string) => loadStashFilesForView(deps, ref)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.stashSelected",

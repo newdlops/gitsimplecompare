@@ -1,6 +1,6 @@
 // Stash 섹션 관련 명령 — 목록 조회 + 선택 파일 stash + apply/pop/drop/branch + 파일 보기.
-// - stash 의 파일 목록은 해시 기준으로 캐시해, 잦은 새로고침에도 `git stash show` 를 반복하지 않는다
-//   (stash 목록 1회 조회만으로 끝나고, 새 stash 가 생겼을 때만 파일을 읽는다).
+// - 초기 새로고침은 stash 메타데이터만 읽고, 파일 목록은 사용자가 항목을 펼칠 때 해당 stash 만 조회한다.
+// - 한 번 읽은 파일 목록은 해시 기준으로 캐시해, 이후 펼침/새로고침에서 `git stash show` 를 반복하지 않는다.
 // - 로직은 GitService 에 두고 여기서는 조립 + 사용자 입력/확인/알림만 담당한다(경계 분리).
 import * as vscode from "vscode";
 import { CommandDeps } from "./shared";
@@ -8,21 +8,39 @@ import { GitService } from "../git/gitService";
 import { GitError } from "../git/gitExec";
 import { FileChange, StashEntry } from "../git/gitTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 
-/** 웹뷰로 보낼 stash(목록 항목 + 담긴 파일 목록). */
-export type StashView = StashEntry & { files: FileChange[] };
+/** 웹뷰의 일반 render payload로 보낼 stash 메타데이터. 파일 목록은 직접 메시지로 분리한다. */
+export type StashView = StashEntry;
+
+/** 웹뷰에 직접 전달할 stash 한 건의 지연 파일 조회 결과. */
+export interface StashFilesLoadResult {
+  ref: string;
+  key: string;
+  files: FileChange[];
+}
 
 /** `${root}@${ref}@${hash}` → 파일 목록 캐시(같은 stash 항목이면 재사용). */
 const fileCache = new Map<string, FileChange[]>();
 
-/** 활성 저장소의 GitService(없으면 undefined). */
+/** 동일 stash 가 렌더 사이에 다시 요청돼도 하나의 git 프로세스만 기다리게 하는 진행 중 조회 맵. */
+const fileLoads = new Map<string, Promise<FileChange[]>>();
+
+/**
+ * Changes 뷰가 선택한 활성 저장소의 GitService 를 찾는다.
+ * @param deps 저장소 레지스트리와 뷰 상태를 담은 공유 의존성
+ * @returns 활성 저장소가 등록돼 있으면 서비스, 아직 선택되지 않았으면 undefined
+ */
 function activeService(deps: CommandDeps): GitService | undefined {
   const root = deps.changesView.getActiveRepo();
   return root ? deps.registry.get(root) : undefined;
 }
 
-/** 짧은 에러 메시지 추출. */
+/**
+ * Git 명령 또는 일반 예외에서 사용자에게 보여 줄 짧은 오류 문구를 만든다.
+ * @param e GitError 또는 임의의 예외 값
+ * @returns stderr/stdout/message 중 의미 있는 내용을 합친 문자열
+ */
 function errText(e: unknown): string {
   if (e instanceof GitError) {
     return [e.stderr.trim(), e.stdout.trim(), e.message]
@@ -33,9 +51,59 @@ function errText(e: unknown): string {
 }
 
 /**
- * stash 목록(+ 각 stash 의 파일)을 다시 읽어 Stashes 섹션을 갱신한다.
- * - 파일은 해시 캐시에서 재사용하고, 없을 때만 `git stash show` 로 읽는다.
- * @param deps 공유 의존성
+ * stash 한 개의 파일 목록을 읽고 캐시에 저장한다.
+ * - 긴 조회 중 다른 상태 렌더가 DOM 을 교체해 같은 ref 를 다시 요청해도 진행 중 Promise 를 공유한다.
+ * - 성공한 빈 배열도 유효한 캐시 값으로 보존하며, 실패한 Promise 는 제거해 다음 펼침에서 재시도한다.
+ * @param svc 실제 `git stash show` 를 실행할 활성 저장소 서비스
+ * @param root 로그와 저장소별 캐시 구분에 사용하는 저장소 루트
+ * @param entry 파일을 읽을 stash 메타데이터
+ * @param key root/ref/hash 로 만든 캐시 및 진행 중 조회 키
+ * @returns 해당 stash 에 포함된 파일 변경 목록
+ */
+async function loadStashFiles(
+  svc: GitService,
+  root: string,
+  entry: StashEntry,
+  key: string
+): Promise<FileChange[]> {
+  const cached = fileCache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const existing = fileLoads.get(key);
+  if (existing) {
+    return existing;
+  }
+  logInfo("stash files load started", { root, ref: entry.ref });
+  const load = svc
+    // ref 번호는 drop/pop으로 바뀔 수 있으므로 목록에서 확정한 hash를 사용해 다른 stash를 읽지 않는다.
+    .stashShowFiles(entry.hash || entry.ref)
+    .then((files) => {
+      fileCache.set(key, files);
+      logInfo("stash files load completed", {
+        root,
+        ref: entry.ref,
+        files: files.length,
+      });
+      return files;
+    })
+    .catch((error) => {
+      logError("stash files load failed", error, { root, ref: entry.ref });
+      throw error;
+    })
+    .finally(() => {
+      fileLoads.delete(key);
+    });
+  fileLoads.set(key, load);
+  return load;
+}
+
+/**
+ * stash 메타데이터만 다시 읽어 Stashes 섹션을 갱신한다.
+ * - 파일 배열은 provider 상태에 보관하지 않아 한 번 펼친 대형 stash가 이후 모든 render payload를 키우지 않는다.
+ * - 파일 캐시는 별도로 유지하며 loadStashFilesForView가 실제 펼침 요청에만 직접 반환한다.
+ * @param deps 저장소 레지스트리와 Changes 뷰를 포함한 공유 의존성
+ * @returns 메타데이터가 현재 활성 저장소의 뷰에 반영되면 완료되는 Promise
  */
 export async function refreshStashes(deps: CommandDeps): Promise<void> {
   const root = deps.changesView.getActiveRepo();
@@ -54,34 +122,86 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
         fileCache.delete(key);
       }
     }
-    const views: StashView[] = await Promise.all(
-      entries.map(async (e) => {
-        const key = stashFileCacheKey(root, e);
-        let files = fileCache.get(key);
-        if (!files) {
-          files = await svc.stashShowFiles(e.ref);
-          fileCache.set(key, files);
-        }
-        return { ...e, files };
-      })
-    );
+    const views: StashView[] = entries;
     logInfo("stashes rendered", {
       root,
       count: views.length,
-      files: views.reduce((sum, item) => sum + item.files.length, 0),
     });
+    if (deps.changesView.getActiveRepo() !== root) {
+      logInfo("stashes result skipped", {
+        root,
+        activeRoot: deps.changesView.getActiveRepo(),
+        reason: "repository-changed",
+      });
+      return;
+    }
     deps.changesView.setStashes(views);
-  } catch {
-    deps.changesView.setStashes([]);
+  } catch (error) {
+    logError("stashes refresh failed", error, { root });
+    if (deps.changesView.getActiveRepo() === root) {
+      deps.changesView.setStashes([]);
+    }
   }
 }
 
-/** stash 파일 목록 캐시 키를 만든다. */
+/**
+ * 사용자가 펼친 stash 하나의 파일만 읽어 웹뷰 직접 메시지용 결과를 반환한다.
+ * - 목록에서 얻은 hash로 `stash show`를 실행해 조회 중 drop/pop이 ref 번호를 바꿔도 다른 stash를 읽지 않는다.
+ * - provider의 metadata 상태는 수정하지 않으므로 느린 결과가 새 stash 목록을 덮어쓸 수 없다.
+ * @param deps 현재 활성 저장소와 GitService를 찾을 공유 의존성
+ * @param requestedRef 웹뷰가 펼친 시점의 stash ref
+ * @returns hash 기반 key와 파일 목록, ref가 사라졌거나 저장소가 바뀌면 undefined
+ */
+export async function loadStashFilesForView(
+  deps: CommandDeps,
+  requestedRef: string
+): Promise<StashFilesLoadResult | undefined> {
+  const root = deps.changesView.getActiveRepo();
+  const svc = root ? deps.registry.get(root) : undefined;
+  if (!root || !svc || !requestedRef) {
+    return undefined;
+  }
+  const entries = await svc.listStashes();
+  const entry = entries.find((candidate) => candidate.ref === requestedRef);
+  if (!entry) {
+    return undefined;
+  }
+  const files = await loadStashFiles(
+    svc,
+    root,
+    entry,
+    stashFileCacheKey(root, entry)
+  );
+  if (deps.changesView.getActiveRepo() !== root) {
+    logInfo("stash files result skipped", {
+      root,
+      activeRoot: deps.changesView.getActiveRepo(),
+      ref: requestedRef,
+      reason: "repository-changed",
+    });
+    return undefined;
+  }
+  return {
+    ref: requestedRef,
+    key: entry.hash || entry.ref || String(entry.index),
+    files,
+  };
+}
+
+/**
+ * 저장소와 stash 항목을 함께 묶어 파일 목록 캐시 키를 만든다.
+ * @param root stash 를 소유한 저장소 루트
+ * @param entry ref/hash/index 를 가진 stash 메타데이터
+ * @returns 저장소 전환과 stash 번호 이동을 구분할 수 있는 캐시 키
+ */
 function stashFileCacheKey(root: string, entry: StashEntry): string {
   return `${root}@${entry.ref}@${entry.hash || entry.index}`;
 }
 
-/** stash 작업 뒤 작업트리/stash/ref/비교 결과를 함께 새로고친다. */
+/**
+ * stash 변경 뒤 작업트리, stash, ref, 비교 결과를 하나의 전체 새로고침으로 동기화한다.
+ * @returns 반환값 없이 명령 큐에 새로고침을 예약한다
+ */
 function refreshAll(): void {
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
 }
