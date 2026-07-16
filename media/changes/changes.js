@@ -51,12 +51,7 @@
       noHistory: "No commits for the current file.",
       openHistoryCommit: "Open File Change",
       stashes: "Stashes",
-      noStashes: "No stashes.",
       stashSelected: "Stash Selected Changes",
-      applyStash: "Apply Stash",
-      popStash: "Pop Stash",
-      dropStash: "Drop Stash",
-      branchStash: "Create Branch from Stash",
       worktrees: "Worktrees",
     },
     window.__gscCompare?.defaults || {},
@@ -65,6 +60,10 @@
 
   let state = vscode.getState() || {};
   state.collapsed = state.collapsed || {};
+  // 새 웹뷰의 Worktrees는 기본 접힘으로 두고 실제로 펼칠 때만 별도 git worktree 조회를 시작한다.
+  if (!Object.prototype.hasOwnProperty.call(state.collapsed, "worktrees")) {
+    state.collapsed.worktrees = true;
+  }
   state.sizes = state.sizes || {};
   state.groups = state.groups || {}; // Staged/Changes 그룹 접힘 상태
   state.folders = state.folders || {}; // 파일 트리 폴더 접힘 상태(kind:path)
@@ -77,6 +76,7 @@
   let currentFileIcons = {};
   let lastPayload = null;
   const loadedFileIconFonts = new Set();
+  let worktreesRequested = false;
   let draggingSectionId = null;
   let suppressHeaderClick = false;
   const isCollapsed = (id) => !!state.collapsed[id];
@@ -719,66 +719,6 @@
     return html + `<div class="files history-files"><div class="rows">${rows}</div></div>`;
   }
 
-  /** stash 안의 파일 한 줄(클릭 시 stash 부모 ↔ stash diff). */
-  function stashFileHtml(ref, ch) {
-    const slash = ch.path.lastIndexOf("/");
-    const fileName = slash >= 0 ? ch.path.slice(slash + 1) : ch.path;
-    const dir = slash >= 0 ? ch.path.slice(0, slash) : "";
-    return (
-      `<div class="row file stash-file" data-status="${esc(ch.status)}" ` +
-      `data-ref="${esc(ref)}" data-path="${esc(ch.path)}" title="${esc(ch.path)}">` +
-      `<span class="twistie"></span>` +
-      `<span class="icon codicon ${statusCodicon(ch.status)}"></span>` +
-      fileIconHtml(ch.path) +
-      `<span class="name">${esc(fileName)}</span>` +
-      (dir ? `<span class="dir">${esc(dir)}</span>` : "") +
-      `</div>`
-    );
-  }
-
-  /** stash 한 개(접기 헤더 + 펼치면 파일 목록). */
-  function stashItemHtml(s) {
-    const key = s.hash || s.ref || String(s.index || "");
-    const expanded = state.stashExpanded[key] !== false;
-    const chevron = expanded ? "codicon-chevron-down" : "codicon-chevron-right";
-    const meta = [s.branch, s.date].filter(Boolean).join(" · ");
-    const files = s.files.map((f) => stashFileHtml(s.ref, f)).join("");
-    return (
-      `<div class="stash${expanded ? "" : " collapsed"}" data-ref="${esc(s.ref)}" ` +
-      `data-key="${esc(key)}" data-hash="${esc(s.hash)}" data-msg="${esc(s.message)}">` +
-      `<div class="row stash-header" title="${esc(`${T.toggleSection}: ${s.message}`)}">` +
-      `<span class="twistie codicon ${chevron}"></span>` +
-      `<span class="icon codicon codicon-archive"></span>` +
-      `<span class="name">${esc(s.message)}</span>` +
-      (meta ? `<span class="stash-meta">${esc(meta)}</span>` : "") +
-      `<span class="row-actions"><button class="row-action codicon codicon-ellipsis" ` +
-      `type="button" data-act="stashMenu" title="${esc(T.moreActions)}" ` +
-      `aria-label="${esc(T.moreActions)}"></button></span>` +
-      `</div>` +
-      `<div class="children stash-files">${files}</div></div>`
-    );
-  }
-
-  /** Stashes 섹션 본문(stash 리스트, 없으면 안내). */
-  function stashesBody(stashes) {
-    if (!stashes.length) {
-      return `<p class="empty">${esc(T.noStashes)}</p>`;
-    }
-    return stashes.map(stashItemHtml).join("");
-  }
-
-  /** stash 액션 메뉴 항목(Apply/Pop/Branch/Drop). 인라인 ... 및 우클릭 공용. */
-  function stashMenuNodes(ref, message) {
-    return [
-      { label: T.applyStash, onClick: () => post("applyStash", { ref }) },
-      { label: T.popStash, onClick: () => post("popStash", { ref }) },
-      { separator: true },
-      { label: T.branchStash, onClick: () => post("branchStash", { ref }) },
-      { separator: true },
-      { label: T.dropStash, onClick: () => post("dropStash", { ref, message }) },
-    ];
-  }
-
   /** webview → 확장 메시지 전송 단축 함수. */
   function post(type, extra) {
     vscode.postMessage(Object.assign({ type }, extra));
@@ -839,7 +779,10 @@
         "stashes",
         T.stashes,
         (p.stashes || []).length,
-        stashesBody(p.stashes || []),
+        window.__gscStashes?.body?.(p.stashes || [], {
+          expandedByKey: state.stashExpanded,
+          fileIconHtml,
+        }) || "",
         ""
       ),
       worktrees: section(
@@ -1176,6 +1119,25 @@
     });
   }
 
+  /**
+   * Worktrees 섹션이 실제로 펼쳐진 첫 시점에만 host 조회를 요청한다.
+   * - 초기 payload에서 worktree 검사를 생략하므로 새 웹뷰의 접힌 섹션은 Git 프로세스를 만들지 않는다.
+   * @returns 반환값 없이 현재 웹뷰 생명주기에서 한 번만 refresh 메시지를 전송한다
+   */
+  function requestExpandedWorktrees() {
+    const section = rootEl.querySelector('.section[data-section="worktrees"]');
+    if (
+      !section ||
+      section.classList.contains("collapsed") ||
+      worktreesRequested ||
+      !(lastPayload?.repos || []).length
+    ) {
+      return;
+    }
+    worktreesRequested = true;
+    post("refreshWorktrees");
+  }
+
   /** 렌더 후 이벤트를 연결한다. */
   function bindEvents() {
     rootEl.querySelectorAll(".section-header").forEach((h) => {
@@ -1190,9 +1152,12 @@
         }
         toggleSection(h.parentElement.dataset.section);
         applyCollapse();
+        window.__gscStashes?.requestExpanded?.(rootEl, vscode);
+        requestExpandedWorktrees();
         applyResize();
       });
     });
+    requestExpandedWorktrees();
     bindSectionDrag();
     // 미트볼(...) → 섹션별 액션 + 아코디언 카테고리 토글 메뉴(다시 누르면 닫힘 토글).
     rootEl.querySelectorAll(".meatball").forEach((el) => {
@@ -1232,7 +1197,15 @@
     bindGroupActions();
     bindRowActions();
     bindHistory();
-    bindStashes();
+    window.__gscStashes?.bind?.(rootEl, vscode, {
+      state,
+      menus: {
+        openContextMenu,
+        openDropdown,
+        closeDropdown,
+        isDropdownAnchor: (anchor) => dropdownEl?.__anchor === anchor,
+      },
+    });
     window.__gscWorktrees?.bind?.(rootEl, vscode);
   }
 
@@ -1280,58 +1253,6 @@
     const tw = el.querySelector(".twistie");
     tw.classList.toggle("codicon-chevron-down", expanded);
     tw.classList.toggle("codicon-chevron-right", !expanded);
-  }
-
-  /** Stashes 섹션: 펼치기/접기, 액션 메뉴(...), 파일 클릭(diff), 우클릭 메뉴. */
-  function bindStashes() {
-    // stash 헤더 클릭 → 펼치기/접기(액션은 제외)
-    rootEl.querySelectorAll(".stash-header").forEach((h) => {
-      h.addEventListener("click", (e) => {
-        if (e.target.closest(".row-actions")) {
-          return;
-        }
-        const stash = h.closest(".stash");
-        const key = stash.dataset.key || stash.dataset.ref || stash.dataset.hash;
-        const wasExpanded = state.stashExpanded[key] !== false;
-        const expanded = !wasExpanded;
-        state.stashExpanded[key] = expanded;
-        vscode.setState(state);
-        stash.classList.toggle("collapsed", !expanded);
-        const tw = h.querySelector(".twistie");
-        tw.classList.toggle("codicon-chevron-down", expanded);
-        tw.classList.toggle("codicon-chevron-right", !expanded);
-      });
-      // 우클릭 → stash 액션 메뉴
-      h.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        const stash = h.closest(".stash");
-        openContextMenu(
-          e.clientX,
-          e.clientY,
-          stashMenuNodes(stash.dataset.ref, stash.dataset.msg)
-        );
-      });
-    });
-    // stash 행의 ... 아이콘 → 액션 메뉴(앵커 드롭다운)
-    rootEl.querySelectorAll('.stash .row-action[data-act="stashMenu"]').forEach(
-      (el) => {
-        el.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const stash = el.closest(".stash");
-          if (dropdownEl && dropdownEl.__anchor === el) {
-            closeDropdown();
-          } else {
-            openDropdown(el, stashMenuNodes(stash.dataset.ref, stash.dataset.msg));
-          }
-        });
-      }
-    );
-    // stash 안 파일 클릭 → stash 부모 ↔ stash diff
-    rootEl.querySelectorAll(".stash-file").forEach((el) => {
-      el.addEventListener("click", () =>
-        post("openStashFile", { ref: el.dataset.ref, path: el.dataset.path })
-      );
-    });
   }
 
   // ── 커밋 박스 ──
@@ -1459,7 +1380,7 @@
     rootEl.querySelectorAll(".row-action").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        // stash 의 ... 메뉴는 bindStashes 에서 따로 처리한다.
+        // stash 의 ... 메뉴는 changesStashes 모듈이 disclosure 상태와 함께 처리한다.
         if (el.dataset.act === "stashMenu") {
           return;
         }
