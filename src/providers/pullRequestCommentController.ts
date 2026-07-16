@@ -20,6 +20,7 @@ const EXT_CONFIG_SECTION = "gitSimpleCompare";
 const SHOW_KEY = "pullRequestComments.show";
 const FULL_SHOW_KEY = `${EXT_CONFIG_SECTION}.${SHOW_KEY}`;
 const REFRESH_DELAY_MS = 220;
+const INITIAL_REFRESH_DELAY_MS = 10_000;
 const COMMENT_CONTROLLER_ID = "gitSimpleComparePrReviewComments";
 
 type PullRequestCommentGroup = PullRequestThreadGroup<PullRequestReviewComment>;
@@ -142,15 +143,23 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     logInfo("pr editor comments enabled", { reason });
-    this.scheduleRefresh(reason);
+    this.scheduleRefresh(
+      reason,
+      reason === "register" ? INITIAL_REFRESH_DELAY_MS : REFRESH_DELAY_MS
+    );
   }
 
   /**
    * 짧은 지연 후 활성 에디터의 PR comment 를 다시 읽는다.
    * - 빠른 탭 이동/저장 이벤트를 한 번으로 합쳐 gh 호출을 줄인다.
+   * - 확장 등록 직후에는 Git 저장소 탐색과 원격 인증 조회가 초기 화면과 경쟁하지 않도록 더 길게 기다린다.
    * @param reason refresh 를 예약한 이벤트 이름
+   * @param delayMs 실제 원격 조회를 시작하기 전 기다릴 시간(ms). 일반 이벤트는 짧은 debounce 를 사용한다.
    */
-  private scheduleRefresh(reason: string): void {
+  private scheduleRefresh(
+    reason: string,
+    delayMs: number = REFRESH_DELAY_MS
+  ): void {
     if (!isEnabled() || this.disposed) {
       return;
     }
@@ -167,10 +176,16 @@ export class PullRequestCommentController implements vscode.Disposable {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
+    if (reason === "register") {
+      logInfo("pr editor comments initial refresh scheduled", {
+        reason,
+        delayMs,
+      });
+    }
     this.refreshTimer = setTimeout(() => {
       this.refreshTimer = undefined;
       void this.refreshActiveEditor(reason, requestId);
-    }, REFRESH_DELAY_MS);
+    }, delayMs);
   }
 
   /**
