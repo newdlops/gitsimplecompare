@@ -36,6 +36,8 @@ import {
   DeletedComparisonGutterController,
 } from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
+import { registerLocalChangesWatcher } from "./providers/localChangesWatcher";
+import { connectRefreshWatcher } from "./providers/refreshWatcher";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
@@ -45,22 +47,15 @@ import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
 import {
   addRefreshReasons,
+  HiddenRepositoryRefreshFence,
   repoRootFromGitPath,
   shouldLogIgnoredRefresh,
   shouldRefreshExplorerComparison,
   shouldRefreshPullRequestComments,
   shouldRefreshForGitPath,
 } from "./utils/extensionRefreshPolicy";
-
-/** 다른 확장이 활성 Explorer 비교 결과를 선택적으로 재사용하는 공개 API. */
-export interface GitSimpleCompareApi {
-  /** 공개 계약 버전. 하위 호환이 깨지는 변경을 소비자가 구분하는 데 사용한다. */
-  version: 1;
-  /** 비교 선택·새로고침·토글 상태가 바뀔 때 발생하는 이벤트. */
-  onDidChangeComparison: vscode.Event<void>;
-  /** 현재 표시 중인 직렬화 가능한 비교 스냅샷을 반환한다. */
-  getComparison(): ComparisonSnapshot | undefined;
-}
+import type { GitSimpleCompareApi } from "./extensionApi";
+export type { GitSimpleCompareApi } from "./extensionApi";
 
 let activeNativeDiffOverlay: NativeDiffOverlayController | undefined;
 
@@ -128,6 +123,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
 
   // 4) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
   let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
+  const hiddenRepositoryRefresh = new HiddenRepositoryRefreshFence();
   /** 상태 이벤트마다 즉시 generation을 올려 debounce 중간의 두 번째 Git 전환도 stale 조회를 무효화한다. */
   const invalidateStatusCachesForRefresh = (): void => {
     registry.invalidateStatusCaches();
@@ -136,7 +132,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     context.extensionUri,
     context.globalState,
     () => comparison.enabled,
-    (reason) => scheduleRefresh(reason, 0)
+    (reason) =>
+      scheduleRefresh(hiddenRepositoryRefresh.consumeVisibilityReason(reason), 0)
   );
   context.subscriptions.push(
     comparison.onDidChangeComparison(() =>
@@ -192,6 +189,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());
   const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
+    hiddenRepositoryRefresh.mark(reason, changesView.isVisible());
     if (
       !changesView.isVisible() &&
       !conflictsVisible &&
@@ -199,8 +197,11 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     ) {
       return;
     }
-    invalidateStatusCachesForRefresh();
-    scheduleRefresh(reason);
+    // provider snapshot 자체가 최신 파일 목록이므로 state 이벤트는 캐시 세대를 다시 흔들지 않고 fast lane으로 보낸다.
+    if (reason !== "vscodeGit:state") {
+      invalidateStatusCachesForRefresh();
+    }
+    scheduleRefresh(reason, reason === "vscodeGit:state" ? 0 : undefined);
   });
   context.subscriptions.push(vscodeGitStatus);
 
@@ -222,6 +223,14 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
   }
+  context.subscriptions.push(
+    ...registerLocalChangesWatcher({
+      isVisible: () => changesView.isVisible(),
+      getActiveRepo: () => changesView.getActiveRepo(),
+      requestRefresh: (reason) => void vscode.commands.executeCommand(
+        "gitSimpleCompare.refreshChanges", { reason }),
+    })
+  );
 
   // 7) "좌→우 반영" 버튼 노출용 컨텍스트 키 추적기 등록
   context.subscriptions.push(registerActiveDiffTracker());
@@ -240,6 +249,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   let pendingClearAllBranchContent = false;
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
+    hiddenRepositoryRefresh.mark(reason, changesVisible);
     logInfo("refresh requested", {
       reason,
       changesVisible,
@@ -289,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     }
   };
   scheduleRefresh = (reason: string, delay = 180): void => {
+    hiddenRepositoryRefresh.mark(reason, changesView.isVisible());
     addRefreshReasons(pendingRefreshReasons, reason);
     if (refreshTimer) {
       clearTimeout(refreshTimer);
@@ -343,31 +354,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       refreshFileHistoryIfVisible("activeEditor")
     )
   );
-  type RefreshWatcherHandler = (
-    event: "create" | "change" | "delete",
-    uri: vscode.Uri
-  ) => void;
-  /** watcher 의 create/change/delete 이벤트를 같은 refresh handler 에 연결한다. */
-  const watchRefresh = (
-    watcher: vscode.FileSystemWatcher,
-    handler: RefreshWatcherHandler
-  ): void => {
-    watcher.onDidCreate(
-      (uri) => handler("create", uri),
-      undefined,
-      context.subscriptions
-    );
-    watcher.onDidChange(
-      (uri) => handler("change", uri),
-      undefined,
-      context.subscriptions
-    );
-    watcher.onDidDelete(
-      (uri) => handler("delete", uri),
-      undefined,
-      context.subscriptions
-    );
-  };
   const gitWatcher = vscode.workspace.createFileSystemWatcher(
     "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,worktrees/**,info/exclude,hooks/**}"
   );
@@ -416,12 +402,24 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     invalidateStatusCachesForRefresh();
     scheduleRefresh(`working-tree-file:${event}:ignore-rules`, 0);
   };
-  watchRefresh(gitWatcher, scheduleRefreshForGitUri);
-  watchRefresh(gitignoreWatcher, scheduleRefreshForIgnoreUri);
-  watchRefresh(commonHooksWatcher, (event, uri) => {
-    logInfo("commit hooks refresh requested", { event, path: uri.fsPath });
-    scheduleRefresh(`custom-hook:${event}:commit-hooks`, 0);
-  });
+  connectRefreshWatcher(
+    gitWatcher,
+    scheduleRefreshForGitUri,
+    context.subscriptions
+  );
+  connectRefreshWatcher(
+    gitignoreWatcher,
+    scheduleRefreshForIgnoreUri,
+    context.subscriptions
+  );
+  connectRefreshWatcher(
+    commonHooksWatcher,
+    (event, uri) => {
+      logInfo("commit hooks refresh requested", { event, path: uri.fsPath });
+      scheduleRefresh(`custom-hook:${event}:commit-hooks`, 0);
+    },
+    context.subscriptions
+  );
   context.subscriptions.push(
     gitWatcher,
     gitignoreWatcher,
