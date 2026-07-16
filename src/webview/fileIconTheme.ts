@@ -104,6 +104,7 @@ interface ResolvedIcon {
 export class FileIconThemeResolver {
   private cacheKey = "";
   private theme?: LoadedIconTheme;
+  private associations?: FileAssociations;
   private readonly imageCache = new Map<string, string>();
   private readonly fontCache = new Map<string, string>();
   private usedFonts = new Map<string, FileIconFontView>();
@@ -116,8 +117,12 @@ export class FileIconThemeResolver {
    * @returns 경로별 아이콘 표현. 해석 실패한 경로는 codicon fallback 을 넣는다.
    */
   payloadFor(paths: string[]): FileIconPayload {
-    this.ensureTheme();
     const unique = [...new Set(paths)].sort();
+    // 빈 shell render에서는 수백 KB icon theme JSON을 동기 읽기/파싱하지 않는다.
+    if (unique.length === 0) {
+      return { icons: {}, fonts: [] };
+    }
+    this.ensureTheme();
     const payloadKey = `${this.cacheKey}\0${unique.join("\0")}`;
     if (payloadKey === this.lastPayloadKey) {
       return this.lastPayload;
@@ -148,6 +153,9 @@ export class FileIconThemeResolver {
     this.lastPayloadKey = "";
     this.lastPayload = { icons: {}, fonts: [] };
     this.theme = id ? loadThemeById(id) : undefined;
+    this.associations = this.theme
+      ? normalizeAssociations(effectiveAssociations(this.theme.document))
+      : undefined;
   }
 
   /**
@@ -155,10 +163,10 @@ export class FileIconThemeResolver {
    * @param resourcePath 저장소 기준 상대 파일 경로
    */
   private iconFor(resourcePath: string): FileIconView | undefined {
-    if (!this.theme) {
+    if (!this.theme || !this.associations) {
       return undefined;
     }
-    const resolved = resolveIcon(this.theme, resourcePath);
+    const resolved = resolveIcon(this.theme, this.associations, resourcePath);
     if (!resolved?.definition.iconPath) {
       return this.glyphIconFor(resolved?.definition);
     }
@@ -398,8 +406,11 @@ function mergeAssociations(
  * @param theme 파싱된 icon theme
  * @param resourcePath 저장소 기준 상대 파일 경로
  */
-function resolveIcon(theme: LoadedIconTheme, resourcePath: string): ResolvedIcon | undefined {
-  const associations = effectiveAssociations(theme.document);
+function resolveIcon(
+  theme: LoadedIconTheme,
+  associations: FileAssociations,
+  resourcePath: string
+): ResolvedIcon | undefined {
   const iconId = associationIconId(associations, resourcePath);
   const definition =
     iconId && theme.document.iconDefinitions
@@ -408,6 +419,40 @@ function resolveIcon(theme: LoadedIconTheme, resourcePath: string): ResolvedIcon
   return definition
     ? { filePath: definition.sourceFilePath ?? theme.filePath, definition }
     : undefined;
+}
+
+/**
+ * icon theme 연결 키를 한 번만 소문자로 정규화해 파일마다 전체 map을 선형 탐색하지 않게 한다.
+ * @param associations color theme override까지 합쳐진 연결 규칙
+ * @returns O(1) key 조회에 사용할 정규화된 새 연결 규칙
+ */
+function normalizeAssociations(associations: FileAssociations): FileAssociations {
+  return {
+    file: associations.file,
+    fileExtensions: normalizeAssociationMap(associations.fileExtensions),
+    fileNames: normalizeAssociationMap(associations.fileNames),
+    languageIds: normalizeAssociationMap(associations.languageIds),
+  };
+}
+
+/**
+ * 연결 map의 대소문자 fallback을 cold path 한 번의 변환으로 바꾼다.
+ * @param map icon theme의 파일명, 확장자 또는 language id 연결 map
+ * @returns 소문자 key로 한 번 정규화한 map, 입력이 없으면 undefined
+ */
+function normalizeAssociationMap(
+  map: Record<string, string> | undefined
+): Record<string, string> | undefined {
+  if (!map) return undefined;
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(map)) {
+    const lowerKey = key.toLowerCase();
+    // 기존 조회처럼 정확한 소문자 key를 우선하고, 없을 때만 먼저 선언된 대소문자 변형을 쓴다.
+    if (!(lowerKey in normalized) || key === lowerKey) {
+      normalized[lowerKey] = value;
+    }
+  }
+  return normalized;
 }
 
 /**
@@ -509,15 +554,12 @@ function matchExtension(map: Record<string, string> | undefined, parent: string 
   return undefined;
 }
 
-/** icon theme 의 연결 키를 대소문자 구분 없이 찾는다. */
+/**
+ * 미리 정규화한 icon theme 연결 map에서 key를 대소문자 구분 없이 찾는다.
+ * @param map normalizeAssociationMap을 거친 연결 map
+ * @param key 파일명, 확장자 또는 language id 후보
+ * @returns 연결된 icon definition id, 규칙이 없으면 undefined
+ */
 function lookupAssociation(map: Record<string, string>, key: string): string | undefined {
-  const direct = map[key];
-  if (direct) {
-    return direct;
-  }
-  const wanted = key.toLowerCase();
-  const match = Object.entries(map).find(
-    ([candidate]) => candidate.toLowerCase() === wanted
-  );
-  return match ? match[1] : undefined;
+  return map[key.toLowerCase()];
 }
