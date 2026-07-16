@@ -72,7 +72,7 @@ const enum VscodeGitStatus {
 
 /**
  * VS Code 내장 Git 상태 캐시를 읽고 변경 이벤트를 전달한다.
- * - ensureReady() 전에는 내장 Git 확장을 활성화하지 않는다. 즉, 확장 활성화만으로 Git 스캔을 유발하지 않는다.
+ * - 조회 시 이미 활성화된 내장 Git만 연결하고, 비활성이면 건드리지 않은 채 CLI 경로로 폴백한다.
  * - 상태 변경 이벤트가 오면 콜백만 호출하고, 실제 refresh 여부는 호출자가 뷰 가시성에 따라 결정한다.
  */
 export class VscodeGitStatusProvider implements vscode.Disposable {
@@ -95,34 +95,42 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     if (this.api) {
       return true;
     }
-    if (!this.activation) {
-      this.activation = this.activateGitApi();
-    }
+    this.startGitApiActivation();
     await this.activation;
     return !!this.api;
   }
 
   /**
-   * 내장 Git 이 알고 있는 저장소 목록과 현재 브랜치를 반환한다.
-   * @returns Git API 를 사용할 수 없으면 undefined, 사용할 수 있으면 저장소 목록
+   * 내장 Git 이 이미 알고 있는 저장소 목록과 현재 브랜치를 즉시 반환한다.
+   * - 아직 API/저장소 스캔이 준비되지 않았으면 내장 Git을 강제 활성화하지 않고 즉시 폴백한다.
+   * @returns 즉시 재사용할 저장소가 없으면 undefined, 있으면 저장소 목록
    */
   async getRepositories(): Promise<VscodeGitRepoInfo[] | undefined> {
-    if (!(await this.ensureReady()) || !this.api) {
+    if (!this.api) {
+      this.attachActiveGitApi();
+    }
+    if (!this.api) {
       return undefined;
     }
-    return this.api.repositories.map((repo) => ({
+    const repositories = this.api.repositories.map((repo) => ({
       root: repo.rootUri.fsPath,
       branch: repo.state.HEAD?.name || "HEAD",
     }));
+    // Git 확장이 활성화됐어도 최초 workspace scan 전의 []는 확정 결과가 아니므로 CLI 탐색을 허용한다.
+    return repositories.length ? repositories : undefined;
   }
 
   /**
-   * 내장 Git 이 이미 계산한 작업트리 상태를 이 확장의 StatusGroups 로 변환한다.
+   * 내장 Git 이 이미 계산한 작업트리 상태를 기다림 없이 이 확장의 StatusGroups 로 변환한다.
+   * - API가 아직 준비되지 않았으면 내장 Git을 활성화하지 않고 undefined를 반환해 같은 refresh가 CLI를 사용하게 한다.
    * @param repoRoot 저장소 루트 절대 경로
    * @returns 해당 저장소 상태. 내장 Git API 에 저장소가 없으면 undefined
    */
   async getStatusGroups(repoRoot: string): Promise<StatusGroups | undefined> {
-    if (!(await this.ensureReady()) || !this.api) {
+    if (!this.api) {
+      this.attachActiveGitApi();
+    }
+    if (!this.api) {
       return undefined;
     }
     const repo = this.findRepository(repoRoot);
@@ -146,6 +154,36 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
         .filter((change): change is FileChange => !!change),
     ]);
     return { staged, unstaged };
+  }
+
+  /**
+   * 내장 Git API 활성화를 한 번만 시작하되 현재 Changes refresh는 그 완료를 기다리지 않게 한다.
+   * @returns 반환값 없이 공유 activation Promise만 준비한다.
+   */
+  private startGitApiActivation(): void {
+    if (this.api || this.activation) {
+      return;
+    }
+    logInfo("vscode git api activation scheduled");
+    this.activation = this.activateGitApi();
+  }
+
+  /**
+   * VS Code가 다른 이유로 이미 활성화한 Git 확장에만 동기적으로 연결한다.
+   * - Changes 콜드스타트가 `vscode.git.activate()`와 workspace scan을 새로 유발하지 않게 한다.
+   * @returns 반환값 없이 즉시 사용할 수 있는 경우에만 API와 이벤트 구독을 준비한다.
+   */
+  private attachActiveGitApi(): void {
+    if (this.api || this.activation) {
+      return;
+    }
+    const extension =
+      vscode.extensions.getExtension<VscodeGitExtension>("vscode.git");
+    if (!extension?.isActive) {
+      return;
+    }
+    logInfo("active vscode git api attach scheduled");
+    this.activation = this.activateGitApi();
   }
 
   /** 등록한 VS Code 이벤트 리스너를 모두 해제한다. */
