@@ -93,14 +93,14 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code executable name or absolute path |
 | `gitSimpleCompare.aiClaudeModel` | empty | Claude Code model selected from CLI metadata |
 | `gitSimpleCompare.aiClaudeCommitPlanModel` | empty | Claude Code model used only for AI Plan; empty inherits `aiClaudeModel`, then the CLI default |
-| `gitSimpleCompare.aiClaudeCommitPlanEffort` | empty | Claude Code reasoning effort used only for AI Plan; empty inherits `aiClaudeEffort`, then the CLI default |
+| `gitSimpleCompare.aiClaudeCommitPlanEffort` | `low` | Claude Code reasoning effort used only for AI Plan; empty inherits `aiClaudeEffort`, then the CLI default |
 | `gitSimpleCompare.aiClaudeEffort` | empty | Claude Code reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max`) |
 | `gitSimpleCompare.aiClaudeSystemPrompt` | empty | Optional Claude Code system prompt appended with `--append-system-prompt` |
 | `gitSimpleCompare.aiClaudeLoginMode` | `claudeai` | Claude login method (`claudeai`, `console`, `sso`, or `setup-token`) |
 | `gitSimpleCompare.aiCodexCommand` | `codex` | Codex executable name or absolute path |
 | `gitSimpleCompare.aiCodexModel` | empty | Codex model selected from the CLI model catalog |
 | `gitSimpleCompare.aiCodexCommitPlanModel` | empty | Codex model used only for AI Plan; empty inherits `aiCodexModel`, then the CLI default |
-| `gitSimpleCompare.aiCodexCommitPlanReasoningEffort` | empty | Codex reasoning effort used only for AI Plan; empty inherits `aiCodexReasoningEffort`, then the CLI default |
+| `gitSimpleCompare.aiCodexCommitPlanReasoningEffort` | `low` | Codex reasoning effort used only for AI Plan; empty inherits `aiCodexReasoningEffort`, then the CLI default |
 | `gitSimpleCompare.aiCodexReasoningEffort` | empty | Codex reasoning effort (`low`, `medium`, `high`, `xhigh`, or `max` when supported) |
 | `gitSimpleCompare.aiCodexProfile` | empty | Optional Codex config profile passed with `--profile` |
 | `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex login method (`device`, `browser`, `api-key`, or `access-token`) |

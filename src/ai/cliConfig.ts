@@ -61,7 +61,7 @@ export function readAiCliConfig(): AiCliConfig {
     claudeCommitPlanModel: config.get("aiClaudeCommitPlanModel", "").trim(),
     claudeEffort: normalizeReasoningEffort(config.get("aiClaudeEffort", "")),
     claudeCommitPlanEffort: normalizeReasoningEffort(
-      config.get("aiClaudeCommitPlanEffort", "")
+      config.get("aiClaudeCommitPlanEffort", "low")
     ),
     claudeSystemPrompt: config.get("aiClaudeSystemPrompt", "").trim(),
     claudeLoginMode: normalizeClaudeLoginMode(
@@ -74,7 +74,7 @@ export function readAiCliConfig(): AiCliConfig {
       config.get("aiCodexReasoningEffort", "")
     ),
     codexCommitPlanReasoningEffort: normalizeReasoningEffort(
-      config.get("aiCodexCommitPlanReasoningEffort", "")
+      config.get("aiCodexCommitPlanReasoningEffort", "low")
     ),
     codexProfile: config.get("aiCodexProfile", "").trim(),
     codexLoginMode: normalizeCodexLoginMode(

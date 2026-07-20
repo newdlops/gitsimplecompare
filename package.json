@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71050",
+  "version": "0.1.71051",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1077,7 +1077,7 @@
             "%config.aiEffort.xhigh%",
             "%config.aiEffort.max%"
           ],
-          "default": "",
+          "default": "low",
           "description": "%config.aiClaudeCommitPlanEffort.desc%"
         },
         "gitSimpleCompare.aiClaudeEffort": {
@@ -1156,7 +1156,7 @@
             "%config.aiEffort.xhigh%",
             "%config.aiEffort.max%"
           ],
-          "default": "",
+          "default": "low",
           "description": "%config.aiCodexCommitPlanReasoningEffort.desc%"
         },
         "gitSimpleCompare.aiCodexReasoningEffort": {

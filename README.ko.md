@@ -79,14 +79,14 @@ UI 기본 언어는 **영어**입니다. VS Code 표시 언어를 한국어(`ko`
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code 실행 파일 이름 또는 절대 경로 |
 | `gitSimpleCompare.aiClaudeModel` | 빈 값 | CLI metadata 에서 선택한 Claude Code 모델 |
 | `gitSimpleCompare.aiClaudeCommitPlanModel` | 빈 값 | AI Plan 전용 Claude Code 모델. 비우면 `aiClaudeModel`, 다시 CLI 기본값 상속 |
-| `gitSimpleCompare.aiClaudeCommitPlanEffort` | 빈 값 | AI Plan 전용 Claude Code 추론 강도. 비우면 `aiClaudeEffort`, 다시 CLI 기본값 상속 |
+| `gitSimpleCompare.aiClaudeCommitPlanEffort` | `low` | AI Plan 전용 Claude Code 추론 강도. 비우면 `aiClaudeEffort`, 다시 CLI 기본값 상속 |
 | `gitSimpleCompare.aiClaudeEffort` | 빈 값 | Claude Code 추론 강도 (`low`, `medium`, `high`, `xhigh`, `max`) |
 | `gitSimpleCompare.aiClaudeSystemPrompt` | 빈 값 | `--append-system-prompt` 로 추가할 Claude Code 시스템 프롬프트 |
 | `gitSimpleCompare.aiClaudeLoginMode` | `claudeai` | Claude 로그인 방식 (`claudeai`, `console`, `sso`, `setup-token`) |
 | `gitSimpleCompare.aiCodexCommand` | `codex` | Codex 실행 파일 이름 또는 절대 경로 |
 | `gitSimpleCompare.aiCodexModel` | 빈 값 | CLI model catalog 에서 선택한 Codex 모델 |
 | `gitSimpleCompare.aiCodexCommitPlanModel` | 빈 값 | AI Plan 전용 Codex 모델. 비우면 `aiCodexModel`, 다시 CLI 기본값 상속 |
-| `gitSimpleCompare.aiCodexCommitPlanReasoningEffort` | 빈 값 | AI Plan 전용 Codex 추론 강도. 비우면 `aiCodexReasoningEffort`, 다시 CLI 기본값 상속 |
+| `gitSimpleCompare.aiCodexCommitPlanReasoningEffort` | `low` | AI Plan 전용 Codex 추론 강도. 비우면 `aiCodexReasoningEffort`, 다시 CLI 기본값 상속 |
 | `gitSimpleCompare.aiCodexReasoningEffort` | 빈 값 | Codex 추론 강도 (`low`, `medium`, `high`, `xhigh`, 지원 시 `max`) |
 | `gitSimpleCompare.aiCodexProfile` | 빈 값 | `--profile` 로 전달할 Codex config profile |
 | `gitSimpleCompare.aiCodexLoginMode` | `device` | Codex 로그인 방식 (`device`, `browser`, `api-key`, `access-token`) |
