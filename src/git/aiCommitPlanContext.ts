@@ -48,7 +48,10 @@ const CACHED_DIFF_ARGS = [
 ] as const;
 
 /** AI CLI에 전달할 텍스트 diff 전체 상한이다. snapshot용 binary diff에는 적용하지 않는다. */
-const MAX_CONTEXT_DIFF_CHARS = 60000;
+const MAX_CONTEXT_DIFF_CHARS = 32000;
+
+/** 변경 의도를 파악하는 데 필요한 hunk 주변 문맥 줄 수다. 전체 파일 문맥을 과도하게 보내지 않는다. */
+const AI_DIFF_CONTEXT_LINES = 5;
 
 /** Git porcelain v1에서 병합 충돌을 나타내는 XY 상태 조합이다. */
 const CONFLICT_CODES = new Set(["DD", "AU", "UD", "UA", "DU", "AA", "UU"]);
@@ -322,7 +325,12 @@ async function readCachedDiff(
   const [nameStatus, numstat, diff, binaryDiff] = await Promise.all([
     runGit([...base, "--name-status", "-z", head], repoRoot, options),
     runGit([...base, "--numstat", "-z", head], repoRoot, options),
-    runGit([...base, "--patch", "--unified=20", head], repoRoot, options),
+    runGit([
+      ...base,
+      "--patch",
+      `--unified=${AI_DIFF_CONTEXT_LINES}`,
+      head,
+    ], repoRoot, options),
     readAiCommitPlanBinaryDiff(repoRoot, head, env),
   ]);
   const counts = parseNumstat(numstat);
@@ -349,7 +357,7 @@ async function readCachedDiff(
  * - 상한을 넘으면 `diff --git` 블록 수로 남은 예산을 균등 배분하고, 잘린 블록과 전체 끝에
  *   명시적인 marker를 붙인다. 정확한 변경 감지는 별도 full binary diff snapshot이 담당한다.
  * @param raw AI 설명에 사용할 전체 textual patch
- * @returns 최대 약 60KB 안에서 모든 파일을 순서대로 대표하는 deterministic excerpt
+ * @returns 최대 약 32KB 안에서 모든 파일을 순서대로 대표하는 deterministic excerpt
  */
 function balancedDiffExcerpt(raw: string): string {
   if (raw.length <= MAX_CONTEXT_DIFF_CHARS) {
