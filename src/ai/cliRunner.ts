@@ -67,6 +67,7 @@ export async function runAiCliPrompt(
     ? undefined
     : options.timeoutMs ?? config.timeoutMs;
   for (const provider of providers) {
+    const startedAt = Date.now();
     const command = buildAiCliProviderCommand(
       config,
       provider,
@@ -84,8 +85,15 @@ export async function runAiCliPrompt(
         reasoningEffort: command.reasoningEffort || "not explicitly set",
         reasoningEffortSource: command.reasoningEffortSource,
         timeoutMs: timeoutMs ?? "none",
+        promptChars: prompt.length,
       });
       const text = await runProviderCommand(command, prompt, cwd, timeoutMs, token);
+      logInfo("AI CLI prompt completed", {
+        provider,
+        modelPurpose,
+        outputChars: text.length,
+        elapsedMs: Date.now() - startedAt,
+      });
       return { provider, text };
     } catch (error) {
       if (isCommandNotFound(error) && config.provider === "auto") {
@@ -93,6 +101,7 @@ export async function runAiCliPrompt(
         logWarn("AI CLI command not found, trying next provider", {
           provider,
           command: command.command,
+          elapsedMs: Date.now() - startedAt,
         });
         continue;
       }

@@ -85,6 +85,7 @@ export async function openAiCommitPlan(
       hasExtraPrompt: hasText(args.extraPrompt),
       hasCommitIntent: hasText(args.commitIntent),
     });
+    const contextStartedAt = Date.now();
     const context = await readAiCommitPlanContext(git.repoRoot, operation);
     assertPlanWorthSplitting(context);
     CommitPlanPanel.createOrShow(
@@ -102,6 +103,7 @@ export async function openAiCommitPlan(
       branch: context.branch,
       scope: context.scope,
       files: context.files.length,
+      contextElapsedMs: Date.now() - contextStartedAt,
     });
   } catch (error) {
     logError("AI commit plan open failed", error, {
@@ -136,12 +138,14 @@ function createPanelActions(
         token
       ),
     refreshContext: async () => {
+      const startedAt = Date.now();
       const context = await readAiCommitPlanContext(repoRoot, operation);
       assertPlanWorthSplitting(context);
       logInfo("AI commit plan context refreshed", {
         repoRoot,
         scope: context.scope,
         files: context.files.length,
+        elapsedMs: Date.now() - startedAt,
       });
       return context;
     },

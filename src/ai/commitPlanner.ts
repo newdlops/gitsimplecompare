@@ -55,7 +55,7 @@ export async function generateAiCommitPlan(
 
   const config = readAiCliConfig();
   const logContext = commitPlanLogContext(context, options, eligiblePaths.length);
-  logInfo("AI commit plan requested", logContext);
+  const startedAt = Date.now();
 
   try {
     const prompt = buildCommitPlanPrompt(context, {
@@ -64,6 +64,10 @@ export async function generateAiCommitPlan(
       commitInstructions: config.commitInstructions,
       extraPrompt: options.extraPrompt,
       commitIntent: options.commitIntent,
+    });
+    logInfo("AI commit plan requested", {
+      ...logContext,
+      promptChars: prompt.length,
     });
     const response = await runAiCliPrompt(
       prompt,
@@ -82,10 +86,14 @@ export async function generateAiCommitPlan(
       groups: result.groups.length,
       warnings: result.warnings.length,
       fallbackGroups: result.groups.filter((group) => group.fallback).length,
+      elapsedMs: Date.now() - startedAt,
     });
     return result;
   } catch (error) {
-    logError("AI commit plan generation failed", error, logContext);
+    logError("AI commit plan generation failed", error, {
+      ...logContext,
+      elapsedMs: Date.now() - startedAt,
+    });
     throw localizeCommitPlanError(error);
   }
 }
