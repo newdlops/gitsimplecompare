@@ -23,10 +23,17 @@ import { previewTargetBranches } from "./pullRequestPreviewBranches";
 import { previewBody } from "./pullRequestPreviewBody";
 import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
 import { previewTitle } from "./pullRequestPreviewTitle";
-import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
-import type { GhPullRequestLabels, PullRequestLabelInfo } from "./pullRequestLabels";
-import { PULL_REQUEST_COMMENT_COUNTS_QUERY, fetchRemainingReviewThreadCommentCounts, totalPullRequestCommentCount } from "./pullRequestCommentCounts";
-import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
+import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
+import {
+  PULL_REQUEST_INFO_QUERY,
+  pullRequestInfoFromGraphQl,
+} from "./pullRequestInfo";
+import type {
+  GhPageInfo,
+  GhPullRequestNode,
+  PullRequestInfo,
+} from "./pullRequestInfo";
+export type { PullRequestInfo } from "./pullRequestInfo";
 export type { PullRequestChangedFileInfo, PullRequestDetailInfo } from "./pullRequestDetail";
 /** PR 목록을 한 번에 읽는 페이지 크기 */
 const PULL_REQUEST_PAGE_SIZE = 80;
@@ -36,32 +43,7 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
     pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
-        number
-        title
-        state
-        url
-        headRefName
-        headRefOid
-        baseRefName
-        baseRefOid
-        author { login }
-        isDraft
-        reviewDecision
-        updatedAt
-${PULL_REQUEST_LABELS_QUERY}
-${PULL_REQUEST_COMMENT_COUNTS_QUERY}
-        files(first: 1) {
-          totalCount
-        }
-        commits(first: 100) {
-          nodes {
-            commit { oid }
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
+${PULL_REQUEST_INFO_QUERY}
       }
       pageInfo {
         hasNextPage
@@ -88,26 +70,6 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
     }
   }
 }`;
-/** graph 에 표시할 Pull Request 한 건 */
-export interface PullRequestInfo {
-  number: number;
-  title: string;
-  state: string;
-  url: string;
-  headRefName: string;
-  headHash?: string;
-  baseRefName: string;
-  /** GitHub가 보고한 base branch tip commit OID */
-  baseHash?: string;
-  author: string;
-  isDraft: boolean;
-  reviewDecision?: string;
-  updatedAt?: string;
-  commentCount: number;
-  fileCount: number;
-  commitHashes: string[];
-  labels?: PullRequestLabelInfo[];
-}
 /** graph 웹뷰에 보내는 PR 전체 상태 */
 export interface PullRequestOverview {
   available: boolean;
@@ -138,30 +100,6 @@ export interface StagedPullRequestPreview {
   existingPr?: PullRequestInfo;
 }
 
-interface GhPullRequest {
-  number?: number;
-  title?: string;
-  state?: string;
-  url?: string;
-  headRefName?: string;
-  headRefOid?: string;
-  baseRefName?: string;
-  baseRefOid?: string;
-  author?: { login?: string };
-  isDraft?: boolean;
-  reviewDecision?: string;
-  updatedAt?: string;
-  commits?: GhCommit[];
-  commentCount?: number;
-  fileCount?: number;
-  commitHashes?: string[];
-  labels?: PullRequestLabelInfo[];
-}
-
-interface GhCommit {
-  oid?: string;
-}
-
 interface GhPullRequestPreview {
   title?: string;
   body?: string;
@@ -171,37 +109,11 @@ interface GhGraphQlResponse {
   data?: {
     repository?: {
       pullRequests?: {
-        nodes?: GhGraphQlPullRequest[];
+        nodes?: GhPullRequestNode[];
         pageInfo?: GhPageInfo;
       };
     };
   };
-}
-
-interface GhGraphQlPullRequest extends GhPullRequestCommentCounts {
-  number?: number;
-  title?: string;
-  state?: string;
-  url?: string;
-  headRefName?: string;
-  headRefOid?: string;
-  baseRefName?: string;
-  baseRefOid?: string;
-  author?: { login?: string };
-  isDraft?: boolean;
-  reviewDecision?: string;
-  updatedAt?: string;
-  labels?: GhPullRequestLabels;
-  files?: { totalCount?: number };
-  commits?: {
-    nodes?: Array<{ commit?: { oid?: string } }>;
-    pageInfo?: GhPageInfo;
-  };
-}
-
-interface GhPageInfo {
-  hasNextPage?: boolean;
-  endCursor?: string;
 }
 
 interface GhCommitPageResponse {
@@ -232,7 +144,7 @@ export class PullRequestService {
     try {
       const repository = await this.repositoryName();
       const page = await this.listPullRequests(repository, cursor);
-      const prs = page.pullRequests.map((pr) => this.toPullRequestInfo(pr));
+      const prs = page.pullRequests;
       const current = localBranches.find((branch) => branch.current);
       return {
         available: true,
@@ -366,7 +278,7 @@ export class PullRequestService {
   private async listPullRequests(
     repository: string,
     cursor?: string
-  ): Promise<{ pullRequests: GhPullRequest[]; pageInfo?: GhPageInfo }> {
+  ): Promise<{ pullRequests: PullRequestInfo[]; pageInfo?: GhPageInfo }> {
     const [owner, name] = splitRepositoryName(repository);
     const args = [
       "api",
@@ -387,33 +299,13 @@ export class PullRequestService {
     const parsed = JSON.parse(out) as GhGraphQlResponse;
     const connection = parsed.data?.repository?.pullRequests;
     const nodes = connection?.nodes || [];
-    const prs = nodes.map(fromGraphQlPullRequest);
     const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(this.repoRoot, owner, name, nodes);
-    prs.forEach((pr) => { pr.commentCount = (pr.commentCount || 0) + (extraReviewCommentCounts.get(Number(pr.number)) || 0); });
+    const prs = nodes.map((pr) => pullRequestInfoFromGraphQl(
+      pr,
+      extraReviewCommentCounts.get(Number(pr.number)) || 0
+    ));
     await this.appendRemainingCommitHashes(owner, name, nodes, prs);
     return { pullRequests: prs, pageInfo: connection?.pageInfo };
-  }
-
-  /** gh PR JSON 을 graph 표시용 타입으로 정규화한다. */
-  private toPullRequestInfo(pr: GhPullRequest): PullRequestInfo {
-    return {
-      number: Number(pr.number) || 0,
-      title: pr.title || "",
-      state: pr.state || "",
-      url: pr.url || "",
-      headRefName: pr.headRefName || "",
-      headHash: pr.headRefOid,
-      baseRefName: pr.baseRefName || "",
-      baseHash: pr.baseRefOid,
-      author: pr.author?.login || "",
-      isDraft: Boolean(pr.isDraft),
-      reviewDecision: pr.reviewDecision,
-      updatedAt: pr.updatedAt,
-      commentCount: pr.commentCount ?? 0,
-      fileCount: pr.fileCount ?? 0,
-      commitHashes: normalizeCommitHashes(pr),
-      labels: pr.labels || [],
-    };
   }
 
   /**
@@ -427,8 +319,8 @@ export class PullRequestService {
   private async appendRemainingCommitHashes(
     owner: string,
     name: string,
-    nodes: GhGraphQlPullRequest[],
-    prs: GhPullRequest[]
+    nodes: GhPullRequestNode[],
+    prs: PullRequestInfo[]
   ): Promise<void> {
     for (let index = 0; index < nodes.length; index++) {
       const prNumber = Number(nodes[index]?.number);
@@ -438,7 +330,10 @@ export class PullRequestService {
       let pageInfo = nodes[index]?.commits?.pageInfo;
       while (pageInfo?.hasNextPage && pageInfo.endCursor) {
         const page = await this.listCommitHashPage(owner, name, prNumber, pageInfo.endCursor);
-        prs[index]?.commitHashes?.push(...page.hashes);
+        const hashes = prs[index]?.commitHashes;
+        if (hashes) {
+          hashes.push(...page.hashes.filter((hash) => !hashes.includes(hash)));
+        }
         pageInfo = page.pageInfo;
       }
     }
@@ -557,44 +452,4 @@ export class PullRequestService {
     }
     return prs.find((pr) => pr.headRefName === current.name)?.baseRefName || current.upstream;
   }
-}
-
-/**
- * 직접 작성한 GraphQL PR node 를 내부 PR JSON 형태로 변환한다.
- * @param pr GitHub GraphQL pull request node
- * @returns graph 표시용 정규화 전 PR 데이터
- */
-function fromGraphQlPullRequest(pr: GhGraphQlPullRequest): GhPullRequest {
-  return {
-    number: pr.number,
-    title: pr.title,
-    state: pr.state,
-    url: pr.url,
-    headRefName: pr.headRefName,
-    headRefOid: pr.headRefOid,
-    baseRefName: pr.baseRefName,
-    baseRefOid: pr.baseRefOid,
-    author: pr.author,
-    isDraft: pr.isDraft,
-    reviewDecision: pr.reviewDecision,
-    updatedAt: pr.updatedAt,
-    commentCount: totalPullRequestCommentCount(pr),
-    fileCount: pr.files?.totalCount ?? 0,
-    commitHashes: (pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
-    labels: normalizePullRequestLabels(pr.labels),
-  };
-}
-
-/**
- * gh PR JSON 에 포함된 commit OID 목록을 graph 배지용 해시 목록으로 정규화한다.
- * - `commits` 필드가 비어 있거나 일부만 내려온 경우에도 headRefOid 를 fallback 으로 포함한다.
- * @param pr gh CLI 가 반환한 PR JSON
- * @returns 중복이 제거된 commit hash 배열
- */
-function normalizeCommitHashes(pr: GhPullRequest): string[] {
-  return Array.from(new Set([
-    ...(pr.commitHashes || []),
-    ...(pr.commits || []).map((commit) => commit.oid || ""),
-    pr.headRefOid || "",
-  ].filter(Boolean)));
 }

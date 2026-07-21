@@ -285,7 +285,33 @@ function mergePullRequests(
     byNumber.set(pr.number, pr);
   }
   for (const pr of next) {
-    byNumber.set(pr.number, pr);
+    const current = byNumber.get(pr.number);
+    byNumber.set(pr.number, current ? mergePullRequest(current, pr) : pr);
   }
   return Array.from(byNumber.values());
+}
+
+/**
+ * 같은 PR의 기존 목록 데이터와 새 페이지/검색 데이터를 손실 없이 합친다.
+ * - repository 검색 응답은 commit 첫 100개만 가지므로, 이미 전체 pagination을 끝낸
+ *   기존 commit 목록을 새 검색 결과가 덮어쓰지 않게 합집합을 유지한다.
+ * @param current pager가 이미 보유한 PR 정보
+ * @param incoming 새 목록 페이지 또는 repository 검색에서 받은 PR 정보
+ * @returns 최신 메타데이터와 누적 commit 목록을 함께 가진 PR 정보
+ */
+function mergePullRequest(
+  current: PullRequestInfo,
+  incoming: PullRequestInfo
+): PullRequestInfo {
+  return {
+    ...current,
+    ...incoming,
+    headHash: incoming.headHash || current.headHash,
+    baseHash: incoming.baseHash || current.baseHash,
+    mergeHash: incoming.mergeHash || current.mergeHash,
+    commitHashes: Array.from(new Set([
+      ...current.commitHashes,
+      ...incoming.commitHashes,
+    ])),
+  };
 }

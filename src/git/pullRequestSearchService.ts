@@ -3,11 +3,12 @@
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
 import { runGh } from "./ghCli";
 import { splitRepositoryName } from "./githubRepository";
-import { PullRequestInfo } from "./pullRequestService";
-import { PULL_REQUEST_LABELS_QUERY, normalizePullRequestLabels } from "./pullRequestLabels";
-import type { GhPullRequestLabels } from "./pullRequestLabels";
-import { PULL_REQUEST_COMMENT_COUNTS_QUERY, fetchRemainingReviewThreadCommentCounts, totalPullRequestCommentCount } from "./pullRequestCommentCounts";
-import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
+import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
+import {
+  PULL_REQUEST_INFO_QUERY,
+  pullRequestInfoFromGraphQl,
+} from "./pullRequestInfo";
+import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 
 /** PR repository-wide 검색 응답 */
 export interface PullRequestSearchResult {
@@ -22,7 +23,7 @@ interface GhSearchResponse {
   data?: {
     search?: {
       issueCount?: number;
-      nodes?: GhSearchPullRequest[];
+      nodes?: GhPullRequestNode[];
       pageInfo?: {
         hasNextPage?: boolean;
         endCursor?: string;
@@ -34,29 +35,13 @@ interface GhSearchResponse {
 interface GhPullRequestNumberResponse {
   data?: {
     repository?: {
-      pullRequest?: GhSearchPullRequest;
+      pullRequest?: GhPullRequestNode;
     };
   };
 }
 
-interface GhSearchPullRequest extends GhPullRequestCommentCounts {
+interface GhAssociatedPullRequest {
   number?: number;
-  title?: string;
-  state?: string;
-  url?: string;
-  headRefName?: string;
-  headRefOid?: string;
-  baseRefName?: string;
-  baseRefOid?: string;
-  author?: { login?: string };
-  isDraft?: boolean;
-  reviewDecision?: string;
-  updatedAt?: string;
-  labels?: GhPullRequestLabels;
-  files?: { totalCount?: number };
-  commits?: {
-    nodes?: Array<{ commit?: { oid?: string } }>;
-  };
 }
 
 const PULL_REQUEST_SEARCH_PAGE_SIZE = 50;
@@ -70,24 +55,7 @@ query($searchQuery: String!, $limit: Int!, $cursor: String) {
     pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
-        number
-        title
-        state
-        url
-        headRefName
-        headRefOid
-        baseRefName
-        baseRefOid
-        author { login }
-        isDraft
-        reviewDecision
-        updatedAt
-${PULL_REQUEST_LABELS_QUERY}
-${PULL_REQUEST_COMMENT_COUNTS_QUERY}
-        files(first: 1) { totalCount }
-        commits(first: 100) {
-          nodes { commit { oid } }
-        }
+${PULL_REQUEST_INFO_QUERY}
       }
     }
   }
@@ -97,24 +65,7 @@ const PULL_REQUEST_NUMBER_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      number
-      title
-      state
-      url
-      headRefName
-      headRefOid
-      baseRefName
-      baseRefOid
-      author { login }
-      isDraft
-      reviewDecision
-      updatedAt
-${PULL_REQUEST_LABELS_QUERY}
-${PULL_REQUEST_COMMENT_COUNTS_QUERY}
-      files(first: 1) { totalCount }
-      commits(first: 100) {
-        nodes { commit { oid } }
-      }
+${PULL_REQUEST_INFO_QUERY}
     }
   }
 }`;
@@ -136,11 +87,16 @@ export async function searchPullRequests(
   }
   const repository = await repositoryName(repoRoot);
   const [owner, name] = splitRepositoryName(repository);
-  const [search, exact] = await Promise.all([
+  const [search, exact, associated] = await Promise.all([
     searchByText(repoRoot, owner, name, trimmed, cursor),
     cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed),
+    cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed),
   ]);
-  const pullRequests = mergeByNumber(exact ? [exact, ...search.pullRequests] : search.pullRequests);
+  const pullRequests = mergeByNumber([
+    ...(exact ? [exact] : []),
+    ...associated,
+    ...search.pullRequests,
+  ]);
   return {
     query,
     pullRequests,
@@ -200,7 +156,10 @@ async function searchPage(
   const nodes = search?.nodes || [];
   const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, nodes);
   return {
-    pullRequests: nodes.map((pr) => toPullRequestInfo(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0)).filter((pr) => pr.number > 0),
+    pullRequests: nodes.map((pr) => pullRequestInfoFromGraphQl(
+      pr,
+      extraReviewCommentCounts.get(Number(pr.number)) || 0
+    )).filter((pr) => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
     nextCursor: search?.pageInfo?.endCursor,
     totalCount: search?.issueCount ?? 0,
@@ -218,6 +177,56 @@ async function searchByNumber(
   if (!match) {
     return undefined;
   }
+  return pullRequestByNumber(repoRoot, owner, name, Number(match[1]));
+}
+
+/**
+ * commit SHA 검색어와 연결된 PR 번호를 GitHub commit API에서 찾고 전체 PR 정보로 확장한다.
+ * - GitHub issue 검색은 PR commit 포함 관계를 색인하지 않으므로 commit 전용 endpoint를 병행한다.
+ * - commit이 없거나 GitHub가 아직 연관 관계를 만들지 못한 경우에는 텍스트 검색 결과만 유지한다.
+ * @param repoRoot gh CLI를 실행할 저장소 루트
+ * @param owner GitHub 저장소 owner
+ * @param name GitHub 저장소 이름
+ * @param query 사용자가 입력한 전체 검색어
+ * @returns 입력 commit과 연결된 PR 목록
+ */
+async function searchByCommitHash(
+  repoRoot: string,
+  owner: string,
+  name: string,
+  query: string
+): Promise<PullRequestInfo[]> {
+  const hash = pullRequestCommitHashQuery(query);
+  if (!hash) {
+    return [];
+  }
+  const route = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
+    + `/commits/${encodeURIComponent(hash)}/pulls?per_page=100`;
+  const out = await runGh(["api", route], repoRoot).catch(() => "");
+  const associated = out ? JSON.parse(out) as GhAssociatedPullRequest[] : [];
+  const numbers = Array.from(new Set(
+    associated.map((pr) => Number(pr.number)).filter((number) => Number.isInteger(number) && number > 0)
+  ));
+  const pullRequests = await Promise.all(
+    numbers.map((number) => pullRequestByNumber(repoRoot, owner, name, number))
+  );
+  return pullRequests.filter((pr): pr is PullRequestInfo => Boolean(pr));
+}
+
+/**
+ * GitHub PR 번호 한 건을 GraphQL 공통 selection으로 조회한다.
+ * @param repoRoot gh CLI를 실행할 저장소 루트
+ * @param owner GitHub 저장소 owner
+ * @param name GitHub 저장소 이름
+ * @param number 조회할 PR 번호
+ * @returns 정규화한 PR 정보. 없거나 조회에 실패하면 undefined
+ */
+async function pullRequestByNumber(
+  repoRoot: string,
+  owner: string,
+  name: string,
+  number: number
+): Promise<PullRequestInfo | undefined> {
   const out = await runGh([
     "api",
     "graphql",
@@ -226,7 +235,7 @@ async function searchByNumber(
     "-F",
     `name=${name}`,
     "-F",
-    `number=${match[1]}`,
+    `number=${number}`,
     "-f",
     `query=${PULL_REQUEST_NUMBER_QUERY}`,
   ], repoRoot).catch(() => "");
@@ -235,7 +244,18 @@ async function searchByNumber(
     return undefined;
   }
   const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [pr]);
-  return toPullRequestInfo(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
+  return pullRequestInfoFromGraphQl(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
+}
+
+/**
+ * repository-wide commit 검색으로 보낼 수 있는 단독 SHA 검색어를 정규화한다.
+ * - 일반 영단어나 PR 번호를 commit endpoint에 보내지 않도록 7~40자리 hex만 허용한다.
+ * @param query 사용자가 입력한 PR 검색 문자열
+ * @returns 소문자로 정규화한 commit SHA 또는 commit 검색이 아니면 undefined
+ */
+export function pullRequestCommitHashQuery(query: string): string | undefined {
+  const trimmed = query.trim();
+  return /^[0-9a-f]{7,40}$/i.test(trimmed) ? trimmed.toLowerCase() : undefined;
 }
 
 /** gh repo view 로 owner/name 을 읽는다. */
@@ -247,31 +267,6 @@ async function repositoryName(repoRoot: string): Promise<string> {
 /** GitHub search 문법에 맞는 PR 검색어를 만든다. */
 function buildSearchQuery(owner: string, name: string, query: string): string {
   return [`repo:${owner}/${name}`, "is:pr", query].join(" ");
-}
-
-/** GraphQL PullRequest node 를 graph PR 타입으로 정규화한다. */
-function toPullRequestInfo(pr: GhSearchPullRequest, extraReviewCommentCount = 0): PullRequestInfo {
-  return {
-    number: Number(pr.number) || 0,
-    title: pr.title || "",
-    state: pr.state || "",
-    url: pr.url || "",
-    headRefName: pr.headRefName || "",
-    headHash: pr.headRefOid,
-    baseRefName: pr.baseRefName || "",
-    baseHash: pr.baseRefOid,
-    author: pr.author?.login || "",
-    isDraft: Boolean(pr.isDraft),
-    reviewDecision: pr.reviewDecision,
-    updatedAt: pr.updatedAt,
-    commentCount: totalPullRequestCommentCount(pr, extraReviewCommentCount),
-    fileCount: pr.files?.totalCount ?? 0,
-    labels: normalizePullRequestLabels(pr.labels),
-    commitHashes: Array.from(new Set([
-      ...(pr.commits?.nodes || []).map((node) => node.commit?.oid || ""),
-      pr.headRefOid || "",
-    ].filter(Boolean))),
-  };
 }
 
 /** PR 번호 기준으로 중복 검색 결과를 제거한다. */
