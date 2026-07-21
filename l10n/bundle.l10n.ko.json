@@ -262,7 +262,7 @@
   "No commits for the current file.": "현재 파일의 커밋 히스토리가 없습니다.",
   "Open File Change": "파일 변경 열기",
   "Empty Tree": "빈 트리",
-  "History is available for local files only.": "히스토리는 로컬 파일에서만 사용할 수 있습니다.",
+  "History is available for repository files only.": "히스토리는 Git 저장소 파일에서만 사용할 수 있습니다.",
   "Could not load file history.": "파일 히스토리를 불러올 수 없습니다.",
   "Change branch": "브랜치 변경",
   "View as Tree": "트리로 보기",

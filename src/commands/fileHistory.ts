@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { EMPTY_TREE_REF, FileHistoryService } from "../git/fileHistoryService";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
+import { fileHistoryResourceLocation } from "../utils/fileHistoryResource";
 import { CommandDeps } from "./shared";
 
 /** 파일 히스토리 refresh 요청 출처. */
@@ -39,7 +40,8 @@ let latestHistoryRequestId = 0;
 
 /**
  * 현재 활성 에디터 파일의 git history 를 읽어 Changes 웹뷰 History 섹션에 반영한다.
- * - background refresh 에서 호출되므로 저장소가 없거나 로컬 파일이 아니어도 경고 팝업은 띄우지 않는다.
+ * - 실제 작업 파일뿐 아니라 삭제 diff에 남은 ref 가상 문서도 원래 저장소 경로로 해석한다.
+ * - background refresh 에서 호출되므로 저장소가 없거나 지원하지 않는 문서여도 경고 팝업은 띄우지 않는다.
  * - 사용자가 다른 탭으로 이동한 경우 현재 탭 기준으로 즉시 교체된다.
  * @param deps 공유 의존성
  * @param request refresh 사유와 명시 URI(없으면 활성 에디터)
@@ -57,19 +59,26 @@ export async function refreshFileHistory(
     logInfo("file history skipped", { reason, reasonDetail: "no-active-file" });
     return;
   }
-  if (uri.scheme !== "file") {
+  const location = fileHistoryResourceLocation(uri);
+  if (!location) {
     deps.changesView.setFileHistory({
       commits: [],
-      message: vscode.l10n.t("History is available for local files only."),
+      message: vscode.l10n.t(
+        "History is available for repository files only."
+      ),
     });
     logInfo("file history skipped", {
       reason,
-      reasonDetail: "non-file-uri",
+      reasonDetail: "unsupported-resource",
       scheme: uri.scheme,
     });
     return;
   }
-  const service = await deps.registry.resolve(dirNameOf(uri.fsPath));
+  const repositoryLookupPath =
+    location.kind === "workingFile"
+      ? dirNameOf(location.fsPath)
+      : location.repoRoot;
+  const service = await deps.registry.resolve(repositoryLookupPath);
   if (!service) {
     deps.changesView.setFileHistory({
       commits: [],
@@ -78,12 +87,16 @@ export async function refreshFileHistory(
     logInfo("file history skipped", {
       reason,
       reasonDetail: "not-a-repository",
-      path: uri.fsPath,
+      path: repositoryLookupPath,
+      resourceKind: location.kind,
     });
     return;
   }
 
-  const relPath = service.toRepoRelative(uri.fsPath);
+  const relPath =
+    location.kind === "workingFile"
+      ? service.toRepoRelative(location.fsPath)
+      : location.relPath;
   const cacheKey = fileHistoryCacheKey(service.repoRoot, relPath);
   const forceReload = shouldForceHistoryReload(reason, request.force);
   if (forceReload) {
@@ -96,6 +109,7 @@ export async function refreshFileHistory(
       reason,
       root: service.repoRoot,
       path: relPath,
+      resourceKind: location.kind,
       commits: cached.commits.length,
       ageMs: Date.now() - cached.loadedAt,
     });
@@ -118,6 +132,7 @@ export async function refreshFileHistory(
       reason,
       root: service.repoRoot,
       path: relPath,
+      resourceKind: location.kind,
       commits: entry.commits.length,
       elapsed: Date.now() - started,
     });
