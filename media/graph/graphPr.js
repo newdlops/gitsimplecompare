@@ -8,8 +8,6 @@
   let pullRequestDetails = new Map();
   let pendingDetails = new Set();
   let prListLoading = false;
-  let focusRequestSeq = 0;
-  let pendingFocusRequest;
   let hoverCard;
 
   /** PR UI 이벤트와 웹뷰 메시지 수신을 초기화한다. */
@@ -58,7 +56,7 @@
         renderPullRequestDetail(activeDetail.number);
       }
     } else if (msg.type === "commitVisibility") {
-      handleCommitVisibility(msg);
+      window.GscGraphPrMatching?.handleCommitVisibility?.(msg);
     } else if (msg.type === "graph" || msg.type === "branchStatus" || msg.type === "tagStatus") {
       // graph/branchStatus/tagStatus 는 모두 그래프 row 를 다시 그린다. row 가 재생성되면 PR 배지가
       // 함께 사라지므로, 이 스크립트가 graph.js 보다 먼저 message 를 받는 점을 이용해 rAF 로 재배치를 예약한다.
@@ -221,58 +219,10 @@
 
   /** graph row/node 에 PR badge 와 강조 class 를 반영한다. */
   function applyDecorations() {
-    const root = document.getElementById("graph-content");
-    if (!root) {
-      return;
-    }
-    root.querySelectorAll(".pr-badges").forEach((el) => el.remove());
-    root.querySelectorAll(".pr-row").forEach((el) => el.classList.remove("pr-row"));
-    root.querySelectorAll(".node.pr-node").forEach((el) => {
-      el.classList.remove("pr-node", ...prColorClasses());
-    });
-    const byHash = pullRequestsByHash();
-    root.querySelectorAll(".row[data-hash]").forEach((row) => {
-      const prs = byHash.get(row.dataset.hash || "") || [];
-      if (!prs.length) {
-        return;
-      }
-      row.classList.add("pr-row");
-      row.insertBefore(badges(prs), row.firstChild);
-      const node = root.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
-      node?.classList.add("pr-node", prColorClass(prs[0]?.number));
-    });
-  }
-
-  /** commit hash 별 PR 목록 map 을 만든다. */
-  function pullRequestsByHash() {
-    const map = new Map();
-    for (const pr of window.GscGraphPrSearch?.all?.(overview.pullRequests) || overview.pullRequests || []) {
-      for (const hash of pr.commitHashes || []) {
-        const list = map.get(hash) || [];
-        list.push(pr);
-        map.set(hash, list);
-      }
-    }
-    return map;
-  }
-
-  /** row 에 붙일 PR badge 묶음을 만든다. */
-  function badges(prs) {
-    const box = document.createElement("span");
-    box.className = "pr-badges";
-    for (const pr of prs.slice(0, 3)) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `pr-row-button ${prColorClass(pr.number)}`;
-      button.dataset.prNumber = String(pr.number);
-      button.title = `Show PR #${pr.number} details`;
-      button.setAttribute("aria-label", `${button.title}: ${pr.title}`);
-      button.innerHTML = `<span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
-        `<span>#${pr.number}</span>` +
-        `<span class="pr-comment-count"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>${commentCount(pr)}</span>`;
-      box.appendChild(button);
-    }
-    return box;
+    const prs = window.GscGraphPrSearch?.all?.(overview.pullRequests)
+      || overview.pullRequests
+      || [];
+    window.GscGraphPrMatching?.applyDecorations?.(prs, commentCount);
   }
 
   /** toolbar PR 버튼에서 전체 PR 목록 drawer 를 연다. */
@@ -312,7 +262,10 @@
 	      `</div>`;
 	    const shell = root.querySelector(".pr-detail-shell");
 	    if (shell) { shell.addEventListener("scroll", handlePrListScroll); shell.scrollTop = previousScroll; }
-	    window.GscGraphPrSearch?.bind?.(root, renderOverviewDetail);
+	    window.GscGraphPrSearch?.bind?.(root, () => {
+	      renderOverviewDetail();
+	      applyDecorations();
+	    });
 	  }
 
 	  /** 검색 상태를 고려해 PR 목록 empty 문구를 만든다. */
@@ -366,87 +319,12 @@
   /** PR 과 연결된 graph row 중 가장 대표적인 row 로 이동하고 하이라이트한다. */
   function focusPullRequestRow(number) {
     const pr = findPr(number);
-    const row = pr ? findPullRequestRow(pr) : null;
-    if (!row) {
-      clearFocusedPullRequest();
-      if (pr) requestCommitVisibility(prRowHashes(pr));
-      return;
-    }
-    highlightCommitRow(row);
+    window.GscGraphPrMatching?.focusPullRequestRow?.(pr);
   }
 
   /** commit hash 로 graph row 를 찾아 이동하고 하이라이트한다. */
-  function focusCommitRow(hash, fromVisibility) {
-    const row = findCommitRow(hash);
-    if (!row) {
-      clearFocusedPullRequest();
-      if (!fromVisibility) requestCommitVisibility([hash]);
-      return;
-    }
-    highlightCommitRow(row);
-  }
-
-  /** graph 에 없는 commit hash 후보를 확장 쪽에서 추가 로드하도록 요청한다. */
-  function requestCommitVisibility(hashes) {
-    const candidates = Array.from(new Set((hashes || []).filter(Boolean)));
-    if (!candidates.length) {
-      return;
-    }
-    const requestId = `pr-focus-${++focusRequestSeq}`;
-    pendingFocusRequest = { requestId, hashes: candidates };
-    window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates });
-  }
-
-  /** 추가 로드 후 발견된 commit 으로 다시 점프한다. */
-  function handleCommitVisibility(msg) {
-    if (!pendingFocusRequest || msg.requestId !== pendingFocusRequest.requestId) {
-      return;
-    }
-    pendingFocusRequest = undefined;
-    if (msg.found && msg.hash) {
-      requestAnimationFrame(() => focusCommitRow(msg.hash, true));
-    }
-  }
-
-  /** PR 의 head commit 을 우선하고, 없으면 로드된 관련 commit row 를 찾는다. */
-  function findPullRequestRow(pr) {
-    const hashes = prRowHashes(pr);
-    for (const hash of hashes) {
-      const row = document.querySelector(`#graph-content .row[data-hash="${cssEscape(hash)}"]`);
-      if (row) {
-        return row;
-      }
-    }
-    return null;
-  }
-
-  /** commit hash 와 일치하는 로드된 graph row 를 찾는다. */
-  function findCommitRow(hash) {
-    return hash ? document.querySelector(`#graph-content .row[data-hash="${cssEscape(hash)}"]`) : null;
-  }
-
-  /** 이미 찾은 graph row 를 PR/commit 이동 결과로 강조한다. */
-  function highlightCommitRow(row) {
-    clearFocusedPullRequest();
-    row.classList.add("pr-focused-row");
-    const node = document.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
-    node?.classList.add("pr-focused-node");
-    row.scrollIntoView({ block: "center", inline: "nearest" });
-  }
-
-  /** PR row 이동에 사용할 후보 hash 순서를 만든다. */
-  function prRowHashes(pr) {
-    return Array.from(new Set([
-      pr.headHash || "",
-      ...(pr.commitHashes || []).slice().reverse(),
-      ...(pr.commitHashes || []),
-    ].filter(Boolean)));
-  }
-
-  /** 이전 PR row 하이라이트를 제거한다. */
-  function clearFocusedPullRequest() {
-    document.querySelectorAll(".pr-focused-row").forEach((el) => el.classList.remove("pr-focused-row"));
-    document.querySelectorAll(".pr-focused-node").forEach((el) => el.classList.remove("pr-focused-node"));
+  function focusCommitRow(hash) {
+    window.GscGraphPrMatching?.focusCommitRow?.(hash, false);
   }
 
   /** 선택한 PR 상세를 drawer 에 렌더링한다. */
@@ -539,7 +417,7 @@
 
   /** PR 상세 drawer 의 related commits 리스트 HTML 을 만든다. */
   function relatedCommitsSection(pr) {
-    const hashes = prRowHashes(pr);
+    const hashes = window.GscGraphPrMatching?.rowHashes?.(pr) || pr.commitHashes || [];
     return `<section class="pr-detail-section">` +
       sectionHeading("git-commit", "Related commits", iconCount("git-commit", hashes.length, "Related commits")) +
       (hashes.length ? `<div class="pr-commit-list">${hashes.map(relatedCommitButton).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
@@ -548,7 +426,7 @@
 
   /** related commit 한 건을 graph row 이동 버튼으로 만든다. */
   function relatedCommitButton(hash) {
-    const row = findCommitRow(hash);
+    const row = window.GscGraphPrMatching?.findCommitRow?.(hash);
     const subject = row?.dataset.subject || "Commit is not loaded in the graph yet.";
     const meta = row?.querySelector?.(".meta")?.textContent || "";
     const title = row ? `Jump to commit ${shortHash(hash)}` : `Commit ${shortHash(hash)} is not loaded in the graph`;
@@ -655,20 +533,13 @@
 	  /** detail root 를 반환한다. */
 	  function detailRoot() { return window.GscGraphDetailHost?.root || document.getElementById("detail"); }
 	  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
-	  function prColorClass(number) { return `pr-color-${Math.abs(Number(number) || 0) % 8}`; }
-	  /** 기존 색상 class 를 지울 때 쓰는 전체 팔레트 목록을 반환한다. */
-	  function prColorClasses() { return Array.from({ length: 8 }, (_, index) => `pr-color-${index}`); }
+	  function prColorClass(number) { return window.GscGraphPrMatching?.colorClass?.(number) || `pr-color-${Math.abs(Number(number) || 0) % 8}`; }
 	  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
 	  function commentCount(pr) { const count = pullRequestDetails.get(Number(pr.number))?.detail?.commentCount ?? pr.commentCount; return Number.isFinite(Number(count)) ? Number(count) : 0; }
 	  /** badge/card 에 표시할 PR 커밋 수를 반환한다. */
 	  function commitCount(pr) { return Array.isArray(pr.commitHashes) ? pr.commitHashes.length : 0; }
 	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */
 	  function shortHash(hash) { return String(hash || "").slice(0, 8); }
-  /** CSS selector 에 들어갈 값을 escape 한다. */
-  function cssEscape(value) {
-    return window.CSS?.escape ? window.CSS.escape(String(value)) : String(value).replace(/["\\]/g, "\\$&");
-  }
-
   /** HTML 특수문자를 escape 한다. */
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));

@@ -31,6 +31,7 @@ export function buildGraphHtml(
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
   const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
+  const prMatchingScriptUri = script(webview, mediaRoot, "graphPrMatching.js");
   const prActionsScriptUri = script(webview, mediaRoot, "graphPrActions.js");
   const prScriptUri = script(webview, mediaRoot, "graphPr.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
@@ -215,6 +216,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${prFilesScriptUri}"></script>
   <script nonce="${nonce}" src="${prLabelsScriptUri}"></script>
   <script nonce="${nonce}" src="${prSearchScriptUri}"></script>
+  <script nonce="${nonce}" src="${prMatchingScriptUri}"></script>
   <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
   <script nonce="${nonce}" src="${prScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
