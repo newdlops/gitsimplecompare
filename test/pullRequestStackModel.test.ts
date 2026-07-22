@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildPullRequestStackGraph,
   buildPullRequestStacks,
   invalidPullRequestBaseBranches,
   pullRequestBaseCandidates,
   type PullRequestStacksSnapshot,
+  type StackLocalBranch,
   type StackPullRequest,
 } from "../src/git/pullRequestStackModel";
+import { replacePullRequestStackBody } from "../src/git/pullRequestStackSubmitService";
 
 /** 테스트에서 관계 필드에 집중할 수 있도록 기본 PR 값을 채운다. */
 function pr(
@@ -180,4 +183,93 @@ test("잘못된 번호/head와 같은 번호의 오래된 응답을 정규화한
   assert.equal(stacks[0].pullRequests[0].headRefName, "feature/new");
   assert.equal(stacks[0].pullRequests[0].baseRefName, "main");
   assert.equal(stacks[0].pullRequests[0].title, "latest");
+});
+
+test("로컬 parent 메타데이터와 열린 PR을 같은 graph stack 흐름으로 합친다", () => {
+  const local: StackLocalBranch[] = [
+    {
+      name: "feature/one",
+      hash: "11111111",
+      parentBranch: "main",
+      parentHead: "00000000",
+    },
+    {
+      name: "feature/two",
+      hash: "22222222",
+      parentBranch: "feature/one",
+      parentHead: "old-one",
+      upstream: "origin/feature/two",
+      upstreamHash: "remote-two",
+    },
+    {
+      name: "feature/three",
+      hash: "33333333",
+      parentBranch: "feature/two",
+      parentHead: "22222222",
+    },
+  ];
+  const graph = buildPullRequestStackGraph(local, [
+    pr(11, "feature/one", "main", {
+      state: "OPEN",
+      headHash: "11111111",
+      baseHash: "main-head",
+    }),
+    pr(12, "feature/two", "feature/one", {
+      state: "OPEN",
+      headHash: "22222222",
+      baseHash: "11111111",
+    }),
+  ], "example/repo", "main");
+
+  assert.equal(graph.stacks.length, 1);
+  assert.deepEqual(
+    graph.stacks[0].layers.map((layer) => [layer.branch, layer.depth, layer.parentBranch]),
+    [
+      ["feature/one", 0, "main"],
+      ["feature/two", 1, "feature/one"],
+      ["feature/three", 2, "feature/two"],
+    ]
+  );
+  assert.equal(graph.layers.find((layer) => layer.branch === "feature/two")?.needsRestack, true);
+  assert.equal(graph.layers.find((layer) => layer.branch === "feature/two")?.remoteDiverged, true);
+  assert.equal(graph.layers.find((layer) => layer.branch === "feature/three")?.pullRequest, undefined);
+});
+
+test("열린 child의 parent인 merged PR은 graph 흐름에 남기고 무관한 merged PR은 제외한다", () => {
+  const graph = buildPullRequestStackGraph([], [
+    pr(1, "feature/merged-parent", "main", { state: "MERGED", headHash: "a" }),
+    pr(2, "feature/open-child", "feature/merged-parent", { state: "OPEN", headHash: "b" }),
+    pr(3, "feature/old-merged", "main", { state: "MERGED", headHash: "c" }),
+  ], "example/repo", "main");
+
+  assert.deepEqual(graph.layers.map((layer) => layer.branch), [
+    "feature/merged-parent",
+    "feature/open-child",
+  ]);
+  assert.equal(graph.layers[0].pullRequest?.state, "MERGED");
+  assert.deepEqual(graph.layers[0].childBranches, ["feature/open-child"]);
+});
+
+test("PR 본문의 stack marker만 교체하고 사용자 설명을 보존한다", () => {
+  const before = [
+    "사용자 설명",
+    "",
+    "<!-- git-simple-compare-stack:start -->",
+    "old stack",
+    "<!-- git-simple-compare-stack:end -->",
+    "",
+    "사용자 꼬리말",
+  ].join("\n");
+  const section = [
+    "<!-- git-simple-compare-stack:start -->",
+    "### Pull request stack",
+    "- **#2** ← current",
+    "<!-- git-simple-compare-stack:end -->",
+  ].join("\n");
+
+  const updated = replacePullRequestStackBody(before, section);
+  assert.match(updated, /^사용자 설명/);
+  assert.match(updated, /- \*\*#2\*\* ← current/);
+  assert.match(updated, /사용자 꼬리말$/);
+  assert.doesNotMatch(updated, /old stack/);
 });

@@ -3,8 +3,12 @@
 // - 명령/UI 레이어에는 CLI 인자나 JSON 응답 형식을 노출하지 않는다.
 import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
+import type { PullRequestInfo } from "./pullRequestInfo";
+import { PullRequestStackMetadataService } from "./pullRequestStackMetadata";
 import {
+  buildPullRequestStackGraph,
   buildPullRequestStacks,
+  type PullRequestStackGraphSnapshot,
   type PullRequestStacksSnapshot,
   type StackPullRequest,
 } from "./pullRequestStackModel";
@@ -85,6 +89,31 @@ export class PullRequestStackService {
       pullRequests,
       stacks: buildPullRequestStacks(pullRequests),
     };
+  }
+
+  /**
+   * Git Graph가 이미 읽은 PR과 로컬 stack 메타데이터를 통합해 흐름 스냅샷을 만든다.
+   * - GitHub 저장소 정보 조회가 실패해도 로컬 layer는 계속 표시되도록 기본 branch를 git에서 보완한다.
+   * @param pullRequests graph pager가 읽은 OPEN/CLOSED/MERGED PR 목록
+   * @param repositoryHint pager가 알고 있는 owner/name 저장소 이름
+   * @returns graph overlay와 stack 작업 버튼이 공유할 통합 스냅샷
+   */
+  async getGraphSnapshot(
+    pullRequests: readonly PullRequestInfo[],
+    repositoryHint = ""
+  ): Promise<PullRequestStackGraphSnapshot> {
+    const [branches, repository] = await Promise.all([
+      new PullRequestStackMetadataService(this.repoRoot).listBranches(),
+      this.repositoryInfo().catch(() => ({} as GhRepositoryInfo)),
+    ]);
+    const defaultBranch = repository.defaultBranchRef?.name
+      || await this.defaultBranchFromGit().catch(() => undefined);
+    return buildPullRequestStackGraph(
+      branches,
+      pullRequests.map(stackPullRequestFromInfo),
+      repository.nameWithOwner || repositoryHint,
+      defaultBranch
+    );
   }
 
   /**
@@ -236,6 +265,20 @@ export class PullRequestStackService {
   }
 
   /**
+   * origin/HEAD symbolic ref에서 GitHub 조회 실패 시 사용할 기본 branch 이름을 읽는다.
+   * @returns origin/main 같은 ref에서 remote 접두사를 제거한 branch 이름
+   */
+  private async defaultBranchFromGit(): Promise<string | undefined> {
+    const symbolic = (await runGit(
+      ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+      this.repoRoot
+    )).trim();
+    return symbolic.startsWith("origin/")
+      ? symbolic.slice("origin/".length)
+      : symbolic || undefined;
+  }
+
+  /**
    * for-each-ref 한 레코드를 로컬 branch와 remote 게시 정보로 변환한다.
    * @param record FIELD_SEPARATOR로 나뉜 git 출력 레코드
    * @param remotes 현재 저장소 remote 이름 목록
@@ -278,6 +321,29 @@ function normalizePullRequest(pr: GhStackPullRequest): StackPullRequest {
     reviewDecision: pr.reviewDecision || undefined,
     mergeStateStatus: pr.mergeStateStatus || undefined,
     updatedAt: pr.updatedAt || undefined,
+  };
+}
+
+/**
+ * graph 공통 PullRequestInfo를 stack 관계 계산에 필요한 형태로 복사한다.
+ * @param pr GitHub GraphQL pager가 정규화한 PR
+ * @returns local stack 모델과 합칠 PR 정보
+ */
+function stackPullRequestFromInfo(pr: PullRequestInfo): StackPullRequest {
+  return {
+    number: pr.number,
+    title: pr.title,
+    url: pr.url,
+    headRefName: pr.headRefName,
+    baseRefName: pr.baseRefName,
+    author: pr.author,
+    isDraft: pr.isDraft,
+    reviewDecision: pr.reviewDecision,
+    updatedAt: pr.updatedAt,
+    state: pr.state,
+    headHash: pr.headHash,
+    baseHash: pr.baseHash,
+    mergeHash: pr.mergeHash,
   };
 }
 
