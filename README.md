@@ -23,6 +23,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a fixed-width author/date column beside the gutter.
+12. **Pull request stacks** — group open GitHub pull requests by their base/head branch chain, rewire a PR's stack parent, and publish a local branch as the next PR in a stack.
 
 ## Usage
 
@@ -79,6 +80,12 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 - Toggle between **tree** and **list** layout from the view toolbar.
 - Change the sort order (**name / path / status**) from the view toolbar.
 - Click any file to open its diff.
+
+### Pull request stacks
+
+Expand **PR Stacks** in the Changes view to load the active repository's open pull requests through the GitHub CLI (`gh`). Pull requests are grouped when a child PR's base branch matches another same-repository PR's head branch. Fork PRs remain visible, with their owner-qualified head branch, but are not treated as selectable stack parents.
+
+Click a PR to open it on GitHub, use the branch action to change its base and rewire the stack, or use the add action to create the next PR above it. Creating a stack PR selects a local branch, performs a confirmed normal (non-force) push to its upstream or a selected remote, and then creates the GitHub PR. Automatic rebases and force-pushes are intentionally not performed. Install `gh` and run `gh auth login` before using the section.
 
 ### Apply Left → Right
 
