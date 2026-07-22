@@ -113,6 +113,13 @@ import {
   removeWorktree,
   renameWorktree,
 } from "./worktrees";
+import {
+  addPullRequestStackLayer,
+  advancePullRequestStack,
+  completeAdvancePostAction,
+  restackPullRequestStack,
+  submitPullRequestStack,
+} from "./pullRequestStacks";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 import { SHOW_BLOCK_BLAME_COMMAND } from "../providers/blockBlameCodeLensPresentation";
 import {
@@ -531,6 +538,24 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.renameWorktree", (arg) =>
       renameWorktree(deps, arg)
+    ),
+    // Git Graph PR stack: layer 생성/restack/submit/merge 후 advance
+    vscode.commands.registerCommand("gitSimpleCompare.addPullRequestStackLayer", (arg) =>
+      addPullRequestStackLayer(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.restackPullRequestStack", (arg) =>
+      restackPullRequestStack(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.submitPullRequestStack", (arg) =>
+      submitPullRequestStack(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.advancePullRequestStack", (arg) =>
+      advancePullRequestStack(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.completePullRequestStackAdvance", (arg) =>
+      arg?.repoRoot && arg?.postAction
+        ? completeAdvancePostAction(arg.repoRoot, arg.postAction)
+        : undefined
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.takeOurs",

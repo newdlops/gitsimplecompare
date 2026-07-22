@@ -33,4 +33,7 @@ export interface ChangesWebviewMessage {
   enabled?: boolean;
   line?: number;
   column?: number;
+  number?: number;
+  url?: string;
+  baseBranch?: string;
 }

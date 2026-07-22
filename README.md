@@ -23,6 +23,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a fixed-width author/date column beside the gutter.
+12. **Pull request stack lifecycle** — draw PR flow directly on the Git Graph and automate layer/worktree creation, descendant restacks, dependency-ordered submit/sync, and post-merge advancement.
 
 ## Usage
 
@@ -40,7 +41,7 @@ For saved, tracked files, Git Simple Compare uses the active language extension'
 
 ### Git Graph
 
-Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit.
+Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit. Pull request stack layers appear as chips on their head commits with dashed arrows pointing to their parent commits.
 
 ### Interactive rebase
 
@@ -66,7 +67,7 @@ This feature runs local CLIs non-interactively: `claude -p` for Claude Code and 
 
 If a browser callback login cannot reach localhost, use a non-callback login method in AI CLI Settings: for Claude Code choose `setup-token`, `console`, or `sso`; for Codex choose `device`, `api-key`, or `access-token`. Then run Login / Status again.
 
-The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button copies the generated/current PR title and body to the clipboard for use on GitHub.
+The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button still copies the generated/current title and body, while **Create Pull Request** can publish the preview directly. Select a local source and target branch; if staged files are part of the preview, the extension asks for a commit message, commits only those staged files, performs a normal (never forced) push, then creates a ready or draft PR through `gh`. Unstaged and untracked files remain in the working tree. Existing PR previews keep the **Open on GitHub** action instead of creating a duplicate.
 
 ### Commit hooks and failed checks
 
@@ -79,6 +80,12 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 - Toggle between **tree** and **list** layout from the view toolbar.
 - Change the sort order (**name / path / status**) from the view toolbar.
 - Click any file to open its diff.
+
+### Pull request stacks
+
+Open the layer button in the Git Graph toolbar to see a unified view of local parent metadata and GitHub PR base/head relationships. **Add Layer** creates a child branch and optional linked worktree from the selected parent. **Restack** previews and rebases that layer and all descendants with per-layer safety refs and integrated conflict Continue/Abort. **Submit / Sync** pushes root-to-leaf, creates missing PRs, updates existing bases and stack sections in PR bodies, and uses an explicit force-with-lease only for rewritten remote history. After a lower PR is merged, **Advance** promotes its children to the previous base, restacks and syncs their PRs, then offers safe local branch/worktree cleanup.
+
+Install `gh` and run `gh auth login` before submitting. For a complete Korean walkthrough, see [PR Stack 사용 가이드](./docs/pull-request-stacks.ko.md).
 
 ### Apply Left → Right
 

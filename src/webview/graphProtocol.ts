@@ -28,6 +28,7 @@ import type {
 } from "../git/graphSearchService";
 import type { GitTagStatus } from "../git/gitTagService";
 import type { ReflogEntry } from "../git/reflogService";
+import type { PullRequestStackGraphSnapshot } from "../git/pullRequestStackModel";
 
 /** graph 검색에서 명시적으로 최신화할 ref 종류 */
 export type GraphSearchFetchTarget = "refs" | "tags";
@@ -89,6 +90,8 @@ export type ToWebviewMessage =
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "tagStatus"; tags: GitTagStatus[] }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
+  | { type: "pullRequestStackSnapshot"; snapshot: PullRequestStackGraphSnapshot }
+  | { type: "pullRequestStackError"; message: string }
   | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
   | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
   | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
@@ -124,6 +127,12 @@ export type FromWebviewMessage =
   | { type: "forcePush" }
   | { type: "openRemoteBranch" }
   | { type: "refreshPullRequests" }
+  | {
+      type: "pullRequestStackAction";
+      action: "addLayer" | "restack" | "submit" | "advance";
+      branch?: string;
+      parentHash?: string;
+    }
   | { type: "refreshReflog"; includeUnreachable?: boolean }
   | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }
   | { type: "loadMorePullRequests" }

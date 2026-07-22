@@ -70,7 +70,14 @@
   state.stashExpanded = state.stashExpanded || {}; // stash 펼침 상태(ref/hash별)
   state.historyExpanded = state.historyExpanded || {}; // history 커밋 상세 펼침 상태(hash별)
   state.commitMessageRevision = state.commitMessageRevision || 0;
-  const SECTION_IDS = ["repos", "changes", "history", "compare", "stashes", "worktrees"];
+  const SECTION_IDS = [
+    "repos",
+    "changes",
+    "history",
+    "compare",
+    "stashes",
+    "worktrees",
+  ];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
   let currentFileIcons = {};

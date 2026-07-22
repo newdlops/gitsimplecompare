@@ -25,6 +25,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 9. **AI 메시지 생성** — 로컬 Claude Code 또는 Codex CLI 에 프롬프트를 보내 커밋 메시지와 staged PR 제목/본문을 생성합니다.
 10. **파일 기반 커밋 hook 관리** — 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하고, lint/파일 검사 실패를 클릭 가능한 파일·행 진단과 재시도 UI로 보여줍니다.
 11. **블록 작업자 Code Vision** — 함수, 클래스, 인터페이스, 메서드와 빈 줄로 구분된 전역 선언 묶음 위에 주요 Git 작업자를 표시합니다. 힌트를 클릭하면 거터 옆에 고정폭 작업자·날짜 열이 열립니다.
+12. **PR Stack 수명주기 관리** — Git Graph에 PR 흐름을 직접 표시하고, 레이어/worktree 생성, 후손 연쇄 restack, 의존성 순서 Submit/Sync, merge 후 Advance를 자동화합니다.
 
 ## 사용 방법
 
@@ -42,13 +43,19 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 ### Git 그래프
 
-브랜치별 커밋 히스토리 그래프를 웹뷰로 엽니다. 커밋 노드를 클릭하면 오른쪽에 상세가 표시되고, 변경 파일을 클릭하면 그 커밋의 diff 가 열립니다. 그래프는 스크롤에 맞춰 최초 커밋에 도달할 때까지 lazy load 됩니다.
+브랜치별 커밋 히스토리 그래프를 웹뷰로 엽니다. 커밋 노드를 클릭하면 오른쪽에 상세가 표시되고, 변경 파일을 클릭하면 그 커밋의 diff 가 열립니다. 그래프는 스크롤에 맞춰 최초 커밋에 도달할 때까지 lazy load 됩니다. PR Stack 레이어는 head commit의 chip과 부모 commit으로 향하는 점선 화살표로 함께 표시됩니다.
 
 ### 변경 파일 뷰
 
 - 뷰 툴바에서 **트리/목록** 보기를 전환합니다.
 - 뷰 툴바에서 정렬 기준(**이름 / 경로 / 상태**)을 바꿉니다.
 - 파일을 클릭하면 diff 가 열립니다.
+
+### PR Stack
+
+Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 GitHub PR base/head 관계를 합친 Stack을 볼 수 있습니다. **Add Layer**는 부모 tip에서 자식 브랜치와 선택적 linked worktree를 만들고, **Restack**은 부모가 바뀐 레이어와 모든 후손을 안전 ref 아래 연쇄 rebase합니다. **Submit / Sync**는 부모부터 push하여 PR을 생성하거나 base·본문의 Stack 목록을 갱신하며, 재작성된 원격에만 명시적 force-with-lease를 사용합니다. 아래 PR이 merge되면 **Advance**가 자식을 이전 base로 승격하고 restack·PR 동기화·안전한 로컬 정리 제안을 이어서 수행합니다.
+
+생성부터 충돌 Continue/Abort, merge 후 정리와 안전장치까지의 자세한 설명은 [PR Stack 사용 가이드](./docs/pull-request-stacks.ko.md)를 참고하세요.
 
 ### AI 커밋/PR 메시지
 
@@ -58,7 +65,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 브라우저 callback 로그인이 localhost 에 도달하지 못하면 AI CLI 설정에서 callback 을 쓰지 않는 로그인 방식으로 바꾸세요. Claude Code 는 `setup-token`, `console`, 또는 `sso`, Codex 는 `device`, `api-key`, 또는 `access-token` 을 선택한 뒤 로그인 / 상태를 다시 실행하면 됩니다.
 
-커밋 메시지 AI 버튼은 staged 변경이 있을 때만 활성화됩니다. PR preview 에서는 복사 버튼으로 생성된/현재 PR 제목과 본문을 GitHub 에 붙여넣기 좋은 형식으로 클립보드에 복사할 수 있습니다.
+커밋 메시지 AI 버튼은 staged 변경이 있을 때만 활성화됩니다. PR Preview의 복사 버튼은 생성된/현재 PR 제목과 본문을 계속 클립보드에 복사하며, **Pull Request 생성** 버튼으로 Preview를 GitHub에 바로 게시할 수도 있습니다. 로컬 source와 target 브랜치를 선택한 뒤 staged 파일이 있으면 별도 커밋 메시지를 입력합니다. 확장은 staged 파일만 커밋하고 일반 push만 수행한 다음 `gh`로 Ready 또는 Draft PR을 만듭니다. unstaged·untracked 파일은 작업트리에 남고, 기존 PR Preview에서는 중복 생성 대신 **GitHub에서 열기**를 제공합니다.
 
 ### 커밋 hook과 검사 실패
 

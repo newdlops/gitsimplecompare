@@ -12,15 +12,13 @@ import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProv
 import { logError, logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
-import {
-  buildChangesRenderPayload,
-  buildWorkingChangesRenderPayload,
-} from "./changesRenderPayload";
+import { buildChangesRenderPayload, buildWorkingChangesRenderPayload } from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
 import { routeCommitHookMessage } from "./changesCommitHookMessages";
 import { routeChangesAiMessage } from "./changesAiMessages";
 import { routeChangesStashMessage } from "./changesStashMessages";
+import { routeChangesWorktreeMessage } from "./changesWorktreeMessages";
 import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
 import {
   TREE_SECTIONS,
@@ -33,8 +31,7 @@ import {
   type VisibleSections,
   type WorktreeView,
 } from "./changesViewTypes";
-export { VISIBLE_SECTIONS } from "./changesViewTypes";
-export type { ComparisonDraft, TreeSection, VisibleSection } from "./changesViewTypes";
+export { VISIBLE_SECTIONS, type ComparisonDraft, type TreeSection, type VisibleSection } from "./changesViewTypes";
 /** 보기 모드/정렬을 세션 간 유지하기 위한 저장 키 */
 const VIEW_MODE_STATE = "gitSimpleCompare.viewMode";
 const SORT_KEY_STATE = "gitSimpleCompare.sortKey";
@@ -434,6 +431,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     if (routeChangesStashMessage(msg, this.view?.webview)) {
       return;
     }
+    if (routeChangesWorktreeMessage(msg)) {
+      return;
+    }
     if (msg.type === "ready") {
       this.lastRenderPayloadJson = "";
       this.render();
@@ -555,29 +555,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       });
     } else if (msg.type === "scmAction" && msg.action) {
       void vscode.commands.executeCommand("gitSimpleCompare.scmAction", msg.action);
-    } else if (msg.type === "refreshWorktrees") {
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
-    } else if (msg.type === "openWorktree" && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.openWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
-    } else if (msg.type === "removeWorktree" && msg.repoRoot && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.removeWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
-    } else if (msg.type === "renameWorktree" && msg.repoRoot && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.renameWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
     } else if (msg.type === "openFileHistoryCommit" && msg.repoRoot &&
       msg.path && msg.baseRef && msg.headRef) {
       void vscode.commands.executeCommand(
