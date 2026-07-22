@@ -67,7 +67,7 @@ This feature runs local CLIs non-interactively: `claude -p` for Claude Code and 
 
 If a browser callback login cannot reach localhost, use a non-callback login method in AI CLI Settings: for Claude Code choose `setup-token`, `console`, or `sso`; for Codex choose `device`, `api-key`, or `access-token`. Then run Login / Status again.
 
-The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button copies the generated/current PR title and body to the clipboard for use on GitHub.
+The commit-message AI button is enabled only when there are staged changes. In PR preview, the copy button still copies the generated/current title and body, while **Create Pull Request** can publish the preview directly. Select a local source and target branch; if staged files are part of the preview, the extension asks for a commit message, commits only those staged files, performs a normal (never forced) push, then creates a ready or draft PR through `gh`. Unstaged and untracked files remain in the working tree. Existing PR previews keep the **Open on GitHub** action instead of creating a duplicate.
 
 ### Commit hooks and failed checks
 

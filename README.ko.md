@@ -65,7 +65,7 @@ Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 
 
 브라우저 callback 로그인이 localhost 에 도달하지 못하면 AI CLI 설정에서 callback 을 쓰지 않는 로그인 방식으로 바꾸세요. Claude Code 는 `setup-token`, `console`, 또는 `sso`, Codex 는 `device`, `api-key`, 또는 `access-token` 을 선택한 뒤 로그인 / 상태를 다시 실행하면 됩니다.
 
-커밋 메시지 AI 버튼은 staged 변경이 있을 때만 활성화됩니다. PR preview 에서는 복사 버튼으로 생성된/현재 PR 제목과 본문을 GitHub 에 붙여넣기 좋은 형식으로 클립보드에 복사할 수 있습니다.
+커밋 메시지 AI 버튼은 staged 변경이 있을 때만 활성화됩니다. PR Preview의 복사 버튼은 생성된/현재 PR 제목과 본문을 계속 클립보드에 복사하며, **Pull Request 생성** 버튼으로 Preview를 GitHub에 바로 게시할 수도 있습니다. 로컬 source와 target 브랜치를 선택한 뒤 staged 파일이 있으면 별도 커밋 메시지를 입력합니다. 확장은 staged 파일만 커밋하고 일반 push만 수행한 다음 `gh`로 Ready 또는 Draft PR을 만듭니다. unstaged·untracked 파일은 작업트리에 남고, 기존 PR Preview에서는 중복 생성 대신 **GitHub에서 열기**를 제공합니다.
 
 ### 커밋 hook과 검사 실패
 
