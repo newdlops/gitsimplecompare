@@ -43,6 +43,7 @@ export class BlockBlameGutter implements vscode.Disposable {
 
   /**
    * 현재 표시를 교체하고 유효한 blame 라인 앞에 작업자 이름과 날짜 열을 적용한다.
+   * - 새 decoration을 먼저 적용한 뒤 이전 타입을 폐기해 refresh 중 빈 화면이 생기지 않게 한다.
    * @param editor 고정폭 작업자 열을 표시할 텍스트 에디터
    * @param document 라인 범위를 검증하고 Range를 만들 대상 문서
    * @param blame 현재 파일 전체의 git blame 결과
@@ -56,7 +57,6 @@ export class BlockBlameGutter implements vscode.Disposable {
     if (this.disposed) {
       return { lineCount: 0, columnLineCount: 0, authorCount: 0 };
     }
-    this.clear();
     const entries = blockBlameColumnEntries(document, blame);
     if (entries.length === 0) {
       return { lineCount: 0, columnLineCount: 0, authorCount: 0 };
@@ -68,11 +68,13 @@ export class BlockBlameGutter implements vscode.Disposable {
     const columnOptions = wholeDocumentColumnOptions(document, entries);
     try {
       editor.setDecorations(decoration, columnOptions);
-      this.decoration = decoration;
     } catch (error) {
       decoration.dispose();
       throw error;
     }
+    const previous = this.decoration;
+    this.decoration = decoration;
+    previous?.dispose();
     return {
       lineCount: entries.length,
       columnLineCount: columnOptions.length,

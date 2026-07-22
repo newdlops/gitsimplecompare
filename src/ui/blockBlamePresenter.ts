@@ -125,10 +125,43 @@ export class BlockBlamePresenter implements vscode.Disposable {
     }
 
     this.clear("replacementRequested");
+    await this.loadAndApply(request, "codeVisionClicked", false);
+  }
+
+  /**
+   * Git 변경 뒤에도 사용자가 펼친 blame 열을 유지하면서 최신 라인 정보를 다시 읽는다.
+   * - 기존 decoration은 새 조회가 성공할 때까지 남겨 짧은 상태 이벤트에도 열이 깜빡이거나 사라지지 않게 한다.
+   * - 연속 refresh는 요청 순번으로 오래된 결과만 버리고 마지막 조회 결과를 적용한다.
+   * @param reason OUTPUT에서 저장소 갱신 원인을 추적할 문자열
+   */
+  refresh(reason: string): void {
+    if (!this.active || this.disposed) {
+      return;
+    }
+    const request = this.active.request;
+    logInfo("block blame gutter refresh requested", {
+      reason,
+      uri: request.uri,
+      symbol: request.symbolName,
+    });
+    void this.loadAndApply(request, `repositoryRefresh:${reason}`, true);
+  }
+
+  /**
+   * 검증된 요청의 파일 blame을 조회하고 현재 거터 열에 적용한다.
+   * @param request Code Vision이 만든 정규화된 파일/블록 요청
+   * @param reason 클릭 또는 저장소 refresh처럼 조회를 시작한 원인
+   * @param preserveCurrent true면 실패하거나 빈 결과일 때 기존 열을 그대로 유지한다.
+   */
+  private async loadAndApply(
+    request: BlockBlameRequest,
+    reason: string,
+    preserveCurrent: boolean
+  ): Promise<void> {
     const requestId = ++this.requestSeq;
     this.pending = request;
     try {
-      const target = await this.resolveTarget(request);
+      const target = await this.resolveTarget(request, !preserveCurrent);
       if (!target || requestId !== this.requestSeq) {
         return;
       }
@@ -141,12 +174,16 @@ export class BlockBlamePresenter implements vscode.Disposable {
       if (blame.length === 0) {
         logInfo("block blame gutter skipped", {
           reason: "empty-blame",
+          trigger: reason,
+          preserved: preserveCurrent,
           path: target.service.toRepoRelative(target.document.uri.fsPath),
           fileLines: target.document.lineCount,
         });
-        void vscode.window.showInformationMessage(
-          vscode.l10n.t("No Git blame information is available for this file.")
-        );
+        if (!preserveCurrent) {
+          void vscode.window.showInformationMessage(
+            vscode.l10n.t("No Git blame information is available for this file.")
+          );
+        }
         return;
       }
 
@@ -156,50 +193,55 @@ export class BlockBlamePresenter implements vscode.Disposable {
         blame
       );
       if (gutterResult.lineCount === 0) {
+        logInfo("block blame gutter skipped", {
+          reason: "no-valid-lines",
+          trigger: reason,
+          preserved: preserveCurrent,
+          path: target.service.toRepoRelative(target.document.uri.fsPath),
+        });
         return;
       }
       this.active = {
         request,
         decorationCount: gutterResult.lineCount,
       };
-      logInfo("block blame gutter applied", {
-        path: target.service.toRepoRelative(target.document.uri.fsPath),
-        symbol: request.symbolName,
-        kind: request.kind,
-        triggerStartLine: request.startLine,
-        triggerEndLine: request.endLine,
-        fileLines: target.document.lineCount,
-        lines: gutterResult.lineCount,
-        columnLines: gutterResult.columnLineCount,
-        authors: gutterResult.authorCount,
-      });
+      logInfo(
+        preserveCurrent
+          ? "block blame gutter refreshed"
+          : "block blame gutter applied",
+        {
+          reason,
+          path: target.service.toRepoRelative(target.document.uri.fsPath),
+          symbol: request.symbolName,
+          kind: request.kind,
+          triggerStartLine: request.startLine,
+          triggerEndLine: request.endLine,
+          fileLines: target.document.lineCount,
+          lines: gutterResult.lineCount,
+          columnLines: gutterResult.columnLineCount,
+          authors: gutterResult.authorCount,
+        }
+      );
     } catch (error) {
       if (requestId !== this.requestSeq) {
         return;
       }
       logError("block blame gutter failed", error, {
+        reason,
+        preserved: preserveCurrent,
         uri: request.uri,
         symbol: request.symbolName,
       });
-      void vscode.window.showErrorMessage(
-        vscode.l10n.t("Could not load block blame: {0}", errorMessage(error))
-      );
+      if (!preserveCurrent) {
+        void vscode.window.showErrorMessage(
+          vscode.l10n.t("Could not load block blame: {0}", errorMessage(error))
+        );
+      }
     } finally {
       if (requestId === this.requestSeq) {
         this.pending = undefined;
       }
     }
-  }
-
-  /**
-   * HEAD/index 같은 저장소 이력이 바뀌면 펼쳐진 라인 blame을 접어 stale 표시를 막는다.
-   * @param reason OUTPUT에서 저장소 갱신 원인을 추적할 문자열
-   */
-  refresh(reason: string): void {
-    if (!this.active && !this.pending) {
-      return;
-    }
-    this.clear(`repositoryRefresh:${reason}`);
   }
 
   /**
@@ -221,17 +263,23 @@ export class BlockBlamePresenter implements vscode.Disposable {
   /**
    * 요청 URI/문서 버전/라인 범위/저장소를 검증하고 표시할 에디터를 확보한다.
    * @param request 검증된 직렬화 command payload
+   * @param notifyUser true면 직접 클릭 요청의 검증 실패를 알림 메시지로 안내한다.
    * @returns 조회와 decoration에 필요한 대상, 사용자에게 이유를 알렸으면 undefined
    */
   private async resolveTarget(
-    request: BlockBlameRequest
+    request: BlockBlameRequest,
+    notifyUser = true
   ): Promise<BlockBlameTarget | undefined> {
     const uri = parseFileUri(request.uri);
     if (!uri) {
       logInfo("block blame gutter skipped", { reason: "non-file-uri" });
-      void vscode.window.showWarningMessage(
-        vscode.l10n.t("Block blame is available only for files in a Git repository.")
-      );
+      if (notifyUser) {
+        void vscode.window.showWarningMessage(
+          vscode.l10n.t(
+            "Block blame is available only for files in a Git repository."
+          )
+        );
+      }
       return undefined;
     }
     const document = await vscode.workspace.openTextDocument(uri);
@@ -240,9 +288,11 @@ export class BlockBlamePresenter implements vscode.Disposable {
         reason: "dirty-document",
         path: uri.fsPath,
       });
-      void vscode.window.showInformationMessage(
-        vscode.l10n.t("Save the file before viewing block blame.")
-      );
+      if (notifyUser) {
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t("Save the file before viewing block blame.")
+        );
+      }
       return undefined;
     }
     if (
@@ -255,11 +305,13 @@ export class BlockBlamePresenter implements vscode.Disposable {
         actual: document.version,
         path: uri.fsPath,
       });
-      void vscode.window.showInformationMessage(
-        vscode.l10n.t(
-          "The file changed after this Code Vision was created. Use the refreshed block blame Code Vision."
-        )
-      );
+      if (notifyUser) {
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t(
+            "The file changed after this Code Vision was created. Use the refreshed block blame Code Vision."
+          )
+        );
+      }
       return undefined;
     }
     if (request.startLine > document.lineCount) {
@@ -269,9 +321,11 @@ export class BlockBlamePresenter implements vscode.Disposable {
         startLine: request.startLine,
         lineCount: document.lineCount,
       });
-      void vscode.window.showInformationMessage(
-        vscode.l10n.t("The selected source block no longer exists.")
-      );
+      if (notifyUser) {
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t("The selected source block no longer exists.")
+        );
+      }
       return undefined;
     }
     const service = await this.registry.resolve(dirname(uri.fsPath));
@@ -280,9 +334,13 @@ export class BlockBlamePresenter implements vscode.Disposable {
         reason: "no-repository",
         path: uri.fsPath,
       });
-      void vscode.window.showInformationMessage(
-        vscode.l10n.t("Block blame is available only for files in a Git repository.")
-      );
+      if (notifyUser) {
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t(
+            "Block blame is available only for files in a Git repository."
+          )
+        );
+      }
       return undefined;
     }
     const editor = await findOrShowEditor(document);

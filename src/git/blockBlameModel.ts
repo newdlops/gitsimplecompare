@@ -32,7 +32,7 @@ export interface SourceBlock {
   startLine: number;
   /** 블록 전체의 1-based 끝 라인(포함) */
   endLine: number;
-  /** CodeLens를 붙일 선언부의 1-based 라인 */
+  /** 이름이나 선언 토큰이 있는 1-based 라인 */
   declarationLine: number;
 }
 

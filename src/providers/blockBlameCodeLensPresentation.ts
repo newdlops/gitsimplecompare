@@ -96,7 +96,8 @@ export async function readSourceBlocks(
 }
 
 /**
- * 블록 요약 하나를 선언문 위에 표시되는 클릭 가능한 CodeLens로 변환한다.
+ * 블록 요약 하나를 선언 묶음 위의 독립 행에 표시되는 클릭 가능한 CodeLens로 변환한다.
+ * - 데코레이터/annotation과 실제 선언 사이에는 행을 끼우지 않아 두 요소의 시각적 결합을 보존한다.
  * @param document Code Vision이 표시될 문서
  * @param summary 집계된 블록 blame 요약
  * @returns 주요 작업자가 없거나 위치가 잘못됐으면 undefined
@@ -109,7 +110,7 @@ export function createBlockBlameCodeLens(
   if (!primary) {
     return undefined;
   }
-  const line = summary.block.declarationLine - 1;
+  const line = codeVisionAnchorLine(document, summary.block);
   if (line < 0 || line >= document.lineCount) {
     return undefined;
   }
@@ -121,6 +122,91 @@ export function createBlockBlameCodeLens(
     arguments: [blockBlameRequest(document, summary.block)],
   };
   return new vscode.CodeLens(document.lineAt(line).range, command);
+}
+
+/**
+ * Code Vision 행을 선언 이름이 아니라 데코레이터까지 포함한 선언 묶음의 첫 줄에 고정한다.
+ * - provider의 전체 range가 JSDoc/decorator를 포함하면 startLine을 그대로 우선한다.
+ * - Python처럼 range가 `def`부터 시작하는 provider를 위해 바로 위 `@` 묶음도 역방향으로 찾는다.
+ * @param document 실제 라인 텍스트와 문서 상한을 제공할 문서
+ * @param block 전체 범위와 선언 토큰 위치가 포함된 소스 블록
+ * @returns CodeLens range에 사용할 0-based 라인
+ */
+function codeVisionAnchorLine(
+  document: vscode.TextDocument,
+  block: SourceBlock
+): number {
+  const declarationLine = clamp(
+    block.declarationLine - 1,
+    0,
+    Math.max(0, document.lineCount - 1)
+  );
+  const symbolStartLine = clamp(
+    Math.min(block.startLine, block.declarationLine) - 1,
+    0,
+    declarationLine
+  );
+  return Math.min(
+    symbolStartLine,
+    leadingAtSignAnnotationLine(document, declarationLine)
+  );
+}
+
+/**
+ * 선언 바로 위의 연속 `@decorator`/`@Annotation` 표현식 중 첫 줄을 찾는다.
+ * - 닫는 괄호부터 역순으로 균형을 계산해 여러 줄 decorator 호출도 하나의 표현식으로 인식한다.
+ * - 빈 줄이나 일반 코드가 나오면 멈춰 이전 선언의 annotation까지 잘못 끌어오지 않는다.
+ * @param document 검사할 텍스트 문서
+ * @param declarationLine 이름 또는 선언 토큰이 있는 0-based 라인
+ * @returns annotation이 없으면 declarationLine, 있으면 가장 위 annotation 라인
+ */
+function leadingAtSignAnnotationLine(document: vscode.TextDocument, declarationLine: number): number {
+  const declarationText = document.lineAt(declarationLine).text;
+  const declarationIndent = declarationText.length - declarationText.trimStart().length;
+  let anchor = declarationLine;
+  let unmatchedClosings = 0;
+  for (let line = declarationLine - 1; line >= 0; line--) {
+    const text = document.lineAt(line).text;
+    const trimmed = text.trim();
+    if (!trimmed) {
+      break;
+    }
+    const indent = text.length - text.trimStart().length;
+    if (indent < declarationIndent) {
+      break;
+    }
+    unmatchedClosings += reverseDelimiterBalance(trimmed);
+    if (
+      indent === declarationIndent &&
+      trimmed.startsWith("@") &&
+      unmatchedClosings <= 0
+    ) {
+      anchor = line;
+      unmatchedClosings = 0;
+      continue;
+    }
+    if (unmatchedClosings <= 0) {
+      break;
+    }
+  }
+  return anchor;
+}
+
+/**
+ * 한 줄을 아래에서 위로 읽는다고 보고 아직 짝을 찾지 못한 닫는 괄호 수 변화를 계산한다.
+ * @param text 공백이 제거된 decorator 표현식 한 줄
+ * @returns 닫는 괄호는 +1, 여는 괄호는 -1로 합산한 값
+ */
+function reverseDelimiterBalance(text: string): number {
+  let balance = 0;
+  for (const character of text) {
+    if (character === ")" || character === "]" || character === "}") {
+      balance++;
+    } else if (character === "(" || character === "[" || character === "{") {
+      balance--;
+    }
+  }
+  return balance;
 }
 
 /**
