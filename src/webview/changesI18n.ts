@@ -203,5 +203,25 @@ export function changesWebviewI18n(): Record<string, string> {
     headLabel: vscode.l10n.t("HEAD"),
     repositoryLabel: vscode.l10n.t("Repository"),
     yes: vscode.l10n.t("yes"),
+    pullRequestStacks: vscode.l10n.t("PR Stacks"),
+    noPullRequestStacks: vscode.l10n.t(
+      "No open pull requests. Create one to start a stack."
+    ),
+    loadingPullRequestStacks: vscode.l10n.t("Loading pull request stacks..."),
+    refreshPullRequestStacks: vscode.l10n.t("Refresh pull request stacks"),
+    createStackPullRequest: vscode.l10n.t("Create stack pull request"),
+    createPullRequestAbove: vscode.l10n.t("Create a pull request above this PR"),
+    changeStackParent: vscode.l10n.t("Change stack parent (base branch)"),
+    openPullRequest: vscode.l10n.t("Open pull request on GitHub"),
+    retry: vscode.l10n.t("Retry"),
+    draft: vscode.l10n.t("draft"),
+    approved: vscode.l10n.t("approved"),
+    changesRequested: vscode.l10n.t("changes requested"),
+    reviewRequired: vscode.l10n.t("review required"),
+    behind: vscode.l10n.t("behind"),
+    blocked: vscode.l10n.t("blocked"),
+    checksPending: vscode.l10n.t("checks pending"),
+    baseLabel: vscode.l10n.t("Base"),
+    authorLabel: vscode.l10n.t("Author"),
   };
 }

@@ -1,0 +1,239 @@
+/* Changes 웹뷰 PR Stacks 섹션. */
+.pr-stack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 7px;
+}
+
+.pr-stack-group {
+  min-width: 0;
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+  padding-bottom: 5px;
+}
+
+.pr-stack-group:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.pr-stack-summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 7px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.pr-stack-summary > .codicon {
+  flex: 0 0 auto;
+}
+
+.pr-stack-root,
+.pr-stack-leaves {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-stack-root {
+  max-width: 34%;
+}
+
+.pr-stack-leaves {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+
+.pr-stack-summary .count {
+  margin-left: auto;
+}
+
+.pr-stack-rows {
+  min-width: 0;
+}
+
+.pr-stack-row {
+  position: relative;
+  display: grid;
+  align-items: stretch;
+  height: auto;
+  min-height: 44px;
+  line-height: normal;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-right: 6px;
+  grid-template-columns: 16px max-content minmax(60px, 1fr) auto;
+  grid-template-rows: minmax(20px, auto) minmax(16px, auto);
+  column-gap: 5px;
+}
+
+.pr-stack-row.depth-0 { padding-left: 7px; }
+.pr-stack-row.depth-1 { padding-left: 19px; }
+.pr-stack-row.depth-2 { padding-left: 31px; }
+.pr-stack-row.depth-3 { padding-left: 43px; }
+.pr-stack-row.depth-4 { padding-left: 55px; }
+.pr-stack-row.depth-5 { padding-left: 67px; }
+.pr-stack-row.depth-6 { padding-left: 79px; }
+.pr-stack-row.depth-7 { padding-left: 91px; }
+.pr-stack-row.depth-8 { padding-left: 103px; }
+
+.pr-stack-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  opacity: 0.45;
+  pointer-events: none;
+  background: var(--vscode-tree-indentGuidesStroke, var(--vscode-panel-border));
+}
+
+.pr-stack-row.depth-0 .pr-stack-rail { display: none; }
+.pr-stack-row.depth-1 .pr-stack-rail { left: 12px; }
+.pr-stack-row.depth-2 .pr-stack-rail { left: 24px; }
+.pr-stack-row.depth-3 .pr-stack-rail { left: 36px; }
+.pr-stack-row.depth-4 .pr-stack-rail { left: 48px; }
+.pr-stack-row.depth-5 .pr-stack-rail { left: 60px; }
+.pr-stack-row.depth-6 .pr-stack-rail { left: 72px; }
+.pr-stack-row.depth-7 .pr-stack-rail { left: 84px; }
+.pr-stack-row.depth-8 .pr-stack-rail { left: 96px; }
+
+.pr-stack-row:hover,
+.pr-stack-row:focus-within {
+  background: var(--vscode-list-hoverBackground);
+  outline: none;
+}
+
+.pr-stack-row:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.pr-stack-row .icon {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+  margin-right: 0;
+  color: var(--vscode-charts-purple, var(--vscode-foreground));
+}
+
+.pr-stack-number {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  color: var(--vscode-textLink-foreground);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pr-stack-title {
+  grid-column: 3 / 5;
+  grid-row: 1;
+  align-self: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-stack-branches {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+}
+
+.pr-stack-branches > span:not(.codicon),
+.pr-stack-branches > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-stack-branches > strong {
+  color: var(--vscode-foreground);
+  font-weight: 500;
+}
+
+.pr-stack-badge {
+  flex: 0 0 auto;
+  border: 1px solid var(--vscode-widget-border, transparent);
+  border-radius: 8px;
+  padding: 0 5px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 9px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.pr-stack-badge.ok {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.pr-stack-badge.warn {
+  color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow));
+}
+
+.pr-stack-badge.danger {
+  color: var(--vscode-editorError-foreground, var(--vscode-charts-red));
+}
+
+.pr-stack-row-actions {
+  grid-column: 4;
+  grid-row: 1 / 3;
+  align-self: center;
+  display: none;
+  background: var(--vscode-list-hoverBackground);
+}
+
+.pr-stack-row:hover .pr-stack-row-actions,
+.pr-stack-row:focus-within .pr-stack-row-actions {
+  display: inline-flex;
+}
+
+.pr-stack-action,
+.pr-stack-header-action {
+  color: var(--vscode-icon-foreground);
+}
+
+.pr-stack-action:focus-visible,
+.pr-stack-header-action:focus-visible,
+.pr-stack-message-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.pr-stack-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.pr-stack-message.error {
+  color: var(--vscode-errorForeground);
+}
+
+.pr-stack-message-action {
+  border: 0;
+  border-radius: 2px;
+  padding: 2px 7px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  cursor: pointer;
+  font: inherit;
+}
+
+.pr-stack-message-action:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}

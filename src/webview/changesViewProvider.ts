@@ -12,15 +12,14 @@ import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProv
 import { logError, logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
-import {
-  buildChangesRenderPayload,
-  buildWorkingChangesRenderPayload,
-} from "./changesRenderPayload";
+import { buildChangesRenderPayload, buildWorkingChangesRenderPayload } from "./changesRenderPayload";
 import { loadViewModes, loadVisibleSections } from "./changesViewState";
 import type { ChangesWebviewMessage } from "./changesWebviewProtocol";
 import { routeCommitHookMessage } from "./changesCommitHookMessages";
 import { routeChangesAiMessage } from "./changesAiMessages";
 import { routeChangesStashMessage } from "./changesStashMessages";
+import { routeChangesPullRequestStackMessage } from "./changesPullRequestStackMessages";
+import { routeChangesWorktreeMessage } from "./changesWorktreeMessages";
 import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
 import {
   TREE_SECTIONS,
@@ -31,10 +30,9 @@ import {
   type ViewModes,
   type VisibleSection,
   type VisibleSections,
-  type WorktreeView,
+  type WorktreeView, type PullRequestStacksView,
 } from "./changesViewTypes";
-export { VISIBLE_SECTIONS } from "./changesViewTypes";
-export type { ComparisonDraft, TreeSection, VisibleSection } from "./changesViewTypes";
+export { VISIBLE_SECTIONS, type ComparisonDraft, type TreeSection, type VisibleSection } from "./changesViewTypes";
 /** 보기 모드/정렬을 세션 간 유지하기 위한 저장 키 */
 const VIEW_MODE_STATE = "gitSimpleCompare.viewMode";
 const SORT_KEY_STATE = "gitSimpleCompare.sortKey";
@@ -52,6 +50,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private statusRenderSignature = "";
   private stashes: StashView[] = [];
   private worktrees: WorktreeView[] = [];
+  private pullRequestStacks: PullRequestStacksView = { status: "idle" };
   private fileHistory: FileHistoryView = { commits: [] };
   private commitMessage = "";
   private commitMessageRevision = 0;
@@ -119,6 +118,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.unstaged = [];
       this.statusRenderSignature = "";
       this.stashes = [];
+      this.pullRequestStacks = { status: "idle", repoRoot: this.activeRepo };
       this.commitMessage = "";
       this.commitMessageRevision++;
       this.commitHooks = undefined;
@@ -164,6 +164,24 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   setWorktrees(worktrees: WorktreeView[]): void {
     this.worktrees = worktrees;
     this.render();
+  }
+  /** GitHub PR stack 지연 조회 상태를 갱신한다(PR Stacks 섹션). */
+  setPullRequestStacks(view: PullRequestStacksView): void {
+    if (view.repoRoot && view.repoRoot !== this.activeRepo) {
+      logInfo("pull request stacks result skipped", {
+        resultRoot: view.repoRoot,
+        activeRoot: this.activeRepo,
+        status: view.status,
+        reason: "stale-repository",
+      });
+      return;
+    }
+    this.pullRequestStacks = view;
+    this.render();
+  }
+  /** 현재 PR Stacks 섹션 상태를 명령 레이어가 같은 생명주기에서 재사용하도록 반환한다. */
+  getPullRequestStacks(): PullRequestStacksView {
+    return this.pullRequestStacks;
   }
   /** 현재 활성 에디터 파일의 커밋 히스토리를 갱신한다(History 섹션). */
   setFileHistory(fileHistory: FileHistoryView): void {
@@ -328,6 +346,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.unstaged = [];
     this.statusRenderSignature = "";
     this.stashes = [];
+    this.pullRequestStacks = { status: "idle", repoRoot: root };
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.commitHooks = undefined;
@@ -377,6 +396,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       unstaged: this.unstaged,
       stashes: this.stashes,
       worktrees: this.worktrees,
+      pullRequestStacks: this.pullRequestStacks,
       fileHistory: this.fileHistory,
       commitMessage: this.commitMessage,
       commitMessageRevision: this.commitMessageRevision,
@@ -432,6 +452,12 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     if (routeChangesStashMessage(msg, this.view?.webview)) {
+      return;
+    }
+    if (routeChangesPullRequestStackMessage(msg)) {
+      return;
+    }
+    if (routeChangesWorktreeMessage(msg)) {
       return;
     }
     if (msg.type === "ready") {
@@ -555,29 +581,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       });
     } else if (msg.type === "scmAction" && msg.action) {
       void vscode.commands.executeCommand("gitSimpleCompare.scmAction", msg.action);
-    } else if (msg.type === "refreshWorktrees") {
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshWorktrees");
-    } else if (msg.type === "openWorktree" && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.openWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
-    } else if (msg.type === "removeWorktree" && msg.repoRoot && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.removeWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
-    } else if (msg.type === "renameWorktree" && msg.repoRoot && msg.path) {
-      void vscode.commands.executeCommand("gitSimpleCompare.renameWorktree", {
-        repoRoot: msg.repoRoot,
-        path: msg.path,
-        isMain: msg.isMain,
-        branch: msg.branch,
-      });
     } else if (msg.type === "openFileHistoryCommit" && msg.repoRoot &&
       msg.path && msg.baseRef && msg.headRef) {
       void vscode.commands.executeCommand(

@@ -1,5 +1,6 @@
 import type { ViewMode } from "../providers/changesTreeModel";
 import type { FileHistoryEntry } from "../git/fileHistoryService";
+import type { PullRequestStacksSnapshot } from "../git/pullRequestStackModel";
 
 /** 트리/리스트 보기를 가지는 섹션(Repositories 는 제외). */
 export type TreeSection = "compare" | "changes";
@@ -12,6 +13,7 @@ export const VISIBLE_SECTIONS = [
   "compare",
   "stashes",
   "worktrees",
+  "pullRequestStacks",
 ] as const;
 
 /** 표시 여부를 토글할 수 있는 아코디언 섹션. */
@@ -57,6 +59,18 @@ export interface WorktreeView {
   locked?: string;
   /** prunable worktree 면 prune 사유. 사유가 없으면 빈 문자열이다. */
   prunable?: string;
+}
+
+/** Changes 웹뷰 PR Stacks 섹션의 지연 조회 상태. */
+export interface PullRequestStacksView {
+  /** 이 상태를 읽은 저장소 루트. 활성 저장소 전환 뒤 stale 결과를 거르는 데 사용한다. */
+  repoRoot?: string;
+  /** 아직 조회 전/조회 중/성공/실패 상태 */
+  status: "idle" | "loading" | "ready" | "error";
+  /** 성공했을 때 표시하고 명령이 재사용할 PR stack 스냅샷 */
+  snapshot?: PullRequestStacksSnapshot;
+  /** 실패했을 때 섹션 안에 표시할 진단 메시지 */
+  error?: string;
 }
 
 /** 트리 섹션 식별자 목록(순회·기본값 생성용). */
