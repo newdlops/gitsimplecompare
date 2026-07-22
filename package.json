@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71057",
+  "version": "0.1.72",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -402,6 +402,18 @@
         "category": "Git Simple Compare"
       },
       {
+        "command": "gitSimpleCompare.toggleSection.pullRequestStacks.visible",
+        "title": "%cmd.section.pullRequestStacks.checked.tooltip%",
+        "shortTitle": "%cmd.section.pullRequestStacks.checked%",
+        "category": "Git Simple Compare"
+      },
+      {
+        "command": "gitSimpleCompare.toggleSection.pullRequestStacks.hidden",
+        "title": "%cmd.section.pullRequestStacks.tooltip%",
+        "shortTitle": "%cmd.section.pullRequestStacks%",
+        "category": "Git Simple Compare"
+      },
+      {
         "command": "gitSimpleCompare.applyLeftToRight",
         "title": "%cmd.applyLeftToRight.tooltip%",
         "shortTitle": "%cmd.applyLeftToRight%",
@@ -530,6 +542,33 @@
         "title": "%cmd.openWorktree%",
         "category": "Git Simple Compare",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "gitSimpleCompare.refreshPullRequestStacks",
+        "title": "%cmd.refreshPullRequestStacks.tooltip%",
+        "shortTitle": "%cmd.refreshPullRequestStacks%",
+        "category": "Git Simple Compare",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitSimpleCompare.createStackPullRequest",
+        "title": "%cmd.createStackPullRequest.tooltip%",
+        "shortTitle": "%cmd.createStackPullRequest%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-pull-request-create)"
+      },
+      {
+        "command": "gitSimpleCompare.changeStackPullRequestBase",
+        "title": "%cmd.changeStackPullRequestBase.tooltip%",
+        "shortTitle": "%cmd.changeStackPullRequestBase%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "gitSimpleCompare.openStackPullRequest",
+        "title": "%cmd.openStackPullRequest%",
+        "category": "Git Simple Compare",
+        "icon": "$(link-external)"
       }
     ],
     "viewsContainers": {
@@ -743,6 +782,16 @@
           "group": "2_sections@6"
         },
         {
+          "command": "gitSimpleCompare.toggleSection.pullRequestStacks.visible",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.pullRequestStacks.visible",
+          "group": "2_sections@7"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.pullRequestStacks.hidden",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.section.pullRequestStacks.visible",
+          "group": "2_sections@7"
+        },
+        {
           "command": "gitSimpleCompare.splitCommits",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@7"
@@ -766,6 +815,16 @@
           "command": "gitSimpleCompare.renameWorktree",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.hasLinkedWorktrees",
           "group": "1_worktrees@3"
+        },
+        {
+          "command": "gitSimpleCompare.refreshPullRequestStacks",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_pr_stacks@0"
+        },
+        {
+          "command": "gitSimpleCompare.createStackPullRequest",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_pr_stacks@1"
         },
         {
           "command": "gitSimpleCompare.continueOperation",
@@ -932,6 +991,18 @@
         },
         {
           "command": "gitSimpleCompare.toggleSection.worktrees.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.pullRequestStacks.visible",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleSection.pullRequestStacks.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.openStackPullRequest",
           "when": "false"
         },
         {
@@ -1277,8 +1348,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/blockBlameModel.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMarkerModel.test.ts test/conflictMutationSafety.test.ts test/conflictWorktreeCas.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestMatching.test.ts test/stagedChangesProbe.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/blockBlameModel.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMarkerModel.test.js out-test/conflictMutationSafety.test.js out-test/conflictWorktreeCas.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/nativeDiffOverlayRetry.test.js out-test/pullRequestMatching.test.js out-test/stagedChangesProbe.test.js out-test/statusCache.test.js",
+    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/blockBlameModel.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMarkerModel.test.ts test/conflictMutationSafety.test.ts test/conflictWorktreeCas.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestMatching.test.ts test/pullRequestStackModel.test.ts test/stagedChangesProbe.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/blockBlameModel.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMarkerModel.test.js out-test/conflictMutationSafety.test.js out-test/conflictWorktreeCas.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/nativeDiffOverlayRetry.test.js out-test/pullRequestMatching.test.js out-test/pullRequestStackModel.test.js out-test/stagedChangesProbe.test.js out-test/statusCache.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {
