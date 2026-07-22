@@ -5,18 +5,35 @@ import { pullRequestPreviewDiffScript } from "./pullRequestPreviewDiffRenderer";
 import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
 import { pullRequestPreviewTimelineScript } from "./pullRequestPreviewTimeline";
 
+/** extension에서 번역해 웹뷰 게시 버튼에 주입하는 동적 상태 문자열이다. */
+export interface PullRequestPreviewPublishI18n {
+  ready: string;
+  busy: string;
+  existing: string;
+  selectTarget: string;
+  selectLocalSource: string;
+  missingMessage: string;
+  noChanges: string;
+  updating: string;
+}
+
 /**
  * preview 페이지 클라이언트 스크립트를 반환한다.
  * @returns 웹뷰 script 태그 안에 삽입할 JavaScript 문자열
  */
-export function pullRequestPreviewScript(): string {
+export function pullRequestPreviewScript(
+  publishI18n: PullRequestPreviewPublishI18n
+): string {
+  const publishText = webviewJson(publishI18n);
   return `
+    const publishText = ${publishText};
     const vscode = acquireVsCodeApi();
     const content = document.getElementById("content");
     const openPr = document.getElementById("open-pr");
     const generatePrMessage = document.getElementById("generate-pr-message");
     const configureAiCli = document.getElementById("configure-ai-cli");
     const copyPrMessage = document.getElementById("copy-pr-message");
+    const publishPr = document.getElementById("publish-pr");
     let activeTab = 'conversation';
     let activeCommitHash = '';
     let collapsedFolders = new Set();
@@ -31,6 +48,7 @@ export function pullRequestPreviewScript(): string {
     let pendingSourceBranch = '';
     let pendingTargetBranch = '';
     let prMessageGenerationActive = false;
+    let pullRequestPublishActive = false;
     document.getElementById("refresh").addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
     generatePrMessage?.addEventListener("click", () => {
       if (generatePrMessage.disabled || prMessageGenerationActive) return;
@@ -42,6 +60,17 @@ export function pullRequestPreviewScript(): string {
       if (!latestPreview) return;
       vscode.postMessage({
         type: "copyPullRequestMessage",
+        title: latestPreview.title || "",
+        body: latestPreview.body || "",
+      });
+    });
+    publishPr?.addEventListener("click", () => {
+      if (!latestPreview || publishPr.disabled || pullRequestPublishActive) return;
+      setPullRequestPublishActive(true);
+      vscode.postMessage({
+        type: "publishPullRequest",
+        sourceBranch: pendingSourceBranch || latestPreview.sourceBranch || "",
+        targetBranch: pendingTargetBranch || latestPreview.targetBranch || "",
         title: latestPreview.title || "",
         body: latestPreview.body || "",
       });
@@ -58,6 +87,7 @@ export function pullRequestPreviewScript(): string {
       if (msg.type === "commitFiles") applyCommitFiles(msg.hash, msg.files);
       if (msg.type === "generatedPullRequestMessage") applyGeneratedPullRequestMessage(msg.message);
       if (msg.type === "aiPullRequestMessageGeneration") setPrMessageGenerationActive(msg.active);
+      if (msg.type === "pullRequestPublishState") setPullRequestPublishActive(msg.active);
       if (msg.type === "error") content.innerHTML = '<p class="empty">' + esc(msg.message) + '</p>';
     });
     function render(preview) {
@@ -121,6 +151,34 @@ export function pullRequestPreviewScript(): string {
         copyPrMessage.setAttribute('aria-label', copyTitle);
         copyPrMessage.dataset.tooltip = copyTitle;
       }
+      if (publishPr) {
+        const existing = !!preview.existingPr;
+        const updating = !!(pendingSourceBranch || pendingTargetBranch);
+        const hasMessage = !!String(preview.title || '').trim();
+        const hasChanges = !!preview.hasStagedChanges;
+        const publishTitle = pullRequestPublishActive
+          ? publishText.busy
+          : updating
+            ? publishText.updating
+            : existing
+              ? publishText.existing
+              : needsTarget
+                ? publishText.selectTarget
+                : !preview.sourceIsLocal
+                  ? publishText.selectLocalSource
+                  : !hasMessage
+                    ? publishText.missingMessage
+                    : !hasChanges
+                      ? publishText.noChanges
+                      : publishText.ready;
+        publishPr.hidden = existing;
+        publishPr.disabled = pullRequestPublishActive || updating || existing || needsTarget
+          || !preview.sourceIsLocal || !hasMessage || !hasChanges;
+        publishPr.title = publishTitle;
+        publishPr.setAttribute('aria-label', publishTitle);
+        publishPr.dataset.tooltip = publishTitle;
+        publishPr.classList.toggle('busy', pullRequestPublishActive);
+      }
     }
     function setPrMessageGenerationActive(active) {
       prMessageGenerationActive = !!active;
@@ -132,6 +190,18 @@ export function pullRequestPreviewScript(): string {
         generatePrMessage.title = title;
         generatePrMessage.setAttribute('aria-label', title);
         generatePrMessage.dataset.tooltip = title;
+      }
+    }
+    function setPullRequestPublishActive(active) {
+      pullRequestPublishActive = !!active;
+      if (latestPreview) syncActionButtons(latestPreview);
+      else if (publishPr) {
+        publishPr.disabled = true;
+        publishPr.classList.toggle('busy', pullRequestPublishActive);
+        const title = pullRequestPublishActive ? publishText.busy : publishText.ready;
+        publishPr.title = title;
+        publishPr.setAttribute('aria-label', title);
+        publishPr.dataset.tooltip = title;
       }
     }
     function prHeader(preview) {
@@ -483,4 +553,14 @@ export function pullRequestPreviewScript(): string {
     function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
     vscode.postMessage({ type: "ready" });
   `;
+}
+
+/** 번역 문자열을 inline script 문맥에서 태그 종료나 줄 구분자로 해석되지 않는 JSON으로 만든다. */
+function webviewJson(value: PullRequestPreviewPublishI18n): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
 }

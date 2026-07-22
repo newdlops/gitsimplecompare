@@ -17,6 +17,10 @@ import {
 } from "../ui/pullRequestPreviewDiff";
 import { nonceValue } from "./nonce";
 import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  PullRequestPreviewPublisher,
+  type PullRequestPreviewPublishMessage,
+} from "./pullRequestPreviewPublish";
 import { pullRequestPreviewScript } from "./pullRequestPreviewScript";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
 
@@ -27,6 +31,7 @@ type PreviewMessage =
   | { type: "generatePullRequestMessage" }
   | { type: "configureAiCli" }
   | { type: "copyPullRequestMessage"; title: string; body: string }
+  | PullRequestPreviewPublishMessage
   | { type: "setPreviewBranch"; role: "source" | "target"; branch: string }
   | { type: "loadCommitFiles"; hash: string }
   | ({ type: "openEditableDiff" } & PullRequestPreviewDiffRequest);
@@ -42,6 +47,7 @@ export class PullRequestPreviewPanel {
   private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private previewRefreshReason = "";
   private pullRequestMessageGenerationInFlight = false;
+  private readonly publisher: PullRequestPreviewPublisher;
 
   /**
    * staged PR preview 패널을 만들거나 기존 패널을 재사용한다.
@@ -83,6 +89,16 @@ export class PullRequestPreviewPanel {
     private existingPr?: PullRequestInfo,
     private sourceBranch?: string
   ) {
+    this.publisher = new PullRequestPreviewPublisher(
+      this.service.repoRoot,
+      (message) => this.post(message),
+      async (result) => {
+        this.existingPr = result.pullRequest;
+        this.baseBranch = result.pullRequest.baseRefName;
+        this.sourceBranch = result.pullRequest.headRefName;
+        await this.sendPreview();
+      }
+    );
     this.panel.webview.html = this.html();
     this.panel.webview.onDidReceiveMessage(
       (msg: PreviewMessage) => this.handleMessage(msg),
@@ -165,6 +181,14 @@ export class PullRequestPreviewPanel {
     }
     if (msg.type === "copyPullRequestMessage") {
       await this.copyPullRequestMessage(msg.title, msg.body);
+      return;
+    }
+    if (msg.type === "publishPullRequest") {
+      await this.publisher.publish(msg, {
+        existingPr: this.existingPr,
+        lastSourceBranch: this.lastSourceBranch,
+        lastTargetBranch: this.lastTargetBranch,
+      });
       return;
     }
     if (msg.type === "setPreviewBranch") {
@@ -343,6 +367,18 @@ export class PullRequestPreviewPanel {
     const noPrMessageTitle = vscode.l10n.t(
       "No pull request message to copy"
     );
+    const publishPrTitle = vscode.l10n.t("Create Pull Request on GitHub");
+    const openPrTitle = vscode.l10n.t("Open related Pull Request on GitHub");
+    const previewScript = pullRequestPreviewScript({
+      ready: publishPrTitle,
+      busy: vscode.l10n.t("Publishing Pull Request to GitHub..."),
+      existing: vscode.l10n.t("A Pull Request already exists for this source branch"),
+      selectTarget: vscode.l10n.t("Select a target branch before creating a Pull Request"),
+      selectLocalSource: vscode.l10n.t("Select a local source branch before creating a Pull Request"),
+      missingMessage: vscode.l10n.t("Generate a Pull Request title before publishing"),
+      noChanges: vscode.l10n.t("No changes to publish as a Pull Request"),
+      updating: vscode.l10n.t("Wait for the Pull Request preview to finish updating"),
+    });
     const codiconUri = this.panel.webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
@@ -381,15 +417,20 @@ export class PullRequestPreviewPanel {
             aria-label="${noPrMessageTitle}" data-tooltip="${noPrMessageTitle}" disabled>
             <span class="codicon codicon-copy" aria-hidden="true"></span>
           </button>
-          <button id="open-pr" class="icon-button" type="button" title="Open related pull request"
-            aria-label="Open related pull request" data-tooltip="Open related pull request" hidden>
+          <button id="publish-pr" class="icon-button publish-button" type="button" title="${publishPrTitle}"
+            aria-label="${publishPrTitle}" data-tooltip="${publishPrTitle}" disabled>
+            <span class="codicon codicon-cloud-upload" aria-hidden="true"></span>
+            <span class="publish-label">${vscode.l10n.t("Create Pull Request")}</span>
+          </button>
+          <button id="open-pr" class="icon-button" type="button" title="${openPrTitle}"
+            aria-label="${openPrTitle}" data-tooltip="${openPrTitle}" hidden>
             <span class="codicon codicon-mark-github" aria-hidden="true"></span>
           </button>
         </div>
       </header>
       <main id="content"><p class="placeholder">Loading...</p></main>
       <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
-      <script nonce="${nonce}">${pullRequestPreviewScript()}</script>
+      <script nonce="${nonce}">${previewScript}</script>
     </body></html>`;
   }
 
