@@ -22,7 +22,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
-11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to expand line-by-line authors directly in the editor.
+11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a fixed-width author/date column beside the gutter.
 
 ## Usage
 
@@ -36,7 +36,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 
 ### Block author Code Vision
 
-For saved, tracked files, Git Simple Compare uses the active language extension's document symbols to place a dedicated CodeLens row above each supported source block. Top-level variables, constants, object declarations, and standalone `type` declarations are grouped until a blank line separates them, so each declaration group gets one CodeLens above its first line instead of one per line. Like IntelliJ Code Vision, the label shows the leading author, additional author count, last change date, and additional commit count. Tiny nested methods are folded into their parent block to reduce visual noise. Hover the Code Vision for the ownership distribution, or click it to expand author/date labels at the end of every line in that block; click it again to hide them. Toggle the feature from the Changes toolbar or with `Git Simple Compare: Toggle Block Author Code Vision`; VS Code's `editor.codeLens` setting is also respected.
+For saved, tracked files, Git Simple Compare uses the active language extension's document symbols to place a dedicated CodeLens row above each supported source block. Top-level variables, constants, object declarations, and standalone `type` declarations are grouped until a blank line separates them, so each declaration group gets one CodeLens above its first line instead of one per line. Like IntelliJ Code Vision, the label shows the leading author, additional author count, last change date, and additional commit count. Tiny nested methods are folded into their parent block to reduce visual noise. Hover the Code Vision for the ownership distribution, or click any Code Vision to open a fixed-width column beside the gutter showing the author name and date for every line in the file. Hover an entry for full identity, commit, and summary details; click any Code Vision in the same file again to hide the column. Toggle the feature from the Changes toolbar or with `Git Simple Compare: Toggle Block Author Code Vision`; VS Code's `editor.codeLens` setting is also respected.
 
 ### Git Graph
 

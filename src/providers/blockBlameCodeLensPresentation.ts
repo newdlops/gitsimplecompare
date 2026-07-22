@@ -431,7 +431,7 @@ function blockBlameTooltip(summary: BlockBlameSummary): string {
   lines.push(
     vscode.l10n.t("Commits: {0}", summary.commitCount),
     "",
-    vscode.l10n.t("Click to show or hide line-by-line authors in the editor.")
+    vscode.l10n.t("Click to show or hide author and date for every line in this file.")
   );
   return lines.join("\n");
 }

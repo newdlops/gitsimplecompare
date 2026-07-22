@@ -56,8 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declaration with the primary author, date, and history counts. Tiny nested
   methods are folded into their parent block. Global variable, object, and type
   declarations are grouped by blank lines with one row above each group. Hover
-  for ownership distribution, or click to expand and collapse line-by-line
-  authors directly in the editor.
+  for ownership distribution, or click to show and hide a file-wide fixed-width
+  column beside the gutter with author/date labels for every line in the file and
+  full blame details on hover.
 - **Local commit hook management and failure diagnostics**: manage standard
   file-based commit hooks from the Changes commit box (including `core.hooksPath`, linked
   worktrees, and Husky), and open lint/file-check failures directly at their

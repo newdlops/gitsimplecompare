@@ -36,7 +36,7 @@ export interface CommandDeps {
   blameDecorations: BlameDecoratorController;
   /** 소스 블록 위 주요 작업자 Code Vision 컨트롤러 */
   blockBlameCodeLens: BlockBlameCodeLensController;
-  /** Code Vision 클릭 시 선택 블록의 라인별 작업자를 편집기에 표시하는 presenter */
+  /** Code Vision 클릭 시 선택 블록의 라인별 작업자를 거터에 표시하는 presenter */
   blockBlamePresenter: BlockBlamePresenter;
   /** VS Code 내장 Git 확장이 이미 계산한 상태를 재사용하는 어댑터 */
   vscodeGitStatus: VscodeGitStatusProvider;
