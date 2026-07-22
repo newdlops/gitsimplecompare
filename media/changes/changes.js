@@ -1,5 +1,5 @@
 // CHANGES 사이드바 웹뷰 클라이언트 — VS Code Explorer/Source Control 스타일 아코디언.
-//   Repositories · Changes · History · Compare Branches · Stashes · Worktrees · PR Stacks.
+//   Repositories · Changes · History · Compare Branches · Stashes · Worktrees.
 // - 섹션 접힘/크기는 vscode.getState/setState 로 보존, 폴더 접힘은 일시적.
 // - 미트볼(...) 메뉴는 window.__gscMenu(provider 가 주입한 트리)로 드릴다운 드롭다운을 그린다.
 (function () {
@@ -53,7 +53,6 @@
       stashes: "Stashes",
       stashSelected: "Stash Selected Changes",
       worktrees: "Worktrees",
-      pullRequestStacks: "PR Stacks",
     },
     window.__gscCompare?.defaults || {},
     window.__gscI18n || {}
@@ -64,10 +63,6 @@
   // 새 웹뷰의 Worktrees는 기본 접힘으로 두고 실제로 펼칠 때만 별도 git worktree 조회를 시작한다.
   if (!Object.prototype.hasOwnProperty.call(state.collapsed, "worktrees")) {
     state.collapsed.worktrees = true;
-  }
-  // GitHub 네트워크 조회가 필요한 PR Stacks도 처음에는 접어 두고 실제 펼침 시점에만 읽는다.
-  if (!Object.prototype.hasOwnProperty.call(state.collapsed, "pullRequestStacks")) {
-    state.collapsed.pullRequestStacks = true;
   }
   state.sizes = state.sizes || {};
   state.groups = state.groups || {}; // Staged/Changes 그룹 접힘 상태
@@ -82,7 +77,6 @@
     "compare",
     "stashes",
     "worktrees",
-    "pullRequestStacks",
   ];
   state.sectionOrder = normalizeSectionOrder(state.sectionOrder);
   state.visibleSections = normalizeVisibleSections(state.visibleSections);
@@ -90,8 +84,6 @@
   let lastPayload = null;
   const loadedFileIconFonts = new Set();
   let worktreesRequested = false;
-  let pullRequestStacksRequested = false;
-  let pullRequestStacksRepoRoot = "";
   let draggingSectionId = null;
   let suppressHeaderClick = false;
   const isCollapsed = (id) => !!state.collapsed[id];
@@ -165,7 +157,6 @@
     compare: 240,
     stashes: 120,
     worktrees: 140,
-    pullRequestStacks: 180,
   };
 
   /** HTML 특수문자를 이스케이프한다. */
@@ -808,13 +799,6 @@
         window.__gscWorktrees?.body?.(p.worktrees || []) || "",
         ""
       ),
-      pullRequestStacks: section(
-        "pullRequestStacks",
-        T.pullRequestStacks,
-        p.pullRequestStacks?.snapshot?.pullRequests?.length || 0,
-        window.__gscPullRequestStacks?.body?.(p.pullRequestStacks) || "",
-        window.__gscPullRequestStacks?.headerActions?.() || ""
-      ),
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
 
@@ -1238,32 +1222,6 @@
     post("refreshWorktrees");
   }
 
-  /**
-   * PR Stacks 섹션이 펼쳐진 저장소마다 한 번만 GitHub 조회를 요청한다.
-   * - 저장소가 바뀌면 이전 요청 플래그를 초기화해 새 활성 저장소의 PR을 자동으로 읽는다.
-   * @returns 반환값 없이 필요할 때 refreshPullRequestStacks 메시지를 보낸다
-   */
-  function requestExpandedPullRequestStacks() {
-    const section = rootEl.querySelector('.section[data-section="pullRequestStacks"]');
-    const repoRoot = lastPayload?.pullRequestStacks?.repoRoot
-      || lastPayload?.repos?.find((repo) => repo.active)?.root
-      || "";
-    if (repoRoot !== pullRequestStacksRepoRoot) {
-      pullRequestStacksRepoRoot = repoRoot;
-      pullRequestStacksRequested = false;
-    }
-    if (
-      !section ||
-      section.classList.contains("collapsed") ||
-      pullRequestStacksRequested ||
-      !repoRoot
-    ) {
-      return;
-    }
-    pullRequestStacksRequested = true;
-    post("refreshPullRequestStacks");
-  }
-
   /** 렌더 후 이벤트를 연결한다. */
   function bindEvents() {
     rootEl.querySelectorAll(".section-header").forEach((h) => {
@@ -1280,12 +1238,10 @@
         applyCollapse();
         window.__gscStashes?.requestExpanded?.(rootEl, vscode);
         requestExpandedWorktrees();
-        requestExpandedPullRequestStacks();
         applyResize();
       });
     });
     requestExpandedWorktrees();
-    requestExpandedPullRequestStacks();
     bindSectionDrag();
     // 미트볼(...) → 섹션별 액션 + 아코디언 카테고리 토글 메뉴(다시 누르면 닫힘 토글).
     rootEl.querySelectorAll(".meatball").forEach((el) => {
@@ -1335,7 +1291,6 @@
       },
     });
     window.__gscWorktrees?.bind?.(rootEl, vscode);
-    window.__gscPullRequestStacks?.bind?.(rootEl, vscode);
   }
 
   /** History 섹션: 커밋 상세 펼침/접기와 상세 파일 링크(diff 열기)를 연결한다. */

@@ -30,14 +30,12 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesHooks.js"),
     vscode.Uri.joinPath(mediaRoot, "changesStashes.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
-    vscode.Uri.joinPath(mediaRoot, "changesPullRequestStacks.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
     vscode.Uri.joinPath(mediaRoot, "changesAiPlan.css"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.css"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.css"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
-    vscode.Uri.joinPath(mediaRoot, "changesPullRequestStacks.css"),
     vscode.Uri.joinPath(mediaRoot, "changes.css"),
   ]);
   const scriptUri = webview.asWebviewUri(
@@ -67,12 +65,6 @@ export function buildChangesHtml(
   const worktreesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"), version)
   );
-  const pullRequestStacksScriptUri = webview.asWebviewUri(
-    withVersion(
-      vscode.Uri.joinPath(mediaRoot, "changesPullRequestStacks.js"),
-      version
-    )
-  );
   const stashesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesStashes.js"), version)
   );
@@ -84,12 +76,6 @@ export function buildChangesHtml(
   );
   const worktreesStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"), version)
-  );
-  const pullRequestStacksStyleUri = webview.asWebviewUri(
-    withVersion(
-      vscode.Uri.joinPath(mediaRoot, "changesPullRequestStacks.css"),
-      version
-    )
   );
   const commitBoxStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"), version)
@@ -131,7 +117,6 @@ export function buildChangesHtml(
   <link href="${aiPlanStyleUri}" rel="stylesheet" />
   <link href="${hooksStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
-  <link href="${pullRequestStacksStyleUri}" rel="stylesheet" />
   <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Changes</title>
 </head>
@@ -145,7 +130,6 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
-  <script nonce="${nonce}" src="${pullRequestStacksScriptUri}"></script>
   <script nonce="${nonce}" src="${compareScriptUri}"></script>
   <script nonce="${nonce}" src="${stashesScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

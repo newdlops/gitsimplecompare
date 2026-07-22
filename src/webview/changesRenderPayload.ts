@@ -17,7 +17,6 @@ import type {
   ViewModes,
   VisibleSections,
   WorktreeView,
-  PullRequestStacksView,
 } from "./changesViewTypes";
 
 /** ChangesViewProvider 의 현재 렌더 관련 상태 묶음. */
@@ -32,7 +31,6 @@ export interface ChangesRenderState {
   unstaged: StatusGroups["unstaged"];
   stashes: StashView[];
   worktrees: WorktreeView[];
-  pullRequestStacks: PullRequestStacksView;
   fileHistory: FileHistoryView;
   commitMessage: string;
   commitMessageRevision: number;
@@ -111,7 +109,6 @@ export function buildChangesRenderPayload(
       ...w,
       activeRepo: w.repoRoot === state.activeRepo,
     })),
-    pullRequestStacks: state.pullRequestStacks,
     history: {
       repoRoot: state.fileHistory.repoRoot,
       path: state.fileHistory.path,
@@ -125,7 +122,7 @@ export function buildChangesRenderPayload(
 
 /**
  * staged/unstaged 변경만 바뀐 빠른 경로에서 Changes 섹션에 필요한 최소 payload를 만든다.
- * - 비교, History, stash, worktree, PR stack을 다시 buildNodes/직렬화하지 않고 로컬 DOM만 교체할 수 있게 한다.
+ * - 비교, History, stash, worktree를 다시 buildNodes/직렬화하지 않고 로컬 DOM만 교체할 수 있게 한다.
  * @param state provider가 보관 중인 현재 상태
  * @param fileIcons 현재 파일 아이콘 테마 해석기
  * @returns Changes 노드, staged 존재 여부, 해당 경로 아이콘만 포함한 delta
