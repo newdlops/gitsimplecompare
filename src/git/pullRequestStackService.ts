@@ -34,20 +34,6 @@ export interface PullRequestStackBranch {
   remoteBranch?: string;
 }
 
-/** 새 PR을 GitHub에 만들 때 필요한 입력 */
-export interface CreateStackPullRequestOptions {
-  /** GitHub에 이미 게시된 source branch 이름 */
-  headBranch: string;
-  /** 바로 아래 PR head 또는 일반 target branch */
-  baseBranch: string;
-  /** 새 Pull Request 제목 */
-  title: string;
-  /** 새 Pull Request 본문 */
-  body: string;
-  /** Draft로 생성할지 여부 */
-  draft: boolean;
-}
-
 /** gh CLI의 `pr list --json` 한 항목 중 사용하는 필드 */
 interface GhStackPullRequest {
   number?: number;
@@ -127,36 +113,6 @@ export class PullRequestStackService {
   }
 
   /**
-   * 이미 원격에 게시된 head branch로 새 Pull Request를 만든다.
-   * @param options head/base/title/body/draft 생성 옵션
-   * @returns gh가 출력한 새 Pull Request URL
-   */
-  async createPullRequest(options: CreateStackPullRequestOptions): Promise<string> {
-    const head = requiredBranch(options.headBranch, "Head branch is required.");
-    const base = requiredBranch(options.baseBranch, "Base branch is required.");
-    const title = options.title.trim();
-    if (!title) {
-      throw new Error("Pull request title is required.");
-    }
-    const args = [
-      "pr",
-      "create",
-      "--head",
-      head,
-      "--base",
-      base,
-      "--title",
-      title,
-      "--body",
-      options.body,
-    ];
-    if (options.draft) {
-      args.push("--draft");
-    }
-    return (await runGh(args, this.repoRoot)).trim();
-  }
-
-  /**
    * PR source로 선택할 로컬 branch와 upstream 게시 상태를 읽는다.
    * @returns 현재 branch 우선, 이후 이름순으로 정렬된 로컬 branch 목록
    */
@@ -194,35 +150,6 @@ export class PullRequestStackService {
       .filter(Boolean)
       .sort((left, right) => Number(right === "origin") - Number(left === "origin")
         || left.localeCompare(right));
-  }
-
-  /**
-   * 로컬 branch를 지정한 remote branch로 게시하고 upstream을 연결한다.
-   * - checkout을 바꾸지 않고 명시 refspec을 사용하므로 다른 worktree가 점유한 branch도 게시할 수 있다.
-   * - 기존 upstream이 있더라도 PR 생성 직전에 일반 push를 수행해 로컬 commit 누락을 막는다.
-   *   remote가 앞서거나 분기됐다면 force하지 않고 git push 실패를 그대로 돌려준다.
-   * @param localBranch 게시할 로컬 branch short name
-   * @param remote push 대상 remote 이름
-   * @param remoteBranch remote에서 사용할 branch 이름. 생략하면 로컬 이름을 사용한다.
-   * @returns GitHub PR head로 사용할 remote branch 이름
-   */
-  async publishBranch(
-    localBranch: string,
-    remote: string,
-    remoteBranch = localBranch
-  ): Promise<string> {
-    const branch = requiredBranch(localBranch, "Local branch is required.");
-    const target = requiredBranch(remoteBranch, "Remote branch is required.");
-    const remotes = await this.listRemotes();
-    if (!remotes.includes(remote)) {
-      throw new Error(`Git remote '${remote}' is not available.`);
-    }
-    await runGit(["show-ref", "--verify", `refs/heads/${branch}`], this.repoRoot);
-    await runGit(
-      ["push", "-u", remote, `${branch}:refs/heads/${target}`],
-      this.repoRoot
-    );
-    return target;
   }
 
   /**

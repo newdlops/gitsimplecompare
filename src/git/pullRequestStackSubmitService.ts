@@ -3,6 +3,7 @@
 // - PR 본문의 사용자 영역은 보존하고 marker 사이 stack 순서만 갱신한다.
 import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
+import { PullRequestPublishService } from "./pullRequestPublishService";
 import { PullRequestStackMetadataService } from "./pullRequestStackMetadata";
 import type { StackLocalBranch } from "./pullRequestStackModel";
 import { PullRequestStackService } from "./pullRequestStackService";
@@ -101,7 +102,7 @@ export class PullRequestStackSubmitService {
       let changedBase = false;
       if (!existing) {
         const title = await this.pullRequestTitle(layer.branch.name);
-        await new PullRequestStackService(this.repoRoot).createPullRequest({
+        await new PullRequestPublishService(this.repoRoot).createPullRequest({
           headBranch: layer.remoteBranch,
           baseBranch: layer.parentBranch,
           title,

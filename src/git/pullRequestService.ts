@@ -86,6 +86,7 @@ export interface PullRequestOverview {
 export interface StagedPullRequestPreview {
   repository?: string;
   currentBranch: string; sourceBranch: string; sourceRef: string;
+  sourceIsLocal: boolean;
   targetBranch: string; targetRef: string; headRef: string;
   sourceBranches: string[]; targetBranches: string[];
   title: string;
@@ -97,6 +98,7 @@ export interface StagedPullRequestPreview {
   conversation: PullRequestConversationItem[];
   stat: string;
   hasStagedChanges: boolean;
+  stagedFileCount: number;
   existingPr?: PullRequestInfo;
 }
 
@@ -191,10 +193,11 @@ export class PullRequestService {
       ? undefined
       : existingPr;
     const headRef = effectivePr ? await resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : "HEAD";
-    const [stagedFiles, repository, existingPreview] = await Promise.all([
+    const [stagedFiles, repository, existingPreview, sourceIsLocal] = await Promise.all([
       this.stagedFiles(),
       this.repositoryName().catch(() => undefined),
       this.existingPullRequestPreview(effectivePr).catch(() => undefined),
+      this.localBranchExists(selectedSource),
     ]);
     const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, effectivePr).catch(() => []);
     const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
@@ -221,6 +224,7 @@ export class PullRequestService {
       currentBranch,
       sourceBranch: selectedSource,
       sourceRef,
+      sourceIsLocal,
       targetBranch,
       targetRef,
       headRef,
@@ -235,6 +239,7 @@ export class PullRequestService {
       conversation,
       stat,
       hasStagedChanges: stagedFiles.length > 0 || previewFiles.length > 0,
+      stagedFileCount: stagedFiles.length,
       existingPr: effectivePr,
     };
   }
@@ -433,6 +438,14 @@ export class PullRequestService {
   /** 현재 branch 이름을 반환한다. detached 이면 HEAD 로 표시한다. */
   private async currentBranch(): Promise<string> {
     return (await runGit(["branch", "--show-current"], this.repoRoot).catch(() => "")).trim() || "HEAD";
+  }
+
+  /** Preview source가 게시 가능한 실제 로컬 branch인지 확인한다. */
+  private async localBranchExists(branch: string): Promise<boolean> {
+    return runGit(
+      ["show-ref", "--verify", `refs/heads/${branch}`],
+      this.repoRoot
+    ).then(() => true, () => false);
   }
 
   /** gh repo view 로 owner/name 을 읽는다. */
