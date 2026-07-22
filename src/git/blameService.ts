@@ -26,6 +26,14 @@ export interface GitBlameLine {
   content: string;
 }
 
+/** git blame 조회를 파일의 일부 라인으로 제한하는 inclusive 범위. */
+export interface GitBlameRange {
+  /** 1-based 시작 라인 */
+  startLine: number;
+  /** 1-based 끝 라인(포함) */
+  endLine: number;
+}
+
 /**
  * 저장소 루트에 묶인 blame 조회 서비스.
  * - 컨트롤러는 저장소 탐지만 GitServiceRegistry 에 맡기고, 실제 blame 실행은 이 서비스가 담당한다.
@@ -38,15 +46,25 @@ export class GitBlameService {
    * - `--line-porcelain` 을 사용해 라인마다 완전한 메타데이터를 받아 파싱한다.
    * - untracked 파일처럼 blame 이 불가능한 대상은 빈 배열로 반환해 UI 가 조용히 비우게 한다.
    * @param fsPath 저장소 상대 또는 절대 파일 경로
+   * @param range 선택적 1-based inclusive 범위. 블록 상세 팝업이 필요한 라인만 읽을 때 사용한다.
    * @returns 1-based 라인 번호 순서의 blame 라인 목록
    */
-  async getFileBlame(fsPath: string): Promise<GitBlameLine[]> {
+  async getFileBlame(
+    fsPath: string,
+    range?: GitBlameRange
+  ): Promise<GitBlameLine[]> {
     const rel = this.toRepoRelative(fsPath);
-    try {
-      const out = await runGit(
-        ["blame", "--line-porcelain", "--", rel],
-        this.repoRoot
+    const args = ["blame", "--line-porcelain"];
+    const normalizedRange = normalizeBlameRange(range);
+    if (normalizedRange) {
+      args.push(
+        "-L",
+        `${normalizedRange.startLine},${normalizedRange.endLine}`
       );
+    }
+    args.push("--", rel);
+    try {
+      const out = await runGit(args, this.repoRoot);
       return parseBlamePorcelain(out);
     } catch (error) {
       if (error instanceof GitError && isExpectedBlameMiss(error)) {
@@ -68,6 +86,22 @@ export class GitBlameService {
       : fsPath;
     return rel.split(path.sep).join("/");
   }
+}
+
+/**
+ * 호출자가 넘긴 범위를 git `-L` 인자에 안전한 정수 범위로 보정한다.
+ * @param range 선택적 blame 범위
+ * @returns 값이 있으면 시작 이상 끝을 보장한 범위, 없으면 undefined
+ */
+function normalizeBlameRange(
+  range: GitBlameRange | undefined
+): GitBlameRange | undefined {
+  if (!range) {
+    return undefined;
+  }
+  const startLine = Math.max(1, Math.floor(range.startLine));
+  const endLine = Math.max(startLine, Math.floor(range.endLine));
+  return { startLine, endLine };
 }
 
 /**
