@@ -114,6 +114,7 @@ import {
   renameWorktree,
 } from "./worktrees";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
+import { SHOW_BLOCK_BLAME_COMMAND } from "../providers/blockBlameCodeLensPresentation";
 import {
   clearExplorerComparison,
   compareLocalWithRemote,
@@ -153,6 +154,12 @@ const BLAME_LINE_COMMANDS = [
   "gitSimpleCompare.toggleBlameLineVisible",
   "gitSimpleCompare.toggleBlameLineVisible.checked",
   "gitSimpleCompare.toggleBlameLineVisible.unchecked",
+];
+
+const BLAME_BLOCK_COMMANDS = [
+  "gitSimpleCompare.toggleBlameBlockVisible",
+  "gitSimpleCompare.toggleBlameBlockVisible.checked",
+  "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
 ];
 
 /**
@@ -384,6 +391,14 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       vscode.commands.registerCommand(command, () =>
         toggleBlameLineVisible(deps)
       )
+    ),
+    ...BLAME_BLOCK_COMMANDS.map((command) =>
+      vscode.commands.registerCommand(command, () =>
+        deps.blockBlameCodeLens.toggleVisible()
+      )
+    ),
+    vscode.commands.registerCommand(SHOW_BLOCK_BLAME_COMMAND, (request) =>
+      deps.blockBlamePresenter.show(request)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loginAiCli",

@@ -16,6 +16,7 @@ import { ConflictsController } from "./providers/conflictsController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
+import { BlockBlameCodeLensController } from "./providers/blockBlameCodeLensController";
 import { ConflictMarkerDecoratorController } from "./providers/conflictMarkerDecoratorController";
 import {
   CONFLICT_OVERLAY_SCHEME,
@@ -26,15 +27,9 @@ import { ConflictOverlayCodeLensProvider } from "./providers/conflictOverlayCode
 import { ConflictEditorActions } from "./commands/conflictEditorActions";
 import { PullRequestCommentController } from "./providers/pullRequestCommentController";
 import { ComparisonController } from "./providers/comparisonController";
-import {
-  resolveComparisonRefIdentity,
-  type ComparisonSnapshot,
-} from "./git/comparisonService";
+import { resolveComparisonRefIdentity, type ComparisonSnapshot } from "./git/comparisonService";
 import { registerComparisonFileDecorations } from "./providers/comparisonFileDecorations";
-import {
-  ComparisonScmProvider,
-  DeletedComparisonGutterController,
-} from "./providers/comparisonScmProvider";
+import { ComparisonScmProvider, DeletedComparisonGutterController } from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { registerLocalChangesWatcher } from "./providers/localChangesWatcher";
 import { connectRefreshWatcher } from "./providers/refreshWatcher";
@@ -43,6 +38,7 @@ import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
+import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
 import {
@@ -177,6 +173,9 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);
   context.subscriptions.push(blameDecorations.register());
+  const blockBlameCodeLens = new BlockBlameCodeLensController(registry);
+  const blockBlamePresenter = new BlockBlamePresenter(registry);
+  context.subscriptions.push(blockBlameCodeLens.register(), blockBlamePresenter.register());
   const prCommentDecorations = new PullRequestCommentController(
     registry,
     context.secrets
@@ -215,6 +214,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     conflictOverlay,
     hunkCheckboxes,
     blameDecorations,
+    blockBlameCodeLens,
+    blockBlamePresenter,
     vscodeGitStatus,
     refreshPullRequestComments: (reason) =>
       prCommentDecorations.invalidateCache(reason),
@@ -234,7 +235,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
 
   // 7) "좌→우 반영" 버튼 노출용 컨텍스트 키 추적기 등록
   context.subscriptions.push(registerActiveDiffTracker());
-
   // 8) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
 
@@ -250,6 +250,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
     hiddenRepositoryRefresh.mark(reason, changesVisible);
+    blockBlameCodeLens.refresh(reason);
+    blockBlamePresenter.refresh(reason);
     logInfo("refresh requested", {
       reason,
       changesVisible,

@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.71052",
+  "version": "0.1.71055",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -270,6 +270,26 @@
         "shortTitle": "%cmd.blameLines%",
         "category": "Git Simple Compare",
         "icon": "$(list-ordered)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameBlockVisible",
+        "title": "%cmd.toggleBlameBlockVisible%",
+        "category": "Git Simple Compare",
+        "icon": "$(account)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameBlockVisible.checked",
+        "title": "%cmd.blameBlocks.checked.tooltip%",
+        "shortTitle": "%cmd.blameBlocks.checked%",
+        "category": "Git Simple Compare",
+        "icon": "$(account)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
+        "title": "%cmd.blameBlocks.tooltip%",
+        "shortTitle": "%cmd.blameBlocks%",
+        "category": "Git Simple Compare",
+        "icon": "$(account)"
       },
       {
         "command": "gitSimpleCompare.loginAiCli",
@@ -653,6 +673,16 @@
           "group": "3_blame@2"
         },
         {
+          "command": "gitSimpleCompare.toggleBlameBlockVisible.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.blame.block.visible",
+          "group": "3_blame@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.blame.block.visible",
+          "group": "3_blame@3"
+        },
+        {
           "command": "gitSimpleCompare.toggleSection.repos.visible",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.section.repos.visible",
           "group": "2_sections@1"
@@ -1024,6 +1054,11 @@
           "default": false,
           "description": "%config.blameLine.show.desc%"
         },
+        "gitSimpleCompare.blameBlock.show": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.blameBlock.show.desc%"
+        },
         "gitSimpleCompare.pullRequestComments.show": {
           "type": "boolean",
           "default": true,
@@ -1242,8 +1277,8 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMarkerModel.test.ts test/conflictMutationSafety.test.ts test/conflictWorktreeCas.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestMatching.test.ts test/stagedChangesProbe.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMarkerModel.test.js out-test/conflictMutationSafety.test.js out-test/conflictWorktreeCas.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/nativeDiffOverlayRetry.test.js out-test/pullRequestMatching.test.js out-test/stagedChangesProbe.test.js out-test/statusCache.test.js",
+    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/blockBlameModel.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMarkerModel.test.ts test/conflictMutationSafety.test.ts test/conflictWorktreeCas.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestMatching.test.ts test/stagedChangesProbe.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
+    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/blockBlameModel.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMarkerModel.test.js out-test/conflictMutationSafety.test.js out-test/conflictWorktreeCas.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/nativeDiffOverlayRetry.test.js out-test/pullRequestMatching.test.js out-test/stagedChangesProbe.test.js out-test/statusCache.test.js",
     "lint": "eslint src"
   },
   "devDependencies": {
