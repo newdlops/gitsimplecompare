@@ -33,6 +33,7 @@ export function buildGraphHtml(
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
   const prMatchingScriptUri = script(webview, mediaRoot, "graphPrMatching.js");
   const prActionsScriptUri = script(webview, mediaRoot, "graphPrActions.js");
+  const prStacksScriptUri = script(webview, mediaRoot, "graphPrStacks.js");
   const prScriptUri = script(webview, mediaRoot, "graphPr.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
@@ -53,6 +54,7 @@ export function buildGraphHtml(
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const prStyleUri = style(webview, mediaRoot, "graphPr.css");
   const prLabelsStyleUri = style(webview, mediaRoot, "graphPrLabels.css");
+  const prStacksStyleUri = style(webview, mediaRoot, "graphPrStacks.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
   const detailStyleUri = style(webview, mediaRoot, "graphDetail.css");
   const rebaseStyleUri = style(webview, mediaRoot, "graphRebase.css");
@@ -85,7 +87,46 @@ export function buildGraphHtml(
   const searchScopeTitle = vscode.l10n.t("Search scope");
   const prListTitle = vscode.l10n.t("Show pull requests");
   const prPreviewTitle = vscode.l10n.t("Preview staged pull request");
+  const prStacksTitle = vscode.l10n.t("Manage pull request stacks");
   const reflogTitle = vscode.l10n.t("Show reflog recovery");
+  // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
+  const prStackI18n = JSON.stringify({
+    unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
+    unavailableReason: vscode.l10n.t("Pull request stacks unavailable: {0}"),
+    manageCount: vscode.l10n.t("Manage pull request stacks ({0} layers)"),
+    showLayerFlow: vscode.l10n.t("Show stack layer {0}: {1} ← {0}"),
+    pullRequestFlow: vscode.l10n.t("Pull request flow: {0} ← {1}"),
+    stackDetails: vscode.l10n.t("Pull request stack details"),
+    stacks: vscode.l10n.t("Pull request stacks"),
+    localRepository: vscode.l10n.t("Local repository"),
+    addLayer: vscode.l10n.t("Add a new stack layer"),
+    layerDetails: vscode.l10n.t("Pull request stack layer details"),
+    addChild: vscode.l10n.t("Add a child layer above {0}"),
+    restackDescendants: vscode.l10n.t("Restack {0} and descendants"),
+    submitStack: vscode.l10n.t("Submit or sync the stack containing {0}"),
+    advanceChildren: vscode.l10n.t("Advance children after merged PR #{0}"),
+    parent: vscode.l10n.t("Parent"),
+    localBranch: vscode.l10n.t("Local branch"),
+    yes: vscode.l10n.t("Yes"),
+    no: vscode.l10n.t("No"),
+    pullRequest: vscode.l10n.t("Pull request"),
+    notSubmitted: vscode.l10n.t("Not submitted"),
+    restack: vscode.l10n.t("Restack"),
+    restackRequired: vscode.l10n.t("Required — parent moved"),
+    upToDate: vscode.l10n.t("Up to date"),
+    worktree: vscode.l10n.t("Worktree"),
+    childLayers: vscode.l10n.t("Child layers"),
+    topLayer: vscode.l10n.t("This is the top layer."),
+    base: vscode.l10n.t("base"),
+    local: vscode.l10n.t("LOCAL"),
+    remote: vscode.l10n.t("REMOTE"),
+    noLayers: vscode.l10n.t("No stack layers yet. Add one from a parent branch to start."),
+    addFirstLayer: vscode.l10n.t("Add the first stack layer"),
+    showAll: vscode.l10n.t("Show all pull request stacks"),
+    openPullRequest: vscode.l10n.t("Open pull request #{0} in browser"),
+    showChild: vscode.l10n.t("Show child layer {0}"),
+    showLayer: vscode.l10n.t("Show stack layer {0}"),
+  }).replace(/</g, "\\u003c");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -99,6 +140,7 @@ export function buildGraphHtml(
   <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${prStyleUri}" rel="stylesheet" />
   <link href="${prLabelsStyleUri}" rel="stylesheet" />
+  <link href="${prStacksStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
   <link href="${detailStyleUri}" rel="stylesheet" />
   <link href="${rebaseStyleUri}" rel="stylesheet" />
@@ -146,6 +188,10 @@ export function buildGraphHtml(
 	            aria-label="${prListTitle}" data-tooltip="${prListTitle}">
 	            <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
 	          </button>
+          <button id="graph-pr-stacks" class="icon-button" type="button" title="${prStacksTitle}"
+            aria-label="${prStacksTitle}" data-tooltip="${prStacksTitle}">
+            <span class="codicon codicon-layers" aria-hidden="true"></span>
+          </button>
           <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
             aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
             <span class="codicon codicon-preview" aria-hidden="true"></span>
@@ -203,6 +249,7 @@ export function buildGraphHtml(
     )}</p></div>
   </div>
   <div id="drawer-backdrop"></div>
+  <script nonce="${nonce}">window.GscPrStackI18n = ${prStackI18n};</script>
   <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
@@ -218,6 +265,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${prSearchScriptUri}"></script>
   <script nonce="${nonce}" src="${prMatchingScriptUri}"></script>
   <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
+  <script nonce="${nonce}" src="${prStacksScriptUri}"></script>
   <script nonce="${nonce}" src="${prScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>

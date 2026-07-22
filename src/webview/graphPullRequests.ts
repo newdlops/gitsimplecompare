@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { LocalBranchStatus } from "../graph/graphTypes";
 import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
+import { PullRequestStackService } from "../git/pullRequestStackService";
 import { searchPullRequests } from "../git/pullRequestSearchService";
 import {
   resolvePreviewHeadRef,
@@ -21,6 +22,7 @@ export class GraphPullRequestPager {
   private nextCursor: string | undefined;
   private hasMore = false;
   private loading = false;
+  private repository = "";
   // 진행 중인 조회를 식별하는 세대 토큰. refresh 는 세대를 올려 이전 조회 결과를 무효화한다.
   // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
   private generation = 0;
@@ -28,6 +30,11 @@ export class GraphPullRequestPager {
   /** open/preview 동작에서 사용할 현재 누적 PR 목록을 반환한다. */
   get items(): PullRequestInfo[] {
     return this.pullRequests;
+  }
+
+  /** stack graph snapshot이 gh repo view 실패 시 재사용할 owner/name 저장소 이름을 반환한다. */
+  get repositoryName(): string {
+    return this.repository;
   }
 
   /**
@@ -143,6 +150,7 @@ export class GraphPullRequestPager {
           : mergePullRequests(this.pullRequests, overview.pullRequests);
         this.nextCursor = overview.nextCursor;
         this.hasMore = overview.hasMore;
+        this.repository = overview.repository || this.repository;
       }
       post({ type: "pullRequestOverview", overview: { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor } });
       logInfo("graph pull request overview sent", {
@@ -159,6 +167,38 @@ export class GraphPullRequestPager {
         this.loading = false;
       }
     }
+  }
+}
+
+/**
+ * 로컬 parent 메타데이터와 현재 pager PR을 합쳐 Git Graph stack 흐름을 보낸다.
+ * - PR 조회가 실패했어도 pager의 마지막 성공 목록과 로컬 layer를 유지한다.
+ * @param repoRoot 대상 저장소 루트
+ * @param pullRequests graph pager가 현재 누적한 PR 목록
+ * @param repositoryHint 마지막 성공 overview의 owner/name
+ * @param post graph 웹뷰 메시지 전송 함수
+ */
+export async function sendGraphPullRequestStacks(
+  repoRoot: string,
+  pullRequests: PullRequestInfo[],
+  repositoryHint: string,
+  post: PostGraphMessage
+): Promise<void> {
+  try {
+    const snapshot = await new PullRequestStackService(repoRoot)
+      .getGraphSnapshot(pullRequests, repositoryHint);
+    post({ type: "pullRequestStackSnapshot", snapshot });
+    logInfo("graph pull request stack snapshot sent", {
+      repoRoot,
+      repository: snapshot.repository,
+      stacks: snapshot.stacks.length,
+      layers: snapshot.layers.length,
+      localLayers: snapshot.layers.filter((layer) => layer.local).length,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    post({ type: "pullRequestStackError", message });
+    logError("graph pull request stack snapshot failed", error, { repoRoot });
   }
 }
 

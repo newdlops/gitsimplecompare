@@ -48,7 +48,7 @@ import {
   tagAction,
 } from "./graphTagActions";
 
-type GraphActionMessage = Extract<
+export type GraphActionMessage = Extract<
   FromWebviewMessage,
   {
     type:
