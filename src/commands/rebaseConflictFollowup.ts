@@ -17,6 +17,7 @@ import {
   finishPendingPullRequestRebaseAfterContinue,
   restorePendingPullRequestRebaseAfterAbort,
 } from "../git/pullRequestRebaseContinuation";
+import { PullRequestStackRestackService } from "../git/pullRequestStackRestack";
 import { RebaseService } from "../git/rebaseService";
 import { readRebaseTodoProgress, type RebaseTodoProgress } from "../git/rebaseTodoProgress";
 import { ConflictsController } from "../providers/conflictsController";
@@ -115,6 +116,9 @@ export async function finishRebaseAfterContinue(
   controller: ConflictsController,
   repoRoot: string
 ): Promise<void> {
+  if (await finishPullRequestStackRestackAfterContinue(controller, repoRoot)) {
+    return;
+  }
   if (await finishPullRequestRebaseAfterContinue(controller, repoRoot)) {
     return;
   }
@@ -126,10 +130,98 @@ export async function finishRebaseAfterContinue(
  * @param repoRoot 대상 저장소 루트
  */
 export async function restoreRebaseAfterAbort(repoRoot: string): Promise<void> {
+  if (await restorePullRequestStackRestackAfterAbort(repoRoot)) {
+    return;
+  }
   if (await restorePullRequestRebaseAfterAbort(repoRoot)) {
     return;
   }
   await restoreBranchRebaseMergeAfterAbort(repoRoot);
+}
+
+/**
+ * stack layer rebase 충돌이 Continue/Skip으로 끝난 뒤 다음 layer를 자동 실행한다.
+ * @param controller 새 충돌 worktree를 Conflicts view에 다시 연결할 컨트롤러
+ * @param repoRoot 방금 rebase를 끝낸 linked worktree 또는 저장소 루트
+ * @returns stack pending을 처리했으면 true
+ */
+async function finishPullRequestStackRestackAfterContinue(
+  controller: ConflictsController,
+  repoRoot: string
+): Promise<boolean> {
+  let result: Awaited<ReturnType<PullRequestStackRestackService["resumeAfterContinue"]>>;
+  try {
+    result = await new PullRequestStackRestackService(repoRoot).resumeAfterContinue();
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Could not continue pull request stack restack: {0}", errorText(err))
+    );
+    return true;
+  }
+  if (result.status === "none") {
+    return false;
+  }
+  if (result.status === "conflicts") {
+    if (result.conflictFiles[0]) {
+      await vscode.commands.executeCommand("gitSimpleCompare.openConflictEditor", {
+        root: result.worktreePath,
+        path: result.conflictFiles[0],
+      });
+    }
+    await controller.refresh();
+    await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
+    vscode.window.showWarningMessage(
+      vscode.l10n.t(
+        "Stack restack continued to '{0}' and paused at the next conflict. Resolve it, then Continue or Abort.",
+        result.branch
+      )
+    );
+    return true;
+  }
+  await controller.refresh();
+  GitGraphPanel.refreshOpen(result.repoRoot, "stackRestackContinue");
+  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "stackRestackContinue",
+  });
+  vscode.window.showInformationMessage(
+    vscode.l10n.t("Pull request stack restack completed for {0} rewritten layer(s).", result.rewrittenBranches.length)
+  );
+  if (result.postAction) {
+    await vscode.commands.executeCommand("gitSimpleCompare.completePullRequestStackAdvance", {
+      repoRoot: result.repoRoot,
+      postAction: result.postAction,
+    });
+  }
+  return true;
+}
+
+/**
+ * stack restack rebase Abort 뒤 이미 끝난 layer와 parent 메타데이터까지 backup으로 복원한다.
+ * @param repoRoot abort가 수행된 linked worktree 또는 저장소 루트
+ * @returns stack pending을 처리했으면 true
+ */
+async function restorePullRequestStackRestackAfterAbort(
+  repoRoot: string
+): Promise<boolean> {
+  try {
+    const graphRepoRoot = await new PullRequestStackRestackService(repoRoot).restoreAfterAbort();
+    if (!graphRepoRoot) {
+      return false;
+    }
+    GitGraphPanel.refreshOpen(graphRepoRoot, "stackRestackAbort");
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+      reason: "stackRestackAbort",
+    });
+    vscode.window.showInformationMessage(
+      vscode.l10n.t("Pull request stack restack was aborted and completed layers were restored from safety refs.")
+    );
+    return true;
+  } catch (err) {
+    vscode.window.showErrorMessage(
+      vscode.l10n.t("Stack restack was aborted, but some layers could not be restored: {0}", errorText(err))
+    );
+    return true;
+  }
 }
 
 /**

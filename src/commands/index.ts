@@ -114,10 +114,11 @@ import {
   renameWorktree,
 } from "./worktrees";
 import {
-  changeStackPullRequestBase,
-  createStackPullRequest,
-  openStackPullRequest,
-  refreshPullRequestStacks,
+  addPullRequestStackLayer,
+  advancePullRequestStack,
+  completeAdvancePostAction,
+  restackPullRequestStack,
+  submitPullRequestStack,
 } from "./pullRequestStacks";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 import { SHOW_BLOCK_BLAME_COMMAND } from "../providers/blockBlameCodeLensPresentation";
@@ -148,8 +149,6 @@ const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.stashes.hidden", "stashes"],
   ["gitSimpleCompare.toggleSection.worktrees.visible", "worktrees"],
   ["gitSimpleCompare.toggleSection.worktrees.hidden", "worktrees"],
-  ["gitSimpleCompare.toggleSection.pullRequestStacks.visible", "pullRequestStacks"],
-  ["gitSimpleCompare.toggleSection.pullRequestStacks.hidden", "pullRequestStacks"],
 ];
 
 const BLAME_DECORATOR_COMMANDS = [
@@ -540,19 +539,23 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand("gitSimpleCompare.renameWorktree", (arg) =>
       renameWorktree(deps, arg)
     ),
-    // GitHub PR stack 목록/원격 parent 변경/새 child PR 생성
-    vscode.commands.registerCommand("gitSimpleCompare.refreshPullRequestStacks", () =>
-      refreshPullRequestStacks(deps)
+    // Git Graph PR stack: layer 생성/restack/submit/merge 후 advance
+    vscode.commands.registerCommand("gitSimpleCompare.addPullRequestStackLayer", (arg) =>
+      addPullRequestStackLayer(deps, arg)
     ),
-    vscode.commands.registerCommand("gitSimpleCompare.openStackPullRequest", (arg) =>
-      openStackPullRequest(deps, arg)
+    vscode.commands.registerCommand("gitSimpleCompare.restackPullRequestStack", (arg) =>
+      restackPullRequestStack(deps, arg)
     ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.changeStackPullRequestBase",
-      (arg) => changeStackPullRequestBase(deps, arg)
+    vscode.commands.registerCommand("gitSimpleCompare.submitPullRequestStack", (arg) =>
+      submitPullRequestStack(deps, arg)
     ),
-    vscode.commands.registerCommand("gitSimpleCompare.createStackPullRequest", (arg) =>
-      createStackPullRequest(deps, arg)
+    vscode.commands.registerCommand("gitSimpleCompare.advancePullRequestStack", (arg) =>
+      advancePullRequestStack(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.completePullRequestStackAdvance", (arg) =>
+      arg?.repoRoot && arg?.postAction
+        ? completeAdvancePostAction(arg.repoRoot, arg.postAction)
+        : undefined
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.takeOurs",
