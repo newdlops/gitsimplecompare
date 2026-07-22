@@ -24,6 +24,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 8. **변경을 여러 커밋으로 분할** — diff hunk 를 개별 선택해 따로 커밋하고, 나머지는 반복합니다(`git add -p` GUI).
 9. **AI 메시지 생성** — 로컬 Claude Code 또는 Codex CLI 에 프롬프트를 보내 커밋 메시지와 staged PR 제목/본문을 생성합니다.
 10. **파일 기반 커밋 hook 관리** — 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하고, lint/파일 검사 실패를 클릭 가능한 파일·행 진단과 재시도 UI로 보여줍니다.
+11. **블록 작업자 Code Vision** — 함수, 클래스, 인터페이스, 메서드와 빈 줄로 구분된 전역 선언 묶음 위에 주요 Git 작업자를 표시합니다. 힌트를 클릭하면 해당 블록의 라인별 작업자가 편집기 안에 펼쳐집니다.
 
 ## 사용 방법
 
@@ -34,6 +35,10 @@ Marketplace ID: `newdlops.git-simple-compare`
 - 에디터 제목 표시줄의 비교 아이콘
 - 액티비티 바의 **Git Simple Compare** 아이콘에서 변경 파일 목록 확인
 - 명령 팔레트 → `Git Simple Compare: git 그래프 보기` (또는 변경 파일 뷰 툴바의 그래프 아이콘)
+
+### 블록 작업자 Code Vision
+
+저장되고 Git에서 추적 중인 파일에서는 현재 언어 확장의 문서 심볼을 사용해 지원되는 각 소스 블록 선언 위에 전용 CodeLens 행을 표시합니다. 최상위 변수·상수·object 선언과 독립 `type` 선언은 빈 줄이 나오기 전까지 하나로 묶으며, 각 묶음의 첫 선언 라인 위에 CodeLens 하나만 표시합니다. IntelliJ Code Vision처럼 주요 작성자, 추가 작업자 수, 마지막 변경 날짜, 추가 커밋 수가 한 줄에 표시됩니다. 아주 작은 중첩 메서드는 부모 블록에 포함해 화면 밀도를 낮춥니다. hover하면 담당 라인 분포를 볼 수 있고, 클릭하면 해당 블록 모든 라인의 작업자와 날짜가 소스 라인 끝에 펼쳐집니다. 같은 Code Vision을 다시 클릭하면 접힙니다. 변경 파일 뷰 툴바 또는 `Git Simple Compare: 블록 작업자 Code Vision 토글` 명령으로 켜고 끌 수 있으며, VS Code의 `editor.codeLens` 설정도 함께 적용됩니다.
 
 ### Git 그래프
 
@@ -75,6 +80,7 @@ UI 기본 언어는 **영어**입니다. VS Code 표시 언어를 한국어(`ko`
 | --- | --- | --- |
 | `gitSimpleCompare.diffBase` | `twoDot` | 브랜치 비교 기준 (`twoDot`=직접 비교, `threeDot`=공통 조상 기준) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | 브랜치 선택 목록에 원격 브랜치 포함 여부 |
+| `gitSimpleCompare.blameBlock.show` | `true` | 소스 블록 선언 위에 클릭 가능한 작업자 Code Vision 표시 |
 | `gitSimpleCompare.aiCliProvider` | `auto` | AI CLI provider (`auto`, `claude`, `codex`) |
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code 실행 파일 이름 또는 절대 경로 |
 | `gitSimpleCompare.aiClaudeModel` | 빈 값 | CLI metadata 에서 선택한 Claude Code 모델 |

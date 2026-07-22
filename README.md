@@ -22,6 +22,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
+11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to expand line-by-line authors directly in the editor.
 
 ## Usage
 
@@ -32,6 +33,10 @@ Marketplace ID: `newdlops.git-simple-compare`
 - Editor title bar → comparison icon
 - Activity Bar → **Git Simple Compare** icon to see the changed-files view
 - Command Palette → `Git Simple Compare: Show Git Graph` (or the graph icon in the Changes view toolbar)
+
+### Block author Code Vision
+
+For saved, tracked files, Git Simple Compare uses the active language extension's document symbols to place a dedicated CodeLens row above each supported source block. Top-level variables, constants, object declarations, and standalone `type` declarations are grouped until a blank line separates them, so each declaration group gets one CodeLens above its first line instead of one per line. Like IntelliJ Code Vision, the label shows the leading author, additional author count, last change date, and additional commit count. Tiny nested methods are folded into their parent block to reduce visual noise. Hover the Code Vision for the ownership distribution, or click it to expand author/date labels at the end of every line in that block; click it again to hide them. Toggle the feature from the Changes toolbar or with `Git Simple Compare: Toggle Block Author Code Vision`; VS Code's `editor.codeLens` setting is also respected.
 
 ### Git Graph
 
@@ -89,6 +94,7 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | --- | --- | --- |
 | `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
+| `gitSimpleCompare.blameBlock.show` | `true` | Show clickable contributor Code Vision above source blocks |
 | `gitSimpleCompare.aiCliProvider` | `auto` | AI CLI provider (`auto`, `claude`, or `codex`) |
 | `gitSimpleCompare.aiClaudeCommand` | `claude` | Claude Code executable name or absolute path |
 | `gitSimpleCompare.aiClaudeModel` | empty | Claude Code model selected from CLI metadata |

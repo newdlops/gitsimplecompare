@@ -51,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Block author Code Vision**: functions, classes, interfaces, methods, and
+  other language symbols now show an IntelliJ-style contributor row above the
+  declaration with the primary author, date, and history counts. Tiny nested
+  methods are folded into their parent block. Global variable, object, and type
+  declarations are grouped by blank lines with one row above each group. Hover
+  for ownership distribution, or click to expand and collapse line-by-line
+  authors directly in the editor.
 - **Local commit hook management and failure diagnostics**: manage standard
   file-based commit hooks from the Changes commit box (including `core.hooksPath`, linked
   worktrees, and Husky), and open lint/file-check failures directly at their
