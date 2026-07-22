@@ -23,7 +23,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
 10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a fixed-width author/date column beside the gutter.
-12. **Pull request stacks** — group open GitHub pull requests by their base/head branch chain, rewire a PR's stack parent, and publish a local branch as the next PR in a stack.
+12. **Pull request stack lifecycle** — draw PR flow directly on the Git Graph and automate layer/worktree creation, descendant restacks, dependency-ordered submit/sync, and post-merge advancement.
 
 ## Usage
 
@@ -41,7 +41,7 @@ For saved, tracked files, Git Simple Compare uses the active language extension'
 
 ### Git Graph
 
-Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit.
+Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit. Pull request stack layers appear as chips on their head commits with dashed arrows pointing to their parent commits.
 
 ### Interactive rebase
 
@@ -83,9 +83,9 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 
 ### Pull request stacks
 
-Expand **PR Stacks** in the Changes view to load the active repository's open pull requests through the GitHub CLI (`gh`). Pull requests are grouped when a child PR's base branch matches another same-repository PR's head branch. Fork PRs remain visible, with their owner-qualified head branch, but are not treated as selectable stack parents.
+Open the layer button in the Git Graph toolbar to see a unified view of local parent metadata and GitHub PR base/head relationships. **Add Layer** creates a child branch and optional linked worktree from the selected parent. **Restack** previews and rebases that layer and all descendants with per-layer safety refs and integrated conflict Continue/Abort. **Submit / Sync** pushes root-to-leaf, creates missing PRs, updates existing bases and stack sections in PR bodies, and uses an explicit force-with-lease only for rewritten remote history. After a lower PR is merged, **Advance** promotes its children to the previous base, restacks and syncs their PRs, then offers safe local branch/worktree cleanup.
 
-Click a PR to open it on GitHub, use the branch action to change its base and rewire the stack, or use the add action to create the next PR above it. Creating a stack PR selects a local branch, performs a confirmed normal (non-force) push to its upstream or a selected remote, and then creates the GitHub PR. Automatic rebases and force-pushes are intentionally not performed. Install `gh` and run `gh auth login` before using the section.
+Install `gh` and run `gh auth login` before submitting. For a complete Korean walkthrough, see [PR Stack 사용 가이드](./docs/pull-request-stacks.ko.md).
 
 ### Apply Left → Right
 
