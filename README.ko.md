@@ -23,7 +23,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 7. **인터랙티브 rebase** — 드래그 앤 드롭 웹뷰에서 rebase 계획을 편집합니다(순서 변경 + pick/reword/squash/fixup/drop). 그래프의 "이 커밋부터 rebase" 또는 명령 팔레트로 실행합니다.
 8. **변경을 여러 커밋으로 분할** — diff hunk 를 개별 선택해 따로 커밋하고, 나머지는 반복합니다(`git add -p` GUI).
 9. **AI 메시지 생성** — 로컬 Claude Code 또는 Codex CLI 에 프롬프트를 보내 커밋 메시지와 staged PR 제목/본문을 생성합니다.
-10. **파일 기반 커밋 hook 관리** — 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하고, lint/파일 검사 실패를 클릭 가능한 파일·행 진단과 재시도 UI로 보여줍니다.
+10. **커밋 hook 사전 실행과 관리** — 커밋 전에 staged snapshot으로 차단 hook을 실행하고, 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하며, lint/파일 검사 실패를 클릭 가능한 파일·행 진단으로 보여줍니다.
 11. **블록 작업자 Code Vision** — 함수, 클래스, 인터페이스, 메서드와 빈 줄로 구분된 전역 선언 묶음 위에 주요 Git 작업자를 표시합니다. 힌트를 클릭하면 거터 옆에 고정폭 작업자·날짜 열이 열립니다.
 12. **PR Stack 수명주기 관리** — Git Graph에 PR 흐름을 직접 표시하고, 레이어/worktree 생성, 후손 연쇄 restack, 의존성 순서 Submit/Sync, merge 후 Advance를 자동화합니다.
 
@@ -70,6 +70,10 @@ Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 
 ### 커밋 hook과 검사 실패
 
 커밋 버튼 옆 방패 버튼을 누르면 현재 저장소의 전통적인 파일 기반 커밋 hook을 관리할 수 있습니다. `core.hooksPath`, linked worktree, Husky의 `.husky/_` 구조를 반영합니다. Git 2.55+의 `hook.*` 설정형 hook은 목록에 표시하거나 변경하지 않습니다. 안전한 토글은 Unix 일반 hook 파일의 실행 비트만 바꿉니다. 추적/미추적 작업트리 hook, Husky proxy, 심볼릭 링크, Windows hook, 기존 `.disabled` 파일은 열어 편집할 수 있지만 이름을 옮기거나 토글하지 않습니다.
+
+같은 패널의 **스테이징된 변경에 커밋 hook 실행** 버튼이나 `Git Simple Compare: 스테이징된 커밋 Hook 실행` 명령으로 커밋 전에 검사할 수 있습니다. `pre-commit`을 먼저 실행하고, 커밋 메시지가 비어 있지 않으면 설치된 `prepare-commit-msg`, `commit-msg`도 순서대로 실행합니다. Hook에는 실제 index의 sibling 복사본을 `GIT_INDEX_FILE`로 전달하므로 일반적인 `git add`는 실제 staged snapshot을 바꾸지 않습니다. 성공·실패 stdout/stderr 원문은 `Git Simple Compare` OUTPUT 채널에 남고, 실패 위치는 커밋 입력창 아래에 표시되어 **검사 다시 실행**으로 이어집니다. Hook은 `GIT_SIMPLE_COMPARE_HOOK_PREFLIGHT=1`로 사전 실행 단계인지 확인할 수 있습니다.
+
+프로젝트 도구와 의존성을 정상적으로 찾도록 hook 자체는 실제 작업 디렉터리에서 실행됩니다. 따라서 hook이 작업트리 파일을 수정하거나 외부 부작용을 만들 수 있고, `GIT_INDEX_FILE`을 의도적으로 해제·우회하는 hook은 실제 index도 바꿀 수 있습니다. 결과 변경을 확인하고 수정 내용을 다시 스테이징한 뒤 커밋하세요. 실제 커밋에서도 정상 hook은 다시 실행됩니다.
 
 커밋 hook이 커밋을 거부하면 ESLint, TypeScript, Ruff, Prettier, pre-commit, Husky와 일반 파일 검사 출력을 커밋 입력창 아래에 표시합니다. 보고된 파일을 클릭해 해당 행을 열고 수정·스테이징한 뒤 **커밋 다시 시도**를 누를 수 있습니다. **전체 출력 보기**는 생략하지 않은 프로세스 출력을 `Git Simple Compare` OUTPUT 채널에서 엽니다.
 

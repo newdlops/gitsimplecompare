@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Staged commit hook preflight**: run `pre-commit` and available commit-message
+  hooks against an isolated sibling copy of the Git index before committing.
+  Full successful or failed output is kept in the Git Simple Compare OUTPUT
+  channel, and failures reuse the clickable file/line diagnostics with a
+  dedicated **Run checks again** action.
 - **Block author Code Vision**: functions, classes, interfaces, methods, and
   other language symbols now show an IntelliJ-style contributor row above the
   declaration with the primary author, date, and history counts. Tiny nested

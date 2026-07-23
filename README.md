@@ -21,7 +21,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 7. **Interactive rebase** — edit a rebase plan in a drag-and-drop webview (reorder + pick/reword/squash/fixup/drop). Launch it from the graph ("Rebase from here") or the command palette.
 8. **Split changes into commits** — pick individual diff hunks and commit them separately, repeating for the rest (a GUI for `git add -p`).
 9. **AI commit plans and messages** — ask the local Claude Code or Codex CLI to split a large change set into reviewable commits, or generate a single commit message and staged PR title/body.
-10. **File-based commit hook management** — inspect, create, open, enable, or disable traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics with Retry and full-output actions.
+10. **Commit hook preview and management** — run blocking hooks against the staged snapshot before committing, inspect/create/open/toggle traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics.
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a fixed-width author/date column beside the gutter.
 12. **Pull request stack lifecycle** — draw PR flow directly on the Git Graph and automate layer/worktree creation, descendant restacks, dependency-ordered submit/sync, and post-merge advancement.
 
@@ -72,6 +72,10 @@ The commit-message AI button is enabled only when there are staged changes. In P
 ### Commit hooks and failed checks
 
 Click the shield beside the commit button to manage the repository's traditional file-based commit hooks. The panel honors `core.hooksPath`, linked worktrees, and Husky's `.husky/_` layout. Git 2.55+ configured hooks declared through `hook.*` are not listed or changed. Safe toggles change only a regular Unix hook's executable bit; tracked/visible working-tree hooks, Husky proxy hooks, symbolic links, Windows hooks, and existing `.disabled` files remain open-for-editing but are not renamed or toggled.
+
+Use **Run commit hooks for staged changes** in the same panel (or `Git Simple Compare: Run Staged Commit Hooks`) before committing. It runs `pre-commit`, followed by available `prepare-commit-msg` and `commit-msg` hooks when the commit message is not empty. Hooks see a sibling copy of the real index through `GIT_INDEX_FILE`, so ordinary `git add` calls do not update the real staged snapshot. Successful and failed stdout/stderr are written in full to the `Git Simple Compare` OUTPUT channel; failed file locations appear below the commit box with **Run checks again**. Hooks can detect this phase through `GIT_SIMPLE_COMPARE_HOOK_PREFLIGHT=1`.
+
+The preview runs hooks in the real working directory so project tools and dependencies resolve normally. A hook can therefore still edit working-tree files or cause external side effects, and a hook that deliberately unsets or bypasses `GIT_INDEX_FILE` can alter the real index. Review any resulting changes and stage fixes before committing; the real commit runs its normal hooks again.
 
 When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, pre-commit, Husky, and file-check output is shown below the commit box. Click a reported file to open its line, fix and stage it, then choose **Retry commit**. **Show full output** opens the unabridged process output in the `Git Simple Compare` OUTPUT channel.
 
