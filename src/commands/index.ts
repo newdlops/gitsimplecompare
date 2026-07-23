@@ -35,17 +35,7 @@ import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { openAiCommitPlan, type OpenAiCommitPlanArgs } from "./aiCommitPlan";
-import { commitChanges } from "./commit";
-import {
-  createCommitHook,
-  dismissCommitFailure,
-  openCommitFailure,
-  openCommitHook,
-  openCommitHooksFolder,
-  refreshCommitHooks,
-  showCommitFailureOutput,
-  toggleCommitHook,
-} from "./commitHooks";
+import { registerCommitCommands } from "./registerCommitCommands";
 import { configureUserProfile } from "./userProfile";
 import { configureRemoteBranch } from "./remoteBranch";
 import {
@@ -332,42 +322,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.addToExclude",
       (paths?: string[]) => addToExclude(deps, paths)
     ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.commit",
-      (op?: Parameters<typeof commitChanges>[1]) => commitChanges(deps, op)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.refreshCommitHooks",
-      () => refreshCommitHooks(deps)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.toggleCommitHook",
-      (args) => toggleCommitHook(deps, args)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.createCommitHook",
-      () => createCommitHook(deps)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.openCommitHook",
-      (name?: string) => openCommitHook(deps, name)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.openCommitHooksFolder",
-      () => openCommitHooksFolder(deps)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.openCommitFailure",
-      (args) => openCommitFailure(deps, args)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.dismissCommitFailure",
-      () => dismissCommitFailure(deps)
-    ),
-    vscode.commands.registerCommand(
-      "gitSimpleCompare.showCommitFailureOutput",
-      showCommitFailureOutput
-    ),
+    ...registerCommitCommands(deps),
     vscode.commands.registerCommand(
       "gitSimpleCompare.generateCommitMessage",
       () => generateCommitMessage(deps)

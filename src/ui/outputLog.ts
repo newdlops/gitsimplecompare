@@ -174,22 +174,24 @@ export function showOutputLog(preserveFocus = true): void {
  * @param label 블록 시작/끝에 표시할 작업 이름
  * @param output stdout/stderr 에서 수집한 전체 텍스트
  * @param detail 저장소/명령/단계처럼 블록을 구분할 메타데이터
+ * @param level 성공한 사전 검사 출력은 info, 실패 프로세스 출력은 error로 표시할 로그 수준
  */
 export function logOutputBlock(
   label: string,
   output: string,
-  detail?: Record<string, unknown>
+  detail?: Record<string, unknown>,
+  level: "info" | "error" = "error"
 ): void {
   if (!output.trim()) {
     return;
   }
   const outputChannel = getChannel();
   outputChannel.appendLine(
-    `[${timestamp()}] [ERROR] ${label} begin${formatDetail(detail)}`
+    `[${timestamp()}] [${level.toUpperCase()}] ${label} begin${formatDetail(detail)}`
   );
   outputChannel.append(output.endsWith("\n") ? output : `${output}\n`);
   outputChannel.appendLine(
-    `[${timestamp()}] [ERROR] ${label} end`
+    `[${timestamp()}] [${level.toUpperCase()}] ${label} end`
   );
 }
 
