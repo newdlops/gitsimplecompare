@@ -14,6 +14,15 @@ export function routeCommitHookMessage(
   webview?: vscode.Webview
 ): boolean {
   switch (message.type) {
+    case "runCommitHookPreflight":
+      runHookOperation(
+        webview,
+        "preflight",
+        undefined,
+        "gitSimpleCompare.runCommitHookPreflight",
+        { message: message.message }
+      );
+      return true;
     case "refreshCommitHooks":
       runHookOperation(
         webview,
@@ -82,7 +91,7 @@ export function routeCommitHookMessage(
  */
 function runHookOperation(
   webview: vscode.Webview | undefined,
-  action: "refresh" | "toggle" | "create",
+  action: "preflight" | "refresh" | "toggle" | "create",
   hookName: string | undefined,
   command: string,
   args?: unknown

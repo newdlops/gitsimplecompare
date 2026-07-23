@@ -27,6 +27,7 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAiPlan.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesHookPreflight.js"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.js"),
     vscode.Uri.joinPath(mediaRoot, "changesStashes.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
@@ -61,6 +62,12 @@ export function buildChangesHtml(
   );
   const hooksScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesHooks.js"), version)
+  );
+  const hookPreflightScriptUri = webview.asWebviewUri(
+    withVersion(
+      vscode.Uri.joinPath(mediaRoot, "changesHookPreflight.js"),
+      version
+    )
   );
   const worktreesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"), version)
@@ -137,6 +144,7 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${aiScriptUri}"></script>
   <script nonce="${nonce}" src="${aiPlanScriptUri}"></script>
   <script nonce="${nonce}" src="${hooksScriptUri}"></script>
+  <script nonce="${nonce}" src="${hookPreflightScriptUri}"></script>
 </body>
 </html>`;
 }

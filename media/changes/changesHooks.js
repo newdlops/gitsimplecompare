@@ -39,6 +39,7 @@
       commitChecksFailed: "Commit checks failed",
       commitFailedDetails: "Commit failed",
       retryCommit: "Retry commit",
+      runCommitChecksAgain: "Run checks again",
       dismissCommitFailure: "Dismiss commit failure",
       showFullOutput: "Show full output",
       openFailureLocation: "Open {0} at line {1}",
@@ -353,6 +354,10 @@
    */
   function failureHtml(failure) {
     const title = failure.likelyHook ? T.commitChecksFailed : T.commitFailedDetails;
+    const retryLabel =
+      failure.origin === "hookPreflight"
+        ? T.runCommitChecksAgain
+        : T.retryCommit;
     const meta = [failure.hookName, failure.checkName]
       .filter(Boolean)
       .map((value) => `<span class="failure-badge">${esc(value)}</span>`)
@@ -369,9 +374,9 @@
       items +
       (failure.truncated ? `<div class="failure-truncated">${esc(T.failureItemsTruncated)}</div>` : "") +
       `<div class="failure-actions">` +
-      `<button id="failure-retry" type="button" title="${esc(T.retryCommit)}" ` +
-      `data-tooltip="${esc(T.retryCommit)}" aria-label="${esc(T.retryCommit)}" ${commitBusy ? "disabled" : ""}>` +
-      `<span class="codicon ${commitBusy ? "codicon-loading codicon-modifier-spin" : "codicon-debug-rerun"}" aria-hidden="true"></span>${esc(T.retryCommit)}</button>` +
+      `<button id="failure-retry" type="button" title="${esc(retryLabel)}" ` +
+      `data-tooltip="${esc(retryLabel)}" aria-label="${esc(retryLabel)}" ${commitBusy ? "disabled" : ""}>` +
+      `<span class="codicon ${commitBusy ? "codicon-loading codicon-modifier-spin" : "codicon-debug-rerun"}" aria-hidden="true"></span>${esc(retryLabel)}</button>` +
       `<button id="failure-output" type="button" title="${esc(T.showFullOutput)}" ` +
       `data-tooltip="${esc(T.showFullOutput)}" aria-label="${esc(T.showFullOutput)}">` +
       `<span class="codicon codicon-output" aria-hidden="true"></span>${esc(T.showFullOutput)}</button>` +
@@ -494,11 +499,16 @@
       commitBusy = true;
       reflectCommitBusy();
       const textarea = document.getElementById("commit-msg");
-      vscode.postMessage({
-        type: "commit",
-        op: failure.operation || "commit",
-        message: textarea ? textarea.value : "",
-      });
+      const message = textarea ? textarea.value : "";
+      if (failure.origin === "hookPreflight") {
+        vscode.postMessage({ type: "runCommitHookPreflight", message });
+      } else {
+        vscode.postMessage({
+          type: "commit",
+          op: failure.operation || "commit",
+          message,
+        });
+      }
     });
   }
 
@@ -540,7 +550,10 @@
       reflectCommitBusy();
     } else if (event.data?.type === "commitHookOperation") {
       const active = !!event.data.active;
-      if (event.data.action === "refresh") {
+      if (event.data.action === "preflight") {
+        commitBusy = active;
+        reflectCommitBusy();
+      } else if (event.data.action === "refresh") {
         refreshing = active;
       } else if (event.data.action === "create") {
         creating = active;

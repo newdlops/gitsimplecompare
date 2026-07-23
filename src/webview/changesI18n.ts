@@ -63,6 +63,15 @@ export function changesWebviewI18n(): Record<string, string> {
     commit: vscode.l10n.t("Commit"),
     commitHooks: vscode.l10n.t("File-based Commit Hooks"),
     manageCommitHooks: vscode.l10n.t("Manage file-based commit hooks"),
+    runStagedCommitHooks: vscode.l10n.t(
+      "Run commit hooks for staged changes"
+    ),
+    stageBeforeCommitHooks: vscode.l10n.t(
+      "Stage changes before running commit hooks"
+    ),
+    runningStagedCommitHooks: vscode.l10n.t(
+      "Running commit hooks for staged changes..."
+    ),
     activeCommitHooks: vscode.l10n.t("{0} file hooks active"),
     refreshCommitHooks: vscode.l10n.t("Refresh file-based commit hooks"),
     openCommitHooksFolder: vscode.l10n.t("Open hooks folder"),
@@ -117,6 +126,7 @@ export function changesWebviewI18n(): Record<string, string> {
     commitChecksFailed: vscode.l10n.t("Commit checks failed"),
     commitFailedDetails: vscode.l10n.t("Commit failed"),
     retryCommit: vscode.l10n.t("Retry commit"),
+    runCommitChecksAgain: vscode.l10n.t("Run checks again"),
     dismissCommitFailure: vscode.l10n.t("Dismiss commit failure"),
     showFullOutput: vscode.l10n.t("Show full output"),
     openFailureLocation: vscode.l10n.t("Open {0} at line {1}"),

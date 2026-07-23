@@ -862,9 +862,11 @@ body:focus-within .row.selected:hover {
 }
 
 .commit-bar {
+  align-items: stretch;
   display: flex;
   gap: 6px;
   margin-top: 6px;
+  min-width: 0;
 }
 
 .commit-btn,
@@ -885,8 +887,17 @@ body:focus-within .row.selected:hover {
   flex: 1 1 auto;
   justify-content: center;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
   padding: 3px 8px;
   border-radius: 2px 0 0 2px;
+}
+
+.commit-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .commit-caret {
