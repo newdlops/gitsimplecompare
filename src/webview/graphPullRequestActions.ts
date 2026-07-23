@@ -4,7 +4,11 @@ import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { GitError } from "../git/gitExec";
 import { PullRequestOperationService } from "../git/pullRequestOperationService";
-import type { PullRequestOperationOptions, PullRequestOperationResult } from "../git/pullRequestOperationService";
+import type {
+  PullRequestOperationOptions,
+  PullRequestOperationResult,
+  PullRequestRevertPlan,
+} from "../git/pullRequestOperationService";
 import type { PullRequestInfo } from "../git/pullRequestService";
 import { logError, logInfo } from "../ui/outputLog";
 
@@ -221,11 +225,16 @@ async function squashRevertPullRequest(
   options?: PullRequestOperationOptions
 ): Promise<void> {
   const service = new PullRequestOperationService(deps.logService.repoRoot);
-  if (!(await confirmPullRequestRevert(service, pr, "squashRevert"))) {
+  const plan = await prepareAndConfirmPullRequestRevert(
+    service,
+    pr,
+    "squashRevert"
+  );
+  if (!plan) {
     return;
   }
   await runPullRequestOperation(deps, pr, "squashRevert", () =>
-    service.squashRevertPullRequest(pr, options)
+    service.squashRevertPullRequest(pr, options, plan)
   );
 }
 
@@ -240,40 +249,92 @@ async function rebaseRevertPullRequest(
   options?: PullRequestOperationOptions
 ): Promise<void> {
   const service = new PullRequestOperationService(deps.logService.repoRoot);
-  if (!(await confirmPullRequestRevert(service, pr, "rebaseRevert"))) {
+  const plan = await prepareAndConfirmPullRequestRevert(
+    service,
+    pr,
+    "rebaseRevert"
+  );
+  if (!plan) {
     return;
   }
   await runPullRequestOperation(deps, pr, "rebaseRevert", () =>
-    service.rebaseRevertPullRequest(pr, options)
+    service.rebaseRevertPullRequest(pr, options, plan)
   );
 }
 
 /**
- * PR revert 실행 전 위험도를 안내하고 사용자의 확인을 받는다.
+ * PR revert object를 준비하고 위험도를 안내한 뒤 확인된 실행 계획을 반환한다.
+ * 누락 object fetch나 검증 실패를 정상 위험도 0으로 숨기지 않고 OUTPUT과 오류 알림에 남긴다.
  * @param service PR 작업 서비스
  * @param pr 작업 대상 PR 정보
  * @param operation 실행할 revert 종류
+ * @returns 사용자가 승인한 계획, 취소 또는 준비 실패면 undefined
  */
-async function confirmPullRequestRevert(
+async function prepareAndConfirmPullRequestRevert(
   service: PullRequestOperationService,
   pr: PullRequestInfo,
   operation: "squashRevert" | "rebaseRevert"
-): Promise<boolean> {
+): Promise<PullRequestRevertPlan | undefined> {
   const label = operation === "squashRevert"
     ? vscode.l10n.t("Squash Revert")
     : vscode.l10n.t("Rebase Revert");
-  const outsideCount = await service.countRevertCommitsOutsideCurrentBranch(pr).catch(() => 0);
-  if (outsideCount > 0) {
-    return confirm(
+  let plan: PullRequestRevertPlan;
+  try {
+    plan = await service.preparePullRequestRevert(pr, operation);
+    logInfo("pr revert plan prepared", {
+      repoRoot: service.repoRoot,
+      operation,
+      number: pr.number,
+      targetKind: plan.targetKind,
+      commitCount: plan.commits.length,
+      commits: plan.commits.slice(0, 10).map((commit) => shortHash(commit.hash)),
+      commitsTruncated: plan.commits.length > 10,
+      outsideCurrentBranch: plan.outsideCurrentBranch,
+      materialized: plan.materialized,
+      materializedRef: plan.materializedRef,
+    });
+  } catch (err) {
+    logError("pr revert preflight failed", err, {
+      repoRoot: service.repoRoot,
+      operation,
+      number: pr.number,
+    });
+    await vscode.window.showErrorMessage(
+      vscode.l10n.t("PR operation failed: {0}", errText(err))
+    );
+    return undefined;
+  }
+  const accepted = plan.outsideCurrentBranch > 0
+    ? await confirm(
       vscode.l10n.t(
         "PR #{0} has {1} commit(s) that are not on the current branch. Reverting it will apply inverse patches to this branch and may remove unrelated changes. Continue?",
         pr.number,
-        outsideCount
+        plan.outsideCurrentBranch
       ),
       label
-    );
+    )
+    : await confirm(defaultRevertConfirmMessage(operation, pr), label);
+  if (accepted) {
+    return plan;
   }
-  return confirm(defaultRevertConfirmMessage(operation, pr), label);
+  try {
+    const released = await service.releasePullRequestRevertPlan(plan);
+    logInfo("pr revert plan cancelled", {
+      repoRoot: service.repoRoot,
+      operation,
+      number: pr.number,
+      materializedRef: plan.materializedRef,
+      released,
+    });
+  } catch (err) {
+    logError("pr revert plan cleanup failed", err, {
+      repoRoot: service.repoRoot,
+      operation,
+      number: pr.number,
+      materializedRef: plan.materializedRef,
+    });
+  }
+  return undefined;
 }
 
 /** PR revert 기본 확인 문구를 만든다. */
