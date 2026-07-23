@@ -13,6 +13,9 @@ export type CommitOperation =
   | "amendStaged"
   | "amendAll";
 
+/** 실패 카드가 실제 commit과 staged hook 사전 실행 중 어느 흐름에서 만들어졌는지 나타낸다. */
+export type CommitFailureOrigin = "commit" | "hookPreflight";
+
 /** 파싱된 commit 검사 실패 한 건. 파일 위치가 있으면 UI 에서 바로 열 수 있다. */
 export interface CommitFailureItem {
   /** 렌더 key 와 중복 제거에 사용할 안정적인 식별자 */
@@ -49,13 +52,18 @@ export interface CommitFailureReport {
   occurredAt: string;
   /** Retry 버튼이 반복할 원래 커밋 종류 */
   operation: CommitOperation;
+  /** Retry 버튼이 실제 commit 또는 hook 사전 실행 중 무엇을 반복할지 결정하는 출처 */
+  origin: CommitFailureOrigin;
 }
 
 interface ParseOptions {
   activeHooks?: readonly CommitHookName[];
+  /** 호출자가 직접 실행해 실패 지점을 정확히 알고 있는 hook 이름 */
+  knownHookName?: CommitHookName;
   /** 호출자가 실패한 명령이 실제 `git commit`임을 확인했을 때 조용한 custom hook 추론에 사용한다. */
   commitCommandFailed?: boolean;
   operation?: CommitOperation;
+  origin?: CommitFailureOrigin;
   occurredAt?: string;
 }
 
@@ -72,6 +80,8 @@ const MAX_INPUT_LINES = 5000;
 const ANSI_ESCAPE = /[\u001b\u009b][[\]()#;?]*(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]+)*)?\u0007|(?:(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
 const WRAPPER_NOISE =
   /^(git .* 실패:|Command failed:|yarn run |npm ERR! code |\$ |> |husky - DEPRECATED|\[(STARTED|SUCCESS|SKIPPED)\])/i;
+const PREFLIGHT_WRAPPER_NOISE =
+  /^(Staged commit hook preflight$|Staged files:|Commit message hooks:|The real Git index is isolated|RESULT:|\[[^\]]+\] (?:STARTED|PASSED|FAILED|SKIPPED|stdout$|stderr$))/i;
 const NON_HOOK_FAILURE =
   /nothing to commit|nothing added to commit|please tell me who you are|unable to auto-detect email|unmerged files|empty commit message|gpg failed to sign|index\.lock|cannot lock ref/i;
 const HOOK_SIGNAL =
@@ -167,13 +177,15 @@ export function parseCommitFailureOutput(
   );
   const inferredHook =
     explicitHook ??
+    options.knownHookName ??
     (validationOutput && blockingHooks.length === 1
       ? blockingHooks[0]
       : undefined);
   const likelyHook = Boolean(
+    options.knownHookName ||
     explicitHook ||
-      checkName ||
-      (!NON_HOOK_FAILURE.test(text) && validationOutput)
+    checkName ||
+    (!NON_HOOK_FAILURE.test(text) && validationOutput)
   );
   const summary = summarizeFailure(items, meaningful, output);
   return {
@@ -189,6 +201,7 @@ export function parseCommitFailureOutput(
       genericCandidates.length > genericLimit,
     occurredAt: options.occurredAt ?? new Date().toISOString(),
     operation: options.operation ?? "commit",
+    origin: options.origin ?? "commit",
   };
 }
 
@@ -421,7 +434,12 @@ function looksLikeFilePath(candidate: string): boolean {
 function meaningfulFailureLines(lines: string[]): string[] {
   return lines
     .map((line) => line.trim())
-    .filter((line) => line && !WRAPPER_NOISE.test(line));
+    .filter(
+      (line) =>
+        line &&
+        !WRAPPER_NOISE.test(line) &&
+        !PREFLIGHT_WRAPPER_NOISE.test(line)
+    );
 }
 
 /**

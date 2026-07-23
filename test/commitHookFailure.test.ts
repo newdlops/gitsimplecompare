@@ -139,6 +139,30 @@ test("직접 git commit 실패로 확인된 짧은 custom hook 출력을 활성 
   assert.equal(report.summary, "custom repository policy rejected this change");
 });
 
+test("staged hook 사전 실행 단계 marker를 요약 잡음에서 제외한다", () => {
+  const report = parseCommitFailureOutput(
+    [
+      "Staged commit hook preflight",
+      "Staged files: 2",
+      "Commit message hooks: enabled",
+      "[pre-commit] STARTED",
+      "[pre-commit] stderr",
+      "custom repository policy rejected this change",
+      "[pre-commit] FAILED (12 ms)",
+    ].join("\n"),
+    ROOT,
+    {
+      knownHookName: "pre-commit",
+      origin: "hookPreflight",
+      operation: "staged",
+    }
+  );
+  assert.equal(report.summary, "custom repository policy rejected this change");
+  assert.equal(report.likelyHook, true);
+  assert.equal(report.hookName, "pre-commit");
+  assert.equal(report.origin, "hookPreflight");
+});
+
 test("100개 항목과 5000행 상한을 적용하고 중복 위치를 한 번만 남긴다", () => {
   const repeated = Array.from(
     { length: 5100 },

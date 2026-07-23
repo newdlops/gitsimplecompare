@@ -38,6 +38,7 @@ function failureReport(
     truncated: false,
     occurredAt: "2026-07-14T00:00:00.000Z",
     operation: "commit",
+    origin: "commit",
     ...overrides,
     items: items.map((item) => ({ ...item })),
   };

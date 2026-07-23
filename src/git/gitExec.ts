@@ -21,6 +21,14 @@ export interface RunGitOptions {
   beforeRetry?: () => Promise<void>;
 }
 
+/** 성공한 Git 명령의 stdout/stderr를 손실 없이 함께 반환하는 결과다. */
+export interface GitCommandOutput {
+  /** Git 프로세스가 표준 출력에 기록한 전체 UTF-8 문자열 */
+  stdout: string;
+  /** Git 또는 hook이 표준 오류에 기록한 전체 UTF-8 문자열 */
+  stderr: string;
+}
+
 /** Git stdin으로 전달할 수 있는 UTF-8 문자열 또는 원본 바이트 입력이다. */
 export type GitInput = string | Uint8Array;
 
@@ -66,11 +74,29 @@ export async function runGit(
   cwd: string,
   options?: Record<string, string> | RunGitOptions
 ): Promise<string> {
+  return (await runGitDetailed(args, cwd, options)).stdout;
+}
+
+/**
+ * git 명령을 실행하고 성공한 경우에도 stdout과 stderr를 모두 반환한다.
+ * - 일반 조회는 stdout만 필요한 `runGit`을 사용하고, 성공 로그까지 보존해야 하는 hook/외부 도구 실행은
+ *   이 함수를 사용해 stderr 진행 출력도 OUTPUT 채널에 남긴다.
+ * - 실패 시에는 `runGit`과 동일한 GitError와 lock 재시도 정책을 사용한다.
+ * @param args git 인자 배열
+ * @param cwd 실행 디렉터리(저장소 경로)
+ * @param options 추가 env 또는 lock 재시도 옵션
+ * @returns 성공한 프로세스의 stdout/stderr 전체 문자열
+ */
+export async function runGitDetailed(
+  args: string[],
+  cwd: string,
+  options?: Record<string, string> | RunGitOptions
+): Promise<GitCommandOutput> {
   const normalized = normalizeOptions(options);
   const retryOnLock = normalized.retryOnLock !== false;
   for (let attempt = 0; ; attempt++) {
     try {
-      return await runGitOnce(args, cwd, normalized.env);
+      return await runGitDetailedOnce(args, cwd, normalized.env);
     } catch (error) {
       if (
         !retryOnLock ||
@@ -83,6 +109,47 @@ export async function runGit(
       await normalized.beforeRetry?.();
     }
   }
+}
+
+/**
+ * stdout/stderr를 모두 보존하는 git 프로세스를 한 번 실행한다.
+ * - 재시도 여부는 공개 `runGitDetailed`이 결정하며 이 함수는 단일 프로세스의 결과만 변환한다.
+ * @param args git 인자 배열
+ * @param cwd 실행 디렉터리
+ * @param env 기존 process.env에 덮어쓸 선택 환경
+ * @returns 성공 시 두 출력 스트림, 실패 시 두 스트림을 담은 GitError
+ */
+function runGitDetailedOnce(
+  args: string[],
+  cwd: string,
+  env?: Record<string, string>
+): Promise<GitCommandOutput> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "git",
+      args,
+      {
+        cwd,
+        maxBuffer: MAX_GIT_BUFFER_BYTES,
+        windowsHide: true,
+        encoding: "utf8",
+        env: env ? { ...process.env, ...env } : undefined,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(
+            new GitError(
+              `git ${args.join(" ")} 실패: ${error.message}`,
+              stderr,
+              stdout
+            )
+          );
+          return;
+        }
+        resolve({ stdout, stderr });
+      }
+    );
+  });
 }
 
 /**
