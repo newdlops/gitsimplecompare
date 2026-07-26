@@ -323,8 +323,10 @@
     return repos
       .map(
         (r) =>
-          `<div class="row repo${r.active ? " active" : ""}" ` +
-          `data-root="${esc(r.root)}" title="${esc(r.root)}">` +
+          `<div class="row repo${r.active ? " active" : ""}" role="button" tabindex="0" ` +
+          `data-root="${esc(r.root)}" title="${esc(r.root)}" aria-label="${esc(
+            `${T.change}: ${r.name}`
+          )}">` +
           `<span class="icon codicon ${
             r.active ? "codicon-pass-filled" : "codicon-repo"
           }"></span>` +
@@ -385,9 +387,9 @@
       const collapsed = !!state.folders[key];
       const title = conflictCount ? `${node.path} - ${T.conflicts}` : node.path;
       return (
-        `<div class="row folder${conflictCount ? " conflict" : ""}" ` +
-        `data-folder-key="${esc(key)}" data-path="${esc(node.path)}" ` +
-        `title="${esc(title)}">` +
+        `<div class="row folder${conflictCount ? " conflict" : ""}" role="button" tabindex="0" ` +
+        `aria-expanded="${collapsed ? "false" : "true"}" data-folder-key="${esc(key)}" ` +
+        `data-path="${esc(node.path)}" title="${esc(title)}" aria-label="${esc(title)}">` +
         `<span class="twistie codicon ${
           collapsed ? "codicon-chevron-right" : "codicon-chevron-down"
         }"></span>` +
@@ -425,7 +427,11 @@
           )}"`
         : "";
     return (
-      `<div class="row file${conflicted ? " conflict" : ""}" data-status="${esc(ch.status)}" ` +
+      `<div class="row file${conflicted ? " conflict" : ""}"${
+        kind === "compare"
+          ? ""
+          : ` role="button" tabindex="0" aria-label="${esc(title)}"`
+      } data-status="${esc(ch.status)}" ` +
       `data-path="${esc(ch.path)}" data-stage="${esc(kind)}" ` +
       `title="${esc(title)}"${compareRowAttrs}>` +
       `<span class="twistie"></span>` +
@@ -554,7 +560,7 @@
     }
     return (
       `<div class="commit-box">` +
-      `<textarea id="commit-msg" class="commit-input" rows="1" ` +
+      `<textarea id="commit-msg" class="commit-input" name="commit-message" autocomplete="off" rows="1" ` +
       `title="${esc(T.commitPlaceholder)}" aria-label="${esc(T.commitPlaceholder)}" ` +
       `placeholder="${esc(T.commitPlaceholder)}">${esc(commit.message)}</textarea>` +
       `<div class="commit-bar">` +
@@ -861,6 +867,7 @@
     body.querySelectorAll(".row.folder").forEach(bindFolderToggle);
     body.querySelectorAll(".wt-files .row.file").forEach((el) => {
       el.addEventListener("click", (event) => onWorkingRowClick(event, el));
+      bindRowKeyboardAction(el, (event) => onWorkingRowClick(event, el));
     });
     bindMarqueeSelection(body);
     bindCommitBox(body);
@@ -1091,6 +1098,23 @@
       }
       toggleFolder(el);
     });
+    bindRowKeyboardAction(el, () => toggleFolder(el));
+  }
+
+  /**
+   * button 요소로 바꾸기 어려운 행형 컨트롤에 키보드 동작을 더한다.
+   * 행 안의 실제 버튼을 조작할 때는 중복 실행하지 않고, Enter/Space만 행의 주 동작으로 연결한다.
+   * @param {HTMLElement} el 키보드로 조작할 행
+   * @param {(event: KeyboardEvent) => void} action Enter 또는 Space에서 실행할 행의 주 동작
+   */
+  function bindRowKeyboardAction(el, action) {
+    el.addEventListener("keydown", (event) => {
+      if (event.target !== el || (event.key !== "Enter" && event.key !== " ")) {
+        return;
+      }
+      event.preventDefault();
+      action(event);
+    });
   }
 
   /**
@@ -1105,6 +1129,7 @@
     const collapsed = children.classList.toggle("collapsed");
     state.folders[el.dataset.folderKey] = collapsed;
     vscode.setState(state);
+    el.setAttribute("aria-expanded", collapsed ? "false" : "true");
     const twistie = el.querySelector(".twistie");
     const folderIcon = el.querySelector(".icon");
     twistie.classList.toggle("codicon-chevron-down", !collapsed);
@@ -1259,15 +1284,17 @@
       });
     });
     rootEl.querySelectorAll(".repo").forEach((el) => {
-      el.addEventListener("click", () =>
-        vscode.postMessage({ type: "selectRepo", root: el.dataset.root })
-      );
+      const selectRepository = () =>
+        vscode.postMessage({ type: "selectRepo", root: el.dataset.root });
+      el.addEventListener("click", selectRepository);
+      bindRowKeyboardAction(el, selectRepository);
     });
     window.__gscCompare.bind(rootEl, vscode);
     rootEl.querySelectorAll(".row.folder").forEach(bindFolderToggle);
     // 작업트리 변경 파일 → 단일 클릭=선택+비교, Ctrl/Cmd·Shift=다중 선택
     rootEl.querySelectorAll(".wt-files .row.file").forEach((el) => {
       el.addEventListener("click", (e) => onWorkingRowClick(e, el));
+      bindRowKeyboardAction(el, (event) => onWorkingRowClick(event, el));
     });
     // 파일 트리 끝 너머(그룹 아래 빈 공간)에서도 드래그 선택이 시작되도록 Changes 섹션 본문 전체를
     // 마퀴 표면으로 삼는다. .wt-files 만 쓰면 행 높이 바깥에서는 selectbox 가 그려지지 않는다.

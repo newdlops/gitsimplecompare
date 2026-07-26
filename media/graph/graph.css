@@ -154,6 +154,12 @@ body.resizing {
   outline: none;
 }
 
+/* 그래프는 키보드 탐색의 시작점이므로 포커스를 테마 색으로 명확하게 표시한다. */
+#graph:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
 #graph-content {
   position: relative;
   min-height: 100%;

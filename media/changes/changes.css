@@ -75,7 +75,9 @@ body {
 }
 
 .section-header:focus-visible,
-.group-toggle:focus-visible {
+.group-toggle:focus-visible,
+.header-action:focus-visible,
+.group-action:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
 }
@@ -278,6 +280,21 @@ body {
 .sash:hover::before,
 .sash.active::before {
   background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+}
+
+/* 운영체제의 모션 감소 설정에서는 상태 변화는 즉시 유지하고 반복 애니메이션만 멈춘다. */
+@media (prefers-reduced-motion: reduce) {
+  .working-op-track span,
+  .wt-files .row.operation-pending::after,
+  .group.operation-pending .group-title::after,
+  .commit-ai-btn.busy .codicon,
+  .commit-btn.busy .codicon {
+    animation: none;
+  }
+
+  .sash::before {
+    transition: none;
+  }
 }
 
 /* 드래그 중에는 커서를 고정하고 텍스트 선택을 막는다. */
@@ -853,8 +870,10 @@ body:focus-within .row.selected:hover {
   outline: none;
 }
 
-.commit-input:focus {
+.commit-input:focus-visible {
   border-color: var(--vscode-focusBorder);
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
 }
 
 .commit-input::placeholder {
