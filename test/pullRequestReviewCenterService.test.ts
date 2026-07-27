@@ -23,7 +23,8 @@ test("Review Center 서비스는 하나의 PR에 필요한 파일과 thread를 G
   assert.ok(calls[1]?.args.some((arg) => arg.includes("reviewThreads(first: $limit)")));
   assert.ok(calls[1]?.args.some((arg) => arg.includes("endCursor")));
   assert.ok(calls[1]?.args.some((arg) => arg.includes("viewerCanUpdate")));
-  assert.ok(calls[1]?.args.some((arg) => arg.includes("requestedReviewers(first: 100)")));
+  assert.ok(calls[1]?.args.some((arg) => arg.includes("reviewRequests(first: 100)") && arg.includes("requestedReviewer")));
+  assert.equal(calls[1]?.args.some((arg) => arg.includes("requestedReviewers")), false);
   assert.ok(calls[1]?.args.some((arg) => arg.includes("milestone { number title }")));
   assert.ok(calls[1]?.args.some((arg) => arg.includes("viewer { login }")));
 });

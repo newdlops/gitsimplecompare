@@ -221,7 +221,11 @@ export function normalizeReviewCenterSnapshot(
     assignees?: { nodes?: Array<{ login?: string } | null> | null } | null;
     labels?: { nodes?: Array<{ name?: string } | null> | null } | null;
     milestone?: { number?: number; title?: string } | null;
-    requestedReviewers?: { nodes?: Array<{ login?: string; slug?: string; name?: string } | null> | null } | null;
+    reviewRequests?: {
+      nodes?: Array<{
+        requestedReviewer?: { login?: string; slug?: string; name?: string } | null;
+      } | null> | null;
+    } | null;
     viewerCanUpdate?: boolean;
     updatedAt?: string;
     isDraft?: boolean;
@@ -253,7 +257,9 @@ export function normalizeReviewCenterSnapshot(
     assignees: normalizeMetadataNames(pullRequest.assignees?.nodes || [], "login"),
     labels: normalizeMetadataNames(pullRequest.labels?.nodes || [], "name"),
     milestone: normalizeMilestone(pullRequest.milestone),
-    requestedReviewers: normalizeRequestedReviewers(pullRequest.requestedReviewers?.nodes || []),
+    requestedReviewers: normalizeRequestedReviewers(
+      (pullRequest.reviewRequests?.nodes || []).map((node) => node?.requestedReviewer || null)
+    ),
     viewerCanUpdate: Boolean(pullRequest.viewerCanUpdate),
     updatedAt: validTime(pullRequest.updatedAt),
     isDraft: Boolean(pullRequest.isDraft),

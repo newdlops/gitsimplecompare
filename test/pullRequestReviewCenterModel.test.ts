@@ -16,7 +16,12 @@ test("Review Center 모델은 파일 상태와 스레드 해결/오래됨 상태
     assignees: { nodes: [{ login: "maintainer" }] },
     labels: { nodes: [{ name: "ready" }] },
     milestone: { number: 8, title: "Release" },
-    requestedReviewers: { nodes: [{ login: "reviewer" }, { slug: "platform", name: "Platform team" }] },
+    reviewRequests: {
+      nodes: [
+        { requestedReviewer: { login: "reviewer" } },
+        { requestedReviewer: { slug: "platform", name: "Platform team" } },
+      ],
+    },
     viewerCanUpdate: true,
     files: {
       nodes: [{ path: "src/a.ts", additions: 4, deletions: 1, changeType: "RENAMED", previousFilename: "src/old.ts", viewerViewedState: "VIEWED" }],

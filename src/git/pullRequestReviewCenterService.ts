@@ -51,10 +51,12 @@ query($owner: String!, $name: String!, $number: Int!, $limit: Int!) {
       assignees(first: 50) { nodes { login } }
       labels(first: 100) { nodes { name } }
       milestone { number title }
-      requestedReviewers(first: 100) {
+      reviewRequests(first: 100) {
         nodes {
-          ... on User { login }
-          ... on Team { slug name }
+          requestedReviewer {
+            ... on User { login }
+            ... on Team { slug name }
+          }
         }
       }
       viewerCanUpdate
@@ -194,7 +196,11 @@ interface GhReviewCenterResponse {
         assignees?: { nodes?: Array<{ login?: string } | null> | null } | null;
         labels?: { nodes?: Array<{ name?: string } | null> | null } | null;
         milestone?: { number?: number; title?: string } | null;
-        requestedReviewers?: { nodes?: Array<{ login?: string; slug?: string; name?: string } | null> | null } | null;
+        reviewRequests?: {
+          nodes?: Array<{
+            requestedReviewer?: { login?: string; slug?: string; name?: string } | null;
+          } | null> | null;
+        } | null;
         viewerCanUpdate?: boolean;
         updatedAt?: string;
         isDraft?: boolean;
