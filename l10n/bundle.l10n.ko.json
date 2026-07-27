@@ -1677,7 +1677,6 @@
   "Graph synchronization commands": "그래프 동기화 명령",
   "Pull request and stack commands": "Pull Request 및 Stack 명령",
   "Graph navigation and details commands": "그래프 탐색 및 상세 명령",
-  "More graph commands": "추가 그래프 명령",
   "Show child layer {0}": "자식 레이어 {0} 표시",
   "Show stack layer {0}": "Stack 레이어 {0} 표시",
   "Finish or abort the current pull request stack restack first.": "현재 Pull Request Stack Restack을 먼저 완료하거나 중단하세요.",

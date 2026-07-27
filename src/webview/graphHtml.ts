@@ -53,7 +53,6 @@ export function buildGraphHtml(
   const reflogSlotLayoutScriptUri = script(webview, mediaRoot, "graphReflogSlotLayout.js");
   const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
   const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
-  const toolbarOverflowScriptUri = script(webview, mediaRoot, "graphToolbarOverflow.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
@@ -97,7 +96,6 @@ export function buildGraphHtml(
   const syncCommandsTitle = vscode.l10n.t("Graph synchronization commands");
   const reviewCommandsTitle = vscode.l10n.t("Pull request and stack commands");
   const navigationCommandsTitle = vscode.l10n.t("Graph navigation and details commands");
-  const moreCommandsTitle = vscode.l10n.t("More graph commands");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
     unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
@@ -174,7 +172,7 @@ export function buildGraphHtml(
             aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
             <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
           </button>
-          <button id="fetch-tags-graph" class="icon-button" type="button" data-toolbar-overflow-item title="${fetchTagsTitle}"
+          <button id="fetch-tags-graph" class="icon-button" type="button" title="${fetchTagsTitle}"
             aria-label="${fetchTagsTitle}" data-tooltip="${fetchTagsTitle}">
             <span class="codicon codicon-tag" aria-hidden="true"></span>
           </button>
@@ -186,11 +184,11 @@ export function buildGraphHtml(
 	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
 	            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
 	          </button>
-          <button id="force-push-graph" class="icon-button danger" type="button" data-toolbar-overflow-item title="${forcePushTitle}"
+          <button id="force-push-graph" class="icon-button danger" type="button" title="${forcePushTitle}"
 	            aria-label="${forcePushTitle}" data-tooltip="${forcePushTitle}">
 	            <span class="codicon codicon-repo-force-push" aria-hidden="true"></span>
 	          </button>
-          <button id="open-remote-branch" class="icon-button" type="button" data-toolbar-overflow-item hidden disabled title="${openRemoteTitle}"
+          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${openRemoteTitle}"
 	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">
 	            <span class="codicon codicon-link-external" aria-hidden="true"></span>
 	          </button>
@@ -204,23 +202,15 @@ export function buildGraphHtml(
             aria-label="${prStacksTitle}" data-tooltip="${prStacksTitle}">
             <span class="codicon codicon-layers" aria-hidden="true"></span>
           </button>
-          <button id="graph-pr-preview" class="icon-button" type="button" data-toolbar-overflow-item title="${prPreviewTitle}"
+          <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
             aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
             <span class="codicon codicon-preview" aria-hidden="true"></span>
           </button>
-          <button id="graph-reflog" class="icon-button" type="button" data-toolbar-overflow-item title="${reflogTitle}"
+          <button id="graph-reflog" class="icon-button" type="button" title="${reflogTitle}"
             aria-label="${reflogTitle}" data-tooltip="${reflogTitle}"
             aria-controls="graph-reflog-panel" aria-expanded="false">
 	            <span class="codicon codicon-history" aria-hidden="true"></span>
 	          </button>
-	          <div class="graph-toolbar-overflow-wrap">
-	            <button id="graph-toolbar-more" class="icon-button" type="button" hidden title="${moreCommandsTitle}"
-	              aria-label="${moreCommandsTitle}" data-tooltip="${moreCommandsTitle}" aria-haspopup="menu" aria-expanded="false"
-	              aria-controls="graph-toolbar-overflow">
-	              <span class="codicon codicon-ellipsis" aria-hidden="true"></span>
-	            </button>
-	            <div id="graph-toolbar-overflow" role="menu" aria-label="${moreCommandsTitle}" hidden></div>
-	          </div>
 	        </div>
 	        <div class="toolbar-group" role="group" aria-label="${navigationCommandsTitle}">
 	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
@@ -293,7 +283,6 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
-  <script nonce="${nonce}" src="${toolbarOverflowScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>

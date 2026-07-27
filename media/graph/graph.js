@@ -521,7 +521,6 @@
   /** toolbar/drawer/scroll 이벤트를 한 번만 등록한다. */
   function initEvents() {
     initMainSplitter();
-    window.GscGraphToolbarOverflow?.init();
     window.GscGraphSearch?.init(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindNavigation(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);

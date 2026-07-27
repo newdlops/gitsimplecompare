@@ -62,12 +62,6 @@ body.resizing {
   background: var(--vscode-toolbar-separatorBackground, var(--vscode-panel-border));
 }
 
-.graph-toolbar-overflow-wrap { position: relative; }
-#graph-toolbar-overflow { position: absolute; top: calc(100% + 4px); right: 0; z-index: 40; display: grid; min-width: 144px; padding: 4px; border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border)); border-radius: 3px; background: var(--vscode-menu-background, var(--vscode-editorWidget-background)); box-shadow: 0 2px 8px color-mix(in srgb, var(--vscode-editor-background) 72%, transparent); }
-#graph-toolbar-overflow[hidden] { display: none; }
-#graph-toolbar-overflow .icon-button { justify-content: flex-start; width: 100%; padding: 0 7px; }
-#graph-toolbar-overflow .icon-button::after { margin-left: 7px; overflow: hidden; color: var(--vscode-menu-foreground, var(--vscode-foreground)); content: attr(aria-label); text-overflow: ellipsis; white-space: nowrap; }
-
 .icon-button {
   position: relative;
   display: inline-flex;
