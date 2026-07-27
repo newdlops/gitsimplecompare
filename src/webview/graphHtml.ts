@@ -1,7 +1,11 @@
 // git graph 웹뷰의 HTML/CSP/리소스 URI 생성을 담당하는 모듈.
 // - 패널 생애주기와 메시지 처리는 graphPanel.ts 에 남기고, 정적인 UI 조립만 이 파일로 분리한다.
 import * as vscode from "vscode";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 
 /**
  * git graph 웹뷰 HTML 을 만든다.
@@ -49,6 +53,7 @@ export function buildGraphHtml(
   const reflogSlotLayoutScriptUri = script(webview, mediaRoot, "graphReflogSlotLayout.js");
   const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
   const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
+  const toolbarOverflowScriptUri = script(webview, mediaRoot, "graphToolbarOverflow.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
@@ -65,7 +70,7 @@ export function buildGraphHtml(
   const codiconStyleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css")
   );
-  const tooltipResources = instantTooltipResources(webview, extensionUri);
+  const sharedResources = sharedWebviewResources(webview, extensionUri);
   const nonce = makeNonce();
   const csp = [
     `default-src 'none'`,
@@ -89,6 +94,10 @@ export function buildGraphHtml(
   const prPreviewTitle = vscode.l10n.t("Preview staged pull request");
   const prStacksTitle = vscode.l10n.t("Manage pull request stacks");
   const reflogTitle = vscode.l10n.t("Show reflog recovery");
+  const syncCommandsTitle = vscode.l10n.t("Graph synchronization commands");
+  const reviewCommandsTitle = vscode.l10n.t("Pull request and stack commands");
+  const navigationCommandsTitle = vscode.l10n.t("Graph navigation and details commands");
+  const moreCommandsTitle = vscode.l10n.t("More graph commands");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
     unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
@@ -124,6 +133,7 @@ export function buildGraphHtml(
     addFirstLayer: vscode.l10n.t("Add the first stack layer"),
     showAll: vscode.l10n.t("Show all pull request stacks"),
     openPullRequest: vscode.l10n.t("Open pull request #{0} in browser"),
+    openReviewCenter: vscode.l10n.t("Open pull request #{0} in Review Center"),
     showChild: vscode.l10n.t("Show child layer {0}"),
     showLayer: vscode.l10n.t("Show stack layer {0}"),
   }).replace(/</g, "\\u003c");
@@ -134,6 +144,7 @@ export function buildGraphHtml(
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${worktreeStyleUri}" rel="stylesheet" />
@@ -148,14 +159,13 @@ export function buildGraphHtml(
   <link href="${rebaseAiStyleUri}" rel="stylesheet" />
   <link href="${reflogStyleUri}" rel="stylesheet" />
   <link href="${reflogVirtualStyleUri}" rel="stylesheet" />
-  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Git Graph</title>
 </head>
-<body class="detail-open">
+<body class="gsc-surface detail-open">
   <div id="app">
     <main id="graph-pane">
 	      <div id="graph-toolbar">
-	        <div class="toolbar-group">
+	        <div class="toolbar-group" role="group" aria-label="${syncCommandsTitle}">
 	          <button id="refresh-graph" class="icon-button" type="button" title="${refreshGraphTitle}"
 	            aria-label="${refreshGraphTitle}" data-tooltip="${refreshGraphTitle}">
 	            <span class="codicon codicon-refresh" aria-hidden="true"></span>
@@ -164,7 +174,7 @@ export function buildGraphHtml(
             aria-label="${fetchTitle}" data-tooltip="${fetchTitle}">
             <span class="codicon codicon-repo-fetch" aria-hidden="true"></span>
           </button>
-          <button id="fetch-tags-graph" class="icon-button" type="button" title="${fetchTagsTitle}"
+          <button id="fetch-tags-graph" class="icon-button" type="button" data-toolbar-overflow-item title="${fetchTagsTitle}"
             aria-label="${fetchTagsTitle}" data-tooltip="${fetchTagsTitle}">
             <span class="codicon codicon-tag" aria-hidden="true"></span>
           </button>
@@ -176,14 +186,16 @@ export function buildGraphHtml(
 	            aria-label="${pushTitle}" data-tooltip="${pushTitle}">
 	            <span class="codicon codicon-repo-push" aria-hidden="true"></span>
 	          </button>
-	          <button id="force-push-graph" class="icon-button danger" type="button" title="${forcePushTitle}"
+          <button id="force-push-graph" class="icon-button danger" type="button" data-toolbar-overflow-item title="${forcePushTitle}"
 	            aria-label="${forcePushTitle}" data-tooltip="${forcePushTitle}">
 	            <span class="codicon codicon-repo-force-push" aria-hidden="true"></span>
 	          </button>
-	          <button id="open-remote-branch" class="icon-button" type="button" hidden disabled title="${openRemoteTitle}"
+          <button id="open-remote-branch" class="icon-button" type="button" data-toolbar-overflow-item hidden disabled title="${openRemoteTitle}"
 	            aria-label="${openRemoteTitle}" data-tooltip="${openRemoteTitle}">
 	            <span class="codicon codicon-link-external" aria-hidden="true"></span>
 	          </button>
+	        </div>
+	        <div class="toolbar-group" role="group" aria-label="${reviewCommandsTitle}">
 	          <button id="graph-pr-list" class="icon-button" type="button" title="${prListTitle}"
 	            aria-label="${prListTitle}" data-tooltip="${prListTitle}">
 	            <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
@@ -192,15 +204,25 @@ export function buildGraphHtml(
             aria-label="${prStacksTitle}" data-tooltip="${prStacksTitle}">
             <span class="codicon codicon-layers" aria-hidden="true"></span>
           </button>
-          <button id="graph-pr-preview" class="icon-button" type="button" title="${prPreviewTitle}"
+          <button id="graph-pr-preview" class="icon-button" type="button" data-toolbar-overflow-item title="${prPreviewTitle}"
             aria-label="${prPreviewTitle}" data-tooltip="${prPreviewTitle}">
             <span class="codicon codicon-preview" aria-hidden="true"></span>
           </button>
-          <button id="graph-reflog" class="icon-button" type="button" title="${reflogTitle}"
+          <button id="graph-reflog" class="icon-button" type="button" data-toolbar-overflow-item title="${reflogTitle}"
             aria-label="${reflogTitle}" data-tooltip="${reflogTitle}"
             aria-controls="graph-reflog-panel" aria-expanded="false">
-            <span class="codicon codicon-history" aria-hidden="true"></span>
-          </button>
+	            <span class="codicon codicon-history" aria-hidden="true"></span>
+	          </button>
+	          <div class="graph-toolbar-overflow-wrap">
+	            <button id="graph-toolbar-more" class="icon-button" type="button" hidden title="${moreCommandsTitle}"
+	              aria-label="${moreCommandsTitle}" data-tooltip="${moreCommandsTitle}" aria-haspopup="menu" aria-expanded="false"
+	              aria-controls="graph-toolbar-overflow">
+	              <span class="codicon codicon-ellipsis" aria-hidden="true"></span>
+	            </button>
+	            <div id="graph-toolbar-overflow" role="menu" aria-label="${moreCommandsTitle}" hidden></div>
+	          </div>
+	        </div>
+	        <div class="toolbar-group" role="group" aria-label="${navigationCommandsTitle}">
 	          <button id="jump-head" class="icon-button" type="button" title="${jumpHeadTitle}"
 	            aria-label="${jumpHeadTitle}" data-tooltip="${jumpHeadTitle}">
 	            <span class="codicon codicon-target" aria-hidden="true"></span>
@@ -250,7 +272,7 @@ export function buildGraphHtml(
   </div>
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}">window.GscPrStackI18n = ${prStackI18n};</script>
-  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+  ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreeScriptUri}"></script>
@@ -271,6 +293,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
+  <script nonce="${nonce}" src="${toolbarOverflowScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>

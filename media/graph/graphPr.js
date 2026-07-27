@@ -310,8 +310,7 @@
 	      `<div class="pr-actions">` +
 	      (window.GscGraphPrActions?.directButtons?.(pr.number) || "") +
 	      rowJumpButton(pr.number) +
-	      previewButton(pr.number, `Preview pull request #${pr.number}`) +
-	      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
+	      openButton(pr.number, reviewCenterTitle(pr.number)) +
 	      `</div>` +
 	      `</article>`;
   }
@@ -353,8 +352,7 @@
       `<h2>#${pr.number} ${esc(pr.title)}</h2></div>` +
       prMetaHtml(pr) +
       `<div class="pr-actions">` +
-      openButton(pr.number, `Open pull request #${pr.number} in browser`) +
-      previewButton(pr.number, `Preview staged content against ${pr.baseRefName || "target branch"}`) +
+      openButton(pr.number, reviewCenterTitle(pr.number)) +
       (window.GscGraphPrActions?.button?.(pr.number) || "") +
       `</div>` +
       `</section>` +
@@ -461,10 +459,15 @@
       `<span class="codicon codicon-target" aria-hidden="true"></span></button>`;
   }
 
-  /** 브라우저 열기 버튼 HTML 을 만든다. */
+  /** Review Center를 여는 버튼 HTML을 만든다. */
   function openButton(number, title) {
     return `<button type="button" class="pr-icon-action" data-open-pr="${number}" ${tooltipAttrs(title)}>` +
-      `<span class="codicon codicon-link-external" aria-hidden="true"></span></button>`;
+      `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span></button>`;
+  }
+
+  /** host가 주입한 번역 template으로 Graph PR의 Review Center 진입 tooltip을 만든다. */
+  function reviewCenterTitle(number) {
+    return String(window.GscPrStackI18n?.openReviewCenter || "").replace("{0}", String(number));
   }
 
   /** staged PR preview 버튼 HTML 을 만든다. */

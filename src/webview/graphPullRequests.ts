@@ -12,6 +12,7 @@ import {
 import { logError, logInfo } from "../ui/outputLog";
 import { openPullRequestPreviewDiff } from "../ui/pullRequestPreviewDiff";
 import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
+import { ReviewCenterPanel } from "./reviewCenterPanel";
 import { ToWebviewMessage } from "./graphProtocol";
 
 type PostGraphMessage = (message: ToWebviewMessage) => void;
@@ -231,20 +232,23 @@ export async function sendGraphPullRequestDetail(
 }
 
 /**
- * PR 번호에 해당하는 URL 을 브라우저에서 연다.
+ * Graph의 PR 행을 동일한 Review Center 작업공간으로 연다.
+ * - Graph는 commit 관계 탐색을 유지하고, 실제 리뷰·관리 작업은 Review Center가 단일 책임으로 맡는다.
  * @param pullRequests 마지막으로 조회한 PR 목록
  * @param number       열 PR 번호
  */
-export async function openGraphPullRequest(
+export function openGraphPullRequest(
+  extensionUri: vscode.Uri,
+  repoRoot: string,
   pullRequests: PullRequestInfo[],
   number: number
-): Promise<void> {
-  const pr = pullRequests.find((item) => item.number === number);
-  if (!pr?.url) {
-    vscode.window.showWarningMessage(vscode.l10n.t("Pull request URL is not available."));
+): void {
+  if (!pullRequests.some((item) => item.number === number)) {
+    vscode.window.showWarningMessage(vscode.l10n.t("Pull request #{0} is not loaded.", number));
     return;
   }
-  await vscode.env.openExternal(vscode.Uri.parse(pr.url));
+  ReviewCenterPanel.createOrShow(extensionUri, repoRoot, number);
+  logInfo("graph pull request opened in review center", { repoRoot, number });
 }
 
 /**
@@ -307,11 +311,16 @@ export function openStagedPullRequestPreview(
   number?: number
 ): void {
   const pr = pullRequests.find((item) => item.number === number);
+  if (pr) {
+    ReviewCenterPanel.createOrShow(extensionUri, repoRoot, pr.number);
+    logInfo("existing graph pull request redirected to review center", { repoRoot, number: pr.number });
+    return;
+  }
   PullRequestPreviewPanel.createOrShow(
     extensionUri,
     new PullRequestService(repoRoot),
-    pr?.baseRefName,
-    pr
+    undefined,
+    undefined
   );
 }
 

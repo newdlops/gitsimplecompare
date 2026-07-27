@@ -113,7 +113,7 @@ async function focusMaterializedUntrackedConflicts(
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "graphCheckoutUntrackedConflict",
   });
-  await vscode.commands.executeCommand("gitSimpleCompare.changes.focus");
+  await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
   if (paths[0]) {
     await vscode.commands.executeCommand(
       "vscode.open",

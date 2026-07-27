@@ -237,7 +237,7 @@ export class GraphPanelMessageRouter {
     } else if (message.type === "refreshPullRequestDetail") {
       await sendGraphPullRequestDetail(this.repoRoot, message.number, this.deps.post);
     } else if (message.type === "openPullRequest") {
-      await openGraphPullRequest(this.pullRequestPager.items, message.number);
+      openGraphPullRequest(this.deps.extensionUri, this.repoRoot, this.pullRequestPager.items, message.number);
     } else if (message.type === "previewStagedPullRequest") {
       openStagedPullRequestPreview(
         this.deps.extensionUri,
