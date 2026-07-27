@@ -299,3 +299,22 @@ test("PR Preview 게시 클라이언트 스크립트가 안전한 JavaScript로 
   assert.equal(script.includes("Create <PR>"), false);
   assert.match(script, /Create \\u003cPR\\u003e/);
 });
+
+test("PR Preview는 생성 전용이며 서버 리뷰 상태를 중복 보유하지 않는다", () => {
+  const script = pullRequestPreviewScript({
+    ready: "Create",
+    busy: "Publishing",
+    existing: "Existing",
+    selectTarget: "Select target",
+    selectLocalSource: "Select source",
+    missingMessage: "Missing title",
+    noChanges: "No changes",
+    updating: "Updating",
+  });
+
+  assert.match(script, /role="tablist"/);
+  assert.match(script, /role="tabpanel"/);
+  assert.match(script, /ArrowLeft/);
+  assert.doesNotMatch(script, /data-toggle-viewed-file/);
+  assert.doesNotMatch(script, /pullRequestPreviewTimelineScript/);
+});
