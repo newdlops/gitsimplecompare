@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-26T09:13:34Z",
+  "title": "Design System: Git Simple Compare",
+  "extensions": {
+    "colorMeta": {
+      "action": {
+        "role": "primary",
+        "displayName": "Workbench Action",
+        "canonical": "var(--vscode-button-background)"
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Workbench Canvas",
+        "canonical": "var(--vscode-editor-background)"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Tool Surface",
+        "canonical": "var(--vscode-editorWidget-background)"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Metadata",
+        "canonical": "var(--vscode-descriptionForeground)"
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "Focus Signal",
+        "canonical": "var(--vscode-focusBorder)"
+      },
+      "error": {
+        "role": "tertiary",
+        "displayName": "Operational Error",
+        "canonical": "var(--vscode-errorForeground)"
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Workbench Title",
+        "purpose": "PR 제목과 작업 패널의 핵심 제목."
+      },
+      "body": {
+        "displayName": "Workbench Body",
+        "purpose": "목록, 설명, 댓글의 기본 텍스트."
+      },
+      "label": {
+        "displayName": "Compact Label",
+        "purpose": "상태, 표 머리글, 작은 컨트롤."
+      },
+      "code": {
+        "displayName": "Editor Code",
+        "purpose": "diff, 경로, SHA, suggestion."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-widget",
+        "value": "var(--vscode-widget-shadow)",
+        "purpose": "menu, popover, tooltip, drag preview처럼 실제로 겹치는 층에만 사용."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "80ms ease-out",
+        "purpose": "hover, focus, selected 상태의 짧은 전환."
+      },
+      {
+        "name": "layer-standard",
+        "value": "120ms ease-out",
+        "purpose": "drawer, inspector, popover의 공간 변화."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0ms",
+        "purpose": "prefers-reduced-motion에서 비필수 이동과 전환을 제거."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "560px"
+      },
+      {
+        "name": "small",
+        "value": "800px"
+      },
+      {
+        "name": "large",
+        "value": "1200px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "현재 작업 영역의 단 하나의 완료 행동.",
+      "html": "<button class=\"ds-btn-primary\">Submit review</button>",
+      "css": ".ds-btn-primary { height: 28px; padding: 4px 10px; border: 1px solid var(--vscode-button-border, transparent); border-radius: 3px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); font: inherit; } .ds-btn-primary:hover { background: var(--vscode-button-hoverBackground); } .ds-btn-primary:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; } .ds-btn-primary:disabled { color: var(--vscode-disabledForeground); cursor: not-allowed; }"
+    },
+    {
+      "name": "Toolbar Icon Button",
+      "kind": "button",
+      "refersTo": "toolbar-button",
+      "description": "툴팁과 접근성 이름을 가진 compact toolbar action.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Refresh review\" title=\"Refresh review\"><svg aria-hidden=\"true\" viewBox=\"0 0 16 16\"><path fill=\"currentColor\" d=\"M13.5 3.5v3h-3l1.2-1.2A5 5 0 1 0 13 9h1.5a6.5 6.5 0 1 1-1.7-4.4z\"/></svg></button>",
+      "css": ".ds-icon-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 3px; background: transparent; color: var(--vscode-icon-foreground); } .ds-icon-btn svg { width: 16px; height: 16px; } .ds-icon-btn:hover { background: var(--vscode-toolbar-hoverBackground); } .ds-icon-btn:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "명시적 접근성 이름과 focus-within을 가진 compact 검색 필드.",
+      "html": "<label class=\"ds-search\"><span class=\"ds-sr-only\">Search pull requests</span><input placeholder=\"Search pull requests…\" /></label>",
+      "css": ".ds-search { display: flex; min-width: 180px; height: 28px; border: 1px solid var(--vscode-input-border, transparent); border-radius: 3px; background: var(--vscode-input-background); } .ds-search:focus-within { border-color: var(--vscode-focusBorder); outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; } .ds-search input { width: 100%; padding: 4px 8px; border: 0; outline: 0; background: transparent; color: var(--vscode-input-foreground); font: inherit; } .ds-search input::placeholder { color: var(--vscode-input-placeholderForeground); } .ds-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "아이콘·텍스트·색을 함께 사용하는 짧은 PR 상태.",
+      "html": "<span class=\"ds-status\"><svg aria-hidden=\"true\" viewBox=\"0 0 16 16\"><path fill=\"currentColor\" d=\"M6.5 11.2 3.3 8l1-1 2.2 2.2L11.7 4l1 1z\"/></svg>Checks passed</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 4px; min-height: 20px; padding: 2px 6px; border-radius: 999px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: 11px; font-weight: 600; } .ds-status svg { width: 14px; height: 14px; }"
+    },
+    {
+      "name": "Selectable List Row",
+      "kind": "nav",
+      "refersTo": "list-row",
+      "description": "고밀도 목록과 파일 탐색의 공통 행.",
+      "html": "<button class=\"ds-list-row\"><span class=\"ds-list-main\">src/webview/review.ts</span><span class=\"ds-list-meta\">3 threads</span></button>",
+      "css": ".ds-list-row { display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 3px 6px; border: 0; border-radius: 2px; background: transparent; color: var(--vscode-foreground); font: inherit; text-align: left; } .ds-list-row:hover { background: var(--vscode-list-hoverBackground); color: var(--vscode-list-hoverForeground); } .ds-list-row:focus-visible { outline: 1px solid var(--vscode-list-focusOutline, var(--vscode-focusBorder)); outline-offset: -1px; } .ds-list-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-list-meta { margin-left: auto; color: var(--vscode-descriptionForeground); font-size: 11px; white-space: nowrap; }"
+    },
+    {
+      "name": "Review Queue Row",
+      "kind": "custom",
+      "description": "관리 큐에서 PR 상태를 압축해 보여주고 코드 리뷰로 드릴다운하는 signature row.",
+      "html": "<button class=\"ds-pr-row\"><span class=\"ds-pr-id\">repo #418</span><strong class=\"ds-pr-title\">Harden review draft recovery</strong><span class=\"ds-pr-need\">Your review</span><span class=\"ds-pr-checks\">2 failed</span><time>12m</time></button>",
+      "css": ".ds-pr-row { display: grid; grid-template-columns: minmax(90px,auto) minmax(180px,1fr) auto auto 44px; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 8px; border: 0; border-bottom: 1px solid var(--vscode-panel-border); background: transparent; color: var(--vscode-foreground); font: inherit; text-align: left; } .ds-pr-row:hover { background: var(--vscode-list-hoverBackground); } .ds-pr-row:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; } .ds-pr-id, .ds-pr-checks, .ds-pr-row time { color: var(--vscode-descriptionForeground); font-size: 11px; } .ds-pr-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; } .ds-pr-need { padding: 2px 6px; border-radius: 999px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-size: 11px; font-weight: 600; } .ds-pr-checks { color: var(--vscode-errorForeground); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Native Control Room",
+    "overview": "Git Simple Compare는 별도 SaaS 대시보드처럼 보이지 않고 VS Code가 원래 제공했을 법한 작업 제어면처럼 느껴져야 한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·다음 행동을 명확히 보여준다. 개인 개발자의 빠른 키보드 흐름과 팀·조직의 PR 운영 흐름은 동급이며 동일한 상태 모델과 상호작용 문법을 공유한다.",
+    "keyCharacteristics": [
+      "VS Code 테마와 글꼴을 그대로 따르는 네이티브성",
+      "2·4·6·8·12·16·24px 리듬의 차분한 고밀도",
+      "상태·권한·대상·복구 경로가 항상 드러나는 운영 도구 문법",
+      "목록에서 코드와 대화로 즉시 이동하는 드릴다운 구조",
+      "색상, 아이콘, 텍스트를 함께 쓰는 접근 가능한 상태 표현",
+      "밝은·어두운·고대비 테마에서 동일한 정보 위계"
+    ],
+    "rules": [
+      {
+        "name": "The Theme Owns Color Rule",
+        "body": "제품 고유의 고정 hex 색상으로 VS Code 테마를 덮어쓰지 않는다.",
+        "section": "colors"
+      },
+      {
+        "name": "The Triple-Encoding Rule",
+        "body": "중요 상태는 색상만으로 표시하지 않는다.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Primary Action Rule",
+        "body": "한 작업 영역 안에서 채워진 primary 버튼은 하나만 보인다.",
+        "section": "colors"
+      },
+      {
+        "name": "The Context Never Disappears Rule",
+        "body": "현재 작업에 필요한 저장소·브랜치·PR 문맥은 sticky context bar에 남는다.",
+        "section": "layout"
+      },
+      {
+        "name": "The Queue-to-Code Rule",
+        "body": "관리 큐의 모든 행은 한 번의 활성화로 해당 PR 리뷰 workspace를 연다.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-by-Default Rule",
+        "body": "정적인 목록, 통계, 파일 블록에는 그림자를 사용하지 않는다.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do VS Code 의미 토큰과 Codicon을 사용하고 고대비 테마까지 확인한다.",
+      "Do 개인 리뷰와 팀·조직 관리 화면을 동일한 우선순위와 상태 모델로 설계한다.",
+      "Do 화면에 보이는 모든 action에 hover, focus, active, disabled, pending, success, error 상태를 정의한다.",
+      "Do 긴 파일명, 1,000개 파일, 수천 개 댓글, binary/renamed/deleted 파일, 한국어/영어 혼합을 정상 상태로 취급한다."
+    ],
+    "donts": [
+      "Don't GitHub 웹 UI를 그대로 복제하거나 별도의 화려한 SaaS 디자인 언어를 만든다.",
+      "Don't 상단 toolbar 한 줄에 모든 기능을 같은 위계의 icon button으로 놓는다.",
+      "Don't hover에서만 발견 가능한 핵심 행동을 만든다.",
+      "Don't outline: none을 대체 focus 표시 없이 사용한다.",
+      "Don't 단순 build/typecheck 통과를 visual QA 완료로 간주한다.",
+      "Don't 새 push로 댓글 위치가 오래되었을 때 draft를 조용히 새 head에 제출한다."
+    ]
+  }
+}
