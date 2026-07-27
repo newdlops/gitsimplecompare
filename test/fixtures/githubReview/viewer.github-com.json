@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "source": "gh api graphql",
+  "operation": "viewer",
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "x-github-api-version": "2022-11-28",
+      "x-ratelimit-remaining": "4999"
+    },
+    "body": {
+      "data": {
+        "viewer": {
+          "id": "MDQ6VXNlcjE=",
+          "login": "fixture-reviewer"
+        }
+      }
+    }
+  }
+}

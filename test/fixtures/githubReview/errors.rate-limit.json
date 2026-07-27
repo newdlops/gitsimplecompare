@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "source": "gh api",
+  "operation": "queue.search",
+  "response": {
+    "status": 429,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "retry-after": "60",
+      "x-ratelimit-remaining": "0"
+    },
+    "body": {
+      "message": "API rate limit exceeded"
+    },
+    "stderr": "HTTP 429: API rate limit exceeded"
+  }
+}
