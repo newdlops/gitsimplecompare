@@ -3,7 +3,11 @@
 import * as vscode from "vscode";
 import { buildCommitMenu, buildScmMenu } from "../commands/scmActions";
 import { changesWebviewI18n } from "./changesI18n";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 import {
   makeNonce,
   resourceVersion,
@@ -32,11 +36,18 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesStashes.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingOperation.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesInformationArchitecture.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesMenu.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesTreeSelection.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesWorkingTreeActions.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesHistory.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesSectionLayout.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
     vscode.Uri.joinPath(mediaRoot, "changesAiPlan.css"),
     vscode.Uri.joinPath(mediaRoot, "changesHooks.css"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.css"),
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesInformationArchitecture.css"),
     vscode.Uri.joinPath(mediaRoot, "changes.css"),
   ]);
   const scriptUri = webview.asWebviewUri(
@@ -75,6 +86,24 @@ export function buildChangesHtml(
   const stashesScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesStashes.js"), version)
   );
+  const informationArchitectureScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesInformationArchitecture.js"), version)
+  );
+  const menuScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesMenu.js"), version)
+  );
+  const treeSelectionScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesTreeSelection.js"), version)
+  );
+  const workingTreeActionsScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorkingTreeActions.js"), version)
+  );
+  const historyScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesHistory.js"), version)
+  );
+  const sectionLayoutScriptUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesSectionLayout.js"), version)
+  );
   const styleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
   );
@@ -93,13 +122,16 @@ export function buildChangesHtml(
   const hooksStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesHooks.css"), version)
   );
+  const informationArchitectureStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesInformationArchitecture.css"), version)
+  );
   const codiconUri = webview.asWebviewUri(
     withVersion(
       vscode.Uri.joinPath(extensionUri, "media", "codicons", "codicon.css"),
       version
     )
   );
-  const tooltipResources = instantTooltipResources(webview, extensionUri);
+  const sharedResources = sharedWebviewResources(webview, extensionUri);
   const nonce = makeNonce();
   const csp = [
     `default-src 'none'`,
@@ -117,6 +149,7 @@ export function buildChangesHtml(
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
   <link href="${compareStyleUri}" rel="stylesheet" />
@@ -124,23 +157,29 @@ export function buildChangesHtml(
   <link href="${aiPlanStyleUri}" rel="stylesheet" />
   <link href="${hooksStyleUri}" rel="stylesheet" />
   <link href="${worktreesStyleUri}" rel="stylesheet" />
-  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
+  <link href="${informationArchitectureStyleUri}" rel="stylesheet" />
   <title>Changes</title>
 </head>
-<body>
+<body class="gsc-surface">
   <div id="root"></div>
   <script nonce="${nonce}">window.__gscI18n=${JSON.stringify(
     i18n
   )};window.__gscMenu=${JSON.stringify(
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
-  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+  ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
   <script nonce="${nonce}" src="${compareScriptUri}"></script>
   <script nonce="${nonce}" src="${stashesScriptUri}"></script>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${informationArchitectureScriptUri}"></script>
+  <script nonce="${nonce}" src="${menuScriptUri}"></script>
+  <script nonce="${nonce}" src="${treeSelectionScriptUri}"></script>
+  <script nonce="${nonce}" src="${workingTreeActionsScriptUri}"></script>
+  <script nonce="${nonce}" src="${historyScriptUri}"></script>
+  <script nonce="${nonce}" src="${sectionLayoutScriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${aiScriptUri}"></script>
   <script nonce="${nonce}" src="${aiPlanScriptUri}"></script>
   <script nonce="${nonce}" src="${hooksScriptUri}"></script>

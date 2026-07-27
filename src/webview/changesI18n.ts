@@ -9,8 +9,13 @@ import * as vscode from "vscode";
 export function changesWebviewI18n(): Record<string, string> {
   return {
     repositories: vscode.l10n.t("Repositories"),
+    repositoryContext: vscode.l10n.t("Repository context"),
+    workingChanges: vscode.l10n.t("Working Changes"),
+    tools: vscode.l10n.t("Tools"),
     compareBranches: vscode.l10n.t("Compare Branches"),
     changes: vscode.l10n.t("Changes"),
+    reviews: vscode.l10n.t("Reviews"),
+    sidebarNavigation: vscode.l10n.t("Git Simple Compare navigation"),
     current: vscode.l10n.t("current"),
     from: vscode.l10n.t("From:"),
     to: vscode.l10n.t("To:"),

@@ -2,7 +2,12 @@
 // - 패널 생애주기에서 CSP, URI 버전, 마크업 책임을 분리한다.
 // - 정적/동적 버튼이 공유할 지역화 문자열을 한 번에 웹뷰 전역으로 주입한다.
 import * as vscode from "vscode";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+  type SharedWebviewResources,
+} from "./sharedWebviewResources";
 import {
   makeNonce,
   resourceVersion,
@@ -15,8 +20,7 @@ interface CommitPlanResources {
   executionScriptUri: vscode.Uri;
   styleUri: vscode.Uri;
   codiconUri: vscode.Uri;
-  tooltipScriptUri: vscode.Uri;
-  tooltipStyleUri: vscode.Uri;
+  sharedResources: SharedWebviewResources;
 }
 
 /** 웹뷰 JS와 HTML 양쪽에서 사용하는 지역화 문자열 사전. */
@@ -68,7 +72,7 @@ function commitPlanResources(
     executionScriptFile,
     styleFile,
   ]);
-  const tooltip = instantTooltipResources(webview, extensionUri);
+  const sharedResources = sharedWebviewResources(webview, extensionUri);
   return {
     scriptUri: webview.asWebviewUri(withVersion(scriptFile, version)),
     executionScriptUri: webview.asWebviewUri(
@@ -76,8 +80,7 @@ function commitPlanResources(
     ),
     styleUri: webview.asWebviewUri(withVersion(styleFile, version)),
     codiconUri: webview.asWebviewUri(withVersion(codiconFile, version)),
-    tooltipScriptUri: tooltip.scriptUri,
-    tooltipStyleUri: tooltip.styleUri,
+    sharedResources,
   };
 }
 
@@ -183,7 +186,7 @@ function documentHtml(
   return `<!DOCTYPE html>
 <html lang="${htmlAttribute(vscode.env.language)}">
 ${headHtml(resources, csp, title)}
-<body>
+<body class="gsc-surface">
   ${topbarHtml(title, i18n)}
   <main>
     ${promptHtml(i18n)}
@@ -198,7 +201,7 @@ ${headHtml(resources, csp, title)}
   <script nonce="${nonce}">window.__gscCommitPlanI18n=${jsonForScript(
     i18n
   )};</script>
-  <script nonce="${nonce}" src="${resources.tooltipScriptUri}"></script>
+  ${sharedWebviewScriptTags(resources.sharedResources, nonce)}
   <script nonce="${nonce}" src="${resources.executionScriptUri}"></script>
   <script nonce="${nonce}" src="${resources.scriptUri}"></script>
 </body>
@@ -242,9 +245,9 @@ function headHtml(
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${htmlAttribute(csp)}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  ${sharedWebviewStyleTags(resources.sharedResources)}
   <link href="${resources.codiconUri}" rel="stylesheet" />
   <link href="${resources.styleUri}" rel="stylesheet" />
-  <link href="${resources.tooltipStyleUri}" rel="stylesheet" />
   <title>${htmlText(title)}</title>
 </head>`;
 }
