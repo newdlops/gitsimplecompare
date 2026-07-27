@@ -113,6 +113,7 @@ async function preparePage(
     });
     target.__gscMenu = [];
     target.__gscCommitMenu = [];
+    target.__gscReviewWritesEnabled = true;
   }, { i18nKey, labels });
 }
 
@@ -162,14 +163,14 @@ async function postWorkspacePayload(page: Page, payload: Record<string, unknown>
 /** small Changes fixture로 실제 Changes renderer를 mount한다. */
 export async function mountChanges(page: Page, fixture: WebviewFixture): Promise<void> {
   await preparePage(page, "changes", "__gscI18n", {
-    repositories: "Repositories", repositoryContext: "Repository context", workingChanges: "Working Changes", tools: "Tools",
+    repositories: "Repositories", repositoryContext: "Repository context", workingChanges: "Working Changes", tools: "Tools", resizeRegions: "Resize {0} and {1}",
     changes: "Changes", reviews: "Reviews", sidebarNavigation: "Git Simple Compare navigation", history: "History", compareBranches: "Compare Branches", stashes: "Stashes", worktrees: "Worktrees",
     noChanges: "No working tree changes.", stagedChanges: "Staged Changes", commit: "Commit", commitPlaceholder: "Message",
     toggleSection: "Toggle section", collapseSection: "Collapse {0}", expandSection: "Expand {0}",
   });
   await addStyles(page, [
     mediaPath("shared", "reset.css"), mediaPath("shared", "tokens.css"), mediaPath("shared", "controls.css"), mediaPath("shared", "navigation.css"),
-    mediaPath("shared", "data-display.css"), mediaPath("shared", "feedback.css"), mediaPath("shared", "layout.css"), mediaPath("changes", "changes.css"), mediaPath("changes", "changesCommitBox.css"),
+    mediaPath("shared", "data-display.css"), mediaPath("shared", "feedback.css"), mediaPath("shared", "layout.css"), mediaPath("changes", "changesInformationArchitecture.css"), mediaPath("changes", "changes.css"), mediaPath("changes", "changesCommitBox.css"),
   ]);
   await addScripts(page, [
     mediaPath("shared", "a11y.js"), mediaPath("shared", "dom.js"), mediaPath("shared", "sidebarShell.js"), mediaPath("shared", "keyboard.js"), mediaPath("shared", "overlay.js"), mediaPath("shared", "persistedState.js"), mediaPath("shared", "requestState.js"), mediaPath("shared", "splitter.js"), mediaPath("shared", "virtualList.js"),
@@ -184,7 +185,7 @@ export async function mountChanges(page: Page, fixture: WebviewFixture): Promise
 /** Personal/Management queue fixture로 실제 Reviews renderer를 mount한다. */
 export async function mountReviews(page: Page, fixture: WebviewFixture): Promise<void> {
   await preparePage(page, "reviews", "__gscReviewsI18n", {
-    title: "Pull Request Reviews", changes: "Changes", reviews: "Reviews", sidebarNavigation: "Git Simple Compare navigation", refresh: "Refresh pull request reviews", scopeTabs: "Review queue scope", personal: "Personal", management: "Management", reviewWritesDisabled: "Review write actions are disabled in this release.",
+    title: "Pull Request Reviews", changes: "Changes", reviews: "Reviews", sidebarNavigation: "Git Simple Compare navigation", refresh: "Refresh pull request reviews", scopeTabs: "Review queue scope", personal: "Personal", management: "Management", reviewWritesDisabled: "Review write actions are disabled by settings.",
     showQueue: "Show {0} review queue", skipToContent: "Skip to main content", loading: "Loading pull request reviews", unavailable: "Reviews are unavailable",
     cachedSummaryTitle: "Cached review summary", cachedSummaryCounts: "{0} personal · {1} management pull requests", cachedSummaryRefreshing: "Showing cached counts while GitHub refreshes the review queues.", cachedSummaryStale: "Showing counts last updated {0} while GitHub refreshes the review queues.", cachedSummaryError: "Cached counts remain available, but GitHub could not refresh the review queues.",
     authenticationRequired: "GitHub authentication required", permissionRequired: "Review queue permission required", connectionUnavailable: "GitHub connection unavailable", rateLimited: "GitHub rate limit reached", signInWithGh: "Sign in with gh", signInWithGhTitle: "Start GitHub CLI sign-in in a terminal", openOutput: "Open Git Simple Compare Output", openOutputTitle: "Open Git Simple Compare Output for review queue diagnostics",
@@ -213,7 +214,7 @@ export async function mountReviewWorkspace(page: Page, fixture: WebviewFixture):
   await preparePage(page, "review-center", "__gscReviewCenterI18n", {
     reviewCenter: "Review Workspace", overview: "Overview", files: "Files", commits: "Commits", checks: "Checks", activity: "Activity",
     refresh: "Refresh", openGitHub: "Open GitHub", openGitHubTitle: "Open this pull request in GitHub", contentTabs: "Review content", showTab: "Show {0}",
-    skipToContent: "Skip to main content", loading: "Loading review", unavailable: "Review is unavailable", reviewWritesDisabled: "Review write actions are disabled in this release.", retry: "Retry", retryTitle: "Retry loading review",
+    skipToContent: "Skip to main content", loading: "Loading review", unavailable: "Review is unavailable", reviewWritesDisabled: "Review write actions are disabled by settings.", retry: "Retry", retryTitle: "Retry loading review",
     description: "Description", noDescription: "No description", reviewState: "Review state", metadata: "Metadata", assignees: "Assignees", labels: "Labels", milestone: "Milestone", reviewers: "Reviewers", none: "None",
     manageMetadata: "Manage metadata", managementOperation: "Operation", addLabels: "Add labels", removeLabels: "Remove labels", addAssignees: "Add assignees", removeAssignees: "Remove assignees", requestReviewers: "Request reviewers", removeReviewers: "Remove review requests", setMilestone: "Set milestone", clearMilestone: "Clear milestone", convertToDraft: "Convert to draft", markReadyForReview: "Mark ready for review",
     metadataValues: "Values", metadataValuesHint: "Comma-separated values", milestoneValues: "Milestone", milestoneValuesHint: "Milestone number", reviewerValues: "Reviewers", reviewerValuesHint: "User or team", clearMilestoneHint: "Clear the milestone", stageChangeHint: "This changes review state", previewChanges: "Preview changes", previewingChanges: "Preparing changes", valuesRequired: "Enter a value", metadataPermissionDenied: "You cannot manage metadata",

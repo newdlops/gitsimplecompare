@@ -12,6 +12,7 @@ export function changesWebviewI18n(): Record<string, string> {
     repositoryContext: vscode.l10n.t("Repository context"),
     workingChanges: vscode.l10n.t("Working Changes"),
     tools: vscode.l10n.t("Tools"),
+    resizeRegions: vscode.l10n.t("Resize {0} and {1}"),
     compareBranches: vscode.l10n.t("Compare Branches"),
     changes: vscode.l10n.t("Changes"),
     reviews: vscode.l10n.t("Reviews"),

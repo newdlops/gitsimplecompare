@@ -17,6 +17,7 @@
       repositoryContext: "Repository context",
       workingChanges: "Working Changes",
       tools: "Tools",
+      resizeRegions: "Resize {0} and {1}",
       compareBranches: "Compare Branches",
       changes: "Changes",
       reviews: "Reviews",
@@ -936,6 +937,7 @@
     HEADER_H,
     MIN_SECTION,
     DEFAULT_WEIGHT,
+    strings: T,
     vscode,
   });
 
@@ -1166,7 +1168,7 @@
     }
     bindCommitBox();
     bindGroupActions();
-    bindRowActions();
+    bindRowActions(rootEl);
     bindHistory();
     window.__gscStashes?.bind?.(rootEl, vscode, {
       state,

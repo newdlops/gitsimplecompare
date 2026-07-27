@@ -21,7 +21,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   overflow-x: hidden;
 }
 
@@ -32,6 +32,7 @@ body {
   flex: 0 0 auto;
   flex-direction: column;
   min-width: 0;
+  position: relative;
 }
 
 .changes-region__title {
@@ -304,6 +305,12 @@ body {
   height: 4px;
   cursor: ns-resize;
   z-index: 10;
+}
+
+/* Working Changes / Tools 그룹 경계는 Tools 제목의 첫 4px에서 잡을 수 있다.
+   Tools 영역 자체가 overflow를 가지므로 음수 위치로 두지 않아 clip되지 않게 한다. */
+.changes-region-sash {
+  top: 0;
 }
 
 .sash::before {
