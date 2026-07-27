@@ -10,7 +10,11 @@ import {
 } from "../ui/githubWebCookieSecret";
 import { logError, logInfo } from "../ui/outputLog";
 import { nonceValue } from "./nonce";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 
 type GitHubWebSessionMessage =
   | { type: "ready" }
@@ -223,7 +227,7 @@ export class GitHubWebSessionPanel {
   private html(): string {
     const nonce = nonceValue();
     const webview = this.panel.webview;
-    const tooltipResources = instantTooltipResources(webview, this.extensionUri);
+    const sharedResources = sharedWebviewResources(webview, this.extensionUri);
     const csp = [
       "default-src 'none'",
       `style-src ${webview.cspSource} 'nonce-${nonce}'`,
@@ -240,10 +244,10 @@ export class GitHubWebSessionPanel {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(vscode.l10n.t("GitHub Web Session"))}</title>
-  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
+  ${sharedWebviewStyleTags(sharedResources)}
   <style nonce="${nonce}">${styles()}</style>
 </head>
-<body>
+<body class="gsc-surface">
   <main class="shell">
     <header class="hero">
       <p class="eyebrow">${escapeHtml(vscode.l10n.t("Suggested changesets"))}</p>
@@ -273,7 +277,7 @@ export class GitHubWebSessionPanel {
       <p id="status" class="status" role="status"></p>
     </section>
   </main>
-  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+  ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}">${script()}</script>
 </body>
 </html>`;

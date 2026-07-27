@@ -16,13 +16,18 @@ import {
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
 import { nonceValue } from "./nonce";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 import {
   PullRequestPreviewPublisher,
   type PullRequestPreviewPublishMessage,
 } from "./pullRequestPreviewPublish";
 import { pullRequestPreviewScript } from "./pullRequestPreviewScript";
 import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
+import { ReviewCenterPanel } from "./reviewCenterPanel";
 
 type PreviewMessage =
   | { type: "ready" }
@@ -96,7 +101,7 @@ export class PullRequestPreviewPanel {
         this.existingPr = result.pullRequest;
         this.baseBranch = result.pullRequest.baseRefName;
         this.sourceBranch = result.pullRequest.headRefName;
-        await this.sendPreview();
+        this.openExistingReview();
       }
     );
     this.panel.webview.html = this.html();
@@ -167,8 +172,8 @@ export class PullRequestPreviewPanel {
       await this.sendPreview();
       return;
     }
-    if (msg.type === "openExistingPr" && this.existingPr?.url) {
-      await vscode.env.openExternal(vscode.Uri.parse(this.existingPr.url));
+    if (msg.type === "openExistingPr") {
+      this.openExistingReview();
       return;
     }
     if (msg.type === "generatePullRequestMessage") {
@@ -356,7 +361,7 @@ export class PullRequestPreviewPanel {
   /** preview 웹뷰 HTML 을 만든다. */
   private html(): string {
     const nonce = nonceValue();
-    const tooltipResources = instantTooltipResources(
+    const sharedResources = sharedWebviewResources(
       this.panel.webview,
       this.extensionUri
     );
@@ -368,7 +373,7 @@ export class PullRequestPreviewPanel {
       "No pull request message to copy"
     );
     const publishPrTitle = vscode.l10n.t("Create Pull Request on GitHub");
-    const openPrTitle = vscode.l10n.t("Open related Pull Request on GitHub");
+    const openPrTitle = vscode.l10n.t("Open existing review in Review Center");
     const previewScript = pullRequestPreviewScript({
       ready: publishPrTitle,
       busy: vscode.l10n.t("Publishing Pull Request to GitHub..."),
@@ -392,9 +397,9 @@ export class PullRequestPreviewPanel {
       <meta http-equiv="Content-Security-Policy" content="${csp}" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link href="${codiconUri}" rel="stylesheet" />
-      <link href="${tooltipResources.styleUri}" rel="stylesheet" />
+      ${sharedWebviewStyleTags(sharedResources)}
       <style nonce="${nonce}">${pullRequestPreviewStyles()}</style>
-      <title>Staged PR Preview</title></head><body>
+      <title>Staged PR Preview</title></head><body class="gsc-surface">
       <header class="topbar">
         <div class="topbar-title">
           <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
@@ -424,12 +429,12 @@ export class PullRequestPreviewPanel {
           </button>
           <button id="open-pr" class="icon-button" type="button" title="${openPrTitle}"
             aria-label="${openPrTitle}" data-tooltip="${openPrTitle}" hidden>
-            <span class="codicon codicon-mark-github" aria-hidden="true"></span>
+            <span class="codicon codicon-comment-discussion" aria-hidden="true"></span>
           </button>
         </div>
       </header>
       <main id="content"><p class="placeholder">Loading...</p></main>
-      <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+      ${sharedWebviewScriptTags(sharedResources, nonce)}
       <script nonce="${nonce}">${previewScript}</script>
     </body></html>`;
   }
@@ -437,6 +442,23 @@ export class PullRequestPreviewPanel {
   /** 타입이 보장된 메시지를 웹뷰로 보낸다. */
   private post(message: unknown): void {
     void this.panel.webview.postMessage(message);
+  }
+
+  /** 기존 PR 또는 새로 publish한 PR을 유일한 리뷰 작업면으로 열고 creation preview는 닫는다. */
+  private openExistingReview(): void {
+    const pullRequest = this.existingPr;
+    if (!pullRequest?.number) {
+      return;
+    }
+    ReviewCenterPanel.createOrShow(
+      this.extensionUri,
+      this.service.repoRoot,
+      pullRequest.number
+    );
+    logInfo("PR preview transitioned to review center", {
+      number: pullRequest.number,
+    });
+    this.panel.dispose();
   }
 
   /** 현재 선택된 source/target 이 기존 PR 의 head/base 와 같은지 확인한다. */

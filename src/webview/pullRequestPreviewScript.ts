@@ -3,7 +3,6 @@
 import { pullRequestPreviewBranchComboboxScript } from "./pullRequestPreviewBranchCombobox";
 import { pullRequestPreviewDiffScript } from "./pullRequestPreviewDiffRenderer";
 import { pullRequestPreviewMarkdownScript } from "./pullRequestPreviewMarkdown";
-import { pullRequestPreviewTimelineScript } from "./pullRequestPreviewTimeline";
 
 /** extension에서 번역해 웹뷰 게시 버튼에 주입하는 동적 상태 문자열이다. */
 export interface PullRequestPreviewPublishI18n {
@@ -34,13 +33,13 @@ export function pullRequestPreviewScript(
     const configureAiCli = document.getElementById("configure-ai-cli");
     const copyPrMessage = document.getElementById("copy-pr-message");
     const publishPr = document.getElementById("publish-pr");
-    let activeTab = 'conversation';
+    // 생성 전용 미리보기는 변경 파일을 첫 화면으로 둔다. 기존 PR의 대화는 Review Center에서만 다룬다.
+    let activeTab = 'files';
     let activeCommitHash = '';
     let collapsedFolders = new Set();
     let collapsedFiles = new Set();
     let expandedDiffContexts = new Map();
     const savedState = vscode.getState?.() || {};
-    let viewedFiles = new Set(Array.isArray(savedState.viewedFiles) ? savedState.viewedFiles : []);
     let fileNavMode = 'tree';
     let filesReviewMode = 'cards';
     let diffLayoutMode = savedState.diffLayoutMode === 'split' ? 'split' : 'unified';
@@ -121,7 +120,6 @@ export function pullRequestPreviewScript(
       bindPreviewBranches();
       bindOpenDiffs();
       bindFileToggles();
-      bindViewedToggles();
       bindViewButtons();
       bindContextToggles();
     }
@@ -224,8 +222,7 @@ export function pullRequestPreviewScript(
       '</section>';
     }
     function tabbar(fileCount, commitCount) {
-      return '<nav class="tabbar" aria-label="Pull request sections">' +
-        tabButton('conversation', 'comment-discussion', 'Conversation', '') +
+      return '<nav class="tabbar" role="tablist" aria-label="Pull request sections">' +
         tabButton('files', 'files', 'Files changed', fileCount) +
         tabButton('commits', 'git-commit', 'Commits', commitCount) +
       '</nav>';
@@ -233,27 +230,37 @@ export function pullRequestPreviewScript(
     function tabButton(tab, icon, label, count) {
       const active = activeTab === tab;
       const title = 'Show ' + label;
-      return '<button class="tab' + (active ? ' active' : '') + '" type="button" data-tab="' + esc(tab) + '" ' +
-        'aria-selected="' + (active ? 'true' : 'false') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
+      return '<button id="pr-preview-tab-' + esc(tab) + '" class="tab' + (active ? ' active' : '') + '" type="button" role="tab" data-tab="' + esc(tab) + '" ' +
+        'aria-selected="' + (active ? 'true' : 'false') + '" aria-controls="pr-preview-tabpanel" tabindex="' + (active ? '0' : '-1') + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' +
         '<span class="codicon codicon-' + icon + '" aria-hidden="true"></span>' + esc(label) +
         (count === '' ? '' : ' <span class="count">' + esc(count) + '</span>') + '</button>';
     }
     function tabContent(preview, files, commits) {
       if (activeTab === 'files') {
-        return '<section class="content-single">' + filesPanel(files, preview) + '</section>';
+        return '<section id="pr-preview-tabpanel" class="content-single" role="tabpanel" tabindex="0" aria-labelledby="pr-preview-tab-files">' + filesPanel(files, preview) + '</section>';
       }
       if (activeTab === 'commits') {
-        return '<section class="commit-review">' + commitsPanel(commits, preview) + commitFilesPanel(commits, preview) + '</section>';
+        return '<section id="pr-preview-tabpanel" class="commit-review" role="tabpanel" tabindex="0" aria-labelledby="pr-preview-tab-commits">' + commitsPanel(commits, preview) + commitFilesPanel(commits, preview) + '</section>';
       }
-      return '<section class="content-grid">' + conversation(preview) +
-        '<div class="side-stack">' + fileTreePanel(files, preview) + commitsPanel(commits, preview) + '</div></section>';
     }
     function bindTabs() {
       content.querySelectorAll('[data-tab]').forEach((button) => {
         button.addEventListener('click', () => {
-          activeTab = button.dataset.tab || 'conversation';
+          activeTab = button.dataset.tab || 'files';
           if (activeTab === 'commits') activeCommitHash = activeCommitHash || (commitPreviews(latestPreview)[0]?.hash || '');
           if (latestPreview) render(latestPreview);
+        });
+        button.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          const tabs = Array.from(content.querySelectorAll('[role="tab"]'));
+          const index = tabs.indexOf(button);
+          const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+            (index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+          event.preventDefault();
+          activeTab = tabs[nextIndex]?.dataset.tab || 'files';
+          if (activeTab === 'commits') activeCommitHash = activeCommitHash || (commitPreviews(latestPreview)[0]?.hash || '');
+          if (latestPreview) render(latestPreview);
+          content.querySelector('[data-tab="' + activeTab + '"]')?.focus();
         });
       });
     }
@@ -311,24 +318,6 @@ export function pullRequestPreviewScript(
         });
       });
     }
-    function bindViewedToggles() {
-      content.querySelectorAll('[data-toggle-viewed-file]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const path = button.dataset.toggleViewedFile || '';
-          const file = findPreviewFile(path) || { path };
-          const key = fileReviewKey(file);
-          if (viewedFiles.has(key)) {
-            viewedFiles.delete(key);
-            collapsedFiles.delete(path);
-          } else {
-            viewedFiles.add(key);
-            collapsedFiles.add(path);
-          }
-          persistReviewState();
-          if (latestPreview) render(latestPreview);
-        });
-      });
-    }
     function bindViewButtons() {
       content.querySelectorAll('[data-file-nav-mode]').forEach((button) => {
         button.addEventListener('click', () => { fileNavMode = button.dataset.fileNavMode || 'tree'; if (latestPreview) render(latestPreview); });
@@ -346,7 +335,7 @@ export function pullRequestPreviewScript(
       if (latestPreview) render(latestPreview);
     }
     function persistReviewState() {
-      vscode.setState?.(Object.assign({}, vscode.getState?.() || {}, { diffLayoutMode, viewedFiles: Array.from(viewedFiles) }));
+      vscode.setState?.(Object.assign({}, vscode.getState?.() || {}, { diffLayoutMode }));
     }
     function bindContextToggles() {
       content.querySelectorAll('[data-expand-context]').forEach((button) => {
@@ -364,15 +353,6 @@ export function pullRequestPreviewScript(
           if (latestPreview) render(latestPreview);
         });
       });
-    }
-    function conversation(preview) {
-      const items = preview.conversation?.length ? preview.conversation : [{ author: preview.existingPr?.author || preview.currentBranch || 'local', body: bodyText(preview), kind: 'body' }];
-      return '<section class="timeline">' + items.map(timelineItem).join('') + '</section>';
-    }
-    function bodyText(preview) {
-      if (preview.body) return preview.body;
-      if (!preview.targetBranch) return 'Select a target branch to generate a staged PR preview.';
-      return preview.existingPr ? 'No PR body.' : 'No staged PR body generated.';
     }
     function filesPanel(files, preview) {
       const emptyText = !preview?.targetBranch ? 'Select a target branch to load changed files.' : 'No changed files.';
@@ -412,11 +392,7 @@ export function pullRequestPreviewScript(
       if (!latestPreview || !message) return;
       latestPreview.title = message.title || latestPreview.title;
       latestPreview.body = message.body || latestPreview.body;
-      const author = latestPreview.existingPr?.author || latestPreview.sourceBranch || latestPreview.currentBranch || 'AI';
-      const bodyItem = { kind: 'body', author, body: latestPreview.body, action: 'generated this pull request message' };
-      const rest = (latestPreview.conversation || []).filter((item) => item.kind !== 'body');
-      latestPreview.conversation = [bodyItem].concat(rest);
-      activeTab = 'conversation';
+      activeTab = 'files';
       render(latestPreview);
     }
     function metric(icon, label, value) {
@@ -426,35 +402,27 @@ export function pullRequestPreviewScript(
       const path = displayPath(file);
       const comments = file.comments || [];
       const collapsed = collapsedFiles.has(file.path);
-      const viewed = viewedFiles.has(fileReviewKey(file));
-      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + (viewed ? ' viewed' : '') + '" data-status="' + esc(file.status) + '">' +
-        reviewFileHeaderHtml(file, path, comments, collapsed, viewed) +
+      return '<article class="review-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
+        reviewFileHeaderHtml(file, path, comments, collapsed) +
         (collapsed ? '' : '<div class="review-file-body">' + patchHtml(file.patch, false, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
     }
     function continuousFileHtml(file) {
       const comments = file.comments || [];
       const collapsed = collapsedFiles.has(file.path);
       const path = displayPath(file);
-      const viewed = viewedFiles.has(fileReviewKey(file));
-      return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + (viewed ? ' viewed' : '') + '" data-status="' + esc(file.status) + '">' +
-        reviewFileHeaderHtml(file, path, comments, collapsed, viewed) +
+      return '<article class="review-file continuous-file' + (collapsed ? ' collapsed' : '') + '" data-status="' + esc(file.status) + '">' +
+        reviewFileHeaderHtml(file, path, comments, collapsed) +
         (collapsed ? '' : '<div class="review-file-body">' + splitPatchHtml(file.patch, file.path, comments, diffLayoutMode) + '</div>') + '</article>';
     }
-    function reviewFileHeaderHtml(file, path, comments, collapsed, viewed) {
+    function reviewFileHeaderHtml(file, path, comments, collapsed) {
       const toggleTitle = (collapsed ? 'Expand file diff for ' : 'Collapse file diff for ') + path;
-      const viewedTitle = (viewed ? 'Mark file as not viewed: ' : 'Mark file as viewed: ') + path;
       return '<div class="review-file-head" title="' + esc(path) + '">' +
         '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
         '<span class="review-file-title">' + esc(path) + '</span>' +
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
-        '<button class="viewed-toggle' + (viewed ? ' viewed' : '') + '" type="button" data-toggle-viewed-file="' + esc(file.path) + '" aria-pressed="' + (viewed ? 'true' : 'false') + '" title="' + esc(viewedTitle) + '" aria-label="' + esc(viewedTitle) + '" data-tooltip="' + esc(viewedTitle) + '"><span class="codicon codicon-check" aria-hidden="true"></span><span>Viewed</span></button>' +
         '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="Open editable diff" aria-label="Open editable diff" data-tooltip="Open editable diff"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>';
-    }
-    function fileReviewKey(file) {
-      const scope = [latestPreview?.repository || '', latestPreview?.existingPr?.number || '', latestPreview?.targetRef || latestPreview?.targetBranch || '', latestPreview?.sourceRef || latestPreview?.sourceBranch || latestPreview?.currentBranch || ''].join('|');
-      return scope + '::' + (file.path || '');
     }
     function reviewFiles(preview) {
       if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;
@@ -547,7 +515,6 @@ export function pullRequestPreviewScript(
     function statusIcon(status) { return status === 'A' ? 'codicon-diff-added' : status === 'D' ? 'codicon-diff-removed' : (status === 'R' || status === 'C') ? 'codicon-diff-renamed' : status === 'U' ? 'codicon-warning' : 'codicon-diff-modified'; }
     ${pullRequestPreviewDiffScript()}
     ${pullRequestPreviewBranchComboboxScript()}
-    ${pullRequestPreviewTimelineScript()}
     ${pullRequestPreviewMarkdownScript()}
     function initial(value) { return String(value || '?').trim().charAt(0).toUpperCase() || '?'; }
     function esc(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
