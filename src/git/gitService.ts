@@ -51,6 +51,11 @@ export class GitService {
     return out.trim();
   }
 
+  /** 현재 worktree HEAD의 full commit OID를 반환해 PR head와 exact identity를 비교한다. */
+  async getHeadOid(): Promise<string> {
+    return (await this.run(["rev-parse", "HEAD"])).trim();
+  }
+
   /**
    * 로컬/원격 브랜치 목록을 반환한다.
    * - for-each-ref 로 한 번에 읽어 파싱한다. 현재 브랜치는 isCurrent=true.
