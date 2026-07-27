@@ -35,6 +35,7 @@ export function buildReviewCenterHtml(
     vscode.Uri.joinPath(mediaRoot, "reviewCenterActivity.js"),
     vscode.Uri.joinPath(mediaRoot, "reviewCenterKeyboard.js"),
     vscode.Uri.joinPath(mediaRoot, "reviewCenterFormat.js"),
+    vscode.Uri.joinPath(mediaRoot, "reviewCenterFiles.js"),
     vscode.Uri.joinPath(mediaRoot, "reviewCenter.js"),
   ];
   const version = resourceVersion(files);
@@ -51,7 +52,8 @@ export function buildReviewCenterHtml(
   const activityScriptUri = webview.asWebviewUri(withVersion(files[10], version));
   const keyboardScriptUri = webview.asWebviewUri(withVersion(files[11], version));
   const formatScriptUri = webview.asWebviewUri(withVersion(files[12], version));
-  const scriptUri = webview.asWebviewUri(withVersion(files[13], version));
+  const filesScriptUri = webview.asWebviewUri(withVersion(files[13], version));
+  const scriptUri = webview.asWebviewUri(withVersion(files[14], version));
   const shared = sharedWebviewResources(webview, extensionUri);
   const nonce = makeNonce();
   const csp = ["default-src 'none'", `style-src ${webview.cspSource}`, `script-src 'nonce-${nonce}'`].join("; ");
@@ -81,6 +83,7 @@ export function buildReviewCenterHtml(
   <script nonce="${nonce}" src="${activityScriptUri}"></script>
   <script nonce="${nonce}" src="${keyboardScriptUri}"></script>
   <script nonce="${nonce}" src="${formatScriptUri}"></script>
+  <script nonce="${nonce}" src="${filesScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

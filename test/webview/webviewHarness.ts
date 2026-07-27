@@ -226,7 +226,7 @@ export async function mountReviewWorkspace(page: Page, fixture: WebviewFixture):
     mediaPath("review-center", "reviewCenterDraft.js"), mediaPath("review-center", "reviewCenterFileComment.js"), mediaPath("review-center", "reviewCenterLineComment.js"),
     mediaPath("review-center", "reviewCenterThreadReply.js"), mediaPath("review-center", "reviewCenterCommentActions.js"), mediaPath("review-center", "reviewCenterSuggestionApply.js"),
     mediaPath("review-center", "reviewCenterCommits.js"), mediaPath("review-center", "reviewCenterChecks.js"), mediaPath("review-center", "reviewCenterManagement.js"),
-    mediaPath("review-center", "reviewCenterActivity.js"), mediaPath("review-center", "reviewCenterKeyboard.js"), mediaPath("review-center", "reviewCenterFormat.js"), mediaPath("review-center", "reviewCenter.js"),
+    mediaPath("review-center", "reviewCenterActivity.js"), mediaPath("review-center", "reviewCenterKeyboard.js"), mediaPath("review-center", "reviewCenterFormat.js"), mediaPath("review-center", "reviewCenterFiles.js"), mediaPath("review-center", "reviewCenter.js"),
   ]);
   await postWorkspacePayload(page, fixture.payload);
 }

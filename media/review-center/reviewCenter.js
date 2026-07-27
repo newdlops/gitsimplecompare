@@ -62,6 +62,14 @@
   const activityTimeline = window.__gscReviewCenterActivity({ T, state, vscode, el, button, render, section });
   const management = window.__gscReviewCenterManagement({ T, state, vscode, el, button, template, formatNumber, render });
   const keyboard = window.__gscReviewCenterKeyboard({ state, tabs, selectTab, render, vscode });
+  const files = window.__gscReviewCenterFiles({
+    T, state, el, button, template, formatNumber, section, render,
+    postMessage: (message) => {
+      vscode.setState(state);
+      vscode.postMessage(message);
+    },
+    fileComment, lineComment, renderPageControl
+  });
 
   /** 현재 비동기 상태를 보존하고 header와 본문을 한번에 교체한다. */
   function render() {
@@ -220,7 +228,7 @@
     content.setAttribute("aria-labelledby", `review-center-tab-${state.tab}`);
     if (!state.reviewWritesEnabled) content.append(el("div", "gsc-banner gsc-banner--warning review-center__notice", T.reviewWritesDisabled));
     if (state.tab === "overview") renderOverview(content);
-    if (state.tab === "files") renderFiles(content);
+    if (state.tab === "files") files.renderFiles(content);
     if (state.tab === "commits") commits.renderCommits(content);
     if (state.tab === "checks") checks.renderChecks(content);
     if (state.tab === "activity") renderActivity(content);
@@ -277,86 +285,6 @@
     });
     row.append(value);
     return row;
-  }
-
-  /** 파일별 상태와 line stat을 보여 주고 클릭하면 native diff를 열게 한다. */
-  function renderFiles(content) {
-    const files = section(template(T.filesTitle, formatNumber(state.snapshot.files.length)));
-    if (state.reviewWritesEnabled) {
-      const addLine = button("gsc-button gsc-button--ghost review-center__line-comment-action", T.addLineComment, T.addLineComment, () => lineComment.open());
-      addLine.disabled = !state.snapshot.files.length || state.lineComment.pending;
-      files.querySelector(".review-center__section-header")?.append(addLine);
-    }
-    const list = el("div", "review-center__files");
-    if (!state.snapshot.files.length) list.append(el("div", "review-center__empty", T.noFiles));
-    state.snapshot.files.forEach((file) => {
-      const item = el("div", "review-center__file");
-      const open = button("review-center__file-open", template(T.openFileDiff, file.path), "", () => openNativeFile(file.path));
-      if (state.activeFilePath === file.path) {
-        item.classList.add("review-center__file--active");
-        open.setAttribute("aria-current", "true");
-      }
-      if (state.snapshot.canOpenNativeDiff === false) {
-        open.disabled = true;
-        open.title = T.nativeDiffUnavailable;
-        open.dataset.tooltip = T.nativeDiffUnavailable;
-        open.setAttribute("aria-label", T.nativeDiffUnavailable);
-      }
-      const info = el("div", "");
-      info.append(el("div", "review-center__file-path gsc-code", file.path));
-      if (file.oldPath) info.append(el("div", "review-center__file-meta", template(T.renamedFrom, file.oldPath)));
-      const stats = el("span", "review-center__file-stats");
-      stats.append(
-        el("span", "gsc-status-pill", file.status),
-        el("span", "review-center__added", `+${formatNumber(file.additions)}`),
-        el("span", "review-center__deleted", `−${formatNumber(file.deletions)}`)
-      );
-      open.append(info, stats);
-      if (state.reviewWritesEnabled) {
-        const controls = el("div", "review-center__file-controls");
-        const pending = Boolean(state.viewedPending[file.path]);
-        const viewedAction = button(
-        "gsc-button gsc-button--ghost review-center__viewed",
-        template(file.isViewed ? T.markUnviewed : T.markViewed, file.path),
-        file.isViewed ? T.viewed : T.unviewed,
-        () => toggleViewed(file)
-      );
-        viewedAction.disabled = pending;
-        viewedAction.setAttribute("aria-busy", String(pending));
-        viewedAction.setAttribute("aria-pressed", String(file.isViewed));
-        const comment = button(
-        "gsc-button gsc-button--ghost review-center__file-comment-action",
-        template(T.addFileComment, file.path),
-        T.addFileComment,
-        () => fileComment.open(file.path)
-      );
-        comment.disabled = state.fileComment.pending;
-        controls.append(viewedAction, comment);
-        item.append(open, controls);
-      } else item.append(open);
-      list.append(item);
-    });
-    files.append(list);
-    if (state.draft.reconcile?.kind === "headChanged") files.append(el("div", "gsc-banner gsc-banner--warning review-center__notice", T.draftHeadChanged));
-    if (state.draft.reconcile?.kind === "conflict") files.append(el("div", "gsc-banner gsc-banner--warning review-center__notice", T.draftConflict));
-    if (state.reviewWritesEnabled) files.append(fileComment.renderComposer(), lineComment.renderComposer());
-    if (state.filesViewedError) files.append(el("div", "gsc-banner gsc-banner--warning review-center__notice", state.filesViewedError));
-    files.append(renderPageControl("files"));
-    content.classList.add("review-center__content--single");
-    content.append(files);
-  }
-
-  /** 한 파일의 local UI 상태를 먼저 바꾸고 host에 서버 Viewed mutation을 요청한다. */
-  function toggleViewed(file) {
-    if (state.viewedPending[file.path]) return;
-    state.snapshot.files = state.snapshot.files.map((item) => item.path === file.path ? {
-      ...item,
-      isViewed: !file.isViewed
-    } : item);
-    state.viewedPending[file.path] = true;
-    state.filesViewedError = "";
-    render();
-    vscode.postMessage({ type: "toggleViewed", path: file.path, viewed: !file.isViewed });
   }
 
   /** 파일 thread와 댓글을 표시하며 위치가 있으면 해당 native diff로 진입시킨다. */
