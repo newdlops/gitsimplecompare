@@ -394,7 +394,7 @@ export async function focusComparisonView(
     return;
   }
   try {
-    await vscode.commands.executeCommand("gitSimpleCompare.changes.focus");
+    await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
   } catch (error) {
     logWarn("comparison view focus failed", {
       focus,

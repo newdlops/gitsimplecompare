@@ -17,7 +17,8 @@ export interface PullRequestChangedFilesResult {
 
 /** Files changed 탭에서 review comment 본문과 위치를 표시하기 위한 데이터 */
 export interface PullRequestPreviewComment {
-  id?: number;
+  /** REST 숫자 id 또는 GraphQL node id. 두 API 원본을 같은 native diff 주석으로 연결한다. */
+  id?: number | string;
   parentId?: string;
   author: string;
   body: string;

@@ -38,9 +38,11 @@ import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
+import { SidebarModeController } from "./ui/sidebarModeController";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
+import { ReviewsViewProvider } from "./webview/reviewsViewProvider";
 import {
   addRefreshReasons,
   HiddenRepositoryRefreshFence,
@@ -73,6 +75,24 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const registry = new GitServiceRegistry();
   const comparison = new ComparisonController();
   context.subscriptions.push(comparison);
+
+  // Changes와 Reviews는 같은 sidebar container에서 mode로 전환한다. 기존 view ID는 유지한다.
+  const sidebarModes = new SidebarModeController(
+    context.workspaceState,
+    vscode.commands,
+    logInfo
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("gitSimpleCompare.showChanges", () =>
+      sidebarModes.select("changes")
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.showReviews", () =>
+      sidebarModes.select("reviews")
+    )
+  );
+  void sidebarModes.initialize().catch((error) => {
+    logError("sidebar mode initialization failed", error);
+  });
 
   // 2) 특정 ref 의 파일 내용을 읽기 전용 가상 문서로 제공
   const contentProvider = new BranchContentProvider(registry);
@@ -131,6 +151,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     (reason) =>
       scheduleRefresh(hiddenRepositoryRefresh.consumeVisibilityReason(reason), 0)
   );
+  // 4-1) GitHub PR Reviews: 개인 작업과 팀/조직 관리 큐를 동등한 sidebar surface로 제공한다.
+  const reviewsView = new ReviewsViewProvider(context.extensionUri, context.workspaceState, context.globalState);
   context.subscriptions.push(
     comparison.onDidChangeComparison(() =>
       changesView.refreshComparisonStatus()
@@ -138,6 +160,11 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     vscode.window.registerWebviewViewProvider(
       ChangesViewProvider.viewId,
       changesView,
+      { webviewOptions: { retainContextWhenHidden: true } }
+    ),
+    vscode.window.registerWebviewViewProvider(
+      ReviewsViewProvider.viewId,
+      reviewsView,
       { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
