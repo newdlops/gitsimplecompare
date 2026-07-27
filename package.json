@@ -43,6 +43,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:gitSimpleCompare.changes",
+    "onView:gitSimpleCompare.reviews",
     "onView:gitSimpleCompare.conflicts"
   ],
   "main": "./dist/extension.js",
@@ -83,6 +84,18 @@
         "title": "%cmd.comparePullRequest%",
         "category": "Git Simple Compare",
         "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "gitSimpleCompare.showChanges",
+        "title": "%cmd.showChanges%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.showReviews",
+        "title": "%cmd.showReviews%",
+        "category": "Git Simple Compare",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "gitSimpleCompare.showExplorerComparison",
@@ -464,9 +477,27 @@
         "category": "Git Simple Compare",
         "icon": "$(refresh)"
       },
-      { "command": "gitSimpleCompare.takeCurrent", "title": "%cmd.takeCurrent.tooltip%", "shortTitle": "%cmd.takeCurrent%", "category": "Git Simple Compare", "icon": "$(arrow-left)" },
-      { "command": "gitSimpleCompare.takeIncoming", "title": "%cmd.takeIncoming.tooltip%", "shortTitle": "%cmd.takeIncoming%", "category": "Git Simple Compare", "icon": "$(arrow-right)" },
-      { "command": "gitSimpleCompare.takeBoth", "title": "%cmd.takeBoth.tooltip%", "shortTitle": "%cmd.takeBoth%", "category": "Git Simple Compare", "icon": "$(combine)" },
+      {
+        "command": "gitSimpleCompare.takeCurrent",
+        "title": "%cmd.takeCurrent.tooltip%",
+        "shortTitle": "%cmd.takeCurrent%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-left)"
+      },
+      {
+        "command": "gitSimpleCompare.takeIncoming",
+        "title": "%cmd.takeIncoming.tooltip%",
+        "shortTitle": "%cmd.takeIncoming%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "gitSimpleCompare.takeBoth",
+        "title": "%cmd.takeBoth.tooltip%",
+        "shortTitle": "%cmd.takeBoth%",
+        "category": "Git Simple Compare",
+        "icon": "$(combine)"
+      },
       {
         "command": "gitSimpleCompare.markResolved",
         "title": "%cmd.markResolved.tooltip%",
@@ -474,7 +505,13 @@
         "category": "Git Simple Compare",
         "icon": "$(check)"
       },
-      { "command": "gitSimpleCompare.openConflictEditor", "title": "%cmd.openConflictEditor.tooltip%", "shortTitle": "%cmd.openConflictEditor%", "category": "Git Simple Compare", "icon": "$(git-merge)" },
+      {
+        "command": "gitSimpleCompare.openConflictEditor",
+        "title": "%cmd.openConflictEditor.tooltip%",
+        "shortTitle": "%cmd.openConflictEditor%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-merge)"
+      },
       {
         "command": "gitSimpleCompare.openMergeEditor",
         "title": "%cmd.openMergeEditor.tooltip%",
@@ -503,7 +540,13 @@
         "category": "Git Simple Compare",
         "icon": "$(circle-slash)"
       },
-      { "command": "gitSimpleCompare.rollbackPull", "title": "%cmd.rollbackPull.tooltip%", "shortTitle": "%cmd.rollbackPull%", "category": "Git Simple Compare", "icon": "$(discard)" },
+      {
+        "command": "gitSimpleCompare.rollbackPull",
+        "title": "%cmd.rollbackPull.tooltip%",
+        "shortTitle": "%cmd.rollbackPull%",
+        "category": "Git Simple Compare",
+        "icon": "$(discard)"
+      },
       {
         "command": "gitSimpleCompare.refreshWorktrees",
         "title": "%cmd.refreshWorktrees.tooltip%",
@@ -583,7 +626,16 @@
           "name": "%view.changes.name%",
           "type": "webview",
           "icon": "$(git-compare)",
-          "contextualTitle": "%viewContainer.title%"
+          "contextualTitle": "%viewContainer.title%",
+          "when": "gitSimpleCompare.sidebarMode != reviews"
+        },
+        {
+          "id": "gitSimpleCompare.reviews",
+          "name": "%view.reviews.name%",
+          "type": "webview",
+          "icon": "$(comment-discussion)",
+          "contextualTitle": "%viewContainer.title%",
+          "when": "gitSimpleCompare.sidebarMode == reviews"
         },
         {
           "id": "gitSimpleCompare.conflicts",
@@ -817,8 +869,16 @@
           "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
           "group": "navigation@3"
         },
-        { "command": "gitSimpleCompare.rollbackPull", "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable", "group": "navigation@4" },
-        { "command": "gitSimpleCompare.refreshConflicts", "when": "view == gitSimpleCompare.conflicts", "group": "navigation@5" }
+        {
+          "command": "gitSimpleCompare.rollbackPull",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable",
+          "group": "navigation@4"
+        },
+        {
+          "command": "gitSimpleCompare.refreshConflicts",
+          "when": "view == gitSimpleCompare.conflicts",
+          "group": "navigation@5"
+        }
       ],
       "view/item/context": [
         {
@@ -1020,11 +1080,26 @@
           "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
           "when": "false"
         },
-        { "command": "gitSimpleCompare.markResolved", "when": "false" },
-        { "command": "gitSimpleCompare.takeCurrent", "when": "false" },
-        { "command": "gitSimpleCompare.takeIncoming", "when": "false" },
-        { "command": "gitSimpleCompare.takeBoth", "when": "false" },
-        { "command": "gitSimpleCompare.openConflictEditor", "when": "false" },
+        {
+          "command": "gitSimpleCompare.markResolved",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.takeCurrent",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.takeIncoming",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.takeBoth",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.openConflictEditor",
+          "when": "false"
+        },
         {
           "command": "gitSimpleCompare.openMergeEditor",
           "when": "false"
@@ -1098,6 +1173,11 @@
           "type": "boolean",
           "default": true,
           "description": "%config.pullRequestComments.show.desc%"
+        },
+        "gitSimpleCompare.experimentalReviewWrites": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.experimentalReviewWrites.desc%"
         },
         "gitSimpleCompare.aiCliProvider": {
           "type": "string",
@@ -1312,15 +1392,21 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
-    "pretest": "esbuild test/aiCliModelSelection.test.ts test/aiCommitPlanService.test.ts test/aiCommitPlanAllScope.test.ts test/aiCommitPlanHookFormatting.test.ts test/blockBlameModel.test.ts test/commitPlanExecutionPresentation.test.ts test/commitPlanPrompt.test.ts test/commitPlanModel.test.ts test/commitHookFailure.test.ts test/commitHookPreflightService.test.ts test/commitHookService.test.ts test/conflictContextService.test.ts test/conflictMarkerModel.test.ts test/conflictMutationSafety.test.ts test/conflictWorktreeCas.test.ts test/extensionRefreshPolicy.test.ts test/fileHistoryService.test.ts test/nativeDiffOverlayRetry.test.ts test/pullRequestMatching.test.ts test/pullRequestRevertOperation.test.ts test/pullRequestPreviewPublish.test.ts test/pullRequestStackLifecycle.test.ts test/pullRequestStackModel.test.ts test/pullRequestStackRestack.test.ts test/stagedChangesProbe.test.ts test/statusCache.test.ts --bundle --platform=node --format=cjs --outdir=out-test",
-    "test": "node --test out-test/aiCliModelSelection.test.js out-test/aiCommitPlanService.test.js out-test/aiCommitPlanAllScope.test.js out-test/aiCommitPlanHookFormatting.test.js out-test/blockBlameModel.test.js out-test/commitPlanExecutionPresentation.test.js out-test/commitPlanPrompt.test.js out-test/commitPlanModel.test.js out-test/commitHookFailure.test.js out-test/commitHookPreflightService.test.js out-test/commitHookService.test.js out-test/conflictContextService.test.js out-test/conflictMarkerModel.test.js out-test/conflictMutationSafety.test.js out-test/conflictWorktreeCas.test.js out-test/extensionRefreshPolicy.test.js out-test/fileHistoryService.test.js out-test/nativeDiffOverlayRetry.test.js out-test/pullRequestMatching.test.js out-test/pullRequestRevertOperation.test.js out-test/pullRequestPreviewPublish.test.js out-test/pullRequestStackLifecycle.test.js out-test/pullRequestStackModel.test.js out-test/pullRequestStackRestack.test.js out-test/stagedChangesProbe.test.js out-test/statusCache.test.js",
+    "test": "node scripts/run-node-tests.mjs",
+    "test:webview": "playwright test test/webview --project=chromium",
+    "test:a11y": "playwright test test/a11y --project=chromium",
+    "test:extension": "node scripts/run-extension-tests.mjs",
+    "test:visual": "playwright test test/visual --project=chromium",
     "lint": "eslint src"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.0",
     "@types/node": "^20.x",
     "@types/vscode": "^1.85.0",
     "@types/ws": "^8.18.1",
     "@vscode/codicons": "^0.0.45",
+    "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.5.0"
   },
