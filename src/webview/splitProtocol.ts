@@ -15,6 +15,12 @@ export type SplitToWebview =
       singleFile?: boolean;
       workingFile?: { path: string; baseText: string; text: string };
     }
+  | {
+      /** 현재 작업의 사용자 노출 상태(중복 실행 차단과 aria-live 안내에 사용). */
+      type: "operation";
+      state: "loading" | "running" | "success" | "error";
+      message: string;
+    }
   | { type: "staged"; message: string }
   | { type: "discarded"; message: string }
   | { type: "saved"; message: string }

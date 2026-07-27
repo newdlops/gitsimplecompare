@@ -1,13 +1,18 @@
 // 작업 변경을 hunk 단위로 골라 선택한 부분만 stage 하는 웹뷰 패널 모듈.
 // - 패널 생애주기와 메시지 라우팅만 담당하고, 실제 hunk stage 는 DiffHunkService 에 위임한다.
 import * as vscode from "vscode";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 import {
   DiffFile,
   DiffHunkService,
   HunkSelection,
 } from "../git/diffHunkService";
 import { openRefVsWorkingDiff } from "../ui/diffPresenter";
+import { logError, logInfo } from "../ui/outputLog";
 import { SplitFocus, SplitFromWebview, SplitToWebview } from "./splitProtocol";
 
 /**
@@ -19,6 +24,7 @@ export class SplitPanel {
   private files: DiffFile[] = []; // 마지막으로 파싱한 변경(stage 시 hunk 매칭에 사용)
   private pendingFocus: SplitFocus | undefined;
   private scope: SplitFocus | undefined;
+  private operationRunning = false;
 
   /**
    * 패널을 열거나, 있으면 앞으로 가져와 변경을 다시 읽는다.
@@ -35,7 +41,7 @@ export class SplitPanel {
       SplitPanel.current.pendingFocus = focus;
       SplitPanel.current.scope = fileScope(focus);
       SplitPanel.current.panel.reveal();
-      void SplitPanel.current.sendChanges();
+      void SplitPanel.current.reloadChanges();
       return;
     }
     const panel = vscode.window.createWebviewPanel(
@@ -82,7 +88,7 @@ export class SplitPanel {
    */
   private async handleMessage(msg: SplitFromWebview): Promise<void> {
     if (msg.type === "ready" || msg.type === "refresh") {
-      await this.sendChanges();
+      await this.reloadChanges();
       return;
     }
     if (msg.type === "stage") {
@@ -101,6 +107,18 @@ export class SplitPanel {
    * @param selections 선택 정보
    */
   private async stage(selections: HunkSelection[]): Promise<void> {
+    if (
+      !this.beginOperation(
+        "running",
+        vscode.l10n.t("Staging selected changes...")
+      )
+    ) {
+      return;
+    }
+    logInfo("split operation started", {
+      operation: "stage",
+      selections: selections.length,
+    });
     try {
       await this.service.stageSelections(this.files, selections);
       await this.sendChanges();
@@ -112,11 +130,22 @@ export class SplitPanel {
       vscode.window.showInformationMessage(
         vscode.l10n.t("Selected hunks staged.")
       );
-    } catch (err) {
-      this.post({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
+      this.finishOperation(
+        "success",
+        vscode.l10n.t("Selected hunks staged.")
+      );
+      logInfo("split operation completed", {
+        operation: "stage",
+        selections: selections.length,
       });
+    } catch (err) {
+      this.finishOperation("error", errorMessage(err));
+      logError("split operation failed", err, {
+        operation: "stage",
+        selections: selections.length,
+      });
+    } finally {
+      this.operationRunning = false;
     }
   }
 
@@ -133,6 +162,18 @@ export class SplitPanel {
     if (!choice) {
       return;
     }
+    if (
+      !this.beginOperation(
+        "running",
+        vscode.l10n.t("Discarding selected changes...")
+      )
+    ) {
+      return;
+    }
+    logInfo("split operation started", {
+      operation: "discard",
+      selections: selections.length,
+    });
     try {
       await this.service.discardSelections(this.files, selections);
       await this.sendChanges();
@@ -144,11 +185,22 @@ export class SplitPanel {
       vscode.window.showInformationMessage(
         vscode.l10n.t("Selected hunks discarded.")
       );
-    } catch (err) {
-      this.post({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
+      this.finishOperation(
+        "success",
+        vscode.l10n.t("Selected hunks discarded.")
+      );
+      logInfo("split operation completed", {
+        operation: "discard",
+        selections: selections.length,
       });
+    } catch (err) {
+      this.finishOperation("error", errorMessage(err));
+      logError("split operation failed", err, {
+        operation: "discard",
+        selections: selections.length,
+      });
+    } finally {
+      this.operationRunning = false;
     }
   }
 
@@ -177,6 +229,15 @@ export class SplitPanel {
     if (!filePath) {
       return;
     }
+    if (
+      !this.beginOperation(
+        "running",
+        vscode.l10n.t("Saving working file...")
+      )
+    ) {
+      return;
+    }
+    logInfo("split operation started", { operation: "save", filePath });
     try {
       await this.service.writeWorkingFile(filePath, content);
       await this.sendChanges();
@@ -187,12 +248,56 @@ export class SplitPanel {
       void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
         reason: "htmlEditableDiff:save",
       });
+      this.finishOperation("success", vscode.l10n.t("Working file saved."));
+      logInfo("split operation completed", { operation: "save", filePath });
     } catch (err) {
-      this.post({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      this.finishOperation("error", errorMessage(err));
+      logError("split operation failed", err, { operation: "save", filePath });
+    } finally {
+      this.operationRunning = false;
     }
+  }
+
+  /** 변경 목록을 읽는 단일 진입점으로, 실패와 중복 refresh를 화면 상태로 일관되게 알린다. */
+  private async reloadChanges(): Promise<void> {
+    if (!this.beginOperation("loading", vscode.l10n.t("Refreshing changes..."))) {
+      return;
+    }
+    logInfo("split operation started", { operation: "refresh" });
+    try {
+      await this.sendChanges();
+      this.finishOperation("success", vscode.l10n.t("Changes refreshed."));
+      logInfo("split operation completed", {
+        operation: "refresh",
+        files: this.files.length,
+      });
+    } catch (err) {
+      this.finishOperation("error", errorMessage(err));
+      logError("split operation failed", err, { operation: "refresh" });
+    } finally {
+      this.operationRunning = false;
+    }
+  }
+
+  /** 진행 중 operation을 하나로 제한하고 웹뷰가 action을 즉시 비활성화하도록 알린다. */
+  private beginOperation(
+    state: "loading" | "running",
+    message: string
+  ): boolean {
+    if (this.operationRunning) {
+      return false;
+    }
+    this.operationRunning = true;
+    this.post({ type: "operation", state, message });
+    return true;
+  }
+
+  /** 작업 결과를 status region에 보내며, 오류도 다음 retry 전에 명확히 남긴다. */
+  private finishOperation(
+    state: "success" | "error",
+    message: string
+  ): void {
+    this.post({ type: "operation", state, message });
   }
 
   /** 작업 변경을 다시 읽어 웹뷰로 보낸다. */
@@ -254,13 +359,16 @@ export class SplitPanel {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "split.js")
     );
+    const editableDiffScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(mediaRoot, "splitEditableDiff.js")
+    );
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "split.css")
     );
     const codiconUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
     );
-    const tooltipResources = instantTooltipResources(webview, this.extensionUri);
+    const sharedResources = sharedWebviewResources(webview, this.extensionUri);
     const nonce = makeNonce();
     const csp = [
       `default-src 'none'`,
@@ -318,12 +426,12 @@ export class SplitPanel {
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
-  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Editable Diff</title>
 </head>
-<body>
+<body class="gsc-surface">
   <header class="topbar">
     <div class="title">
       <span class="codicon codicon-split-horizontal"></span>
@@ -394,7 +502,7 @@ export class SplitPanel {
   </main>
   <footer class="commitbar">
     <span id="selection-summary"></span>
-    <span id="notice"></span>
+    <span id="notice" class="operation-status" role="status" aria-live="polite"></span>
     <button id="discard" class="secondary" type="button"
       title="${i18n.discardSelectedChanges}" aria-label="${i18n.discardSelectedChanges}"
       data-tooltip="${i18n.discardSelectedChanges}" disabled>
@@ -409,7 +517,8 @@ export class SplitPanel {
     </button>
   </footer>
   <script nonce="${nonce}">window.__gscSplitI18n=${JSON.stringify(i18n)};</script>
-  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+  ${sharedWebviewScriptTags(sharedResources, nonce)}
+  <script nonce="${nonce}" src="${editableDiffScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
@@ -430,4 +539,9 @@ function makeNonce(): string {
     text += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return text;
+}
+
+/** 알 수 없는 예외를 사용자에게 표시 가능한 짧은 문자열로 바꾼다. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -513,12 +513,30 @@ button:disabled {
   opacity: 0.5;
 }
 
+.operation-status {
+  min-width: 0;
+  color: var(--vscode-descriptionForeground);
+  overflow-wrap: anywhere;
+}
+
+.operation-status--loading,
+.operation-status--running {
+  color: var(--vscode-textLink-foreground);
+}
+
+.operation-status--success {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.operation-status--error {
+  color: var(--vscode-errorForeground);
+}
+
 button:not(:disabled):hover {
   filter: brightness(1.08);
 }
 
-#selection-summary,
-#notice {
+#selection-summary {
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
 }
@@ -527,4 +545,10 @@ button:not(:disabled):hover {
   max-width: 38%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
 }
+
+#notice.operation-status--loading,
+#notice.operation-status--running { color: var(--vscode-textLink-foreground); }
+#notice.operation-status--success { color: var(--vscode-testing-iconPassed); }
+#notice.operation-status--error { color: var(--vscode-errorForeground); }
