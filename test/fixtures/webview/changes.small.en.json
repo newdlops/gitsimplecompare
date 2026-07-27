@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "surface": "changes",
+  "state": "small",
+  "locale": "en",
+  "viewport": { "width": 360, "height": 760 },
+  "payload": {
+    "repos": [{ "root": "/fixture/demo", "name": "demo", "branch": "feature/ui", "active": true }],
+    "compare": { "mode": "draft", "from": "", "to": "", "viewMode": "tree", "nodes": [] },
+    "changes": {
+      "viewMode": "tree",
+      "staged": [{ "kind": "file", "change": { "path": "src/app.ts", "status": "M", "additions": 3, "deletions": 1 } }],
+      "unstaged": [{ "kind": "file", "change": { "path": "README.md", "status": "M", "additions": 1, "deletions": 0 } }]
+    },
+    "commit": { "message": "", "messageRevision": 1, "repoRoot": "/fixture/demo", "branch": "feature/ui", "hasRepo": true, "hasStagedChanges": true, "aiGenerating": false },
+    "stashes": [],
+    "worktrees": [],
+    "history": { "repoRoot": "/fixture/demo", "path": "src/app.ts", "commits": [], "message": "" },
+    "visibleSections": { "repos": true, "changes": true, "history": true, "compare": true, "stashes": true, "worktrees": true },
+    "fileIcons": { "icons": {}, "fonts": [] }
+  }
+}

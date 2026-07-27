@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "surface": "reviews",
+  "state": "large",
+  "locale": "en",
+  "viewport": { "width": 1280, "height": 900 },
+  "payload": {
+    "generated": { "kind": "review-queue", "count": 200, "seed": "pr-00" },
+    "snapshot": {
+      "repository": "fixture-org/review-demo",
+      "viewer": "fixture-reviewer",
+      "personal": { "requested": [], "authored": [], "assigned": [], "mentioned": [], "participated": [] },
+      "management": {
+        "open": [
+          { "repository": "fixture-org/review-demo", "number": 101, "title": "Synthetic large queue representative", "url": "https://example.invalid/fixture-org/review-demo/pull/101", "author": "fixture-author", "updatedAt": "2026-07-27T09:00:00Z", "isDraft": false, "reviewDecision": "CHANGES_REQUESTED", "mergeStateStatus": "BLOCKED", "requestedReviewers": ["fixture-reviewer"], "assignees": ["fixture-maintainer"], "labels": ["priority:high"] }
+        ]
+      },
+      "refreshedAt": "2026-07-27T09:00:00Z"
+    }
+  }
+}

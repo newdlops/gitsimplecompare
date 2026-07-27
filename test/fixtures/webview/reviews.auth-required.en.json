@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "surface": "reviews",
+  "state": "error",
+  "locale": "en",
+  "viewport": { "width": 360, "height": 640 },
+  "payload": {
+    "kind": "authRequired",
+    "message": "GitHub authentication is required to load pull request reviews. Run gh auth login and retry."
+  }
+}

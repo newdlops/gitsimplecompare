@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "surface": "review-workspace",
+  "state": "populated",
+  "locale": "en",
+  "viewport": { "width": 1024, "height": 900 },
+  "payload": {
+    "snapshot": {
+      "repository": "fixture-org/review-demo",
+      "number": 42,
+      "pullRequestId": "fixture-pr-42",
+      "title": "Improve deterministic review fixtures",
+      "url": "https://example.invalid/fixture-org/review-demo/pull/42",
+      "body": "This synthetic pull request exercises the review workspace shell.",
+      "author": "fixture-author",
+      "viewer": "fixture-reviewer",
+      "assignees": ["fixture-maintainer"],
+      "labels": ["ui", "priority:high"],
+      "milestone": { "number": 7, "title": "Fixture release" },
+      "requestedReviewers": [{ "kind": "user", "key": "fixture-reviewer", "label": "fixture-reviewer" }, { "kind": "team", "key": "platform", "label": "Platform" }],
+      "viewerCanUpdate": true,
+      "canOpenNativeDiff": true,
+      "updatedAt": "2026-07-27T09:00:00Z",
+      "isDraft": false,
+      "reviewDecision": "CHANGES_REQUESTED",
+      "mergeStateStatus": "BLOCKED",
+      "baseRefName": "main",
+      "headRefName": "feature/review-fixture",
+      "headOid": "fixture-head-oid",
+      "files": [{ "path": "src/fixture.ts", "status": "M", "additions": 12, "deletions": 4, "isViewed": false }],
+      "threads": [{ "id": "fixture-thread-1", "path": "src/fixture.ts", "line": 12, "startLine": 10, "isOutdated": false, "isResolved": false, "comments": [{ "id": "fixture-comment-1", "author": "fixture-reviewer", "body": "Please keep this fixture deterministic.", "createdAt": "2026-07-27T08:00:00Z", "suggestions": [] }] }],
+      "filesTruncated": false,
+      "threadsTruncated": false,
+      "refreshedAt": "2026-07-27T09:00:00Z"
+    }
+  }
+}
