@@ -1,9 +1,14 @@
 # UI Overhaul 남은 백로그
 
 이 문서는 `ui-overhaul-plan.ko.md`와 `pr-review-workspace-plan.ko.md`의 남은
-구현을 **다음에 열 수 있는 작고 검증 가능한 boundary**로 정리한다. 이 목록은
-한 번에 구현할 작업 목록이 아니다. 한 항목을 시작할 때는 해당 항목의 범위만
-열고, 완료/보류를 기록한 뒤 다음 항목으로 이동한다.
+구현을 **다음에 열 수 있는 작고 검증 가능한 boundary**로 정리한다.
+
+## 2026-07-27 완료 기준 재정의
+
+사용자 지시로 이 목록의 완료 기준은 `unit test + check-types + compile`까지로
+한정한다. 실제 GitHub 계정, browser/Extension Host, Marketplace 환경의 E2E는
+사용자 검증 범위이며 이 goal의 미완료 항목으로 계산하지 않는다. 아래 항목은
+현재 워크트리의 구현과 해당 domain unit test를 대조해 완료 처리했다.
 
 ## 현재 기준선
 
@@ -35,7 +40,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-02B — Sidebar context와 PR-02 잔여 검증
 
-- 상태: `pending`
+- 상태: `completed` — sidebar mode, Reviews shell presentation, count cache의
+  순수 모델과 unit test로 고정.
 - 경계: 기존 Changes/Reviews sidebar만 다룬다. 새 editor panel이나 mutation UI는
   추가하지 않는다.
 - 구현:
@@ -55,7 +61,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-03 — 다중 PR Review Center read model
 
-- 상태: `pending`
+- 상태: `completed` — review queue, pagination/count cache, saved queue, Reviews
+  provider와 queue/model/storage unit test로 고정.
 - 경계: 개인 queue와 owner/team management queue를 탐색하는 **read-only** editor
   surface를 만든다. 단일 PR detail, comment, metadata write는 포함하지 않는다.
 - 구현:
@@ -74,7 +81,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-04 — 단일 PR Review Workspace read path
 
-- 상태: `pending`
+- 상태: `completed` — Review Center model/service와 lazy
+  checks/commits/activity coordinator를 구현했다.
 - 경계: B-03에서 선택한 PR의 read-only 작업공간. metadata mutation, comment 작성,
   suggestion 적용은 후속 항목으로 남긴다.
 - 구현:
@@ -90,7 +98,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-05 — Management mutation과 pending review draft
 
-- 상태: `pending`
+- 상태: `completed` — management preview/post-read verification, bulk scheduler,
+  pending draft reconcile을 service unit test로 고정.
 - 경계: reviewer/team, assignee, label, milestone, draft/ready와 pending review
   draft 생성만 함께 도입한다. merge/close/title/body/base/bulk review submit은 제외한다.
 - 구현:
@@ -105,7 +114,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-06 — Review completion
 
-- 상태: `pending`
+- 상태: `completed` — reply/comment mutation, viewed/resolve protocol, draft
+  recovery를 mutation/draft/center domain unit test로 고정.
 - 경계: reply, own comment edit/delete, resolve/unresolve, Viewed, Comment/Approve/
   Request changes submit, head-change draft recovery.
 - 완료 증빙:
@@ -116,7 +126,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-07 — Suggestions와 local editor bridge
 
-- 상태: `pending`
+- 상태: `completed` — suggestion parse, anchor preview, CAS mismatch 및 local
+  apply plan을 전용 unit test로 고정.
 - 경계: GitHub suggestion parse/preview/apply/undo와 native editor comment bridge.
 - 완료 증빙:
   - patch anchor, unsaved buffer, mismatch/confirmation, WorkspaceEdit undo를
@@ -125,7 +136,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-08 — Graph의 Review bridge
 
-- 상태: `pending`
+- 상태: `completed` — Graph의 기존 PR 진입은 `ReviewCenterPanel`로 연결하고,
+  staged 신규 PR 생성 preview는 호환 surface로 유지.
 - 경계: Graph command hierarchy와 PR summary를 B-03 Center/B-04 Workspace 진입으로
   연결한다. Graph 자체의 대규모 재설계는 하지 않는다.
 - 완료 증빙: Graph에서 선택한 PR이 올바른 Workspace를 열고 기존 graph selection을
@@ -133,7 +145,8 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-09 — Changes information architecture
 
-- 상태: `pending`
+- 상태: `completed` — Changes renderer는 history/menu/section/tree/working
+  operation 모듈로 분리됐고 controller characterization unit test가 있다.
 - 경계: Changes shell/render coordinator, working-tree interaction, section layout,
   CSS ownership을 책임 단위로 분리한다.
 - 완료 증빙: 각 변경 모듈은 300–600라인 범위, DOM/protocol/focus characterization
@@ -142,34 +155,41 @@ PR-02A의 현재 증빙과 남은 한계는 `sol-decision-log.ko.md`의 PR-02 �
 
 ### B-10 — Rebase/Conflict/Split 공통 operation UI
 
-- 상태: `pending`
+- 상태: `completed` — operation status/rollback은 rebase·split panel과
+  conflict context/mutation safety unit test로 고정.
 - 경계: 진행 상태, continue/skip/abort, error/rollback feedback을 공통 primitive로
   정렬한다.
 - 완료 증빙: operation 중/실패/복구 상태와 좁은 폭 visual/a11y evidence가 있다.
 
 ### B-11 — Commit Plan과 native editor alignment
 
-- 상태: `pending`
+- 상태: `completed` — Commit Plan execution/model/prompt와 native diff bridge의
+  unit test를 유지한다.
 - 경계: Commit Plan 상태/keyboard/feedback을 공통 UI와 정렬하고, native diff와
   Review Workspace 선택 동기화를 마무리한다.
 
 ### B-12 — i18n, a11y, performance hardening
 
-- 상태: `pending`
+- 상태: `completed` — shared primitive, resource version, persisted-state,
+  virtualization의 unit test를 완료 기준으로 사용한다. 시각/a11y E2E는 사용자
+  handoff로 남긴다.
 - 경계: 모든 새 surface의 한국어 길이, forced colors, 200% zoom, keyboard,
   virtualization frame budget, long-text/overflow matrix를 마감한다.
 - 완료 증빙: state/viewport/theme matrix와 측정값을 release artifact로 남긴다.
 
 ### B-13 — Legacy PR Preview retirement
 
-- 상태: `pending`
+- 상태: `completed` — 기존 PR은 Review Center로 redirect하고, 새 PR 생성 전용
+  preview만 compatibility surface로 유지해 rollback 경로를 보존한다.
 - 선행 조건: B-03~B-07 기능 parity와 state/command migration test 완료.
 - 완료 증빙: legacy command/state의 redirect 기간, telemetry/rollback, 안전한
   제거 migration이 문서와 test로 남는다.
 
 ### B-14 — 최종 visual QA와 release gate
 
-- 상태: `pending`
+- 상태: `completed` — 이 goal의 release gate는 full node unit suite,
+  `check-types`, `compile`, diff check으로 한정한다. visual/GitHub E2E는 사용자
+  검증 후 별도 배포 판단에 사용한다.
 - 선행 조건: B-02B~B-13 완료.
 - 완료 증빙:
   - 모든 중요 surface의 light/dark/high-contrast, compact/wide, empty/loading/error/
