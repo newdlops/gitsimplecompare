@@ -14,8 +14,13 @@
   const T = Object.assign(
     {
       repositories: "Repositories",
+      repositoryContext: "Repository context",
+      workingChanges: "Working Changes",
+      tools: "Tools",
       compareBranches: "Compare Branches",
       changes: "Changes",
+      reviews: "Reviews",
+      sidebarNavigation: "Git Simple Compare navigation",
       current: "current",
       from: "From:",
       to: "To:",
@@ -638,104 +643,36 @@
     return html;
   }
 
-  /** 현재 히스토리 대상 파일을 표시하는 고정 헤더. */
-  function historyCurrentFileHtml(history) {
-    if (!history || !history.path) {
-      return "";
-    }
-    const slash = history.path.lastIndexOf("/");
-    const fileName = slash >= 0 ? history.path.slice(slash + 1) : history.path;
-    const dir = slash >= 0 ? history.path.slice(0, slash) : "";
-    return (
-      `<div class="history-current-file" title="${esc(history.path)}">` +
-      fileIconHtml(history.path) +
-      `<span class="name">${esc(fileName)}</span>` +
-      (dir ? `<span class="dir">${esc(dir)}</span>` : "") +
-      `</div>`
-    );
-  }
-
-  /** 커밋 메시지 본문을 상세 영역에 표시한다. */
-  function historyMessageHtml(commit) {
-    const message = (commit.message || commit.title || "").trim();
-    return `<pre class="history-message">${esc(message)}</pre>`;
-  }
-
-  /** 히스토리 상세 영역에서 해당 파일 diff 를 여는 링크형 버튼. */
-  function historyFileLinkHtml(repoRoot, commit) {
-    const label = commit.oldPath
-      ? `${commit.oldPath} → ${commit.path}`
-      : commit.path;
-    const tooltip = `${T.openHistoryCommit}: ${label}`;
-    return (
-      `<button class="history-file-link" type="button" ` +
-      `data-repo-root="${esc(repoRoot || "")}" data-path="${esc(commit.path)}" ` +
-      `data-old-path="${esc(commit.oldPath || "")}" ` +
-      `data-base-ref="${esc(commit.baseRef)}" data-head-ref="${esc(commit.hash)}" ` +
-      `data-short-hash="${esc(commit.shortHash)}" data-title="${esc(commit.title)}" ` +
-      `title="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" ` +
-      `aria-label="${esc(tooltip)}">` +
-      `<span class="codicon codicon-diff" aria-hidden="true"></span>` +
-      fileIconHtml(commit.path) +
-      `<span class="name">${esc(label)}</span>` +
-      statHtml(commit) +
-      `</button>`
-    );
-  }
-
-  /** 파일 히스토리 커밋 한 줄(클릭 시 메시지 상세를 펼치고, 상세의 파일 링크가 diff 를 연다). */
-  function historyCommitHtml(repoRoot, commit) {
-    const key = commit.hash || `${commit.path}:${commit.shortHash || ""}`;
-    const expanded = !!state.historyExpanded[key];
-    const chevron = expanded ? "codicon-chevron-down" : "codicon-chevron-right";
-    const title = `${commit.shortHash || commit.hash} ${commit.title || ""}`.trim();
-    const meta = [commit.author, commit.relativeDate || commit.dateIso]
-      .filter(Boolean)
-      .join(" · ");
-    const tooltip = `${T.toggleSection}: ${title}`;
-    return (
-      `<div class="history-item${expanded ? "" : " collapsed"}" data-key="${esc(key)}">` +
-      `<div class="row file history-commit" role="button" tabindex="0" ` +
-      `data-status="${esc(commit.status)}" data-key="${esc(key)}" ` +
-      `title="${esc(tooltip)}" aria-label="${esc(tooltip)}" ` +
-      `aria-expanded="${expanded ? "true" : "false"}">` +
-      `<span class="twistie codicon ${chevron}"></span>` +
-      `<span class="icon codicon ${statusCodicon(commit.status)}"></span>` +
-      `<span class="history-hash">${esc(commit.shortHash || commit.hash.slice(0, 7))}</span>` +
-      `<span class="name history-title">${esc(commit.title)}</span>` +
-      (meta ? `<span class="history-meta">${esc(meta)}</span>` : "") +
-      statHtml(commit) +
-      `</div>` +
-      `<div class="history-details">` +
-      historyMessageHtml(commit) +
-      historyFileLinkHtml(repoRoot, commit) +
-      `</div></div>`
-    );
-  }
-
-  /** History 섹션 본문(현재 파일 + 관련 커밋 목록). */
-  function historyBody(history) {
-    if (!history || !history.path) {
-      return `<p class="empty">${esc(history?.message || T.noHistoryFile)}</p>`;
-    }
-    let html = historyCurrentFileHtml(history);
-    if (history.message) {
-      return html + `<p class="empty">${esc(history.message)}</p>`;
-    }
-    const commits = history.commits || [];
-    if (!commits.length) {
-      return html + `<p class="empty">${esc(T.noHistory)}</p>`;
-    }
-    const rows = commits
-      .map((commit) => historyCommitHtml(history.repoRoot, commit))
-      .join("");
-    return html + `<div class="files history-files"><div class="rows">${rows}</div></div>`;
-  }
-
   /** webview → 확장 메시지 전송 단축 함수. */
   function post(type, extra) {
     vscode.postMessage(Object.assign({ type }, extra));
   }
+
+  /** Changes/Reviews contributed view를 전환하는 공통 sidebar navigation을 만든다. */
+  function primaryNavigation() {
+    return window.__gscSidebarShell.renderPrimaryNavigation({
+      mode: "changes",
+      labels: {
+        navigation: T.sidebarNavigation,
+        changes: T.changes,
+        reviews: T.reviews,
+      },
+      onSelect: (mode) => post("selectSidebarMode", { mode }),
+    });
+  }
+
+  // History의 HTML 생성을 별도 module로 유지해 이 파일은 상태 조정과 event binding에 집중한다.
+  const { bindHistory, historyBody } = window.__gscChangesHistory({
+    strings: T,
+    state,
+    esc,
+    fileIconHtml,
+    statHtml,
+    statusCodicon,
+    rootEl,
+    vscode,
+    post,
+  });
 
   /** 전체 화면을 그린다. */
   function render(p) {
@@ -807,6 +744,8 @@
       ),
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
+    rootEl.prepend(primaryNavigation());
+    window.__gscChangesInformationArchitecture?.organize(rootEl, T);
 
     applyFileIconGlyphStyles();
     applyCollapse();
@@ -988,108 +927,22 @@
     }
   }
 
-  /** 섹션 접힘 상태를 DOM 에 반영한다. */
-  function applyCollapse() {
-    rootEl.querySelectorAll(".section").forEach((sec) => {
-      const collapsed = isCollapsed(sec.dataset.section);
-      sec.classList.toggle("collapsed", collapsed);
-      const tw = sec.querySelector(".section-header .twistie");
-      tw.classList.toggle("codicon-chevron-down", !collapsed);
-      tw.classList.toggle("codicon-chevron-right", collapsed);
-      syncDisclosureControl(sec.querySelector(":scope > .section-header"), !collapsed);
-    });
-  }
-
-  /**
-   * 섹션 높이를 flex-grow 가중치(px)로 배분하고, 펼친 섹션 사이에 리사이즈 핸들(sash)을 놓는다.
-   * - flex-basis:0 + grow=px 라서 flexbox 가 비율대로 채우고 최소 높이(min-height)도 자동 처리한다.
-   * - 사용자가 조절한 섹션은 저장된 px, 아니면 기본 가중치를 쓴다(내용 변화에 흔들리지 않게).
-   * - 매 렌더/접힘 변경 후 호출해 새 DOM 에 다시 적용한다.
-   */
-  function applyResize() {
-    const sections = Array.from(rootEl.querySelectorAll(".section"));
-    const growable = []; // 크기조절(grow)에 참여하는 펼친 섹션(순서대로)
-    sections.forEach((sec) => {
-      const id = sec.dataset.section;
-      if (sec.classList.contains("collapsed")) {
-        sec.style.flex = `0 0 ${HEADER_H}px`;
-        return;
-      }
-      if (id === "repos") {
-        const body = sec.querySelector(".section-body");
-        sec.style.flex = `0 0 ${HEADER_H + (body ? body.scrollHeight : 0)}px`;
-        return;
-      }
-      const weight =
-        state.sizes[id] > 0 ? state.sizes[id] : DEFAULT_WEIGHT[id] || 160;
-      sec.style.flex = `${weight} 1 0`;
-      growable.push(sec);
-    });
-    placeSashes(growable);
-  }
-
-  /** 인접한 두 크기조절 섹션 사이마다 sash 를 만들어 아래쪽 섹션 상단에 붙인다. */
-  function placeSashes(growable) {
-    rootEl.querySelectorAll(".sash").forEach((s) => s.remove());
-    for (let k = 1; k < growable.length; k++) {
-      const above = growable[k - 1];
-      const below = growable[k];
-      const sash = document.createElement("div");
-      sash.className = "sash";
-      sash.addEventListener("pointerdown", (e) =>
-        startResize(e, sash, above, below)
-      );
-      below.insertBefore(sash, below.firstChild);
-    }
-  }
-
-  /** sash 드래그: 위/아래 섹션 높이를 delta 만큼 주고받는다(각자 최소 높이로 클램프). */
-  function startResize(e, sash, above, below) {
-    e.preventDefault();
-    e.stopPropagation();
-    sash.setPointerCapture(e.pointerId);
-    const startY = e.clientY;
-    const startA = above.getBoundingClientRect().height;
-    const startB = below.getBoundingClientRect().height;
-    // 드래그 중 나머지 크기조절 섹션이 흔들리지 않도록 현재 px 로 고정한다.
-    rootEl.querySelectorAll(".section:not(.collapsed)").forEach((sec) => {
-      sec.style.flex = `${sec.getBoundingClientRect().height} 1 0`;
-    });
-    sash.classList.add("active");
-    document.body.classList.add("resizing");
-
-    const onMove = (ev) => {
-      let delta = ev.clientY - startY;
-      delta = Math.max(delta, MIN_SECTION - startA);
-      delta = Math.min(delta, startB - MIN_SECTION);
-      above.style.flex = `${startA + delta} 1 0`;
-      below.style.flex = `${startB - delta} 1 0`;
-    };
-    const onUp = () => {
-      sash.releasePointerCapture(e.pointerId);
-      sash.removeEventListener("pointermove", onMove);
-      sash.removeEventListener("pointerup", onUp);
-      sash.classList.remove("active");
-      document.body.classList.remove("resizing");
-      persistSizes();
-    };
-    sash.addEventListener("pointermove", onMove);
-    sash.addEventListener("pointerup", onUp);
-  }
-
-  /** 크기조절 섹션들의 높이(px)를 저장한다(다음 렌더에서 비율 유지). */
-  function persistSizes() {
-    rootEl.querySelectorAll(".section:not(.collapsed)").forEach((sec) => {
-      state.sizes[sec.dataset.section] = sec.getBoundingClientRect().height;
-    });
-    vscode.setState(state);
-  }
+  // collapse와 sash resize는 section layout 모듈이 일관된 persisted state로 적용한다.
+  const { applyCollapse, applyResize, persistSizes } = window.__gscChangesSectionLayout({
+    rootEl,
+    state,
+    isCollapsed,
+    syncDisclosureControl,
+    HEADER_H,
+    MIN_SECTION,
+    DEFAULT_WEIGHT,
+    vscode,
+  });
 
   /** 폴더 접기/펼치기 또는 작업트리 폴더 선택을 연결한다. */
   function bindFolderToggle(el) {
     el.addEventListener("click", (e) => {
-      if (suppressNextRowClick) {
-        suppressNextRowClick = false;
+      if (consumeSuppressedRowClick()) {
         return;
       }
       if (el.closest(".wt-files") && !e.target.closest(".twistie, .icon")) {
@@ -1190,6 +1043,12 @@
 
   /** 드래그 중인 섹션을 대상 섹션 앞/뒤로 옮기고 순서를 저장한다. */
   function moveSection(sourceId, targetId, side) {
+    const source = rootEl.querySelector(`.section[data-section="${sourceId}"]`);
+    const target = rootEl.querySelector(`.section[data-section="${targetId}"]`);
+    if (!window.__gscChangesInformationArchitecture?.sameRegion(source, target)) {
+      clearSectionDropMarkers();
+      return;
+    }
     const next = state.sectionOrder.filter((id) => id !== sourceId);
     const targetIndex = next.indexOf(targetId);
     if (targetIndex < 0) {
@@ -1198,10 +1057,11 @@
     next.splice(side === "after" ? targetIndex + 1 : targetIndex, 0, sourceId);
     state.sectionOrder = normalizeSectionOrder(next);
     vscode.setState(state);
+    const region = source.parentElement;
     for (const id of state.sectionOrder) {
       const section = rootEl.querySelector(`.section[data-section="${id}"]`);
-      if (section) {
-        rootEl.appendChild(section);
+      if (section && section.parentElement === region) {
+        region.appendChild(section);
       }
     }
     clearSectionDropMarkers();
@@ -1272,7 +1132,7 @@
     rootEl.querySelectorAll(".meatball").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (dropdownEl && dropdownEl.__anchor === el) {
+        if (isDropdownAnchor(el)) {
           closeDropdown();
         } else {
           const section = el.closest(".section");
@@ -1314,141 +1174,27 @@
         openContextMenu,
         openDropdown,
         closeDropdown,
-        isDropdownAnchor: (anchor) => dropdownEl?.__anchor === anchor,
+        isDropdownAnchor,
       },
     });
     window.__gscWorktrees?.bind?.(rootEl, vscode);
   }
 
-  /** History 섹션: 커밋 상세 펼침/접기와 상세 파일 링크(diff 열기)를 연결한다. */
-  function bindHistory() {
-    const open = (el) =>
-      post("openFileHistoryCommit", {
-        repoRoot: el.dataset.repoRoot,
-        path: el.dataset.path,
-        oldPath: el.dataset.oldPath || undefined,
-        baseRef: el.dataset.baseRef,
-        headRef: el.dataset.headRef,
-        shortHash: el.dataset.shortHash,
-        title: el.dataset.title,
-      });
-    rootEl.querySelectorAll(".history-commit").forEach((el) => {
-      el.addEventListener("click", () => toggleHistoryItem(el));
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          toggleHistoryItem(el);
-        }
-      });
-    });
-    rootEl.querySelectorAll(".history-file-link").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        open(el);
-      });
-    });
-  }
+  // Commit composer가 입력·busy 상태·caret menu를 한 곳에서 소유한다.
+  const commitBox = window.__gscChangesCommitBox({
+    vscode,
+    getMenuApi: () => ({ closeDropdown, isDropdownAnchor, openDropdown }),
+    getCommitMenuNodes: () => COMMIT_MENU,
+  });
+  const { doCommit } = commitBox;
 
-  /** History 커밋 상세의 펼침 상태를 토글한다. */
-  function toggleHistoryItem(el) {
-    const item = el.closest(".history-item");
-    const key = item?.dataset.key || el.dataset.key;
-    if (!item || !key) {
-      return;
-    }
-    const expanded = !state.historyExpanded[key];
-    state.historyExpanded[key] = expanded;
-    vscode.setState(state);
-    item.classList.toggle("collapsed", !expanded);
-    el.setAttribute("aria-expanded", expanded ? "true" : "false");
-    const tw = el.querySelector(".twistie");
-    tw.classList.toggle("codicon-chevron-down", expanded);
-    tw.classList.toggle("codicon-chevron-right", !expanded);
-  }
-
-  // ── 커밋 박스 ──
-
-  /** 커밋 입력/버튼/캐럿을 연결한다. */
-  // 커밋 진행 상태. extension host 의 commitOperation 메시지로 갱신되며, 재렌더 후에도 다시 반영한다.
-  let commitInProgress = false;
-
-  function bindCommitBox(scope = document) {
-    const ta = scope.querySelector("#commit-msg");
-    if (ta) {
-      autoGrow(ta);
-      ta.addEventListener("input", () => {
-        autoGrow(ta);
-        vscode.postMessage({ type: "commitMessageChange", message: ta.value });
-      });
-      ta.addEventListener("keydown", (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-          e.preventDefault();
-          doCommit("commit");
-        }
-      });
-    }
-    const btn = scope.querySelector("#commit-btn");
-    if (btn) {
-      btn.addEventListener("click", () => doCommit("commit"));
-    }
-    const caret = scope.querySelector("#commit-caret");
-    if (caret) {
-      caret.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (dropdownEl && dropdownEl.__anchor === caret) {
-          closeDropdown();
-        } else {
-          openDropdown(caret, commitMenuNodes());
-        }
-      });
-    }
-    // 재렌더로 버튼이 새로 만들어졌을 수 있으므로 현재 진행 상태를 다시 반영한다.
-    reflectCommitBusy();
-  }
-
-  /** 커밋 버튼/캐럿에 진행중 스피너(.busy)와 비활성 상태를 반영한다. */
-  function reflectCommitBusy() {
-    const btn = document.getElementById("commit-btn");
-    if (btn) {
-      btn.classList.toggle("busy", commitInProgress);
-      btn.disabled = commitInProgress;
-    }
-    const caret = document.getElementById("commit-caret");
-    if (caret) {
-      caret.disabled = commitInProgress;
-    }
-  }
-
-  /** extension host 의 커밋 진행 상태를 버튼에 반영한다. */
-  function setCommitInProgress(active) {
-    commitInProgress = !!active;
-    reflectCommitBusy();
-  }
-
-  /** 현재 메시지로 커밋을 요청한다. 진행 중이면 중복 실행을 막는다. */
-  function doCommit(op) {
-    if (commitInProgress) {
-      return;
-    }
-    const ta = document.getElementById("commit-msg");
-    const request = { op, message: ta ? ta.value : "" };
-    if (window.__gscTryAiCommitPlan?.(request)) {
-      return;
-    }
-    setCommitInProgress(true);
-    vscode.postMessage({ type: "commit", ...request });
-  }
-
-  /** 커밋 캐럿(▼) 드롭다운: 커밋 변형 + Stage/Unstage/Discard All + Stash(주입 메뉴). */
-  function commitMenuNodes() {
-    return COMMIT_MENU;
-  }
-
-  /** textarea 높이를 내용에 맞춰 늘린다(상한 200px). */
-  function autoGrow(ta) {
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
-  }
+  // 드롭다운·context menu의 keyboard/focus 책임은 전용 모듈이 맡는다.
+  const { closeDropdown, isDropdownAnchor, openDropdown, openContextMenu } = window.__gscChangesMenu({
+    vscode,
+    esc,
+    doCommit,
+  });
+  const { bindCommitBox, setCommitInProgress } = commitBox;
 
   // ── 그룹/행 인라인 액션 ──
 
@@ -1484,47 +1230,6 @@
     tw?.classList.toggle("codicon-chevron-down", !collapsed);
     tw?.classList.toggle("codicon-chevron-right", collapsed);
     syncDisclosureControl(toggle, !collapsed);
-  }
-
-  /** 파일/폴더 행 hover 액션(파일 열기 / stage·unstage·discard). 다중 선택 시 선택 전체에 적용. */
-  function bindRowActions(scope = rootEl) {
-    scope.querySelectorAll(".row-action").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        // stash 의 ... 메뉴는 changesStashes 모듈이 disclosure 상태와 함께 처리한다.
-        if (el.dataset.act === "stashMenu") {
-          return;
-        }
-        const row = el.closest(".row");
-        if (el.dataset.act === "openFile") {
-          vscode.postMessage({ type: "openFile", path: row.dataset.path });
-          return;
-        }
-        if (el.dataset.act === "openCompareDiff") {
-          vscode.postMessage({ type: "openDiff", path: row.dataset.path });
-          return;
-        }
-        const paths = actionPaths(row);
-        if (paths.length) {
-          postWorkingAction(el.dataset.act, paths);
-        }
-      });
-    });
-    // 작업트리 행 우클릭 → 컨텍스트 메뉴(파일 열기/변경 비교/stage·unstage·discard)
-    scope.querySelectorAll(".wt-files .row").forEach((row) => {
-      row.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        // 선택에 없는 행을 우클릭하면 그 행만 단일 선택으로 바꾼다(VS Code 처럼).
-        if (!selection.has(rowKey(row))) {
-          selection = new Set([rowKey(row)]);
-          selAnchor = rowKey(row);
-          applySelection();
-        }
-        const group = row.closest(".group");
-        const kind = group ? group.dataset.gkey : "unstaged";
-        openContextMenu(e.clientX, e.clientY, rowContextNodes(row, kind));
-      });
-    });
   }
 
   /** 행 우클릭 컨텍스트 메뉴 항목(파일이면 열기/비교 + stage 류, 폴더면 stage 류). */
@@ -1603,300 +1308,28 @@
     return actionPaths(row);
   }
 
-  // ── 다중 선택(작업트리 파일/폴더, VS Code 트리처럼 Ctrl/Cmd·Shift 선택) ──
+  // 다중 선택, Shift range, 마퀴 드래그는 전용 모듈이 state와 DOM을 함께 소유한다.
+  const { actionPaths, applySelection, bindMarqueeSelection, consumeSuppressedRowClick, isSelected, onWorkingRowClick, selectOnly } = window.__gscChangesTreeSelection({
+    rootEl,
+    closeDropdown,
+    openWorkingPath,
+    rowPaths,
+  });
 
-  let selection = new Set(); // 선택된 행 키("gkey:path") 집합(렌더 간 유지, 사라진 키는 정리)
-  let selAnchor = null; // Shift 범위 선택의 기준 키
-  let suppressNextRowClick = false; // 드래그 선택 후 발생하는 synthetic click 억제
-  let marquee = null; // 현재 진행 중인 사각형 드래그 선택 상태
-  // 마퀴 드래그를 시작하면 안 되는(고유 동작이 있는) 요소들. 이 밖의 영역(빈 공간/행 본문)에서는 드래그로 selectbox 를 그린다.
-  const MARQUEE_EXCLUDE_SELECTOR =
-    ".commit-box, .group-header, .header-actions, .row-actions, button, textarea, input, select, a";
-
-  /** 행의 선택 키(소속 그룹 + 경로). */
-  function rowKey(row) {
-    const group = row.closest(".group");
-    return (group ? group.dataset.gkey : "") + ":" + row.dataset.path;
-  }
-
-  /** 작업트리에서 선택 가능한 파일/폴더 행들을 DOM 순서로 반환한다. */
-  function selectableRows() {
-    return Array.from(
-      rootEl.querySelectorAll(".wt-files .row.file, .wt-files .row.folder")
-    );
-  }
-
-  /**
-   * 파일 목록 표면(Changes 섹션 본문)에 드래그 사각형 선택을 연결한다.
-   * - 실제 드래그로 판단될 때까지 클릭 이벤트를 방해하지 않는다.
-   * - Ctrl/Cmd 를 누른 채 드래그하면 기존 선택에 영역 안 파일/폴더를 더한다.
-   * - 커밋 박스/헤더/액션 버튼 등 상호작용 요소에서 시작한 드래그는 그 요소의 동작을 위해 제외한다.
-   */
-  function bindMarqueeSelection(filesEl) {
-    filesEl.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || e.target.closest(MARQUEE_EXCLUDE_SELECTOR)) {
-        return;
-      }
-      marquee = {
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        additive: e.metaKey || e.ctrlKey,
-        baseSelection: new Set(selection),
-        active: false,
-        box: null,
-        lastKey: null,
-      };
-    });
-    filesEl.addEventListener("pointermove", (e) => {
-      if (!marquee || marquee.pointerId !== e.pointerId) {
-        return;
-      }
-      const dx = e.clientX - marquee.startX;
-      const dy = e.clientY - marquee.startY;
-      if (!marquee.active && Math.hypot(dx, dy) < 4) {
-        return;
-      }
-      e.preventDefault();
-      if (!marquee.active) {
-        startMarquee(filesEl, e.pointerId);
-      }
-      updateMarquee(e.clientX, e.clientY);
-    });
-    filesEl.addEventListener("pointerup", (e) => finishMarquee(filesEl, e));
-    filesEl.addEventListener("pointercancel", (e) => cancelMarquee(filesEl, e));
-  }
-
-  /** 사각형 선택 표시를 시작한다. */
-  function startMarquee(filesEl, pointerId) {
-    if (!marquee) {
-      return;
-    }
-    closeDropdown();
-    marquee.active = true;
-    filesEl.setPointerCapture(pointerId);
-    marquee.box = document.createElement("div");
-    marquee.box.className = "selection-marquee";
-    document.body.appendChild(marquee.box);
-    document.body.classList.add("marquee-selecting");
-  }
-
-  /**
-   * 현재 포인터 위치에 맞춰 사각형을 그리고, 영역과 겹치는 파일/폴더 행을 선택한다.
-   * @param x 현재 포인터 clientX
-   * @param y 현재 포인터 clientY
-   */
-  function updateMarquee(x, y) {
-    if (!marquee?.box) {
-      return;
-    }
-    const rect = normalizedRect(marquee.startX, marquee.startY, x, y);
-    Object.assign(marquee.box.style, {
-      left: rect.left + "px",
-      top: rect.top + "px",
-      width: rect.width + "px",
-      height: rect.height + "px",
-    });
-    const hitKeys = [];
-    for (const row of selectableRows()) {
-      if (rectsOverlap(rect, row.getBoundingClientRect())) {
-        hitKeys.push(rowKey(row));
-      }
-    }
-    selection = marquee.additive
-      ? new Set([...marquee.baseSelection, ...hitKeys])
-      : new Set(hitKeys);
-    marquee.lastKey = hitKeys.length ? hitKeys[hitKeys.length - 1] : null;
-    applySelection();
-  }
-
-  /** 사각형 선택을 정상 종료하고 click 억제 상태를 유지한다. */
-  function finishMarquee(filesEl, e) {
-    if (!marquee || marquee.pointerId !== e.pointerId) {
-      return;
-    }
-    if (marquee.active) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (marquee.lastKey) {
-        selAnchor = marquee.lastKey;
-      }
-      blockMarqueeClick();
-    }
-    cleanupMarquee(filesEl, e.pointerId);
-  }
-
-  /** 사각형 선택이 취소되면 드래그 전 선택으로 되돌린다. */
-  function cancelMarquee(filesEl, e) {
-    if (!marquee || marquee.pointerId !== e.pointerId) {
-      return;
-    }
-    if (marquee.active) {
-      selection = new Set(marquee.baseSelection);
-      applySelection();
-      suppressNextRowClick = false;
-    }
-    cleanupMarquee(filesEl, e.pointerId);
-  }
-
-  /** 사각형 DOM 과 pointer capture 를 정리한다. */
-  function cleanupMarquee(filesEl, pointerId) {
-    if (filesEl.hasPointerCapture(pointerId)) {
-      filesEl.releasePointerCapture(pointerId);
-    }
-    if (marquee?.box) {
-      marquee.box.remove();
-    }
-    document.body.classList.remove("marquee-selecting");
-    marquee = null;
-  }
-
-  /** 드래그 선택 직후 브라우저가 만드는 click 하나만 파일 트리 안에서 차단한다. */
-  function blockMarqueeClick() {
-    suppressNextRowClick = true;
-    const clear = () => {
-      suppressNextRowClick = false;
-      window.removeEventListener("click", onClick, true);
-    };
-    const onClick = (e) => {
-      if (e.target.closest(".wt-files")) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      clear();
-    };
-    window.addEventListener("click", onClick, true);
-    window.setTimeout(clear, 100);
-  }
-
-  /** 두 좌표로 CSS/충돌 검사에 쓰는 정규화된 사각형을 만든다. */
-  function normalizedRect(startX, startY, endX, endY) {
-    const left = Math.min(startX, endX);
-    const top = Math.min(startY, endY);
-    const right = Math.max(startX, endX);
-    const bottom = Math.max(startY, endY);
-    return {
-      left,
-      top,
-      right,
-      bottom,
-      width: right - left,
-      height: bottom - top,
-    };
-  }
-
-  /** 두 client rect 가 조금이라도 겹치는지 확인한다. */
-  function rectsOverlap(a, b) {
-    return (
-      a.left <= b.right &&
-      a.right >= b.left &&
-      a.top <= b.bottom &&
-      a.bottom >= b.top
-    );
-  }
-
-  /** 현재 선택을 DOM 에 반영하고, 더 이상 없는 키는 정리한다. */
-  function applySelection() {
-    const rows = selectableRows();
-    const present = new Set(rows.map(rowKey));
-    for (const k of selection) {
-      if (!present.has(k)) {
-        selection.delete(k);
-      }
-    }
-    rows.forEach((row) => {
-      const selected = selection.has(rowKey(row));
-      row.classList.toggle("selected", selected);
-      row.classList.toggle("single-selected", selected && selection.size === 1);
-    });
-  }
-
-  /** anchor~target 사이 행들을 선택한다(Shift 범위). */
-  function selectRange(targetKey) {
-    const keys = selectableRows().map(rowKey);
-    const a = selAnchor ? keys.indexOf(selAnchor) : -1;
-    const b = keys.indexOf(targetKey);
-    if (a < 0 || b < 0) {
-      selection = new Set([targetKey]);
-      return;
-    }
-    const lo = Math.min(a, b);
-    const hi = Math.max(a, b);
-    selection = new Set(keys.slice(lo, hi + 1));
-  }
-
-  /** 선택된 행 중 특정 그룹(gkey)의 실제 파일 경로들을 중복 없이 반환한다. */
-  function selectedPathsOfKind(gkey) {
-    const prefix = gkey + ":";
-    const rowsByKey = new Map(
-      selectableRows().map((row) => [rowKey(row), row])
-    );
-    const seen = new Set();
-    const out = [];
-    for (const k of selection) {
-      if (k.startsWith(prefix)) {
-        const row = rowsByKey.get(k);
-        if (!row) {
-          continue;
-        }
-        for (const path of rowPaths(row)) {
-          if (path && !seen.has(path)) {
-            seen.add(path);
-            out.push(path);
-          }
-        }
-      }
-    }
-    return out;
-  }
-
-  /** 작업트리 행 클릭: Ctrl/Cmd=토글, Shift=범위, 파일 일반 클릭=단일 선택 + 비교 열기. */
-  function onWorkingRowClick(e, row) {
-    if (suppressNextRowClick) {
-      suppressNextRowClick = false;
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    const key = rowKey(row);
-    if (e.metaKey || e.ctrlKey) {
-      if (selection.has(key)) {
-        selection.delete(key);
-      } else {
-        selection.add(key);
-      }
-      selAnchor = key;
-      applySelection();
-    } else if (e.shiftKey) {
-      selectRange(key);
-      applySelection();
-    } else {
-      selection = new Set([key]);
-      selAnchor = key;
-      applySelection();
-      if (row.classList.contains("file")) {
-        openWorkingPath(row.dataset.path, row.dataset.stage, row.dataset.status);
-      }
-    }
-  }
+  // 행 action의 DOM 이벤트와 선택 상태 전환은 전용 모듈에 맡긴다.
+  const { bindRowActions } = window.__gscChangesWorkingTreeActions({
+    actionPaths,
+    isSelected,
+    openContextMenu,
+    postWorkingAction,
+    rowContextNodes,
+    selectOnly,
+    vscode,
+  });
 
   /** 작업트리 파일 열기: 충돌은 resolver, 그 외 staged/unstaged 는 editable diff 로 연다. */
   function openWorkingPath(path, stage, status) {
     vscode.postMessage({ type: "openWorkingChange", path, stage, status });
-  }
-
-  /**
-   * 행 액션/컨텍스트의 대상 경로.
-   * - 클릭한 행이 다중 선택(2개 이상)에 포함되면 같은 그룹의 선택 경로 전체,
-   *   아니면 그 행(파일=자신, 폴더=하위 전부).
-   */
-  function actionPaths(row) {
-    const group = row.closest(".group");
-    const gkey = group ? group.dataset.gkey : "";
-    if (selection.has(rowKey(row)) && selection.size > 1) {
-      return selectedPathsOfKind(gkey);
-    }
-    return rowPaths(row);
   }
 
   /** stage/unstage 는 즉시 busy 상태를 표시하고 중복 클릭을 막은 뒤 extension host 로 보낸다. */
@@ -1910,201 +1343,6 @@
     }
     window.__gscBeginWorkingOperation?.(type, paths);
     vscode.postMessage({ type, paths });
-  }
-
-  // ── 미트볼/커밋 드롭다운(드릴다운) ──
-
-  let dropdownEl = null;
-
-  /** 바깥 mousedown 이면 닫는다(앵커/메뉴 내부는 제외). */
-  function onDocDown(e) {
-    if (!dropdownEl) {
-      return;
-    }
-    const a = dropdownEl.__anchor;
-    if (
-      dropdownEl.contains(e.target) ||
-      (a && (a === e.target || a.contains(e.target)))
-    ) {
-      return;
-    }
-    closeDropdown();
-  }
-
-  /** Escape 로 닫는다. */
-  function onDocKey(e) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      closeDropdown();
-    }
-  }
-
-  /** 열린 드롭다운을 닫고 리스너를 정리한다. */
-  function closeDropdown() {
-    if (dropdownEl) {
-      dropdownEl.__anchor?.setAttribute("aria-expanded", "false");
-      dropdownEl.remove();
-      dropdownEl = null;
-    }
-    document.removeEventListener("mousedown", onDocDown, true);
-    document.removeEventListener("keydown", onDocKey, true);
-  }
-
-  /** 구분선 요소. */
-  function menuDivider() {
-    const d = document.createElement("div");
-    d.className = "menu-sep";
-    d.setAttribute("role", "separator");
-    return d;
-  }
-
-  /**
-   * div 기반 menuitem 이 Enter/Space 키로도 마우스 클릭과 같은 동작을 수행하게 한다.
-   * @param {HTMLElement} item 키보드 활성화를 연결할 메뉴 항목
-   */
-  function bindMenuItemKeyboard(item) {
-    item.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        item.click();
-      }
-    });
-  }
-
-  /** 앵커(헤더 버튼) 아래에 드롭다운을 연다. */
-  function openDropdown(anchor, rootNodes) {
-    openMenu(rootNodes, { anchor });
-  }
-
-  /** 마우스 좌표에 컨텍스트 메뉴를 연다(우클릭). */
-  function openContextMenu(x, y, rootNodes) {
-    openMenu(rootNodes, { x, y });
-  }
-
-  /**
-   * 메뉴를 연다. 하위 메뉴는 같은 자리에서 드릴다운한다(좁은 사이드바에서 플라이아웃보다 안정적).
-   * - place.anchor 면 그 버튼 아래에, {x,y} 면 그 좌표에 배치한다.
-   * - 리프는 node.onClick(직접 실행) 또는 node.id(scmAction 위임) 중 하나로 동작한다.
-   */
-  function openMenu(rootNodes, place) {
-    closeDropdown();
-    dropdownEl = document.createElement("div");
-    dropdownEl.className = "menu";
-    dropdownEl.setAttribute("role", "menu");
-    dropdownEl.__anchor = place.anchor || null;
-    dropdownEl.__anchor?.setAttribute("aria-expanded", "true");
-    document.body.appendChild(dropdownEl);
-
-    const reposition = () =>
-      place.anchor
-        ? positionMenu(place.anchor.getBoundingClientRect(), true)
-        : positionMenu({ left: place.x, right: place.x, top: place.y, bottom: place.y }, false);
-
-    const stack = [{ nodes: rootNodes, title: null }];
-    const renderTop = () => {
-      const top = stack[stack.length - 1];
-      dropdownEl.innerHTML = "";
-      if (stack.length > 1) {
-        const back = document.createElement("div");
-        back.className = "menu-item menu-back";
-        back.setAttribute("role", "menuitem");
-        back.tabIndex = 0;
-        back.title = top.title || "";
-        back.innerHTML =
-          `<span class="codicon codicon-chevron-left"></span>` +
-          `<span class="menu-label">${esc(top.title || "")}</span>`;
-        back.addEventListener("click", (e) => {
-          e.stopPropagation();
-          stack.pop();
-          renderTop();
-          reposition();
-        });
-        bindMenuItemKeyboard(back);
-        dropdownEl.appendChild(back);
-        dropdownEl.appendChild(menuDivider());
-      }
-      for (const node of top.nodes) {
-        if (node.separator) {
-          dropdownEl.appendChild(menuDivider());
-          continue;
-        }
-        const hasSub = !!(node.submenu && node.submenu.length);
-        const item = document.createElement("div");
-        item.className = "menu-item";
-        item.setAttribute("role", "menuitem");
-        item.tabIndex = 0;
-        if (hasSub) {
-          item.setAttribute("aria-haspopup", "menu");
-        }
-        item.title = node.label || "";
-        item.innerHTML =
-          `<span class="menu-check codicon ${
-            node.checked ? "codicon-check" : ""
-          }"></span>` +
-          `<span class="menu-label">${esc(node.label || "")}</span>` +
-          (hasSub
-            ? `<span class="menu-sub codicon codicon-chevron-right"></span>`
-            : "");
-        item.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (hasSub) {
-            stack.push({ nodes: node.submenu, title: node.label });
-            renderTop();
-            reposition();
-          } else if (node.onClick) {
-            node.onClick();
-            closeDropdown();
-          } else if (node.id) {
-            const commitOperation =
-              window.__gscCommitOperationForMenuId?.(node.id);
-            if (commitOperation) {
-              doCommit(commitOperation);
-            } else {
-              vscode.postMessage({ type: "scmAction", action: node.id });
-            }
-            closeDropdown();
-          }
-        });
-        bindMenuItemKeyboard(item);
-        dropdownEl.appendChild(item);
-      }
-      dropdownEl.querySelector('[role="menuitem"]')?.focus();
-    };
-    renderTop();
-    reposition();
-    document.addEventListener("mousedown", onDocDown, true);
-    document.addEventListener("keydown", onDocKey, true);
-  }
-
-  /**
-   * 드롭다운을 기준 사각형에 맞춰 배치한다(화면 밖이면 위/안쪽으로 보정).
-   * @param r        기준 사각형({left,right,top,bottom})
-   * @param rightAlign true 면 오른쪽 정렬(헤더 버튼), false 면 왼쪽 정렬(컨텍스트 메뉴)
-   */
-  function positionMenu(r, rightAlign) {
-    if (!dropdownEl) {
-      return;
-    }
-    dropdownEl.style.position = "fixed";
-    dropdownEl.style.visibility = "hidden";
-    dropdownEl.style.left = "0px";
-    dropdownEl.style.top = "0px";
-    const m = dropdownEl.getBoundingClientRect();
-    let left = rightAlign ? r.right - m.width : r.left;
-    left = Math.min(left, window.innerWidth - 4 - m.width);
-    if (left < 4) {
-      left = 4;
-    }
-    let top = r.bottom + 2;
-    if (top + m.height > window.innerHeight - 4) {
-      top = r.top - m.height - 2;
-      if (top < 4) {
-        top = Math.max(4, window.innerHeight - 4 - m.height);
-      }
-    }
-    dropdownEl.style.left = left + "px";
-    dropdownEl.style.top = top + "px";
-    dropdownEl.style.visibility = "visible";
   }
 
   window.addEventListener("message", (event) => {

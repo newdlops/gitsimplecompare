@@ -1,0 +1,7 @@
+/* Changes의 정보 영역은 card를 만들지 않고 section 위계만 한 단계 분리한다. */
+.changes-region { display: flex; flex: 0 0 auto; flex-direction: column; gap: 0; min-height: 0; }
+.changes-region + .changes-region { margin-top: 8px; }
+.changes-region__title { margin: 0; padding: 0 8px 3px; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; letter-spacing: .04em; line-height: 16px; text-transform: uppercase; }
+.changes-region--working { flex: 1 1 auto; }
+.changes-region--working .section { flex: 1 1 auto; }
+.changes-region--working .changes-region__title { color: var(--vscode-foreground); }

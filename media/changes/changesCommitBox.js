@@ -29,6 +29,82 @@
     }
   };
 
+  /**
+   * 커밋 composer의 입력·진행 상태·메뉴 상호작용을 소유하는 controller를 만든다.
+   * @param {object} options host bridge와 menu API 지연 조회 함수를 포함한 의존성
+   * @returns {{bindCommitBox: Function, doCommit: Function, setCommitInProgress: Function}} composer 제어 API
+   */
+  window.__gscChangesCommitBox = function createChangesCommitBox({
+    vscode,
+    getMenuApi,
+    getCommitMenuNodes,
+  }) {
+    let commitInProgress = false;
+
+    /** 렌더된 textarea와 button/caret에 입력·키보드·클릭 동작을 연결한다. */
+    function bindCommitBox(scope = document) {
+      const textarea = scope.querySelector("#commit-msg");
+      if (textarea) {
+        autoGrow(textarea);
+        textarea.addEventListener("input", () => {
+          autoGrow(textarea);
+          vscode.postMessage({ type: "commitMessageChange", message: textarea.value });
+        });
+        textarea.addEventListener("keydown", (event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+            event.preventDefault();
+            doCommit("commit");
+          }
+        });
+      }
+      const commitButton = scope.querySelector("#commit-btn");
+      commitButton?.addEventListener("click", () => doCommit("commit"));
+      const caret = scope.querySelector("#commit-caret");
+      caret?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const menu = getMenuApi();
+        if (menu.isDropdownAnchor(caret)) menu.closeDropdown();
+        else menu.openDropdown(caret, getCommitMenuNodes());
+      });
+      reflectCommitBusy();
+    }
+
+    /** 현재 commit busy 상태를 재렌더된 button과 caret에 다시 반영한다. */
+    function reflectCommitBusy() {
+      const button = document.getElementById("commit-btn");
+      if (button) {
+        button.classList.toggle("busy", commitInProgress);
+        button.disabled = commitInProgress;
+      }
+      const caret = document.getElementById("commit-caret");
+      if (caret) caret.disabled = commitInProgress;
+    }
+
+    /** host가 알린 commit operation 상태를 controller에 반영한다. */
+    function setCommitInProgress(active) {
+      commitInProgress = Boolean(active);
+      reflectCommitBusy();
+    }
+
+    /** 현재 textarea 메시지로 commit을 한 번만 요청하고 AI planner hook을 우선한다. */
+    function doCommit(op) {
+      if (commitInProgress) return;
+      const textarea = document.getElementById("commit-msg");
+      const request = { op, message: textarea ? textarea.value : "" };
+      if (window.__gscTryAiCommitPlan?.(request)) return;
+      setCommitInProgress(true);
+      vscode.postMessage({ type: "commit", ...request });
+    }
+
+    /** textarea 높이를 내용에 맞춰 늘리되 sidebar를 과도하게 밀지 않는다. */
+    function autoGrow(textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+
+    return { bindCommitBox, doCommit, setCommitInProgress };
+  };
+
   if (!rootEl) {
     return;
   }

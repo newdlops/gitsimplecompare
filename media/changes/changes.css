@@ -25,6 +25,30 @@ body {
   overflow-x: hidden;
 }
 
+/* 최상위 Repository / Working Changes / Tools landmark를 compact sidebar heading으로 보인다.
+   - informationArchitecture가 추가한 h2가 browser 기본 margin·font를 쓰지 않게 해 기존 section header와 밀도를 맞춘다. */
+.changes-region {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.changes-region__title {
+  margin: 0;
+  padding: 7px 8px 3px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+.changes-region--repository .changes-region__title {
+  padding-top: 5px;
+}
+
 .codicon {
   font-size: 16px;
   line-height: 22px;
@@ -225,6 +249,23 @@ body {
 .section[data-section="changes"] > .section-body {
   padding-right: 12px;
   scrollbar-gutter: stable;
+}
+
+/* 좁은 sidebar에서도 textarea 아래 Commit primary action까지 한 화면에서 도달해야 한다.
+   - 파일 목록은 section body 내부에서 계속 scroll하지만 composer/action을 48px 기본 section 높이에 잘라내지 않는다. */
+.section[data-section="changes"] {
+  min-height: 176px;
+}
+
+/* 280px sidebar에서는 reserved scrollbar gutter와 composer 양쪽 여백이 함께 action menu를
+   잘라낼 수 있다. 좁은 폭에서만 gutter/여백을 줄여 Commit과 caret를 하나의 완전한 control로 보인다. */
+@media (max-width: 320px) {
+  .section[data-section="changes"] > .section-body {
+    padding-right: 0;
+    scrollbar-gutter: auto;
+  }
+
+  .commit-box { padding-inline: 8px; }
 }
 
 .section.collapsed .section-body {
@@ -1174,7 +1215,13 @@ body:focus-within .row.selected:hover {
     --vscode-menu-selectionBackground,
     var(--vscode-list-hoverBackground)
   );
-  outline: none;
+}
+
+/* 메뉴 항목은 hover 배경만으로 키보드 포커스를 대체하지 않는다.
+   고대비 테마에서도 현재 roving-tabindex 대상을 식별할 수 있게 focus border를 남긴다. */
+.menu-item:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
 }
 
 .menu-label {
