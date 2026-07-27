@@ -1,0 +1,33 @@
+/* 모든 webview가 공유하는 최소 reset과 forced-colors 기본값.
+   - 기존 VS Code token 기반 스타일을 덮어쓰지 않고 browser 기본 margin/box model만 정규화한다. */
+:where(*, *::before, *::after) {
+  box-sizing: border-box;
+}
+
+:where(html, body) {
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  color: var(--gsc-fg);
+  background: var(--gsc-bg);
+  font-family: var(--gsc-font);
+  font-size: var(--gsc-font-size);
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where(button, [role="button"]) {
+  touch-action: manipulation;
+}
+
+:where(img, svg) {
+  max-width: 100%;
+}
+
+@media (forced-colors: active) {
+  :where(button, input, select, textarea, [role="button"]) {
+    forced-color-adjust: auto;
+  }
+}

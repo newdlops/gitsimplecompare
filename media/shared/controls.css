@@ -1,0 +1,232 @@
+/* Review Center와 Workspace에서 공유하는 compact control 문법.
+   - 한 영역의 primary action은 하나만 사용하고, icon action은 항상 title/aria-label과 함께 쓴다. */
+.gsc-button,
+.gsc-icon-button,
+.gsc-input,
+.gsc-select {
+  font: inherit;
+}
+
+.gsc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gsc-space-2);
+  min-height: var(--gsc-control-height);
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--gsc-radius-control);
+  color: var(--gsc-secondary-fg);
+  background: var(--gsc-secondary-bg);
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.gsc-button:hover:not(:disabled) {
+  background: var(--gsc-secondary-hover, var(--gsc-secondary-bg));
+}
+
+.gsc-button--primary {
+  color: var(--gsc-action-fg);
+  background: var(--gsc-action-bg);
+}
+
+.gsc-button--primary:hover:not(:disabled) {
+  background: var(--gsc-action-hover);
+}
+
+.gsc-button--ghost {
+  color: var(--gsc-fg);
+  background: transparent;
+}
+
+.gsc-button--ghost:hover:not(:disabled) {
+  background: var(--gsc-hover);
+}
+
+.gsc-button--danger {
+  color: var(--gsc-error);
+  background: transparent;
+  border-color: var(--gsc-error);
+}
+
+.gsc-button[aria-busy="true"]::before {
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  animation: gsc-control-spin 0.8s linear infinite;
+}
+
+.gsc-button:disabled,
+.gsc-icon-button:disabled,
+.gsc-input:disabled,
+.gsc-select:disabled {
+  color: var(--gsc-disabled);
+  cursor: default;
+}
+
+.gsc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gsc-control-height);
+  min-width: var(--gsc-control-height);
+  height: var(--gsc-control-height);
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--gsc-radius-control);
+  color: var(--vscode-icon-foreground, var(--gsc-fg));
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.gsc-icon-button:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, var(--gsc-hover));
+}
+
+.gsc-input,
+.gsc-select {
+  width: 100%;
+  min-height: var(--gsc-control-height);
+  padding: 4px 8px;
+  border: 1px solid var(--gsc-input-border);
+  border-radius: var(--gsc-radius-control);
+  color: var(--gsc-input-fg);
+  background: var(--gsc-input-bg);
+  line-height: 18px;
+}
+
+.gsc-input::placeholder {
+  color: var(--gsc-muted);
+  opacity: 1;
+}
+
+.gsc-field {
+  display: grid;
+  gap: var(--gsc-space-2);
+}
+
+.gsc-field__label {
+  color: var(--gsc-fg);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.gsc-field__hint {
+  color: var(--gsc-muted);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.gsc-field--invalid .gsc-input,
+.gsc-field--invalid .gsc-select {
+  border-color: var(--gsc-error);
+}
+
+.gsc-field__error {
+  color: var(--gsc-error);
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.gsc-segmented {
+  display: inline-flex;
+  min-height: var(--gsc-control-height);
+  border: 1px solid var(--gsc-border);
+  border-radius: var(--gsc-radius-control);
+  overflow: hidden;
+}
+
+.gsc-segmented__button {
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-right: 1px solid var(--gsc-border);
+  color: var(--gsc-fg);
+  background: transparent;
+  cursor: pointer;
+}
+
+.gsc-segmented__button:last-child {
+  border-right: 0;
+}
+
+.gsc-segmented__button[aria-pressed="true"],
+.gsc-segmented__button[aria-selected="true"] {
+  color: var(--gsc-selected-fg);
+  background: var(--gsc-selected);
+}
+
+.gsc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gsc-space-1);
+  max-width: 100%;
+  min-height: 18px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--vscode-badge-foreground, var(--gsc-fg));
+  background: var(--vscode-badge-background, var(--gsc-surface-alt));
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gsc-status-pill--error {
+  color: var(--gsc-error);
+  background: var(--gsc-error-bg);
+}
+
+.gsc-status-pill--warning {
+  color: var(--gsc-warning);
+  background: var(--gsc-warning-bg);
+}
+
+.gsc-status-pill--success {
+  color: var(--gsc-success);
+}
+
+.gsc-skip-link {
+  position: fixed;
+  top: var(--gsc-space-2);
+  inset-inline-start: var(--gsc-space-2);
+  z-index: calc(var(--gsc-z-sticky) + 1);
+  padding: var(--gsc-space-2) var(--gsc-space-4);
+  transform: translateY(-150%);
+  border: 1px solid var(--gsc-focus);
+  border-radius: var(--gsc-radius-control);
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  text-decoration: none;
+  transition: transform 120ms ease-out;
+}
+
+.gsc-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 1px solid var(--gsc-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsc-skip-link {
+    transition: none;
+  }
+}
+
+@keyframes gsc-control-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

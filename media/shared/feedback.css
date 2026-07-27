@@ -1,0 +1,138 @@
+/* loading, empty, inline error, banner, toast의 공통 상태 표현.
+   - 상태 색은 항상 icon 또는 label과 함께 사용해 색상만으로 의미를 전달하지 않는다. */
+.gsc-skeleton {
+  display: block;
+  min-height: 12px;
+  border-radius: var(--gsc-radius-row);
+  background: var(--vscode-editor-inactiveSelectionBackground, var(--gsc-surface-alt));
+}
+
+.gsc-skeleton--row {
+  height: var(--gsc-compact-row-height);
+  margin: var(--gsc-space-2) var(--gsc-space-3);
+}
+
+.gsc-empty-state,
+.gsc-error-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--gsc-space-3);
+  max-width: 560px;
+  padding: var(--gsc-space-8);
+}
+
+.gsc-empty-state__icon,
+.gsc-error-state__icon {
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.gsc-empty-state__title,
+.gsc-error-state__title {
+  margin: 0;
+  color: var(--gsc-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.gsc-empty-state__body,
+.gsc-error-state__body {
+  margin: 0;
+  color: var(--gsc-muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.gsc-error-state__icon,
+.gsc-error-state__title {
+  color: var(--gsc-error);
+}
+
+.gsc-inline-error,
+.gsc-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gsc-space-3);
+  padding: var(--gsc-space-3) var(--gsc-space-4);
+  border: 1px solid var(--gsc-border);
+  border-radius: var(--gsc-radius-surface);
+  color: var(--gsc-fg);
+  background: var(--gsc-surface);
+}
+
+.gsc-inline-error {
+  border-color: var(--gsc-error);
+  color: var(--gsc-error);
+  background: var(--gsc-error-bg);
+}
+
+.gsc-banner--warning {
+  border-color: var(--gsc-warning);
+  background: var(--gsc-warning-bg);
+}
+
+.gsc-banner--info {
+  border-color: var(--gsc-info);
+}
+
+.gsc-banner__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.gsc-banner__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--gsc-space-2);
+}
+
+.gsc-progress {
+  display: grid;
+  gap: var(--gsc-space-2);
+}
+
+.gsc-progress__track {
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--vscode-progressBar-background, var(--gsc-surface-alt));
+}
+
+.gsc-progress__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--vscode-progressBar-background, var(--gsc-action-bg));
+}
+
+.gsc-toast-region {
+  position: fixed;
+  right: var(--gsc-space-4);
+  bottom: var(--gsc-space-4);
+  z-index: var(--gsc-z-menu);
+  display: grid;
+  gap: var(--gsc-space-2);
+  width: min(420px, calc(100vw - 16px));
+  pointer-events: none;
+}
+
+.gsc-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gsc-space-3);
+  padding: var(--gsc-space-3) var(--gsc-space-4);
+  border: 1px solid var(--gsc-border);
+  border-radius: var(--gsc-radius-surface);
+  color: var(--gsc-fg);
+  background: var(--gsc-surface);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+.gsc-toast--error {
+  border-color: var(--gsc-error);
+}

@@ -1,0 +1,56 @@
+/* 목록·주 콘텐츠·inspector를 재사용 가능한 grid로 배치하는 기본 layout primitive. */
+.gsc-workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--gsc-bg);
+}
+
+.gsc-workspace--three-pane {
+  grid-template-columns: minmax(200px, var(--gsc-nav-width, 240px)) minmax(0, 1fr) minmax(260px, var(--gsc-inspector-width, 320px));
+}
+
+.gsc-workspace__pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.gsc-workspace__pane + .gsc-workspace__pane {
+  border-left: 1px solid var(--gsc-divider);
+}
+
+.gsc-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--gsc-z-sticky);
+  background: var(--gsc-bg);
+}
+
+.gsc-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--gsc-z-sticky);
+  background: var(--gsc-bg);
+}
+
+@media (max-width: 1199px) {
+  .gsc-workspace--three-pane {
+    grid-template-columns: minmax(200px, var(--gsc-nav-width, 240px)) minmax(0, 1fr);
+  }
+
+  .gsc-workspace__pane--inspector {
+    display: none;
+  }
+}
+
+@media (max-width: 799px) {
+  .gsc-workspace--three-pane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gsc-workspace__pane--navigator {
+    display: none;
+  }
+}
