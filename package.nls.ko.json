@@ -170,7 +170,7 @@
   "config.blameLine.show.desc": "활성 에디터의 각 라인 앞에 Git blame 텍스트를 표시할지 여부",
   "config.blameBlock.show.desc": "함수, 클래스, 인터페이스 등 소스 블록 선언 위에 클릭 가능한 Git 작업자 Code Vision을 표시할지 여부",
   "config.pullRequestComments.show.desc": "활성 에디터에 GitHub Pull Request 리뷰 댓글을 표시할지 여부",
-  "config.experimentalReviewWrites.desc": "일회용 저장소에서 검증한 뒤 실험적 GitHub Pull Request 쓰기 동작을 활성화합니다.",
+  "config.reviewWritesEnabled.desc": "GitHub Pull Request 리뷰와 관리 쓰기 동작을 활성화합니다. 읽기 전용 리뷰 UI만 사용하려면 이 설정을 끄세요.",
   "config.aiCliProvider.desc": "커밋 플랜과 AI 메시지 생성에 사용할 AI CLI provider",
   "config.aiCliProvider.auto": "Claude Code 를 먼저 시도하고, 실패하면 Codex 를 시도합니다.",
   "config.aiCliProvider.claude": "Claude Code CLI 를 사용합니다.",

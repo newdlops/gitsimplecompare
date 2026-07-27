@@ -11,7 +11,7 @@ import { reviewCenterPreviewCommentsForFile, type ReviewCenterSnapshot } from ".
 import { resolvePreviewHeadRef, resolvePreviewTargetRef } from "../git/pullRequestPreviewTarget";
 import { openPullRequestPreviewDiff } from "../ui/pullRequestPreviewDiff";
 import { logError, logInfo } from "../ui/outputLog";
-import { experimentalReviewWritesEnabled, isReviewCenterWriteMessage } from "../ui/reviewWriteGate";
+import { isReviewCenterWriteMessage, reviewWritesEnabled } from "../ui/reviewWriteGate";
 import { buildReviewCenterHtml } from "./reviewCenterHtml";
 import { WorkspaceReviewDraftStorage } from "./reviewDraftStorage";
 import { ReviewCenterDraftCoordinator, reviewDraftTarget } from "./reviewCenterDraftCoordinator";
@@ -126,7 +126,7 @@ export class ReviewCenterPanel {
     this.suggestionApplyCoordinator = new ReviewCenterSuggestionApplyCoordinator(repoRoot, new GitService(repoRoot), {
       post: (message) => this.post(message), isCurrent: (snapshot) => ReviewCenterPanel.current === this && this.snapshot === snapshot,
     });
-    panel.webview.html = buildReviewCenterHtml(extensionUri, panel.webview, experimentalReviewWritesEnabled());
+    panel.webview.html = buildReviewCenterHtml(extensionUri, panel.webview, reviewWritesEnabled());
     panel.webview.onDidReceiveMessage((message: ReviewCenterWebviewMessage) => {
       void this.handleMessage(message);
     }, undefined, this.disposables);
@@ -182,8 +182,8 @@ export class ReviewCenterPanel {
 
   /** 웹뷰 의도를 refresh/native diff/GitHub browser 보조 동작으로 분기한다. */
   private async handleMessage(message: ReviewCenterWebviewMessage): Promise<void> {
-    if (isReviewCenterWriteMessage(message) && !experimentalReviewWritesEnabled()) {
-      logInfo("review center write skipped", { number: this.number, type: message.type, reason: "experimentalReviewWritesDisabled" });
+    if (isReviewCenterWriteMessage(message) && !reviewWritesEnabled()) {
+      logInfo("review center write skipped", { number: this.number, type: message.type, reason: "reviewWritesDisabled" });
       return;
     }
     if (message.type === "ready" || message.type === "refresh") {

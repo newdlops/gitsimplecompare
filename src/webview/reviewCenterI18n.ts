@@ -231,7 +231,7 @@ export function reviewCenterI18n(): ReviewCenterI18n {
     skipToContent: vscode.l10n.t("Skip to main content"),
     loading: vscode.l10n.t("Loading pull request review"),
     unavailable: vscode.l10n.t("Review Center is unavailable"),
-    reviewWritesDisabled: vscode.l10n.t("Review write actions are disabled in this release. Enable Experimental Review Writes only after validating them in a disposable repository."),
+    reviewWritesDisabled: vscode.l10n.t("Review write actions are disabled by settings. Enable Git Simple Compare: Review Writes Enabled to use them."),
     retry: vscode.l10n.t("Retry"),
     retryTitle: vscode.l10n.t("Retry loading Review Center"),
     description: vscode.l10n.t("Description"),

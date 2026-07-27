@@ -1,7 +1,7 @@
 {
   "Added": "추가됨",
   "Pull Request Reviews": "Pull Request 리뷰",
-  "Review write actions are disabled in this release. Enable Experimental Review Writes only after validating them in a disposable repository.": "이 릴리스에서는 리뷰 쓰기 동작이 비활성화되어 있습니다. 일회용 저장소에서 검증한 뒤에만 Experimental Review Writes를 활성화하세요.",
+  "Review write actions are disabled by settings. Enable Git Simple Compare: Review Writes Enabled to use them.": "설정에 의해 리뷰 쓰기 동작이 비활성화되어 있습니다. 사용하려면 Git Simple Compare: Review Writes Enabled를 켜세요.",
   "Git Simple Compare navigation": "Git Simple Compare 탐색",
   "Cached review summary": "저장된 리뷰 요약",
   "GitHub authentication is required to load pull request reviews. Run gh auth login and retry.": "Pull Request 리뷰를 불러오려면 GitHub 인증이 필요합니다. gh auth login을 실행한 뒤 다시 시도하세요.",
@@ -563,6 +563,7 @@
   "Repository context": "저장소 컨텍스트",
   "Working Changes": "작업 변경",
   "Tools": "도구",
+  "Resize {0} and {1}": "{0}과(와) {1} 영역 크기 조절",
   "Compare Branches": "브랜치 비교",
   "Changes": "변경 사항",
   "History": "히스토리",

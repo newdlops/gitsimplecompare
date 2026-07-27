@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.72006",
+  "version": "0.1.72009",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1174,10 +1174,10 @@
           "default": true,
           "description": "%config.pullRequestComments.show.desc%"
         },
-        "gitSimpleCompare.experimentalReviewWrites": {
+        "gitSimpleCompare.reviewWritesEnabled": {
           "type": "boolean",
-          "default": false,
-          "description": "%config.experimentalReviewWrites.desc%"
+          "default": true,
+          "description": "%config.reviewWritesEnabled.desc%"
         },
         "gitSimpleCompare.aiCliProvider": {
           "type": "string",

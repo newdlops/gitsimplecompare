@@ -150,7 +150,7 @@ export function reviewsI18n(): ReviewsI18n {
     cachedSummaryStale: vscode.l10n.t("Showing counts last updated {0} while GitHub refreshes the review queues."),
     cachedSummaryError: vscode.l10n.t("Cached counts remain available, but GitHub could not refresh the review queues."),
     unavailable: vscode.l10n.t("Reviews are unavailable"),
-    reviewWritesDisabled: vscode.l10n.t("Review write actions are disabled in this release. Enable Experimental Review Writes only after validating them in a disposable repository."),
+    reviewWritesDisabled: vscode.l10n.t("Review write actions are disabled by settings. Enable Git Simple Compare: Review Writes Enabled to use them."),
     authenticationRequired: vscode.l10n.t("GitHub authentication required"),
     permissionRequired: vscode.l10n.t("Review queue permission required"),
     connectionUnavailable: vscode.l10n.t("GitHub connection unavailable"),

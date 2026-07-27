@@ -7,7 +7,7 @@ import { PullRequestReviewQueueService, type ReviewQueueIdentity } from "../git/
 import { isReviewQueueAbort } from "../git/pullRequestReviewQueueFailure";
 import type { ReviewQueueLane, ReviewQueueSnapshot } from "../git/pullRequestReviewModel";
 import { logError, logInfo, showOutputLog } from "../ui/outputLog";
-import { experimentalReviewWritesEnabled, isReviewQueueWriteMessage } from "../ui/reviewWriteGate";
+import { isReviewQueueWriteMessage, reviewWritesEnabled } from "../ui/reviewWriteGate";
 import { buildReviewsHtml } from "./reviewsHtml";
 import type { ReviewsWebviewMessage } from "./reviewsProtocol";
 import { ReviewCenterPanel } from "./reviewCenterPanel";
@@ -83,7 +83,7 @@ export class ReviewsViewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, "media")],
     };
-    view.webview.html = buildReviewsHtml(this.extensionUri, view.webview, experimentalReviewWritesEnabled());
+    view.webview.html = buildReviewsHtml(this.extensionUri, view.webview, reviewWritesEnabled());
     view.webview.onDidReceiveMessage((message: ReviewsWebviewMessage) => {
       void this.handleMessage(message);
     });
@@ -254,8 +254,8 @@ export class ReviewsViewProvider implements vscode.WebviewViewProvider {
 
   /** webview에서 온 refresh/Review Center 열기 요청을 작은 액션으로 분기한다. */
   private async handleMessage(message: ReviewsWebviewMessage): Promise<void> {
-    if (isReviewQueueWriteMessage(message) && !experimentalReviewWritesEnabled()) {
-      logInfo("review queue write skipped", { type: message.type, reason: "experimentalReviewWritesDisabled" });
+    if (isReviewQueueWriteMessage(message) && !reviewWritesEnabled()) {
+      logInfo("review queue write skipped", { type: message.type, reason: "reviewWritesDisabled" });
       return;
     }
     if (message.type === "selectSidebarMode") {

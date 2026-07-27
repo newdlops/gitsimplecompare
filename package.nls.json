@@ -170,7 +170,7 @@
   "config.blameLine.show.desc": "Show Git blame text before each line in the active editor.",
   "config.blameBlock.show.desc": "Show clickable Git contributor Code Vision above functions, classes, interfaces, and other source blocks.",
   "config.pullRequestComments.show.desc": "Show GitHub pull request review comments in the active editor.",
-  "config.experimentalReviewWrites.desc": "Enable experimental GitHub pull request write actions after validating them in a disposable repository.",
+  "config.reviewWritesEnabled.desc": "Enable GitHub pull request review and management write actions. Disable this setting to use the review UI in read-only mode.",
   "config.aiCliProvider.desc": "AI CLI provider used for commit planning and AI message generation.",
   "config.aiCliProvider.auto": "Try Claude Code first, then Codex.",
   "config.aiCliProvider.claude": "Use Claude Code CLI.",
