@@ -2,14 +2,13 @@
 import { RebaseCommit, RebaseItem } from "../git/rebaseService";
 
 /** 확장 → 웹뷰 */
-export type RebaseToWebview = {
-  type: "plan";
-  base: string;
-  commits: RebaseCommit[];
-};
+export type RebaseToWebview =
+  | { type: "plan"; base: string; commits: RebaseCommit[] }
+  | { type: "operation"; state: "loading" | "running" | "error"; message: string };
 
 /** 웹뷰 → 확장 */
 export type RebaseFromWebview =
   | { type: "ready" }
+  | { type: "retry" }
   | { type: "start"; items: RebaseItem[] }
   | { type: "cancel" };

@@ -6,6 +6,10 @@
 
   const vscode = acquireVsCodeApi();
   const listEl = document.getElementById("list");
+  const statusEl = document.getElementById("operation-status");
+  const startBtn = document.getElementById("start");
+  const retryBtn = document.getElementById("retry");
+  const T = window.__gscRebaseI18n || {};
 
   // 선택 가능한 동작과 표시 라벨(영어 기본; 라벨은 UI 가독성용 고정 텍스트)
   const ACTIONS = ["pick", "reword", "squash", "fixup", "drop"];
@@ -40,20 +44,28 @@
       (a) => `<option value="${a}">${a}</option>`
     ).join("");
     li.innerHTML =
-      `<span class="handle" title="drag to reorder">⠿</span>` +
+      `<span class="handle" title="${esc(T.dragHandle)}" aria-hidden="true">⠿</span>` +
       `<div class="body">` +
       `<div class="top">` +
-	      `<select class="action" title="Choose rebase action" aria-label="Choose rebase action">${options}</select>` +
+	      `<select class="action" title="${esc(T.chooseAction)}" aria-label="${esc(T.chooseAction)}">${options}</select>` +
       `<span class="subject">${esc(commit.subject)}</span>` +
       `<span class="hash">${esc(commit.hash.slice(0, 7))}</span>` +
+	      `<span class="move-actions"><button class="move-up" type="button" title="${esc(T.moveUp)}" aria-label="${esc(T.moveUp)}" data-tooltip="${esc(T.moveUp)}">↑</button><button class="move-down" type="button" title="${esc(T.moveDown)}" aria-label="${esc(T.moveDown)}" data-tooltip="${esc(T.moveDown)}">↓</button></span>` +
       `</div>` +
-	      `<textarea class="message" title="Edit commit message" ` +
-	      `aria-label="Edit commit message" placeholder="commit message"></textarea>` +
+	      `<textarea class="message" title="${esc(T.editMessage)}" ` +
+	      `aria-label="${esc(T.editMessage)}" placeholder="${esc(T.commitMessage)}"></textarea>` +
       `</div>`;
 
     const select = li.querySelector(".action");
     const textarea = li.querySelector(".message");
     select.addEventListener("change", () => applyAction(li, select, textarea));
+    li.querySelector(".move-up").addEventListener("click", () => moveItem(li, -1));
+    li.querySelector(".move-down").addEventListener("click", () => moveItem(li, 1));
+    li.addEventListener("keydown", (event) => {
+      if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      moveItem(li, event.key === "ArrowUp" ? -1 : 1);
+    });
 
     bindDrag(li);
     return li;
@@ -101,6 +113,16 @@
     });
   }
 
+  /** 같은 todo 목록 안에서 항목을 한 칸 이동하고 포커스를 유지해 키보드 재정렬을 가능하게 한다. */
+  function moveItem(li, offset) {
+    const items = Array.from(listEl.querySelectorAll(".item"));
+    const index = items.indexOf(li);
+    const destination = index + offset;
+    if (index < 0 || destination < 0 || destination >= items.length) return;
+    listEl.insertBefore(li, offset < 0 ? items[destination] : items[destination].nextSibling);
+    li.querySelector(offset < 0 ? ".move-up" : ".move-down")?.focus();
+  }
+
   /** 현재 DOM 순서대로 계획 항목 배열을 수집한다(위가 먼저=오래된 것). */
   function collectItems() {
     return Array.from(listEl.querySelectorAll(".item")).map((li) => {
@@ -122,18 +144,31 @@
   }
 
   // 버튼: 시작/취소
-  document.getElementById("start").addEventListener("click", () => {
+  startBtn.addEventListener("click", () => {
     vscode.postMessage({ type: "start", items: collectItems() });
   });
   document.getElementById("cancel").addEventListener("click", () => {
     vscode.postMessage({ type: "cancel" });
   });
+  retryBtn.addEventListener("click", () => vscode.postMessage({ type: "retry" }));
+
+  /** host operation 상태에 맞춰 실행 중 중복 제출과 오류 재시도 surface를 갱신한다. */
+  function renderOperation(operation) {
+    statusEl.textContent = operation.message || "";
+    statusEl.className = `operation-status operation-status--${operation.state}`;
+    statusEl.hidden = !operation.message;
+    startBtn.disabled = operation.state === "loading" || operation.state === "running";
+    retryBtn.hidden = operation.state !== "error";
+  }
 
   // 확장에서 오는 메시지 처리
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.type === "plan") {
       renderPlan(msg.commits);
+      renderOperation({ state: "ready", message: "" });
+    } else if (msg.type === "operation") {
+      renderOperation(msg);
     }
   });
 

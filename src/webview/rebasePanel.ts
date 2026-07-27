@@ -2,7 +2,11 @@
 // - 패널 생애주기와 메시지 라우팅만 담당하고, 실제 rebase 실행은 RebaseService 에 위임한다.
 // - 충돌로 멈추면 충돌 뷰(기능 3)가 이어받도록 새로고침 명령을 호출한다(경계 분리).
 import * as vscode from "vscode";
-import { instantTooltipResources } from "./instantTooltipResources";
+import {
+  sharedWebviewResources,
+  sharedWebviewScriptTags,
+  sharedWebviewStyleTags,
+} from "./sharedWebviewResources";
 import { RebaseItem, RebaseService } from "../git/rebaseService";
 import { RebaseFromWebview, RebaseToWebview } from "./rebaseProtocol";
 
@@ -76,26 +80,8 @@ export class RebasePanel {
    * @param msg 웹뷰 메시지
    */
   private async handleMessage(msg: RebaseFromWebview): Promise<void> {
-    if (msg.type === "ready") {
-      try {
-        const commits = await this.service.getCommits(this.base);
-        if (commits.length === 0) {
-          vscode.window.showInformationMessage(
-            vscode.l10n.t("No commits to rebase.")
-          );
-          this.dispose();
-          return;
-        }
-        this.post({ type: "plan", base: this.base, commits });
-      } catch (err) {
-        vscode.window.showErrorMessage(
-          vscode.l10n.t(
-            "Could not load commits: {0}",
-            err instanceof Error ? err.message : String(err)
-          )
-        );
-        this.dispose();
-      }
+    if (msg.type === "ready" || msg.type === "retry") {
+      await this.loadPlan();
       return;
     }
     if (msg.type === "cancel") {
@@ -104,6 +90,21 @@ export class RebasePanel {
     }
     if (msg.type === "start") {
       await this.runRebase(msg.items);
+    }
+  }
+
+  /** todo 조회 실패를 panel 안에 남겨 사용자가 같은 기준점에서 명시적으로 재시도하게 한다. */
+  private async loadPlan(): Promise<void> {
+    this.post({ type: "operation", state: "loading", message: vscode.l10n.t("Loading rebase commits…") });
+    try {
+      const commits = await this.service.getCommits(this.base);
+      if (!commits.length) {
+        this.post({ type: "operation", state: "error", message: vscode.l10n.t("No commits to rebase.") });
+        return;
+      }
+      this.post({ type: "plan", base: this.base, commits });
+    } catch (error) {
+      this.post({ type: "operation", state: "error", message: vscode.l10n.t("Could not load commits: {0}", error instanceof Error ? error.message : String(error)) });
     }
   }
 
@@ -126,6 +127,7 @@ export class RebasePanel {
     if (choice !== yes) {
       return;
     }
+    this.post({ type: "operation", state: "running", message: vscode.l10n.t("Starting rebase…") });
 
     const result = await this.service.start(
       this.base,
@@ -178,7 +180,7 @@ export class RebasePanel {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(mediaRoot, "rebase.css")
     );
-    const tooltipResources = instantTooltipResources(webview, extensionUri);
+    const sharedResources = sharedWebviewResources(webview, extensionUri);
     const nonce = makeNonce();
     const csp = [
       `default-src 'none'`,
@@ -191,17 +193,18 @@ export class RebasePanel {
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  ${sharedWebviewStyleTags(sharedResources)}
   <link href="${styleUri}" rel="stylesheet" />
-  <link href="${tooltipResources.styleUri}" rel="stylesheet" />
   <title>Interactive Rebase</title>
 </head>
-<body>
+<body class="gsc-surface">
   <header>
     <h1>${vscode.l10n.t("Interactive Rebase")}</h1>
     <p class="hint">${vscode.l10n.t(
       "Drag to reorder. Top is applied first (oldest)."
     )}</p>
   </header>
+  <div id="operation-status" class="operation-status" role="status" aria-live="polite"></div>
   <ul id="list"></ul>
   <footer>
 	    <button id="start" class="primary" type="button" title="${vscode.l10n.t(
@@ -211,6 +214,7 @@ export class RebasePanel {
     )}">${vscode.l10n.t(
       "Start Rebase"
     )}</button>
+    <button id="retry" type="button" hidden title="${vscode.l10n.t("Retry")}" aria-label="${vscode.l10n.t("Retry")}" data-tooltip="${vscode.l10n.t("Retry")}">${vscode.l10n.t("Retry")}</button>
 	    <button id="cancel" type="button" title="${vscode.l10n.t(
         "Cancel"
       )}" aria-label="${vscode.l10n.t("Cancel")}" data-tooltip="${vscode.l10n.t(
@@ -219,7 +223,15 @@ export class RebasePanel {
       "Cancel"
     )}</button>
   </footer>
-  <script nonce="${nonce}" src="${tooltipResources.scriptUri}"></script>
+  <script nonce="${nonce}">window.__gscRebaseI18n=${JSON.stringify({
+      dragHandle: vscode.l10n.t("Drag to reorder"),
+      chooseAction: vscode.l10n.t("Choose rebase action"),
+      editMessage: vscode.l10n.t("Edit commit message"),
+      commitMessage: vscode.l10n.t("Commit message"),
+      moveUp: vscode.l10n.t("Move commit up"),
+      moveDown: vscode.l10n.t("Move commit down"),
+    })};</script>
+  ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
