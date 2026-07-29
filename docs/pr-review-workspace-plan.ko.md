@@ -1,5 +1,7 @@
 # PR Review Center / Workspace 상세 구현 명세
 
+> **폐기됨 (2026-07-29):** 이 문서는 제거된 Reviews 구현의 역사적 명세이며 현재 제품 구현 근거가 아닙니다.
+
 > 대상 구현자: Terra High  
 > 상위 계획: [`ui-overhaul-plan.ko.md`](./ui-overhaul-plan.ko.md)  
 > 제품 계약: [`PRODUCT.md`](../PRODUCT.md)  
@@ -6110,8 +6112,8 @@ R12 exit:
 2. existing PR이면 Review Workspace.
 3. staged changes로 새 PR 생성 전이면 creation preview.
 4. legacy persisted Viewed를 server state로 자동 write하지 않는다.
-5. migration notice 후 legacy local state 폐기.
-6. 중복 preview conversation/files/commits renderer 제거.
+5. Preview local Viewed는 server state로 자동 write하거나 migration하지 않고 Preview 범위에서 유지한다.
+6. staged Preview의 Conversation/files/commits renderer는 local model로 유지하며 existing PR live review renderer만 제거한다.
 7. shared Markdown/diff helper만 남김.
 8. dead CSS/protocol/message 제거.
 9. command/l10n/docs 갱신.

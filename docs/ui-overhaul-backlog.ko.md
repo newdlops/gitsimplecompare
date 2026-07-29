@@ -1,5 +1,7 @@
 # UI Overhaul 남은 백로그
 
+> **폐기됨 (2026-07-29):** Reviews 관련 백로그와 완료 상태는 현재 구현 근거가 아닙니다. 역사적 본문은 보존합니다.
+
 이 문서는 `ui-overhaul-plan.ko.md`와 `pr-review-workspace-plan.ko.md`의 남은
 구현을 **다음에 열 수 있는 작고 검증 가능한 boundary**로 정리한다.
 

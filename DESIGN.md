@@ -109,13 +109,12 @@ components:
 
 Git Simple Compare는 별도 SaaS 대시보드처럼 보이지 않고 VS Code가 원래 제공했을 법한
 작업 제어면처럼 느껴져야 한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·
-다음 행동을 명확히 보여준다. 그래프, diff, 리뷰 큐처럼 정보가 많은 화면도 같은
+다음 행동을 명확히 보여준다. Graph, diff, Changes처럼 정보가 많은 화면도 같은
 간격·상태·포커스 문법을 공유해 사용자가 매번 UI를 다시 해석하지 않게 한다.
 
-개인 개발자의 빠른 키보드 흐름과 팀·조직의 PR 운영 흐름은 동급이다. 개인 화면은
-관리 정보를 숨기지 않고, 관리 화면은 개별 코드 리뷰로 곧바로 드릴다운할 수 있어야
-한다. 두 흐름 모두 동일한 PR 상태 모델, 권한 표시, 필터, 진행률, 오류 복구 문법을
-사용한다.
+개인 개발자의 빠른 키보드 흐름을 우선한다. Changes와 Graph는 현재 저장소·브랜치·
+변경 상태를 즉시 드러내고, staged Pull Request Preview는 게시 전 대상과 결과를
+명확히 확인하게 한다.
 
 밀도는 높지만 답답하지 않아야 한다. 구획은 카드 장식보다 정렬, 여백, 얇은 경계,
 VS Code의 표면 토큰으로 만든다. 중요한 상태는 색상 하나가 아니라 아이콘, 텍스트,
@@ -203,7 +202,7 @@ VS Code의 표면 토큰으로 만든다. 중요한 상태는 색상 하나가 �
 
 모든 화면은 `command bar → context/header → primary work region → contextual
 inspector/status` 순서를 공유한다. 사이드바는 빠른 상태 확인과 작은 행동을 담당하고,
-편집기 웹뷰는 그래프·리뷰·계획처럼 다중 단계 작업을 담당한다. 모달은 제출 확인이나
+편집기 웹뷰는 Graph와 staged Preview처럼 다중 단계 작업을 담당한다. 모달은 제출 확인이나
 파괴적 작업처럼 주변 문맥을 잠시 멈춰야 할 때만 사용한다.
 
 기본 간격은 2·4·6·8·12·16·24px이다. 2–6px는 아이콘·배지·고밀도 행 내부,
@@ -217,7 +216,7 @@ compact 목록의 기본 행은 26px, 입력과 일반 버튼은 28px다. 댓글
   전체 폭 drawer로 전환하고, 상단 command bar의 보조 행동은 overflow menu로
   이동한다.
 - **소형 (560–799px):** 단일 주 영역 + 접을 수 있는 보조 rail. PR 파일 목록은
-  overlay, 리뷰 요약은 하단 sheet로 연다.
+  overlay로 열고, Preview 상태와 요약은 주 콘텐츠 안에서 읽을 수 있게 유지한다.
 - **중형 (800–1199px):** 목록/주 콘텐츠의 2열. inspector는 필요할 때 주 콘텐츠
   위에 겹치거나 오른쪽을 대체한다.
 - **대형 (≥1200px):** 목록/주 콘텐츠/inspector의 3열. 분할선은 키보드와 포인터로
@@ -232,8 +231,9 @@ compact 목록의 기본 행은 26px, 입력과 일반 버튼은 28px다. 댓글
 PR 번호, base/head, 새 커밋 감지 상태 중 현재 작업에 필요한 문맥은 sticky
 context bar에 남는다.
 
-**The Queue-to-Code Rule.** 관리 큐의 모든 행은 한 번의 활성화로 해당 PR 리뷰
-workspace를 열며, 뒤로 가면 필터·정렬·선택·스크롤 위치가 복원된다.
+**The Graph-to-Preview Rule.** Graph의 PR 행은 기본 브라우저에서 기존 Pull Request를
+열고, 번호가 없는 staged 작업은 Preview를 연다. Graph의 커밋 탐색 상태는 이 동작과
+독립적으로 유지된다.
 
 ## Elevation & Depth
 
@@ -307,26 +307,12 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
 - 현재 위치, 선택 파일, 미해결 댓글 수, Viewed 진행률은 navigation과 함께
   읽을 수 있어야 한다.
 
-### Review Queue
+### Pull Request Preview
 
-- 한 행은 저장소/PR 번호, 제목, 작성자, 나에게 필요한 행동, review decision,
-  required checks, 업데이트 시각, 크기/진행률을 우선순위 순으로 담는다.
-- 열은 사용자가 표시 여부와 폭을 조정할 수 있고 workspace 범위에 저장한다.
-- 행 전체가 열기 target이지만, assignee/reviewer/label 같은 inline control은
-  독립된 버튼과 tooltip을 가진다.
-- 50개를 넘는 결과는 windowing하며 화면 밖 행을 키보드로 탐색할 수 있어야 한다.
-
-### Review Workspace
-
-- 기본 대형 구성은 file navigator / diff / review inspector다.
-- diff line 전체를 tab stop으로 만들지 않는다. 파일 및 thread navigation과
-  명시적 “줄에 댓글 추가” action으로 키보드 접근을 제공한다.
-- pending comment는 서버 제출 댓글과 시각적으로 구분하고, 현재 `headOid`와 함께
-  표시한다.
-- Viewed는 로컬 장식이 아니라 GitHub viewer state를 반영하며 optimistic 상태와
-  실패 복구를 같은 위치에서 보여준다.
-- submit review는 pending comment 수, 최신 head, 선택한 decision, 본문, 권한을
-  한 화면에서 검증한다.
+- Graph toolbar에서 staged PR Preview를 열며, source/target은 로컬 staged 변경을 기준으로 한다.
+- Preview는 loading, error, target 없음, 기존 PR, publish 완료 상태를 명확히 구분한다.
+- 기존 PR은 **Open pull request on GitHub** 버튼으로 기본 브라우저에서 열고, text/title/tooltip/aria-label은 같은 이름을 사용한다.
+- 좁은 폭, 태블릿, 데스크톱 및 VS Code 테마에서 overflow 없이 동작하며 모든 버튼은 tooltip과 접근성 이름을 가진다.
 
 ### Feedback and Empty States
 
@@ -341,11 +327,11 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
 ### Do:
 
 - **Do** VS Code 의미 토큰과 Codicon을 사용하고 고대비 테마까지 확인한다.
-- **Do** 개인 리뷰와 팀·조직 관리 화면을 동일한 우선순위와 상태 모델로 설계한다.
+- **Do** Changes, Graph, staged Preview가 같은 저장소·브랜치·상태 모델을 읽도록 설계한다.
 - **Do** 화면에 보이는 모든 action에 hover, focus, active, disabled, pending,
   success, error 상태를 정의한다.
-- **Do** 변경 가능한 관리 정보에 권한을 먼저 표시하고, 변경 결과를 즉시 재조회해
-  서버 상태로 확인한다.
+- **Do** staged Preview 게시 전 대상 브랜치와 변경 범위를 표시하고, 기존 PR은 기본
+  브라우저의 GitHub 페이지에서 확인하게 한다.
 - **Do** 긴 파일명, 1,000개 파일, 수천 개 댓글, binary/renamed/deleted 파일,
   한국어/영어 혼합을 정상 상태로 취급한다.
 - **Do** destructive action 전에 대상과 영향을 보여주고, 가능한 경우 undo 또는

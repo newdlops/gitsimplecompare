@@ -8,19 +8,17 @@ web
 
 ## Users
 
-Git Simple Compare는 VS Code 안에서 Git 변경과 GitHub Pull Request를 다루는 개발자,
-리뷰어, 저장소 관리자, 팀 리드를 위한 확장이다. 개인·소규모 팀의 키보드 중심
-파워유저뿐 아니라, 여러 PR과 리뷰 상태를 지속적으로 추적하고 운영해야 하는 조직
-사용자도 동등한 핵심 사용자다.
+Git Simple Compare는 VS Code 안에서 로컬 Git 변경과 GitHub Pull Request를 다루는
+개발자를 위한 확장이다.
 
 주 사용 상황은 코드를 읽고 편집하는 도중이다. 사용자는 브라우저와 터미널을
 오가며 문맥을 다시 만드는 대신, 현재 로컬 작업트리·브랜치·커밋·GitHub PR의
-관계를 VS Code 안에서 이해하고 다음 Git 또는 리뷰 작업을 수행한다.
+관계를 VS Code 안에서 이해하고 다음 Git 작업을 수행한다.
 
 ## Product Purpose
 
 로컬/원격 브랜치 비교, 파일 비교, 편집 가능한 diff, 스테이징·커밋, 충돌 해결,
-rebase, 커밋 분할, Git 그래프, worktree, PR 생성·검토·stack 수명주기를 하나의
+rebase, 커밋 분할, Git 그래프, worktree, staged PR preview·생성·stack 수명주기를 하나의
 개발 환경 안에서 연결한다.
 
 성공은 사용자가 현재 저장소와 리뷰 상태를 빠르게 파악하고, 위험한 변경을 실행하기
@@ -50,15 +48,8 @@ rebase, 커밋 분할, Git 그래프, worktree, PR 생성·검토·stack 수명�
 - 작업트리 변경의 스테이징, 커밋, hook 사전 실행, AI 커밋 계획과 메시지 생성
 - Git 그래프, reflog 복구, stash, worktree, branch 작업
 - merge/rebase/cherry-pick/revert 충돌 해결과 interactive rebase
-- GitHub PR 목록·상세·대화·변경 파일·inline review comment 조회, staged PR 생성,
+- GitHub PR 목록·상세·변경 파일·native inline comment 표시, staged PR preview·생성,
   PR stack 생성·restack·submit/sync·advance
-- 기존 PR 리뷰 UI는 읽기와 로컬 Viewed 상태 중심이다. 대화, inline comment,
-  suggestion, Viewed, Approve, Request changes, Comment 제출까지 완결된 리뷰
-  경험으로 확장하는 것이 이번 제품 방향에 포함된다.
-- 팀·조직 관리 UI는 후순위가 아니다. PR 큐, 담당과 검토 상태, 진행률, 체크/정책
-  가시성, 대량 탐색을 개인 리뷰 흐름과 함께 설계한다.
-- 조직별 정책 설정·권한 모델의 정확한 범위는 아직 열린 결정이다. 현재 저장소
-  메타데이터와 GitHub API로 지원 가능한 범위부터 정의한다.
 - 웹뷰는 VS Code 테마 토큰과 Codicon을 사용하고, 확장의 git/UI/provider/command
   모듈 경계를 유지해야 한다.
 
@@ -85,9 +76,9 @@ rebase, 커밋 분할, Git 그래프, worktree, PR 생성·검토·stack 수명�
 
 1. 비교에서 행동까지 사용자의 코드 문맥을 보존한다.
 2. 로컬 Git 상태와 원격 PR 상태의 차이를 숨기지 않고 명확히 설명한다.
-3. 개인 실행 흐름과 팀·조직 운영 흐름을 모두 1급 경험으로 설계한다.
+3. Graph와 staged PR Preview에서 로컬 변경과 기존 PR의 관계를 명확히 연결한다.
 4. 위험하거나 되돌리기 어려운 작업은 영향·대상·복구 경로를 실행 전에 보여준다.
-5. 대규모 저장소와 긴 리뷰에서도 점진적 로딩, 검색, 필터, 진행 상태로 작업 가능성을
+5. 대규모 저장소와 긴 변경 목록에서도 점진적 로딩, 검색, 필터, 진행 상태로 작업 가능성을
    유지한다.
 
 ## Accessibility & Inclusion

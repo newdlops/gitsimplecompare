@@ -1,5 +1,7 @@
 # Git Simple Compare UI 대개편 실행 계획
 
+> **폐기됨 (2026-07-29):** Reviews 관련 계획과 완료 상태는 현재 구현 근거가 아닙니다. 역사적 본문은 보존합니다.
+
 > 상태: 구현 전 승인용 계획  
 > 대상 구현자: Terra High  
 > 관련 문서: [`PRODUCT.md`](../PRODUCT.md), [`DESIGN.md`](../DESIGN.md),
@@ -545,8 +547,10 @@ Force Push, branch delete, reflog drop 같은 위험 action은 일반 toolbar ic
 - publish 전 summary/permission/remote 상태 확인
 - create 성공 후 새 Review Workspace로 전환
 
-Conversation tab과 기존 PR review data는 creation 화면에서 제거한다. existing PR을
-감지하면 `Open existing review`가 primary이고 중복 생성은 차단한다.
+Preview는 staged 데이터만으로 구성한 local `Conversation`/`Commits`/`Files changed`
+모델과 파일 탐색, local-only Viewed 표시를 유지한다. 이는 GitHub review 상태나 서버
+mutation을 흉내 내지 않는다. existing PR을 감지하면 `Open existing review`가 primary이고
+중복 생성은 차단하며, 실제 GitHub review는 Review Center가 소유한다.
 
 ### 6.6 Conflicts
 
@@ -819,7 +823,7 @@ token, cookie, secret은 webview state 또는 일반 workspaceState에 넣지 �
 - queue/file/diff windowing stress
 - memory/dispose/request cancellation audit
 
-### PR-13 — Legacy PR Preview retirement
+### PR-13 — Legacy PR Preview route retirement
 
 **선행 조건**
 
@@ -829,7 +833,7 @@ token, cookie, secret은 webview state 또는 일반 workspaceState에 넣지 �
 **변경**
 
 - 기존 `PullRequestPreviewPanel` command를 creation 또는 review command로 redirect
-- local-only Viewed state migration/폐기
+- Preview repository/source/target/path local Viewed state는 유지하며 서버 state와 결합하거나 migration하지 않음
 - 사용되지 않는 duplicated PR CSS/tooltip/client renderer 제거
 
 ### PR-14 — Final visual QA and release gate
@@ -969,7 +973,7 @@ theme와 viewport 조합마다 screenshot을 만든다. 픽셀 차이만 승인�
 
 - 기존 section visibility/order → 새 Changes Tools visibility/order
 - 기존 PR preview selected tab/layout → 가능한 경우 새 workspace tab/layout
-- local Viewed set → 서버 state와 병합하지 않고 폐기 안내 후 GitHub state를 재조회
+- Preview local Viewed set은 Preview 내에 유지하고, Review Center의 GitHub Viewed state와 결합하지 않음
 - 기존 branch/source/target draft → creation flow state로 이동
 
 ### 12.3 실패 시 fallback
@@ -1008,7 +1012,7 @@ theme와 viewport 조합마다 screenshot을 만든다. 픽셀 차이만 승인�
 - React/Preact 등 새 framework를 추가하지 않는다.
 - GitHub 웹 UI를 복제하지 않는다.
 - VS Code 테마를 고정 팔레트로 대체하지 않는다.
-- Viewed를 local-only 상태로 유지하지 않는다.
+- Preview의 Viewed는 local-only 상태로 유지하며 실제 GitHub Viewed는 Review Center만 소유한다.
 - 새 head에 오래된 review draft를 자동 재배치해 제출하지 않는다.
 - 큰 목록/diff를 windowing 없이 한 번에 DOM에 넣지 않는다.
 - build 성공을 visual QA로 간주하지 않는다.
