@@ -64,6 +64,10 @@ export interface PullRequestStackLayer {
   branch: string;
   /** 바로 아래 layer 또는 일반 target branch */
   parentBranch: string;
+  /** local metadata가 의도한 parent. GitHub PR base와 다를 때 UI가 둘을 구분한다. */
+  localParentBranch?: string;
+  /** 게시된 PR이 가리키는 GitHub base. local-only layer에서는 비어 있다. */
+  publishedParentBranch?: string;
   /** graph row에 layer chip을 붙일 head commit OID */
   headHash?: string;
   /** graph에서 PR 흐름의 도착점으로 쓸 parent tip OID */
@@ -84,6 +88,8 @@ export interface PullRequestStackLayer {
   remoteDiverged: boolean;
   /** parent가 움직였거나 현재 parent가 branch 조상이 아니어서 restack이 필요한지 여부 */
   needsRestack: boolean;
+  /** local metadata 없이 GitHub PR 관계만으로 표시되는 remote-only layer 여부 */
+  githubOnly: boolean;
 }
 
 /** Git Graph에서 하나의 연결된 PR 흐름으로 그릴 stack */
@@ -277,7 +283,10 @@ export function buildPullRequestStackGraph(
   for (const branch of [...branchNames].sort((a, b) => a.localeCompare(b))) {
     const local = locals.get(branch);
     const pr = pullRequestByHead.get(branch);
-    const parentBranch = pr?.baseRefName || local?.parentBranch || defaultBranch || "";
+    const localParentBranch = local?.parentBranch;
+    const publishedParentBranch = pr?.baseRefName;
+    // 로컬 metadata를 우선해 edit 뒤의 목표 topology와 restack 경계를 보존한다.
+    const parentBranch = localParentBranch || publishedParentBranch || defaultBranch || "";
     if (!parentBranch || parentBranch === branch) {
       continue;
     }
@@ -286,6 +295,8 @@ export function buildPullRequestStackGraph(
     layerByBranch.set(branch, {
       branch,
       parentBranch,
+      localParentBranch,
+      publishedParentBranch,
       headHash,
       parentHash,
       recordedParentHead: local?.parentHead,
@@ -295,9 +306,8 @@ export function buildPullRequestStackGraph(
       worktreePath: local?.worktreePath,
       pullRequest: pr,
       remoteDiverged: Boolean(local?.upstreamHash && local.upstreamHash !== local.hash),
-      needsRestack: Boolean(
-        local && parentHash && local.parentHead && local.parentHead !== parentHash
-      ),
+      needsRestack: Boolean(local && parentHash && local.parentHead && local.parentHead !== parentHash),
+      githubOnly: Boolean(pr && !local),
     });
   }
 

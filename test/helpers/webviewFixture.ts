@@ -2,8 +2,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export type WebviewFixtureSurface = "changes" | "pr-preview";
-export type WebviewFixtureState = "small" | "populated" | "loading" | "error" | "no-target" | "existing-pr";
+export type WebviewFixtureSurface = "changes" | "pr-preview" | "graph-pr-stack";
+export type WebviewFixtureState = "small" | "populated" | "loading" | "error" | "no-target" | "existing-pr" | "github-only" | "empty";
 export interface WebviewFixture<TPayload = Record<string, unknown>> {
   schemaVersion: 1;
   surface: WebviewFixtureSurface;
@@ -23,9 +23,9 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 /** viewport 수치가 양의 정수인지 확인한다. */
 function isPositiveInteger(value: unknown): value is number { return typeof value === "number" && Number.isInteger(value) && value > 0; }
 /** 살아 있는 화면 이름인지 확인한다. */
-function isSurface(value: unknown): value is WebviewFixtureSurface { return value === "changes" || value === "pr-preview"; }
+function isSurface(value: unknown): value is WebviewFixtureSurface { return value === "changes" || value === "pr-preview" || value === "graph-pr-stack"; }
 /** fixture가 표현할 수 있는 Preview/Changes 상태인지 확인한다. */
-function isState(value: unknown): value is WebviewFixtureState { return ["small", "populated", "loading", "error", "no-target", "existing-pr"].includes(String(value)); }
+function isState(value: unknown): value is WebviewFixtureState { return ["small", "populated", "loading", "error", "no-target", "existing-pr", "github-only", "empty"].includes(String(value)); }
 
 /** fixture JSON의 metadata, locale, 화면 크기, payload 형태를 fail-closed로 검증한다. */
 export function parseWebviewFixture(value: unknown, name = "inline.json"): WebviewFixture {

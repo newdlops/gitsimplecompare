@@ -32,6 +32,14 @@ export interface PullRequestStackLayerCleanupResult {
   skippedReason?: "main-worktree" | "current-worktree";
 }
 
+/** 로컬 Stack 관계 삭제 전에 사용자에게 보여 줄 연결 성분 요약 */
+export interface PullRequestStackComponentPreview {
+  /** 선택 branch를 포함한, 실제 gscStackParent 관계로 연결된 child branch 목록 */
+  branches: string[];
+  /** 삭제할 parent 관계 수. branch/worktree/commit/PR 수가 아니다. */
+  relationCount: number;
+}
+
 /** 로컬 stack 메타데이터와 layer branch를 다루는 서비스 */
 export class PullRequestStackMetadataService {
   constructor(public readonly repoRoot: string) {}
@@ -139,6 +147,77 @@ export class PullRequestStackMetadataService {
       await runGit(["config", "--local", configKey(child, PARENT_HEAD_KEY), head], this.repoRoot);
     } else {
       await this.unsetConfig(child, PARENT_HEAD_KEY);
+    }
+  }
+
+  /**
+   * 기존 layer의 parent 이름만 바꾸고 기록된 parentHead 경계는 그대로 보존한다.
+   * - parentHead가 없던 오래된 관계에도 값을 새로 만들지 않아 이후 restack 필요 상태가 정확하다.
+   * @param branch 편집할 local child branch
+   * @param parentBranch 새 local parent branch
+   */
+  async editParent(branch: string, parentBranch: string): Promise<void> {
+    const child = await this.assertLocalBranch(branch);
+    const parent = await this.assertLocalBranch(parentBranch);
+    if (child === parent) throw new Error("A stack layer cannot be its own parent.");
+    const before = await this.readParentState(child);
+    if (!before.parentBranch) throw new Error(`Branch '${child}' is not a local stack layer.`);
+    await this.assertNoCycle(child, parent);
+    try {
+      await runGit(["config", "--local", configKey(child, PARENT_KEY), parent], this.repoRoot);
+    } catch (error) {
+      await this.restoreParent(child, before.parentBranch, before.parentHead).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  /**
+   * 선택 layer가 속한 로컬 Stack 연결 성분과 삭제될 관계 수를 계산한다.
+   * - 일반 base는 관계를 가진 node가 아니므로 같은 base를 공유하는 독립 stack을 합치지 않는다.
+   * @param branch 연결 성분을 찾을 local stack layer
+   * @returns config key 삭제 전 확인창에 사용할 branch/관계 요약
+   */
+  async previewComponent(branch: string): Promise<PullRequestStackComponentPreview> {
+    const selected = await this.assertLocalBranch(branch);
+    const branches = await this.listBranches();
+    const byName = new Map(branches.map((item) => [item.name, item]));
+    if (!byName.get(selected)?.parentBranch) throw new Error(`Branch '${selected}' is not a local stack layer.`);
+    const connected = new Set<string>([selected]);
+    const pending = [selected];
+    while (pending.length) {
+      const current = pending.pop()!;
+      const currentMeta = byName.get(current);
+      const neighbours = branches.filter((item) => item.parentBranch === current).map((item) => item.name);
+      // parent도 자체 metadata가 있는 layer일 때만 거슬러 올라간다. 일반 base는 경계다.
+      if (currentMeta?.parentBranch && byName.get(currentMeta.parentBranch)?.parentBranch) {
+        neighbours.push(currentMeta.parentBranch);
+      }
+      for (const neighbour of neighbours) {
+        if (!connected.has(neighbour)) { connected.add(neighbour); pending.push(neighbour); }
+      }
+    }
+    const names = [...connected].sort((left, right) => left.localeCompare(right));
+    return { branches: names, relationCount: names.filter((name) => byName.get(name)?.parentBranch).length };
+  }
+
+  /**
+   * preview된 성분의 두 gscStack config key만 제거하고, 중간 실패면 이미 지운 값을 복원한다.
+   * @param branch 삭제 성분을 식별할 local stack layer
+   * @returns 실제 제거한 관계 수와 branch 목록
+   */
+  async deleteComponent(branch: string): Promise<PullRequestStackComponentPreview> {
+    const preview = await this.previewComponent(branch);
+    const states = await Promise.all(preview.branches.map(async (name) => [name, await this.readParentState(name)] as const));
+    const cleared: string[] = [];
+    try {
+      for (const [name] of states) { await this.clearParent(name); cleared.push(name); }
+      return preview;
+    } catch (error) {
+      await Promise.all(cleared.map(async (name) => {
+        const state = states.find(([candidate]) => candidate === name)?.[1];
+        if (state) await this.restoreParent(name, state.parentBranch, state.parentHead);
+      }));
+      throw error;
     }
   }
 
@@ -266,6 +345,14 @@ export class PullRequestStackMetadataService {
       this.repoRoot
     ).catch(() => "");
     return output.trim() || undefined;
+  }
+
+  /** branch의 두 Stack 설정 값을 함께 읽어 편집/삭제 실패 복원에 사용한다. */
+  private async readParentState(branch: string): Promise<{ parentBranch?: string; parentHead?: string }> {
+    const [parentBranch, parentHead] = await Promise.all([
+      this.readConfig(branch, PARENT_KEY), this.readConfig(branch, PARENT_HEAD_KEY),
+    ]);
+    return { parentBranch, parentHead };
   }
 
   /** 저장된 parent를 따라가며 새 관계가 cycle을 만들지 검사한다. */

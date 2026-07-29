@@ -250,6 +250,29 @@ test("열린 child의 parent인 merged PR은 graph 흐름에 남기고 무관한
   assert.deepEqual(graph.layers[0].childBranches, ["feature/open-child"]);
 });
 
+/** 로컬 편집 뒤에도 GitHub base와 로컬 목표 parent를 별도 상태로 표시하는지 검증한다. */
+test("로컬 parent와 게시된 PR base가 다르면 Restack 대상과 두 parent를 함께 노출한다", () => {
+  const graph = buildPullRequestStackGraph([{
+    name: "feature/child", hash: "child", parentBranch: "local/base", parentHead: "old-base",
+  }, { name: "local/base", hash: "local-base" }], [
+    pr(1, "feature/child", "published/base", { headHash: "child", baseHash: "published-base" }),
+  ]);
+  const layer = graph.layers[0];
+  assert.equal(layer.parentBranch, "local/base");
+  assert.equal(layer.localParentBranch, "local/base");
+  assert.equal(layer.publishedParentBranch, "published/base");
+  assert.equal(layer.needsRestack, true);
+  assert.equal(layer.githubOnly, false);
+});
+
+/** local branch가 없는 PR 관계는 관리 action을 막을 수 있도록 GitHub-only로 표시하는지 검증한다. */
+test("로컬 branch가 없는 PR layer는 GitHub-only 상태로 표시한다", () => {
+  const graph = buildPullRequestStackGraph([], [pr(1, "remote/layer", "main")]);
+  assert.equal(graph.layers[0].githubOnly, true);
+  assert.equal(graph.layers[0].localParentBranch, undefined);
+  assert.equal(graph.layers[0].publishedParentBranch, "main");
+});
+
 test("PR 본문의 stack marker만 교체하고 사용자 설명을 보존한다", () => {
   const before = [
     "사용자 설명",

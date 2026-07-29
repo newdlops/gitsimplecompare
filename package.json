@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.72025",
+  "version": "0.1.72027",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -601,6 +601,20 @@
         "shortTitle": "%cmd.advancePullRequestStack%",
         "category": "Git Simple Compare",
         "icon": "$(git-merge)"
+      },
+      {
+        "command": "gitSimpleCompare.editPullRequestStackParent",
+        "title": "%cmd.editPullRequestStackParent.tooltip%",
+        "shortTitle": "%cmd.editPullRequestStackParent%",
+        "category": "Git Simple Compare",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "gitSimpleCompare.deleteLocalPullRequestStack",
+        "title": "%cmd.deleteLocalPullRequestStack.tooltip%",
+        "shortTitle": "%cmd.deleteLocalPullRequestStack%",
+        "category": "Git Simple Compare",
+        "icon": "$(trash)"
       }
     ],
     "viewsContainers": {

@@ -19,104 +19,17 @@ import { logError, logInfo } from "../ui/outputLog";
 import { GitGraphPanel } from "../webview/graphPanel";
 import { discoverRepositories, type CommandDeps } from "./shared";
 
-/** Graph row와 Command Palette가 stack 동작에 전달하는 최소 컨텍스트 */
-export interface PullRequestStackCommandArg {
-  repoRoot?: string;
-  /** 선택 layer branch. Add Layer에서는 기본 parent로 사용한다. */
-  branch?: string;
-  /** Add Layer가 사용할 명시 parent branch */
-  parentBranch?: string;
-  /** remote-only PR 위에 layer를 만들 때 사용할 parent commit OID */
-  parentHash?: string;
-}
+/** Graph row와 Command Palette가 모든 Stack 명령에 전달하는 최소 컨텍스트 */
+export interface PullRequestStackCommandArg { repoRoot?: string; branch?: string; parentBranch?: string; parentHash?: string; }
 
-/**
- * 선택한 parent tip에서 새 child branch를 만들고 선택적으로 linked worktree를 함께 만든다.
- * @param deps 명령 공용 저장소 탐지 의존성
- * @param arg Graph에서 전달한 저장소/parent 문맥
- */
-export async function addPullRequestStackLayer(
-  deps: CommandDeps,
-  arg?: PullRequestStackCommandArg
-): Promise<void> {
-  const repoRoot = await resolveRepoRoot(deps, arg?.repoRoot);
-  if (!repoRoot) return;
-  const metadata = new PullRequestStackMetadataService(repoRoot);
-  try {
-    if (!await ensureNoPendingRestack(repoRoot)) return;
-    const branches = await metadata.listBranches();
-    const parentBranch = arg?.parentBranch || arg?.branch || await pickParentBranch(repoRoot, branches);
-    if (!parentBranch) return;
-    const parentRef = arg?.parentHash || await metadata.resolveBranchHead(parentBranch);
-    const branch = await vscode.window.showInputBox({
-      title: vscode.l10n.t("Add Pull Request Stack Layer"),
-      prompt: vscode.l10n.t("New child branch above '{0}'", parentBranch),
-      placeHolder: "feature/next-layer",
-      validateInput: async (value) => validateNewBranch(metadata, branches, value),
-    });
-    if (!branch) return;
-    const mode = await vscode.window.showQuickPick([
-      {
-        label: vscode.l10n.t("$(multiple-windows) Create Linked Worktree"),
-        description: vscode.l10n.t("recommended; start editing the new layer separately"),
-        worktree: true,
-      },
-      {
-        label: vscode.l10n.t("$(git-branch) Create Branch Only"),
-        description: vscode.l10n.t("keep the current checkout unchanged"),
-        worktree: false,
-      },
-    ], {
-      title: vscode.l10n.t("Add Pull Request Stack Layer"),
-      placeHolder: vscode.l10n.t("Choose how to create '{0}'", branch),
-    });
-    if (!mode) return;
-    const worktreePath = mode.worktree
-      ? await pickWorktreePath(repoRoot, branch)
-      : undefined;
-    if (mode.worktree && !worktreePath) return;
-    const create = vscode.l10n.t("Create Layer");
-    const confirmed = await vscode.window.showInformationMessage(
-      worktreePath
-        ? vscode.l10n.t("Create '{0}' above '{1}' in linked worktree '{2}'?", branch, parentBranch, worktreePath)
-        : vscode.l10n.t("Create branch '{0}' above '{1}'?", branch, parentBranch),
-      { modal: true },
-      create
-    );
-    if (confirmed !== create) return;
-    const release = acquireStackMutation(repoRoot);
-    if (!release) return;
-    try {
-      await metadata.createLayer({ branch, parentBranch, parentRef, worktreePath });
-    } finally {
-      release();
-    }
-    logInfo("pull request stack layer created", {
-      repoRoot, branch, parentBranch, parentRef, worktreePath,
-    });
-    refreshStackSurfaces(repoRoot, "stackLayerCreated");
-    if (worktreePath) {
-      const open = vscode.l10n.t("Open Worktree");
-      const choice = await vscode.window.showInformationMessage(
-        vscode.l10n.t("Stack layer '{0}' was created.", branch),
-        open
-      );
-      if (choice === open) {
-        await vscode.commands.executeCommand(
-          "vscode.openFolder",
-          vscode.Uri.file(worktreePath),
-          { forceNewWindow: true }
-        );
-      }
-    } else {
-      vscode.window.showInformationMessage(
-        vscode.l10n.t("Stack layer '{0}' was created above '{1}'.", branch, parentBranch)
-      );
-    }
-  } catch (error) {
-    showStackError("pull request stack layer creation failed", error, { repoRoot });
-  }
-}
+/** 선택 parent tip에서 local child layer와 선택적 linked worktree를 만든다. */
+export async function addPullRequestStackLayer(deps: CommandDeps, arg?: PullRequestStackCommandArg): Promise<void> { const repoRoot=await resolveRepoRoot(deps,arg?.repoRoot); if(!repoRoot)return; const metadata=new PullRequestStackMetadataService(repoRoot); try { if(!await ensureNoPendingRestack(repoRoot))return; const branches=await metadata.listBranches(); const parentBranch=arg?.parentBranch||arg?.branch||await pickParentBranch(repoRoot,branches); if(!parentBranch)return; const parentRef=arg?.parentHash||await metadata.resolveBranchHead(parentBranch); const branch=await vscode.window.showInputBox({title:vscode.l10n.t("Add Pull Request Stack Layer"),prompt:vscode.l10n.t("New child branch above '{0}'",parentBranch),placeHolder:"feature/next-layer",validateInput:value=>validateNewBranch(metadata,branches,value)}); if(!branch)return; const mode=await vscode.window.showQuickPick([{label:vscode.l10n.t("$(multiple-windows) Create Linked Worktree"),description:vscode.l10n.t("recommended; start editing the new layer separately"),worktree:true},{label:vscode.l10n.t("$(git-branch) Create Branch Only"),description:vscode.l10n.t("keep the current checkout unchanged"),worktree:false}],{title:vscode.l10n.t("Add Pull Request Stack Layer")}); if(!mode)return; const worktreePath=mode.worktree?await pickWorktreePath(repoRoot,branch):undefined; if(mode.worktree&&!worktreePath)return; const create=vscode.l10n.t("Create Layer"); if(await vscode.window.showInformationMessage(worktreePath?vscode.l10n.t("Create '{0}' above '{1}' in linked worktree '{2}'?",branch,parentBranch,worktreePath):vscode.l10n.t("Create branch '{0}' above '{1}'?",branch,parentBranch),{modal:true},create)!==create)return; await withLease(repoRoot,()=>metadata.createLayer({branch,parentBranch,parentRef,worktreePath})); logInfo("pull request stack layer created",{repoRoot,branch,parentBranch,parentRef,worktreePath}); refreshStackSurfaces(repoRoot,"stackLayerCreated"); } catch(error){showStackError("pull request stack layer creation failed",error,{repoRoot});} }
+
+/** 선택 layer의 local parent만 편집하고 Restack 안내를 표시한다. */
+export async function editPullRequestStackParent(deps:CommandDeps,arg?:PullRequestStackCommandArg):Promise<void>{const repoRoot=await resolveRepoRoot(deps,arg?.repoRoot);if(!repoRoot)return;try{if(!await ensureNoPendingRestack(repoRoot))return;const metadata=new PullRequestStackMetadataService(repoRoot);const branches=await metadata.listBranches();const branch=arg?.branch||await pickStackBranch(repoRoot,vscode.l10n.t("Select a local Stack layer"));if(!branch)return;const current=branches.find(item=>item.name===branch);if(!current?.parentBranch){vscode.window.showWarningMessage(vscode.l10n.t("This layer has no local stack metadata to edit."));return;}const forbidden=descendantNames(branches,branch);const parent=await vscode.window.showQuickPick(branches.filter(item=>item.name!==branch&&!forbidden.has(item.name)).map(item=>({label:`$(git-branch) ${item.name}`,branch:item.name})),{title:vscode.l10n.t("Edit Stack Parent")});if(!parent)return;const action=vscode.l10n.t("Edit Local Parent");if(await vscode.window.showWarningMessage(vscode.l10n.t("Change only the local Stack parent of '{0}' from '{1}' to '{2}'? Git history and GitHub pull requests will not change. The recorded restack boundary is preserved.",branch,current.parentBranch,parent.branch),{modal:true},action)!==action)return;logInfo("pull request stack parent edit attempted",{repoRoot,branch,parent:parent.branch});await withLease(repoRoot,()=>metadata.editParent(branch,parent.branch));refreshStackSurfaces(repoRoot,"stackParentEdited");logInfo("pull request stack parent edit succeeded",{repoRoot,branch,parent:parent.branch});vscode.window.showInformationMessage(vscode.l10n.t("Local Stack parent updated. Restack, then Submit / Sync if the published PR base must follow it."));}catch(error){showStackError("pull request stack parent edit failed",error,{repoRoot});}}
+
+/** 선택 local Stack 성분의 config 관계만 삭제한다. */
+export async function deleteLocalPullRequestStack(deps:CommandDeps,arg?:PullRequestStackCommandArg):Promise<void>{const repoRoot=await resolveRepoRoot(deps,arg?.repoRoot);if(!repoRoot)return;try{if(!await ensureNoPendingRestack(repoRoot))return;const metadata=new PullRequestStackMetadataService(repoRoot);const branch=arg?.branch||await pickStackBranch(repoRoot,vscode.l10n.t("Select a local Stack layer"));if(!branch)return;const preview=await metadata.previewComponent(branch);const action=vscode.l10n.t("Delete Local Stack");if(await vscode.window.showWarningMessage(vscode.l10n.t("Delete {0} local Stack relationship(s) for: {1}? Only local Stack metadata is removed. Branches, worktrees, commits, remote branches, and pull requests are kept. Published PR stacks can remain visible.",preview.relationCount,preview.branches.join(", ")),{modal:true},action)!==action)return;logInfo("local pull request stack deletion attempted",{repoRoot,branch,relationCount:preview.relationCount});await vscode.window.withProgress({location:vscode.ProgressLocation.Notification,title:vscode.l10n.t("Deleting local Stack metadata..."),cancellable:false},()=>withLease(repoRoot,()=>metadata.deleteComponent(branch)));refreshStackSurfaces(repoRoot,"localStackDeleted");logInfo("local pull request stack deletion succeeded",{repoRoot,branch,relationCount:preview.relationCount});}catch(error){showStackError("local pull request stack deletion failed",error,{repoRoot});}}
 
 /**
  * 선택 layer와 descendants의 연쇄 rebase 계획을 preview한 뒤 안전 snapshot 아래 실행한다.
@@ -411,46 +324,6 @@ async function confirmAdvancePlan(
   return confirmed === action;
 }
 
-/** Add Layer에서 사용할 parent를 current branch 우선으로 선택받는다. */
-async function pickParentBranch(
-  repoRoot: string,
-  branches: StackLocalBranch[]
-): Promise<string | undefined> {
-  const currentBranch = await runGit(["branch", "--show-current"], repoRoot)
-    .then((value) => value.trim(), () => "");
-  const selected = await vscode.window.showQuickPick(
-    [...branches].sort((left, right) =>
-      Number(right.name === currentBranch) - Number(left.name === currentBranch)
-      || left.name.localeCompare(right.name)
-    ).map((branch) => ({
-      label: branch.name === currentBranch ? `$(check) ${branch.name}` : `$(git-branch) ${branch.name}`,
-      description: branch.parentBranch
-        ? vscode.l10n.t("stacked on {0}", branch.parentBranch)
-        : vscode.l10n.t("regular branch"),
-      detail: branch.subject,
-      branch: branch.name,
-    })),
-    { title: vscode.l10n.t("Add Pull Request Stack Layer"), placeHolder: vscode.l10n.t("Select the parent branch") }
-  );
-  return selected?.branch;
-}
-
-/** local stack layer를 사용자에게 선택받는다. */
-async function pickStackBranch(repoRoot: string, placeHolder: string): Promise<string | undefined> {
-  const branches = (await new PullRequestStackMetadataService(repoRoot).listBranches())
-    .filter((branch) => branch.parentBranch);
-  if (!branches.length) {
-    vscode.window.showWarningMessage(vscode.l10n.t("No local pull request stack layers were found."));
-    return undefined;
-  }
-  const selected = await vscode.window.showQuickPick(branches.map((branch) => ({
-    label: `$(layers) ${branch.name}`,
-    description: `${branch.parentBranch} ← ${branch.name}`,
-    detail: branch.subject,
-    branch: branch.name,
-  })), { placeHolder });
-  return selected?.branch;
-}
 
 /** Git remote를 origin 우선으로 선택받는다. */
 async function pickRemote(repoRoot: string): Promise<string | undefined> {
@@ -501,99 +374,21 @@ async function pickAdvanceCandidate(
   return selected?.branch;
 }
 
-/** branch 이름을 Git으로 검증하고 기존 branch 중복을 즉시 알려 준다. */
-async function validateNewBranch(
-  metadata: PullRequestStackMetadataService,
-  branches: StackLocalBranch[],
-  value: string
-): Promise<string | undefined> {
-  const branch = value.trim();
-  if (!branch) return vscode.l10n.t("A branch name is required.");
-  if (branches.some((item) => item.name === branch)) return vscode.l10n.t("Branch '{0}' already exists.", branch);
-  try {
-    await runGit(["check-ref-format", "--branch", branch], metadata.repoRoot);
-    return undefined;
-  } catch {
-    return vscode.l10n.t("'{0}' is not a valid Git branch name.", branch);
-  }
-}
-
-/** linked worktree 기본 경로를 제안하고 사용자가 절대 경로를 확인/수정하게 한다. */
-async function pickWorktreePath(repoRoot: string, branch: string): Promise<string | undefined> {
-  const safeName = branch.replace(/[^A-Za-z0-9._-]+/g, "-");
-  const suggestion = path.join(path.dirname(repoRoot), `${path.basename(repoRoot)}-${safeName}`);
-  const value = await vscode.window.showInputBox({
-    title: vscode.l10n.t("Create Linked Worktree"),
-    prompt: vscode.l10n.t("Absolute path for the new stack layer worktree"),
-    value: suggestion,
-    validateInput: (input) => path.isAbsolute(input.trim())
-      ? undefined
-      : vscode.l10n.t("Enter an absolute worktree path."),
-  });
-  return value?.trim() || undefined;
-}
-
-/** 저장소 단위 mutation lease를 얻지 못하면 겹친 동작을 안내한다. */
-function acquireStackMutation(repoRoot: string): (() => void) | undefined {
-  const release = tryAcquireConflictMutation(repoRoot);
-  if (!release) {
-    vscode.window.showWarningMessage(vscode.l10n.t("Another Git conflict action is already running."));
-  }
-  return release;
-}
-
-/** pending restack 중 topology 변경이나 원격 게시가 겹치지 않도록 새 stack 동작을 막는다. */
-async function ensureNoPendingRestack(repoRoot: string): Promise<boolean> {
-  if (!await new PullRequestStackRestackService(repoRoot).hasPendingRestack()) {
-    return true;
-  }
-  vscode.window.showWarningMessage(
-    vscode.l10n.t("Finish or abort the current pull request stack restack first.")
-  );
-  return false;
-}
-
-/** Graph, PR 목록, Changes 상태를 stack mutation 뒤 최신화한다. */
-function refreshStackSurfaces(repoRoot: string, reason: string): void {
-  GitGraphPanel.refreshOpen(repoRoot, reason);
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
-}
-
-/** 명시 root, Changes 활성 root, workspace repository 선택 순서로 대상 저장소를 찾는다. */
-async function resolveRepoRoot(
-  deps: CommandDeps,
-  requestedRoot?: string
-): Promise<string | undefined> {
-  if (requestedRoot) return requestedRoot;
-  const active = deps.changesView.getActiveRepo();
-  if (active) return active;
-  const repositories = await discoverRepositories(deps.registry);
-  if (repositories.length === 1) return repositories[0].root;
-  const selected = await vscode.window.showQuickPick(
-    repositories.map((repo) => ({ label: repo.root, repoRoot: repo.root })),
-    { placeHolder: vscode.l10n.t("Select a repository for pull request stack action") }
-  );
-  return selected?.repoRoot;
-}
-
-/** stack 오류를 OUTPUT에 재현 문맥과 함께 남기고 사용자에게 짧게 표시한다. */
-function showStackError(
-  event: string,
-  error: unknown,
-  context: Record<string, unknown>
-): void {
-  logError(event, error, context);
-  vscode.window.showErrorMessage(
-    vscode.l10n.t("Pull request stack action failed: {0}", errorText(error))
-  );
-}
 
 /** commit OID를 preview용 8자로 줄인다. */
 function shortHash(hash: string): string {
   return hash.slice(0, 8);
 }
 
-/** unknown 오류를 UI 문자열로 정규화한다. */
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+/** parent 선택, local Stack 선택, 설정 mutation과 공통 오류/새로고침을 지원한다. */
+async function pickParentBranch(root:string,branches:StackLocalBranch[]):Promise<string|undefined>{const current=await runGit(["branch","--show-current"],root).then(v=>v.trim(),()=>"");const item=await vscode.window.showQuickPick(branches.map(branch=>({label:branch.name===current?`$(check) ${branch.name}`:`$(git-branch) ${branch.name}`,branch:branch.name})),{title:vscode.l10n.t("Add Pull Request Stack Layer")});return item?.branch;}
+async function pickStackBranch(root:string,placeHolder:string):Promise<string|undefined>{const branches=(await new PullRequestStackMetadataService(root).listBranches()).filter(branch=>branch.parentBranch);if(!branches.length){vscode.window.showWarningMessage(vscode.l10n.t("No local pull request stack layers were found."));return undefined;}const item=await vscode.window.showQuickPick(branches.map(branch=>({label:`$(layers) ${branch.name}`,description:`${branch.parentBranch} ← ${branch.name}`,branch:branch.name})),{placeHolder});return item?.branch;}
+async function validateNewBranch(metadata:PullRequestStackMetadataService,branches:StackLocalBranch[],value:string):Promise<string|undefined>{const branch=value.trim();if(!branch)return vscode.l10n.t("A branch name is required.");if(branches.some(item=>item.name===branch))return vscode.l10n.t("Branch '{0}' already exists.",branch);try{await runGit(["check-ref-format","--branch",branch],metadata.repoRoot);return undefined;}catch{return vscode.l10n.t("'{0}' is not a valid Git branch name.",branch);}}
+async function pickWorktreePath(root:string,branch:string):Promise<string|undefined>{const value=await vscode.window.showInputBox({title:vscode.l10n.t("Create Linked Worktree"),value:path.join(path.dirname(root),`${path.basename(root)}-${branch.replace(/[^A-Za-z0-9._-]+/g,"-")}`),validateInput:input=>path.isAbsolute(input.trim())?undefined:vscode.l10n.t("Enter an absolute worktree path.")});return value?.trim()||undefined;}
+function descendantNames(branches:StackLocalBranch[],branch:string):Set<string>{const found=new Set<string>(),pending=[branch];while(pending.length){const parent=pending.pop()!;for(const item of branches)if(item.parentBranch===parent&&!found.has(item.name)){found.add(item.name);pending.push(item.name);}}return found;}
+async function ensureNoPendingRestack(root:string):Promise<boolean>{if(!await new PullRequestStackRestackService(root).hasPendingRestack())return true;logInfo("pull request stack management skipped",{repoRoot:root,reason:"pendingRestack"});vscode.window.showWarningMessage(vscode.l10n.t("Finish or abort the current pull request stack restack first."));return false;}
+function acquireStackMutation(root:string):(()=>void)|undefined{const release=tryAcquireConflictMutation(root);if(!release)vscode.window.showWarningMessage(vscode.l10n.t("Another Git conflict action is already running."));return release;}
+async function withLease<T>(root:string,action:()=>Promise<T>):Promise<T>{const release=acquireStackMutation(root);if(!release)throw new Error(vscode.l10n.t("Another Git conflict action is already running."));try{return await action();}finally{release();}}
+function refreshStackSurfaces(root:string,reason:string):void{GitGraphPanel.refreshOpen(root,reason);void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges",{reason});}
+async function resolveRepoRoot(deps:CommandDeps,requested?:string):Promise<string|undefined>{if(requested)return requested;const active=deps.changesView.getActiveRepo();if(active)return active;const repositories=await discoverRepositories(deps.registry);if(repositories.length===1)return repositories[0].root;const item=await vscode.window.showQuickPick(repositories.map(repo=>({label:repo.root,repoRoot:repo.root})),{placeHolder:vscode.l10n.t("Select a repository for pull request stack action")});return item?.repoRoot;}
+function showStackError(event:string,error:unknown,context:Record<string,unknown>):void{logError(event,error,context);vscode.window.showErrorMessage(vscode.l10n.t("Pull request stack action failed: {0}",error instanceof Error?error.message:String(error)));}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "surface": "graph-pr-stack",
+  "state": "populated",
+  "locale": "en",
+  "viewport": { "width": 1440, "height": 900 },
+  "payload": {
+    "repository": "fixture-org/a-very-long-local-stack-repository-name-for-overflow-coverage",
+    "stacks": [{ "id": "stack-feature", "rootBaseRefName": "main", "layers": [{ "branch": "feature/this-is-an-intentionally-very-long-local-stack-child-branch-name", "parentBranch": "local/base", "localParentBranch": "local/base", "publishedParentBranch": "published/base", "headHash": "child", "parentHash": "local-base", "recordedParentHead": "old-base", "depth": 0, "childBranches": [], "local": true, "remoteDiverged": false, "needsRestack": true, "githubOnly": false, "pullRequest": { "number": 42, "state": "OPEN" } }] }],
+    "layers": [{ "branch": "feature/this-is-an-intentionally-very-long-local-stack-child-branch-name", "parentBranch": "local/base", "localParentBranch": "local/base", "publishedParentBranch": "published/base", "headHash": "child", "parentHash": "local-base", "recordedParentHead": "old-base", "depth": 0, "childBranches": [], "local": true, "remoteDiverged": false, "needsRestack": true, "githubOnly": false, "pullRequest": { "number": 42, "state": "OPEN" } }]
+  }
+}

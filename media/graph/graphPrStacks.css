@@ -162,6 +162,18 @@
   background: var(--vscode-toolbar-hoverBackground);
 }
 
+.pr-stack-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pr-stack-sync-warning {
+  margin: 8px 14px;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .pr-stack-overview-list {
   display: grid;
   align-content: start;

@@ -8,6 +8,7 @@
   let snapshot = { repository: "", stacks: [], layers: [] };
   let loadError = "";
   let activeBranch = "";
+  let stackBusy = false;
 
   /** stack toolbar, graph chip, detail panel 이벤트와 extension 메시지를 등록한다. */
   function init() {
@@ -25,7 +26,20 @@
       loadError = "";
       updateToolbarState();
       requestAnimationFrame(renderGraphFlow);
-      if (activeBranch) renderLayerDetail(activeBranch);
+      if (activeBranch) {
+        if (activeBranch !== "__overview__" && !findLayer(activeBranch)) {
+          showOverview();
+          document.getElementById("graph-pr-stacks")?.focus();
+        } else renderLayerDetail(activeBranch);
+      }
+      return;
+    }
+    if (message.type === "pullRequestStackActionState") {
+      stackBusy = Boolean(message.busy);
+      document.querySelectorAll("[data-stack-action]").forEach((button) => {
+        button.disabled = stackBusy;
+        button.toggleAttribute("aria-busy", stackBusy);
+      });
       return;
     }
     if (message.type === "pullRequestStackError") {
@@ -143,7 +157,8 @@
     if (action) {
       event.preventDefault();
       event.stopPropagation();
-      postStackAction(action.dataset.stackAction, action.dataset.stackBranch, action.dataset.parentHash);
+      if (action.disabled || stackBusy) return;
+      postStackAction(action.dataset.stackAction, action.dataset.stackBranch, action.dataset.parentHash, action);
       return;
     }
     const layerButton = event.target.closest?.("[data-show-stack-layer]");
@@ -194,6 +209,8 @@
     const pr = layer.pullRequest;
     const actions = [
       actionButton("addLayer", layer.branch, layer.headHash, "add", text("addChild", layer.branch)),
+      layer.local ? actionButton("editParent", layer.branch, "", "edit", text("editParent", layer.branch)) : disabledActionButton("edit", text("githubOnly")),
+      layer.local ? actionButton("deleteLocal", layer.branch, "", "trash", text("deleteLocal")) : disabledActionButton("trash", text("githubOnly")),
       layer.local ? actionButton("restack", layer.branch, "", "debug-restart", text("restackDescendants", layer.branch)) : "",
       layer.local ? actionButton("submit", layer.branch, "", "cloud-upload", text("submitStack", layer.branch)) : "",
       pr?.state === "MERGED" && layer.childBranches?.length
@@ -205,11 +222,15 @@
       detailHeader(layer.branch, `${layer.parentBranch} ← ${layer.branch}`, actions, true) +
       `<dl class="pr-stack-layer-summary">` +
       summaryRow(text("parent"), layer.parentBranch) +
+      (layer.localParentBranch ? summaryRow(text("localParent"), layer.localParentBranch) : "") +
+      (layer.publishedParentBranch ? summaryRow(text("publishedParent"), layer.publishedParentBranch) : "") +
       summaryRow(text("localBranch"), layer.local ? text("yes") : text("no")) +
       summaryRow(text("pullRequest"), pr?.number ? `#${pr.number} · ${pr.state || "OPEN"}` : text("notSubmitted")) +
       summaryRow(text("restack"), layer.needsRestack ? text("restackRequired") : text("upToDate")) +
       (layer.worktreePath ? summaryRow(text("worktree"), layer.worktreePath) : "") +
       `</dl>` +
+      (layer.localParentBranch && layer.publishedParentBranch && layer.localParentBranch !== layer.publishedParentBranch
+        ? `<p class="pr-stack-sync-warning">${escapeHtml(text("restackThenSync"))}</p>` : "") +
       (layer.childBranches?.length
         ? `<section class="pr-stack-child-list"><h3>${escapeHtml(text("childLayers"))}</h3>${layer.childBranches.map(childButton).join("")}</section>`
         : `<p class="pr-stack-empty">${escapeHtml(text("topLayer"))}</p>`) +
@@ -263,6 +284,12 @@
       `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`;
   }
 
+  /** remote-only 관계처럼 실행할 수 없는 action을 이유 tooltip이 있는 disabled 버튼으로 만든다. */
+  function disabledActionButton(icon, title) {
+    return `<button type="button" class="pr-stack-icon-button" disabled ${tooltip(title)}>` +
+      `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`;
+  }
+
   /** GitHub PR을 브라우저에서 여는 tooltip icon button을 만든다. */
   function openPrButton(number) {
     return `<button type="button" class="pr-stack-icon-button" data-open-stack-pr="${Number(number)}" ` +
@@ -283,8 +310,10 @@
   }
 
   /** stack action 메시지를 선택 branch/head 문맥과 함께 extension으로 보낸다. */
-  function postStackAction(action, branch, parentHash) {
+  function postStackAction(action, branch, parentHash, button) {
     if (!action) return;
+    stackBusy = true;
+    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); }
     window.GscGraphPostMessage?.({
       type: "pullRequestStackAction",
       action,

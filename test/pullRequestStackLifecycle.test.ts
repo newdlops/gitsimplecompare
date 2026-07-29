@@ -119,6 +119,35 @@ async function createTwoLayerStack(repoRoot: string): Promise<string> {
   return firstWorktree;
 }
 
+/** 로컬 parent 편집과 성분 삭제가 Git 리소스를 건드리지 않고 독립 Stack을 보존하는지 검증한다. */
+test("로컬 Stack parent 편집은 경계를 보존하고 삭제는 연결 성분 config만 제거한다", async () => {
+  const fixture = await createLifecycleFixture();
+  try {
+    const metadata = new PullRequestStackMetadataService(fixture.repoRoot);
+    const main = await git(fixture.repoRoot, "rev-parse", "main");
+    await metadata.createLayer({ branch: "stack/one", parentBranch: "main", parentRef: main });
+    const one = await git(fixture.repoRoot, "rev-parse", "stack/one");
+    await metadata.createLayer({ branch: "stack/two", parentBranch: "stack/one", parentRef: one });
+    await metadata.createLayer({ branch: "other/one", parentBranch: "main", parentRef: main });
+    const before = (await metadata.listBranches()).find((item) => item.name === "stack/two")!;
+    await metadata.editParent("stack/two", "main");
+    const edited = (await metadata.listBranches()).find((item) => item.name === "stack/two")!;
+    assert.equal(edited.parentBranch, "main");
+    assert.equal(edited.parentHead, before.parentHead);
+    await metadata.editParent("stack/two", "stack/one");
+    await assert.rejects(() => metadata.editParent("stack/one", "stack/two"), /cycle/);
+    const preview = await metadata.previewComponent("stack/one");
+    assert.deepEqual(preview.branches, ["stack/one", "stack/two"]);
+    await metadata.deleteComponent("stack/one");
+    const after = await metadata.listBranches();
+    assert.equal(after.find((item) => item.name === "stack/one")?.parentBranch, undefined);
+    assert.equal(after.find((item) => item.name === "stack/two")?.parentBranch, undefined);
+    assert.equal(after.find((item) => item.name === "other/one")?.parentBranch, "main");
+    assert.equal(await git(fixture.repoRoot, "rev-parse", "stack/one"), one);
+    await git(fixture.repoRoot, "show-ref", "--verify", "refs/heads/stack/two");
+  } finally { await rm(fixture.fixtureRoot, { recursive: true, force: true }); }
+});
+
 /** 가짜 gh 상태 JSON을 원자성 요구가 없는 테스트 fixture 파일에 기록한다. */
 async function writeFakeGitHubState(
   file: string,

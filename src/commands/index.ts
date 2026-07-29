@@ -104,12 +104,12 @@ import {
   renameWorktree,
 } from "./worktrees";
 import {
-  addPullRequestStackLayer,
   advancePullRequestStack,
   completeAdvancePostAction,
   restackPullRequestStack,
   submitPullRequestStack,
 } from "./pullRequestStacks";
+import { addPullRequestStackLayer, deleteLocalPullRequestStack, editPullRequestStackParent } from "./pullRequestStacks";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
 import { SHOW_BLOCK_BLAME_COMMAND } from "../providers/blockBlameCodeLensPresentation";
 import {
@@ -506,6 +506,12 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.advancePullRequestStack", (arg) =>
       advancePullRequestStack(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.editPullRequestStackParent", (arg) =>
+      editPullRequestStackParent(deps, arg)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.deleteLocalPullRequestStack", (arg) =>
+      deleteLocalPullRequestStack(deps, arg)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.completePullRequestStackAdvance", (arg) =>
       arg?.repoRoot && arg?.postAction

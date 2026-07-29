@@ -154,6 +154,12 @@ A'(api) ─ B'(ui) ─ C'(tests)
 
 명령 팔레트의 **Git Simple Compare: Restack Pull Request Stack...**을 실행해 레이어를 고를 수도 있습니다.
 
+## 로컬 Stack 부모 편집 및 삭제
+
+**Edit Stack Parent...**는 선택한 레이어의 로컬 `gscStackParent`만 변경합니다. commit history를 rebase하지 않고 GitHub Pull Request base도 변경하지 않습니다. 기존 `gscStackParentHead`는 Restack 경계로 유지되므로, 로컬 부모와 게시된 PR base가 다르면 Restack 후 Submit / Sync가 필요합니다.
+
+**Delete Local Stack...**는 선택 레이어와 로컬 parent 관계로 연결된 성분의 `gscStackParent` 및 `gscStackParentHead`만 지웁니다. branch, linked worktree, commit, remote branch, Pull Request는 삭제하거나 닫지 않습니다. 일반 base branch를 공유할 뿐 연결되지 않은 다른 Stack은 삭제 대상이 아닙니다. 게시된 PR 관계는 GitHub에서 온 정보이므로 로컬 메타데이터를 지운 뒤에도 Graph에 GitHub-only Stack으로 남을 수 있습니다.
+
 ### 확장이 수행하는 안전 절차
 
 Restack은 선택 레이어부터 모든 후손을 부모 우선 순서로 처리합니다.
