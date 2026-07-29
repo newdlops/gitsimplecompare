@@ -30,6 +30,12 @@ interface CacheGenerationSnapshot {
   repository: number;
 }
 
+/** 같은 저장소/브랜치 원격 조회를 공유할 때 취소까지 함께 관리하는 묶음. */
+interface PullRequestCommentInFlight {
+  controller: AbortController;
+  promise: Promise<ActivePullRequestReviewComments | undefined>;
+}
+
 /**
  * 저장소/브랜치별 PR review comment 조회를 TTL 캐시와 singleflight 로 감싼다.
  * - 같은 키의 동시 호출은 하나의 원격 Promise 를 공유해 gh/GitHub 요청 중복을 막는다.
@@ -37,10 +43,7 @@ interface CacheGenerationSnapshot {
  */
 export class PullRequestCommentCache {
   private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
-  private readonly inFlightLoads = new Map<
-    string,
-    Promise<ActivePullRequestReviewComments | undefined>
-  >();
+  private readonly inFlightLoads = new Map<string, PullRequestCommentInFlight>();
   private readonly repoGenerations = new Map<string, number>();
   private readonly webSessionFlowKeys = new Set<string>();
   private globalGeneration = 0;
@@ -58,7 +61,8 @@ export class PullRequestCommentCache {
    * @returns 활성 PR 코멘트 데이터. detached HEAD 또는 연결된 PR 이 없으면 undefined
    */
   async load(
-    repoRoot: string
+    repoRoot: string,
+    signal?: AbortSignal
   ): Promise<ActivePullRequestReviewComments | undefined> {
     const branchService = new PullRequestReviewCommentService(repoRoot);
     const branch = await branchService.getCurrentBranch();
@@ -68,20 +72,27 @@ export class PullRequestCommentCache {
     const key = cacheKey(repoRoot, branch);
     const cached = this.freshEntry(key);
     if (cached) {
+      logInfo("pr editor comments cache hit", { repoRoot, branch });
       return cached.data;
     }
     const pending = this.inFlightLoads.get(key);
     if (pending) {
-      return pending;
+      logInfo("pr editor comments cache coalesced", { repoRoot, branch });
+      return pending.promise;
     }
     const generation = this.generation(repoRoot);
-    const load = this.loadUncached(repoRoot, branch, key, generation);
-    this.inFlightLoads.set(key, load);
+    const controller = new AbortController();
+    const removeAbortListener = forwardAbort(signal, controller);
+    const load = this.loadUncached(repoRoot, branch, key, generation, controller.signal)
+      .finally(removeAbortListener);
+    const pendingLoad = { controller, promise: load };
+    this.inFlightLoads.set(key, pendingLoad);
+    logInfo("pr editor comments load started", { repoRoot, branch });
     try {
       return await load;
     } finally {
       // 무효화 뒤 시작된 새 요청을 이전 요청의 finally 가 지우지 않도록 같은 Promise 만 제거한다.
-      if (this.inFlightLoads.get(key) === load) {
+      if (this.inFlightLoads.get(key) === pendingLoad) {
         this.inFlightLoads.delete(key);
       }
     }
@@ -89,11 +100,12 @@ export class PullRequestCommentCache {
 
   /**
    * 모든 저장소의 TTL 캐시와 진행 중 요청 연결을 무효화한다.
-   * - 실행 중인 네트워크 요청은 강제로 취소하지 않지만 세대를 올려 완료 결과가 캐시에 재진입하지 못하게 한다.
+   * - 실행 중인 네트워크 요청도 취소하고 세대를 올려 늦은 결과가 캐시에 재진입하지 못하게 한다.
    * - GitHub 웹 쿠키 변경이면 이전 인증 오류 안내 dedupe 도 비워 새 인증 상태를 다시 평가한다.
    * @param reason 인증 변경/사용자 명령처럼 전체 무효화를 일으킨 원인
    */
   invalidate(reason: string): void {
+    this.cancel(reason);
     this.cache.clear();
     this.globalGeneration++;
     this.inFlightLoads.clear();
@@ -115,11 +127,21 @@ export class PullRequestCommentCache {
     this.deleteRepositoryEntries(this.inFlightLoads, repoRoot);
   }
 
+  /** 진행 중인 gh/HTTPS 조회를 취소해 오래된 editor 결과가 캐시·세션 안내로 이어지지 않게 한다. */
+  cancel(reason: string): void {
+    for (const pending of this.inFlightLoads.values()) {
+      pending.controller.abort();
+    }
+    this.inFlightLoads.clear();
+    logInfo("pr editor comments load cancelled", { reason });
+  }
+
   /**
    * controller 폐기 뒤 완료되는 원격 요청이 캐시를 다시 만들지 못하도록 전체 세대와 참조를 정리한다.
-   * - 네트워크 Promise 자체는 Node API 취소 신호를 지원하지 않으므로 자연 완료시키고 결과만 버린다.
+   * - gh/HTTPS 작업에는 AbortSignal을 전달해 자연 완료를 기다리지 않고 즉시 중단한다.
    */
   dispose(): void {
+    this.cancel("dispose");
     this.globalGeneration++;
     this.cache.clear();
     this.inFlightLoads.clear();
@@ -141,7 +163,8 @@ export class PullRequestCommentCache {
     repoRoot: string,
     branch: string,
     key: string,
-    generation: CacheGenerationSnapshot
+    generation: CacheGenerationSnapshot,
+    signal: AbortSignal
   ): Promise<ActivePullRequestReviewComments | undefined> {
     const [webAccessToken, webCookie] = await Promise.all([
       readGitHubAuthenticationToken(),
@@ -151,17 +174,21 @@ export class PullRequestCommentCache {
       suggestedChangeset: webAccessToken || webCookie
         ? { webAccessToken, webCookie }
         : undefined,
+      signal,
     });
     const data = await service.getActiveBranchReviewComments(branch);
+    throwIfAborted(signal);
     if (this.isCurrent(repoRoot, generation)) {
       this.cache.set(key, { at: Date.now(), data });
     }
-    this.openGitHubWebSessionFlowIfNeeded(
-      repoRoot,
-      branch,
-      data?.suggestedChangesetStatus,
-      webCookie
-    );
+    if (!signal.aborted && this.isCurrent(repoRoot, generation)) {
+      this.openGitHubWebSessionFlowIfNeeded(
+        repoRoot,
+        branch,
+        data?.suggestedChangesetStatus,
+        webCookie
+      );
+    }
     logLoadedComments(repoRoot, branch, data);
     return data;
   }
@@ -254,6 +281,22 @@ export class PullRequestCommentCache {
         entries.delete(key);
       }
     }
+  }
+}
+
+/** 호출자 신호를 singleflight 요청 소유자에 전달하고 등록 해제 함수를 반환한다. */
+function forwardAbort(signal: AbortSignal | undefined, controller: AbortController): () => void {
+  if (!signal) return () => undefined;
+  const abort = () => controller.abort();
+  if (signal.aborted) abort();
+  else signal.addEventListener("abort", abort, { once: true });
+  return () => signal.removeEventListener("abort", abort);
+}
+
+/** 취소된 요청이 음수 캐시나 GitHub 웹 세션 안내로 처리되지 않게 한다. */
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw new DOMException("PR review comment request was cancelled.", "AbortError");
   }
 }
 

@@ -101,15 +101,17 @@ export async function fetchRemainingReviewThreadCommentCounts(
   cwd: string,
   owner: string,
   name: string,
-  pullRequests: GhPullRequestCommentCounts[]
+  pullRequests: GhPullRequestCommentCounts[],
+  signal?: AbortSignal
 ): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
   for (const pr of pullRequests) {
+    throwIfAborted(signal);
     const number = Number(pr.number);
     if (!Number.isFinite(number) || number <= 0) {
       continue;
     }
-    const count = await readRemainingReviewThreadCommentCount(cwd, owner, name, number, pr.reviewThreads?.pageInfo);
+    const count = await readRemainingReviewThreadCommentCount(cwd, owner, name, number, pr.reviewThreads?.pageInfo, signal);
     if (count > 0) {
       counts.set(number, count);
     }
@@ -131,12 +133,14 @@ async function readRemainingReviewThreadCommentCount(
   owner: string,
   name: string,
   number: number,
-  pageInfo: GhPageInfo | undefined
+  pageInfo: GhPageInfo | undefined,
+  signal?: AbortSignal
 ): Promise<number> {
   let pages = 1;
   let count = 0;
   while (pageInfo?.hasNextPage && pageInfo.endCursor && pages < MAX_REVIEW_THREAD_COUNT_PAGES) {
-    const page = await readReviewThreadCountPage(cwd, owner, name, number, pageInfo.endCursor);
+    throwIfAborted(signal);
+    const page = await readReviewThreadCountPage(cwd, owner, name, number, pageInfo.endCursor, signal);
     count += reviewThreadCommentCount(page.nodes || []);
     pageInfo = page.pageInfo;
     pages++;
@@ -158,7 +162,8 @@ async function readReviewThreadCountPage(
   owner: string,
   name: string,
   number: number,
-  cursor: string
+  cursor: string,
+  signal?: AbortSignal
 ): Promise<GhReviewThreadConnection> {
   const out = await runGh([
     "api",
@@ -173,7 +178,7 @@ async function readReviewThreadCountPage(
     `cursor=${cursor}`,
     "-f",
     `query=${PULL_REQUEST_REVIEW_THREAD_COUNTS_QUERY}`,
-  ], cwd);
+  ], cwd, { signal, operation: "graph-pr-review-thread-count-page" });
   const parsed = JSON.parse(out) as GhReviewThreadCountPageResponse;
   return parsed.data?.repository?.pullRequest?.reviewThreads || {};
 }
@@ -181,4 +186,13 @@ async function readReviewThreadCountPage(
 /** 숫자로 신뢰할 수 있는 count 만 0 이상의 정수로 정규화한다. */
 function normalizeCount(value: number | undefined): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * 취소된 Graph PR 요청이 다음 pagination을 시작하지 않도록 호출 경계에서 즉시 중단한다.
+ * @param signal pager가 소유한 선택적 취소 신호
+ * @throws 요청이 취소됐을 때 AbortError
+ */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new DOMException("Graph pull request request was cancelled.", "AbortError");
 }

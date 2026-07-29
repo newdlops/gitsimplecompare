@@ -41,6 +41,7 @@ const PULL_REQUEST_PAGE_SIZE = 80;
 const PULL_REQUESTS_QUERY = `
 query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
+    defaultBranchRef { name }
     pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
 ${PULL_REQUEST_INFO_QUERY}
@@ -74,6 +75,7 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
 export interface PullRequestOverview {
   available: boolean;
   repository?: string;
+  defaultBranch?: string;
   currentBranch?: string;
   targetBranch?: string;
   error?: string;
@@ -110,6 +112,7 @@ interface GhPullRequestPreview {
 interface GhGraphQlResponse {
   data?: {
     repository?: {
+      defaultBranchRef?: { name?: string };
       pullRequests?: {
         nodes?: GhPullRequestNode[];
         pageInfo?: GhPageInfo;
@@ -141,16 +144,19 @@ export class PullRequestService {
    */
   async getOverview(
     localBranches: LocalBranchStatus[],
-    cursor?: string
+    cursor?: string,
+    signal?: AbortSignal
   ): Promise<PullRequestOverview> {
     try {
-      const repository = await this.repositoryName();
-      const page = await this.listPullRequests(repository, cursor);
+      throwIfAborted(signal);
+      const repository = await this.repositoryName(signal, "graph-pr-repository");
+      const page = await this.listPullRequests(repository, cursor, signal);
       const prs = page.pullRequests;
       const current = localBranches.find((branch) => branch.current);
       return {
         available: true,
         repository,
+        defaultBranch: page.defaultBranch,
         currentBranch: current?.name,
         targetBranch: this.targetBranchFor(current, prs),
         hasMore: Boolean(page.pageInfo?.hasNextPage),
@@ -158,6 +164,7 @@ export class PullRequestService {
         pullRequests: prs,
       };
     } catch (error) {
+      if (signal?.aborted || isAbortError(error)) throw error;
       return {
         available: false,
         currentBranch: localBranches.find((branch) => branch.current)?.name,
@@ -282,8 +289,9 @@ export class PullRequestService {
    */
   private async listPullRequests(
     repository: string,
-    cursor?: string
-  ): Promise<{ pullRequests: PullRequestInfo[]; pageInfo?: GhPageInfo }> {
+    cursor?: string,
+    signal?: AbortSignal
+  ): Promise<{ pullRequests: PullRequestInfo[]; pageInfo?: GhPageInfo; defaultBranch?: string }> {
     const [owner, name] = splitRepositoryName(repository);
     const args = [
       "api",
@@ -300,17 +308,18 @@ export class PullRequestService {
     if (cursor) {
       args.splice(args.length - 2, 0, "-f", `cursor=${cursor}`);
     }
-    const out = await runGh(args, this.repoRoot);
+    const out = await runGh(args, this.repoRoot, { signal, operation: "graph-pr-list-page" });
     const parsed = JSON.parse(out) as GhGraphQlResponse;
     const connection = parsed.data?.repository?.pullRequests;
     const nodes = connection?.nodes || [];
-    const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(this.repoRoot, owner, name, nodes);
+    throwIfAborted(signal);
+    const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(this.repoRoot, owner, name, nodes, signal);
     const prs = nodes.map((pr) => pullRequestInfoFromGraphQl(
       pr,
       extraReviewCommentCounts.get(Number(pr.number)) || 0
     ));
-    await this.appendRemainingCommitHashes(owner, name, nodes, prs);
-    return { pullRequests: prs, pageInfo: connection?.pageInfo };
+    await this.appendRemainingCommitHashes(owner, name, nodes, prs, signal);
+    return { pullRequests: prs, pageInfo: connection?.pageInfo, defaultBranch: parsed.data?.repository?.defaultBranchRef?.name };
   }
 
   /**
@@ -325,16 +334,18 @@ export class PullRequestService {
     owner: string,
     name: string,
     nodes: GhPullRequestNode[],
-    prs: PullRequestInfo[]
+    prs: PullRequestInfo[],
+    signal?: AbortSignal
   ): Promise<void> {
     for (let index = 0; index < nodes.length; index++) {
+      throwIfAborted(signal);
       const prNumber = Number(nodes[index]?.number);
       if (!Number.isFinite(prNumber)) {
         continue;
       }
       let pageInfo = nodes[index]?.commits?.pageInfo;
       while (pageInfo?.hasNextPage && pageInfo.endCursor) {
-        const page = await this.listCommitHashPage(owner, name, prNumber, pageInfo.endCursor);
+        const page = await this.listCommitHashPage(owner, name, prNumber, pageInfo.endCursor, signal);
         const hashes = prs[index]?.commitHashes;
         if (hashes) {
           hashes.push(...page.hashes.filter((hash) => !hashes.includes(hash)));
@@ -355,7 +366,8 @@ export class PullRequestService {
     owner: string,
     name: string,
     number: number,
-    cursor: string
+    cursor: string,
+    signal?: AbortSignal
   ): Promise<{ hashes: string[]; pageInfo?: GhPageInfo }> {
     const out = await runGh([
       "api",
@@ -370,7 +382,7 @@ export class PullRequestService {
       `cursor=${cursor}`,
       "-f",
       `query=${PULL_REQUEST_COMMITS_QUERY}`,
-    ], this.repoRoot);
+    ], this.repoRoot, { signal, operation: "graph-pr-commit-page" });
     const parsed = JSON.parse(out) as GhCommitPageResponse;
     const commits = parsed.data?.repository?.pullRequest?.commits;
     return {
@@ -449,8 +461,8 @@ export class PullRequestService {
   }
 
   /** gh repo view 로 owner/name 을 읽는다. */
-  private async repositoryName(): Promise<string> {
-    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot);
+  private async repositoryName(signal?: AbortSignal, operation = "pull-request-repository"): Promise<string> {
+    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, { signal, operation });
     const parsed = JSON.parse(out) as { nameWithOwner?: string };
     return parsed.nameWithOwner || "";
   }
@@ -465,4 +477,16 @@ export class PullRequestService {
     }
     return prs.find((pr) => pr.headRefName === current.name)?.baseRefName || current.upstream;
   }
+}
+
+/** 취소 신호와 gh의 취소 오류를 공통으로 판별해 오류 overview로 잘못 바꾸지 않는다. */
+function isAbortError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { code?: unknown }).code;
+  return error.name === "AbortError" || code === "ABORTED" || code === "ABORT_ERR";
+}
+
+/** pagination 직전에 취소 여부를 확인해 불필요한 후속 gh 프로세스를 만들지 않는다. */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new DOMException("Graph pull request request was cancelled.", "AbortError");
 }

@@ -36,6 +36,8 @@ export interface PullRequestSuggestedChangesetOptions {
   webAccessToken?: string;
   /** VS Code SecretStorage 등에 저장된 github.com Cookie 헤더 값 */
   webCookie?: string;
+  /** 활성 에디터 요청이 폐기될 때 gh 및 HTTPS 순회를 중단할 신호 */
+  signal?: AbortSignal;
 }
 
 /** REST review comment 에서 suggested changeset 보조 조회에 필요한 최소 정보 */
@@ -68,22 +70,26 @@ export async function readPullRequestSuggestedChangesets(
   options: PullRequestSuggestedChangesetOptions = {},
   comments: PullRequestSuggestedChangesetComment[] = []
 ): Promise<PullRequestSuggestedChangesetRead> {
+  throwIfAborted(options.signal);
   const url = `https://github.com/${owner}/${name}/pull/${number}/files`;
   const reasons: string[] = [];
-  const ghHtml = await readWithGhApi(repoRoot, url);
+  const ghHtml = await readWithGhApi(repoRoot, url, options.signal);
+  throwIfAborted(options.signal);
   if (ghHtml.ok) {
     return parsedRead(ghHtml.html, "gh-api-web");
   }
   reasons.push(`gh-api-web: ${ghHtml.reason}`);
 
   if (options.webAccessToken) {
-    const vscodeTokenHtml = await readWithToken(url, options.webAccessToken);
+    const vscodeTokenHtml = await readWithToken(url, options.webAccessToken, options.signal);
     if (vscodeTokenHtml.ok) {
       return parsedRead(vscodeTokenHtml.html, "vscode-auth-web");
     }
     reasons.push(`vscode-auth-web: ${vscodeTokenHtml.reason}`);
-    const vscodeCommentHtml = await readCommentPages(comments, (pageUrl) =>
-      readWithToken(pageUrl, options.webAccessToken || "")
+    const vscodeCommentHtml = await readCommentPages(
+      comments,
+      (pageUrl) => readWithToken(pageUrl, options.webAccessToken || "", options.signal),
+      options.signal
     );
     if (vscodeCommentHtml.ok) {
       return mapRead(vscodeCommentHtml.byCommentId, "vscode-auth-comment-page");
@@ -94,15 +100,17 @@ export async function readPullRequestSuggestedChangesets(
     reasons.push("vscode-auth-comment-page: no VS Code GitHub session");
   }
 
-  const ghToken = await readGhToken(repoRoot);
+  const ghToken = await readGhToken(repoRoot, options.signal);
   if (ghToken.ok) {
-    const ghTokenHtml = await readWithToken(url, ghToken.token);
+    const ghTokenHtml = await readWithToken(url, ghToken.token, options.signal);
     if (ghTokenHtml.ok) {
       return parsedRead(ghTokenHtml.html, "gh-token-web");
     }
     reasons.push(`gh-token-web: ${ghTokenHtml.reason}`);
-    const ghCommentHtml = await readCommentPages(comments, (pageUrl) =>
-      readWithToken(pageUrl, ghToken.token)
+    const ghCommentHtml = await readCommentPages(
+      comments,
+      (pageUrl) => readWithToken(pageUrl, ghToken.token, options.signal),
+      options.signal
     );
     if (ghCommentHtml.ok) {
       return mapRead(ghCommentHtml.byCommentId, "gh-token-comment-page");
@@ -114,7 +122,7 @@ export async function readPullRequestSuggestedChangesets(
   }
 
   if (options.webCookie) {
-    const storedCookieHtml = await readWithCookie(url, options.webCookie);
+    const storedCookieHtml = await readWithCookie(url, options.webCookie, options.signal);
     if (storedCookieHtml.ok) {
       return parsedRead(storedCookieHtml.html, "stored-web-cookie");
     }
@@ -125,7 +133,7 @@ export async function readPullRequestSuggestedChangesets(
 
   const envCookie = process.env[WEB_COOKIE_ENV]?.trim();
   if (envCookie) {
-    const envCookieHtml = await readWithCookie(url, envCookie);
+    const envCookieHtml = await readWithCookie(url, envCookie, options.signal);
     if (envCookieHtml.ok) {
       return parsedRead(envCookieHtml.html, "env-web-cookie");
     }
@@ -144,10 +152,11 @@ export async function readPullRequestSuggestedChangesets(
  */
 async function readWithGhApi(
   repoRoot: string,
-  url: string
+  url: string,
+  signal?: AbortSignal
 ): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
   try {
-    const html = await runGh(["api", url], repoRoot);
+    const html = await runGh(["api", url], repoRoot, { signal, operation: "suggested-changeset-web" });
     return isGitHubHtml(html)
       ? { ok: true, html }
       : { ok: false, reason: "gh api web response was not HTML" };
@@ -163,10 +172,11 @@ async function readWithGhApi(
  * @returns token 또는 실패 이유
  */
 async function readGhToken(
-  repoRoot: string
+  repoRoot: string,
+  signal?: AbortSignal
 ): Promise<{ ok: true; token: string } | { ok: false; reason: string }> {
   try {
-    const token = (await runGh(["auth", "token"], repoRoot)).trim();
+    const token = (await runGh(["auth", "token"], repoRoot, { signal, operation: "suggested-changeset-token" })).trim();
     return token
       ? { ok: true, token }
       : { ok: false, reason: "gh auth token returned empty token" };
@@ -182,15 +192,18 @@ async function readGhToken(
  * @param token OAuth token
  * @returns HTML 또는 실패 이유
  */
-function readWithToken(
+async function readWithToken(
   url: string,
-  token: string
+  token: string,
+  signal?: AbortSignal
 ): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
-  return readGitHubWebHtmlWithFragments(url, {
+  const read = await readGitHubWebHtmlWithFragments(url, {
     Authorization: `Bearer ${token}`,
     Accept: "text/html",
     "User-Agent": "Git Simple Compare",
-  });
+  }, signal);
+  throwIfAborted(signal);
+  return read;
 }
 
 /**
@@ -199,15 +212,18 @@ function readWithToken(
  * @param cookie GitHub 웹 세션 Cookie 헤더 값
  * @returns HTML 또는 실패 이유
  */
-function readWithCookie(
+async function readWithCookie(
   url: string,
-  cookie: string
+  cookie: string,
+  signal?: AbortSignal
 ): Promise<{ ok: true; html: string } | { ok: false; reason: string }> {
-  return readGitHubWebHtmlWithFragments(url, {
+  const read = await readGitHubWebHtmlWithFragments(url, {
     Accept: "text/html",
     Cookie: cookie,
     "User-Agent": "Git Simple Compare",
-  });
+  }, signal);
+  throwIfAborted(signal);
+  return read;
 }
 
 /**
@@ -220,7 +236,8 @@ function readWithCookie(
  */
 async function readCommentPages(
   comments: PullRequestSuggestedChangesetComment[],
-  readUrl: (url: string) => Promise<{ ok: true; html: string } | { ok: false; reason: string }>
+  readUrl: (url: string) => Promise<{ ok: true; html: string } | { ok: false; reason: string }>,
+  signal?: AbortSignal
 ): Promise<{ ok: true; byCommentId: Map<string, string[]> } | { ok: false; reason: string }> {
   const urls = commentPageUrls(comments);
   if (!urls.length) {
@@ -229,6 +246,7 @@ async function readCommentPages(
   const result = new Map<string, string[]>();
   const failures: string[] = [];
   for (const url of urls) {
+    throwIfAborted(signal);
     const read = await readUrl(url);
     if (!read.ok) {
       failures.push(read.reason);
@@ -241,6 +259,13 @@ async function readCommentPages(
   }
   const detail = unique(failures).slice(0, 3).join(", ");
   return { ok: false, reason: detail || `0 suggestions from ${urls.length} comment page(s)` };
+}
+
+/** 취소된 보조 조회가 다음 인증/HTML 경로로 진행하지 못하게 한다. */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw new DOMException("Suggested changeset request was cancelled.", "AbortError");
+  }
 }
 
 /**

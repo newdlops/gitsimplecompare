@@ -6,6 +6,7 @@ import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
 import {
   PullRequestSuggestedChangesetOptions,
+  PullRequestSuggestedChangesetRead,
   PullRequestSuggestedChangesetStatus,
   readPullRequestSuggestedChangesets,
 } from "./pullRequestSuggestedChangesets";
@@ -101,6 +102,8 @@ const MAX_PAGES = 10;
 export interface PullRequestReviewCommentServiceOptions {
   /** suggested changeset 웹 HTML 을 읽기 위한 VS Code GitHub OAuth token */
   suggestedChangeset?: PullRequestSuggestedChangesetOptions;
+  /** 활성 에디터 교체 시 gh/웹 보조 조회를 중단할 신호 */
+  signal?: AbortSignal;
 }
 
 /**
@@ -131,25 +134,30 @@ export class PullRequestReviewCommentService {
   async getActiveBranchReviewComments(
     branch?: string
   ): Promise<ActivePullRequestReviewComments | undefined> {
+    throwIfAborted(this.options.signal);
     const currentBranch = branch || await this.getCurrentBranch();
     if (!currentBranch) {
       return undefined;
     }
     const pr = await this.readCurrentPullRequest();
+    throwIfAborted(this.options.signal);
     if (!pr?.number) {
       return undefined;
     }
     const repository = await this.repositoryName();
+    throwIfAborted(this.options.signal);
     const [owner, name] = splitRepositoryName(repository);
     const comments = await this.readReviewComments(owner, name, Number(pr.number));
-    const suggested = await readPullRequestSuggestedChangesets(
-      this.repoRoot,
-      owner,
-      name,
-      Number(pr.number),
-      this.options.suggestedChangeset,
-      comments.map((comment) => ({ id: comment.id, url: comment.url }))
-    );
+    const suggested = comments.length
+      ? await readPullRequestSuggestedChangesets(
+        this.repoRoot,
+        owner,
+        name,
+        Number(pr.number),
+        { ...this.options.suggestedChangeset, signal: this.options.signal },
+        comments.map((comment) => ({ id: comment.id, url: comment.url }))
+      )
+      : skippedSuggestedChangesets();
     return {
       number: Number(pr.number),
       title: pr.title || "",
@@ -171,7 +179,7 @@ export class PullRequestReviewCommentService {
         "view",
         "--json",
         "number,title,url,headRefName",
-      ], this.repoRoot);
+      ], this.repoRoot, { signal: this.options.signal, operation: "pr-comment-view" });
       return JSON.parse(out) as GhPullRequestView;
     } catch (error) {
       if (isNoPullRequestError(error)) {
@@ -186,7 +194,10 @@ export class PullRequestReviewCommentService {
    * @returns GitHub REST route 에 사용할 owner/name 문자열
    */
   private async repositoryName(): Promise<string> {
-    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot);
+    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, {
+      signal: this.options.signal,
+      operation: "pr-comment-repository",
+    });
     const parsed = JSON.parse(out) as GhRepositoryView;
     if (!parsed.nameWithOwner) {
       throw new Error("GitHub repository name is not available.");
@@ -213,7 +224,8 @@ export class PullRequestReviewCommentService {
         "-H",
         "Accept: application/vnd.github-commitcomment.full+json",
         `repos/${owner}/${name}/pulls/${number}/comments?per_page=${PAGE_SIZE}&page=${page}`,
-      ], this.repoRoot);
+      ], this.repoRoot, { signal: this.options.signal, operation: "pr-review-comments" });
+      throwIfAborted(this.options.signal);
       const items = JSON.parse(out) as GhReviewComment[];
       all.push(...items.map(normalizeReviewComment).filter(isReviewComment));
       if (items.length < PAGE_SIZE) {
@@ -221,6 +233,21 @@ export class PullRequestReviewCommentService {
       }
     }
     return inheritReplyCommentLocations(all);
+  }
+}
+
+/** review comment가 없을 때 GitHub 웹 HTML 보조 조회를 생략한 상태를 만든다. */
+function skippedSuggestedChangesets(): PullRequestSuggestedChangesetRead {
+  return {
+    byCommentId: new Map(),
+    status: { attempted: false, comments: 0, changesets: 0, reason: "no review comments" },
+  };
+}
+
+/** 취소된 활성 에디터 요청이 후속 gh/웹 작업을 시작하지 못하게 한다. */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw new DOMException("PR review comment request was cancelled.", "AbortError");
   }
 }
 

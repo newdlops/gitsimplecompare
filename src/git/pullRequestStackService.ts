@@ -86,12 +86,22 @@ export class PullRequestStackService {
    */
   async getGraphSnapshot(
     pullRequests: readonly PullRequestInfo[],
-    repositoryHint = ""
+    repositoryHint = "",
+    defaultBranchHint = "",
+    signal?: AbortSignal
   ): Promise<PullRequestStackGraphSnapshot> {
+    throwIfAborted(signal);
+    const reuseMetadata = Boolean(repositoryHint && defaultBranchHint);
     const [branches, repository] = await Promise.all([
       new PullRequestStackMetadataService(this.repoRoot).listBranches(),
-      this.repositoryInfo().catch(() => ({} as GhRepositoryInfo)),
+      reuseMetadata
+        ? Promise.resolve({ nameWithOwner: repositoryHint, defaultBranchRef: { name: defaultBranchHint } })
+        : this.repositoryInfo(signal).catch((error) => {
+          if (signal?.aborted) throw error;
+          return {} as GhRepositoryInfo;
+        }),
     ]);
+    throwIfAborted(signal);
     const defaultBranch = repository.defaultBranchRef?.name
       || await this.defaultBranchFromGit().catch(() => undefined);
     return buildPullRequestStackGraph(
@@ -183,10 +193,11 @@ export class PullRequestStackService {
    * gh repo view로 owner/name과 기본 branch를 한 번에 읽는다.
    * @returns GitHub 저장소 표시와 root base 후보에 사용할 정보
    */
-  private async repositoryInfo(): Promise<GhRepositoryInfo> {
+  private async repositoryInfo(signal?: AbortSignal): Promise<GhRepositoryInfo> {
     const out = await runGh(
       ["repo", "view", "--json", "nameWithOwner,defaultBranchRef"],
-      this.repoRoot
+      this.repoRoot,
+      { signal, operation: "graph-pr-stack-repository" }
     );
     return JSON.parse(out) as GhRepositoryInfo;
   }
@@ -227,6 +238,15 @@ export class PullRequestStackService {
       remoteBranch: published?.branch,
     };
   }
+}
+
+/**
+ * Graph 패널이 이미 폐기됐으면 원격 metadata fallback이나 후속 snapshot 생성을 시작하지 않는다.
+ * @param signal Graph PR refresh 세대가 소유한 선택적 취소 신호
+ * @throws 호출 수명주기에서 취소됐을 때 AbortError
+ */
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new DOMException("Graph pull request request was cancelled.", "AbortError");
 }
 
 /**

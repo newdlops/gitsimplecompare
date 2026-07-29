@@ -37,6 +37,7 @@ export class PullRequestCommentController implements vscode.Disposable {
   private readonly commentCache: PullRequestCommentCache;
   private readonly activeThreads = new Map<string, vscode.CommentThread>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  private activeRequest: AbortController | undefined;
   private requestSeq = 0;
   private refreshDeferred = false;
   private disposed = false;
@@ -67,13 +68,16 @@ export class PullRequestCommentController implements vscode.Disposable {
         if (state.focused && this.refreshDeferred) {
           this.refreshDeferred = false;
           this.scheduleRefresh("windowFocused");
+        } else if (!state.focused) {
+          this.cancelActiveRequest("windowUnfocused");
+          this.refreshDeferred = true;
         }
       }),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (isActiveDocument(document)) {
-          void this.invalidateActiveRepoCache().finally(() =>
-            this.scheduleRefresh("documentSaved")
-          );
+          // 저장은 GitHub PR의 branch/comment 데이터를 바꾸지 않는다. TTL 결과를 재적용해
+          // 기존 thread의 펼친 상태를 보존하고, 진행 중인 singleflight도 취소하지 않는다.
+          this.scheduleRefresh("documentSaved");
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
@@ -119,6 +123,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       this.refreshTimer = undefined;
     }
     this.requestSeq++;
+    this.cancelActiveRequest("dispose");
     this.commentCache.dispose();
     this.clearVisibleDecorations();
     this.clearActiveGroups();
@@ -136,6 +141,7 @@ export class PullRequestCommentController implements vscode.Disposable {
   private applyConfiguration(reason: string): void {
     if (!isEnabled()) {
       this.requestSeq++;
+      this.cancelActiveRequest("configurationDisabled");
       this.refreshDeferred = false;
       this.clearVisibleDecorations();
       this.clearActiveGroups();
@@ -164,6 +170,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     if (!vscode.window.state.focused) {
+      this.cancelActiveRequest("windowUnfocused");
       this.refreshDeferred = true;
       if (this.refreshTimer) {
         clearTimeout(this.refreshTimer);
@@ -173,6 +180,9 @@ export class PullRequestCommentController implements vscode.Disposable {
     }
     this.refreshDeferred = false;
     const requestId = ++this.requestSeq;
+    if (reason !== "documentSaved") {
+      this.cancelActiveRequest(reason);
+    }
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
@@ -184,7 +194,9 @@ export class PullRequestCommentController implements vscode.Disposable {
     }
     this.refreshTimer = setTimeout(() => {
       this.refreshTimer = undefined;
-      void this.refreshActiveEditor(reason, requestId);
+      const request = new AbortController();
+      this.activeRequest = request;
+      void this.refreshActiveEditor(reason, requestId, request.signal);
     }, delayMs);
   }
 
@@ -196,15 +208,18 @@ export class PullRequestCommentController implements vscode.Disposable {
    */
   private async refreshActiveEditor(
     reason: string,
-    requestId: number
+    requestId: number,
+    signal: AbortSignal
   ): Promise<void> {
     // 백그라운드 창은 원격 PR 조회를 시작하지 않는다. 기존 thread/decorations 는 보존하고,
     // 창이 다시 포커스되면 onDidChangeWindowState 경로가 최신 상태를 예약한다.
     if (!vscode.window.state.focused) {
+      this.cancelActiveRequest("windowUnfocused");
       this.refreshDeferred = true;
       return;
     }
     const editor = vscode.window.activeTextEditor;
+    const targetUri = editor?.document.uri.toString();
     if (!isEnabled() || !editor) {
       this.clearVisibleDecorations();
       this.clearActiveGroups();
@@ -223,7 +238,7 @@ export class PullRequestCommentController implements vscode.Disposable {
       return;
     }
     if (
-      requestId !== this.requestSeq ||
+      !this.isLatestTarget(requestId, targetUri, signal) ||
       !isEnabled()
     ) {
       return;
@@ -239,13 +254,13 @@ export class PullRequestCommentController implements vscode.Disposable {
       service.toRepoRelative(editor.document.uri.fsPath)
     );
     try {
-      const prComments = await this.commentCache.load(service.repoRoot);
+      const prComments = await this.commentCache.load(service.repoRoot, signal);
       if (!vscode.window.state.focused) {
         this.refreshDeferred = true;
         return;
       }
       if (
-        requestId !== this.requestSeq ||
+        !this.isLatestTarget(requestId, targetUri, signal) ||
         !isEnabled()
       ) {
         return;
@@ -299,7 +314,8 @@ export class PullRequestCommentController implements vscode.Disposable {
         suggestedCommentIds: suggestedCommentIds(fileComments),
       });
     } catch (error) {
-      if (requestId !== this.requestSeq) {
+      if (!this.isLatestTarget(requestId, targetUri, signal)) {
+        logInfo("pr editor comments load cancelled", { reason, repoRoot: service.repoRoot });
         return;
       }
       logInfo("pr editor comments failed", {
@@ -310,20 +326,18 @@ export class PullRequestCommentController implements vscode.Disposable {
     }
   }
 
-  /**
-   * 활성 파일의 저장소 캐시를 무효화한다.
-   * - 저장 후 GitHub comment line 과 작업 파일의 관계가 바뀔 수 있으므로 다음 refresh 에서 다시 읽는다.
-   */
-  private async invalidateActiveRepoCache(): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.uri.scheme !== "file") {
-      return;
-    }
-    const service = await this.registry.resolve(dirname(editor.document.uri.fsPath));
-    if (!service) {
-      return;
-    }
-    this.commentCache.invalidateRepository(service.repoRoot);
+  /** 현재 요청이 같은 활성 파일·세대·포커스를 여전히 가리키는지 확인한다. */
+  private isLatestTarget(requestId: number, targetUri: string | undefined, signal: AbortSignal): boolean {
+    return !signal.aborted && vscode.window.state.focused && isEnabled() && requestId === this.requestSeq &&
+      vscode.window.activeTextEditor?.document.uri.toString() === targetUri;
+  }
+
+  /** 활성 요청과 그 하위 gh/HTTPS singleflight를 취소하고 원인을 OUTPUT에 남긴다. */
+  private cancelActiveRequest(reason: string): void {
+    if (!this.activeRequest || this.activeRequest.signal.aborted) return;
+    this.activeRequest.abort();
+    this.commentCache.cancel(reason);
+    logInfo("pr editor comments request cancelled", { reason });
   }
 
   /**
