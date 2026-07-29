@@ -37,6 +37,17 @@ export interface RepositoryEventRoute {
   graph: boolean;
 }
 
+/** linked-worktree admin delete의 동일 관측만 기억해 Graph queue 폭주를 막는다. */
+class LinkedWorktreeDeleteLedger {
+  private readonly deleted = new Set<string>();
+  /** delete는 최초만 true이며 create/change는 새 material state로 다시 연다. */
+  observe(path: string, event: "create" | "change" | "delete"): boolean {
+    if (event !== "delete") { this.deleted.delete(path); return true; }
+    if (this.deleted.has(path)) return false;
+    this.deleted.add(path); return true;
+  }
+}
+
 /**
  * watcher의 세 이벤트를 같은 handler에 연결하고 activation disposable 목록에 등록한다.
  * @param watcher 이미 생성한 VS Code FileSystemWatcher
@@ -129,6 +140,7 @@ export function visibleRepositoryRoots(
 export function createGitMetadataRefreshHandler(
   target: GitMetadataRefreshTarget
 ): RefreshWatcherHandler {
+  const linkedWorktreeDeletes = new LinkedWorktreeDeleteLedger();
   return (event, uri) => {
     const relevantRoots = visibleRepositoryRoots(target.relevantRoots());
     const graphRoot = target.graphRoot();
@@ -179,7 +191,7 @@ export function createGitMetadataRefreshHandler(
       for (const root of broadcastRoots) {
         target.invalidateStatus(root);
         target.queueRepository(root);
-        if (graphRoot && rootKey(root) === rootKey(graphRoot)) {
+        if (graphRoot && rootKey(root) === rootKey(graphRoot) && linkedWorktreeDeletes.observe(uri.fsPath, event)) {
           target.queueGraph(graphRoot);
         }
       }

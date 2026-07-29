@@ -3,6 +3,7 @@
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
+import { readGraphRefreshFingerprint } from "../git/graphRefreshFingerprint";
 import { loadCommitWindowAroundWithRange } from "../git/gitLogWindow";
 import { Commit, GraphData, LocalBranchStatus } from "../graph/graphTypes";
 import { logError, logInfo } from "../ui/outputLog";
@@ -11,12 +12,13 @@ import type { GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter 
 import { buildGraphHtml } from "./graphHtml";
 import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
-import { GraphPanelMessageRouter, GraphVisibilityRefreshCoalescer } from "./graphPanelMessageRouter";
+import { GraphPanelMessageRouter } from "./graphPanelMessageRouter";
 import { sendGraphTagStatus } from "./graphTagStatus";
 import { readGraphWorktreeBranchStatus } from "./graphWorktrees";
 import { syncGraphLocalRefs } from "./graphLocalRefs";
 import { layoutGraphData } from "./graphLayoutData";
 import { createGraphBranchFilterSnapshot, graphBranchFilterNeedsReconcile, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, loadGraphLocalBranchData, mergeGraphBranchRefs, refreshGraphCheckout, resolveGraphBranchFilter } from "./graphBranchLoading";
+import { GraphRefreshLifecycleCoordinator, GraphRefreshMode } from "./graphRefreshCoordinator";
 
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -46,7 +48,7 @@ export class GitGraphPanel {
   private remoteCatalogStatus: GraphRemoteCatalogStatus = "ready";
   private remoteCatalogError: string | undefined;
   private readonly branchLoading = new GraphBranchLoadingCoordinator();
-  private readonly refreshCoalescer = new GraphVisibilityRefreshCoalescer();
+  private readonly refreshCoordinator: GraphRefreshLifecycleCoordinator;
   private readonly messages: GraphPanelMessageRouter;
   /**
    * 패널을 만들거나, 이미 있으면 앞으로 가져온다.
@@ -60,9 +62,9 @@ export class GitGraphPanel {
       GitGraphPanel.current.branchLoading.cancel("repositoryChanged");
       GitGraphPanel.current.logService.cancelGraphBranchContainment("repositoryChanged");
       GitGraphPanel.current.logService = logService;
-      GitGraphPanel.current.resetLoadedGraph();
+      GitGraphPanel.current.refreshCoordinator.setRepository(logService.repoRoot);
       GitGraphPanel.current.panel.reveal();
-      void GitGraphPanel.current.reloadGraph();
+      void GitGraphPanel.current.reloadRepository();
       return;
     }
     const panel = vscode.window.createWebviewPanel("gitSimpleCompare.graph", vscode.l10n.t("Git Graph"), vscode.ViewColumn.Active, {
@@ -89,15 +91,7 @@ export class GitGraphPanel {
     if (!current || current.logService.repoRoot !== repoRoot) {
       return false;
     }
-    if (!current.panel.visible) {
-      current.deferExternalRefresh(repoRoot, reason);
-      return true;
-    }
-    if (current.loading) {
-      logInfo("graph external refresh skipped", { repoRoot, reason, active: "pageLoad" });
-      return true;
-    }
-    current.runExternalRefresh(repoRoot, reason, shouldRefreshPullRequests(reason));
+    void current.requestExternalRefresh(repoRoot, reason);
     return true;
   }
   /**
@@ -114,19 +108,14 @@ export class GitGraphPanel {
     current.post(message);
     return true;
   }
-  private constructor(
-    private readonly panel: vscode.WebviewPanel,
-    private readonly extensionUri: vscode.Uri,
-    private logService: GitLogService
-  ) {
+  private constructor(private readonly panel: vscode.WebviewPanel, private readonly extensionUri: vscode.Uri, private logService: GitLogService) {
     this.messages = new GraphPanelMessageRouter({
       logService: () => this.logService,
       localBranches: () => this.lastLocalBranches,
       extensionUri: this.extensionUri,
       post: (message) => this.post(message),
       withBusy: (key, action) => this.withBusy(key, action),
-      resetLoadedGraph: () => this.resetLoadedGraph(),
-      reloadGraph: () => this.reloadGraph(),
+      reloadGraph: (cause) => this.runDirectGraph(cause),
       setBranchFilter: (message) => this.setBranchFilter(message),
       loadNextPage: (reset, direction) => this.loadNextPage(reset, direction),
       loadedCommitHash: (hashes) => hashes
@@ -138,6 +127,21 @@ export class GitGraphPanel {
       refreshAfterFetchAction: () => this.refreshAfterFetchAction(),
       refreshAfterCheckoutAction: () => this.refreshAfterCheckoutAction(),
     });
+    this.refreshCoordinator = new GraphRefreshLifecycleCoordinator({
+      readFingerprint: readGraphRefreshFingerprint,
+      reloadGraph: async () => {
+        this.resetLoadedGraph();
+        await this.reloadGraph();
+      },
+      publishAfterReload: async (context, mode) => {
+        if (mode === "pullRequests") await this.messages.refreshPullRequests(context.cause);
+        else if (mode === "stacks") await this.messages.sendPullRequestStacks();
+      },
+      invalidateReload: (reason) => this.invalidateRefreshWork(reason),
+      info: (event, fields) => logInfo(event, fields),
+      error: (event, error, fields) => logError(event, error, fields),
+    });
+    this.refreshCoordinator.setRepository(this.logService.repoRoot);
     this.panel.webview.html = buildGraphHtml(panel, extensionUri);
     // 웹뷰에서 오는 메시지 처리
     this.panel.webview.onDidReceiveMessage(
@@ -152,6 +156,7 @@ export class GitGraphPanel {
   /** 패널과 리스너를 정리한다. */
   private dispose(): void {
     this.disposed = true;
+    this.refreshCoordinator.dispose();
     this.messages.cancelPullRequestLoading("dispose");
     this.branchLoading.cancel("dispose"); this.logService.cancelGraphBranchContainment("dispose");
     GitGraphPanel.current = undefined;
@@ -160,46 +165,45 @@ export class GitGraphPanel {
       this.disposables.pop()?.dispose();
     }
   }
-  /** 숨겨진 동안 refresh를 한 건으로 병합하고 강한 PR 원인을 보존한다. */
-  private deferExternalRefresh(repoRoot: string, reason: string): void {
-    const refreshPullRequests = shouldRefreshPullRequests(reason);
-    const action = this.refreshCoalescer.defer(repoRoot, reason, refreshPullRequests);
-    logInfo(`graph external refresh ${action}`, { repoRoot, reason, refreshPullRequests });
-  }
-  /** 숨김이면 원격 PR을 취소하고, 다시 보이면 보류된 graph refresh를 재개한다. */
+  /** 숨김/표시 전환을 lifecycle coordinator와 remote branch 작업에 함께 반영한다. */
   private handleViewStateChange(event: vscode.WebviewPanelOnDidChangeViewStateEvent): void {
     if (!event.webviewPanel.visible) {
-      this.messages.cancelPullRequestLoading("hidden");
-      this.branchLoading.cancel("hidden");
-      this.logService.cancelGraphBranchContainment("hidden");
-      logInfo("graph pull request loading cancelled for hidden panel", { repoRoot: this.logService.repoRoot });
+      this.refreshCoordinator.setVisible(false);
       return;
     }
-    const deferred = this.refreshCoalescer.take(this.logService.repoRoot);
-    if (!deferred || deferred.repoRoot !== this.logService.repoRoot) {
-      if (this.remoteCatalogStatus === "pending" && vscode.window.state.focused) this.resumeBranchLoading();
-      return;
-    }
-    logInfo("graph external refresh resumed", { repoRoot: deferred.repoRoot, reason: deferred.reason, refreshPullRequests: deferred.refreshPullRequests });
-    this.runExternalRefresh(deferred.repoRoot, deferred.reason, deferred.refreshPullRequests);
+    const resumedRefresh = this.refreshCoordinator.setVisible(true);
+    if (!resumedRefresh && this.remoteCatalogStatus === "pending" && vscode.window.state.focused) this.resumeBranchLoading();
   }
   /** 창 포커스가 빠지면 원격 read를 중단하고 복귀 시 local-first 세대를 다시 연다. */
   private handleWindowFocusChange(focused: boolean): void {
-    if (!focused) { this.branchLoading.cancel("windowUnfocused"); this.logService.cancelGraphBranchContainment("windowUnfocused"); return; }
-    if (this.panel.visible && this.remoteCatalogStatus === "pending") this.resumeBranchLoading();
+    const resumedRefresh = this.refreshCoordinator.setFocused(focused);
+    if (!focused) return;
+    if (!resumedRefresh && this.panel.visible && this.remoteCatalogStatus === "pending") this.resumeBranchLoading();
   }
   /** hide/focus 취소 뒤 기존 누적 offset을 버리고 첫 local Graph post부터 안전하게 다시 연다. */
   private resumeBranchLoading(): void { this.resetLoadedGraph(); void this.reloadGraph(); }
-  /** 보이는 패널에서 local graph 뒤에 비차단 PR/stack 작업을 시작한다. */
-  private runExternalRefresh(repoRoot: string, reason: string, refreshPullRequests: boolean): void {
-    logInfo("graph external refresh requested", { repoRoot, reason, refreshPullRequests });
+  /** watcher 원인을 의미 fingerprint와 함께 lifecycle coordinator에 전달한다. */
+  private async requestExternalRefresh(repoRoot: string, reason: string): Promise<void> {
+    const mode: GraphRefreshMode = shouldRefreshPullRequests(reason) ? "pullRequests" : "stacks";
+    await this.refreshCoordinator.request({ repoRoot, cause: reason, mode });
+  }
+  /** ready/manual 요청은 한 번의 직접 Graph reload와 fingerprint baseline을 완료할 때까지 기다린다. */
+  private async runDirectGraph(cause: "ready" | "refresh"): Promise<boolean> {
+    return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause });
+  }
+  /** 저장소 교체도 직접 baseline을 확정한 뒤 local stack과 비차단 PR hydration을 같은 순서로 복원한다. */
+  private async reloadRepository(): Promise<void> {
+    if (!await this.runDirectGraph("ready") || this.disposed) return;
+    await this.messages.sendPullRequestStacks();
+    void this.messages.refreshPullRequests("ready");
+  }
+  /** lifecycle 취소 시 PR/branch/Git containment의 늦은 결과를 같은 이유로 무효화한다. */
+  private invalidateRefreshWork(reason: string): void {
     this.resetLoadedGraph();
-    void this.reloadGraph()
-      .then(() => {
-        if (this.logService.repoRoot !== repoRoot || !this.panel.visible) return;
-        return refreshPullRequests ? this.messages.refreshPullRequests(reason) : this.messages.sendPullRequestStacks();
-      })
-      .catch((error) => logError("graph external refresh failed", error, { repoRoot, reason }));
+    this.messages.cancelPullRequestLoading(reason);
+    this.branchLoading.cancel(reason);
+    this.logService.cancelGraphBranchContainment(reason);
+    logInfo("graph refresh lifecycle invalidated", { repoRoot: this.logService.repoRoot, reason });
   }
   /** branch filter 메시지를 패널 소유 상태에 반영한 뒤 첫 페이지를 다시 읽는다. */
   private async setBranchFilter(message: Extract<FromWebviewMessage, { type: "setBranchFilter" }>): Promise<void> {
@@ -298,10 +302,9 @@ export class GitGraphPanel {
   }
   /**
    * 다음 커밋 페이지를 읽어 누적 목록에 붙이고, 현재까지의 그래프를 웹뷰로 보낸다.
-   * - git log 는 skip/limit 으로 필요한 페이지만 읽는다.
-   * - 레이아웃은 지금까지 로드된 커밋 전체를 기준으로 다시 계산한다. 새 부모 커밋이
-   *   들어오면 이전 페이지의 "바닥으로 이어지던" 간선 도착점이 자연스럽게 보정된다.
+   * - git log 는 skip/limit 으로 필요한 페이지만 읽고, 전체 누적 커밋으로 레이아웃을 보정한다.
    * @param reset true 면 첫 페이지 로드로 간주해 웹뷰 선택/스크롤 상태를 초기화한다.
+   * @param direction older/newer 중 어느 쪽으로 페이지를 확장할지 지정한다.
    */
   private async loadNextPage(
     reset: boolean,
@@ -335,7 +338,6 @@ export class GitGraphPanel {
       this.postLoadState(reset, direction);
       return;
     }
-
     const generation = this.loadGeneration, started = Date.now();
     const pageLimit = GRAPH_PAGE_SIZE, branchFilter = this.currentBranchFilter();
     if (branchFilter.empty) {
@@ -520,7 +522,6 @@ export class GitGraphPanel {
       if (generation === this.loadGeneration && this.loading) this.loading = false;
     }
   }
-
   /** 현재 패널의 누적 커밋/종료 상태를 초기화하고 이전 비동기 로드 결과를 무효화한다. */
   private resetLoadedGraph(): void {
     this.branchLoading.invalidateCatalog(this.logService.repoRoot);
@@ -533,15 +534,12 @@ export class GitGraphPanel {
     this.rangeTotalCount = undefined;
     this.loadGeneration++;
   }
-
   /** 비동기 local/page 결과가 현재 패널과 같은 Graph 세대인지 판정한다. */
   private isGraphGenerationActive(generation: number, service = this.logService): boolean { return isCurrentGraphLoad(service, this.logService, generation, this.loadGeneration, this.disposed); }
-
   /** 현재 브랜치 필터 상태를 git log 와 ref 표시 필터에 쓸 수 있는 형태로 변환한다. */
   private currentBranchFilter(): ResolvedGraphBranchFilter {
     return resolveGraphBranchFilter(this.branchFilter, this.lastBranchRefs, this.remoteCatalogStatus);
   }
-
   /** 현재 remote hydration 상태를 포함한 filter snapshot을 웹뷰에 보낸다. */
   private postBranchFilterOptions(): void {
     this.post({ type: "branchFilterOptions", filter: createGraphBranchFilterSnapshot(this.lastBranchRefs, this.lastLocalBranches, this.branchFilter, this.remoteCatalogStatus, this.remoteCatalogError) });

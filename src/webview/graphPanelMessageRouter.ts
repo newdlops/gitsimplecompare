@@ -23,6 +23,7 @@ import type {
 } from "./graphProtocol";
 import {
   GraphPullRequestPager,
+  GraphPullRequestStackPublication,
   openGraphPullRequest,
   openGraphPullRequestFileDiff,
   openStagedPullRequestPreview,
@@ -40,35 +41,6 @@ const GRAPH_BUSY_BUTTON_IDS: Record<string, string> = {
   push: "push-graph",
   forcePush: "force-push-graph",
 };
-
-/** 숨김 상태에서 합칠 외부 graph refresh의 최소 정보. */
-export interface DeferredGraphRefresh { repoRoot: string; reason: string; refreshPullRequests: boolean; }
-
-/**
- * panel이 숨겨진 동안 발생한 refresh를 저장소별 한 건으로 병합한다.
- * - PR 목록을 다시 읽어야 하는 강한 원인은 stack-only 원인보다 우선한다.
- */
-export class GraphVisibilityRefreshCoalescer {
-  private pending: DeferredGraphRefresh | undefined;
-
-  /** 새 refresh를 보류하거나 같은 저장소의 기존 보류 요청에 합친다. */
-  defer(repoRoot: string, reason: string, refreshPullRequests: boolean): "deferred" | "coalesced" {
-    if (this.pending?.repoRoot === repoRoot) {
-      this.pending.refreshPullRequests ||= refreshPullRequests;
-      this.pending.reason = refreshPullRequests ? reason : this.pending.reason;
-      return "coalesced";
-    }
-    this.pending = { repoRoot, reason, refreshPullRequests };
-    return "deferred";
-  }
-
-  /** reveal 시 현재 저장소와 일치하는 보류 요청 한 건만 소비한다. */
-  take(repoRoot: string): DeferredGraphRefresh | undefined {
-    const pending = this.pending;
-    this.pending = undefined;
-    return pending?.repoRoot === repoRoot ? pending : undefined;
-  }
-}
 
 /**
  * 웹뷰 액션이 직접 지정한 busy 버튼 id를 안전하게 읽는다.
@@ -92,10 +64,8 @@ export interface GraphPanelMessageRouterDeps {
   post: (message: ToWebviewMessage) => void;
   /** 지정 버튼의 busy 상태를 감싸 비동기 작업을 실행한다. */
   withBusy: <T>(key: string, action: () => Promise<T>) => Promise<T>;
-  /** 누적 커밋과 비동기 세대를 초기화한다. */
-  resetLoadedGraph: () => void;
-  /** 브랜치와 첫 커밋 페이지를 다시 읽는다. */
-  reloadGraph: () => Promise<void>;
+  /** ready/manual의 직접 reload를 lifecycle coordinator에 위임한다. */
+  reloadGraph: (cause: "ready" | "refresh") => Promise<boolean>;
   /** branch filter 메시지를 패널 소유 상태에 반영하고 다시 로드한다. */
   setBranchFilter: (
     message: Extract<FromWebviewMessage, { type: "setBranchFilter" }>
@@ -119,6 +89,7 @@ export interface GraphPanelMessageRouterDeps {
 /** PR pager 상태와 Graph 웹뷰의 모든 incoming message 분기를 관리하는 router. */
 export class GraphPanelMessageRouter {
   private readonly pullRequestPager = new GraphPullRequestPager();
+  private readonly stackPublication = new GraphPullRequestStackPublication();
   private readonly commitDetails = new GraphCommitDetailSender();
   private pullRequestRequest: AbortController | undefined;
 
@@ -144,7 +115,8 @@ export class GraphPanelMessageRouter {
         this.pullRequestPager.repositoryName,
         this.pullRequestPager.defaultBranchName,
         controller.signal,
-        this.deps.post
+        this.deps.post,
+        this.stackPublication
       );
     } finally {
       if (ownsRequest && this.pullRequestRequest === controller) this.pullRequestRequest = undefined;
@@ -156,6 +128,9 @@ export class GraphPanelMessageRouter {
     this.pullRequestRequest?.abort();
     this.pullRequestRequest = undefined;
     this.pullRequestPager.cancel(reason);
+    if (reason === "repositoryChanged" || reason === "dispose") {
+      this.pullRequestPager.resetRepository(); this.stackPublication.reset();
+    }
     logInfo("graph pull request lifecycle cancelled", { repoRoot: this.repoRoot, reason });
   }
 
@@ -260,9 +235,10 @@ export class GraphPanelMessageRouter {
   /** ready/manual refresh에서 Graph와 rebase session을 복원하고 PR 갱신을 병렬 시작한다. */
   private async handleReload(reason: "ready" | "refresh"): Promise<void> {
     logInfo("graph reload requested", { repoRoot: this.repoRoot, reason });
-    this.deps.resetLoadedGraph();
-    await this.deps.withBusy("refresh-graph", this.deps.reloadGraph);
+    const reloaded = await this.deps.withBusy("refresh-graph", () => this.deps.reloadGraph(reason));
+    if (!reloaded) return;
     await restoreGraphRebaseSession(this.rebaseDeps());
+    await this.sendPullRequestStacks();
     void this.deps.withBusy("graph-pr-list", () => this.refreshPullRequests(reason));
   }
 
@@ -319,13 +295,20 @@ export class GraphPanelMessageRouter {
       restack: "gitSimpleCompare.restackPullRequestStack",
       submit: "gitSimpleCompare.submitPullRequestStack",
       advance: "gitSimpleCompare.advancePullRequestStack",
+      editParent: "gitSimpleCompare.editPullRequestStackParent",
+      deleteLocal: "gitSimpleCompare.deleteLocalPullRequestStack",
     } as const;
-    await vscode.commands.executeCommand(commands[message.action], {
-      repoRoot: this.repoRoot,
-      branch: message.branch,
-      parentBranch: message.action === "addLayer" ? message.branch : undefined,
-      parentHash: message.parentHash,
-    });
+    this.deps.post({ type: "pullRequestStackActionState", busy: true });
+    try {
+      await vscode.commands.executeCommand(commands[message.action], {
+        repoRoot: this.repoRoot,
+        branch: message.branch,
+        parentBranch: message.action === "addLayer" ? message.branch : undefined,
+        parentHash: message.parentHash,
+      });
+    } finally {
+      this.deps.post({ type: "pullRequestStackActionState", busy: false });
+    }
   }
 
   /** reflog commit window를 표시한 뒤 요청 ID와 함께 검색 결과를 웹뷰에 반환한다. */

@@ -358,6 +358,25 @@ test("linked worktree metadata는 보이는 저장소 root 집합으로 broadcas
   ]), ["/repo", "C:\\Work\\Repo"]);
 });
 
+test("linked worktree delete/delete/create/delete는 동일 delete만 합치고 새 상태는 다시 Graph queue에 넣는다", () => {
+  const queued: string[] = [];
+  const handler = createGitMetadataRefreshHandler({
+    relevantRoots: () => ["/repo"],
+    graphRoot: () => "/repo",
+    skipLog: new RepositoryRefreshSkipFence(),
+    invalidateStatus: () => undefined,
+    queueRepository: () => undefined,
+    queueGraph: (root) => queued.push(root),
+    scheduleRefresh: () => undefined,
+  });
+  const metadata = fileUri("/main/.git/worktrees/topic/HEAD") as never;
+  handler("delete", metadata);
+  handler("delete", metadata);
+  handler("create", metadata);
+  handler("delete", metadata);
+  assert.deepEqual(queued, ["/repo", "/repo", "/repo"]);
+});
+
 test("focus watcher 하나의 glob과 hook 경로 분류가 내부·workspace hook을 포함한다", () => {
   assert.match(FOCUSED_GIT_METADATA_GLOB, /\.git\/hooks/);
   assert.match(FOCUSED_GIT_METADATA_GLOB, /\.husky/);

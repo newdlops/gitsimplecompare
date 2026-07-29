@@ -92,6 +92,7 @@ export type ToWebviewMessage =
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
   | { type: "pullRequestStackSnapshot"; snapshot: PullRequestStackGraphSnapshot }
   | { type: "pullRequestStackError"; message: string }
+  | { type: "pullRequestStackActionState"; busy: boolean }
   | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
   | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
   | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
@@ -129,7 +130,7 @@ export type FromWebviewMessage =
   | { type: "refreshPullRequests" }
   | {
       type: "pullRequestStackAction";
-      action: "addLayer" | "restack" | "submit" | "advance";
+      action: "addLayer" | "restack" | "submit" | "advance" | "editParent" | "deleteLocal";
       branch?: string;
       parentHash?: string;
     }

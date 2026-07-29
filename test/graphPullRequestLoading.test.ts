@@ -4,8 +4,7 @@ import { fetchRemainingReviewThreadCommentCounts } from "../src/git/pullRequestC
 import { PullRequestService } from "../src/git/pullRequestService";
 import { PullRequestStackService } from "../src/git/pullRequestStackService";
 import { PullRequestStackMetadataService } from "../src/git/pullRequestStackMetadata";
-import { GraphVisibilityRefreshCoalescer } from "../src/webview/graphPanelMessageRouter";
-import { GraphPullRequestPager, sendGraphPullRequestStacks } from "../src/webview/graphPullRequests";
+import { GraphPullRequestPager, GraphPullRequestStackPublication, sendGraphPullRequestStacks } from "../src/webview/graphPullRequests";
 
 /** refresh A/B의 취소를 재현할 수 있도록 signal 해제 전까지 대기하는 overview를 만든다. */
 function abortableOverview(signal: AbortSignal): Promise<never> {
@@ -57,23 +56,18 @@ test("graph pull request abort prevents review pagination and forwards complete 
   }
 });
 
-test("graph visibility coalesces hidden refreshes and preserves the stronger PR reason", () => {
-  const coalescer = new GraphVisibilityRefreshCoalescer();
-  let localGraphLoads = 0;
-  let pullRequestLoads = 0;
-  assert.equal(coalescer.defer("/repo", "stableMetadata", false), "deferred");
-  assert.equal(coalescer.defer("/repo", "stackSubmitted", true), "coalesced");
-  assert.equal(localGraphLoads, 0);
-  assert.equal(pullRequestLoads, 0);
-  const pending = coalescer.take("/repo");
-  assert.deepEqual(pending, { repoRoot: "/repo", reason: "stackSubmitted", refreshPullRequests: true });
-  if (pending) {
-    localGraphLoads++;
-    pullRequestLoads++;
-  }
-  assert.equal(localGraphLoads, 1);
-  assert.equal(pullRequestLoads, 1);
-  assert.equal(coalescer.take("/repo"), undefined);
+test("graph stack publication은 성공·오류 상태 전환만 게시하고 repository reset 뒤 첫 성공을 보낸다", () => {
+  const publication = new GraphPullRequestStackPublication();
+  const posted: unknown[] = [];
+  const snapshot = { repository: "owner/repo", defaultBranch: "main", stacks: [], layers: [] };
+  assert.equal(publication.publish(snapshot, (message) => posted.push(message)), true);
+  assert.equal(publication.publish(snapshot, (message) => posted.push(message)), false);
+  assert.equal(publication.publishError("unavailable", (message) => posted.push(message)), true);
+  assert.equal(publication.publishError("unavailable", (message) => posted.push(message)), false);
+  assert.equal(publication.publish(snapshot, (message) => posted.push(message)), true);
+  publication.reset();
+  assert.equal(publication.publish(snapshot, (message) => posted.push(message)), true);
+  assert.equal(posted.length, 4);
 });
 
 test("graph stack reuses complete metadata hints and falls back when hints are incomplete", async () => {

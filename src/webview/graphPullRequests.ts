@@ -16,6 +16,27 @@ import { ToWebviewMessage } from "./graphProtocol";
 
 type PostGraphMessage = (message: ToWebviewMessage) => void;
 
+/** repository 수명 안에서 같은 stack snapshot의 중복 webview 게시를 막는다. */
+export class GraphPullRequestStackPublication {
+  private fingerprint: string | undefined;
+  /** 새 repository 수명에서 첫 snapshot을 반드시 게시하도록 이전 식별자를 지운다. */
+  reset(): void { this.fingerprint = undefined; }
+  /** snapshot 내용이 바뀐 경우에만 게시하고 실제 게시 여부를 반환한다. */
+  publish(snapshot: Extract<ToWebviewMessage, { type: "pullRequestStackSnapshot" }> ["snapshot"], post: PostGraphMessage): boolean {
+    const next = `success:${JSON.stringify(snapshot)}`;
+    if (this.fingerprint === next) return false;
+    this.fingerprint = next;
+    post({ type: "pullRequestStackSnapshot", snapshot });
+    return true;
+  }
+  /** 같은 오류는 한 번만 게시하고, 다음 성공이 오류 상태를 해제하도록 상태를 구분한다. */
+  publishError(message: string, post: PostGraphMessage): boolean {
+    const next = `error:${message}`;
+    if (this.fingerprint === next) return false;
+    this.fingerprint = next; post({ type: "pullRequestStackError", message }); return true;
+  }
+}
+
 /** graph PR 목록의 cursor/누적 상태를 관리한다. */
 export class GraphPullRequestPager {
   private pullRequests: PullRequestInfo[] = [];
@@ -25,6 +46,7 @@ export class GraphPullRequestPager {
   private repository = "";
   private defaultBranch = "";
   private activeRequest: AbortController | undefined;
+  private lastOverviewFingerprint: string | undefined;
   // 진행 중인 조회를 식별하는 세대 토큰. refresh 는 세대를 올려 이전 조회 결과를 무효화한다.
   // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
   private generation = 0;
@@ -42,6 +64,17 @@ export class GraphPullRequestPager {
   /** 마지막 성공 overview에서 받은 기본 branch를 stack snapshot hint로 반환한다. */
   get defaultBranchName(): string {
     return this.defaultBranch;
+  }
+
+  /** 저장소 교체·패널 폐기 때만 게시 fingerprint를 버려 다음 수명주기의 첫 상태를 보장한다. */
+  resetPublication(): void {
+    this.lastOverviewFingerprint = undefined;
+  }
+
+  /** 저장소 수명 경계에서 이전 repository의 PR·cursor·metadata hint를 모두 버린다. */
+  resetRepository(): void {
+    this.pullRequests = []; this.nextCursor = undefined; this.hasMore = false;
+    this.repository = ""; this.defaultBranch = ""; this.resetPublication();
   }
 
   /** 패널 숨김·폐기·저장소 교체 시 진행 중인 gh 조회를 중단하고 세대를 무효화한다. */
@@ -177,10 +210,17 @@ export class GraphPullRequestPager {
         this.repository = overview.repository || this.repository;
         this.defaultBranch = overview.defaultBranch || this.defaultBranch;
       }
-      post({ type: "pullRequestOverview", overview: { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor } });
-      logInfo("graph pull request overview sent", {
+      const effectiveOverview = { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor };
+      const fingerprint = JSON.stringify(effectiveOverview);
+      const changed = this.lastOverviewFingerprint !== fingerprint;
+      if (changed) {
+        this.lastOverviewFingerprint = fingerprint;
+        post({ type: "pullRequestOverview", overview: effectiveOverview });
+      }
+      logInfo("graph pull request overview publication", {
         repoRoot,
         reason,
+        action: changed ? "sent" : "retained",
         available: overview.available,
         pageCount: overview.pullRequests.length,
         totalCount: this.pullRequests.length,
@@ -217,7 +257,8 @@ export async function sendGraphPullRequestStacks(
   repositoryHint: string,
   defaultBranchHint: string,
   signal: AbortSignal | undefined,
-  post: PostGraphMessage
+  post: PostGraphMessage,
+  publication?: GraphPullRequestStackPublication
 ): Promise<void> {
   try {
     if (signal?.aborted) return;
@@ -230,9 +271,10 @@ export async function sendGraphPullRequestStacks(
       logInfo("graph pull request stack stale skip", { repoRoot });
       return;
     }
-    post({ type: "pullRequestStackSnapshot", snapshot });
-    logInfo("graph pull request stack snapshot sent", {
+    const sent = publication ? publication.publish(snapshot, post) : (post({ type: "pullRequestStackSnapshot", snapshot }), true);
+    logInfo("graph pull request stack snapshot publication", {
       repoRoot,
+      action: sent ? "sent" : "retained",
       repository: snapshot.repository,
       stacks: snapshot.stacks.length,
       layers: snapshot.layers.length,
@@ -244,7 +286,7 @@ export async function sendGraphPullRequestStacks(
       return;
     }
     const message = error instanceof Error ? error.message : String(error);
-    post({ type: "pullRequestStackError", message });
+    publication?.publishError(message, post) ?? post({ type: "pullRequestStackError", message });
     logError("graph pull request stack snapshot failed", error, { repoRoot });
   }
 }
