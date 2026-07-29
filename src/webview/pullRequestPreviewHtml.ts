@@ -14,10 +14,8 @@ function escapeHtml(value: string): string {
  * PR 생성 preview의 CSP 안전 HTML 셸을 만든다.
  * @param extensionUri 확장 리소스의 기준 URI
  * @param webview 리소스 URI와 CSP source를 제공하는 웹뷰
+ * @param text 테스트에서 주입하거나 로케일 기본값으로 사용할 Preview 문자열
  * @returns 웹뷰에 할당할 완성 HTML
- */
-/**
- * @param text 테스트에서 주입할 수 있는 로컬라이즈된 Preview 문자열이다.
  */
 export function buildPullRequestPreviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview, text: PullRequestPreviewI18n = pullRequestPreviewI18n()): string {
   const nonce = nonceValue();

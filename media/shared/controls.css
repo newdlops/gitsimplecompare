@@ -1,4 +1,4 @@
-/* Review Center와 Workspace에서 공유하는 compact control 문법.
+/* Git Simple Compare 웹뷰에서 공유하는 compact control 문법.
    - 한 영역의 primary action은 하나만 사용하고, icon action은 항상 title/aria-label과 함께 쓴다. */
 .gsc-button,
 .gsc-icon-button,
