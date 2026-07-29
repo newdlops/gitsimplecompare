@@ -19,7 +19,7 @@ function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
 function createFakeGh(root: string): { executable: string; calls: string } {
   const executable = join(root, "gh");
   const calls = join(root, "gh-calls.txt");
-  writeFileSync(executable, `#!/bin/sh\necho "$@" >> "${calls}"\n[ -n "$GSC_FAKE_GH_DELAY" ] && sleep "$GSC_FAKE_GH_DELAY"\ncase "$1:$2" in\n  pr:view) echo '{"number":7,"title":"PR","headRefName":"main"}' ;;\n  repo:view) echo '{"nameWithOwner":"owner/repo"}' ;;\n  api:*) echo '[]' ;;\n  *) exit 1 ;;\nesac\n`);
+  writeFileSync(executable, `#!/bin/sh\n[ -n "$GSC_FAKE_GH_DELAY" ] && sleep "$GSC_FAKE_GH_DELAY"\necho "$@" >> "${calls}"\ncase "$1:$2" in\n  pr:view) echo '{"number":7,"title":"PR","headRefName":"main"}' ;;\n  repo:view) echo '{"nameWithOwner":"owner/repo"}' ;;\n  api:*) echo '[]' ;;\n  *) exit 1 ;;\nesac\n`);
   chmodSync(executable, 0o755);
   return { executable, calls };
 }
@@ -29,6 +29,41 @@ function createRepository(): string {
   const root = mkdtempSync(join(tmpdir(), "gsc-pr-comments-"));
   execFileSync("git", ["init", "-q", "-b", "main", root]);
   return root;
+}
+
+/**
+ * 캐시 정책만 검증할 때 원격 응답과 같은 모양의 전체 PR 데이터를 만든다.
+ * @param payload body/HTML/diff/suggested changeset 에 그대로 넣을 문자열
+ * @returns 축약 여부와 중첩 문자열 weight 를 검증할 수 있는 PR 결과
+ */
+function policyData(payload = ""): any {
+  return {
+    number: 7,
+    title: "PR",
+    headRefName: "main",
+    comments: [{
+      id: "1",
+      author: "reviewer",
+      body: payload,
+      bodyText: payload,
+      bodyHtml: `<p>${payload}</p>`,
+      diffHunk: payload,
+      suggestedChangesets: [payload],
+      path: "file.ts",
+    }],
+  };
+}
+
+/**
+ * private 캐시 정책 seam 을 통해 완료 결과를 저장하고 내부 Map 을 반환한다.
+ * @param cache 정책 검증용 PullRequestCommentCache 인스턴스
+ * @param key 저장할 완료 캐시 키
+ * @param data 변형 없이 보존해야 하는 전체 PR 결과
+ * @returns 정책 적용 뒤의 완료 캐시 Map
+ */
+function storePolicyEntry(cache: any, key: string, data = policyData()): Map<string, any> {
+  cache.storeCompletedEntry(key, data);
+  return cache.cache;
 }
 
 test("같은 PR cache 요청은 singleflight가 되고 0 comment면 웹 HTML을 읽지 않는다", async (t) => {
@@ -70,6 +105,70 @@ test("같은 PR cache 요청은 singleflight가 되고 0 comment면 웹 HTML을 
   assert.equal(retry?.number, 7);
   const retryCalls = readFileSync(fakeGh.calls, "utf8");
   assert.equal((retryCalls.match(/^pr view /gm) || []).length, 2);
+});
+
+test("완료 PR 결과는 활성 1건과 LRU 과거 7건만 보존하고 퇴거 뒤 한 번 재조회한다", async (t) => {
+  const root = createRepository();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const cache: any = new PullRequestCommentCache({ get: async () => undefined } as any);
+  const key = `${root}\0main`;
+  storePolicyEntry(cache, key);
+  for (let index = 1; index <= 8; index++) storePolicyEntry(cache, `other-${index}`);
+  assert.equal(cache.cache.size, 8);
+  assert.equal(cache.cache.has(key), false);
+
+  let remoteLoads = 0;
+  cache.loadUncached = async () => {
+    remoteLoads++;
+    const data = policyData("reloaded");
+    cache.storeCompletedEntry(key, data);
+    return data;
+  };
+  await cache.load(root);
+  await cache.load(root);
+  assert.equal(remoteLoads, 1);
+  assert.equal(cache.cache.get(key).data.comments[0].body, "reloaded");
+});
+
+test("LRU hit, 전체 TTL sweep, oversize 활성 해제와 dispose는 완료 캐시만 결정적으로 정리한다", () => {
+  let now = 0;
+  const cache: any = new PullRequestCommentCache({ get: async () => undefined } as any, {
+    now: () => now,
+    ttlMs: 10,
+    maxHistoricalEntries: 2,
+    maxHistoricalWeight: 200,
+  });
+  vscodeMock.__resetOutputLines();
+  storePolicyEntry(cache, "one");
+  storePolicyEntry(cache, "two");
+  storePolicyEntry(cache, "three");
+  assert.equal(cache.cache.has("one"), true);
+  cache.freshEntry("one");
+  storePolicyEntry(cache, "four");
+  assert.equal(cache.cache.has("one"), true);
+  assert.equal(cache.cache.has("two"), false);
+
+  now = 10;
+  cache.sweepExpiredEntries();
+  assert.equal(cache.cache.size, 0);
+  assert.ok(vscodeMock.__outputLines.some((line) => line.includes('"reason":"expiry"') && line.includes('"removed":3')));
+
+  const oversized = policyData("x".repeat(500));
+  storePolicyEntry(cache, "oversized", oversized);
+  assert.equal(cache.cache.get("oversized").data, oversized);
+  storePolicyEntry(cache, "next");
+  assert.equal(cache.cache.has("oversized"), false);
+  assert.equal(cache.cache.has("next"), true);
+  assert.ok(vscodeMock.__outputLines.some((line) => line.includes('"reason":"oversizeRelease"')));
+
+  const pending = { controller: new AbortController(), promise: Promise.resolve(undefined) };
+  cache.inFlightLoads.set("pending", pending);
+  cache.dispose();
+  assert.equal(pending.controller.signal.aborted, true);
+  assert.equal(cache.cache.size, 0);
+  assert.equal(cache.inFlightLoads.size, 0);
+  assert.equal(cache.repoGenerations.size, 0);
+  assert.ok(vscodeMock.__outputLines.some((line) => line.includes('"reason":"dispose"') && line.includes('"remaining":0')));
 });
 
 test("활성 파일 교체와 취소 뒤에는 이전 PR 결과를 표시하지 않는다", async (t) => {

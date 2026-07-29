@@ -16,12 +16,29 @@ import {
 } from "./pullRequestCommentDiagnostics";
 
 const CACHE_TTL_MS = 2 * 60 * 1000;
+const MAX_HISTORICAL_CACHE_ENTRIES = 7;
+const MAX_HISTORICAL_CACHE_WEIGHT = 4_194_304;
 const GITHUB_WEB_SESSION_COMMAND = "gitSimpleCompare.setGitHubWebCookie";
 
 /** TTL 캐시에 저장할 조회 시각과 활성 PR 코멘트 데이터. */
 interface PullRequestCommentCacheEntry {
   at: number;
+  weight: number;
   data?: ActivePullRequestReviewComments;
+}
+
+/** 완료 캐시 정책의 시간과 한계를 테스트에서만 결정적으로 바꾸는 내부 주입값. */
+interface PullRequestCommentCacheOptions {
+  now?: () => number;
+  ttlMs?: number;
+  maxHistoricalEntries?: number;
+  maxHistoricalWeight?: number;
+}
+
+/** 여러 캐시 항목을 한 번에 해제할 때 민감한 데이터 없이 남길 집계값. */
+interface CacheReleaseSummary {
+  removed: number;
+  weight: number;
 }
 
 /** 조회를 시작할 때 캡처해 완료 결과가 아직 캐시에 들어갈 수 있는지 판정하는 세대 묶음. */
@@ -46,12 +63,17 @@ export class PullRequestCommentCache {
   private readonly inFlightLoads = new Map<string, PullRequestCommentInFlight>();
   private readonly repoGenerations = new Map<string, number>();
   private readonly webSessionFlowKeys = new Set<string>();
+  private activeKey: string | undefined;
   private globalGeneration = 0;
 
   /**
    * @param secrets GitHub 웹 suggested changeset 조회용 Cookie 헤더를 읽을 SecretStorage
+   * @param options 완료 캐시 한계 검증에만 쓰는 시간/한계 주입값. 운영에서는 고정 정책을 사용한다.
    */
-  constructor(private readonly secrets: vscode.SecretStorage) {}
+  constructor(
+    private readonly secrets: vscode.SecretStorage,
+    private readonly options: PullRequestCommentCacheOptions = {}
+  ) {}
 
   /**
    * 현재 checkout 브랜치의 PR review comment 를 캐시와 함께 읽는다.
@@ -64,6 +86,7 @@ export class PullRequestCommentCache {
     repoRoot: string,
     signal?: AbortSignal
   ): Promise<ActivePullRequestReviewComments | undefined> {
+    this.sweepExpiredEntries();
     const branchService = new PullRequestReviewCommentService(repoRoot);
     const branch = await branchService.getCurrentBranch();
     if (!branch) {
@@ -106,7 +129,8 @@ export class PullRequestCommentCache {
    */
   invalidate(reason: string): void {
     this.cancel(reason);
-    this.cache.clear();
+    this.releaseEntries(Array.from(this.cache.keys()), "invalidate");
+    this.activeKey = undefined;
     this.globalGeneration++;
     this.inFlightLoads.clear();
     if (/githubWebCookie/i.test(reason)) {
@@ -123,8 +147,15 @@ export class PullRequestCommentCache {
    */
   invalidateRepository(repoRoot: string): void {
     this.repoGenerations.set(repoRoot, this.repositoryGeneration(repoRoot) + 1);
-    this.deleteRepositoryEntries(this.cache, repoRoot);
-    this.deleteRepositoryEntries(this.inFlightLoads, repoRoot);
+    const keys = this.repositoryKeys(this.cache, repoRoot);
+    this.releaseEntries(keys, "invalidateRepository");
+    if (this.activeKey && keys.includes(this.activeKey)) {
+      this.activeKey = undefined;
+    }
+    for (const key of this.repositoryKeys(this.inFlightLoads, repoRoot)) {
+      this.inFlightLoads.get(key)?.controller.abort();
+      this.inFlightLoads.delete(key);
+    }
   }
 
   /** 진행 중인 gh/HTTPS 조회를 취소해 오래된 editor 결과가 캐시·세션 안내로 이어지지 않게 한다. */
@@ -143,7 +174,8 @@ export class PullRequestCommentCache {
   dispose(): void {
     this.cancel("dispose");
     this.globalGeneration++;
-    this.cache.clear();
+    this.releaseEntries(Array.from(this.cache.keys()), "dispose");
+    this.activeKey = undefined;
     this.inFlightLoads.clear();
     this.repoGenerations.clear();
     this.webSessionFlowKeys.clear();
@@ -179,7 +211,7 @@ export class PullRequestCommentCache {
     const data = await service.getActiveBranchReviewComments(branch);
     throwIfAborted(signal);
     if (this.isCurrent(repoRoot, generation)) {
-      this.cache.set(key, { at: Date.now(), data });
+      this.storeCompletedEntry(key, data);
     }
     if (!signal.aborted && this.isCurrent(repoRoot, generation)) {
       this.openGitHubWebSessionFlowIfNeeded(
@@ -255,33 +287,178 @@ export class PullRequestCommentCache {
   }
 
   /**
-   * 캐시 키의 항목이 TTL 안에 있으면 그대로 반환하고, 만료됐으면 즉시 제거한다.
+   * 캐시 키의 이미 sweep 된 유효 항목을 반환하고 Map 끝으로 옮겨 LRU와 활성 결과를 갱신한다.
    * - data가 undefined인 "활성 PR 없음"도 유효한 음수 캐시이므로 entry 존재 여부로 hit를 구분한다.
-   * - 만료 항목을 읽는 순간 제거해 오래 사용한 창에서 브랜치별 빈 결과가 계속 쌓이지 않게 한다.
    * @param key 저장소와 브랜치를 결합한 캐시 키
-   * @returns 재사용 가능한 캐시 항목, 없거나 만료됐으면 undefined
+   * @returns 재사용 가능한 캐시 항목, 없으면 undefined
    */
   private freshEntry(key: string): PullRequestCommentCacheEntry | undefined {
     const entry = this.cache.get(key);
-    if (!entry || Date.now() - entry.at >= CACHE_TTL_MS) {
-      this.cache.delete(key);
+    if (!entry) {
       return undefined;
     }
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    this.activeKey = key;
+    this.pruneHistoricalEntries();
     return entry;
   }
 
   /**
-   * repoRoot prefix 를 공유하는 캐시/진행 중 요청 항목을 Map 에서 제거한다.
-   * @param entries 저장소/브랜치 복합 키를 가진 Map
-   * @param repoRoot 제거할 저장소 루트
+   * 원격 조회에 성공한 전체 데이터를 보존한 채 완료 캐시에 저장하고 활성/과거 보존 한계를 적용한다.
+   * @param key 저장소와 브랜치를 결합한 캐시 키
+   * @param data 축약하거나 변형하면 안 되는 활성 PR 코멘트 전체 데이터
    */
-  private deleteRepositoryEntries<T>(entries: Map<string, T>, repoRoot: string): void {
-    for (const key of Array.from(entries.keys())) {
-      if (key.startsWith(`${repoRoot}\0`)) {
-        entries.delete(key);
-      }
-    }
+  private storeCompletedEntry(key: string, data: ActivePullRequestReviewComments | undefined): void {
+    this.cache.delete(key);
+    this.cache.set(key, { at: this.now(), weight: cacheEntryWeight(key, data), data });
+    this.activeKey = key;
+    this.pruneHistoricalEntries();
   }
+
+  /**
+   * 모든 완료 항목을 먼저 검사해 TTL 이 지난 결과를 한 줄 로그로 묶어 제거한다.
+   * - load 시작마다 전체 sweep 하므로 오래 접근하지 않은 브랜치 결과도 메모리에 남지 않는다.
+   * @returns 제거한 항목 수와 UTF-16 문자열 payload 합계
+   */
+  private sweepExpiredEntries(): CacheReleaseSummary {
+    const now = this.now();
+    const expired = Array.from(this.cache.entries())
+      .filter(([, entry]) => now - entry.at >= this.ttlMs())
+      .map(([key]) => key);
+    const summary = this.releaseEntries(expired, "expiry");
+    if (this.activeKey && expired.includes(this.activeKey)) {
+      this.activeKey = undefined;
+    }
+    return summary;
+  }
+
+  /**
+   * 활성 1건을 제외한 과거 결과를 LRU 순서로 7건과 4 Mi UTF-16 code unit 이하로 줄인다.
+   * - 활성 결과가 단독 한계를 넘더라도 유지하지만, 다른 키가 활성화되면 과거 항목으로 즉시 퇴거한다.
+   * @returns 제거한 과거 결과 수와 UTF-16 문자열 payload 합계
+   */
+  private pruneHistoricalEntries(): CacheReleaseSummary {
+    const historical = Array.from(this.cache.entries())
+      .filter(([key]) => key !== this.activeKey);
+    const maxWeight = this.maxHistoricalWeight();
+    let totalWeight = historical.reduce((total, [, entry]) => total + entry.weight, 0);
+    const evicted: string[] = [];
+    while (
+      historical.length - evicted.length > this.maxHistoricalEntries() ||
+      totalWeight > maxWeight
+    ) {
+      const [key, entry] = historical[evicted.length];
+      evicted.push(key);
+      totalWeight -= entry.weight;
+    }
+    const reason = evicted.some((key) => (this.cache.get(key)?.weight ?? 0) > maxWeight)
+      ? "oversizeRelease"
+      : "eviction";
+    return this.releaseEntries(evicted, reason);
+  }
+
+  /**
+   * 지정한 완료 캐시 키를 제거하고 제거 건수·payload·잔여 건수만 OUTPUT 에 집계 기록한다.
+   * @param keys 제거할 캐시 키 목록
+   * @param reason expiry/eviction/dispose 등 메모리 해제 원인
+   * @returns 실제 제거된 항목 수와 UTF-16 문자열 payload 합계
+   */
+  private releaseEntries(keys: readonly string[], reason: string): CacheReleaseSummary {
+    const summary: CacheReleaseSummary = { removed: 0, weight: 0 };
+    for (const key of keys) {
+      const entry = this.cache.get(key);
+      if (!entry) continue;
+      this.cache.delete(key);
+      summary.removed++;
+      summary.weight += entry.weight;
+    }
+    if (summary.removed) {
+      logInfo("pr editor comments cache entries released", {
+        reason,
+        removed: summary.removed,
+        payload: summary.weight,
+        remaining: this.cache.size,
+      });
+    }
+    return summary;
+  }
+
+  /**
+   * repoRoot prefix 를 공유하는 캐시/진행 중 요청 키를 복사해 안전하게 순회할 목록으로 만든다.
+   * @param entries 저장소/브랜치 복합 키를 가진 Map
+   * @param repoRoot 찾을 Git 저장소 루트
+   * @returns 해당 저장소에 속하는 복합 캐시 키 목록
+   */
+  private repositoryKeys<T>(entries: Map<string, T>, repoRoot: string): string[] {
+    return Array.from(entries.keys()).filter((key) => key.startsWith(`${repoRoot}\0`));
+  }
+
+  /**
+   * 완료 캐시에 사용할 현재 시각을 주입 clock 또는 실제 시계에서 읽는다.
+   * @returns TTL 비교에 사용할 Unix epoch 밀리초
+   */
+  private now(): number {
+    return this.options.now?.() ?? Date.now();
+  }
+
+  /**
+   * 운영 TTL 2분을 유지하면서 테스트에서만 만료 경계를 고정할 수 있게 반환한다.
+   * @returns 완료 결과가 유효한 밀리초 기간
+   */
+  private ttlMs(): number {
+    return this.options.ttlMs ?? CACHE_TTL_MS;
+  }
+
+  /**
+   * 운영 과거 항목 상한 7건을 유지하면서 테스트에서만 작은 LRU 경계를 사용할 수 있게 반환한다.
+   * @returns 활성 결과를 제외하고 보존할 최대 완료 항목 수
+   */
+  private maxHistoricalEntries(): number {
+    return this.options.maxHistoricalEntries ?? MAX_HISTORICAL_CACHE_ENTRIES;
+  }
+
+  /**
+   * 운영 payload 상한 4 Mi UTF-16 code units를 유지하면서 테스트에서만 작은 경계를 사용할 수 있게 반환한다.
+   * @returns 과거 완료 결과 문자열 payload 의 최대 UTF-16 code unit 수
+   */
+  private maxHistoricalWeight(): number {
+    return this.options.maxHistoricalWeight ?? MAX_HISTORICAL_CACHE_WEIGHT;
+  }
+}
+
+/**
+ * 캐시 키와 PR 결과의 모든 중첩 문자열을 UTF-16 code unit 단위로 합산한다.
+ * - 본문·HTML·diff·suggested changeset 을 복사하거나 자르지 않고, 보존 정책 판단에만 길이를 사용한다.
+ * @param key 저장소/브랜치 복합 캐시 키
+ * @param data 보존할 전체 PR 결과
+ * @returns 키와 모든 중첩 문자열 payload 의 UTF-16 code unit 합계
+ */
+function cacheEntryWeight(key: string, data: ActivePullRequestReviewComments | undefined): number {
+  return key.length + nestedStringWeight(data, new WeakSet<object>());
+}
+
+/**
+ * 임의의 API 결과 객체를 순회해 문자열 필드의 UTF-16 길이를 결정적으로 합산한다.
+ * - 순환 참조와 공유 객체는 한 번만 방문해 비정상 응답이 캐시 정책을 무한 순회하지 못하게 한다.
+ * @param value 합산할 API 결과 일부
+ * @param visited 이미 순회한 객체 집합
+ * @returns value 아래 문자열 필드의 UTF-16 code unit 합계
+ */
+function nestedStringWeight(value: unknown, visited: WeakSet<object>): number {
+  if (typeof value === "string") {
+    return value.length;
+  }
+  if (!value || typeof value !== "object" || visited.has(value)) {
+    return 0;
+  }
+  visited.add(value);
+  return Object.keys(value)
+    .sort()
+    .reduce((total, key) => total + nestedStringWeight(
+      (value as Record<string, unknown>)[key],
+      visited
+    ), 0);
 }
 
 /** 호출자 신호를 singleflight 요청 소유자에 전달하고 등록 해제 함수를 반환한다. */
