@@ -19,6 +19,8 @@ export interface RunGitOptions {
   env?: Record<string, string>;
   retryOnLock?: boolean;
   beforeRetry?: () => Promise<void>;
+  /** 호출 취소 시 실행 중인 git 프로세스도 종료할 신호다. */
+  signal?: AbortSignal;
 }
 
 /** 성공한 Git 명령의 stdout/stderr를 손실 없이 함께 반환하는 결과다. */
@@ -96,7 +98,7 @@ export async function runGitDetailed(
   const retryOnLock = normalized.retryOnLock !== false;
   for (let attempt = 0; ; attempt++) {
     try {
-      return await runGitDetailedOnce(args, cwd, normalized.env);
+      return await runGitDetailedOnce(args, cwd, normalized.env, normalized.signal);
     } catch (error) {
       if (
         !retryOnLock ||
@@ -122,10 +124,15 @@ export async function runGitDetailed(
 function runGitDetailedOnce(
   args: string[],
   cwd: string,
-  env?: Record<string, string>
+  env?: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<GitCommandOutput> {
   return new Promise((resolve, reject) => {
-    execFile(
+    if (signal?.aborted) {
+      reject(new GitError(`git ${args.join(" ")} cancelled`, ""));
+      return;
+    }
+    const child = execFile(
       "git",
       args,
       {
@@ -136,6 +143,7 @@ function runGitDetailedOnce(
         env: env ? { ...process.env, ...env } : undefined,
       },
       (error, stdout, stderr) => {
+        signal?.removeEventListener("abort", abort);
         if (error) {
           reject(
             new GitError(
@@ -149,6 +157,9 @@ function runGitDetailedOnce(
         resolve({ stdout, stderr });
       }
     );
+    /** AbortSignal과 child process를 연결해 supersede된 read가 남지 않게 한다. */
+    const abort = () => child.kill();
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }
 
@@ -309,7 +320,8 @@ function normalizeOptions(
   if (
     "env" in options ||
     "retryOnLock" in options ||
-    "beforeRetry" in options
+    "beforeRetry" in options ||
+    "signal" in options
   ) {
     return options as RunGitOptions;
   }

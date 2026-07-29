@@ -23,13 +23,14 @@ export type GitHubWebHtmlRead =
  */
 export async function readGitHubWebHtmlWithFragments(
   url: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<GitHubWebHtmlRead> {
-  const base = await readGitHubWebHtml(url, headers);
+  const base = await readGitHubWebHtml(url, headers, signal);
   if (!base.ok) {
     return base;
   }
-  const fragments = await readFragmentHtml(base.finalUrl, base.html, headers);
+  const fragments = await readFragmentHtml(base.finalUrl, base.html, headers, signal);
   return {
     ok: true,
     finalUrl: base.finalUrl,
@@ -46,9 +47,10 @@ export async function readGitHubWebHtmlWithFragments(
  */
 export function readGitHubWebHtml(
   url: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<GitHubWebHtmlRead> {
-  return readText(url, headers, true);
+  return readText(url, headers, true, 0, signal);
 }
 
 /**
@@ -63,12 +65,16 @@ export function readGitHubWebHtml(
 async function readFragmentHtml(
   baseUrl: string,
   baseHtml: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<string[]> {
   const queue = fragmentUrls(baseHtml, baseUrl).map((url) => ({ url, depth: 1 }));
   const seen = new Set<string>([normalizeUrl(baseUrl)]);
   const result: string[] = [];
   while (queue.length && seen.size <= MAX_FRAGMENT_URLS) {
+    if (signal?.aborted) {
+      break;
+    }
     const next = queue.shift();
     if (!next) {
       break;
@@ -78,7 +84,7 @@ async function readFragmentHtml(
       continue;
     }
     seen.add(normalized);
-    const read = await readText(next.url, headers, false);
+    const read = await readText(next.url, headers, false, 0, signal);
     if (!read.ok) {
       continue;
     }
@@ -174,10 +180,14 @@ function readText(
   url: string,
   headers: Record<string, string>,
   requireFullHtml: boolean,
-  redirects = 0
+  redirects = 0,
+  signal?: AbortSignal
 ): Promise<GitHubWebHtmlRead> {
+  if (signal?.aborted) {
+    return Promise.resolve({ ok: false, reason: "request cancelled" });
+  }
   return new Promise((resolve) => {
-    const request = https.get(url, { headers }, (response) => {
+    const request = https.get(url, { headers, signal }, (response) => {
       if (isRedirect(response.statusCode) && response.headers.location) {
         response.resume();
         if (redirects >= MAX_REDIRECTS) {
@@ -189,7 +199,7 @@ function readText(
           resolve({ ok: false, reason: `unsafe redirect status ${response.statusCode}` });
           return;
         }
-        readText(nextUrl, headers, requireFullHtml, redirects + 1).then(resolve);
+        readText(nextUrl, headers, requireFullHtml, redirects + 1, signal).then(resolve);
         return;
       }
       if (response.statusCode !== 200) {
