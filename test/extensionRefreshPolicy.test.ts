@@ -2,17 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   HiddenRepositoryRefreshFence,
+  RepositoryRefreshSkipFence,
   RefreshDrain,
   addRefreshReasons,
   changesRefreshLanes,
   changesRefreshSections,
+  directFileFallbackAction,
   repoRootFromGitPath,
+  repositoryRefreshScope,
   shouldForceChangesGitStatus,
   shouldInvalidateChangesStatus,
   shouldLogIgnoredRefresh,
   shouldRefreshExplorerComparison,
   shouldRefreshPullRequestComments,
   shouldRefreshForGitPath,
+  shouldSerializeAutomaticAuxiliary,
   shouldShowChangesRefreshProgress,
 } from "../src/utils/extensionRefreshPolicy";
 
@@ -51,6 +55,9 @@ test("refresh 원인을 중복 없이 합치고 비교 refresh 범위를 판정�
   ]);
   assert.equal(shouldRefreshExplorerComparison([...reasons].join(",")), true);
   assert.equal(shouldRefreshExplorerComparison("vscodeGit:state"), false);
+  assert.equal(shouldRefreshExplorerComparison("vscodeGit:identity"), false);
+  assert.equal(shouldRefreshExplorerComparison("vscodeGit:head"), true);
+  assert.equal(shouldRefreshExplorerComparison("windowFocusedReconcile"), true);
 });
 
 test("Git 메타데이터 경로에서 저장소 루트를 복원한다", () => {
@@ -98,8 +105,6 @@ test("refresh 원인별로 정확성에 필요한 Changes 조회 영역을 선�
   ]);
   assert.deepEqual(changesRefreshSections("vscodeGit:repositoryClosed"), [
     "repositories",
-    "workingChanges",
-    "stashes",
   ]);
   assert.deepEqual(changesRefreshSections("git:change:commit-hooks"), [
     "commitHooks",
@@ -116,8 +121,20 @@ test("refresh 원인별로 정확성에 필요한 Changes 조회 영역을 선�
   ]);
   assert.deepEqual(changesRefreshSections("vscodeGit:identity"), [
     "repositories",
+  ]);
+  assert.deepEqual(changesRefreshSections("vscodeGit:head"), [
+    "repositories",
     "workingChanges",
     "fileHistory",
+    "comparison",
+  ]);
+  assert.deepEqual(changesRefreshSections("windowFocusedReconcile"), [
+    "repositories",
+    "workingChanges",
+    "fileHistory",
+    "stashes",
+    "worktrees",
+    "commitHooks",
     "comparison",
   ]);
   assert.deepEqual(changesRefreshSections("checkoutBranch"), [
@@ -207,14 +224,77 @@ test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
     true
   );
   assert.equal(shouldForceChangesGitStatus("vscodeGit:state"), false);
-  assert.equal(shouldForceChangesGitStatus("filesCreated"), true);
-  assert.equal(shouldForceChangesGitStatus("vscodeGit:identity"), true);
+  assert.equal(shouldForceChangesGitStatus("filesCreated"), false);
+  assert.equal(shouldForceChangesGitStatus("vscodeGit:identity"), false);
+  assert.equal(shouldForceChangesGitStatus("vscodeGit:head"), true);
   assert.equal(shouldRefreshPullRequestComments("vscodeGit:state"), false);
-  assert.equal(shouldRefreshPullRequestComments("vscodeGit:identity"), true);
+  assert.equal(shouldRefreshPullRequestComments("vscodeGit:identity"), false);
+  assert.equal(shouldRefreshPullRequestComments("vscodeGit:head"), true);
   assert.equal(
     shouldRefreshPullRequestComments("git:change:stable-git-state"),
     true
   );
+});
+
+test("repository 이벤트를 실제 소비 root와 의미에 따라 최소 범위로 제한한다", () => {
+  const relevantRoots = ["/active", "/comparison", "/conflicts"];
+  for (const reason of ["vscodeGit:state", "vscodeGit:head"]) {
+    assert.equal(
+      repositoryRefreshScope({ reason, repoRoot: "/inactive", relevantRoots }),
+      "skip"
+    );
+  }
+  for (const repoRoot of relevantRoots) {
+    assert.equal(
+      repositoryRefreshScope({
+        reason: "vscodeGit:head",
+        repoRoot,
+        relevantRoots,
+      }),
+      "active/full"
+    );
+  }
+  assert.equal(
+    repositoryRefreshScope({
+      reason: "vscodeGit:identity",
+      repoRoot: "/inactive",
+      relevantRoots,
+    }),
+    "repository-list-only"
+  );
+  assert.equal(
+    repositoryRefreshScope({
+      reason: "vscodeGit:repositoryOpened",
+      relevantRoots,
+    }),
+    "repository-list-only"
+  );
+  assert.equal(
+    repositoryRefreshScope({ reason: "vscodeGit:state", relevantRoots }),
+    "active/full"
+  );
+});
+
+test("direct file fallback은 provider/authoritative 병합 원인이 있으면 취소한다", () => {
+  assert.equal(directFileFallbackAction("documentSaved"), "schedule");
+  assert.equal(directFileFallbackAction("filesCreated,filesRenamed"), "schedule");
+  assert.equal(
+    directFileFallbackAction("documentSaved,vscodeGit:state"),
+    "cancel"
+  );
+  assert.equal(directFileFallbackAction("filesDeleted,commitResult"), "cancel");
+  assert.equal(directFileFallbackAction("command"), "cancel");
+});
+
+test("자동 auxiliary만 직렬화하고 skip 로그는 TTL 동안 집계한다", () => {
+  assert.equal(shouldSerializeAutomaticAuxiliary("viewReady"), true);
+  assert.equal(shouldSerializeAutomaticAuxiliary("commitResult"), true);
+  assert.equal(shouldSerializeAutomaticAuxiliary("command"), false);
+
+  const fence = new RepositoryRefreshSkipFence(100);
+  assert.equal(fence.record("/repo\u0000state", 0), 1);
+  assert.equal(fence.record("/repo\u0000state", 20), undefined);
+  assert.equal(fence.record("/repo\u0000state", 120), 2);
 });
 
 test("수동 refresh만 표시하고 초기·자동 복구와 commit 보정은 조용히 실행한다", () => {

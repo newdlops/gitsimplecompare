@@ -24,10 +24,11 @@ export interface LocalChangesWatchTarget {
 export function registerLocalChangesWatcher(
   target: LocalChangesWatchTarget
 ): vscode.Disposable[] {
-  const request = (reason: string, uris: readonly vscode.Uri[]): void => {
+  const request = (sourceReason: string, uris: readonly vscode.Uri[]): void => {
     if (!target.isVisible()) return;
     const root = target.getActiveRepo();
     if (!root || !uris.some((uri) => uriBelongsToRoot(uri, root))) return;
+    const reason = localRefreshReason(sourceReason, uris);
     logInfo("local changes fast refresh requested", {
       reason,
       root,
@@ -52,6 +53,47 @@ export function registerLocalChangesWatcher(
       )
     ),
   ];
+}
+
+/**
+ * workspace 파일 이벤트를 일반 direct-file, ignore 규칙, commit hook 원인으로 분류한다.
+ * - broad FileSystemWatcher 없이 VS Code가 이미 전달한 save/create/delete/rename URI만 사용한다.
+ * @param sourceReason documentSaved/filesCreated/filesDeleted/filesRenamed 중 원래 이벤트
+ * @param uris 이벤트가 포함한 이전/새 파일 URI 목록
+ * @returns Changes refresh section 정책이 이해하는 최소 원인 문자열
+ */
+function localRefreshReason(
+  sourceReason: string,
+  uris: readonly vscode.Uri[]
+): string {
+  const paths = uris
+    .filter((uri) => uri.scheme === "file")
+    .map((uri) => uri.fsPath.replace(/\\/g, "/"));
+  if (paths.some(isCommitHookPath)) {
+    return `working-tree-file:${sourceReason}:commit-hooks`;
+  }
+  if (paths.some(isIgnoreRulesPath)) {
+    return `working-tree-file:${sourceReason}:ignore-rules`;
+  }
+  return sourceReason;
+}
+
+/**
+ * 기본 `.git/hooks` 또는 흔히 쓰는 workspace hook 디렉터리 파일인지 확인한다.
+ * @param normalizedPath 슬래시로 정규화된 파일 절대 경로
+ * @returns commit hook 목록만 다시 읽어야 하는 경로면 true
+ */
+function isCommitHookPath(normalizedPath: string): boolean {
+  return /\/(?:\.git\/hooks|\.husky|\.githooks)\//.test(normalizedPath);
+}
+
+/**
+ * 저장소/디렉터리 ignore 규칙 파일인지 확인한다.
+ * @param normalizedPath 슬래시로 정규화된 파일 절대 경로
+ * @returns working status의 ignore 판정에 영향을 주면 true
+ */
+function isIgnoreRulesPath(normalizedPath: string): boolean {
+  return /\/\.gitignore$|\/\.git\/info\/exclude$/.test(normalizedPath);
 }
 
 /**

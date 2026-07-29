@@ -13,6 +13,24 @@ export interface VscodeGitRepoInfo {
   branch: string;
 }
 
+/** 내장 Git 이벤트가 바꾼 상태 의미와 해당 저장소 root를 함께 전달하는 payload다. */
+export interface VscodeGitStatusEvent {
+  reason:
+    | "vscodeGit:state"
+    | "vscodeGit:head"
+    | "vscodeGit:identity"
+    | "vscodeGit:repositoryOpened"
+    | "vscodeGit:repositoryClosed"
+    | "vscodeGit:enablement";
+  repoRoot?: string;
+}
+
+/** branch 이름과 HEAD commit을 분리해 상태 이벤트 의미를 판별하는 snapshot이다. */
+interface RepositoryIdentity {
+  branch: string;
+  head: string;
+}
+
 /** 내장 Git 확장의 공개 API 중 이 확장이 사용하는 최소 표면. */
 interface VscodeGitExtension {
   enabled?: boolean;
@@ -83,9 +101,15 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     VscodeGitRepository,
     vscode.Disposable[]
   >();
-  private readonly repositoryIdentities = new Map<VscodeGitRepository, string>();
+  private readonly repositoryIdentities = new Map<
+    VscodeGitRepository,
+    RepositoryIdentity
+  >();
+  private readonly repositoryRevisions = new Map<VscodeGitRepository, number>();
 
-  constructor(private readonly onDidChange: (reason: string) => void) {}
+  constructor(
+    private readonly onDidChange: (event: VscodeGitStatusEvent) => void
+  ) {}
 
   /**
    * VS Code Git API 를 사용할 수 있게 준비한다.
@@ -157,6 +181,17 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
   }
 
   /**
+   * 저장소 state 이벤트가 몇 번 도착했는지 나타내는 process-local revision을 반환한다.
+   * - direct-file CLI fallback은 snapshot 조회 뒤 revision이 바뀌었으면 provider가 갱신됐다고 보고 CLI를 취소한다.
+   * @param repoRoot 확인할 저장소 루트 절대 경로
+   * @returns API 저장소의 현재 revision, provider가 없으면 undefined
+   */
+  getStatusRevision(repoRoot: string): number | undefined {
+    const repo = this.findRepository(repoRoot);
+    return repo ? this.repositoryRevisions.get(repo) ?? 0 : undefined;
+  }
+
+  /**
    * 내장 Git API 활성화를 한 번만 시작하되 현재 Changes refresh는 그 완료를 기다리지 않게 한다.
    * @returns 반환값 없이 공유 activation Promise만 준비한다.
    */
@@ -198,6 +233,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     }
     this.repositoryDisposables.clear();
     this.repositoryIdentities.clear();
+    this.repositoryRevisions.clear();
   }
 
   /** 내장 Git 확장을 활성화하고 저장소 상태 이벤트를 연결한다. */
@@ -216,15 +252,21 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       this.disposables.push(
         this.api.onDidOpenRepository((repo) => {
           this.watchRepository(repo);
-          this.onDidChange("vscodeGit:repositoryOpened");
+          this.onDidChange({
+            reason: "vscodeGit:repositoryOpened",
+            repoRoot: repo.rootUri.fsPath,
+          });
         }),
         this.api.onDidCloseRepository((repo) => {
           this.unwatchRepository(repo);
-          this.onDidChange("vscodeGit:repositoryClosed");
+          this.onDidChange({
+            reason: "vscodeGit:repositoryClosed",
+            repoRoot: repo.rootUri.fsPath,
+          });
         }),
         gitExtension.onDidChangeEnablement?.((enabled) => {
           logInfo("vscode git enablement changed", { enabled });
-          this.onDidChange("vscodeGit:enablement");
+          this.onDidChange({ reason: "vscodeGit:enablement" });
         }) ?? new vscode.Disposable(() => undefined)
       );
       for (const repo of this.api.repositories) {
@@ -250,14 +292,23 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       return;
     }
     this.repositoryIdentities.set(repo, repositoryIdentity(repo));
+    this.repositoryRevisions.set(repo, 0);
     const disposable = repo.state.onDidChange(() => {
       const previous = this.repositoryIdentities.get(repo);
       const current = repositoryIdentity(repo);
       this.repositoryIdentities.set(repo, current);
-      // 파일/index 변화는 가벼운 Changes 갱신만, HEAD/branch 이동은 비교 identity 갱신까지 요청한다.
-      this.onDidChange(
-        previous !== current ? "vscodeGit:identity" : "vscodeGit:state"
+      this.repositoryRevisions.set(
+        repo,
+        (this.repositoryRevisions.get(repo) ?? 0) + 1
       );
+      // checkout처럼 branch와 commit이 함께 바뀌면 HEAD 갱신을 우선하고, 이름만 바뀐 경우만 목록 전용 identity로 보낸다.
+      const reason =
+        previous?.head !== current.head
+          ? "vscodeGit:head"
+          : previous?.branch !== current.branch
+            ? "vscodeGit:identity"
+            : "vscodeGit:state";
+      this.onDidChange({ reason, repoRoot: repo.rootUri.fsPath });
     });
     this.repositoryDisposables.set(repo, [disposable]);
   }
@@ -276,6 +327,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     }
     this.repositoryDisposables.delete(repo);
     this.repositoryIdentities.delete(repo);
+    this.repositoryRevisions.delete(repo);
   }
 
   /**
@@ -389,13 +441,16 @@ function uniqueChanges(changes: FileChange[]): FileChange[] {
 }
 
 /**
- * 저장소의 branch/HEAD 이동만 작업트리 상태 이벤트와 구분할 수 있는 signature를 만든다.
+ * 저장소의 branch/HEAD 이동을 작업트리 상태 이벤트와 구분할 snapshot을 만든다.
  * - commit hash가 제공되는 VS Code Git API에서는 같은 branch의 새 commit도 identity 변화로 잡는다.
  * @param repo VS Code Git API 저장소 객체
- * @returns branch 이름과 HEAD commit을 결합한 비교 문자열
+ * @returns branch 이름과 HEAD commit을 분리한 비교 snapshot
  */
-function repositoryIdentity(repo: VscodeGitRepository): string {
-  return `${repo.state.HEAD?.name ?? ""}\0${repo.state.HEAD?.commit ?? ""}`;
+function repositoryIdentity(repo: VscodeGitRepository): RepositoryIdentity {
+  return {
+    branch: repo.state.HEAD?.name ?? "",
+    head: repo.state.HEAD?.commit ?? "",
+  };
 }
 
 /**

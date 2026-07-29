@@ -1,12 +1,20 @@
 // 확장 전역 refresh watcher의 경로 판정과 원인 병합을 담당하는 순수 정책 모듈.
 // - VS Code API와 실제 refresh 실행을 몰라 테스트/확장이 쉽고, extension 진입점은 조립에 집중한다.
-
 /** 파일 watcher 이벤트를 실제 refresh로 보낼지와 진단 사유를 함께 나타낸다. */
 export interface RefreshDecision {
   refresh: boolean;
   reason: string;
 }
-
+/** 저장소가 붙은 Git 이벤트를 어느 refresh 범위로 보낼지 나타낸다. */
+export type RepositoryRefreshScope = "active/full" | "repository-list-only" | "skip";
+/** 저장소 이벤트와 현재 화면이 실제로 소비하는 저장소 루트를 함께 전달하는 입력이다. */
+export interface RepositoryRefreshContext {
+  reason: string;
+  repoRoot?: string;
+  relevantRoots: readonly (string | undefined)[];
+}
+/** direct file 뒤 CLI timer를 예약하거나 더 최신 요청으로 취소하는 정책 결과다. */
+export type DirectFileFallbackAction = "schedule" | "cancel";
 /** Changes 웹뷰 전체 새로고침에서 독립적으로 조회할 수 있는 데이터 영역. */
 export type ChangesRefreshSection =
   | "repositories"
@@ -16,7 +24,6 @@ export type ChangesRefreshSection =
   | "worktrees"
   | "commitHooks"
   | "comparison";
-
 /** 로컬 작업 상태와 부가 정보를 서로 막지 않게 분리한 Changes 새로고침 lane. */
 export interface ChangesRefreshLanes {
   /** 저장소 identity와 staged/unstaged 목록처럼 사용자 입력에 즉시 반응해야 하는 영역. */
@@ -24,10 +31,8 @@ export interface ChangesRefreshLanes {
   /** History, stash, worktree, hook, 비교처럼 로컬 목록과 독립적으로 조회 가능한 영역. */
   auxiliary: ChangesRefreshSection[];
 }
-
 /** 새로고침 pass 하나에 포함된 요청을 실제 실행 함수로 넘기는 계약. */
 export type RefreshPassRunner = (reason: string) => Promise<void>;
-
 /** 진행 중인 pass와 함께 기다릴 개별 새로고침 요청. */
 interface RefreshWaiter {
   sequence: number;
@@ -171,6 +176,83 @@ export class HiddenRepositoryRefreshFence {
 }
 
 /**
+ * 고빈도 irrelevant repository 이벤트의 skip 로그를 root/reason별 TTL로 제한한다.
+ * - 첫 이벤트는 즉시 기록하고 같은 key의 후속 이벤트는 TTL 동안 개수만 모아 OUTPUT 폭주를 막는다.
+ */
+export class RepositoryRefreshSkipFence {
+  private readonly entries = new Map<string, { loggedAt: number; count: number }>();
+  /** @param ttlMs 같은 root/reason을 다시 로그하기 전 최소 대기 시간 */
+  constructor(private readonly ttlMs = 5000) {}
+  /**
+   * skip 이벤트를 기록하고 지금 OUTPUT에 로그할 누적 개수를 반환한다.
+   * @param key 저장소 root와 provider reason을 결합한 안정적인 식별자
+   * @param now 테스트에서 TTL 경계를 고정할 현재 시각
+   * @returns 첫 이벤트/TTL 경과 시 누적 개수, 억제 중이면 undefined
+   */
+  record(key: string, now = Date.now()): number | undefined {
+    const entry = this.entries.get(key);
+    if (!entry) {
+      this.entries.set(key, { loggedAt: now, count: 0 });
+      return 1;
+    }
+    entry.count++;
+    if (now - entry.loggedAt < this.ttlMs) return undefined;
+    const count = entry.count;
+    entry.count = 0;
+    entry.loggedAt = now;
+    return count;
+  }
+}
+/**
+ * VS Code Git 이벤트를 활성 화면 전체, 저장소 목록 전용, 무시 범위로 분류한다.
+ * - branch identity/open/close는 파일 상태를 다시 읽지 않고 목록만 맞춘다.
+ * - state/head는 Changes·comparison·conflicts 중 실제 소비 root와 일치할 때만 통과시킨다.
+ * @param context provider reason/root와 현재 보이는 소비자 root 목록
+ * @returns extension refresh fan-out에 사용할 최소 범위
+ */
+export function repositoryRefreshScope(
+  context: RepositoryRefreshContext
+): RepositoryRefreshScope {
+  const reason = context.reason.trim();
+  if (
+    reason === "vscodeGit:identity" ||
+    reason === "vscodeGit:repositoryOpened" ||
+    reason === "vscodeGit:repositoryClosed" ||
+    reason === "vscodeGit:enablement"
+  ) {
+    return "repository-list-only";
+  }
+  if (!context.repoRoot) return "active/full";
+  const root = normalizeRepositoryRoot(context.repoRoot);
+  return context.relevantRoots.some((candidate) =>
+    !!candidate && normalizeRepositoryRoot(candidate) === root)
+    ? "active/full"
+    : "skip";
+}
+/**
+ * direct-file CLI fallback timer의 다음 동작을 정한다.
+ * - provider/수동/mutation 원인이 섞이면 취소를 우선해 중복 CLI를 막는다.
+ * @param reason 단일 또는 병합된 refresh 원인
+ * @returns direct file 원인만 있으면 schedule, 그 밖에는 cancel
+ */
+export function directFileFallbackAction(reason: string): DirectFileFallbackAction {
+  const parts = splitRefreshReasons(reason);
+  const hasProviderOrAuthoritative = parts.some(
+    (item) => item.startsWith("vscodeGit:") || shouldForceChangesGitStatus(item)
+  );
+  return !hasProviderOrAuthoritative && parts.some(isDirectLocalFileRefreshReason)
+    ? "schedule"
+    : "cancel";
+}
+/**
+ * 자동 auxiliary pass의 section을 직렬 실행해야 하는지 판정한다.
+ * @param reason 단일 또는 병합된 refresh 원인
+ * @returns 명시적 수동 command가 아니면 true
+ */
+export function shouldSerializeAutomaticAuxiliary(reason: string): boolean {
+  return !splitRefreshReasons(reason).includes("command");
+}
+/**
  * `.git` 파일 시스템 이벤트가 refresh로 이어져야 하는지 판정한다.
  * - ref/HEAD/merge 상태와 ignore/hook처럼 화면 데이터에 영향을 주는 경로만 통과시킨다.
  * @param fsPath 변경된 `.git` 내부 파일의 절대 경로
@@ -208,7 +290,9 @@ export function shouldLogIgnoredRefresh(reason: string): boolean {
 export function shouldRefreshExplorerComparison(reason: string): boolean {
   return reason.split(",").some((part) => {
     const value = part.trim();
-    return value.includes("stable-git-state") || value === "workspaceFolders";
+    return value.includes("stable-git-state") ||
+      value === "workspaceFolders" || value === "vscodeGit:head" ||
+      value === "windowFocusedReconcile";
   });
 }
 
@@ -226,7 +310,7 @@ export function shouldRefreshPullRequestComments(reason: string): boolean {
       item === "vscodeGit:repositoryOpened" ||
       item === "vscodeGit:repositoryClosed" ||
       item === "vscodeGit:enablement" ||
-      item === "vscodeGit:identity" ||
+      item === "vscodeGit:head" ||
       item.startsWith("identity:")
   );
 }
@@ -324,13 +408,12 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
       item === "commit" ||
       item === "commitResult" ||
       item === "commitAttempt" ||
-      item === "vscodeGit:identity" ||
+      item === "vscodeGit:head" ||
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
       item.startsWith("branchOperation") ||
       item.includes("ignore-rules") ||
       item.includes("conflict") ||
-      isDirectLocalFileRefreshReason(item) ||
       item.startsWith("hunkCheckbox:") ||
       item.startsWith("editorHunks:") ||
       item.includes("stable-git-state")
@@ -397,7 +480,7 @@ function sectionsForRefreshReason(
   }
   if (
     reason.includes("stable-git-state") ||
-    reason === "vscodeGit:identity" ||
+    reason === "vscodeGit:head" ||
     reason === "checkoutBranch" ||
     reason.startsWith("checkout:") ||
     reason.startsWith("branchOperation")
@@ -410,15 +493,17 @@ function sectionsForRefreshReason(
     ];
   }
   if (
+    reason === "vscodeGit:identity" ||
     reason === "vscodeGit:repositoryOpened" ||
     reason === "vscodeGit:repositoryClosed" ||
     reason === "vscodeGit:enablement"
   ) {
-    return ["repositories", "workingChanges", "stashes"];
+    return ["repositories"];
   }
-  // 과거 버전이 만든 synthetic focus 원인이 들어와도 전체 History/stash 재조사를 하지 않는다.
-  if (reason === "windowFocused") {
-    return ["workingChanges"];
+  // 과거 windowFocused는 working만 유지하고 명시적 reconciliation은 watcher 중단 중 놓칠 수 있는 전 영역을 복구한다.
+  if (reason === "windowFocused" || reason === "windowFocusedReconcile") {
+    return reason === "windowFocused" ? ["workingChanges"] :
+      ALL_CHANGES_SECTIONS;
   }
   return ALL_CHANGES_SECTIONS;
 }
@@ -469,6 +554,15 @@ function splitRefreshReasons(reason: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * provider와 controller가 주는 저장소 루트 문자열을 비교용으로 정규화한다.
+ * @param value 절대 저장소 경로
+ * @returns 구분자와 Windows 대소문자 차이를 제거한 문자열
+ */
+function normalizeRepositoryRoot(value: string): string {
+  const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
+  return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
+}
 /**
  * `.git` 내부 파일 절대 경로에서 저장소 루트를 꺼낸다.
  * @param fsPath `.git/HEAD` 또는 `.git/refs/**` 아래 절대 경로
