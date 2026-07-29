@@ -5,7 +5,7 @@ import type { StatusGroups } from "./gitService";
 import { countUntrackedLines } from "./untrackedStats";
 
 type RunGitLike = (args: string[]) => Promise<string>;
-const UNTRACKED_STATS_CONCURRENCY = 16;
+const UNTRACKED_STATS_CONCURRENCY = 4;
 
 /**
  * 현재 index/working diff 를 읽어 이미 분류된 상태 목록에 라인 증감 정보를 붙인다.
@@ -22,14 +22,13 @@ export async function attachStatusStats(
   if (!groups.staged.length && !groups.unstaged.length) {
     return { staged: [], unstaged: [] };
   }
-  const [stagedNum, unstagedNum] = await Promise.all([
-    groups.staged.length
-      ? run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => "")
-      : Promise.resolve(""),
-    groups.unstaged.length
-      ? run(["diff", "--numstat", "-z", "-M"]).catch(() => "")
-      : Promise.resolve(""),
-  ]);
+  // 두 read-only diff도 큰 저장소에서는 CPU/디스크를 크게 쓰므로 staged 뒤 unstaged 순서로 직렬화한다.
+  const stagedNum = groups.staged.length
+    ? await run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => "")
+    : "";
+  const unstagedNum = groups.unstaged.length
+    ? await run(["diff", "--numstat", "-z", "-M"]).catch(() => "")
+    : "";
   return attachParsedStatusStats(repoRoot, groups, stagedNum, unstagedNum);
 }
 
