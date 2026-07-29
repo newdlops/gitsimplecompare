@@ -42,8 +42,7 @@ async function run() {
   import_strict.default.equal(extension.isActive, true, "Git Simple Compare extension did not activate.");
   const commands2 = await vscode.commands.getCommands(true);
   import_strict.default.ok(commands2.includes("gitSimpleCompare.showChanges"), "Changes sidebar wrapper command was not registered.");
-  import_strict.default.ok(commands2.includes("gitSimpleCompare.showReviews"), "Reviews sidebar wrapper command was not registered.");
-  await vscode.commands.executeCommand("gitSimpleCompare.showReviews");
+  import_strict.default.equal(commands2.includes("gitSimpleCompare.showReviews"), false, "Reviews sidebar wrapper command must not be registered.");
   await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
 }
 // Annotate the CommonJS export names for ESM import in node:

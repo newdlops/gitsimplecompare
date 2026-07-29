@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "surface": "review-workspace",
-  "state": "error",
-  "locale": "en",
-  "viewport": { "width": 375, "height": 760 },
-  "payload": { "message": "Fixture permission error: review details are unavailable." }
-}

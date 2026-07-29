@@ -1,24 +1,18 @@
-// PR-00 webview fixture schema의 대표 상태와 경로 안전성을 검증한다.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadWebviewFixture } from "./helpers/webviewFixture";
+import { loadWebviewFixture, parseWebviewFixture } from "./helpers/webviewFixture";
 
-test("webview fixture는 small/large/error/Korean 대표 상태를 명시한다", async () => {
-  const [small, large, error, korean] = await Promise.all([
-    loadWebviewFixture("changes.small.en.json"),
-    loadWebviewFixture("reviews.large.en.json"),
-    loadWebviewFixture("review-workspace.error.en.json"),
-    loadWebviewFixture("reviews.management.ko.json"),
-  ]);
-
-  assert.equal(small.surface, "changes");
-  assert.equal(small.state, "small");
-  assert.equal(large.state, "large");
-  assert.equal(error.state, "error");
-  assert.equal(korean.locale, "ko");
-  assert.ok(korean.viewport.width >= 320);
+test("Changes와 staged Preview fixture를 읽는다", async () => {
+  assert.equal((await loadWebviewFixture("changes.small.en.json")).surface, "changes");
+  assert.equal((await loadWebviewFixture("pr-preview.populated.en.json")).surface, "pr-preview");
 });
-
-test("webview fixture loader는 경로 탐색 이름을 거부한다", async () => {
-  await assert.rejects(loadWebviewFixture("../package.json"), /Unsafe webview fixture name/);
+test("fixture traversal과 지원하지 않는 surface를 거부한다", async () => {
+  await assert.rejects(() => loadWebviewFixture("../package.json"), /Unsafe/);
+  const valid = { schemaVersion: 1, surface: "changes", state: "small", locale: "en", viewport: { width: 1, height: 1 }, payload: {} };
+  assert.throws(() => parseWebviewFixture({ ...valid, surface: "reviews" }, "inline"), /metadata/);
+  assert.throws(() => parseWebviewFixture({ ...valid, schemaVersion: 2 }, "inline"), /metadata/);
+  assert.throws(() => parseWebviewFixture({ ...valid, state: "cached" }, "inline"), /metadata/);
+  assert.throws(() => parseWebviewFixture({ ...valid, locale: "ja" }, "inline"), /metadata/);
+  assert.throws(() => parseWebviewFixture({ ...valid, viewport: { width: 0, height: 1 } }, "inline"), /viewport/);
+  assert.throws(() => parseWebviewFixture({ ...valid, payload: [] }, "inline"), /payload/);
 });

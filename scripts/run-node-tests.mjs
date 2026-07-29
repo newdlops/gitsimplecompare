@@ -200,6 +200,7 @@ async function bundleTests(sourceFiles) {
     format: "cjs",
     target: "node18",
     logLevel: "info",
+    alias: { vscode: path.join(workspaceRoot, "test", "helpers", "vscodeMock.ts") },
   });
 }
 

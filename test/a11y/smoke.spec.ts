@@ -1,65 +1,40 @@
-// PR-00 접근성 smoke: fixture로 mount한 실제 Review renderer의 기본 자동 규칙을 검사한다.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { loadWebviewFixture } from "../helpers/webviewFixture";
-import { mountReviews, mountReviewWorkspace } from "../webview/webviewHarness";
+import { dispatchWebviewMessage, mountChanges, mountPullRequestPreview, readPostedMessages } from "../webview/webviewHarness";
 
-/** Axe 결과를 사람이 읽을 수 있는 CSS target과 함께 assertion 오류로 바꾼다. */
-function violationSummary(violations: ReadonlyArray<{ id: string; nodes: ReadonlyArray<{ target: readonly string[] }> }>): string {
-  return violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(" ")).join(", ")}`).join("\n");
-}
+/** 실패한 Axe 규칙을 사람이 바로 확인할 수 있게 짧게 요약한다. */
+function violationSummary(results: { violations: Array<{ id: string; nodes: unknown[] }> }): string { return results.violations.map((item) => `${item.id}:${item.nodes.length}`).join(", "); }
 
-test("Reviews populated management fixture는 자동 a11y 위반이 없다", async ({ page }) => {
-  const fixture = await loadWebviewFixture("reviews.management.ko.json");
+test("Changes production renderer supports Axe, keyboard, forced colors, and reduced motion", async ({ page }) => {
+  const fixture = await loadWebviewFixture("changes.small.en.json");
   await page.setViewportSize(fixture.viewport);
-  await mountReviews(page, fixture);
-  await page.getByRole("tab", { name: /Management/ }).click();
-
-  const results = await new AxeBuilder({ page }).include("#root").analyze();
-  expect(results.violations, violationSummary(results.violations)).toEqual([]);
+  await mountChanges(page, fixture);
+  const row = page.locator('.section[data-section="changes"] #changes-group-files-staged .row.file[data-stage="staged"][data-path="src/app.ts"] > .name');
+  await expect(row).toBeVisible();
+  await expect(page.locator("#section-body-history")).toHaveAttribute("tabindex", "0");
+  await expect(page.locator("#section-body-stashes")).toHaveAttribute("tabindex", "0");
+  const axe = await new AxeBuilder({ page }).include("#root").analyze();
+  expect(axe.violations, violationSummary(axe)).toEqual([]);
+  const header = page.locator('.section[data-section="changes"] > .section-header');
+  await expect(header).toHaveAttribute("aria-expanded", "true"); await header.press("Enter"); await expect(header).toHaveAttribute("aria-expanded", "false"); await header.press(" "); await expect(header).toHaveAttribute("aria-expanded", "true");
+  await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" }); await page.locator('.section[data-section="history"] > .section-header').focus(); await page.keyboard.press("Tab"); const focusedBody=page.locator("#section-body-history"); await expect(focusedBody).toBeFocused();
+  expect(await page.evaluate(() => ({ forced: matchMedia("(forced-colors: active)").matches, reduced: matchMedia("(prefers-reduced-motion: reduce)").matches, focus: document.activeElement?.matches(":focus-visible"), style: getComputedStyle(document.activeElement!).outlineStyle, adjust: getComputedStyle(document.activeElement!).forcedColorAdjust }))).toEqual({ forced: true, reduced: true, focus: true, style: expect.not.stringMatching("none"), adjust: "auto" });
+  await dispatchWebviewMessage(page, { type:"workingOperation", active:true, action:"unstage", paths:["src/app.ts"], phase:"git" });
+  await expect(page.locator(".working-op-track > span")).toHaveCSS("animation-duration", "0.001s"); await expect(page.locator(".working-op-track > span")).toHaveCSS("animation-iteration-count", "1");
 });
 
-test("Review Workspace error fixture는 alert와 retry action을 제공한다", async ({ page }) => {
-  const fixture = await loadWebviewFixture("review-workspace.error.en.json");
-  await page.setViewportSize(fixture.viewport);
-  await mountReviewWorkspace(page, fixture);
-
-  await expect(page.getByRole("alert")).toContainText("Fixture permission error");
-  await expect(page.getByRole("button", { name: "Retry loading review" })).toBeVisible();
-  const results = await new AxeBuilder({ page }).include("#root").analyze();
-  expect(results.violations, violationSummary(results.violations)).toEqual([]);
-});
-
-test("공통 surface는 forced-colors에서 native control과 keyboard focus를 유지한다", async ({ page }) => {
-  const fixture = await loadWebviewFixture("reviews.management.ko.json");
-  await page.emulateMedia({ forcedColors: "active" });
-  await page.setViewportSize(fixture.viewport);
-  await mountReviews(page, fixture);
-
-  const refresh = page.getByRole("button", { name: /Refresh/ });
-  await refresh.focus();
-  await expect(refresh).toBeFocused();
-  await expect(refresh).toHaveCSS("forced-color-adjust", "auto");
-  expect(await refresh.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
-});
-
-test("Reviews cached count summary는 tabpanel·retry action을 접근 가능하게 제공한다", async ({ page }) => {
-  const fixture = await loadWebviewFixture("reviews.cached.en.json");
-  await page.setViewportSize(fixture.viewport);
-  await mountReviews(page, fixture);
-
-  await expect(page.getByRole("tabpanel", { name: "Cached review summary" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry loading pull request reviews" })).toBeVisible();
-  const results = await new AxeBuilder({ page }).include("#root").analyze();
-  expect(results.violations, violationSummary(results.violations)).toEqual([]);
-});
-
-test("Reviews auth shell은 sign-in과 diagnostics action을 접근 가능하게 제공한다", async ({ page }) => {
-  const fixture = await loadWebviewFixture("reviews.auth-required.en.json");
-  await page.setViewportSize(fixture.viewport);
-  await mountReviews(page, fixture);
-
-  await expect(page.getByRole("button", { name: "Start GitHub CLI sign-in in a terminal" })).toBeVisible();
-  const results = await new AxeBuilder({ page }).include("#root").analyze();
-  expect(results.violations, violationSummary(results.violations)).toEqual([]);
+test("Preview production renderer supports Axe and toolbar keyboard order", async ({ page }) => {
+  const fixture = await loadWebviewFixture("pr-preview.populated.en.json"); await page.setViewportSize(fixture.viewport); await mountPullRequestPreview(page, fixture);
+  const create = page.getByRole("button", { name:"Create Pull Request on GitHub" });
+  await create.focus(); await expect(create).toBeFocused(); await page.keyboard.press("Enter");
+  await expect.poll(() => readPostedMessages(page)).toContainEqual({ type:"publishPullRequest", sourceBranch:fixture.payload.sourceBranch, targetBranch:fixture.payload.targetBranch, title:fixture.payload.title, body:fixture.payload.body });
+  await dispatchWebviewMessage(page,{type:"preview",preview:{...fixture.payload,existingPr:{number:1,url:"https://example.test/pr/1"}}});
+  const open = page.getByRole("button", { name:"Open pull request on GitHub" }); await expect(page.locator("#pr-preview-tabpanel")).toBeVisible(); await expect(open).toBeVisible();
+  const axe = await new AxeBuilder({ page }).include("#content").analyze(); expect(axe.violations, violationSummary(axe)).toEqual([]);
+  await page.locator("#refresh").focus(); for (const selector of ["#generate-pr-message", "#configure-ai-cli", "#copy-pr-message", "#open-pr"]) { await page.keyboard.press("Tab"); await expect(page.locator(selector)).toBeFocused(); }
+  await page.keyboard.press("Enter"); await expect.poll(() => readPostedMessages(page)).toContainEqual({ type:"openExistingPr" });
+  await page.emulateMedia({ forcedColors:"active", reducedMotion:"reduce" }); await page.keyboard.press("Shift+Tab"); await page.keyboard.press("Tab"); await expect(open).toBeFocused();
+  expect(await page.evaluate(() => ({ forced: matchMedia("(forced-colors: active)").matches, reduced: matchMedia("(prefers-reduced-motion: reduce)").matches, focus: document.activeElement?.matches(":focus-visible"), style: getComputedStyle(document.activeElement!).outlineStyle, adjust: getComputedStyle(document.activeElement!).forcedColorAdjust }))).toEqual({ forced:true, reduced:true, focus:true, style:expect.not.stringMatching("none"), adjust:"auto" });
+  await expect(page.locator("#pr-preview-tab-conversation")).toHaveCSS("animation-duration", "0.001s"); await expect(page.locator("#pr-preview-tab-conversation")).toHaveCSS("animation-iteration-count", "1");
 });

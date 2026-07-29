@@ -8,6 +8,9 @@ import {
   pullRequestInfoFromGraphQl,
 } from "../src/git/pullRequestInfo";
 import { pullRequestCommitHashQuery } from "../src/git/pullRequestSearchService";
+import { openGraphPullRequest, openStagedPullRequestPreview } from "../src/webview/graphPullRequests";
+import { PullRequestPreviewPanel } from "../src/webview/pullRequestPreviewPanel";
+import * as vscodeMock from "./helpers/vscodeMock";
 
 interface GraphPrMatchingApi {
   matchingHashes(pr: object): string[];
@@ -82,4 +85,42 @@ test("Graph PR 매칭은 merged commit을 포함하고 대표 이동 대상으�
 
   assert.deepEqual(Array.from(matching.matchingHashes(pr)), [first, head, merged]);
   assert.deepEqual(Array.from(matching.rowHashes(pr)), [merged, head, first]);
+});
+
+test("Graph PR은 검증된 외부 URL만 열고 실패에는 성공 로그를 남기지 않는다", async () => {
+  vscodeMock.__resetOutputLines();
+  vscodeMock.__resetWindowMessages();
+  await openGraphPullRequest("/repo", [{ number: 7, url: "https://example.test/pr/7" } as any], 7);
+  assert.equal(vscodeMock.__externalUris.length, 1);
+  assert.deepEqual(vscodeMock.__warningMessages, []);
+  assert.ok(vscodeMock.__outputLines.some((line) => line.includes("graph pull request opened in browser")));
+  vscodeMock.__resetWindowMessages();
+  await openGraphPullRequest("/repo", [], 7);
+  assert.deepEqual(vscodeMock.__warningMessages, ["Pull request #7 is not loaded."]);
+  assert.equal(vscodeMock.__externalUris.length, 0);
+  vscodeMock.__resetWindowMessages();
+  await openGraphPullRequest("/repo", [{ number: 7, url: "" } as any], 7);
+  assert.deepEqual(vscodeMock.__warningMessages, ["Unable to open Pull Request #7 on GitHub."]);
+  assert.equal(vscodeMock.__externalUris.length, 0);
+  vscodeMock.__resetWindowMessages();
+  vscodeMock.__setOpenExternalResult(false);
+  await assert.rejects(() => openGraphPullRequest("/repo", [{ number: 7, url: "https://example.test/pr/7" } as any], 7), /Unable to open Pull Request #7/);
+  vscodeMock.__resetWindowMessages();
+  vscodeMock.__setOpenExternalResult(new Error("browser unavailable"));
+  await assert.rejects(() => openGraphPullRequest("/repo", [{ number: 7, url: "https://example.test/pr/7" } as any], 7), /browser unavailable/);
+  assert.equal(vscodeMock.__outputLines.filter((line) => line.includes("opened in browser")).length, 1);
+});
+
+test("번호 없는 staged Preview는 pager 상태와 무관하게 repository service로 연다", () => {
+  const original = PullRequestPreviewPanel.createOrShow;
+  const calls: unknown[][] = [];
+  const extensionUri = { path: "/extension" } as any;
+  (PullRequestPreviewPanel as any).createOrShow = (...args: unknown[]) => calls.push(args);
+  try {
+    openStagedPullRequestPreview(extensionUri, "/exact-repo");
+    assert.equal(calls.length, 1);
+    assert.equal((calls[0][1] as { repoRoot: string }).repoRoot, "/exact-repo");
+    assert.equal(calls[0][0], extensionUri);
+    assert.deepEqual(calls[0].slice(2), [undefined, undefined]);
+  } finally { (PullRequestPreviewPanel as any).createOrShow = original; }
 });

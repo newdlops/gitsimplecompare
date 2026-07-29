@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "surface": "pr-preview",
+  "state": "populated",
+  "locale": "en",
+  "viewport": { "width": 1280, "height": 900 },
+  "payload": {
+    "repository": "fixture-org/a-repository-name-that-exercises-long-branch-layout",
+    "currentBranch": "feature/very-long-local-source-branch-for-preview-fixture",
+    "sourceBranch": "feature/very-long-local-source-branch-for-preview-fixture",
+    "targetBranch": "main",
+    "sourceIsLocal": true,
+    "sourceBranches": ["feature/very-long-local-source-branch-for-preview-fixture", "feature/alternative-preview-source"],
+    "targetBranches": ["main", "release/a-very-long-target-branch-name"],
+    "title": "Prepare deterministic Pull Request preview coverage",
+    "body": "This description is deliberately stable for Copy and Create payload assertions.",
+    "hasStagedChanges": true,
+    "stagedFileCount": 2,
+    "files": [
+      { "path": "src/previewFixture.ts", "status": "M", "additions": 12, "deletions": 4, "patch": "@@ -1,31 +1,31 @@\n line 01\n line 02\n line 03\n line 04\n line 05\n line 06\n line 07\n line 08\n line 09\n line 10\n line 11\n line 12\n line 13\n line 14\n line 15\n line 16\n line 17\n line 18\n line 19\n line 20\n-old deterministic value\n+new deterministic value\n line 22\n line 23\n line 24\n line 25\n line 26\n line 27\n line 28\n line 29\n line 30" },
+      { "path": "docs/nested/foldable/long-preview-fixture.md", "status": "A", "additions": 8, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+fixture", "comments": [{ "author": "fixture-reviewer", "body": "Fixture line-anchored comment", "line": 1, "side": "RIGHT" }] },
+      { "path": "__proto__/constructor.ts", "status": "A", "additions": 1, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+export {};" }
+    ],
+    "previewFiles": [
+      { "path": "src/previewFixture.ts", "status": "M", "additions": 12, "deletions": 4, "patch": "@@ -1,31 +1,31 @@\n line 01\n line 02\n line 03\n line 04\n line 05\n line 06\n line 07\n line 08\n line 09\n line 10\n line 11\n line 12\n line 13\n line 14\n line 15\n line 16\n line 17\n line 18\n line 19\n line 20\n-old deterministic value\n+new deterministic value\n line 22\n line 23\n line 24\n line 25\n line 26\n line 27\n line 28\n line 29\n line 30" },
+      { "path": "docs/nested/foldable/long-preview-fixture.md", "status": "A", "additions": 8, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+fixture", "comments": [{ "author": "fixture-reviewer", "body": "Fixture line-anchored comment", "line": 1, "side": "RIGHT" }] },
+      { "path": "__proto__/constructor.ts", "status": "A", "additions": 1, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+export {};" }
+    ],
+    "commits": ["1111111 Add deterministic fixture", "2222222 Follow-up preview change"],
+    "previewCommits": [{ "hash": "1111111", "shortHash": "1111111", "title": "Add deterministic fixture", "files": [] }, { "hash": "2222222", "shortHash": "2222222", "title": "Follow-up preview change", "files": [] }],
+    "conversation": [{ "author": "fixture-author", "body": "Local staged context for the pull request.", "createdAt": "2025-01-01T00:00:00.000Z" }]
+  }
+}
