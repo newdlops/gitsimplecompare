@@ -8,7 +8,6 @@ import {
   CommandDeps,
   RepoInfo,
   discoverRepositories,
-  repositoryPathKey,
   resolvePreferredRepositoryRoot,
 } from "./shared";
 import { refreshWorkingChanges } from "./workingChanges";
@@ -21,6 +20,7 @@ import {
   changesRefreshLanes,
   shouldForceChangesGitStatus,
   shouldInvalidateChangesStatus,
+  shouldSerializeAutomaticAuxiliary,
   shouldShowChangesRefreshProgress,
 } from "../utils/extensionRefreshPolicy";
 
@@ -169,7 +169,7 @@ async function refreshChangesViewOnce(
   let prefetchedWorking =
     repositoryLoad && initialRoot && sections.includes("workingChanges")
       ? timedRefreshSection("workingChanges", () =>
-          refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+          refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason })
         )
       : undefined;
   // repositoryLoad가 먼저 실패해도 이미 시작한 status Promise가 unhandled rejection으로 남지 않게 한다.
@@ -195,7 +195,7 @@ async function refreshChangesViewOnce(
       ? prefetchedWorking
         ? promisedSectionTask("workingChanges", prefetchedWorking)
         : sectionTask("workingChanges", () =>
-            refreshWorkingChanges(deps, { forceGit: forceGitStatus })
+            refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason })
           )
       : undefined,
     sections.includes("fileHistory")
@@ -214,10 +214,9 @@ async function refreshChangesViewOnce(
       ? sectionTask("comparison", () => refreshActiveComparison(deps))
       : undefined,
   ].filter((task): task is RefreshTask => !!task);
-  const results = await Promise.allSettled(
-    tasks.map((task) =>
-      task.promise ?? timedRefreshSection(task.section, task.run)
-    )
+  const results = await settleRefreshTasks(
+    tasks,
+    lane === "auxiliary" && shouldSerializeAutomaticAuxiliary(reason)
   );
   results.forEach((result, index) => {
     if (result.status === "rejected") {
@@ -253,23 +252,41 @@ async function discoverRepositoriesForRefresh(
   if (vscodeRepos && !firstView) {
     return vscodeRepos;
   }
-  const workspaceRepos = await discoverRepositories(deps.registry);
-  if (!vscodeRepos) {
-    return workspaceRepos;
-  }
-  const merged = new Map(
-    vscodeRepos.map((repo) => [repositoryPathKey(repo.root), repo])
-  );
-  for (const repo of workspaceRepos) {
-    merged.set(repositoryPathKey(repo.root), repo);
-  }
-  return [...merged.values()];
+  return discoverRepositories(deps.registry, vscodeRepos ?? []);
 }
 
 interface RefreshTask {
   section: ChangesRefreshSection;
   run: () => Promise<void>;
   promise?: Promise<void>;
+}
+
+/**
+ * refresh section을 병렬 또는 직렬로 실행하면서 모든 오류를 격리해 settled 결과로 보존한다.
+ * - 자동 auxiliary pass는 concurrency 1로 Git subprocess peak를 제한하고, 한 section 실패 뒤에도 다음을 실행한다.
+ * @param tasks 고정된 UI 순서의 section 작업 목록
+ * @param serial true면 한 번에 하나씩, false면 기존 수동 refresh처럼 병렬 실행
+ * @returns 각 section과 같은 순서의 성공/실패 결과
+ */
+async function settleRefreshTasks(
+  tasks: RefreshTask[],
+  serial: boolean
+): Promise<PromiseSettledResult<void>[]> {
+  const run = (task: RefreshTask): Promise<void> =>
+    task.promise ?? timedRefreshSection(task.section, task.run);
+  if (!serial) {
+    return Promise.allSettled(tasks.map(run));
+  }
+  const results: PromiseSettledResult<void>[] = [];
+  for (const task of tasks) {
+    try {
+      await run(task);
+      results.push({ status: "fulfilled", value: undefined });
+    } catch (reason) {
+      results.push({ status: "rejected", reason });
+    }
+  }
+  return results;
 }
 
 /** 실행할 section과 지연 실행 함수를 task로 묶는다. */

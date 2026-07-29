@@ -202,11 +202,14 @@ export interface RepoInfo {
 /**
  * 워크스페이스(활성 에디터 + 폴더들)에서 git 저장소를 조용히 수집한다.
  * - 각 저장소의 현재 브랜치까지 읽어 VS Code SCM 처럼 표시한다. 경고는 띄우지 않는다.
+ * - VS Code Git이 이미 알려 준 정확한 search root는 다시 rev-parse하지 않고 결과에 그대로 병합한다.
  * @param registry GitService 레지스트리
+ * @param knownRepositories provider가 root/branch를 확정한 저장소 목록
  * @returns 활성 파일과 workspace folder에서 찾은 중복 없는 저장소/브랜치 목록
  */
 export async function discoverRepositories(
-  registry: GitServiceRegistry
+  registry: GitServiceRegistry,
+  knownRepositories: readonly RepoInfo[] = []
 ): Promise<RepoInfo[]> {
   const searchPaths: string[] = [];
   const active = vscode.window.activeTextEditor?.document.uri;
@@ -216,13 +219,24 @@ export async function discoverRepositories(
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     searchPaths.push(folder.uri.fsPath);
   }
-  // multi-root workspace의 rev-parse와 브랜치 조회는 서로 독립이므로 병렬 실행해 합산 지연을 피한다.
+  const knownRoots = new Set(
+    knownRepositories.map((repository) => repositoryPathKey(repository.root))
+  );
+  const uncoveredPaths = [...new Set(searchPaths)].filter(
+    (searchPath) => !knownRoots.has(repositoryPathKey(searchPath))
+  );
+  // 정확히 알려지지 않은 active nested/workspace root만 병렬 probe해 nested repository도 놓치지 않는다.
   const identities = await Promise.all(
-    [...new Set(searchPaths)].map((searchPath) =>
+    uncoveredPaths.map((searchPath) =>
       registry.resolveWithBranch(searchPath)
     )
   );
-  const repositories = new Map<string, RepoInfo>();
+  const repositories = new Map(
+    knownRepositories.map((repository) => [
+      repositoryPathKey(repository.root),
+      { ...repository },
+    ])
+  );
   for (const identity of identities) {
     if (!identity) continue;
     const root = identity.service.repoRoot;

@@ -8,12 +8,15 @@ import {
   type StatusRefreshFreshness,
 } from "../git/statusCache";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
+import { directFileFallbackAction } from "../utils/extensionRefreshPolicy";
 import type { CommandDeps } from "./shared";
 
 /** 작업 상태 refresh 호출자가 선택할 수 있는 source 정책. */
 export interface RefreshWorkingChangesOptions {
   /** true면 VS Code Git snapshot을 건너뛰고 실제 porcelain 상태를 읽는다. */
   forceGit?: boolean;
+  /** direct-file/provider/manual 원인을 구분해 지연 CLI fallback을 제어한다. */
+  reason?: string;
 }
 
 /** 저장소 하나의 최신 요청, provider fence, 지연된 통계 작업을 묶은 상태. */
@@ -23,6 +26,7 @@ interface WorkingStatusRefreshState {
   statsTimer?: ReturnType<typeof setTimeout>;
   statsRunning?: Promise<void>;
   pendingStats?: StatusStatsRequest;
+  fallbackTimer?: ReturnType<typeof setTimeout>;
   lastApplied?: StatusGroups;
 }
 
@@ -41,6 +45,7 @@ interface WorkingStatusRequest {
   state: WorkingStatusRefreshState;
   requestId: number;
   generation: number;
+  providerRevision?: number;
   startedAt: number;
 }
 
@@ -48,7 +53,9 @@ interface WorkingStatusRequest {
 // 시간 창이 끝난 뒤에도 StatusSourceFence가 실제 fingerprint 수렴까지 정확성을 이어서 보장한다.
 const RECENT_MUTATION_WINDOW_MS = 3000;
 // 연속 Git 상태 이벤트마다 numstat 프로세스를 만들지 않고 마지막 snapshot만 보강한다.
-const STATUS_STATS_DEBOUNCE_MS = 120;
+const STATUS_STATS_DEBOUNCE_MS = 300;
+// direct file 뒤 provider event가 도착할 짧은 시간을 주고, 없을 때만 porcelain을 한 번 확인한다.
+const DIRECT_FILE_FALLBACK_GRACE_MS = 240;
 // 한 status 조회 중 여러 ref watcher가 cache generation을 바꿔도 현재 refresh가 SoT 적용을 마치게 한다.
 const STATUS_GENERATION_RETRY_LIMIT = 3;
 const statesByActivation = new WeakMap<
@@ -91,6 +98,14 @@ async function refreshWorkingStatusAttempt(
   }
 
   const state = stateFor(deps, root);
+  const refreshReason = options.reason ?? (options.forceGit ? "forceGit" : "request");
+  const fallbackAction = directFileFallbackAction(refreshReason);
+  cancelDeferredGitFallback(
+    state,
+    root,
+    refreshReason,
+    fallbackAction === "schedule"
+  );
   const requestId = ++state.requestId;
   cancelPendingStats(state);
   const service = deps.registry.get(root);
@@ -101,6 +116,7 @@ async function refreshWorkingStatusAttempt(
     state,
     requestId,
     generation: service.getStatusGeneration(),
+    providerRevision: deps.vscodeGitStatus.getStatusRevision(root),
     startedAt: Date.now(),
   };
   const recentMutation = service.mutatedRecently(RECENT_MUTATION_WINDOW_MS);
@@ -118,8 +134,17 @@ async function refreshWorkingStatusAttempt(
     ) {
       applyStatusGroups(request, providerGroups, "vscodeGit", recentMutation);
       scheduleStatusStats(request, providerGroups, "vscodeGit");
+      if (fallbackAction === "schedule") {
+        scheduleDeferredGitFallback(request, refreshReason);
+      }
       return;
     }
+  }
+
+  if (!forceGit && fallbackAction === "schedule") {
+    // provider가 아직 준비되지 않았거나 fence 확인이 필요해도 direct file pass 자체는 CLI를 만들지 않는다.
+    scheduleDeferredGitFallback(request, refreshReason);
+    return;
   }
 
   // force 요청, provider 미지원, 또는 fence와 다른 provider snapshot은 실제 porcelain으로 확정한다.
@@ -300,6 +325,89 @@ function scheduleStatusStats(
     request.state.statsTimer = undefined;
     enqueueStatusStats({ request, groups, source });
   }, STATUS_STATS_DEBOUNCE_MS);
+}
+
+/**
+ * direct file refresh의 최신 요청 하나에 repository별 CLI 확인 timer를 예약한다.
+ * - timer가 살아 있는 동안 provider/수동 요청이 오면 시작부에서 취소되며, 아무 이벤트가 없을 때만 force pass를 실행한다.
+ * @param request provider snapshot을 읽은 최신 요청 토큰
+ * @param reason save/create/delete/rename 중 fallback을 만든 원인
+ */
+function scheduleDeferredGitFallback(
+  request: WorkingStatusRequest,
+  reason: string
+): void {
+  request.state.fallbackTimer = setTimeout(() => {
+    request.state.fallbackTimer = undefined;
+    const activeRoot = request.deps.changesView.getActiveRepo();
+    if (
+      request.state.requestId !== request.requestId ||
+      activeRoot !== request.root
+    ) {
+      logInfo("deferred CLI fallback skipped", {
+        root: request.root,
+        activeRoot,
+        reason,
+        requestId: request.requestId,
+        latestRequestId: request.state.requestId,
+      });
+      return;
+    }
+    const currentProviderRevision =
+      request.deps.vscodeGitStatus.getStatusRevision(request.root);
+    if (
+      request.providerRevision !== undefined &&
+      currentProviderRevision !== request.providerRevision
+    ) {
+      logInfo("deferred CLI fallback canceled", {
+        root: request.root,
+        reason: "provider-event",
+        requestId: request.requestId,
+        providerRevision: request.providerRevision,
+        currentProviderRevision,
+      });
+      return;
+    }
+    logInfo("deferred CLI fallback running", {
+      root: request.root,
+      reason,
+      requestId: request.requestId,
+    });
+    void refreshWorkingStatus(request.deps, {
+      forceGit: true,
+      reason: "directFileFallback",
+    });
+  }, DIRECT_FILE_FALLBACK_GRACE_MS);
+  logInfo("deferred CLI fallback scheduled", {
+    root: request.root,
+    reason,
+    requestId: request.requestId,
+    graceMs: DIRECT_FILE_FALLBACK_GRACE_MS,
+  });
+}
+
+/**
+ * 더 최신 status 요청을 시작하기 전에 아직 실행되지 않은 direct-file fallback을 취소한다.
+ * @param state 저장소별 timer 상태
+ * @param root OUTPUT 진단에 표시할 저장소 root
+ * @param reason 새 요청 원인
+ * @param coalesced 새 direct-file 이벤트가 이전 timer를 최신 timer로 대체하는지 여부
+ */
+function cancelDeferredGitFallback(
+  state: WorkingStatusRefreshState,
+  root: string,
+  reason: string,
+  coalesced: boolean
+): void {
+  if (!state.fallbackTimer) return;
+  clearTimeout(state.fallbackTimer);
+  state.fallbackTimer = undefined;
+  logInfo(
+    coalesced
+      ? "deferred CLI fallback coalesced"
+      : "deferred CLI fallback canceled",
+    { root, reason }
+  );
 }
 
 /**

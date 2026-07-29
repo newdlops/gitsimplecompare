@@ -32,7 +32,11 @@ import { registerComparisonFileDecorations } from "./providers/comparisonFileDec
 import { ComparisonScmProvider, DeletedComparisonGutterController } from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
 import { registerLocalChangesWatcher } from "./providers/localChangesWatcher";
-import { connectRefreshWatcher } from "./providers/refreshWatcher";
+import {
+  createGitMetadataRefreshHandler,
+  FOCUSED_GIT_METADATA_GLOB,
+  FocusScopedRefreshWatcher,
+} from "./providers/refreshWatcher";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
@@ -43,12 +47,12 @@ import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
 import {
   addRefreshReasons,
+  changesRefreshSections,
   HiddenRepositoryRefreshFence,
-  repoRootFromGitPath,
-  shouldLogIgnoredRefresh,
+  RepositoryRefreshSkipFence,
+  repositoryRefreshScope,
   shouldRefreshExplorerComparison,
   shouldRefreshPullRequestComments,
-  shouldRefreshForGitPath,
 } from "./utils/extensionRefreshPolicy";
 import type { GitSimpleCompareApi } from "./extensionApi";
 export type { GitSimpleCompareApi } from "./extensionApi";
@@ -188,17 +192,40 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   );
   activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());
-  const vscodeGitStatus = new VscodeGitStatusProvider((reason) => {
+  const repositorySkipLog = new RepositoryRefreshSkipFence();
+  /** 현재 보이는 refresh 소비자들이 실제로 읽는 저장소 root만 provider 필터에 전달한다. */
+  const relevantRepositoryRoots = (): (string | undefined)[] => [
+    changesView.isVisible() ? changesView.getActiveRepo() : undefined,
+    comparison.enabled ? comparison.peekComparison()?.repoRoot : undefined,
+    conflictsVisible ? conflicts.current?.repoRoot : undefined,
+  ];
+  const vscodeGitStatus = new VscodeGitStatusProvider((event) => {
+    const { reason, repoRoot } = event;
+    const scope = repositoryRefreshScope({
+      reason,
+      repoRoot,
+      relevantRoots: relevantRepositoryRoots(),
+    });
+    if (scope === "skip") {
+      const count = repositorySkipLog.record(`${repoRoot ?? "unknown"}\0${reason}`);
+      if (count !== undefined) {
+        logInfo("repository refresh event skipped", { reason, repoRoot, count });
+      }
+      return;
+    }
     hiddenRepositoryRefresh.mark(reason, changesView.isVisible());
+    if (scope === "repository-list-only" && !changesView.isVisible()) {
+      return;
+    }
     if (
       !changesView.isVisible() &&
       !conflictsVisible &&
-      !(comparison.enabled && reason === "vscodeGit:identity")
+      !(comparison.enabled && scope === "active/full")
     ) {
       return;
     }
     // provider snapshot 자체가 최신 파일 목록이므로 state 이벤트는 캐시 세대를 다시 흔들지 않고 fast lane으로 보낸다.
-    if (reason !== "vscodeGit:state") {
+    if (scope === "active/full" && reason !== "vscodeGit:state") {
       invalidateStatusCachesForRefresh();
     }
     scheduleRefresh(reason, reason === "vscodeGit:state" ? 0 : undefined);
@@ -250,13 +277,23 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const refreshEverything = (reason: string): void => {
     const changesVisible = changesView.isVisible();
     hiddenRepositoryRefresh.mark(reason, changesVisible);
-    blockBlameCodeLens.refresh(reason);
-    blockBlamePresenter.refresh(reason);
     logInfo("refresh requested", {
       reason,
       changesVisible,
       conflictsVisible,
     });
+    const sections = changesRefreshSections(reason);
+    if (sections.length === 1 && sections[0] === "repositories") {
+      logInfo("refresh scoped to repository list", { reason });
+      if (changesVisible) {
+        void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+          reason,
+        });
+      }
+      return;
+    }
+    blockBlameCodeLens.refresh(reason);
+    blockBlamePresenter.refresh(reason);
     if (pendingClearAllBranchContent) {
       clearBranchContentCache();
       pendingClearAllBranchContent = false;
@@ -277,7 +314,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     if (
       reason
         .split(",")
-        .some((part) => part.trim() === "vscodeGit:identity")
+        .some((part) => part.trim() === "vscodeGit:head")
     ) {
       void refreshComparisonIdentity(comparison, changesView, reason).catch((error) => {
         logError("comparison identity refresh failed", error, { reason });
@@ -356,76 +393,29 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       refreshFileHistoryIfVisible("activeEditor")
     )
   );
-  const gitWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/.git/{HEAD,refs/**,packed-refs,MERGE_HEAD,REBASE_HEAD,CHERRY_PICK_HEAD,REVERT_HEAD,rebase-merge/**,rebase-apply/**,worktrees/**,info/exclude,hooks/**}"
-  );
-  const gitignoreWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/.gitignore"
-  );
-  const commonHooksWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/{.husky/**,.githooks/**}"
-  );
-  const scheduleRefreshForGitUri = (
-    event: "create" | "change" | "delete",
-    uri: vscode.Uri
-  ): void => {
-    const decision = shouldRefreshForGitPath(uri.fsPath);
-    if (!decision.refresh) {
-      if (shouldLogIgnoredRefresh(decision.reason)) {
-        logInfo("refresh event ignored", {
-          source: "git",
-          event,
-          path: uri.fsPath,
-          reason: decision.reason,
-        });
-      }
-      return;
-    }
-    invalidateStatusCachesForRefresh();
-    if (
-      decision.reason !== "ignore-rules" &&
-      decision.reason !== "commit-hooks"
-    ) {
-      const repoRoot = repoRootFromGitPath(uri.fsPath);
-      if (repoRoot) {
-        pendingBranchCacheRoots.add(repoRoot);
-        pendingGraphRefreshRoots.add(repoRoot);
-      } else {
-        pendingClearAllBranchContent = true;
-      }
-    }
-    scheduleRefresh(`git:${event}:${decision.reason}`);
-  };
-  const scheduleRefreshForIgnoreUri = (
-    event: "create" | "change" | "delete",
-    uri: vscode.Uri
-  ): void => {
-    logInfo("ignore rules refresh requested", { event, path: uri.fsPath });
-    invalidateStatusCachesForRefresh();
-    scheduleRefresh(`working-tree-file:${event}:ignore-rules`, 0);
-  };
-  connectRefreshWatcher(
-    gitWatcher,
-    scheduleRefreshForGitUri,
-    context.subscriptions
-  );
-  connectRefreshWatcher(
-    gitignoreWatcher,
-    scheduleRefreshForIgnoreUri,
-    context.subscriptions
-  );
-  connectRefreshWatcher(
-    commonHooksWatcher,
-    (event, uri) => {
-      logInfo("commit hooks refresh requested", { event, path: uri.fsPath });
-      scheduleRefresh(`custom-hook:${event}:commit-hooks`, 0);
+  const scheduleRefreshForGitUri = createGitMetadataRefreshHandler({
+    relevantRoots: relevantRepositoryRoots,
+    skipLog: repositorySkipLog,
+    invalidateStatus: invalidateStatusCachesForRefresh,
+    queueRepository: (repoRoot) => {
+      pendingBranchCacheRoots.add(repoRoot);
+      pendingGraphRefreshRoots.add(repoRoot);
     },
-    context.subscriptions
+    queueUnknownRepository: () => {
+      pendingClearAllBranchContent = true;
+    },
+    scheduleRefresh,
+  });
+  const gitWatcher = new FocusScopedRefreshWatcher(
+    FOCUSED_GIT_METADATA_GLOB,
+    scheduleRefreshForGitUri
   );
+  gitWatcher.setFocused(vscode.window.state.focused);
+  logInfo(`git metadata watcher ${
+    vscode.window.state.focused ? "resumed" : "suspended"
+  }`, { reason: "activation" });
   context.subscriptions.push(
     gitWatcher,
-    gitignoreWatcher,
-    commonHooksWatcher,
     new vscode.Disposable(() => {
       if (refreshTimer) {
         clearTimeout(refreshTimer);
@@ -433,13 +423,18 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     }),
     vscode.window.onDidChangeWindowState((state) => {
       if (!state.focused) {
+        if (gitWatcher.setFocused(false)) {
+          logInfo("git metadata watcher suspended", { reason: "window-unfocused" });
+        }
         return;
       }
+      if (gitWatcher.setFocused(true)) {
+        logInfo("git metadata watcher resumed", { reason: "window-focused" });
+      }
       const hadDeferredReason = pendingRefreshReasons.size > 0;
-      // Git API가 없거나 auto refresh가 꺼진 환경도 외부 편집/git add를 놓치지 않도록, 보이는 Changes는
-      // 포커스 복귀 때 workingChanges 한 영역만 CLI SoT로 확인한다. 정책에서 History/stash 등은 제외된다.
-      if (changesView.isVisible()) {
-        addRefreshReasons(pendingRefreshReasons, "windowFocused");
+      // watcher가 멈춘 동안의 HEAD/status/repository 누락은 보이는 소비자에 한해 한 번의 pass로 복구한다.
+      if (changesView.isVisible() || conflictsVisible || comparison.enabled) {
+        addRefreshReasons(pendingRefreshReasons, "windowFocusedReconcile");
       }
       if (pendingRefreshReasons.size === 0) {
         return;
