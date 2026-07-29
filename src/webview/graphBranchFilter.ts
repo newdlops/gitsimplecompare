@@ -30,6 +30,8 @@ export interface GraphBranchFilterSnapshot {
   selected: string[];
   compact: boolean;
   branches: GraphBranchFilterOption[];
+  remoteStatus: "pending" | "ready" | "error";
+  remoteError?: string;
 }
 
 /** 현재 필터 상태를 git log 호출과 ref 표시 필터링에 쓸 수 있게 해석한 값 */
@@ -67,14 +69,16 @@ export function normalizeBranchFilterState(
  */
 export function resolveBranchFilter(
   state: GraphBranchFilterState,
-  branchRefs: readonly GraphBranchRef[]
+  branchRefs: readonly GraphBranchRef[],
+  remoteStatus: "pending" | "ready" | "error" = "ready"
 ): ResolvedGraphBranchFilter {
   const known = new Set(branchRefs.map((branch) => branch.name));
   if (state.mode === "all") {
     return {
       mode: state.mode,
-      refs: [],
-      filtersRefs: false,
+      // 원격 카탈로그 전에는 명시적 로컬 refs만 사용해 첫 페이지가 remote scan을 기다리지 않는다.
+      refs: remoteStatus !== "ready" ? branchRefs.filter((branch) => branch.kind === "local").map((branch) => branch.name) : [],
+      filtersRefs: remoteStatus !== "ready",
       empty: false,
       visibleRefs: known,
     };
@@ -99,9 +103,11 @@ export function resolveBranchFilter(
 export function buildBranchFilterSnapshot(
   branchRefs: readonly GraphBranchRef[],
   localBranches: readonly LocalBranchStatus[],
-  state: GraphBranchFilterState
+  state: GraphBranchFilterState,
+  remoteStatus: "pending" | "ready" | "error" = "ready",
+  remoteError?: string
 ): GraphBranchFilterSnapshot {
-  const resolved = resolveBranchFilter(state, branchRefs);
+  const resolved = resolveBranchFilter(state, branchRefs, remoteStatus);
   const current = new Set(
     localBranches.filter((branch) => branch.current).map((branch) => branch.name)
   );
@@ -114,11 +120,12 @@ export function buildBranchFilterSnapshot(
     }));
   return {
     mode: state.mode,
-    selected: resolved.filtersRefs
-      ? branches.filter((branch) => branch.checked).map((branch) => branch.name)
-      : branches.map((branch) => branch.name),
+    // 아직 목록에 없는 remote custom selection도 hydration 전후에 잃지 않는다.
+    selected: state.mode === "custom" ? state.selected : branches.map((branch) => branch.name),
     compact: state.compact,
     branches,
+    remoteStatus,
+    remoteError,
   };
 }
 

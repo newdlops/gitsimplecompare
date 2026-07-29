@@ -2,6 +2,7 @@
 // - 그래프 UI 가 필요로 하는 커밋 목록과, 노드 클릭 시 보여줄 상세 정보를 제공한다.
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
+import { logInfo } from "../ui/outputLog";
 import { detectOperation } from "./conflictService";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import {
@@ -98,9 +99,7 @@ export class GitLogService {
       return [];
     }
     const safeSkip = Math.max(0, Math.floor(skip));
-    if (safeSkip === 0) {
-      this.invalidateCaches();
-    }
+    if (safeSkip === 0 && this.branchRefCache.getStats().indexedPages > 0) this.branchRefCache.invalidate();
     const refArgs = refs.length > 0 ? refs : ["--branches", "--remotes", "--tags"];
     const out = await runGit(
       [
@@ -117,6 +116,13 @@ export class GitLogService {
     );
 
     const commits = parseGitLogOutput(out);
+    const branchStats = this.branchRefCache.indexPage({ commits, skip: safeSkip, allRefs: refs.length === 0 });
+    logInfo("graph branch containment index page", {
+      repoRoot: this.repoRoot, skip: safeSkip, commits: commits.length,
+      snapshots: branchStats.snapshots, indexedPages: branchStats.indexedPages,
+      indexedCommits: branchStats.indexedCommits, fallbacks: branchStats.fallbacks,
+      incomplete: branchStats.incomplete,
+    });
     if (includeLocalOnlyBranches) {
       await this.attachLocalOnlyBranches(commits);
     }
@@ -193,6 +199,17 @@ export class GitLogService {
       .split("\n")
       .filter((line) => line.trim().length > 0)
       .map((line) => this.parseBranchStatus(line));
+  }
+
+  /**
+   * Graph가 이미 읽은 local/remote tip을 containment cache에 주입한다.
+   * - 같은 ref를 다시 읽지 않아 cold-start 첫 post와 background warmup을 분리한다.
+   * @param localStatus 현재 local branch status 조회 결과
+   * @param remoteTips remote catalog가 제공한 name/object ID 목록
+   */
+  seedGraphBranchTips(localStatus: readonly LocalBranchStatus[], remoteTips?: readonly { name: string; hash: string }[]): void {
+    this.branchRefCache.seedLocalBranches(localStatus);
+    if (remoteTips) this.branchRefCache.seedRemoteBranches(remoteTips);
   }
 
   /**
@@ -482,8 +499,38 @@ export class GitLogService {
 
   /** 브랜치 ref 와 로컬 전용 커밋 표시 캐시를 함께 비운다. */
   invalidateCaches(): void {
+    const branchStats = this.branchRefCache.getStats();
+    logInfo("graph branch containment index invalidated", {
+      repoRoot: this.repoRoot, generation: branchStats.generation,
+      snapshots: branchStats.snapshots, indexedPages: branchStats.indexedPages,
+      indexedCommits: branchStats.indexedCommits, fallbacks: branchStats.fallbacks,
+      incomplete: branchStats.incomplete,
+    });
     this.branchRefCache.invalidate();
     this.localOnlyBranchMapPromise = undefined;
+  }
+
+  /**
+   * 패널이 hidden/dispose된 동안 containment propagation이 새 task에서 시작하지 못하게 취소한다.
+   * @param reason OUTPUT에서 lifecycle 취소 원인을 확인할 문자열
+   * @returns 없음
+   */
+  cancelGraphBranchContainment(reason: string): void { this.branchRefCache.cancelWarmup(reason); }
+
+  /**
+   * checkout처럼 화면의 기존 DAG를 재사용할 때 새 ref snapshot으로 containment를 다시 만든다.
+   * @param commits 화면에 유지한 topo-order 커밋 목록
+   * @param skip 이 목록의 git log 시작 offset
+   * @param refs 화면이 사용 중인 명시 ref. 비어야 all-refs exact index가 된다.
+   */
+  async reindexGraphBranchContainment(commits: readonly Commit[], skip: number, refs: readonly string[]): Promise<void> {
+    const stats = this.branchRefCache.indexPage({ commits, skip, allRefs: refs.length === 0 });
+    logInfo("graph branch containment index reused", {
+      repoRoot: this.repoRoot, commits: commits.length, skip,
+      snapshots: stats.snapshots, indexedPages: stats.indexedPages,
+      indexedCommits: stats.indexedCommits, fallbacks: stats.fallbacks,
+      incomplete: stats.incomplete,
+    });
   }
 
   /**

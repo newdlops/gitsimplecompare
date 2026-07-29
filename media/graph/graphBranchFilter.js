@@ -6,7 +6,7 @@
   let buttonEl;
   let menuEl;
   let bound = false;
-  let snapshot = { mode: "all", selected: [], compact: true, branches: [] };
+  let snapshot = { mode: "all", selected: [], compact: true, branches: [], remoteStatus: "ready" };
   let branchQuery = "";
   let focusBranchSearch = false;
 
@@ -108,7 +108,7 @@
 
   /** 현재 체크된 브랜치 이름 목록을 읽는다. */
   function checkedBranches() {
-    const checked = new Map(snapshot.branches.map((branch) => [branch.name, branch.checked]));
+    const checked = new Map(snapshot.branches.map((branch) => [branch.name, snapshot.mode === "custom" ? snapshot.selected.includes(branch.name) : branch.checked]));
     menuEl.querySelectorAll("[data-branch-filter-checkbox]").forEach((input) => {
       checked.set(input.value, input.checked);
     });
@@ -138,6 +138,8 @@
       selected: Array.isArray(next?.selected) ? next.selected : [],
       compact: next?.compact !== false,
       branches: Array.isArray(next?.branches) ? next.branches : [],
+      remoteStatus: next?.remoteStatus || "ready",
+      remoteError: next?.remoteError || "",
     };
     render();
   }
@@ -179,6 +181,7 @@
         `<span>Visible branches</span>` +
         `<span>${esc(checkedCount)} / ${esc(snapshot.branches.length)}</span>` +
       `</div>` +
+      remoteStatusHtml() +
       `<div class="branch-filter-shortcuts">` +
         shortcutButton("select-all", "Select All", "Show every local and remote branch in the graph", snapshot.mode === "all") +
         shortcutButton("clear-all", "Clear All", "Hide every branch from the graph", snapshot.mode === "custom" && checkedCount === 0) +
@@ -189,6 +192,22 @@
         branches +
       `</div>`
     );
+  }
+
+  /** 원격 목록 hydration 상태를 비차단 안내로 렌더링한다. */
+  function remoteStatusHtml() {
+    if (snapshot.remoteStatus === "pending") {
+      return `<div class="branch-filter-empty" role="status">` +
+        `<span class="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"></span>` +
+        `<span>Loading remote branches…</span></div>`;
+    }
+    if (snapshot.remoteStatus === "error") {
+      const detail = snapshot.remoteError || "Refresh to retry remote branches.";
+      return `<div class="branch-filter-empty" role="status" title="${esc(detail)}" data-tooltip="${esc(detail)}">` +
+        `<span class="codicon codicon-warning" aria-hidden="true"></span>` +
+        `<span>Remote branches unavailable. Refresh to retry.</span></div>`;
+    }
+    return "";
   }
 
   /** 브랜치 선택 목록 검색 입력 HTML 을 만든다. */

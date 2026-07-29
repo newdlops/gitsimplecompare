@@ -23,6 +23,8 @@ export class GraphPullRequestPager {
   private hasMore = false;
   private loading = false;
   private repository = "";
+  private defaultBranch = "";
+  private activeRequest: AbortController | undefined;
   // 진행 중인 조회를 식별하는 세대 토큰. refresh 는 세대를 올려 이전 조회 결과를 무효화한다.
   // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
   private generation = 0;
@@ -35,6 +37,21 @@ export class GraphPullRequestPager {
   /** stack graph snapshot이 gh repo view 실패 시 재사용할 owner/name 저장소 이름을 반환한다. */
   get repositoryName(): string {
     return this.repository;
+  }
+
+  /** 마지막 성공 overview에서 받은 기본 branch를 stack snapshot hint로 반환한다. */
+  get defaultBranchName(): string {
+    return this.defaultBranch;
+  }
+
+  /** 패널 숨김·폐기·저장소 교체 시 진행 중인 gh 조회를 중단하고 세대를 무효화한다. */
+  cancel(reason: string): void {
+    if (!this.activeRequest) return;
+    this.activeRequest.abort();
+    this.activeRequest = undefined;
+    this.generation++;
+    this.loading = false;
+    logInfo("graph pull request request cancelled", { reason, generation: this.generation });
   }
 
   /**
@@ -51,10 +68,14 @@ export class GraphPullRequestPager {
     localBranches: LocalBranchStatus[],
     reason: string,
     post: PostGraphMessage
-  ): Promise<void> {
+  ): Promise<boolean> {
+    this.cancel("superseded");
     const generation = ++this.generation;
+    const controller = new AbortController();
+    this.activeRequest = controller;
     this.loading = true;
-    await this.fetchPage(repoRoot, localBranches, reason, post, undefined, "replace", generation);
+    logInfo("graph pull request request started", { repoRoot, reason, generation });
+    return this.fetchPage(repoRoot, localBranches, reason, post, undefined, "replace", generation, controller.signal);
   }
 
   /**
@@ -67,14 +88,16 @@ export class GraphPullRequestPager {
     repoRoot: string,
     localBranches: LocalBranchStatus[],
     post: PostGraphMessage
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (this.loading || !this.hasMore || !this.nextCursor) {
-      return;
+      return false;
     }
     // loadMore 는 세대를 올리지 않는다. 도중에 refresh 가 시작되면 세대가 어긋나 이 페이지 결과는 폐기된다.
     const generation = this.generation;
     this.loading = true;
-    await this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor, "append", generation);
+    const controller = new AbortController();
+    this.activeRequest = controller;
+    return this.fetchPage(repoRoot, localBranches, "loadMore", post, this.nextCursor, "append", generation, controller.signal);
   }
 
   /**
@@ -129,19 +152,20 @@ export class GraphPullRequestPager {
     post: PostGraphMessage,
     cursor: string | undefined,
     mode: "replace" | "append",
-    generation: number
-  ): Promise<void> {
+    generation: number,
+    signal: AbortSignal
+  ): Promise<boolean> {
     try {
       const service = new PullRequestService(repoRoot);
-      const overview = await service.getOverview(localBranches, cursor);
+      const overview = await service.getOverview(localBranches, cursor, signal);
       if (generation !== this.generation) {
-        logInfo("graph pull request overview discarded", {
+        logInfo("graph pull request stale skip", {
           repoRoot,
           reason,
           generation,
           current: this.generation,
         });
-        return;
+        return false;
       }
       if (overview.available) {
         // 성공 시에만 상태를 갱신한다. replace 는 첫 페이지로 교체, append 는 기존 목록 뒤에 병합한다.
@@ -151,6 +175,7 @@ export class GraphPullRequestPager {
         this.nextCursor = overview.nextCursor;
         this.hasMore = overview.hasMore;
         this.repository = overview.repository || this.repository;
+        this.defaultBranch = overview.defaultBranch || this.defaultBranch;
       }
       post({ type: "pullRequestOverview", overview: { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor } });
       logInfo("graph pull request overview sent", {
@@ -161,11 +186,19 @@ export class GraphPullRequestPager {
         totalCount: this.pullRequests.length,
         hasMore: this.hasMore,
       });
+      return true;
+    } catch (error) {
+      if (signal.aborted || isAbortError(error)) {
+        logInfo("graph pull request request cancelled", { repoRoot, reason, generation });
+        return false;
+      }
+      throw error;
     } finally {
       // 현재 세대의 조회만 loading 을 해제한다(더 최신 refresh 가 소유권을 가진 경우 건드리지 않음).
       if (generation === this.generation) {
         this.loading = false;
       }
+      if (this.activeRequest?.signal === signal) this.activeRequest = undefined;
     }
   }
 }
@@ -182,11 +215,21 @@ export async function sendGraphPullRequestStacks(
   repoRoot: string,
   pullRequests: PullRequestInfo[],
   repositoryHint: string,
+  defaultBranchHint: string,
+  signal: AbortSignal | undefined,
   post: PostGraphMessage
 ): Promise<void> {
   try {
+    if (signal?.aborted) return;
+    logInfo(repositoryHint && defaultBranchHint
+      ? "graph pull request stack metadata reused"
+      : "graph pull request stack metadata fallback", { repoRoot, repositoryHint, defaultBranchHint });
     const snapshot = await new PullRequestStackService(repoRoot)
-      .getGraphSnapshot(pullRequests, repositoryHint);
+      .getGraphSnapshot(pullRequests, repositoryHint, defaultBranchHint, signal);
+    if (signal?.aborted) {
+      logInfo("graph pull request stack stale skip", { repoRoot });
+      return;
+    }
     post({ type: "pullRequestStackSnapshot", snapshot });
     logInfo("graph pull request stack snapshot sent", {
       repoRoot,
@@ -196,10 +239,21 @@ export async function sendGraphPullRequestStacks(
       localLayers: snapshot.layers.filter((layer) => layer.local).length,
     });
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      logInfo("graph pull request stack cancelled", { repoRoot });
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     post({ type: "pullRequestStackError", message });
     logError("graph pull request stack snapshot failed", error, { repoRoot });
   }
+}
+
+/** gh CLI의 취소 오류와 DOM AbortError를 일반 오류 UI에서 제외한다. */
+function isAbortError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as Error & { code?: unknown }).code;
+  return error.name === "AbortError" || code === "ABORTED" || code === "ABORT_ERR";
 }
 
 /**

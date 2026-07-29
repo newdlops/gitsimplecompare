@@ -41,6 +41,35 @@ const GRAPH_BUSY_BUTTON_IDS: Record<string, string> = {
   forcePush: "force-push-graph",
 };
 
+/** 숨김 상태에서 합칠 외부 graph refresh의 최소 정보. */
+export interface DeferredGraphRefresh { repoRoot: string; reason: string; refreshPullRequests: boolean; }
+
+/**
+ * panel이 숨겨진 동안 발생한 refresh를 저장소별 한 건으로 병합한다.
+ * - PR 목록을 다시 읽어야 하는 강한 원인은 stack-only 원인보다 우선한다.
+ */
+export class GraphVisibilityRefreshCoalescer {
+  private pending: DeferredGraphRefresh | undefined;
+
+  /** 새 refresh를 보류하거나 같은 저장소의 기존 보류 요청에 합친다. */
+  defer(repoRoot: string, reason: string, refreshPullRequests: boolean): "deferred" | "coalesced" {
+    if (this.pending?.repoRoot === repoRoot) {
+      this.pending.refreshPullRequests ||= refreshPullRequests;
+      this.pending.reason = refreshPullRequests ? reason : this.pending.reason;
+      return "coalesced";
+    }
+    this.pending = { repoRoot, reason, refreshPullRequests };
+    return "deferred";
+  }
+
+  /** reveal 시 현재 저장소와 일치하는 보류 요청 한 건만 소비한다. */
+  take(repoRoot: string): DeferredGraphRefresh | undefined {
+    const pending = this.pending;
+    this.pending = undefined;
+    return pending?.repoRoot === repoRoot ? pending : undefined;
+  }
+}
+
 /**
  * 웹뷰 액션이 직접 지정한 busy 버튼 id를 안전하게 읽는다.
  * @param message 웹뷰에서 받은 protocol 메시지
@@ -91,6 +120,7 @@ export interface GraphPanelMessageRouterDeps {
 export class GraphPanelMessageRouter {
   private readonly pullRequestPager = new GraphPullRequestPager();
   private readonly commitDetails = new GraphCommitDetailSender();
+  private pullRequestRequest: AbortController | undefined;
 
   constructor(private readonly deps: GraphPanelMessageRouterDeps) {}
 
@@ -104,12 +134,29 @@ export class GraphPanelMessageRouter {
    * - branch 생성/restack처럼 GitHub 목록을 다시 읽지 않아도 되는 mutation 뒤에 사용한다.
    */
   async sendPullRequestStacks(): Promise<void> {
-    await sendGraphPullRequestStacks(
-      this.repoRoot,
-      this.pullRequestPager.items,
-      this.pullRequestPager.repositoryName,
-      this.deps.post
-    );
+    const ownsRequest = !this.pullRequestRequest;
+    const controller = this.pullRequestRequest ?? new AbortController();
+    this.pullRequestRequest = controller;
+    try {
+      await sendGraphPullRequestStacks(
+        this.repoRoot,
+        this.pullRequestPager.items,
+        this.pullRequestPager.repositoryName,
+        this.pullRequestPager.defaultBranchName,
+        controller.signal,
+        this.deps.post
+      );
+    } finally {
+      if (ownsRequest && this.pullRequestRequest === controller) this.pullRequestRequest = undefined;
+    }
+  }
+
+  /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
+  cancelPullRequestLoading(reason: string): void {
+    this.pullRequestRequest?.abort();
+    this.pullRequestRequest = undefined;
+    this.pullRequestPager.cancel(reason);
+    logInfo("graph pull request lifecycle cancelled", { repoRoot: this.repoRoot, reason });
   }
 
   /**
@@ -117,13 +164,21 @@ export class GraphPanelMessageRouter {
    * @param reason OUTPUT 로그와 stale generation 식별에 남길 갱신 원인
    */
   async refreshPullRequests(reason: string): Promise<void> {
-    await this.pullRequestPager.refresh(
+    this.cancelPullRequestLoading("superseded");
+    const controller = new AbortController();
+    this.pullRequestRequest = controller;
+    const refreshed = await this.pullRequestPager.refresh(
       this.repoRoot,
       this.deps.localBranches(),
       reason,
       this.deps.post
     );
+    if (!refreshed || controller.signal.aborted || this.pullRequestRequest !== controller) {
+      logInfo("graph pull request stack stale skip", { repoRoot: this.repoRoot, reason });
+      return;
+    }
     await this.sendPullRequestStacks();
+    if (this.pullRequestRequest === controller) this.pullRequestRequest = undefined;
   }
 
   /**
