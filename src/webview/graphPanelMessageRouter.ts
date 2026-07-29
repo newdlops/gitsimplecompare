@@ -237,14 +237,9 @@ export class GraphPanelMessageRouter {
     } else if (message.type === "refreshPullRequestDetail") {
       await sendGraphPullRequestDetail(this.repoRoot, message.number, this.deps.post);
     } else if (message.type === "openPullRequest") {
-      openGraphPullRequest(this.deps.extensionUri, this.repoRoot, this.pullRequestPager.items, message.number);
+      await openGraphPullRequest(this.repoRoot, this.pullRequestPager.items, message.number);
     } else if (message.type === "previewStagedPullRequest") {
-      openStagedPullRequestPreview(
-        this.deps.extensionUri,
-        this.repoRoot,
-        this.pullRequestPager.items,
-        message.number
-      );
+      openStagedPullRequestPreview(this.deps.extensionUri, this.repoRoot);
     } else if (message.type === "openPullRequestFileDiff") {
       await openGraphPullRequestFileDiff(
         this.repoRoot,

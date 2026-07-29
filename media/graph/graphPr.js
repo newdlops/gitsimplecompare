@@ -113,14 +113,6 @@
       window.GscGraphPostMessage?.({ type: "openPullRequest", number: Number(open.dataset.openPr) });
       return;
     }
-    const preview = event.target.closest?.("[data-preview-pr]");
-    if (preview) {
-      window.GscGraphPostMessage?.({
-        type: "previewStagedPullRequest",
-        number: Number(preview.dataset.previewPr),
-      });
-      return;
-    }
     const overviewButton = event.target.closest?.("[data-pr-overview]");
     if (overviewButton) {
       showOverviewDetail(false);
@@ -310,7 +302,7 @@
 	      `<div class="pr-actions">` +
 	      (window.GscGraphPrActions?.directButtons?.(pr.number) || "") +
 	      rowJumpButton(pr.number) +
-	      openButton(pr.number, reviewCenterTitle(pr.number)) +
+	      openButton(pr.number, openPullRequestTitle(pr.number)) +
 	      `</div>` +
 	      `</article>`;
   }
@@ -352,7 +344,7 @@
       `<h2>#${pr.number} ${esc(pr.title)}</h2></div>` +
       prMetaHtml(pr) +
       `<div class="pr-actions">` +
-      openButton(pr.number, reviewCenterTitle(pr.number)) +
+      openButton(pr.number, openPullRequestTitle(pr.number)) +
       (window.GscGraphPrActions?.button?.(pr.number) || "") +
       `</div>` +
       `</section>` +
@@ -459,21 +451,15 @@
       `<span class="codicon codicon-target" aria-hidden="true"></span></button>`;
   }
 
-  /** Review Center를 여는 버튼 HTML을 만든다. */
+  /** GitHub에서 PR을 여는 버튼 HTML을 만든다. */
   function openButton(number, title) {
     return `<button type="button" class="pr-icon-action" data-open-pr="${number}" ${tooltipAttrs(title)}>` +
-      `<span class="codicon codicon-comment-discussion" aria-hidden="true"></span></button>`;
+      `<span class="codicon codicon-link-external" aria-hidden="true"></span></button>`;
   }
 
-  /** host가 주입한 번역 template으로 Graph PR의 Review Center 진입 tooltip을 만든다. */
-  function reviewCenterTitle(number) {
-    return String(window.GscPrStackI18n?.openReviewCenter || "").replace("{0}", String(number));
-  }
-
-  /** staged PR preview 버튼 HTML 을 만든다. */
-  function previewButton(number, title) {
-    return `<button type="button" class="pr-icon-action" data-preview-pr="${number}" ${tooltipAttrs(title)}>` +
-      `<span class="codicon codicon-preview" aria-hidden="true"></span></button>`;
+  /** host가 주입한 번역 template으로 GitHub PR 열기 tooltip을 만든다. */
+  function openPullRequestTitle(number) {
+    return String(window.GscPrStackI18n?.openPullRequest || "").replace("{0}", String(number));
   }
 
   /** 섹션 제목과 우측 icon count 묶음을 만든다. */

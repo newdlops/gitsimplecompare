@@ -10,24 +10,16 @@ import {
   PullRequestInfo,
   PullRequestService,
 } from "../git/pullRequestService";
-import { logError, logInfo } from "../ui/outputLog";
+import { logError, logInfo, logWarn } from "../ui/outputLog";
 import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
-import { nonceValue } from "./nonce";
-import {
-  sharedWebviewResources,
-  sharedWebviewScriptTags,
-  sharedWebviewStyleTags,
-} from "./sharedWebviewResources";
 import {
   PullRequestPreviewPublisher,
   type PullRequestPreviewPublishMessage,
 } from "./pullRequestPreviewPublish";
-import { pullRequestPreviewScript } from "./pullRequestPreviewScript";
-import { pullRequestPreviewStyles } from "./pullRequestPreviewStyles";
-import { ReviewCenterPanel } from "./reviewCenterPanel";
+import { buildPullRequestPreviewHtml } from "./pullRequestPreviewHtml";
 
 type PreviewMessage =
   | { type: "ready" }
@@ -101,10 +93,10 @@ export class PullRequestPreviewPanel {
         this.existingPr = result.pullRequest;
         this.baseBranch = result.pullRequest.baseRefName;
         this.sourceBranch = result.pullRequest.headRefName;
-        this.openExistingReview();
+        await this.sendPreview();
       }
     );
-    this.panel.webview.html = this.html();
+    this.panel.webview.html = buildPullRequestPreviewHtml(this.extensionUri, this.panel.webview);
     this.panel.webview.onDidReceiveMessage(
       (msg: PreviewMessage) => this.handleMessage(msg),
       undefined,
@@ -173,7 +165,7 @@ export class PullRequestPreviewPanel {
       return;
     }
     if (msg.type === "openExistingPr") {
-      this.openExistingReview();
+      await this.openExistingPullRequest();
       return;
     }
     if (msg.type === "generatePullRequestMessage") {
@@ -265,6 +257,7 @@ export class PullRequestPreviewPanel {
   /** staged preview 데이터를 읽어 웹뷰에 보낸다. */
   private async sendPreview(): Promise<void> {
     const requestSeq = ++this.previewRequestSeq;
+    this.post({ type: "previewLoading" });
     try {
       const preview = await this.service.getStagedPreview(
         this.baseBranch,
@@ -358,107 +351,27 @@ export class PullRequestPreviewPanel {
     }
   }
 
-  /** preview 웹뷰 HTML 을 만든다. */
-  private html(): string {
-    const nonce = nonceValue();
-    const sharedResources = sharedWebviewResources(
-      this.panel.webview,
-      this.extensionUri
-    );
-    const generatePrMessageTitle = vscode.l10n.t(
-      "Generate AI pull request message"
-    );
-    const configureAiCliTitle = vscode.l10n.t("Configure AI CLI");
-    const noPrMessageTitle = vscode.l10n.t(
-      "No pull request message to copy"
-    );
-    const publishPrTitle = vscode.l10n.t("Create Pull Request on GitHub");
-    const openPrTitle = vscode.l10n.t("Open existing review in Review Center");
-    const previewScript = pullRequestPreviewScript({
-      ready: publishPrTitle,
-      busy: vscode.l10n.t("Publishing Pull Request to GitHub..."),
-      existing: vscode.l10n.t("A Pull Request already exists for this source branch"),
-      selectTarget: vscode.l10n.t("Select a target branch before creating a Pull Request"),
-      selectLocalSource: vscode.l10n.t("Select a local source branch before creating a Pull Request"),
-      missingMessage: vscode.l10n.t("Generate a Pull Request title before publishing"),
-      noChanges: vscode.l10n.t("No changes to publish as a Pull Request"),
-      updating: vscode.l10n.t("Wait for the Pull Request preview to finish updating"),
-    });
-    const codiconUri = this.panel.webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", "codicons", "codicon.css")
-    );
-    const csp = [
-      `default-src 'none'`,
-      `style-src ${this.panel.webview.cspSource} 'nonce-${nonce}'`,
-      `script-src 'nonce-${nonce}'`,
-      `font-src ${this.panel.webview.cspSource}`,
-    ].join("; ");
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" />
-      <meta http-equiv="Content-Security-Policy" content="${csp}" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <link href="${codiconUri}" rel="stylesheet" />
-      ${sharedWebviewStyleTags(sharedResources)}
-      <style nonce="${nonce}">${pullRequestPreviewStyles()}</style>
-      <title>Staged PR Preview</title></head><body class="gsc-surface">
-      <header class="topbar">
-        <div class="topbar-title">
-          <span class="codicon codicon-git-pull-request" aria-hidden="true"></span>
-          <h1>Pull request preview</h1>
-        </div>
-        <div class="actions">
-          <button id="refresh" class="icon-button" type="button" title="Refresh staged PR preview"
-            aria-label="Refresh staged PR preview" data-tooltip="Refresh staged PR preview">
-            <span class="codicon codicon-refresh" aria-hidden="true"></span>
-          </button>
-          <button id="generate-pr-message" class="icon-button" type="button" title="${generatePrMessageTitle}"
-            aria-label="${generatePrMessageTitle}" data-tooltip="${generatePrMessageTitle}">
-            <span class="codicon codicon-comment-discussion-sparkle" aria-hidden="true"></span>
-          </button>
-          <button id="configure-ai-cli" class="icon-button" type="button" title="${configureAiCliTitle}"
-            aria-label="${configureAiCliTitle}" data-tooltip="${configureAiCliTitle}">
-            <span class="codicon codicon-settings-gear" aria-hidden="true"></span>
-          </button>
-          <button id="copy-pr-message" class="icon-button" type="button" title="${noPrMessageTitle}"
-            aria-label="${noPrMessageTitle}" data-tooltip="${noPrMessageTitle}" disabled>
-            <span class="codicon codicon-copy" aria-hidden="true"></span>
-          </button>
-          <button id="publish-pr" class="icon-button publish-button" type="button" title="${publishPrTitle}"
-            aria-label="${publishPrTitle}" data-tooltip="${publishPrTitle}" disabled>
-            <span class="codicon codicon-cloud-upload" aria-hidden="true"></span>
-            <span class="publish-label">${vscode.l10n.t("Create Pull Request")}</span>
-          </button>
-          <button id="open-pr" class="icon-button" type="button" title="${openPrTitle}"
-            aria-label="${openPrTitle}" data-tooltip="${openPrTitle}" hidden>
-            <span class="codicon codicon-comment-discussion" aria-hidden="true"></span>
-          </button>
-        </div>
-      </header>
-      <main id="content"><p class="placeholder">Loading...</p></main>
-      ${sharedWebviewScriptTags(sharedResources, nonce)}
-      <script nonce="${nonce}">${previewScript}</script>
-    </body></html>`;
-  }
-
   /** 타입이 보장된 메시지를 웹뷰로 보낸다. */
   private post(message: unknown): void {
     void this.panel.webview.postMessage(message);
   }
 
-  /** 기존 PR 또는 새로 publish한 PR을 유일한 리뷰 작업면으로 열고 creation preview는 닫는다. */
-  private openExistingReview(): void {
+  /** 기존 PR URL을 기본 브라우저로 열고 Preview 패널은 유지한다. */
+  private async openExistingPullRequest(): Promise<void> {
     const pullRequest = this.existingPr;
-    if (!pullRequest?.number) {
+    if (!pullRequest?.number || !pullRequest.url) {
+      vscode.window.showWarningMessage(vscode.l10n.t("Unable to open Pull Request #{0} on GitHub.", pullRequest?.number ?? ""));
+      logWarn("PR preview existing pull request open skipped: missing URL", { repoRoot: this.service.repoRoot, number: pullRequest?.number, reason: "missing-url" });
       return;
     }
-    ReviewCenterPanel.createOrShow(
-      this.extensionUri,
-      this.service.repoRoot,
-      pullRequest.number
-    );
-    logInfo("PR preview transitioned to review center", {
-      number: pullRequest.number,
-    });
-    this.panel.dispose();
+    try {
+      const opened = await vscode.env.openExternal(vscode.Uri.parse(pullRequest.url));
+      if (!opened) throw new Error(vscode.l10n.t("Unable to open Pull Request #{0} on GitHub.", pullRequest.number));
+      logInfo("PR preview existing pull request opened in browser", { repoRoot: this.service.repoRoot, number: pullRequest.number, url: pullRequest.url });
+    } catch (error) {
+      logError("PR preview existing pull request open failed", error, { repoRoot: this.service.repoRoot, number: pullRequest.number, url: pullRequest.url });
+      void vscode.window.showErrorMessage(vscode.l10n.t("Unable to open Pull Request #{0} on GitHub.", pullRequest.number));
+    }
   }
 
   /** 현재 선택된 source/target 이 기존 PR 의 head/base 와 같은지 확인한다. */

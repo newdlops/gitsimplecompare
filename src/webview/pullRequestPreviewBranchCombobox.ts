@@ -10,18 +10,18 @@ export function pullRequestPreviewBranchComboboxScript(): string {
     function branchControl(id, role, caption, label, selected, branches, placeholder) {
       const values = Array.from(new Set([selected].concat(branches || []))).filter(Boolean);
       const listId = id + '-list';
-      const options = values.map((branch) => branchOptionHtml(branch, branch === selected)).join('');
+      const options = values.map((branch, index) => branchOptionHtml(id, index, branch, branch === selected)).join('') || '<div class="branch-combo-empty" role="status">' + esc(publishText.noMatchingBranches) + '</div>';
       const toggleTitle = branchToggleTooltip(role, false);
       return '<div class="branch-combo" data-branch-combo="' + esc(role) + '">' +
         '<label class="branch-combo-label" for="' + esc(id) + '">' + esc(caption) + '</label>' +
-        '<div class="branch-combobox" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="' + esc(listId) + '">' +
-          '<input id="' + esc(id) + '" class="branch-combo-input" type="text" value="' + esc(selected) + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false" title="' + esc(label) + '" aria-label="' + esc(label) + '" data-branch-role="' + esc(role) + '" data-branch-selected="' + esc(selected) + '">' +
+        '<div class="branch-combobox">' +
+          '<input id="' + esc(id) + '" class="branch-combo-input" type="text" value="' + esc(selected) + '" placeholder="' + esc(placeholder || '') + '" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="' + esc(listId) + '" aria-autocomplete="list" title="' + esc(label) + '" aria-label="' + esc(label) + '" data-branch-role="' + esc(role) + '" data-branch-selected="' + esc(selected) + '">' +
           '<button class="branch-combo-toggle" type="button" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '" aria-expanded="false" data-branch-toggle="' + esc(role) + '"><span class="codicon codicon-chevron-down" aria-hidden="true"></span></button>' +
           '<div id="' + esc(listId) + '" class="branch-combo-list" role="listbox" hidden>' + options + '</div>' +
         '</div></div>';
     }
-    function branchOptionHtml(branch, selected) {
-      return '<button class="branch-combo-option' + (selected ? ' active' : '') + '" type="button" role="option" aria-selected="' + (selected ? 'true' : 'false') + '" title="' + esc(branch) + '" aria-label="' + esc(branch) + '" data-branch-value="' + esc(branch) + '">' + esc(branch) + '</button>';
+    function branchOptionHtml(comboId, index, branch, selected) {
+      return '<button id="' + esc(comboId) + '-option-' + index + '" class="branch-combo-option' + (selected ? ' active' : '') + '" type="button" role="option" aria-selected="' + (selected ? 'true' : 'false') + '" title="' + esc(branch) + '" aria-label="' + esc(branch) + '" data-branch-value="' + esc(branch) + '">' + esc(branch) + '</button>';
     }
     function bindPreviewBranches() {
       content.querySelectorAll('[data-branch-combo]').forEach((combo) => bindBranchCombo(combo));
@@ -85,20 +85,22 @@ export function pullRequestPreviewBranchComboboxScript(): string {
       vscode.postMessage({ type: 'setPreviewBranch', role, branch });
     }
     function openBranchCombo(combo) {
-      filterBranchOptions(combo);
+      if (!isBranchComboOpen(combo)) filterBranchOptions(combo);
       combo.querySelector('.branch-combo-list')?.removeAttribute('hidden');
-      combo.querySelector('.branch-combobox')?.setAttribute('aria-expanded', 'true');
+      combo.querySelector('.branch-combo-input')?.setAttribute('aria-expanded', 'true');
       syncBranchToggleTooltip(combo, true);
     }
     function closeBranchCombo(combo) {
       combo.querySelector('.branch-combo-list')?.setAttribute('hidden', '');
-      combo.querySelector('.branch-combobox')?.setAttribute('aria-expanded', 'false');
+      combo.querySelector('.branch-combo-input')?.setAttribute('aria-expanded', 'false');
+      combo.querySelector('.branch-combo-input')?.removeAttribute('aria-activedescendant');
       syncBranchToggleTooltip(combo, false);
       combo.querySelectorAll('.branch-combo-option.keyboard').forEach((item) => item.classList.remove('keyboard'));
     }
     /** 브랜치 역할과 펼침 상태를 조합해 토글 버튼이 실행할 다음 동작을 설명한다. */
     function branchToggleTooltip(role, expanded) {
-      return (expanded ? 'Hide ' : 'Show ') + String(role || 'branch') + ' branch options';
+      const roleLabel = role === 'source' ? publishText.sourceRole : role === 'target' ? publishText.targetRole : String(role || 'branch');
+      return template(expanded ? publishText.hideBranchOptions : publishText.showBranchOptions, roleLabel);
     }
     /** 브랜치 목록의 열림 상태를 hover 툴팁과 스크린리더 상태에 함께 반영한다. */
     function syncBranchToggleTooltip(combo, expanded) {
@@ -124,6 +126,11 @@ export function pullRequestPreviewBranchComboboxScript(): string {
         if (matched && !first) first = option;
       });
       first?.classList.add('keyboard');
+      const empty = combo.querySelector('.branch-combo-empty') || document.createElement('div');
+      empty.className = 'branch-combo-empty'; empty.setAttribute('role', 'status'); empty.textContent = publishText.noMatchingBranches;
+      if (!first && !combo.querySelector('.branch-combo-empty')) combo.querySelector('.branch-combo-list')?.append(empty);
+      if (first) { combo.querySelector('.branch-combo-input')?.setAttribute('aria-activedescendant', first.id); empty.remove(); }
+      else combo.querySelector('.branch-combo-input')?.removeAttribute('aria-activedescendant');
     }
     function firstVisibleBranchOption(combo) {
       return Array.from(combo.querySelectorAll('.branch-combo-option')).find((option) => option.dataset.filtered !== 'true');
@@ -132,13 +139,14 @@ export function pullRequestPreviewBranchComboboxScript(): string {
       return Array.from(combo.querySelectorAll('.branch-combo-option')).find((option) => option.dataset.branchValue === value);
     }
     function moveBranchKeyboardSelection(combo, delta) {
-      openBranchCombo(combo);
+      if (!isBranchComboOpen(combo)) openBranchCombo(combo);
       const visible = Array.from(combo.querySelectorAll('.branch-combo-option')).filter((option) => option.dataset.filtered !== 'true');
       if (!visible.length) return;
       const current = visible.findIndex((option) => option.classList.contains('keyboard'));
       const next = visible[(current + delta + visible.length) % visible.length];
       visible.forEach((option) => option.classList.remove('keyboard'));
       next.classList.add('keyboard');
+      combo.querySelector('.branch-combo-input')?.setAttribute('aria-activedescendant', next.id);
       next.scrollIntoView({ block: 'nearest' });
     }
   `;

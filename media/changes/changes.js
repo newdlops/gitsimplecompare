@@ -20,8 +20,6 @@
       resizeRegions: "Resize {0} and {1}",
       compareBranches: "Compare Branches",
       changes: "Changes",
-      reviews: "Reviews",
-      sidebarNavigation: "Git Simple Compare navigation",
       current: "current",
       from: "From:",
       to: "To:",
@@ -317,7 +315,8 @@
       `title="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
       `<span class="twistie codicon codicon-chevron-down"></span>` +
       `<span class="title">${esc(title)}</span>${countHtml}${conflictHtml}</button>${actions}` +
-      `<div id="section-body-${esc(id)}" class="section-body">${bodyHtml}</div></div>`
+      // 확장된 본문은 native 키보드 스크롤을 위해 직접 Tab으로 포커스할 수 있다.
+      `<div id="section-body-${esc(id)}" class="section-body" tabindex="0">${bodyHtml}</div></div>`
     );
   }
 
@@ -649,19 +648,6 @@
     vscode.postMessage(Object.assign({ type }, extra));
   }
 
-  /** Changes/Reviews contributed view를 전환하는 공통 sidebar navigation을 만든다. */
-  function primaryNavigation() {
-    return window.__gscSidebarShell.renderPrimaryNavigation({
-      mode: "changes",
-      labels: {
-        navigation: T.sidebarNavigation,
-        changes: T.changes,
-        reviews: T.reviews,
-      },
-      onSelect: (mode) => post("selectSidebarMode", { mode }),
-    });
-  }
-
   // History의 HTML 생성을 별도 module로 유지해 이 파일은 상태 조정과 event binding에 집중한다.
   const { bindHistory, historyBody } = window.__gscChangesHistory({
     strings: T,
@@ -745,7 +731,6 @@
       ),
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
-    rootEl.prepend(primaryNavigation());
     window.__gscChangesInformationArchitecture?.organize(rootEl, T);
 
     applyFileIconGlyphStyles();

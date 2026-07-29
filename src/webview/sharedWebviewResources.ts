@@ -4,11 +4,10 @@ import * as vscode from "vscode";
 import { instantTooltipResources } from "./instantTooltipResources";
 import { resourceVersion, withVersion } from "./webviewResourceVersion";
 
-const SHARED_STYLE_FILES = ["reset.css", "tokens.css", "controls.css", "navigation.css", "data-display.css", "feedback.css", "layout.css"];
+const SHARED_STYLE_FILES = ["reset.css", "tokens.css", "controls.css", "data-display.css", "feedback.css", "layout.css"];
 const SHARED_SCRIPT_FILES = [
   "a11y.js",
   "dom.js",
-  "sidebarShell.js",
   "keyboard.js",
   "overlay.js",
   "persistedState.js",

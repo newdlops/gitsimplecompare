@@ -131,7 +131,6 @@ export function buildGraphHtml(
     addFirstLayer: vscode.l10n.t("Add the first stack layer"),
     showAll: vscode.l10n.t("Show all pull request stacks"),
     openPullRequest: vscode.l10n.t("Open pull request #{0} in browser"),
-    openReviewCenter: vscode.l10n.t("Open pull request #{0} in Review Center"),
     showChild: vscode.l10n.t("Show child layer {0}"),
     showLayer: vscode.l10n.t("Show stack layer {0}"),
   }).replace(/</g, "\\u003c");

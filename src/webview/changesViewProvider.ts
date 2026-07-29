@@ -438,15 +438,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.lastRenderPayloadJson = "";
       this.render();
       this.requestRefresh("viewReady");
-    } else if (
-      msg.type === "selectSidebarMode" &&
-      (msg.mode === "changes" || msg.mode === "reviews")
-    ) {
-      void vscode.commands.executeCommand(
-        msg.mode === "changes"
-          ? "gitSimpleCompare.showChanges"
-          : "gitSimpleCompare.showReviews"
-      );
     } else if (msg.type === "selectRepo" && msg.root) {
       this.selectRepo(msg.root);
     } else if (msg.type === "changeRef" && msg.side) {

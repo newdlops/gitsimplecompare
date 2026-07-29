@@ -9,10 +9,9 @@ import {
   resolvePreviewHeadRef,
   resolvePreviewTargetRef,
 } from "../git/pullRequestPreviewTarget";
-import { logError, logInfo } from "../ui/outputLog";
+import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { openPullRequestPreviewDiff } from "../ui/pullRequestPreviewDiff";
 import { PullRequestPreviewPanel } from "./pullRequestPreviewPanel";
-import { ReviewCenterPanel } from "./reviewCenterPanel";
 import { ToWebviewMessage } from "./graphProtocol";
 
 type PostGraphMessage = (message: ToWebviewMessage) => void;
@@ -232,23 +231,30 @@ export async function sendGraphPullRequestDetail(
 }
 
 /**
- * Graph의 PR 행을 동일한 Review Center 작업공간으로 연다.
- * - Graph는 commit 관계 탐색을 유지하고, 실제 리뷰·관리 작업은 Review Center가 단일 책임으로 맡는다.
+ * Graph의 PR 행에 연결된 외부 GitHub URL을 연다.
+ * - Graph는 commit 관계 탐색을 유지하고, 기존 Pull Request는 기본 브라우저에서 확인한다.
  * @param pullRequests 마지막으로 조회한 PR 목록
  * @param number       열 PR 번호
  */
-export function openGraphPullRequest(
-  extensionUri: vscode.Uri,
+export async function openGraphPullRequest(
   repoRoot: string,
   pullRequests: PullRequestInfo[],
   number: number
-): void {
-  if (!pullRequests.some((item) => item.number === number)) {
+): Promise<void> {
+  const pullRequest = pullRequests.find((item) => item.number === number);
+  if (!pullRequest) {
     vscode.window.showWarningMessage(vscode.l10n.t("Pull request #{0} is not loaded.", number));
+    logWarn("graph pull request open skipped: not loaded", { repoRoot, number });
     return;
   }
-  ReviewCenterPanel.createOrShow(extensionUri, repoRoot, number);
-  logInfo("graph pull request opened in review center", { repoRoot, number });
+  if (!pullRequest.url) {
+    vscode.window.showWarningMessage(vscode.l10n.t("Unable to open Pull Request #{0} on GitHub.", number));
+    logWarn("graph pull request open skipped: missing URL", { repoRoot, number, reason: "missing-url" });
+    return;
+  }
+  const opened = await vscode.env.openExternal(vscode.Uri.parse(pullRequest.url));
+  if (!opened) throw new Error(vscode.l10n.t("Unable to open Pull Request #{0} on GitHub.", number));
+  logInfo("graph pull request opened in browser", { repoRoot, number, url: pullRequest.url });
 }
 
 /**
@@ -306,16 +312,8 @@ export async function openGraphPullRequestFileDiff(
  */
 export function openStagedPullRequestPreview(
   extensionUri: vscode.Uri,
-  repoRoot: string,
-  pullRequests: PullRequestInfo[],
-  number?: number
+  repoRoot: string
 ): void {
-  const pr = pullRequests.find((item) => item.number === number);
-  if (pr) {
-    ReviewCenterPanel.createOrShow(extensionUri, repoRoot, pr.number);
-    logInfo("existing graph pull request redirected to review center", { repoRoot, number: pr.number });
-    return;
-  }
   PullRequestPreviewPanel.createOrShow(
     extensionUri,
     new PullRequestService(repoRoot),

@@ -100,10 +100,11 @@ body {
 }
 
 .section-header:focus-visible,
+.section-body:focus-visible,
 .group-toggle:focus-visible,
 .header-action:focus-visible,
 .group-action:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
+  outline: 1px solid var(--vscode-focusBorder, Highlight);
   outline-offset: -1px;
 }
 

@@ -7,7 +7,6 @@
  */
 export interface ChangesWebviewMessage {
   type: string;
-  mode?: "changes" | "reviews";
   side?: "from" | "to";
   path?: string;
   root?: string;

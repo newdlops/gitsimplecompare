@@ -1,10 +1,7 @@
 // PR preview Files changed 탭의 diff snippet 렌더러.
 // - 웹뷰 패널 본문이 커지지 않도록 GitHub 스타일 diff 파싱/강조 스크립트를 분리한다.
 
-/**
- * PR preview 웹뷰 안에서 실행할 diff 렌더링 helper 스크립트를 반환한다.
- * @returns old/new line number, marker, code 컬럼과 간단한 구문 강조를 만드는 클라이언트 스크립트
- */
+/** PR preview 웹뷰 안에서 실행할 diff 렌더링 helper 스크립트를 반환한다. */
 export function pullRequestPreviewDiffScript(): string {
   return `
     function patchHtml(patch, compact, filePath, comments, layout) {
@@ -14,13 +11,13 @@ export function pullRequestPreviewDiffScript(): string {
       return renderGithubDiff(patch, 360, filePath, ' continuous-diff', comments || [], layout || 'unified');
     }
     function renderGithubDiff(patch, limit, filePath, extraClass, comments, layout) {
-      if (!patch) return '<p class="empty">Diff snippet is unavailable for this file.</p>';
+      if (!patch) return '<p class="empty">' + esc(publishText.diffUnavailable) + '</p>';
       const rows = layout === 'split'
         ? splitDiffRows(String(patch), limit, filePath, comments)
         : diffRows(String(patch), limit, filePath, comments);
       const omitted = rows.omitted ? diffOmittedRow(rows.omitted) : '';
       const unmatched = rows.unmatched.length
-        ? inlineCommentsHtml(rows.unmatched, 'review', languageForPath(filePath))
+        ? inlineCommentsHtml(rows.unmatched, undefined, languageForPath(filePath))
         : '';
       const layoutClass = layout === 'split' ? ' split-diff' : ' unified-diff';
       return '<div class="diff-snippet github-diff' + extraClass + layoutClass + '">' + rows.html + omitted + unmatched + '</div>';
@@ -271,11 +268,11 @@ export function pullRequestPreviewDiffScript(): string {
       return diffRowHtml(kind, oldNo, newNo, marker, codeHtml == null ? highlightCode(code || ' ', language) : codeHtml);
     }
     function diffRowHtml(kind, oldNo, newNo, marker, codeHtml) {
-      return '<div class="diff-row ' + kind + '"><span class="diff-line-no old">' + esc(oldNo) + '</span><span class="diff-line-no new">' + esc(newNo) + '</span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
+      return '<div class="diff-row ' + diffRowMetadata(kind, oldNo, newNo) + '"><span class="diff-line-no old">' + esc(oldNo) + '</span><span class="diff-line-no new">' + esc(newNo) + '</span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
     }
     function splitCodeRowHtml(oldCell, newCell, language, fragments) {
       const kind = oldCell && newCell ? (oldCell.kind === 'ctx' && newCell.kind === 'ctx' ? 'ctx' : 'change') : oldCell ? 'del' : 'add';
-      return '<div class="diff-row split-row ' + kind + '">' +
+      return '<div class="diff-row split-row ' + diffSplitRowMetadata(kind, oldCell, newCell) + '">' +
         splitCellHtml('old', oldCell, language, fragments?.old) + splitCellHtml('new', newCell, language, fragments?.new) + '</div>';
     }
     function splitCellHtml(side, cell, language, codeHtml) {
@@ -287,6 +284,24 @@ export function pullRequestPreviewDiffScript(): string {
     }
     function splitMetaRowHtml(kind, marker, codeHtml) {
       return '<div class="diff-row split-meta-row ' + kind + '"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">' + esc(marker) + '</span><span class="diff-code">' + codeHtml + '</span></div>';
+    }
+    // unified 행의 inert metadata를 안전한 kind와 line 값으로 만든다.
+    function diffRowMetadata(kind, oldNo, newNo) {
+      return diffKind(kind) + '" data-diff-kind="' + esc(diffKind(kind)) + '" data-old-line="' + esc(diffLine(oldNo)) + '" data-new-line="' + esc(diffLine(newNo));
+    }
+    // split 행의 inert metadata를 별도 side 값으로 보존한다.
+    function diffSplitRowMetadata(kind, oldCell, newCell) {
+      return diffKind(kind) + '" data-old-line="' + esc(diffLine(oldCell?.no)) + '" data-new-line="' + esc(diffLine(newCell?.no)) + '" data-old-kind="' + esc(diffKind(oldCell?.kind)) + '" data-new-kind="' + esc(diffKind(newCell?.kind));
+    }
+    // renderer가 만든 알려진 diff kind만 attribute로 허용한다.
+    function diffKind(value) {
+      const kind = String(value || '');
+      return /^(add|del|ctx|change|hunk|meta|omitted|empty)$/.test(kind) ? kind : '';
+    }
+    // 양의 정수 line number만 inert attribute에 기록한다.
+    function diffLine(value) {
+      const line = Number(value);
+      return Number.isInteger(line) && line > 0 ? String(line) : '';
     }
     function pairedInlineFragments(removed, added, language) {
       const count = Math.max(removed.length, added.length);
@@ -317,21 +332,21 @@ export function pullRequestPreviewDiffScript(): string {
       return highlightCode(before, language) + '<span class="diff-word ' + kind + '">' + highlightCode(middle || ' ', language) + '</span>' + highlightCode(after, language);
     }
     function diffOmittedRow(count) {
-      return '<div class="diff-row omitted"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + esc(count) + ' lines truncated</span></div>';
+      return '<div class="diff-row omitted"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + esc(template(publishText.diffLinesTruncated, count)) + '</span></div>';
     }
     function diffContextRow(count, key, expanded, step, collapsible) {
       if (expanded) {
         return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code">' + collapseContextButton(key, count) + '</span></div>';
       }
       const next = Math.min(count, step || 20);
-      const title = 'Expand ' + count + ' unchanged lines';
-      const expandButton = '<button type="button" class="diff-context-toggle" data-expand-context="' + esc(key) + '" data-expand-step="' + esc(next) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">Show ' + esc(next) + ' more unchanged lines (' + esc(count) + ' hidden)</button>';
+      const title = template(publishText.diffExpandUnchangedLines, count);
+      const expandButton = '<button type="button" class="diff-context-toggle" data-expand-context="' + esc(key) + '" data-expand-step="' + esc(next) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' + esc(template(publishText.diffShowMoreUnchangedLines, next, count)) + '</button>';
       const collapseButton = collapsible ? collapseContextButton(key, count) : '';
       return '<div class="diff-row omitted context-fold"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker">...</span><span class="diff-code"><span class="diff-context-actions">' + expandButton + collapseButton + '</span></span></div>';
     }
     function collapseContextButton(key, count) {
-      const title = 'Collapse ' + count + ' unchanged lines';
-      return '<button type="button" class="diff-context-toggle" data-collapse-context="' + esc(key) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">Collapse unchanged lines</button>';
+      const title = template(publishText.diffCollapseUnchangedLines, count);
+      return '<button type="button" class="diff-context-toggle" data-collapse-context="' + esc(key) + '" title="' + esc(title) + '" aria-label="' + esc(title) + '" data-tooltip="' + esc(title) + '">' + esc(publishText.diffCollapseUnchanged) + '</button>';
     }
     function buildCommentState(comments) {
       const byKey = new Map();
@@ -372,11 +387,12 @@ export function pullRequestPreviewDiffScript(): string {
       return '<div class="diff-comment-row"><span class="diff-line-no old"></span><span class="diff-line-no new"></span><span class="diff-marker"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span></span><div class="diff-inline-comments">' +
         comments.map((comment) => inlineCommentHtml(comment, label, language)).join('') + '</div></div>';
     }
-    function inlineCommentHtml(comment, fallbackLabel, language) {
-      const line = comment.line || comment.originalLine || fallbackLabel;
-      const where = line ? 'line ' + line : 'review';
+    function inlineCommentHtml(comment, fallbackLine, language) {
+      const candidate = comment.line || comment.originalLine || fallbackLine;
+      const line = typeof candidate === 'number' && candidate > 0 ? candidate : undefined;
+      const where = line ? template(publishText.diffLine, line) : publishText.diffReview;
       return '<article class="diff-inline-comment"><div class="comment-meta"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span><strong>' +
-        esc(comment.author || 'unknown') + '</strong><span>' + esc(where) + '</span>' +
+        esc(comment.author || publishText.diffUnknownAuthor) + '</strong><span>' + esc(where) + '</span>' +
         (comment.createdAt ? '<span>' + esc(formatDate(comment.createdAt)) + '</span>' : '') + '</div>' +
         '<div class="comment-body markdown-body">' + renderReviewCommentMarkdown(comment, language) + '</div></article>';
     }

@@ -149,7 +149,7 @@ export type FromWebviewMessage =
       target?: GraphSearchFetchTarget;
     }
   | { type: "openPullRequest"; number: number }
-  | { type: "previewStagedPullRequest"; number?: number }
+  | { type: "previewStagedPullRequest" }
   | {
       type: "openPullRequestFileDiff";
       number: number;

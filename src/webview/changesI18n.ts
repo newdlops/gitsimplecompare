@@ -15,8 +15,6 @@ export function changesWebviewI18n(): Record<string, string> {
     resizeRegions: vscode.l10n.t("Resize {0} and {1}"),
     compareBranches: vscode.l10n.t("Compare Branches"),
     changes: vscode.l10n.t("Changes"),
-    reviews: vscode.l10n.t("Reviews"),
-    sidebarNavigation: vscode.l10n.t("Git Simple Compare navigation"),
     current: vscode.l10n.t("current"),
     from: vscode.l10n.t("From:"),
     to: vscode.l10n.t("To:"),
