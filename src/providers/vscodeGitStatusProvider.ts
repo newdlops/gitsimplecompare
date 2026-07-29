@@ -31,6 +31,32 @@ interface RepositoryIdentity {
   head: string;
 }
 
+/** provider working-status fingerprint가 사용하는 변경 항목의 최소 구조다. */
+export interface VscodeGitFingerprintChange {
+  readonly uri: { readonly fsPath: string };
+  readonly renameUri?: { readonly fsPath: string };
+  readonly status: number;
+}
+
+/** index/working/untracked/merge 배열만 분리해 순수 fingerprint 테스트에 사용하는 구조다. */
+export interface VscodeGitFingerprintState {
+  readonly indexChanges: readonly VscodeGitFingerprintChange[];
+  readonly workingTreeChanges: readonly VscodeGitFingerprintChange[];
+  readonly untrackedChanges: readonly VscodeGitFingerprintChange[];
+  readonly mergeChanges: readonly VscodeGitFingerprintChange[];
+}
+
+/** branch/HEAD와 working fingerprint를 함께 비교하는 provider repository snapshot이다. */
+export interface VscodeGitRepositorySnapshot extends RepositoryIdentity {
+  statusFingerprint: string;
+}
+
+/** repository snapshot 변화에서 callback 이유와 status revision 증가 여부를 분리한 결과다. */
+export interface VscodeGitRepositoryTransition {
+  reasons: Array<"vscodeGit:head" | "vscodeGit:identity" | "vscodeGit:state">;
+  statusChanged: boolean;
+}
+
 /** 내장 Git 확장의 공개 API 중 이 확장이 사용하는 최소 표면. */
 interface VscodeGitExtension {
   enabled?: boolean;
@@ -105,6 +131,8 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     VscodeGitRepository,
     RepositoryIdentity
   >();
+  private readonly repositoryStatusFingerprints =
+    new Map<VscodeGitRepository, string>();
   private readonly repositoryRevisions = new Map<VscodeGitRepository, number>();
 
   constructor(
@@ -181,8 +209,8 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
   }
 
   /**
-   * 저장소 state 이벤트가 몇 번 도착했는지 나타내는 process-local revision을 반환한다.
-   * - direct-file CLI fallback은 snapshot 조회 뒤 revision이 바뀌었으면 provider가 갱신됐다고 보고 CLI를 취소한다.
+   * 저장소 working-status fingerprint가 바뀐 횟수인 process-local revision을 반환한다.
+   * - identity-only 이벤트는 제외해 direct-file fallback이 실제 상태 최신성에서만 취소되게 한다.
    * @param repoRoot 확인할 저장소 루트 절대 경로
    * @returns API 저장소의 현재 revision, provider가 없으면 undefined
    */
@@ -233,6 +261,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     }
     this.repositoryDisposables.clear();
     this.repositoryIdentities.clear();
+    this.repositoryStatusFingerprints.clear();
     this.repositoryRevisions.clear();
   }
 
@@ -292,23 +321,33 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       return;
     }
     this.repositoryIdentities.set(repo, repositoryIdentity(repo));
+    this.repositoryStatusFingerprints.set(
+      repo,
+      vscodeGitWorkingStatusFingerprint(repo.state)
+    );
     this.repositoryRevisions.set(repo, 0);
     const disposable = repo.state.onDidChange(() => {
-      const previous = this.repositoryIdentities.get(repo);
-      const current = repositoryIdentity(repo);
-      this.repositoryIdentities.set(repo, current);
-      this.repositoryRevisions.set(
-        repo,
-        (this.repositoryRevisions.get(repo) ?? 0) + 1
+      const previousIdentity = this.repositoryIdentities.get(repo) ??
+        repositoryIdentity(repo);
+      const previousFingerprint =
+        this.repositoryStatusFingerprints.get(repo) ?? "";
+      const currentIdentity = repositoryIdentity(repo);
+      const currentFingerprint = vscodeGitWorkingStatusFingerprint(repo.state);
+      const transition = classifyVscodeGitRepositoryTransition(
+        { ...previousIdentity, statusFingerprint: previousFingerprint },
+        { ...currentIdentity, statusFingerprint: currentFingerprint }
       );
-      // checkout처럼 branch와 commit이 함께 바뀌면 HEAD 갱신을 우선하고, 이름만 바뀐 경우만 목록 전용 identity로 보낸다.
-      const reason =
-        previous?.head !== current.head
-          ? "vscodeGit:head"
-          : previous?.branch !== current.branch
-            ? "vscodeGit:identity"
-            : "vscodeGit:state";
-      this.onDidChange({ reason, repoRoot: repo.rootUri.fsPath });
+      this.repositoryIdentities.set(repo, currentIdentity);
+      this.repositoryStatusFingerprints.set(repo, currentFingerprint);
+      if (transition.statusChanged) {
+        this.repositoryRevisions.set(
+          repo,
+          (this.repositoryRevisions.get(repo) ?? 0) + 1
+        );
+      }
+      for (const reason of transition.reasons) {
+        this.onDidChange({ reason, repoRoot: repo.rootUri.fsPath });
+      }
     });
     this.repositoryDisposables.set(repo, [disposable]);
   }
@@ -327,6 +366,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     }
     this.repositoryDisposables.delete(repo);
     this.repositoryIdentities.delete(repo);
+    this.repositoryStatusFingerprints.delete(repo);
     this.repositoryRevisions.delete(repo);
   }
 
@@ -438,6 +478,58 @@ function uniqueChanges(changes: FileChange[]): FileChange[] {
     out.push(change);
   }
   return out;
+}
+
+/**
+ * VS Code Git의 working-status 배열을 순서와 경로 구분자에 안정적인 fingerprint로 만든다.
+ * - branch/HEAD는 포함하지 않아 identity-only event가 direct-file fallback revision을 올리지 않는다.
+ * @param state index/working/untracked/merge 변경 배열
+ * @returns bucket·status·현재/rename 경로를 정렬해 결합한 문자열
+ */
+export function vscodeGitWorkingStatusFingerprint(
+  state: VscodeGitFingerprintState
+): string {
+  const entries: string[] = [];
+  for (const [bucket, changes] of [
+    ["index", state.indexChanges],
+    ["working", state.workingTreeChanges],
+    ["untracked", state.untrackedChanges],
+    ["merge", state.mergeChanges],
+  ] as const) {
+    for (const change of changes) {
+      entries.push([
+        bucket,
+        change.status,
+        normalizePath(change.uri.fsPath),
+        change.renameUri ? normalizePath(change.renameUri.fsPath) : "",
+      ].join("\0"));
+    }
+  }
+  return entries.sort().join("\n");
+}
+
+/**
+ * 이전/현재 repository snapshot을 head 우선 event와 독립 status revision으로 분류한다.
+ * - head 변화는 full refresh 하나로 충분하고, same-head identity+status는 목록과 working 의미를 각각 보존한다.
+ * - 실제 onDidChange에서 identity가 그대로면 fingerprint가 같아도 state를 보내 동일 M 파일의 통계 보강을 다시 예약한다.
+ * @param previous 직전 branch/HEAD/working fingerprint
+ * @param current 최신 branch/HEAD/working fingerprint
+ * @returns emit할 이유 순서와 status revision 증가 여부
+ */
+export function classifyVscodeGitRepositoryTransition(
+  previous: VscodeGitRepositorySnapshot,
+  current: VscodeGitRepositorySnapshot
+): VscodeGitRepositoryTransition {
+  const statusChanged =
+    previous.statusFingerprint !== current.statusFingerprint;
+  if (previous.head !== current.head) {
+    return { reasons: ["vscodeGit:head"], statusChanged };
+  }
+  const reasons: VscodeGitRepositoryTransition["reasons"] = [];
+  const branchChanged = previous.branch !== current.branch;
+  if (branchChanged) reasons.push("vscodeGit:identity");
+  if (statusChanged || !branchChanged) reasons.push("vscodeGit:state");
+  return { reasons, statusChanged };
 }
 
 /**

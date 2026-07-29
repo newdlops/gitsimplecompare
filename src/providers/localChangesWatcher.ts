@@ -27,12 +27,15 @@ export function registerLocalChangesWatcher(
   const request = (sourceReason: string, uris: readonly vscode.Uri[]): void => {
     if (!target.isVisible()) return;
     const root = target.getActiveRepo();
-    if (!root || !uris.some((uri) => uriBelongsToRoot(uri, root))) return;
-    const reason = localRefreshReason(sourceReason, uris);
+    if (!root) return;
+    const activeUris = uris.filter((uri) => uriBelongsToRoot(uri, root));
+    if (!activeUris.length) return;
+    const reason = localRefreshReasons(sourceReason, activeUris);
     logInfo("local changes fast refresh requested", {
       reason,
       root,
-      resources: uris.length,
+      resources: activeUris.length,
+      batchResources: uris.length,
     });
     target.requestRefresh(reason);
   };
@@ -62,29 +65,44 @@ export function registerLocalChangesWatcher(
  * @param uris 이벤트가 포함한 이전/새 파일 URI 목록
  * @returns Changes refresh section 정책이 이해하는 최소 원인 문자열
  */
-function localRefreshReason(
+export function localRefreshReasons(
   sourceReason: string,
-  uris: readonly vscode.Uri[]
+  uris: readonly Pick<vscode.Uri, "scheme" | "fsPath">[]
 ): string {
-  const paths = uris
-    .filter((uri) => uri.scheme === "file")
-    .map((uri) => uri.fsPath.replace(/\\/g, "/"));
-  if (paths.some(isCommitHookPath)) {
-    return `working-tree-file:${sourceReason}:commit-hooks`;
+  const reasons = new Set<string>();
+  for (const uri of uris) {
+    if (uri.scheme !== "file") continue;
+    const filePath = uri.fsPath.replace(/\\/g, "/");
+    if (isGitHookPath(filePath)) {
+      reasons.add(`working-tree-file:${sourceReason}:commit-hooks`);
+    } else if (isWorkspaceHookPath(filePath)) {
+      reasons.add(sourceReason);
+      reasons.add(`working-tree-file:${sourceReason}:commit-hooks`);
+    } else if (isIgnoreRulesPath(filePath)) {
+      reasons.add(`working-tree-file:${sourceReason}:ignore-rules`);
+    } else {
+      reasons.add(sourceReason);
+    }
   }
-  if (paths.some(isIgnoreRulesPath)) {
-    return `working-tree-file:${sourceReason}:ignore-rules`;
-  }
-  return sourceReason;
+  return [...reasons].join(",");
 }
 
 /**
- * 기본 `.git/hooks` 또는 흔히 쓰는 workspace hook 디렉터리 파일인지 확인한다.
+ * 기본 `.git/hooks` 파일인지 확인한다.
  * @param normalizedPath 슬래시로 정규화된 파일 절대 경로
- * @returns commit hook 목록만 다시 읽어야 하는 경로면 true
+ * @returns commitHooks만 다시 읽어야 하는 내부 hook이면 true
  */
-function isCommitHookPath(normalizedPath: string): boolean {
-  return /\/(?:\.git\/hooks|\.husky|\.githooks)\//.test(normalizedPath);
+function isGitHookPath(normalizedPath: string): boolean {
+  return /\/\.git\/hooks\//.test(normalizedPath);
+}
+
+/**
+ * `.husky`/`.githooks`처럼 작업트리에도 표시될 수 있는 hook 파일인지 확인한다.
+ * @param normalizedPath 슬래시로 정규화된 파일 절대 경로
+ * @returns workingChanges와 commitHooks를 함께 갱신해야 하면 true
+ */
+function isWorkspaceHookPath(normalizedPath: string): boolean {
+  return /\/(?:\.husky|\.githooks)\//.test(normalizedPath);
 }
 
 /**
@@ -102,7 +120,10 @@ function isIgnoreRulesPath(normalizedPath: string): boolean {
  * @param root 현재 Changes 뷰가 선택한 저장소 절대 경로
  * @returns file URI가 root 범위 안이면 true
  */
-function uriBelongsToRoot(uri: vscode.Uri, root: string): boolean {
+export function uriBelongsToRoot(
+  uri: Pick<vscode.Uri, "scheme" | "fsPath">,
+  root: string
+): boolean {
   if (uri.scheme !== "file") return false;
   const relative = path.relative(path.resolve(root), path.resolve(uri.fsPath));
   return (

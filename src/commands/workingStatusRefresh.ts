@@ -78,6 +78,25 @@ export async function refreshWorkingStatus(
 }
 
 /**
+ * activation 종료 시 아직 시작하지 않은 fallback/stats 작업을 모두 취소한다.
+ * - 실행 중 read-only 통계는 강제 종료하지 않고 requestId를 올려 완료 결과와 queued 후속 작업만 폐기한다.
+ * @param deps 종료하는 activation의 공유 의존성 identity
+ */
+export function disposeWorkingStatusRefresh(deps: CommandDeps): void {
+  const repositories = statesByActivation.get(deps);
+  if (!repositories) return;
+  for (const [root, state] of repositories) {
+    state.requestId++;
+    cancelDeferredGitFallback(state, root, "activation-disposed", false);
+    cancelPendingStats(state);
+  }
+  statesByActivation.delete(deps);
+  logInfo("working status activation disposed", {
+    repositories: repositories.size,
+  });
+}
+
+/**
  * 작업 상태 조회 한 번을 실행하고, 동일 요청의 cache generation만 바뀌었으면 제한적으로 다시 읽는다.
  * - commit 직후 HEAD/ref watcher가 진행 중인 porcelain 조회를 무효화할 수 있다. 이때 결과를 단순 skip하면
  *   다음 queued pass 전까지 이전 staged 목록이 남으므로, 같은 활성 저장소/요청이면 CLI SoT를 즉시 재시도한다.
@@ -556,8 +575,9 @@ function stateFor(
 
 /** 저장소가 사라졌을 때 해당 활성화의 진행 중 요청과 통계 timer를 모두 무효화한다. */
 function invalidateActivationRequests(deps: CommandDeps): void {
-  for (const state of statesByActivation.get(deps)?.values() ?? []) {
+  for (const [root, state] of statesByActivation.get(deps) ?? []) {
     state.requestId++;
+    cancelDeferredGitFallback(state, root, "active-repository-missing", false);
     cancelPendingStats(state);
   }
 }

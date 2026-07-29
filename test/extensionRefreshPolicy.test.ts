@@ -1,6 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  localRefreshReasons,
+  uriBelongsToRoot,
+} from "../src/providers/localChangesWatcher";
+import {
+  FOCUSED_GIT_METADATA_GLOB,
+  classifyHookPath,
+  createGitMetadataRefreshHandler,
+  internalGitHookRefreshRoots,
+  isLinkedWorktreeAdminPath,
+  routeRepositoryEvent,
+  shouldQueueGraphRefresh,
+  visibleRepositoryRoots,
+} from "../src/providers/refreshWatcher";
+import {
+  classifyVscodeGitRepositoryTransition,
+  vscodeGitWorkingStatusFingerprint,
+} from "../src/providers/vscodeGitStatusProvider";
+import {
   HiddenRepositoryRefreshFence,
   RepositoryRefreshSkipFence,
   RefreshDrain,
@@ -62,9 +80,14 @@ test("refresh 원인을 중복 없이 합치고 비교 refresh 범위를 판정�
 
 test("Git 메타데이터 경로에서 저장소 루트를 복원한다", () => {
   assert.equal(repoRootFromGitPath("/repo/.git/refs/heads/main"), "/repo");
+  assert.equal(repoRootFromGitPath("C:\\repo\\.git\\HEAD"), "C:\\repo");
   assert.equal(
     repoRootFromGitPath("C:\\repo\\.git\\worktrees\\feature\\HEAD"),
-    "C:\\repo"
+    undefined
+  );
+  assert.equal(
+    repoRootFromGitPath("/repo/.git/worktrees/feature/HEAD"),
+    undefined
   );
   assert.equal(repoRootFromGitPath("/repo/src/file.ts"), undefined);
 });
@@ -214,6 +237,7 @@ test("상태 mutation과 SoT 강제 조회 원인을 판정한다", () => {
   assert.equal(shouldForceChangesGitStatus("commit"), true);
   assert.equal(shouldForceChangesGitStatus("commitResult"), true);
   assert.equal(shouldForceChangesGitStatus("windowFocused"), false);
+  assert.equal(shouldForceChangesGitStatus("windowFocusedReconcile"), true);
   assert.equal(shouldForceChangesGitStatus("viewReady"), false);
   assert.equal(shouldForceChangesGitStatus("viewReadyDeferred"), false);
   assert.equal(shouldForceChangesGitStatus("viewVisible"), false);
@@ -276,14 +300,193 @@ test("repository 이벤트를 실제 소비 root와 의미에 따라 최소 범�
 });
 
 test("direct file fallback은 provider/authoritative 병합 원인이 있으면 취소한다", () => {
-  assert.equal(directFileFallbackAction("documentSaved"), "schedule");
-  assert.equal(directFileFallbackAction("filesCreated,filesRenamed"), "schedule");
+  const hook = "working-tree-file:change:workspace-hook,custom-hook:change:commit-hooks";
+  for (const reason of [
+    "documentSaved",
+    "filesCreated,filesRenamed",
+    "documentSaved,vscodeGit:identity",
+    hook,
+    `${hook},working-tree-file:create:workspace-hook`,
+  ]) assert.equal(directFileFallbackAction(reason), "schedule");
+  for (const reason of [
+    "documentSaved,vscodeGit:state",
+    "filesDeleted,commitResult",
+    `${hook},vscodeGit:state`,
+    `${hook},commitResult`,
+    "command",
+  ]) assert.equal(directFileFallbackAction(reason), "cancel");
+});
+
+test("Graph refresh는 같은 저장소의 HEAD·stable metadata·focus만 받는다", () => {
+  assert.deepEqual(routeRepositoryEvent("vscodeGit:head", "/graph", [], "/graph"),
+    { scope: "skip", graph: true });
+  assert.deepEqual(routeRepositoryEvent(
+    "git:change:stable-git-state", "/graph", [], "/graph"),
+    { scope: "skip", graph: true });
+  assert.deepEqual(routeRepositoryEvent("vscodeGit:state", "/graph", [], "/graph"),
+    { scope: "skip", graph: false });
+  assert.equal(shouldQueueGraphRefresh("vscodeGit:head", "/other", "/graph"), false);
+  assert.equal(shouldQueueGraphRefresh(
+    "windowFocusedReconcile", "/graph", "/graph"), true);
+});
+
+test("Graph queue에는 정규화 비교 뒤에도 panel의 정확한 root를 보존한다", () => {
+  const queued: string[] = [];
+  const reasons: string[] = [];
+  const handler = createGitMetadataRefreshHandler({
+    relevantRoots: () => [],
+    graphRoot: () => "C:\\Graph\\Repo",
+    skipLog: new RepositoryRefreshSkipFence(),
+    invalidateStatus: () => undefined,
+    queueRepository: () => undefined,
+    queueGraph: (root) => queued.push(root),
+    scheduleRefresh: (reason) => reasons.push(reason),
+  });
+  handler("change", fileUri("c:\\graph\\repo\\.git\\HEAD") as never);
+  assert.deepEqual(queued, ["C:\\Graph\\Repo"]);
+  assert.deepEqual(reasons, ["graph:git:change:stable-git-state"]);
+});
+
+test("linked worktree metadata는 보이는 저장소 root 집합으로 broadcast한다", () => {
+  assert.equal(isLinkedWorktreeAdminPath(
+    "/main/.git/worktrees/topic/HEAD"), true);
+  assert.equal(isLinkedWorktreeAdminPath(
+    "C:\\main\\.git\\worktrees\\topic\\HEAD"), true);
+  assert.equal(isLinkedWorktreeAdminPath("/main/.git/HEAD"), false);
+  assert.deepEqual(visibleRepositoryRoots([
+    "/repo", undefined, "/repo/", "C:\\Work\\Repo", "c:/work/repo",
+  ]), ["/repo", "C:\\Work\\Repo"]);
+});
+
+test("focus watcher 하나의 glob과 hook 경로 분류가 내부·workspace hook을 포함한다", () => {
+  assert.match(FOCUSED_GIT_METADATA_GLOB, /\.git\/hooks/);
+  assert.match(FOCUSED_GIT_METADATA_GLOB, /\.husky/);
+  assert.match(FOCUSED_GIT_METADATA_GLOB, /\.githooks/);
+  assert.deepEqual(classifyHookPath("/repo/.git/hooks/pre-commit", ["/repo"]),
+    { kind: "git-hook", repoRoot: "/repo" });
+  assert.deepEqual(classifyHookPath(
+    "/repo/apps/web/.husky/pre-commit", ["/repo", "/repo/apps/web"]),
+    { kind: "workspace-hook", repoRoot: "/repo/apps/web" });
+  assert.deepEqual(classifyHookPath("/inactive/.githooks/pre-push", ["/repo"]),
+    { kind: "workspace-hook", repoRoot: undefined });
+});
+
+test("linked worktree 공용 내부 hook은 visible roots에 hook-only로 broadcast한다", () => {
+  let roots = ["/linked", "/linked/"];
+  const reasons: string[] = [];
+  const sideEffects: string[] = [];
+  const handler = createGitMetadataRefreshHandler({
+    relevantRoots: () => roots,
+    graphRoot: () => undefined,
+    skipLog: new RepositoryRefreshSkipFence(),
+    invalidateStatus: () => sideEffects.push("status"),
+    queueRepository: () => sideEffects.push("branch"),
+    queueGraph: () => sideEffects.push("graph"),
+    scheduleRefresh: (reason) => reasons.push(reason),
+  });
+  assert.deepEqual(internalGitHookRefreshRoots(undefined, roots), ["/linked"]);
+  handler("change", fileUri("/main/.git/hooks/pre-commit") as never);
+  assert.deepEqual(reasons, ["git:change:commit-hooks"]);
+  assert.deepEqual(sideEffects, []);
+  roots = [];
+  handler("delete", fileUri("/main/.git/hooks/pre-commit") as never);
+  assert.deepEqual(reasons, ["git:change:commit-hooks"]);
+});
+
+test("로컬 URI batch는 활성 root를 먼저 거르고 적용 사유의 합집합을 보존한다", () => {
+  const ordinary = fileUri("/repo/src/index.ts");
+  const workspaceHook = fileUri("/repo/.husky/pre-commit");
+  const gitHook = fileUri("/repo/.git/hooks/pre-commit");
+  const ignore = fileUri("/repo/.gitignore");
+  const inactiveHook = fileUri("/other/.husky/pre-commit");
+
   assert.equal(
-    directFileFallbackAction("documentSaved,vscodeGit:state"),
-    "cancel"
+    localRefreshReasons("filesCreated", [ordinary, workspaceHook]),
+    "filesCreated,working-tree-file:filesCreated:commit-hooks"
   );
-  assert.equal(directFileFallbackAction("filesDeleted,commitResult"), "cancel");
-  assert.equal(directFileFallbackAction("command"), "cancel");
+  assert.equal(
+    localRefreshReasons("filesCreated", [ignore, ordinary]),
+    "working-tree-file:filesCreated:ignore-rules,filesCreated"
+  );
+  assert.equal(
+    localRefreshReasons("filesCreated", [gitHook]),
+    "working-tree-file:filesCreated:commit-hooks"
+  );
+  const active = [ordinary, inactiveHook].filter((uri) =>
+    uriBelongsToRoot(uri, "/repo")
+  );
+  assert.deepEqual(active, [ordinary]);
+  assert.equal(localRefreshReasons("filesCreated", active), "filesCreated");
+  assert.equal(uriBelongsToRoot(fileUri("/repo-old/file.ts"), "/repo"), false);
+  assert.equal(uriBelongsToRoot(fileUri("/repo/new.ts"), "/repo"), true);
+});
+
+test("VS Code Git status revision은 working fingerprint 변화에만 반응한다", () => {
+  const unchanged = { branch: "main", head: "a", statusFingerprint: "same" };
+  assert.deepEqual(
+    classifyVscodeGitRepositoryTransition(unchanged, {
+      ...unchanged,
+      branch: "topic",
+    }),
+    { reasons: ["vscodeGit:identity"], statusChanged: false }
+  );
+  assert.deepEqual(
+    classifyVscodeGitRepositoryTransition(unchanged, {
+      branch: "topic",
+      head: "a",
+      statusFingerprint: "changed",
+    }),
+    {
+      reasons: ["vscodeGit:identity", "vscodeGit:state"],
+      statusChanged: true,
+    }
+  );
+  assert.deepEqual(
+    classifyVscodeGitRepositoryTransition(unchanged, {
+      branch: "main",
+      head: "b",
+      statusFingerprint: "changed",
+    }),
+    { reasons: ["vscodeGit:head"], statusChanged: true }
+  );
+  assert.deepEqual(classifyVscodeGitRepositoryTransition(unchanged, unchanged),
+    { reasons: ["vscodeGit:state"], statusChanged: false });
+});
+
+test("동일 M fingerprint의 provider 이벤트도 stats 보강용 state 의미를 유지한다", () => {
+  const state = {
+    indexChanges: [],
+    workingTreeChanges: [gitChange("/repo/file.ts", 5)],
+    untrackedChanges: [],
+    mergeChanges: [],
+  };
+  const statusFingerprint = vscodeGitWorkingStatusFingerprint(state);
+  const snapshot = { branch: "main", head: "a", statusFingerprint };
+  assert.deepEqual(classifyVscodeGitRepositoryTransition(snapshot, snapshot),
+    { reasons: ["vscodeGit:state"], statusChanged: false });
+});
+
+test("VS Code Git working fingerprint는 순서에는 안정적이고 rename 의미를 보존한다", () => {
+  const first = vscodeGitWorkingStatusFingerprint({
+    indexChanges: [gitChange("/repo/b.ts", 1), gitChange("/repo/a.ts", 0)],
+    workingTreeChanges: [],
+    untrackedChanges: [],
+    mergeChanges: [],
+  });
+  const reordered = vscodeGitWorkingStatusFingerprint({
+    indexChanges: [gitChange("/repo/a.ts", 0), gitChange("/repo/b.ts", 1)],
+    workingTreeChanges: [],
+    untrackedChanges: [],
+    mergeChanges: [],
+  });
+  const renamed = vscodeGitWorkingStatusFingerprint({
+    indexChanges: [gitChange("/repo/a.ts", 0, "/repo/old-a.ts")],
+    workingTreeChanges: [gitChange("/repo/b.ts", 1)],
+    untrackedChanges: [],
+    mergeChanges: [],
+  });
+  assert.equal(first, reordered);
+  assert.notEqual(first, renamed);
 });
 
 test("자동 auxiliary만 직렬화하고 skip 로그는 TTL 동안 집계한다", () => {
@@ -380,4 +583,18 @@ function deferred<T>() {
 /** queue의 Promise continuation이 실행될 수 있도록 이벤트 루프를 한 번 양보한다. */
 function nextTurn(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
+}
+
+/** VS Code mock 없이 순수 URI 정책 함수에 넘길 최소 file URI를 만든다. */
+function fileUri(fsPath: string): { scheme: string; fsPath: string } {
+  return { scheme: "file", fsPath };
+}
+
+/** fingerprint 순수 함수에 넘길 최소 VS Code Git change 구조를 만든다. */
+function gitChange(fsPath: string, status: number, renamePath?: string) {
+  return {
+    uri: { fsPath },
+    renameUri: renamePath ? { fsPath: renamePath } : undefined,
+    status,
+  };
 }

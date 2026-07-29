@@ -36,10 +36,12 @@ import {
   createGitMetadataRefreshHandler,
   FOCUSED_GIT_METADATA_GLOB,
   FocusScopedRefreshWatcher,
+  routeRepositoryEvent,
 } from "./providers/refreshWatcher";
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
+import { disposeWorkingStatusRefresh } from "./commands/workingStatusRefresh";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
@@ -50,15 +52,12 @@ import {
   changesRefreshSections,
   HiddenRepositoryRefreshFence,
   RepositoryRefreshSkipFence,
-  repositoryRefreshScope,
   shouldRefreshExplorerComparison,
   shouldRefreshPullRequestComments,
 } from "./utils/extensionRefreshPolicy";
 import type { GitSimpleCompareApi } from "./extensionApi";
 export type { GitSimpleCompareApi } from "./extensionApi";
-
 let activeNativeDiffOverlay: NativeDiffOverlayController | undefined;
-
 /**
  * 확장이 활성화될 때 호출된다.
  * - 공유 인스턴스를 만들고, 가상 문서 프로바이더/명령/추적기를 등록한 뒤
@@ -76,7 +75,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const registry = new GitServiceRegistry();
   const comparison = new ComparisonController();
   context.subscriptions.push(comparison);
-
   context.subscriptions.push(
     vscode.commands.registerCommand("gitSimpleCompare.showChanges", () =>
       vscode.commands.executeCommand("gitSimpleCompare.changes.focus")
@@ -201,12 +199,15 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   ];
   const vscodeGitStatus = new VscodeGitStatusProvider((event) => {
     const { reason, repoRoot } = event;
-    const scope = repositoryRefreshScope({
-      reason,
-      repoRoot,
-      relevantRoots: relevantRepositoryRoots(),
-    });
-    if (scope === "skip") {
+    const graphRoot = GitGraphPanel.getOpenRepositoryRoot();
+    const route = routeRepositoryEvent(
+      reason, repoRoot, relevantRepositoryRoots(), graphRoot);
+    if (route.graph && graphRoot) pendingGraphRefreshRoots.add(graphRoot);
+    if (route.scope === "skip") {
+      if (route.graph) {
+        scheduleRefresh(`graph:${reason}`);
+        return;
+      }
       const count = repositorySkipLog.record(`${repoRoot ?? "unknown"}\0${reason}`);
       if (count !== undefined) {
         logInfo("repository refresh event skipped", { reason, repoRoot, count });
@@ -214,19 +215,19 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       return;
     }
     hiddenRepositoryRefresh.mark(reason, changesView.isVisible());
-    if (scope === "repository-list-only" && !changesView.isVisible()) {
+    if (route.scope === "repository-list-only" && !changesView.isVisible()) {
       return;
     }
     if (
       !changesView.isVisible() &&
       !conflictsVisible &&
-      !(comparison.enabled && scope === "active/full")
+      !(comparison.enabled && route.scope === "active/full")
     ) {
       return;
     }
     // provider snapshot 자체가 최신 파일 목록이므로 state 이벤트는 캐시 세대를 다시 흔들지 않고 fast lane으로 보낸다.
-    if (scope === "active/full" && reason !== "vscodeGit:state") {
-      invalidateStatusCachesForRefresh();
+    if (route.scope === "active/full" && reason !== "vscodeGit:state") {
+      repoRoot ? registry.invalidateStatusCache(repoRoot) : invalidateStatusCachesForRefresh();
     }
     scheduleRefresh(reason, reason === "vscodeGit:state" ? 0 : undefined);
   });
@@ -252,6 +253,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     context.subscriptions.push(disposable);
   }
   context.subscriptions.push(
+    new vscode.Disposable(() => disposeWorkingStatusRefresh(deps)),
     ...registerLocalChangesWatcher({
       isVisible: () => changesView.isVisible(),
       getActiveRepo: () => changesView.getActiveRepo(),
@@ -259,12 +261,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
         "gitSimpleCompare.refreshChanges", { reason }),
     })
   );
-
   // 7) "좌→우 반영" 버튼 노출용 컨텍스트 키 추적기 등록
   context.subscriptions.push(registerActiveDiffTracker());
   // 8) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
-
   // 9) Git 메타데이터/VS Code Git 상태 이벤트에 맞춰 보이는 뷰만 갱신한다.
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingRefreshReasons = new Set<string>();
@@ -282,6 +282,13 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       changesVisible,
       conflictsVisible,
     });
+    if (reason.split(",").every((part) => part.trim().startsWith("graph:"))) {
+      for (const repoRoot of pendingGraphRefreshRoots) {
+        GitGraphPanel.refreshOpen(repoRoot, reason);
+      }
+      pendingGraphRefreshRoots.clear();
+      return;
+    }
     const sections = changesRefreshSections(reason);
     if (sections.length === 1 && sections[0] === "repositories") {
       logInfo("refresh scoped to repository list", { reason });
@@ -395,15 +402,13 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   );
   const scheduleRefreshForGitUri = createGitMetadataRefreshHandler({
     relevantRoots: relevantRepositoryRoots,
+    graphRoot: () => GitGraphPanel.getOpenRepositoryRoot(),
     skipLog: repositorySkipLog,
-    invalidateStatus: invalidateStatusCachesForRefresh,
+    invalidateStatus: (repoRoot) => registry.invalidateStatusCache(repoRoot),
     queueRepository: (repoRoot) => {
       pendingBranchCacheRoots.add(repoRoot);
-      pendingGraphRefreshRoots.add(repoRoot);
     },
-    queueUnknownRepository: () => {
-      pendingClearAllBranchContent = true;
-    },
+    queueGraph: (repoRoot) => pendingGraphRefreshRoots.add(repoRoot),
     scheduleRefresh,
   });
   const gitWatcher = new FocusScopedRefreshWatcher(
@@ -433,8 +438,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
       const hadDeferredReason = pendingRefreshReasons.size > 0;
       // watcher가 멈춘 동안의 HEAD/status/repository 누락은 보이는 소비자에 한해 한 번의 pass로 복구한다.
-      if (changesView.isVisible() || conflictsVisible || comparison.enabled) {
+      const graphRoot = GitGraphPanel.getOpenRepositoryRoot();
+      if (changesView.isVisible() || conflictsVisible || comparison.enabled || graphRoot) {
         addRefreshReasons(pendingRefreshReasons, "windowFocusedReconcile");
+        if (graphRoot) pendingGraphRefreshRoots.add(graphRoot);
       }
       if (pendingRefreshReasons.size === 0) {
         return;
@@ -455,7 +462,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       }
     })
   );
-
   // 10) 워크스페이스 폴더가 바뀌면 저장소 목록부터 다시 찾는다.
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
@@ -465,7 +471,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       scheduleRefresh("workspaceFolders", 0);
     })
   );
-
   // 11) 파일 아이콘/색상 테마가 바뀌면 Changes 웹뷰의 파일 아이콘도 다시 그린다.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
@@ -490,7 +495,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     getComparison: () => comparison.getPublicComparison(),
   };
 }
-
 /**
  * 확장이 비활성화될 때 호출된다.
  * - renderer에 주입된 native DOM과 debugger bridge는 비동기 정리가 끝날 때까지 기다린다.
@@ -500,7 +504,6 @@ export async function deactivate(): Promise<void> {
   activeNativeDiffOverlay = undefined;
   await overlay?.shutdown();
 }
-
 /**
  * VS Code Git 상태 이벤트가 단순 작업파일 변경인지 ref/checkout 변경인지 가볍게 구분한다.
  * - base/target ref가 움직였거나 localRemote 모드에서 HEAD가 바뀌면 전체 비교 refresh를 요청한다.
@@ -563,7 +566,6 @@ async function refreshComparisonIdentity(
     targetMatchesHead: identity.targetHash === identity.headHash,
   });
 }
-
 /**
  * controller의 HEAD gate만 바뀐 경우 같은 비교를 보여 주는 Changes 카드도 함께 갱신한다.
  * - 저장소/ref/diff 기준이 모두 같을 때만 적용해 사용자가 막 선택한 다른 비교를 덮지 않는다.

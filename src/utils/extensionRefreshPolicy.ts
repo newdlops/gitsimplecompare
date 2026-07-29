@@ -39,7 +39,6 @@ interface RefreshWaiter {
   resolve: () => void;
   reject: (error: unknown) => void;
 }
-
 const ALL_CHANGES_SECTIONS: readonly ChangesRefreshSection[] = [
   "repositories",
   "workingChanges",
@@ -49,7 +48,6 @@ const ALL_CHANGES_SECTIONS: readonly ChangesRefreshSection[] = [
   "commitHooks",
   "comparison",
 ];
-
 /**
  * 겹쳐 들어온 새로고침 요청을 pass 단위로 합치고 queue가 안정될 때 호출자를 완료한다.
  * - 실행 중 새 요청이 오면 다음 pass 원인에 합치고, 후속 보정 pass까지 모두 끝난 뒤 Promise를 완료한다.
@@ -61,15 +59,12 @@ export class RefreshDrain {
   private readonly waiters: RefreshWaiter[] = [];
   private requestedSequence = 0;
   private draining = false;
-
   /** @param run 합쳐진 원인 문자열로 실제 새로고침 한 pass를 수행할 함수 */
   constructor(private readonly run: RefreshPassRunner) {}
-
   /** 현재 pass가 실행 중이거나 다음 pass가 예약되어 있는지 확인한다. */
   isRunning(): boolean {
     return this.draining;
   }
-
   /**
    * 새 원인을 queue에 넣고 이 요청이 실제 반영될 때까지 기다리는 Promise를 반환한다.
    * @param reason 단일 또는 쉼표로 합쳐진 새로고침 원인
@@ -238,7 +233,10 @@ export function repositoryRefreshScope(
 export function directFileFallbackAction(reason: string): DirectFileFallbackAction {
   const parts = splitRefreshReasons(reason);
   const hasProviderOrAuthoritative = parts.some(
-    (item) => item.startsWith("vscodeGit:") || shouldForceChangesGitStatus(item)
+    (item) =>
+      item === "vscodeGit:state" ||
+      item === "vscodeGit:head" ||
+      shouldForceChangesGitStatus(item)
   );
   return !hasProviderOrAuthoritative && parts.some(isDirectLocalFileRefreshReason)
     ? "schedule"
@@ -409,6 +407,7 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
       item === "commitResult" ||
       item === "commitAttempt" ||
       item === "vscodeGit:head" ||
+      item === "windowFocusedReconcile" ||
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
       item.startsWith("branchOperation") ||
@@ -531,14 +530,14 @@ function isWorkingTreeRefreshReason(reason: string): boolean {
 /**
  * 내장 Git provider를 기다리지 않고 실제 porcelain 상태를 확인해야 하는 workspace 파일 이벤트인지 판정한다.
  * @param reason 쉼표가 제거된 단일 refresh 원인
- * @returns 저장·생성·삭제·이름 변경 이벤트면 true
+ * @returns 저장·생성·삭제·이름 변경 또는 workspace hook 직접 변경이면 true
  */
 function isDirectLocalFileRefreshReason(reason: string): boolean {
   return (
     reason === "documentSaved" ||
     reason === "filesCreated" ||
     reason === "filesDeleted" ||
-    reason === "filesRenamed"
+    reason === "filesRenamed" || /^working-tree-file:[^:]+:workspace-hook$/.test(reason)
   );
 }
 
@@ -570,6 +569,7 @@ function normalizeRepositoryRoot(value: string): string {
  */
 export function repoRootFromGitPath(fsPath: string): string | undefined {
   const normalized = fsPath.replace(/\\/g, "/");
+  if (/\/\.git\/worktrees\/[^/]+\//.test(normalized)) return undefined;
   const index = normalized.indexOf("/.git/");
   return index >= 0 ? fsPath.slice(0, index) : undefined;
 }
