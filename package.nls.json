@@ -1,6 +1,5 @@
 {
   "ext.description": "Compare git branches, review editable diffs, resolve conflicts, and create AI commit plans and messages.",
-  "view.reviews.name": "Reviews",
   "cmd.compareBranches": "Compare with Current Checkout...",
   "cmd.compareBranchesAdvanced": "Compare Any Two Branches (Advanced)...",
   "cmd.openGutterSettings": "Configure Editor Line Markers...",
@@ -8,7 +7,6 @@
   "cmd.compareLocalWithRemote": "Compare Current Branch with Upstream",
   "cmd.comparePullRequest": "Compare Pull Request...",
   "cmd.showChanges": "Show Changes",
-  "cmd.showReviews": "Show Reviews",
   "cmd.showExplorerComparison": "Show Editor Comparison Markers",
   "cmd.showExplorerComparison.tooltip": "Show comparison badges and editor gutter markers; select a comparison first when none is active",
   "cmd.hideExplorerComparison": "Hide Editor Comparison Markers",
@@ -170,7 +168,6 @@
   "config.blameLine.show.desc": "Show Git blame text before each line in the active editor.",
   "config.blameBlock.show.desc": "Show clickable Git contributor Code Vision above functions, classes, interfaces, and other source blocks.",
   "config.pullRequestComments.show.desc": "Show GitHub pull request review comments in the active editor.",
-  "config.reviewWritesEnabled.desc": "Enable GitHub pull request review and management write actions. Disable this setting to use the review UI in read-only mode.",
   "config.aiCliProvider.desc": "AI CLI provider used for commit planning and AI message generation.",
   "config.aiCliProvider.auto": "Try Claude Code first, then Codex.",
   "config.aiCliProvider.claude": "Use Claude Code CLI.",

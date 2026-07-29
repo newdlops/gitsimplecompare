@@ -38,11 +38,9 @@ import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
-import { SidebarModeController } from "./ui/sidebarModeController";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { GitGraphPanel } from "./webview/graphPanel";
-import { ReviewsViewProvider } from "./webview/reviewsViewProvider";
 import {
   addRefreshReasons,
   HiddenRepositoryRefreshFence,
@@ -70,30 +68,16 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
   context.subscriptions.push(new vscode.Disposable(disposeBranchContentCache));
-
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();
   const comparison = new ComparisonController();
   context.subscriptions.push(comparison);
 
-  // Changes와 Reviews는 같은 sidebar container에서 mode로 전환한다. 기존 view ID는 유지한다.
-  const sidebarModes = new SidebarModeController(
-    context.workspaceState,
-    vscode.commands,
-    logInfo
-  );
   context.subscriptions.push(
     vscode.commands.registerCommand("gitSimpleCompare.showChanges", () =>
-      sidebarModes.select("changes")
-    ),
-    vscode.commands.registerCommand("gitSimpleCompare.showReviews", () =>
-      sidebarModes.select("reviews")
+      vscode.commands.executeCommand("gitSimpleCompare.changes.focus")
     )
   );
-  void sidebarModes.initialize().catch((error) => {
-    logError("sidebar mode initialization failed", error);
-  });
-
   // 2) 특정 ref 의 파일 내용을 읽기 전용 가상 문서로 제공
   const contentProvider = new BranchContentProvider(registry);
   context.subscriptions.push(
@@ -105,7 +89,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       releaseBranchContentDocument(document.uri);
     })
   );
-
   // 3) 선택한 브랜치/원격/PR 비교를 Explorer, 탭, SCM Quick Diff 에 함께 투영
   const comparisonScm = new ComparisonScmProvider(comparison);
   const deletedComparisonGutter = new DeletedComparisonGutterController();
@@ -136,7 +119,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     comparison.onDidChangeComparison(syncComparisonContext)
   );
   syncComparisonContext();
-
   // 4) 브랜치 비교 결과를 보여줄 CHANGES 웹뷰(보기 모드/정렬은 globalState 에 보존)
   let scheduleRefresh: (reason: string, delay?: number) => void = () => undefined;
   const hiddenRepositoryRefresh = new HiddenRepositoryRefreshFence();
@@ -151,8 +133,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     (reason) =>
       scheduleRefresh(hiddenRepositoryRefresh.consumeVisibilityReason(reason), 0)
   );
-  // 4-1) GitHub PR Reviews: 개인 작업과 팀/조직 관리 큐를 동등한 sidebar surface로 제공한다.
-  const reviewsView = new ReviewsViewProvider(context.extensionUri, context.workspaceState, context.globalState);
   context.subscriptions.push(
     comparison.onDidChangeComparison(() =>
       changesView.refreshComparisonStatus()
@@ -161,14 +141,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       ChangesViewProvider.viewId,
       changesView,
       { webviewOptions: { retainContextWhenHidden: true } }
-    ),
-    vscode.window.registerWebviewViewProvider(
-      ReviewsViewProvider.viewId,
-      reviewsView,
-      { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
-
   // 5) 충돌 해결 뷰 + 컨트롤러
   const conflictsProvider = new ConflictsTreeProvider();
   const conflictsTree = vscode.window.createTreeView("gitSimpleCompare.conflicts", {
@@ -230,7 +204,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     scheduleRefresh(reason, reason === "vscodeGit:state" ? 0 : undefined);
   });
   context.subscriptions.push(vscodeGitStatus);
-
   // 6) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {
     registry,

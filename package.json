@@ -2,7 +2,7 @@
   "name": "git-simple-compare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.72010",
+  "version": "0.1.72017",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -43,7 +43,6 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:gitSimpleCompare.changes",
-    "onView:gitSimpleCompare.reviews",
     "onView:gitSimpleCompare.conflicts"
   ],
   "main": "./dist/extension.js",
@@ -90,12 +89,6 @@
         "title": "%cmd.showChanges%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
-      },
-      {
-        "command": "gitSimpleCompare.showReviews",
-        "title": "%cmd.showReviews%",
-        "category": "Git Simple Compare",
-        "icon": "$(comment-discussion)"
       },
       {
         "command": "gitSimpleCompare.showExplorerComparison",
@@ -626,16 +619,7 @@
           "name": "%view.changes.name%",
           "type": "webview",
           "icon": "$(git-compare)",
-          "contextualTitle": "%viewContainer.title%",
-          "when": "gitSimpleCompare.sidebarMode != reviews"
-        },
-        {
-          "id": "gitSimpleCompare.reviews",
-          "name": "%view.reviews.name%",
-          "type": "webview",
-          "icon": "$(comment-discussion)",
-          "contextualTitle": "%viewContainer.title%",
-          "when": "gitSimpleCompare.sidebarMode == reviews"
+          "contextualTitle": "%viewContainer.title%"
         },
         {
           "id": "gitSimpleCompare.conflicts",
@@ -1173,11 +1157,6 @@
           "type": "boolean",
           "default": true,
           "description": "%config.pullRequestComments.show.desc%"
-        },
-        "gitSimpleCompare.reviewWritesEnabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.reviewWritesEnabled.desc%"
         },
         "gitSimpleCompare.aiCliProvider": {
           "type": "string",

@@ -1,6 +1,5 @@
 {
   "ext.description": "git 브랜치 비교, 편집 가능한 diff, 충돌 해결, AI 커밋 플랜과 메시지를 지원하는 확장",
-  "view.reviews.name": "리뷰",
   "cmd.compareBranches": "현재 체크아웃과 비교...",
   "cmd.compareBranchesAdvanced": "임의의 두 브랜치 비교(고급)...",
   "cmd.openGutterSettings": "편집기 라인 표시 설정...",
@@ -8,7 +7,6 @@
   "cmd.compareLocalWithRemote": "현재 브랜치와 Upstream 비교",
   "cmd.comparePullRequest": "Pull Request 비교...",
   "cmd.showChanges": "변경 사항 보기",
-  "cmd.showReviews": "리뷰 보기",
   "cmd.showExplorerComparison": "편집기 비교 라인 표시 켜기",
   "cmd.showExplorerComparison.tooltip": "Explorer 비교 배지와 편집기 Gutter 표시 켜기(활성 비교가 없으면 먼저 비교 선택)",
   "cmd.hideExplorerComparison": "편집기 비교 라인 표시 끄기",
@@ -170,7 +168,6 @@
   "config.blameLine.show.desc": "활성 에디터의 각 라인 앞에 Git blame 텍스트를 표시할지 여부",
   "config.blameBlock.show.desc": "함수, 클래스, 인터페이스 등 소스 블록 선언 위에 클릭 가능한 Git 작업자 Code Vision을 표시할지 여부",
   "config.pullRequestComments.show.desc": "활성 에디터에 GitHub Pull Request 리뷰 댓글을 표시할지 여부",
-  "config.reviewWritesEnabled.desc": "GitHub Pull Request 리뷰와 관리 쓰기 동작을 활성화합니다. 읽기 전용 리뷰 UI만 사용하려면 이 설정을 끄세요.",
   "config.aiCliProvider.desc": "커밋 플랜과 AI 메시지 생성에 사용할 AI CLI provider",
   "config.aiCliProvider.auto": "Claude Code 를 먼저 시도하고, 실패하면 Codex 를 시도합니다.",
   "config.aiCliProvider.claude": "Claude Code CLI 를 사용합니다.",
