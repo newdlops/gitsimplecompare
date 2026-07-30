@@ -44,3 +44,18 @@ test("PR stack GitHub-only management is disabled with explanatory tooltip", asy
   await expect(disabled).toHaveCount(2);
   for (const button of await disabled.all()) { await expect(button).toHaveAttribute("title", /GitHub-only/); await expect(button).toHaveAttribute("aria-label", /GitHub-only/); }
 });
+
+/** Draft layer는 기존 외부 열기를 보존하면서 해당 PR 번호의 preview 진입점을 제공한다. */
+test("PR stack Draft layer posts an accessible preview request and preserves browser open", async ({ page }) => {
+  await mountPullRequestStackGraph(page, { repository:"fixture", stacks:[], layers:[{ branch:"draft/feature", parentBranch:"main", headHash:"child", parentHash:"local-base", depth:0, childBranches:[], local:true, needsRestack:false, pullRequest:{ number:42, state:"OPEN", isDraft:true } }] });
+  await page.locator("[data-stack-branch]").dispatchEvent("click");
+  const preview = page.getByRole("button", { name:"Preview staged pull request" });
+  const open = page.getByRole("button", { name:"Open pull request #42 in browser" });
+  for (const attribute of ["title", "data-tooltip", "aria-label"]) await expect(preview).toHaveAttribute(attribute, "Preview staged pull request");
+  await expect(open).toBeVisible();
+  await preview.click();
+  expect(await readPostedMessages(page)).toContainEqual({ type:"previewStagedPullRequest", number:42 });
+  await mountPullRequestStackGraph(page, { repository:"fixture", stacks:[], layers:[{ branch:"ready/feature", parentBranch:"main", headHash:"child", parentHash:"local-base", depth:0, childBranches:[], local:true, needsRestack:false, pullRequest:{ number:43, state:"OPEN", isDraft:false } }] });
+  await page.locator("[data-stack-branch]").dispatchEvent("click");
+  await expect(page.getByRole("button", { name:"Preview staged pull request" })).toHaveCount(0);
+});

@@ -401,15 +401,36 @@ export async function openGraphPullRequestFileDiff(
 }
 
 /**
- * staged 상태를 PR 로 만든다고 가정한 preview 패널을 연다.
+ * staged 변경 또는 Graph에 적재된 기존 PR 기준으로 preview 패널을 연다.
+ * - 번호가 없으면 기존 toolbar 동작처럼 현재 repository의 staged 변경을 preview 한다.
+ * - 번호가 있으면 stack snapshot의 축약 정보 대신 pager의 완전한 PR을 사용해 GitHub PR 문맥을 보존한다.
+ * @param extensionUri  preview 웹뷰 resource를 찾을 확장 URI
  * @param repoRoot      대상 저장소 루트
- * @param pullRequests 마지막으로 조회한 PR 목록
- * @param number        기존 PR 기준으로 열 경우의 PR 번호
+ * @param pullRequests Graph pager가 현재 적재한 완전한 PR 목록
+ * @param number        기존 PR 기준으로 열 경우의 PR 번호. 없으면 로컬 staged preview를 연다.
  */
 export function openStagedPullRequestPreview(
   extensionUri: vscode.Uri,
-  repoRoot: string
+  repoRoot: string,
+  pullRequests: PullRequestInfo[] = [],
+  number?: number
 ): void {
+  if (number !== undefined) {
+    const pullRequest = pullRequests.find((item) => item.number === number);
+    if (!pullRequest) {
+      vscode.window.showWarningMessage(vscode.l10n.t("Pull request #{0} is not loaded.", number));
+      logWarn("graph pull request preview skipped: not loaded", { repoRoot, number });
+      return;
+    }
+    PullRequestPreviewPanel.createOrShow(
+      extensionUri,
+      new PullRequestService(repoRoot),
+      pullRequest.baseRefName,
+      pullRequest
+    );
+    logInfo("graph pull request preview opened", { repoRoot, number, baseRefName: pullRequest.baseRefName });
+    return;
+  }
   PullRequestPreviewPanel.createOrShow(
     extensionUri,
     new PullRequestService(repoRoot),

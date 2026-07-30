@@ -46,6 +46,7 @@ import { syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
+import { disposePullRequestQuickEdit } from "./ui/pullRequestQuickEdit";
 import { GitGraphPanel } from "./webview/graphPanel";
 import {
   addRefreshReasons,
@@ -70,6 +71,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   });
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
+  context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
   context.subscriptions.push(new vscode.Disposable(disposeBranchContentCache));
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();

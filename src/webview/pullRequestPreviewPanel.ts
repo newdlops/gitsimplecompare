@@ -10,11 +10,13 @@ import {
   PullRequestInfo,
   PullRequestService,
 } from "../git/pullRequestService";
+import type { PullRequestPreviewFile } from "../git/pullRequestPreviewFiles";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 import {
   openPullRequestPreviewDiff,
   type PullRequestPreviewDiffRequest,
 } from "../ui/pullRequestPreviewDiff";
+import { openPullRequestQuickEdit } from "../ui/pullRequestQuickEdit";
 import {
   PullRequestPreviewPublisher,
   type PullRequestPreviewPublishMessage,
@@ -31,6 +33,7 @@ type PreviewMessage =
   | PullRequestPreviewPublishMessage
   | { type: "setPreviewBranch"; role: "source" | "target"; branch: string }
   | { type: "loadCommitFiles"; hash: string }
+  | { type: "openQuickEditor"; path: string }
   | ({ type: "openEditableDiff" } & PullRequestPreviewDiffRequest);
 
 /** staged PR preview 웹뷰 패널 */
@@ -40,6 +43,8 @@ export class PullRequestPreviewPanel {
   private lastTargetRef?: string;
   private lastSourceBranch?: string;
   private lastSourceRef?: string;
+  private lastCurrentBranch?: string;
+  private quickEditFiles: readonly PullRequestPreviewFile[] = [];
   private previewRequestSeq = 0;
   private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private previewRefreshReason = "";
@@ -204,6 +209,10 @@ export class PullRequestPreviewPanel {
       await this.openEditableDiff(msg);
       return;
     }
+    if (msg.type === "openQuickEditor") {
+      await this.openQuickEditor(msg.path);
+      return;
+    }
     if (msg.type === "loadCommitFiles") {
       await this.sendCommitFiles(msg.hash);
     }
@@ -244,6 +253,43 @@ export class PullRequestPreviewPanel {
     }
   }
 
+  /**
+   * 마지막으로 검증된 preview 파일을 현재 작업 브랜치의 일반 editor로 연다.
+   * @param filePath 웹뷰에서 선택한 저장소 상대 경로
+   */
+  private async openQuickEditor(filePath: string): Promise<void> {
+    const file = this.quickEditFiles.find((candidate) => candidate.path === filePath);
+    if (!file) {
+      logWarn("PR preview quick edit skipped: file not in current preview", {
+        repoRoot: this.service.repoRoot,
+        path: filePath,
+      });
+      await vscode.window.showWarningMessage(
+        vscode.l10n.t("This review file cannot be opened for quick editing.")
+      );
+      return;
+    }
+    if (
+      !this.lastCurrentBranch
+      || !this.lastSourceBranch
+      || this.lastSourceBranch !== this.lastCurrentBranch
+    ) {
+      logWarn("PR preview quick edit skipped: source branch is not checked out", {
+        repoRoot: this.service.repoRoot,
+        sourceBranch: this.lastSourceBranch,
+        currentBranch: this.lastCurrentBranch,
+        path: filePath,
+      });
+      await vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          "Quick edit is available only for files on the checked-out source branch."
+        )
+      );
+      return;
+    }
+    await openPullRequestQuickEdit(this.service.repoRoot, file);
+  }
+
   /** Commits 탭에서 선택한 commit 의 파일 변경을 웹뷰에 보낸다. */
   private async sendCommitFiles(hash: string): Promise<void> {
     try {
@@ -271,6 +317,8 @@ export class PullRequestPreviewPanel {
       this.lastTargetRef = preview.targetRef;
       this.lastSourceBranch = preview.sourceBranch;
       this.lastSourceRef = preview.sourceRef;
+      this.lastCurrentBranch = preview.currentBranch;
+      this.quickEditFiles = preview.previewFiles;
       this.panel.title = preview.existingPr?.number
         ? vscode.l10n.t("PR #{0} Preview", preview.existingPr.number)
         : preview.targetBranch
@@ -281,6 +329,7 @@ export class PullRequestPreviewPanel {
       if (requestSeq !== this.previewRequestSeq) {
         return;
       }
+      this.quickEditFiles = [];
       logError("staged PR preview failed", error);
       this.post({
         type: "error",

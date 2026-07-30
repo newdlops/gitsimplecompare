@@ -124,3 +124,20 @@ test("번호 없는 staged Preview는 pager 상태와 무관하게 repository se
     assert.deepEqual(calls[0].slice(2), [undefined, undefined]);
   } finally { (PullRequestPreviewPanel as any).createOrShow = original; }
 });
+
+test("번호 있는 staged Preview는 pager의 완전한 PR 문맥으로 열고 누락 번호를 로컬로 fallback하지 않는다", () => {
+  const original = PullRequestPreviewPanel.createOrShow;
+  const calls: unknown[][] = [];
+  const extensionUri = { path: "/extension" } as any;
+  const pullRequest = { number: 42, baseRefName: "main", headRefName: "draft/feature", isDraft: true } as any;
+  (PullRequestPreviewPanel as any).createOrShow = (...args: unknown[]) => calls.push(args);
+  vscodeMock.__resetWindowMessages();
+  try {
+    openStagedPullRequestPreview(extensionUri, "/exact-repo", [pullRequest], 42);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].slice(2), ["main", pullRequest]);
+    openStagedPullRequestPreview(extensionUri, "/exact-repo", [pullRequest], 99);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(vscodeMock.__warningMessages, ["Pull request #99 is not loaded."]);
+  } finally { (PullRequestPreviewPanel as any).createOrShow = original; }
+});

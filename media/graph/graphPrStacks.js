@@ -173,6 +173,12 @@
       window.GscGraphPostMessage?.({ type: "openPullRequest", number: Number(open.dataset.openStackPr) });
       return;
     }
+    const preview = event.target.closest?.("[data-preview-stack-pr]");
+    if (preview) {
+      event.preventDefault();
+      window.GscGraphPostMessage?.({ type: "previewStagedPullRequest", number: Number(preview.dataset.previewStackPr) });
+      return;
+    }
     if (event.target.closest?.("[data-stack-overview]")) {
       event.preventDefault();
       showOverview();
@@ -216,6 +222,7 @@
       pr?.state === "MERGED" && layer.childBranches?.length
         ? actionButton("advance", layer.branch, "", "git-merge", text("advanceChildren", pr.number))
         : "",
+      pr?.isDraft && pr.number ? previewPrButton(pr.number) : "",
       pr?.number ? openPrButton(pr.number) : "",
     ].join("");
     root.innerHTML = `<div class="pr-stack-detail-shell">` +
@@ -295,6 +302,13 @@
     return `<button type="button" class="pr-stack-icon-button" data-open-stack-pr="${Number(number)}" ` +
       tooltip(text("openPullRequest", number)) + `>` +
       `<span class="codicon codicon-link-external" aria-hidden="true"></span></button>`;
+  }
+
+  /** Draft PR을 기존 Staged PR Preview 패널에서 여는 tooltip icon button을 만든다. */
+  function previewPrButton(number) {
+    return `<button type="button" class="pr-stack-icon-button" data-preview-stack-pr="${Number(number)}" ` +
+      tooltip(text("previewPullRequest")) + `>` +
+      `<span class="codicon codicon-preview" aria-hidden="true"></span></button>`;
   }
 
   /** 선택 child layer detail로 이동하는 버튼을 만든다. */

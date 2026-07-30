@@ -25,12 +25,17 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
     const publishPr = document.getElementById("publish-pr");
     // staged Preview는 로컬 변경을 게시 전에 확인하며, 기존 PR은 외부 GitHub URL로 연다.
     const savedState = vscode.getState?.() || {};
+    const inspectorWidthMin = 220;
+    const inspectorWidthMax = 420;
+    const inspectorWidthDefault = 300;
     let activeTab = ['conversation', 'commits', 'files'].includes(savedState.activeTab) ? savedState.activeTab : 'conversation';
     let activeCommitHash = '';
     let collapsedFiles = new Set();
     let expandedDiffContexts = new Map();
     let filesReviewMode = savedState.filesReviewMode === 'cards' ? 'cards' : 'continuous';
     let diffLayoutMode = savedState.diffLayoutMode === 'split' ? 'split' : 'unified';
+    let inspectorWidth = normalizeInspectorWidth(savedState.inspectorWidth);
+    let conversationRailSplitter = null;
     let latestPreview = null;
     const localViewed = new Set(Array.isArray(savedState.localViewed) ? savedState.localViewed : []);
     /** {0} placeholder를 production webview에서도 안전하게 대체한다. */
@@ -81,10 +86,12 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
       bindCommitRows();
       bindPreviewBranches();
       bindOpenDiffs();
+      bindQuickEditors();
       bindFileToggles();
       bindViewButtons();
       bindContextToggles();
       bindConversationNavigation();
+      bindConversationRail();
       content.querySelector('[data-retry-preview]')?.addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
     }
     function prHeader(preview) {
@@ -189,6 +196,16 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
         });
       });
     }
+    /** 현재 checkout된 source의 신뢰된 preview 파일만 일반 editor quick edit로 요청한다. */
+    function bindQuickEditors() {
+      content.querySelectorAll('[data-open-quick-editor]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const path = button.dataset.openQuickEditor || '';
+          if (!path) return;
+          vscode.postMessage({ type: 'openQuickEditor', path });
+        });
+      });
+    }
     function bindFileToggles() {
       content.querySelectorAll('[data-toggle-file]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -211,9 +228,15 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
       persistDisplayState();
       if (latestPreview) render(latestPreview);
     }
+    /** 저장된 rail 폭이 숫자 범위를 벗어나도 기존 display preference를 안전하게 보존한다. */
+    function normalizeInspectorWidth(value) {
+      const width = Number(value);
+      if (!Number.isFinite(width)) return inspectorWidthDefault;
+      return Math.max(inspectorWidthMin, Math.min(inspectorWidthMax, Math.round(width)));
+    }
     /** title/body draft를 보존하고 로컬 UI preference 및 Viewed 표시만 webview state에 저장한다. */
     function persistDisplayState() {
-      vscode.setState?.({ activeTab, filesReviewMode, diffLayoutMode, localViewed: Array.from(localViewed) });
+      vscode.setState?.({ activeTab, filesReviewMode, diffLayoutMode, inspectorWidth, localViewed: Array.from(localViewed) });
     }
     function bindContextToggles() {
       content.querySelectorAll('[data-expand-context]').forEach((button) => {
@@ -284,6 +307,10 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
     }
     function reviewFileHeaderHtml(file, path, comments, collapsed) {
       const toggleTitle = template(collapsed ? publishText.expandFileDiff : publishText.collapseFileDiff, path);
+      const quickEditState = quickEditFileState(file);
+      const quickEdit = quickEditState
+        ? '<button class="file-action" type="button" data-open-quick-editor="' + esc(file.path) + '" title="' + esc(quickEditState.label) + '" aria-label="' + esc(quickEditState.label) + '" data-tooltip="' + esc(quickEditState.label) + '" aria-disabled="' + (!quickEditState.enabled) + '"' + (quickEditState.enabled ? '' : ' disabled') + '><span class="codicon codicon-edit" aria-hidden="true"></span></button>'
+        : '';
       return '<div class="review-file-head" title="' + esc(path) + '">' +
         '<button class="file-toggle" type="button" data-toggle-file="' + esc(file.path) + '" title="' + esc(toggleTitle) + '" aria-label="' + esc(toggleTitle) + '" data-tooltip="' + esc(toggleTitle) + '"><span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '" aria-hidden="true"></span></button>' +
         '<span class="status-icon codicon ' + statusIcon(file.status) + '" aria-hidden="true"></span>' +
@@ -291,7 +318,20 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
         '<span class="comment-chip"><span class="codicon codicon-comment-discussion" aria-hidden="true"></span>' + esc(comments.length) + '</span>' +
         '<span class="stat"><span class="add">+' + esc(file.additions || 0) + '</span><span class="del">-' + esc(file.deletions || 0) + '</span></span>' +
         localViewedButton(file) +
+        quickEdit +
         '<button class="file-action" type="button" data-open-diff="' + esc(file.path) + '" title="' + esc(publishText.openEditableDiff) + '" aria-label="' + esc(publishText.openEditableDiff) + '" data-tooltip="' + esc(publishText.openEditableDiff) + '"><span class="codicon codicon-diff" aria-hidden="true"></span></button></div>';
+    }
+    /** 주 preview 파일의 quick edit 가능 여부와 불가한 경우의 복구 안내를 함께 만든다. */
+    function quickEditFileState(file) {
+      if (activeTab === 'commits' || !(latestPreview?.previewFiles || []).length || !file.path) return null;
+      if (file.status === 'D') {
+        return { enabled: false, label: publishText.quickEditDeleted || publishText.openEditableDiff };
+      }
+      const sourceBranch = pendingSourceBranch || latestPreview?.sourceBranch;
+      if (!latestPreview?.currentBranch || sourceBranch !== latestPreview.currentBranch) {
+        return { enabled: false, label: publishText.quickEditNeedsCheckout || publishText.openEditableDiff };
+      }
+      return { enabled: true, label: publishText.openQuickEditor || publishText.openEditableDiff };
     }
     function reviewFiles(preview) {
       if (preview.previewFiles && preview.previewFiles.length) return preview.previewFiles;

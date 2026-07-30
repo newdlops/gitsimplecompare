@@ -22,7 +22,7 @@ const PREVIEW_SHELL_CSS = `    body { margin: 0; color: var(--vscode-foreground)
     .gsc-icon-button.busy .codicon { animation: codicon-spin 1.5s steps(30) infinite; }
     .publish-button { grid-auto-flow: column; gap: 6px; width: auto; min-width: 28px; padding: 0 10px; }
     .publish-label { white-space: nowrap; font-size: 12px; font-weight: 600; }
-    .pr-page { max-width: 1080px; min-width: 0; margin: 0 auto; display: grid; gap: 12px; }
+    .pr-page { width: min(100%, 1560px); min-width: 0; margin: 0 auto; display: grid; gap: 12px; }
     .pr-header { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
     .state-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: var(--green-bg); color: var(--green); font-weight: 600; white-space: nowrap; }
@@ -66,6 +66,7 @@ const SHARED_PANEL_MARKDOWN_CSS = `    .panel { min-width: 0; border: 1px solid 
         .file-view-label { font-size: 11px; line-height: 1; white-space: nowrap; }
     .avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); font-weight: 700; }
     .markdown-body { padding: 14px; overflow: auto; line-height: 1.5; }
+    .markdown-body > :not(pre) { max-inline-size: 82ch; }
     .markdown-body :is(h1,h2,h3,p,ul,ol,blockquote,pre) { margin-top: 0; margin-bottom: 10px; }
     .markdown-body pre, .markdown-body code { font-family: var(--vscode-editor-font-family); background: var(--vscode-textCodeBlock-background); }
     .markdown-body pre { padding: 10px; overflow: auto; }
@@ -84,20 +85,32 @@ const SHARED_PANEL_MARKDOWN_CSS = `    .panel { min-width: 0; border: 1px solid 
 
 /** Preview Conversation 전용 CSS 조각이다. */
 const PREVIEW_CONVERSATION_CSS = `    .pr-composer { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); background: var(--panel); }
-    .preview-conversation-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 12px; align-items: start; }
+    .preview-conversation-layout { display: grid; grid-template-columns: minmax(0, 1fr) 5px minmax(220px, var(--preview-inspector-width, 300px)); gap: 12px; align-items: start; }
     .preview-conversation-main, .preview-inspector, .preview-timeline { display: grid; gap: 12px; min-width: 0; }
     .preview-opening .pr-composer { border: 0; }
     .preview-conversation-item { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
     .preview-conversation-item__head { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--subtle); color: var(--muted); font-size: 12px; }
     .preview-conversation-item__head strong { color: var(--vscode-foreground); }
     .preview-conversation-item__body { padding: 10px; overflow-wrap: anywhere; line-height: 1.5; }
+    .preview-conversation-item__body > :not(pre) { max-inline-size: 82ch; }
     .preview-inspector { position: sticky; top: 56px; }
-    .preview-file-tree { display: grid; gap: 2px; padding: 6px; }
-    .preview-tree-folder > summary, .preview-tree-file { min-width: 0; padding: 4px 6px; color: var(--vscode-foreground); background: transparent; font: inherit; font-size: 12px; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-    .preview-tree-folder > summary { list-style: none; } .preview-tree-folder > summary::-webkit-details-marker { display: none; }
+    .preview-inspector-splitter { align-self: stretch; min-height: 48px; border-left: 1px solid var(--vscode-panel-border); cursor: col-resize; touch-action: none; }
+    .preview-inspector-splitter:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+    .preview-file-tree { display: block; max-width: 100%; overflow: auto hidden; padding: 6px; scrollbar-gutter: stable; }
+    .preview-file-tree:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+    .preview-file-tree__content, .preview-tree-folder, .preview-tree-folder > div { display: grid; grid-auto-rows: max-content; align-content: start; gap: 2px; box-sizing: border-box; }
+    .preview-file-tree__content { width: max-content; min-width: 100%; }
+    .preview-tree-folder { width: 100%; }
+    .preview-tree-folder > summary, .preview-tree-file { box-sizing: border-box; min-width: max-content; padding: 4px 6px; color: var(--vscode-foreground); background: transparent; font: inherit; font-size: 12px; text-align: left; white-space: nowrap; cursor: pointer; }
+    .preview-tree-folder > summary { display: flex; width: 100%; align-items: center; list-style: none; } .preview-tree-folder > summary::-webkit-details-marker { display: none; }
     .preview-tree-folder > summary .codicon, .preview-tree-file .codicon { margin-right: 5px; }
-    .preview-tree-folder > div { display: grid; gap: 2px; margin-left: 12px; }
-    .preview-tree-file { border: 0; } .preview-tree-file:hover, .preview-tree-file:focus-visible, .preview-tree-folder > summary:hover, .preview-tree-folder > summary:focus-visible { background: var(--vscode-toolbar-hoverBackground); }
+    .preview-tree-folder > div { width: 100%; padding-inline-start: 12px; }
+    .preview-tree-file { display: grid; grid-template-columns: auto minmax(max-content, 1fr) auto; align-items: center; gap: 5px; width: 100%; border: 0; }
+    .preview-tree-file__name { min-width: 0; white-space: nowrap; }
+    .preview-tree-file__stats { display: inline-grid; grid-template-columns: minmax(3ch, auto) minmax(3ch, auto); gap: 5px; font-family: var(--vscode-editor-font-family); font-variant-numeric: tabular-nums; text-align: right; }
+    .preview-tree-file__add { color: var(--vscode-gitDecoration-addedResourceForeground); }
+    .preview-tree-file__del { color: var(--vscode-gitDecoration-deletedResourceForeground); }
+    .preview-tree-file:hover, .preview-tree-file:focus-visible, .preview-tree-folder > summary:hover, .preview-tree-folder > summary:focus-visible { background: var(--vscode-toolbar-hoverBackground); }
 `;
 
 /** Preview 파일 action이 공통으로 쓰는 CSS 조각이다. */
@@ -128,10 +141,11 @@ const SHARED_FILE_DIFF_CSS = `    .file-list { display: grid; gap: 10px; min-wid
         .review-file:first-child { border-top: 0; }
         .file-list .review-file { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
         .file-list .review-file:first-child { border-top: 1px solid var(--border); }
-        .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
+        .review-file-head { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto auto; gap: 8px; align-items: center; padding: 9px 10px; background: var(--subtle); }
         .review-file-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--vscode-editor-font-family); }
     .file-action, .file-toggle { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid var(--border); border-radius: 3px; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); cursor: pointer; }
-    .file-action:hover, .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
+    .file-action:hover:not(:disabled), .file-toggle:hover { background: var(--vscode-toolbar-hoverBackground); }
+    .file-action:disabled { color: var(--vscode-disabledForeground); background: transparent; cursor: default; }
     .file-toggle { width: 22px; }
     .comment-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
     .diff-snippet { display: block; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; background: var(--vscode-textCodeBlock-background); font-family: var(--vscode-editor-font-family); font-size: 12px; line-height: 20px; }
@@ -187,7 +201,8 @@ const SHARED_FILE_DIFF_CSS = `    .file-list { display: grid; gap: 10px; min-wid
 `;
 
 /** Preview 반응형 전용 CSS 조각이다. */
-const PREVIEW_MEDIA_CSS = `    @media (max-width: 800px) {
+const PREVIEW_MEDIA_CSS = `    @media (max-width: 899px) { .preview-conversation-layout { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); } .preview-inspector-splitter { display: none; } }
+    @media (max-width: 800px) {
       .topbar { align-items: flex-start; flex-wrap: wrap; }
       .actions { justify-content: flex-start; }
       .branch-flow { align-items: stretch; }

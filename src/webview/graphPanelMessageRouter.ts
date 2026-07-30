@@ -222,7 +222,12 @@ export class GraphPanelMessageRouter {
       }
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error);
-      logError("graph message handling failed", error, { type: message.type });
+      logError("graph message handling failed", error, {
+        type: message.type,
+        ...(message.type === "prepareGraphRebase"
+          ? { startHash: message.hash, requestedOnto: message.onto }
+          : {}),
+      });
       this.deps.post({ type: "error", message: text });
     }
   }
@@ -270,7 +275,12 @@ export class GraphPanelMessageRouter {
     } else if (message.type === "openPullRequest") {
       await openGraphPullRequest(this.repoRoot, this.pullRequestPager.items, message.number);
     } else if (message.type === "previewStagedPullRequest") {
-      openStagedPullRequestPreview(this.deps.extensionUri, this.repoRoot);
+      openStagedPullRequestPreview(
+        this.deps.extensionUri,
+        this.repoRoot,
+        this.pullRequestPager.items,
+        message.number
+      );
     } else if (message.type === "openPullRequestFileDiff") {
       await openGraphPullRequestFileDiff(
         this.repoRoot,
