@@ -1,5 +1,6 @@
 // staged 상태를 target branch 로 PR 한다고 가정한 모의 페이지 웹뷰.
 // - PR 데이터 생성은 PullRequestService 에 맡기고, 이 파일은 패널 생애주기와 렌더링만 담당한다.
+import * as path from "node:path";
 import * as vscode from "vscode";
 import {
   isAiCliAuthenticationError,
@@ -11,6 +12,11 @@ import {
   PullRequestService,
 } from "../git/pullRequestService";
 import type { PullRequestPreviewFile } from "../git/pullRequestPreviewFiles";
+import {
+  PullRequestQuickEditError,
+  PullRequestQuickEditService,
+  type PullRequestQuickEditSession,
+} from "../git/pullRequestQuickEditService";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 import {
   openPullRequestPreviewDiff,
@@ -48,8 +54,12 @@ export class PullRequestPreviewPanel {
   private previewRequestSeq = 0;
   private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private previewRefreshReason = "";
+  private activeQuickEditSession?: PullRequestQuickEditSession;
+  private quickEditSaveQueue: Promise<void> = Promise.resolve();
+  private disposed = false;
   private pullRequestMessageGenerationInFlight = false;
   private readonly publisher: PullRequestPreviewPublisher;
+  private readonly quickEditService: PullRequestQuickEditService;
 
   /**
    * staged PR preview 패널을 만들거나 기존 패널을 재사용한다.
@@ -91,6 +101,7 @@ export class PullRequestPreviewPanel {
     private existingPr?: PullRequestInfo,
     private sourceBranch?: string
   ) {
+    this.quickEditService = new PullRequestQuickEditService(this.service.repoRoot);
     this.publisher = new PullRequestPreviewPublisher(
       this.service.repoRoot,
       (message) => this.post(message),
@@ -107,12 +118,11 @@ export class PullRequestPreviewPanel {
       undefined,
       this.disposables
     );
-    vscode.workspace.onDidSaveTextDocument((document) => {
-      const file = document.uri.scheme === "file" ? document.uri.fsPath : "";
-      if (file && file.startsWith(`${this.service.repoRoot}/`)) {
-        this.schedulePreviewRefresh("fileSave");
-      }
-    }, undefined, this.disposables);
+    vscode.workspace.onDidSaveTextDocument(
+      (document) => this.handleSavedDocument(document),
+      undefined,
+      this.disposables
+    );
     const gitWatcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(
         this.service.repoRoot,
@@ -128,10 +138,9 @@ export class PullRequestPreviewPanel {
 
   /** 패널 리소스를 정리한다. */
   private dispose(): void {
-    if (this.previewRefreshTimer) {
-      clearTimeout(this.previewRefreshTimer);
-      this.previewRefreshTimer = undefined;
-    }
+    this.disposed = true;
+    this.activeQuickEditSession = undefined;
+    this.cancelScheduledPreviewRefresh();
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();
     }
@@ -142,6 +151,9 @@ export class PullRequestPreviewPanel {
    * @param reason refresh 를 예약한 원인
    */
   private schedulePreviewRefresh(reason: string): void {
+    if (this.disposed) {
+      return;
+    }
     this.previewRefreshReason = this.previewRefreshTimer
       ? `${this.previewRefreshReason},${reason}`
       : reason;
@@ -160,12 +172,27 @@ export class PullRequestPreviewPanel {
     }, 180);
   }
 
+  /** 예약된 자동 refresh를 취소하고 누적 원인을 비운다. */
+  private cancelScheduledPreviewRefresh(): void {
+    if (this.previewRefreshTimer) {
+      clearTimeout(this.previewRefreshTimer);
+      this.previewRefreshTimer = undefined;
+    }
+    this.previewRefreshReason = "";
+  }
+
   /**
    * 웹뷰 메시지를 처리한다.
    * @param msg 웹뷰에서 보낸 메시지
    */
   private async handleMessage(msg: PreviewMessage): Promise<void> {
-    if (msg.type === "ready" || msg.type === "refresh") {
+    if (msg.type === "ready") {
+      await this.sendPreview();
+      return;
+    }
+    if (msg.type === "refresh") {
+      await this.quickEditSaveQueue;
+      this.cancelScheduledPreviewRefresh();
       await this.sendPreview();
       return;
     }
@@ -287,7 +314,67 @@ export class PullRequestPreviewPanel {
       );
       return;
     }
-    await openPullRequestQuickEdit(this.service.repoRoot, file);
+    try {
+      const session = await this.quickEditService.prepare(
+        file.path,
+        this.lastSourceBranch
+      );
+      if (await openPullRequestQuickEdit(this.service.repoRoot, file)) {
+        this.activeQuickEditSession = session;
+      }
+    } catch (error) {
+      logWarn("PR preview quick edit preparation failed", {
+        repoRoot: this.service.repoRoot,
+        path: file.path,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      await vscode.window.showWarningMessage(quickEditPreparationMessage(error));
+    }
+  }
+
+  /**
+   * 활성 Quick Edit 문서의 저장만 직렬 staging queue에 넣는다.
+   * - 일반 저장은 staged preview 원본을 바꾸지 않으므로 불필요한 전체 refresh를 만들지 않는다.
+   * @param document 방금 디스크에 저장된 VS Code 문서
+   */
+  private handleSavedDocument(document: vscode.TextDocument): void {
+    const session = this.activeQuickEditSession;
+    if (
+      !session
+      || document.uri.scheme !== "file"
+      || path.resolve(document.uri.fsPath)
+        !== path.resolve(this.service.repoRoot, session.relativePath)
+    ) {
+      return;
+    }
+    const staging = this.quickEditSaveQueue.then(async () => {
+      const changed = await this.quickEditService.stageSavedFile(session);
+      if (!changed) {
+        logInfo("PR preview quick edit save skipped: index already matches", {
+          repoRoot: this.service.repoRoot,
+          path: session.relativePath,
+        });
+        return;
+      }
+      logInfo("PR preview quick edit save staged", {
+        repoRoot: this.service.repoRoot,
+        path: session.relativePath,
+      });
+      this.schedulePreviewRefresh("quickEditSave");
+    });
+    this.quickEditSaveQueue = staging.catch(async (error) => {
+      logError("PR preview quick edit save staging failed", error, {
+        repoRoot: this.service.repoRoot,
+        path: session.relativePath,
+      });
+      await vscode.window.showErrorMessage(
+        vscode.l10n.t(
+          "Quick Edit saved {0}, but the staged preview could not be updated: {1}",
+          session.relativePath,
+          error instanceof Error ? error.message : String(error)
+        )
+      );
+    });
   }
 
   /** Commits 탭에서 선택한 commit 의 파일 변경을 웹뷰에 보낸다. */
@@ -430,6 +517,35 @@ export class PullRequestPreviewPanel {
     return (!target || target === this.existingPr?.baseRefName)
       && (!source || source === this.existingPr?.headRefName);
   }
+}
+
+/**
+ * Quick Edit 준비 실패를 사용자가 바로 복구할 수 있는 안내로 바꾼다.
+ * @param error Git 계층이 분류한 준비 오류 또는 예상하지 못한 실패
+ * @returns warning notification에 표시할 로컬라이즈 문자열
+ */
+function quickEditPreparationMessage(error: unknown): string {
+  if (error instanceof PullRequestQuickEditError) {
+    if (error.code === "existingUnstagedChanges") {
+      return vscode.l10n.t(
+        "Quick Edit stages this file when saved. Stage or discard its existing unstaged changes first."
+      );
+    }
+    if (error.code === "sourceBranchChanged") {
+      return vscode.l10n.t(
+        "Quick edit is available only for files on the checked-out source branch."
+      );
+    }
+    if (error.code === "unsafePath") {
+      return vscode.l10n.t(
+        "This review file cannot be opened for quick editing."
+      );
+    }
+  }
+  return vscode.l10n.t(
+    "Unable to prepare Quick Edit: {0}",
+    error instanceof Error ? error.message : String(error)
+  );
 }
 
 /** 오류 값을 사용자에게 보여줄 짧은 문자열로 바꾼다. */

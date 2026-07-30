@@ -40,11 +40,12 @@ let visibleEditorsListener: vscode.Disposable | undefined;
  * PR preview의 신뢰된 파일 정보를 사용해 실제 작업 파일을 일반 editor로 연다.
  * @param repoRoot 현재 preview가 속한 저장소 루트
  * @param file host가 마지막 preview에서 찾은 파일과 patch 정보
+ * @returns Quick Edit 대상과 decoration을 정상적으로 활성화했으면 true
  */
 export async function openPullRequestQuickEdit(
   repoRoot: string,
   file: Pick<PullRequestPreviewFile, "path" | "status" | "patch">
-): Promise<void> {
+): Promise<boolean> {
   const relativePath = safeRelativePath(repoRoot, file.path);
   if (!relativePath) {
     logWarn("PR preview quick edit skipped: unsafe path", {
@@ -54,7 +55,7 @@ export async function openPullRequestQuickEdit(
     await vscode.window.showWarningMessage(
       vscode.l10n.t("This review file cannot be opened for quick editing.")
     );
-    return;
+    return false;
   }
   if (file.status === "D") {
     logWarn("PR preview quick edit skipped: deleted file", {
@@ -64,12 +65,24 @@ export async function openPullRequestQuickEdit(
     await vscode.window.showWarningMessage(
       vscode.l10n.t("Deleted files cannot be quick edited.")
     );
-    return;
+    return false;
   }
 
   const fileUri = vscode.Uri.file(path.join(repoRoot, relativePath));
   try {
     const document = await vscode.workspace.openTextDocument(fileUri);
+    if (document.isDirty) {
+      logWarn("PR preview quick edit skipped: document already has unsaved changes", {
+        repoRoot,
+        path: relativePath,
+      });
+      await vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          "Save or discard the existing editor changes before using Quick Edit."
+        )
+      );
+      return false;
+    }
     const editor = await vscode.window.showTextDocument(document, {
       preview: false,
       preserveFocus: false,
@@ -86,6 +99,7 @@ export async function openPullRequestQuickEdit(
       addedRanges: changes.addedRanges.length,
       deletedAnchors: changes.deletedAnchors.length,
     });
+    return true;
   } catch (error) {
     logError("PR preview quick edit open failed", error, {
       repoRoot,
@@ -98,6 +112,7 @@ export async function openPullRequestQuickEdit(
         error instanceof Error ? error.message : String(error)
       )
     );
+    return false;
   }
 }
 
