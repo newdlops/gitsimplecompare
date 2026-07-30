@@ -38,8 +38,9 @@
     function onKeydown(event) {
       const decrement = horizontal ? "ArrowLeft" : "ArrowUp";
       const increment = horizontal ? "ArrowRight" : "ArrowDown";
-      if (event.key === decrement) { event.preventDefault(); setValue(value - step, "keyboard"); }
-      else if (event.key === increment) { event.preventDefault(); setValue(value + step, "keyboard"); }
+      const direction = Number(options.direction) || 1;
+      if (event.key === decrement) { event.preventDefault(); setValue(value - step * direction, "keyboard"); }
+      else if (event.key === increment) { event.preventDefault(); setValue(value + step * direction, "keyboard"); }
       else if (event.key === "Home") { event.preventDefault(); setValue(min, "keyboard"); }
       else if (event.key === "End") { event.preventDefault(); setValue(max, "keyboard"); }
     }

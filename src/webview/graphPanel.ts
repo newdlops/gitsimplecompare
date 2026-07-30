@@ -568,6 +568,7 @@ export class GitGraphPanel {
       loading: this.loading,
       loadDirection: direction,
       reset,
+      colorScope: this.logService.repoRoot,
     };
   }
   /**

@@ -32,6 +32,7 @@ export function buildGraphHtml(
   const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
   const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
   const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
+  const detailResizeScriptUri = script(webview, mediaRoot, "graphDetailResize.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
   const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
@@ -138,6 +139,7 @@ export function buildGraphHtml(
     addFirstLayer: vscode.l10n.t("Add the first stack layer"),
     showAll: vscode.l10n.t("Show all pull request stacks"),
     openPullRequest: vscode.l10n.t("Open pull request #{0} in browser"),
+    previewPullRequest: vscode.l10n.t("Preview staged pull request"),
     showChild: vscode.l10n.t("Show child layer {0}"),
     showLayer: vscode.l10n.t("Show stack layer {0}"),
   }).replace(/</g, "\\u003c");
@@ -289,6 +291,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
+  <script nonce="${nonce}" src="${detailResizeScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>

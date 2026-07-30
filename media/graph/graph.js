@@ -12,10 +12,6 @@
   const NODE_R = 6; // 노드 반지름
   const MARGIN = 16; // 그래프 좌측 여백
   const TAIL_H = 42; // 로딩/더 보기 행 높이
-  const DETAIL_MIN_W = 280;
-  const DETAIL_MAX_W = 760;
-  const SUMMARY_MIN_H = 96;
-  const FILES_MIN_H = 120;
 
   const graphEl = document.getElementById("graph");
   const graphContentEl = document.getElementById("graph-content");
@@ -32,10 +28,14 @@
   let currentLaneCount = 1;
   let selectedHash = null;
   let detailLabel = "commit details";
-  let detailSummaryHeight = 180;
   let loadState = { loadedCount: 0, hasMore: false, hasMoreBefore: false, loading: false, reset: true };
   let rowColorCache = new WeakMap();
   let localColorResolver = null;
+  const detailResize = window.GscGraphDetailResize?.create?.({
+    splitterEl,
+    detailEl,
+    isDrawerMode,
+  });
 
   /** 레인 인덱스를 x 좌표로 변환한다. */
   function laneX(col) {
@@ -45,11 +45,6 @@
   /** 행 인덱스를 y 좌표(행 중앙)로 변환한다. */
   function rowY(row) {
     return row * ROW_H + ROW_H / 2;
-  }
-
-  /** 숫자를 min/max 범위 안으로 제한한다. */
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
   }
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
@@ -75,6 +70,7 @@
 
     currentRows = data.rows || [];
     currentEdges = data.edges || [];
+    window.GscGraphColors?.beginStableColorFrame?.(state?.colorScope, currentRows);
     rowColorCache = new WeakMap();
     localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
     currentLaneCount = data.laneCount || 1;
@@ -206,11 +202,18 @@
     if (cached) {
       return cached;
     }
-    const color =
+    const semanticColor =
       localColorResolver?.colorForRow?.(row) ||
-      window.GscGraphFeatures?.rowColor?.(row) ||
+      window.GscGraphFeatures?.rowColor?.(row);
+    const suggestedColor =
+      semanticColor ||
       window.GscGraphColors?.rowColor?.(row) ||
       "#abb2bf";
+    const color = window.GscGraphColors?.stableRowColor?.(
+      row,
+      suggestedColor,
+      Boolean(semanticColor)
+    ) || suggestedColor;
     rowColorCache.set(row, color);
     return color;
   }
@@ -280,7 +283,7 @@
     }
     window.GscGraphDetail.render(detail, {
       root: detailEl,
-      bindSplitter: initDetailSplitter,
+      bindSplitter: detailResize?.initDetailSplitter || (() => {}),
     });
   }
 
@@ -414,113 +417,9 @@
     setDetailVisible(document.body.classList.contains("detail-open"));
   }
 
-  /** 메인 그래프/상세 사이 splitter 의 드래그와 키보드 조작을 등록한다. */
-  function initMainSplitter() {
-    splitterEl.addEventListener("pointerdown", (event) => {
-      if (isDrawerMode()) {
-        return;
-      }
-      event.preventDefault();
-      const startX = event.clientX;
-      const startWidth = detailEl.getBoundingClientRect().width;
-      document.body.classList.add("resizing");
-
-      const onMove = (moveEvent) => {
-        setDetailWidth(startWidth + startX - moveEvent.clientX);
-      };
-      const onUp = () => {
-        document.body.classList.remove("resizing");
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    });
-
-    splitterEl.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
-        return;
-      }
-      event.preventDefault();
-      const delta = event.key === "ArrowLeft" ? 24 : -24;
-      setDetailWidth(detailEl.getBoundingClientRect().width + delta);
-    });
-  }
-
-  /**
-   * 상세 패널 폭을 허용 범위 안으로 조정한다.
-   * @param width 사용자가 요청한 상세 패널 폭
-   */
-  function setDetailWidth(width) {
-    const maxByWindow = Math.max(DETAIL_MIN_W, Math.floor(window.innerWidth * 0.7));
-    const next = clamp(width, DETAIL_MIN_W, Math.min(DETAIL_MAX_W, maxByWindow));
-    detailEl.style.flexBasis = next + "px";
-    detailEl.style.width = next + "px";
-  }
-
-  /** 커밋 요약/파일 목록 사이 splitter 의 드래그와 키보드 조작을 등록한다. */
-  function initDetailSplitter() {
-    const detailSplitter = detailEl.querySelector("#detail-splitter");
-    const summary = detailEl.querySelector(".commit-summary");
-    const shell = detailEl.querySelector(".detail-shell");
-    if (!detailSplitter || !summary || !shell) {
-      return;
-    }
-
-    resizeSummary(summary, shell, preferredSummaryHeight(summary, shell));
-    detailSplitter.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      const startY = event.clientY;
-      const startHeight = summary.getBoundingClientRect().height;
-      document.body.classList.add("resizing");
-
-      const onMove = (moveEvent) => {
-        resizeSummary(summary, shell, startHeight + moveEvent.clientY - startY);
-      };
-      const onUp = () => {
-        document.body.classList.remove("resizing");
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    });
-
-    detailSplitter.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
-        return;
-      }
-      event.preventDefault();
-      const delta = event.key === "ArrowUp" ? -18 : 18;
-      resizeSummary(summary, shell, detailSummaryHeight + delta);
-    });
-  }
-
-  /**
-   * 상세 패널 내부의 커밋 요약 영역 높이를 조절한다.
-   * @param summary 높이를 적용할 요약 영역
-   * @param shell   상세 패널 내부 전체 컨테이너
-   * @param height  요청된 요약 영역 높이
-   */
-  function resizeSummary(summary, shell, height) {
-    const max = Math.max(SUMMARY_MIN_H, shell.clientHeight - FILES_MIN_H);
-    detailSummaryHeight = clamp(height, SUMMARY_MIN_H, max);
-    summary.style.flexBasis = detailSummaryHeight + "px";
-  }
-
-  /**
-   * 커밋 메시지/메타 정보가 긴 경우 파일 목록을 최소 높이까지 줄여 상세 내용을 먼저 보이게 한다.
-   * @param summary 실제 상세 내용이 들어 있는 영역
-   * @param shell   상세 패널 전체 높이를 제공하는 컨테이너
-   */
-  function preferredSummaryHeight(summary, shell) {
-    const max = Math.max(SUMMARY_MIN_H, shell.clientHeight - FILES_MIN_H);
-    return clamp(summary.scrollHeight + 2, SUMMARY_MIN_H, max);
-  }
-
   /** toolbar/drawer/scroll 이벤트를 한 번만 등록한다. */
   function initEvents() {
-    initMainSplitter();
+    detailResize?.initMainSplitter();
     window.GscGraphSearch?.init(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindNavigation(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);

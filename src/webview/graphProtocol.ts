@@ -44,6 +44,8 @@ export interface GraphLoadState {
   loading: boolean;
   loadDirection?: GraphLoadDirection;
   reset: boolean;
+  /** 같은 저장소 안에서 커밋 표시 색상을 재렌더 사이에 고정하기 위한 범위 식별자 */
+  colorScope?: string;
 }
 
 /** 그래프 rebase 진행 상태 배너의 단계 */
@@ -150,7 +152,7 @@ export type FromWebviewMessage =
       target?: GraphSearchFetchTarget;
     }
   | { type: "openPullRequest"; number: number }
-  | { type: "previewStagedPullRequest" }
+  | { type: "previewStagedPullRequest"; number?: number }
   | {
       type: "openPullRequestFileDiff";
       number: number;

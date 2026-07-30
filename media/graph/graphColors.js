@@ -13,6 +13,84 @@
     "#f15bb5", "#fee440", "#8ac926", "#ff595e", "#1982c4", "#6a4c93",
     "#b5e48c", "#ffca3a", "#52b788", "#c77dff", "#fb8500", "#90dbf4",
   ];
+  const MAX_STABLE_COMMIT_COLORS = 1024;
+  const stableCommitColors = new Map();
+  let stableColorScope = "";
+
+  /**
+   * 그래프가 다른 저장소나 완전히 겹치지 않는 커밋 창으로 전환될 때 고정 색상을 비운다.
+   * 같은 저장소의 새로고침·페이지 변경은 기존 해시가 겹치므로 색상을 보존하고,
+   * 더 이상 보이지 않는 창은 놓아 주어 제한된 캐시를 새 화면이 사용할 수 있게 한다.
+   * @param scope 확장에서 전달한 저장소 식별자
+   * @param rows 새 프레임에 표시할 그래프 행 목록
+   */
+  function beginStableColorFrame(scope, rows) {
+    const nextScope = String(scope || "");
+    if (nextScope && stableColorScope && stableColorScope !== nextScope) {
+      stableCommitColors.clear();
+    }
+    if (nextScope) {
+      stableColorScope = nextScope;
+    }
+    if (!stableCommitColors.size) {
+      return;
+    }
+    let hasRealCommit = false;
+    let hasCachedCommit = false;
+    for (const row of rows || []) {
+      if (!cacheableRow(row)) {
+        continue;
+      }
+      hasRealCommit = true;
+      if (stableCommitColors.has(row.hash)) {
+        hasCachedCommit = true;
+        break;
+      }
+    }
+    if (hasRealCommit && !hasCachedCommit) {
+      stableCommitColors.clear();
+    }
+  }
+
+  /**
+   * 실제 커밋 해시에 처음 보인 색상을 연결해 후속 GraphData 렌더에서도 그대로 반환한다.
+   * local-only 같은 브랜치 의미 색상은 일반 레인색을 한 번만 대체할 수 있으며,
+   * 가상 커밋은 현재 HEAD 레인을 따라야 하므로 저장하지 않는다.
+   * 캐시는 상한에 도달하면 기존(먼저 본 최신) 커밋을 지키고 새 항목을 추가하지 않는다.
+   * @param row 색상을 표시할 그래프 행
+   * @param suggestedColor 현재 레이아웃과 브랜치 상태가 제안한 색상
+   * @param semanticColor 브랜치 의미가 담긴 색상이면 true
+   * @returns 같은 커밋에 고정된 최종 표시 색상
+   */
+  function stableRowColor(row, suggestedColor, semanticColor) {
+    if (!cacheableRow(row)) {
+      return suggestedColor;
+    }
+    const stored = stableCommitColors.get(row.hash);
+    if (stored) {
+      if (!stored.semantic && semanticColor) {
+        stored.color = suggestedColor;
+        stored.semantic = true;
+      }
+      return stored.color;
+    }
+    if (stableCommitColors.size < MAX_STABLE_COMMIT_COLORS) {
+      stableCommitColors.set(row.hash, {
+        color: suggestedColor,
+        semantic: Boolean(semanticColor),
+      });
+    }
+    return suggestedColor;
+  }
+
+  /** 장기 색상 식별자로 안전한 실제 커밋 행인지 판정한다. */
+  function cacheableRow(row) {
+    return Boolean(
+      row?.hash &&
+      row.kind !== "ongoing" &&
+      row.kind !== "staged"
+    );
+  }
 
   /** 레인 색상 인덱스를 인접 lane 간 색상 계열이 겹치지 않게 변환한다. */
   function colorOf(index) {
@@ -149,10 +227,12 @@
   }
 
   window.GscGraphColors = {
+    beginStableColorFrame,
     colorOf,
     branchColor,
     branchPaletteColor,
     rowColor,
+    stableRowColor,
     edgeColor,
   };
 })();
