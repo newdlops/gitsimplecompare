@@ -305,7 +305,7 @@ test("Submit/Sync 후 merge된 부모를 Advance하면 PR base와 로컬 stack�
     if (restacked.status !== "completed" || !restacked.postAction) return;
     const sync = await advanceService.syncPromotedStacks(restacked.postAction, true);
     assert.deepEqual(sync.promotedBranches, ["stack/two"]);
-    assert.equal(sync.submittedStacks[0].layers[0].push, "force-with-lease");
+    assert.equal(sync.submittedStacks[0].layers[0].push, "fast-forward");
     assert.equal(sync.submittedStacks[0].layers[0].changedBase, true);
 
     github = await readFakeGitHubState(fixture.ghStatePath);

@@ -184,6 +184,8 @@ export async function continueOperation(
     await controller.refresh();
     if (continued && operation === "merge") {
       await restorePullSnapshotAfterContinue(controller, svc.repoRoot);
+      // Stack restack이 history-preserving merge로 멈춘 경우에도 다음 layer 실행을 이어야 한다.
+      await finishRebaseAfterContinue(controller, svc.repoRoot);
     } else if (continued && operation === "rebase") {
       await finishRebaseAfterContinue(controller, svc.repoRoot);
       await publishRebaseContinueState(svc.repoRoot);
@@ -228,7 +230,7 @@ export async function abortOperation(
         vscode.l10n.t("Could not abort: {0}", errorText(err))
       );
     }
-    if (aborted && operation === "rebase") {
+    if (aborted && (operation === "rebase" || operation === "merge")) {
       await restoreRebaseAfterAbort(svc.repoRoot);
     } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
       await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);

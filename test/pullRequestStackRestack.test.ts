@@ -22,6 +22,15 @@ async function createRepository(): Promise<string> {
   return directory;
 }
 
+/** 게시된 branch의 upstream ancestry를 검증할 수 있도록 bare origin을 연결한다. */
+async function addOrigin(repoRoot: string): Promise<string> {
+  const remoteRoot = await mkdtemp(join(tmpdir(), "gsc-stack-restack-origin-"));
+  await git(remoteRoot, "init", "--bare");
+  await git(repoRoot, "remote", "add", "origin", remoteRoot);
+  await git(repoRoot, "push", "-u", "origin", "main");
+  return remoteRoot;
+}
+
 /** shell을 거치지 않고 테스트 저장소에서 git 명령을 실행하고 stdout을 반환한다. */
 async function git(repoRoot: string, ...args: string[]): Promise<string> {
   const result = await execFileAsync("git", args, {
@@ -226,5 +235,109 @@ test("stack branch를 checkout한 worktree가 dirty면 snapshot이나 rebase 전
     assert.equal(refs, "");
   } finally {
     await rm(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test("upstream tip을 포함한 게시 child는 새 parent를 merge해 원격 history를 보존한다", async () => {
+  const repoRoot = await createRepository();
+  let remoteRoot: string | undefined;
+  try {
+    remoteRoot = await addOrigin(repoRoot);
+    const { oldTwo } = await createTwoLayerStack(repoRoot);
+    await git(repoRoot, "push", "-u", "origin", "stack/two");
+    await git(repoRoot, "switch", "stack/one");
+    await writeFile(join(repoRoot, "parent-followup.txt"), "new parent work\n", "utf8");
+    await git(repoRoot, "add", "parent-followup.txt");
+    await git(repoRoot, "commit", "-m", "new parent work");
+    const newOne = await git(repoRoot, "rev-parse", "HEAD");
+    await git(repoRoot, "switch", "main");
+
+    const service = new PullRequestStackRestackService(repoRoot);
+    const plan = await service.createPlan("stack/one");
+    assert.deepEqual(plan.steps.map((step) => [step.branch, step.action]), [
+      ["stack/one", "record"],
+      ["stack/two", "merge"],
+    ]);
+    const result = await service.execute(plan);
+    assert.equal(result.status, "completed");
+    if (result.status !== "completed") return;
+    const newTwo = await git(repoRoot, "rev-parse", "stack/two");
+    assert.notEqual(newTwo, oldTwo);
+    assert.equal(await isAncestor(repoRoot, oldTwo, newTwo), true);
+    assert.equal(await isAncestor(repoRoot, newOne, newTwo), true);
+    assert.deepEqual(result.historyPreservingBranches, ["stack/two"]);
+    assert.deepEqual(result.rewrittenBranches, []);
+  } finally {
+    await rm(repoRoot, { recursive: true, force: true });
+    if (remoteRoot) await rm(remoteRoot, { recursive: true, force: true });
+  }
+});
+
+test("게시 child의 merge 충돌 Abort는 branch와 Stack 메타데이터를 복원한다", async () => {
+  const repoRoot = await createRepository();
+  let remoteRoot: string | undefined;
+  try {
+    remoteRoot = await addOrigin(repoRoot);
+    const metadata = new PullRequestStackMetadataService(repoRoot);
+    const main = await git(repoRoot, "rev-parse", "main");
+    await metadata.createLayer({ branch: "stack/one", parentBranch: "main", parentRef: main });
+    await git(repoRoot, "switch", "stack/one");
+    await writeFile(join(repoRoot, "shared.txt"), "parent\n", "utf8");
+    await git(repoRoot, "add", "shared.txt");
+    await git(repoRoot, "commit", "-m", "parent change");
+    const oldOne = await git(repoRoot, "rev-parse", "HEAD");
+    await metadata.createLayer({ branch: "stack/two", parentBranch: "stack/one", parentRef: oldOne });
+    await git(repoRoot, "switch", "stack/two");
+    await writeFile(join(repoRoot, "shared.txt"), "child\n", "utf8");
+    await git(repoRoot, "add", "shared.txt");
+    await git(repoRoot, "commit", "-m", "child change");
+    const oldTwo = await git(repoRoot, "rev-parse", "HEAD");
+    await git(repoRoot, "push", "-u", "origin", "stack/two");
+    await git(repoRoot, "switch", "stack/one");
+    await writeFile(join(repoRoot, "shared.txt"), "parent amended\n", "utf8");
+    await git(repoRoot, "add", "shared.txt");
+    await git(repoRoot, "commit", "--amend", "--no-edit");
+    await git(repoRoot, "switch", "main");
+
+    const service = new PullRequestStackRestackService(repoRoot);
+    const paused = await service.execute(await service.createPlan("stack/one"));
+    assert.equal(paused.status, "conflicts");
+    if (paused.status !== "conflicts") return;
+    await git(paused.worktreePath, "merge", "--abort");
+    await new PullRequestStackRestackService(paused.worktreePath).restoreAfterAbort();
+    assert.equal(await git(repoRoot, "rev-parse", "stack/two"), oldTwo);
+    const child = (await metadata.listBranches()).find((branch) => branch.name === "stack/two");
+    assert.equal(child?.parentHead, oldOne);
+  } finally {
+    await rm(repoRoot, { recursive: true, force: true });
+    if (remoteRoot) await rm(remoteRoot, { recursive: true, force: true });
+  }
+});
+
+test("upstream과 이미 분기한 게시 child는 history 교체가 필요한 rebase를 계획한다", async () => {
+  const repoRoot = await createRepository();
+  let remoteRoot: string | undefined;
+  try {
+    remoteRoot = await addOrigin(repoRoot);
+    await createTwoLayerStack(repoRoot);
+    await git(repoRoot, "push", "-u", "origin", "stack/two");
+    await git(repoRoot, "switch", "stack/two");
+    await writeFile(join(repoRoot, "two.txt"), "two rewritten locally\n", "utf8");
+    await git(repoRoot, "add", "two.txt");
+    await git(repoRoot, "commit", "--amend", "--no-edit");
+    await git(repoRoot, "switch", "stack/one");
+    await writeFile(join(repoRoot, "parent-followup.txt"), "new parent work\n", "utf8");
+    await git(repoRoot, "add", "parent-followup.txt");
+    await git(repoRoot, "commit", "-m", "new parent work");
+    await git(repoRoot, "switch", "main");
+
+    const plan = await new PullRequestStackRestackService(repoRoot).createPlan("stack/one");
+    assert.deepEqual(plan.steps.map((step) => [step.branch, step.action]), [
+      ["stack/one", "record"],
+      ["stack/two", "rebase"],
+    ]);
+  } finally {
+    await rm(repoRoot, { recursive: true, force: true });
+    if (remoteRoot) await rm(remoteRoot, { recursive: true, force: true });
   }
 });

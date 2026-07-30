@@ -184,7 +184,11 @@ async function finishPullRequestStackRestackAfterContinue(
     reason: "stackRestackContinue",
   });
   vscode.window.showInformationMessage(
-    vscode.l10n.t("Pull request stack restack completed for {0} rewritten layer(s).", result.rewrittenBranches.length)
+    vscode.l10n.t(
+      "Pull request stack restack completed: {0} history-preserving merge update(s), {1} history-rewriting rebase update(s).",
+      result.historyPreservingBranches.length,
+      result.rewrittenBranches.length
+    )
   );
   if (result.postAction) {
     await vscode.commands.executeCommand("gitSimpleCompare.completePullRequestStackAdvance", {

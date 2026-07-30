@@ -142,7 +142,8 @@ export class RebaseService {
 
   /**
    * 현재 checkout 된 로컬 브랜치에서 그래프 rebase 계획의 기준점을 계산한다.
-   * - 사용자가 커밋을 지정했으면 HEAD 조상 여부와 무관하게 그 커밋의 부모를 기준점으로 삼는다.
+   * - 사용자가 커밋을 지정했으면 현재 HEAD 이력에 포함된 행인지 확인한 뒤 그 부모를 기준점으로 삼는다.
+   * - 다른 브랜치 행을 현재 HEAD 기준 범위로 계산하면 브랜치 시작까지 잘못 포함되므로 명시적으로 거부한다.
    * - 사용자가 root 커밋을 지정했으면 --root rebase 로 현재 브랜치 전체를 편집한다.
    * - 커밋을 지정하지 않았을 때만 upstream merge-base 를 자동 기준점으로 사용한다.
    * @param startHash 사용자가 그래프에서 드래그한 시작 커밋 해시
@@ -166,6 +167,7 @@ export class RebaseService {
     let root = false;
     let baseReason: RebasePlanInfo["baseReason"] = "selected";
     if (startHash) {
+      await this.assertHeadAncestor(startHash);
       base = (await this.parentOf(startHash)) ?? "";
       root = !base;
     } else if (upstream) {
@@ -453,6 +455,23 @@ export class RebaseService {
       return (await runGit(["rev-parse", `${hash}^`], this.repoRoot)).trim();
     } catch {
       return undefined;
+    }
+  }
+
+  /**
+   * 그래프에서 선택한 커밋이 현재 checkout 브랜치의 HEAD 이력에 포함되는지 확인한다.
+   * - 다른 브랜치 커밋의 부모가 우연히 현재 브랜치의 공통 조상이면 `parent..HEAD`가 현재 브랜치
+   *   시작 구간 전체로 확장될 수 있으므로, 기준점을 계산하기 전에 선택 커밋 자체를 검증한다.
+   * @param hash 그래프 row/node에서 전달된 시작 커밋 해시
+   * @throws 선택 커밋이 현재 HEAD의 조상이 아니거나 유효한 커밋으로 확인되지 않을 때
+   */
+  private async assertHeadAncestor(hash: string): Promise<void> {
+    try {
+      await runGit(["merge-base", "--is-ancestor", hash, "HEAD"], this.repoRoot);
+    } catch {
+      throw new Error(
+        "The selected commit is not on the checked-out branch. Check out that branch before starting interactive rebase."
+      );
     }
   }
 

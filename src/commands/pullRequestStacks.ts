@@ -265,12 +265,18 @@ async function presentRestackResult(
       repoRoot,
       operationId: result.operationId,
       rewrittenBranches: result.rewrittenBranches,
+      historyPreservingBranches: result.historyPreservingBranches,
       backupRefs: result.backupRefs,
     });
     refreshStackSurfaces(repoRoot, "stackRestacked");
     vscode.window.showInformationMessage(
-      result.rewrittenBranches.length
-        ? vscode.l10n.t("Restacked {0} layer(s). Safety refs were kept under refs/gitsimplecompare/stack-backups/.", result.rewrittenBranches.length)
+      result.rewrittenBranches.length || result.historyPreservingBranches.length
+        ? vscode.l10n.t(
+          "Restacked {0} layer(s): {1} history-preserving merge update(s), {2} history-rewriting rebase update(s). Safety refs were kept under refs/gitsimplecompare/stack-backups/.",
+          result.historyPreservingBranches.length + result.rewrittenBranches.length,
+          result.historyPreservingBranches.length,
+          result.rewrittenBranches.length
+        )
         : vscode.l10n.t("The stack already matches its current parent branches.")
     );
   }
@@ -283,7 +289,7 @@ async function confirmRestackPlan(
 ): Promise<boolean> {
   const inferredLabel = vscode.l10n.t("inferred boundary");
   const lines = plan.steps.map((step) =>
-    `${step.action === "rebase" ? "↻" : "✓"} ${step.branch}: ${step.parentBranch} ` +
+    `${step.action === "merge" ? "⇄" : step.action === "rebase" ? "↻" : "✓"} ${step.branch}: ${step.parentBranch} ` +
     `${shortHash(step.oldParentHead)} → ${shortHash(step.previewParentHead)}` +
     `${step.inferredBoundary ? ` (${inferredLabel})` : ""}`
   );
@@ -292,7 +298,7 @@ async function confirmRestackPlan(
     : "";
   const confirmed = await vscode.window.showWarningMessage(
     vscode.l10n.t(
-      "Run this stack plan? A backup ref is created for every layer before history is rewritten.\n\n{0}{1}",
+      "Run this stack plan? A backup ref is created for every layer before history changes. ⇄ preserves published history with a merge; ↻ rewrites history with a rebase.\n\n{0}{1}",
       lines.join("\n"),
       inferred
     ),

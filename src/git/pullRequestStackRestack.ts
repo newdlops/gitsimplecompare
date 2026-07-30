@@ -1,7 +1,6 @@
 // PR stack의 연쇄 rebase 계획·실행·충돌 후속 처리를 담당하는 서비스 모듈.
 // - 각 layer를 별도 clean worktree에서 `rebase --onto`하고 branch별 backup ref를 먼저 만든다.
 // - 충돌 상태와 남은 계획은 common git dir에 저장해 VS Code 재시작 뒤 Continue/Abort도 이어 간다.
-import * as crypto from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -9,8 +8,14 @@ import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
 import { PullRequestStackMetadataService } from "./pullRequestStackMetadata";
 import type { StackLocalBranch } from "./pullRequestStackModel";
+import {
+  clearRestackState,
+  makeRestackOperationId,
+  readRestackState,
+  writeRestackState,
+} from "./pullRequestStackRestackRuntime";
 import { WorktreeService, type WorktreeInfo } from "./worktreeService";
-const STATE_VERSION = 1, STATE_RELATIVE_PATH = "gitsimplecompare/stack-restack-state.json";
+const STATE_VERSION = 1;
 const TEMP_WORKTREE_PREFIX = "gsc-stack-restack-";
 /** Advance 완료 뒤 명령 레이어가 submit/cleanup을 이어가기 위한 후속 동작 */
 export interface PullRequestStackRestackPostAction {
@@ -34,7 +39,7 @@ export interface PullRequestStackRestackStep {
   previewParentHead: string;
   parentTargetHash?: string;
   inferredBoundary: boolean;
-  action: "record" | "rebase";
+  action: "record" | "merge" | "rebase";
 }
 /** 실행 전 확인 화면과 실제 executor가 공유하는 연쇄 restack 계획 */
 export interface PullRequestStackRestackPlan {
@@ -50,6 +55,7 @@ export type PullRequestStackRestackResult =
       repoRoot: string;
       operationId: string;
       rewrittenBranches: string[];
+      historyPreservingBranches: string[];
       backupRefs: string[];
       postAction?: PullRequestStackRestackPostAction;
     }
@@ -83,6 +89,7 @@ interface PendingPullRequestStackRestack {
   steps: PendingRestackStep[];
   metadataBefore: RestackMetadataCheckpoint[];
   rewrittenBranches: string[];
+  historyPreservingBranches: string[];
   postAction?: PullRequestStackRestackPostAction;
   createdAt: number;
 }
@@ -131,8 +138,10 @@ export class PullRequestStackRestackService {
         ? { hash: await this.resolveCommit(override.oldParentHead), inferred: false }
         : await this.resolveOldParentBoundary(branch, previewParentHead);
       const parentWillMove = planned.has(parentBranch)
-        && steps.some((step) => step.branch === parentBranch && step.action === "rebase");
+        && steps.some((step) => step.branch === parentBranch && step.action !== "record");
       const parentAlreadyAncestor = await this.isAncestor(previewParentHead, branch.hash);
+      const preservesPublishedHistory = Boolean(branch.upstreamHash)
+        && await this.isAncestor(branch.upstreamHash!, branch.hash);
       steps.push({
         branch: branch.name,
         parentBranch,
@@ -141,12 +150,14 @@ export class PullRequestStackRestackService {
         previewParentHead,
         parentTargetHash: override?.parentTargetHash,
         inferredBoundary: boundary.inferred,
-        action: !parentWillMove && parentAlreadyAncestor ? "record" : "rebase",
+        action: !parentWillMove && parentAlreadyAncestor
+          ? "record"
+          : preservesPublishedHistory ? "merge" : "rebase",
       });
     }
     return {
       repoRoot: this.repoRoot,
-      operationId: makeOperationId(),
+      operationId: makeRestackOperationId(),
       steps,
       postAction,
     };
@@ -189,10 +200,11 @@ export class PullRequestStackRestackService {
       steps,
       metadataBefore,
       rewrittenBranches: [],
+      historyPreservingBranches: [],
       postAction: plan.postAction,
       createdAt: Date.now(),
     };
-    await writePendingState(this.repoRoot, state);
+    await writeRestackState(this.repoRoot, state);
     try {
       await this.applyPlannedParentOverrides(state);
       return await this.runRemaining(state);
@@ -222,7 +234,7 @@ export class PullRequestStackRestackService {
     await executor.finishStep(state, step, step.worktreePath);
     state.index++;
     state.status = "running";
-    await writePendingState(state.repoRoot, state);
+    await writeRestackState(state.repoRoot, state);
     return executor.runRemaining(state);
   }
 
@@ -258,41 +270,44 @@ export class PullRequestStackRestackService {
         await this.metadata.updateParentHead(step.branch, currentParent);
         step.afterHead = currentBranch;
         state.index++;
-        await writePendingState(this.repoRoot, state);
+        await writeRestackState(this.repoRoot, state);
         continue;
       }
       const worktree = await this.acquireBranchWorktree(step.branch);
       step.worktreePath = worktree.path;
       step.temporaryWorktree = worktree.temporary;
       state.status = "running";
-      await writePendingState(this.repoRoot, state);
+      await writeRestackState(this.repoRoot, state);
       try {
         await runGit(
-          ["rebase", "--onto", currentParent, step.oldParentHead],
+          step.action === "merge"
+            ? ["merge", "--no-ff", "--no-edit", currentParent]
+            : ["rebase", "--onto", currentParent, step.oldParentHead],
           worktree.path,
           { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true", HUSKY: "0" } }
         );
       } catch (error) {
         if (await this.isConflictState(worktree.path)) {
           state.status = "conflicts";
-          await writePendingState(this.repoRoot, state);
+          await writeRestackState(this.repoRoot, state);
           return this.conflictResult(state, step);
         }
         throw error;
       }
       await this.finishStep(state, step, worktree.path, currentParent);
       state.index++;
-      await writePendingState(this.repoRoot, state);
+      await writeRestackState(this.repoRoot, state);
     }
     const result: PullRequestStackRestackResult = {
       status: "completed",
       repoRoot: state.repoRoot,
       operationId: state.operationId,
       rewrittenBranches: [...state.rewrittenBranches],
+      historyPreservingBranches: [...state.historyPreservingBranches],
       backupRefs: state.steps.map((step) => step.snapshotRef),
       postAction: state.postAction,
     };
-    await clearPendingState(this.repoRoot);
+    await clearRestackState(this.repoRoot);
     return result;
   }
 
@@ -308,8 +323,11 @@ export class PullRequestStackRestackService {
       || step.parentTargetHash
       || await this.metadata.resolveBranchHead(step.parentBranch);
     step.afterHead = afterHead;
-    if (afterHead !== step.beforeHead && !state.rewrittenBranches.includes(step.branch)) {
-      state.rewrittenBranches.push(step.branch);
+    if (afterHead !== step.beforeHead) {
+      const changed = step.action === "merge"
+        ? state.historyPreservingBranches
+        : state.rewrittenBranches;
+      if (!changed.includes(step.branch)) changed.push(step.branch);
     }
     await this.metadata.updateParentHead(step.branch, parentHead);
     if (step.temporaryWorktree) {
@@ -416,8 +434,11 @@ export class PullRequestStackRestackService {
     state: PendingPullRequestStackRestack
   ): Promise<void> {
     const step = state.steps[state.index];
-    if (step?.worktreePath && await detectOperation(step.worktreePath) === "rebase") {
-      await runGit(["rebase", "--abort"], step.worktreePath).catch(() => undefined);
+    if (step?.worktreePath) {
+      const operation = await detectOperation(step.worktreePath);
+      if (operation === "rebase" || operation === "merge") {
+        await runGit([operation, "--abort"], step.worktreePath).catch(() => undefined);
+      }
     }
     await this.rollbackState(state);
   }
@@ -442,7 +463,7 @@ export class PullRequestStackRestackService {
         checkpoint.parentHead
       );
     }
-    await clearPendingState(this.repoRoot);
+    await clearRestackState(this.repoRoot);
   }
 
   /** branch를 checkout한 worktree는 clean reset, 미점유 branch는 CAS update-ref로 복원한다. */
@@ -502,14 +523,14 @@ export class PullRequestStackRestackService {
       .then(() => true, () => false);
   }
 
-  /** worktree에 rebase 또는 unmerged index가 남아 있는지 확인한다. */
+  /** worktree에 rebase/merge 또는 unmerged index가 남아 있는지 확인한다. */
   private async isConflictState(worktreePath: string): Promise<boolean> {
     const [operation, unmerged] = await Promise.all([
       detectOperation(worktreePath),
       runGit(["diff", "--name-only", "--diff-filter=U", "-z"], worktreePath)
         .catch(() => ""),
     ]);
-    return operation === "rebase" || Boolean(unmerged);
+    return operation === "rebase" || operation === "merge" || Boolean(unmerged);
   }
 
   /** 현재 저장소에서 commit-ish를 전체 OID로 해석한다. */
@@ -556,45 +577,14 @@ function selectRestackBranches(
 }
 
 /** 날짜와 난수로 backup ref/state에서 충돌하지 않는 operation ID를 만든다. */
-function makeOperationId(): string {
-  return `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-}
-/** common git dir 아래 pending state 파일 절대 경로를 계산한다. */
-async function pendingStatePath(repoRoot: string): Promise<string> {
-  const common = (await runGit(["rev-parse", "--git-common-dir"], repoRoot)).trim();
-  return path.resolve(repoRoot, common, STATE_RELATIVE_PATH);
-}
-/** pending JSON을 검증해 현재 버전 state로 읽는다. */
 async function readPendingState(
   repoRoot: string
 ): Promise<PendingPullRequestStackRestack | undefined> {
-  const file = await pendingStatePath(repoRoot);
-  const raw = await fs.readFile(file, "utf8").catch(() => "");
-  if (!raw) return undefined;
-  try {
-    const value = JSON.parse(raw) as PendingPullRequestStackRestack;
-    return value?.version === STATE_VERSION
+  const value = await readRestackState<PendingPullRequestStackRestack>(repoRoot);
+  return value?.version === STATE_VERSION
       && typeof value.repoRoot === "string"
       && Array.isArray(value.steps)
       && Number.isInteger(value.index)
       ? value
       : undefined;
-  } catch {
-    return undefined;
-  }
-}
-/** pending state를 임시 파일+rename으로 원자적으로 교체한다. */
-async function writePendingState(
-  repoRoot: string,
-  state: PendingPullRequestStackRestack
-): Promise<void> {
-  const file = await pendingStatePath(repoRoot);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const temporary = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-  await fs.rename(temporary, file);
-}
-/** 완료/abort 뒤 pending state 파일을 제거한다. */
-async function clearPendingState(repoRoot: string): Promise<void> {
-  await fs.rm(await pendingStatePath(repoRoot), { force: true });
 }
