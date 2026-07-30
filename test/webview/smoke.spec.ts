@@ -70,21 +70,25 @@ test("Preview uses production content, state, publish and existing-PR actions", 
 test("Preview quick edit is available only for the checked-out source file", async ({ page }) => {
   const fixture:any = await loadWebviewFixture("pr-preview.populated.en.json");
   await mountPullRequestPreview(page, fixture, {
-    openQuickEditor: "Quick edit with change markers",
+    openQuickEditor: "Quick edit and stage on save",
     quickEditNeedsCheckout: "Check out the source branch to use quick edit",
     quickEditDeleted: "Deleted files cannot be quick edited.",
   });
   await page.getByRole("tab", { name: /Changed files/ }).click();
   const edit = page.getByRole("button", {
-    name: "Quick edit with change markers",
+    name: "Quick edit and stage on save",
   }).first();
   await expect(edit).toBeVisible();
   for (const attribute of ["title", "data-tooltip", "aria-label"]) {
     await expect(edit).toHaveAttribute(
       attribute,
-      "Quick edit with change markers"
+      "Quick edit and stage on save"
     );
   }
+  await edit.hover();
+  await expect(page.getByRole("tooltip")).toHaveText(
+    "Quick edit and stage on save"
+  );
   await edit.click();
   expect(await readPostedMessages(page)).toContainEqual({
     type: "openQuickEditor",
@@ -101,6 +105,42 @@ test("Preview quick edit is available only for the checked-out source file", asy
   await expect(unavailableEdits).toHaveCount(fixture.payload.previewFiles.length);
   await expect(unavailableEdits.first()).toBeDisabled();
   await expect(unavailableEdits.first()).toHaveAttribute("aria-disabled", "true");
+});
+
+test("Preview renders a composed Quick Edit replacement at its original line", async ({ page }) => {
+  const fixture:any = await loadWebviewFixture("pr-preview.populated.en.json");
+  const file = {
+    status: "M",
+    path: "review.txt",
+    additions: 1,
+    deletions: 1,
+    comments: [],
+    patch: [
+      "diff --git a/review.txt b/review.txt",
+      "--- a/review.txt",
+      "+++ b/review.txt",
+      "@@ -1,3 +1,3 @@",
+      " line 1",
+      "-base line",
+      "+quick edited",
+      " line 3",
+    ].join("\n"),
+  };
+  await mountPullRequestPreview(page, {
+    ...fixture,
+    payload: {
+      ...fixture.payload,
+      files: [file],
+      previewFiles: [file],
+    },
+  });
+  await page.getByRole("tab", { name: /Changed files/ }).click();
+
+  const replacement = page.locator(
+    '.diff-row[data-diff-kind="add"][data-new-line="2"]'
+  );
+  await expect(replacement).toContainText("quick edited");
+  await expect(page.getByText("remote change", { exact: true })).toHaveCount(0);
 });
 
 test("Preview Conversation rail resizes, persists, and keeps line statistics accessible", async ({ page }) => {

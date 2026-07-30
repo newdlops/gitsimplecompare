@@ -92,7 +92,7 @@ test("quick edit opens a normal editor and applies bounded added/deleted decorat
     workspaceApi.openTextDocument = originalOpenTextDocument;
   });
 
-  await openPullRequestQuickEdit("/repo", {
+  const opened = await openPullRequestQuickEdit("/repo", {
     path: "src/file.ts",
     status: "M",
     patch: [
@@ -105,6 +105,7 @@ test("quick edit opens a normal editor and applies bounded added/deleted decorat
     ].join("\n"),
   });
 
+  assert.equal(opened, true);
   assert.deepEqual(shownOptions, { preview: false, preserveFocus: false });
   assert.equal(decorationOptions.length, 2);
   assert.equal(decorationCalls.length, 2);
@@ -135,11 +136,12 @@ test("quick edit rejects paths outside the repository before opening a document"
     return {};
   };
   try {
-    await openPullRequestQuickEdit("/repo", {
+    const openedResult = await openPullRequestQuickEdit("/repo", {
       path: "../outside.ts",
       status: "M",
       patch: "",
     });
+    assert.equal(openedResult, false);
   } finally {
     workspaceApi.openTextDocument = originalOpenTextDocument;
     disposePullRequestQuickEdit();
@@ -147,5 +149,42 @@ test("quick edit rejects paths outside the repository before opening a document"
   assert.equal(opened, false);
   assert.deepEqual(vscodeMock.__warningMessages, [
     "This review file cannot be opened for quick editing.",
+  ]);
+});
+
+test("quick edit refuses an already dirty editor document before auto-staging can be armed", async () => {
+  vscodeMock.__resetWindowMessages();
+  const windowApi = vscodeMock.window as any;
+  const workspaceApi = vscodeMock.workspace as any;
+  const originalShowTextDocument = windowApi.showTextDocument;
+  const originalOpenTextDocument = workspaceApi.openTextDocument;
+  let shown = false;
+  workspaceApi.openTextDocument = async () => ({
+    isDirty: true,
+    uri: {
+      scheme: "file",
+      fsPath: "/repo/src/dirty.ts",
+      toString: () => "file:///repo/src/dirty.ts",
+    },
+  });
+  windowApi.showTextDocument = async () => {
+    shown = true;
+    return {};
+  };
+  try {
+    const opened = await openPullRequestQuickEdit("/repo", {
+      path: "src/dirty.ts",
+      status: "M",
+      patch: "",
+    });
+    assert.equal(opened, false);
+  } finally {
+    workspaceApi.openTextDocument = originalOpenTextDocument;
+    windowApi.showTextDocument = originalShowTextDocument;
+    disposePullRequestQuickEdit();
+  }
+  assert.equal(shown, false);
+  assert.deepEqual(vscodeMock.__warningMessages, [
+    "Save or discard the existing editor changes before using Quick Edit.",
   ]);
 });
