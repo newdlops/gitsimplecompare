@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { commitChanges } from "./commit";
 import {
+  copyCommitHookPreflightFailure,
   runCommitHookPreflight,
   type RunCommitHookPreflightArgs,
 } from "./commitHookPreflight";
@@ -35,6 +36,10 @@ export function registerCommitCommands(
       "gitSimpleCompare.runCommitHookPreflight",
       (args?: RunCommitHookPreflightArgs) =>
         runCommitHookPreflight(deps, args)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.copyCommitHookPreflightFailure",
+      () => copyCommitHookPreflightFailure(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.refreshCommitHooks",

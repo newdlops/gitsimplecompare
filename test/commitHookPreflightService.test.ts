@@ -16,7 +16,16 @@ import {
 } from "../src/git/commitHookPreflightService";
 import {
   buildCommitFailureReport,
+  commitFailureOutput,
 } from "../src/git/commitHookFailure";
+import {
+  copyCommitHookPreflightFailure,
+  runCommitHookPreflight,
+} from "../src/commands/commitHookPreflight";
+import { ChangesViewProvider } from "../src/webview/changesViewProvider";
+import { routeCommitHookMessage } from "../src/webview/changesCommitHookMessages";
+import type { CommandDeps } from "../src/commands/shared";
+import * as vscodeMock from "./helpers/vscodeMock";
 import { runGit } from "../src/git/gitExec";
 
 process.env.GIT_CONFIG_NOSYSTEM = "1";
@@ -117,6 +126,27 @@ async function stagedPaths(repoRoot: string): Promise<string[]> {
   return raw.split("\0").filter(Boolean).sort();
 }
 
+/** command 테스트에 필요한 Changes provider 경계만 구현한 최소 의존성이다. */
+function preflightDeps(
+  root: string,
+  changesView: Record<string, unknown>
+): CommandDeps {
+  return {
+    changesView: {
+      getActiveRepo: () => root,
+      getCommitMessage: () => "test: hook preflight",
+      setCommitFailure: () => {},
+      ...changesView,
+    },
+  } as unknown as CommandDeps;
+}
+
+/** provider 메모리 경계를 테스트할 때 쓰는 저장하지 않는 Memento 대역이다. */
+const testMemento = {
+  get: <T>(_key: string, fallback?: T) => fallback,
+  update: async () => {},
+};
+
 test("pre-commit은 staged snapshot만 보고 hook의 git add는 실제 index를 바꾸지 않는다", async (context) => {
   if (process.platform === "win32") {
     context.skip("executable shell hook test is Unix-specific");
@@ -206,6 +236,91 @@ test("실패 hook의 원문과 이름을 보존해 기존 파일 진단 카드�
     assert.equal(report.items[0]?.path, "src/a.ts");
     assert.deepEqual(await stagedPaths(root), ["src/a.ts"]);
   });
+});
+
+test("예상 hook 실패 원문은 OUTPUT에 남기지 않고 provider 메모리 복사만 허용한다", async (context) => {
+  if (process.platform === "win32") {
+    context.skip("executable shell hook test is Unix-specific");
+    return;
+  }
+  await withRepo(async (root) => {
+    const sentinel = "HOOK-RAW-SENTINEL-stdout-stderr";
+    await put(root, "src/a.ts", "export {};\n");
+    await runGit(["add", "src/a.ts"], root);
+    await writeHook(
+      root,
+      "pre-commit",
+      `printf '${sentinel} stdout\\n'\nprintf '${sentinel} stderr\\n' >&2\nexit 1`
+    );
+    let retainedOutput = "";
+    vscodeMock.__resetOutputLines();
+    await runCommitHookPreflight(
+      preflightDeps(root, {
+        setCommitHookPreflightFailure: (_report: unknown, output: string) => {
+          retainedOutput = output;
+        },
+      })
+    );
+
+    assert.match(retainedOutput, new RegExp(sentinel));
+    assert.equal(vscodeMock.__outputLines.join("\n").includes(sentinel), false);
+  });
+});
+
+test("hook 실패 복사는 provider의 현재 메모리 원문만 정확히 쓰고 reset 뒤에는 거부한다", async () => {
+  const provider = new ChangesViewProvider(
+    { toString: () => "file:///extension" } as never,
+    testMemento as never,
+    () => true,
+    () => {}
+  );
+  const error = new CommitHookPreflightError(
+    "hookFailed",
+    "pre-commit failed",
+    "pre-commit",
+    "raw stdout\nraw stderr\n"
+  );
+  const expected = commitFailureOutput(error);
+  const report = buildCommitFailureReport(error, "/repo", {
+    knownHookName: error.hookName,
+    operation: "staged",
+    origin: "hookPreflight",
+  });
+  provider.setCommitHookPreflightFailure(report, expected);
+  vscodeMock.__resetWindowMessages();
+
+  assert.equal(await provider.copyCommitHookFailureOutput(), true);
+  assert.deepEqual(vscodeMock.__clipboardWrites, [expected]);
+  provider.setCommitFailure(undefined);
+  assert.equal(await provider.copyCommitHookFailureOutput(), false);
+  assert.deepEqual(vscodeMock.__clipboardWrites, [expected]);
+  assert.equal(
+    routeCommitHookMessage({ type: "copyCommitHookPreflightFailure" }),
+    true
+  );
+  assert.deepEqual(vscodeMock.__executedCommands, [
+    { id: "gitSimpleCompare.copyCommitHookPreflightFailure", args: [] },
+  ]);
+  await copyCommitHookPreflightFailure(
+    preflightDeps("/repo", { copyCommitHookFailureOutput: async () => false })
+  );
+  assert.deepEqual(vscodeMock.__clipboardWrites, [expected]);
+  assert.deepEqual(vscodeMock.__warningMessages, [
+    "No current hook error log is available to copy.",
+  ]);
+});
+
+test("예상 hook 실패 외의 기반 실행 오류는 상세 OUTPUT 로그를 유지한다", async () => {
+  const missingRoot = path.join(
+    tmpdir(),
+    `gsc-missing-hook-preflight-${Date.now()}`
+  );
+  vscodeMock.__resetOutputLines();
+  await runCommitHookPreflight(preflightDeps(missingRoot, {}));
+
+  const output = vscodeMock.__outputLines.join("\n");
+  assert.match(output, /commit hook preflight failed/);
+  assert.match(output, /"error":\{/);
 });
 
 test("prepare-commit-msg가 바꾼 메시지를 commit-msg가 같은 순서로 검사한다", async (context) => {

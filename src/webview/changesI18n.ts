@@ -133,6 +133,13 @@ export function changesWebviewI18n(): Record<string, string> {
     runCommitChecksAgain: vscode.l10n.t("Run checks again"),
     dismissCommitFailure: vscode.l10n.t("Dismiss commit failure"),
     showFullOutput: vscode.l10n.t("Show full output"),
+    copyErrorLog: vscode.l10n.t("Copy error log"),
+    noFailureLocationsCopy: vscode.l10n.t(
+      "The check did not report a file location. Copy the error log for details."
+    ),
+    failureItemsTruncatedCopy: vscode.l10n.t(
+      "Some failures are hidden. Copy the error log for details."
+    ),
     openFailureLocation: vscode.l10n.t("Open {0} at line {1}"),
     noFailureLocations: vscode.l10n.t(
       "The check did not report a file location. See the full output for details."

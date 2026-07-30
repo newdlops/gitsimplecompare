@@ -42,9 +42,12 @@
       runCommitChecksAgain: "Run checks again",
       dismissCommitFailure: "Dismiss commit failure",
       showFullOutput: "Show full output",
+      copyErrorLog: "Copy error log",
       openFailureLocation: "Open {0} at line {1}",
       noFailureLocations: "The check did not report a file location. See the full output for details.",
       failureItemsTruncated: "Some failures are hidden. See the full output.",
+      noFailureLocationsCopy: "The check did not report a file location. Copy the error log for details.",
+      failureItemsTruncatedCopy: "Some failures are hidden. Copy the error log for details.",
       hookFramework: "Managed by {0}",
       updatingCommitHooks: "Updating commit hooks...",
     },
@@ -353,6 +356,7 @@
    * @returns {string} 반복 live 낭독 없이 탐색 가능한 실패 카드 HTML
    */
   function failureHtml(failure) {
+    const canCopyErrorLog = !!latestCommit?.canCopyCommitHookErrorLog;
     const title = failure.likelyHook ? T.commitChecksFailed : T.commitFailedDetails;
     const retryLabel =
       failure.origin === "hookPreflight"
@@ -364,7 +368,7 @@
       .join("");
     const items = (failure.items || []).length
       ? `<div class="failure-list">${failure.items.map(failureItemHtml).join("")}</div>`
-      : `<div class="failure-empty">${esc(T.noFailureLocations)}</div>`;
+      : `<div class="failure-empty">${esc(canCopyErrorLog ? T.noFailureLocationsCopy : T.noFailureLocations)}</div>`;
     return (
       `<section class="commit-failure-card" role="region" aria-labelledby="commit-failure-title">` +
       `<header class="failure-header"><span class="codicon codicon-error" aria-hidden="true"></span>` +
@@ -372,14 +376,18 @@
       iconButton("failure-dismiss", "close", T.dismissCommitFailure, false) +
       `</header><div class="failure-summary">${esc(failure.summary)}</div>` +
       items +
-      (failure.truncated ? `<div class="failure-truncated">${esc(T.failureItemsTruncated)}</div>` : "") +
+      (failure.truncated ? `<div class="failure-truncated">${esc(canCopyErrorLog ? T.failureItemsTruncatedCopy : T.failureItemsTruncated)}</div>` : "") +
       `<div class="failure-actions">` +
       `<button id="failure-retry" type="button" title="${esc(retryLabel)}" ` +
       `data-tooltip="${esc(retryLabel)}" aria-label="${esc(retryLabel)}" ${commitBusy ? "disabled" : ""}>` +
       `<span class="codicon ${commitBusy ? "codicon-loading codicon-modifier-spin" : "codicon-debug-rerun"}" aria-hidden="true"></span>${esc(retryLabel)}</button>` +
-      `<button id="failure-output" type="button" title="${esc(T.showFullOutput)}" ` +
-      `data-tooltip="${esc(T.showFullOutput)}" aria-label="${esc(T.showFullOutput)}">` +
-      `<span class="codicon codicon-output" aria-hidden="true"></span>${esc(T.showFullOutput)}</button>` +
+      (canCopyErrorLog
+        ? `<button id="failure-copy-error-log" type="button" title="${esc(T.copyErrorLog)}" ` +
+          `data-tooltip="${esc(T.copyErrorLog)}" aria-label="${esc(T.copyErrorLog)}">` +
+          `<span class="codicon codicon-copy" aria-hidden="true"></span>${esc(T.copyErrorLog)}</button>`
+        : `<button id="failure-output" type="button" title="${esc(T.showFullOutput)}" ` +
+          `data-tooltip="${esc(T.showFullOutput)}" aria-label="${esc(T.showFullOutput)}">` +
+          `<span class="codicon codicon-output" aria-hidden="true"></span>${esc(T.showFullOutput)}</button>`) +
       `</div></section>`
     );
   }
@@ -491,6 +499,9 @@
     );
     stack.querySelector("#failure-output")?.addEventListener("click", () =>
       vscode.postMessage({ type: "showCommitFailureOutput" })
+    );
+    stack.querySelector("#failure-copy-error-log")?.addEventListener("click", () =>
+      vscode.postMessage({ type: "copyCommitHookPreflightFailure" })
     );
     stack.querySelector("#failure-retry")?.addEventListener("click", () => {
       if (commitBusy) {

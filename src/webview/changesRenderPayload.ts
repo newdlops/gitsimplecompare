@@ -37,6 +37,7 @@ export interface ChangesRenderState {
   aiCommitGenerating: boolean;
   commitHooks?: CommitHooksSnapshot;
   commitFailure?: CommitFailureReport;
+  canCopyCommitHookErrorLog: boolean;
   viewModes: ViewModes;
   sortKey: SortKey;
   visibleSections: VisibleSections;
@@ -170,6 +171,7 @@ function buildCommitPayload(state: ChangesRenderState) {
     aiGenerating: state.aiCommitGenerating,
     hooks: state.commitHooks,
     failure: state.commitFailure,
+    canCopyCommitHookErrorLog: state.canCopyCommitHookErrorLog,
   };
 }
 

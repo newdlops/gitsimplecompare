@@ -55,6 +55,8 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private aiCommitGenerating = false;
   private commitHooks?: CommitHooksSnapshot;
   private commitFailure?: CommitFailureReport;
+  /** 예상 hook 실패 원문은 웹뷰에 보내지 않는 provider 수명 한정 메모리다. */
+  private commitHookFailureOutput?: string;
   private viewModes: ViewModes;
   private sortKey: SortKey;
   private visibleSections: VisibleSections;
@@ -93,6 +95,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     });
     view.onDidDispose(() => {
       this.view = undefined;
+      this.clearCommitFailure();
       this.clearRenderTimer();
     });
   }
@@ -119,7 +122,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       this.commitMessage = "";
       this.commitMessageRevision++;
       this.commitHooks = undefined;
-      this.commitFailure = undefined;
+      this.clearCommitFailure();
     }
     this.render();
   }
@@ -193,14 +196,29 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 마지막 commit/hook 실패 보고서를 설정하거나 지우고 다시 그린다. */
   setCommitFailure(report: CommitFailureReport | undefined): void {
     this.commitFailure = report;
+    this.clearCommitHookFailureOutput();
     this.render();
+  }
+  /** 예상된 hook preflight 실패의 표시 진단과 복사 전용 원문을 함께 설정한다. */
+  setCommitHookPreflightFailure(report: CommitFailureReport, output: string): void {
+    this.commitFailure = report;
+    this.commitHookFailureOutput = output;
+    this.render();
+  }
+  /** 현재 provider 메모리에 남은 예상 hook 실패 원문을 정확히 한 번 클립보드에 쓴다. */
+  async copyCommitHookFailureOutput(): Promise<boolean> {
+    if (this.commitHookFailureOutput === undefined) {
+      return false;
+    }
+    await vscode.env.clipboard.writeText(this.commitHookFailureOutput);
+    return true;
   }
   /** 비교 컨텍스트를 교체하고 다시 그린다. */
   setComparison(comparison: BranchComparison): void {
     const repoChanged = this.activeRepo !== comparison.repoRoot;
     if (repoChanged) {
       this.commitHooks = undefined;
-      this.commitFailure = undefined;
+      this.clearCommitFailure();
     }
     this.comparison = comparison;
     this.activeRepo = comparison.repoRoot;
@@ -328,7 +346,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.commitMessage = "";
     this.commitMessageRevision++;
     this.commitHooks = undefined;
-    this.commitFailure = undefined;
+    this.clearCommitFailure();
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
@@ -380,6 +398,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       aiCommitGenerating: this.aiCommitGenerating,
       commitHooks: this.commitHooks,
       commitFailure: this.commitFailure,
+      canCopyCommitHookErrorLog: this.commitHookFailureOutput !== undefined,
       viewModes: this.viewModes,
       sortKey: this.sortKey,
       visibleSections: this.getVisibleSections(),
@@ -391,6 +410,15 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       clearTimeout(this.renderTimer);
       this.renderTimer = undefined;
     }
+  }
+  /** 예상 hook 실패의 원문 메모리만 비운다. */
+  private clearCommitHookFailureOutput(): void {
+    this.commitHookFailureOutput = undefined;
+  }
+  /** 실패 카드와 예상 hook 원문을 같은 생명주기 경계에서 함께 비운다. */
+  private clearCommitFailure(): void {
+    this.commitFailure = undefined;
+    this.clearCommitHookFailureOutput();
   }
   /** 작업트리 stage/unstage 진행 상태를 웹뷰에 알린다. */
   setWorkingOperation(

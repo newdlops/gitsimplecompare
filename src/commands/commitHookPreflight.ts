@@ -138,6 +138,30 @@ async function handlePreflightFailure(
     return;
   }
 
+  if (
+    error instanceof CommitHookPreflightError &&
+    error.code === "hookFailed"
+  ) {
+    const report = buildCommitFailureReport(error, repoRoot, {
+      activeHooks: error.hookName ? [error.hookName] : [],
+      knownHookName: error.hookName,
+      operation: "staged",
+      origin: "hookPreflight",
+    });
+    // 예상된 hook 실패 원문은 OUTPUT/웹뷰에 남기지 않고 provider 메모리에만 둔다.
+    deps.changesView.setCommitHookPreflightFailure(
+      report,
+      commitFailureOutput(error)
+    );
+    logInfo("commit hook preflight failed", {
+      root: repoRoot,
+      code: error.code,
+      hook: error.hookName,
+      durationMs: Date.now() - startedAt,
+    });
+    return;
+  }
+
   const knownHook =
     error instanceof CommitHookPreflightError
       ? error.hookName
@@ -169,6 +193,21 @@ async function handlePreflightFailure(
     error,
     vscode.l10n.t("Staged commit hook failed: {0}", report.summary),
     { root: repoRoot, hook: knownHook }
+  );
+}
+
+/** 현재 예상 hook 실패 원문을 provider 메모리에서만 읽어 클립보드에 복사한다. */
+export async function copyCommitHookPreflightFailure(
+  deps: CommandDeps
+): Promise<void> {
+  if (await deps.changesView.copyCommitHookFailureOutput()) {
+    void vscode.window.showInformationMessage(
+      vscode.l10n.t("Error log copied to clipboard.")
+    );
+    return;
+  }
+  void vscode.window.showWarningMessage(
+    vscode.l10n.t("No current hook error log is available to copy.")
   );
 }
 

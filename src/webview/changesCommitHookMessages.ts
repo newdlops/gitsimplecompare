@@ -76,6 +76,11 @@ export function routeCommitHookMessage(
         "gitSimpleCompare.showCommitFailureOutput"
       );
       return true;
+    case "copyCommitHookPreflightFailure":
+      void vscode.commands.executeCommand(
+        "gitSimpleCompare.copyCommitHookPreflightFailure"
+      );
+      return true;
     default:
       return false;
   }
