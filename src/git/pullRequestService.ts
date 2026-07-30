@@ -10,7 +10,10 @@ import type { PullRequestDetailInfo } from "./pullRequestDetail";
 import { fetchPullRequestChangedFiles, fetchPullRequestPreviewFiles } from "./pullRequestPreviewFiles";
 import type { PullRequestChangedFilesResult, PullRequestPreviewFile } from "./pullRequestPreviewFiles";
 import {
+  applyStagedPullRequestPreviewOverlay,
+  buildIndexedPullRequestPreviewFiles,
   buildLocalPullRequestPreview,
+  buildStagedPullRequestPreviewOverlay,
   commitLabels,
   fetchExistingPullRequestCommits,
   fetchLocalCommitPreviewFiles,
@@ -208,11 +211,48 @@ export class PullRequestService {
     ]);
     const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, effectivePr).catch(() => []);
     const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
-    const localPreview = !hasTargetBranch || prPreviewFiles.length || prPreviewCommits.length
-      ? { files: [] as PullRequestPreviewFile[], commits: [] as PullRequestPreviewCommit[] }
-      : await buildLocalPullRequestPreview(this.repoRoot, targetRef, sourceRef, stagedFiles);
-    const previewFiles = prPreviewFiles.length ? prPreviewFiles : localPreview.files;
-    const previewCommits = prPreviewCommits.length ? prPreviewCommits : localPreview.commits;
+    const hasRemotePreview = prPreviewFiles.length > 0 || prPreviewCommits.length > 0;
+    const previewStagedFiles =
+      currentBranch === selectedSource ? stagedFiles : [];
+    let previewModel: {
+      files: PullRequestPreviewFile[];
+      commits: PullRequestPreviewCommit[];
+    };
+    if (!hasTargetBranch) {
+      previewModel = { files: [], commits: [] };
+    } else if (hasRemotePreview && previewStagedFiles.length) {
+      const [overlay, indexedFiles] = await Promise.all([
+        buildStagedPullRequestPreviewOverlay(
+          this.repoRoot,
+          previewStagedFiles
+        ),
+        buildIndexedPullRequestPreviewFiles(
+          this.repoRoot,
+          targetRef,
+          sourceRef
+        ),
+      ]);
+      previewModel = applyStagedPullRequestPreviewOverlay(
+        prPreviewFiles,
+        prPreviewCommits,
+        overlay,
+        indexedFiles
+      );
+    } else if (hasRemotePreview) {
+      previewModel = {
+        files: prPreviewFiles,
+        commits: prPreviewCommits,
+      };
+    } else {
+      previewModel = await buildLocalPullRequestPreview(
+        this.repoRoot,
+        targetRef,
+        sourceRef,
+        previewStagedFiles
+      );
+    }
+    const previewFiles = previewModel.files;
+    const previewCommits = previewModel.commits;
     const commits = commitLabels(previewCommits);
     const stat = previewStat(previewFiles);
     const generatedBody = hasTargetBranch ? previewBody(previewFiles, commits, stat) : "";

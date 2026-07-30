@@ -21,6 +21,12 @@ export interface PullRequestPreviewCommit {
   synthetic?: boolean;
 }
 
+/** 기존/로컬 PR preview 위에 합칠 staged 파일과 synthetic commit 묶음이다. */
+export interface StagedPullRequestPreviewOverlay {
+  files: PullRequestPreviewFile[];
+  commit?: PullRequestPreviewCommit;
+}
+
 interface PreviewPullRequestRef {
   number?: number;
   commitHashes?: string[];
@@ -82,24 +88,76 @@ export async function buildLocalPullRequestPreview(
   sourceRef: string,
   stagedFiles: CommitFileChange[]
 ): Promise<{ files: PullRequestPreviewFile[]; commits: PullRequestPreviewCommit[] }> {
-  const [baseFiles, commits, stagedPatch] = await Promise.all([
-    readRangeFiles(repoRoot, targetBranch, sourceRef),
+  const [indexedFiles, commits, stagedOverlay] = await Promise.all([
+    stagedFiles.length
+      ? buildIndexedPullRequestPreviewFiles(repoRoot, targetBranch, sourceRef)
+      : Promise.resolve(undefined),
     readLocalCommitSummaries(repoRoot, targetBranch, sourceRef),
-    runGit(["diff", "--cached", "--patch", "-M", `--unified=${FULL_DIFF_CONTEXT_LINES}`], repoRoot).catch(() => ""),
+    buildStagedPullRequestPreviewOverlay(repoRoot, stagedFiles),
   ]);
-  let stagedSyntheticFiles: PullRequestPreviewFile[] = [];
-  if (stagedFiles.length) {
-    stagedSyntheticFiles = applyPatches(stagedPreviewFiles(stagedFiles), stagedPatch);
-    commits.push({
+  if (stagedOverlay.commit) {
+    commits.push(stagedOverlay.commit);
+  }
+  const files = indexedFiles
+    ?? await readRangeFiles(repoRoot, targetBranch, sourceRef);
+  return { files, commits };
+}
+
+/**
+ * 현재 index와 HEAD 사이의 staged delta를 preview 파일과 synthetic commit으로 만든다.
+ * - 기존 GitHub PR preview도 같은 overlay를 사용해 Quick Edit 저장 결과를 새로고침 즉시 보여 준다.
+ * @param repoRoot staged index를 읽을 저장소 루트
+ * @param stagedFiles 이미 name-status/numstat을 붙인 staged 파일 목록
+ * @returns 기존 preview에 합칠 staged 파일과 선택 synthetic commit
+ */
+export async function buildStagedPullRequestPreviewOverlay(
+  repoRoot: string,
+  stagedFiles: CommitFileChange[]
+): Promise<StagedPullRequestPreviewOverlay> {
+  if (!stagedFiles.length) {
+    return { files: [] };
+  }
+  const stagedPatch = await runGit([
+    "diff",
+    "--cached",
+    "--patch",
+    "-M",
+    `--unified=${FULL_DIFF_CONTEXT_LINES}`,
+  ], repoRoot).catch(() => "");
+  const files = applyPatches(stagedPreviewFiles(stagedFiles), stagedPatch);
+  return {
+    files,
+    commit: {
       hash: "__gsc_staged_preview_commit__",
       shortHash: "staged",
       title: "Staged changes",
       author: "Working Tree",
-      files: stagedSyntheticFiles,
+      files,
       synthetic: true,
-    });
-  }
-  return { files: mergePreviewFiles(baseFiles, stagedSyntheticFiles), commits };
+    },
+  };
+}
+
+/**
+ * GitHub 또는 로컬 PR preview에 staged overlay를 합치면서 기존 review comment를 보존한다.
+ * @param files 기존 PR 전체 changed files
+ * @param commits 기존 PR commit 목록
+ * @param overlay 현재 index에서 만든 staged delta
+ * @param indexedFiles merge-base에서 index까지 다시 계산한 최종 PR files
+ * @returns 파일/commit 양쪽에 같은 staged 결과가 붙은 새 배열
+ */
+export function applyStagedPullRequestPreviewOverlay(
+  files: PullRequestPreviewFile[],
+  commits: PullRequestPreviewCommit[],
+  overlay: StagedPullRequestPreviewOverlay,
+  indexedFiles?: PullRequestPreviewFile[]
+): { files: PullRequestPreviewFile[]; commits: PullRequestPreviewCommit[] } {
+  return {
+    files: indexedFiles === undefined
+      ? [...files]
+      : preservePreviewComments(indexedFiles, files),
+    commits: overlay.commit ? [...commits, overlay.commit] : [...commits],
+  };
 }
 
 /**
@@ -229,6 +287,48 @@ async function readRangeFiles(repoRoot: string, targetBranch: string, sourceRef:
   return filesFromDiff(nameStatus, numstat, patch);
 }
 
+/**
+ * PR merge-base와 현재 index를 직접 비교해 commit 변경과 staged 변경이 합성된 최종 파일 diff를 만든다.
+ * - 같은 파일의 연속 patch 문자열을 붙이지 않으므로 Quick Edit 결과가 원래 라인 번호에 반영된다.
+ * @param repoRoot index와 refs를 읽을 저장소 루트
+ * @param targetRef PR target branch/ref
+ * @param sourceRef 현재 index가 기반한 source branch/ref
+ * @returns 최종 파일 목록, merge-base를 찾지 못하면 안전한 fallback을 위한 undefined
+ */
+export async function buildIndexedPullRequestPreviewFiles(
+  repoRoot: string,
+  targetRef: string,
+  sourceRef: string
+): Promise<PullRequestPreviewFile[] | undefined> {
+  const mergeBase = await runGit(
+    ["merge-base", targetRef, sourceRef],
+    repoRoot
+  ).then((value) => value.trim(), () => "");
+  if (!mergeBase) {
+    return undefined;
+  }
+  const [nameStatus, numstat, patch] = await Promise.all([
+    runGit(
+      ["diff", "--cached", "--name-status", "-z", "-M", mergeBase, "--"],
+      repoRoot
+    ),
+    runGit(
+      ["diff", "--cached", "--numstat", "-z", "-M", mergeBase, "--"],
+      repoRoot
+    ),
+    runGit([
+      "diff",
+      "--cached",
+      "--patch",
+      "-M",
+      `--unified=${FULL_DIFF_CONTEXT_LINES}`,
+      mergeBase,
+      "--",
+    ], repoRoot),
+  ]);
+  return filesFromDiff(nameStatus, numstat, patch);
+}
+
 /** name-status/numstat/patch 출력을 preview file 배열로 합친다. */
 function filesFromDiff(nameStatus: string, numstat: string, patch: string): PullRequestPreviewFile[] {
   const counts = parseNumstat(numstat);
@@ -348,26 +448,23 @@ function unquotePath(path: string): string {
   return path.replace(/^"|"$/g, "").replace(/\\"/g, "\"");
 }
 
-/** 같은 path 의 파일 항목을 하나로 합친다. */
-function mergePreviewFiles(...groups: PullRequestPreviewFile[][]): PullRequestPreviewFile[] {
-  const byPath = new Map<string, PullRequestPreviewFile>();
-  for (const file of groups.flat()) {
-    const previous = byPath.get(file.path);
-    byPath.set(file.path, previous ? mergeFile(previous, file) : file);
-  }
-  return Array.from(byPath.values());
-}
-
-/** 같은 파일의 누적 diff 정보를 합친다. */
-function mergeFile(a: PullRequestPreviewFile, b: PullRequestPreviewFile): PullRequestPreviewFile {
-  return {
-    ...a,
-    status: b.status || a.status,
-    additions: (a.additions || 0) + (b.additions || 0),
-    deletions: (a.deletions || 0) + (b.deletions || 0),
-    patch: [a.patch, b.patch].filter(Boolean).join("\n"),
-    comments: [...(a.comments || []), ...(b.comments || [])],
-  };
+/**
+ * 최종 index diff의 patch·통계·라인 좌표는 그대로 두고 기존 GitHub review comment만 path별로 복원한다.
+ * @param indexedFiles merge-base에서 index까지 다시 계산한 최종 파일 목록
+ * @param serverFiles GitHub가 제공한 기존 PR 파일과 comment
+ * @returns 최종 patch에 기존 comment 배열을 붙인 새 파일 목록
+ */
+function preservePreviewComments(
+  indexedFiles: PullRequestPreviewFile[],
+  serverFiles: PullRequestPreviewFile[]
+): PullRequestPreviewFile[] {
+  const commentsByPath = new Map(
+    serverFiles.map((file) => [file.path, file.comments || []] as const)
+  );
+  return indexedFiles.map((file) => ({
+    ...file,
+    comments: commentsByPath.get(file.path) || [],
+  }));
 }
 
 /** commit message 의 첫 줄만 반환한다. */
