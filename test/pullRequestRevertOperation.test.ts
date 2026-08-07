@@ -126,8 +126,10 @@ async function createTwoCommitFeature(
  * clone을 먼저 만든 뒤 PR commit을 push해 local clone 최적화로 object가 섞이지 않게 한다.
  */
 async function createMissingPullRefFixture(t: TestContext): Promise<{
+  seed: string;
   target: string;
   pullHead: string;
+  pullCommits: string[];
 }> {
   const root = await mkdtemp(join(tmpdir(), "gsc-pr-ref-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -150,10 +152,14 @@ async function createMissingPullRefFixture(t: TestContext): Promise<{
   await git(seed, "switch", "-q", "-c", "deleted-feature");
   await writeFile(join(seed, "feature.txt"), "from pull ref\n", "utf8");
   await git(seed, "add", "feature.txt");
+  await git(seed, "commit", "-q", "-m", "pull request first");
+  const pullFirst = await git(seed, "rev-parse", "HEAD");
+  await writeFile(join(seed, "second.txt"), "second pull ref change\n", "utf8");
+  await git(seed, "add", "second.txt");
   await git(seed, "commit", "-q", "-m", "pull request head");
   const pullHead = await git(seed, "rev-parse", "HEAD");
   await git(seed, "push", "-q", "origin", `HEAD:refs/pull/42/head`);
-  return { target, pullHead };
+  return { seed, target, pullHead, pullCommits: [pullFirst, pullHead] };
 }
 
 test("PR commit materialize 후 기존 확장 ref를 조건부로 복원한다", async (t) => {
@@ -179,6 +185,61 @@ test("PR commit materialize 후 기존 확장 ref를 조건부로 복원한다",
   assert.equal(await git(target, "rev-parse", materializedRef), previousHead);
 });
 
+test("Squash Cherry-Pick은 로컬에 없는 PR commit을 pull ref에서 가져온다", async (t) => {
+  const { target, pullHead, pullCommits } = await createMissingPullRefFixture(t);
+  await assert.rejects(git(target, "cat-file", "-e", `${pullHead}^{commit}`));
+  const pr = pullRequest({ headHash: pullHead, commitHashes: pullCommits });
+
+  const result = await new PullRequestOperationService(target).squashCherryPick(pr);
+
+  assert.equal(result.status, "completed");
+  assert.equal(await readFile(join(target, "feature.txt"), "utf8"), "from pull ref\n");
+  assert.equal(
+    await readFile(join(target, "second.txt"), "utf8"),
+    "second pull ref change\n"
+  );
+  assert.equal(await git(target, "log", "-1", "--format=%s"), 'Cherry-Pick "Test pull request" #42');
+  await assert.rejects(
+    git(target, "show-ref", "--verify", materializedRefForPullRequest(42))
+  );
+});
+
+test("PR Rebase도 로컬에 없는 원본 commit을 같은 pull ref에서 가져온다", async (t) => {
+  const { target, pullHead, pullCommits } = await createMissingPullRefFixture(t);
+  const pr = pullRequest({ headHash: pullHead, commitHashes: pullCommits });
+
+  const result = await new PullRequestOperationService(target).rebasePullRequest(pr);
+
+  assert.equal(result.status, "completed");
+  assert.equal(await readFile(join(target, "feature.txt"), "utf8"), "from pull ref\n");
+  assert.equal(
+    await readFile(join(target, "second.txt"), "utf8"),
+    "second pull ref change\n"
+  );
+  assert.equal(await git(target, "rev-list", "--count", `${result.beforeHead}..HEAD`), "2");
+  await assert.rejects(
+    git(target, "show-ref", "--verify", materializedRefForPullRequest(42))
+  );
+});
+
+test("PR head가 조회 뒤 바뀌면 오래된 Squash Cherry-Pick을 중단한다", async (t) => {
+  const { seed, target, pullHead, pullCommits } = await createMissingPullRefFixture(t);
+  await writeFile(join(seed, "latest.txt"), "new PR head\n", "utf8");
+  await git(seed, "add", "latest.txt");
+  await git(seed, "commit", "-q", "-m", "new pull request head");
+  await git(seed, "push", "-q", "--force", "origin", "HEAD:refs/pull/42/head");
+  const pr = pullRequest({ headHash: pullHead, commitHashes: pullCommits });
+
+  await assert.rejects(
+    new PullRequestOperationService(target).squashCherryPick(pr),
+    /PR #42 head changed.*Refresh the pull request/
+  );
+  assert.equal(await git(target, "log", "-1", "--format=%s"), "base");
+  await assert.rejects(
+    git(target, "show-ref", "--verify", materializedRefForPullRequest(42))
+  );
+});
+
 test("원격 pull ref도 없으면 누락 object를 정상 계획으로 숨기지 않는다", async (t) => {
   const repoRoot = await createRepository(t);
   const missing = "2".repeat(40);
@@ -189,7 +250,7 @@ test("원격 pull ref도 없으면 누락 object를 정상 계획으로 숨기�
       pullRequest({ headHash: missing, commitHashes: [missing] }),
       "squashRevert"
     ),
-    /commit objects are not available locally.*could not be fetched from origin/
+    /commit objects are not available locally.*(could not be fetched from origin|no Git remote)/
   );
   await assert.rejects(
     git(
