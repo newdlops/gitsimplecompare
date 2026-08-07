@@ -1,12 +1,8 @@
 // PR revert 대상 commit을 선택하고 로컬 object database에 준비하는 Git 서비스.
 // - 병합 결과가 현재 브랜치에 있으면 실제로 반영된 merge commit을 우선 사용한다.
 // - 원본 PR commit이 필요하지만 로컬에 없으면 GitHub pull ref를 숨김 ref로 fetch한다.
-import {
-  GitError,
-  runGit,
-  runGitBuffer,
-  runGitWithInput,
-} from "./gitExec";
+import { runGit, runGitBuffer, runGitWithInput } from "./gitExec";
+import { PullRequestCommitMaterializer } from "./pullRequestCommitMaterializer";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import { pullRequestRevertCommitHashes } from "./pullRequestOperationFormat";
 
@@ -36,33 +32,22 @@ export interface PullRequestRevertPlan {
   materializedPreviousHead?: string;
 }
 
-/** 여러 commit의 object 조회 결과 */
-interface ResolvedCommitSet {
-  resolved: string[];
-  missing: string[];
-}
-
-/** 숨김 PR head ref를 만든 결과 */
-interface MaterializedPullRequestHead {
-  ref: string;
-  hash: string;
-  previousHead?: string;
-}
-
 /** 병합 결과 commit을 직접 revert할 수 있는지 확인한 결과 */
 interface MergedResultCandidate {
   hash: string;
   parents: string[];
 }
 
-const MATERIALIZED_PR_REF_PREFIX = "refs/gitsimplecompare/pr-heads";
-
 /**
  * PR revert의 대상 선택과 원본 commit materialize를 담당한다.
  * UI나 명령 계층에 의존하지 않으므로 다른 PR 작업에서도 같은 준비 규칙을 재사용할 수 있다.
  */
 export class PullRequestRevertPlanService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly commitMaterializer: PullRequestCommitMaterializer;
+
+  constructor(public readonly repoRoot: string) {
+    this.commitMaterializer = new PullRequestCommitMaterializer(repoRoot);
+  }
 
   /**
    * 현재 HEAD를 기준으로 안전하게 실행 가능한 PR revert 계획을 만든다.
@@ -118,23 +103,7 @@ export class PullRequestRevertPlanService {
    * @returns 이 호출이 실제 ref를 복원하거나 삭제했으면 true
    */
   async release(plan: PullRequestRevertPlan): Promise<boolean> {
-    if (!plan.materializedRef || !plan.materializedHead) {
-      return false;
-    }
-    const current = await this.resolveOptionalCommit(plan.materializedRef);
-    if (current !== plan.materializedHead) {
-      return false;
-    }
-    const args = plan.materializedPreviousHead
-      ? [
-        "update-ref",
-        plan.materializedRef,
-        plan.materializedPreviousHead,
-        plan.materializedHead,
-      ]
-      : ["update-ref", "-d", plan.materializedRef, plan.materializedHead];
-    await runGit(args, this.repoRoot);
-    return true;
+    return this.commitMaterializer.release(plan);
   }
 
   /**
@@ -287,23 +256,11 @@ export class PullRequestRevertPlanService {
     if (!requested.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to revert.`);
     }
-    let commitSet = await this.resolveCommitSet(requested);
-    let materialized: MaterializedPullRequestHead | undefined;
-    if (commitSet.missing.length > 0) {
-      materialized = await this.materializePullRequestHead(pr);
-      commitSet = await this.resolveCommitSet(requested);
-    }
-    if (commitSet.missing.length > 0) {
-      await this.deleteMaterializedRef(materialized);
-      throw new Error(
-        `PR #${pr.number} commit object(s) are unavailable after fetching its pull ref: ` +
-          commitSet.missing.map(shortHash).join(", ")
-      );
-    }
+    const prepared = await this.commitMaterializer.prepare(pr, requested);
     try {
-      await this.assertOriginalCommitsSupported(pr, commitSet.resolved);
+      await this.assertOriginalCommitsSupported(pr, prepared.commits);
       const outsideCurrentBranch = await this.countOutsideCurrentBranch(
-        commitSet.resolved,
+        prepared.commits,
         preparedHead
       );
       return {
@@ -311,74 +268,16 @@ export class PullRequestRevertPlanService {
         operation,
         preparedHead,
         targetKind: "originalCommits",
-        commits: commitSet.resolved.map((hash) => ({ hash })),
+        commits: prepared.commits.map((hash) => ({ hash })),
         outsideCurrentBranch,
-        materialized: Boolean(materialized),
-        materializedRef: materialized?.ref,
-        materializedHead: materialized?.hash,
-        materializedPreviousHead: materialized?.previousHead,
+        materialized: prepared.materialized,
+        materializedRef: prepared.materializedRef,
+        materializedHead: prepared.materializedHead,
+        materializedPreviousHead: prepared.materializedPreviousHead,
       };
     } catch (error) {
-      await this.deleteMaterializedRef(materialized);
+      await this.commitMaterializer.release(prepared).catch(() => false);
       throw error;
-    }
-  }
-
-  /**
-   * 원본 commit OID 목록을 한 Git 프로세스로 commit object에 정규화한다.
-   * `cat-file --batch-check`를 사용해 큰 PR도 commit마다 프로세스를 만들지 않는다.
-   * @param hashes GitHub가 제공한 commit OID 목록
-   * @returns 입력 순서를 유지한 전체 hash와 누락 OID
-   */
-  private async resolveCommitSet(hashes: string[]): Promise<ResolvedCommitSet> {
-    const expressions = hashes.map((hash) => `${hash}^{commit}`);
-    const output = await runGitWithInput(
-      ["cat-file", "--batch-check=%(objectname) %(objecttype)"],
-      this.repoRoot,
-      `${expressions.join("\n")}\n`
-    );
-    const lines = output.trimEnd().split("\n");
-    const resolved: string[] = [];
-    const missing: string[] = [];
-    for (let index = 0; index < hashes.length; index++) {
-      const parts = (lines[index] || "").trim().split(/\s+/);
-      if (parts.length === 2 && parts[1] === "commit") {
-        resolved.push(parts[0]);
-      } else {
-        missing.push(hashes[index]);
-      }
-    }
-    return { resolved, missing };
-  }
-
-  /**
-   * GitHub가 제공하는 PR head ref를 확장 전용 숨김 ref로 fetch한다.
-   * destination ref를 명시해 FETCH_HEAD가 덮여도 operation과 충돌 해결에 필요한 object를 유지한다.
-   * @param pr fetch할 양의 PR 번호와 표시 정보
-   * @returns 생성된 namespaced ref와 그 commit hash
-   */
-  private async materializePullRequestHead(
-    pr: PullRequestInfo
-  ): Promise<MaterializedPullRequestHead> {
-    if (!Number.isInteger(pr.number) || pr.number <= 0) {
-      throw new Error("Cannot fetch a pull request without a valid positive number.");
-    }
-    const ref = materializedRefForPullRequest(pr.number);
-    const source = `refs/pull/${pr.number}/head`;
-    const previousHead = await this.resolveOptionalCommit(ref);
-    try {
-      await runGit(
-        ["fetch", "--no-tags", "origin", `+${source}:${ref}`],
-        this.repoRoot
-      );
-      const hash = await this.normalizeRequiredCommit(ref, `PR #${pr.number} fetched head`);
-      return { ref, hash, previousHead };
-    } catch (error) {
-      await this.restoreMaterializedRefAfterFailedFetch(ref, previousHead);
-      throw new Error(
-        `PR #${pr.number} commit objects are not available locally, and ${source} ` +
-          `could not be fetched from origin. ${gitErrorText(error)}`
-      );
     }
   }
 
@@ -475,71 +374,11 @@ export class PullRequestRevertPlanService {
     return this.normalizeRequiredCommit("HEAD", "Current HEAD");
   }
 
-  /**
-   * 계획 생성이 실패했을 때 이미 만든 숨김 ref를 조건부로 복원하거나 삭제한다.
-   * @param materialized 생성 전이면 undefined, 생성 후면 ref/hash 쌍
-   */
-  private async deleteMaterializedRef(
-    materialized: MaterializedPullRequestHead | undefined
-  ): Promise<void> {
-    if (!materialized) {
-      return;
-    }
-    await runGit(
-      materialized.previousHead
-        ? [
-          "update-ref",
-          materialized.ref,
-          materialized.previousHead,
-          materialized.hash,
-        ]
-        : ["update-ref", "-d", materialized.ref, materialized.hash],
-      this.repoRoot
-    ).catch(() => "");
-  }
-
-  /**
-   * fetch 실패 전부터 존재하던 확장 ref를 보존하고, 실패 중 새 값이 기록됐을 때만 원복한다.
-   * @param ref fetch destination ref
-   * @param previousHead fetch 시작 전 ref가 가리키던 선택 commit
-   */
-  private async restoreMaterializedRefAfterFailedFetch(
-    ref: string,
-    previousHead: string | undefined
-  ): Promise<void> {
-    const current = await this.resolveOptionalCommit(ref);
-    if (!current || current === previousHead) {
-      return;
-    }
-    await runGit(
-      previousHead
-        ? ["update-ref", ref, previousHead, current]
-        : ["update-ref", "-d", ref, current],
-      this.repoRoot
-    ).catch(() => "");
-  }
 }
 
-/**
- * PR 번호를 확장 전용 숨김 ref path로 변환한다.
- * @param number 양의 GitHub PR 번호
- * @returns 다른 extension ref와 충돌하지 않는 full ref
- */
-export function materializedRefForPullRequest(number: number): string {
-  return `${MATERIALIZED_PR_REF_PREFIX}/${number}`;
-}
+export { materializedRefForPullRequest } from "./pullRequestCommitMaterializer";
 
 /** 긴 commit hash를 오류와 OUTPUT 필드에 적합한 길이로 줄인다. */
 function shortHash(hash: string): string {
   return hash.slice(0, 10);
-}
-
-/** GitError의 stderr/stdout을 보존해 fetch 실패 원인을 한 문자열로 만든다. */
-function gitErrorText(error: unknown): string {
-  if (error instanceof GitError) {
-    return [error.stderr.trim(), error.stdout.trim(), error.message]
-      .filter(Boolean)
-      .join("\n");
-  }
-  return error instanceof Error ? error.message : String(error);
 }
