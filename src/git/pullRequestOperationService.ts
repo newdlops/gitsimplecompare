@@ -1,9 +1,10 @@
 // PR 단위 cherry-pick/rebase/revert 명령을 조립하는 공개 Git 서비스.
 // - 상태/snapshot은 PullRequestOperationSnapshot, dirty worktree 실행은 Worktree,
-//   revert 대상 준비는 PullRequestRevertPlanService에 위임한다.
+//   원본 object 준비는 PullRequestCommitMaterializer, revert 대상 선택은 RevertPlan에 위임한다.
 import { detectOperation } from "./conflictService";
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
 import { GitError, runGit } from "./gitExec";
+import { PullRequestCommitMaterializer, type PullRequestCommitMaterialization } from "./pullRequestCommitMaterializer";
 import { pullRequestCommitHashes } from "./pullRequestOperationFormat";
 import {
   PullRequestOperationSnapshot,
@@ -46,11 +47,13 @@ export class PullRequestOperationService {
   private readonly state: PullRequestOperationSnapshot;
   private readonly worktree: PullRequestOperationWorktree;
   private readonly revertPlans: PullRequestRevertPlanService;
+  private readonly commitMaterializer: PullRequestCommitMaterializer;
 
   constructor(public readonly repoRoot: string) {
     this.state = new PullRequestOperationSnapshot(repoRoot);
     this.worktree = new PullRequestOperationWorktree(repoRoot, this.state);
     this.revertPlans = new PullRequestRevertPlanService(repoRoot);
+    this.commitMaterializer = new PullRequestCommitMaterializer(repoRoot);
   }
 
   /**
@@ -64,23 +67,27 @@ export class PullRequestOperationService {
     pr: PullRequestInfo,
     options?: PullRequestOperationOptions
   ): Promise<PullRequestOperationResult> {
-    const commits = pullRequestCommitHashes(pr);
-    if (!commits.length) {
+    const requestedCommits = pullRequestCommitHashes(pr);
+    if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to cherry-pick.`);
     }
     await this.state.assertReadyForPrOperation();
     const branch = await this.state.currentBranch();
     const beforeHead = await this.state.currentHead();
+    const prepared = await this.commitMaterializer.prepare(pr, requestedCommits);
+    const commits = prepared.commits;
     if (
       options?.strategy === "worktree" ||
       await this.state.hasLocalChanges()
     ) {
-      return this.worktree.squashCherryPick(
+      const result = await this.worktree.squashCherryPick(
         pr,
         commits,
         branch,
         beforeHead
       );
+      await this.releasePreparedCommitsQuietly(prepared);
+      return result;
     }
     const snapshotRef = await this.state.createSnapshot(
       branch,
@@ -97,13 +104,15 @@ export class PullRequestOperationService {
     } catch (error) {
       throw error instanceof Error ? error : new Error(String(error));
     }
-    return {
+    const result: PullRequestOperationResult = {
       status: "completed",
       branch,
       beforeHead,
       afterHead: await this.state.currentHead(),
       snapshotRef,
     };
+    await this.releasePreparedCommitsQuietly(prepared);
+    return result;
   }
 
   /**
@@ -117,23 +126,27 @@ export class PullRequestOperationService {
     pr: PullRequestInfo,
     options?: PullRequestOperationOptions
   ): Promise<PullRequestOperationResult> {
-    const commits = pullRequestCommitHashes(pr);
-    if (!commits.length) {
+    const requestedCommits = pullRequestCommitHashes(pr);
+    if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to rebase.`);
     }
     await this.state.assertReadyForPrOperation();
     const destinationBranch = await this.state.currentBranch();
     const beforeHead = await this.state.currentHead();
+    const prepared = await this.commitMaterializer.prepare(pr, requestedCommits);
+    const commits = prepared.commits;
     if (
       options?.strategy === "worktree" ||
       await this.state.hasLocalChanges()
     ) {
-      return this.worktree.rebasePullRequest(
+      const result = await this.worktree.rebasePullRequest(
         pr,
         commits,
         destinationBranch,
         beforeHead
       );
+      await this.releasePreparedCommitsQuietly(prepared);
+      return result;
     }
     const snapshotRef = await this.state.createSnapshot(
       destinationBranch,
@@ -156,7 +169,7 @@ export class PullRequestOperationService {
         preservedStashHash: preserved?.hash,
         guardCurrentBranch: true,
       });
-      return {
+      const operationResult: PullRequestOperationResult = {
         status: result.status,
         branch: destinationBranch,
         beforeHead,
@@ -165,6 +178,10 @@ export class PullRequestOperationService {
         sourceBranch: result.sourceRef,
         preservedStashHash: result.preservedStashHash,
       };
+      if (operationResult.status === "completed") {
+        await this.releasePreparedCommitsQuietly(prepared);
+      }
+      return operationResult;
     } catch (error) {
       const restored = await this.restoreAfterFailedDeferredRebase(
         preserved,
@@ -175,6 +192,7 @@ export class PullRequestOperationService {
       );
       if (restored) {
         await this.state.deleteSnapshotRef(destinationBranch, snapshotRef);
+        await this.releasePreparedCommitsQuietly(prepared);
       }
       throw this.withPreservedStashNotice(
         error,
@@ -467,6 +485,17 @@ export class PullRequestOperationService {
     plan: PullRequestRevertPlan
   ): Promise<void> {
     await this.revertPlans.release(plan).catch(() => false);
+  }
+
+  /**
+   * 성공했거나 안전하게 원복된 PR 적용 작업의 임시 pull ref를 정리한다.
+   * cleanup 실패가 이미 완료된 Git 작업을 실패로 바꾸지 않도록 오류는 의도적으로 삼킨다.
+   * @param prepared commit object 준비 단계가 반환한 숨김 ref 정보
+   */
+  private async releasePreparedCommitsQuietly(
+    prepared: PullRequestCommitMaterialization
+  ): Promise<void> {
+    await this.commitMaterializer.release(prepared).catch(() => false);
   }
 
   /** 결과와 OUTPUT에 표시할 실제 revert 출처를 선택한다. */
