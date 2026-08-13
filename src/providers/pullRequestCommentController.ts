@@ -20,7 +20,7 @@ const EXT_CONFIG_SECTION = "gitSimpleCompare";
 const SHOW_KEY = "pullRequestComments.show";
 const FULL_SHOW_KEY = `${EXT_CONFIG_SECTION}.${SHOW_KEY}`;
 const REFRESH_DELAY_MS = 220;
-const INITIAL_REFRESH_DELAY_MS = 10_000;
+const INITIAL_REFRESH_DELAY_MS = 500;
 const COMMENT_CONTROLLER_ID = "gitSimpleComparePrReviewComments";
 
 type PullRequestCommentGroup = PullRequestThreadGroup<PullRequestReviewComment>;
@@ -142,6 +142,7 @@ export class PullRequestCommentController implements vscode.Disposable {
     if (!isEnabled()) {
       this.requestSeq++;
       this.cancelActiveRequest("configurationDisabled");
+      this.commentCache.cancel("configurationDisabled");
       this.refreshDeferred = false;
       this.clearVisibleDecorations();
       this.clearActiveGroups();
@@ -196,7 +197,11 @@ export class PullRequestCommentController implements vscode.Disposable {
       this.refreshTimer = undefined;
       const request = new AbortController();
       this.activeRequest = request;
-      void this.refreshActiveEditor(reason, requestId, request.signal);
+      void this.refreshActiveEditor(reason, requestId, request.signal).finally(() => {
+        if (this.activeRequest === request) {
+          this.activeRequest = undefined;
+        }
+      });
     }, delayMs);
   }
 
@@ -254,7 +259,9 @@ export class PullRequestCommentController implements vscode.Disposable {
       service.toRepoRelative(editor.document.uri.fsPath)
     );
     try {
-      const prComments = await this.commentCache.load(service.repoRoot, signal);
+      // 파일/창 포커스 전환은 표시 대상만 바뀌는 이벤트다. 저장소 단위 원격 조회까지
+      // 같은 signal로 취소하면 느린 PR은 끝없이 재시작되므로 singleflight는 완료·캐시되게 둔다.
+      const prComments = await this.commentCache.load(service.repoRoot);
       if (!vscode.window.state.focused) {
         this.refreshDeferred = true;
         return;
@@ -332,11 +339,15 @@ export class PullRequestCommentController implements vscode.Disposable {
       vscode.window.activeTextEditor?.document.uri.toString() === targetUri;
   }
 
-  /** 활성 요청과 그 하위 gh/HTTPS singleflight를 취소하고 원인을 OUTPUT에 남긴다. */
+  /**
+   * 현재 화면 표시 요청만 취소하고 원인을 OUTPUT에 남긴다.
+   * - 저장소 단위 gh/HTTPS singleflight는 계속 실행해, 포커스·탭 전환 뒤 최신 요청이 같은 결과를 재사용하게 한다.
+   * @param reason 표시 대상이 무효화된 이벤트 이름
+   */
   private cancelActiveRequest(reason: string): void {
     if (!this.activeRequest || this.activeRequest.signal.aborted) return;
     this.activeRequest.abort();
-    this.commentCache.cancel(reason);
+    this.activeRequest = undefined;
     logInfo("pr editor comments request cancelled", { reason });
   }
 

@@ -171,7 +171,7 @@ test("LRU hit, 전체 TTL sweep, oversize 활성 해제와 dispose는 완료 캐
   assert.ok(vscodeMock.__outputLines.some((line) => line.includes('"reason":"dispose"') && line.includes('"remaining":0')));
 });
 
-test("활성 파일 교체와 취소 뒤에는 이전 PR 결과를 표시하지 않는다", async (t) => {
+test("활성 파일 교체는 표시 요청만 취소하고 진행 중인 PR 로드는 유지한다", async (t) => {
   const windowApi = vscodeMock.window as any;
   const workspaceApi = vscodeMock.workspace as any;
   const originalWindow = { ...windowApi };
@@ -190,9 +190,13 @@ test("활성 파일 교체와 취소 뒤에는 이전 PR 결과를 표시하지 
   } as any, { get: async () => undefined } as any);
   const result = deferred<any>();
   const cache = (controller as any).commentCache;
-  let cancelled = "";
-  cache.load = async (_root: string, signal: AbortSignal) => { assert.equal(signal.aborted, false); return result.promise; };
-  cache.cancel = (reason: string) => { cancelled = reason; };
+  let loadSignal: AbortSignal | undefined;
+  let cacheCancelReason = "";
+  cache.load = async (_root: string, signal?: AbortSignal) => {
+    loadSignal = signal;
+    return result.promise;
+  };
+  cache.cancel = (reason: string) => { cacheCancelReason = reason; };
   (controller as any).requestSeq = 1;
   const signal = new AbortController();
   (controller as any).activeRequest = signal;
@@ -204,7 +208,8 @@ test("활성 파일 교체와 취소 뒤에는 이전 PR 결과를 표시하지 
   await loading;
 
   assert.equal(signal.signal.aborted, true);
-  assert.equal(cancelled, "activeEditor");
+  assert.equal(loadSignal, undefined);
+  assert.equal(cacheCancelReason, "");
   assert.equal((controller as any).activeThreads.size, 0);
   controller.dispose();
 });
