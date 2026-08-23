@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Block blame alignment**: clicking a block author Code Vision now places
+  line-by-line author/date labels in a dedicated editor gutter column. The
+  column follows Monaco's visible line rows through scrolling, CodeLens, and
+  folding without inserting blame text into the source body.
+
 ### Changed
 
 - **Faster startup and Changes cold start**: startup activation now registers
@@ -61,9 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declaration with the primary author, date, and history counts. Tiny nested
   methods are folded into their parent block. Global variable, object, and type
   declarations are grouped by blank lines with one row above each group. Hover
-  for ownership distribution, or click to show and hide a file-wide fixed-width
-  column beside the gutter with author/date labels for every line in the file and
-  full blame details on hover.
+  for ownership distribution, or click to show and hide a file-wide author/date
+  column aligned to every visible line in the editor gutter, with full blame
+  details on hover.
 - **Local commit hook management and failure diagnostics**: manage standard
   file-based commit hooks from the Changes commit box (including `core.hooksPath`, linked
   worktrees, and Husky), and open lint/file-check failures directly at their
