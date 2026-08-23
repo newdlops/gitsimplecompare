@@ -188,7 +188,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri, context.workspaceState,
-    hunkCheckboxes, conflictOverlay, conflictActions
+    hunkCheckboxes, conflictOverlay, conflictActions, blockBlamePresenter
   );
   activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());

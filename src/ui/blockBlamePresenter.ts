@@ -1,6 +1,6 @@
-// 블록 작성자 Code Vision을 클릭했을 때 현재 파일 전체의 line-by-line blame을 거터 옆 열에 표시한다.
-// - Git 조회는 GitBlameService에 맡기고, 이 모듈은 범위 검증과 decoration 생애주기만 담당한다.
-// - 배지 대신 고정폭 `작업자 · 날짜` 열을 사용해 기존 인레이와 시각적으로 분리한다.
+// 블록 작성자 Code Vision을 클릭했을 때 현재 파일 전체의 line-by-line blame 거터를 연다.
+// - Git 조회는 GitBlameService에 맡기고, 이 모듈은 요청 검증과 거터 snapshot 생애주기만 담당한다.
+// - 본문 decoration을 만들지 않으며 네이티브 overlay가 코드 라인과 같은 top 좌표에 라벨을 배치한다.
 import * as vscode from "vscode";
 import {
   normalizeBlockBlameRequest,
@@ -8,7 +8,10 @@ import {
 } from "../git/blockBlameModel";
 import { GitBlameService } from "../git/blameService";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
-import { BlockBlameGutter } from "./blockBlameGutter";
+import {
+  BlockBlameGutter,
+  type BlockBlameGutterSnapshot,
+} from "./blockBlameGutter";
 import { logError, logInfo } from "./outputLog";
 
 const BLOCK_BLAME_SHOW_CONFIG = "gitSimpleCompare.blameBlock.show";
@@ -18,12 +21,10 @@ type ResolvedGitService = NonNullable<
   Awaited<ReturnType<GitServiceRegistry["resolve"]>>
 >;
 
-/** 검증된 문서, 에디터, 저장소와 실제 표시할 inclusive 범위. */
+/** 검증된 문서와 Git blame을 조회할 저장소 서비스. */
 interface BlockBlameTarget {
   /** blame 대상 저장 문서 */
   document: vscode.TextDocument;
-  /** 라인별 decoration을 적용할 텍스트 에디터 */
-  editor: vscode.TextEditor;
   /** Git blame 실행과 상대 경로 로그에 사용할 저장소 서비스 */
   service: ResolvedGitService;
 }
@@ -32,17 +33,19 @@ interface BlockBlameTarget {
 interface ActiveBlockBlame {
   /** 같은 파일의 Code Vision 재클릭 여부를 판별할 원본 요청 */
   request: BlockBlameRequest;
-  /** OUTPUT 상태 로그에 남길 실제 decoration 개수 */
-  decorationCount: number;
+  /** OUTPUT 상태 로그에 남길 실제 거터 라벨 개수 */
+  lineCount: number;
 }
 
 /**
- * Code Vision 클릭으로 열리는 블록 범위의 라인별 작성자 decoration을 관리한다.
+ * Code Vision 클릭으로 열리는 파일 단위 라인별 작성자 거터를 관리한다.
  * - 새 블록을 클릭하면 기존 범위를 교체하고 같은 블록을 다시 클릭하면 접는다.
  * - 탭 이동, 문서 편집, 문서 닫기 때 오래된 라벨을 즉시 제거한다.
  */
 export class BlockBlamePresenter implements vscode.Disposable {
   private readonly gutter = new BlockBlameGutter();
+  /** 네이티브 overlay가 거터 snapshot 교체와 해제를 구독하는 이벤트. */
+  readonly onDidChangeGutter = this.gutter.onDidChangeGutter;
   private readonly disposables: vscode.Disposable[] = [];
   private active?: ActiveBlockBlame;
   private pending?: BlockBlameRequest;
@@ -57,7 +60,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
   constructor(private readonly registry: GitServiceRegistry) {}
 
   /**
-   * 오래된 gutter 표시를 정리할 VS Code 이벤트를 등록한다.
+   * 오래된 라인별 blame 거터를 정리할 VS Code 이벤트를 등록한다.
    * @returns 확장 비활성화 때 함께 정리할 presenter 자신
    */
   register(): vscode.Disposable {
@@ -103,8 +106,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
   }
 
   /**
-   * command 인자를 검증하고 현재 파일 모든 라인 앞 고정폭 열에 작업자·날짜를 펼친다.
-   * - 같은 파일의 어느 Code Vision이든 다시 클릭하면 Git을 재조회하지 않고 현재 열을 접는다.
+   * command 인자를 검증하고 현재 파일의 라인별 작업자·날짜 거터를 펼친다.
+   * - 같은 파일의 어느 Code Vision이든 다시 클릭하면 Git을 재조회하지 않고 현재 라벨을 접는다.
    * @param rawRequest Code Vision command 또는 외부 executeCommand가 전달한 알 수 없는 값
    */
   async show(rawRequest: unknown): Promise<void> {
@@ -130,7 +133,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
 
   /**
    * Git 변경 뒤에도 사용자가 펼친 blame 열을 유지하면서 최신 라인 정보를 다시 읽는다.
-   * - 기존 decoration은 새 조회가 성공할 때까지 남겨 짧은 상태 이벤트에도 열이 깜빡이거나 사라지지 않게 한다.
+   * - 기존 snapshot은 새 조회가 성공할 때까지 남겨 짧은 상태 이벤트에도 열이 깜빡이지 않게 한다.
    * - 연속 refresh는 요청 순번으로 오래된 결과만 버리고 마지막 조회 결과를 적용한다.
    * @param reason OUTPUT에서 저장소 갱신 원인을 추적할 문자열
    */
@@ -148,10 +151,10 @@ export class BlockBlamePresenter implements vscode.Disposable {
   }
 
   /**
-   * 검증된 요청의 파일 blame을 조회하고 현재 거터 열에 적용한다.
+   * 검증된 요청의 파일 blame을 조회하고 네이티브 거터 snapshot에 적용한다.
    * @param request Code Vision이 만든 정규화된 파일/블록 요청
    * @param reason 클릭 또는 저장소 refresh처럼 조회를 시작한 원인
-   * @param preserveCurrent true면 실패하거나 빈 결과일 때 기존 열을 그대로 유지한다.
+   * @param preserveCurrent true면 실패하거나 빈 결과일 때 기존 라벨을 그대로 유지한다.
    */
   private async loadAndApply(
     request: BlockBlameRequest,
@@ -187,11 +190,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
         return;
       }
 
-      const gutterResult = this.gutter.apply(
-        target.editor,
-        target.document,
-        blame
-      );
+      const gutterResult = this.gutter.apply(target.document, blame);
       if (gutterResult.lineCount === 0) {
         logInfo("block blame gutter skipped", {
           reason: "no-valid-lines",
@@ -203,7 +202,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       }
       this.active = {
         request,
-        decorationCount: gutterResult.lineCount,
+        lineCount: gutterResult.lineCount,
       };
       logInfo(
         preserveCurrent
@@ -218,7 +217,6 @@ export class BlockBlamePresenter implements vscode.Disposable {
           triggerEndLine: request.endLine,
           fileLines: target.document.lineCount,
           lines: gutterResult.lineCount,
-          columnLines: gutterResult.columnLineCount,
           authors: gutterResult.authorCount,
         }
       );
@@ -245,7 +243,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
   }
 
   /**
-   * presenter가 만든 decoration, 이벤트 listener, 진행 중 요청을 모두 정리한다.
+   * presenter가 만든 snapshot, 이벤트 listener, 진행 중 요청을 모두 정리한다.
    * @returns 반환값 없음
    */
   dispose(): void {
@@ -261,10 +259,18 @@ export class BlockBlamePresenter implements vscode.Disposable {
   }
 
   /**
+   * 네이티브 overlay controller가 지금 표시할 거터 데이터를 읽는다.
+   * @returns 활성 거터가 없으면 undefined, 있으면 마지막으로 검증된 snapshot
+   */
+  gutterSnapshot(): BlockBlameGutterSnapshot | undefined {
+    return this.gutter.snapshot();
+  }
+
+  /**
    * 요청 URI/문서 버전/라인 범위/저장소를 검증하고 표시할 에디터를 확보한다.
    * @param request 검증된 직렬화 command payload
    * @param notifyUser true면 직접 클릭 요청의 검증 실패를 알림 메시지로 안내한다.
-   * @returns 조회와 decoration에 필요한 대상, 사용자에게 이유를 알렸으면 undefined
+   * @returns 조회와 거터 snapshot에 필요한 대상, 사용자에게 이유를 알렸으면 undefined
    */
   private async resolveTarget(
     request: BlockBlameRequest,
@@ -343,10 +349,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
       }
       return undefined;
     }
-    const editor = await findOrShowEditor(document);
+    await findOrShowEditor(document);
     return {
       document,
-      editor,
       service,
     };
   }
@@ -356,7 +361,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
    * @param target 조회를 시작할 때 확정한 문서와 에디터
    * @param request Code Vision 생성 시점의 문서 버전을 포함한 요청
    * @param requestId 최신 요청만 적용하기 위한 순번
-   * @returns 안전하게 decoration을 적용해도 되면 true
+   * @returns 안전하게 거터 snapshot을 적용해도 되면 true
    */
   private canApplyResult(
     target: BlockBlameTarget,
@@ -374,7 +379,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
   }
 
   /**
-   * 현재 펼쳐진 블록 라벨과 진행 중 요청을 취소한다.
+   * 현재 펼쳐진 블록 blame 거터와 진행 중 요청을 취소한다.
    * @param reason OUTPUT 채널에서 접힌 원인을 확인할 상태 이름
    */
   private clear(reason: string): void {
@@ -386,7 +391,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
         reason,
         uri: this.active.request.uri,
         symbol: this.active.request.symbolName,
-        lines: this.active.decorationCount,
+        lines: this.active.lineCount,
       });
       this.active = undefined;
     }
@@ -409,7 +414,7 @@ function sameDocumentRequest(
 /**
  * 이미 보이는 대상 에디터를 재사용하고 없으면 일반 편집기로 문서를 연다.
  * @param document 클릭한 Code Vision의 문서
- * @returns decoration을 적용할 활성 TextEditor
+ * @returns 거터 renderer가 대상으로 삼을 활성 TextEditor
  */
 async function findOrShowEditor(
   document: vscode.TextDocument
