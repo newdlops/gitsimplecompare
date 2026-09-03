@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72040] - 2026-09-03
+
 ### Fixed
 
 - **Block blame alignment**: clicking a block author Code Vision now places
@@ -58,6 +60,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Safe VS Code cache cleanup**: inspect regenerable workbench, renderer/GPU,
+  webview, and extension-download caches by size, select which groups to remove,
+  and preserve settings, installed extensions, projects, workspace state, and
+  backups. The command is available from the Git Simple Compare view title and
+  the Command Palette, with Korean localization and explicit confirmation.
 - **Staged commit hook preflight**: run `pre-commit` and available commit-message
   hooks against an isolated sibling copy of the Git index before committing.
   Full successful or failed output is kept in the Git Simple Compare OUTPUT
