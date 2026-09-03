@@ -24,6 +24,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 10. **Commit hook preview and management** — run blocking hooks against the staged snapshot before committing, inspect/create/open/toggle traditional local hook files, and turn failed lint/file checks into clickable file-and-line diagnostics.
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a line-aligned author/date column in the editor gutter.
 12. **Pull request stack lifecycle** — draw PR flow directly on the Git Graph and automate layer/worktree creation, descendant restacks, dependency-ordered submit/sync, and post-merge advancement.
+13. **Safe VS Code cache cleanup** — inspect regenerable workbench, renderer/GPU, webview, and extension-download caches by size, select what to remove, and keep settings, installed extensions, projects, workspace state, and backups intact.
 
 ## Usage
 
@@ -34,6 +35,12 @@ Marketplace ID: `newdlops.git-simple-compare`
 - Editor title bar → comparison icon
 - Activity Bar → **Git Simple Compare** icon to see the changed-files view
 - Command Palette → `Git Simple Compare: Show Git Graph` (or the graph icon in the Changes view toolbar)
+
+### VS Code cache cleanup
+
+Use the **Clean VS Code Cache** (`$(clear-all)`) action in the Git Simple Compare view title, or run `Git Simple Compare: Clean VS Code Cache...` from the Command Palette. The picker reports the approximate size of each regenerable cache group before a confirmation dialog. Active VS Code windows can recreate or lock cache files, so the result reports anything left behind and offers to reload the current window. In a Remote window, the command cleans the active remote extension host cache and explicitly leaves the local desktop cache alone.
+
+The cleanup never targets user settings, installed extension directories, projects, `User/workspaceStorage`, backups, or extension global storage.
 
 ### Block author Code Vision
 

@@ -172,6 +172,13 @@
         "icon": "$(trash)"
       },
       {
+        "command": "gitSimpleCompare.cleanupVscodeCache",
+        "title": "%cmd.cleanupVscodeCache.tooltip%",
+        "shortTitle": "%cmd.cleanupVscodeCache%",
+        "category": "Git Simple Compare",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "gitSimpleCompare.compareFileWithBranch",
         "title": "%cmd.compareFileWithBranch%",
         "category": "Git Simple Compare",
@@ -731,6 +738,11 @@
           "command": "gitSimpleCompare.undoBranchOperation",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@6"
+        },
+        {
+          "command": "gitSimpleCompare.cleanupVscodeCache",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "navigation@5"
         },
         {
           "command": "gitSimpleCompare.refreshChanges",

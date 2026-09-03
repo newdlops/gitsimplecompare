@@ -26,6 +26,7 @@ Marketplace ID: `newdlops.git-simple-compare`
 10. **커밋 hook 사전 실행과 관리** — 커밋 전에 staged snapshot으로 차단 hook을 실행하고, 전통적인 로컬 hook 파일을 조회·생성·열기·활성화·비활성화하며, lint/파일 검사 실패를 클릭 가능한 파일·행 진단으로 보여줍니다.
 11. **블록 작업자 Code Vision** — 함수, 클래스, 인터페이스, 메서드와 빈 줄로 구분된 전역 선언 묶음 위에 주요 Git 작업자를 표시합니다. 힌트를 클릭하면 편집기 거터에 라인 정렬된 작업자·날짜 열이 열립니다.
 12. **PR Stack 수명주기 관리** — Git Graph에 PR 흐름을 직접 표시하고, 레이어/worktree 생성, 후손 연쇄 restack, 의존성 순서 Submit/Sync, merge 후 Advance를 자동화합니다.
+13. **안전한 VS Code 캐시 정리** — 다시 생성 가능한 Workbench, 렌더러/GPU, 웹뷰, 확장 다운로드 캐시 크기를 확인하고 선택해 정리합니다. 설정, 설치된 확장, 프로젝트, 워크스페이스 상태 및 백업은 보존합니다.
 
 ## 사용 방법
 
@@ -36,6 +37,12 @@ Marketplace ID: `newdlops.git-simple-compare`
 - 에디터 제목 표시줄의 비교 아이콘
 - 액티비티 바의 **Git Simple Compare** 아이콘에서 변경 파일 목록 확인
 - 명령 팔레트 → `Git Simple Compare: git 그래프 보기` (또는 변경 파일 뷰 툴바의 그래프 아이콘)
+
+### VS Code 캐시 정리
+
+Git Simple Compare 뷰의 최상위 제목 표시줄에서 **VS Code 캐시 정리**(`$(clear-all)`) 액션을 누르거나, 명령 팔레트에서 `Git Simple Compare: VS Code 캐시 정리...`를 실행합니다. 선택창에서 다시 생성 가능한 캐시 그룹별 근사 크기를 확인한 뒤 확인 대화상자를 거쳐 정리합니다. 실행 중인 다른 VS Code 창이 캐시를 다시 만들거나 파일을 잠글 수 있으므로, 결과에서 남은 항목을 정확히 안내하고 현재 창 다시 로드를 제안합니다. 원격 창에서는 활성 원격 확장 호스트의 캐시만 정리하며 로컬 데스크톱 캐시는 건드리지 않습니다.
+
+사용자 설정, 설치된 확장 디렉터리, 프로젝트, `User/workspaceStorage`, 백업 및 확장 global storage는 삭제 대상에 포함하지 않습니다.
 
 ### 블록 작업자 Code Vision
 

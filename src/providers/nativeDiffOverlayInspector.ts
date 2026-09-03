@@ -2,9 +2,9 @@
 // - renderer overlay의 UI 상태와 분리해 프로세스 탐색/HTTP probe/SIGUSR1 절차만 담당한다.
 import { execFile } from "node:child_process";
 import * as http from "node:http";
-import * as path from "node:path";
 import WebSocket = require("ws");
 import { logWarn } from "../ui/outputLog";
+import { deriveVscodeUserDataDir } from "../system/vscodeCacheService";
 
 interface ProcessRow {
   pid: number;
@@ -19,7 +19,7 @@ export async function findCurrentVSCodeMainPid(
   const rows = await listProcessRows();
   const byPid = new Map(rows.map((row) => [row.pid, row]));
   const mainRows = rows.filter((row) => isVSCodeMainProcess(row.command));
-  const userDataDir = deriveUserDataDirHint(globalStorageFsPath);
+  const userDataDir = deriveVscodeUserDataDir(globalStorageFsPath);
   if (userDataDir) {
     const hinted = mainRows.filter((row) =>
       commandHasUserDataDir(row.command, userDataDir)
@@ -110,13 +110,6 @@ async function listProcessRows(): Promise<ProcessRow[]> {
 /** VS Code/Electron main process 명령인지 판별한다. */
 function isVSCodeMainProcess(command: string): boolean {
   return /\/Contents\/MacOS\/(?:Code|Code - Insiders|Code - OSS|Electron)(?:\s+--|$)/.test(command);
-}
-
-/** globalStorage 경로에서 user-data-dir 힌트를 역산한다. */
-function deriveUserDataDirHint(globalStorageFsPath: string): string | undefined {
-  const marker = `${path.sep}User${path.sep}globalStorage${path.sep}`;
-  const index = globalStorageFsPath.indexOf(marker);
-  return index >= 0 ? globalStorageFsPath.slice(0, index) : undefined;
 }
 
 /** main process command line이 같은 user-data-dir을 가리키는지 확인한다. */

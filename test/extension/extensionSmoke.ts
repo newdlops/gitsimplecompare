@@ -11,6 +11,7 @@ export async function run(): Promise<void> {
   assert.equal(extension.isActive, true, "Git Simple Compare extension did not activate.");
   const commands = await vscode.commands.getCommands(true);
   assert.ok(commands.includes("gitSimpleCompare.showChanges"), "Changes sidebar wrapper command was not registered.");
+  assert.ok(commands.includes("gitSimpleCompare.cleanupVscodeCache"), "VS Code cache cleanup command was not registered.");
   assert.equal(commands.includes("gitSimpleCompare.showReviews"), false, "Reviews sidebar wrapper command must not be registered.");
   await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
 }

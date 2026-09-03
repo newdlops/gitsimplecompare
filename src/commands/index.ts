@@ -32,6 +32,7 @@ import {
   undoBranchOperation,
 } from "./branchOperations";
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
+import { cleanupVscodeCache } from "./cleanupVscodeCache";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { openAiCommitPlan, type OpenAiCommitPlanArgs } from "./aiCommitPlan";
@@ -247,6 +248,10 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand(
       "gitSimpleCompare.cleanupPrOperationWorktrees",
       () => cleanupPullRequestOperationWorktrees(deps)
+    ),
+    vscode.commands.registerCommand(
+      "gitSimpleCompare.cleanupVscodeCache",
+      () => cleanupVscodeCache(deps)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.compareFileWithBranch",

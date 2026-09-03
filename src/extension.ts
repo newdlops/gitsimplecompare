@@ -236,6 +236,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(vscodeGitStatus);
   // 6) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {
+    globalStorageUri: context.globalStorageUri,
     registry,
     changesView,
     extensionUri: context.extensionUri,
