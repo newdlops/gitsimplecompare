@@ -19,6 +19,7 @@ Trace-*.json
 .codex/**
 .django-shell/**
 .impeccable/**
+.plan/**
 .portmanager/**
 .mcp.json
 AGENTS.md
@@ -29,5 +30,6 @@ log.txt
 docs/**
 scripts/**
 out-test-extension/**
+playwright-report/**
 test-results/**
 *.vsix

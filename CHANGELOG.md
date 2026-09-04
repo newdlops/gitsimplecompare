@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72042] - 2026-09-05
+
 ### Added
 
 - **Git Graph performance diagnostics** now records fingerprint, local and
