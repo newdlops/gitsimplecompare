@@ -26,7 +26,15 @@ export async function mountGraphRenderer(page: Page): Promise<void> {
         `<button id="refresh-graph" class="icon-button" type="button" title="Refresh graph" aria-label="Refresh graph" data-tooltip="Refresh graph"><span class="codicon codicon-refresh" aria-hidden="true"></span></button>` +
         `<span id="load-status" aria-live="polite"></span>` +
         `<button id="toggle-detail" class="icon-button" type="button" title="Toggle details" aria-label="Toggle details" data-tooltip="Toggle details"><span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span></button>` +
-      `</div><div id="graph" tabindex="0"><div id="graph-content"></div></div></main>` +
+      `</div>` +
+      `<section id="graph-health" role="status" aria-live="polite" hidden>` +
+        `<span id="graph-health-icon" class="codicon codicon-warning" aria-hidden="true"></span>` +
+        `<div class="graph-health-copy"><strong id="graph-health-title"></strong>` +
+        `<span id="graph-health-detail"></span><code id="graph-health-refs" translate="no" hidden></code></div>` +
+        `<button id="graph-health-output" class="gsc-button gsc-button--ghost graph-health-action" type="button" ` +
+        `title="Show Git Simple Compare Output" aria-label="Show Git Simple Compare Output" ` +
+        `data-tooltip="Show Git Simple Compare Output">Show Output</button>` +
+      `</section><div id="graph" tabindex="0"><div id="graph-content"></div></div></main>` +
       `<div id="main-splitter" class="splitter" role="separator" aria-orientation="vertical" tabindex="0" title="Resize commit details" aria-label="Resize commit details"></div>` +
       `<div id="detail"><p class="placeholder">Select a commit to see details.</p></div>` +
     `</div><div id="drawer-backdrop"></div></body>`
@@ -34,8 +42,8 @@ export async function mountGraphRenderer(page: Page): Promise<void> {
   await bridge(page, "__gscI18n");
   await assets(
     page,
-    ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphDetail.css"],
-    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graph.js"]
+    ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphHealth.css", "graph/graphDetail.css"],
+    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphPerformance.js", "graph/graph.js"]
   );
   const font = (await readFile(media("codicons", "codicon.ttf"))).toString("base64");
   await page.addStyleTag({
@@ -47,7 +55,8 @@ export async function mountGraphRenderer(page: Page): Promise<void> {
       `--vscode-editor-background:#1e1e1e;--vscode-sideBar-background:#252526;--vscode-panel-border:#454545;` +
       `--vscode-focusBorder:#007fd4;--vscode-icon-foreground:#c5c5c5;--vscode-toolbar-hoverBackground:#3a3d41;` +
       `--vscode-list-hoverBackground:#2a2d2e;--vscode-list-activeSelectionBackground:#094771;` +
-      `--vscode-list-activeSelectionForeground:#fff}`,
+      `--vscode-list-activeSelectionForeground:#fff;--vscode-editorWidget-background:#252526;` +
+      `--vscode-editorWarning-foreground:#cca700;--vscode-errorForeground:#f48771}`,
   });
 }
 

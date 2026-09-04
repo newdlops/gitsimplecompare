@@ -6,7 +6,7 @@ export type GraphRefreshMode = "none" | "stacks" | "pullRequests";
 /** 외부 요청이 coordinator에 전달하는 최소 정보다. */
 export interface GraphRefreshRequest { repoRoot: string; cause: string; mode: GraphRefreshMode; force?: boolean; }
 /** Graph reload callback이 stale 여부를 판단할 수 있도록 전달하는 실행 문맥이다. */
-export interface GraphRefreshContext { repoRoot: string; cause: string; generation: number; }
+export interface GraphRefreshContext { repoRoot: string; cause: string; generation: number; fingerprint: string; }
 /** UI adapter가 주입하는 Git read, reload, publication, invalidation, logging 경계다. */
 export interface GraphRefreshLifecycleDeps {
   readFingerprint(repoRoot: string): Promise<string>;
@@ -103,7 +103,7 @@ export class GraphRefreshLifecycleCoordinator {
     // 뒤의 약한 watcher read가 먼저 끝나도 앞선 command/PR 요청의 강한 의도를 잃지 않게 누적한다.
     this.unreadIntent = { force: !!(force || this.unreadIntent.force), mode: strongestMode(request.mode, this.unreadIntent.mode) };
     try {
-      const fingerprint = await this.deps.readFingerprint(request.repoRoot);
+      const fingerprint = await this.readFingerprint(request, this.generation);
       if (!this.isCurrent(request.repoRoot, epoch) || !this.canRun()) { this.defer(request); return; }
       if (sequence !== this.requestSequence) {
         this.deps.info("graph refresh coalesce", this.fields(request, this.generation, graphRefreshFingerprintDigest(fingerprint)));
@@ -122,15 +122,28 @@ export class GraphRefreshLifecycleCoordinator {
   async runDirect(request: Pick<GraphRefreshRequest, "repoRoot" | "cause">): Promise<boolean> {
     if (this.disposed) return false;
     this.setRepository(request.repoRoot);
+    const superseded = !!(
+      this.running || this.directRunning || this.pending || this.deferred ||
+      this.unreadIntent.force || this.unreadIntent.mode !== "none"
+    );
+    this.running = undefined;
+    this.directRunning = false;
+    this.pending = undefined;
+    this.deferred = undefined;
+    this.unreadIntent = { mode: "none", force: false };
+    // 아직 fingerprint를 읽는 요청도 같은 repository에서 뒤늦게 schedule되지 않도록 epoch를 항상 전진시킨다.
+    this.epoch++;
+    this.requestSequence++;
+    if (superseded) this.deps.invalidateReload("directSupersede");
     const epoch = this.epoch;
     const directSequence = ++this.directSequence;
     const generation = ++this.generation;
-    const context = { ...request, generation };
     this.directRunning = true;
     this.deps.info("graph refresh start", this.fields(request, generation, "direct"));
     try {
+      const fingerprint = await this.readFingerprint(request, generation);
+      const context = { ...request, generation, fingerprint };
       await this.deps.reloadGraph(context);
-      const fingerprint = await this.deps.readFingerprint(request.repoRoot);
       if (!this.isCurrentDirect(request.repoRoot, epoch, directSequence)) return false;
       this.baseline = fingerprint;
       this.deps.info("graph refresh complete", this.fields(request, generation, graphRefreshFingerprintDigest(fingerprint)));
@@ -180,7 +193,7 @@ export class GraphRefreshLifecycleCoordinator {
 
   /** 한 자동 transaction을 실행하고 성공시에만 baseline을 전진시킨 뒤 newest pending을 소비한다. */
   private async run(request: ResolvedRequest, generation: number, epoch: number): Promise<void> {
-    const context = { repoRoot: request.repoRoot, cause: request.cause, generation };
+    const context = { repoRoot: request.repoRoot, cause: request.cause, generation, fingerprint: request.fingerprint };
     const digest = graphRefreshFingerprintDigest(request.fingerprint);
     this.deps.info("graph refresh start", this.fields(request, generation, digest));
     try {
@@ -232,6 +245,20 @@ export class GraphRefreshLifecycleCoordinator {
     return previous
       ? { ...next, force: !!(next.force || previous.force), mode: strongestMode(next.mode, previous.mode) }
       : next;
+  }
+
+  /** fingerprint Git read 시간을 모든 direct/automatic 경로에서 같은 필드로 기록한다. */
+  private async readFingerprint(
+    request: Pick<GraphRefreshRequest, "repoRoot" | "cause">,
+    generation: number
+  ): Promise<string> {
+    const started = Date.now();
+    const fingerprint = await this.deps.readFingerprint(request.repoRoot);
+    this.deps.info("graph performance fingerprint", {
+      ...this.fields(request, generation, graphRefreshFingerprintDigest(fingerprint)),
+      elapsedMs: Date.now() - started,
+    });
+    return fingerprint;
   }
 
   /** lifecycle 경계에서 자동 실행 중인 최신 reconcile을 deferred로 보존하고 늦은 결과를 stale 처리한다. */

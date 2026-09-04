@@ -131,6 +131,7 @@ export async function createWorktree(deps: CommandDeps): Promise<void> {
       startPoint,
       newBranch,
     });
+    if (newBranch) git.invalidateBranchCache();
     await refreshAfterWorktreeChange(deps, group.repoRoot, "worktreeCreated");
     const open = vscode.l10n.t("Open Worktree");
     const choice = await vscode.window.showInformationMessage(

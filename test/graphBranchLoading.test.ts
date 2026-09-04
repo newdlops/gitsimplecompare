@@ -25,6 +25,28 @@ test("local branch data does not start a separate local refs scan", async () => 
   );
   assert.deepEqual(calls.sort(), ["local-status", "worktrees"]);
   assert.deepEqual(local.refs, [{ name: "main", kind: "local" }]);
+  assert.deepEqual(local.invalidRefs, []);
+});
+
+test("local branch snapshot carries damaged refs while exposing only healthy filter refs", async () => {
+  const local = await loadGraphLocalBranchData(
+    "/repo",
+    async () => ({
+      branches: [{ name: "main", hash: "tip", current: true, upstream: undefined, ahead: 0, behind: 0, gone: false, dateIso: "", subject: "" }],
+      invalidRefs: [{ name: "broken", fullRef: "refs/heads/broken", hash: "missing", kind: "local" }],
+    }),
+    async () => []
+  );
+  assert.deepEqual(local.refs, [{ name: "main", kind: "local" }]);
+  assert.equal(local.invalidRefs[0]?.name, "broken");
+  const filter = resolveGraphBranchFilter(
+    normalizeBranchFilterState("all"),
+    [...local.refs, { name: "origin/main", kind: "remote" }],
+    "ready",
+    true
+  );
+  assert.deepEqual(filter.refs, ["main", "origin/main"]);
+  assert.equal(filter.filtersRefs, true);
 });
 
 test("linked worktrees share one common-dir remote read while retaining consumer results", async () => {
@@ -163,36 +185,67 @@ test("rejected delayed page after disposal emits neither page nor finally loadin
   assert.equal(loadingPosts, 0);
 });
 
-test("coordinator starts only after first post gate and suppresses hide-before-microtask and stale results", async () => {
+test("coordinator skips inactive reads and suppresses a stale remote result", async () => {
   const requests: { resolve: (value: string) => void }[] = [];
   const catalog = new GraphBranchCatalog(async (args) => {
     if (args[0] === "rev-parse") return "/common/.git\n";
     return await new Promise<string>((resolve) => requests.push({ resolve }));
   });
   const coordinator = new GraphBranchLoadingCoordinator(catalog);
-  const events: string[] = [];
   const hidden = coordinator.begin("/one");
-  coordinator.deferRemote("/one", hidden, { onRemoteReady: async () => events.push("hidden-ready"), onRemoteFailed: () => events.push("hidden-fail") }, () => false);
+  assert.equal(await coordinator.loadRemote("/one", hidden, "v1", () => false), undefined);
   await settleAsyncRead();
   assert.equal(requests.length, 0);
 
   const active = coordinator.begin("/one");
-  coordinator.deferRemote("/one", active, { onRemoteReady: async () => events.push("ready"), onRemoteFailed: () => events.push("fail") }, () => true);
+  const pending = coordinator.loadRemote("/one", active, "v1", () => true);
   await settleAsyncRead();
   coordinator.begin("/two");
   requests[0].resolve(remoteLine("tip", "origin/main"));
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.deepEqual(events, []);
+  assert.equal(await pending, undefined);
 });
 
-test("local status then first graph precedes deferred remote ref scan", async () => {
+test("local and remote snapshots start together and gate one final graph render", async () => {
   const ledger: string[] = [];
-  await loadGraphLocalBranchData("/repo", async () => { ledger.push("local-status"); return []; }, async () => []);
-  ledger.push("firstGraph");
+  let releaseLocal: (() => void) | undefined;
+  let releaseRemote: (() => void) | undefined;
+  const local = loadGraphLocalBranchData(
+    "/repo",
+    async () => { ledger.push("local-status"); await new Promise<void>((resolve) => { releaseLocal = resolve; }); return []; },
+    async () => []
+  );
   const catalog = new GraphBranchCatalog(async (args) => {
     ledger.push(args[0]);
-    return args[0] === "rev-parse" ? "/common/.git\n" : "";
+    if (args[0] === "rev-parse") return "/common/.git\n";
+    await new Promise<void>((resolve) => { releaseRemote = resolve; });
+    return "";
   });
-  await catalog.getRemoteTips("/repo");
-  assert.deepEqual(ledger, ["local-status", "firstGraph", "rev-parse", "for-each-ref"]);
+  const generation = new GraphBranchLoadingCoordinator(catalog);
+  const token = generation.begin("/repo");
+  const remote = generation.loadRemote("/repo", token, "v1", () => true);
+  await settleAsyncRead();
+  assert.deepEqual(ledger, ["local-status", "rev-parse", "for-each-ref"]);
+  assert.equal(ledger.includes("graph"), false);
+  releaseLocal!(); releaseRemote!();
+  await Promise.all([local, remote]);
+  ledger.push("graph");
+  assert.equal(ledger.filter((event) => event === "graph").length, 1);
+});
+
+test("remote catalog reuses one semantic version and rereads only after the version changes", async () => {
+  let remoteReads = 0;
+  let commonDirReads = 0;
+  const catalog = new GraphBranchCatalog(async (args) => {
+    if (args[0] === "rev-parse") {
+      commonDirReads++;
+      return "/common/.git\n";
+    }
+    remoteReads++;
+    return remoteLine(`tip-${remoteReads}`, "origin/main");
+  });
+  assert.equal((await catalog.getRemoteTips("/repo", undefined, "v1"))[0].hash, "tip-1");
+  assert.equal((await catalog.getRemoteTips("/repo", undefined, "v1"))[0].hash, "tip-1");
+  assert.equal((await catalog.getRemoteTips("/repo", undefined, "v2"))[0].hash, "tip-2");
+  assert.equal(remoteReads, 2);
+  assert.equal(commonDirReads, 1);
 });

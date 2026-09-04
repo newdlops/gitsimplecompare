@@ -1,7 +1,13 @@
-// Graph 브랜치 카탈로그의 local-first hydration 순서를 조정하는 모듈.
+// Graph 브랜치 카탈로그의 로컬 우선 표시와 단일 최종 hydration 순서를 조정하는 모듈.
 import { GraphBranchCatalog } from "../git/graphBranchCatalog";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
-import type { Commit, LocalBranchStatus, WorktreeBranchStatus } from "../graph/graphTypes";
+import type {
+  Commit,
+  GraphInvalidRef,
+  GraphLocalBranchSnapshot,
+  LocalBranchStatus,
+  WorktreeBranchStatus,
+} from "../graph/graphTypes";
 import { logError, logInfo } from "../ui/outputLog";
 import { buildBranchFilterSnapshot, resolveBranchFilter } from "./graphBranchFilter";
 import type { GraphBranchFilterSnapshot, GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter } from "./graphBranchFilter";
@@ -9,11 +15,10 @@ import type { GraphBranchFilterSnapshot, GraphBranchFilterState, GraphBranchRef,
 /** local-first 브랜치 hydration이 패널에 제공하는 현재 상태다. */
 export type GraphRemoteCatalogStatus = "pending" | "ready" | "error";
 
-/** 원격 hydration 완료 시 패널이 현재 세대만 재조정하도록 받는 콜백이다. */
-export interface GraphBranchLoadingCallbacks {
-  onRemoteReady: (branches: GraphRemoteBranchTip[], generation: number) => Promise<void>;
-  onRemoteFailed: (error: unknown, generation: number) => void;
-}
+/** 한 remote catalog read의 현재 세대 결과다. undefined는 숨김/교체로 취소됐음을 뜻한다. */
+export type GraphRemoteCatalogResult =
+  | { status: "ready"; branches: GraphRemoteBranchTip[] }
+  | { status: "error"; error: unknown };
 
 /** repository/generation 취소를 소유해 늦은 remote 결과가 UI를 덮어쓰지 않게 한다. */
 export class GraphBranchLoadingCoordinator {
@@ -23,36 +28,51 @@ export class GraphBranchLoadingCoordinator {
 
   constructor(private readonly catalog = new GraphBranchCatalog()) {}
 
-  /** 새 local-first reload의 세대를 열고 이전 remote read를 취소한다. */
+  /** 새 reload의 세대를 열고 이전 remote read를 취소한다. */
   begin(repoRoot: string): number {
     this.cancel("supersede");
     this.repoRoot = repoRoot;
     this.generation++;
-    logInfo("graph remote branches defer", { repoRoot, generation: this.generation });
+    logInfo("graph remote branches prepare", { repoRoot, generation: this.generation });
     return this.generation;
   }
 
-  /** 첫 graph post 뒤 원격 ref를 비차단으로 시작한다. */
-  deferRemote(repoRoot: string, generation: number, callbacks: GraphBranchLoadingCallbacks, canStart: () => boolean): void {
-    queueMicrotask(() => {
-      if (generation !== this.generation || repoRoot !== this.repoRoot || !canStart()) {
-        logInfo("graph remote branches defer", { repoRoot, generation, reason: "inactiveOrStale" });
-        return;
-      }
-      const controller = new AbortController();
-      this.controller = controller;
-      const started = Date.now();
-      logInfo("graph remote branches start", { repoRoot, generation });
-      void this.catalog.getRemoteTips(repoRoot, controller.signal).then(async (branches) => {
-        if (generation !== this.generation || repoRoot !== this.repoRoot) return;
-        logInfo("graph remote branches complete", { repoRoot, generation, count: branches.length, elapsed: Date.now() - started });
-        await callbacks.onRemoteReady(branches, generation);
-      }).catch((error) => {
-        if (controller.signal.aborted || generation !== this.generation || repoRoot !== this.repoRoot) return;
-        logError("graph remote branches fail", error, { repoRoot, generation, elapsed: Date.now() - started });
-        callbacks.onRemoteFailed(error, generation);
+  /**
+   * 로컬 status와 병렬로 remote catalog를 시작하고 최종 log scope를 정하기 전에 결과를 반환한다.
+   * @param repoRoot 현재 Graph 저장소 루트
+   * @param generation begin이 발급한 remote read 세대
+   * @param version semantic fingerprint에서 파생한 remote ref cache 버전
+   * @param canStart 패널 visible/focus 상태를 마지막으로 확인하는 함수
+   * @returns ready/error 결과. 세대 교체나 숨김으로 취소되면 undefined
+   */
+  async loadRemote(
+    repoRoot: string,
+    generation: number,
+    version: string,
+    canStart: () => boolean
+  ): Promise<GraphRemoteCatalogResult | undefined> {
+    if (generation !== this.generation || repoRoot !== this.repoRoot || !canStart()) {
+      logInfo("graph remote branches skipped", { repoRoot, generation, reason: "inactiveOrStale" });
+      return undefined;
+    }
+    const controller = new AbortController();
+    this.controller = controller;
+    const started = Date.now();
+    logInfo("graph remote branches start", { repoRoot, generation, version });
+    try {
+      const branches = await this.catalog.getRemoteTips(repoRoot, controller.signal, version);
+      if (controller.signal.aborted || generation !== this.generation || repoRoot !== this.repoRoot) return undefined;
+      logInfo("graph remote branches complete", {
+        repoRoot, generation, version, count: branches.length, elapsedMs: Date.now() - started,
       });
-    });
+      return { status: "ready", branches };
+    } catch (error) {
+      if (controller.signal.aborted || generation !== this.generation || repoRoot !== this.repoRoot) return undefined;
+      logError("graph remote branches fail", error, { repoRoot, generation, version, elapsedMs: Date.now() - started });
+      return { status: "error", error };
+    } finally {
+      if (this.controller === controller) this.controller = undefined;
+    }
   }
 
   /** 숨김/처분/새 reload의 이전 read를 중단하고 세대를 무효화한다. */
@@ -75,24 +95,48 @@ export class GraphBranchLoadingCoordinator {
 /** local branch/worktree/ref 조회를 병렬 실행해 첫 Graph 렌더에 필요한 snapshot 재료를 만든다. */
 export async function loadGraphLocalBranchData(
   repoRoot: string,
-  getLocalBranches: () => Promise<LocalBranchStatus[]>,
+  getLocalBranches: () => Promise<LocalBranchStatus[] | GraphLocalBranchSnapshot>,
   getWorktrees: () => Promise<WorktreeBranchStatus[]>
-): Promise<{ branches: LocalBranchStatus[]; refs: GraphBranchRef[]; worktrees: WorktreeBranchStatus[] }> {
-  const [branches, worktrees] = await Promise.all([
-    getLocalBranches(), getWorktrees().catch((error) => {
+): Promise<{
+  branches: LocalBranchStatus[];
+  refs: GraphBranchRef[];
+  worktrees: WorktreeBranchStatus[];
+  invalidRefs: GraphInvalidRef[];
+  timings: { localBranchesMs: number; worktreesMs: number; totalMs: number };
+}> {
+  const started = Date.now();
+  const localStarted = Date.now();
+  const worktreeStarted = Date.now();
+  const [localResult, worktreeResult] = await Promise.all([
+    getLocalBranches().then((value) => ({ value, elapsedMs: Date.now() - localStarted })),
+    getWorktrees().catch((error) => {
       logError("graph worktree status failed", error, { repoRoot });
       return [];
-    }),
+    }).then((value) => ({ value, elapsedMs: Date.now() - worktreeStarted })),
   ]);
-  return { branches, refs: branches.map((branch) => ({ name: branch.name, kind: "local" as const })), worktrees };
+  const localRead = localResult.value;
+  const snapshot = Array.isArray(localRead)
+    ? { branches: localRead, invalidRefs: [] }
+    : localRead;
+  return {
+    branches: snapshot.branches,
+    refs: snapshot.branches.map((branch) => ({ name: branch.name, kind: "local" as const })),
+    worktrees: worktreeResult.value,
+    invalidRefs: snapshot.invalidRefs,
+    timings: {
+      localBranchesMs: localResult.elapsedMs,
+      worktreesMs: worktreeResult.elapsedMs,
+      totalMs: Date.now() - started,
+    },
+  };
 }
 
 /** 현재 상태를 웹뷰가 즉시 그릴 수 있는 branch-filter 메시지 payload로 만든다. */
 export function createGraphBranchFilterSnapshot(
   refs: readonly GraphBranchRef[], branches: readonly LocalBranchStatus[], state: GraphBranchFilterState,
-  remoteStatus: GraphRemoteCatalogStatus, remoteError?: string
+  remoteStatus: GraphRemoteCatalogStatus, remoteError?: string, requireExplicitRefs = false
 ): GraphBranchFilterSnapshot {
-  return buildBranchFilterSnapshot(refs, branches, state, remoteStatus, remoteError);
+  return buildBranchFilterSnapshot(refs, branches, state, remoteStatus, remoteError, requireExplicitRefs);
 }
 
 /** local/remote ref를 이름 기준으로 합쳐 중복 없는 카탈로그를 만든다. */
@@ -111,9 +155,10 @@ export function graphBranchFilterNeedsReconcile(
 
 /** panel state를 현재 remote hydration 상태까지 반영한 log filter로 해석한다. */
 export function resolveGraphBranchFilter(
-  state: GraphBranchFilterState, refs: readonly GraphBranchRef[], remoteStatus: GraphRemoteCatalogStatus
+  state: GraphBranchFilterState, refs: readonly GraphBranchRef[], remoteStatus: GraphRemoteCatalogStatus,
+  requireExplicitRefs = false
 ): ResolvedGraphBranchFilter {
-  return resolveBranchFilter(state, refs, remoteStatus);
+  return resolveBranchFilter(state, refs, remoteStatus, requireExplicitRefs);
 }
 
 /** checkout 뒤 기존 Graph 페이지를 재사용할 수 있는지 판정하고 virtual commit 갱신을 수행한다. */

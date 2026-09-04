@@ -22,6 +22,13 @@ test("custom hidden remote selection survives pending snapshot and activates aft
   assert.deepEqual(ready.refs, ["origin/feature"]);
 });
 
+test("all filter with damaged refs never falls back to implicit Git refs when no healthy branch remains", () => {
+  const filter = resolveBranchFilter(normalizeBranchFilterState("all"), [], "ready", true);
+  assert.deepEqual(filter.refs, []);
+  assert.equal(filter.filtersRefs, true);
+  assert.equal(filter.empty, true);
+});
+
 test("remote catalog parser excludes symbolic remote HEAD refs", () => {
   assert.deepEqual(parseRemoteBranches("origin/HEAD\x1frefs/remotes/origin/HEAD\norigin/main\x1frefs/remotes/origin/main\n"), [{ name: "origin/main", kind: "remote" }]);
 });

@@ -21,6 +21,7 @@ interface CompletedRead { epoch: number; tips: GraphRemoteBranchTip[]; }
 const completed = new Map<string, CompletedRead>();
 const pending = new Map<string, SharedRead>();
 const epochs = new Map<string, number>();
+const versions = new Map<string, string>();
 let resolvingCommonDirs = 0;
 const runnerIds = new WeakMap<object, number>();
 let nextRunnerId = 1;
@@ -37,7 +38,11 @@ export class GraphBranchCatalog {
    * @param signal 이 consumer만 취소하는 신호. 마지막 consumer가 취소될 때만 Git read를 중단한다.
    * @returns remote/HEAD를 제외한 원격 tip 레코드
    */
-  async getRemoteTips(repoRoot: string, signal?: AbortSignal): Promise<GraphRemoteBranchTip[]> {
+  async getRemoteTips(
+    repoRoot: string,
+    signal?: AbortSignal,
+    version = "unversioned"
+  ): Promise<GraphRemoteBranchTip[]> {
     let identity: string;
     resolvingCommonDirs++;
     try {
@@ -51,29 +56,33 @@ export class GraphBranchCatalog {
     }
     this.roots.set(repoRoot, identity);
     const baseKey = `${runnerId(this.runner)}:${identity}`;
+    this.selectVersion(baseKey, version, repoRoot, identity);
     const epoch = epochs.get(baseKey) ?? 0;
     const key = `${baseKey}:${epoch}`;
     const cached = completed.get(key);
-    if (cached?.epoch === epoch) return cloneTips(cached.tips);
+    if (cached?.epoch === epoch) {
+      logInfo("graph remote catalog cache hit", { repoRoot, commonDir: identity, epoch, version, count: cached.tips.length });
+      return cloneTips(cached.tips);
+    }
     let shared = pending.get(key);
     if (!shared) {
       const controller = new AbortController();
       shared = { controller, subscribers: new Set(), promise: this.readRemoteTips(repoRoot, controller.signal).then((tips) => {
         if ((epochs.get(baseKey) ?? 0) === epoch) completed.set(key, { epoch, tips });
-        logInfo("graph remote catalog complete", { repoRoot, commonDir: identity, epoch, count: tips.length });
+        logInfo("graph remote catalog complete", { repoRoot, commonDir: identity, epoch, version, count: tips.length });
         return tips;
       }).finally(() => pending.delete(key)) };
       pending.set(key, shared);
-      logInfo("graph remote catalog start", { repoRoot, commonDir: identity, epoch });
+      logInfo("graph remote catalog start", { repoRoot, commonDir: identity, epoch, version });
     } else {
-      logInfo("graph remote catalog coalesce", { repoRoot, commonDir: identity, epoch, subscribers: shared.subscribers.size });
+      logInfo("graph remote catalog coalesce", { repoRoot, commonDir: identity, epoch, version, subscribers: shared.subscribers.size });
     }
     return this.subscribe(shared, signal);
   }
 
   /** UI branch filter가 필요한 이름/kind만 반환한다. */
-  async getRemoteBranches(repoRoot: string, signal?: AbortSignal): Promise<GraphBranchRef[]> {
-    return (await this.getRemoteTips(repoRoot, signal)).map(({ name, kind }) => ({ name, kind }));
+  async getRemoteBranches(repoRoot: string, signal?: AbortSignal, version?: string): Promise<GraphBranchRef[]> {
+    return (await this.getRemoteTips(repoRoot, signal, version)).map(({ name, kind }) => ({ name, kind }));
   }
 
   /** ref epoch가 바뀐 저장소의 성공 캐시만 버린다. 실행 중인 consumer는 자신의 결과를 유지한다. */
@@ -86,6 +95,8 @@ export class GraphBranchCatalog {
 
   /** worktree가 공유하는 절대 common Git dir을 얻고 실패 시 호출부가 root 격리로 축소할 수 있게 한다. */
   private async commonDir(repoRoot: string, signal?: AbortSignal): Promise<string> {
+    const cached = this.roots.get(repoRoot);
+    if (cached) return cached;
     const value = (await this.runner(["rev-parse", "--path-format=absolute", "--git-common-dir"], repoRoot, { signal })).trim();
     if (!value) throw new Error("Git common dir is unavailable.");
     return value;
@@ -95,6 +106,27 @@ export class GraphBranchCatalog {
   private async readRemoteTips(repoRoot: string, signal: AbortSignal): Promise<GraphRemoteBranchTip[]> {
     const output = await this.runner(["for-each-ref", `--format=%(objectname)${FS}%(refname:short)${FS}%(refname)`, "refs/remotes"], repoRoot, { signal });
     return parseRemoteBranchTips(output);
+  }
+
+  /** fingerprint에서 파생한 remote 버전이 바뀔 때만 epoch와 완료 cache를 교체한다. */
+  private selectVersion(baseKey: string, version: string, repoRoot: string, commonDir: string): void {
+    const previous = versions.get(baseKey);
+    if (previous === undefined) {
+      versions.set(baseKey, version);
+      return;
+    }
+    if (previous === version) return;
+    const previousEpoch = epochs.get(baseKey) ?? 0;
+    epochs.set(baseKey, previousEpoch + 1);
+    completed.delete(`${baseKey}:${previousEpoch}`);
+    versions.set(baseKey, version);
+    logInfo("graph remote catalog version changed", {
+      repoRoot,
+      commonDir,
+      previousVersion: previous,
+      version,
+      epoch: previousEpoch + 1,
+    });
   }
 
   /** 한 consumer의 취소가 다른 active consumer를 중단하지 않도록 shared promise를 구독한다. */
@@ -137,7 +169,14 @@ export function parseRemoteBranchTips(output: string): GraphRemoteBranchTip[] {
 
 /** 기존 테스트/호출자가 name/kind parser를 쓸 수 있도록 얇은 호환 wrapper를 둔다. */
 export function parseRemoteBranches(output: string): GraphBranchRef[] {
-  return parseRemoteBranchTips(output).map(({ name, kind }) => ({ name, kind }));
+  return output.split("\n").flatMap((line) => {
+    const fields = line.split(FS);
+    // 초기 공개 parser의 name/fullRef 2필드 계약과 현재 hash/name/fullRef 계약을 모두 받는다.
+    const [name, fullRef] = fields.length >= 3 ? [fields[1], fields[2]] : fields;
+    return name && fullRef?.startsWith("refs/remotes/") && !name.endsWith("/HEAD")
+      ? [{ name, kind: "remote" as const }]
+      : [];
+  });
 }
 
 /** module cache와 호출자 사이에서 mutable 배열/객체가 공유되지 않게 복사한다. */

@@ -33,6 +33,7 @@ export function buildGraphHtml(
   const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
   const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
   const detailResizeScriptUri = script(webview, mediaRoot, "graphDetailResize.js");
+  const performanceScriptUri = script(webview, mediaRoot, "graphPerformance.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
   const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
@@ -55,6 +56,7 @@ export function buildGraphHtml(
   const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
   const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
+  const healthStyleUri = style(webview, mediaRoot, "graphHealth.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const prStyleUri = style(webview, mediaRoot, "graphPr.css");
@@ -97,6 +99,7 @@ export function buildGraphHtml(
   const syncCommandsTitle = vscode.l10n.t("Graph synchronization commands");
   const reviewCommandsTitle = vscode.l10n.t("Pull request and stack commands");
   const navigationCommandsTitle = vscode.l10n.t("Graph navigation and details commands");
+  const showOutputTitle = vscode.l10n.t("Show Git Simple Compare Output");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
     unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
@@ -153,6 +156,7 @@ export function buildGraphHtml(
   ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconStyleUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${healthStyleUri}" rel="stylesheet" />
   <link href="${worktreeStyleUri}" rel="stylesheet" />
   <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${prStyleUri}" rel="stylesheet" />
@@ -256,6 +260,17 @@ export function buildGraphHtml(
         </div>
         <span id="load-status" aria-live="polite"></span>
       </div>
+      <section id="graph-health" role="status" aria-live="polite" hidden>
+        <span id="graph-health-icon" class="codicon codicon-warning" aria-hidden="true"></span>
+        <div class="graph-health-copy">
+          <strong id="graph-health-title"></strong>
+          <span id="graph-health-detail"></span>
+          <code id="graph-health-refs" translate="no" hidden></code>
+        </div>
+        <button id="graph-health-output" class="gsc-button gsc-button--ghost graph-health-action"
+          type="button" title="${showOutputTitle}" aria-label="${showOutputTitle}"
+          data-tooltip="${showOutputTitle}">${vscode.l10n.t("Show Output")}</button>
+      </section>
       <section id="graph-pr-panel" aria-label="${prListTitle}" hidden></section>
       <section id="graph-reflog-panel" aria-label="${reflogTitle}" hidden></section>
       <div id="graph" tabindex="0"><div id="graph-content"></div></div>
@@ -292,6 +307,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
   <script nonce="${nonce}" src="${detailResizeScriptUri}"></script>
+  <script nonce="${nonce}" src="${performanceScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>

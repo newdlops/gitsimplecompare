@@ -48,6 +48,15 @@ export interface GraphLoadState {
   colorScope?: string;
 }
 
+/** extension graph post부터 webview frame까지 같은 성능 흐름을 식별하는 metadata다. */
+export interface GraphRenderPerformance {
+  traceId: string;
+  cause: string;
+  kind: "initial" | "pagination" | "localOnly" | "checkout" | "window";
+  extensionStartedAt: number;
+  sentAt: number;
+}
+
 /** 그래프 rebase 진행 상태 배너의 단계 */
 export type GraphRebaseProgressPhase =
   | "running"
@@ -84,10 +93,25 @@ export interface GraphRebaseProgress {
   active: boolean;
 }
 
+/** Graph 상단 상태 영역에 표시할 ref/오류 진단 항목 */
+export interface GraphHealthItem {
+  label: string;
+  description: string;
+}
+
+/** 정상 커밋을 유지하면서 사용자에게 복구 경로를 알리는 Graph 상태 안내 */
+export interface GraphHealthNotice {
+  level: "warning" | "error";
+  title: string;
+  detail: string;
+  items?: GraphHealthItem[];
+}
+
 /** 확장 → 웹뷰 메시지 */
 export type ToWebviewMessage =
-  | { type: "graph"; data: GraphData; state: GraphLoadState }
+  | { type: "graph"; data: GraphData; state: GraphLoadState; performance?: GraphRenderPerformance }
   | { type: "graphLoadState"; state: GraphLoadState }
+  | { type: "graphHealth"; notice?: GraphHealthNotice }
   | { type: "branchStatus"; branches: LocalBranchStatus[]; worktrees?: WorktreeBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "tagStatus"; tags: GitTagStatus[] }
@@ -117,6 +141,14 @@ export type ToWebviewMessage =
 export type FromWebviewMessage =
   | { type: "ready" }
   | { type: "refresh" }
+  | { type: "showGraphOutput" }
+  | {
+      type: "graphRendered";
+      performance: GraphRenderPerformance;
+      receivedAt: number;
+      renderedAt: number;
+      paintedAt: number;
+    }
   | {
       type: "setBranchFilter";
       mode: GraphBranchFilterMode;

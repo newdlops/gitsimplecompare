@@ -2,6 +2,38 @@
 // - GitLogService 의 그래프/커밋 책임과 태그 관리 책임을 분리해 파일 크기와 경계를 유지한다.
 // - 원격 tag 는 git 이 로컬 tracking ref 로 보관하지 않으므로 ls-remote 로 별도 조회한다.
 import { runGit } from "./gitExec";
+import { logInfo } from "../ui/outputLog";
+
+const REMOTE_TAG_CACHE_TTL_MS = 5 * 60 * 1_000;
+
+/** tag 서비스의 Git 명령을 테스트에서 대체할 수 있는 실행 함수다. */
+export type GitTagRunner = (args: string[], repoRoot: string, options?: Parameters<typeof runGit>[2]) => Promise<string>;
+
+/** 원격 tag 조회를 강제하거나 기본 TTL을 조정하는 읽기 옵션이다. */
+export interface GitTagQueryOptions {
+  forceRemote?: boolean;
+  maxRemoteAgeMs?: number;
+}
+
+interface RemoteTagCacheEntry {
+  repoRoot: string;
+  remote: string;
+  at: number;
+  tags: GitRemoteTagRef[];
+}
+
+interface RemoteTagPendingEntry {
+  repoRoot: string;
+  remote: string;
+  epoch: number;
+  promise: Promise<GitRemoteTagRef[]>;
+}
+
+const remoteTagCompleted = new Map<string, RemoteTagCacheEntry>();
+const remoteTagPending = new Map<string, RemoteTagPendingEntry>();
+const remoteTagEpochs = new Map<string, number>();
+const tagRunnerIds = new WeakMap<object, number>();
+let nextTagRunnerId = 1;
 
 /** 로컬 tag 한 건. hash 는 annotated tag 를 peel 한 실제 대상 객체를 우선 사용한다. */
 export interface GitLocalTagRef {
@@ -25,17 +57,18 @@ export interface GitTagStatus {
 
 /** 특정 저장소의 tag 상태와 tag 이름 변경을 다루는 서비스 */
 export class GitTagService {
-  constructor(private readonly repoRoot: string) {}
+  /** @param repoRoot 대상 저장소 루트 @param runner production runGit 또는 테스트 실행기 */
+  constructor(private readonly repoRoot: string, private readonly runner: GitTagRunner = runGit) {}
 
   /**
    * 로컬 tag 와 원격 tag 를 통합한 상태 목록을 반환한다.
    * - 같은 이름의 tag 가 로컬/여러 remote 에 있을 수 있으므로 이름 기준으로 묶는다.
    * - 원격 조회 실패는 해당 remote 만 건너뛰고 로컬 tag 표시는 유지한다.
    */
-  async getTagStatuses(): Promise<GitTagStatus[]> {
+  async getTagStatuses(options: GitTagQueryOptions = {}): Promise<GitTagStatus[]> {
     const [localTags, remoteTags] = await Promise.all([
       this.getLocalTagRefs(),
-      this.getRemoteTagRefs(),
+      this.getRemoteTagRefs(options),
     ]);
     const byName = new Map<string, GitTagStatus>();
     for (const tag of localTags) {
@@ -61,7 +94,7 @@ export class GitTagService {
    * - annotated tag 는 %(*objectname) 으로 peel 된 커밋/객체를 우선 사용한다.
    */
   async getLocalTagRefs(): Promise<GitLocalTagRef[]> {
-    const out = await runGit(
+    const out = await this.runner(
       [
         "for-each-ref",
         "--format=%(refname:short)%00%(*objectname)%00%(objectname)",
@@ -83,10 +116,10 @@ export class GitTagService {
    * 모든 remote 에서 tag 목록을 조회한다.
    * - private remote 인증 실패처럼 조회할 수 없는 remote 는 빈 목록으로 처리한다.
    */
-  async getRemoteTagRefs(): Promise<GitRemoteTagRef[]> {
+  async getRemoteTagRefs(options: GitTagQueryOptions = {}): Promise<GitRemoteTagRef[]> {
     const remotes = await this.getRemotes();
     const nested = await Promise.all(
-      remotes.map((remote) => this.getRemoteTagRefsForRemote(remote).catch(() => []))
+      remotes.map((remote) => this.getCachedRemoteTagRefs(remote, options).catch(() => []))
     );
     return nested.flat().sort(compareRemoteTag);
   }
@@ -103,11 +136,11 @@ export class GitTagService {
     if (await this.hasLocalTag(newName)) {
       throw new Error(`Tag already exists: ${newName}`);
     }
-    await runGit(
+    await this.runner(
       ["update-ref", `refs/tags/${newName}`, `refs/tags/${oldName}`],
       this.repoRoot
     );
-    await runGit(["update-ref", "-d", `refs/tags/${oldName}`], this.repoRoot);
+    await this.runner(["update-ref", "-d", `refs/tags/${oldName}`], this.repoRoot);
   }
 
   /**
@@ -115,7 +148,7 @@ export class GitTagService {
    * @param name 확인할 tag 이름
    */
   async hasLocalTag(name: string): Promise<boolean> {
-    return runGit(
+    return this.runner(
       ["show-ref", "--verify", "--quiet", `refs/tags/${name}`],
       this.repoRoot
     ).then(
@@ -130,7 +163,7 @@ export class GitTagService {
    * @param remote 조회할 git remote 이름
    */
   private async getRemoteTagRefsForRemote(remote: string): Promise<GitRemoteTagRef[]> {
-    const out = await runGit(
+    const out = await this.runner(
       ["ls-remote", "--tags", remote],
       this.repoRoot,
       { env: { GIT_TERMINAL_PROMPT: "0" }, retryOnLock: false }
@@ -160,7 +193,7 @@ export class GitTagService {
 
   /** 저장소에 등록된 remote 이름 목록을 반환한다. */
   private async getRemotes(): Promise<string[]> {
-    const out = await runGit(["remote"], this.repoRoot).catch(() => "");
+    const out = await this.runner(["remote"], this.repoRoot).catch(() => "");
     return out.split("\n").map((line) => line.trim()).filter(Boolean);
   }
 
@@ -169,8 +202,71 @@ export class GitTagService {
    * @param name 검사할 tag 이름
    */
   private async assertValidTagName(name: string): Promise<void> {
-    await runGit(["check-ref-format", `refs/tags/${name}`], this.repoRoot);
+    await this.runner(["check-ref-format", `refs/tags/${name}`], this.repoRoot);
   }
+
+  /**
+   * remote 하나의 tag 결과를 TTL cache/singleflight로 읽는다.
+   * @param remote 조회할 remote 이름
+   * @param options 수동 강제 조회와 TTL 설정
+   * @returns caller가 변경해도 cache가 오염되지 않는 원격 tag 배열
+   */
+  private async getCachedRemoteTagRefs(
+    remote: string,
+    options: GitTagQueryOptions
+  ): Promise<GitRemoteTagRef[]> {
+    const key = remoteTagCacheKey(this.runner, this.repoRoot, remote);
+    const maxAgeMs = options.maxRemoteAgeMs ?? REMOTE_TAG_CACHE_TTL_MS;
+    const cached = remoteTagCompleted.get(key);
+    if (!options.forceRemote && cached && Date.now() - cached.at <= maxAgeMs) {
+      logInfo("graph remote tag cache hit", {
+        repoRoot: this.repoRoot, remote, tags: cached.tags.length, ageMs: Date.now() - cached.at,
+      });
+      return cloneRemoteTags(cached.tags);
+    }
+    const existing = remoteTagPending.get(key);
+    if (existing) {
+      logInfo("graph remote tag cache coalesce", { repoRoot: this.repoRoot, remote });
+      return cloneRemoteTags(await existing.promise);
+    }
+    const started = Date.now();
+    const epoch = remoteTagEpochs.get(key) ?? 0;
+    logInfo("graph remote tag cache miss", { repoRoot: this.repoRoot, remote, forced: !!options.forceRemote });
+    const promise = this.getRemoteTagRefsForRemote(remote).then((tags) => {
+      if ((remoteTagEpochs.get(key) ?? 0) === epoch) {
+        remoteTagCompleted.set(key, {
+          repoRoot: this.repoRoot, remote, at: Date.now(), tags: cloneRemoteTags(tags),
+        });
+      }
+      logInfo("graph remote tag cache complete", {
+        repoRoot: this.repoRoot, remote, tags: tags.length, elapsedMs: Date.now() - started,
+      });
+      return tags;
+    }).finally(() => {
+      if (remoteTagPending.get(key)?.promise === promise) remoteTagPending.delete(key);
+    });
+    remoteTagPending.set(key, { repoRoot: this.repoRoot, remote, epoch, promise });
+    return cloneRemoteTags(await promise);
+  }
+}
+
+/** remote tag push/delete 뒤 해당 저장소 또는 remote의 완료 cache만 즉시 제거한다. */
+export function invalidateRemoteTagCache(repoRoot: string, remote?: string): void {
+  const invalidated = new Set<string>();
+  for (const [key, entry] of remoteTagCompleted) {
+    if (entry.repoRoot === repoRoot && (!remote || entry.remote === remote)) {
+      remoteTagCompleted.delete(key);
+      invalidated.add(key);
+    }
+  }
+  for (const [key, entry] of remoteTagPending) {
+    if (entry.repoRoot === repoRoot && (!remote || entry.remote === remote)) {
+      remoteTagPending.delete(key);
+      invalidated.add(key);
+    }
+  }
+  for (const key of invalidated) remoteTagEpochs.set(key, (remoteTagEpochs.get(key) ?? 0) + 1);
+  logInfo("graph remote tag cache invalidated", { repoRoot, remote: remote ?? "all" });
 }
 
 /** remote/name 순서로 tag 를 안정적으로 정렬한다. */
@@ -178,4 +274,20 @@ function compareRemoteTag(a: GitRemoteTagRef, b: GitRemoteTagRef): number {
   return a.remote === b.remote
     ? a.name.localeCompare(b.name)
     : a.remote.localeCompare(b.remote);
+}
+
+/** runner/repository/remote 경계를 모두 포함해 테스트와 production cache가 섞이지 않는 key를 만든다. */
+function remoteTagCacheKey(runner: GitTagRunner, repoRoot: string, remote: string): string {
+  const object = runner as unknown as object;
+  let id = tagRunnerIds.get(object);
+  if (!id) {
+    id = nextTagRunnerId++;
+    tagRunnerIds.set(object, id);
+  }
+  return `${id}:${repoRoot}\x00${remote}`;
+}
+
+/** module cache의 mutable tag 객체가 caller로 공유되지 않도록 배열과 항목을 복제한다. */
+function cloneRemoteTags(tags: readonly GitRemoteTagRef[]): GitRemoteTagRef[] {
+  return tags.map((tag) => ({ ...tag }));
 }

@@ -65,6 +65,24 @@ export interface LocalBranchStatus {
   subject: string;
 }
 
+/** Graph 로딩에서 제외한 손상된 Git ref 한 건 */
+export interface GraphInvalidRef {
+  /** 사용자에게 표시할 짧은 ref 이름 */
+  name: string;
+  /** 진단과 복구 명령에 사용할 전체 ref 이름 */
+  fullRef: string;
+  /** ref 파일이 가리키지만 로컬 object database에서 찾을 수 없는 object ID */
+  hash: string;
+  /** 현재는 로컬 브랜치 검증 결과만 노출하며 이후 remote/tag 검증을 확장할 수 있는 종류 */
+  kind: "local";
+}
+
+/** 정상 로컬 브랜치와 Graph에서 격리한 손상 ref를 함께 반환하는 조회 결과 */
+export interface GraphLocalBranchSnapshot {
+  branches: LocalBranchStatus[];
+  invalidRefs: GraphInvalidRef[];
+}
+
 /** 그래프 브랜치 배지에 표시할 worktree 점유 상태 */
 export interface WorktreeBranchStatus {
   /** worktree 가 checkout 중인 로컬 브랜치 이름 */

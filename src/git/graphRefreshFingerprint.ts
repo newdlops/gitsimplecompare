@@ -25,3 +25,26 @@ export async function readGraphRefreshFingerprint(repoRoot: string): Promise<Gra
   ]);
   return createGraphRefreshFingerprint({ head, symbolicHead, refs: refs.split("\n"), worktrees: worktrees.split("\n\n") });
 }
+
+/**
+ * 전체 Graph fingerprint에서 refs/remotes 행만 추려 remote catalog cache 버전을 만든다.
+ * - HEAD/local/tag/worktree 변화는 원격 tracking ref 재조회 이유가 아니므로 버전에 포함하지 않는다.
+ * @param fingerprint createGraphRefreshFingerprint가 만든 전체 의미 snapshot
+ * @returns 순서 안정적인 짧은 remote ref 버전
+ */
+export function graphRemoteRefVersion(fingerprint: GraphRefreshFingerprint): string {
+  const remoteLines = fingerprint.split("\n")
+    .filter((line) => line.startsWith("refs/remotes/"))
+    .sort();
+  return fingerprintDigest(remoteLines.join("\n"));
+}
+
+/** 캐시 key와 OUTPUT 로그에 원문 ref 목록 대신 쓸 안정적인 FNV-1a digest를 만든다. */
+function fingerprintDigest(value: string): string {
+  let hash = 2166136261;
+  for (const character of value) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}

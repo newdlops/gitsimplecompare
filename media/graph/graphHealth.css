@@ -1,0 +1,102 @@
+/* Git Graph가 일부 손상 또는 조회 실패를 만났을 때 표시하는 compact 상태 행 전용 스타일. */
+#graph-pane {
+  container: graph-pane / inline-size;
+}
+
+.graph-health-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+#graph-health {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+}
+
+#graph-health[hidden] {
+  display: none;
+}
+
+#graph-health[data-level="warning"] #graph-health-icon {
+  color: var(--vscode-editorWarning-foreground, #cca700);
+}
+
+#graph-health[data-level="error"] #graph-health-icon {
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.graph-health-copy {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  line-height: 18px;
+}
+
+#graph-health-title {
+  flex: 0 0 auto;
+  font-size: 0.92em;
+  font-weight: 600;
+}
+
+#graph-health-detail {
+  min-width: 12ch;
+  overflow: hidden;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#graph-health-refs {
+  min-width: 8ch;
+  max-width: 34ch;
+  overflow: hidden;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.86em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-health-action.gsc-button {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 0.9em;
+}
+
+/* 전체 viewport가 아니라 splitter로 달라지는 실제 Graph pane 폭을 기준으로 상태 행을 접는다. */
+@container graph-pane (max-width: 720px) {
+  #graph-health {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .graph-health-copy {
+    flex-basis: calc(100% - 28px);
+    flex-wrap: wrap;
+    gap: 2px 6px;
+  }
+
+  #graph-health-detail {
+    flex-basis: 100%;
+    white-space: normal;
+  }
+
+  #graph-health-refs {
+    max-width: min(100%, 48ch);
+  }
+
+  .graph-health-action.gsc-button {
+    margin-left: 24px;
+  }
+}

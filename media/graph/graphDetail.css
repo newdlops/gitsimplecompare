@@ -406,7 +406,45 @@
     box-shadow: -8px 0 22px rgba(0, 0, 0, 0.28);
   }
 
-  body.detail-open #detail {
+body.detail-open #detail {
     transform: translateX(0);
+  }
+}
+
+/* 메인 Graph와 상세 패널 사이의 splitter 및 모바일 drawer 배경은 상세 패널과 함께 관리한다. */
+#main-splitter {
+  flex: 0 0 var(--splitter-size);
+  cursor: col-resize;
+  background: var(--vscode-panel-border);
+}
+
+#main-splitter:hover {
+  background: var(--vscode-focusBorder);
+}
+
+body.detail-collapsed #detail,
+body.detail-collapsed #main-splitter {
+  display: none;
+}
+
+#drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  #main-splitter {
+    display: none;
+  }
+
+  body.detail-collapsed #detail {
+    display: flex;
+  }
+
+  body.detail-open #drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: block;
+    background: rgba(0, 0, 0, 0.28);
   }
 }

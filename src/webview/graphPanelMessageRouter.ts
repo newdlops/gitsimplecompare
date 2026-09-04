@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { GitLogService, EMPTY_TREE } from "../git/gitLogService";
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
-import { logError, logInfo } from "../ui/outputLog";
+import { logError, logInfo, showOutputLog } from "../ui/outputLog";
 import {
   handleGraphAction,
   isGraphActionMessage,
@@ -12,6 +12,7 @@ import {
 } from "./graphActions";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
+import { logGraphWebviewPaint } from "./graphPerformance";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
 import { restoreGraphRebaseSession } from "./graphRebaseSession";
@@ -165,6 +166,10 @@ export class GraphPanelMessageRouter {
     try {
       if (message.type === "ready" || message.type === "refresh") {
         await this.handleReload(message.type);
+      } else if (message.type === "showGraphOutput") {
+        showOutputLog(false);
+      } else if (message.type === "graphRendered") {
+        logGraphWebviewPaint(this.repoRoot, message);
       } else if (message.type === "loadMore") {
         await this.deps.loadNextPage(false, message.direction || "older");
       } else if (message.type === "setBranchFilter") {

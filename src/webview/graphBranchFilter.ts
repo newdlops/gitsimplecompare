@@ -70,16 +70,24 @@ export function normalizeBranchFilterState(
 export function resolveBranchFilter(
   state: GraphBranchFilterState,
   branchRefs: readonly GraphBranchRef[],
-  remoteStatus: "pending" | "ready" | "error" = "ready"
+  remoteStatus: "pending" | "ready" | "error" = "ready",
+  requireExplicitRefs = false
 ): ResolvedGraphBranchFilter {
   const known = new Set(branchRefs.map((branch) => branch.name));
   if (state.mode === "all") {
+    const filtersRefs = remoteStatus !== "ready" || requireExplicitRefs;
+    const refs = filtersRefs
+      ? branchRefs
+        .filter((branch) => remoteStatus === "ready" || branch.kind === "local")
+        .map((branch) => branch.name)
+      : [];
     return {
       mode: state.mode,
-      // 원격 카탈로그 전에는 명시적 로컬 refs만 사용해 첫 페이지가 remote scan을 기다리지 않는다.
-      refs: remoteStatus !== "ready" ? branchRefs.filter((branch) => branch.kind === "local").map((branch) => branch.name) : [],
-      filtersRefs: remoteStatus !== "ready",
-      empty: false,
+      // 원격 카탈로그 전에는 로컬 refs만, 손상 ref가 있으면 hydration 뒤에도 검증된 refs만 명시한다.
+      refs,
+      filtersRefs,
+      // 명시적 범위가 비었을 때 GitLogService의 암묵적 --branches 폴백을 호출하지 않는다.
+      empty: filtersRefs && refs.length === 0,
       visibleRefs: known,
     };
   }
@@ -105,9 +113,10 @@ export function buildBranchFilterSnapshot(
   localBranches: readonly LocalBranchStatus[],
   state: GraphBranchFilterState,
   remoteStatus: "pending" | "ready" | "error" = "ready",
-  remoteError?: string
+  remoteError?: string,
+  requireExplicitRefs = false
 ): GraphBranchFilterSnapshot {
-  const resolved = resolveBranchFilter(state, branchRefs, remoteStatus);
+  const resolved = resolveBranchFilter(state, branchRefs, remoteStatus, requireExplicitRefs);
   const current = new Set(
     localBranches.filter((branch) => branch.current).map((branch) => branch.name)
   );

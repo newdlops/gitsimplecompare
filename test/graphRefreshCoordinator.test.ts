@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGraphRefreshFingerprint } from "../src/git/graphRefreshFingerprint";
+import { createGraphRefreshFingerprint, graphRemoteRefVersion } from "../src/git/graphRefreshFingerprint";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode } from "../src/webview/graphRefreshCoordinator";
 
 /** 테스트가 reload/fingerprint 완료 시점을 시간 대기 없이 직접 제어할 수 있는 promise를 만든다. */
@@ -45,9 +45,9 @@ test("direct 초기 load 뒤 동일 delete/focus burst는 Graph transaction을 �
   assert.equal(harness.reloads.length, 1);
   assert.equal(harness.publications.length, 0);
   assert.deepEqual(harness.logs.map(({ event }) => event), [
-    "graph refresh start", "graph refresh complete",
-    "graph refresh schedule", "graph refresh skip",
-    "graph refresh schedule", "graph refresh skip",
+    "graph refresh start", "graph performance fingerprint", "graph refresh complete",
+    "graph performance fingerprint", "graph refresh schedule", "graph refresh skip",
+    "graph performance fingerprint", "graph refresh schedule", "graph refresh skip",
   ]);
   for (const { fields } of harness.logs) {
     assert.equal(fields.repoRoot, "/repo");
@@ -264,9 +264,95 @@ test("동일 repository의 늦은 direct 완료와 repository switch/direct 실�
   assert.deepEqual(reloads, ["first", "second", "first", "failed"]);
 });
 
+test("direct refresh는 실행 중인 자동 세대를 취소해 늦은 baseline과 publication을 차단한다", async () => {
+  const automatic = deferred<void>();
+  const invalidations: string[] = [];
+  const reloads: string[] = [];
+  const publications: string[] = [];
+  let read = 0;
+  const coordinator = new GraphRefreshLifecycleCoordinator({
+    readFingerprint: async () => ["base", "automatic", "direct"][read++]!,
+    reloadGraph: async ({ cause }) => {
+      reloads.push(cause);
+      if (cause === "automatic") await automatic.promise;
+    },
+    publishAfterReload: async ({ cause }) => { publications.push(cause); },
+    invalidateReload: (reason) => { invalidations.push(reason); },
+    info: () => undefined,
+    error: () => undefined,
+  });
+  await coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+  await coordinator.request({ repoRoot: "/repo", cause: "automatic", mode: "pullRequests" });
+  await settle();
+  assert.equal(await coordinator.runDirect({ repoRoot: "/repo", cause: "refresh" }), true);
+  automatic.resolve();
+  await settle();
+  assert.deepEqual(reloads, ["ready", "automatic", "refresh"]);
+  assert.deepEqual(publications, []);
+  assert.ok(invalidations.includes("directSupersede"));
+});
+
+test("direct refresh는 아직 fingerprint를 읽는 자동 요청의 늦은 schedule도 차단한다", async () => {
+  const watcherFingerprint = deferred<string>();
+  const reloads: string[] = [];
+  let read = 0;
+  const coordinator = new GraphRefreshLifecycleCoordinator({
+    readFingerprint: () => {
+      read++;
+      if (read === 1) return Promise.resolve("base");
+      if (read === 2) return watcherFingerprint.promise;
+      return Promise.resolve("direct");
+    },
+    reloadGraph: async ({ cause }) => { reloads.push(cause); },
+    publishAfterReload: async () => undefined,
+    invalidateReload: () => undefined,
+    info: () => undefined,
+    error: () => undefined,
+  });
+  await coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+  const watcher = coordinator.request({ repoRoot: "/repo", cause: "head", mode: "stacks" });
+  await coordinator.runDirect({ repoRoot: "/repo", cause: "refresh" });
+  watcherFingerprint.resolve("late-watcher");
+  await watcher;
+  await settle();
+  assert.deepEqual(reloads, ["ready", "refresh"]);
+});
+
 test("ref와 worktree 출력 순서는 fingerprint에 영향을 주지 않는다", () => {
   assert.equal(
     createGraphRefreshFingerprint({ head: "abc", symbolicHead: "refs/heads/main", refs: ["b", "a"], worktrees: ["two", "one"] }),
     createGraphRefreshFingerprint({ head: "abc", symbolicHead: "refs/heads/main", refs: ["a", "b", "a"], worktrees: ["one", "two"] })
   );
+});
+
+test("remote ref 버전은 local/tag/worktree 변화는 무시하고 remote tip 변화만 반영한다", () => {
+  const base = createGraphRefreshFingerprint({
+    head: "one",
+    symbolicHead: "refs/heads/main",
+    refs: ["refs/heads/main one", "refs/remotes/origin/main remote-one", "refs/tags/v1 tag-one"],
+    worktrees: ["worktree /repo"],
+  });
+  const localOnlyChange = createGraphRefreshFingerprint({
+    head: "two",
+    symbolicHead: "refs/heads/feature",
+    refs: ["refs/heads/feature two", "refs/remotes/origin/main remote-one", "refs/tags/v2 tag-two"],
+    worktrees: ["worktree /repo", "worktree /repo-linked"],
+  });
+  const remoteChange = createGraphRefreshFingerprint({
+    head: "two",
+    symbolicHead: "refs/heads/feature",
+    refs: ["refs/heads/feature two", "refs/remotes/origin/main remote-two"],
+    worktrees: ["worktree /repo-linked"],
+  });
+  assert.equal(graphRemoteRefVersion(base), graphRemoteRefVersion(localOnlyChange));
+  assert.notEqual(graphRemoteRefVersion(base), graphRemoteRefVersion(remoteChange));
+});
+
+test("direct reload는 미리 읽은 fingerprint를 같은 context로 전달하고 측정 로그를 남긴다", async () => {
+  const harness = createHarness(["direct-snapshot"]);
+  assert.equal(await harness.coordinator.runDirect({ repoRoot: "/repo", cause: "ready" }), true);
+  assert.equal(harness.reloads[0]?.fingerprint, "direct-snapshot");
+  const timing = harness.logs.find(({ event }) => event === "graph performance fingerprint");
+  assert.equal(timing?.fields.cause, "ready");
+  assert.equal(typeof timing?.fields.elapsedMs, "number");
 });

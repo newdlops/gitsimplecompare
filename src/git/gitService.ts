@@ -5,7 +5,9 @@
 import * as path from "node:path";
 import { readFile, rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
+import { GitBranchListCache } from "./gitBranchListCache";
 import { GitError, runGit } from "./gitExec";
+import { runGitStatus } from "./gitStatusExec";
 import { runStash, stashPushPaths } from "./stashExec";
 import { attachParsedStatusStats, attachStatusStats } from "./statusStats";
 import {
@@ -37,11 +39,14 @@ export { GitError } from "./gitExec";
  */
 export class GitService {
   private readonly statusCache = new StatusCache<StatusGroups>(cloneStatusGroups);
+  private readonly branchListCache: GitBranchListCache;
   // 이 서비스로 마지막 git 상태 변경(commit/stage/unstage/discard 등)을 한 시각.
   // 직후 짧은 동안은 VS Code 내장 Git 캐시가 뒤처지므로, 새로고침이 CLI 로 강제 조회하도록 신호로 쓴다.
   private lastMutationAt = 0;
 
-  constructor(public readonly repoRoot: string) {}
+  constructor(public readonly repoRoot: string) {
+    this.branchListCache = GitBranchListCache.forRepository(repoRoot);
+  }
   /**
    * 현재 체크아웃된 브랜치 이름을 반환한다.
    * - 분리된 HEAD 상태면 "HEAD" 가 반환될 수 있다.
@@ -63,35 +68,12 @@ export class GitService {
    * @returns 브랜치 정보 배열(로컬 먼저, 그다음 원격)
    */
   async listBranches(includeRemote: boolean): Promise<BranchInfo[]> {
-    const current = await this.getCurrentBranch();
-    const refs = includeRemote
-      ? ["refs/heads", "refs/remotes"]
-      : ["refs/heads"];
-    const out = await this.run([
-      "for-each-ref",
-      "--format=%(refname:short)\t%(refname)",
-      ...refs,
-    ]);
+    return (await this.branchListCache.read(includeRemote, (args) => this.run(args))).branches;
+  }
 
-    const branches: BranchInfo[] = [];
-    for (const line of out.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        continue;
-      }
-      const [short, full] = trimmed.split("\t");
-      const isRemote = full.startsWith("refs/remotes/");
-      // 원격의 심볼릭 HEAD(origin/HEAD)는 비교 대상으로 의미가 없으니 제외한다.
-      if (isRemote && short.endsWith("/HEAD")) {
-        continue;
-      }
-      branches.push({
-        name: short,
-        kind: isRemote ? "remote" : "local",
-        isCurrent: !isRemote && short === current,
-      });
-    }
-    return branches;
+  /** checkout/commit/branch 생성처럼 ref가 바뀐 뒤 Quick Pick snapshot 세대를 즉시 올린다. */
+  invalidateBranchCache(): void {
+    this.branchListCache.invalidate();
   }
 
   /**
@@ -214,7 +196,10 @@ export class GitService {
    * @returns porcelain 기준 상태 그룹과 선택적으로 보강된 라인 통계
    */
   private async readStatusGroups(includeStats: boolean): Promise<StatusGroups> {
-    const status = this.run(["status", "--porcelain", "-z", "--untracked-files=all"]);
+    const status = runGitStatus(
+      ["status", "--porcelain", "-z", "--untracked-files=all"],
+      this.repoRoot
+    );
     if (!includeStats) {
       return parsePorcelainGroups(await status);
     }
@@ -387,6 +372,7 @@ export class GitService {
     }
     await this.run(args);
     this.invalidateStatusCache();
+    this.invalidateBranchCache();
   }
 
   // ---- stash ----
@@ -483,6 +469,7 @@ export class GitService {
   async stashBranch(name: string, ref: string): Promise<void> {
     await runStash(["branch", name, ref], this.repoRoot);
     this.invalidateStatusCache();
+    this.invalidateBranchCache();
   }
 
   /**

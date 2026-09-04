@@ -3,32 +3,31 @@
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
-import { detectOperation } from "./conflictService";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import {
   Commit,
   CommitDetail,
   CommitFileChange,
+  GraphLocalBranchSnapshot,
   GraphRowKind,
   LocalBranchStatus,
 } from "../graph/graphTypes";
 import { GitBranchRefCache } from "./gitBranchRefCache";
-import { loadLocalOnlyBranchMap } from "./gitLocalOnlyBranches";
+import { invalidateGitBranchListCaches } from "./gitBranchListCache";
+import { GitGraphActionService } from "./gitGraphActionService";
+import type { RevertCommitResult } from "./gitGraphActionService";
+import { runGitStatus } from "./gitStatusExec";
+import { readGraphLocalBranchSnapshot } from "./graphLocalBranches";
+import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
 import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
-import { parseTrack } from "./gitLogRefs";
-import {
-  isUnpushedLocalHead,
-  localNameFromRemoteRef,
-  splitRemoteRef,
-} from "./gitRefNames";
 import {
   ForcePushMode,
   PushCurrentPlan,
   PushCurrentResult,
-  forcePushCurrent,
-  pushCurrentWithAutoUpstream,
 } from "./pushService";
 import { countUntrackedLines } from "./untrackedStats";
+
+export type { RevertCommitResult } from "./gitGraphActionService";
 
 /** 빈 트리 오브젝트 해시(루트 커밋의 부모 대용으로 diff 비교에 사용) */
 export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -36,22 +35,6 @@ export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 export const ONGOING_COMMIT_HASH = "__gsc_virtual_ongoing__";
 /** index 상태를 나타내는 그래프 전용 가상 커밋 해시 */
 export const STAGED_COMMIT_HASH = "__gsc_virtual_staged__";
-
-/** 커밋 revert 실행 결과 */
-export type RevertCommitResult =
-  | {
-      status: "reverted";
-      branch: string;
-      targetHash: string;
-      beforeHead: string;
-      afterHead: string;
-    }
-  | {
-      status: "conflicts";
-      branch: string;
-      targetHash: string;
-      beforeHead: string;
-    };
 
 /** 로그 필드 구분자(제어문자 Unit Separator) */
 const FS = LOG_FIELD_SEPARATOR;
@@ -61,10 +44,16 @@ const FS = LOG_FIELD_SEPARATOR;
  */
 export class GitLogService {
   private readonly branchRefCache: GitBranchRefCache;
-  private localOnlyBranchMapPromise: Promise<Map<string, string[]>> | undefined;
+  private readonly localOnlyBranchCache: GitLocalOnlyBranchCache;
+  private readonly graphActions: GitGraphActionService;
 
   constructor(public readonly repoRoot: string) {
     this.branchRefCache = new GitBranchRefCache(repoRoot, FS);
+    this.localOnlyBranchCache = new GitLocalOnlyBranchCache(repoRoot);
+    this.graphActions = new GitGraphActionService(repoRoot, () => {
+      this.invalidateCaches();
+      invalidateGitBranchListCaches(repoRoot);
+    });
   }
 
   /**
@@ -180,25 +169,18 @@ export class GitLogService {
    * 로컬 브랜치 현황을 반환한다.
    * - refs/heads 만 읽어 현재 브랜치, upstream, ahead/behind, 마지막 커밋 정보를 보여준다.
    * - upstream 이 사라진 브랜치는 gone=true 로 표시해 사용자가 정리가 필요한 브랜치를 찾게 한다.
+   * - 손상 ref는 Graph 전용 snapshot 경계에서 격리해 다른 브랜치 작업도 중단되지 않게 한다.
    */
   async getLocalBranches(): Promise<LocalBranchStatus[]> {
-    const format = [
-      "%(HEAD)",
-      "%(refname:short)",
-      "%(objectname)",
-      "%(upstream:short)",
-      "%(upstream:track)",
-      "%(committerdate:iso8601-strict)",
-      "%(subject)",
-    ].join(FS);
-    const out = await runGit(
-      ["for-each-ref", "--sort=-committerdate", `--format=${format}`, "refs/heads"],
-      this.repoRoot
-    );
-    return out
-      .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .map((line) => this.parseBranchStatus(line));
+    return (await this.getLocalBranchSnapshot()).branches;
+  }
+
+  /**
+   * Graph 첫 로드가 정상 브랜치와 손상 ref를 동시에 판단할 수 있는 snapshot을 반환한다.
+   * @returns 정상 LocalBranchStatus와 UI에 경고할 누락-object ref 목록
+   */
+  async getLocalBranchSnapshot(): Promise<GraphLocalBranchSnapshot> {
+    return readGraphLocalBranchSnapshot(this.repoRoot);
   }
 
   /**
@@ -209,7 +191,17 @@ export class GitLogService {
    */
   seedGraphBranchTips(localStatus: readonly LocalBranchStatus[], remoteTips?: readonly { name: string; hash: string }[]): void {
     this.branchRefCache.seedLocalBranches(localStatus);
-    if (remoteTips) this.branchRefCache.seedRemoteBranches(remoteTips);
+    this.localOnlyBranchCache.setLocalBranches(localStatus);
+    if (remoteTips) {
+      this.branchRefCache.seedRemoteBranches(remoteTips);
+      this.localOnlyBranchCache.setRemoteTips(remoteTips);
+    }
+  }
+
+  /** remote catalog 실패를 containment/local-only cache에 반영해 과거 remote tip 표시를 제거한다. */
+  markGraphRemoteBranchesUnavailable(): void {
+    this.branchRefCache.seedRemoteBranches([]);
+    this.localOnlyBranchCache.setRemoteUnavailable();
   }
 
   /**
@@ -218,7 +210,7 @@ export class GitLogService {
    * - ongoing 은 working tree 전체(HEAD 대비 staged+unstaged), staged 는 index 스냅샷을 뜻한다.
    */
   async getVirtualCommits(): Promise<Commit[]> {
-    const status = await runGit(["status", "--porcelain=v1"], this.repoRoot);
+    const status = await runGitStatus(["status", "--porcelain=v1"], this.repoRoot);
     if (!status.trim()) {
       return [];
     }
@@ -230,269 +222,114 @@ export class GitLogService {
     ];
   }
 
-  /**
-   * 그래프의 로컬 브랜치 chip 클릭에서 선택한 브랜치로 전환한다.
-   * - 호출부에서 getLocalBranches 로 검증한 로컬 브랜치 이름만 전달한다.
-   * - merge=true 면 작업트리 변경과 대상 브랜치를 3-way merge 하며 checkout 해 충돌을 노출한다.
-   * @param branchName 전환할 로컬 브랜치 이름
-   * @param merge      로컬 변경 충돌 시 merge checkout 을 시도할지 여부
-   */
-  async checkoutLocalBranch(branchName: string, merge = false): Promise<void> {
-    await this.ensureCheckoutAllowed();
-    await runGit(
-      ["switch", ...(merge ? ["--merge"] : []), branchName],
-      this.repoRoot
-    );
-    this.invalidateCaches();
+  /** 로컬 브랜치 전환을 변경 전용 서비스에 위임한다. */
+  checkoutLocalBranch(branchName: string, merge = false): Promise<void> {
+    return this.graphActions.checkoutLocalBranch(branchName, merge);
   }
 
-  /**
-   * 원격 브랜치와 같은 이름의 로컬 브랜치를 만들고 checkout 한다.
-   * - origin/feature 처럼 remote/name 형태의 ref 에서 name 부분을 로컬 브랜치명으로 쓴다.
-   * - merge=true 면 작업트리 변경과 대상 브랜치를 3-way merge 하며 checkout 해 충돌을 노출한다.
-   * @param remoteBranch checkout 할 원격 브랜치 short name
-   * @param merge        로컬 변경 충돌 시 merge checkout 을 시도할지 여부
-   * @returns 생성/checkout 한 로컬 브랜치명
-   */
-  async checkoutRemoteBranchAsLocal(
-    remoteBranch: string,
-    merge = false
-  ): Promise<string> {
-    await this.ensureCheckoutAllowed();
-    const localName = localNameFromRemoteRef(remoteBranch);
-    await runGit(
-      [
-        "switch",
-        ...(merge ? ["--merge"] : []),
-        "-c",
-        localName,
-        "--track",
-        remoteBranch,
-      ],
-      this.repoRoot
-    );
-    this.invalidateCaches();
-    return localName;
+  /** 원격 추적 브랜치 생성과 전환을 변경 전용 서비스에 위임한다. */
+  checkoutRemoteBranchAsLocal(remoteBranch: string, merge = false): Promise<string> {
+    return this.graphActions.checkoutRemoteBranchAsLocal(remoteBranch, merge);
   }
 
-  /**
-   * 특정 커밋으로 detached HEAD checkout 을 수행한다.
-   * @param hash  checkout 할 커밋 해시
-   * @param merge 로컬 변경과 3-way merge 하며 전환할지 여부
-   */
-  async checkoutCommitDetached(hash: string, merge = false): Promise<void> {
-    await this.ensureCheckoutAllowed();
-    await runGit(
-      ["switch", ...(merge ? ["--merge"] : []), "--detach", hash],
-      this.repoRoot
-    );
-    this.invalidateCaches();
+  /** detached HEAD 전환을 변경 전용 서비스에 위임한다. */
+  checkoutCommitDetached(hash: string, merge = false): Promise<void> {
+    return this.graphActions.checkoutCommitDetached(hash, merge);
   }
 
-  /** rebase 진행 중에는 다른 브랜치/커밋으로 checkout 하지 못하게 막는다. */
-  async ensureCheckoutAllowed(): Promise<void> {
-    if (await detectOperation(this.repoRoot) === "rebase") {
-      throw new Error(
-        "Cannot checkout while a rebase is in progress. Continue or abort the rebase first."
-      );
-    }
+  /** rebase 중 checkout 차단 여부 검사를 변경 전용 서비스에 위임한다. */
+  ensureCheckoutAllowed(): Promise<void> {
+    return this.graphActions.ensureCheckoutAllowed();
   }
 
-  /** 지정 커밋을 시작점으로 새 로컬 브랜치를 만든다. */
-  async createBranchAt(name: string, startPoint: string): Promise<void> {
-    await runGit(["branch", name, startPoint], this.repoRoot);
-    this.invalidateCaches();
+  /** 새 로컬 브랜치 생성을 변경 전용 서비스에 위임한다. */
+  createBranchAt(name: string, startPoint: string): Promise<void> {
+    return this.graphActions.createBranchAt(name, startPoint);
   }
 
-  /** 로컬 브랜치를 삭제한다. */
-  async deleteLocalBranch(name: string, force = false): Promise<void> {
-    await runGit(["branch", force ? "-D" : "-d", name], this.repoRoot);
-    this.invalidateCaches();
+  /** 로컬 브랜치 삭제를 변경 전용 서비스에 위임한다. */
+  deleteLocalBranch(name: string, force = false): Promise<void> {
+    return this.graphActions.deleteLocalBranch(name, force);
   }
 
-  /** 원격 브랜치를 원격 저장소에서 삭제한다. */
-  async deleteRemoteBranch(ref: string): Promise<void> {
-    const parsed = splitRemoteRef(ref);
-    await runGit(["push", parsed.remote, "--delete", parsed.branch], this.repoRoot);
-    this.invalidateCaches();
+  /** 원격 브랜치 삭제를 변경 전용 서비스에 위임한다. */
+  deleteRemoteBranch(ref: string): Promise<void> {
+    return this.graphActions.deleteRemoteBranch(ref);
   }
 
-  /** 그래프 액션에서 선택할 수 있는 브랜치 목록을 반환한다. */
-  async getBranches(): Promise<{ name: string; kind: "local" | "remote" }[]> {
-    const out = await runGit(
-      [
-        "for-each-ref",
-        "--format=%(refname:short)\x1f%(refname)",
-        "refs/heads",
-        "refs/remotes",
-      ],
-      this.repoRoot
-    );
-    return out
-      .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .flatMap((line) => {
-        const [name, full] = line.split(FS);
-        if (!name || name.endsWith("/HEAD")) {
-          return [];
-        }
-        return [{ name, kind: full.startsWith("refs/remotes/") ? "remote" : "local" }];
-      });
+  /** Graph 액션용 브랜치 목록 조회를 변경 전용 서비스에 위임한다. */
+  getBranches(): Promise<{ name: string; kind: "local" | "remote" }[]> {
+    return this.graphActions.getBranches();
   }
 
-  /** 특정 커밋에 lightweight tag 를 만든다. */
-  async createTag(name: string, target: string): Promise<void> {
-    await runGit(["tag", name, target], this.repoRoot);
+  /** lightweight tag 생성을 변경 전용 서비스에 위임한다. */
+  createTag(name: string, target: string): Promise<void> {
+    return this.graphActions.createTag(name, target);
   }
 
-  /** 로컬 tag 를 삭제한다. */
-  async deleteTag(name: string): Promise<void> {
-    await runGit(["tag", "-d", name], this.repoRoot);
+  /** 로컬 tag 삭제를 변경 전용 서비스에 위임한다. */
+  deleteTag(name: string): Promise<void> {
+    return this.graphActions.deleteTag(name);
   }
 
-  /** 원격 저장소에서 tag 를 삭제한다. */
-  async deleteRemoteTag(remote: string, name: string): Promise<void> {
-    await runGit(["push", remote, `:refs/tags/${name}`], this.repoRoot);
+  /** 원격 tag 삭제와 관련 캐시 무효화를 변경 전용 서비스에 위임한다. */
+  deleteRemoteTag(remote: string, name: string): Promise<void> {
+    return this.graphActions.deleteRemoteTag(remote, name);
   }
 
-  /** tag 목록을 이름순으로 반환한다. */
-  async getTags(): Promise<string[]> {
-    const out = await runGit(["tag", "--list"], this.repoRoot);
-    return out.split("\n").map((line) => line.trim()).filter(Boolean);
+  /** 로컬 tag 목록 조회를 변경 전용 서비스에 위임한다. */
+  getTags(): Promise<string[]> {
+    return this.graphActions.getTags();
   }
 
-  /** 원격 저장소 목록을 반환한다. */
-  async getRemotes(): Promise<string[]> {
-    const out = await runGit(["remote"], this.repoRoot);
-    return out.split("\n").map((line) => line.trim()).filter(Boolean);
+  /** 원격 저장소 목록 조회를 변경 전용 서비스에 위임한다. */
+  getRemotes(): Promise<string[]> {
+    return this.graphActions.getRemotes();
   }
 
-  /** 지정 tag 를 원격 저장소로 push 한다. */
-  async pushTag(remote: string, name: string): Promise<void> {
-    await runGit(["push", remote, `refs/tags/${name}`], this.repoRoot);
+  /** tag push와 관련 캐시 무효화를 변경 전용 서비스에 위임한다. */
+  pushTag(remote: string, name: string): Promise<void> {
+    return this.graphActions.pushTag(remote, name);
   }
 
-  /** 전체 원격 브랜치 ref 를 fetch/prune 한다. tag 동기화는 tag 충돌을 피하기 위해 별도 액션으로 분리한다. */
-  async fetchAll(): Promise<void> {
-    await runGit(["fetch", "--all", "--prune"], this.repoRoot);
-    this.invalidateCaches();
+  /** 원격 브랜치 fetch/prune을 변경 전용 서비스에 위임한다. */
+  fetchAll(): Promise<void> {
+    return this.graphActions.fetchAll();
   }
 
-  /** tag 목록만 원격에서 가져온다. */
-  async fetchTags(): Promise<void> {
-    await runGit(["fetch", "--tags"], this.repoRoot);
+  /** tag fetch를 변경 전용 서비스에 위임한다. */
+  fetchTags(): Promise<void> {
+    return this.graphActions.fetchTags();
   }
 
-  /** 현재 브랜치의 upstream 변경을 fast-forward 방식으로 pull 한다. */
-  async pullCurrent(): Promise<void> {
-    await runGit(["pull", "--ff-only"], this.repoRoot);
-    this.invalidateCaches();
+  /** 현재 브랜치 fast-forward pull을 변경 전용 서비스에 위임한다. */
+  pullCurrent(): Promise<void> {
+    return this.graphActions.pullCurrent();
   }
 
-  /** 현재 브랜치의 커밋을 remote 로 push 한다. upstream 보정 계획은 호출부가 먼저 확인한다. */
-  async pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
-    const result = await pushCurrentWithAutoUpstream(this.repoRoot, plan);
-    this.invalidateCaches();
-    return result;
+  /** 현재 브랜치 push와 upstream 보정을 변경 전용 서비스에 위임한다. */
+  pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
+    return this.graphActions.pushCurrent(plan);
   }
 
-  /** 현재 브랜치의 커밋을 사용자가 고른 force 옵션으로 remote 에 push 한다. */
-  async forcePushCurrent(
-    mode: ForcePushMode,
-    plan?: PushCurrentPlan
-  ): Promise<PushCurrentResult> {
-    const result = await forcePushCurrent(this.repoRoot, mode, plan);
-    this.invalidateCaches();
-    return result;
+  /** 현재 브랜치 force push를 변경 전용 서비스에 위임한다. */
+  forcePushCurrent(mode: ForcePushMode, plan?: PushCurrentPlan): Promise<PushCurrentResult> {
+    return this.graphActions.forcePushCurrent(mode, plan);
   }
 
-  /** 지정 커밋을 현재 브랜치에 cherry-pick 한다. */
-  async cherryPick(hash: string): Promise<void> {
-    await runGit(["cherry-pick", hash], this.repoRoot);
-    this.invalidateCaches();
+  /** cherry-pick 실행을 변경 전용 서비스에 위임한다. */
+  cherryPick(hash: string): Promise<void> {
+    return this.graphActions.cherryPick(hash);
   }
 
-  /**
-   * 현재 로컬 브랜치에 포함된 커밋을 revert 해서 새 커밋을 만든다.
-   * - detached HEAD 나 현재 브랜치에 포함되지 않은 커밋은 차단한다.
-   * - merge commit 은 호출부가 고른 mainline parent 번호가 필요하다.
-   * @param hash     revert 대상 커밋 해시
-   * @param mainline merge commit revert 에 사용할 mainline parent 번호(1부터 시작)
-   */
-  async revertCommitOnCurrentBranch(
-    hash: string,
-    mainline?: number
-  ): Promise<RevertCommitResult> {
-    if (isVirtualCommitHash(hash)) {
-      throw new Error("Virtual commits cannot be reverted.");
-    }
-    await this.assertReadyForRevert();
-    const branch = (await this.getLocalBranches()).find((item) => item.current);
-    if (!branch) {
-      throw new Error("Only commits on the current local branch can be reverted.");
-    }
-    const targetHash = await this.normalizeCommit(hash);
-    if (!(await this.isAncestor(targetHash, "HEAD"))) {
-      throw new Error("Only commits on the current local branch can be reverted.");
-    }
-    await this.assertValidRevertMainline(targetHash, mainline);
-    const beforeHead = await this.getHeadHash();
-    if (!beforeHead) {
-      throw new Error("Cannot revert because HEAD is unavailable.");
-    }
-    try {
-      await runGit(
-        [
-          "revert",
-          "--no-edit",
-          ...(mainline ? ["-m", String(mainline)] : []),
-          targetHash,
-        ],
-        this.repoRoot,
-        { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" } }
-      );
-    } catch (err) {
-      this.invalidateCaches();
-      if (
-        (await detectOperation(this.repoRoot).catch(() => "none")) === "revert" &&
-        (await this.hasUnmergedChanges())
-      ) {
-        return {
-          status: "conflicts",
-          branch: branch.name,
-          targetHash,
-          beforeHead,
-        };
-      }
-      throw err;
-    }
-    const afterHead = await this.getHeadHash();
-    if (!afterHead) {
-      throw new Error("Revert completed, but the new HEAD could not be read.");
-    }
-    this.invalidateCaches();
-    return {
-      status: "reverted",
-      branch: branch.name,
-      targetHash,
-      beforeHead,
-      afterHead,
-    };
+  /** 현재 브랜치 commit revert를 변경 전용 서비스에 위임한다. */
+  revertCommitOnCurrentBranch(hash: string, mainline?: number): Promise<RevertCommitResult> {
+    return this.graphActions.revertCommitOnCurrentBranch(hash, mainline);
   }
 
-  /**
-   * 현재 로컬 브랜치의 최신 unpushed commit 을 되돌린다.
-   * - HEAD 가 요청 해시와 같고, 현재 브랜치가 upstream 보다 앞서 있거나 upstream 이 없는 경우만 허용한다.
-   * - --soft reset 을 사용해 커밋 내용은 staged 상태로 남긴다.
-   * @param hash undo 대상 HEAD 커밋 해시
-   */
-  async undoLastUnpushedCommit(hash: string): Promise<void> {
-    const branch = (await this.getLocalBranches()).find((item) => item.current);
-    if (!branch || branch.hash !== hash || !isUnpushedLocalHead(branch)) {
-      throw new Error(`Commit is not an unpushed local HEAD: ${hash}`);
-    }
-    await runGit(["reset", "--soft", "HEAD~1"], this.repoRoot);
-    this.invalidateCaches();
+  /** 마지막 unpushed commit의 soft reset을 변경 전용 서비스에 위임한다. */
+  undoLastUnpushedCommit(hash: string): Promise<void> {
+    return this.graphActions.undoLastUnpushedCommit(hash);
   }
 
   // ---- 내부 구현 ----
@@ -507,7 +344,12 @@ export class GitLogService {
       incomplete: branchStats.incomplete,
     });
     this.branchRefCache.invalidate();
-    this.localOnlyBranchMapPromise = undefined;
+    this.localOnlyBranchCache.invalidate("gitMutation");
+  }
+
+  /** UI filter/pagination reset에서는 ref 기반 local-only 결과를 보존하고 page containment index만 초기화한다. */
+  resetGraphBranchIndex(): void {
+    this.branchRefCache.invalidate();
   }
 
   /**
@@ -515,7 +357,10 @@ export class GitLogService {
    * @param reason OUTPUT에서 lifecycle 취소 원인을 확인할 문자열
    * @returns 없음
    */
-  cancelGraphBranchContainment(reason: string): void { this.branchRefCache.cancelWarmup(reason); }
+  cancelGraphBranchContainment(reason: string): void {
+    this.branchRefCache.cancelWarmup(reason);
+    this.localOnlyBranchCache.cancel(reason);
+  }
 
   /**
    * checkout처럼 화면의 기존 DAG를 재사용할 때 새 ref snapshot으로 containment를 다시 만든다.
@@ -543,37 +388,17 @@ export class GitLogService {
     if (!commits.length) {
       return 0;
     }
-    const byHash = await this.localOnlyBranchMap().catch(() => new Map<string, string[]>());
+    const byHash = await this.localOnlyBranchCache.getMap().catch(() => new Map<string, string[]>());
     let changed = 0;
     for (const commit of commits) {
       const branches = byHash.get(commit.hash);
+      delete commit.localOnlyBranches;
       if (branches?.length) {
         commit.localOnlyBranches = [...branches];
         changed++;
       }
     }
     return changed;
-  }
-
-  /**
-   * 로컬 전용 커밋 해시별 브랜치 목록을 캐시해서 반환한다.
-   * @returns commit hash → 이 커밋을 upstream 보다 앞선 변경으로 포함하는 로컬 브랜치 이름들
-   */
-  private localOnlyBranchMap(): Promise<Map<string, string[]>> {
-    if (!this.localOnlyBranchMapPromise) {
-      this.localOnlyBranchMapPromise = this.loadLocalOnlyBranchMap();
-    }
-    return this.localOnlyBranchMapPromise;
-  }
-
-  /**
-   * ahead 상태인 로컬 브랜치의 `upstream..local` 범위를 해시별로 묶는다.
-   * - upstream 이 없거나 사라진 브랜치는 기준점이 모호하므로 여기서는 표시하지 않는다.
-   * @returns 로컬 전용 커밋 해시별 브랜치 이름 맵
-   */
-  private async loadLocalOnlyBranchMap(): Promise<Map<string, string[]>> {
-    const branches = await this.getLocalBranches().catch(() => []);
-    return loadLocalOnlyBranchMap(this.repoRoot, branches);
   }
 
   /**
@@ -686,73 +511,6 @@ export class GitLogService {
     );
   }
 
-  /** revert 시작 전 진행 중인 git 작업이나 unmerged 파일이 없는지 확인한다. */
-  private async assertReadyForRevert(): Promise<void> {
-    const operation = await detectOperation(this.repoRoot);
-    if (operation !== "none") {
-      throw new Error(`Cannot revert while ${operation} is in progress.`);
-    }
-    if (await this.hasUnmergedChanges()) {
-      throw new Error("Resolve unmerged files before reverting a commit.");
-    }
-  }
-
-  /**
-   * merge commit revert 의 mainline parent 번호가 실제 부모 범위 안에 있는지 확인한다.
-   * @param hash     revert 대상 커밋 해시
-   * @param mainline 사용자가 선택한 mainline parent 번호
-   */
-  private async assertValidRevertMainline(
-    hash: string,
-    mainline?: number
-  ): Promise<void> {
-    const parents = await this.getCommitParents(hash);
-    if (parents.length <= 1) {
-      return;
-    }
-    if (
-      !Number.isInteger(mainline) ||
-      !mainline ||
-      mainline < 1 ||
-      mainline > parents.length
-    ) {
-      throw new Error("Reverting a merge commit requires a mainline parent.");
-    }
-  }
-
-  /**
-   * ancestor 가 target 의 조상인지 확인한다.
-   * @param ancestor 조상이어야 하는 커밋
-   * @param target   기준 커밋/ref
-   */
-  private async isAncestor(ancestor: string, target: string): Promise<boolean> {
-    try {
-      await runGit(["merge-base", "--is-ancestor", ancestor, target], this.repoRoot);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /** unmerged 파일이 남아 있는지 확인한다. */
-  private async hasUnmergedChanges(): Promise<boolean> {
-    const out = await runGit(
-      ["diff", "--name-only", "--diff-filter=U"],
-      this.repoRoot
-    );
-    return out.trim().length > 0;
-  }
-
-  /**
-   * 입력 ref 가 실제 commit 인지 검증하고 전체 해시로 정규화한다.
-   * @param hash 커밋으로 해석할 ref/hash
-   */
-  private async normalizeCommit(hash: string): Promise<string> {
-    return (
-      await runGit(["rev-parse", "--verify", `${hash}^{commit}`], this.repoRoot)
-    ).trim();
-  }
-
   /** 현재 HEAD 해시를 반환한다. 아직 커밋이 없으면 undefined 를 반환한다. */
   private async getHeadHash(): Promise<string | undefined> {
     try {
@@ -762,25 +520,6 @@ export class GitLogService {
     }
   }
 
-  /**
-   * git for-each-ref 한 줄을 로컬 브랜치 상태로 변환한다.
-   * @param entry FS 로 구분된 브랜치 출력
-   */
-  private parseBranchStatus(entry: string): LocalBranchStatus {
-    const [head, name, hash, upstream, track, dateIso, subject] = entry.split(FS);
-    const parsedTrack = parseTrack(track ?? "");
-    return {
-      name: name ?? "",
-      hash: hash ?? "",
-      upstream: upstream || undefined,
-      ahead: parsedTrack.ahead,
-      behind: parsedTrack.behind,
-      gone: parsedTrack.gone,
-      current: head === "*",
-      dateIso: dateIso ?? "",
-      subject: subject ?? "",
-    };
-  }
 }
 
 /** 지정 해시가 그래프 전용 가상 커밋인지 확인한다. */

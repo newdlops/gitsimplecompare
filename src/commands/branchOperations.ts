@@ -24,7 +24,7 @@ export async function branchSquashMerge(deps: CommandDeps): Promise<void> {
   if (!picked) {
     return;
   }
-  await runBranchOperation(picked, "squash");
+  await runBranchOperation(deps, picked, "squash");
 }
 
 /**
@@ -37,7 +37,7 @@ export async function branchRebaseMerge(deps: CommandDeps): Promise<void> {
   if (!picked) {
     return;
   }
-  await runBranchOperation(picked, "rebase");
+  await runBranchOperation(deps, picked, "rebase");
 }
 
 /**
@@ -76,6 +76,7 @@ export async function undoBranchOperation(deps: CommandDeps): Promise<void> {
       restoredHead: shortHash(result.restoredHead),
     });
     service.invalidateStatusCache();
+    service.invalidateBranchCache();
     await refreshAfterBranchOperation("branchOperationUndo");
     vscode.window.showInformationMessage(
       vscode.l10n.t("Branch operation undone on '{0}'.", result.branch)
@@ -140,6 +141,7 @@ async function pickSourceBranch(
  * @param operation 실행할 branch operation 종류
  */
 async function runBranchOperation(
+  deps: CommandDeps,
   picked: { repoRoot: string; branch: BranchInfo },
   operation: BranchOperationKind
 ): Promise<void> {
@@ -164,6 +166,7 @@ async function runBranchOperation(
       },
       () => runMaterializedBranchOperation(picked, operation)
     );
+    deps.registry.get(picked.repoRoot).invalidateBranchCache();
     await handleBranchOperationResult(result, operation, picked.repoRoot);
   } catch (err) {
     logError("branch command operation failed", err, {

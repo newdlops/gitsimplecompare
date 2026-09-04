@@ -22,6 +22,9 @@
   const toggleDetailBtn = document.getElementById("toggle-detail");
   const refreshBtn = document.getElementById("refresh-graph");
   const openRemoteBtn = document.getElementById("open-remote-branch");
+  const healthEl = document.getElementById("graph-health"), healthIconEl = document.getElementById("graph-health-icon");
+  const healthTitleEl = document.getElementById("graph-health-title"), healthDetailEl = document.getElementById("graph-health-detail");
+  const healthRefsEl = document.getElementById("graph-health-refs"), healthOutputBtn = document.getElementById("graph-health-output");
 
   let currentRows = []; // 마지막으로 렌더링한 행 데이터(선택/상세 요청에 사용)
   let currentEdges = [];
@@ -29,6 +32,7 @@
   let selectedHash = null;
   let detailLabel = "commit details";
   let loadState = { loadedCount: 0, hasMore: false, hasMoreBefore: false, loading: false, reset: true };
+  let graphHealthNotice = null;
   let rowColorCache = new WeakMap();
   let localColorResolver = null;
   const detailResize = window.GscGraphDetailResize?.create?.({
@@ -311,10 +315,58 @@
     }
   }
 
+  /**
+   * 확장이 보낸 Graph 경고/오류를 커밋 영역을 가리지 않는 compact 상태 행으로 렌더링한다.
+   * @param notice GraphHealthNotice 또는 상태를 지우는 undefined
+   */
+  function renderGraphHealth(notice) {
+    graphHealthNotice = notice || null;
+    if (!healthEl || !healthTitleEl || !healthDetailEl || !healthRefsEl) {
+      updateLoadStatus();
+      return;
+    }
+    if (!notice) {
+      healthEl.hidden = true;
+      healthEl.removeAttribute("data-level");
+      healthEl.removeAttribute("title");
+      updateLoadStatus();
+      return;
+    }
+    const level = notice.level === "error" ? "error" : "warning";
+    const items = Array.isArray(notice.items) ? notice.items : [];
+    const labels = items.map((item) => item?.label).filter(Boolean);
+    const descriptions = items.map((item) => item?.description).filter(Boolean);
+    healthEl.hidden = false;
+    healthEl.dataset.level = level;
+    healthEl.setAttribute("role", level === "error" ? "alert" : "status");
+    healthEl.setAttribute("aria-live", level === "error" ? "assertive" : "polite");
+    healthEl.title = [notice.title, notice.detail, ...descriptions].filter(Boolean).join("\n");
+    healthTitleEl.textContent = notice.title || "";
+    healthDetailEl.textContent = notice.detail || "";
+    healthRefsEl.textContent = labels.join(", ");
+    healthRefsEl.hidden = labels.length === 0;
+    if (healthIconEl) {
+      healthIconEl.className = `codicon codicon-${level === "error" ? "error" : "warning"}`;
+    }
+    if (level === "error" && currentRows.length === 0) {
+      loadState = Object.assign({}, loadState, {
+        loadedCount: 0,
+        hasMore: false,
+        hasMoreBefore: false,
+        loading: false,
+      });
+      resizeGraphContent();
+      graphContentEl.innerHTML = `<p class="empty">${esc(notice.title)}</p>`;
+    }
+    updateLoadStatus();
+  }
+
   /** 로드 상태 텍스트를 갱신한다. */
   function updateLoadStatus() {
     const loaded = loadState.loadedCount || currentRows.length;
-    if (loadState.loading) {
+    if (graphHealthNotice?.level === "error") {
+      statusEl.textContent = graphHealthNotice.title || "Git graph unavailable";
+    } else if (loadState.loading) {
       statusEl.textContent = loadState.loadDirection === "newer"
         ? `Loading newer commits before ${loaded} loaded`
         : `Loading older commits after ${loaded} loaded`;
@@ -323,7 +375,10 @@
     } else {
       statusEl.textContent = `${loaded} commits, complete`;
     }
-    statusEl.classList.toggle("loading", loadState.loading);
+    statusEl.classList.toggle(
+      "loading",
+      loadState.loading && graphHealthNotice?.level !== "error"
+    );
   }
 
   /**
@@ -425,6 +480,7 @@
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);
     graphEl.addEventListener("scroll", maybeLoadMore);
     refreshBtn.addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
+    healthOutputBtn?.addEventListener("click", () => vscode.postMessage({ type: "showGraphOutput" }));
     [["fetch-graph", "fetch"], ["fetch-tags-graph", "fetchTags"], ["pull-graph", "pull"], ["push-graph", "push"], ["force-push-graph", "forcePush"]].forEach(([id, type]) =>
       document.getElementById(id)?.addEventListener("click", () => vscode.postMessage({ type }))
     );
@@ -451,7 +507,11 @@
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.type === "graph") {
+      const receivedAt = Date.now();
       renderGraph(msg.data, msg.state);
+      window.GscGraphPerformance?.report?.(vscode, msg.performance, receivedAt, Date.now());
+    } else if (msg.type === "graphHealth") {
+      renderGraphHealth(msg.notice);
     } else if (msg.type === "branchStatus") {
       window.GscGraphWorktrees?.setWorktrees?.(msg.worktrees);
       window.GscGraphFeatures && window.GscGraphFeatures.setLocalBranches(msg.branches);

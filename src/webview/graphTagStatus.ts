@@ -12,17 +12,19 @@ import { ToWebviewMessage } from "./graphProtocol";
  */
 export async function sendGraphTagStatus(
   repoRoot: string,
-  post: (message: ToWebviewMessage) => void
+  post: (message: ToWebviewMessage) => void,
+  options: { forceRemote?: boolean } = {}
 ): Promise<void> {
   const started = Date.now();
   try {
-    const tags = await new GitTagService(repoRoot).getTagStatuses();
+    const tags = await new GitTagService(repoRoot).getTagStatuses(options);
     post({ type: "tagStatus", tags });
     logInfo("graph tag status sent", {
       repoRoot,
       tags: tags.length,
       localTags: tags.filter((tag) => tag.localHash).length,
       remoteTags: tags.filter((tag) => tag.remoteTargets.length > 0).length,
+      forcedRemote: !!options.forceRemote,
       elapsedMs: Date.now() - started,
     });
   } catch (err) {

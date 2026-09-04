@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Git Graph performance diagnostics** now records fingerprint, local and
+  remote branch reads, status, log, layout, extension-to-webview transport,
+  render, and frame timings in the Git Simple Compare OUTPUT channel.
+- **Damaged local ref isolation** keeps healthy commits and branches available
+  when one local branch points to a missing object, with an accessible Graph
+  warning and a direct path to the diagnostic OUTPUT channel.
+
+### Changed
+
+- **Faster branch and Graph loading** now reads the current branch in the same
+  branch snapshot, caches repeated branch pickers, resolves all local-only
+  commit memberships in one DAG traversal, and loads the first commit page only
+  once after local and remote branch catalogs complete in parallel.
+- Remote branch catalogs are reused until their semantic remote-ref fingerprint
+  changes, while remote tag reads use a bounded five-minute cache with
+  single-flight requests and explicit refresh after tag mutations.
+
+### Fixed
+
+- Superseded, hidden, repository-switched, and manually refreshed Graph loads
+  now cancel or ignore stale Git work and cannot overwrite the newest render or
+  refresh baseline.
+- A broken Git fsmonitor daemon is detected from successful or failed status
+  diagnostics and bypassed with a temporary command-scoped setting, without
+  changing the user's repository or global Git configuration.
+
 ## [0.1.72041] - 2026-09-04
 
 ### Fixed
