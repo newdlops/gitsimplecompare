@@ -72,22 +72,12 @@ export async function cleanupVscodeCache(deps: CommandDeps): Promise<void> {
  * @returns 사용자 취소 또는 정리/안내가 완료되면 resolve되는 Promise
  */
 async function runCacheCleanup(deps: CommandDeps): Promise<void> {
-  if (deps.globalStorageUri.scheme !== "file") {
-    logWarn("VS Code cache cleanup unavailable", {
-      reason: "non-file-global-storage",
-      scheme: deps.globalStorageUri.scheme,
-    });
-    await vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        "VS Code cache cleanup is available only in desktop or remote Node extension hosts."
-      )
-    );
-    return;
-  }
-
+  // 최신 데스크톱 VS Code도 로컬 경로에 vscode-userdata 스킴을 사용할 수 있다.
+  // Node 확장 호스트에서는 fsPath를 사용하고, 서비스가 표준 저장 구조와 삭제 루트를 다시 검증한다.
   const service = new VscodeCacheService(deps.globalStorageUri.fsPath);
   logInfo("VS Code cache inspection started", {
     userDataDir: service.userDataDir,
+    storageScheme: deps.globalStorageUri.scheme,
     remoteName: vscode.env.remoteName,
   });
   const inspection = await inspectWithProgress(service);

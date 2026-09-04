@@ -18,7 +18,10 @@ import {
 } from "./helpers/vscodeMock";
 
 /** 명령 테스트용 user-data-dir과 최소 CommandDeps를 실제 사용자 데이터 밖에 만든다. */
-async function commandFixture(t: test.TestContext): Promise<{
+async function commandFixture(
+  t: test.TestContext,
+  scheme = "file"
+): Promise<{
   userDataDir: string;
   cacheFile: string;
   settingsFile: string;
@@ -46,7 +49,7 @@ async function commandFixture(t: test.TestContext): Promise<{
     settingsFile,
     deps: {
       globalStorageUri: {
-        scheme: "file",
+        scheme,
         fsPath: globalStoragePath,
       },
     } as unknown as CommandDeps,
@@ -59,9 +62,9 @@ async function writeFixtureFile(filePath: string, contents: string): Promise<voi
   await writeFile(filePath, contents, "utf8");
 }
 
-/** Quick Pick과 modal 확인을 거친 정상 흐름이 선택 그룹만 정리하는지 검증한다. */
-test("캐시 정리 명령은 크기를 보여 주고 확인 뒤 선택 그룹만 삭제한다", async (t) => {
-  const fixture = await commandFixture(t);
+/** 데스크톱 vscode-userdata URI에서도 선택과 확인 뒤 지정 캐시만 정리하는지 검증한다. */
+test("vscode-userdata 캐시 정리 명령은 선택 그룹만 삭제한다", async (t) => {
+  const fixture = await commandFixture(t, "vscode-userdata");
   __resetWindowMessages();
   __resetOutputLines();
   __setQuickPickResult((items) =>
