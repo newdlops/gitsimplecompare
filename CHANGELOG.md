@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72041] - 2026-09-04
+
+### Fixed
+
+- **VS Code cache cleanup on desktop** now accepts VS Code's
+  `vscode-userdata` global-storage URI and starts the cache scan instead of
+  incorrectly reporting that a desktop or remote Node extension host is
+  required.
+
 ## [0.1.72040] - 2026-09-03
 
 ### Fixed
