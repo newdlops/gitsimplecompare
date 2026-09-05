@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72043] - 2026-09-05
+
+### Fixed
+
+- **Accurate commit branch membership**: Git Graph now uses its fast cached
+  branch list only after the selected commit and both branch catalogs are fully
+  indexed. Partially loaded history and direct commit-detail reads use Git to
+  avoid missing branches or incorrectly showing an empty list.
+- Branch catalog changes and Graph hiding now discard cached branch-membership
+  lookups. Branches moved beyond the loaded history are checked against Git,
+  while checkout changes on known tips retain the fast indexed path.
+- Temporary Git failures during branch-membership lookup are logged in the
+  Git Simple Compare OUTPUT channel and retried on the next selection. A late
+  failure from an earlier lookup cannot remove a newer cached result.
+
 ## [0.1.72042] - 2026-09-05
 
 ### Added

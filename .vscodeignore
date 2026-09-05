@@ -4,6 +4,7 @@ out-test/**
 test/**
 src/**
 .gitignore
+.gsc-node-test.lock
 .codeidx/**
 esbuild.js
 tsconfig.json

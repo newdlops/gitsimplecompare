@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { GitService, type StatusGroups } from "../src/git/gitService";
+import { GitStatusFsMonitorGuard } from "../src/git/gitStatusExec";
 import { detectRepositoryIdentity } from "../src/git/repositoryDiscovery";
 import {
   StatusCache,
@@ -125,15 +126,24 @@ test("낮은 상세도 캐시는 통계를 요구하는 조회에 재사용하�
   assert.deepEqual(await cache.get(1000, 0), { label: "with-stats" });
 });
 
-test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계를 다시 보강한다", async () => {
+test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계를 다시 보강한다", async (t) => {
   const service = new GitService("/unused");
   const commands: string[][] = [];
+  // status는 fsmonitor guard, numstat은 GitService.run을 사용하므로 실제 실행 경계를 각각 대체한다.
+  // 테스트 종료 때 prototype mock을 자동 복원해 다른 저장소 테스트의 Git 실행은 유지한다.
+  t.mock.method(GitStatusFsMonitorGuard.prototype, "run", async (args: string[], root: string) => {
+    assert.equal(root, "/unused");
+    assert.equal(args[0], "status");
+    commands.push(args);
+    return " M tracked.txt\0";
+  });
   const runnable = service as unknown as {
     run: (args: string[]) => Promise<string>;
   };
   runnable.run = async (args: string[]) => {
+    assert.equal(args[0], "diff");
     commands.push(args);
-    return args[0] === "status" ? " M tracked.txt\0" : "";
+    return "";
   };
 
   const statusOnly = await service.getStatusGroups({
@@ -163,6 +173,8 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     additions: 0,
     deletions: 0,
   });
+  assert.deepEqual(await service.getStatusGroups(), withStats);
+  assert.equal(commands.length, 4, "통계를 포함한 완료 캐시는 status와 diff 모두 다시 실행하지 않는다");
 });
 
 test("provider 통계 보강 결과는 authoritative GitService 캐시를 오염시키지 않는다", async (t) => {
