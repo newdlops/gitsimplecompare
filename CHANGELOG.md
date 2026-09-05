@@ -5,6 +5,16 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72046] - 2026-09-05
+
+### Changed
+
+- The Marketplace package uses the new ID `newdlops.gitsimplecompare`.
+  Users of `newdlops.git-simple-compare` need to install the new listing once;
+  updates do not transfer automatically between extension IDs.
+- Installation links and instructions now point to the new package.
+  Existing `gitSimpleCompare.*` settings and commands retain their names.
+
 ## [0.1.72045] - 2026-09-05
 
 ### Changed

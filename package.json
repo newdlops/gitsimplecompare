@@ -1,8 +1,8 @@
 {
-  "name": "git-simple-compare",
+  "name": "gitsimplecompare",
   "displayName": "Git Simple Compare",
   "description": "%ext.description%",
-  "version": "0.1.72045",
+  "version": "0.1.72046",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {

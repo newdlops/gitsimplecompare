@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 
 /** Development Host가 extension manifest를 찾고 activation까지 완료하는지 검사한다. */
 export async function run(): Promise<void> {
-  const extension = vscode.extensions.getExtension("newdlops.git-simple-compare");
+  const extension = vscode.extensions.getExtension("newdlops.gitsimplecompare");
   assert.ok(extension, "Git Simple Compare extension manifest was not discovered by the Development Host.");
   await extension.activate();
   assert.equal(extension.isActive, true, "Git Simple Compare extension did not activate.");

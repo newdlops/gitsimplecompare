@@ -1,7 +1,11 @@
 # Publishing Checklist
 
 Publisher: `newdlops`  
-Extension ID: `newdlops.git-simple-compare`
+Extension ID: `newdlops.gitsimplecompare`
+
+The previous ID `newdlops.git-simple-compare` is unavailable in Marketplace.
+Existing users must install the new listing once. Keep the original publisher
+and repository; command IDs and `gitSimpleCompare.*` settings remain stable.
 
 ## Required Assets
 
@@ -25,7 +29,7 @@ npx @vscode/vsce package
 After packaging, install the generated VSIX in a clean VS Code window:
 
 ```bash
-code --install-extension git-simple-compare-0.1.0.vsix
+code --install-extension gitsimplecompare-0.1.72046.vsix
 ```
 
 Check these flows before publishing:
@@ -72,6 +76,7 @@ Before each publish:
 
 Keep these fields in `package.json` aligned with the published listing:
 
+- `name`: `gitsimplecompare`
 - `publisher`: `newdlops`
 - `repository.url`: `https://github.com/newdlops/gitsimplecompare.git`
 - `bugs.url`: `https://github.com/newdlops/gitsimplecompare/issues`

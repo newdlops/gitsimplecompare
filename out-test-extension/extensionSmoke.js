@@ -36,7 +36,7 @@ module.exports = __toCommonJS(extensionSmoke_exports);
 var import_strict = __toESM(require("node:assert/strict"));
 var vscode = __toESM(require("vscode"));
 async function run() {
-  const extension = vscode.extensions.getExtension("newdlops.git-simple-compare");
+  const extension = vscode.extensions.getExtension("newdlops.gitsimplecompare");
   import_strict.default.ok(extension, "Git Simple Compare extension manifest was not discovered by the Development Host.");
   await extension.activate();
   import_strict.default.equal(extension.isActive, true, "Git Simple Compare extension did not activate.");

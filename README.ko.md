@@ -4,13 +4,17 @@ git 브랜치와 파일을 간단하게 비교하고, **비교하면서 바로 �
 
 > The English document is available at [README.md](./README.md).
 
-Marketplace ID: `newdlops.git-simple-compare`
+Marketplace ID: `newdlops.gitsimplecompare`
 
 ## 설치
 
-- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.git-simple-compare)
-- 명령줄: `code --install-extension newdlops.git-simple-compare`
-- 수동 VSIX: `.vsix` 파일을 다운로드하거나 빌드한 뒤 `code --install-extension git-simple-compare-0.1.0.vsix`
+- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
+- 명령줄: `code --install-extension newdlops.gitsimplecompare`
+- 수동 VSIX: `.vsix` 파일을 다운로드하거나 빌드한 뒤 `code --install-extension gitsimplecompare-0.1.72046.vsix`
+
+기존 `newdlops.git-simple-compare`를 사용했다면 해당 확장을 비활성화하거나
+제거한 뒤 새 확장을 한 번 설치해 주세요. 확장 ID 사이에는 자동 업데이트가
+이어지지 않으며, 기존 `gitSimpleCompare.*` 설정은 그대로 사용할 수 있습니다.
 
 ## 기능
 

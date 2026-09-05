@@ -2,13 +2,17 @@
 
 Compare git branches and files with simple, **editable** diffs — right inside VS Code.
 
-Marketplace ID: `newdlops.git-simple-compare`
+Marketplace ID: `newdlops.gitsimplecompare`
 
 ## Install
 
-- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.git-simple-compare)
-- Command line: `code --install-extension newdlops.git-simple-compare`
-- Manual VSIX: download or build a `.vsix`, then run `code --install-extension git-simple-compare-0.1.0.vsix`
+- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
+- Command line: `code --install-extension newdlops.gitsimplecompare`
+- Manual VSIX: download or build a `.vsix`, then run `code --install-extension gitsimplecompare-0.1.72046.vsix`
+
+Previously installed `newdlops.git-simple-compare`? Disable or uninstall that
+extension, then install this listing once. VS Code does not transfer automatic
+updates between extension IDs. Your `gitSimpleCompare.*` settings remain available.
 
 ## Features
 
