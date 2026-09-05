@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.72044] - 2026-09-05
+
+### Changed
+
+- **Remote branch checkout avoids local name collisions**: selecting
+  `origin/master` when `master` already exists now creates and checks out
+  `master-<short-commit-hash>`. Further collisions use `-2`, `-3`, and so on.
+  Existing local branches are preserved, and each new branch tracks the
+  selected remote branch. This applies to both Git Graph and Changes checkout.
+- Git Graph previews the available local branch name before checkout and
+  reports the actual created name afterward, including when another branch
+  takes the proposed name while the confirmation is open.
+
 ## [0.1.72043] - 2026-09-05
 
 ### Fixed

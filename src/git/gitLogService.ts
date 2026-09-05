@@ -232,6 +232,11 @@ export class GitLogService {
     return this.graphActions.checkoutRemoteBranchAsLocal(remoteBranch, merge);
   }
 
+  /** 원격 short ref를 받아 checkout 확인창에 표시할 충돌 없는 로컬 생성 후보 이름을 반환한다. */
+  getRemoteBranchCheckoutName(remoteBranch: string): Promise<string> {
+    return this.graphActions.getRemoteBranchCheckoutName(remoteBranch);
+  }
+
   /** detached HEAD 전환을 변경 전용 서비스에 위임한다. */
   checkoutCommitDetached(hash: string, merge = false): Promise<void> {
     return this.graphActions.checkoutCommitDetached(hash, merge);

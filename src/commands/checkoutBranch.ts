@@ -39,10 +39,11 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
   }
 
   const logService = new GitLogService(service.repoRoot);
+  let checkedOutBranch = picked.name;
   try {
     try {
       if (picked.kind === "remote") {
-        await logService.checkoutRemoteBranchAsLocal(picked.name);
+        checkedOutBranch = await logService.checkoutRemoteBranchAsLocal(picked.name);
       } else {
         await logService.checkoutLocalBranch(picked.name);
       }
@@ -54,9 +55,13 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
         err,
         service.repoRoot,
         picked.name,
-        () => picked.kind === "remote"
-          ? logService.checkoutRemoteBranchAsLocal(picked.name, true).then(() => undefined)
-          : logService.checkoutLocalBranch(picked.name, true)
+        async () => {
+          if (picked.kind === "remote") {
+            checkedOutBranch = await logService.checkoutRemoteBranchAsLocal(picked.name, true);
+          } else {
+            await logService.checkoutLocalBranch(picked.name, true);
+          }
+        }
       );
       if (result === "cancelled") {
         return;
@@ -68,7 +73,8 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
     service.invalidateStatusCache();
     logInfo("branch checkout finished", {
       repoRoot: service.repoRoot,
-      branch: picked.name,
+      branch: checkedOutBranch,
+      sourceBranch: picked.name,
       kind: picked.kind,
     });
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {

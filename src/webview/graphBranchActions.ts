@@ -87,8 +87,8 @@ export async function checkoutBranch(
 }
 
 /**
- * 원격 브랜치 chip 클릭 시 같은 이름의 로컬 브랜치를 만들고 checkout 한다.
- * - 이미 같은 로컬 브랜치가 있으면 새로 만들지 않고 checkout 여부만 확인한다.
+ * 원격 브랜치 chip 클릭 시 충돌 없는 이름의 새 로컬 브랜치를 만들고 checkout 한다.
+ * - 이름 충돌 시 해시가 붙은 후보를 확인창에 표시하고 완료 알림에는 실제 생성 결과를 사용한다.
  * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
  * @param remoteBranch checkout 할 원격 브랜치 short name
  */
@@ -96,20 +96,7 @@ export async function checkoutRemoteBranch(
   deps: GraphBranchActionDeps,
   remoteBranch: string
 ): Promise<void> {
-  const localName = localNameForRemoteBranch(remoteBranch);
-  const existing = (await deps.logService.getLocalBranches()).find(
-    (branch) => branch.name === localName
-  );
-  if (existing) {
-    const ok = await confirm(
-      vscode.l10n.t("Local branch '{0}' already exists. Checkout it?", localName),
-      vscode.l10n.t("Checkout")
-    );
-    if (ok) {
-      await checkoutBranch(deps, localName);
-    }
-    return;
-  }
+  let localName = await deps.logService.getRemoteBranchCheckoutName(remoteBranch);
 
   const ok = await confirm(
     vscode.l10n.t(
@@ -124,7 +111,7 @@ export async function checkoutRemoteBranch(
   }
 
   try {
-    await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch);
+    localName = await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch);
   } catch (err) {
     if (!isCheckoutConflictError(err)) {
       throw err;
@@ -133,7 +120,7 @@ export async function checkoutRemoteBranch(
       err,
       deps.logService.repoRoot,
       remoteBranch,
-      () => deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true).then(() => undefined)
+      async () => { localName = await deps.logService.checkoutRemoteBranchAsLocal(remoteBranch, true); }
     );
     if (result === "cancelled") {
       return;
@@ -531,16 +518,6 @@ function isUnmergedBranchDeleteError(err: unknown): boolean {
     return false;
   }
   return /not fully merged/i.test(err.stderr);
-}
-
-/**
- * origin/feature 형태의 remote ref 에서 feature 를 로컬 브랜치명으로 사용한다.
- * @param remoteBranch 원격 브랜치 short name
- * @returns 로컬 브랜치로 만들 이름
- */
-function localNameForRemoteBranch(remoteBranch: string): string {
-  const slash = remoteBranch.indexOf("/");
-  return slash >= 0 ? remoteBranch.slice(slash + 1) : remoteBranch;
 }
 
 /**
