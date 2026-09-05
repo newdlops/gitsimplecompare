@@ -77,6 +77,7 @@ Before each publish:
 Keep these fields in `package.json` aligned with the published listing:
 
 - `name`: `gitsimplecompare`
+- `displayName`: `Git Simple Compare & Graph`
 - `publisher`: `newdlops`
 - `repository.url`: `https://github.com/newdlops/gitsimplecompare.git`
 - `bugs.url`: `https://github.com/newdlops/gitsimplecompare/issues`

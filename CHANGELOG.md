@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The Marketplace package uses the new ID `newdlops.gitsimplecompare`.
+- The Marketplace listing is named **Git Simple Compare & Graph** and uses
+  the new ID `newdlops.gitsimplecompare`.
   Users of `newdlops.git-simple-compare` need to install the new listing once;
   updates do not transfer automatically between extension IDs.
 - Installation links and instructions now point to the new package.

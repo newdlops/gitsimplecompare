@@ -8,7 +8,7 @@ Marketplace ID: `newdlops.gitsimplecompare`
 
 ## 설치
 
-- VS Code Marketplace: [Git Simple Compare](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
+- VS Code Marketplace: [Git Simple Compare & Graph](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
 - 명령줄: `code --install-extension newdlops.gitsimplecompare`
 - 수동 VSIX: `.vsix` 파일을 다운로드하거나 빌드한 뒤 `code --install-extension gitsimplecompare-0.1.72046.vsix`
 

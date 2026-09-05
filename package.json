@@ -1,6 +1,6 @@
 {
   "name": "gitsimplecompare",
-  "displayName": "Git Simple Compare",
+  "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
   "version": "0.1.72046",
   "publisher": "newdlops",
