@@ -6,6 +6,7 @@ import { realpath } from "node:fs/promises";
 import { runGit } from "./gitExec";
 import type { StackLocalBranch } from "./pullRequestStackModel";
 import { WorktreeService, type WorktreeInfo } from "./worktreeService";
+import { logInfo } from "../ui/outputLog";
 
 const FIELD_SEPARATOR = "\x1f";
 const RECORD_SEPARATOR = "\x1e";
@@ -49,20 +50,19 @@ export class PullRequestStackMetadataService {
    * @returns Git Graph 모델과 restack 계획이 공유할 branch 배열
    */
   async listBranches(): Promise<StackLocalBranch[]> {
-    const [records, remoteRefs, worktrees] = await Promise.all([
+    const started = Date.now();
+    const [records, remoteRefs, worktrees, parents] = await Promise.all([
       this.readLocalBranchRecords(),
       this.readRemoteRefHashes(),
       new WorktreeService(this.repoRoot).listWorktrees(),
+      this.readAllParentSettings(),
     ]);
     const worktreeByBranch = new Map(
       worktrees.filter((item) => item.branch).map((item) => [item.branch!, item.path])
     );
-    return Promise.all(records.map(async (record) => {
+    const branches = records.map((record) => {
       const [name, hash, upstream, subject] = record.split(FIELD_SEPARATOR);
-      const [parentBranch, parentHead] = await Promise.all([
-        this.readConfig(name, PARENT_KEY),
-        this.readConfig(name, PARENT_HEAD_KEY),
-      ]);
+      const { parentBranch, parentHead } = parents.get(name) || {};
       return {
         name,
         hash,
@@ -73,7 +73,12 @@ export class PullRequestStackMetadataService {
         parentHead,
         worktreePath: worktreeByBranch.get(name),
       };
-    }));
+    });
+    logInfo("graph stack metadata read", {
+      repoRoot: this.repoRoot, branches: branches.length, parentEntries: parents.size,
+      configReads: 1, elapsedMs: Date.now() - started,
+    });
+    return branches;
   }
 
   /**
@@ -336,6 +341,32 @@ export class PullRequestStackMetadataService {
       const [name, hash] = record.replace(/^\r?\n|\r?\n$/g, "").split(FIELD_SEPARATOR);
       return [name, hash] as const;
     }).filter(([name, hash]) => Boolean(name && hash)));
+  }
+
+  /**
+   * 모든 branch의 Stack parent/head 설정을 Git 프로세스 한 번으로 읽는다.
+   * - N개 branch마다 두 프로세스를 띄우는 비용과 fork 폭증을 피한다.
+   * - Git의 NUL record/첫 newline 구분을 사용해 값의 개행을 보존한다.
+   * - section과 변수명은 Git이 소문자로 반환하지만 branch subsection의 대소문자는 유지한다.
+   * @returns 정확한 branch 이름 → parent/head 맵. 중복 설정은 기존 --get처럼 마지막 값을 사용한다.
+   */
+  private async readAllParentSettings(): Promise<Map<string, { parentBranch?: string; parentHead?: string }>> {
+    const output = await runGit([
+      "config", "--local", "--null", "--get-regexp", "^branch\\..*\\.gscstack(parent|parenthead)$",
+    ], this.repoRoot).catch(() => "");
+    const parents = new Map<string, { parentBranch?: string; parentHead?: string }>();
+    for (const record of output.split("\0")) {
+      const separator = record.indexOf("\n");
+      if (separator < 0) continue;
+      const match = /^branch\.(.+)\.(gscstackparent|gscstackparenthead)$/.exec(record.slice(0, separator));
+      if (!match) continue;
+      const entry = parents.get(match[1]) || {};
+      const value = record.slice(separator + 1).trim() || undefined;
+      if (match[2] === "gscstackparent") entry.parentBranch = value;
+      else entry.parentHead = value;
+      parents.set(match[1], entry);
+    }
+    return parents;
   }
 
   /** branch config key 하나를 읽고 없으면 undefined를 반환한다. */

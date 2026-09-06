@@ -56,7 +56,7 @@ export class GraphPullRequestPager {
     return this.pullRequests;
   }
 
-  /** stack graph snapshot이 gh repo view 실패 시 재사용할 owner/name 저장소 이름을 반환한다. */
+  /** stack graph snapshot이 추가 원격 조회 없이 재사용할 owner/name 저장소 이름을 반환한다. */
   get repositoryName(): string {
     return this.repository;
   }
@@ -264,7 +264,7 @@ export async function sendGraphPullRequestStacks(
     if (signal?.aborted) return;
     logInfo(repositoryHint && defaultBranchHint
       ? "graph pull request stack metadata reused"
-      : "graph pull request stack metadata fallback", { repoRoot, repositoryHint, defaultBranchHint });
+      : "graph pull request stack local metadata", { repoRoot, repositoryHint, defaultBranchHint });
     const snapshot = await new PullRequestStackService(repoRoot)
       .getGraphSnapshot(pullRequests, repositoryHint, defaultBranchHint, signal);
     if (signal?.aborted) {

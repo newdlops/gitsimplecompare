@@ -70,25 +70,31 @@ test("graph stack publication은 성공·오류 상태 전환만 게시하고 re
   assert.equal(posted.length, 4);
 });
 
-test("graph stack reuses complete metadata hints and falls back when hints are incomplete", async () => {
+test("graph stack uses local metadata before the PR response without a separate network request", async () => {
   const originalBranches = PullRequestStackMetadataService.prototype.listBranches;
   const originalRepositoryInfo = (PullRequestStackService.prototype as any).repositoryInfo;
+  const originalDefaultBranch = (PullRequestStackService.prototype as any).defaultBranchFromGit;
   let repositoryInfoCalls = 0;
   PullRequestStackMetadataService.prototype.listBranches = async () => [];
   (PullRequestStackService.prototype as any).repositoryInfo = async () => {
     repositoryInfoCalls++;
     return { nameWithOwner: "owner/repo", defaultBranchRef: { name: "main" } };
   };
+  (PullRequestStackService.prototype as any).defaultBranchFromGit = async () => "local-main";
   try {
     const service = new PullRequestStackService("/repo");
     const reused = await service.getGraphSnapshot([], "owner/repo", "main");
     assert.equal(repositoryInfoCalls, 0);
     assert.deepEqual([reused.repository, reused.defaultBranch], ["owner/repo", "main"]);
     const fallback = await service.getGraphSnapshot([], "owner/repo", "");
-    assert.equal(repositoryInfoCalls, 1);
-    assert.deepEqual([fallback.repository, fallback.defaultBranch], ["owner/repo", "main"]);
+    assert.equal(repositoryInfoCalls, 0);
+    assert.deepEqual([fallback.repository, fallback.defaultBranch], ["owner/repo", "local-main"]);
+    const initial = await service.getGraphSnapshot([]);
+    assert.equal(repositoryInfoCalls, 0);
+    assert.deepEqual([initial.repository, initial.defaultBranch], ["", "local-main"]);
   } finally {
     PullRequestStackMetadataService.prototype.listBranches = originalBranches;
     (PullRequestStackService.prototype as any).repositoryInfo = originalRepositoryInfo;
+    (PullRequestStackService.prototype as any).defaultBranchFromGit = originalDefaultBranch;
   }
 });

@@ -79,9 +79,12 @@ export class PullRequestStackService {
 
   /**
    * Git Graph가 이미 읽은 PR과 로컬 stack 메타데이터를 통합해 흐름 스냅샷을 만든다.
-   * - GitHub 저장소 정보 조회가 실패해도 로컬 layer는 계속 표시되도록 기본 branch를 git에서 보완한다.
+   * - 원격 정보는 pager의 같은 PR 응답을 재사용한다. 첫 로컬 stack 표시가 별도 네트워크를 기다리지 않는다.
+   * - 아직 힌트가 없으면 기본 branch를 git에서 보완하고, PR 응답 뒤 다음 snapshot에서 확정한다.
    * @param pullRequests graph pager가 읽은 OPEN/CLOSED/MERGED PR 목록
    * @param repositoryHint pager가 알고 있는 owner/name 저장소 이름
+   * @param defaultBranchHint pager가 같은 응답에서 받은 기본 branch 이름
+   * @param signal 늦은 로컬 조회 결과의 게시를 막을 선택적 취소 신호
    * @returns graph overlay와 stack 작업 버튼이 공유할 통합 스냅샷
    */
   async getGraphSnapshot(
@@ -91,23 +94,15 @@ export class PullRequestStackService {
     signal?: AbortSignal
   ): Promise<PullRequestStackGraphSnapshot> {
     throwIfAborted(signal);
-    const reuseMetadata = Boolean(repositoryHint && defaultBranchHint);
-    const [branches, repository] = await Promise.all([
+    const [branches, defaultBranch] = await Promise.all([
       new PullRequestStackMetadataService(this.repoRoot).listBranches(),
-      reuseMetadata
-        ? Promise.resolve({ nameWithOwner: repositoryHint, defaultBranchRef: { name: defaultBranchHint } })
-        : this.repositoryInfo(signal).catch((error) => {
-          if (signal?.aborted) throw error;
-          return {} as GhRepositoryInfo;
-        }),
+      defaultBranchHint || this.defaultBranchFromGit().catch(() => undefined),
     ]);
     throwIfAborted(signal);
-    const defaultBranch = repository.defaultBranchRef?.name
-      || await this.defaultBranchFromGit().catch(() => undefined);
     return buildPullRequestStackGraph(
       branches,
       pullRequests.map(stackPullRequestFromInfo),
-      repository.nameWithOwner || repositoryHint,
+      repositoryHint,
       defaultBranch
     );
   }

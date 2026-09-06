@@ -2,7 +2,7 @@
 // - 목록과 검색 서비스가 같은 GraphQL selection 및 commit 의미를 공유하도록 분리한다.
 // - PR 자체 commit 과 merge 결과 commit 을 구분해 git 작업에는 원래 commit 만 사용하게 한다.
 import {
-  PULL_REQUEST_COMMENT_COUNTS_QUERY,
+  buildPullRequestCommentCountsQuery,
   totalPullRequestCommentCount,
 } from "./pullRequestCommentCounts";
 import type { GhPullRequestCommentCounts } from "./pullRequestCommentCounts";
@@ -69,8 +69,18 @@ export interface GhPullRequestNode extends GhPullRequestCommentCounts {
   };
 }
 
-/** 목록/번호/커밋 검색에서 재사용하는 PullRequest GraphQL selection */
-export const PULL_REQUEST_INFO_QUERY = `
+/** 목록/번호/커밋 검색에서 재사용하는 기본 PullRequest GraphQL selection */
+export const PULL_REQUEST_INFO_QUERY = buildPullRequestInfoQuery();
+
+/**
+ * 목록 크기에 맞춰 중첩 connection의 첫 페이지 크기를 조절한 selection을 만든다.
+ * - 작은 첫 페이지를 쓰는 호출자는 pageInfo를 따라 나머지 데이터를 반드시 보완한다.
+ * @param commitPageSize PR별 첫 commit 페이지 크기. 검색 등 기존 호출은 100을 유지한다.
+ * @param reviewThreadPageSize PR별 첫 review thread 페이지 크기
+ * @returns 공통 PR 필드와 지정한 connection 크기를 포함한 GraphQL selection
+ */
+export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPageSize = 100): string {
+  return `
         number
         title
         state
@@ -85,12 +95,13 @@ export const PULL_REQUEST_INFO_QUERY = `
         reviewDecision
         updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
-${PULL_REQUEST_COMMENT_COUNTS_QUERY}
+${buildPullRequestCommentCountsQuery(reviewThreadPageSize)}
         files(first: 1) { totalCount }
-        commits(first: 100) {
+        commits(first: ${commitPageSize}) {
           nodes { commit { oid } }
           pageInfo { hasNextPage endCursor }
         }`;
+}
 
 /**
  * GitHub GraphQL PullRequest node 를 확장 내부 공통 타입으로 정규화한다.

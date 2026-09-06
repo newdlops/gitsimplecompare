@@ -119,6 +119,43 @@ async function createTwoLayerStack(repoRoot: string): Promise<string> {
   return firstWorktree;
 }
 
+/** Git의 실제 config 출력에서 branch 대소문자·점·중복 값과 조회 횟수를 함께 검사한다. */
+test("Stack 설정은 브랜치 수와 무관하게 한 번 읽고 기존 --get 의미를 유지한다", async () => {
+  const fixture = await createLifecycleFixture();
+  const previousTrace = process.env.GIT_TRACE;
+  try {
+    const metadata = new PullRequestStackMetadataService(fixture.repoRoot);
+    const empty = await metadata.listBranches();
+    assert.equal(empty[0].parentBranch, undefined);
+    const names = ["Stack/Topic.v1", "topic/child.v1", "feature.with.dots", "no-parent"];
+    for (const name of names) await git(fixture.repoRoot, "branch", name);
+    const head = await git(fixture.repoRoot, "rev-parse", "HEAD");
+    await git(fixture.repoRoot, "config", "--local", "branch.Stack/Topic.v1.gscStackParent", "main");
+    await git(fixture.repoRoot, "config", "--local", "branch.Stack/Topic.v1.gscStackParentHead", head);
+    await git(fixture.repoRoot, "config", "--local", "branch.topic/child.v1.gscStackParent", "Stack/Topic.v1");
+    await git(fixture.repoRoot, "config", "--local", "branch.feature.with.dots.gscStackParent", "old-parent");
+    await git(fixture.repoRoot, "config", "--local", "--add", "branch.feature.with.dots.gscStackParent", "topic/child.v1");
+    const expectedLast = await git(fixture.repoRoot, "config", "--local", "--get", "branch.feature.with.dots.gscStackParent");
+    const tracePath = join(fixture.fixtureRoot, "metadata-trace.log");
+    process.env.GIT_TRACE = tracePath;
+    const branches = await metadata.listBranches();
+    const trace = await readFile(tracePath, "utf8");
+    assert.equal((trace.match(/built-in: git config /g) || []).length, 1);
+    assert.equal(branches.length, names.length + 1);
+    const byName = new Map(branches.map((branch) => [branch.name, branch]));
+    assert.equal(byName.get("Stack/Topic.v1")?.parentBranch, "main");
+    assert.equal(byName.get("Stack/Topic.v1")?.parentHead, head);
+    assert.equal(byName.get("topic/child.v1")?.parentBranch, "Stack/Topic.v1");
+    assert.equal(byName.get("topic/child.v1")?.parentHead, undefined);
+    assert.equal(byName.get("feature.with.dots")?.parentBranch, expectedLast);
+    assert.equal(byName.get("no-parent")?.parentBranch, undefined);
+  } finally {
+    if (previousTrace === undefined) delete process.env.GIT_TRACE;
+    else process.env.GIT_TRACE = previousTrace;
+    await rm(fixture.fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 /** 로컬 parent 편집과 성분 삭제가 Git 리소스를 건드리지 않고 독립 Stack을 보존하는지 검증한다. */
 test("로컬 Stack parent 편집은 경계를 보존하고 삭제는 연결 성분 config만 제거한다", async () => {
   const fixture = await createLifecycleFixture();

@@ -5,6 +5,28 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72047] - 2026-09-06
+
+### Changed
+
+- **Faster GitHub PR loading**: Git Graph reads repository metadata with the
+  PR list, removing two separate remote metadata requests from initial loading.
+  Local stack information is available without waiting for GitHub.
+- Local stack parent settings are read in one Git command instead of two
+  commands per branch, reducing process overhead in repositories with many
+  local branches.
+- PR pages still contain up to 80 entries. Each entry starts with smaller
+  commit and review-thread pages; additional pages run with at most four
+  concurrent requests and retain the full commit order and comment counts.
+- Unresponsive PR list requests stop after 30 seconds per request. Failed
+  refreshes retain the last successful list, and OUTPUT logs include query
+  timings, completion status, and request counts.
+
+### Fixed
+
+- Repeated pagination cursors fail instead of fetching indefinitely. Large
+  review discussions no longer silently stop counting after 20 pages.
+
 ## [0.1.72046] - 2026-09-05
 
 ### Changed

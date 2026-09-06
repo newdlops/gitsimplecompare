@@ -8,7 +8,7 @@ Marketplace ID: `newdlops.gitsimplecompare`
 
 - VS Code Marketplace: [Git Simple Compare & Graph](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
 - Command line: `code --install-extension newdlops.gitsimplecompare`
-- Manual VSIX: download or build a `.vsix`, then run `code --install-extension gitsimplecompare-0.1.72046.vsix`
+- Manual VSIX: download or build a `.vsix`, then run `code --install-extension gitsimplecompare-0.1.72047.vsix`
 
 Previously installed `newdlops.git-simple-compare`? Disable or uninstall that
 extension, then install this listing once. VS Code does not transfer automatic
