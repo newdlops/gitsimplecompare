@@ -6,6 +6,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { PullRequestCommentCache } from "../src/providers/pullRequestCommentCache";
 import { PullRequestCommentController } from "../src/providers/pullRequestCommentController";
+import {
+  PullRequestReviewCommentService,
+  type PullRequestReviewCommentServiceOptions,
+} from "../src/git/pullRequestReviewComments";
+import { storeGitHubWebCookie } from "../src/ui/githubWebCookieSecret";
 import * as vscodeMock from "./helpers/vscodeMock";
 
 /** 테스트가 완료 시점을 제어할 수 있는 Promise와 resolve 함수를 만든다. */
@@ -212,4 +217,94 @@ test("활성 파일 교체는 표시 요청만 취소하고 진행 중인 PR 로
   assert.equal(cacheCancelReason, "");
   assert.equal((controller as any).activeThreads.size, 0);
   controller.dispose();
+});
+
+test("저장한 웹 세션의 404는 새로고침·브랜치 변경·창 재시작 뒤에도 로그인 화면을 열지 않는다", async (t) => {
+  const storedValues = new Map<string, string>();
+  const secrets = {
+    get: async (key: string) => storedValues.get(key),
+    store: async (key: string, value: string) => { storedValues.set(key, value); },
+  } as any;
+  // 실제 자격 증명 대신 고정 가짜 값으로 저장과 다음 창의 SecretStorage 재사용을 검증한다.
+  const cookie = "user_session=fake-session-for-regression";
+  assert.equal(await storeGitHubWebCookie(secrets, cookie, "test"), true);
+  let branch = "main";
+  const receivedCookies: Array<string | undefined> = [];
+  const data = {
+    ...policyData("API review comment with a suggestion"),
+    suggestedChangesetStatus: {
+      attempted: true,
+      comments: 0,
+      changesets: 0,
+      reason: "gh-token-web: status 404; stored-web-cookie: status 404",
+    },
+  };
+  t.mock.method(PullRequestReviewCommentService.prototype, "getCurrentBranch", async () => branch);
+  t.mock.method(PullRequestReviewCommentService.prototype, "getActiveBranchReviewComments", async function (
+    this: PullRequestReviewCommentService
+  ) {
+    const options = (this as unknown as { options: PullRequestReviewCommentServiceOptions }).options;
+    receivedCookies.push(options.suggestedChangeset?.webCookie);
+    return data;
+  });
+  vscodeMock.__resetWindowMessages();
+  vscodeMock.__resetOutputLines();
+  const cache = new PullRequestCommentCache(secrets);
+  t.after(() => cache.dispose());
+
+  assert.equal(await cache.load("/repo"), data);
+  assert.equal(await cache.load("/repo"), data);
+  assert.deepEqual(vscodeMock.__executedCommands, [], "404 must not ask for another login");
+  cache.invalidate("githubWebCookieStored");
+  assert.equal(await cache.load("/repo"), data);
+  branch = "feature/other";
+  assert.equal(await cache.load("/repo"), data);
+  cache.dispose();
+
+  const reopened = new PullRequestCommentCache(secrets);
+  t.after(() => reopened.dispose());
+  assert.equal(await reopened.load("/repo"), data);
+  assert.deepEqual(receivedCookies, Array(4).fill(cookie));
+  assert.deepEqual(vscodeMock.__executedCommands, []);
+  assert.deepEqual(vscodeMock.__informationMessages, []);
+  assert.deepEqual(vscodeMock.__warningMessages, []);
+  assert.deepEqual(vscodeMock.__errorMessages, []);
+  assert.ok(vscodeMock.__outputLines.some((line) => line.includes("stored-web-cookie: status 404")));
+  assert.equal(vscodeMock.__outputLines.join("\n").includes(cookie), false);
+});
+
+test("웹 쿠키가 없어도 기존 GitHub 로그인을 조용히 재사용하고 API 댓글을 유지한다", async (t) => {
+  const accessToken = "fake-oauth-token-for-regression";
+  const authentication = t.mock.method(vscodeMock.authentication, "getSession", async () => ({ accessToken }));
+  t.mock.method(PullRequestReviewCommentService.prototype, "getCurrentBranch", async () => "main");
+  const data = {
+    ...policyData("Existing API comment"),
+    suggestedChangesetStatus: {
+      attempted: true,
+      comments: 0,
+      changesets: 0,
+      reason: "vscode-auth-web: status 404; stored-web-cookie: not set",
+    },
+  };
+  let receivedToken: string | undefined;
+  t.mock.method(PullRequestReviewCommentService.prototype, "getActiveBranchReviewComments", async function (
+    this: PullRequestReviewCommentService
+  ) {
+    const options = (this as unknown as { options: PullRequestReviewCommentServiceOptions }).options;
+    receivedToken = options.suggestedChangeset?.webAccessToken;
+    return data;
+  });
+  vscodeMock.__resetWindowMessages();
+  vscodeMock.__resetOutputLines();
+  const cache = new PullRequestCommentCache({ get: async () => undefined } as any);
+  t.after(() => cache.dispose());
+
+  assert.equal(await cache.load("/repo"), data);
+  assert.equal(receivedToken, accessToken);
+  assert.deepEqual(authentication.mock.calls[0].arguments, ["github", ["repo"], { silent: true }]);
+  assert.deepEqual(vscodeMock.__executedCommands, []);
+  assert.deepEqual(vscodeMock.__informationMessages, []);
+  assert.deepEqual(vscodeMock.__warningMessages, []);
+  assert.deepEqual(vscodeMock.__errorMessages, []);
+  assert.equal(vscodeMock.__outputLines.join("\n").includes(accessToken), false);
 });

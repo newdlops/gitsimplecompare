@@ -1,24 +1,21 @@
 // GitHub PR review comment 원격 조회와 저장소별 캐시 생명주기를 관리한다.
-// - 에디터 표시/포커스 판단은 controller 에 남기고, TTL·singleflight·인증 보조 흐름만 담당한다.
+// - 에디터 표시/포커스 판단은 controller 에 남기고, TTL·singleflight·저장된 인증 재사용만 담당한다.
 import * as vscode from "vscode";
 import {
   ActivePullRequestReviewComments,
   PullRequestReviewCommentService,
 } from "../git/pullRequestReviewComments";
-import type { PullRequestSuggestedChangesetStatus } from "../git/pullRequestSuggestedChangesets";
 import { readStoredGitHubWebCookie } from "../ui/githubWebCookieSecret";
 import { logInfo } from "../ui/outputLog";
 import {
   countAttachedSuggestedChangesets,
   countBodySuggestedChangeHints,
-  gitHubWebSessionFlowReason,
   hasCodeFence,
 } from "./pullRequestCommentDiagnostics";
 
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const MAX_HISTORICAL_CACHE_ENTRIES = 7;
 const MAX_HISTORICAL_CACHE_WEIGHT = 4_194_304;
-const GITHUB_WEB_SESSION_COMMAND = "gitSimpleCompare.setGitHubWebCookie";
 
 /** TTL 캐시에 저장할 조회 시각과 활성 PR 코멘트 데이터. */
 interface PullRequestCommentCacheEntry {
@@ -62,7 +59,6 @@ export class PullRequestCommentCache {
   private readonly cache = new Map<string, PullRequestCommentCacheEntry>();
   private readonly inFlightLoads = new Map<string, PullRequestCommentInFlight>();
   private readonly repoGenerations = new Map<string, number>();
-  private readonly webSessionFlowKeys = new Set<string>();
   private activeKey: string | undefined;
   private globalGeneration = 0;
 
@@ -124,7 +120,6 @@ export class PullRequestCommentCache {
   /**
    * 모든 저장소의 TTL 캐시와 진행 중 요청 연결을 무효화한다.
    * - 실행 중인 네트워크 요청도 취소하고 세대를 올려 늦은 결과가 캐시에 재진입하지 못하게 한다.
-   * - GitHub 웹 쿠키 변경이면 이전 인증 오류 안내 dedupe 도 비워 새 인증 상태를 다시 평가한다.
    * @param reason 인증 변경/사용자 명령처럼 전체 무효화를 일으킨 원인
    */
   invalidate(reason: string): void {
@@ -133,9 +128,6 @@ export class PullRequestCommentCache {
     this.activeKey = undefined;
     this.globalGeneration++;
     this.inFlightLoads.clear();
-    if (/githubWebCookie/i.test(reason)) {
-      this.webSessionFlowKeys.clear();
-    }
     logInfo("pr editor comments cache invalidated", { reason });
   }
 
@@ -158,7 +150,7 @@ export class PullRequestCommentCache {
     }
   }
 
-  /** 진행 중인 gh/HTTPS 조회를 취소해 오래된 editor 결과가 캐시·세션 안내로 이어지지 않게 한다. */
+  /** 진행 중인 gh/HTTPS 조회를 취소해 오래된 editor 결과가 캐시에 들어가지 않게 한다. */
   cancel(reason: string): void {
     for (const pending of this.inFlightLoads.values()) {
       pending.controller.abort();
@@ -178,12 +170,12 @@ export class PullRequestCommentCache {
     this.activeKey = undefined;
     this.inFlightLoads.clear();
     this.repoGenerations.clear();
-    this.webSessionFlowKeys.clear();
   }
 
   /**
    * 캐시가 없는 저장소/브랜치의 PR 코멘트를 실제로 조회한다.
    * - OAuth token/Cookie 는 suggested changeset HTML 보조 조회에만 전달하며 로그에는 기록하지 않는다.
+   * - 보조 조회 실패는 OUTPUT 진단으로 남기고 API 댓글은 유지한다. 404 등으로 재로그인을 요구하지 않는다.
    * - 시작 세대가 여전히 최신일 때만 결과를 TTL 캐시에 넣어 저장/인증 변경과의 경합을 차단한다.
    * @param repoRoot 조회할 Git 저장소 루트
    * @param branch 현재 checkout 브랜치 이름
@@ -213,56 +205,8 @@ export class PullRequestCommentCache {
     if (this.isCurrent(repoRoot, generation)) {
       this.storeCompletedEntry(key, data);
     }
-    if (!signal.aborted && this.isCurrent(repoRoot, generation)) {
-      this.openGitHubWebSessionFlowIfNeeded(
-        repoRoot,
-        branch,
-        data?.suggestedChangesetStatus,
-        webCookie
-      );
-    }
     logLoadedComments(repoRoot, branch, data);
     return data;
-  }
-
-  /**
-   * GitHub 웹 suggested changeset 보조 조회가 인증 문제로 실패하면 세션 설정 패널을 한 번 연다.
-   * - 같은 저장소/브랜치/실패 원인은 dedupe 해 반복 refresh 가 같은 안내 창을 계속 만들지 않게 한다.
-   * @param repoRoot 조회 저장소 루트
-   * @param branch 현재 브랜치
-   * @param status suggested changeset 보조 조회 상태
-   * @param webCookie SecretStorage 에 저장된 GitHub 웹 Cookie 헤더
-   */
-  private openGitHubWebSessionFlowIfNeeded(
-    repoRoot: string,
-    branch: string,
-    status: PullRequestSuggestedChangesetStatus | undefined,
-    webCookie: string | undefined
-  ): void {
-    const reason = gitHubWebSessionFlowReason(status, webCookie);
-    if (!reason) {
-      return;
-    }
-    const key = `${repoRoot}\0${branch}\0${reason}`;
-    if (this.webSessionFlowKeys.has(key)) {
-      return;
-    }
-    this.webSessionFlowKeys.add(key);
-    logInfo("github web session flow requested", {
-      repoRoot,
-      branch,
-      reason,
-      suggestedChangesetReason: status?.reason,
-    });
-    void vscode.commands.executeCommand(GITHUB_WEB_SESSION_COMMAND).then(
-      undefined,
-      (error) => logInfo("github web session flow failed", {
-        repoRoot,
-        branch,
-        reason,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    );
   }
 
   /** 현재 전체/저장소 무효화 세대를 조회 시작용 값 객체로 복사한다. */
@@ -470,7 +414,7 @@ function forwardAbort(signal: AbortSignal | undefined, controller: AbortControll
   return () => signal.removeEventListener("abort", abort);
 }
 
-/** 취소된 요청이 음수 캐시나 GitHub 웹 세션 안내로 처리되지 않게 한다. */
+/** 취소된 요청이 음수 캐시로 처리되지 않게 한다. */
 function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) {
     throw new DOMException("PR review comment request was cancelled.", "AbortError");

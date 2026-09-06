@@ -10,7 +10,7 @@ Marketplace ID: `newdlops.gitsimplecompare`
 
 - VS Code Marketplace: [Git Simple Compare & Graph](https://marketplace.visualstudio.com/items?itemName=newdlops.gitsimplecompare)
 - 명령줄: `code --install-extension newdlops.gitsimplecompare`
-- 수동 VSIX: `.vsix` 파일을 다운로드하거나 빌드한 뒤 `code --install-extension gitsimplecompare-0.1.72047.vsix`
+- 수동 VSIX: `.vsix` 파일을 다운로드하거나 빌드한 뒤 `code --install-extension gitsimplecompare-0.1.72048.vsix`
 
 기존 `newdlops.git-simple-compare`를 사용했다면 해당 확장을 비활성화하거나
 제거한 뒤 새 확장을 한 번 설치해 주세요. 확장 ID 사이에는 자동 업데이트가

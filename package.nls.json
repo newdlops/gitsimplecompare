@@ -40,7 +40,7 @@
   "cmd.configureUserProfile.tooltip": "Configure global or repository Git user name and email",
   "cmd.configureRemoteBranch": "Set Remote Branch",
   "cmd.configureRemoteBranch.tooltip": "Configure the upstream remote branch for the current branch",
-  "cmd.setGitHubWebCookie": "Login GitHub Web Session",
+  "cmd.setGitHubWebCookie": "Configure GitHub Web Session",
   "cmd.clearGitHubWebCookie": "Logout GitHub Web Session",
   "cmd.toggleBlameDecorator": "Toggle Git Blame Decorator",
   "cmd.toggleBlameLineVisible": "Toggle Git Blame Lines",

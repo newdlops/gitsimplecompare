@@ -29,7 +29,7 @@ type GitHubWebSessionStatus = {
   message: string;
 };
 
-/** GitHub 웹 세션 로그인 안내 webview 패널 */
+/** 사용자가 명령으로 여는 선택적 GitHub 웹 세션 설정 webview 패널 */
 export class GitHubWebSessionPanel {
   private static current: GitHubWebSessionPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -218,7 +218,7 @@ export class GitHubWebSessionPanel {
       type: "status",
       state: "idle",
       message: hasStoredSession
-        ? vscode.l10n.t("Stored GitHub web session is active.")
+        ? vscode.l10n.t("A GitHub web session is saved. Access is checked when suggested changesets are loaded.")
         : vscode.l10n.t("No GitHub web session is stored."),
     });
   }
@@ -252,7 +252,7 @@ export class GitHubWebSessionPanel {
     <header class="hero">
       <p class="eyebrow">${escapeHtml(vscode.l10n.t("Suggested changesets"))}</p>
       <h1>${escapeHtml(vscode.l10n.t("GitHub Web Session"))}</h1>
-      <p>${escapeHtml(vscode.l10n.t("Use a signed-in github.com request when Copilot or private PR suggested changesets are missing from the GitHub API."))}</p>
+      <p>${escapeHtml(vscode.l10n.t("Optional: save a GitHub web session to load suggested changesets missing from the GitHub API. Signing in to GitHub in your browser does not save a session here."))}</p>
     </header>
     <section class="section" aria-labelledby="copy-title">
       <h2 id="copy-title">${escapeHtml(vscode.l10n.t("Copy a GitHub request"))}</h2>

@@ -28,7 +28,7 @@ export async function promptAndStoreGitHubWebCookie(
   secrets: vscode.SecretStorage
 ): Promise<boolean> {
   const value = await vscode.window.showInputBox({
-    title: vscode.l10n.t("Login GitHub Web Session"),
+    title: vscode.l10n.t("Configure GitHub Web Session"),
     prompt: vscode.l10n.t(
       "Paste the github.com Cookie header or a copied cURL request."
     ),

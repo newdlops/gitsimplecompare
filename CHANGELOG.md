@@ -5,6 +5,18 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72048] - 2026-09-06
+
+### Fixed
+
+- GitHub Web Session no longer opens automatically when optional suggested
+  changeset requests fail, including a 404 with a saved session. Refreshing,
+  changing branches, or reopening VS Code keeps existing authentication and
+  API review comments available without repeated login prompts.
+- The **Configure GitHub Web Session** command remains available for manual
+  setup. Its description explains that browser sign-in and the saved session
+  are separate; a saved session is no longer labeled as verified active.
+
 ## [0.1.72047] - 2026-09-06
 
 ### Changed

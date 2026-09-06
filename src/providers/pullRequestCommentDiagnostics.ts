@@ -1,7 +1,6 @@
-// PR comment 표시용 진단 값과 GitHub 웹 세션 안내 조건을 계산한다.
-// - VS Code comment thread 표시 책임과 로그/인증 안내 판별 책임을 분리해 controller 를 작게 유지한다.
+// PR comment 표시용 진단 값을 계산한다.
+// - VS Code comment thread 표시 책임과 로그용 집계 책임을 분리해 controller 를 작게 유지한다.
 import type { PullRequestReviewComment } from "../git/pullRequestReviewComments";
-import type { PullRequestSuggestedChangesetStatus } from "../git/pullRequestSuggestedChangesets";
 
 /**
  * GitHub review comment 에 실제로 붙어서 렌더링 가능한 suggested changeset 수를 센다.
@@ -54,29 +53,6 @@ export function hasCodeFence(comment: PullRequestReviewComment): boolean {
 }
 
 /**
- * suggested changeset 조회 실패가 GitHub 웹 세션 설정으로 해결 가능한지 판단한다.
- * @param status suggested changeset 보조 조회 상태
- * @param webCookie SecretStorage 에 저장된 GitHub 웹 Cookie 헤더
- * @returns 자동 안내를 열 이유. 안내가 필요 없으면 undefined
- */
-export function gitHubWebSessionFlowReason(
-  status: PullRequestSuggestedChangesetStatus | undefined,
-  webCookie: string | undefined
-): "missingCookie" | "rejectedCookie" | undefined {
-  if (!status?.attempted || status.source) {
-    return undefined;
-  }
-  const reason = status.reason || "";
-  if (!webCookie && /stored-web-cookie:\s*not set/i.test(reason)) {
-    return "missingCookie";
-  }
-  if (webCookie && isStoredGitHubWebCookieRejected(reason)) {
-    return "rejectedCookie";
-  }
-  return undefined;
-}
-
-/**
  * GitHub review comment 본문에 suggested changeset 후보가 있는지 빠르게 판별한다.
  * - 실제 렌더링 파서는 ui 모듈에 두고, 여기서는 OUTPUT 진단용 count 만 계산한다.
  * @param comment GitHub review comment
@@ -85,17 +61,4 @@ export function gitHubWebSessionFlowReason(
 function hasBodySuggestedChangeset(comment: PullRequestReviewComment): boolean {
   return /(^|\n)[ \t]*(`{3,}|~{3,})\s*suggestion/i.test(comment.body || "")
     || /suggest(?:ed)?[-_ ]?changeset|suggest(?:ed)?[-_ ]?change|js-suggest/i.test(comment.bodyHtml || "");
-}
-
-/**
- * 저장된 GitHub 웹 Cookie 가 인증된 HTML 을 돌려주지 못한 실패인지 확인한다.
- * @param reason suggested changeset 조회 실패 이유 문자열
- * @returns 저장 쿠키 재설정이 필요해 보이면 true
- */
-function isStoredGitHubWebCookieRejected(reason: string): boolean {
-  const match = /stored-web-cookie:\s*([^;]+)/i.exec(reason);
-  if (!match) {
-    return false;
-  }
-  return /\bstatus\s*(?:30[12378]|401|403|404)\b|redirect|login|not GitHub HTML|not HTML/i.test(match[1]);
 }

@@ -65,6 +65,14 @@ export const window = {
     ),
 };
 export const l10n = { t: (value: string, ...values: unknown[]) => value.replace(/\{(\d+)\}/g, (_match, index) => String(values[Number(index)] ?? "")) };
+/** 기존 GitHub 로그인 세션의 조용한 재사용을 검증하기 위한 인증 API 대역이다. */
+export const authentication = {
+  getSession: async (
+    _provider: string,
+    _scopes: readonly string[],
+    _options: { silent?: boolean }
+  ): Promise<{ accessToken: string } | undefined> => undefined,
+};
 export class EventEmitter<T = unknown> { public event = () => ({ dispose() {} }); public fire(_value: T) {} public dispose() {} }
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
 export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}) };
