@@ -298,11 +298,12 @@ export class GitService {
 
   /**
    * 지정 경로들을 스테이징한다(`git add`).
+   * - 대괄호나 pathspec magic이 있는 이름도 선택한 파일 그대로 처리한다.
    * @param paths 저장소 상대 경로 목록
    */
   async stage(paths: string[]): Promise<void> {
     if (paths.length) {
-      await this.run(["add", "--", ...paths]);
+      await this.run(["--literal-pathspecs", "add", "--", ...paths]);
       this.invalidateStatusCache();
     }
   }
@@ -319,7 +320,7 @@ export class GitService {
    */
   async unstage(paths: string[]): Promise<void> {
     if (paths.length) {
-      await this.run(["reset", "-q", "HEAD", "--", ...paths]);
+      await this.run(["--literal-pathspecs", "reset", "-q", "HEAD", "--", ...paths]);
       this.invalidateStatusCache();
     }
   }
@@ -344,7 +345,7 @@ export class GitService {
     const tracked = paths.filter((p) => !untracked.has(p));
     const toDelete = paths.filter((p) => untracked.has(p));
     if (tracked.length) {
-      await this.run(["checkout", "--", ...tracked]);
+      await this.run(["--literal-pathspecs", "checkout", "--", ...tracked]);
     }
     for (const rel of toDelete) {
       await rm(path.resolve(this.repoRoot, rel), { force: true });
@@ -486,9 +487,18 @@ export class GitService {
       const spec = ref === ":0" ? `:0:${rel}` : `${ref}:${rel}`;
       return await this.run(["show", spec]);
     } catch (err) {
-      // 파일이 그 ref에 존재하지 않는 경우 등은 빈 내용으로 취급한다.
-      if (err instanceof GitError) {
-        return "";
+      // Git 실행 실패를 빈 파일로 캐시하지 않는다. fatal 오류도 tree/index에서 부재가 확인될 때만 허용한다.
+      if (err instanceof GitError && err.code === 128) {
+        const args = ref === ":0"
+          ? ["ls-files", "--stage", "-z", "--", rel]
+          : ["ls-tree", "-z", "--full-name", ref, "--", rel];
+        const entries = await this.run(["--literal-pathspecs", ...args]).catch(() => undefined);
+        if (entries === "") return "";
+        if (ref === "HEAD") {
+          // 첫 커밋 전의 유효한 unborn 브랜치만 빈 기준으로 허용한다. 잘못된 ref/손상된 객체는 오류다.
+          const branch = await this.run(["symbolic-ref", "--quiet", "HEAD"]).catch(() => undefined);
+          if (branch && await this.run(["for-each-ref", "--format=%(objectname)", branch.trim()]) === "") return "";
+        }
       }
       throw err;
     }

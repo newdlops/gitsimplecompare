@@ -5,6 +5,32 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72049] - 2026-09-07
+
+### Fixed
+
+- Stage, unstage, and discard treat selected filenames literally. Brackets
+  and Git pathspec syntax cannot expand a selection to other files.
+- Pull recovery is tied to the original branch, worktree, and operation.
+  Stale confirmations and unrelated conflicts cannot reset another branch.
+  Recovery applies the saved stash by object ID even when its list position
+  changes. Older snapshots without operation metadata remain in the stash
+  for manual recovery.
+- Push validates the approved branch, commit, and destination settings before
+  sending an explicit commit ID. A branch switch during push cannot change
+  its source or set upstream on another branch. Force-with-lease retains the
+  remote commit known when the push was prepared, including after a fetch.
+- Git failures retain exit codes, process signals, and original causes.
+  Commit messages containing `index.lock` no longer trigger false retries;
+  commands that can already have run hooks or changed remote state are not
+  replayed after lock failures. Standard-input and binary-output commands
+  also honor cancellation.
+- Pull distinguishes missing upstream branches from authentication and
+  transport failures. Unset Git profile values are identified by exit code.
+- Failed file reads no longer become cached empty documents. Files absent
+  from a valid ref, including the empty base before the first commit, still
+  display correctly in comparisons.
+
 ## [0.1.72048] - 2026-09-06
 
 ### Fixed

@@ -3,7 +3,7 @@
 // - URI 에 담긴 ref/repoRoot/path 를 해석해 GitService 로 내용을 읽어 반환한다.
 import * as vscode from "vscode";
 import { GitServiceRegistry } from "../git/serviceRegistry";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import { COMPARE_SCHEME, parseRefUri } from "../utils/uri";
 
 const changeEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -224,7 +224,8 @@ export class BranchContentProvider
       contentCache.set(key, promise);
     }
     const content = await promise.catch((error) => {
-      contentCache.delete(key);
+      if (contentCache.get(key) === promise) contentCache.delete(key);
+      logError("branch content failed", error, { ref, path: relative });
       throw error;
     });
     logInfo("branch content provided", {

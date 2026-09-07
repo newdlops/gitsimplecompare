@@ -1,22 +1,12 @@
 // pull 중 로컬 변경을 안전하게 보존하고 충돌 rollback 을 지원하는 git 서비스.
 // - graph/command UI 는 이 서비스의 결과만 보고 사용자 메시지와 뷰 갱신을 담당한다.
 // - git 상태 변경은 runGit 을 통해서만 수행해 git 접근 경계를 유지한다.
-import { randomUUID } from "node:crypto";
 import { detectOperation } from "./conflictService";
 import { GitError, runGit } from "./gitExec";
-import { runStash } from "./stashExec";
+import { PullRollbackStore, type PullRollbackSnapshot } from "./pullRollbackStore";
+export type { PullRollbackSnapshot } from "./pullRollbackStore";
 
-const SNAPSHOT_PREFIX = "GSC_PULL_ROLLBACK";
 type LocalChangeBlocker = "none" | "tracked" | "untracked" | "mixed";
-
-export interface PullRollbackSnapshot {
-  id: string;
-  ref: string;
-  hash: string;
-  head: string;
-  branch: string;
-  createdAt: number;
-}
 
 export type PullConflictStage = "pull" | "restoreLocalChanges";
 
@@ -40,7 +30,12 @@ export type PullSnapshotCleanupResult =
  * pull 시점의 로컬 변경을 임시 stash 로 보존하고, 충돌 시 pre-pull 상태로 되돌리는 서비스.
  */
 export class PullService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly snapshots: PullRollbackStore;
+
+  /** 이 저장소의 worktree별 복구 기록 관리자를 준비한다. */
+  constructor(public readonly repoRoot: string) {
+    this.snapshots = new PullRollbackStore(repoRoot);
+  }
 
   /**
    * 현재 브랜치를 pull 한다. 로컬 변경이 있어도 먼저 그대로 pull 을 시도하고,
@@ -94,12 +89,14 @@ export class PullService {
     } catch (err) {
       const state = await this.tryIsConflictState(err);
       if (state.conflicted) {
+        await this.snapshots.bind(snapshot, "pull", snapshot.head);
         return this.conflictResult("pull", hadLocalChanges, snapshot, err);
       }
       await this.restoreSnapshotAfterUnexpectedFailure(snapshot, err);
       throw err;
     }
 
+    await this.snapshots.bind(snapshot, "restoreLocalChanges", await this.currentHead());
     try {
       await this.applySnapshot(snapshot);
     } catch (err) {
@@ -123,19 +120,23 @@ export class PullService {
   }
 
   /**
-   * 가장 최근 pull rollback snapshot 이 있는지 확인한다.
+   * 현재 브랜치·worktree·작업과 일치하는 pull rollback snapshot을 확인한다.
    * @returns rollback 가능한 snapshot. 없으면 undefined
    */
   async findLatestPullRollbackSnapshot(): Promise<PullRollbackSnapshot | undefined> {
-    return (await this.listPullRollbackSnapshots())[0];
+    return this.snapshots.find();
   }
 
   /**
-   * 가장 최근 pull rollback snapshot 으로 pull 직전 HEAD/작업트리 상태를 복원한다.
+   * 현재 작업과 연결된 snapshot으로 pull 직전 HEAD/작업트리 상태를 복원한다.
+   * @param expectedId 확인창에서 승인한 snapshot ID. 실행 전 기록이 바뀌면 중단한다.
    * @returns 사용한 snapshot. 없으면 undefined
    */
-  async rollbackLatestPull(): Promise<PullRollbackSnapshot | undefined> {
+  async rollbackLatestPull(expectedId?: string): Promise<PullRollbackSnapshot | undefined> {
     const snapshot = await this.findLatestPullRollbackSnapshot();
+    if (expectedId && snapshot?.id !== expectedId) {
+      throw new Error("Pull recovery changed after confirmation. Refresh and try again. Saved changes remain in the stash.");
+    }
     if (!snapshot) {
       return undefined;
     }
@@ -148,10 +149,11 @@ export class PullService {
    * @returns snapshot 복원/충돌/없음 상태
    */
   async restoreSnapshotAfterResolvedPull(): Promise<PullSnapshotCleanupResult> {
-    const snapshot = await this.findLatestPullRollbackSnapshot();
+    const snapshot = await this.snapshots.find("resolvedPull");
     if (!snapshot || (await this.tryIsConflictState()).conflicted) {
       return { status: "none" };
     }
+    await this.snapshots.bind(snapshot, "restoreLocalChanges", await this.currentHead());
     try {
       await this.applySnapshot(snapshot);
     } catch (err) {
@@ -176,10 +178,11 @@ export class PullService {
    * @returns 제거한 snapshot 정보. 아직 충돌/작업이 남아 있으면 none
    */
   async dropSnapshotAfterResolvedRestore(): Promise<PullSnapshotCleanupResult> {
-    const snapshot = await this.findLatestPullRollbackSnapshot();
+    const snapshot = await this.snapshots.find("resolvedRestore");
     if (!snapshot || (await this.tryIsConflictState()).conflicted) {
       return { status: "none" };
     }
+    await this.snapshots.assertCurrent(snapshot, "resolvedRestore");
     await this.dropSnapshot(snapshot);
     return { status: "dropped", snapshot };
   }
@@ -192,16 +195,20 @@ export class PullService {
 
   /** 현재 브랜치의 upstream 변경을 merge pull 방식으로 가져온다. */
   private async runPull(): Promise<void> {
-    await runGit(["pull", "--no-rebase", "--no-edit"], this.repoRoot);
+    await runGit(["pull", "--no-rebase", "--no-edit"], this.repoRoot, { retryOnLock: false });
   }
 
   /** 지정 snapshot 을 기준으로 pull 직전 상태를 복원한다. */
-  private async rollbackSnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
+  private async rollbackSnapshot(
+    snapshot: PullRollbackSnapshot,
+    purpose: "rollback" | "automatic" = "rollback"
+  ): Promise<void> {
+    await this.snapshots.assertCurrent(snapshot, purpose);
+    const expectedHead = await this.currentHead();
     await this.abortOperationIfNeeded();
-    await runGit(["reset", "--hard", snapshot.head], this.repoRoot);
-    const currentSnapshot =
-      (await this.findSnapshotByHash(snapshot.hash)) ?? snapshot;
-    await this.popSnapshot(currentSnapshot);
+    await this.snapshots.assertOrigin(snapshot.branch, expectedHead);
+    await runGit(["reset", "--hard", snapshot.head], this.repoRoot, { retryOnLock: false });
+    await this.popSnapshot(snapshot);
   }
 
   /** 진행 중인 merge/rebase/cherry-pick/revert 가 있으면 pull 을 시작하지 않도록 막는다. */
@@ -219,8 +226,11 @@ export class PullService {
 
   /** 현재 브랜치 이름을 읽는다. detached HEAD 면 표시용 이름을 반환한다. */
   private async currentBranch(): Promise<string> {
-    return (await runGit(["symbolic-ref", "--short", "HEAD"], this.repoRoot).catch(
-      () => "DETACHED"
+    return (await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], this.repoRoot).catch(
+      error => {
+        if (error instanceof GitError && error.code === 1) return "DETACHED";
+        throw error;
+      }
     )).trim();
   }
 
@@ -235,12 +245,12 @@ export class PullService {
     }
     const remote = (
       await runGit(["config", "--get", `branch.${branch}.remote`], this.repoRoot).catch(
-        () => ""
+        error => missingConfigValue(error)
       )
     ).trim();
     const mergeRef = (
       await runGit(["config", "--get", `branch.${branch}.merge`], this.repoRoot).catch(
-        () => ""
+        error => missingConfigValue(error)
       )
     ).trim();
     if (!remote || !mergeRef) {
@@ -248,7 +258,8 @@ export class PullService {
     }
     try {
       await runGit(["ls-remote", "--exit-code", remote, mergeRef], this.repoRoot);
-    } catch {
+    } catch (error) {
+      if (!(error instanceof GitError) || error.code !== 2) throw error;
       throw new Error(
         `Configured upstream '${remote}/${mergeRef.replace(
           /^refs\/heads\//,
@@ -269,90 +280,7 @@ export class PullService {
     branch: string,
     includeUntracked: boolean
   ): Promise<PullRollbackSnapshot | undefined> {
-    const id = randomUUID();
-    const createdAt = Date.now();
-    const marker = [
-      SNAPSHOT_PREFIX,
-      id,
-      head,
-      String(createdAt),
-      encodeURIComponent(branch),
-    ].join("|");
-    const args = ["push"];
-    if (includeUntracked) {
-      args.push("-u");
-    }
-    args.push("-m", marker);
-    const out = await runStash(args, this.repoRoot);
-    if (/No local changes to save/i.test(out)) {
-      return undefined;
-    }
-    const snapshot = (await this.listPullRollbackSnapshots()).find(
-      (item) => item.id === id
-    );
-    if (!snapshot) {
-      throw new Error("Pull rollback snapshot was not created.");
-    }
-    return snapshot;
-  }
-
-  /** stash list 에 남아 있는 pull rollback snapshot 들을 최신순으로 반환한다. */
-  private async listPullRollbackSnapshots(): Promise<PullRollbackSnapshot[]> {
-    const out = await runStash(
-      ["list", "--format=%gd%x1f%gs%x1f%H%x1e"],
-      this.repoRoot
-    ).catch(() => "");
-    return out
-      .split("\x1e")
-      .map((record) => this.parseSnapshot(record))
-      .filter((item): item is PullRollbackSnapshot => Boolean(item));
-  }
-
-  /** stash list 한 줄에서 rollback marker 를 파싱한다. */
-  private parseSnapshot(record: string): PullRollbackSnapshot | undefined {
-    const [ref, subject, hash] = record.split("\x1f");
-    if (!ref || !subject || !hash) {
-      return undefined;
-    }
-    const message = stripStashSubject(subject);
-    const markerOffset = message.indexOf(`${SNAPSHOT_PREFIX}|`);
-    if (markerOffset < 0) {
-      return undefined;
-    }
-    const parts = message
-      .slice(markerOffset)
-      .split("|");
-    const [prefix] = parts;
-    const [id, head, createdAtRaw, branchRaw] =
-      parts.length >= 5
-        ? [parts[1], parts[2], parts[3], parts[4]]
-        : [`legacy-${hash}`, parts[1], parts[2], parts[3]];
-    const createdAt = Number(createdAtRaw);
-    if (
-      prefix !== SNAPSHOT_PREFIX ||
-      !id ||
-      !head ||
-      !Number.isFinite(createdAt)
-    ) {
-      return undefined;
-    }
-    return {
-      id,
-      ref,
-      hash,
-      head,
-      createdAt,
-      branch: branchRaw ? decodeURIComponent(branchRaw) : "",
-    };
-  }
-
-  /** snapshot hash 로 현재 stash ref 를 다시 찾는다. stash 순서가 바뀐 경우를 보정한다. */
-  private async findSnapshotByHash(
-    hash: string
-  ): Promise<PullRollbackSnapshot | undefined> {
-    return (await this.listPullRollbackSnapshots()).find(
-      (snapshot) => snapshot.hash === hash
-    );
+    return this.snapshots.create(head, branch, includeUntracked);
   }
 
   /** 현재 저장소가 충돌 또는 진행 중 작업 상태인지 확인한다. */
@@ -386,15 +314,13 @@ export class PullService {
   private async abortOperationIfNeeded(): Promise<void> {
     const operation = await detectOperation(this.repoRoot);
     if (operation !== "none") {
-      await runGit([operation, "--abort"], this.repoRoot);
+      await runGit([operation, "--abort"], this.repoRoot, { retryOnLock: false });
     }
   }
 
   /** 임시 rollback stash 를 stash 목록에서 제거한다. */
   private async dropSnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
-    const currentSnapshot =
-      (await this.findSnapshotByHash(snapshot.hash)) ?? snapshot;
-    await runStash(["drop", currentSnapshot.ref], this.repoRoot);
+    await this.snapshots.drop(snapshot);
   }
 
   /**
@@ -403,18 +329,18 @@ export class PullService {
    * @param snapshot 적용할 rollback snapshot
    */
   private async applySnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
-    await runStash(["apply", "--index", snapshot.ref], this.repoRoot);
+    await this.snapshots.apply(snapshot);
   }
 
   /**
    * rollback 시 snapshot 을 복원하고 stash 에서 제거한다.
-   * - pop 은 성공할 때만 stash 를 삭제하므로 복원 실패 시 snapshot 을 보존한다.
+   * - OID로 apply한 뒤 성공한 객체만 drop하므로 stash 순번 변경과 복원 실패에도 원본을 보존한다.
    * @param snapshot 복원할 rollback snapshot
    */
   private async popSnapshot(snapshot: PullRollbackSnapshot): Promise<void> {
-    const currentSnapshot =
-      (await this.findSnapshotByHash(snapshot.hash)) ?? snapshot;
-    await runStash(["pop", "--index", currentSnapshot.ref], this.repoRoot);
+    await this.snapshots.apply(snapshot, snapshot.head);
+    await this.snapshots.assertOrigin(snapshot.branch, snapshot.head);
+    await this.snapshots.drop(snapshot);
   }
 
   /** 예상 밖 실패 시 임시 stash 로 숨긴 로컬 변경을 되살린다. 복원 실패는 원인과 함께 다시 던진다. */
@@ -423,7 +349,7 @@ export class PullService {
     originalError: unknown
   ): Promise<void> {
     try {
-      await this.rollbackSnapshot(snapshot);
+      await this.rollbackSnapshot(snapshot, "automatic");
     } catch (rollbackError) {
       throw new Error(
         `Pull failed and rollback snapshot restore also failed: ${errorText(
@@ -450,10 +376,10 @@ export class PullService {
   }
 }
 
-/** stash reflog subject 의 "On branch:" 접두어를 제거해 원래 메시지만 남긴다. */
-function stripStashSubject(subject: string): string {
-  const match = /^(?:WIP on|On) ([^:]+):\s?(.*)$/.exec(subject);
-  return match ? match[2] : subject;
+/** 설정 키 부재(exit 1)만 빈 값으로 바꾸고 인증·실행·파일 오류는 그대로 전달한다. */
+function missingConfigValue(error: unknown): string {
+  if (error instanceof GitError && error.code === 1) return "";
+  throw error;
 }
 
 /** unknown 오류를 사용자/로그에 넣기 좋은 짧은 문자열로 변환한다. */

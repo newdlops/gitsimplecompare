@@ -20,7 +20,7 @@ import {
 import { ConflictsController } from "../providers/conflictsController";
 import type { ConflictEditorOverlayController } from "../providers/conflictEditorOverlayController";
 import { openMergeEditorUri } from "../ui/mergePresenter";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 
 /**
  * 충돌 목록을 다시 읽어 갱신한다.
@@ -325,11 +325,13 @@ export async function rollbackPull(
   if (!release) return;
   try {
     try {
-      await service.rollbackLatestPull();
+      await service.rollbackLatestPull(snapshot.id);
+      logInfo("pull rollback completed", { repoRoot: svc.repoRoot, snapshotId: snapshot.id, branch: snapshot.branch });
       vscode.window.showInformationMessage(
         vscode.l10n.t("Pull was rolled back to the pre-pull state.")
       );
     } catch (err) {
+      logError("pull rollback failed", err, { repoRoot: svc.repoRoot, snapshotId: snapshot.id });
       vscode.window.showErrorMessage(
         vscode.l10n.t("Could not rollback pull: {0}", errorText(err))
       );

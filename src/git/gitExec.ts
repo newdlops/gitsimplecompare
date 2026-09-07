@@ -1,17 +1,27 @@
 // git CLI 를 실제로 실행하는 저수준 래퍼 모듈.
 // - 여러 git 서비스(GitService, GitLogService 등)가 공유하는 단일 실행 지점이다.
 //   execFile 로 셸을 거치지 않아 인자 이스케이프 문제가 없다.
-import { execFile } from "node:child_process";
+import { execFile, type ExecFileException } from "node:child_process";
 
 /** git 명령 실행 중 발생한 오류를 식별하기 위한 전용 에러 타입 */
 export class GitError extends Error {
+  /** Git 종료 코드 또는 ENOENT/EAGAIN 같은 프로세스 실행 오류 코드다. */
+  readonly code?: number | string;
+  readonly signal?: NodeJS.Signals | null;
+  readonly killed?: boolean;
+
+  /** 원래 실행 오류와 출력 스트림을 보존해 호출부가 실패 원인을 구분하게 한다. */
   constructor(
     message: string,
     public readonly stderr: string,
-    public readonly stdout = ""
+    public readonly stdout = "",
+    cause?: ExecFileException
   ) {
-    super(message);
+    super(message, { cause });
     this.name = "GitError";
+    this.code = cause?.code ?? undefined;
+    this.signal = cause?.signal;
+    this.killed = cause?.killed;
   }
 }
 
@@ -95,22 +105,9 @@ export async function runGitDetailed(
   options?: Record<string, string> | RunGitOptions
 ): Promise<GitCommandOutput> {
   const normalized = normalizeOptions(options);
-  const retryOnLock = normalized.retryOnLock !== false;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await runGitDetailedOnce(args, cwd, normalized.env, normalized.signal);
-    } catch (error) {
-      if (
-        !retryOnLock ||
-        !isRetryableGitError(error) ||
-        attempt >= LOCK_RETRY_DELAYS_MS.length
-      ) {
-        throw error;
-      }
-      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
-      await normalized.beforeRetry?.();
-    }
-  }
+  return withGitRetry(args, normalized, () =>
+    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal)
+  );
 }
 
 /**
@@ -125,7 +122,8 @@ function runGitDetailedOnce(
   args: string[],
   cwd: string,
   env?: Record<string, string>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  input?: GitInput
 ): Promise<GitCommandOutput> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -149,7 +147,8 @@ function runGitDetailedOnce(
             new GitError(
               `git ${args.join(" ")} 실패: ${error.message}`,
               stderr,
-              stdout
+              stdout,
+              error
             )
           );
           return;
@@ -160,6 +159,11 @@ function runGitDetailedOnce(
     /** AbortSignal과 child process를 연결해 supersede된 read가 남지 않게 한다. */
     const abort = () => child.kill();
     signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+    if (input !== undefined && child.stdin) {
+      child.stdin.on("error", () => undefined);
+      child.stdin.end(input);
+    }
   });
 }
 
@@ -179,22 +183,9 @@ export async function runGitWithInput(
   options?: Record<string, string> | RunGitOptions
 ): Promise<string> {
   const normalized = normalizeOptions(options);
-  const retryOnLock = normalized.retryOnLock !== false;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await runGitOnce(args, cwd, normalized.env, input);
-    } catch (error) {
-      if (
-        !retryOnLock ||
-        !isRetryableGitError(error) ||
-        attempt >= LOCK_RETRY_DELAYS_MS.length
-      ) {
-        throw error;
-      }
-      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
-      await normalized.beforeRetry?.();
-    }
-  }
+  return (await withGitRetry(args, normalized, () =>
+    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, input)
+  )).stdout;
 }
 
 /**
@@ -213,57 +204,35 @@ export async function runGitBuffer(
   options?: Record<string, string> | RunGitOptions
 ): Promise<Buffer> {
   const normalized = normalizeOptions(options);
-  const retryOnLock = normalized.retryOnLock !== false;
+  return withGitRetry(args, normalized, () =>
+    runGitBufferOnce(args, cwd, normalized.env, normalized.signal)
+  );
+}
+
+/**
+ * 모든 출력 형식에 같은 오류 분류·취소·재시도 전 검증을 적용한다.
+ * @param args 부작용 위험을 판단할 Git 명령 인자
+ * @param options 실행 취소 및 재시도 정책
+ * @param execute 실제 Git 프로세스를 한 번 실행하는 함수
+ * @returns 성공한 실행 결과. 취소나 재시도 불가 오류는 호출부로 전달한다.
+ */
+async function withGitRetry<T>(args: string[], options: RunGitOptions, execute: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await runGitBufferOnce(args, cwd, normalized.env);
+      return await execute();
     } catch (error) {
       if (
-        !retryOnLock ||
-        !isRetryableGitError(error) ||
+        options.signal?.aborted ||
+        options.retryOnLock === false ||
+        !isRetryableGitError(error, args) ||
         attempt >= LOCK_RETRY_DELAYS_MS.length
       ) {
         throw error;
       }
-      await sleep(LOCK_RETRY_DELAYS_MS[attempt]);
-      await normalized.beforeRetry?.();
+      await sleep(LOCK_RETRY_DELAYS_MS[attempt], options.signal);
+      await options.beforeRetry?.();
     }
   }
-}
-
-/** git 명령 한 번을 실행한다. lock 재시도 루프는 runGit 이 담당한다. */
-function runGitOnce(
-  args: string[],
-  cwd: string,
-  env?: Record<string, string>,
-  input?: GitInput
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      "git",
-      args,
-      {
-        cwd,
-        maxBuffer: MAX_GIT_BUFFER_BYTES,
-        windowsHide: true,
-        encoding: "utf8",
-        env: env ? { ...process.env, ...env } : undefined,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(
-            new GitError(`git ${args.join(" ")} 실패: ${error.message}`, stderr, stdout)
-          );
-          return;
-        }
-        resolve(stdout);
-      }
-    );
-    if (input !== undefined && child.stdin) {
-      child.stdin.on("error", () => undefined);
-      child.stdin.end(input);
-    }
-  });
 }
 
 /**
@@ -278,10 +247,15 @@ function runGitOnce(
 function runGitBufferOnce(
   args: string[],
   cwd: string,
-  env?: Record<string, string>
+  env?: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    execFile(
+    if (signal?.aborted) {
+      reject(new GitError(`git ${args.join(" ")} cancelled`, ""));
+      return;
+    }
+    const child = execFile(
       "git",
       args,
       {
@@ -292,6 +266,7 @@ function runGitBufferOnce(
         env: env ? { ...process.env, ...env } : undefined,
       },
       (error, stdout, stderr) => {
+        signal?.removeEventListener("abort", abort);
         if (error) {
           const stderrText = stderr.toString("utf8");
           const stdoutText = stdout.toString("utf8");
@@ -299,7 +274,8 @@ function runGitBufferOnce(
             new GitError(
               `git ${args.join(" ")} 실패: ${error.message}`,
               stderrText,
-              stdoutText
+              stdoutText,
+              error
             )
           );
           return;
@@ -307,6 +283,10 @@ function runGitBufferOnce(
         resolve(stdout);
       }
     );
+    /** Buffer 실행도 호출 취소 시 자식 Git을 종료하고 이후 재시도를 막는다. */
+    const abort = () => child.kill();
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
   });
 }
 
@@ -348,40 +328,65 @@ function gitConfigCount(explicit: string | undefined): number {
 
 /** git index/ref lock 이 다른 git 프로세스에 의해 잡힌 상황인지 확인한다. */
 function isGitLockError(error: GitError): boolean {
-  const text = `${error.message}\n${error.stderr}\n${error.stdout}`;
-  return (
-    /index\.lock/.test(text) ||
-    /cannot lock ref/i.test(text) ||
-    /unable to create .*\.lock/i.test(text) ||
-    /another git process seems to be running/i.test(text)
-  );
+  // 명령 인자/훅 stdout에는 사용자 파일명·커밋 메시지가 포함되므로 판정에 쓰지 않는다.
+  // 값 불일치나 ref 경로 충돌은 재시도로 해결되지 않으므로 실제 lock 파일 경합만 허용한다.
+  return /^(?:fatal|error): [^\r\n]*unable to create [^\r\n]*\.lock['"]?: File exists\.?\s*$/im.test(error.stderr);
 }
 
 /** git 실행 자체가 일시적 자원 오류나 lock 으로 실패했는지 확인한다. */
-function isRetryableGitError(error: unknown): boolean {
+function isRetryableGitError(error: unknown, args: string[]): boolean {
   if (error instanceof GitError) {
-    return isGitLockError(error) || isTransientSpawnError(error);
+    return (isGitLockError(error) && isSafeLockRetry(args)) || isTransientSpawnError(error);
   }
   const code =
     typeof error === "object" && error
       ? (error as { code?: unknown }).code
       : undefined;
-  const message = error instanceof Error ? error.message : String(error);
-  return isTransientSpawnError({ code, message });
+  return isTransientSpawnError({ code });
+}
+
+/**
+ * hook/원격/여러 ref를 이미 변경했을 수 있는 명령은 lock 오류여도 통째로 재실행하지 않는다.
+ * @param args 전역 Git 옵션을 포함한 실행 인자
+ * @returns 부분 변경이나 훅 중복 실행 위험이 작은 단일 작업이면 true
+ */
+function isSafeLockRetry(args: string[]): boolean {
+  for (let index = 0; index < args.length; index++) {
+    const value = args[index];
+    if (["-c", "-C", "--git-dir", "--work-tree", "--namespace"].includes(value)) {
+      index++;
+      continue;
+    }
+    if (value.startsWith("-")) continue;
+    return !["commit", "push", "pull", "merge", "rebase", "cherry-pick", "revert", "stash"].includes(value);
+  }
+  return false;
 }
 
 /** spawn/파일 디스크립터 계열의 일시적 실행 오류인지 확인한다. */
-function isTransientSpawnError(error: { code?: unknown; message: string }): boolean {
+function isTransientSpawnError(error: { code?: unknown }): boolean {
   return (
     error.code === "EBADF" ||
     error.code === "EMFILE" ||
     error.code === "ENFILE" ||
-    error.code === "EAGAIN" ||
-    /spawn (EBADF|EMFILE|ENFILE|EAGAIN)/i.test(error.message)
+    error.code === "EAGAIN"
   );
 }
 
-/** lock 이 풀릴 시간을 주기 위한 Promise 기반 sleep. */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** lock 대기 중 취소도 즉시 전달해 취소된 명령이 재실행되지 않게 한다. */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    /** 취소 시 타이머와 리스너를 정리하고 GitError로 실패를 전달한다. */
+    const abort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+      reject(new GitError("Git command cancelled during retry.", ""));
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+  });
 }

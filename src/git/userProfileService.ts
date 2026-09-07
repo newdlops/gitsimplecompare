@@ -105,17 +105,12 @@ function scopeFlag(scope: GitUserProfileScope): "--global" | "--local" {
 
 /**
  * git config key 가 설정되지 않아 발생한 실패인지 판별한다.
- * - 현재 GitError 는 exit code 를 보관하지 않으므로, stderr/stdout 이 모두 비고 spawn 오류가
- *   아닌 git config 실패만 "값 없음"으로 취급한다.
+ * - Git의 종료 코드 1만 값 부재로 취급해 실행 실패나 손상된 설정을 숨기지 않는다.
  * @param error git 실행 중 발생한 오류
  */
 function isUnsetConfigValue(error: unknown): boolean {
   if (!(error instanceof GitError)) {
     return false;
   }
-  return (
-    !error.stderr.trim() &&
-    !error.stdout.trim() &&
-    !/spawn|ENOENT|EACCES/i.test(error.message)
-  );
+  return error.code === 1;
 }
