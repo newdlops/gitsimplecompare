@@ -515,6 +515,7 @@ async function undoPullRequestOperation(
 ): Promise<void> {
   const service = new PullRequestOperationService(deps.logService.repoRoot);
   if (!await service.hasUndoSnapshot(branchName)) {
+    logInfo("PR operation undo unavailable for current worktree state", { repoRoot: deps.logService.repoRoot, branchName });
     vscode.window.showWarningMessage(
       branchName
         ? vscode.l10n.t("No PR operation snapshot is available for '{0}'.", branchName)
@@ -522,16 +523,15 @@ async function undoPullRequestOperation(
     );
     return;
   }
+  const plan = await service.prepareUndo(branchName);
   if (!(await confirm(
-    branchName
-      ? vscode.l10n.t("Undo the last PR operation on '{0}'? The branch will reset to the saved snapshot.", branchName)
-      : vscode.l10n.t("Undo the last PR operation on the current branch? The branch will reset to the saved snapshot."),
+    vscode.l10n.t("Undo the last PR operation on '{0}'? The branch will reset to the saved snapshot.", plan.branch),
     vscode.l10n.t("Undo PR Operation")
   ))) {
     return;
   }
   logInfo("pr operation undo started", { repoRoot: deps.logService.repoRoot });
-  const result = await service.undoLastOperation(branchName);
+  const result = await service.undoLastOperation(plan.branch, plan);
   logInfo("pr operation undo finished", {
     repoRoot: deps.logService.repoRoot,
     branch: result.branch,

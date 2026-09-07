@@ -1,7 +1,6 @@
 // PR 단위 cherry-pick/rebase/revert 명령을 조립하는 공개 Git 서비스.
 // - 상태/snapshot은 PullRequestOperationSnapshot, dirty worktree 실행은 Worktree,
 //   원본 object 준비는 PullRequestCommitMaterializer, revert 대상 선택은 RevertPlan에 위임한다.
-import { detectOperation } from "./conflictService";
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
 import { GitError, runGit } from "./gitExec";
 import { PullRequestCommitMaterializer, type PullRequestCommitMaterialization } from "./pullRequestCommitMaterializer";
@@ -20,11 +19,9 @@ import {
   type PullRequestRevertOperation,
   type PullRequestRevertPlan,
 } from "./pullRequestRevertPlan";
-import { assertCurrentBranchHead } from "./refSafety";
-import {
-  pushPreservedLocalChangesStash,
-  restorePreservedLocalChangesStash,
-} from "./stashExec";
+import { pushPreservedLocalChangesStash } from "./stashExec";
+import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
+import type { OperationUndoPlan } from "./operationUndoStore";
 
 export type {
   PullRequestOperationResult,
@@ -86,6 +83,7 @@ export class PullRequestOperationService {
         branch,
         beforeHead
       );
+      await this.state.recordCompleted(result.branch, result.snapshotRef);
       await this.releasePreparedCommitsQuietly(prepared);
       return result;
     }
@@ -102,8 +100,10 @@ export class PullRequestOperationService {
       await runGit(["add", "-A"], this.repoRoot);
       await this.worktree.commitSquash(pr, this.repoRoot);
     } catch (error) {
+      await this.state.recordFailedSquash(branch, snapshotRef);
       throw error instanceof Error ? error : new Error(String(error));
     }
+    await this.state.recordCompleted(branch, snapshotRef);
     const result: PullRequestOperationResult = {
       status: "completed",
       branch,
@@ -145,6 +145,7 @@ export class PullRequestOperationService {
         destinationBranch,
         beforeHead
       );
+      await this.state.recordCompleted(result.branch, result.snapshotRef);
       await this.releasePreparedCommitsQuietly(prepared);
       return result;
     }
@@ -183,22 +184,20 @@ export class PullRequestOperationService {
       }
       return operationResult;
     } catch (error) {
-      const restored = await this.restoreAfterFailedDeferredRebase(
-        preserved,
-        destinationBranch,
-        beforeHead,
-        snapshotRef,
-        "PR rebase merge failed, but local changes could not be restored."
-      );
+      const { restored, notice } = await recoverFailedRebaseStart({
+        repoRoot: this.repoRoot, branch: destinationBranch, beforeHead, snapshotRef, preservedStashHash: preserved?.hash,
+      });
       if (restored) {
         await this.state.deleteSnapshotRef(destinationBranch, snapshotRef);
         await this.releasePreparedCommitsQuietly(prepared);
       }
-      throw this.withPreservedStashNotice(
+      const failure = this.withPreservedStashNotice(
         error,
         restored ? undefined : preserved,
         destinationBranch
       );
+      failure.message += notice;
+      throw failure;
     }
   }
 
@@ -245,6 +244,7 @@ export class PullRequestOperationService {
         destinationBranch,
         beforeHead
       );
+      await this.state.recordCompleted(result.branch, result.snapshotRef);
       if (result.status === "completed") {
         await this.releaseRevertPlanQuietly(plan);
       }
@@ -284,22 +284,20 @@ export class PullRequestOperationService {
         preservedStashHash: result.preservedStashHash,
       };
     } catch (error) {
-      const restored = await this.restoreAfterFailedDeferredRebase(
-        preserved,
-        destinationBranch,
-        beforeHead,
-        snapshotRef,
-        "PR rebase revert failed, but local changes could not be restored."
-      );
+      const { restored, notice } = await recoverFailedRebaseStart({
+        repoRoot: this.repoRoot, branch: destinationBranch, beforeHead, snapshotRef, preservedStashHash: preserved?.hash,
+      });
       if (restored) {
         await this.state.deleteSnapshotRef(destinationBranch, snapshotRef);
         releasePlan = true;
       }
-      throw this.withPreservedStashNotice(
+      const failure = this.withPreservedStashNotice(
         error,
         restored ? undefined : preserved,
         destinationBranch
       );
+      failure.message += notice;
+      throw failure;
     } finally {
       if (releasePlan) {
         await this.releaseRevertPlanQuietly(plan);
@@ -349,6 +347,7 @@ export class PullRequestOperationService {
         branch,
         beforeHead
       );
+      await this.state.recordCompleted(result.branch, result.snapshotRef);
       if (result.status === "completed") {
         await this.releaseRevertPlanQuietly(plan);
       }
@@ -366,6 +365,7 @@ export class PullRequestOperationService {
       }
       await runGit(["add", "-A"], this.repoRoot);
       await this.worktree.commitSquashRevert(pr, this.repoRoot);
+      await this.state.recordCompleted(branch, snapshotRef);
       const result: PullRequestOperationResult = {
         status: "completed",
         branch,
@@ -377,6 +377,7 @@ export class PullRequestOperationService {
       await this.releaseRevertPlanQuietly(plan);
       return result;
     } catch (error) {
+      await this.state.recordFailedSquash(branch, snapshotRef);
       if (await this.state.hasUnmergedChanges()) {
         return {
           status: "conflicts",
@@ -387,7 +388,6 @@ export class PullRequestOperationService {
           sourceBranch: this.sourceLabel(pr, plan),
         };
       }
-      await this.state.deleteSnapshotRef(branch, snapshotRef);
       await this.releaseRevertPlanQuietly(plan);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -436,11 +436,18 @@ export class PullRequestOperationService {
   /**
    * 현재 브랜치의 마지막 PR 작업을 snapshot으로 되돌린다.
    * @param branchName 오류 metadata에서 복구한 선택적 대상 브랜치
+   * @param approvedPlan 확인창을 열기 전에 고정한 Undo 대상
    */
   async undoLastOperation(
-    branchName?: string
+    branchName?: string,
+    approvedPlan?: OperationUndoPlan
   ): Promise<PullRequestOperationUndoResult> {
-    return this.state.undoLastOperation(branchName);
+    return this.state.undoLastOperation(branchName, approvedPlan);
+  }
+
+  /** 확인창 이전에 동일 worktree의 PR 작업 ID와 HEAD를 고정해 승인 대상 교체를 막는다. */
+  async prepareUndo(branchName?: string): Promise<OperationUndoPlan> {
+    return this.state.prepareUndo(branchName);
   }
 
   /**
@@ -516,47 +523,6 @@ export class PullRequestOperationService {
       this.repoRoot,
       `Git Simple Compare ${reason}`
     );
-  }
-
-  /** 보존 stash를 working tree에 복원하고 성공하면 stash 목록에서 제거한다. */
-  private async restorePreservedLocalChanges(
-    preserved: PreservedLocalChanges | undefined,
-    failureMessage: string
-  ): Promise<void> {
-    if (!preserved) {
-      return;
-    }
-    await restorePreservedLocalChangesStash(
-      this.repoRoot,
-      preserved.hash,
-      failureMessage
-    );
-  }
-
-  /**
-   * deferred rebase 시작 중 실패하면 snapshot으로 원복하고 사용자 stash를 복원한다.
-   * 이미 conflict operation이 시작됐으면 상태를 보존해야 하므로 false를 반환한다.
-   */
-  private async restoreAfterFailedDeferredRebase(
-    preserved: PreservedLocalChanges | undefined,
-    branch: string,
-    beforeHead: string,
-    snapshotRef: string,
-    restoreFailureMessage: string
-  ): Promise<boolean> {
-    if (await detectOperation(this.repoRoot) !== "none") {
-      return false;
-    }
-    await this.state.switchToBranch(branch);
-    await assertCurrentBranchHead(
-      this.repoRoot,
-      branch,
-      beforeHead,
-      "restoring failed PR operation"
-    );
-    await runGit(["reset", "--hard", snapshotRef], this.repoRoot);
-    await this.restorePreservedLocalChanges(preserved, restoreFailureMessage);
-    return true;
   }
 
   /**

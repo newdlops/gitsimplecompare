@@ -16,6 +16,7 @@ import {
   restorePreservedLocalChangesStash,
 } from "./stashExec";
 import { assertCurrentBranchHead } from "./refSafety";
+import { OperationUndoStore } from "./operationUndoStore";
 
 /** deferred rebase 실행에 필요한 입력값 */
 export interface DeferredCommitRebaseInput {
@@ -194,14 +195,16 @@ export async function dropPendingDeferredCommitRebaseStashAfterResolvedRestore(
  * @param repoRoot git 저장소 루트
  * @param branch 복원 대상 브랜치
  * @param failureMessage stash 복원 실패 시 붙일 사용자 메시지
+ * @param snapshotRef Undo가 승인받은 작업의 immutable snapshot
  */
 export async function restorePendingDeferredCommitRebaseLocalChangesForBranch(
   repoRoot: string,
   branch: string,
-  failureMessage: string
+  failureMessage: string,
+  snapshotRef: string
 ): Promise<void> {
   const pending = await readPendingDeferredCommitRebase(repoRoot);
-  if (!pending || pending.destinationBranch !== branch) {
+  if (!pending || pending.destinationBranch !== branch || pending.snapshotRef !== snapshotRef) {
     return;
   }
   await restorePendingLocalChanges(repoRoot, pending, failureMessage);
@@ -261,6 +264,7 @@ async function applyPendingDeferredCommitQueue(
         currentCommit: commit,
         remainingCommits: remaining,
       });
+      await recordDeferredUndoState(repoRoot, state, "replay");
       return {
         status: "conflicts",
         branch: state.destinationBranch,
@@ -291,6 +295,7 @@ async function finishPendingDeferredCommitRebase(
 ): Promise<DeferredCommitRebaseResumeResult> {
   const state = { ...pending, operationHead: await currentHead(repoRoot) };
   await writePendingDeferredCommitRebase(repoRoot, state);
+  await recordDeferredUndoState(repoRoot, state, "completed");
   try {
     await restorePendingLocalChanges(
       repoRoot,
@@ -315,6 +320,21 @@ async function finishPendingDeferredCommitRebase(
     restoredLocalChanges: Boolean(state.preservedStashHash),
     operation: state.operation,
   };
+}
+
+/**
+ * PR 큐의 충돌/완료 결과를 저장한다. 임시 worktree·이전 버전 작업은 출처를 새로 추정하지 않는다.
+ * @param repoRoot 실제 replay가 실행된 worktree
+ * @param pending 이 큐를 시작한 snapshot 정보
+ * @param phase 방금 만든 충돌 또는 완료 상태
+ */
+async function recordDeferredUndoState(
+  repoRoot: string,
+  pending: PendingDeferredCommitRebase,
+  phase: "replay" | "completed"
+): Promise<void> {
+  if (pending.kind === "branch-rebase") return;
+  await new OperationUndoStore(repoRoot, "pull-request").capture(pending.destinationBranch, pending.snapshotRef, phase, true);
 }
 
 /**

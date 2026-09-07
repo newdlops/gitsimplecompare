@@ -5,7 +5,8 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
-import { BranchOperationUndoStore } from "./branchOperationUndoStore";
+import { OperationUndoStore as BranchOperationUndoStore } from "./operationUndoStore";
+import { logError } from "../ui/outputLog";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import {
   dropPreservedLocalChangesStash,
@@ -98,7 +99,7 @@ export async function runBranchRebaseMerge(
         rebaseTodo: await readRebaseTodoProgress(input.repoRoot).catch(() => undefined),
       };
     }
-    await cleanupFailedStart(input.repoRoot, pending);
+    await cleanupFailedStart(input.repoRoot, pending).catch(error => logError("branch rebase pending cleanup failed", error));
     throw err instanceof Error ? err : new Error(String(err));
   }
 }
@@ -351,13 +352,14 @@ async function hasUnmergedChanges(repoRoot: string): Promise<boolean> {
   return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot).catch(() => "")).length > 0;
 }
 
-/** 예상치 못한 시작 실패 뒤 원래 브랜치로 돌아가고 pending 상태를 정리한다. */
+/** 시작 실패 뒤 자신이 쓴 pending만 정리한다. 사용자가 옮긴 브랜치는 이동하지 않는다. */
 async function cleanupFailedStart(
   repoRoot: string,
   pending: PendingBranchRebaseMerge
 ): Promise<void> {
-  await switchToBranch(repoRoot, pending.branch).catch(() => undefined);
-  await clearPendingBranchRebaseMerge(repoRoot).catch(() => undefined);
+  if ((await readPendingBranchRebaseMerge(repoRoot))?.snapshotRef === pending.snapshotRef) {
+    await clearPendingBranchRebaseMerge(repoRoot);
+  }
 }
 
 /** 보존 stash 를 복원한다. */

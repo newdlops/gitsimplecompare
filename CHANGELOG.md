@@ -5,6 +5,22 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72052] - 2026-09-07
+
+### Fixed
+
+- Failed rebase startup no longer hard-resets files or switches back over a
+  user's newer branch selection. New edits, staged changes and later commits
+  retain their recovery snapshot and stash. Safe startup recovery restores the
+  original staged and unstaged state while preserving the initial Git error.
+- PR Undo now verifies the operation ID, worktree, HEAD and Git operation
+  generation. Unrelated rebases, cherry-picks, reverts, stash conflicts and
+  newly staged changes stop Undo without discarding manual work. Confirmation
+  stays bound to the original operation, and stash restoration requires the
+  matching immutable snapshot. Completed, conflicted and continued PR actions
+  record their own recovery state; older snapshots without ownership metadata
+  remain available for manual recovery.
+
 ## [0.1.72051] - 2026-09-07
 
 ### Fixed

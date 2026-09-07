@@ -1,14 +1,11 @@
 // PR 작업의 브랜치 상태 검사, undo snapshot, 안전한 reset을 담당하는 Git snapshot 모듈.
 // - 실제 cherry-pick/revert 조립과 분리해 snapshot 생명주기를 다른 PR 작업에서도 재사용한다.
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
-import { detectOperation, type MergeOperation } from "./conflictService";
+import { detectOperation } from "./conflictService";
 import { restorePendingDeferredCommitRebaseLocalChangesForBranch } from "./deferredCommitRebase";
 import { GitError, runGit } from "./gitExec";
 import {
   PULL_REQUEST_OPERATION_COMMANDS,
   createSnapshotSnowflake,
-  legacySnapshotRefForBranch,
   snapshotRefForBranch,
   snapshotRefForCommand,
   snapshotRefForCommandSnowflake,
@@ -16,6 +13,8 @@ import {
 } from "./pullRequestOperationFormat";
 import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestRebaseContinuation";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
+import { OperationUndoStore, type OperationUndoPlan } from "./operationUndoStore";
+import { logInfo } from "../ui/outputLog";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -28,7 +27,12 @@ export interface PullRequestOperationUndoResult {
  * 작업 내용 생성은 담당하지 않고, 브랜치 이동과 사용자 변경 보호 규칙만 한곳에서 강제한다.
  */
 export class PullRequestOperationSnapshot {
-  constructor(public readonly repoRoot: string) {}
+  private readonly undoStore: OperationUndoStore;
+
+  /** 개별 worktree의 PR 기록만 사용해 다른 브랜치 작업의 snapshot과 섞이지 않게 한다. */
+  constructor(public readonly repoRoot: string) {
+    this.undoStore = new OperationUndoStore(repoRoot, "pull-request");
+  }
 
   /**
    * PR 작업 전 진행 중인 Git operation과 unmerged index가 없는지 확인한다.
@@ -160,6 +164,7 @@ export class PullRequestOperationSnapshot {
         snapshotRef
       );
       await this.updateLatestSnapshotRef(snapshotRefForBranch(branch), snapshotRef);
+      await this.undoStore.start(branch, head, snapshotRef);
       return snapshotRef;
     } catch (error) {
       await this.deleteSnapshotRef(branch, snapshotRef);
@@ -191,38 +196,55 @@ export class PullRequestOperationSnapshot {
 
   /**
    * 현재 브랜치의 마지막 PR 작업을 시작 전 snapshot으로 되돌린다.
-   * 진행 중인 rebase/cherry-pick은 먼저 abort하고, 보존 stash도 해당 브랜치에 복원한다.
+   * 같은 작업 ID와 Git 상태를 다시 검증한 뒤 해당 작업과 일치하는 stash만 복원한다.
    * @param branchName detached rebase 등에서 호출자가 알고 있는 대상 브랜치
+   * @param approvedPlan 확인창을 열기 전에 고정한 Undo 계획
    * @returns 복원된 브랜치와 HEAD
    */
   async undoLastOperation(
-    branchName?: string
+    branchName?: string,
+    approvedPlan?: OperationUndoPlan
   ): Promise<PullRequestOperationUndoResult> {
-    const branch = branchName || await this.currentBranchForUndo();
-    const snapshotRef = await this.latestSnapshotRefForBranch(branch);
-    const restoredHead = await this.resolveSnapshot(snapshotRef);
-    const operation = await this.assertReadyForUndo();
-    const currentBranch = await this.currentBranch().catch(() => "");
-    if (branch !== currentBranch) {
-      if (operation !== "none") {
-        await this.abortOperationIfNeeded(operation);
-        if (await this.currentBranch().catch(() => "") !== branch) {
-          await this.switchToBranch(branch);
-        }
-        await this.resetCurrentBranchToSnapshot(snapshotRef);
-        await this.restorePendingLocalChanges(branch);
-        await this.deleteSnapshotRef(branch, snapshotRef);
-        return { branch, restoredHead };
+    const plan = approvedPlan ?? await this.prepareUndo(branchName);
+    const { branch, snapshotRef, restoredHead } = plan;
+    try {
+      await this.undoStore.undo(plan);
+      if (plan.worktreeBranch === branch) {
+        await this.restorePendingLocalChanges(branch, snapshotRef);
       }
-      await this.updateBranchRef(branch, snapshotRef);
+      await this.undoStore.remove(plan);
       await this.deleteSnapshotRef(branch, snapshotRef);
       return { branch, restoredHead };
+    } catch (error) {
+      logInfo("PR operation undo stopped; recovery snapshot preserved", {
+        repoRoot: this.repoRoot, branch, snapshotRef, id: plan.id, error: gitErrorText(error),
+      });
+      throw error;
     }
-    await this.abortOperationIfNeeded(operation);
-    await this.resetCurrentBranchToSnapshot(snapshotRef);
-    await this.restorePendingLocalChanges(branch);
-    await this.deleteSnapshotRef(branch, snapshotRef);
-    return { branch, restoredHead };
+  }
+
+  /** 확인창 이전의 작업 ID·브랜치·HEAD를 고정한다. 출처를 검증할 수 없으면 실행을 차단한다. */
+  async prepareUndo(branchName?: string): Promise<OperationUndoPlan> {
+    return this.undoStore.prepare(branchName);
+  }
+
+  /** 완료된 PR 결과를 기록한다. 실제 결과 적용 후, 사용자 stash를 복원하기 전에 호출한다. */
+  async recordCompleted(branch: string, snapshotRef: string): Promise<void> {
+    await this.undoStore.capture(branch, snapshotRef, "completed");
+  }
+
+  /**
+   * 실패한 squash의 부분 결과를 기록하되 기록 실패가 원래 Git 오류를 가리지 않게 한다.
+   * @param branch 이 호출이 작업을 시작한 브랜치
+   * @param snapshotRef 다른 작업과 구별할 immutable snapshot
+   */
+  async recordFailedSquash(branch: string, snapshotRef: string): Promise<void> {
+    try {
+      const operation = await detectOperation(this.repoRoot);
+      await this.undoStore.capture(branch, snapshotRef, operation === "none" ? "squash" : "replay");
+    } catch (error) {
+      logInfo("PR partial result could not be bound to Undo", { repoRoot: this.repoRoot, branch, snapshotRef, error: gitErrorText(error) });
+    }
   }
 
   /**
@@ -231,13 +253,7 @@ export class PullRequestOperationSnapshot {
    * @param branchName 확인할 브랜치. 생략하면 현재/진행 중 rebase 브랜치를 찾는다.
    */
   async hasUndoSnapshot(branchName?: string): Promise<boolean> {
-    const branch = branchName || await this.currentBranchForUndo().catch(() => "");
-    if (!branch) {
-      return false;
-    }
-    return Boolean(
-      await this.latestSnapshotRefForBranch(branch).catch(() => "")
-    );
+    return this.prepareUndo(branchName).then(() => true, () => false);
   }
 
   /**
@@ -304,108 +320,12 @@ export class PullRequestOperationSnapshot {
     }
   }
 
-  /** PR undo가 새 사용자 변경이나 무관한 Git operation을 덮지 않는지 확인한다. */
-  private async assertReadyForUndo(): Promise<MergeOperation> {
-    const operation = await detectOperation(this.repoRoot);
-    if (operation === "merge" || operation === "revert") {
-      throw new Error(`Cannot undo PR operation while ${operation} is in progress.`);
-    }
-    if (operation === "none") {
-      await this.assertNoUnmergedChanges();
-    }
-    return operation;
-  }
-
-  /**
-   * undo 대상 브랜치를 찾는다.
-   * rebase 중 detached HEAD라면 Git rebase metadata의 원래 branch 이름을 사용한다.
-   */
-  private async currentBranchForUndo(): Promise<string> {
-    const branch = await this.currentBranch().catch(() => "");
-    if (branch) {
-      return branch;
-    }
-    if (await detectOperation(this.repoRoot) === "rebase") {
-      const rebaseBranch = await this.currentRebaseBranch();
-      if (rebaseBranch) {
-        return rebaseBranch;
-      }
-    }
-    throw new Error("PR operation undo requires a checked-out local branch.");
-  }
-
-  /** 진행 중인 rebase의 원래 branch 이름을 Git 상태 파일에서 읽는다. */
-  private async currentRebaseBranch(): Promise<string | undefined> {
-    const gitDirRaw = (
-      await runGit(["rev-parse", "--git-dir"], this.repoRoot)
-    ).trim();
-    const gitDir = path.resolve(this.repoRoot, gitDirRaw);
-    for (const file of ["rebase-merge/head-name", "rebase-apply/head-name"]) {
-      const raw = await fs.readFile(path.join(gitDir, file), "utf8").catch(() => "");
-      const branch = raw.trim().replace(/^refs\/heads\//, "");
-      if (branch) {
-        return branch;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * checkout되지 않은 브랜치를 snapshot으로 이동한다.
-   * - branch 명령의 worktree 검사를 사용해 다른 worktree의 HEAD만 바뀌는 일을 막는다.
-   * @param branch 복원할 로컬 브랜치
-   * @param ref 복원할 snapshot ref
-   */
-  private async updateBranchRef(branch: string, ref: string): Promise<void> {
-    await runGit(["branch", "--force", "--", branch, ref], this.repoRoot, { retryOnLock: false });
-  }
-
   /** latest symbolic ref가 특정 immutable snapshot을 가리키도록 갱신한다. */
   private async updateLatestSnapshotRef(
     latestRef: string,
     snapshotRef: string
   ): Promise<void> {
     await runGit(["symbolic-ref", latestRef, snapshotRef], this.repoRoot);
-  }
-
-  /** 브랜치의 최신 snapshot을 command별·legacy ref까지 호환해 찾는다. */
-  private async latestSnapshotRefForBranch(branch: string): Promise<string> {
-    const branchLatest = await this.resolvedSnapshotRef(snapshotRefForBranch(branch));
-    if (branchLatest) {
-      return branchLatest;
-    }
-    const commandLatest = (
-      await Promise.all(
-        PULL_REQUEST_OPERATION_COMMANDS.map(async (command) => {
-          const ref = await this.resolvedSnapshotRef(
-            snapshotRefForCommand(branch, command)
-          );
-          return ref ? { ref, sortKey: snapshotSortKey(ref) } : undefined;
-        })
-      )
-    )
-      .filter((item): item is { ref: string; sortKey: string } => Boolean(item))
-      .sort((left, right) => right.sortKey.localeCompare(left.sortKey))[0];
-    if (commandLatest) {
-      return commandLatest.ref;
-    }
-    const legacy = await this.resolvedSnapshotRef(
-      legacySnapshotRefForBranch(branch)
-    );
-    if (legacy) {
-      return legacy;
-    }
-    throw new Error("No PR operation snapshot is available for the current branch.");
-  }
-
-  /** symbolic latest ref를 실제 snapshot으로 풀고 유효한 commit일 때만 반환한다. */
-  private async resolvedSnapshotRef(ref: string): Promise<string | undefined> {
-    const target = await this.symbolicRefTarget(ref);
-    const snapshotRef = target || ref;
-    return this.resolveSnapshot(snapshotRef).then(
-      () => snapshotRef,
-      () => undefined
-    );
   }
 
   /** symbolic ref의 target을 반환하며 일반 ref거나 없으면 undefined를 반환한다. */
@@ -427,55 +347,23 @@ export class PullRequestOperationSnapshot {
     }
   }
 
-  /** undo snapshot ref가 실제 commit이면 전체 hash를 반환한다. */
-  private async resolveSnapshot(ref: string): Promise<string> {
-    const hash = await runGit(
-      ["rev-parse", "--verify", `${ref}^{commit}`],
-      this.repoRoot
-    ).catch(() => "");
-    if (!hash.trim()) {
-      throw new Error("No PR operation snapshot is available for the current branch.");
-    }
-    return hash.trim();
-  }
-
-  /** 진행 중인 rebase/cherry-pick류 작업을 undo 전에 중단한다. */
-  private async abortOperationIfNeeded(operation: MergeOperation): Promise<void> {
-    if (operation !== "none") {
-      await runGit([operation, "--abort"], this.repoRoot);
-    }
-  }
-
-  /** 현재 브랜치를 snapshot으로 되돌리되 로컬 변경을 덮으면 snapshot을 남기고 중단한다. */
-  private async resetCurrentBranchToSnapshot(snapshotRef: string): Promise<void> {
-    await this.resetCurrentBranchPreservingLocalChanges(
-      snapshotRef,
-      "PR operation undo would overwrite local changes, so it was stopped. " +
-        "Commit or stash the local changes, then run undo again. " +
-        `The undo snapshot was kept at ${snapshotRef}.`
-    );
-  }
-
   /** 두 deferred PR 경로가 보존한 사용자 변경을 undo 대상 브랜치에 복원한다. */
-  private async restorePendingLocalChanges(branch: string): Promise<void> {
+  private async restorePendingLocalChanges(branch: string, snapshotRef: string): Promise<void> {
     const message =
       "PR operation was undone, but preserved local changes could not be restored.";
     await restorePendingPullRequestLocalChangesForBranch(
       this.repoRoot,
       branch,
-      message
+      message,
+      snapshotRef
     );
     await restorePendingDeferredCommitRebaseLocalChangesForBranch(
       this.repoRoot,
       branch,
-      message
+      message,
+      snapshotRef
     );
   }
-}
-
-/** snapshot ref의 snowflake 끝부분을 최신순 정렬 키로 반환한다. */
-function snapshotSortKey(ref: string): string {
-  return ref.split("/").pop() || "";
 }
 
 /** GitError의 stderr/stdout을 보존해 reset 실패 복구 안내에 포함한다. */

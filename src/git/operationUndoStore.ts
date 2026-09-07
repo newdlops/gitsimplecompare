@@ -1,4 +1,4 @@
-// 브랜치 Undo snapshot을 작업 ID, worktree, Git 작업 세대와 연결해 다른 변경의 폐기를 막는다.
+// 브랜치/PR Undo snapshot을 작업 ID, worktree, Git 작업 세대와 연결해 다른 변경의 폐기를 막는다.
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
@@ -7,10 +7,10 @@ import { readConflictOperationEpoch } from "./conflictOperationEpoch";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
 
-type Phase = "prepared" | "completed" | "squash" | "rebase" | "restoring";
+type Phase = "prepared" | "completed" | "squash" | "rebase" | "replay" | "restoring";
 
 /** 확인창을 열기 전에 고정하고 실행 직전에 다시 검증할 Undo 대상이다. */
-export interface BranchOperationUndoPlan {
+export interface OperationUndoPlan {
   id: string;
   branch: string;
   snapshotRef: string;
@@ -18,6 +18,8 @@ export interface BranchOperationUndoPlan {
   expectedHead: string;
   phase: Phase;
   operation: MergeOperation;
+  worktreeBranch: string;
+  worktreeHead: string;
 }
 
 interface Binding {
@@ -41,11 +43,13 @@ interface RepositoryState {
   index: string;
   unmerged: boolean;
   rebase: string;
+  sequencer: string;
 }
 
-/** 동일 worktree에서 만든 브랜치 작업 snapshot의 생성·검증·복구 수명주기를 관리한다. */
-export class BranchOperationUndoStore {
-  constructor(private readonly repoRoot: string) {}
+/** 동일 worktree에서 만든 브랜치/PR snapshot의 생성·검증·복구 수명주기를 관리한다. */
+export class OperationUndoStore {
+  /** family로 브랜치와 PR의 기록 영역을 분리하고 기존 브랜치 기록의 형식을 유지한다. */
+  constructor(private readonly repoRoot: string, private readonly family: "branch" | "pull-request" = "branch") {}
 
   /**
    * 새 snapshot에 고유 작업 ID를 부여한다. 아직 결과를 기록하지 않은 상태는 자동 Undo하지 않는다.
@@ -64,10 +68,10 @@ export class BranchOperationUndoStore {
    * 완료 또는 부분 적용 결과를 기록해 이후 별개의 stash 충돌/새 rebase와 구분한다.
    * @param branch snapshot 소유 브랜치
    * @param snapshotRef 이 호출이 시작한 snapshot ref
-   * @param phase 완료, squash 부분 적용, rebase 중단 중 하나
+   * @param phase 완료, squash 부분 적용, rebase 또는 PR cherry-pick/revert 중단 상태
    * @param allowMissing 이전 버전에서 시작한 rebase의 완료를 허용하되 Undo 기록은 추정하지 않는다.
    */
-  async capture(branch: string, snapshotRef: string, phase: "completed" | "squash" | "rebase", allowMissing = false): Promise<void> {
+  async capture(branch: string, snapshotRef: string, phase: "completed" | "squash" | "rebase" | "replay", allowMissing = false): Promise<void> {
     const binding = await this.read(branch);
     // 업데이트 전 시작한 rebase는 계속할 수 있지만 출처 없는 자동 Undo 기록은 새로 만들지 않는다.
     if (!binding && allowMissing) return;
@@ -78,13 +82,15 @@ export class BranchOperationUndoStore {
       if (state.operation !== "rebase" || !state.rebase) throw staleUndo();
       const owner = await this.rebaseBranch();
       if (owner !== branch) throw staleUndo();
+    } else if (phase === "replay") {
+      if (state.branch !== branch || !["cherry-pick", "revert"].includes(state.operation)) throw staleUndo();
     } else if (state.branch !== branch || state.operation !== "none") {
       throw staleUndo();
     }
     if (phase === "squash" && state.head !== binding.beforeHead) throw staleUndo();
     await this.write({ ...binding, phase, state });
-    logInfo("branch operation recovery recorded", {
-      repoRoot: this.repoRoot, branch, snapshotRef, phase, id: binding.id,
+    logInfo("operation recovery recorded", {
+      repoRoot: this.repoRoot, family: this.family, branch, snapshotRef, phase, id: binding.id,
     });
   }
 
@@ -93,30 +99,42 @@ export class BranchOperationUndoStore {
    * @param branch 확인할 브랜치. 생략하면 현재/진행 중 rebase의 브랜치를 찾는다.
    * @returns snapshot ID와 현재 HEAD에 고정된 Undo 계획
    */
-  async prepare(branch?: string): Promise<BranchOperationUndoPlan> {
+  async prepare(branch?: string): Promise<OperationUndoPlan> {
     const target = branch || await this.currentBranch() || await this.rebaseBranch();
     if (!target) throw staleUndo();
     const binding = await this.read(target);
     if (!binding || !binding.state || binding.phase === "prepared") throw staleUndo();
     await this.assertSnapshot(binding);
     const state = await this.readState();
+    const offBranch = state.branch !== target;
+    const targetHead = offBranch
+      ? (await runGit(["rev-parse", "--verify", `refs/heads/${target}^{commit}`], this.repoRoot)).trim()
+      : state.head;
     if (binding.phase === "rebase") {
       if (state.operation !== "rebase" || !state.rebase || state.rebase !== binding.state.rebase ||
           await this.rebaseBranch() !== binding.branch) throw staleUndo();
+    } else if (binding.phase === "replay") {
+      // 충돌 뒤 새로 스테이징한 사용자 변경은 abort가 폐기할 수 있어 자동 Undo를 중단한다.
+      if (offBranch || state.head !== binding.state.head || state.operation !== binding.state.operation ||
+          state.epoch !== binding.state.epoch || state.sequencer !== binding.state.sequencer ||
+          state.index !== binding.state.index) throw staleUndo();
     } else {
-      if (state.branch !== target || state.head !== binding.state.head || state.operation !== "none") throw staleUndo();
+      if ((offBranch && (this.family !== "pull-request" || !["completed", "restoring"].includes(binding.phase))) ||
+          targetHead !== binding.state.head || state.operation !== "none") throw staleUndo();
       if (binding.phase === "squash") {
         if (state.headLog !== binding.state.headLog || state.epoch !== binding.state.epoch ||
-            state.squash !== binding.state.squash || state.index !== binding.state.index) throw staleUndo();
-      } else if (state.unmerged) {
+            state.squash !== binding.state.squash || state.index !== binding.state.index ||
+            (this.family === "pull-request" && state.sequencer !== binding.state.sequencer)) throw staleUndo();
+      } else if (state.unmerged || (this.family === "pull-request" && state.sequencer)) {
         // 완료된 작업의 snapshot으로 나중에 발생한 stash/checkout 충돌을 폐기하지 않는다.
         throw staleUndo();
       }
     }
     return {
       id: binding.id, branch: target, snapshotRef: binding.snapshotRef,
-      restoredHead: binding.beforeHead, expectedHead: state.head,
+      restoredHead: binding.beforeHead, expectedHead: targetHead,
       phase: binding.phase, operation: state.operation,
+      worktreeBranch: state.branch, worktreeHead: state.head,
     };
   }
 
@@ -125,11 +143,17 @@ export class BranchOperationUndoStore {
    * @param plan 확인창 이전에 확정한 작업 ID/HEAD
    * @returns 복원 완료 후의 브랜치와 HEAD는 plan.branch/restoredHead와 같다.
    */
-  async undo(plan: BranchOperationUndoPlan): Promise<void> {
+  async undo(plan: OperationUndoPlan): Promise<void> {
     const current = await this.prepare(plan.branch);
     if (JSON.stringify(current) !== JSON.stringify(plan)) throw staleUndo();
-    if (plan.operation === "rebase") {
-      await runGit(["rebase", "--abort"], this.repoRoot, { retryOnLock: false });
+    if (this.family === "pull-request" && plan.worktreeBranch !== plan.branch) {
+      // Git 자체의 worktree 검사를 유지해 다른 worktree에서 사용 중인 브랜치를 이동하지 않는다.
+      await runGit(["branch", "--force", "--", plan.branch, plan.restoredHead], this.repoRoot, { retryOnLock: false });
+    } else if (plan.operation !== "none") {
+      await runGit([plan.operation, "--abort"], this.repoRoot, { retryOnLock: false });
+      if (plan.phase === "replay") {
+        await runGit(["reset", "--keep", plan.restoredHead], this.repoRoot, { retryOnLock: false });
+      }
     } else if (plan.phase !== "restoring") {
       // --merge는 squash의 index를 되돌리면서 다른 파일의 unstaged 변경을 보존한다.
       const mode = plan.phase === "squash" ? "--merge" : "--keep";
@@ -138,17 +162,22 @@ export class BranchOperationUndoStore {
     await this.assertRestored(plan);
     const binding = await this.read(plan.branch);
     if (!binding || binding.id !== plan.id) throw staleUndo();
-    await this.write({ ...binding, phase: "restoring", state: await this.readState() });
+    const state = await this.readState();
+    await this.write({ ...binding, phase: "restoring", state: { ...state, head: plan.restoredHead } });
   }
 
   /**
    * stash 복원 직전과 정리 직전에 원래 브랜치/HEAD가 유지되는지 확인한다.
    * @param plan 복원 중인 작업
    */
-  async assertRestored(plan: BranchOperationUndoPlan): Promise<void> {
+  async assertRestored(plan: OperationUndoPlan): Promise<void> {
     const branch = await this.currentBranch();
     const head = (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
-    if (branch !== plan.branch || head !== plan.restoredHead || await detectOperation(this.repoRoot) !== "none") {
+    const offBranch = this.family === "pull-request" && plan.worktreeBranch !== plan.branch;
+    const targetHead = offBranch
+      ? (await runGit(["rev-parse", "--verify", `refs/heads/${plan.branch}^{commit}`], this.repoRoot)).trim() : head;
+    if (branch !== (offBranch ? plan.worktreeBranch : plan.branch) || targetHead !== plan.restoredHead ||
+        (offBranch && head !== plan.worktreeHead) || await detectOperation(this.repoRoot) !== "none") {
       throw staleUndo();
     }
   }
@@ -157,7 +186,7 @@ export class BranchOperationUndoStore {
    * 복원이 끝난 동일 작업의 ref와 메타데이터만 삭제한다.
    * @param plan 성공적으로 복원한 작업
    */
-  async remove(plan: BranchOperationUndoPlan): Promise<void> {
+  async remove(plan: OperationUndoPlan): Promise<void> {
     await this.assertRestored(plan);
     const binding = await this.read(plan.branch);
     if (!binding || binding.id !== plan.id) throw staleUndo();
@@ -177,7 +206,7 @@ export class BranchOperationUndoStore {
    */
   private async readState(): Promise<RepositoryState> {
     const gitDir = await this.gitDir();
-    const [branch, head, operation, indexText, epoch, headLog, squash, rebase] = await Promise.all([
+    const [branch, head, operation, indexText, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
       this.currentBranch(),
       runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot),
       detectOperation(this.repoRoot),
@@ -186,12 +215,26 @@ export class BranchOperationUndoStore {
       fileIdentity(path.join(gitDir, "logs/HEAD")),
       fileIdentity(path.join(gitDir, "SQUASH_MSG")),
       this.rebaseIdentity(gitDir),
+      this.sequencerIdentity(gitDir),
     ]);
     return {
-      branch, head: head.trim(), operation, epoch, headLog, squash, rebase,
+      branch, head: head.trim(), operation, epoch, headLog, squash, rebase, sequencer,
       index: createHash("sha256").update(indexText).digest("hex"),
       unmerged: indexText.split("\0").some(entry => /^\d+ [a-f0-9]+ [123]\t/.test(entry)),
     };
+  }
+
+  /** no-commit cherry-pick도 marker 없이 sequencer를 남기므로 생성 세대와 todo를 별도로 고정한다. */
+  private async sequencerIdentity(gitDir: string): Promise<string> {
+    const directory = path.join(gitDir, "sequencer");
+    try {
+      const info = await stat(directory, { bigint: true });
+      const metadata = await Promise.all(["head", "todo"].map(file => readFile(path.join(directory, file), "utf8")));
+      return [info.dev, info.ino, info.birthtimeNs, ...metadata].join("\0");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+      throw error;
+    }
   }
 
   /**
@@ -240,7 +283,7 @@ export class BranchOperationUndoStore {
     const value = JSON.parse(raw) as Binding;
     if (value.version !== 1 || value.branch !== branch || value.gitDir !== await this.gitDir() ||
         typeof value.id !== "string" || typeof value.beforeHead !== "string" || typeof value.snapshotRef !== "string" ||
-        !["prepared", "completed", "squash", "rebase", "restoring"].includes(value.phase)) throw staleUndo();
+        !["prepared", "completed", "squash", "rebase", "replay", "restoring"].includes(value.phase)) throw staleUndo();
     return value;
   }
 
@@ -255,7 +298,7 @@ export class BranchOperationUndoStore {
 
   /** 브랜치 이름의 slash/특수 문자가 파일 경계를 바꾸지 않도록 hex key를 사용한다. */
   private async file(branch: string): Promise<string> {
-    return path.join(await this.gitDir(), "gitsimplecompare", "branch-operation-undo", `${Buffer.from(branch).toString("hex")}.json`);
+    return path.join(await this.gitDir(), "gitsimplecompare", `${this.family}-operation-undo`, `${Buffer.from(branch).toString("hex")}.json`);
   }
 
   /** linked worktree끼리 복구 기록을 공유하지 않도록 실제 개별 git-dir를 사용한다. */
@@ -277,5 +320,5 @@ async function fileIdentity(file: string): Promise<string> {
 
 /** 출처나 현재 상태가 달라지면 snapshot을 보존한 채 Undo를 중단하는 오류다. */
 function staleUndo(): Error {
-  return new Error("The saved branch operation no longer matches this worktree or its changes. Undo was stopped; the recovery snapshot was preserved.");
+  return new Error("The saved operation no longer matches this worktree or its changes. Undo was stopped; the recovery snapshot was preserved.");
 }

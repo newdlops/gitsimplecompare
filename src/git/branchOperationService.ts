@@ -5,7 +5,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { detectOperation } from "./conflictService";
-import { BranchOperationUndoStore, type BranchOperationUndoPlan } from "./branchOperationUndoStore";
+import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
+import { OperationUndoStore as BranchOperationUndoStore, type OperationUndoPlan as BranchOperationUndoPlan } from "./operationUndoStore";
 import { logError } from "../ui/outputLog";
 import {
   restorePendingBranchRebaseMergeLocalChangesForBranch,
@@ -13,10 +14,7 @@ import {
 } from "./branchRebaseMerge";
 import { runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
-import {
-  pushPreservedLocalChangesStash,
-  restorePreservedLocalChangesStash,
-} from "./stashExec";
+import { pushPreservedLocalChangesStash } from "./stashExec";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -138,16 +136,15 @@ export class BranchOperationService {
         rebaseTodo: result.rebaseTodo,
       };
     } catch (err) {
-      const restored = await this.restoreAfterFailedDeferredRebase(
-        preserved,
-        branch,
-        beforeHead,
-        snapshotRef
-      );
+      const { restored, notice } = await recoverFailedRebaseStart({
+        repoRoot: this.repoRoot, branch, beforeHead, snapshotRef, preservedStashHash: preserved?.hash,
+      });
       if (restored) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+        await runGit(["update-ref", "-d", snapshotRef, beforeHead], this.repoRoot).catch(() => "");
       }
-      throw this.withPreservedStashNotice(err, restored ? undefined : preserved, branch);
+      const error = this.withPreservedStashNotice(err, restored ? undefined : preserved, branch);
+      error.message += notice;
+      throw error;
     }
   }
 
@@ -285,14 +282,6 @@ export class BranchOperationService {
     return hash;
   }
 
-  /** 지정한 로컬 브랜치로 working tree 를 전환한다. */
-  private async switchToBranch(branch: string): Promise<void> {
-    if (await this.currentBranch().catch(() => "") === branch) {
-      return;
-    }
-    await runGit(["switch", branch], this.repoRoot);
-  }
-
   /** 로컬 변경이 있는 상태에서 squash commit 을 임시 worktree 로 계산해 현재 브랜치에 반영한다. */
   private async squashMergeWithLocalChanges(
     sourceBranch: string,
@@ -408,39 +397,6 @@ export class BranchOperationService {
       return undefined;
     }
     return pushPreservedLocalChangesStash(this.repoRoot, `Git Simple Compare ${reason}`);
-  }
-
-  /** deferred rebase 시작 중 예상치 못하게 실패하면 snapshot 으로 되돌리고 보존 stash 를 복원한다. */
-  private async restoreAfterFailedDeferredRebase(
-    preserved: PreservedLocalChanges | undefined,
-    branch: string,
-    beforeHead: string,
-    snapshotRef: string
-  ): Promise<boolean> {
-    if (await detectOperation(this.repoRoot) !== "none") {
-      return false;
-    }
-    await this.switchToBranch(branch);
-    await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "restoring failed branch operation");
-    await runGit(["reset", "--hard", snapshotRef], this.repoRoot);
-    if (preserved) {
-      await this.restorePreservedLocalChanges(
-        preserved,
-        "Branch rebase merge failed, but local changes could not be restored."
-      );
-    }
-    return true;
-  }
-
-  /** 보존해 둔 로컬 변경을 다시 적용하고 stash 목록에서 제거한다. */
-  private async restorePreservedLocalChanges(
-    preserved: PreservedLocalChanges | undefined,
-    failureMessage: string
-  ): Promise<void> {
-    if (!preserved) {
-      return;
-    }
-    await restorePreservedLocalChangesStash(this.repoRoot, preserved.hash, failureMessage);
   }
 
   /** 충돌로 멈춘 작업에서는 사용자의 원래 변경이 어느 stash 에 보존됐는지 오류에 덧붙인다. */

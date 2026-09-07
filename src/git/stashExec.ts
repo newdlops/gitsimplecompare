@@ -156,19 +156,21 @@ function isUnsupportedPathspecFileError(err: unknown): boolean {
 
 /**
  * PR/branch operation 이 보존해 둔 로컬 변경 stash 를 작업트리에 복원하고 성공하면 제거한다.
- * - staged 상태까지 강제로 되살리는 `--index` 는 충돌 시 index 단계에서 자주 멈추므로 사용하지 않는다.
+ * - 기본은 내용만 복원하고, 시작 전 HEAD의 깨끗한 index로 돌아온 실패 복구만 staged 상태 복원을 선택한다.
  * - 복원 충돌/실패가 나면 stash 는 삭제하지 않고, 사용자가 직접 적용할 수 있도록 stash ref 를 오류에 포함한다.
  * @param repoRoot git 저장소 루트
  * @param hash 보존 stash commit hash
  * @param failureMessage 실패 시 사용자에게 보여줄 앞부분 메시지
+ * @param restoreIndex 시작 전 HEAD와 깨끗한 index가 확인된 실패 복구에서 staged 상태도 복원할지 여부
  */
 export async function restorePreservedLocalChangesStash(
   repoRoot: string,
   hash: string,
-  failureMessage: string
+  failureMessage: string,
+  restoreIndex = false
 ): Promise<void> {
   try {
-    await runStash(["apply", hash], repoRoot);
+    await runStash(["apply", ...(restoreIndex ? ["--index"] : []), hash], repoRoot, { retryOnLock: false });
     await dropPreservedLocalChangesStash(repoRoot, hash);
   } catch (err) {
     const ref = await findPreservedLocalChangesStashRef(repoRoot, hash);

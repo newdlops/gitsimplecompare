@@ -120,14 +120,16 @@ export async function dropPendingPullRequestStashAfterResolvedRestore(
  * @param repoRoot git 저장소 루트
  * @param branch 현재 복원 대상 브랜치
  * @param failureMessage stash 복원 실패 시 붙일 사용자 메시지
+ * @param snapshotRef Undo가 승인받은 작업의 immutable snapshot
  */
 export async function restorePendingPullRequestLocalChangesForBranch(
   repoRoot: string,
   branch: string,
-  failureMessage: string
+  failureMessage: string,
+  snapshotRef: string
 ): Promise<void> {
   const pending = await readPendingPullRequestRebase(repoRoot);
-  if (!pending || pending.destinationBranch !== branch) {
+  if (!pending || pending.destinationBranch !== branch || pending.snapshotRef !== snapshotRef) {
     return;
   }
   await restorePendingLocalChanges(repoRoot, pending, failureMessage);
