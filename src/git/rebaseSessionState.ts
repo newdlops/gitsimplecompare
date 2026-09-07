@@ -52,6 +52,7 @@ export interface RebaseSessionState {
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
   message?: string;
+  restoringLocalChanges?: boolean;
   events: RebaseSessionEvent[];
 }
 
@@ -63,6 +64,7 @@ export interface RebaseSessionUpdate {
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
   message?: string;
+  restoringLocalChanges?: boolean;
   detail?: Record<string, unknown>;
 }
 
@@ -189,6 +191,7 @@ export async function updateRebaseSessionState(
     paused: cloneJson(update.paused),
     stopped: cloneJson(update.stopped),
     message: update.message,
+    restoringLocalChanges: update.restoringLocalChanges,
     events: [...current.events, event].slice(-MAX_EVENTS),
   };
   await writeRebaseSessionState(repoRoot, next);
@@ -215,6 +218,7 @@ export async function recordRebaseSessionResult(
     paused: result.paused,
     stopped: result.stopped,
     message: result.message,
+    restoringLocalChanges: result.restoringLocalChanges,
     detail: {
       status: result.status,
       message: result.message,
@@ -275,6 +279,7 @@ function phaseFromResult(result: RebaseResultLike): RebaseSessionPhase {
 type RebaseResultLike = RebaseResult | {
   status: "completed" | "conflicts" | "failed" | "paused" | "aborted" | "stopped";
   message?: string;
+  restoringLocalChanges?: boolean;
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
 };

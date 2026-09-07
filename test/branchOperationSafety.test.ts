@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { BranchOperationService } from "../src/git/branchOperationService";
+import { ConflictService } from "../src/git/conflictService";
 import { finishPendingBranchRebaseMergeAfterContinue } from "../src/git/branchRebaseMerge";
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
 import { runGit } from "../src/git/gitExec";
@@ -174,7 +175,7 @@ test("a continued branch rebase records its completed HEAD for later Undo", asyn
   await service.rebaseMerge("source");
   await writeFile(join(root, "tracked.txt"), "resolved\n");
   await git(root, "add", "tracked.txt");
-  await runGit(["rebase", "--continue"], root, { env: { GIT_EDITOR: "true" } });
+  await new ConflictService(root).continueOperation("rebase");
   assert.equal((await finishPendingBranchRebaseMergeAfterContinue(root)).status, "completed");
   await service.undoLastOperation();
   assert.equal(await git(root, "rev-parse", "HEAD"), before);

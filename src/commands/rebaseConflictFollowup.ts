@@ -19,6 +19,7 @@ import {
 } from "../git/pullRequestRebaseContinuation";
 import { PullRequestStackRestackService } from "../git/pullRequestStackRestack";
 import { RebaseService } from "../git/rebaseService";
+import { REBASE_RESTORE_CONFLICT_MESSAGE } from "../git/rebasePlanSafety";
 import { readRebaseTodoProgress, type RebaseTodoProgress } from "../git/rebaseTodoProgress";
 import { ConflictsController } from "../providers/conflictsController";
 import { logInfo } from "../ui/outputLog";
@@ -73,9 +74,18 @@ export async function publishRebaseContinueState(
   }
   const conflicts = new ConflictService(repoRoot);
   const [operation, conflictFiles] = await Promise.all([
-    conflicts.getOperation().catch(() => "none"),
-    conflicts.listConflicts().catch(() => []),
+    conflicts.getOperation(),
+    conflicts.listConflicts(),
   ]);
+  if (operation === "none" && conflictFiles.length) {
+    const message = vscode.l10n.t(REBASE_RESTORE_CONFLICT_MESSAGE);
+    GitGraphPanel.postOpen(repoRoot, { type: "graphRebaseProgress", progress: {
+      action: "continue", phase: "conflicts", title: vscode.l10n.t("Local changes need conflict resolution"), detail: message, active: false,
+    } });
+    GitGraphPanel.postOpen(repoRoot, { type: "graphRebaseOperation", active: false, restoringLocalChanges: true });
+    vscode.window.showWarningMessage(message);
+    return;
+  }
   if (operation === "rebase" && conflictFiles.length === 0) {
     const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
     GitGraphPanel.postOpen(repoRoot, graphRebaseTodoProgressMessage({

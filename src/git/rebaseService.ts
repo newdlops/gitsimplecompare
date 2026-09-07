@@ -6,11 +6,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
-import { parseNameStatusZ, parseNumstat, parsePorcelainGroups } from "./diffParse";
-import {
-  applyRebaseEditTempFiles,
-  cleanupRebaseEditTempFiles,
-} from "./rebaseEditSession";
+import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { amendRebaseEdit } from "./rebaseEditApply";
+import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
 import {
   collectHistoryExcludePaths,
 } from "./rebaseFileExcludes";
@@ -62,6 +60,7 @@ export interface RebaseResult {
   message?: string;
   paused?: RebasePausedState;
   stopped?: RebaseStoppedState;
+  restoringLocalChanges?: boolean;
 }
 /** rebase 가 edit todo 에서 멈췄을 때 UI 가 이어받을 상태 */
 export interface RebasePausedState {
@@ -80,6 +79,7 @@ export interface RebaseStoppedState {
 /** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
 export interface RebasePlanInfo {
   branch: string;
+  checkout?: RebaseCheckoutIdentity;
   upstream?: string;
   /** rebase 기준 커밋. root=true 일 때는 빈 문자열이다. */
   base: string;
@@ -96,6 +96,7 @@ export interface RebasePlanInfo {
  * 한 저장소의 인터랙티브 rebase 를 다루는 서비스.
  */
 export class RebaseService {
+  private preparedCheckout?: RebaseCheckoutIdentity;
   constructor(public readonly repoRoot: string) {}
   /**
    * 작업트리가 깨끗한지(추적 파일에 미커밋 변경이 없는지) 확인한다.
@@ -153,6 +154,7 @@ export class RebaseService {
     startHash?: string,
     ontoHash?: string
   ): Promise<RebasePlanInfo> {
+    const checkout = await captureRebaseCheckout(this.repoRoot);
     const branch = (
       await runGit(["branch", "--show-current"], this.repoRoot)
     ).trim();
@@ -195,8 +197,11 @@ export class RebaseService {
       base,
       root
     );
+    await assertRebaseCheckout(this.repoRoot, checkout);
+    this.preparedCheckout = checkout;
     return {
       branch,
+      checkout,
       upstream: upstream || undefined,
       base,
       root,
@@ -223,7 +228,8 @@ export class RebaseService {
     root: boolean,
     items: RebaseItem[],
     editorScript: string,
-    onto?: string
+    onto?: string,
+    expectedCheckout?: RebaseCheckoutIdentity
   ): Promise<RebaseResult> {
     const active = await detectOperation(this.repoRoot);
     if (active === "rebase") {
@@ -237,10 +243,13 @@ export class RebaseService {
     if (active !== "none") {
       return { status: "failed", message: `Cannot start rebase while ${active} is in progress.` };
     }
+    const checkout = expectedCheckout ?? this.preparedCheckout ?? await captureRebaseCheckout(this.repoRoot);
+    await assertRebaseCheckout(this.repoRoot, checkout);
     const todoItems = items.slice();
     if (todoItems.length === 0) {
       return { status: "noop" };
     }
+    await assertLinearRebasePlan(this.repoRoot, base, root);
     const validation = validateRebaseTodoCoverage(
       await this.getCommits(base, root),
       todoItems
@@ -284,6 +293,7 @@ export class RebaseService {
     };
 
     try {
+      await assertRebaseCheckout(this.repoRoot, checkout);
       await runGit(
         [
           "rebase",
@@ -303,6 +313,9 @@ export class RebaseService {
       if (await detectOperation(this.repoRoot) === "rebase") {
         keepTempFiles = true;
         return { status: "stopped", stopped: await this.getStoppedState() };
+      }
+      if (await this.hasUnmergedFiles()) {
+        return { status: "conflicts", restoringLocalChanges: true, message: REBASE_RESTORE_CONFLICT_MESSAGE };
       }
       return { status: "completed" };
     } catch (err) {
@@ -399,27 +412,7 @@ export class RebaseService {
     if (!state) {
       return false;
     }
-    const stagedFromTemp = await applyRebaseEditTempFiles(this.repoRoot, state);
-    const candidates = uniquePaths((state.files ?? []).map((file) => file.path));
-    const paths = stagedFromTemp.length > 0
-      ? stagedFromTemp
-      : await this.changedPausedEditPaths(candidates);
-    if (paths.length === 0) {
-      return false;
-    }
-    if (stagedFromTemp.length === 0) {
-      await runGit(["add", "-A", "--", ...paths], this.repoRoot);
-    }
-    if (!(await this.hasStagedChanges(paths))) {
-      return false;
-    }
-    await runGit(
-      ["commit", "--amend", "--no-edit", "--allow-empty", "--no-verify"],
-      this.repoRoot,
-      { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" }
-    );
-    await cleanupRebaseEditTempFiles(this.repoRoot, state);
-    return true;
+    return amendRebaseEdit(this.repoRoot, state);
   }
 
   /**
@@ -480,41 +473,8 @@ export class RebaseService {
     const out = await runGit(
       ["diff", "--name-only", "--diff-filter=U", "-z"],
       this.repoRoot
-    ).catch(() => "");
-    return out.split("\0").some((entry) => entry.length > 0);
-  }
-
-  /** 지정 경로 중 index 에 커밋할 변경이 stage 되어 있는지 확인한다. */
-  private async hasStagedChanges(paths: string[]): Promise<boolean> {
-    try {
-      await runGit(["diff", "--cached", "--quiet", "--", ...paths], this.repoRoot);
-      return false;
-    } catch {
-      return true;
-    }
-  }
-
-  /** edit 커밋 후보 경로 중 실제 작업트리/index 에 변경이 있는 경로만 고른다. */
-  private async changedPausedEditPaths(candidates: string[]): Promise<string[]> {
-    const wanted = new Set(candidates);
-    if (wanted.size === 0) {
-      return [];
-    }
-    const raw = await runGit(
-      ["status", "--porcelain", "-z", "--untracked-files=all"],
-      this.repoRoot
     );
-    const { staged, unstaged } = parsePorcelainGroups(raw);
-    const changed = new Set<string>();
-    for (const change of [...staged, ...unstaged]) {
-      if (wanted.has(change.path)) {
-        changed.add(change.path);
-      }
-      if (change.oldPath && wanted.has(change.oldPath)) {
-        changed.add(change.oldPath);
-      }
-    }
-    return Array.from(changed);
+    return out.split("\0").some((entry) => entry.length > 0);
   }
 
   /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */
@@ -551,23 +511,6 @@ async function optionalGit(
 function tempPath(kind: string): string {
   const suffix = Math.random().toString(36).slice(2);
   return path.join(os.tmpdir(), `gsc-rebase-${kind}-${suffix}`);
-}
-
-/**
- * 경로 배열의 빈 값과 중복을 제거한다.
- * @param paths 경로 후보 목록
- */
-function uniquePaths(paths: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const path of paths) {
-    if (!path || seen.has(path)) {
-      continue;
-    }
-    seen.add(path);
-    out.push(path);
-  }
-  return out;
 }
 
 /** rebase 가 충돌 없이 멈춘 이유를 Git stderr/stdout 에서 짧게 뽑는다. */

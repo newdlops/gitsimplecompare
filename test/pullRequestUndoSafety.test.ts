@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
-import { detectOperation } from "../src/git/conflictService";
+import { ConflictService, detectOperation } from "../src/git/conflictService";
 import { readConflictOperationEpoch } from "../src/git/conflictOperationEpoch";
 import { continuePendingDeferredCommitRebase } from "../src/git/deferredCommitRebase";
 import { readPendingDeferredCommitRebase, writePendingDeferredCommitRebase } from "../src/git/deferredCommitRebaseState";
@@ -223,7 +223,7 @@ test("continuing a PR conflict records its completed HEAD for later Undo", async
   await service.rebasePullRequest(pr);
   await writeFile(join(root, "tracked.txt"), "resolved\n");
   await git(root, "add", "tracked.txt");
-  await runGit(["cherry-pick", "--continue"], root, { env: { GIT_EDITOR: "true" } });
+  await new ConflictService(root).continueOperation("cherry-pick");
   assert.equal((await continuePendingDeferredCommitRebase(root)).status, "completed");
   await service.undoLastOperation();
   assert.equal(await git(root, "rev-parse", "HEAD"), beforeHead);

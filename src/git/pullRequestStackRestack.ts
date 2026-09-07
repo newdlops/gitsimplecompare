@@ -14,7 +14,9 @@ import {
   readRestackState,
   writeRestackState,
 } from "./pullRequestStackRestackRuntime";
-import { WorktreeService, type WorktreeInfo } from "./worktreeService";
+import { WorktreeService } from "./worktreeService";
+import { assertControlledTransition, captureGitOperation, type GitOperationIdentity } from "./operationControl";
+import { rollbackRestack } from "./pullRequestStackRestackRecovery";
 const STATE_VERSION = 1;
 const TEMP_WORKTREE_PREFIX = "gsc-stack-restack-";
 /** Advance 완료 뒤 명령 레이어가 submit/cleanup을 이어가기 위한 후속 동작 */
@@ -79,8 +81,9 @@ interface PendingRestackStep extends PullRequestStackRestackStep {
   afterHead?: string;
   worktreePath?: string;
   temporaryWorktree?: boolean;
+  nativeOperation?: GitOperationIdentity;
 }
-interface PendingPullRequestStackRestack {
+export interface PendingPullRequestStackRestack {
   version: number;
   repoRoot: string;
   operationId: string;
@@ -231,6 +234,7 @@ export class PullRequestStackRestackService {
     if (await executor.isConflictState(step.worktreePath)) {
       return executor.conflictResult(state, step);
     }
+    await assertControlledTransition(this.repoRoot, step.nativeOperation, "continue");
     await executor.finishStep(state, step, step.worktreePath);
     state.index++;
     state.status = "running";
@@ -248,6 +252,7 @@ export class PullRequestStackRestackService {
       return undefined;
     }
     const executor = path.resolve(state.repoRoot) === path.resolve(this.repoRoot) ? this : new PullRequestStackRestackService(state.repoRoot);
+    await assertControlledTransition(this.repoRoot, state.steps[state.index]?.nativeOperation, "abort");
     await executor.rollbackState(state);
     return state.repoRoot;
   }
@@ -289,6 +294,7 @@ export class PullRequestStackRestackService {
       } catch (error) {
         if (await this.isConflictState(worktree.path)) {
           state.status = "conflicts";
+          step.nativeOperation = await captureGitOperation(worktree.path);
           await writeRestackState(this.repoRoot, state);
           return this.conflictResult(state, step);
         }
@@ -323,6 +329,7 @@ export class PullRequestStackRestackService {
       || step.parentTargetHash
       || await this.metadata.resolveBranchHead(step.parentBranch);
     step.afterHead = afterHead;
+    await writeRestackState(this.repoRoot, state);
     if (afterHead !== step.beforeHead) {
       const changed = step.action === "merge"
         ? state.historyPreservingBranches
@@ -400,11 +407,7 @@ export class PullRequestStackRestackService {
 
   /** 임시 linked worktree의 Git 메타데이터와 디렉터리를 함께 정리한다. */
   private async removeTemporaryWorktree(worktreePath: string): Promise<void> {
-    await runGit(["worktree", "remove", "--force", worktreePath], this.repoRoot)
-      .catch(async () => {
-        await fs.rm(worktreePath, { recursive: true, force: true });
-        await runGit(["worktree", "prune"], this.repoRoot).catch(() => undefined);
-      });
+    await runGit(["worktree", "remove", worktreePath], this.repoRoot, { retryOnLock: false });
   }
 
   /** 현재 pending step의 충돌 파일 목록을 읽어 UI 연결 결과를 만든다. */
@@ -445,47 +448,7 @@ export class PullRequestStackRestackService {
 
   /** 완료된 layer를 역순으로 backup ref에 복원하고 임시 worktree/config/state를 정리한다. */
   private async rollbackState(state: PendingPullRequestStackRestack): Promise<void> {
-    const worktrees = await new WorktreeService(this.repoRoot).listWorktrees();
-    for (const step of [...state.steps].reverse()) {
-      const current = await this.resolveCommit(`refs/heads/${step.branch}`);
-      const snapshot = await this.resolveCommit(step.snapshotRef);
-      if (current !== snapshot) {
-        await this.restoreBranch(step.branch, snapshot, current, worktrees);
-      }
-      if (step.temporaryWorktree && step.worktreePath) {
-        await this.removeTemporaryWorktree(step.worktreePath).catch(() => undefined);
-      }
-    }
-    for (const checkpoint of state.metadataBefore) {
-      await this.metadata.restoreParent(
-        checkpoint.branch,
-        checkpoint.parentBranch,
-        checkpoint.parentHead
-      );
-    }
-    await clearRestackState(this.repoRoot);
-  }
-
-  /** branch를 checkout한 worktree는 clean reset, 미점유 branch는 CAS update-ref로 복원한다. */
-  private async restoreBranch(
-    branch: string,
-    snapshot: string,
-    current: string,
-    worktrees: WorktreeInfo[]
-  ): Promise<void> {
-    const owner = worktrees.find((item) => item.branch === branch);
-    if (!owner) {
-      await runGit(["update-ref", `refs/heads/${branch}`, snapshot, current], this.repoRoot);
-      return;
-    }
-    const status = await runGit(
-      ["status", "--porcelain=v1", "--untracked-files=all"],
-      owner.path
-    );
-    if (status) {
-      throw new Error(`Cannot restore '${branch}': worktree '${owner.path}' has new local changes.`);
-    }
-    await runGit(["reset", "--hard", snapshot], owner.path);
+    await rollbackRestack(this.repoRoot, state);
   }
 
   /** branch의 기록된 parent head가 없을 때 안전한 조상 경계를 계산한다. */

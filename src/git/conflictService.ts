@@ -15,6 +15,7 @@ import {
   type ConflictWorkingResult,
 } from "./conflictContentService";
 import { runGit } from "./gitExec";
+import { controlGitOperation, type GitOperationIdentity } from "./operationControl";
 import {
   cleanupRebaseMessageQueue,
   rebaseContinueEditorEnv,
@@ -345,12 +346,12 @@ export class ConflictService {
    * - graph rebase 메시지 큐가 있으면 reword/squash 메시지를 적용하고, 없으면 editor 를 우회한다.
    * @param op 진행 중인 작업 종류
    */
-  async continueOperation(op: MergeOperation): Promise<void> {
+  async continueOperation(op: MergeOperation, expected?: GitOperationIdentity): Promise<void> {
     if (op === "none") {
       return;
     }
     const env = await this.continueEnv(op);
-    await runGit([op, "--continue"], this.repoRoot, env);
+    await controlGitOperation(this.repoRoot, op, "continue", expected, env);
     await this.cleanupMessageQueueIfRebaseDone(op);
   }
 
@@ -359,14 +360,14 @@ export class ConflictService {
    * - merge 에는 skip 개념이 없으므로 잘못 호출되면 명확한 오류를 던진다.
    * @param op 진행 중인 작업 종류
    */
-  async skipOperation(op: MergeOperation): Promise<void> {
+  async skipOperation(op: MergeOperation, expected?: GitOperationIdentity): Promise<void> {
     if (op === "none") {
       return;
     }
     if (op === "merge") {
       throw new Error("Merge operation cannot be skipped.");
     }
-    await runGit([op, "--skip"], this.repoRoot, await this.continueEnv(op));
+    await controlGitOperation(this.repoRoot, op, "skip", expected, await this.continueEnv(op));
     await this.cleanupMessageQueueIfRebaseDone(op);
   }
 
@@ -374,11 +375,11 @@ export class ConflictService {
    * 진행 중인 작업을 취소한다(`git <op> --abort`).
    * @param op 진행 중인 작업 종류
    */
-  async abortOperation(op: MergeOperation): Promise<void> {
+  async abortOperation(op: MergeOperation, expected?: GitOperationIdentity): Promise<void> {
     if (op === "none") {
       return;
     }
-    await runGit([op, "--abort"], this.repoRoot);
+    await controlGitOperation(this.repoRoot, op, "abort", expected);
     if (op === "rebase") {
       await cleanupRebaseMessageQueue(this.repoRoot);
     }

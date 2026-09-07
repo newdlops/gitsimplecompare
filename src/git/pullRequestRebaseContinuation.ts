@@ -3,9 +3,12 @@
 //   Conflicts 명령에서 이 모듈을 통해 이어받는다.
 import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
+import { assertControlledTransition } from "./operationControl";
+import { assertCurrentBranchHead } from "./refSafety";
 import {
   clearPendingPullRequestRebase,
   readPendingPullRequestRebase,
+  writePendingPullRequestRebase,
   type PendingPullRequestRebase,
 } from "./pullRequestOperationState";
 import {
@@ -58,6 +61,7 @@ export async function finishPendingPullRequestRebaseAfterContinue(
     return { status: "pending" };
   }
   const rebasedHead = await currentHead(repoRoot);
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "continue");
   try {
     await completePendingPullRequestRebase(repoRoot, pending, rebasedHead);
   } catch (err) {
@@ -89,7 +93,8 @@ export async function restorePendingPullRequestRebaseAfterAbort(
   if (!pending || await isConflictState(repoRoot)) {
     return { status: "none" };
   }
-  await switchToBranch(repoRoot, pending.destinationBranch);
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "abort");
+  await assertCurrentBranchHead(repoRoot, pending.destinationBranch, pending.beforeHead, "restoring aborted PR rebase");
   await restorePendingLocalChanges(repoRoot, pending, "PR rebase was aborted, but preserved local changes could not be restored.");
   await runGit(["update-ref", "-d", pending.snapshotRef], repoRoot).catch(() => "");
   return { status: "restored", branch: pending.destinationBranch };
@@ -103,9 +108,10 @@ export async function dropPendingPullRequestStashAfterResolvedRestore(
   repoRoot: string
 ): Promise<PullRequestRebaseCleanupResult> {
   const pending = await readPendingPullRequestRebase(repoRoot);
-  if (!pending || await isConflictState(repoRoot)) {
+  if (!pending?.restoreHead || await isConflictState(repoRoot)) {
     return { status: "none" };
   }
+  await assertCurrentBranchHead(repoRoot, pending.destinationBranch, pending.restoreHead, "finishing PR stash restoration");
   if (pending.preservedStashHash) {
     await dropPreservedLocalChangesStash(repoRoot, pending.preservedStashHash);
     await clearPendingPullRequestRebase(repoRoot);
@@ -146,6 +152,7 @@ async function restorePendingLocalChanges(
   pending: PendingPullRequestRebase,
   failureMessage: string
 ): Promise<void> {
+  await writePendingPullRequestRebase(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   if (pending.preservedStashHash) {
     await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   }

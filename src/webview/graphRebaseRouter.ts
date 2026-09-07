@@ -24,6 +24,7 @@ import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
 import { readRebaseTodoProgress } from "../git/rebaseTodoProgress";
 import type { RebaseItem, RebaseResult } from "../git/rebaseService";
 import { logError } from "../ui/outputLog";
+import { assertRebaseCheckout } from "../git/rebasePlanSafety";
 
 type GraphRebaseMessage = Extract<
   FromWebviewMessage,
@@ -77,6 +78,8 @@ export async function handleGraphRebaseMessage(
     return;
   }
   if (msg.type === "runGraphRebase") {
+    if (!msg.checkout) throw new Error("Prepare a new rebase plan before starting.");
+    await assertRebaseCheckout(deps.logService.repoRoot, msg.checkout);
     await beginGraphRebaseSession(
       {
         base: msg.base,
@@ -93,7 +96,8 @@ export async function handleGraphRebaseMessage(
         msg.onto,
         msg.items,
         msg.editPath,
-        deps
+        deps,
+        msg.checkout
       )
     );
     return;
@@ -173,7 +177,7 @@ async function postRebaseResult(
   } else if (result.status === "paused" && result.paused) {
     deps.post({ type: "graphRebasePaused", paused: result.paused });
   } else if (result.status === "conflicts") {
-    deps.post({ type: "graphRebaseOperation", active: true });
+    deps.post({ type: "graphRebaseOperation", active: !result.restoringLocalChanges, restoringLocalChanges: result.restoringLocalChanges });
   } else if (result.status === "stopped") {
     deps.post({ type: "graphRebaseOperation", active: true });
   }

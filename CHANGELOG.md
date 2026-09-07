@@ -5,6 +5,29 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72053] - 2026-09-07
+
+### Fixed
+
+- Continue, Skip and Abort verify the worktree and native Git operation
+  generation. Confirmation cannot control a replacement operation, and pending
+  PR, branch and stack recovery only follows a verified extension action.
+  Unverified or externally finished operations retain their recovery data.
+- Rebase Abort and Undo stop for unrelated new working edits. Discarded
+  resolution files and index blobs are backed up under the worktree Git
+  directory's `gitsimplecompare/operation-recovery`; Output logs the location.
+  Deferred PR abort recovery uses a protected reset to preserve local edits.
+- Rebase edit amends exclude unrelated staged files. Temporary edit sessions
+  verify the original worktree and index before applying changes, preserving
+  both versions when another edit intervenes.
+- Stack rollback checks every layer against its recorded result before
+  restoring branches. Later user commits, dirty worktrees and backup refs are
+  preserved when automatic recovery cannot proceed safely.
+- Interactive plans remain bound to their original worktree, branch and HEAD.
+  Unsupported merge-containing plans stop before starting Git. Autostash
+  restoration conflicts keep visible recovery guidance instead of reporting
+  completion or offering controls for a rebase that has already ended.
+
 ## [0.1.72052] - 2026-09-07
 
 ### Fixed

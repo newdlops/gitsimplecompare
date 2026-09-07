@@ -3,6 +3,8 @@
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
+import { assertGitOperation, captureGitOperation } from "../git/operationControl";
+import { GitError } from "../git/gitExec";
 import { tryAcquireConflictMutation } from "../git/conflictMutationCoordinator";
 import { PullService } from "../git/pullService";
 import { listRebaseEditTempPaths } from "../git/rebaseEditSession";
@@ -164,16 +166,23 @@ export async function continueOperation(
   const release = acquireConflictMutationOrNotify(svc.repoRoot);
   if (!release) return;
   try {
-    const operation = controller.currentOperation;
+    const expected = await captureGitOperation(svc.repoRoot);
+    const operation = expected.operation;
     let continued = false;
+    let attemptedNative = false;
     try {
       if (operation === "rebase") {
+        await assertGitOperation(svc.repoRoot, expected);
         await amendPausedRebaseEditBeforeContinue(svc.repoRoot);
       }
-      await svc.continueOperation(operation);
+      // edit amend가 HEAD를 바꾸므로 동일 작업 세대인지 확인하고 새 항목을 제어한다.
+      const current = await captureGitOperation(svc.repoRoot);
+      if (current.generation !== expected.generation) await assertGitOperation(svc.repoRoot, expected);
+      attemptedNative = true;
+      await svc.continueOperation(operation, current);
       continued = true;
     } catch (err) {
-      if (operation === "rebase" && await publishRebaseContinueConflict(svc.repoRoot)) {
+      if (attemptedNative && err instanceof GitError && operation === "rebase" && await publishRebaseContinueConflict(svc.repoRoot)) {
         continued = true;
       } else {
         vscode.window.showErrorMessage(
@@ -208,9 +217,10 @@ export async function abortOperation(
   if (!svc) {
     return;
   }
+  const expected = await captureGitOperation(svc.repoRoot);
   const yes = vscode.l10n.t("Abort");
   const choice = await vscode.window.showWarningMessage(
-    vscode.l10n.t("Abort the current {0}? Changes from it will be discarded.", controller.currentOperation),
+    vscode.l10n.t("Abort the current {0}? Changes from it will be discarded.", expected.operation),
     { modal: true },
     yes
   );
@@ -220,10 +230,10 @@ export async function abortOperation(
   const release = acquireConflictMutationOrNotify(svc.repoRoot);
   if (!release) return;
   try {
-    const operation = controller.currentOperation;
+    const operation = expected.operation;
     let aborted = false;
     try {
-      await svc.abortOperation(operation);
+      await svc.abortOperation(operation, expected);
       aborted = true;
     } catch (err) {
       vscode.window.showErrorMessage(
@@ -232,6 +242,7 @@ export async function abortOperation(
     }
     if (aborted && (operation === "rebase" || operation === "merge")) {
       await restoreRebaseAfterAbort(svc.repoRoot);
+      if (operation === "rebase") await publishRebaseContinueState(svc.repoRoot);
     } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
       await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
     }
@@ -253,7 +264,8 @@ export async function skipOperation(
   if (!svc) {
     return;
   }
-  const operation = controller.currentOperation;
+  const expected = await captureGitOperation(svc.repoRoot);
+  const operation = expected.operation;
   if (operation !== "rebase") {
     vscode.window.showWarningMessage(
       vscode.l10n.t("Skip is only available while a rebase is in progress.")
@@ -274,7 +286,7 @@ export async function skipOperation(
   try {
     let skipped = false;
     try {
-      await svc.skipOperation(operation);
+      await svc.skipOperation(operation, expected);
       skipped = true;
     } catch (err) {
       vscode.window.showErrorMessage(

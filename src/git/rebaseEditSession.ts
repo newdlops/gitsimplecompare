@@ -4,7 +4,10 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { runGit, runGitLiteralPaths } from "./gitExec";
+import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
+import { claimConflictWorkingLeaf, readConflictWorkingLeaf, type ConflictWorktreeClaim } from "./conflictWorktreeCas";
+import { resolveSafeConflictWorkingPath } from "./conflictPathSafety";
 import type { RebaseCommitFile, RebasePausedState } from "./rebaseService";
 
 /** rebase edit diff 오른쪽에 열 임시 파일 정보 */
@@ -19,6 +22,9 @@ interface RebaseEditEntry extends RebaseEditTempFile {
   pausedHash: string;
   originalHash?: string;
   tempDir: string;
+  operation: GitOperationIdentity;
+  workingVersion: string;
+  indexEntry: string;
 }
 
 const sessions = new Map<string, RebaseEditEntry[]>();
@@ -42,6 +48,12 @@ export async function createRebaseEditTempFile(
     return existing;
   }
 
+  const operation = await captureGitOperation(repoRoot);
+  const target = await resolveSafeConflictWorkingPath(repoRoot, file.path);
+  const working = await readConflictWorkingLeaf(target);
+  if (working.kind !== "regular") throw new Error("Rebase temporary editing requires a regular working file.");
+  const workingVersion = working.version;
+  const indexEntry = await readIndexEntry(repoRoot, file.path);
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gsc-rebase-edit-"));
   const tempPath = path.join(dir, safeRelativePath(file.path));
   await fs.mkdir(path.dirname(tempPath), { recursive: true });
@@ -56,6 +68,7 @@ export async function createRebaseEditTempFile(
     relPath: file.path,
     leftRelPath: file.oldPath || file.path,
     tempPath,
+    operation, workingVersion, indexEntry,
   };
   const next = sessionEntries(repoRoot)
     .filter((old) => !samePausedEntry(old, entry) || old.relPath !== entry.relPath);
@@ -75,6 +88,7 @@ async function findExistingTempFile(
     return undefined;
   }
   try {
+    await assertGitOperation(repoRoot, entry.operation);
     await fs.access(entry.tempPath);
     return entry;
   } catch {
@@ -94,23 +108,44 @@ export async function applyRebaseEditTempFiles(
   repoRoot: string,
   paused: RebasePausedState
 ): Promise<string[]> {
-  const staged: string[] = [];
+  const edits: { entry: RebaseEditEntry; edited: Buffer; target: string }[] = [];
   for (const entry of matchingEntries(repoRoot, paused)) {
-    const edited = await fs.readFile(entry.tempPath, "utf8").catch(() => undefined);
+    const edited = await fs.readFile(entry.tempPath).catch(() => undefined);
     if (edited === undefined) {
       continue;
     }
     const current = await readCommitFile(repoRoot, paused.hash, entry.relPath).catch(() => "");
-    if (edited === current) {
+    if (edited.equals(Buffer.from(current))) {
       continue;
     }
-    const target = path.join(repoRoot, entry.relPath);
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    await fs.writeFile(target, edited, "utf8");
-    await runGit(["add", "--", entry.relPath], repoRoot);
-    staged.push(entry.relPath);
+    await assertGitOperation(repoRoot, entry.operation);
+    const target = await resolveSafeConflictWorkingPath(repoRoot, entry.relPath);
+    if ((await readConflictWorkingLeaf(target)).version !== entry.workingVersion ||
+        await readIndexEntry(repoRoot, entry.relPath) !== entry.indexEntry) {
+      throw new Error(`'${entry.relPath}' changed after the rebase editor opened. Both versions were kept; reconcile the working file and '${entry.tempPath}' before continuing.`);
+    }
+    edits.push({ entry, edited, target });
   }
-  return staged;
+  // 모든 파일을 먼저 검사하고 원자적으로 claim하므로 마지막 파일 검증 실패도 앞 파일을 덮어쓰지 않는다.
+  const claims: ConflictWorktreeClaim[] = [];
+  let staged = false;
+  try {
+    for (const edit of edits) claims.push(await claimConflictWorkingLeaf(edit.target, edit.entry.workingVersion));
+    for (const [index, edit] of edits.entries()) {
+      await claims[index].install({ kind: "regular", buffer: edit.edited,
+        mode: (claims[index].snapshot.mode ?? 0) & 0o111 ? "100755" : "100644" });
+    }
+    if (edits.length) await runGitLiteralPaths(["add", "--", ...edits.map(edit => edit.entry.relPath)], repoRoot, { retryOnLock: false });
+    staged = true;
+    for (const claim of claims) await claim.commit();
+    for (const edit of edits) {
+      edit.entry.workingVersion = (await readConflictWorkingLeaf(edit.target)).version;
+      edit.entry.indexEntry = await readIndexEntry(repoRoot, edit.entry.relPath);
+    }
+  } finally {
+    if (!staged) for (const claim of claims.reverse()) await claim.rollback();
+  }
+  return edits.map(edit => edit.entry.relPath);
 }
 
 /**
@@ -186,4 +221,9 @@ function readCommitFile(
 /** 임시 디렉터리 내부에 안전하게 만들 수 있는 상대 경로로 정규화한다. */
 function safeRelativePath(relPath: string): string {
   return relPath.split(/[\\/]+/).filter((part) => part && part !== "..").join(path.sep);
+}
+
+/** 파일을 열 때의 stage 정보를 비교하기 위해 literal 경로의 index 행을 읽는다. */
+async function readIndexEntry(repoRoot: string, relative: string): Promise<string> {
+  return runGitLiteralPaths(["ls-files", "--stage", "-z", "--", relative], repoRoot);
 }

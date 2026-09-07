@@ -8,6 +8,7 @@ import type {
   RebaseResult,
 } from "../git/rebaseService";
 import { RebaseService } from "../git/rebaseService";
+import { REBASE_RESTORE_CONFLICT_MESSAGE } from "../git/rebasePlanSafety";
 import {
   isActiveRebaseSession,
   readRebaseSessionState,
@@ -129,6 +130,14 @@ export async function restoreGraphRebaseSession(
     readRebaseSessionState(repoRoot).catch(() => undefined),
     conflictService.getOperation().catch(() => "none"),
   ]);
+  if (state?.restoringLocalChanges && operation === "none" && (await conflictService.listConflicts()).length) {
+    deps.post({ type: "graphRebaseProgress", progress: {
+      action: "continue", phase: "conflicts", active: false,
+      title: "Local changes need conflict resolution", detail: REBASE_RESTORE_CONFLICT_MESSAGE,
+    } });
+    deps.post({ type: "graphRebaseOperation", active: false, restoringLocalChanges: true });
+    return true;
+  }
   if (!state || !isActiveRebaseSession(state) || operation !== "rebase") {
     return false;
   }

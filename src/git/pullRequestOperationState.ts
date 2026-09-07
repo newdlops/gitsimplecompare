@@ -17,6 +17,8 @@ export interface PendingPullRequestRebase {
   sourceBranch: string;
   preservedStashHash?: string;
   createdAt: number;
+  nativeOperation?: import("./operationControl").GitOperationIdentity;
+  restoreHead?: string;
 }
 
 /**
@@ -115,5 +117,8 @@ function normalizeState(value: unknown): PendingPullRequestRebase | undefined {
     sourceBranch: item.sourceBranch,
     preservedStashHash: preserved,
     createdAt,
+    nativeOperation: item.nativeOperation && typeof item.nativeOperation === "object"
+      ? item.nativeOperation as import("./operationControl").GitOperationIdentity : undefined,
+    restoreHead: typeof item.restoreHead === "string" ? item.restoreHead : undefined,
   };
 }

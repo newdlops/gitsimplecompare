@@ -8,6 +8,8 @@ import {
   sharedWebviewStyleTags,
 } from "./sharedWebviewResources";
 import { RebaseItem, RebaseService } from "../git/rebaseService";
+import { assertRebaseCheckout, captureRebaseCheckout, type RebaseCheckoutIdentity } from "../git/rebasePlanSafety";
+import { runConflictMutation } from "../git/conflictMutationCoordinator";
 import { RebaseFromWebview, RebaseToWebview } from "./rebaseProtocol";
 
 /**
@@ -16,6 +18,7 @@ import { RebaseFromWebview, RebaseToWebview } from "./rebaseProtocol";
 export class RebasePanel {
   private static current: RebasePanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private checkout?: RebaseCheckoutIdentity;
 
   /**
    * 패널을 연다(기존 패널이 있으면 닫고 새로 만든다).
@@ -97,7 +100,10 @@ export class RebasePanel {
   private async loadPlan(): Promise<void> {
     this.post({ type: "operation", state: "loading", message: vscode.l10n.t("Loading rebase commits…") });
     try {
+      const checkout = await captureRebaseCheckout(this.service.repoRoot);
       const commits = await this.service.getCommits(this.base);
+      await assertRebaseCheckout(this.service.repoRoot, checkout);
+      this.checkout = checkout;
       if (!commits.length) {
         this.post({ type: "operation", state: "error", message: vscode.l10n.t("No commits to rebase.") });
         return;
@@ -114,6 +120,8 @@ export class RebasePanel {
    * @param items 사용자가 짠 계획
    */
   private async runRebase(items: RebaseItem[]): Promise<void> {
+    if (!this.checkout) return;
+    const checkout = this.checkout;
     const count = items.length;
     const yes = vscode.l10n.t("Start Rebase");
     const choice = await vscode.window.showWarningMessage(
@@ -129,18 +137,20 @@ export class RebasePanel {
     }
     this.post({ type: "operation", state: "running", message: vscode.l10n.t("Starting rebase…") });
 
-    const result = await this.service.start(
+    const result = await runConflictMutation(this.service.repoRoot, () => this.service.start(
       this.base,
       false,
       items,
-      this.editorScript
-    );
+      this.editorScript,
+      undefined,
+      checkout
+    )).catch(error => ({ status: "failed" as const, message: error instanceof Error ? error.message : String(error) }));
     if (result.status === "completed") {
       vscode.window.showInformationMessage(vscode.l10n.t("Rebase completed."));
       this.dispose();
     } else if (result.status === "conflicts") {
       vscode.window.showWarningMessage(
-        vscode.l10n.t(
+        result.restoringLocalChanges ? vscode.l10n.t(result.message!) : vscode.l10n.t(
           "Rebase paused due to conflicts. Resolve them in the Conflicts view, then Continue."
         )
       );
@@ -154,6 +164,7 @@ export class RebasePanel {
       vscode.window.showInformationMessage(vscode.l10n.t("Nothing to rebase."));
       this.dispose();
     } else {
+      this.post({ type: "operation", state: "error", message: vscode.l10n.t("Rebase failed: {0}", result.message ?? "") });
       vscode.window.showErrorMessage(
         vscode.l10n.t("Rebase failed: {0}", result.message ?? "")
       );

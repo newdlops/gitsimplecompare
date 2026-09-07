@@ -57,6 +57,9 @@ export function graphRebaseResultProgress(
     return pausedProgress(action, result.paused, items);
   }
   if (result.status === "conflicts") {
+    if (result.restoringLocalChanges) {
+      return terminalProgress(action, "conflicts", "Local changes need conflict resolution", result.message || "Resolve the restored local changes in the Conflicts view. Git kept the autostash for recovery.");
+    }
     return stoppedProgress(action, result, items);
   }
   if (result.status === "stopped") {

@@ -4,6 +4,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { runGit } from "./gitExec";
+import type { GitOperationIdentity } from "./operationControl";
 
 const STATE_GIT_PATH = "gitsimplecompare/deferred-commit-rebase-state.json";
 
@@ -23,6 +24,9 @@ export interface PendingDeferredCommitRebase {
   sourceRef?: string;
   operationHead?: string;
   currentCommit?: string;
+  /** 충돌한 native 작업의 소유권. 이전 버전의 출처 없는 상태는 자동 복구하지 않는다. */
+  nativeOperation?: GitOperationIdentity;
+  restoreHead?: string;
   remainingCommits: string[];
   preservedStashHash?: string;
   createdAt: number;
@@ -138,6 +142,9 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
     sourceRef,
     operationHead,
     currentCommit,
+    nativeOperation: item.nativeOperation && typeof item.nativeOperation === "object"
+      ? item.nativeOperation as GitOperationIdentity : undefined,
+    restoreHead: typeof item.restoreHead === "string" ? item.restoreHead : undefined,
     remainingCommits,
     preservedStashHash,
     createdAt,

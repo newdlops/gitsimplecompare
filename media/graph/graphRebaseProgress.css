@@ -66,6 +66,12 @@
   white-space: nowrap;
 }
 
+/* 복구에 필요한 충돌 안내는 좁은 패널에서도 잘리지 않게 전체 문장을 표시한다. */
+#graph-rebase-progress.phase-conflicts .rebase-progress-detail {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .rebase-progress-guidance {
   display: flex;
   flex-wrap: wrap;

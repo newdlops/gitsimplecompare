@@ -76,7 +76,7 @@ export const authentication = {
 };
 export class EventEmitter<T = unknown> { public event = () => ({ dispose() {} }); public fire(_value: T) {} public dispose() {} }
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
-export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}) };
+export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}) };
 export const ViewColumn = { Active: 1 };
 export const ProgressLocation = { Notification: 15 };
 export const env = { remoteName: undefined as string | undefined, openExternal: async (uri: unknown) => { __externalUris.push(uri); if (externalResult instanceof Error) throw externalResult; return externalResult; }, clipboard: { writeText: async (value: string) => { __clipboardWrites.push(value); } } };

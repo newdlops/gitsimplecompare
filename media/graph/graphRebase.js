@@ -127,6 +127,8 @@
       renderPlan();
       window.GscGraphDetail?.refresh?.();
     } else if (msg.type === "graphRebaseOperation") {
+      // 커밋 재작성은 끝났으므로 rebase 제어를 닫고 별도 복원 충돌 배너는 유지한다.
+      if (msg.restoringLocalChanges) { clearPlan(); return; }
       operationActive = Boolean(msg.active);
       ensureBar();
       renderPlan();
@@ -523,7 +525,7 @@
       return;
     }
     window.GscGraphPostMessage?.({ type: "runGraphRebase", base: plan.base,
-      root: Boolean(plan.root), onto: plan.onto || "", editPath, items: itemsPayload() });
+      root: Boolean(plan.root), onto: plan.onto || "", checkout: plan.checkout, editPath, items: itemsPayload() });
   }
 
   /** 확장 호스트에 보낼 현재 rebase 계획 payload 를 만든다. */

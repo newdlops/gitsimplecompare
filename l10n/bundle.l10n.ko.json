@@ -1604,5 +1604,7 @@
   "Reload Window": "창 다시 로드",
   "Freed approximately {0}, but {1} cache path(s) could not be cleaned. Close all VS Code windows and try again if needed.": "약 {0}을(를) 확보했지만 캐시 경로 {1}개를 정리하지 못했습니다. 필요하면 모든 VS Code 창을 닫고 다시 시도하세요.",
   "Freed approximately {0}; {1} was recreated or remained in active caches.": "약 {0}을(를) 확보했지만 사용 중인 캐시에서 {1}이(가) 다시 생성되었거나 남았습니다.",
-  "VS Code cache cleanup finished. Freed approximately {0}.": "VS Code 캐시 정리를 완료했습니다. 약 {0}을(를) 확보했습니다."
+  "VS Code cache cleanup finished. Freed approximately {0}.": "VS Code 캐시 정리를 완료했습니다. 약 {0}을(를) 확보했습니다.",
+  "Rebase finished, but restoring local changes caused conflicts. Resolve them in the Conflicts view. Git kept the autostash for recovery.": "Rebase는 끝났지만 로컬 변경을 복원하면서 충돌이 발생했습니다. Conflicts 뷰에서 해결하세요. Git의 autostash는 복구를 위해 보존되어 있습니다.",
+  "Local changes need conflict resolution": "복원한 로컬 변경의 충돌을 해결해야 합니다"
 }

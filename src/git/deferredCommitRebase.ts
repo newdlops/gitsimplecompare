@@ -2,6 +2,7 @@
 // - git rebase 는 첫 충돌에서 멈추므로, cherry-pick 큐로 충돌 없는 커밋을 먼저 쌓고
 //   충돌나는 커밋만 마지막 단계에서 Conflicts 뷰에 노출한다.
 import { detectOperation } from "./conflictService";
+import { assertControlledTransition, captureGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import {
   clearPendingDeferredCommitRebase,
@@ -130,6 +131,7 @@ export async function continuePendingDeferredCommitRebase(
   if (await isConflictState(repoRoot)) {
     return { status: "pending" };
   }
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "continue");
   const operationHead = await currentHead(repoRoot);
   return applyPendingDeferredCommitQueue(repoRoot, {
     ...pending,
@@ -140,7 +142,7 @@ export async function continuePendingDeferredCommitRebase(
 
 /**
  * deferred rebase 를 abort 한 뒤 시작 snapshot 과 보존 stash 를 복원한다.
- * - 이미 적용된 non-conflict commit 들까지 모두 취소해야 하므로 snapshot 으로 hard reset 한다.
+ * - 확인된 abort 뒤에만 snapshot으로 돌아가며 --keep으로 새 로컬 편집을 보호한다.
  * @param repoRoot git 저장소 루트
  */
 export async function restorePendingDeferredCommitRebaseAfterAbort(
@@ -150,7 +152,7 @@ export async function restorePendingDeferredCommitRebaseAfterAbort(
   if (!pending || await isConflictState(repoRoot)) {
     return { status: "none" };
   }
-  await switchToBranch(repoRoot, pending.destinationBranch);
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "abort");
   if (pending.operationHead) {
     await assertCurrentBranchHead(
       repoRoot,
@@ -159,7 +161,7 @@ export async function restorePendingDeferredCommitRebaseAfterAbort(
       "restoring aborted deferred rebase"
     );
   }
-  await runGit(["reset", "--hard", pending.snapshotRef], repoRoot);
+  await runGit(["reset", "--keep", pending.snapshotRef], repoRoot, { retryOnLock: false });
   await restorePendingLocalChanges(
     repoRoot,
     pending,
@@ -177,9 +179,10 @@ export async function dropPendingDeferredCommitRebaseStashAfterResolvedRestore(
   repoRoot: string
 ): Promise<DeferredCommitRebaseCleanupResult> {
   const pending = await readPendingDeferredCommitRebase(repoRoot);
-  if (!pending || await isConflictState(repoRoot)) {
+  if (!pending?.restoreHead || await isConflictState(repoRoot)) {
     return { status: "none" };
   }
+  await assertCurrentBranchHead(repoRoot, pending.destinationBranch, pending.restoreHead, "finishing deferred stash restoration");
   if (pending.preservedStashHash) {
     await dropPreservedLocalChangesStash(repoRoot, pending.preservedStashHash);
     await clearPendingDeferredCommitRebase(repoRoot);
@@ -262,6 +265,7 @@ async function applyPendingDeferredCommitQueue(
         ...state,
         operationHead: await currentHead(repoRoot),
         currentCommit: commit,
+        nativeOperation: await captureGitOperation(repoRoot),
         remainingCommits: remaining,
       });
       await recordDeferredUndoState(repoRoot, state, "replay");
@@ -381,6 +385,7 @@ async function restorePendingLocalChanges(
   pending: PendingDeferredCommitRebase,
   failureMessage: string
 ): Promise<void> {
+  await writePendingDeferredCommitRebase(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   if (pending.preservedStashHash) {
     await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   }
@@ -404,27 +409,7 @@ async function isConflictState(repoRoot: string): Promise<boolean> {
  * @param repoRoot git 저장소 루트
  */
 async function hasUnmergedChanges(repoRoot: string): Promise<boolean> {
-  return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot).catch(() => "")).length > 0;
-}
-
-/**
- * 지정한 로컬 브랜치로 working tree 를 전환한다.
- * @param repoRoot git 저장소 루트
- * @param branch 전환할 브랜치 이름
- */
-async function switchToBranch(repoRoot: string, branch: string): Promise<void> {
-  if (await currentBranch(repoRoot).catch(() => "") === branch) {
-    return;
-  }
-  await runGit(["switch", branch], repoRoot);
-}
-
-/**
- * 현재 로컬 브랜치 이름을 읽는다.
- * @param repoRoot git 저장소 루트
- */
-async function currentBranch(repoRoot: string): Promise<string> {
-  return (await runGit(["symbolic-ref", "--short", "HEAD"], repoRoot).catch(() => "")).trim();
+  return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot)).length > 0;
 }
 
 /**

@@ -132,7 +132,7 @@ export type ToWebviewMessage =
   | { type: "graphRebaseAiPlan"; result: AiRebasePlanResult }
   | { type: "graphRebaseProgress"; progress: GraphRebaseProgress }
   | { type: "graphRebasePaused"; paused: RebasePausedState }
-  | { type: "graphRebaseOperation"; active: boolean }
+  | { type: "graphRebaseOperation"; active: boolean; restoringLocalChanges?: boolean }
   | { type: "graphRebaseClear" }
   | { type: "graphBusy"; key: string; busy: boolean }
   | { type: "error"; message: string };
@@ -243,6 +243,7 @@ export type FromWebviewMessage =
   | { type: "abortGraphRebase" }
   | {
       type: "runGraphRebase";
+      checkout?: import("../git/rebasePlanSafety").RebaseCheckoutIdentity;
       base: string;
       root?: boolean;
       onto?: string;

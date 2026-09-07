@@ -4,6 +4,7 @@ import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/
 import * as path from "node:path";
 import { detectOperation, type MergeOperation } from "./conflictService";
 import { readConflictOperationEpoch } from "./conflictOperationEpoch";
+import { controlGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
 
@@ -150,7 +151,7 @@ export class OperationUndoStore {
       // Git 자체의 worktree 검사를 유지해 다른 worktree에서 사용 중인 브랜치를 이동하지 않는다.
       await runGit(["branch", "--force", "--", plan.branch, plan.restoredHead], this.repoRoot, { retryOnLock: false });
     } else if (plan.operation !== "none") {
-      await runGit([plan.operation, "--abort"], this.repoRoot, { retryOnLock: false });
+      await controlGitOperation(this.repoRoot, plan.operation, "abort");
       if (plan.phase === "replay") {
         await runGit(["reset", "--keep", plan.restoredHead], this.repoRoot, { retryOnLock: false });
       }

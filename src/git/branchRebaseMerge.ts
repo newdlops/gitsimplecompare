@@ -4,6 +4,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperation } from "./conflictService";
+import { assertControlledTransition, captureGitOperation } from "./operationControl";
 import { runGit } from "./gitExec";
 import { OperationUndoStore as BranchOperationUndoStore } from "./operationUndoStore";
 import { logError } from "../ui/outputLog";
@@ -60,6 +61,8 @@ interface PendingBranchRebaseMerge {
   snapshotRef: string;
   preservedStashHash?: string;
   createdAt: number;
+  nativeOperation?: import("./operationControl").GitOperationIdentity;
+  restoreHead?: string;
 }
 
 /**
@@ -88,6 +91,8 @@ export async function runBranchRebaseMerge(
     return resumeToRunResult(input, result, rebasedHead);
   } catch (err) {
     if (await isRebaseConflictState(input.repoRoot)) {
+      pending.nativeOperation = await captureGitOperation(input.repoRoot);
+      await writePendingBranchRebaseMerge(input.repoRoot, pending);
       return {
         status: "conflicts",
         branch: input.branch,
@@ -123,6 +128,7 @@ export async function finishPendingBranchRebaseMergeAfterContinue(
     };
   }
   const rebasedHead = await currentHead(repoRoot);
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "continue");
   return completePendingBranchRebaseMerge(repoRoot, pending, rebasedHead);
 }
 
@@ -139,7 +145,8 @@ export async function restorePendingBranchRebaseMergeAfterAbort(
   if (!pending || await isRebaseConflictState(repoRoot)) {
     return { status: "none" };
   }
-  await switchToBranch(repoRoot, pending.branch);
+  await assertControlledTransition(repoRoot, pending.nativeOperation, "abort");
+  await assertCurrentBranchHead(repoRoot, pending.branch, pending.beforeHead, "restoring aborted branch rebase");
   await restorePendingLocalChanges(
     repoRoot,
     pending,
@@ -159,9 +166,10 @@ export async function dropPendingBranchRebaseMergeStashAfterResolvedRestore(
   repoRoot: string
 ): Promise<BranchRebaseMergeCleanupResult> {
   const pending = await readPendingBranchRebaseMerge(repoRoot);
-  if (!pending || await isRebaseConflictState(repoRoot)) {
+  if (!pending?.restoreHead || await isRebaseConflictState(repoRoot)) {
     return { status: "none" };
   }
+  await assertCurrentBranchHead(repoRoot, pending.branch, pending.restoreHead, "finishing branch stash restoration");
   if (pending.preservedStashHash) {
     await dropPreservedLocalChangesStash(repoRoot, pending.preservedStashHash);
     await clearPendingBranchRebaseMerge(repoRoot);
@@ -335,6 +343,9 @@ function normalizeState(value: unknown): PendingBranchRebaseMerge | undefined {
     snapshotRef: item.snapshotRef,
     preservedStashHash: typeof item.preservedStashHash === "string" ? item.preservedStashHash : undefined,
     createdAt: typeof item.createdAt === "number" ? item.createdAt : 0,
+    nativeOperation: item.nativeOperation && typeof item.nativeOperation === "object"
+      ? item.nativeOperation as import("./operationControl").GitOperationIdentity : undefined,
+    restoreHead: typeof item.restoreHead === "string" ? item.restoreHead : undefined,
   };
 }
 
@@ -368,23 +379,11 @@ async function restorePendingLocalChanges(
   pending: PendingBranchRebaseMerge,
   failureMessage: string
 ): Promise<void> {
+  await writePendingBranchRebaseMerge(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   if (!pending.preservedStashHash) {
     return;
   }
   await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
-}
-
-/** 현재 브랜치 이름을 반환한다. detached HEAD 면 빈 문자열이다. */
-async function currentBranch(repoRoot: string): Promise<string> {
-  return (await runGit(["symbolic-ref", "--short", "HEAD"], repoRoot).catch(() => "")).trim();
-}
-
-/** 지정 브랜치로 전환한다. */
-async function switchToBranch(repoRoot: string, branch: string): Promise<void> {
-  if (await currentBranch(repoRoot) === branch) {
-    return;
-  }
-  await runGit(["switch", branch], repoRoot);
 }
 
 /** 현재 HEAD commit hash 를 반환한다. */

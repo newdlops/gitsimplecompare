@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { PullRequestStackMetadataService } from "../src/git/pullRequestStackMetadata";
 import { PullRequestStackRestackService } from "../src/git/pullRequestStackRestack";
+import { ConflictService } from "../src/git/conflictService";
 
 const execFileAsync = promisify(execFile);
 
@@ -154,7 +155,7 @@ test("연쇄 restack 충돌은 임시 worktree에 보존되고 Abort가 원래 c
     assert.equal(result.branch, "stack/two");
     assert.deepEqual(result.conflictFiles, ["shared.txt"]);
     assert.match(result.worktreePath, /gsc-stack-restack-/);
-    await git(result.worktreePath, "rebase", "--abort");
+    await new ConflictService(result.worktreePath).abortOperation("rebase");
     const restoredRoot = await new PullRequestStackRestackService(result.worktreePath)
       .restoreAfterAbort();
     assert.equal(restoredRoot, repoRoot);
@@ -201,7 +202,7 @@ test("임시 worktree 충돌을 해결한 Continue는 원본 저장소 state로 
     if (paused.status !== "conflicts") return;
     await writeFile(join(paused.worktreePath, "shared.txt"), "resolved child on amended parent\n", "utf8");
     await git(paused.worktreePath, "add", "shared.txt");
-    await git(paused.worktreePath, "rebase", "--continue");
+    await new ConflictService(paused.worktreePath).continueOperation("rebase");
 
     const completed = await new PullRequestStackRestackService(paused.worktreePath)
       .resumeAfterContinue();
@@ -303,7 +304,7 @@ test("게시 child의 merge 충돌 Abort는 branch와 Stack 메타데이터를 �
     const paused = await service.execute(await service.createPlan("stack/one"));
     assert.equal(paused.status, "conflicts");
     if (paused.status !== "conflicts") return;
-    await git(paused.worktreePath, "merge", "--abort");
+    await new ConflictService(paused.worktreePath).abortOperation("merge");
     await new PullRequestStackRestackService(paused.worktreePath).restoreAfterAbort();
     assert.equal(await git(repoRoot, "rev-parse", "stack/two"), oldTwo);
     const child = (await metadata.listBranches()).find((branch) => branch.name === "stack/two");
