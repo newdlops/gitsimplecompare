@@ -32,7 +32,11 @@
       }
       document.removeEventListener("mousedown", onDocDown, true);
       document.removeEventListener("keydown", onDocKey, true);
-      if (restoreFocus && anchor?.isConnected) anchor.focus();
+      if (restoreFocus && anchor?.isConnected) {
+        // 포인터가 행을 떠났어도 focus-within으로 hover 전용 버튼을 먼저 노출한다.
+        anchor.closest(".row[tabindex]")?.focus({ preventScroll: true });
+        anchor.focus({ preventScroll: true });
+      }
     }
 
     /** 구분선 요소를 만든다. */
@@ -67,7 +71,10 @@
 
     /** menuitem 사이의 키보드 이동과 submenu 진입·복귀를 연결한다. */
     function bindMenuKeyboard(stack, reposition, renderTop) {
-      dropdownEl.addEventListener("keydown", (event) => {
+      const menu = dropdownEl;
+      menu.addEventListener("keydown", (event) => {
+        // capture 단계의 Escape 또는 menuitem의 Enter가 이미 메뉴를 닫았으면 처리를 끝낸다.
+        if (dropdownEl !== menu) return;
         const items = Array.from(dropdownEl.querySelectorAll('[role="menuitem"]'));
         if (!items.length) return;
         const current = items.indexOf(document.activeElement);

@@ -717,6 +717,7 @@
         T.stashes,
         (p.stashes || []).length,
         window.__gscStashes?.body?.(p.stashes || [], {
+          repoRoot: p.commit?.repoRoot,
           expandedByKey: state.stashExpanded,
           fileIconHtml,
         }) || "",

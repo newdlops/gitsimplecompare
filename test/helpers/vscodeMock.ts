@@ -54,6 +54,7 @@ export const window = {
   showWarningMessage(message: string) { __warningMessages.push(message); return Promise.resolve(warningMessageResult); },
   showErrorMessage(message: string) { __errorMessages.push(message); return Promise.resolve(undefined); },
   showInformationMessage(message: string) { __informationMessages.push(message); return Promise.resolve(informationMessageResult); },
+  showInputBox: async (_options?: unknown): Promise<string | undefined> => undefined,
   showQuickPick: async (items: readonly unknown[]) => {
     __quickPickItems.push([...items]);
     return typeof quickPickResult === "function" ? quickPickResult(items) : quickPickResult;

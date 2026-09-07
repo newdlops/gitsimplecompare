@@ -5,6 +5,34 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72051] - 2026-09-07
+
+### Fixed
+
+- Branch Undo verifies the operation ID, worktree, HEAD and active Git operation
+  before restoring its snapshot. Unrelated stash conflicts, restarted rebases,
+  newer commits and newly staged changes are preserved. Confirmation cannot
+  accidentally approve an operation created while the dialog was open.
+- A failed squash commit retains its recovery snapshot and staged result.
+  Undo preserves unrelated working edits; a failed temporary squash leaves
+  the user's original staged changes outside automatic recovery.
+- Stash actions, lazy file loading and file diffs retain the selected repository
+  and commit hash when stash numbers or the active repository change. Pop and
+  branch creation delete the selected stash only after successful application.
+  Failed reads remain retryable, and stale selections stop with an error.
+- Partial binary stage, unstage, discard and split commit treat selected
+  filenames literally. Per-file and full diff queries now produce consistent
+  binary headers for change validation.
+- PR Undo refuses to move a branch checked out in another worktree.
+- Closing a Changes menu with Enter or Escape no longer raises an exception;
+  Escape restores focus even after the pointer leaves a stash row.
+
+### Changed
+
+- Automatic branch Undo requires an operation record created in this worktree.
+  Older snapshots remain in Git for manual recovery instead of being inferred
+  as the owner of current changes.
+
 ## [0.1.72050] - 2026-09-07
 
 ### Changed

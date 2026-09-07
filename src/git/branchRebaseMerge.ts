@@ -5,6 +5,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
+import { BranchOperationUndoStore } from "./branchOperationUndoStore";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import {
   dropPreservedLocalChangesStash,
@@ -174,14 +175,16 @@ export async function dropPendingBranchRebaseMergeStashAfterResolvedRestore(
  * @param repoRoot git 저장소 루트
  * @param branch 복원 대상 브랜치
  * @param failureMessage stash 복원 실패 시 보여줄 메시지
+ * @param snapshotRef Undo 중인 snapshot. 다른 작업이 보존한 stash는 적용하지 않는다.
  */
 export async function restorePendingBranchRebaseMergeLocalChangesForBranch(
   repoRoot: string,
   branch: string,
-  failureMessage: string
+  failureMessage: string,
+  snapshotRef: string
 ): Promise<void> {
   const pending = await readPendingBranchRebaseMerge(repoRoot);
-  if (!pending || pending.branch !== branch) {
+  if (!pending || pending.branch !== branch || pending.snapshotRef !== snapshotRef) {
     return;
   }
   await restorePendingLocalChanges(repoRoot, pending, failureMessage);
@@ -211,6 +214,7 @@ async function completePendingBranchRebaseMerge(
     rebasedHead,
     "completing branch rebase merge"
   );
+  await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", true);
   try {
     await restorePendingLocalChanges(
       repoRoot,

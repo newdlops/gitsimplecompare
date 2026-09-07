@@ -57,6 +57,7 @@ export async function undoBranchOperation(deps: CommandDeps): Promise<void> {
     return;
   }
   const label = vscode.l10n.t("Undo Branch Operation");
+  const plan = await branchService.prepareUndo();
   const choice = await vscode.window.showWarningMessage(
     vscode.l10n.t(
       "Undo the last branch operation on the current branch? The branch will reset to the saved snapshot."
@@ -69,7 +70,7 @@ export async function undoBranchOperation(deps: CommandDeps): Promise<void> {
   }
   try {
     logInfo("branch operation undo started", { repoRoot: service.repoRoot });
-    const result = await branchService.undoLastOperation();
+    const result = await branchService.undoLastOperation(plan.branch, plan);
     logInfo("branch operation undo finished", {
       repoRoot: service.repoRoot,
       branch: result.branch,

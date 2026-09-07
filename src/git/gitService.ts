@@ -8,7 +8,7 @@ import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitBranchListCache } from "./gitBranchListCache";
 import { GitError, runGit } from "./gitExec";
 import { runGitStatus } from "./gitStatusExec";
-import { runStash, stashPushPaths } from "./stashExec";
+import { StashService, type StashSelection } from "./stashService";
 import { attachParsedStatusStats, attachStatusStats } from "./statusStats";
 import {
   appendIgnoreEntries,
@@ -386,8 +386,8 @@ export class GitService {
    * @param message stash 메시지(선택)
    */
   async stashPush(paths: string[], message?: string): Promise<void> {
-    await stashPushPaths(this.repoRoot, paths, message);
-    this.invalidateStatusCache();
+    try { await new StashService(this.repoRoot).push(paths, message); }
+    finally { this.invalidateStatusCache(); }
   }
 
   /**
@@ -398,39 +398,12 @@ export class GitService {
    * - %gd(stash@{n}) · %gs(reflog 제목) · %cr(상대시각) · %H(해시).
    */
   async listStashes(): Promise<StashEntry[]> {
-    const out = await this.run([
-      "reflog",
-      "show",
-      "--max-count=10000",
-      "--format=%gd%x1f%gs%x1f%cr%x1f%H%x1e",
-      "refs/stash",
-    ]).catch(() => "");
-    const entries: StashEntry[] = [];
-    for (const rec of out.split("\x1e")) {
-      const line = rec.replace(/^\s+/, "");
-      if (!line) {
-        continue;
-      }
-      const [gd, gs, cr, hash] = line.split("\x1f");
-      if (!gd) {
-        continue;
-      }
-      const idxMatch = /(?:refs\/)?stash@\{(\d+)\}/.exec(gd);
-      const index = idxMatch ? Number(idxMatch[1]) : entries.length;
-      // gs 예: "WIP on main: 1a2b3c4 subject" 또는 "On main: 내 메시지"
-      const subjMatch = /^(?:WIP on|On) ([^:]+):\s?(.*)$/.exec(gs ?? "");
-      const branch = subjMatch ? subjMatch[1] : "";
-      const message = (subjMatch ? subjMatch[2] : gs) || gs || "";
-      entries.push({
-        index,
-        ref: `stash@{${index}}`,
-        message,
-        branch,
-        relativeDate: cr ?? "",
-        hash: hash ?? "",
-      });
-    }
-    return entries;
+    return new StashService(this.repoRoot).list();
+  }
+
+  /** 확인창 전에 선택을 전체 hash로 고정한다. 없거나 모호한 선택이면 중단한다. */
+  async resolveStash(selection: StashSelection): Promise<StashEntry> {
+    return new StashService(this.repoRoot).resolve(selection);
   }
 
   /**
@@ -439,38 +412,30 @@ export class GitService {
    * @param ref stash 참조(stash@{n})
    */
   async stashShowFiles(ref: string): Promise<FileChange[]> {
-    const out = await runStash([
-      "show",
-      "--include-untracked",
-      "--name-status",
-      "-z",
-      ref,
-    ], this.repoRoot).catch(() => "");
-    return parseNameStatusZ(out);
+    return new StashService(this.repoRoot).files(ref);
   }
 
   /** stash 를 작업트리에 적용한다(`git stash apply`). */
-  async stashApply(ref: string): Promise<void> {
-    await runStash(["apply", ref], this.repoRoot);
-    this.invalidateStatusCache();
+  async stashApply(selection: StashSelection): Promise<void> {
+    try { await new StashService(this.repoRoot).apply(selection); }
+    finally { this.invalidateStatusCache(); }
   }
 
   /** stash 를 적용하고 목록에서 제거한다(`git stash pop`). */
-  async stashPop(ref: string): Promise<void> {
-    await runStash(["pop", ref], this.repoRoot);
-    this.invalidateStatusCache();
+  async stashPop(selection: StashSelection): Promise<void> {
+    try { await new StashService(this.repoRoot).apply(selection, true); }
+    finally { this.invalidateStatusCache(); }
   }
 
   /** stash 를 버린다(`git stash drop`). */
-  async stashDrop(ref: string): Promise<void> {
-    await runStash(["drop", ref], this.repoRoot);
+  async stashDrop(selection: StashSelection): Promise<void> {
+    await new StashService(this.repoRoot).drop(selection);
   }
 
   /** stash 를 새 브랜치로 펼친다(`git stash branch <name> <ref>`). */
-  async stashBranch(name: string, ref: string): Promise<void> {
-    await runStash(["branch", name, ref], this.repoRoot);
-    this.invalidateStatusCache();
-    this.invalidateBranchCache();
+  async stashBranch(name: string, selection: StashSelection): Promise<void> {
+    try { await new StashService(this.repoRoot).branch(name, selection); }
+    finally { this.invalidateStatusCache(); this.invalidateBranchCache(); }
   }
 
   /**

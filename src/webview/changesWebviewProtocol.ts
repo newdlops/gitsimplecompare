@@ -19,6 +19,7 @@ export interface ChangesWebviewMessage {
   action?: string;
   ref?: string;
   stashKey?: string;
+  hash?: string;
   stage?: string;
   status?: string;
   repoRoot?: string;

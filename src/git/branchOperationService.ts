@@ -3,8 +3,10 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { detectOperation, type MergeOperation } from "./conflictService";
-import { restorePendingDeferredCommitRebaseLocalChangesForBranch } from "./deferredCommitRebase";
+import { randomUUID } from "node:crypto";
+import { detectOperation } from "./conflictService";
+import { BranchOperationUndoStore, type BranchOperationUndoPlan } from "./branchOperationUndoStore";
+import { logError } from "../ui/outputLog";
 import {
   restorePendingBranchRebaseMergeLocalChangesForBranch,
   runBranchRebaseMerge,
@@ -40,7 +42,11 @@ interface PreservedLocalChanges {
 
 /** 브랜치 단위 git 작업 서비스 */
 export class BranchOperationService {
-  constructor(public readonly repoRoot: string) {}
+  private readonly undoStore: BranchOperationUndoStore;
+
+  constructor(public readonly repoRoot: string) {
+    this.undoStore = new BranchOperationUndoStore(repoRoot);
+  }
 
   /**
    * source 브랜치의 변경을 현재 브랜치에 squash commit 하나로 병합한다.
@@ -68,6 +74,7 @@ export class BranchOperationService {
       }
       await runGit(["add", "-A"], this.repoRoot);
       await this.commitSquash(sourceBranch, branch, this.repoRoot);
+      await this.undoStore.capture(branch, snapshotRef, "completed");
       return {
         status: "completed",
         branch,
@@ -77,6 +84,7 @@ export class BranchOperationService {
         snapshotRef,
       };
     } catch (err) {
+      await this.recordFailedSquash(branch, snapshotRef);
       if (await this.hasUnmergedChanges()) {
         return {
           status: "conflicts",
@@ -87,7 +95,6 @@ export class BranchOperationService {
           snapshotRef,
         };
       }
-      await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
       throw err instanceof Error ? err : new Error(String(err));
     }
   }
@@ -118,6 +125,8 @@ export class BranchOperationService {
         snapshotRef,
         preservedStashHash: preserved?.hash,
       });
+      await this.undoStore.capture(branch, snapshotRef,
+        await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
       return {
         status: result.status,
         branch,
@@ -146,33 +155,29 @@ export class BranchOperationService {
    * 현재 브랜치의 마지막 branch operation 을 시작 전 snapshot 으로 되돌린다.
    * - rebase merge 가 충돌로 멈춘 경우에는 먼저 진행 중인 git 작업을 abort 한다.
    * @param branchName undo 대상 브랜치. 생략하면 현재 브랜치를 사용한다.
+   * @param approvedPlan 확인창 이전에 고정한 작업. 생략하면 현재 상태를 검증해 만든다.
    * @returns 복원된 브랜치와 HEAD
    */
-  async undoLastOperation(branchName?: string): Promise<BranchOperationUndoResult> {
-    const branch = branchName || await this.currentBranch();
-    const snapshotRef = branchSnapshotRefForBranch(branch);
-    const restoredHead = await this.resolveSnapshot(snapshotRef);
-    const operation = await this.assertReadyForUndo();
-    await this.abortOperationIfNeeded(operation);
-    if (await this.currentBranch().catch(() => "") !== branch) {
-      await this.switchToBranch(branch);
-    }
-    await this.resetCurrentBranchToSnapshot(snapshotRef);
+  async undoLastOperation(branchName?: string, approvedPlan?: BranchOperationUndoPlan): Promise<BranchOperationUndoResult> {
+    const plan = approvedPlan ?? await this.prepareUndo(branchName);
+    const { branch, restoredHead } = plan;
+    await this.undoStore.undo(plan);
     await restorePendingBranchRebaseMergeLocalChangesForBranch(
       this.repoRoot,
       branch,
-      "Branch operation was undone, but preserved local changes could not be restored."
+      "Branch operation was undone, but preserved local changes could not be restored.",
+      plan.snapshotRef
     );
-    await restorePendingDeferredCommitRebaseLocalChangesForBranch(
-      this.repoRoot,
-      branch,
-      "Branch operation was undone, but preserved local changes could not be restored."
-    );
-    await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
+    await this.undoStore.remove(plan);
     return {
       branch,
       restoredHead,
     };
+  }
+
+  /** 확인창 대기 중 작업이나 HEAD가 바뀌는 것을 감지하도록 Undo 대상을 고정한다. */
+  async prepareUndo(branchName?: string): Promise<BranchOperationUndoPlan> {
+    return this.undoStore.prepare(branchName);
   }
 
   /**
@@ -180,11 +185,7 @@ export class BranchOperationService {
    * @param branchName 확인할 브랜치. 생략하면 현재 브랜치를 사용한다.
    */
   async hasUndoSnapshot(branchName?: string): Promise<boolean> {
-    const branch = branchName || await this.currentBranch().catch(() => "");
-    if (!branch) {
-      return false;
-    }
-    return Boolean(await this.resolveSnapshot(branchSnapshotRefForBranch(branch)).catch(() => ""));
+    return this.prepareUndo(branchName).then(() => true, () => false);
   }
 
   /** 브랜치 작업 전 진행 중인 git 작업과 unmerged 파일이 없는지 확인한다. */
@@ -196,15 +197,6 @@ export class BranchOperationService {
     if (await this.hasUnmergedChanges()) {
       throw new Error("Resolve unmerged files before running a branch operation.");
     }
-  }
-
-  /** undo 가 사용자의 새 로컬 변경이나 무관한 git 작업을 덮어쓰지 않는지 확인한다. */
-  private async assertReadyForUndo(): Promise<MergeOperation> {
-    const operation = await detectOperation(this.repoRoot);
-    if (operation === "merge" || operation === "revert") {
-      throw new Error(`Cannot undo branch operation while ${operation} is in progress.`);
-    }
-    return operation;
   }
 
   /**
@@ -265,18 +257,19 @@ export class BranchOperationService {
 
   /** 현재 브랜치용 branch operation undo snapshot ref 를 생성한다. */
   private async createSnapshot(branch: string, head: string): Promise<string> {
-    const ref = branchSnapshotRefForBranch(branch);
+    const ref = `refs/gitsimplecompare/branch-operation-snapshots/${Buffer.from(branch).toString("hex")}/${randomUUID()}`;
     await runGit(["update-ref", ref, head], this.repoRoot);
+    await this.undoStore.start(branch, head, ref);
     return ref;
   }
 
-  /** undo snapshot ref 가 실제 commit 으로 존재하는지 확인한다. */
-  private async resolveSnapshot(ref: string): Promise<string> {
-    const hash = (await runGit(["rev-parse", "--verify", `${ref}^{commit}`], this.repoRoot).catch(() => "")).trim();
-    if (!hash) {
-      throw new Error("No branch operation snapshot is available for the current branch.");
+  /** squash가 부분 적용된 채 실패하면 복구 정보를 남기고 최초 Git 오류는 그대로 전달한다. */
+  private async recordFailedSquash(branch: string, snapshotRef: string): Promise<void> {
+    try {
+      await this.undoStore.capture(branch, snapshotRef, "squash");
+    } catch (error) {
+      logError("branch squash recovery recording failed; snapshot preserved", error, { repoRoot: this.repoRoot, branch, snapshotRef });
     }
-    return hash;
   }
 
   /**
@@ -292,35 +285,12 @@ export class BranchOperationService {
     return hash;
   }
 
-  /** 진행 중인 rebase/cherry-pick 류 작업이 있으면 undo 전에 중단한다. */
-  private async abortOperationIfNeeded(operation: MergeOperation): Promise<void> {
-    if (operation !== "none") {
-      await runGit([operation, "--abort"], this.repoRoot);
-    }
-  }
-
   /** 지정한 로컬 브랜치로 working tree 를 전환한다. */
   private async switchToBranch(branch: string): Promise<void> {
     if (await this.currentBranch().catch(() => "") === branch) {
       return;
     }
     await runGit(["switch", branch], this.repoRoot);
-  }
-
-  /** 현재 브랜치를 snapshot 으로 되돌리되 로컬 변경을 덮을 상황에서는 중단한다. */
-  private async resetCurrentBranchToSnapshot(snapshotRef: string): Promise<void> {
-    try {
-      if (await this.hasUnmergedChanges()) {
-        await runGit(["reset", "--hard", snapshotRef], this.repoRoot);
-        return;
-      }
-      await runGit(["reset", "--keep", snapshotRef], this.repoRoot);
-    } catch (err) {
-      throw new Error(
-        "Branch operation undo would overwrite local changes, so it was stopped. " +
-          `The undo snapshot was kept at ${snapshotRef}. ${errText(err)}`
-      );
-    }
   }
 
   /** 로컬 변경이 있는 상태에서 squash commit 을 임시 worktree 로 계산해 현재 브랜치에 반영한다. */
@@ -357,12 +327,8 @@ export class BranchOperationService {
       snapshotRef = await this.createSnapshot(branch, beforeHead);
       await this.assertStillOnBranch(branch, beforeHead, afterHead);
       await runGit(["reset", "--keep", afterHead], this.repoRoot);
+      await this.undoStore.capture(branch, snapshotRef, "completed");
       return { status: "completed", branch, sourceBranch, beforeHead, afterHead, snapshotRef };
-    } catch (err) {
-      if (snapshotRef) {
-        await runGit(["update-ref", "-d", snapshotRef], this.repoRoot).catch(() => "");
-      }
-      throw err instanceof Error ? err : new Error(String(err));
     } finally {
       if (!keepWorktree) {
         await this.removeTemporaryWorktree(worktreePath);
@@ -497,15 +463,6 @@ export class BranchOperationService {
     return next;
   }
 
-}
-
-/**
- * 브랜치별 undo snapshot ref 이름을 만든다.
- * @param branch snapshot 을 저장할 브랜치 이름
- * @returns git refs 아래에 저장할 snapshot ref
- */
-function branchSnapshotRefForBranch(branch: string): string {
-  return `refs/gitsimplecompare/branch-operations/${Buffer.from(branch).toString("hex")}`;
 }
 
 /** 오류 메시지를 사용자에게 보여줄 짧은 문자열로 만든다. */

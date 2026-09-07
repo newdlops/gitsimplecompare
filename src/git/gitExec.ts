@@ -90,6 +90,21 @@ export async function runGit(
 }
 
 /**
+ * 파일명을 pathspec 패턴이나 magic으로 확장하지 않고 Git 명령을 실행한다.
+ * @param args 하위 명령과 경로를 포함하는 인자 배열
+ * @param cwd Git 명령의 작업 디렉터리
+ * @param options 실행 환경, 취소 신호, lock 재시도 정책
+ * @returns 경로를 문자 그대로 처리한 명령의 표준 출력
+ */
+export function runGitLiteralPaths(
+  args: string[],
+  cwd: string,
+  options?: Record<string, string> | RunGitOptions
+): Promise<string> {
+  return runGit(["--literal-pathspecs", ...args], cwd, options);
+}
+
+/**
  * git 명령을 실행하고 성공한 경우에도 stdout과 stderr를 모두 반환한다.
  * - 일반 조회는 stdout만 필요한 `runGit`을 사용하고, 성공 로그까지 보존해야 하는 hook/외부 도구 실행은
  *   이 함수를 사용해 stderr 진행 출력도 OUTPUT 채널에 남긴다.

@@ -13,6 +13,14 @@ import { logError, logInfo } from "../ui/outputLog";
 /** 웹뷰의 일반 render payload로 보낼 stash 메타데이터. 파일 목록은 직접 메시지로 분리한다. */
 export type StashView = StashEntry;
 
+/** 웹뷰는 렌더 당시 저장소와 hash를 보낸다. ref 문자열은 기존 명령 호출과의 호환용이다. */
+export type StashCommandSelection = string | {
+  ref: string;
+  repoRoot?: string;
+  hash?: string;
+  message?: string;
+};
+
 /** 웹뷰에 직접 전달할 stash 한 건의 지연 파일 조회 결과. */
 export interface StashFilesLoadResult {
   ref: string;
@@ -34,6 +42,24 @@ const fileLoads = new Map<string, Promise<FileChange[]>>();
 function activeService(deps: CommandDeps): GitService | undefined {
   const root = deps.changesView.getActiveRepo();
   return root ? deps.registry.get(root) : undefined;
+}
+
+/**
+ * 사용자 입력을 기다리기 전에 저장소와 stash hash를 함께 고정한다.
+ * @param deps 선택 당시 등록된 저장소 서비스
+ * @param selection 화면에서 선택한 identity 또는 기존 명령의 번호
+ * @returns 확인창 이후에도 사용할 서비스와 실제 stash 항목
+ */
+async function captureSelection(deps: CommandDeps, selection: StashCommandSelection) {
+  const explicit = typeof selection !== "string" && (selection.repoRoot !== undefined || selection.hash !== undefined);
+  if (explicit && (!selection.repoRoot || !selection.hash)) throw new Error("The stash selection is incomplete. Refresh the stash list.");
+  const root = explicit ? selection.repoRoot : deps.changesView.getActiveRepo();
+  const svc = root ? deps.registry.get(root) : undefined;
+  if (!svc || !root) throw new Error("The selected stash repository is no longer available.");
+  const entry = await svc.resolveStash(explicit
+    ? { ref: selection.ref, hash: selection.hash! }
+    : typeof selection === "string" ? selection : selection.ref);
+  return { root, svc, entry };
 }
 
 /**
@@ -149,23 +175,14 @@ export async function refreshStashes(deps: CommandDeps): Promise<void> {
  * - 목록에서 얻은 hash로 `stash show`를 실행해 조회 중 drop/pop이 ref 번호를 바꿔도 다른 stash를 읽지 않는다.
  * - provider의 metadata 상태는 수정하지 않으므로 느린 결과가 새 stash 목록을 덮어쓸 수 없다.
  * @param deps 현재 활성 저장소와 GitService를 찾을 공유 의존성
- * @param requestedRef 웹뷰가 펼친 시점의 stash ref
+ * @param selection 웹뷰가 펼친 시점의 저장소와 stash identity
  * @returns hash 기반 key와 파일 목록, ref가 사라졌거나 저장소가 바뀌면 undefined
  */
 export async function loadStashFilesForView(
   deps: CommandDeps,
-  requestedRef: string
+  selection: StashCommandSelection
 ): Promise<StashFilesLoadResult | undefined> {
-  const root = deps.changesView.getActiveRepo();
-  const svc = root ? deps.registry.get(root) : undefined;
-  if (!root || !svc || !requestedRef) {
-    return undefined;
-  }
-  const entries = await svc.listStashes();
-  const entry = entries.find((candidate) => candidate.ref === requestedRef);
-  if (!entry) {
-    return undefined;
-  }
+  const { root, svc, entry } = await captureSelection(deps, selection);
   const files = await loadStashFiles(
     svc,
     root,
@@ -176,14 +193,14 @@ export async function loadStashFilesForView(
     logInfo("stash files result skipped", {
       root,
       activeRoot: deps.changesView.getActiveRepo(),
-      ref: requestedRef,
+      ref: entry.ref,
       reason: "repository-changed",
     });
     return undefined;
   }
   return {
-    ref: requestedRef,
-    key: entry.hash || entry.ref || String(entry.index),
+    ref: entry.ref,
+    key: `${root}@${entry.hash}`,
     files,
   };
 }
@@ -241,89 +258,58 @@ export async function stashSelected(
 }
 
 /** stash 를 작업트리에 적용한다(목록 유지). */
-export async function applyStash(deps: CommandDeps, ref: string): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc || !ref) {
-    return;
-  }
-  try {
-    await svc.stashApply(ref);
-  } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
-    );
-  }
-  refreshAll();
+export async function applyStash(deps: CommandDeps, selection: StashCommandSelection): Promise<void> {
+  await runSelectedStash(deps, selection, (svc, entry) => svc.stashApply(entry));
 }
 
 /** stash 를 적용하고 목록에서 제거한다(pop). */
-export async function popStash(deps: CommandDeps, ref: string): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc || !ref) {
-    return;
-  }
-  try {
-    await svc.stashPop(ref);
-  } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
-    );
-  }
-  refreshAll();
+export async function popStash(deps: CommandDeps, selection: StashCommandSelection): Promise<void> {
+  await runSelectedStash(deps, selection, (svc, entry) => svc.stashPop(entry));
 }
 
 /** stash 를 버린다(모달 확인). */
 export async function dropStash(
   deps: CommandDeps,
-  ref: string,
+  selection: StashCommandSelection,
   message?: string
 ): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc || !ref) {
-    return;
-  }
-  const choice = await vscode.window.showWarningMessage(
-    vscode.l10n.t("Drop stash '{0}'? This is irreversible.", message || ref),
-    { modal: true },
-    vscode.l10n.t("Drop Stash")
-  );
-  if (!choice) {
-    return;
-  }
-  try {
-    await svc.stashDrop(ref);
-  } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
+  await runSelectedStash(deps, selection, async (svc, entry) => {
+    const label = vscode.l10n.t("Drop Stash");
+    const choice = await vscode.window.showWarningMessage(
+      vscode.l10n.t("Drop stash '{0}'? This is irreversible.", message || entry.message || entry.ref),
+      { modal: true }, label
     );
-  }
-  refreshAll();
+    if (choice === label) await svc.stashDrop(entry);
+  });
 }
 
 /** stash 를 새 브랜치로 펼친다(브랜치 이름 입력). */
 export async function branchStash(
   deps: CommandDeps,
-  ref: string
+  selection: StashCommandSelection
 ): Promise<void> {
-  const svc = activeService(deps);
-  if (!svc || !ref) {
-    return;
-  }
-  const name = await vscode.window.showInputBox({
-    title: vscode.l10n.t("Create Branch from Stash"),
-    prompt: vscode.l10n.t("New branch name"),
+  await runSelectedStash(deps, selection, async (svc, entry) => {
+    const name = await vscode.window.showInputBox({
+      title: vscode.l10n.t("Create Branch from Stash"),
+      prompt: vscode.l10n.t("New branch name"),
+    });
+    if (name) await svc.stashBranch(name, entry);
   });
-  if (!name) {
-    return;
-  }
+}
+
+/** 저장소/hash 고정, 오류 출력, 부분 실패 이후 새로고침을 stash 액션들이 공유한다. */
+async function runSelectedStash(
+  deps: CommandDeps,
+  selection: StashCommandSelection,
+  action: (svc: GitService, entry: StashEntry) => Promise<void>
+): Promise<void> {
   try {
-    await svc.stashBranch(name, ref);
-  } catch (e) {
-    vscode.window.showErrorMessage(
-      vscode.l10n.t("Action failed: {0}", errText(e))
-    );
-  }
-  refreshAll();
+    const { svc, entry } = await captureSelection(deps, selection);
+    await action(svc, entry);
+  } catch (error) {
+    logError("selected stash action failed", error);
+    void vscode.window.showErrorMessage(vscode.l10n.t("Action failed: {0}", errText(error)));
+  } finally { refreshAll(); }
 }
 
 /**
@@ -333,13 +319,11 @@ export async function branchStash(
  */
 export async function openStashFile(
   deps: CommandDeps,
-  arg: { ref: string; path: string }
+  arg: Exclude<StashCommandSelection, string> & { path: string }
 ): Promise<void> {
-  const root = deps.changesView.getActiveRepo();
-  if (!root || !arg?.ref || !arg?.path) {
-    return;
-  }
+  if (!arg?.path) return;
+  const { root, entry } = await captureSelection(deps, arg);
   const fileName = arg.path.slice(arg.path.lastIndexOf("/") + 1);
   // stash 커밋의 첫 부모(^1)는 stash 가 만들어진 시점의 상태다.
-  await openRefVsRefDiff(root, `${arg.ref}^1`, arg.ref, arg.path, fileName);
+  await openRefVsRefDiff(root, `${entry.hash}^1`, entry.hash, arg.path, fileName);
 }

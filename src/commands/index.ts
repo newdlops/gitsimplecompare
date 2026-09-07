@@ -81,6 +81,7 @@ import {
   popStash,
   refreshStashes,
   stashSelected,
+  type StashCommandSelection,
 } from "./stash";
 import {
   abortOperation,
@@ -382,7 +383,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loadStashFiles",
-      (ref: string) => loadStashFilesForView(deps, ref)
+      (selection: StashCommandSelection) => loadStashFilesForView(deps, selection)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.stashSelected",
@@ -390,24 +391,23 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.applyStash",
-      (ref: string) => applyStash(deps, ref)
+      (selection: StashCommandSelection) => applyStash(deps, selection)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.popStash",
-      (ref: string) => popStash(deps, ref)
+      (selection: StashCommandSelection) => popStash(deps, selection)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.dropStash",
-      (arg: { ref: string; message?: string }) =>
-        dropStash(deps, arg?.ref, arg?.message)
+      (selection: StashCommandSelection) => dropStash(deps, selection)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.branchStash",
-      (ref: string) => branchStash(deps, ref)
+      (selection: StashCommandSelection) => branchStash(deps, selection)
     ),
     vscode.commands.registerCommand(
       "gitSimpleCompare.openStashFile",
-      (arg: { ref: string; path: string }) => openStashFile(deps, arg)
+      (arg: Exclude<StashCommandSelection, string> & { path: string }) => openStashFile(deps, arg)
     ),
     // 보기 상태: 트리/리스트 토글 및 정렬 변경
     vscode.commands.registerCommand("gitSimpleCompare.viewAsTree", () =>

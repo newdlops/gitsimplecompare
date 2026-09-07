@@ -350,9 +350,14 @@ export class PullRequestOperationSnapshot {
     return undefined;
   }
 
-  /** checkout되지 않은 로컬 브랜치 ref를 snapshot commit으로 직접 이동한다. */
+  /**
+   * checkout되지 않은 브랜치를 snapshot으로 이동한다.
+   * - branch 명령의 worktree 검사를 사용해 다른 worktree의 HEAD만 바뀌는 일을 막는다.
+   * @param branch 복원할 로컬 브랜치
+   * @param ref 복원할 snapshot ref
+   */
   private async updateBranchRef(branch: string, ref: string): Promise<void> {
-    await runGit(["update-ref", `refs/heads/${branch}`, ref], this.repoRoot);
+    await runGit(["branch", "--force", "--", branch, ref], this.repoRoot, { retryOnLock: false });
   }
 
   /** latest symbolic ref가 특정 immutable snapshot을 가리키도록 갱신한다. */

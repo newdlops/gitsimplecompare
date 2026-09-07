@@ -10,7 +10,7 @@ import {
 } from "./diffPatchBuild";
 import { createDiffMutationGuard } from "./diffMutationGuard";
 import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
-import { runGit } from "./gitExec";
+import { runGitLiteralPaths as runGit } from "./gitExec";
 
 const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
 
@@ -414,6 +414,8 @@ function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
   const flushFile = (): void => {
     flushHunk();
     if (current) {
+      // 파일 하나만 조회해도 전체 diff와 같은 header가 되도록 출력 끝의 구분 개행만 제거한다.
+      while (headerLines[headerLines.length - 1] === "") headerLines.pop();
       current.header = headerLines.join("\n");
       files.push(current);
     }

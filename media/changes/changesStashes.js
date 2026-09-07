@@ -63,7 +63,7 @@
    * @returns {string} 렌더 사이에서도 동일한 stash를 식별하는 키
    */
   function stashKey(stash) {
-    return stash.hash || stash.ref || String(stash.index || "");
+    return `${stash.repoRoot || ""}@${stash.hash || stash.ref || String(stash.index || "")}`;
   }
 
   /**
@@ -137,6 +137,7 @@
     return (
       `<div class="stash${expanded ? "" : " collapsed"}" data-ref="${esc(stash.ref)}" ` +
       `data-key="${esc(key)}" data-hash="${esc(stash.hash)}" ` +
+      `data-repo-root="${esc(stash.repoRoot)}" ` +
       `data-msg="${esc(stash.message)}" data-files-loaded="${filesLoaded ? "true" : "false"}">` +
       `<div class="row stash-header" role="button" tabindex="0" ` +
       `data-disclosure-label="${esc(stash.message || stash.ref)}" ` +
@@ -160,7 +161,7 @@
    * @returns {string} 섹션 본문에 삽입할 stash 목록 또는 빈 상태 HTML
    */
   function body(stashes, context) {
-    const rows = Array.isArray(stashes) ? stashes : [];
+    const rows = Array.isArray(stashes) ? stashes.map(stash => ({ ...stash, repoRoot: context?.repoRoot })) : [];
     renderFileIcon = context?.fileIconHtml || (() => "");
     const validKeys = new Set(rows.map(stashKey));
     for (const key of filesByKey.keys()) {
@@ -189,19 +190,28 @@
   /**
    * stash 헤더의 인라인 메뉴와 컨텍스트 메뉴가 공유할 액션 노드를 만든다.
    * @param {ReturnType<typeof acquireVsCodeApi>} vscode 웹뷰 메시지 API
-   * @param {string} ref 액션 대상 stash ref
-   * @param {string} message 삭제 확인 등에 사용할 stash 메시지
+   * @param {object} target 메뉴를 연 순간의 저장소/ref/hash/message
    * @returns {object[]} 공용 메뉴 렌더러가 소비하는 액션·구분선 노드 목록
    */
-  function menuNodes(vscode, ref, message) {
+  function menuNodes(vscode, target) {
     return [
-      { label: T.applyStash, onClick: () => post(vscode, "applyStash", { ref }) },
-      { label: T.popStash, onClick: () => post(vscode, "popStash", { ref }) },
+      { label: T.applyStash, onClick: () => post(vscode, "applyStash", target) },
+      { label: T.popStash, onClick: () => post(vscode, "popStash", target) },
       { separator: true },
-      { label: T.branchStash, onClick: () => post(vscode, "branchStash", { ref }) },
+      { label: T.branchStash, onClick: () => post(vscode, "branchStash", target) },
       { separator: true },
-      { label: T.dropStash, onClick: () => post(vscode, "dropStash", { ref, message }) },
+      { label: T.dropStash, onClick: () => post(vscode, "dropStash", target) },
     ];
+  }
+
+  /**
+   * 현재 활성 저장소 대신 렌더된 stash 행의 identity를 고정한다.
+   * @param {HTMLElement} stash 선택한 stash 행
+   * @returns {object} 입력창 대기나 새 렌더 이후에도 사용할 명령 대상
+   */
+  function selection(stash) {
+    return { repoRoot: stash?.dataset.repoRoot, ref: stash?.dataset.ref,
+      hash: stash?.dataset.hash, message: stash?.dataset.msg };
   }
 
   /**
@@ -226,7 +236,7 @@
     stash.dataset.filesLoading = "true";
     stash.setAttribute("aria-busy", "true");
     post(vscode, "loadStashFiles", {
-      ref: stash.dataset.ref,
+      ...selection(stash),
       stashKey: key,
     });
   }
@@ -326,7 +336,7 @@
           menus.openContextMenu?.(
             event.clientX,
             event.clientY,
-            menuNodes(vscode, stash.dataset.ref, stash.dataset.msg)
+            menuNodes(vscode, selection(stash))
           );
         }
       });
@@ -353,7 +363,7 @@
         } else {
           menus.openDropdown?.(
             button,
-            menuNodes(vscode, stash.dataset.ref, stash.dataset.msg)
+            menuNodes(vscode, selection(stash))
           );
         }
       });
@@ -370,7 +380,7 @@
     rootEl.querySelectorAll(".stash-file").forEach((file) => {
       file.addEventListener("click", () =>
         post(vscode, "openStashFile", {
-          ref: file.dataset.ref,
+          ...selection(file.closest(".stash")),
           path: file.dataset.path,
         })
       );
@@ -414,8 +424,7 @@
     }
     document.querySelectorAll(".stash").forEach((stash) => {
       if (
-        stash.dataset.key === requestedKey ||
-        stash.dataset.ref === event.data.ref
+        stash.dataset.key === requestedKey
       ) {
         delete stash.dataset.filesLoading;
         stash.removeAttribute("aria-busy");
