@@ -37,6 +37,8 @@ export interface PullRequestInfo {
   fileCount: number;
   /** PR head branch에 포함된 원래 commit OID 목록. PR git 작업에서 사용한다. */
   commitHashes: string[];
+  /** false면 후속 commit 페이지가 남아 있어 Git 쓰기 작업에 사용할 수 없다. */
+  commitHashesComplete?: boolean;
   labels?: PullRequestLabelInfo[];
 }
 
@@ -132,6 +134,7 @@ export function pullRequestInfoFromGraphQl(
     commentCount: totalPullRequestCommentCount(pr, extraReviewCommentCount),
     fileCount: pr.files?.totalCount ?? 0,
     commitHashes: normalizePullRequestCommitHashes(pr),
+    commitHashesComplete: !pr.commits?.pageInfo?.hasNextPage,
     labels: normalizePullRequestLabels(pr.labels),
   };
 }

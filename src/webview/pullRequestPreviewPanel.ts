@@ -28,6 +28,8 @@ import {
   type PullRequestPreviewPublishMessage,
 } from "./pullRequestPreviewPublish";
 import { buildPullRequestPreviewHtml } from "./pullRequestPreviewHtml";
+import { PullRequestPreviewLazyReads } from "./pullRequestPreviewLazyReads";
+import { invalidatePreviewRemote } from "../git/pullRequestPreviewRemote";
 
 type PreviewMessage =
   | { type: "ready" }
@@ -38,7 +40,8 @@ type PreviewMessage =
   | { type: "copyPullRequestMessage"; title: string; body: string }
   | PullRequestPreviewPublishMessage
   | { type: "setPreviewBranch"; role: "source" | "target"; branch: string }
-  | { type: "loadCommitFiles"; hash: string }
+  | { type: "loadCommitFiles"; hash: string; requestId?: number }
+  | { type: "loadConversation"; requestId?: number }
   | { type: "openQuickEditor"; path: string }
   | ({ type: "openEditableDiff" } & PullRequestPreviewDiffRequest);
 
@@ -52,6 +55,8 @@ export class PullRequestPreviewPanel {
   private lastCurrentBranch?: string;
   private quickEditFiles: readonly PullRequestPreviewFile[] = [];
   private previewRequestSeq = 0;
+  private previewController?: AbortController;
+  private readonly lazyReads: PullRequestPreviewLazyReads;
   private previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private previewRefreshReason = "";
   private activeQuickEditSession?: PullRequestQuickEditSession;
@@ -101,6 +106,7 @@ export class PullRequestPreviewPanel {
     private existingPr?: PullRequestInfo,
     private sourceBranch?: string
   ) {
+    this.lazyReads = new PullRequestPreviewLazyReads(service, message => this.post(message));
     this.quickEditService = new PullRequestQuickEditService(this.service.repoRoot);
     this.publisher = new PullRequestPreviewPublisher(
       this.service.repoRoot,
@@ -139,6 +145,7 @@ export class PullRequestPreviewPanel {
   /** 패널 리소스를 정리한다. */
   private dispose(): void {
     this.disposed = true;
+    this.previewController?.abort(); this.previewRequestSeq++;
     this.activeQuickEditSession = undefined;
     this.cancelScheduledPreviewRefresh();
     while (this.disposables.length) {
@@ -193,6 +200,7 @@ export class PullRequestPreviewPanel {
     if (msg.type === "refresh") {
       await this.quickEditSaveQueue;
       this.cancelScheduledPreviewRefresh();
+      invalidatePreviewRemote(this.service.repoRoot);
       await this.sendPreview();
       return;
     }
@@ -241,7 +249,10 @@ export class PullRequestPreviewPanel {
       return;
     }
     if (msg.type === "loadCommitFiles") {
-      await this.sendCommitFiles(msg.hash);
+      await this.lazyReads.loadCommit(msg.hash, msg.requestId);
+    }
+    if (msg.type === "loadConversation") {
+      await this.lazyReads.loadConversation(msg.requestId);
     }
   }
 
@@ -377,29 +388,26 @@ export class PullRequestPreviewPanel {
     });
   }
 
-  /** Commits 탭에서 선택한 commit 의 파일 변경을 웹뷰에 보낸다. */
-  private async sendCommitFiles(hash: string): Promise<void> {
-    try {
-      this.post({ type: "commitFiles", hash, files: await this.service.getPreviewCommitFiles(hash) });
-    } catch (error) {
-      logError("PR preview commit files failed", error);
-      this.post({ type: "commitFiles", hash, files: [] });
-    }
-  }
-
   /** staged preview 데이터를 읽어 웹뷰에 보낸다. */
   private async sendPreview(): Promise<void> {
+    if (this.disposed) return;
+    this.previewController?.abort();
+    const controller = new AbortController();
+    this.previewController = controller;
     const requestSeq = ++this.previewRequestSeq;
     this.post({ type: "previewLoading" });
     try {
       const preview = await this.service.getStagedPreview(
         this.baseBranch,
         this.existingPr,
-        this.sourceBranch
+        this.sourceBranch,
+        controller.signal
       );
       if (requestSeq !== this.previewRequestSeq) {
         return;
       }
+      preview.requestId = requestSeq;
+      this.lazyReads.setPreview(preview, controller.signal);
       this.lastTargetBranch = preview.targetBranch;
       this.lastTargetRef = preview.targetRef;
       this.lastSourceBranch = preview.sourceBranch;

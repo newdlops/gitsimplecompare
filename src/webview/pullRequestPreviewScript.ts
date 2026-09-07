@@ -53,7 +53,14 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
       if (msg.type === 'previewLoading') {
         beginPreviewLoading();
       }
-      if (msg.type === "commitFiles") applyCommitFiles(msg.hash, msg.files);
+      if (msg.type === "commitFiles" && msg.requestId === latestPreview?.requestId) applyCommitFiles(msg.hash, msg.files, msg.error);
+      if (msg.type === "previewConversation" && msg.requestId === latestPreview?.requestId) {
+        latestPreview.conversationLoading = false;
+        latestPreview.conversationError = msg.error;
+        latestPreview.conversationLoaded = !msg.error;
+        if (!msg.error) latestPreview.conversation = msg.conversation;
+        render(latestPreview);
+      }
       if (msg.type === "generatedPullRequestMessage") applyGeneratedPullRequestMessage(msg.message);
       if (msg.type === "aiPullRequestMessageGeneration") setPrMessageGenerationActive(msg.active);
       if (msg.type === "pullRequestPublishState") setPullRequestPublishActive(msg.active);
@@ -71,6 +78,10 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
         activeCommitHash = commits[0].hash;
       }
       if (activeTab === 'commits') markCommitFilesLoading(commits.find((commit) => commit.hash === activeCommitHash));
+      if (activeTab === 'conversation' && preview.conversationLoaded === false && !preview.conversationLoading && !preview.conversationError) {
+        preview.conversationLoading = true;
+        vscode.postMessage({ type: 'loadConversation', requestId: preview.requestId });
+      }
       openPr.hidden = !preview.existingPr?.url;
       syncActionButtons(preview);
       content.innerHTML =
@@ -129,7 +140,7 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
         (count === '' ? '' : ' <span class="count">' + esc(count) + '</span>') + '</button>';
     }
     function tabContent(preview, files, commits) {
-      if (activeTab === 'conversation') return '<section id="pr-preview-tabpanel" class="content-single" role="tabpanel" tabindex="0" aria-labelledby="pr-preview-tab-conversation">' + conversationPanel(preview, files, commits) + '</section>';
+      if (activeTab === 'conversation') return '<section id="pr-preview-tabpanel" class="content-single" role="tabpanel" tabindex="0" aria-labelledby="pr-preview-tab-conversation">' + lazyReadNotice('conversation', preview.conversationError, preview.conversationLoading) + conversationPanel(preview, files, commits) + '</section>';
       if (activeTab === 'files') {
         return '<section id="pr-preview-tabpanel" class="content-single" role="tabpanel" tabindex="0" aria-labelledby="pr-preview-tab-files">' + filesPanel(files, preview) + '</section>';
       }
@@ -274,21 +285,39 @@ export function pullRequestPreviewScript(text: PullRequestPreviewI18n): string {
     function commitFilesPanel(commits, preview) {
       if (!preview?.targetBranch) return '<section class="panel"><p class="empty">' + esc(publishText.selectTargetToInspectCommitFiles) + '</p></section>';
       const commit = commits.find((item) => item.hash === activeCommitHash) || commits[0];
+      if (commit?.error) return '<section class="panel">' + lazyReadNotice('commit', commit.error, false) + '</section>';
       if (commit?.loading) return '<section class="panel"><p class="empty">' + esc(publishText.loadingCommitFiles) + '</p></section>';
       return commit ? filesPanel(commit.files || [], preview) : '<section class="panel"><p class="empty">' + esc(publishText.selectCommitToInspectChangedFiles) + '</p></section>';
     }
     function markCommitFilesLoading(commit) {
-      if (!commit || commit.synthetic || (commit.files || []).length || commit.loading) return;
+      if (!commit || commit.synthetic || commit.filesLoaded || (commit.files || []).length || commit.loading || commit.error) return;
       commit.loading = true;
-      vscode.postMessage({ type: 'loadCommitFiles', hash: commit.hash });
+      vscode.postMessage({ type: 'loadCommitFiles', hash: commit.hash, requestId: latestPreview?.requestId });
     }
-    function applyCommitFiles(hash, files) {
+    function applyCommitFiles(hash, files, error) {
       const commit = commitPreviews(latestPreview).find((item) => item.hash === hash);
       if (!commit) return;
-      commit.files = files || [];
+      if (!error) commit.files = files || [];
+      commit.filesLoaded = !error;
+      commit.error = error;
       commit.loading = false;
       render(latestPreview);
     }
+    /** 지연 조회 실패를 빈 성공으로 숨기지 않고 기존 토큰의 재시도 버튼을 제공한다. */
+    function lazyReadNotice(kind, error, loading) {
+      if (error) return '<p class="empty" role="alert">' + esc(publishText.detailsFailed) + ' ' + esc(error) + ' <button class="gsc-button" type="button" data-retry-details="' + kind + '" title="' + esc(publishText.retryDetails) + '" aria-label="' + esc(publishText.retryDetails) + '">' + esc(publishText.retryDetails) + '</button></p>';
+      return loading ? '<p class="empty" role="status">' + esc(publishText.loadingConversation) + '</p>' : '';
+    }
+    content.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-retry-details]');
+      if (!button || !latestPreview) return;
+      if (button.dataset.retryDetails === 'conversation') latestPreview.conversationError = undefined;
+      else {
+        const commit = commitPreviews(latestPreview).find(item => item.hash === activeCommitHash);
+        if (commit) commit.error = undefined;
+      }
+      render(latestPreview);
+    });
     function reviewFileHtml(file) {
       const path = displayPath(file);
       const comments = file.comments || [];

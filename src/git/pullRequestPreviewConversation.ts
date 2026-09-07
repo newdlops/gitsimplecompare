@@ -1,6 +1,7 @@
 // PR preview Conversation 탭에 표시할 GitHub 대화 이력을 읽는 모듈.
 // - 기존 PR 은 GitHub timeline/review/comment 를 합쳐 GitHub Conversation 탭에 가깝게 보여준다.
 import { runGh } from "./ghCli";
+import type { GhExecute } from "./ghRunner";
 import { splitRepositoryName } from "./githubRepository";
 
 /** Conversation 탭 timeline 한 항목 */
@@ -91,7 +92,8 @@ export async function buildPullRequestConversation(
   repository: string | undefined,
   pr: PreviewPullRequestRef | undefined,
   body: string,
-  fallbackAuthor: string
+  fallbackAuthor: string,
+  runner: GhExecute = runGh
 ): Promise<PullRequestConversationItem[]> {
   const opening: PullRequestConversationItem = {
     kind: "body",
@@ -103,13 +105,13 @@ export async function buildPullRequestConversation(
   }
   const [owner, name] = splitRepositoryName(repository);
   const [timeline, reviews, reviewComments] = await Promise.all([
-    readTimeline(cwd, owner, name, pr.number).catch(() => undefined),
-    readReviews(cwd, owner, name, pr.number).catch(() => []),
-    readReviewComments(cwd, owner, name, pr.number).catch(() => []),
+    readTimeline(cwd, owner, name, pr.number, runner).catch(() => undefined),
+    readReviews(cwd, owner, name, pr.number, runner),
+    readReviewComments(cwd, owner, name, pr.number, runner),
   ]);
   const issueItems = timeline
     ? timeline.map(normalizeTimelineItem).filter(Boolean) as PullRequestConversationItem[]
-    : (await readIssueComments(cwd, owner, name, pr.number).catch(() => [])).map(normalizeComment);
+    : (await readIssueComments(cwd, owner, name, pr.number, runner)).map(normalizeComment);
   return uniqueItems([
     opening,
     ...issueItems,
@@ -123,9 +125,10 @@ async function readTimeline(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<GhTimelineItem[]> {
-  return readPaged<GhTimelineItem>(cwd, owner, name, `issues/${number}/timeline`);
+  return readPaged<GhTimelineItem>(cwd, owner, name, `issues/${number}/timeline`, undefined, runner);
 }
 
 /** GitHub issue comments API 를 페이지 단위로 읽는다. */
@@ -133,14 +136,15 @@ async function readIssueComments(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<GhIssueComment[]> {
   return readPaged<GhIssueComment>(
     cwd,
     owner,
     name,
     `issues/${number}/comments`,
-    ["Accept: application/vnd.github.full+json"]
+    ["Accept: application/vnd.github.full+json"], runner
   );
 }
 
@@ -149,14 +153,15 @@ async function readReviews(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<GhReview[]> {
   return readPaged<GhReview>(
     cwd,
     owner,
     name,
     `pulls/${number}/reviews`,
-    ["Accept: application/vnd.github.full+json"]
+    ["Accept: application/vnd.github.full+json"], runner
   );
 }
 
@@ -165,14 +170,15 @@ async function readReviewComments(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<GhReviewComment[]> {
   return readPaged<GhReviewComment>(
     cwd,
     owner,
     name,
     `pulls/${number}/comments`,
-    ["Accept: application/vnd.github-commitcomment.full+json"]
+    ["Accept: application/vnd.github-commitcomment.full+json"], runner
   );
 }
 
@@ -189,15 +195,16 @@ async function readPaged<T>(
   owner: string,
   name: string,
   route: string,
-  headers: string[] = ["Accept: application/vnd.github+json"]
+  headers: string[] = ["Accept: application/vnd.github+json"],
+  runner: GhExecute = runGh
 ): Promise<T[]> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const out = await runGh([
+    const out = await runner([
       "api",
       ...headers.flatMap((header) => ["-H", header]),
       `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
-    ], cwd);
+    ], cwd, { operation: "pr-preview-conversation" });
     const items = JSON.parse(out) as T[];
     all.push(...items);
     if (items.length < PAGE_SIZE) {

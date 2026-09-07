@@ -7,6 +7,7 @@ import { readConflictOperationEpoch } from "./conflictOperationEpoch";
 import { controlGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
+import { restoreUnoccupiedBranch } from "./branchRefCas";
 
 type Phase = "prepared" | "completed" | "squash" | "rebase" | "replay" | "restoring";
 
@@ -148,8 +149,7 @@ export class OperationUndoStore {
     const current = await this.prepare(plan.branch);
     if (JSON.stringify(current) !== JSON.stringify(plan)) throw staleUndo();
     if (this.family === "pull-request" && plan.worktreeBranch !== plan.branch) {
-      // Git 자체의 worktree 검사를 유지해 다른 worktree에서 사용 중인 브랜치를 이동하지 않는다.
-      await runGit(["branch", "--force", "--", plan.branch, plan.restoredHead], this.repoRoot, { retryOnLock: false });
+      await restoreUnoccupiedBranch(this.repoRoot, plan.branch, plan.expectedHead, plan.restoredHead);
     } else if (plan.operation !== "none") {
       await controlGitOperation(this.repoRoot, plan.operation, "abort");
       if (plan.phase === "replay") {

@@ -46,6 +46,9 @@ export class PullRequestCommitMaterializer {
     pr: PullRequestInfo,
     hashes: string[]
   ): Promise<PullRequestCommitMaterialization> {
+    if (pr.commitHashesComplete === false) {
+      throw new Error(`PR #${pr.number} commit list is incomplete. Refresh pull requests before applying changes.`);
+    }
     const requested = Array.from(new Set(hashes.filter(Boolean)));
     if (!requested.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to prepare.`);

@@ -64,6 +64,9 @@ export interface PullRequestPreviewI18n {
   readonly noCommits: string;
   readonly selectTargetToInspectCommitFiles: string;
   readonly loadingCommitFiles: string;
+  readonly loadingConversation: string;
+  readonly detailsFailed: string;
+  readonly retryDetails: string;
   readonly selectCommitToInspectChangedFiles: string;
   readonly openEditableDiff: string;
   readonly openQuickEditor?: string;
@@ -102,6 +105,9 @@ export interface PullRequestPreviewI18n {
  */
 export function pullRequestPreviewI18n(): PullRequestPreviewI18n {
   return {
+    loadingConversation: vscode.l10n.t("Loading conversation…"),
+    detailsFailed: vscode.l10n.t("Could not load details."),
+    retryDetails: vscode.l10n.t("Retry loading"),
     title: vscode.l10n.t("Pull request preview"),
     refresh: vscode.l10n.t("Refresh staged PR preview"),
     generate: vscode.l10n.t("Generate AI pull request message"),

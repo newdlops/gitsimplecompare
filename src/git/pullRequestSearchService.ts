@@ -1,7 +1,9 @@
 // GitHub repository-wide PR 검색 서비스.
 // - PR drawer 의 검색이 현재 로드된 페이지에 갇히지 않도록 GitHub GraphQL search 를 사용한다.
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
-import { runGh } from "./ghCli";
+import { readGitHub } from "./githubReadCache";
+import type { GhExecute } from "./ghRunner";
+import { completePullRequestCommits, mapPullRequestReads } from "./pullRequestCommitPages";
 import { splitRepositoryName } from "./githubRepository";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
 import {
@@ -79,31 +81,34 @@ ${PULL_REQUEST_INFO_QUERY}
 export async function searchPullRequests(
   repoRoot: string,
   query: string,
-  cursor?: string
+  cursor?: string,
+  signal?: AbortSignal,
+  execute: GhExecute = readGitHub
 ): Promise<PullRequestSearchResult> {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    return { query, pullRequests: [], hasMore: false, totalCount: 0 };
-  }
-  const repository = await repositoryName(repoRoot);
-  const [owner, name] = splitRepositoryName(repository);
-  const [search, exact, associated] = await Promise.all([
-    searchByText(repoRoot, owner, name, trimmed, cursor),
-    cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed),
-    cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed),
-  ]);
-  const pullRequests = mergeByNumber([
-    ...(exact ? [exact] : []),
-    ...associated,
-    ...search.pullRequests,
-  ]);
-  return {
-    query,
-    pullRequests,
-    hasMore: search.hasMore,
-    nextCursor: search.nextCursor,
-    totalCount: Math.max(search.totalCount, pullRequests.length),
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  signal?.throwIfAborted();
+  signal?.addEventListener("abort", cancel, { once: true });
+  /** 검색과 모든 후속 페이지가 같은 취소 신호를 쓰도록 실행기를 결합한다. */
+  const runner: GhExecute = (args, root, options) => {
+    controller.signal.throwIfAborted();
+    return execute(args, root, { ...options, signal: controller.signal });
   };
+  try {
+    const trimmed = query.trim();
+    if (!trimmed) return { query, pullRequests: [], hasMore: false, totalCount: 0 };
+    const repository = await repositoryName(repoRoot, runner);
+    const [owner, name] = splitRepositoryName(repository);
+    const [search, exact, associated] = await Promise.all([
+      searchByText(repoRoot, owner, name, trimmed, cursor, runner),
+      cursor ? Promise.resolve(undefined) : searchByNumber(repoRoot, owner, name, trimmed, runner),
+      cursor ? Promise.resolve([]) : searchByCommitHash(repoRoot, owner, name, trimmed, runner),
+    ]);
+    const pullRequests = mergeByNumber([...(exact ? [exact] : []), ...associated, ...search.pullRequests]);
+    controller.signal.throwIfAborted();
+    return { query, pullRequests, hasMore: search.hasMore, nextCursor: search.nextCursor,
+      totalCount: Math.max(search.totalCount, pullRequests.length) };
+  } finally { signal?.removeEventListener("abort", cancel); controller.abort(); }
 }
 
 /** GitHub issue search 로 전체 PR 텍스트 검색을 수행한다. */
@@ -112,7 +117,8 @@ async function searchByText(
   owner: string,
   name: string,
   query: string,
-  cursor: string | undefined
+  cursor: string | undefined,
+  runner: GhExecute
 ): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
   const max = cursor ? PULL_REQUEST_SEARCH_MORE_LIMIT : PULL_REQUEST_SEARCH_INITIAL_LIMIT;
   const pullRequests: PullRequestInfo[] = [];
@@ -120,7 +126,7 @@ async function searchByText(
   let hasMore = false;
   let totalCount = 0;
   do {
-    const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length));
+    const page = await searchPage(repoRoot, owner, name, query, nextCursor, Math.min(PULL_REQUEST_SEARCH_PAGE_SIZE, max - pullRequests.length), runner);
     pullRequests.push(...page.pullRequests);
     totalCount = Math.max(totalCount, page.totalCount);
     nextCursor = page.nextCursor;
@@ -139,9 +145,10 @@ async function searchPage(
   name: string,
   query: string,
   cursor: string | undefined,
-  limit: number
+  limit: number,
+  runner: GhExecute
 ): Promise<{ pullRequests: PullRequestInfo[]; hasMore: boolean; nextCursor?: string; totalCount: number }> {
-  const out = await runGh([
+  const out = await runner([
     "api",
     "graphql",
     "-F",
@@ -151,15 +158,17 @@ async function searchPage(
     ...(cursor ? ["-f", `cursor=${cursor}`] : []),
     "-f",
     `query=${PULL_REQUEST_SEARCH_QUERY}`,
-  ], repoRoot);
+  ], repoRoot, { operation: "pr-search" });
   const search = (JSON.parse(out) as GhSearchResponse).data?.search;
   const nodes = search?.nodes || [];
-  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, nodes);
+  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, nodes, undefined, runner);
+  const pullRequests = await mapPullRequestReads(nodes, async node => {
+    const pr = pullRequestInfoFromGraphQl(node, extraReviewCommentCounts.get(Number(node.number)) || 0);
+    await completePullRequestCommits(repoRoot, owner, name, node, pr, undefined, runner);
+    return pr;
+  });
   return {
-    pullRequests: nodes.map((pr) => pullRequestInfoFromGraphQl(
-      pr,
-      extraReviewCommentCounts.get(Number(pr.number)) || 0
-    )).filter((pr) => pr.number > 0),
+    pullRequests: pullRequests.filter(pr => pr.number > 0),
     hasMore: Boolean(search?.pageInfo?.hasNextPage),
     nextCursor: search?.pageInfo?.endCursor,
     totalCount: search?.issueCount ?? 0,
@@ -171,13 +180,14 @@ async function searchByNumber(
   repoRoot: string,
   owner: string,
   name: string,
-  query: string
+  query: string,
+  runner: GhExecute
 ): Promise<PullRequestInfo | undefined> {
   const match = /^#?(\d+)$/.exec(query.trim());
   if (!match) {
     return undefined;
   }
-  return pullRequestByNumber(repoRoot, owner, name, Number(match[1]));
+  return pullRequestByNumber(repoRoot, owner, name, Number(match[1]), runner);
 }
 
 /**
@@ -194,7 +204,8 @@ async function searchByCommitHash(
   repoRoot: string,
   owner: string,
   name: string,
-  query: string
+  query: string,
+  runner: GhExecute
 ): Promise<PullRequestInfo[]> {
   const hash = pullRequestCommitHashQuery(query);
   if (!hash) {
@@ -202,14 +213,12 @@ async function searchByCommitHash(
   }
   const route = `repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
     + `/commits/${encodeURIComponent(hash)}/pulls?per_page=100`;
-  const out = await runGh(["api", route], repoRoot).catch(() => "");
+  const out = await runner(["api", route], repoRoot, { operation: "pr-search-associated" }).catch(() => "");
   const associated = out ? JSON.parse(out) as GhAssociatedPullRequest[] : [];
   const numbers = Array.from(new Set(
     associated.map((pr) => Number(pr.number)).filter((number) => Number.isInteger(number) && number > 0)
   ));
-  const pullRequests = await Promise.all(
-    numbers.map((number) => pullRequestByNumber(repoRoot, owner, name, number))
-  );
+  const pullRequests = await mapPullRequestReads(numbers, number => pullRequestByNumber(repoRoot, owner, name, number, runner));
   return pullRequests.filter((pr): pr is PullRequestInfo => Boolean(pr));
 }
 
@@ -225,9 +234,10 @@ async function pullRequestByNumber(
   repoRoot: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<PullRequestInfo | undefined> {
-  const out = await runGh([
+  const out = await runner([
     "api",
     "graphql",
     "-F",
@@ -238,13 +248,15 @@ async function pullRequestByNumber(
     `number=${number}`,
     "-f",
     `query=${PULL_REQUEST_NUMBER_QUERY}`,
-  ], repoRoot).catch(() => "");
+  ], repoRoot, { operation: "pr-search-number" }).catch(() => "");
   const pr = out ? (JSON.parse(out) as GhPullRequestNumberResponse).data?.repository?.pullRequest : undefined;
   if (!pr) {
     return undefined;
   }
-  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [pr]);
-  return pullRequestInfoFromGraphQl(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
+  const extraReviewCommentCounts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [pr], undefined, runner);
+  const result = pullRequestInfoFromGraphQl(pr, extraReviewCommentCounts.get(Number(pr.number)) || 0);
+  await completePullRequestCommits(repoRoot, owner, name, pr, result, undefined, runner);
+  return result;
 }
 
 /**
@@ -259,8 +271,8 @@ export function pullRequestCommitHashQuery(query: string): string | undefined {
 }
 
 /** gh repo view 로 owner/name 을 읽는다. */
-async function repositoryName(repoRoot: string): Promise<string> {
-  const out = await runGh(["repo", "view", "--json", "nameWithOwner"], repoRoot);
+async function repositoryName(repoRoot: string, runner: GhExecute): Promise<string> {
+  const out = await runner(["repo", "view", "--json", "nameWithOwner"], repoRoot, { operation: "pr-search-repository" });
   return (JSON.parse(out) as { nameWithOwner?: string }).nameWithOwner || "";
 }
 

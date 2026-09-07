@@ -1,4 +1,7 @@
 {
+  "Loading conversation…": "대화를 불러오는 중…",
+  "Could not load details.": "상세 정보를 불러오지 못했습니다.",
+  "Retry loading": "다시 불러오기",
   "Added": "추가됨",
   "{0} selected": "{0}개 선택됨",
   "Assignee logins": "담당자 로그인",

@@ -1,6 +1,7 @@
 // Graph용 PR 목록을 한 번의 저장소 조회와 제한된 후속 pagination으로 읽는 모듈.
 // - UI에 전달하기 전에 모든 commit OID와 기존 기준의 댓글 수를 완성한다.
 import { runGh } from "./ghCli";
+import { completePullRequestCommits } from "./pullRequestCommitPages";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
 import { splitRepositoryName } from "./githubRepository";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
@@ -37,17 +38,6 @@ ${buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE
   }
 }`;
 
-const PULL_REQUEST_COMMITS_QUERY = `
-query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      commits(first: 100, after: $cursor) {
-        nodes { commit { oid } }
-        pageInfo { hasNextPage endCursor }
-      }
-    }
-  }
-}`;
 
 /** Graph 목록과 stack이 같은 응답에서 재사용할 저장소 정보 및 완성된 PR 페이지다. */
 export interface PullRequestListPage {
@@ -67,13 +57,6 @@ interface GhListResponse {
   };
 }
 
-interface GhCommitPageResponse {
-  data?: {
-    repository?: {
-      pullRequest?: { commits?: GhPullRequestNode["commits"] };
-    };
-  };
-}
 
 /**
  * Graph용 PR 목록을 읽되 gh의 저장소 문맥을 GraphQL 변수로 직접 전달한다.
@@ -228,37 +211,7 @@ async function appendCommitHashes(
   node: GhPullRequestNode, pullRequest: PullRequestInfo,
   signal: AbortSignal, runner: GhExecute
 ): Promise<void> {
-  const number = Number(node.number);
-  if (!Number.isFinite(number) || number <= 0) return;
-  // head fallback은 모든 페이지 뒤에 붙여 중간 commit보다 먼저 적용되는 순서 오류를 막는다.
-  const hashes = new Set((node.commits?.nodes || []).map((entry) => entry.commit?.oid || "").filter(Boolean));
-  const cursors = new Set<string>();
-  let pageInfo = node.commits?.pageInfo;
-  while (pageInfo?.hasNextPage) {
-    throwIfAborted(signal);
-    const cursor = pageInfo.endCursor;
-    if (!cursor || cursors.has(cursor)) {
-      throw new Error("GitHub pull request commit pagination did not advance.");
-    }
-    cursors.add(cursor);
-    const output = await runner([
-      "api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`,
-      "-F", `number=${number}`, "-f", `cursor=${cursor}`,
-      "-f", `query=${PULL_REQUEST_COMMITS_QUERY}`,
-    ], repoRoot, { signal, operation: "graph-pr-commit-page" });
-    throwIfAborted(signal);
-    const commits = (JSON.parse(output) as GhCommitPageResponse).data?.repository?.pullRequest?.commits;
-    if (!commits) throw new Error("GitHub pull request commits are not available.");
-    for (const entry of commits.nodes || []) {
-      const hash = entry.commit?.oid;
-      if (hash && !hashes.has(hash)) {
-        hashes.add(hash);
-      }
-    }
-    pageInfo = commits.pageInfo;
-  }
-  if (node.headRefOid) hashes.add(node.headRefOid);
-  pullRequest.commitHashes = [...hashes];
+  await completePullRequestCommits(repoRoot, owner, name, node, pullRequest, signal, runner);
 }
 
 /**

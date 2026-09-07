@@ -14,8 +14,8 @@ function firstPage(nodes: GhPullRequestNode[], hasMore = false): string {
 }
 
 /** commit hash와 후속 cursor를 가진 GraphQL connection을 만들어 페이지 순서를 검증한다. */
-function commitPage(hashes: string[], nextCursor?: string): string {
-  return JSON.stringify({ data: { repository: { pullRequest: { commits: {
+function commitPage(hashes: string[], nextCursor?: string, headRefOid = "head"): string {
+  return JSON.stringify({ data: { repository: { pullRequest: { headRefOid, commits: {
     nodes: hashes.map((oid) => ({ commit: { oid } })),
     pageInfo: { hasNextPage: !!nextCursor, endCursor: nextCursor },
   } } } } });
@@ -131,7 +131,7 @@ test("independent large PRs overlap with at most four outstanding network reques
   await settle();
   assert.equal(pending.length, 4);
   for (let index = 0; index < 9; index++) {
-    pending[index].resolve(commitPage([`end-${index + 1}`]));
+    pending[index].resolve(commitPage([`end-${index + 1}`], undefined, `head-${index + 1}`));
     await settle();
   }
   const page = await result;
@@ -144,6 +144,7 @@ test("independent large PRs overlap with at most four outstanding network reques
 test("commit and comment pagination share the same four-request limit", async () => {
   const pending: Array<ReturnType<typeof deferred<string>>> = [];
   const operations: string[] = [];
+  const heads: string[] = [];
   const nodes = [1, 2, 3].map((number) => ({ ...pagedPullRequest(number), reviewThreads: {
     pageInfo: { hasNextPage: true, endCursor: "comments" },
   } }));
@@ -151,6 +152,7 @@ test("commit and comment pagination share the same four-request limit", async ()
     if (options.operation === "graph-pr-list-page") return firstPage(nodes);
     const read = deferred<string>();
     operations.push(options.operation);
+    heads.push(`head-${_args.find(arg => arg.startsWith("number="))?.slice(7)}`);
     pending.push(read);
     return read.promise;
   };
@@ -159,7 +161,7 @@ test("commit and comment pagination share the same four-request limit", async ()
   assert.equal(pending.length, 4);
   assert.equal(operations.filter((operation) => operation === "graph-pr-review-thread-count-page").length, 2);
   for (let index = 0; index < 6; index++) {
-    pending[index].resolve(operations[index] === "graph-pr-commit-page" ? commitPage(["end"]) : reviewPage([7]));
+    pending[index].resolve(operations[index] === "graph-pr-commit-page" ? commitPage(["end"], undefined, heads[index]) : reviewPage([7]));
     await settle();
   }
   const page = await result;
@@ -241,7 +243,7 @@ test("repeated commit cursors fail promptly instead of fetching forever", async 
     calls++;
     return options.operation === "graph-pr-list-page"
       ? firstPage([pagedPullRequest(1)])
-      : commitPage(["middle"], "cursor-1");
+      : commitPage(["middle"], "cursor-1", "head-1");
   };
   await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, runner), /did not advance/);
   assert.equal(calls, 2);

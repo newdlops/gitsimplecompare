@@ -83,6 +83,9 @@ interface PendingRestackStep extends PullRequestStackRestackStep {
   worktreePath?: string;
   temporaryWorktree?: boolean;
   nativeOperation?: GitOperationIdentity;
+  /** ref 변경 전에 기록한 복구 의도. reflog token으로 완료 여부를 재확인한다. */
+  rollback?: { from: string; to: string; token: string };
+  removingWorktree?: boolean;
 }
 export interface PendingPullRequestStackRestack {
   version: number;
@@ -96,6 +99,8 @@ export interface PendingPullRequestStackRestack {
   historyPreservingBranches: string[];
   postAction?: PullRequestStackRestackPostAction;
   createdAt: number;
+  /** native Abort 소유권 확인 뒤 기록되어 후속 정리를 재시작할 수 있게 한다. */
+  rollbackStarted?: boolean;
 }
 /** PR stack 연쇄 rebase의 plan과 실행 상태를 관리하는 서비스 */
 export class PullRequestStackRestackService {
@@ -262,7 +267,7 @@ export class PullRequestStackRestackService {
       return undefined;
     }
     const executor = path.resolve(state.repoRoot) === path.resolve(this.repoRoot) ? this : new PullRequestStackRestackService(state.repoRoot);
-    await assertControlledTransition(this.repoRoot, state.steps[state.index]?.nativeOperation, "abort");
+    if (!state.rollbackStarted) await assertControlledTransition(this.repoRoot, state.steps[state.index]?.nativeOperation, "abort");
     await executor.rollbackState(state);
     return state.repoRoot;
   }

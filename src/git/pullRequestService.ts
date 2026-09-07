@@ -3,6 +3,8 @@
 import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import { runGh } from "./ghCli";
+import type { GhExecute } from "./ghRunner";
+import { fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
 import { runGit } from "./gitExec";
 import { fetchPullRequestListPage } from "./pullRequestListService";
 import { fetchPullRequestDetail } from "./pullRequestDetail";
@@ -15,7 +17,6 @@ import {
   buildLocalPullRequestPreview,
   buildStagedPullRequestPreviewOverlay,
   commitLabels,
-  fetchExistingPullRequestCommits,
   fetchLocalCommitPreviewFiles,
   previewStat,
 } from "./pullRequestPreviewCommits";
@@ -44,6 +45,8 @@ export interface PullRequestOverview {
 
 /** staged 상태로 PR 을 만들 때의 모의 내용 */
 export interface StagedPullRequestPreview {
+  requestId?: number;
+  conversationLoaded?: boolean;
   repository?: string;
   currentBranch: string; sourceBranch: string; sourceRef: string;
   sourceIsLocal: boolean;
@@ -65,11 +68,12 @@ export interface StagedPullRequestPreview {
 interface GhPullRequestPreview {
   title?: string;
   body?: string;
+  headRefOid?: string;
 }
 
 /** 저장소 한 개의 GitHub PR POC 조회 서비스 */
 export class PullRequestService {
-  constructor(public readonly repoRoot: string) {}
+  constructor(public readonly repoRoot: string, private readonly previewRead = previewReadRunner) {}
 
   /**
    * gh CLI 로 저장소 PR 목록을 읽고, graph 배지용 PR commit 해시들을 붙인다.
@@ -116,7 +120,8 @@ export class PullRequestService {
   async getStagedPreview(
     baseBranch?: string,
     existingPr?: PullRequestInfo,
-    sourceBranch?: string
+    sourceBranch?: string,
+    signal?: AbortSignal
   ): Promise<StagedPullRequestPreview> {
     const currentBranch = await this.currentBranch();
     const selectedSource = sourceBranch || existingPr?.headRefName || currentBranch;
@@ -131,15 +136,21 @@ export class PullRequestService {
       || (sourceBranch && existingPr?.headRefName && sourceBranch !== existingPr.headRefName)
       ? undefined
       : existingPr;
+    signal?.throwIfAborted();
+    const runner = this.previewRead(this.repoRoot, effectivePr, signal);
     const headRef = effectivePr ? await resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : "HEAD";
     const [stagedFiles, repository, existingPreview, sourceIsLocal] = await Promise.all([
       this.stagedFiles(),
-      this.repositoryName().catch(() => undefined),
-      this.existingPullRequestPreview(effectivePr).catch(() => undefined),
+      this.repositoryName(signal, "pr-preview-repository", runner).catch(error => { if (effectivePr) throw error; return undefined; }),
+      this.existingPullRequestPreview(effectivePr, runner),
       this.localBranchExists(selectedSource),
     ]);
-    const prPreviewFiles = await this.existingPullRequestPreviewFiles(repository, effectivePr).catch(() => []);
-    const prPreviewCommits = await fetchExistingPullRequestCommits(this.repoRoot, repository, effectivePr).catch(() => []);
+    if (effectivePr && existingPreview?.headRefOid !== effectivePr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
+    const [prPreviewFiles, prPreviewCommits] = await Promise.all([
+      this.existingPullRequestPreviewFiles(repository, effectivePr, runner),
+      effectivePr ? fetchPreviewCommitSummaries(this.repoRoot, effectivePr, runner) : Promise.resolve([]),
+    ]);
+    signal?.throwIfAborted();
     const hasRemotePreview = prPreviewFiles.length > 0 || prPreviewCommits.length > 0;
     const previewStagedFiles =
       currentBranch === selectedSource ? stagedFiles : [];
@@ -187,15 +198,10 @@ export class PullRequestService {
     const generatedBody = hasTargetBranch ? previewBody(previewFiles, commits, stat) : "";
     const body = existingPreview ? existingPreview.body ?? "" : generatedBody;
     const conversation = hasTargetBranch || effectivePr
-      ? await buildPullRequestConversation(
-        this.repoRoot,
-        repository,
-        effectivePr,
-        body,
-        selectedSource
-      ).catch(() => [{ kind: "body" as const, author: effectivePr?.author || selectedSource, body }])
-      : [];
+      ? [{ kind: "body" as const, author: effectivePr?.author || selectedSource, body }] : [];
+    signal?.throwIfAborted();
     return {
+      conversationLoaded: !effectivePr,
       repository,
       currentBranch,
       sourceBranch: selectedSource,
@@ -247,8 +253,19 @@ export class PullRequestService {
    * @param hash 파일 변경을 읽을 commit hash
    * @returns 해당 commit 의 changed files
    */
-  async getPreviewCommitFiles(hash: string): Promise<PullRequestPreviewFile[]> {
+  async getPreviewCommitFiles(hash: string, preview?: StagedPullRequestPreview, signal?: AbortSignal): Promise<PullRequestPreviewFile[]> {
+    if (preview?.existingPr && preview.repository) {
+      return (await fetchRemotePreviewCommit(this.repoRoot, preview.repository, hash, signal)).files;
+    }
     return fetchLocalCommitPreviewFiles(this.repoRoot, hash);
+  }
+
+  /** Conversation 탭을 열 때만 대화를 읽고 파일 탭과 같은 댓글 cache/취소 정책을 공유한다. */
+  async getPreviewConversation(preview: StagedPullRequestPreview, signal?: AbortSignal): Promise<PullRequestConversationItem[]> {
+    const result = await buildPullRequestConversation(this.repoRoot, preview.repository, preview.existingPr,
+      preview.body, preview.sourceBranch, this.previewRead(this.repoRoot, preview.existingPr, signal));
+    signal?.throwIfAborted();
+    return result;
   }
 
   /** staged diff 의 파일 목록과 증감 라인을 읽는다. */
@@ -276,18 +293,19 @@ export class PullRequestService {
    * @returns GitHub PR 의 현재 title/body. 조회 실패 시 호출부가 staged preview 본문으로 fallback 한다.
    */
   private async existingPullRequestPreview(
-    existingPr?: PullRequestInfo
+    existingPr?: PullRequestInfo,
+    runner: GhExecute = runGh
   ): Promise<GhPullRequestPreview | undefined> {
     if (!existingPr?.number) {
       return undefined;
     }
-    const out = await runGh([
+    const out = await runner([
       "pr",
       "view",
       String(existingPr.number),
       "--json",
-      "title,body",
-    ], this.repoRoot);
+      "title,body,headRefOid",
+    ], this.repoRoot, { operation: "pr-preview-metadata" });
     return JSON.parse(out) as GhPullRequestPreview;
   }
 
@@ -299,12 +317,13 @@ export class PullRequestService {
    */
   private async existingPullRequestPreviewFiles(
     repository: string | undefined,
-    existingPr?: PullRequestInfo
+    existingPr?: PullRequestInfo,
+    runner: GhExecute = runGh
   ): Promise<PullRequestPreviewFile[]> {
     if (!repository || !existingPr?.number) {
       return [];
     }
-    return fetchPullRequestPreviewFiles(this.repoRoot, repository, existingPr.number);
+    return fetchPullRequestPreviewFiles(this.repoRoot, repository, existingPr.number, runner);
   }
 
   /** 현재 branch 이름을 반환한다. detached 이면 HEAD 로 표시한다. */
@@ -321,8 +340,8 @@ export class PullRequestService {
   }
 
   /** gh repo view 로 owner/name 을 읽는다. */
-  private async repositoryName(signal?: AbortSignal, operation = "pull-request-repository"): Promise<string> {
-    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, { signal, operation });
+  private async repositoryName(signal?: AbortSignal, operation = "pull-request-repository", runner: GhExecute = runGh): Promise<string> {
+    const out = await runner(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, { signal, operation });
     const parsed = JSON.parse(out) as { nameWithOwner?: string };
     return parsed.nameWithOwner || "";
   }

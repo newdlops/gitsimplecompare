@@ -18,6 +18,8 @@ export interface PullRequestPreviewCommit {
   author?: string;
   dateIso?: string;
   files: PullRequestPreviewFile[];
+  /** 파일 없는 성공도 재조회 루프 없이 표시하기 위한 지연 로딩 완료 표식이다. */
+  filesLoaded?: boolean;
   synthetic?: boolean;
 }
 

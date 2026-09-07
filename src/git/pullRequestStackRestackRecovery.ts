@@ -6,6 +6,7 @@ import { clearRestackState, writeRestackState } from "./pullRequestStackRestackR
 import type { PendingPullRequestStackRestack } from "./pullRequestStackRestack";
 import { WorktreeService } from "./worktreeService";
 import { logInfo } from "../ui/outputLog";
+import { lstat, realpath } from "node:fs/promises";
 
 /**
  * 모든 layer의 소유권을 먼저 검사한 뒤 역순으로 원래 OID와 metadata를 복원한다.
@@ -17,9 +18,15 @@ export async function rollbackRestack(repoRoot: string, state: PendingPullReques
   const worktrees = await new WorktreeService(repoRoot).listWorktrees();
   const restorations = [];
   for (const step of state.steps) {
-    const expected = step.afterHead ?? step.beforeHead;
+    let expected = step.afterHead ?? step.beforeHead;
     const current = (await runGit(["rev-parse", `refs/heads/${step.branch}`], repoRoot)).trim();
     const snapshot = (await runGit(["rev-parse", step.snapshotRef], repoRoot)).trim();
+    if (step.rollback && current === step.rollback.to && current !== expected) {
+      // ref 이동 직후 checkpoint 저장이 실패했을 때 자신의 reflog 항목만 완료 증거로 인정한다.
+      const receipt = (await runGit(["reflog", "show", "-1", "--format=%H%x00%gs", `refs/heads/${step.branch}`], repoRoot)).trim();
+      if (step.rollback.from === expected && step.rollback.to === step.beforeHead &&
+          (receipt === `${current}\0${step.rollback.token}` || receipt.startsWith(`${current}\0${step.rollback.token}:`))) expected = current;
+    }
     if (current !== expected || snapshot !== step.beforeHead) {
       logInfo("stack rollback stopped", { repoRoot, branch: step.branch, expected, current, snapshot });
       throw new Error(`Cannot restore '${step.branch}': the branch changed after restack. New commits and recovery snapshots were kept.`);
@@ -28,20 +35,37 @@ export async function rollbackRestack(repoRoot: string, state: PendingPullReques
     if (owner) await assertCleanOwner(owner.path, step.branch, expected);
     restorations.push({ step, owner, expected, snapshot });
   }
+  state.rollbackStarted = true;
+  await writeRestackState(repoRoot, state);
   for (const { step, owner, expected, snapshot } of restorations.reverse()) {
     if (expected !== snapshot) {
+      step.rollback = { from: expected, to: snapshot, token: `gitsimplecompare rollback ${state.operationId} ${step.branch}` };
+      await writeRestackState(repoRoot, state);
       if (owner) {
         await assertCleanOwner(owner.path, step.branch, expected);
-        await runGit(["reset", "--keep", snapshot], owner.path, { retryOnLock: false });
+        await runGit(["-c", "core.logAllRefUpdates=true", "reset", "--keep", snapshot], owner.path,
+          { retryOnLock: false, env: { GIT_REFLOG_ACTION: step.rollback.token } });
       } else {
-        await runGit(["update-ref", `refs/heads/${step.branch}`, snapshot, expected], repoRoot, { retryOnLock: false });
+        await runGit(["update-ref", "--create-reflog", "-m", step.rollback.token, `refs/heads/${step.branch}`, snapshot, expected], repoRoot, { retryOnLock: false });
       }
       // 중간 복구 실패 후 재시도 시에도 이미 되돌린 layer를 이 작업 결과로 식별한다.
       step.afterHead = snapshot;
       await writeRestackState(repoRoot, state);
+    } else if (step.afterHead !== snapshot) {
+      step.afterHead = snapshot;
+      await writeRestackState(repoRoot, state);
     }
     if (step.temporaryWorktree && step.worktreePath) {
-      await runGit(["worktree", "remove", step.worktreePath], repoRoot, { retryOnLock: false });
+      const exists = await lstat(step.worktreePath).then(() => true, error => {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+        throw error;
+      });
+      if (exists || !step.removingWorktree) {
+        if (!owner || await realpath(owner.path) !== await realpath(step.worktreePath)) throw new Error("Temporary recovery worktree changed. Recovery snapshots were kept.");
+        step.removingWorktree = true;
+        await writeRestackState(repoRoot, state);
+        await runGit(["worktree", "remove", step.worktreePath], repoRoot, { retryOnLock: false });
+      }
       step.worktreePath = undefined;
       step.temporaryWorktree = false;
       await writeRestackState(repoRoot, state);

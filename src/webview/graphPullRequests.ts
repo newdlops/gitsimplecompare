@@ -50,6 +50,10 @@ export class GraphPullRequestPager {
   // 진행 중인 조회를 식별하는 세대 토큰. refresh 는 세대를 올려 이전 조회 결과를 무효화한다.
   // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
   private generation = 0;
+  private searchRequest: AbortController | undefined;
+  private repositoryEpoch = 0;
+  /** 검색 실행기를 주입해 실제 수명주기와 지연 응답의 경쟁을 결정적으로 검증한다. */
+  constructor(private readonly searcher = searchPullRequests) {}
 
   /** open/preview 동작에서 사용할 현재 누적 PR 목록을 반환한다. */
   get items(): PullRequestInfo[] {
@@ -73,12 +77,14 @@ export class GraphPullRequestPager {
 
   /** 저장소 수명 경계에서 이전 repository의 PR·cursor·metadata hint를 모두 버린다. */
   resetRepository(): void {
+    this.searchRequest?.abort(); this.searchRequest = undefined; this.repositoryEpoch++;
     this.pullRequests = []; this.nextCursor = undefined; this.hasMore = false;
     this.repository = ""; this.defaultBranch = ""; this.resetPublication();
   }
 
   /** 패널 숨김·폐기·저장소 교체 시 진행 중인 gh 조회를 중단하고 세대를 무효화한다. */
   cancel(reason: string): void {
+    if (reason !== "superseded") { this.searchRequest?.abort(); this.searchRequest = undefined; }
     if (!this.activeRequest) return;
     this.activeRequest.abort();
     this.activeRequest = undefined;
@@ -147,8 +153,13 @@ export class GraphPullRequestPager {
     cursor: string | undefined,
     post: PostGraphMessage
   ): Promise<void> {
+    this.searchRequest?.abort();
+    const controller = new AbortController();
+    this.searchRequest = controller;
+    const epoch = this.repositoryEpoch;
     try {
-      const result = await searchPullRequests(repoRoot, query, cursor);
+      const result = await this.searcher(repoRoot, query, cursor, controller.signal);
+      if (controller.signal.aborted || this.searchRequest !== controller || epoch !== this.repositoryEpoch) return;
       this.pullRequests = mergePullRequests(this.pullRequests, result.pullRequests);
       post({ type: "pullRequestSearchResult", requestId, result });
       logInfo("graph pull request search sent", {
@@ -160,9 +171,12 @@ export class GraphPullRequestPager {
         hasMore: result.hasMore,
       });
     } catch (error) {
+      if (controller.signal.aborted || this.searchRequest !== controller || epoch !== this.repositoryEpoch) return;
       const message = error instanceof Error ? error.message : String(error);
       logError("graph pull request search failed", error, { repoRoot, requestId, query });
       post({ type: "pullRequestSearchError", requestId, query, message });
+    } finally {
+      if (this.searchRequest === controller) this.searchRequest = undefined;
     }
   }
 
@@ -457,8 +471,7 @@ function mergePullRequests(
 
 /**
  * 같은 PR의 기존 목록 데이터와 새 페이지/검색 데이터를 손실 없이 합친다.
- * - repository 검색 응답은 commit 첫 100개만 가지므로, 이미 전체 pagination을 끝낸
- *   기존 commit 목록을 새 검색 결과가 덮어쓰지 않게 합집합을 유지한다.
+ * - head가 달라진 이력은 섞지 않고, 같은 head의 완성된 snapshot만 재사용한다.
  * @param current pager가 이미 보유한 PR 정보
  * @param incoming 새 목록 페이지 또는 repository 검색에서 받은 PR 정보
  * @returns 최신 메타데이터와 누적 commit 목록을 함께 가진 PR 정보
@@ -473,9 +486,11 @@ function mergePullRequest(
     headHash: incoming.headHash || current.headHash,
     baseHash: incoming.baseHash || current.baseHash,
     mergeHash: incoming.mergeHash || current.mergeHash,
-    commitHashes: Array.from(new Set([
-      ...current.commitHashes,
-      ...incoming.commitHashes,
-    ])),
+    commitHashes: current.headHash && current.headHash === incoming.headHash &&
+      current.commitHashesComplete !== false && incoming.commitHashesComplete === false
+      ? [...current.commitHashes] : [...incoming.commitHashes],
+    commitHashesComplete: current.headHash && current.headHash === incoming.headHash &&
+      current.commitHashesComplete !== false && incoming.commitHashesComplete === false
+      ? current.commitHashesComplete : incoming.commitHashesComplete,
   };
 }

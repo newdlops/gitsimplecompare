@@ -198,6 +198,7 @@ test("manual preview refresh waits until the Quick Edit staging queue is complet
   const events: string[] = [];
   let release!: () => void;
   const panel = Object.create(PullRequestPreviewPanel.prototype) as any;
+  panel.service = { repoRoot: "/fixture/manual-refresh" };
   panel.quickEditSaveQueue = new Promise<void>((resolve) => {
     release = resolve;
   });

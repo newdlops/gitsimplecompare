@@ -2,6 +2,7 @@
 // - 기존 drawer 상세는 가벼운 파일 트리에 집중하고, preview 는 GitHub PR처럼 diff snippet 과 review comment 를 함께 보여준다.
 import { CommitFileChange } from "../graph/graphTypes";
 import { runGh } from "./ghCli";
+import type { GhExecute } from "./ghRunner";
 import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
@@ -89,12 +90,13 @@ interface PagedResult<T> {
 export async function fetchPullRequestPreviewFiles(
   cwd: string,
   repository: string,
-  number: number
+  number: number,
+  runner: GhExecute = runGh
 ): Promise<PullRequestPreviewFile[]> {
   const [owner, name] = splitRepositoryName(repository);
   const [filePage, comments] = await Promise.all([
-    readPullFiles(cwd, owner, name, number),
-    readReviewComments(cwd, owner, name, number),
+    readPullFiles(cwd, owner, name, number, runner),
+    readReviewComments(cwd, owner, name, number, runner),
   ]);
   const commentsByPath = groupCommentsByPath(comments);
   return filePage.items.map((file) => normalizeFile(file, commentsByPath));
@@ -137,13 +139,14 @@ async function readPullFiles(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute = runGh
 ): Promise<PagedResult<GhPullFile>> {
   return readPagedResult<GhPullFile>(
     cwd,
     owner,
     name,
-    `pulls/${number}/files`
+    `pulls/${number}/files`, [], runner
   );
 }
 
@@ -159,14 +162,15 @@ async function readReviewComments(
   cwd: string,
   owner: string,
   name: string,
-  number: number
+  number: number,
+  runner: GhExecute
 ): Promise<GhReviewComment[]> {
   const page = await readPagedResult<GhReviewComment>(
     cwd,
     owner,
     name,
     `pulls/${number}/comments`,
-    ["Accept: application/vnd.github-commitcomment.full+json"]
+    ["Accept: application/vnd.github-commitcomment.full+json"], runner
   );
   return page.items;
 }
@@ -184,15 +188,16 @@ async function readPagedResult<T>(
   owner: string,
   name: string,
   route: string,
-  headers: string[] = []
+  headers: string[] = [],
+  runner: GhExecute = runGh
 ): Promise<PagedResult<T>> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const out = await runGh([
+    const out = await runner([
       "api",
       ...headers.flatMap((header) => ["-H", header]),
       `repos/${owner}/${name}/${route}?per_page=${PAGE_SIZE}&page=${page}`,
-    ], cwd);
+    ], cwd, { operation: "pr-preview-files" });
     const items = JSON.parse(out) as T[];
     all.push(...items);
     if (items.length < PAGE_SIZE) {

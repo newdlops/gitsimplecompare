@@ -5,6 +5,30 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72055] - 2026-09-07
+
+### Fixed
+
+- PR search completes commit pagination against the same head before returning
+  results. Incomplete commit lists cannot be applied, and force-pushed PRs replace
+  the old commit snapshot instead of combining unrelated histories.
+- Searches are cancelled when superseded or when the graph leaves the repository.
+  Late search results cannot overwrite another repository's PR list.
+- Undo of a PR on another local branch checks the expected OID during the final
+  ref update and preserves branches used by other worktrees, rebases or bisects.
+- Stack rollback records its intent before restoring refs and uses its own reflog
+  receipt to resume after checkpoint I/O failures. Temporary worktree cleanup can
+  also resume after an interrupted state write.
+
+### Performance
+
+- PR previews initially load commit summaries and changed files. Commit patches
+  and the conversation load when their tabs need them, with explicit loading,
+  error and retry states. Successful empty commits do not trigger reload loops.
+- Preview reads share in-flight requests and bounded caches, reuse review comments,
+  and limit concurrent GitHub reads to four. Cancellation stops unused requests;
+  refreshing mutable PR data preserves reusable commit OID entries.
+
 ## [0.1.72054] - 2026-09-07
 
 ### Fixed
