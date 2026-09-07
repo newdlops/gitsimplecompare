@@ -1606,5 +1606,8 @@
   "Freed approximately {0}; {1} was recreated or remained in active caches.": "약 {0}을(를) 확보했지만 사용 중인 캐시에서 {1}이(가) 다시 생성되었거나 남았습니다.",
   "VS Code cache cleanup finished. Freed approximately {0}.": "VS Code 캐시 정리를 완료했습니다. 약 {0}을(를) 확보했습니다.",
   "Rebase finished, but restoring local changes caused conflicts. Resolve them in the Conflicts view. Git kept the autostash for recovery.": "Rebase는 끝났지만 로컬 변경을 복원하면서 충돌이 발생했습니다. Conflicts 뷰에서 해결하세요. Git의 autostash는 복구를 위해 보존되어 있습니다.",
-  "Local changes need conflict resolution": "복원한 로컬 변경의 충돌을 해결해야 합니다"
+  "Local changes need conflict resolution": "복원한 로컬 변경의 충돌을 해결해야 합니다",
+  "Rebase was left paused because some edit files could not be saved. Save them successfully before continuing.": "편집 파일을 저장하지 못해 rebase를 일시 정지 상태로 유지했습니다. 파일을 저장한 뒤 계속 진행하세요.",
+  "Git finished, but recovery is incomplete. Check the error and retry after resolving it. Recovery snapshots were kept.": "Git 작업은 끝났지만 복구가 완료되지 않았습니다. 오류를 해결한 뒤 다시 시도하세요. 복구 스냅샷은 보존되어 있습니다.",
+  "The operation is still paused. Resolve the remaining work in the Conflicts view, then continue there.": "작업이 아직 일시 정지 상태입니다. Conflicts 뷰에서 남은 작업을 해결하고 계속 진행하세요."
 }

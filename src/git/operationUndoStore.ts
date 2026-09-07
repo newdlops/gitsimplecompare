@@ -156,6 +156,10 @@ export class OperationUndoStore {
         await runGit(["reset", "--keep", plan.restoredHead], this.repoRoot, { retryOnLock: false });
       }
     } else if (plan.phase !== "restoring") {
+      // 완료 후 따로 stage한 내용은 --keep도 index에서 지우므로 reset 전에 그대로 두고 중단한다.
+      if (plan.phase === "completed" && await runGit(["diff", "--cached", "--name-only", "-z"], this.repoRoot)) {
+        throw new Error("Undo stopped because staged changes would be reset. Commit or stash these changes before retrying. Your index, working files, and recovery snapshot were kept.");
+      }
       // --merge는 squash의 index를 되돌리면서 다른 파일의 unstaged 변경을 보존한다.
       const mode = plan.phase === "squash" ? "--merge" : "--keep";
       await runGit(["reset", mode, plan.restoredHead], this.repoRoot, { retryOnLock: false });

@@ -5,9 +5,10 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runGit, runGitLiteralPaths } from "./gitExec";
-import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
+import { captureGitOperation, type GitOperationIdentity } from "./operationControl";
 import { claimConflictWorkingLeaf, readConflictWorkingLeaf, type ConflictWorktreeClaim } from "./conflictWorktreeCas";
 import { resolveSafeConflictWorkingPath } from "./conflictPathSafety";
+import { assertRebaseEditIdentity } from "./rebaseEditIdentity";
 import type { RebaseCommitFile, RebasePausedState } from "./rebaseService";
 
 /** rebase edit diff 오른쪽에 열 임시 파일 정보 */
@@ -88,7 +89,7 @@ async function findExistingTempFile(
     return undefined;
   }
   try {
-    await assertGitOperation(repoRoot, entry.operation);
+    await assertRebaseEditIdentity(repoRoot, { ...paused, hash: entry.pausedHash, originalHash: entry.originalHash, operation: entry.operation });
     await fs.access(entry.tempPath);
     return entry;
   } catch {
@@ -118,7 +119,7 @@ export async function applyRebaseEditTempFiles(
     if (edited.equals(Buffer.from(current))) {
       continue;
     }
-    await assertGitOperation(repoRoot, entry.operation);
+    await assertRebaseEditIdentity(repoRoot, { ...paused, hash: entry.pausedHash, originalHash: entry.originalHash, operation: entry.operation });
     const target = await resolveSafeConflictWorkingPath(repoRoot, entry.relPath);
     if ((await readConflictWorkingLeaf(target)).version !== entry.workingVersion ||
         await readIndexEntry(repoRoot, entry.relPath) !== entry.indexEntry) {
@@ -130,12 +131,17 @@ export async function applyRebaseEditTempFiles(
   const claims: ConflictWorktreeClaim[] = [];
   let staged = false;
   try {
+    if (edits.length) await assertRebaseEditIdentity(repoRoot, paused);
     for (const edit of edits) claims.push(await claimConflictWorkingLeaf(edit.target, edit.entry.workingVersion));
+    if (edits.length) await assertRebaseEditIdentity(repoRoot, paused);
     for (const [index, edit] of edits.entries()) {
       await claims[index].install({ kind: "regular", buffer: edit.edited,
         mode: (claims[index].snapshot.mode ?? 0) & 0o111 ? "100755" : "100644" });
     }
-    if (edits.length) await runGitLiteralPaths(["add", "--", ...edits.map(edit => edit.entry.relPath)], repoRoot, { retryOnLock: false });
+    if (edits.length) {
+      await assertRebaseEditIdentity(repoRoot, paused);
+      await runGitLiteralPaths(["add", "--", ...edits.map(edit => edit.entry.relPath)], repoRoot, { retryOnLock: false });
+    }
     staged = true;
     for (const claim of claims) await claim.commit();
     for (const edit of edits) {

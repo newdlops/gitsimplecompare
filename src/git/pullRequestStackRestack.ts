@@ -17,6 +17,7 @@ import {
 import { WorktreeService } from "./worktreeService";
 import { assertControlledTransition, captureGitOperation, type GitOperationIdentity } from "./operationControl";
 import { rollbackRestack } from "./pullRequestStackRestackRecovery";
+import { logError, logInfo } from "../ui/outputLog";
 const STATE_VERSION = 1;
 const TEMP_WORKTREE_PREFIX = "gsc-stack-restack-";
 /** Advance 완료 뒤 명령 레이어가 submit/cleanup을 이어가기 위한 후속 동작 */
@@ -212,7 +213,16 @@ export class PullRequestStackRestackService {
       await this.applyPlannedParentOverrides(state);
       return await this.runRemaining(state);
     } catch (error) {
-      await this.rollbackFailedExecution(state).catch(() => undefined);
+      try {
+        await this.rollbackFailedExecution(state);
+      } catch (recoveryError) {
+        // 실패한 rename의 메모리 checkpoint를 다시 기록하되 Git 작업이나 사용자 파일은 건드리지 않는다.
+        await writeRestackState(this.repoRoot, state).catch(stateError => {
+          logError("stack recovery checkpoint could not be saved", stateError, { repoRoot: this.repoRoot, operationId: state.operationId });
+        });
+        logError("stack automatic recovery stopped", recoveryError, { repoRoot: this.repoRoot, operationId: state.operationId });
+        throw new Error(`${error instanceof Error ? error.message : String(error)}\nRecovery stopped: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`);
+      }
       throw error;
     }
   }
@@ -440,7 +450,8 @@ export class PullRequestStackRestackService {
     if (step?.worktreePath) {
       const operation = await detectOperation(step.worktreePath);
       if (operation === "rebase" || operation === "merge") {
-        await runGit([operation, "--abort"], step.worktreePath).catch(() => undefined);
+        logInfo("stack Git operation preserved after failure", { repoRoot: this.repoRoot, worktreePath: step.worktreePath, operation });
+        throw new Error(`The ${operation} in '${step.worktreePath}' is still active. Resolve it or use Abort after preserving your edits. Working files and recovery refs were kept.`);
       }
     }
     await this.rollbackState(state);

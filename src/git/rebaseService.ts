@@ -8,6 +8,7 @@ import { GitError, runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import { amendRebaseEdit } from "./rebaseEditApply";
+import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
 import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
 import {
   collectHistoryExcludePaths,
@@ -68,6 +69,8 @@ export interface RebasePausedState {
   originalHash?: string;
   parent?: string;
   files: RebaseCommitFile[];
+  /** 같은 커밋으로 rebase를 재시작한 경우도 구분하기 위한 native 작업 식별자 */
+  operation?: GitOperationIdentity;
 }
 /** rebase 가 충돌/실패로 특정 todo 항목에서 멈춘 위치 */
 export interface RebaseStoppedState {
@@ -377,20 +380,24 @@ export class RebaseService {
     if (await this.hasUnmergedFiles()) {
       return undefined;
     }
+    const operation = await captureGitOperation(this.repoRoot);
     const progress = await readRebaseTodoProgress(this.repoRoot).catch(() => undefined);
     const currentAction = progress?.items.find((item) => item.role === "current")?.action;
     if (currentAction !== "edit") {
       return undefined;
     }
-    const hash = (await runGit(["rev-parse", "HEAD"], this.repoRoot)).trim();
+    const hash = operation.head;
     const originalHash = await this.currentOriginalHash();
     const parent = await this.parentOf(hash);
-    return {
+    const state = {
       hash,
       originalHash,
       parent,
       files: await this.getCommitFiles(hash),
+      operation,
     };
+    await assertGitOperation(this.repoRoot, operation);
+    return state;
   }
 
   /**

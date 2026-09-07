@@ -1,9 +1,11 @@
-// rebase 중단/skip에서 폐기할 index와 작업 파일을 Git metadata 아래에 원본 바이트로 보존한다.
+// Git 중단/skip에서 폐기할 index와 작업 파일을 Git metadata 아래에 원본 바이트로 보존한다.
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { readConflictWorkingLeaf } from "./conflictWorktreeCas";
 import { runGit, runGitBuffer } from "./gitExec";
+import { resolveSafeConflictWorkingPath } from "./conflictPathSafety";
+import { recoveryOverwritePaths } from "./operationRecoveryPaths";
 import { logInfo } from "../ui/outputLog";
 
 /**
@@ -13,21 +15,25 @@ import { logInfo } from "../ui/outputLog";
  * @param action 복구 자료를 만든 이유
  * @returns 자료가 있으면 복구 manifest의 디렉터리. 보존 실패 시 Git 중단 명령도 실행하지 않는다.
  */
-export async function preserveOperationEdits(repoRoot: string, gitDir: string, action: string): Promise<string | undefined> {
-  const [changed, staged, untracked, index] = await Promise.all([
+export async function preserveOperationEdits(repoRoot: string, gitDir: string, action: string, targets?: string[]): Promise<string | undefined> {
+  const [changed, staged, untracked, index, overwritten] = await Promise.all([
     runGit(["diff", "HEAD", "--name-only", "-z"], repoRoot),
     runGit(["diff", "--cached", "--name-only", "-z"], repoRoot),
     runGit(["ls-files", "--others", "--exclude-standard", "-z"], repoRoot),
     runGit(["ls-files", "--stage", "-z"], repoRoot),
+    recoveryOverwritePaths(repoRoot, gitDir, action, targets),
   ]);
-  const files = [...new Set(`${changed}\0${staged}\0${untracked}`.split("\0").filter(Boolean))];
+  const files = [...new Set([...`${changed}\0${staged}\0${untracked}`.split("\0").filter(Boolean), ...overwritten])];
   if (!files.length) return undefined;
   const directory = path.join(gitDir, "gitsimplecompare", "operation-recovery", randomUUID());
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const entries = [];
   for (const [number, relative] of files.entries()) {
-    const absolute = path.resolve(repoRoot, relative);
-    if (!absolute.startsWith(path.resolve(repoRoot) + path.sep)) throw new Error("Invalid recovery file path.");
+    const absolute = await resolveSafeConflictWorkingPath(repoRoot, relative).catch(error => {
+      // 삭제된 부모 디렉터리는 absent leaf로 기록할 수 있지만 symlink/권한 오류는 허용하지 않는다.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return path.resolve(repoRoot, relative);
+      throw error;
+    });
     const leaf = await readConflictWorkingLeaf(absolute);
     if (leaf.kind === "nonfile") throw new Error(`Cannot safely preserve '${relative}' before ${action}.`);
     const dataFile = `${number}.data`;

@@ -1,7 +1,10 @@
 // 그래프 안에서 만든 interactive rebase 계획을 실행하는 모듈.
 // - 웹뷰 패널은 메시지 라우팅만 하고, 기준점 계산/실행/충돌 이동은 이 모듈이 담당한다.
 import * as vscode from "vscode";
-import { readRebaseControlState, saveRebaseEditTempDocuments, openPausedEditFile } from "./graphRebaseControlState";
+import { readRebaseControlState, openPausedEditFile } from "./graphRebaseControlState";
+import { saveRebaseEditTempDocuments } from "../ui/rebaseEditDocuments";
+import { assertRebaseEditIdentity } from "../git/rebaseEditIdentity";
+import { finishGraphRebaseControl } from "./graphRebaseFollowup";
 import { ConflictService } from "../git/conflictService";
 import { assertGitOperation, captureGitOperation } from "../git/operationControl";
 import { assertRebaseCheckout, type RebaseCheckoutIdentity } from "../git/rebasePlanSafety";
@@ -249,7 +252,7 @@ async function continueGraphRebaseLocked(
       operation,
     });
     await refreshAfterRebaseControl(deps, "graphRebaseContinueNoop");
-    return { status: "completed" };
+    return finishGraphRebaseControl(deps, "continue", false);
   }
   const rebase = new RebaseService(repoRoot);
   const paused = await rebase.getPausedEditState();
@@ -267,6 +270,7 @@ async function continueGraphRebaseLocked(
       ...(await rebaseProgressLogDetail(repoRoot)),
     });
   }
+  await assertGitOperation(repoRoot, expected);
   const todo = await updateInProgressRebaseTodo(
     repoRoot,
     items,
@@ -329,8 +333,12 @@ async function continueGraphRebaseLocked(
       repoRoot,
       ...(await rebaseProgressLogDetail(repoRoot)),
     });
-    const current = await captureGitOperation(repoRoot);
-    if (current.generation !== expected.generation) await assertGitOperation(repoRoot, expected);
+    const current = paused ? await assertRebaseEditIdentity(repoRoot, paused, amended) : await captureGitOperation(repoRoot);
+    if (!paused) {
+      if (!todo.changed || current.generation !== expected.generation || current.head !== expected.head || current.gitDir !== expected.gitDir) {
+        await assertGitOperation(repoRoot, expected);
+      }
+    }
     await conflicts.continueOperation("rebase", current);
   } catch (err) {
     const diagnostics = await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined);
@@ -361,7 +369,7 @@ async function continueGraphRebaseLocked(
       guidance: rebaseDiagnosticGuidance(diagnostics),
     };
   }
-  return readRebaseControlState(deps, "Rebase completed.");
+  return finishGraphRebaseControl(deps, "continue");
 }
 
 /**
@@ -429,7 +437,7 @@ async function skipGraphRebaseLocked(
     vscode.window.showErrorMessage(vscode.l10n.t("Rebase skip failed: {0}", message));
     return { status: "failed", message };
   }
-  return readRebaseControlState(deps, "Rebase completed.");
+  return finishGraphRebaseControl(deps, "continue");
 }
 
 /**
@@ -453,7 +461,7 @@ async function abortGraphRebaseLocked(
   const conflicts = new ConflictService(repoRoot);
   if (await conflicts.getOperation() !== "rebase") {
     await refreshAfterRebaseControl(deps, "graphRebaseAbortNoop");
-    return { status: "completed" };
+    return finishGraphRebaseControl(deps, "abort", false);
   }
   const yes = vscode.l10n.t("Abort Rebase");
   const expected = await captureGitOperation(repoRoot);
@@ -466,9 +474,5 @@ async function abortGraphRebaseLocked(
     return { status: "failed", message: "cancelled" };
   }
   await conflicts.abortOperation("rebase", expected);
-  const state = await readRebaseControlState(deps, "");
-  if (state.status === "conflicts") return state;
-  await refreshAfterRebaseControl(deps, "graphRebaseAborted");
-  vscode.window.showInformationMessage(vscode.l10n.t("Rebase aborted."));
-  return { status: "aborted" };
+  return finishGraphRebaseControl(deps, "abort");
 }

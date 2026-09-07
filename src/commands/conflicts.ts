@@ -3,13 +3,13 @@
 //   git 세부 동작은 ConflictService 에, UI 갱신은 controller.refresh 에 위임한다.
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
-import { assertGitOperation, captureGitOperation } from "../git/operationControl";
+import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "../git/operationControl";
 import { GitError } from "../git/gitExec";
 import { tryAcquireConflictMutation } from "../git/conflictMutationCoordinator";
 import { PullService } from "../git/pullService";
-import { listRebaseEditTempPaths } from "../git/rebaseEditSession";
 import { RebaseService } from "../git/rebaseService";
-import type { RebasePausedState } from "../git/rebaseService";
+import { assertRebaseEditIdentity } from "../git/rebaseEditIdentity";
+import { saveRebaseEditTempDocuments } from "../ui/rebaseEditDocuments";
 import {
   dropRebaseStashesAfterResolvedRestore,
   finishDeferredCommitRebaseAfterContinue,
@@ -171,13 +171,12 @@ export async function continueOperation(
     let continued = false;
     let attemptedNative = false;
     try {
+      let current = expected;
       if (operation === "rebase") {
         await assertGitOperation(svc.repoRoot, expected);
-        await amendPausedRebaseEditBeforeContinue(svc.repoRoot);
+        current = await amendPausedRebaseEditBeforeContinue(svc.repoRoot, expected);
       }
-      // edit amend가 HEAD를 바꾸므로 동일 작업 세대인지 확인하고 새 항목을 제어한다.
-      const current = await captureGitOperation(svc.repoRoot);
-      if (current.generation !== expected.generation) await assertGitOperation(svc.repoRoot, expected);
+      // 준비 단계가 검증한 정확한 항목만 제어하고 외부 Continue가 바꾼 HEAD를 새 대상으로 채택하지 않는다.
       attemptedNative = true;
       await svc.continueOperation(operation, current);
       continued = true;
@@ -196,8 +195,8 @@ export async function continueOperation(
       // Stack restack이 history-preserving merge로 멈춘 경우에도 다음 layer 실행을 이어야 한다.
       await finishRebaseAfterContinue(controller, svc.repoRoot);
     } else if (continued && operation === "rebase") {
-      await finishRebaseAfterContinue(controller, svc.repoRoot);
-      await publishRebaseContinueState(svc.repoRoot);
+      const followup = await finishRebaseAfterContinue(controller, svc.repoRoot);
+      if (followup !== "failed") await publishRebaseContinueState(svc.repoRoot);
     } else if (continued && (operation === "cherry-pick" || operation === "revert")) {
       await finishDeferredCommitRebaseAfterContinue(controller, svc.repoRoot);
     }
@@ -241,8 +240,8 @@ export async function abortOperation(
       );
     }
     if (aborted && (operation === "rebase" || operation === "merge")) {
-      await restoreRebaseAfterAbort(svc.repoRoot);
-      if (operation === "rebase") await publishRebaseContinueState(svc.repoRoot);
+      const followup = await restoreRebaseAfterAbort(svc.repoRoot);
+      if (operation === "rebase" && followup !== "failed") await publishRebaseContinueState(svc.repoRoot);
     } else if (aborted && (operation === "cherry-pick" || operation === "revert")) {
       await restoreDeferredCommitRebaseAfterAbort(svc.repoRoot);
     }
@@ -295,8 +294,8 @@ export async function skipOperation(
     }
     await controller.refresh();
     if (skipped) {
-      await finishRebaseAfterContinue(controller, svc.repoRoot);
-      await publishRebaseContinueState(svc.repoRoot);
+      const followup = await finishRebaseAfterContinue(controller, svc.repoRoot);
+      if (followup !== "failed") await publishRebaseContinueState(svc.repoRoot);
     }
   } finally {
     release();
@@ -421,11 +420,12 @@ function acquireConflictMutationOrNotify(repoRoot: string): (() => void) | undef
  * - 그래프 전용 Continue 경로와 달리 Conflicts 뷰/명령 팔레트의 Continue 는 git continue 만 실행하므로
  *   여기서 dirty 임시 문서를 저장하고 paused commit 을 먼저 갱신한다.
  * @param repoRoot 대상 저장소 루트
- * @returns amend 로 커밋이 실제 갱신되었으면 true
+ * @returns 저장과 amend 후에도 같은 edit 항목임을 확인한 native Continue 대상
  */
 async function amendPausedRebaseEditBeforeContinue(
-  repoRoot: string
-): Promise<boolean> {
+  repoRoot: string,
+  expected: GitOperationIdentity
+): Promise<GitOperationIdentity> {
   const service = new RebaseService(repoRoot);
   const paused = await service.getPausedEditState();
   if (!paused) {
@@ -433,9 +433,11 @@ async function amendPausedRebaseEditBeforeContinue(
       repoRoot,
       reason: "noPausedEdit",
     });
-    return false;
+    await assertGitOperation(repoRoot, expected);
+    return expected;
   }
   const savedDocs = await saveRebaseEditTempDocuments(repoRoot, paused);
+  await assertGitOperation(repoRoot, expected);
   const amended = await service.amendPausedEditChanges(paused);
   logInfo("conflicts rebase paused edit continue prepared", {
     repoRoot,
@@ -444,25 +446,7 @@ async function amendPausedRebaseEditBeforeContinue(
     savedDocs,
     amended,
   });
-  return amended;
-}
-
-/**
- * Continue 직전에 VS Code 에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다.
- * @param repoRoot 대상 저장소 루트
- * @param paused 현재 rebase edit 정지 상태
- * @returns 저장한 dirty 문서 수
- */
-async function saveRebaseEditTempDocuments(
-  repoRoot: string,
-  paused: RebasePausedState
-): Promise<number> {
-  const paths = new Set(listRebaseEditTempPaths(repoRoot, paused));
-  const docs = vscode.workspace.textDocuments.filter(
-    (doc) => doc.isDirty && doc.uri.scheme === "file" && paths.has(doc.uri.fsPath)
-  );
-  await Promise.all(docs.map((doc) => doc.save()));
-  return docs.length;
+  return assertRebaseEditIdentity(repoRoot, paused, amended);
 }
 
 /**

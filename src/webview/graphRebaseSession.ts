@@ -2,6 +2,9 @@
 // - git/rebaseSessionState 는 파일 저장만 담당하고, 이 모듈은 웹뷰 메시지와 Git 상태를 연결한다.
 import { ConflictService } from "../git/conflictService";
 import { runGit } from "../git/gitExec";
+import { assertGitOperation, captureGitOperation } from "../git/operationControl";
+import { bindStartedRebase } from "../git/rebaseSessionIdentity";
+import { captureRebaseCheckout } from "../git/rebasePlanSafety";
 import type {
   RebaseItem,
   RebasePlanInfo,
@@ -103,7 +106,8 @@ export async function recordGraphRebaseSessionResult(
   result: RebaseResult | GraphRebaseControlResult,
   items: RebaseItem[]
 ): Promise<void> {
-  const state = await recordRebaseSessionResult(repoRoot, action, result, items);
+  const nativeOperation = action === "run" ? await bindStartedRebase(repoRoot) : undefined;
+  const state = await recordRebaseSessionResult(repoRoot, action, result, items, nativeOperation);
   if (state) {
     logInfo("graph rebase session result recorded", {
       repoRoot,
@@ -142,6 +146,14 @@ export async function restoreGraphRebaseSession(
     return false;
   }
 
+  const expected = await captureGitOperation(repoRoot);
+  if (!state.nativeOperation || expected.operation !== "rebase" ||
+      state.nativeOperation.gitDir !== expected.gitDir || state.nativeOperation.generation !== expected.generation) {
+    logInfo("graph rebase session restore skipped", { repoRoot, operationId: state.operationId, reason: "differentNativeOperation" });
+    deps.post({ type: "graphRebaseClear" });
+    return false;
+  }
+
   const service = new RebaseService(repoRoot);
   const paused = await service.getPausedEditState().catch(() => undefined);
   const stopped = await service.getStoppedState().catch(() => undefined);
@@ -157,6 +169,7 @@ export async function restoreGraphRebaseSession(
     detail: { operation, progress: Boolean(progress), conflicts: conflicts.length },
   }).catch(() => undefined);
 
+  await assertGitOperation(repoRoot, expected);
   deps.post({ type: "graphRebasePlan", plan: { ...state.plan, items: state.items } });
   if (progress) {
     deps.post(graphRebaseTodoProgressMessage({
@@ -198,16 +211,18 @@ async function buildSessionPlan(
   service: RebaseService,
   input: GraphRebaseSessionStartInput
 ): Promise<RebasePlanInfo> {
-  const [branch, upstream, commits] = await Promise.all([
+  const [branch, upstream, commits, checkout] = await Promise.all([
     runGit(["branch", "--show-current"], repoRoot).then((out) => out.trim()),
     runGit(
       ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
       repoRoot
     ).then((out) => out.trim()).catch(() => undefined),
     service.getCommits(input.base, input.root),
+    captureRebaseCheckout(repoRoot),
   ]);
   return {
     branch,
+    checkout,
     upstream,
     base: input.base,
     root: input.root,

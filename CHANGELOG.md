@@ -5,6 +5,29 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72054] - 2026-09-07
+
+### Fixed
+
+- Merge, cherry-pick and revert Abort, plus cherry-pick/revert Skip, preserve
+  discarded working files and staged blobs in recovery backups. Ignored files that overlap recovery
+  targets are included; unsafe directory replacements stop before Git runs.
+- Completed PR and branch Undo stop before resetting separately staged edits,
+  including content kept only in the index. Working files and snapshots remain
+  available so changes can be committed or stashed before retrying.
+- Rebase edit amends verify the worktree, native operation generation, original
+  todo item and expected HEAD. A stale edit request cannot amend the next commit.
+  Failed, cancelled or incomplete editor saves leave rebase paused.
+- Stack checkpoint failures retain the active Git operation, working edits and
+  recovery refs. Automatic rollback no longer runs an unprotected Abort, and
+  both the original error and recovery failure are reported.
+- Graph Continue, Skip and Abort share branch, PR and stack recovery follow-up
+  with the Conflicts commands. Completion includes stash restoration and pending
+  cleanup; recovery failures are reported separately from native Git completion.
+- Graph sessions are bound to the native rebase they started. General control
+  commands record session completion, and old or unverified plans are not
+  restored onto a later rebase.
+
 ## [0.1.72053] - 2026-09-07
 
 ### Fixed

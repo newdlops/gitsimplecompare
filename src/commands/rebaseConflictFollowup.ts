@@ -26,6 +26,10 @@ import { logInfo } from "../ui/outputLog";
 import { GitGraphPanel } from "../webview/graphPanel";
 import { graphRebaseTodoProgressMessage } from "../webview/graphRebaseTodoProgress";
 
+/** native Git 뒤 복원 결과를 일반 명령과 그래프에 같은 기준으로 전달한다. */
+export type RebaseFollowupStatus = "none" | "pending" | "completed" | "conflicts" | "failed";
+type RebaseRefreshController = Pick<ConflictsController, "refresh">;
+
 /**
  * `git rebase --continue` 가 다음 충돌에서 멈춘 경우 오류 대신 그래프 TODO 카드를 갱신한다.
  * @param repoRoot 대상 저장소 루트
@@ -123,30 +127,26 @@ export async function publishRebaseContinueState(
  * @param repoRoot   대상 저장소 루트
  */
 export async function finishRebaseAfterContinue(
-  controller: ConflictsController,
+  controller: RebaseRefreshController,
   repoRoot: string
-): Promise<void> {
-  if (await finishPullRequestStackRestackAfterContinue(controller, repoRoot)) {
-    return;
-  }
-  if (await finishPullRequestRebaseAfterContinue(controller, repoRoot)) {
-    return;
-  }
-  await finishBranchRebaseMergeAfterContinue(controller, repoRoot);
+): Promise<RebaseFollowupStatus> {
+  const stack = await finishPullRequestStackRestackAfterContinue(controller, repoRoot);
+  if (stack !== "none") return stack;
+  const pullRequest = await finishPullRequestRebaseAfterContinue(controller, repoRoot);
+  if (pullRequest !== "none") return pullRequest;
+  return finishBranchRebaseMergeAfterContinue(controller, repoRoot);
 }
 
 /**
  * rebase abort 뒤 PR/branch pending 상태를 복원한다.
  * @param repoRoot 대상 저장소 루트
  */
-export async function restoreRebaseAfterAbort(repoRoot: string): Promise<void> {
-  if (await restorePullRequestStackRestackAfterAbort(repoRoot)) {
-    return;
-  }
-  if (await restorePullRequestRebaseAfterAbort(repoRoot)) {
-    return;
-  }
-  await restoreBranchRebaseMergeAfterAbort(repoRoot);
+export async function restoreRebaseAfterAbort(repoRoot: string): Promise<RebaseFollowupStatus> {
+  const stack = await restorePullRequestStackRestackAfterAbort(repoRoot);
+  if (stack !== "none") return stack;
+  const pullRequest = await restorePullRequestRebaseAfterAbort(repoRoot);
+  if (pullRequest !== "none") return pullRequest;
+  return restoreBranchRebaseMergeAfterAbort(repoRoot);
 }
 
 /**
@@ -156,9 +156,9 @@ export async function restoreRebaseAfterAbort(repoRoot: string): Promise<void> {
  * @returns stack pending을 처리했으면 true
  */
 async function finishPullRequestStackRestackAfterContinue(
-  controller: ConflictsController,
+  controller: RebaseRefreshController,
   repoRoot: string
-): Promise<boolean> {
+): Promise<RebaseFollowupStatus> {
   let result: Awaited<ReturnType<PullRequestStackRestackService["resumeAfterContinue"]>>;
   try {
     result = await new PullRequestStackRestackService(repoRoot).resumeAfterContinue();
@@ -166,10 +166,10 @@ async function finishPullRequestStackRestackAfterContinue(
     vscode.window.showErrorMessage(
       vscode.l10n.t("Could not continue pull request stack restack: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
   if (result.status === "none") {
-    return false;
+    return "none";
   }
   if (result.status === "conflicts") {
     if (result.conflictFiles[0]) {
@@ -186,7 +186,7 @@ async function finishPullRequestStackRestackAfterContinue(
         result.branch
       )
     );
-    return true;
+    return "conflicts";
   }
   await controller.refresh();
   GitGraphPanel.refreshOpen(result.repoRoot, "stackRestackContinue");
@@ -206,7 +206,7 @@ async function finishPullRequestStackRestackAfterContinue(
       postAction: result.postAction,
     });
   }
-  return true;
+  return "completed";
 }
 
 /**
@@ -216,11 +216,11 @@ async function finishPullRequestStackRestackAfterContinue(
  */
 async function restorePullRequestStackRestackAfterAbort(
   repoRoot: string
-): Promise<boolean> {
+): Promise<RebaseFollowupStatus> {
   try {
     const graphRepoRoot = await new PullRequestStackRestackService(repoRoot).restoreAfterAbort();
     if (!graphRepoRoot) {
-      return false;
+      return "none";
     }
     GitGraphPanel.refreshOpen(graphRepoRoot, "stackRestackAbort");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
@@ -229,12 +229,12 @@ async function restorePullRequestStackRestackAfterAbort(
     vscode.window.showInformationMessage(
       vscode.l10n.t("Pull request stack restack was aborted and completed layers were restored from safety refs.")
     );
-    return true;
+    return "completed";
   } catch (err) {
     vscode.window.showErrorMessage(
       vscode.l10n.t("Stack restack was aborted, but some layers could not be restored: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
 }
 
@@ -331,9 +331,9 @@ export async function restoreDeferredCommitRebaseAfterAbort(repoRoot: string): P
 
 /** PR rebase 충돌이 continue 로 해결된 뒤 목적 브랜치 반영과 stash 복원을 마무리한다. */
 async function finishPullRequestRebaseAfterContinue(
-  controller: ConflictsController,
+  controller: RebaseRefreshController,
   repoRoot: string
-): Promise<boolean> {
+): Promise<RebaseFollowupStatus> {
   let result: Awaited<ReturnType<typeof finishPendingPullRequestRebaseAfterContinue>>;
   try {
     result = await finishPendingPullRequestRebaseAfterContinue(repoRoot);
@@ -341,7 +341,7 @@ async function finishPullRequestRebaseAfterContinue(
     vscode.window.showErrorMessage(
       vscode.l10n.t("Could not finish PR rebase: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
   if (result.status === "none" || result.status === "pending") {
     if (result.status === "pending") {
@@ -352,7 +352,7 @@ async function finishPullRequestRebaseAfterContinue(
         vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here.")
       );
     }
-    return result.status !== "none";
+    return result.status;
   }
   if (result.status === "completed") {
     vscode.window.showInformationMessage(
@@ -370,14 +370,14 @@ async function finishPullRequestRebaseAfterContinue(
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "prRebaseContinue",
   });
-  return true;
+  return result.status === "restoreConflicts" ? "conflicts" : "completed";
 }
 
 /** 브랜치 rebase merge 충돌이 continue 로 해결된 뒤 목적 브랜치 반영과 stash 복원을 마무리한다. */
 async function finishBranchRebaseMergeAfterContinue(
-  controller: ConflictsController,
+  controller: RebaseRefreshController,
   repoRoot: string
-): Promise<boolean> {
+): Promise<RebaseFollowupStatus> {
   let result: Awaited<ReturnType<typeof finishPendingBranchRebaseMergeAfterContinue>>;
   try {
     result = await finishPendingBranchRebaseMergeAfterContinue(repoRoot);
@@ -385,10 +385,10 @@ async function finishBranchRebaseMergeAfterContinue(
     vscode.window.showErrorMessage(
       vscode.l10n.t("Could not finish branch rebase merge: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
   if (result.status === "none") {
-    return false;
+    return "none";
   }
   if (result.status === "pending") {
     await publishRebaseTodoProgress(
@@ -398,7 +398,7 @@ async function finishBranchRebaseMergeAfterContinue(
       vscode.l10n.t("Resolve the current todo, then Continue, Skip, or Abort. Remaining todo items stay visible here."),
       result.rebaseTodo
     );
-    return true;
+    return "pending";
   }
   if (result.status === "completed") {
     vscode.window.showInformationMessage(
@@ -423,11 +423,11 @@ async function finishBranchRebaseMergeAfterContinue(
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "branchRebaseMergeContinue",
   });
-  return true;
+  return result.status === "restoreConflicts" ? "conflicts" : "completed";
 }
 
 /** PR rebase abort 뒤 시작 브랜치와 보존 stash 를 복원한다. */
-async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<boolean> {
+async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<RebaseFollowupStatus> {
   let result: Awaited<ReturnType<typeof restorePendingPullRequestRebaseAfterAbort>>;
   try {
     result = await restorePendingPullRequestRebaseAfterAbort(repoRoot);
@@ -435,10 +435,10 @@ async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<boo
     vscode.window.showErrorMessage(
       vscode.l10n.t("PR rebase was aborted, but local changes could not be restored: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
   if (result.status !== "restored") {
-    return false;
+    return "none";
   }
   vscode.window.showInformationMessage(
     vscode.l10n.t("PR rebase aborted and local changes were restored on '{0}'.", result.branch)
@@ -446,11 +446,11 @@ async function restorePullRequestRebaseAfterAbort(repoRoot: string): Promise<boo
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "prRebaseAbort",
   });
-  return true;
+  return "completed";
 }
 
 /** 브랜치 rebase merge abort 뒤 시작 브랜치와 보존 stash 를 복원한다. */
-async function restoreBranchRebaseMergeAfterAbort(repoRoot: string): Promise<boolean> {
+async function restoreBranchRebaseMergeAfterAbort(repoRoot: string): Promise<RebaseFollowupStatus> {
   let result: Awaited<ReturnType<typeof restorePendingBranchRebaseMergeAfterAbort>>;
   try {
     result = await restorePendingBranchRebaseMergeAfterAbort(repoRoot);
@@ -458,10 +458,10 @@ async function restoreBranchRebaseMergeAfterAbort(repoRoot: string): Promise<boo
     vscode.window.showErrorMessage(
       vscode.l10n.t("Branch rebase merge was aborted, but local changes could not be restored: {0}", errorText(err))
     );
-    return true;
+    return "failed";
   }
   if (result.status !== "restored") {
-    return false;
+    return "none";
   }
   vscode.window.showInformationMessage(
     vscode.l10n.t("Branch rebase merge aborted and local changes were restored on '{0}'.", result.branch)
@@ -476,7 +476,7 @@ async function restoreBranchRebaseMergeAfterAbort(repoRoot: string): Promise<boo
   void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
     reason: "branchRebaseMergeAbort",
   });
-  return true;
+  return "completed";
 }
 
 /** PR stash 복원 충돌이 해결된 뒤 이미 적용된 stash 를 제거한다. */

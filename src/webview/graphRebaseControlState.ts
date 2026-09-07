@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { ConflictService } from "../git/conflictService";
 import { RebaseService, type RebasePausedState } from "../git/rebaseService";
-import { createRebaseEditTempFile, listRebaseEditTempPaths } from "../git/rebaseEditSession";
+import { createRebaseEditTempFile } from "../git/rebaseEditSession";
 import { EMPTY_TREE } from "../git/gitLogService";
 import { readRebaseContinueDiagnostics, type RebaseContinueDiagnostics } from "../git/rebaseContinueDiagnostics";
 import { REBASE_RESTORE_CONFLICT_MESSAGE } from "../git/rebasePlanSafety";
@@ -94,18 +94,6 @@ export async function readRebaseControlState(
     vscode.window.showInformationMessage(vscode.l10n.t(completedMessage));
   }
   return { status: "completed" };
-}
-
-/** Continue 직전에 열려 있는 rebase edit 임시 문서의 dirty 내용을 저장한다. */
-export async function saveRebaseEditTempDocuments(
-  repoRoot: string,
-  paused: RebasePausedState
-): Promise<void> {
-  const paths = new Set(listRebaseEditTempPaths(repoRoot, paused));
-  const docs = vscode.workspace.textDocuments.filter(
-    (doc) => doc.isDirty && doc.uri.scheme === "file" && paths.has(doc.uri.fsPath)
-  );
-  await Promise.all(docs.map((doc) => doc.save()));
 }
 
 /** edit 정지 지점에서 첫 편집 가능 파일 또는 사용자가 고른 파일을 editable diff 로 연다. */

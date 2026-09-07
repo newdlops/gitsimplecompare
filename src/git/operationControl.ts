@@ -6,7 +6,8 @@ import { detectOperation, type MergeOperation } from "./conflictService";
 import { readConflictOperationEpoch } from "./conflictOperationEpoch";
 import { runGit } from "./gitExec";
 import { preserveOperationEdits } from "./operationRecoveryBackup";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
+import { finishControlledRebaseSession } from "./rebaseSessionState";
 
 /** worktree, 작업 생성 세대와 현재 todo/HEAD를 함께 고정한 제어 대상이다. */
 export interface GitOperationIdentity {
@@ -60,8 +61,8 @@ export async function controlGitOperation(
   const before = expected ?? await captureGitOperation(repoRoot);
   if (before.operation !== operation || operation === "none") throw changedOperation();
   await assertGitOperation(repoRoot, before);
-  if ((action === "abort" || action === "skip") && operation === "rebase") {
-    await assertNoUnrelatedUnstagedChanges(repoRoot);
+  if (action === "abort" || action === "skip") {
+    if (operation === "rebase") await assertNoUnrelatedUnstagedChanges(repoRoot);
     await preserveOperationEdits(repoRoot, before.gitDir, action);
   }
   await assertGitOperation(repoRoot, before);
@@ -80,6 +81,10 @@ export async function controlGitOperation(
     await writeFile(temporary, JSON.stringify(receipt), { mode: 0o600 });
     await rename(temporary, file);
     logInfo("git operation controlled", { repoRoot, operation, action, generation: before.generation });
+    await finishControlledRebaseSession(repoRoot, before, receipt.after, action).catch(error => {
+      // UI 세션 저장 실패 때문에 이미 수행한 Git 명령을 재실행하지 않는다. 복원 시 세대 검증도 별도로 수행한다.
+      logError("ended rebase session could not be recorded", error, { repoRoot, operation, action });
+    });
   } catch (error) {
     if (!failure) throw error;
   }

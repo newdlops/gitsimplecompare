@@ -13,6 +13,7 @@ import type {
 } from "./rebaseService";
 import type { RebaseTodoProgress } from "./rebaseTodoProgress";
 import { readRebaseTodoProgress } from "./rebaseTodoProgress";
+import type { GitOperationIdentity } from "./operationControl";
 
 /** 세션 파일 포맷 버전. 구조 변경 시 migration 기준으로 사용한다. */
 export const REBASE_SESSION_VERSION = 1;
@@ -54,6 +55,8 @@ export interface RebaseSessionState {
   message?: string;
   restoringLocalChanges?: boolean;
   events: RebaseSessionEvent[];
+  /** 실제로 시작한 native rebase 세대. 연결 정보가 없는 옛 세션은 자동 복원하지 않는다. */
+  nativeOperation?: GitOperationIdentity;
 }
 
 /** 세션 상태를 갱신할 때 호출부가 넘길 수 있는 값 */
@@ -66,6 +69,7 @@ export interface RebaseSessionUpdate {
   message?: string;
   restoringLocalChanges?: boolean;
   detail?: Record<string, unknown>;
+  nativeOperation?: GitOperationIdentity;
 }
 
 const MAX_EVENTS = 80;
@@ -179,6 +183,7 @@ export async function updateRebaseSessionState(
   };
   const next: RebaseSessionState = {
     ...current,
+    nativeOperation: update.nativeOperation ?? current.nativeOperation,
     updatedAt: now,
     phase: update.phase,
     lastAction: update.action,
@@ -209,10 +214,12 @@ export async function recordRebaseSessionResult(
   repoRoot: string,
   action: string,
   result: RebaseResultLike,
-  items: RebaseItem[]
+  items: RebaseItem[],
+  nativeOperation?: GitOperationIdentity
 ): Promise<RebaseSessionState | undefined> {
   return updateRebaseSessionState(repoRoot, {
     action,
+    nativeOperation,
     phase: phaseFromResult(result),
     items,
     paused: result.paused,
@@ -225,6 +232,26 @@ export async function recordRebaseSessionResult(
       paused: result.paused?.originalHash ?? result.paused?.hash,
       stopped: result.stopped?.originalHash ?? result.stopped?.hash,
     },
+  });
+}
+
+/**
+ * 일반/그래프 제어가 해당 세션의 Git 작업을 끝내면 디스크 상태도 terminal로 갱신한다.
+ * @param before 실제 제어 명령의 이전 작업. 다른 세션은 갱신하지 않는다.
+ * @param after 명령 이후 상태. 같은 세대의 다음 todo에서 멈췄으면 세션을 유지한다.
+ */
+export async function finishControlledRebaseSession(
+  repoRoot: string, before: GitOperationIdentity, after: GitOperationIdentity, action: string
+): Promise<void> {
+  if (before.operation !== "rebase") return;
+  const state = await readRebaseSessionState(repoRoot);
+  if (!state?.nativeOperation || state.nativeOperation.gitDir !== before.gitDir ||
+      state.nativeOperation.generation !== before.generation) return;
+  if (after.operation === "rebase" && after.generation === before.generation) return;
+  const restoringLocalChanges = after.operation === "none" && Boolean(await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot));
+  await updateRebaseSessionState(repoRoot, {
+    action, phase: action === "abort" ? "aborted" : "completed", restoringLocalChanges,
+    detail: { event: "nativeOperationEnded", generation: before.generation },
   });
 }
 

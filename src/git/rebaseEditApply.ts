@@ -3,6 +3,7 @@ import { runGit, runGitLiteralPaths } from "./gitExec";
 import { parsePorcelainGroups } from "./diffParse";
 import { applyRebaseEditTempFiles, cleanupRebaseEditTempFiles } from "./rebaseEditSession";
 import type { RebasePausedState } from "./rebaseService";
+import { assertRebaseEditIdentity } from "./rebaseEditIdentity";
 
 /**
  * 다른 파일의 staged 변경은 그대로 둔 채 실패하고, edit 대상 변경만 amend한다.
@@ -11,18 +12,22 @@ import type { RebasePausedState } from "./rebaseService";
  * @returns 실제 amend를 했으면 true, 대상 수정이 없으면 false
  */
 export async function amendRebaseEdit(repoRoot: string, state: RebasePausedState): Promise<boolean> {
+  await assertRebaseEditIdentity(repoRoot, state);
   const candidates = new Set(state.files.flatMap(file => [file.path, ...(file.oldPath ? [file.oldPath] : [])]));
   await assertStagedScope(repoRoot, candidates);
   const temporary = await applyRebaseEditTempFiles(repoRoot, state);
   const paths = temporary.length ? temporary : await changedEditPaths(repoRoot, candidates);
   if (!paths.length) return false;
+  await assertRebaseEditIdentity(repoRoot, state);
   if (!temporary.length) await runGitLiteralPaths(["add", "-A", "--", ...paths], repoRoot, { retryOnLock: false });
   await assertStagedScope(repoRoot, candidates);
   const staged = await runGit(["diff", "--cached", "--name-only", "-z"], repoRoot);
   if (!staged) return false;
+  await assertRebaseEditIdentity(repoRoot, state);
   // --only로 Git 자체도 파일 범위를 고정해 마지막 검사 뒤 다른 파일이 stage되어도 섞지 않는다.
   await runGitLiteralPaths(["commit", "--amend", "--only", "--no-edit", "--allow-empty", "--no-verify", "--", ...paths], repoRoot,
     { env: { GIT_EDITOR: "true", GIT_SEQUENCE_EDITOR: "true" }, retryOnLock: false });
+  await assertRebaseEditIdentity(repoRoot, state, true);
   await cleanupRebaseEditTempFiles(repoRoot, state);
   return true;
 }
