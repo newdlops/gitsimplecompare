@@ -87,8 +87,8 @@ export async function checkoutBranch(
 }
 
 /**
- * 원격 브랜치 chip 클릭 시 충돌 없는 이름의 새 로컬 브랜치를 만들고 checkout 한다.
- * - 이름 충돌 시 해시가 붙은 후보를 확인창에 표시하고 완료 알림에는 실제 생성 결과를 사용한다.
+ * 원격 브랜치 chip 클릭 시 원래 이름의 새 로컬 브랜치를 만들고 checkout 한다.
+ * - 이름 충돌 시 기존 브랜치의 stale 보존 이름을 기존 확인창에 함께 표시한다.
  * @param deps graph 패널이 제공하는 git service 와 refresh 콜백
  * @param remoteBranch checkout 할 원격 브랜치 short name
  */
@@ -96,10 +96,16 @@ export async function checkoutRemoteBranch(
   deps: GraphBranchActionDeps,
   remoteBranch: string
 ): Promise<void> {
-  let localName = await deps.logService.getRemoteBranchCheckoutName(remoteBranch);
+  const plan = await deps.logService.getRemoteBranchCheckoutPlan(remoteBranch);
+  let localName = plan.localName;
 
   const ok = await confirm(
-    vscode.l10n.t(
+    plan.staleBranch ? vscode.l10n.t(
+      "Rename existing local branch '{0}' to '{1}', then create '{0}' from '{2}' and checkout?",
+      localName,
+      plan.staleBranch.name,
+      remoteBranch
+    ) : vscode.l10n.t(
       "Create local branch '{0}' from '{1}' and checkout?",
       localName,
       remoteBranch

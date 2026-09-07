@@ -5,6 +5,19 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72050] - 2026-09-07
+
+### Changed
+
+- Remote checkout now gives the new tracking branch its original name.
+  An existing local branch is renamed to `<name>-stale-<old-commit-hash>`,
+  with a numeric suffix when that archive name is already taken. Existing
+  commits, branch settings, reflogs, and linked worktree files are preserved.
+- The checkout confirmation shows the existing branch's archive name.
+  A failed checkout restores the old name when no new branch was created;
+  a hook failure after checkout preserves the completed Git state. Concurrent
+  remote checkouts within one extension host are serialized across worktrees.
+
 ## [0.1.72049] - 2026-09-07
 
 ### Fixed

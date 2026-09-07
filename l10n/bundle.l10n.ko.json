@@ -146,6 +146,7 @@
   "Create Branch from Tag": "태그에서 브랜치 생성",
   "Create branch from tag '{0}'": "태그 '{0}' 에서 브랜치 생성",
   "Create local branch '{0}' from '{1}' and checkout?": "'{1}' 에서 로컬 브랜치 '{0}' 을(를) 만들고 checkout 할까요?",
+  "Rename existing local branch '{0}' to '{1}', then create '{0}' from '{2}' and checkout?": "기존 로컬 브랜치 '{0}'의 이름을 '{1}'로 바꾸고, '{2}'에서 새 '{0}' 브랜치를 만들어 checkout 할까요?",
   "Branch '{0}' already exists.": "브랜치 '{0}' 이(가) 이미 있습니다.",
   "Branch '{0}' cloned from '{1}'.": "브랜치 '{0}' 을(를) '{1}' 에서 복제했습니다.",
   "Delete": "삭제",

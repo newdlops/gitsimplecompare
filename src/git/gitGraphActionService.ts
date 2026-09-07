@@ -5,8 +5,12 @@ import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
 import { invalidateRemoteTagCache } from "./gitTagService";
 import { readGraphLocalBranchSnapshot } from "./graphLocalBranches";
-import { isUnpushedLocalHead, localNameFromRemoteRef, splitRemoteRef } from "./gitRefNames";
-import { logInfo } from "../ui/outputLog";
+import { isUnpushedLocalHead, splitRemoteRef } from "./gitRefNames";
+import {
+  checkoutRemoteBranchAsLocal,
+  getRemoteBranchCheckoutPlan,
+  type RemoteBranchCheckoutPlan,
+} from "./remoteBranchCheckout";
 import {
   ForcePushMode,
   PushCurrentPlan,
@@ -61,56 +65,29 @@ export class GitGraphActionService {
   }
 
   /**
-   * 원격 브랜치 checkout에 사용할 충돌 없는 로컬 이름을 읽기 전용으로 결정한다.
-   * - 기본 이름이 있으면 원격 tip의 짧은 해시를 붙이고, 그 이름도 있으면 숫자를 증가시킨다.
-   * - UI 확인 이후 외부에서 branch가 생성될 수 있으므로 실제 checkout도 이 조회를 다시 실행한다.
+   * 원격 브랜치 checkout에서 새 브랜치가 사용할 원래 로컬 이름을 읽기 전용으로 반환한다.
    * @param remoteBranch origin/feature 형태의 원격 브랜치 short name
-   * @returns 현재 로컬 refs/heads 목록과 겹치지 않는 생성 후보 이름
+   * @returns 기존 동명 브랜치를 stale 이름으로 보존한 뒤 새로 사용할 이름
    */
   async getRemoteBranchCheckoutName(remoteBranch: string): Promise<string> {
-    const localName = localNameFromRemoteRef(remoteBranch);
-    const output = await runGit(
-      ["for-each-ref", "--format=%(refname:lstrip=2)", "refs/heads"],
-      this.repoRoot
-    );
-    const existingNames = new Set(output.split("\n").filter(Boolean));
-    if (!existingNames.has(localName)) return localName;
+    return (await this.getRemoteBranchCheckoutPlan(remoteBranch)).localName;
+  }
 
-    const hash = (await runGit(
-      ["rev-parse", "--verify", "--short=7", `refs/remotes/${remoteBranch}^{commit}`],
-      this.repoRoot
-    )).trim();
-    const base = `${localName}-${hash}`;
-    let candidate = base;
-    for (let index = 2; existingNames.has(candidate); index++) {
-      candidate = `${base}-${index}`;
-    }
-    return candidate;
+  /** 원격 short ref를 받아 확인창에 표시할 새 이름과 기존 브랜치의 보존 이름을 반환한다. */
+  getRemoteBranchCheckoutPlan(remoteBranch: string): Promise<RemoteBranchCheckoutPlan> {
+    return getRemoteBranchCheckoutPlan(this.repoRoot, remoteBranch);
   }
 
   /**
    * 원격 브랜치를 추적하는 새 로컬 브랜치를 만들고 전환한다.
-   * - 기존 같은 이름의 브랜치는 보존하고 해시/숫자 suffix로 이름 충돌을 피한다.
+   * - 기존 같은 이름의 브랜치를 <이름>-stale-<기존 OID>로 옮겨 새 브랜치에 원래 이름을 준다.
    * @param remoteBranch checkout할 원격 브랜치 short name
    * @param merge 작업트리 변경을 3-way merge하며 전환할지 여부
    * @returns 생성하고 전환한 로컬 브랜치 이름
    */
   async checkoutRemoteBranchAsLocal(remoteBranch: string, merge = false): Promise<string> {
-    await this.ensureCheckoutAllowed();
     try {
-      const localName = await this.getRemoteBranchCheckoutName(remoteBranch);
-      await runGit(
-        ["switch", ...(merge ? ["--merge"] : []), "-c", localName, "--track", `refs/remotes/${remoteBranch}`],
-        this.repoRoot
-      );
-      logInfo("remote branch checkout finished", {
-        repoRoot: this.repoRoot,
-        remoteBranch,
-        localBranch: localName,
-        nameCollision: localName !== localNameFromRemoteRef(remoteBranch),
-        merge,
-      });
-      return localName;
+      return await checkoutRemoteBranchAsLocal(this.repoRoot, remoteBranch, merge);
     } finally {
       this.invalidateRefs();
     }
