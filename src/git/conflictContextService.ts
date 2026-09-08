@@ -115,17 +115,17 @@ const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 export async function readConflictOperationContext(
   repoRoot: string,
   operation: MergeOperation,
-  rel: string
+  rel: string, signal?: AbortSignal
 ): Promise<ConflictOperationContext> {
   const targetRef = operationTargetRef(operation);
   const [branch, operationTarget] = await Promise.all([
-    readCurrentBranch(repoRoot),
-    targetRef ? describeCommit(repoRoot, targetRef) : Promise.resolve(undefined),
+    readCurrentBranch(repoRoot, signal),
+    targetRef ? describeCommit(repoRoot, targetRef, targetRef, signal) : Promise.resolve(undefined),
   ]);
   if (operation !== "rebase") {
     return { operation, branch, operationTarget };
   }
-  const rebase = await readRebaseConflictContext(repoRoot, rel);
+  const rebase = await readRebaseConflictContext(repoRoot, rel, signal);
   return {
     operation,
     branch: rebase?.branch || branch,
@@ -145,13 +145,13 @@ export async function readConflictOperationContext(
 export async function describeFileSource(
   repoRoot: string,
   ref: string,
-  rel: string
+  rel: string, signal?: AbortSignal
 ): Promise<ConflictCommitIdentity | undefined> {
   const output = await runGit(
     ["log", "-1", "-M", "--format=%H%x1f%s", ref, "--", rel],
     repoRoot,
-    LITERAL_PATH_ENV
-  ).catch(() => "");
+    { env: LITERAL_PATH_ENV, signal }
+  ).catch(() => { signal?.throwIfAborted(); return ""; });
   const line = output.split(/\r?\n/).find((entry) => entry.trim());
   if (!line) {
     return undefined;
@@ -172,9 +172,10 @@ export async function describeFileSource(
  */
 async function readRebaseConflictContext(
   repoRoot: string,
-  rel: string
+  rel: string, signal?: AbortSignal
 ): Promise<RebaseConflictContext | undefined> {
-  const state = await readRebaseState(repoRoot);
+  const state = await readRebaseState(repoRoot, signal);
+  signal?.throwIfAborted();
   if (!state) {
     return undefined;
   }
@@ -195,7 +196,7 @@ async function readRebaseConflictContext(
     (entry.kind === "other" && entry.action !== "label") ||
     (entry.kind === "commit" && (entry.action === "edit" || !entry.hash))
   ).length;
-  const currentHash = await resolveCommit(repoRoot, "REBASE_HEAD") || state.stoppedSha;
+  const currentHash = await resolveCommit(repoRoot, "REBASE_HEAD", signal) || state.stoppedSha;
   const lastDone = doneEntries[doneEntries.length - 1];
   const currentCommit = findTodoCommit(done, currentHash) || done[done.length - 1];
   const current = lastDone?.kind === "commit" ? currentCommit : lastDone || currentCommit;
@@ -206,9 +207,9 @@ async function readRebaseConflictContext(
   const todoStateComplete = state.backend === "rebase-merge" && state.hasDone && state.hasTodo;
   const [touches, originalPathKnown] = await Promise.all([
     todoStateComplete
-      ? commitsTouchingPath(repoRoot, rel, remainingCommits.map(({ entry }) => entry.hash!))
+      ? commitsTouchingPath(repoRoot, rel, remainingCommits.map(({ entry }) => entry.hash!), signal)
       : Promise.resolve(undefined),
-    currentHash ? originalCommitUsesPath(repoRoot, currentHash, rel) : Promise.resolve(false),
+    currentHash ? originalCommitUsesPath(repoRoot, currentHash, rel, signal) : Promise.resolve(false),
   ]);
   const future = touches
     ? remainingCommits.flatMap(({ entry, sequenceIndex }) => {
@@ -234,13 +235,13 @@ async function readRebaseConflictContext(
       : "expected-final";
   const [originalHead, onto, currentIdentity] = await Promise.all([
     state.originalHead
-      ? describeCommit(repoRoot, state.originalHead, "original branch tip")
+      ? describeCommit(repoRoot, state.originalHead, "original branch tip", signal)
       : Promise.resolve(undefined),
     state.onto
-      ? describeCommit(repoRoot, state.onto, "onto")
+      ? describeCommit(repoRoot, state.onto, "onto", signal)
       : Promise.resolve(undefined),
     currentHash
-      ? describeCommit(repoRoot, currentHash, "REBASE_HEAD")
+      ? describeCommit(repoRoot, currentHash, "REBASE_HEAD", signal)
       : Promise.resolve(undefined),
   ]);
   return {
@@ -279,13 +280,13 @@ async function readRebaseConflictContext(
  * @returns 첫 번째로 존재하는 rebase backend 상태 또는 undefined
  */
 async function readRebaseState(
-  repoRoot: string
+  repoRoot: string, signal?: AbortSignal
 ): Promise<RebaseStateSnapshot | undefined> {
   for (const backend of ["rebase-merge", "rebase-apply"]) {
     const raw = await runGit(
       ["rev-parse", "--git-path", backend],
-      repoRoot
-    ).catch(() => "");
+      repoRoot, { signal }
+    ).catch(() => { signal?.throwIfAborted(); return ""; });
     if (!raw.trim()) {
       continue;
     }
@@ -395,10 +396,11 @@ function findTodoCommit(
 async function commitsTouchingPath(
   repoRoot: string,
   rel: string,
-  hashes: string[]
+  hashes: string[], signal?: AbortSignal
 ): Promise<PathTouchCommit[] | undefined> {
   const result: PathTouchCommit[] = [];
   for (let start = 0; start < hashes.length; start += MAX_HASHES_PER_QUERY) {
+    signal?.throwIfAborted();
     const chunk = hashes.slice(start, start + MAX_HASHES_PER_QUERY);
     const raw = await runGit(
       [
@@ -412,8 +414,8 @@ async function commitsTouchingPath(
         rel,
       ],
       repoRoot,
-      LITERAL_PATH_ENV
-    ).catch(() => undefined);
+      { env: LITERAL_PATH_ENV, signal }
+    ).catch(() => { signal?.throwIfAborted(); return undefined; });
     if (raw === undefined) {
       return undefined;
     }
@@ -429,14 +431,14 @@ async function commitsTouchingPath(
 async function originalCommitUsesPath(
   repoRoot: string,
   commit: string,
-  rel: string
+  rel: string, signal?: AbortSignal
 ): Promise<boolean> {
   for (const ref of [commit, `${commit}^`]) {
     const output = await runGit(
       ["ls-tree", "-z", "--name-only", ref, "--", rel],
       repoRoot,
-      LITERAL_PATH_ENV
-    ).catch(() => "");
+      { env: LITERAL_PATH_ENV, signal }
+    ).catch(() => { signal?.throwIfAborted(); return ""; });
     if (output.split("\0").includes(rel)) return true;
   }
   return false;
@@ -495,30 +497,32 @@ function operationTargetRef(operation: MergeOperation): string | undefined {
 async function describeCommit(
   repoRoot: string,
   ref: string,
-  label = ref
+  label = ref, signal?: AbortSignal
 ): Promise<ConflictCommitIdentity | undefined> {
-  const commit = await resolveCommit(repoRoot, ref);
+  const commit = await resolveCommit(repoRoot, ref, signal);
   if (!commit) {
     return undefined;
   }
   const subject = (
-    await runGit(["show", "-s", "--format=%s", commit], repoRoot).catch(() => "")
+    await runGit(["show", "-s", "--format=%s", commit], repoRoot, { signal })
+      .catch(() => { signal?.throwIfAborted(); return ""; })
   ).trim();
   return { ref: label, commit, subject: subject || undefined };
 }
 
 /** ref/hash를 전체 commit hash로 정규화한다. */
-async function resolveCommit(repoRoot: string, ref: string): Promise<string | undefined> {
+async function resolveCommit(repoRoot: string, ref: string, signal?: AbortSignal): Promise<string | undefined> {
   const output = await runGit(
     ["rev-parse", "--verify", `${ref}^{commit}`],
-    repoRoot
-  ).catch(() => "");
+    repoRoot, { signal }
+  ).catch(() => { signal?.throwIfAborted(); return ""; });
   return output.split(/\r?\n/).find(Boolean)?.trim() || undefined;
 }
 
 /** 현재 checkout branch를 읽고 rebase detached HEAD에서는 빈 값으로 둔다. */
-async function readCurrentBranch(repoRoot: string): Promise<string | undefined> {
-  const output = await runGit(["branch", "--show-current"], repoRoot).catch(() => "");
+async function readCurrentBranch(repoRoot: string, signal?: AbortSignal): Promise<string | undefined> {
+  const output = await runGit(["branch", "--show-current"], repoRoot, { signal })
+    .catch(() => { signal?.throwIfAborted(); return ""; });
   return output.trim() || undefined;
 }
 

@@ -158,3 +158,52 @@ test("busy actions defer metadata publication until their owned refresh can retr
   await coordinator.refresh(session, session.pendingRefreshReason!); await settle();
   assert.equal(session.document.metadataState, "ready");
 });
+
+/** 여러 열린 문서의 실제 조회 시작 순서와 close 취소를 검증한다. */
+test("visible conflict reads run first with at most two content reads and cancelled sessions leave the queue", async () => {
+  const sessions = Array.from({ length: 6 }, (_, index) => { const session = fixture().session; return Object.assign(session, { id: String(index) }); });
+  const started: string[] = [], pending = new Map<string, ReturnType<typeof deferred<ConflictDocument>>>();
+  let active = 0, maximum = 0;
+  for (const session of sessions) session.service.getConflictDocument = async (_rel, _full, options) => {
+    started.push(session.id); maximum = Math.max(maximum, ++active);
+    const read = deferred<ConflictDocument>(); pending.set(session.id, read);
+    const abort = () => read.reject(new DOMException("closed", "AbortError"));
+    options?.signal?.addEventListener("abort", abort, { once: true });
+    try { return await read.promise; }
+    finally { active--; options?.signal?.removeEventListener("abort", abort); }
+  };
+  const coordinator = new ConflictEditorReadCoordinator({
+    isCurrent: session => !session.resolved, isDirty: () => false, isVisible: session => session.id === "5",
+    commitDocument: (session, doc) => applyConflictDocument(session, doc), commitMetadata: () => {},
+    reopen: async () => {}, publishResolvedResult: async () => false, markResolved: () => {},
+  });
+  const reads = sessions.map(session => coordinator.refresh(session, "index"));
+  await settle();
+  assert.deepEqual(started, ["5", "0"]);
+  sessions[1].resolved = true; coordinator.cancel(sessions[1]);
+  sessions[0].resolved = true; coordinator.cancel(sessions[0]);
+  await settle();
+  assert.deepEqual(started, ["5", "0", "2"]);
+  for (const session of sessions) { session.resolved = true; coordinator.cancel(session); }
+  await Promise.all(reads);
+  assert.equal(maximum, 2); assert.equal(active, 0);
+  assert.equal(started.includes("1"), false);
+});
+
+/** 취소된 상세 조회가 error로 표시되지 않고 다시 활성화된 문서에서는 재시도할 수 있어야 한다. */
+test("suspend cancels running metadata and resuming can complete fresh details", async () => {
+  const { session, coordinator, state } = fixture(document("pending"));
+  let signal: AbortSignal | undefined;
+  session.service.getConflictDocumentMetadata = async (_document, cancellation) => {
+    signal = cancellation;
+    return new Promise((_resolve, reject) => cancellation?.addEventListener("abort", () => reject(cancellation.reason), { once: true }));
+  };
+  coordinator.enrich(session); await settle();
+  session.suspended = true; coordinator.cancel(session); await settle();
+  assert.equal(signal?.aborted, true); assert.equal(state.metadata, 0);
+  assert.equal(session.document.metadataState, "pending");
+  session.suspended = false;
+  session.service.getConflictDocumentMetadata = async doc => metadata(doc);
+  coordinator.enrich(session); await settle();
+  assert.equal(session.document.metadataState, "ready");
+});

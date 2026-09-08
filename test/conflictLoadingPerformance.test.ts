@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
-import { appendFile, writeFile } from "node:fs/promises";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { ConflictService } from "../src/git/conflictService";
@@ -33,8 +33,27 @@ function callsFor(t: TestContext): string[][] {
     if (args[0] === "git") calls.push(args[1]);
     return (original as Function)(...args);
   });
+  const spawn = childProcess.spawn;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => {
+    if (args[0] === "git") calls.push(args[1]);
+    return (spawn as Function)(...args);
+  });
   return calls;
 }
+
+/** replace ref가 바뀌어도 캐시한 원본과 실제 Accept Current가 같은 index blob을 사용해야 한다. */
+test("conflict previews and stage acceptance use the same immutable blob despite replacement refs", async t => {
+  const { root } = await conflicted(t);
+  const service = new ConflictService(root);
+  const doc = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true });
+  const replacement = join(root, "replacement.txt"); await writeFile(replacement, "replacement bytes\n");
+  const oid = await git(root, "hash-object", "-w", replacement);
+  await git(root, "replace", doc.current.oid!, oid);
+  const current = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true });
+  assert.equal(current.current.content, "main\n");
+  await service.takeOurs("tracked.txt", current.resultVersion, current.sourceVersion);
+  assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), current.current.content);
+});
 
 test("conflict content opens in eight Git reads without waiting for commit history or todo analysis", async t => {
   const { root } = await conflicted(t);
@@ -63,11 +82,17 @@ test("unchanged conflict refresh reuses metadata but still reads fresh content a
   const calls = callsFor(t);
   await writeFile(join(root, "tracked.txt"), "new on-disk resolution\n");
   const refreshed = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true, previous });
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 5);
+  assert.equal(calls.some(args => args[0] === "cat-file"), false);
   assert.equal(refreshed.context, previous.context);
   assert.equal(refreshed.metadataState, "ready");
   assert.equal(refreshed.result, "new on-disk resolution\n");
   assert.notEqual(refreshed.resultVersion, previous.resultVersion);
+  await writeFile(join(root, ".gitattributes"), "tracked.txt -diff\n");
+  const binary = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true, previous: refreshed });
+  assert.equal(binary.current.kind, "binary");
+  assert.equal(binary.incoming.kind, "binary");
+  await writeFile(join(root, ".gitattributes"), "");
   await git(root, "rebase", "--abort");
   await assert.rejects(git(root, "rebase", "main"));
   const replacement = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true, previous });

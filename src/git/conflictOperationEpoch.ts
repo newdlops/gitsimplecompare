@@ -30,11 +30,12 @@ const OPERATION_PATHS = [
  * @param repoRoot 대상 저장소 루트
  * @returns 같은 stage blob이어도 Git 작업이 새로 시작되면 달라지는 SHA-256 epoch
  */
-export async function readConflictOperationEpoch(repoRoot: string): Promise<string> {
+export async function readConflictOperationEpoch(repoRoot: string, signal?: AbortSignal): Promise<string> {
   const [gitDirText, head] = await Promise.all([
-    runGit(["rev-parse", "--absolute-git-dir"], repoRoot),
-    runGit(["rev-parse", "--verify", "HEAD"], repoRoot).catch(() => "unborn"),
+    runGit(["rev-parse", "--absolute-git-dir"], repoRoot, { signal }),
+    runGit(["rev-parse", "--verify", "HEAD"], repoRoot, { signal }).catch(() => { signal?.throwIfAborted(); return "unborn"; }),
   ]);
+  signal?.throwIfAborted();
   return readConflictOperationEpochAt(gitDirText.trim(), head);
 }
 

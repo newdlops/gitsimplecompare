@@ -84,6 +84,8 @@ export interface ConflictDocumentMetadata {
 export interface ConflictDocumentReadOptions {
   deferMetadata?: boolean;
   previous?: ConflictDocument;
+  /** 편집기 수명이 끝나면 조회만 취소한다. 저장/해결 mutation에는 전달하지 않는다. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -93,9 +95,10 @@ export interface ConflictDocumentReadOptions {
  * @param repoRoot 저장소 루트
  */
 export async function detectOperation(
-  repoRoot: string
+  repoRoot: string, signal?: AbortSignal
 ): Promise<MergeOperation> {
-  const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], repoRoot)).trim();
+  const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], repoRoot, { signal })).trim();
+  signal?.throwIfAborted();
   return detectOperationInGitDir(path.resolve(repoRoot, gitDirRaw));
 }
 
@@ -246,8 +249,8 @@ export class ConflictService {
     options: ConflictDocumentReadOptions = {}
   ): Promise<ConflictDocument> {
     const [operation, contents] = await Promise.all([
-      this.getOperation(),
-      this.content.readDocument(rel, fullResult),
+      this.getOperation(options.signal),
+      this.content.readDocument(rel, fullResult, options.signal),
     ]);
     const previous = options.previous;
     const reusable = previous?.sourceVersion === contents.sourceVersion && previous.operation === operation
@@ -261,7 +264,7 @@ export class ConflictService {
       metadataState: reusable ? "ready" : "pending",
     };
     if (reusable || options.deferMetadata) return document;
-    const metadata = await this.getConflictDocumentMetadata(document);
+    const metadata = await this.getConflictDocumentMetadata(document, options.signal);
     return metadata ? { ...document, context: metadata.context, metadataState: "ready",
       current: { ...document.current, ...metadata.sources.current },
       incoming: { ...document.incoming, ...metadata.sources.incoming } } : document;
@@ -272,12 +275,13 @@ export class ConflictService {
    * @param document 먼저 읽은 파일 내용과 operation/source identity
    * @returns 같은 source의 설명. 조회 중 Git 작업이 바뀌었으면 undefined이며 바이트는 반환하지 않는다.
    */
-  async getConflictDocumentMetadata(document: ConflictDocument): Promise<ConflictDocumentMetadata | undefined> {
+  async getConflictDocumentMetadata(document: ConflictDocument, signal?: AbortSignal): Promise<ConflictDocumentMetadata | undefined> {
     const [sources, context] = await Promise.all([
-      this.getConflictSources(document.rel, document.operation),
-      readConflictOperationContext(this.repoRoot, document.operation, document.rel),
+      this.getConflictSources(document.rel, document.operation, signal),
+      readConflictOperationContext(this.repoRoot, document.operation, document.rel, signal),
     ]);
-    const sourceVersion = await this.content.readSourceVersion(document.rel);
+    signal?.throwIfAborted();
+    const sourceVersion = await this.content.readSourceVersion(document.rel, signal);
     return sourceVersion === document.sourceVersion ? { sourceVersion, sources, context } : undefined;
   }
 
@@ -287,15 +291,16 @@ export class ConflictService {
    */
   async getConflictSources(
     rel?: string,
-    knownOperation?: MergeOperation
+    knownOperation?: MergeOperation,
+    signal?: AbortSignal
   ): Promise<ConflictSources> {
-    const operation = knownOperation ?? await this.getOperation();
-    const refs = await this.conflictRefs(operation);
+    const operation = knownOperation ?? await this.getOperation(signal);
+    const refs = await this.conflictRefs(operation, signal);
     const [currentFile, incomingFile] = rel
       ? await Promise.all([
-          describeFileSource(this.repoRoot, refs.current.fileRef, rel),
+          describeFileSource(this.repoRoot, refs.current.fileRef, rel, signal),
           refs.incoming.fileRef
-            ? describeFileSource(this.repoRoot, refs.incoming.fileRef, rel)
+            ? describeFileSource(this.repoRoot, refs.incoming.fileRef, rel, signal)
             : Promise.resolve(undefined),
         ])
       : [];
@@ -371,8 +376,8 @@ export class ConflictService {
   /**
    * 진행 중인 git 작업 종류를 판별한다(공유 함수 detectOperation 에 위임).
    */
-  getOperation(): Promise<MergeOperation> {
-    return detectOperation(this.repoRoot);
+  getOperation(signal?: AbortSignal): Promise<MergeOperation> {
+    return detectOperation(this.repoRoot, signal);
   }
 
   /**
@@ -449,13 +454,13 @@ export class ConflictService {
    * 진행 중 작업에 맞춰 Current/Incoming 의 ref 와 커밋 해시를 계산한다.
    * @param operation 현재 git 작업 종류
    */
-  private async conflictRefs(operation: MergeOperation): Promise<{
+  private async conflictRefs(operation: MergeOperation, signal?: AbortSignal): Promise<{
     current: { ref: string; fileRef: string; commit?: string; subject?: string };
     incoming: { ref: string; fileRef?: string; commit?: string; subject?: string };
   }> {
     const [current, incoming] = await Promise.all([
-      this.describeRef("HEAD"),
-      this.incomingConflictRef(operation),
+      this.describeRef("HEAD", signal),
+      this.incomingConflictRef(operation, signal),
     ]);
     return {
       current: { ref: "HEAD", fileRef: "HEAD", ...current },
@@ -468,14 +473,14 @@ export class ConflictService {
    * - rebase-merges의 merge todo나 exec가 시작한 nested Git 작업은 REBASE_HEAD보다
    *   MERGE_HEAD/CHERRY_PICK_HEAD/REVERT_HEAD가 실제 Incoming 출처이므로 우선한다.
    */
-  private async incomingConflictRef(operation: MergeOperation): Promise<{
+  private async incomingConflictRef(operation: MergeOperation, signal?: AbortSignal): Promise<{
     ref: string;
     fileRef?: string;
     commit?: string;
     subject?: string;
   }> {
     if (operation === "revert") {
-      return { ref: "reverse side of REVERT_HEAD", ...await this.describeRef("REVERT_HEAD") };
+      return { ref: "reverse side of REVERT_HEAD", ...await this.describeRef("REVERT_HEAD", signal) };
     }
     if (operation !== "rebase") {
       const ref = operation === "merge"
@@ -483,13 +488,13 @@ export class ConflictService {
         : operation === "cherry-pick"
           ? "CHERRY_PICK_HEAD"
           : "theirs";
-      return { ref, fileRef: ref, ...await this.describeRef(ref) };
+      return { ref, fileRef: ref, ...await this.describeRef(ref, signal) };
     }
     const [merge, cherryPick, revert, replay] = await Promise.all([
-      this.describeRef("MERGE_HEAD"),
-      this.describeRef("CHERRY_PICK_HEAD"),
-      this.describeRef("REVERT_HEAD"),
-      this.describeRef("REBASE_HEAD"),
+      this.describeRef("MERGE_HEAD", signal),
+      this.describeRef("CHERRY_PICK_HEAD", signal),
+      this.describeRef("REVERT_HEAD", signal),
+      this.describeRef("REBASE_HEAD", signal),
     ]);
     if (merge.commit) return { ref: "MERGE_HEAD", fileRef: "MERGE_HEAD", ...merge };
     if (cherryPick.commit) {
@@ -506,9 +511,10 @@ export class ConflictService {
    * @param ref git ref 이름
    */
   private async describeRef(
-    ref: string
+    ref: string, signal?: AbortSignal
   ): Promise<{ commit?: string; subject?: string }> {
-    const output = await runGit(["show", "-s", "--format=%H%x00%s", ref, "--"], this.repoRoot).catch(() => "");
+    const output = await runGit(["show", "-s", "--format=%H%x00%s", ref, "--"], this.repoRoot, { signal })
+      .catch(() => { signal?.throwIfAborted(); return ""; });
     const [commit, subject] = (output.split(/\r?\n/).find(Boolean) || "").split("\0");
     if (!commit) return {};
     return { commit, subject: subject || undefined };

@@ -33,7 +33,7 @@ export interface ConflictWorktreeClaim {
  * @returns regular/symlink/absent/nonfile snapshot과 CAS version
  */
 export async function readConflictWorkingLeaf(
-  absolute: string
+  absolute: string, signal?: AbortSignal
 ): Promise<ConflictWorkingLeafSnapshot> {
   const stat = await lstatIfPresent(absolute);
   if (!stat) return { kind: "absent", version: "worktree:absent" };
@@ -62,7 +62,8 @@ export async function readConflictWorkingLeaf(
   try {
     const opened = await handle.stat();
     if (!opened.isFile()) throw staleResultError();
-    const buffer = await handle.readFile();
+    const buffer = await handle.readFile({ signal });
+    signal?.throwIfAborted();
     return {
       kind: "regular",
       version: hashWorkingResult("file", opened.mode, buffer, opened),

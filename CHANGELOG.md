@@ -5,6 +5,28 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72059] - 2026-09-08
+
+### Performance
+
+- Reuse immutable conflict blob previews in a bounded cache, sharing concurrent
+  reads while keeping index, attributes, operation and Result validation fresh.
+- Stream large conflict source blobs with a 512 KiB preview limit while checking
+  the entire stream for binary content, avoiding the buffered Git output limit.
+- Prioritize visible conflict editors, limit concurrent content and metadata
+  reads, and cancel obsolete reads when editors close, suspend or resolve.
+- Share PR pagination slots between individual requests so large PRs cannot
+  monopolize them. Publish each completed comment count before slower PRs in
+  the same batch finish, preserving incomplete-data guards and cancellation.
+
+### Fixed
+
+- Report Stack configuration lock, permission and parsing failures instead of
+  treating them as missing settings. Restore earlier changes after partial
+  writes or deletion failures and report incomplete recovery.
+- Cancel queued PR requests before releasing a failed request's slot and keep
+  the original failure available when cancelling sibling requests.
+
 ## [0.1.72058] - 2026-09-08
 
 ### Performance

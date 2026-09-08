@@ -17,6 +17,7 @@ import {
 import { runGit, runGitBuffer, runGitWithInput } from "./gitExec";
 import { acceptAllConflictBlocks } from "../utils/conflictMarkerModel";
 import { decodeUtf8 } from "../utils/textEncoding";
+import { conflictBlobReader, MAX_CONFLICT_TEXT_BYTES } from "./conflictBlobReader";
 
 /** 충돌 stage나 작업 파일 내용을 UI가 안전하게 다룰 수 있도록 분류한 종류다. */
 export type ConflictContentKind =
@@ -67,7 +68,6 @@ export interface ConflictContentDocument {
   bothAvailable: boolean;
 }
 
-const MAX_CONFLICT_TEXT_BYTES = 512 * 1024;
 const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 
 /**
@@ -81,10 +81,10 @@ export class ConflictContentService {
    * @param rel 저장소 상대 충돌 경로
    * @returns stage mode/OID와 새로 읽은 operation epoch. 더 이상 충돌이 아니면 실패한다.
    */
-  async readSourceVersion(rel: string): Promise<string> {
+  async readSourceVersion(rel: string, signal?: AbortSignal): Promise<string> {
     this.assertRelativePath(rel);
     const [entries, epoch] = await Promise.all([
-      this.readUnmergedStages(rel), readConflictOperationEpoch(this.repoRoot),
+      this.readUnmergedStages(rel, undefined, signal), readConflictOperationEpoch(this.repoRoot, signal),
     ]);
     this.assertStillConflicted(entries);
     return unmergedSourceVersion(entries, epoch);
@@ -97,26 +97,28 @@ export class ConflictContentService {
    */
   async readDocument(
     rel: string,
-    fullResult = false
+    fullResult = false,
+    signal?: AbortSignal
   ): Promise<ConflictContentDocument> {
     this.assertRelativePath(rel);
     const [entries, forcedBinary, operationEpoch] = await Promise.all([
-      this.readUnmergedStages(rel),
-      this.isDiffDisabled(rel),
-      readConflictOperationEpoch(this.repoRoot),
+      this.readUnmergedStages(rel, undefined, signal),
+      this.isDiffDisabled(rel, signal),
+      readConflictOperationEpoch(this.repoRoot, signal),
     ]);
     this.assertStillConflicted(entries);
     const [base, current, incoming, result] = await Promise.all([
-      this.readStage(1, entries, forcedBinary),
-      this.readStage(2, entries, forcedBinary),
-      this.readStage(3, entries, forcedBinary),
+      this.readStage(1, entries, forcedBinary, true, signal),
+      this.readStage(2, entries, forcedBinary, true, signal),
+      this.readStage(3, entries, forcedBinary, true, signal),
       this.readWorkingResult(
         rel,
         forcedBinary,
         !fullResult,
-        [...entries.values()].some((entry) => entry.mode === "160000")
+        [...entries.values()].some((entry) => entry.mode === "160000"), signal
       ),
     ]);
+    signal?.throwIfAborted();
     const both = this.bothPreview(current, incoming, result);
     return {
       base,
@@ -349,14 +351,20 @@ export class ConflictContentService {
     stage: 1 | 2 | 3,
     entries: Map<1 | 2 | 3, UnmergedStageEntry>,
     forcedBinary: boolean,
-    truncate = true
+    truncate = true,
+    signal?: AbortSignal
   ): Promise<ConflictContentSide> {
     const entry = entries.get(stage);
     if (!entry) return { stage, exists: false, kind: "absent", content: "" };
     if (entry.mode === "160000") {
       return { stage, exists: true, kind: "submodule", oid: entry.oid, mode: entry.mode, content: "" };
     }
-    const buffer = await runGitBuffer(["cat-file", "blob", entry.oid], this.repoRoot);
+    if (entry.mode !== "120000" && truncate) {
+      const preview = forcedBinary ? { kind: "binary" as const, content: "" }
+        : await conflictBlobReader.read(this.repoRoot, entry.oid, signal);
+      return { stage, exists: true, oid: entry.oid, mode: entry.mode, ...preview };
+    }
+    const buffer = await runGitBuffer(["cat-file", "blob", entry.oid], this.repoRoot, { signal, env: { GIT_NO_REPLACE_OBJECTS: "1" } });
     if (entry.mode === "120000") {
       return {
         stage, exists: true, kind: "symlink", oid: entry.oid, mode: entry.mode,
@@ -385,10 +393,11 @@ export class ConflictContentService {
     rel: string,
     forcedBinary: boolean,
     truncate = true,
-    knownSubmodule = false
+    knownSubmodule = false,
+    signal?: AbortSignal
   ): Promise<ConflictWorkingResult> {
     const absolute = await this.safeWorkingPath(rel);
-    const snapshot = await readConflictWorkingLeaf(absolute);
+    const snapshot = await readConflictWorkingLeaf(absolute, signal);
     if (snapshot.kind === "absent") {
       return { content: "", state: { exists: false, kind: "absent" }, version: snapshot.version };
     }
@@ -422,18 +431,18 @@ export class ConflictContentService {
   /** unmerged index의 stage 1/2/3 mode와 OID를 NUL 안전 형식으로 읽는다. */
   private async readUnmergedStages(
     rel: string,
-    indexEnv: Record<string, string> = {}
+    indexEnv: Record<string, string> = {}, signal?: AbortSignal
   ): Promise<Map<1 | 2 | 3, UnmergedStageEntry>> {
-    return readUnmergedStages(this.repoRoot, rel, indexEnv);
+    return readUnmergedStages(this.repoRoot, rel, indexEnv, signal);
   }
 
   /** `.gitattributes`의 `-diff`가 현재 경로를 binary로 강제하는지 읽는다. */
-  private async isDiffDisabled(rel: string): Promise<boolean> {
+  private async isDiffDisabled(rel: string, signal?: AbortSignal): Promise<boolean> {
     const raw = await runGit(
       ["check-attr", "-z", "diff", "--", rel],
       this.repoRoot,
-      LITERAL_PATH_ENV
-    ).catch(() => "");
+      { env: LITERAL_PATH_ENV, signal }
+    ).catch(() => { signal?.throwIfAborted(); return ""; });
     return raw.split("\0")[2] === "unset";
   }
 
@@ -521,14 +530,14 @@ export class ConflictContentService {
   ): Promise<ConflictDesiredLeaf> {
     if (!entry) return { kind: "absent" };
     if (entry.mode === "120000") {
-      return { kind: "symlink", target: await runGitBuffer(["cat-file", "blob", entry.oid], this.repoRoot) };
+      return { kind: "symlink", target: await runGitBuffer(["cat-file", "blob", entry.oid], this.repoRoot, { GIT_NO_REPLACE_OBJECTS: "1" }) };
     }
     if (entry.mode !== "100644" && entry.mode !== "100755") {
       throw new Error(`Unsupported conflict stage mode: ${entry.mode}`);
     }
     const buffer = await runGitBuffer(
       ["cat-file", "--filters", `--path=${rel}`, entry.oid],
-      this.repoRoot
+      this.repoRoot, { GIT_NO_REPLACE_OBJECTS: "1" }
     );
     return { kind: "regular", buffer, mode: entry.mode };
   }

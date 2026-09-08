@@ -53,10 +53,12 @@ implements vscode.Disposable, ConflictResultResourceHost {
   private readonly saves: ConflictResultSaveCoordinator;
   private readonly disposables: vscode.Disposable[] = [];
   private readonly refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly opening = new Set<AbortController>();
   private uiRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
   private readonly reads = new ConflictEditorReadCoordinator({
     isCurrent: session => this.isCurrent(session), isDirty: session => !!this.textDocument(session)?.isDirty,
+    isVisible: session => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === session.uri.toString()),
     commitDocument: (session, document, reason) => this.commitDocument(session, document, reason),
     commitMetadata: (session, metadata) => {
       applyConflictMetadata(session, metadata);
@@ -114,11 +116,16 @@ implements vscode.Disposable, ConflictResultResourceHost {
     onDidMutate: () => Promise<void>
   ): Promise<void> {
     const started = Date.now();
-    const document = await service.getConflictDocument(rel, true, { deferMetadata: true });
     if (this.disposed) return;
-    this.invalidateSameConflictSessions(service.repoRoot, rel);
-    await this.openLoadedSession(service, rel, onDidMutate, document);
-    logInfo("native conflict editor content ready", { repoRoot: service.repoRoot, rel, elapsedMs: Date.now() - started });
+    const controller = new AbortController(); this.opening.add(controller);
+    try {
+      const document = await this.reads.load(service, rel, controller.signal);
+      if (this.disposed) return;
+      this.invalidateSameConflictSessions(service.repoRoot, rel);
+      await this.openLoadedSession(service, rel, onDidMutate, document);
+      logInfo("native conflict editor content ready", { repoRoot: service.repoRoot, rel, elapsedMs: Date.now() - started });
+    } catch (error) { if (!controller.signal.aborted) throw error; }
+    finally { controller.abort(); this.opening.delete(controller); }
   }
 
   /** FileSystemProvider/readonly provider가 현재 URI resource를 찾을 때 사용한다. */
@@ -285,6 +292,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   markResolved(session: TrustedConflictEditorSession, reason: string): void {
     if (!this.isCurrent(session)) return;
     session.resolved = true;
+    this.reads.cancel(session);
     session.pendingRefreshReason = undefined;
     session.revision++;
     session.watcher?.dispose();
@@ -306,6 +314,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   suspend(session: TrustedConflictEditorSession, reason: string): void {
     if (!this.isCurrent(session)) return;
     session.suspended = true;
+    this.reads.cancel(session);
     session.busy = false;
     session.revision++;
     this.fireUiChanged(reason);
@@ -315,10 +324,12 @@ implements vscode.Disposable, ConflictResultResourceHost {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    for (const controller of this.opening) controller.abort();
+    this.opening.clear();
     if (this.uiRefreshTimer) clearTimeout(this.uiRefreshTimer);
     for (const timer of this.refreshTimers.values()) clearTimeout(timer);
     this.refreshTimers.clear();
-    for (const session of this.sessions.values()) session.watcher?.dispose();
+    for (const session of this.sessions.values()) { this.reads.cancel(session); session.watcher?.dispose(); }
     this.sessions.clear();
     while (this.disposables.length) this.disposables.pop()?.dispose();
     this.resultFiles.dispose();
@@ -429,6 +440,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   ): Promise<void> {
     session.resolved = true;
     session.suspended = true;
+    this.reads.cancel(session);
     session.watcher?.dispose();
     session.watcher = undefined;
     session.content = vscode.l10n.t(
@@ -454,7 +466,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     if (session?.suspended && !session.resolved) {
       session.suspended = false;
       session.revision++;
-      this.reads.enrich(session);
+      this.scheduleSessionRefresh(session.uri, "conflictEditorResumed", 0);
     }
     this.fireUiChanged("activeEditor");
   }
@@ -475,13 +487,16 @@ implements vscode.Disposable, ConflictResultResourceHost {
     if (timer) clearTimeout(timer);
     this.refreshTimers.delete(key);
     const session = this.sessions.get(key);
+    if (session) this.reads.cancel(session);
     session?.watcher?.dispose();
     if (this.sessions.delete(key)) this.fireUiChanged("documentClosed");
   }
 
   /** ConflictsController가 index를 갱신하면 같은 저장소 session을 다시 검증한다. */
   private onConflictsRefreshed(snapshot: ConflictsRefreshSnapshot): void {
-    for (const session of this.sessions.values()) {
+    const visible = new Set(vscode.window.visibleTextEditors.map(editor => editor.document.uri.toString()));
+    const sessions = [...this.sessions.values()].sort((a, b) => Number(visible.has(b.uri.toString())) - Number(visible.has(a.uri.toString())));
+    for (const session of sessions) {
       if (session.service.repoRoot !== snapshot.repoRoot) continue;
       if (session.resolved) {
         if (snapshot.conflicts.includes(session.rel) && !session.suspended) {
@@ -535,6 +550,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
       this.refreshTimers.delete(session.uri.toString());
       session.resolved = true;
       session.suspended = true;
+      this.reads.cancel(session);
       session.watcher?.dispose();
       session.watcher = undefined;
       session.content = vscode.l10n.t(

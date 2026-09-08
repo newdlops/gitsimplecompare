@@ -114,3 +114,49 @@ test("a failed progress renderer cannot crash background pagination or hide fina
   assert.equal(page.pullRequests[0].commentCount, 12);
   assert.equal(page.pullRequests[0].commentCountComplete, true);
 });
+
+/** 같은 GraphQL 묶음의 작은 PR은 다른 PR의 후속 페이지를 기다리지 않고 완료 표시한다. */
+test("completed PR comments publish before another PR in the same batch finishes", { timeout: 5000 }, async () => {
+  const slow = deferred<string>(), ready = deferred<PullRequestListPage>();
+  let rounds = 0;
+  const loading = fetchPullRequestListPage("/repo", undefined, undefined, async (_args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") return JSON.stringify({ data: { repository: {
+      nameWithOwner: "owner/repo", pullRequests: { nodes: [node(1), node(2)] },
+    } } });
+    if (++rounds === 1) return JSON.stringify({ data: { repository: {
+      pr0: { reviewThreads: threads(7) }, pr1: { reviewThreads: threads(4, "slow-next") },
+    } } });
+    return slow.promise;
+  }, { onProgress: page => { if (page.pullRequests[0].commentCountComplete) ready.resolve(page); } });
+  try {
+    const page = await ready.promise;
+    assert.equal(page.pullRequests[0].commentCount, 12);
+    assert.equal(page.pullRequests[1].commentCountComplete, false);
+  } finally { slow.resolve(JSON.stringify({ data: { repository: { pr0: { reviewThreads: threads(8) } } } })); }
+  const page = await loading;
+  assert.equal(page.pullRequests[0].commentCount, 12);
+  assert.equal(page.pullRequests[1].commentCount, 17);
+});
+
+/** 큰 PR 네 개가 있어도 다섯 번째 PR의 첫 후속 페이지가 두 번째 페이지보다 먼저 시작된다. */
+test("PR pagination shares four request slots fairly between pages", async () => {
+  const requested: string[] = [];
+  const prs = Array.from({ length: 6 }, (_, index) => ({ ...node(index + 1), reviewThreads: { nodes: [], pageInfo: { hasNextPage: false } },
+    commits: { nodes: [{ commit: { oid: `first-${index + 1}` } }], pageInfo: { hasNextPage: true, endCursor: "page1" } } }));
+  let active = 0, maximum = 0;
+  await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") return JSON.stringify({ data: { repository: {
+      nameWithOwner: "owner/repo", pullRequests: { nodes: prs },
+    } } });
+    maximum = Math.max(maximum, ++active);
+    const number = Number(args.find(arg => arg.startsWith("number="))!.split("=")[1]);
+    const cursor = args.find(arg => arg.startsWith("cursor="))!.split("=")[1];
+    requested.push(`${number}:${cursor}`);
+    await new Promise(resolve => setImmediate(resolve)); active--;
+    return JSON.stringify({ data: { repository: { pullRequest: { headRefOid: `head-${number}`, commits: {
+      nodes: [{ commit: { oid: `${number}-${cursor}` } }], pageInfo: { hasNextPage: cursor === "page1", endCursor: "page2" },
+    } } } } });
+  });
+  assert.equal(maximum, 4);
+  assert.deepEqual(requested.slice(0, 6), [1, 2, 3, 4, 5, 6].map(number => `${number}:page1`));
+});

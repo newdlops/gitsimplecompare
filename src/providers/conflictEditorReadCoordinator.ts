@@ -3,11 +3,14 @@
 import type { ConflictDocument, ConflictDocumentMetadata } from "../git/conflictService";
 import { logError, logInfo } from "../ui/outputLog";
 import type { TrustedConflictEditorSession as Session } from "./conflictEditorOverlayController";
+import { PriorityReadQueue } from "../utils/priorityReadQueue";
 
 /** controller의 provider/UI 갱신을 안전한 session에만 위임하는 최소 경계다. */
 export interface ConflictEditorReadHost {
   isCurrent(session: Session): boolean;
   isDirty(session: Session): boolean;
+  /** 현재 화면의 문서는 대기 중인 숨겨진 문서보다 먼저 조회한다. */
+  isVisible?(session: Session): boolean;
   commitDocument(session: Session, document: ConflictDocument, reason: string): void;
   commitMetadata(session: Session, metadata: ConflictDocumentMetadata | undefined): void;
   reopen(session: Session, document: ConflictDocument): Promise<void>;
@@ -21,15 +24,34 @@ interface PendingRead { next?: ReadRequest; promise: Promise<boolean> }
 export class ConflictEditorReadCoordinator {
   private readonly reads = new WeakMap<Session, PendingRead>();
   private readonly metadataReads = new WeakSet<Session>();
+  private readonly contentQueue = new PriorityReadQueue(2);
+  private readonly metadataQueue = new PriorityReadQueue(1);
+  private readonly controllers = new WeakMap<Session, AbortController>();
+  private readonly metadataControllers = new WeakMap<Session, AbortController>();
 
   constructor(private readonly host: ConflictEditorReadHost) {}
+
+  /** 아직 session이 없는 첫 열기도 내용 조회 슬롯을 공유하고 사용자 요청을 우선한다. */
+  load(service: Session["service"], rel: string, signal: AbortSignal): Promise<ConflictDocument> {
+    return this.contentQueue.run(() => service.getConflictDocument(rel, true, { deferMetadata: true, signal }), signal, () => -1);
+  }
+
+  /** close/resolve/suspend된 session의 대기 및 실행 중 조회를 중단하고 늦은 응답을 무효화한다. */
+  cancel(session: Session): void {
+    session.refreshGeneration++;
+    const pending = this.reads.get(session);
+    if (pending) pending.next = undefined;
+    this.controllers.get(session)?.abort();
+    this.metadataControllers.get(session)?.abort();
+    logInfo("native conflict reads cancelled", { repoRoot: session.service.repoRoot, rel: session.rel });
+  }
 
   /**
    * 최신 내용이 필요하다는 요청을 합치고 마지막으로 게시된 조회 결과를 반환한다.
    * @param allowBusy 명시적 Reload/Save action이 자신의 busy 구간에서 읽을 때만 true
    */
   refresh(session: Session, reason: string, allowBusy = false): Promise<boolean> {
-    if (!this.host.isCurrent(session) || session.resolved) return Promise.resolve(false);
+    if (!this.host.isCurrent(session) || session.resolved || session.suspended) return Promise.resolve(false);
     if (session.busy && !allowBusy) {
       session.pendingRefreshReason = reason;
       return Promise.resolve(true);
@@ -61,13 +83,21 @@ export class ConflictEditorReadCoordinator {
    * - Result 본문·저장 기준선은 바꾸지 않으며 close/reopen/resolve/새 source의 늦은 응답을 버린다.
    */
   enrich(session: Session): void {
-    if (!this.host.isCurrent(session) || session.resolved || session.document.metadataState !== "pending"
+    if (!this.host.isCurrent(session) || session.resolved || session.suspended || session.document.metadataState !== "pending"
       || this.metadataReads.has(session)) return;
     if (session.busy) { session.pendingRefreshReason = "conflictMetadataDeferred"; return; }
     const document = session.document;
     const started = Date.now();
+    const controller = new AbortController();
+    this.metadataControllers.set(session, controller);
     this.metadataReads.add(session);
-    void session.service.getConflictDocumentMetadata(document).then(metadata => {
+    void this.metadataQueue.run(() => {
+      if (!this.canPublishMetadata(session, document)) return Promise.resolve(undefined);
+      if (session.busy) { session.pendingRefreshReason = "conflictMetadataDeferred"; return Promise.resolve(undefined); }
+      return session.service.getConflictDocumentMetadata(document, controller.signal);
+    },
+      controller.signal, () => this.host.isVisible?.(session) === false ? 1 : 0).then(metadata => {
+      if (controller.signal.aborted) return;
       if (!this.canPublishMetadata(session, document)) return;
       if (session.busy) {
         session.pendingRefreshReason = "conflictMetadataDeferred";
@@ -78,14 +108,18 @@ export class ConflictEditorReadCoordinator {
         void this.refresh(session, "conflictMetadataSourceChanged").catch(() => undefined);
       }
     }).catch(error => {
+      if (controller.signal.aborted) return;
       if (this.canPublishMetadata(session, document)) {
         if (session.busy) session.pendingRefreshReason = "conflictMetadataDeferred";
         else this.host.commitMetadata(session, undefined);
       }
       logError("native conflict metadata read failed", error, { repoRoot: session.service.repoRoot, rel: session.rel });
     }).finally(() => {
+      const cancelled = controller.signal.aborted;
+      controller.abort();
       this.metadataReads.delete(session);
-      if (session.document.sourceVersion !== document.sourceVersion) this.enrich(session);
+      this.metadataControllers.delete(session);
+      if (cancelled || session.document.sourceVersion !== document.sourceVersion) this.enrich(session);
     });
   }
 
@@ -98,14 +132,23 @@ export class ConflictEditorReadCoordinator {
 
   /** 새 내용은 generation/dirty 검증 뒤 게시하고, unchanged refresh는 provider repaint를 생략한다. */
   private async read(session: Session, { reason, allowBusy }: ReadRequest): Promise<boolean> {
-    if (!this.host.isCurrent(session) || session.resolved) return false;
+    if (!this.host.isCurrent(session) || session.resolved || session.suspended) return false;
     if (session.busy && !allowBusy) { session.pendingRefreshReason = reason; return true; }
     const generation = session.refreshGeneration;
     const started = Date.now();
+    const controller = new AbortController();
+    this.controllers.set(session, controller);
     try {
       const previous = session.document;
-      const document = await session.service.getConflictDocument(session.rel, true, { deferMetadata: true, previous });
+      const document = await this.contentQueue.run(() => {
+        if (!this.host.isCurrent(session) || session.resolved || session.suspended || generation !== session.refreshGeneration) controller.abort();
+        controller.signal.throwIfAborted();
+        return session.service.getConflictDocument(session.rel, true, { deferMetadata: true, previous, signal: controller.signal });
+      }, controller.signal,
+        () => allowBusy ? -1 : this.host.isVisible?.(session) === false ? 1 : 0);
+      if (controller.signal.aborted) return false;
       if (!this.host.isCurrent(session) || session.resolved || generation !== session.refreshGeneration) return false;
+      if (session.document.sourceVersion !== document.sourceVersion) this.metadataControllers.get(session)?.abort();
       preserveNewerMetadata(document, session.document);
       if (!allowBusy && this.host.isDirty(session)) { session.pendingRefreshReason = reason; return true; }
       if ((document.resultState.kind !== "text") !== session.virtual) {
@@ -118,6 +161,7 @@ export class ConflictEditorReadCoordinator {
         reason, elapsedMs: Date.now() - started, metadataReused: document.metadataState === "ready" });
       return true;
     } catch (error) {
+      if (controller.signal.aborted) return false;
       if (!this.host.isCurrent(session) || generation !== session.refreshGeneration) return false;
       if (/no longer conflicted|Reload the conflict editor/i.test(error instanceof Error ? error.message : String(error))) {
         const published = await this.host.publishResolvedResult(session, reason).catch(() => false);
@@ -126,6 +170,9 @@ export class ConflictEditorReadCoordinator {
       }
       logError("native conflict editor session refresh failed", error, { repoRoot: session.service.repoRoot, rel: session.rel, reason });
       throw error;
+    } finally {
+      controller.abort();
+      if (this.controllers.get(session) === controller) this.controllers.delete(session);
     }
   }
 }

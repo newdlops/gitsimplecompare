@@ -229,6 +229,7 @@ test("a late first page after cancellation cannot trigger supplemental reads", a
   let calls = 0;
   const result = fetchPullRequestListPage("/repo", undefined, controller.signal, async () => { calls++; return initial.promise; });
   const rejected = assert.rejects(result, { name: "AbortError" });
+  await settle();
   controller.abort();
   initial.resolve(firstPage([pagedPullRequest(1)]));
   await rejected;

@@ -10,10 +10,10 @@ export interface UnmergedStageEntry { stage: 1 | 2 | 3; mode: string; oid: strin
  * @returns stage별 mode/OID. 해결된 경로는 빈 Map이다.
  */
 export async function readUnmergedStages(
-  repoRoot: string, rel: string, indexEnv: Record<string, string> = {}
+  repoRoot: string, rel: string, indexEnv: Record<string, string> = {}, signal?: AbortSignal
 ): Promise<Map<1 | 2 | 3, UnmergedStageEntry>> {
   const raw = await runGit(["ls-files", "--unmerged", "-z", "--", rel], repoRoot,
-    { GIT_LITERAL_PATHSPECS: "1", ...indexEnv });
+    { env: { GIT_LITERAL_PATHSPECS: "1", ...indexEnv }, signal });
   const entries = new Map<1 | 2 | 3, UnmergedStageEntry>();
   for (const record of raw.split("\0")) {
     const match = /^(\d+) ([0-9a-f]{4,64}) ([123])\t/.exec(record);

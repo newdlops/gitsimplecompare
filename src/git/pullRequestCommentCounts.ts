@@ -105,6 +105,7 @@ export function reviewThreadCommentCount(threads: GhReviewThreadCommentCount[]):
  * @param pullRequests 첫 페이지 reviewThreads pageInfo 를 가진 PR node 배열
  * @param signal 다음 페이지 조회를 중단할 선택적 취소 신호
  * @param runner 목록 서비스의 제한된 병렬 실행 및 테스트에서 공유하는 gh 실행기
+ * @param onCompleted PR 하나의 모든 후속 페이지가 검증되면 추가 합계를 먼저 게시할 콜백
  * @returns PR 번호 → 추가 review thread comment 수 맵
  */
 export async function fetchRemainingReviewThreadCommentCounts(
@@ -113,7 +114,8 @@ export async function fetchRemainingReviewThreadCommentCounts(
   name: string,
   pullRequests: GhPullRequestCommentCounts[],
   signal?: AbortSignal,
-  runner: GhExecute = runGh
+  runner: GhExecute = runGh,
+  onCompleted?: (number: number, count: number) => void
 ): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
   const pending = pullRequests.filter(pr => Number.isSafeInteger(pr.number) && Number(pr.number) > 0
@@ -122,11 +124,13 @@ export async function fetchRemainingReviewThreadCommentCounts(
     throwIfAborted(signal);
     const batch = pending.slice(offset, offset + 4);
     if (batch.length > 1) {
-      for (const [number, count] of await readReviewThreadCountBatch(cwd, owner, name, batch, signal, runner)) counts.set(number, count);
+      for (const [number, count] of await readReviewThreadCountBatch(cwd, owner, name, batch, signal, runner, onCompleted)) counts.set(number, count);
       continue;
     }
     const pr = batch[0], number = Number(pr.number);
     const count = await readRemainingReviewThreadCommentCount(cwd, owner, name, number, pr.reviewThreads?.pageInfo, signal, runner);
+    throwIfAborted(signal);
+    onCompleted?.(number, count);
     if (count > 0) {
       counts.set(number, count);
     }
@@ -142,7 +146,8 @@ export async function fetchRemainingReviewThreadCommentCounts(
  */
 async function readReviewThreadCountBatch(
   cwd: string, owner: string, name: string, pullRequests: GhPullRequestCommentCounts[],
-  signal: AbortSignal | undefined, runner: GhExecute
+  signal: AbortSignal | undefined, runner: GhExecute,
+  onCompleted?: (number: number, count: number) => void
 ): Promise<Map<number, number>> {
   const states = pullRequests.map(pr => ({ number: Number(pr.number), page: pr.reviewThreads!, count: 0, seen: new Set<string>() }));
   while (states.some(state => state.page.pageInfo?.hasNextPage)) {
@@ -168,11 +173,19 @@ async function readReviewThreadCountBatch(
     const response = JSON.parse(output) as { errors?: unknown[];
       data?: { repository?: Record<string, { reviewThreads?: GhReviewThreadConnection } | null> } };
     if (response.errors?.length) throw new Error("GitHub review thread comments are not available.");
-    pending.forEach((state, index) => {
+    const pages = pending.map((_state, index) => {
       const page = response.data?.repository?.[`pr${index}`]?.reviewThreads;
-      if (!page) throw new Error("GitHub review thread comments are not available.");
+      if (!page || !Array.isArray(page.nodes) || typeof page.pageInfo?.hasNextPage !== "boolean") {
+        throw new Error("GitHub review thread comments are not available.");
+      }
+      return page;
+    });
+    pending.forEach((state, index) => {
+      throwIfAborted(signal);
+      const page = pages[index];
       state.count += reviewThreadCommentCount(page.nodes || []);
       state.page = page;
+      if (!page.pageInfo?.hasNextPage) onCompleted?.(state.number, state.count);
     });
   }
   return new Map(states.map(state => [state.number, state.count]));

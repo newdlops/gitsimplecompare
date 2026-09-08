@@ -2,6 +2,7 @@
 // - 첫 응답을 즉시 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
 import { readGitHub } from "./githubReadCache";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
+import { PriorityReadQueue } from "../utils/priorityReadQueue";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
 import { splitRepositoryName } from "./githubRepository";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
@@ -90,11 +91,19 @@ export async function fetchPullRequestListPage(
   const cancel = () => controller.abort();
   signal?.addEventListener("abort", cancel, { once: true });
   let requests = 0;
+  let requestFailure: { error: unknown } | undefined;
   let progressTimer: ReturnType<typeof setTimeout> | undefined;
+  const requestQueue = new PriorityReadQueue(MAX_PARALLEL_REQUESTS);
   const measuredRunner: GhExecute = async (args, cwd, options) => {
     throwIfAborted(options.signal);
-    requests++;
-    return executeQuery(args, cwd, options, runner, timeoutMs);
+    return requestQueue.run(async () => {
+      requests++;
+      try { return await executeQuery(args, cwd, options, runner, timeoutMs); }
+      catch (error) {
+        // 슬롯 반환 전에 대기 요청을 취소해 실패 뒤 새 CLI가 시작되는 틈을 막는다.
+        requestFailure ??= { error }; controller.abort(); throw error;
+      }
+    }, options.signal ?? controller.signal);
   };
   try {
     const output = await measuredRunner([
@@ -114,6 +123,10 @@ export async function fetchPullRequestListPage(
     const previous = new Map(options.previous?.repository === repository.nameWithOwner
       ? options.previous.pullRequests.map(pr => [pr.number, pr] as const) : []);
     const tasks: Array<() => Promise<void>> = [];
+    // PR 전체 pagination이 끝나기 전에도 완료된 PR의 숫자를 먼저 게시한다.
+    const scheduleProgress = () => {
+      if (options.onProgress && !progressTimer && !controller.signal.aborted) progressTimer = setTimeout(publish, 100);
+    };
     let reusedCommits = 0;
     nodes.forEach((node, index) => {
       const pr = pullRequests[index];
@@ -132,8 +145,12 @@ export async function fetchPullRequestListPage(
     for (let offset = 0; offset < reviews.length; offset += 4) {
       const batch = reviews.slice(offset, offset + 4);
       tasks.push(async () => {
-        const counts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, batch.map(item => item.node), controller.signal, measuredRunner);
-        for (const { pr } of batch) { pr.commentCount += counts.get(pr.number) || 0; pr.commentCountComplete = true; }
+        await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, batch.map(item => item.node), controller.signal, measuredRunner,
+          (number, count) => {
+            const pr = batch.find(item => item.pr.number === number)!.pr;
+            pr.commentCount += count; pr.commentCountComplete = true;
+            scheduleProgress();
+          });
       });
     }
     const page = { repository: repository.nameWithOwner, defaultBranch: repository.defaultBranchRef?.name,
@@ -151,9 +168,8 @@ export async function fetchPullRequestListPage(
       logInfo("graph pull request first page ready", { repoRoot, pullRequests: pullRequests.length,
         elapsedMs: Date.now() - started, paginationTasks: tasks.length, reusedCommits });
     }
-    await completePagination(tasks, controller, () => {
-      if (options.onProgress && !progressTimer) progressTimer = setTimeout(publish, 100);
-    });
+    try { await completePagination(tasks, controller, scheduleProgress); }
+    catch (error) { throw requestFailure?.error ?? error; }
     throwIfAborted(controller.signal);
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks: tasks.length,
@@ -246,28 +262,24 @@ async function appendCommitHashes(
 }
 
 /**
- * 서로 독립인 PR/connection은 병렬로 읽되 실행 수와 오류 후 추가 요청을 제한한다.
+ * 모든 PR/connection을 등록하고 요청 단위 큐가 페이지마다 공정하게 실행 기회를 나누게 한다.
  * - 한 작업 실패 시 다른 작업도 취소하고 모두 정리한 뒤 최초 오류를 전달한다.
  * @param tasks PR별 commit 또는 review thread pagination 작업
  * @param controller 외부 취소와 작업 실패를 함께 전달할 페이지 수명주기
  * @returns 모든 작업이 성공하면 완료되며, 부분 결과는 호출부에 반환하지 않는다.
  */
 async function completePagination(tasks: Array<() => Promise<void>>, controller: AbortController, onCompleted: () => void): Promise<void> {
-  let next = 0;
   let failure: { error: unknown } | undefined;
-  const worker = async () => {
-    while (next < tasks.length) {
+  await Promise.allSettled(tasks.map(async task => {
+    try {
       throwIfAborted(controller.signal);
-      const task = tasks[next++];
-      try { await task(); if (!controller.signal.aborted) onCompleted(); }
-      catch (error) {
-        failure ??= { error };
-        controller.abort();
-        return;
-      }
+      await task();
+      if (!controller.signal.aborted) onCompleted();
+    } catch (error) {
+      failure ??= { error };
+      controller.abort();
     }
-  };
-  await Promise.allSettled(Array.from({ length: Math.min(MAX_PARALLEL_REQUESTS, tasks.length) }, worker));
+  }));
   if (failure) throw failure.error;
   throwIfAborted(controller.signal);
 }

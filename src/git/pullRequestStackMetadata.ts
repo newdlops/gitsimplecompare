@@ -3,10 +3,10 @@
 // - GitHub에 게시하기 전에도 worktree 전체가 같은 stack 관계를 공유할 수 있다.
 import * as path from "node:path";
 import { realpath } from "node:fs/promises";
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
 import type { StackLocalBranch } from "./pullRequestStackModel";
 import { WorktreeService, type WorktreeInfo } from "./worktreeService";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 
 const FIELD_SEPARATOR = "\x1f";
 const RECORD_SEPARATOR = "\x1e";
@@ -100,8 +100,7 @@ export class PullRequestStackMetadataService {
       throw new Error("A stack layer cannot be its own parent.");
     }
     await this.assertNoCycle(child, parent);
-    await runGit(["config", "--local", configKey(child, PARENT_KEY), parent], this.repoRoot);
-    await runGit(["config", "--local", configKey(child, PARENT_HEAD_KEY), head], this.repoRoot);
+    await this.writeParentState(child, { parentBranch: parent, parentHead: head });
   }
 
   /**
@@ -121,9 +120,7 @@ export class PullRequestStackMetadataService {
    */
   async clearParent(branch: string): Promise<void> {
     const child = requiredValue(branch, "Stack branch is required.");
-    // 두 명령이 같은 config.lock을 경쟁하지 않도록 조회와 달리 쓰기는 순차 실행한다.
-    await this.unsetConfig(child, PARENT_KEY);
-    await this.unsetConfig(child, PARENT_HEAD_KEY);
+    await this.writeParentState(child, {});
   }
 
   /**
@@ -146,12 +143,7 @@ export class PullRequestStackMetadataService {
     const parent = requiredValue(parentBranch, "Stack parent branch is required.");
     await this.assertNoCycle(child, parent);
     const head = parentHead ? await this.resolveCommit(parentHead) : undefined;
-    await runGit(["config", "--local", configKey(child, PARENT_KEY), parent], this.repoRoot);
-    if (head) {
-      await runGit(["config", "--local", configKey(child, PARENT_HEAD_KEY), head], this.repoRoot);
-    } else {
-      await this.unsetConfig(child, PARENT_HEAD_KEY);
-    }
+    await this.writeParentState(child, { parentBranch: parent, parentHead: head });
   }
 
   /**
@@ -217,11 +209,16 @@ export class PullRequestStackMetadataService {
       for (const [name] of states) { await this.clearParent(name); cleared.push(name); }
       return preview;
     } catch (error) {
-      // 복원도 하나의 config 파일을 쓰므로 branch별로 순차 처리한다.
+      // 실패한 layer는 clearParent가 자체 복원한다. 앞서 지운 layer는 하나가 실패해도 모두 복원을 시도한다.
+      const failures: unknown[] = [];
       for (const name of cleared) {
         const state = states.find(([candidate]) => candidate === name)?.[1];
-        if (state) await this.restoreParent(name, state.parentBranch, state.parentHead);
+        if (state) {
+          try { await this.writeParentState(name, state); }
+          catch (failure) { failures.push(failure); }
+        }
       }
+      if (failures.length) throw new AggregateError([error, ...failures], "Stack deletion failed and some settings could not be restored. Check the Git Simple Compare output.");
       throw error;
     }
   }
@@ -353,7 +350,7 @@ export class PullRequestStackMetadataService {
   private async readAllParentSettings(): Promise<Map<string, { parentBranch?: string; parentHead?: string }>> {
     const output = await runGit([
       "config", "--local", "--null", "--get-regexp", "^branch\\..*\\.gscstack(parent|parenthead)$",
-    ], this.repoRoot).catch(() => "");
+    ], this.repoRoot).catch(error => missingConfig(error, 1));
     const parents = new Map<string, { parentBranch?: string; parentHead?: string }>();
     for (const record of output.split("\0")) {
       const separator = record.indexOf("\n");
@@ -374,7 +371,7 @@ export class PullRequestStackMetadataService {
     const output = await runGit(
       ["config", "--local", "--get", configKey(branch, key)],
       this.repoRoot
-    ).catch(() => "");
+    ).catch(error => missingConfig(error, 1));
     return output.trim() || undefined;
   }
 
@@ -384,6 +381,41 @@ export class PullRequestStackMetadataService {
       this.readConfig(branch, PARENT_KEY), this.readConfig(branch, PARENT_HEAD_KEY),
     ]);
     return { parentBranch, parentHead };
+  }
+
+  /**
+   * parent/head를 순차 기록하고 두 번째 쓰기 실패 시 첫 번째 값만 작업 전 상태로 복원한다.
+   * - 키 부재 외의 lock/권한/구문 오류는 성공으로 숨기지 않는다. 실패한 쓰기는 덮어 복원하지 않는다.
+   * @param state 기록할 parent/head 값. undefined인 키는 제거한다.
+   */
+  private async writeParentState(branch: string, state: { parentBranch?: string; parentHead?: string }): Promise<void> {
+    const before = await this.readParentState(branch);
+    const changes = [
+      { key: PARENT_KEY, before: before.parentBranch, after: state.parentBranch },
+      { key: PARENT_HEAD_KEY, before: before.parentHead, after: state.parentHead },
+    ].filter(change => change.before !== change.after);
+    const written: typeof changes = [];
+    try {
+      for (const change of changes) {
+        await this.writeConfig(branch, change.key, change.after);
+        written.push(change);
+      }
+    } catch (error) {
+      const failures: unknown[] = [];
+      for (const change of written.reverse()) {
+        try { await this.writeConfig(branch, change.key, change.before); }
+        catch (failure) { failures.push(failure); }
+      }
+      logError("stack config write failed", error, { repoRoot: this.repoRoot, branch, rollbackFailures: failures.length });
+      if (failures.length) throw new AggregateError([error, ...failures], "Stack settings could not be fully restored. Check the Git Simple Compare output.");
+      throw error;
+    }
+  }
+
+  /** 값이 있으면 정확한 local config key를 기록하고, 없으면 부재만 허용하며 제거한다. */
+  private async writeConfig(branch: string, key: string, value: string | undefined): Promise<void> {
+    if (value === undefined) return this.unsetConfig(branch, key);
+    await runGit(["config", "--local", configKey(branch, key), value], this.repoRoot);
   }
 
   /** 저장된 parent를 따라가며 새 관계가 cycle을 만들지 검사한다. */
@@ -457,8 +489,14 @@ export class PullRequestStackMetadataService {
     await runGit(
       ["config", "--local", "--unset-all", configKey(branch, key)],
       this.repoRoot
-    ).catch(() => undefined);
+    ).catch(error => { missingConfig(error, 5); });
   }
+}
+
+/** Git config의 키 부재 종료 코드와 빈 진단만 허용한다. 같은 코드의 lock 실패는 그대로 전달한다. */
+function missingConfig(error: unknown, absentCode: number): string {
+  if (error instanceof GitError && error.code === absentCode && !error.stderr.trim() && !error.stdout.trim()) return "";
+  throw error;
 }
 
 /** branch subsection의 stack 설정 key를 만든다. */

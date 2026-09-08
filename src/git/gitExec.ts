@@ -1,7 +1,7 @@
 // git CLI 를 실제로 실행하는 저수준 래퍼 모듈.
 // - 여러 git 서비스(GitService, GitLogService 등)가 공유하는 단일 실행 지점이다.
 //   execFile 로 셸을 거치지 않아 인자 이스케이프 문제가 없다.
-import { execFile, type ExecFileException } from "node:child_process";
+import { execFile, spawn, type ExecFileException } from "node:child_process";
 
 /** git 명령 실행 중 발생한 오류를 식별하기 위한 전용 에러 타입 */
 export class GitError extends Error {
@@ -46,6 +46,52 @@ export type GitInput = string | Uint8Array;
 
 const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
 const MAX_GIT_BUFFER_BYTES = 128 * 1024 * 1024;
+
+/**
+ * 조회 전용 Git 출력을 작은 Buffer 조각으로 소비해 큰 blob 전체를 메모리에 쌓지 않는다.
+ * - callback의 누적 상태를 중복 처리하지 않도록 자동 재시도하지 않는다.
+ * - 취소/소비 오류 시 자식 프로세스를 종료하고 close 뒤에만 완료해 실행 슬롯을 정확히 반환한다.
+ * @param onData 출력 조각을 동기적으로 소비하는 함수. Buffer를 보존할 때 필요한 부분만 복사한다.
+ * @param options 조회 환경과 호출 수명에 연결된 취소 신호
+ */
+export function runGitStream(
+  args: string[], cwd: string, onData: (chunk: Buffer) => void, options: RunGitOptions = {}
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (options.signal?.aborted) { reject(options.signal.reason); return; }
+    const child = spawn("git", args, { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+      env: options.env ? { ...process.env, ...options.env } : undefined });
+    let stderr = Buffer.alloc(0), failure: unknown;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    /** 종료 요청 뒤에도 남는 프로세스는 강제 종료하고 close에서 리스너/타이머를 정리한다. */
+    const stop = () => {
+      child.kill();
+      killTimer ??= setTimeout(() => child.kill("SIGKILL"), 1000);
+      killTimer.unref();
+    };
+    const abort = () => { failure = options.signal?.reason ?? new DOMException("Git read cancelled.", "AbortError"); stop(); };
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (failure) return;
+      try { onData(chunk); } catch (error) { failure = error; stop(); }
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      if (stderr.length < 64 * 1024) stderr = Buffer.concat([stderr, chunk.subarray(0, 64 * 1024 - stderr.length)]);
+    });
+    child.on("error", error => { failure ??= new GitError(`git ${args[0]} failed: ${error.message}`, stderr.toString("utf8"), "", error as ExecFileException); });
+    child.stdout.on("error", error => { failure ??= error; stop(); });
+    child.stderr.on("error", error => { failure ??= error; stop(); });
+    child.on("close", (code, signal) => {
+      clearTimeout(killTimer);
+      options.signal?.removeEventListener("abort", abort);
+      if (failure) reject(failure);
+      else if (code !== 0) reject(new GitError(`git ${args[0]} failed (${code ?? signal})`, stderr.toString("utf8"), "",
+        Object.assign(new Error("Git stream failed."), { code: code ?? undefined, signal: signal ?? undefined })));
+      else resolve();
+    });
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
+  });
+}
 
 /**
  * 기존 Git command-scope 설정을 보존하면서 새 `-c key=value` 상당 override를 환경에 덧붙인다.
