@@ -60,6 +60,7 @@ export async function prepareGraphRebase(
   deps: Pick<GraphRebaseDeps, "logService">
 ): Promise<RebasePlanInfo> {
   const service = new RebaseService(deps.logService.repoRoot);
+  const started = Date.now();
   const plan = await service.prepareCurrentBranchPlan(hash, onto);
   logInfo("graph rebase plan prepared", {
     repoRoot: deps.logService.repoRoot,
@@ -69,6 +70,7 @@ export async function prepareGraphRebase(
     root: Boolean(plan.root),
     onto: plan.onto,
     commits: plan.commits.length,
+    elapsedMs: Date.now() - started,
   });
   return plan;
 }
@@ -136,6 +138,7 @@ export async function runGraphRebase(
       onto,
       items: items.length,
     });
+    const started = Date.now();
     const result = await service.start(
       base,
       root,
@@ -144,21 +147,16 @@ export async function runGraphRebase(
       onto,
       checkout
     );
+    logInfo("graph rebase execution finished", { repoRoot, status: result.status, elapsedMs: Date.now() - started });
     if (result.status === "completed") {
-      await deps.refreshGraph();
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-        reason: "graphRebaseCompleted",
-      });
+      refreshAfterRebaseControl(deps, "graphRebaseCompleted");
       vscode.window.showInformationMessage(vscode.l10n.t("Rebase completed."));
     } else if (result.status === "conflicts") {
       if (result.restoringLocalChanges && result.message) vscode.window.showWarningMessage(vscode.l10n.t(result.message));
-      await deps.refreshGraph();
+      refreshAfterRebaseControl(deps, "graphRebaseConflict");
       await focusRebaseConflicts(deps.logService.repoRoot);
     } else if (result.status === "paused" && result.paused) {
-      await deps.refreshGraph();
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-        reason: "graphRebaseEditPaused",
-      });
+      refreshAfterRebaseControl(deps, "graphRebaseEditPaused");
       await openPausedEditFile(deps.logService.repoRoot, result.paused, editPath);
       vscode.window.showInformationMessage(
         vscode.l10n.t(
@@ -166,10 +164,7 @@ export async function runGraphRebase(
         )
       );
     } else if (result.status === "stopped") {
-      await deps.refreshGraph();
-      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-        reason: "graphRebaseStopped",
-      });
+      refreshAfterRebaseControl(deps, "graphRebaseStopped");
       logInfo("graph rebase stopped at todo", {
         repoRoot: deps.logService.repoRoot,
         stopped: result.stopped?.hash,
@@ -251,7 +246,6 @@ async function continueGraphRebaseLocked(
       reason: "noRebaseOperation",
       operation,
     });
-    await refreshAfterRebaseControl(deps, "graphRebaseContinueNoop");
     return finishGraphRebaseControl(deps, "continue", false);
   }
   const rebase = new RebaseService(repoRoot);
@@ -394,7 +388,7 @@ async function skipGraphRebaseLocked(
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
   if (await conflicts.getOperation() !== "rebase") {
-    await refreshAfterRebaseControl(deps, "graphRebaseSkipNoop");
+    refreshAfterRebaseControl(deps, "graphRebaseSkipNoop");
     return { status: "completed" };
   }
   const yes = vscode.l10n.t("Skip");
@@ -460,7 +454,6 @@ async function abortGraphRebaseLocked(
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
   if (await conflicts.getOperation() !== "rebase") {
-    await refreshAfterRebaseControl(deps, "graphRebaseAbortNoop");
     return finishGraphRebaseControl(deps, "abort", false);
   }
   const yes = vscode.l10n.t("Abort Rebase");

@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { detectOperation, type MergeOperation } from "./conflictService";
 import { containsConflictMarkers } from "./conflictMarkers";
 import { runGit } from "./gitExec";
+import { listUnmergedFiles } from "./unmergedFiles";
 
 /** rebase continue 판단에 필요한 작업트리/메타데이터 진단 결과 */
 export interface RebaseContinueDiagnostics {
@@ -36,8 +37,9 @@ export async function readRebaseContinueDiagnostics(
 ): Promise<RebaseContinueDiagnostics> {
   const [operation, unmergedFiles, statusOut, messageConflicts] = await Promise.all([
     detectOperation(repoRoot).catch(() => "none" as const),
-    readUnmergedFiles(repoRoot),
-    runGit(["status", "--porcelain=v1", "-z"], repoRoot).catch(() => ""),
+    listUnmergedFiles(repoRoot).catch(() => []),
+    runGit(["status", "--porcelain=v1", "-z", "--untracked-files=no"], repoRoot,
+      { GIT_OPTIONAL_LOCKS: "0" }).catch(() => ""),
     readRebaseMessageConflicts(repoRoot),
   ]);
   const statusEntries = parseStatusEntries(statusOut);
@@ -63,41 +65,19 @@ export async function readRebaseContinueDiagnostics(
 }
 
 /**
- * git index 에 남은 unmerged path 를 읽는다.
- * @param repoRoot 저장소 루트
- */
-async function readUnmergedFiles(repoRoot: string): Promise<string[]> {
-  const out = await runGit(
-    ["diff", "--name-only", "--diff-filter=U", "-z"],
-    repoRoot
-  ).catch(() => "");
-  return unique(out.split("\0").filter(Boolean));
-}
-
-/**
  * rebase message 의 `# Conflicts:` 섹션에서 파일 목록을 읽는다.
  * @param repoRoot 저장소 루트
  */
 async function readRebaseMessageConflicts(repoRoot: string): Promise<string[]> {
+  const raw = (await runGit(["rev-parse", "--git-dir"], repoRoot).catch(() => "")).trim();
+  if (!raw) return [];
+  const gitDir = path.resolve(repoRoot, raw);
   const contents = await Promise.all(
     ["rebase-merge/message", "rebase-apply/final-commit"].map((rel) =>
-      readGitPath(repoRoot, rel)
+      fs.readFile(path.join(gitDir, rel), "utf8").catch(() => "")
     )
   );
   return unique(contents.flatMap(parseConflictSection));
-}
-
-/**
- * git metadata 상대 경로를 읽는다. 없으면 빈 문자열을 반환한다.
- * @param repoRoot 저장소 루트
- * @param rel      git metadata 상대 경로
- */
-async function readGitPath(repoRoot: string, rel: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", rel], repoRoot).catch(() => "")).trim();
-  if (!raw) {
-    return "";
-  }
-  return fs.readFile(path.resolve(repoRoot, raw), "utf8").catch(() => "");
 }
 
 /**

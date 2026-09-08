@@ -1,5 +1,6 @@
 // 그래프 패널의 rebase 관련 메시지를 처리하는 라우터.
 // - graphPanel.ts 는 웹뷰 생애주기와 공통 라우팅만 맡고, rebase 실행/진행 표시 조립은 여기서 담당한다.
+import * as vscode from "vscode";
 import type { ToWebviewMessage, FromWebviewMessage } from "./graphProtocol";
 import {
   abortGraphRebase,
@@ -170,7 +171,11 @@ async function postRebaseResult(
   items: RebaseItem[]
 ): Promise<void> {
   if (!(await postGitTodoProgress(deps, action, result))) {
-    deps.post(graphRebaseResultProgress(action, result, items));
+    const message = graphRebaseResultProgress(action, result, items);
+    if (message.type === "graphRebaseProgress" && message.progress.detail) {
+      message.progress.detail = vscode.l10n.t(message.progress.detail);
+    }
+    deps.post(message);
   }
   if (result.status === "completed" || result.status === "aborted" || result.status === "noop") {
     deps.post({ type: "graphRebaseClear" });

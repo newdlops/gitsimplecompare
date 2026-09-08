@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import { finishRebaseAfterContinue, restoreRebaseAfterAbort } from "../commands/rebaseConflictFollowup";
 import { readRebaseControlState } from "./graphRebaseControlState";
+import { refreshAfterRebaseControl } from "./graphRebaseUtils";
 import type { GraphRebaseControlResult, GraphRebaseDeps } from "./graphRebaseActions";
 
 /**
@@ -22,7 +23,7 @@ export async function finishGraphRebaseControl(
     ? await restoreRebaseAfterAbort(repoRoot)
     : await finishRebaseAfterContinue(controller, repoRoot);
   if (followup === "failed") {
-    await deps.refreshGraph();
+    refreshAfterRebaseControl(deps, "graphRebaseRecoveryFailed");
     return { status: "failed", message: vscode.l10n.t("Git finished, but recovery is incomplete. Check the error and retry after resolving it. Recovery snapshots were kept.") };
   }
   const state = await readRebaseControlState(deps, "");

@@ -5,6 +5,23 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72057] - 2026-09-08
+
+### Performance
+
+- Load rebase commit metadata and file statistics in two Git processes, preserving
+  root commits, first-parent merge diffs, empty commits, renames and literal paths.
+  Recheck the current commit range before starting without rereading file diffs.
+- Read unresolved paths directly from the index. Skip unused untracked-file
+  discovery in rebase diagnostics and resolve the worktree Git directory once per
+  todo read instead of once per state file.
+- Deliver rebase results and focus conflicts while Graph and Changes refresh in
+  the background. Release the mutation guard after Git and recovery finish;
+  graph refresh delays or failures no longer hold up the next conflict action.
+- Avoid repeating detailed diagnostics when focusing known conflicts or reporting
+  completion. Log Git control time, plan loading, conflict focus and graph refresh
+  durations in the Git Simple Compare output channel.
+
 ## [0.1.72056] - 2026-09-08
 
 ### Performance

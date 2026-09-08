@@ -6,7 +6,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
-import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { readRebaseCommits, readRebaseCommitFiles } from "./rebaseCommitReader";
+import { listUnmergedFiles } from "./unmergedFiles";
 import { amendRebaseEdit } from "./rebaseEditApply";
 import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
 import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
@@ -21,7 +22,6 @@ import {
 import { usableRebaseOntoTarget } from "./rebaseOntoTarget";
 import { readRebaseTodoProgress } from "./rebaseTodoProgress";
 import { validateRebaseTodoCoverage } from "./rebaseTodoValidation";
-const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** rebase 계획에서 커밋별로 보여줄 변경 파일 한 건 */
 export interface RebaseCommitFile {
@@ -119,29 +119,7 @@ export class RebaseService {
    * @param root true 면 HEAD 의 전체 조상 커밋을 root 부터 반환한다.
    */
   async getCommits(base: string, root = false): Promise<RebaseCommit[]> {
-    const out = await runGit(
-      [
-        "log",
-        "--reverse",
-        "--pretty=format:%H\x1f%s\x1f%b",
-        "-z",
-        root ? "HEAD" : `${base}..HEAD`,
-      ],
-      this.repoRoot
-    );
-    const commits = out
-      .split("\0")
-      .filter((e) => e.length > 0)
-      .map((entry) => {
-        const [hash, subject, body] = entry.split("\x1f");
-        return { hash, subject: subject ?? "", body: (body ?? "").trim(), files: [] };
-      });
-    return Promise.all(
-      commits.map(async (commit) => ({
-        ...commit,
-        files: await this.getCommitFiles(commit.hash),
-      }))
-    );
+    return readRebaseCommits(this.repoRoot, base, root);
   }
 
   /**
@@ -254,7 +232,7 @@ export class RebaseService {
     }
     await assertLinearRebasePlan(this.repoRoot, base, root);
     const validation = validateRebaseTodoCoverage(
-      await this.getCommits(base, root),
+      await readRebaseCommits(this.repoRoot, base, root, false),
       todoItems
     );
     if (!validation.ok) {
@@ -427,22 +405,7 @@ export class RebaseService {
    * @param hash 대상 커밋 해시
    */
   private async getCommitFiles(hash: string): Promise<RebaseCommitFile[]> {
-    const base = (await this.parentOf(hash)) ?? EMPTY_TREE;
-    const [nameStatus, numstat] = await Promise.all([
-      runGit(["diff", "--name-status", "-M", "-z", base, hash], this.repoRoot),
-      runGit(["diff", "--numstat", "-z", "-M", base, hash], this.repoRoot),
-    ]);
-    const counts = parseNumstat(numstat);
-    return parseNameStatusZ(nameStatus).map((change) => {
-      const stat = counts.get(change.path);
-      return {
-        status: change.status,
-        path: change.path,
-        oldPath: change.oldPath,
-        additions: stat?.additions ?? 0,
-        deletions: stat?.deletions ?? 0,
-      };
-    });
+    return readRebaseCommitFiles(this.repoRoot, hash);
   }
 
   /**
@@ -477,11 +440,7 @@ export class RebaseService {
 
   /** rebase 충돌로 unmerged index entry 가 있는지 확인한다. */
   private async hasUnmergedFiles(): Promise<boolean> {
-    const out = await runGit(
-      ["diff", "--name-only", "--diff-filter=U", "-z"],
-      this.repoRoot
-    );
-    return out.split("\0").some((entry) => entry.length > 0);
+    return (await listUnmergedFiles(this.repoRoot)).length > 0;
   }
 
   /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */

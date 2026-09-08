@@ -6,6 +6,7 @@ import type * as vscode from "vscode";
 import { abortOperation, continueOperation, skipOperation } from "../src/commands/conflicts";
 import { BranchOperationService } from "../src/git/branchOperationService";
 import { ConflictService, detectOperation } from "../src/git/conflictService";
+import { isConflictMutationActive } from "../src/git/conflictMutationCoordinator";
 import { GitLogService } from "../src/git/gitLogService";
 import { createRebaseEditTempFile } from "../src/git/rebaseEditSession";
 import { readRebaseSessionState, rebaseSessionStatePath } from "../src/git/rebaseSessionState";
@@ -20,6 +21,19 @@ import { prSafetyFixture } from "./helpers/prOperationSafetyFixture";
 import { Uri, workspace, window, __errorMessages } from "./helpers/vscodeMock";
 
 const editor = resolve("media/rebase/rebaseEditor.js");
+
+test("graph Continue releases its mutation lease before a slow graph refresh completes", { timeout: 15_000 }, async t => {
+  const { root, deps } = await pausedFixture(t);
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  t.after(() => release());
+  let refreshing = false;
+  const result = await continueGraphRebase({ ...deps, refreshGraph: () => { refreshing = true; return pending; } });
+  assert.equal(result.status, "completed");
+  assert.equal(refreshing, true);
+  assert.equal(isConflictMutationActive(root), false);
+  assert.equal(await detectOperation(root), "none");
+});
 
 /** 실제 Git 서비스를 쓰면서 VS Code 표시만 대체한 일반 명령 컨트롤러다. */
 function controller(root: string): ConflictsController {

@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { join } from "node:path";
-import { graphRebaseResultProgress } from "../../src/webview/graphRebaseProgress";
+import { graphRebaseResultProgress, graphRebaseStartingProgress } from "../../src/webview/graphRebaseProgress";
 import { REBASE_RESTORE_CONFLICT_MESSAGE } from "../../src/git/rebasePlanSafety";
 import { dispatchWebviewMessage, mountGraphRenderer, readPostedMessages } from "./webviewHarness";
 
 for (const width of [390, 768, 1440]) {
   test(`rebase plan identity and persistent restore-conflict guidance at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: width === 390 ? 844 : width === 768 ? 1024 : 900 });
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
     await mountGraphRenderer(page);
@@ -29,6 +29,16 @@ for (const width of [390, 768, 1440]) {
       .toMatchObject({ checkout, base: "b".repeat(40), items: [{ hash: checkout.head, action: "pick" }] });
     await dispatchWebviewMessage(page, { type: "graphRebaseOperation", active: true });
     await expect(page.getByRole("button", { name: "Continue rebase", exact: true })).toBeVisible();
+    await dispatchWebviewMessage(page, graphRebaseStartingProgress("continue"));
+    await expect(page.locator("#graph-rebase-progress")).toContainText("Continuing rebase");
+    await dispatchWebviewMessage(page, graphRebaseResultProgress("continue", { status: "conflicts" }));
+    const proceed = page.getByRole("button", { name: "Continue rebase", exact: true });
+    await expect(proceed).toBeEnabled();
+    await proceed.click();
+    expect((await readPostedMessages(page)).some((message: any) => message.type === "continueGraphRebase")).toBe(true);
+    await page.mouse.click(380, 300);
+    await expect(page.getByRole("tooltip")).toBeHidden();
+    await page.screenshot({ path: `/tmp/gsc-72057-rebase-conflicts-${width}.png` });
     await dispatchWebviewMessage(page, graphRebaseResultProgress("continue", {
       status: "conflicts", restoringLocalChanges: true, message: REBASE_RESTORE_CONFLICT_MESSAGE,
     }));
@@ -45,5 +55,9 @@ for (const width of [390, 768, 1440]) {
       element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight)).toBe(true);
     await page.screenshot({ path: `/tmp/gsc-rebase-safety-${width}.png` });
     expect(errors).toEqual([]);
+    await dispatchWebviewMessage(page, graphRebaseResultProgress("continue", { status: "completed" }));
+    await expect(guidance).toContainText("Rebase completed");
+    await expect(guidance).toContainText("Graph and Changes refresh in the background.");
+    await page.screenshot({ path: `/tmp/gsc-72057-rebase-completed-${width}.png` });
   });
 }

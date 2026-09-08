@@ -124,28 +124,25 @@ interface RebaseStateFiles {
   todo: string;
 }
 
-/** rebase-merge/rebase-apply 디렉터리에서 done/todo 파일을 읽는다. */
+/**
+ * worktree 전용 git-dir를 한 번 해석한 뒤 두 backend의 done/todo 파일을 읽는다.
+ * - 상태 파일은 매번 다시 읽어 Continue/Skip 이후의 진행률을 캐시 없이 반영한다.
+ * @param repoRoot 대상 worktree 루트
+ * @returns 내용이 있는 첫 backend의 상태, 진행 중 todo가 없으면 undefined
+ */
 async function readRebaseStateFiles(repoRoot: string): Promise<RebaseStateFiles | undefined> {
+  const raw = (await runGit(["rev-parse", "--git-dir"], repoRoot)).trim();
+  const gitDir = path.resolve(repoRoot, raw);
   for (const dir of ["rebase-merge", "rebase-apply"]) {
-    const [donePath, todoPath] = await Promise.all([
-      gitPath(repoRoot, `${dir}/done`),
-      gitPath(repoRoot, `${dir}/git-rebase-todo`),
-    ]);
     const [done, todo] = await Promise.all([
-      fs.readFile(donePath, "utf8").catch(() => ""),
-      fs.readFile(todoPath, "utf8").catch(() => ""),
+      fs.readFile(path.join(gitDir, dir, "done"), "utf8").catch(() => ""),
+      fs.readFile(path.join(gitDir, dir, "git-rebase-todo"), "utf8").catch(() => ""),
     ]);
     if (done || todo) {
       return { done, todo };
     }
   }
   return undefined;
-}
-
-/** git metadata 상대 경로를 linked worktree 에서도 유효한 절대 경로로 변환한다. */
-async function gitPath(repoRoot: string, rel: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", rel], repoRoot)).trim();
-  return path.resolve(repoRoot, raw);
 }
 
 /** rebase todo 텍스트에서 주석/빈 줄을 제외한 todo entry 를 파싱한다. */

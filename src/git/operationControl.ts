@@ -67,11 +67,13 @@ export async function controlGitOperation(
   }
   await assertGitOperation(repoRoot, before);
   let failure: unknown;
+  const nativeStarted = Date.now();
   try {
     await runGit([operation, `--${action}`], repoRoot, { env, retryOnLock: false });
   } catch (error) {
     failure = error;
   }
+  const gitElapsedMs = Date.now() - nativeStarted;
   // 다음 충돌로 비정상 종료해도 원래 오류를 보존하면서 실행 전후의 작업만 기록한다.
   try {
     const receipt: ControlReceipt = { action, before, after: await captureGitOperation(repoRoot) };
@@ -80,7 +82,7 @@ export async function controlGitOperation(
     const temporary = `${file}.${randomUUID()}.tmp`;
     await writeFile(temporary, JSON.stringify(receipt), { mode: 0o600 });
     await rename(temporary, file);
-    logInfo("git operation controlled", { repoRoot, operation, action, generation: before.generation });
+    logInfo("git operation controlled", { repoRoot, operation, action, generation: before.generation, gitElapsedMs });
     await finishControlledRebaseSession(repoRoot, before, receipt.after, action).catch(error => {
       // UI 세션 저장 실패 때문에 이미 수행한 Git 명령을 재실행하지 않는다. 복원 시 세대 검증도 별도로 수행한다.
       logError("ended rebase session could not be recorded", error, { repoRoot, operation, action });

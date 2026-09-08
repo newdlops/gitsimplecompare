@@ -69,7 +69,7 @@ export function graphRebaseResultProgress(
     return failedProgress(action, result, items);
   }
   if (result.status === "completed") {
-    return terminalProgress(action, "completed", "Rebase completed", "Graph and Changes were refreshed.");
+    return terminalProgress(action, "completed", "Rebase completed", "Graph and Changes refresh in the background.");
   }
   if (result.status === "aborted") {
     return terminalProgress(action, "aborted", "Rebase aborted", "The branch was restored to the pre-rebase state.");

@@ -15,6 +15,7 @@ import {
   type ConflictWorkingResult,
 } from "./conflictContentService";
 import { runGit } from "./gitExec";
+import { listUnmergedFiles } from "./unmergedFiles";
 import { controlGitOperation, type GitOperationIdentity } from "./operationControl";
 import {
   cleanupRebaseMessageQueue,
@@ -110,14 +111,10 @@ export class ConflictService {
 
   /**
    * 현재 충돌(unmerged) 상태인 파일들의 저장소 상대 경로 목록을 반환한다.
-   * - `--diff-filter=U` 로 unmerged 항목만, `-z` 로 경로를 안전하게 파싱한다.
+   * - 작업트리 diff 없이 index의 unmerged stage만 읽고 특수 문자 경로를 보존한다.
    */
   async listConflicts(): Promise<string[]> {
-    const out = await runGit(
-      ["diff", "--name-only", "--diff-filter=U", "-z"],
-      this.repoRoot
-    );
-    return out.split("\0").filter((p) => p.length > 0);
+    return listUnmergedFiles(this.repoRoot);
   }
 
   /**

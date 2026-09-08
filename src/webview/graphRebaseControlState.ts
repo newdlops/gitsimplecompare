@@ -31,18 +31,21 @@ export async function readRebaseControlState(
       files: paused.files.length,
       ...(await rebaseProgressLogDetail(repoRoot)),
     });
-    await refreshAfterRebaseControl(deps, "graphRebaseEditPaused");
+    refreshAfterRebaseControl(deps, "graphRebaseEditPaused");
     await openPausedEditFile(repoRoot, paused);
     return { status: "paused", paused };
   }
   const conflictService = new ConflictService(repoRoot);
-  const conflicts = await conflictService.listConflicts();
+  const [conflicts, operation] = await Promise.all([
+    conflictService.listConflicts(), conflictService.getOperation(),
+  ]);
   const diagnostics = knownDiagnostics ??
-    (await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined));
+    (operation === "rebase" && !conflicts.length
+      ? await readRebaseContinueDiagnostics(repoRoot).catch(() => undefined) : undefined);
   const diagnosticDetail = rebaseDiagnosticDetail(diagnostics);
   const diagnosticGuidance = rebaseDiagnosticGuidance(diagnostics);
   if (conflicts.length > 0) {
-    const restoringLocalChanges = await conflictService.getOperation() === "none";
+    const restoringLocalChanges = operation === "none";
     const stopped = await rebase.getStoppedState();
     logInfo("graph rebase continue stopped with conflicts", {
       repoRoot,
@@ -52,8 +55,8 @@ export async function readRebaseControlState(
       ...(await rebaseProgressLogDetail(repoRoot)),
       ...rebaseDiagnosticLogDetail(diagnostics),
     });
-    await refreshAfterRebaseControl(deps, "graphRebaseConflict");
-    await focusRebaseConflicts(repoRoot);
+    refreshAfterRebaseControl(deps, "graphRebaseConflict");
+    await focusRebaseConflicts(repoRoot, { files: conflicts, diagnostics });
     return {
       status: "conflicts",
       restoringLocalChanges,
@@ -62,7 +65,6 @@ export async function readRebaseControlState(
       guidance: diagnosticGuidance,
     };
   }
-  const operation = await conflictService.getOperation();
   if (operation === "rebase") {
     const stopped = await rebase.getStoppedState();
     logInfo("graph rebase continue stopped at todo", {
@@ -72,7 +74,7 @@ export async function readRebaseControlState(
       ...(await rebaseProgressLogDetail(repoRoot)),
       ...rebaseDiagnosticLogDetail(diagnostics),
     });
-    await refreshAfterRebaseControl(deps, "graphRebaseStopped");
+    refreshAfterRebaseControl(deps, "graphRebaseStopped");
     vscode.window.showWarningMessage(
       diagnosticDetail ||
         vscode.l10n.t("Rebase paused at a todo item. Check the current todo card, then Continue, Skip, or Abort.")
@@ -89,7 +91,7 @@ export async function readRebaseControlState(
     operation,
     ...(await rebaseProgressLogDetail(repoRoot)),
   });
-  await refreshAfterRebaseControl(deps, "graphRebaseCompleted");
+  refreshAfterRebaseControl(deps, "graphRebaseCompleted");
   if (completedMessage) {
     vscode.window.showInformationMessage(vscode.l10n.t(completedMessage));
   }
