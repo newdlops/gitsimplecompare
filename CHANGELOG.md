@@ -5,6 +5,29 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72058] - 2026-09-08
+
+### Performance
+
+- Open conflict Result editors as soon as index content and save identities are
+  ready. Load commit sources and remaining rebase analysis in the background,
+  with explicit loading and retry states that preserve Result edits.
+- Coalesce overlapping conflict refreshes and reuse source-validated metadata
+  when only Result changes. Skip unchanged editor repaints and discard metadata
+  from closed, resolved or replaced sessions.
+- Refresh Changes once after graph rebase actions, limiting reads to affected
+  sections and including stash updates on completion or recovery failure.
+- Reuse the freshly resolved Git directory and HEAD within each operation
+  identity capture. Preserve fresh validation before Continue, Skip and Abort.
+- Batch review-thread count pages for up to four PRs per GitHub request and
+  publish completed commit details while slower comment pages continue loading.
+  Refreshes still recount current comments and share the four-request limit.
+
+### Fixed
+
+- Serialize local Stack metadata deletions and recovery writes so they do not
+  compete for the same Git config lock and intermittently leave a relationship.
+
 ## [0.1.72057] - 2026-09-08
 
 ### Performance

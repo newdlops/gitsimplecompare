@@ -3,6 +3,7 @@
 // - 모든 경로 인자는 literal pathspec으로 취급해 특수 파일명이 다른 파일까지 확장되지 않게 한다.
 import * as path from "node:path";
 import { unmergedSourceVersion } from "./conflictContentIdentity";
+import { readUnmergedStages, type UnmergedStageEntry } from "./unmergedFiles";
 import { readConflictOperationEpoch } from "./conflictOperationEpoch";
 import { assertConflictRelativePath, resolveSafeConflictWorkingPath } from "./conflictPathSafety";
 import { resolveConflictRegularFileMode } from "./conflictFileMode";
@@ -66,17 +67,6 @@ export interface ConflictContentDocument {
   bothAvailable: boolean;
 }
 
-/** index 한 항목의 mode/blob 식별자다. */
-interface IndexEntry {
-  mode: string;
-  oid: string;
-}
-
-/** `git ls-files --unmerged` 한 stage의 mode/blob 식별자다. */
-interface UnmergedStageEntry extends IndexEntry {
-  stage: 1 | 2 | 3;
-}
-
 const MAX_CONFLICT_TEXT_BYTES = 512 * 1024;
 const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 
@@ -85,6 +75,20 @@ const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
  */
 export class ConflictContentService {
   constructor(public readonly repoRoot: string) {}
+
+  /**
+   * 표시용 상세 정보의 지연 응답을 검증할 현재 source identity만 읽는다.
+   * @param rel 저장소 상대 충돌 경로
+   * @returns stage mode/OID와 새로 읽은 operation epoch. 더 이상 충돌이 아니면 실패한다.
+   */
+  async readSourceVersion(rel: string): Promise<string> {
+    this.assertRelativePath(rel);
+    const [entries, epoch] = await Promise.all([
+      this.readUnmergedStages(rel), readConflictOperationEpoch(this.repoRoot),
+    ]);
+    this.assertStillConflicted(entries);
+    return unmergedSourceVersion(entries, epoch);
+  }
 
   /**
    * 세 index stage와 작업트리 Result를 한 번에 읽는다.
@@ -420,19 +424,7 @@ export class ConflictContentService {
     rel: string,
     indexEnv: Record<string, string> = {}
   ): Promise<Map<1 | 2 | 3, UnmergedStageEntry>> {
-    const raw = await runGit(
-      ["ls-files", "--unmerged", "-z", "--", rel],
-      this.repoRoot,
-      { ...LITERAL_PATH_ENV, ...indexEnv }
-    );
-    const entries = new Map<1 | 2 | 3, UnmergedStageEntry>();
-    for (const record of raw.split("\0")) {
-      const match = /^(\d+) ([0-9a-f]{4,64}) ([123])\t/.exec(record);
-      if (!match || record.slice(record.indexOf("\t") + 1) !== rel) continue;
-      const stage = Number(match[3]) as 1 | 2 | 3;
-      entries.set(stage, { stage, mode: match[1], oid: match[2] });
-    }
-    return entries;
+    return readUnmergedStages(this.repoRoot, rel, indexEnv);
   }
 
   /** `.gitattributes`의 `-diff`가 현재 경로를 binary로 강제하는지 읽는다. */

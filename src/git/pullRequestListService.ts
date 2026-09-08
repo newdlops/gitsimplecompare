@@ -7,7 +7,7 @@ import { splitRepositoryName } from "./githubRepository";
 import { fetchRemainingReviewThreadCommentCounts } from "./pullRequestCommentCounts";
 import { buildPullRequestInfoQuery, pullRequestInfoFromGraphQl } from "./pullRequestInfo";
 import type { GhPageInfo, GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 
 /** 화면의 기존 PR 페이지 크기를 유지하고 중첩 connection만 작게 시작한다. */
 const PULL_REQUEST_PAGE_SIZE = 80;
@@ -22,7 +22,7 @@ const QUERY_TIMEOUT_MS = 30_000;
 export interface PullRequestListOptions {
   /** 요청당 허용 시간(밀리초). 미지정 시 30초이며 실패 시 기존 성공 목록을 유지한다. */
   requestTimeoutMs?: number;
-  /** 후속 조회가 있을 때만 호출한다. 표시용 snapshot이며 불완전한 commit은 Git 쓰기에 사용할 수 없다. */
+  /** 첫 표시와 후속 정보 완성 때 호출한다. 불완전한 commit은 Git 쓰기에 사용할 수 없다. */
   onProgress?: (page: PullRequestListPage) => void;
   /** 같은 repository·base/head OID의 완성된 commit 목록만 재사용한다. */
   previous?: { repository: string; pullRequests: PullRequestInfo[] };
@@ -90,6 +90,7 @@ export async function fetchPullRequestListPage(
   const cancel = () => controller.abort();
   signal?.addEventListener("abort", cancel, { once: true });
   let requests = 0;
+  let progressTimer: ReturnType<typeof setTimeout> | undefined;
   const measuredRunner: GhExecute = async (args, cwd, options) => {
     throwIfAborted(options.signal);
     requests++;
@@ -125,23 +126,34 @@ export async function fetchPullRequestListPage(
       if (pr.commitHashesComplete === false) {
         tasks.push(() => appendCommitHashes(repoRoot, owner, name, node, pullRequests[index], controller.signal, measuredRunner));
       }
-      if (node.reviewThreads?.pageInfo?.hasNextPage) {
-        tasks.push(async () => {
-          const counts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [node], controller.signal, measuredRunner);
-          pullRequests[index].commentCount += counts.get(Number(node.number)) || 0;
-          pullRequests[index].commentCountComplete = true;
-        });
-      }
     });
+    const reviews = nodes.map((node, index) => ({ node, pr: pullRequests[index] }))
+      .filter(({ node }) => node.reviewThreads?.pageInfo?.hasNextPage);
+    for (let offset = 0; offset < reviews.length; offset += 4) {
+      const batch = reviews.slice(offset, offset + 4);
+      tasks.push(async () => {
+        const counts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, batch.map(item => item.node), controller.signal, measuredRunner);
+        for (const { pr } of batch) { pr.commentCount += counts.get(pr.number) || 0; pr.commentCountComplete = true; }
+      });
+    }
     const page = { repository: repository.nameWithOwner, defaultBranch: repository.defaultBranchRef?.name,
       pullRequests, pageInfo: repository.pullRequests.pageInfo };
+    // 객체 복사로 이미 표시한 snapshot을 보호하고 완료 burst는 100ms 간격으로 모아 보낸다.
+    const publish = () => {
+      progressTimer = undefined;
+      if (controller.signal.aborted) return;
+      try {
+        options.onProgress?.({ ...page, pullRequests: pullRequests.map(pr => ({ ...pr, commitHashes: [...pr.commitHashes] })) });
+      } catch (error) { logError("graph pull request progress publication failed", error, { repoRoot }); }
+    };
     if (tasks.length) {
-      // 후속 task가 객체를 바꿔도 이미 게시한 표시용 snapshot은 바뀌지 않게 복사한다.
-      options.onProgress?.({ ...page, pullRequests: pullRequests.map(pr => ({ ...pr, commitHashes: [...pr.commitHashes] })) });
+      publish();
       logInfo("graph pull request first page ready", { repoRoot, pullRequests: pullRequests.length,
         elapsedMs: Date.now() - started, paginationTasks: tasks.length, reusedCommits });
     }
-    await completePagination(tasks, controller);
+    await completePagination(tasks, controller, () => {
+      if (options.onProgress && !progressTimer) progressTimer = setTimeout(publish, 100);
+    });
     throwIfAborted(controller.signal);
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks: tasks.length,
@@ -149,6 +161,7 @@ export async function fetchPullRequestListPage(
     });
     return page;
   } finally {
+    clearTimeout(progressTimer);
     signal?.removeEventListener("abort", cancel);
   }
 }
@@ -239,14 +252,14 @@ async function appendCommitHashes(
  * @param controller 외부 취소와 작업 실패를 함께 전달할 페이지 수명주기
  * @returns 모든 작업이 성공하면 완료되며, 부분 결과는 호출부에 반환하지 않는다.
  */
-async function completePagination(tasks: Array<() => Promise<void>>, controller: AbortController): Promise<void> {
+async function completePagination(tasks: Array<() => Promise<void>>, controller: AbortController, onCompleted: () => void): Promise<void> {
   let next = 0;
   let failure: { error: unknown } | undefined;
   const worker = async () => {
     while (next < tasks.length) {
       throwIfAborted(controller.signal);
       const task = tasks[next++];
-      try { await task(); }
+      try { await task(); if (!controller.signal.aborted) onCompleted(); }
       catch (error) {
         failure ??= { error };
         controller.abort();

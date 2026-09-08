@@ -1,5 +1,7 @@
 // 확장 전역 refresh watcher의 경로 판정과 원인 병합을 담당하는 순수 정책 모듈.
 // - VS Code API와 실제 refresh 실행을 몰라 테스트/확장이 쉽고, extension 진입점은 조립에 집중한다.
+import { isGitExcludePath, isStableGitStatePath } from "./gitRefreshPaths";
+export { repoRootFromGitPath } from "./gitRefreshPaths";
 /** 파일 watcher 이벤트를 실제 refresh로 보낼지와 진단 사유를 함께 나타낸다. */
 export interface RefreshDecision {
   refresh: boolean;
@@ -384,6 +386,7 @@ export function shouldInvalidateChangesStatus(reason: string): boolean {
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
       item.startsWith("branchOperation") ||
+      item.startsWith("graphRebase") ||
       item.includes("conflict") ||
       item.includes("ignore-rules") ||
       isDirectLocalFileRefreshReason(item) ||
@@ -408,6 +411,7 @@ export function shouldForceChangesGitStatus(reason: string): boolean {
       item === "commitAttempt" ||
       item === "vscodeGit:head" ||
       item === "windowFocusedReconcile" ||
+      item.startsWith("graphRebase") ||
       item === "checkoutBranch" ||
       item.startsWith("checkout:") ||
       item.startsWith("branchOperation") ||
@@ -439,6 +443,11 @@ export function shouldShowChangesRefreshProgress(reason: string): boolean {
 function sectionsForRefreshReason(
   reason: string
 ): readonly ChangesRefreshSection[] {
+  if (reason.startsWith("graphRebase")) {
+    // rebase는 HEAD/branch와 비교 기준을 바꾼다. 종료·복구 실패는 autostash 목록도 달라질 수 있다.
+    return ["repositories", "workingChanges", "fileHistory", "comparison",
+      ...(/Completed|RecoveryFailed/.test(reason) ? ["stashes" as const] : [])];
+  }
   if (reason.includes("commit-hooks")) {
     return ["commitHooks"];
   }
@@ -561,40 +570,4 @@ function splitRefreshReasons(reason: string): string[] {
 function normalizeRepositoryRoot(value: string): string {
   const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
   return /^[A-Za-z]:\//.test(normalized) ? normalized.toLowerCase() : normalized;
-}
-/**
- * `.git` 내부 파일 절대 경로에서 저장소 루트를 꺼낸다.
- * @param fsPath `.git/HEAD` 또는 `.git/refs/**` 아래 절대 경로
- * @returns 저장소 루트, `.git` 내부 경로가 아니면 undefined
- */
-export function repoRootFromGitPath(fsPath: string): string | undefined {
-  const normalized = fsPath.replace(/\\/g, "/");
-  if (/\/\.git\/worktrees\/[^/]+\//.test(normalized)) return undefined;
-  const index = normalized.indexOf("/.git/");
-  return index >= 0 ? fsPath.slice(0, index) : undefined;
-}
-
-/**
- * `.git` 내부 이벤트 중 ref/작업 상태를 바꾸는 안정적인 경로인지 확인한다.
- * @param path 슬래시(`/`)로 정규화된 절대 경로
- * @returns 비교/그래프/충돌 상태에 영향을 줄 수 있으면 true
- */
-function isStableGitStatePath(path: string): boolean {
-  // Git은 실제 ref/index를 교체하기 전에 lock과 log를 여러 번 쓴다. 최종 HEAD/ref 파일 이벤트가
-  // 별도로 오므로 중간 파일은 버려도 비교 결과는 유지되며 worktree 수에 따른 이벤트 폭주만 줄어든다.
-  if (/\/\.git\/(?:.*\.lock|.*\/logs\/.*|worktrees\/[^/]+\/index)$/.test(path)) {
-    return false;
-  }
-  return /\/\.git\/(HEAD|packed-refs|refs\/|MERGE_HEAD|REBASE_HEAD|CHERRY_PICK_HEAD|REVERT_HEAD|rebase-merge\/|rebase-apply\/|worktrees\/)/.test(
-    path
-  );
-}
-
-/**
- * `.git/info/exclude` 변경인지 확인한다.
- * @param path 슬래시(`/`)로 정규화된 절대 경로
- * @returns 저장소 전용 ignore 파일이면 true
- */
-function isGitExcludePath(path: string): boolean {
-  return /\/\.git\/info\/exclude$/.test(path);
 }

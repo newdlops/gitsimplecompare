@@ -35,7 +35,17 @@ export async function readConflictOperationEpoch(repoRoot: string): Promise<stri
     runGit(["rev-parse", "--absolute-git-dir"], repoRoot),
     runGit(["rev-parse", "--verify", "HEAD"], repoRoot).catch(() => "unborn"),
   ]);
-  const gitDir = gitDirText.trim();
+  return readConflictOperationEpochAt(gitDirText.trim(), head);
+}
+
+/**
+ * 같은 검증 시점에 이미 읽은 git-dir와 HEAD로 marker를 새로 읽는다.
+ * - 호출 사이의 캐시는 두지 않아 abort·재시작과 todo 변경 검증을 그대로 유지한다.
+ * @param gitDir 현재 worktree의 실제 Git directory
+ * @param head 이번 snapshot에서 읽은 HEAD 또는 unborn 표시
+ * @returns 현재 marker identity와 HEAD를 모두 포함한 epoch
+ */
+export async function readConflictOperationEpochAt(gitDir: string, head: string): Promise<string> {
   const parts = await Promise.all(
     OPERATION_PATHS.map((rel) => operationPathIdentity(gitDir, rel, true))
   );

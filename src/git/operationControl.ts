@@ -2,8 +2,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { detectOperation, type MergeOperation } from "./conflictService";
-import { readConflictOperationEpoch } from "./conflictOperationEpoch";
+import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
+import { readConflictOperationEpochAt } from "./conflictOperationEpoch";
 import { runGit } from "./gitExec";
 import { preserveOperationEdits } from "./operationRecoveryBackup";
 import { logError, logInfo } from "../ui/outputLog";
@@ -31,13 +31,16 @@ interface ControlReceipt {
  * @returns 확인창과 실행 직전 비교에 사용할 불변 값
  */
 export async function captureGitOperation(repoRoot: string): Promise<GitOperationIdentity> {
-  const gitDir = await realpath((await runGit(["rev-parse", "--absolute-git-dir"], repoRoot)).trim());
-  const [operation, epoch, head, branch] = await Promise.all([
-    detectOperation(repoRoot), readConflictOperationEpoch(repoRoot),
+  const [gitDirText, head, branch] = await Promise.all([
+    runGit(["rev-parse", "--absolute-git-dir"], repoRoot),
     runGit(["rev-parse", "--verify", "HEAD"], repoRoot),
     runGit(["branch", "--show-current"], repoRoot),
   ]);
-  const generation = await operationGeneration(gitDir, operation);
+  const gitDir = await realpath(gitDirText.trim());
+  const operation = detectOperationInGitDir(gitDir);
+  const [epoch, generation] = await Promise.all([
+    readConflictOperationEpochAt(gitDir, head), operationGeneration(gitDir, operation),
+  ]);
   return { gitDir, operation, epoch, generation, head: head.trim(), branch: branch.trim() };
 }
 

@@ -121,10 +121,9 @@ export class PullRequestStackMetadataService {
    */
   async clearParent(branch: string): Promise<void> {
     const child = requiredValue(branch, "Stack branch is required.");
-    await Promise.all([
-      this.unsetConfig(child, PARENT_KEY),
-      this.unsetConfig(child, PARENT_HEAD_KEY),
-    ]);
+    // 두 명령이 같은 config.lock을 경쟁하지 않도록 조회와 달리 쓰기는 순차 실행한다.
+    await this.unsetConfig(child, PARENT_KEY);
+    await this.unsetConfig(child, PARENT_HEAD_KEY);
   }
 
   /**
@@ -218,10 +217,11 @@ export class PullRequestStackMetadataService {
       for (const [name] of states) { await this.clearParent(name); cleared.push(name); }
       return preview;
     } catch (error) {
-      await Promise.all(cleared.map(async (name) => {
+      // 복원도 하나의 config 파일을 쓰므로 branch별로 순차 처리한다.
+      for (const name of cleared) {
         const state = states.find(([candidate]) => candidate === name)?.[1];
         if (state) await this.restoreParent(name, state.parentBranch, state.parentHead);
-      }));
+      }
       throw error;
     }
   }

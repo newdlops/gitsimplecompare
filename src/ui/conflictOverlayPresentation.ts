@@ -105,6 +105,11 @@ export function buildConflictOverlayPresentation(
 
 /** operation별 Current/Incoming의 의미와 Result 반영 시점을 만든다. */
 function operationPresentation(document: ConflictDocument): OperationPresentation {
+  if (document.metadataState === "pending" || document.metadataState === "error") {
+    return standardPresentation("Index stage 2 (Ours)", "Index stage 3 (Theirs)",
+      "Current/Ours content stored in index stage 2.", "Incoming/Theirs content stored in index stage 3.",
+      "This working-tree Result is staged when you mark the file resolved.");
+  }
   if (document.operation === "rebase") {
     if (document.incoming.ref !== "REBASE_HEAD") {
       return {
@@ -278,6 +283,14 @@ function futureDetails(rebase: NonNullable<ConflictDocument["context"]["rebase"]
 
 /** rebase future 분석 결과를 최종 결과 강조 문구로 만든다. */
 function rebaseImpact(document: ConflictDocument): ConflictOverlayImpact {
+  if (document.metadataState === "pending") {
+    return { tone: "info", title: vscode.l10n.t("Loading conflict details…"),
+      detail: vscode.l10n.t("You can edit Result now. Commit sources and later rebase changes are still loading.") };
+  }
+  if (document.metadataState === "error") {
+    return { tone: "warning", title: vscode.l10n.t("Conflict details unavailable"),
+      detail: vscode.l10n.t("You can edit Result. Reload to retry commit sources and later rebase analysis.") };
+  }
   const rebase = document.context.rebase;
   if (!rebase) {
     return {

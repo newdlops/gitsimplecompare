@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { ConflictWorkingResult } from "../git/conflictContentService";
 import type {
   ConflictDocument,
+  ConflictDocumentMetadata,
   ConflictService,
 } from "../git/conflictService";
 import type { TrustedConflictEditorSession } from "./conflictEditorOverlayController";
@@ -65,6 +66,19 @@ export function applyConflictDocument(
     ? virtualConflictDocumentText(document)
     : document.result;
   session.mtime = Date.now();
+  session.revision++;
+}
+
+/** 늦게 읽은 설명만 교체해 사용자가 편집 중인 Result와 CAS 기준선을 그대로 유지한다. */
+export function applyConflictMetadata(session: TrustedConflictEditorSession, metadata: ConflictDocumentMetadata | undefined): void {
+  session.document = metadata ? { ...session.document, context: metadata.context, metadataState: "ready",
+    current: { ...session.document.current, ...metadata.sources.current },
+    incoming: { ...session.document.incoming, ...metadata.sources.incoming } }
+    : { ...session.document, metadataState: "error" };
+  if (session.virtual) {
+    session.content = virtualConflictDocumentText(session.document);
+    session.mtime = Date.now();
+  }
   session.revision++;
 }
 

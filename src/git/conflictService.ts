@@ -69,6 +69,21 @@ export interface ConflictDocument {
   resultVersion: string;
   both: string;
   bothAvailable: boolean;
+  /** pending/error 상태에서는 커밋 출처와 향후 rebase 영향이 아직 확정되지 않았다. */
+  metadataState?: "pending" | "ready" | "error";
+}
+
+/** 파일 바이트와 분리해 늦게 읽을 수 있는 표시용 출처/작업 설명이다. */
+export interface ConflictDocumentMetadata {
+  sourceVersion: string;
+  sources: ConflictSources;
+  context: ConflictOperationContext;
+}
+
+/** native editor는 상세 조회를 미루고 같은 source의 이전 설명을 재사용할 수 있다. */
+export interface ConflictDocumentReadOptions {
+  deferMetadata?: boolean;
+  previous?: ConflictDocument;
 }
 
 /**
@@ -81,7 +96,11 @@ export async function detectOperation(
   repoRoot: string
 ): Promise<MergeOperation> {
   const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], repoRoot)).trim();
-  const gitDir = path.resolve(repoRoot, gitDirRaw);
+  return detectOperationInGitDir(path.resolve(repoRoot, gitDirRaw));
+}
+
+/** 이미 확인한 worktree Git directory의 현재 marker를 읽어 중복 rev-parse 실행을 피한다. */
+export function detectOperationInGitDir(gitDir: string): MergeOperation {
   const has = (name: string): boolean => fs.existsSync(path.join(gitDir, name));
 
   if (has("rebase-merge") || has("rebase-apply")) {
@@ -217,31 +236,49 @@ export class ConflictService {
    * - Current/Incoming 은 git index stage 2/3 을 그대로 읽어 커밋 해시 라벨과 함께 보여준다.
    * - Result 는 실제 작업 파일이므로 사용자가 편집하고 Resolve Marked 로 스테이징할 대상이다.
    * @param rel 저장소 상대 경로
+   * @param fullResult native editor처럼 Result 전체 본문이 필요하면 true
+   * @param options 설명 지연 여부와 source가 같은 이전 설명. mutation 기준선은 매번 새로 읽는다.
+   * @returns CAS identity를 포함한 파일 내용과 준비 상태가 명시된 설명 정보
    */
   async getConflictDocument(
     rel: string,
-    fullResult = false
+    fullResult = false,
+    options: ConflictDocumentReadOptions = {}
   ): Promise<ConflictDocument> {
-    const operation = await this.getOperation();
-    const [sources, context, contents] = await Promise.all([
-      this.getConflictSources(rel, operation),
-      readConflictOperationContext(this.repoRoot, operation, rel),
+    const [operation, contents] = await Promise.all([
+      this.getOperation(),
       this.content.readDocument(rel, fullResult),
     ]);
-    return {
-      rel,
-      operation,
-      context,
+    const previous = options.previous;
+    const reusable = previous?.sourceVersion === contents.sourceVersion && previous.operation === operation
+      && previous.rel === rel && (!previous.metadataState || previous.metadataState === "ready");
+    const document: ConflictDocument = {
+      ...contents, rel, operation,
+      context: reusable ? previous.context : { operation },
       base: { label: "Base", ref: "index stage 1", ...contents.base },
-      current: { ...sources.current, ...contents.current },
-      incoming: { ...sources.incoming, ...contents.incoming },
-      result: contents.result,
-      resultState: contents.resultState,
-      sourceVersion: contents.sourceVersion,
-      resultVersion: contents.resultVersion,
-      both: contents.both,
-      bothAvailable: contents.bothAvailable,
+      current: { label: "Current", ref: "index stage 2", ...(reusable ? previous.current : {}), ...contents.current },
+      incoming: { label: "Incoming", ref: "index stage 3", ...(reusable ? previous.incoming : {}), ...contents.incoming },
+      metadataState: reusable ? "ready" : "pending",
     };
+    if (reusable || options.deferMetadata) return document;
+    const metadata = await this.getConflictDocumentMetadata(document);
+    return metadata ? { ...document, context: metadata.context, metadataState: "ready",
+      current: { ...document.current, ...metadata.sources.current },
+      incoming: { ...document.incoming, ...metadata.sources.incoming } } : document;
+  }
+
+  /**
+   * 커밋/파일 이력과 남은 todo 분석을 읽고 원본이 여전히 같은지 새로 검증한다.
+   * @param document 먼저 읽은 파일 내용과 operation/source identity
+   * @returns 같은 source의 설명. 조회 중 Git 작업이 바뀌었으면 undefined이며 바이트는 반환하지 않는다.
+   */
+  async getConflictDocumentMetadata(document: ConflictDocument): Promise<ConflictDocumentMetadata | undefined> {
+    const [sources, context] = await Promise.all([
+      this.getConflictSources(document.rel, document.operation),
+      readConflictOperationContext(this.repoRoot, document.operation, document.rel),
+    ]);
+    const sourceVersion = await this.content.readSourceVersion(document.rel);
+    return sourceVersion === document.sourceVersion ? { sourceVersion, sources, context } : undefined;
   }
 
   /**
@@ -471,18 +508,9 @@ export class ConflictService {
   private async describeRef(
     ref: string
   ): Promise<{ commit?: string; subject?: string }> {
-    const commitOut = await runGit(["rev-parse", "--verify", ref], this.repoRoot).catch(
-      () => ""
-    );
-    const commit = commitOut.split(/\r?\n/).find(Boolean);
-    if (!commit) {
-      return {};
-    }
-    const subject = (
-      await runGit(["show", "-s", "--format=%s", commit], this.repoRoot).catch(
-        () => ""
-      )
-    ).trim();
+    const output = await runGit(["show", "-s", "--format=%H%x00%s", ref, "--"], this.repoRoot).catch(() => "");
+    const [commit, subject] = (output.split(/\r?\n/).find(Boolean) || "").split("\0");
+    if (!commit) return {};
     return { commit, subject: subject || undefined };
   }
 

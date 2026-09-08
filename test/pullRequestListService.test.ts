@@ -159,9 +159,11 @@ test("commit and comment pagination share the same four-request limit", async ()
   const result = fetchPullRequestListPage("/repo", undefined, undefined, runner);
   await settle();
   assert.equal(pending.length, 4);
-  assert.equal(operations.filter((operation) => operation === "graph-pr-review-thread-count-page").length, 2);
-  for (let index = 0; index < 6; index++) {
-    pending[index].resolve(operations[index] === "graph-pr-commit-page" ? commitPage(["end"], undefined, heads[index]) : reviewPage([7]));
+  assert.equal(operations.filter((operation) => operation === "graph-pr-review-thread-count-batch").length, 1);
+  const reviewThreads = JSON.parse(reviewPage([7])).data.repository.pullRequest.reviewThreads;
+  for (let index = 0; index < 4; index++) {
+    pending[index].resolve(operations[index] === "graph-pr-commit-page" ? commitPage(["end"], undefined, heads[index])
+      : JSON.stringify({ data: { repository: { pr0: { reviewThreads }, pr1: { reviewThreads }, pr2: { reviewThreads } } } }));
     await settle();
   }
   const page = await result;

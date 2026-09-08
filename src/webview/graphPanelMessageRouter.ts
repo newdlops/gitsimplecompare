@@ -66,7 +66,7 @@ export interface GraphPanelMessageRouterDeps {
   /** 지정 버튼의 busy 상태를 감싸 비동기 작업을 실행한다. */
   withBusy: <T>(key: string, action: () => Promise<T>) => Promise<T>;
   /** ready/manual의 직접 reload를 lifecycle coordinator에 위임한다. */
-  reloadGraph: (cause: "ready" | "refresh") => Promise<boolean>;
+  reloadGraph: (cause: "ready" | "refresh" | "graphRebase") => Promise<boolean>;
   /** branch filter 메시지를 패널 소유 상태에 반영하고 다시 로드한다. */
   setBranchFilter: (
     message: Extract<FromWebviewMessage, { type: "setBranchFilter" }>
@@ -383,7 +383,8 @@ export class GraphPanelMessageRouter {
     return {
       extensionUri: this.deps.extensionUri,
       logService: this.deps.logService(),
-      refreshGraph: this.deps.refreshAfterGraphAction,
+      // Changes는 refreshAfterRebaseControl이 즉시 한 번 요청하므로 여기서는 그래프만 읽는다.
+      refreshGraph: async () => { await this.deps.reloadGraph("graphRebase"); },
       post: this.deps.post,
     };
   }

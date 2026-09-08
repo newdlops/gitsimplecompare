@@ -47,6 +47,7 @@ interface GhPageInfo {
 }
 
 interface GhReviewThreadCountPageResponse {
+  errors?: unknown[];
   data?: {
     repository?: {
       pullRequest?: {
@@ -115,18 +116,66 @@ export async function fetchRemainingReviewThreadCommentCounts(
   runner: GhExecute = runGh
 ): Promise<Map<number, number>> {
   const counts = new Map<number, number>();
-  for (const pr of pullRequests) {
+  const pending = pullRequests.filter(pr => Number.isSafeInteger(pr.number) && Number(pr.number) > 0
+    && pr.reviewThreads?.pageInfo?.hasNextPage);
+  for (let offset = 0; offset < pending.length; offset += 4) {
     throwIfAborted(signal);
-    const number = Number(pr.number);
-    if (!Number.isFinite(number) || number <= 0) {
+    const batch = pending.slice(offset, offset + 4);
+    if (batch.length > 1) {
+      for (const [number, count] of await readReviewThreadCountBatch(cwd, owner, name, batch, signal, runner)) counts.set(number, count);
       continue;
     }
+    const pr = batch[0], number = Number(pr.number);
     const count = await readRemainingReviewThreadCommentCount(cwd, owner, name, number, pr.reviewThreads?.pageInfo, signal, runner);
     if (count > 0) {
       counts.set(number, count);
     }
   }
   return counts;
+}
+
+/**
+ * 서로 다른 PR 최대 네 개의 다음 thread 페이지를 GraphQL alias로 한 왕복에 읽는다.
+ * - 댓글은 HEAD가 같아도 바뀌므로 과거 총합을 캐시하지 않고 매번 최신 페이지를 합산한다.
+ * - 각 PR의 cursor는 독립적으로 검증하고, 완료된 PR은 다음 요청에서 제외한다.
+ * @returns 번호별 후속 페이지 합계. 취소·부분 오류·반복 cursor는 성공 총합으로 반환하지 않는다.
+ */
+async function readReviewThreadCountBatch(
+  cwd: string, owner: string, name: string, pullRequests: GhPullRequestCommentCounts[],
+  signal: AbortSignal | undefined, runner: GhExecute
+): Promise<Map<number, number>> {
+  const states = pullRequests.map(pr => ({ number: Number(pr.number), page: pr.reviewThreads!, count: 0, seen: new Set<string>() }));
+  while (states.some(state => state.page.pageInfo?.hasNextPage)) {
+    throwIfAborted(signal);
+    const pending = states.filter(state => state.page.pageInfo?.hasNextPage);
+    const variables: string[] = [], selections: string[] = [];
+    const args = ["api", "graphql", "-F", `owner=${owner}`, "-F", `name=${name}`];
+    pending.forEach((state, index) => {
+      const cursor = state.page.pageInfo?.endCursor;
+      if (!cursor || state.seen.has(cursor)) throw new Error("GitHub review thread pagination did not advance.");
+      state.seen.add(cursor);
+      variables.push(`$number${index}: Int!`, `$cursor${index}: String!`);
+      selections.push(`pr${index}: pullRequest(number: $number${index}) { reviewThreads(first: 100, after: $cursor${index}) {
+        nodes { comments(first: 1) { totalCount } } pageInfo { hasNextPage endCursor }
+      } }`);
+      args.push("-F", `number${index}=${state.number}`, "-f", `cursor${index}=${cursor}`);
+    });
+    args.push("-f", `query=query($owner: String!, $name: String!, ${variables.join(", ")}) {
+      repository(owner: $owner, name: $name) { ${selections.join("\n")} }
+    }`);
+    const output = await runner(args, cwd, { signal, operation: "graph-pr-review-thread-count-batch" });
+    throwIfAborted(signal);
+    const response = JSON.parse(output) as { errors?: unknown[];
+      data?: { repository?: Record<string, { reviewThreads?: GhReviewThreadConnection } | null> } };
+    if (response.errors?.length) throw new Error("GitHub review thread comments are not available.");
+    pending.forEach((state, index) => {
+      const page = response.data?.repository?.[`pr${index}`]?.reviewThreads;
+      if (!page) throw new Error("GitHub review thread comments are not available.");
+      state.count += reviewThreadCommentCount(page.nodes || []);
+      state.page = page;
+    });
+  }
+  return new Map(states.map(state => [state.number, state.count]));
 }
 
 /**
@@ -194,9 +243,10 @@ async function readReviewThreadCountPage(
     "-f",
     `query=${PULL_REQUEST_REVIEW_THREAD_COUNTS_QUERY}`,
   ], cwd, { signal, operation: "graph-pr-review-thread-count-page" });
+  throwIfAborted(signal);
   const parsed = JSON.parse(out) as GhReviewThreadCountPageResponse;
   const threads = parsed.data?.repository?.pullRequest?.reviewThreads;
-  if (!threads) throw new Error("GitHub review thread comments are not available.");
+  if (parsed.errors?.length || !threads) throw new Error("GitHub review thread comments are not available.");
   return threads;
 }
 

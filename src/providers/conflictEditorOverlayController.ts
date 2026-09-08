@@ -10,11 +10,12 @@ import { ConflictReadonlyContentProvider, ConflictResultFileSystemProvider,
 import { watchConflictResultFile } from "./conflictResultWatcher";
 import { ConflictResultSaveCoordinator } from "./conflictResultSaveCoordinator";
 import { virtualConflictDocumentText } from "./conflictSessionDocument";
-import { applyConflictDocument, applyConflictWorkingResult,
+import { applyConflictDocument, applyConflictMetadata, applyConflictWorkingResult,
   applyStaleSavedBaseline, createConflictEditorSession } from "./conflictEditorSessionState";
 import { buildConflictCodeLensState, isConflictActionCurrent,
   trustedConflictActionContext, trustedConflictBlockSession,
   type ConflictCodeLensState, type TrustedConflictActionContext } from "./conflictEditorSessionAccess";
+import { ConflictEditorReadCoordinator } from "./conflictEditorReadCoordinator";
 
 export type { ConflictCodeLensState, TrustedConflictActionContext } from "./conflictEditorSessionAccess";
 
@@ -54,6 +55,18 @@ implements vscode.Disposable, ConflictResultResourceHost {
   private readonly refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private uiRefreshTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
+  private readonly reads = new ConflictEditorReadCoordinator({
+    isCurrent: session => this.isCurrent(session), isDirty: session => !!this.textDocument(session)?.isDirty,
+    commitDocument: (session, document, reason) => this.commitDocument(session, document, reason),
+    commitMetadata: (session, metadata) => {
+      applyConflictMetadata(session, metadata);
+      if (session.virtual) this.fireResourceChanged(session);
+      this.fireUiChanged("conflictMetadata");
+    },
+    reopen: (session, document) => this.reopenForResultKindChange(session, document),
+    publishResolvedResult: (session, reason) => this.publishResolvedResult(session, reason),
+    markResolved: (session, reason) => this.markResolved(session, reason),
+  });
 
   readonly onDidChangeOverlay = this.onDidChangeOverlayEmitter.event;
   readonly onDidChangeCodeLenses = this.onDidChangeCodeLensesEmitter.event;
@@ -100,10 +113,12 @@ implements vscode.Disposable, ConflictResultResourceHost {
     rel: string,
     onDidMutate: () => Promise<void>
   ): Promise<void> {
-    const document = await service.getConflictDocument(rel, true);
+    const started = Date.now();
+    const document = await service.getConflictDocument(rel, true, { deferMetadata: true });
     if (this.disposed) return;
     this.invalidateSameConflictSessions(service.repoRoot, rel);
     await this.openLoadedSession(service, rel, onDidMutate, document);
+    logInfo("native conflict editor content ready", { repoRoot: service.repoRoot, rel, elapsedMs: Date.now() - started });
   }
 
   /** FileSystemProvider/readonly provider가 현재 URI resource를 찾을 때 사용한다. */
@@ -245,41 +260,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     reason: string,
     allowBusy = false
   ): Promise<boolean> {
-    if (!this.isCurrent(session) || session.resolved) return false;
-    if (session.busy && !allowBusy) {
-      session.pendingRefreshReason = reason;
-      return true;
-    }
-    const generation = ++session.refreshGeneration;
-    try {
-      const document = await session.service.getConflictDocument(session.rel, true);
-      if (!this.isCurrent(session) || generation !== session.refreshGeneration) return false;
-      if (!allowBusy && this.textDocument(session)?.isDirty) {
-        session.pendingRefreshReason = reason;
-        return true;
-      }
-      const virtual = document.resultState.kind !== "text";
-      if (virtual !== session.virtual) {
-        await this.reopenForResultKindChange(session, document);
-        return false;
-      }
-      this.commitDocument(session, document, reason);
-      return true;
-    } catch (error) {
-      if (!this.isCurrent(session) || generation !== session.refreshGeneration) return false;
-      if (/no longer conflicted|Reload the conflict editor/i.test(errorText(error))) {
-        const published = await this.publishResolvedResult(session, reason)
-          .catch(() => false);
-        if (published && this.isCurrent(session)) this.markResolved(session, reason);
-        return false;
-      }
-      logError("native conflict editor session refresh failed", error, {
-        repoRoot: session.service.repoRoot,
-        rel: session.rel,
-        reason,
-      });
-      throw error;
-    }
+    return this.reads.refresh(session, reason, allowBusy);
   }
 
   /** 해결 mutation 뒤 full working Result를 custom provider baseline으로 게시한다. */
@@ -391,6 +372,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
       throw error;
     }
     this.fireUiChanged("opened");
+    this.reads.enrich(session);
     logInfo("native conflict editor opened", {
       repoRoot: service.repoRoot,
       rel,
@@ -472,6 +454,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     if (session?.suspended && !session.resolved) {
       session.suspended = false;
       session.revision++;
+      this.reads.enrich(session);
     }
     this.fireUiChanged("activeEditor");
   }
@@ -591,6 +574,3 @@ implements vscode.Disposable, ConflictResultResourceHost {
     }
   }
 }
-
-/** unknown error를 로그/분기에 사용할 문자열로 정규화한다. */
-function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error); }
