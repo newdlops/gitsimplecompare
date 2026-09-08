@@ -26,23 +26,47 @@ const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: St
   } }
 }`;
 interface CommitNode { oid: string; messageHeadline?: string; committedDate?: string; author?: { name?: string }; }
+interface SummaryPage { headRefOid?: string; title?: string; body?: string;
+  commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } }; }
+/** 미리보기 첫 요청으로 함께 얻는 저장소·본문·첫 커밋 페이지다. */
+export interface PreviewBootstrap { repository: string; title: string; body: string; firstPage: SummaryPage; }
+const BOOTSTRAP_QUERY = QUERY.replace("{ pullRequest(number: $number) {", "{ nameWithOwner pullRequest(number: $number) { title body");
+
+/**
+ * 저장소 문맥·제목·본문·첫 커밋 페이지를 한 요청으로 읽어 초기 네트워크 왕복을 줄인다.
+ * @param pr Graph에서 선택한 head snapshot. 변경됐으면 파일 조회 전에 실패한다.
+ * @returns 첫 head가 검증된 원격 데이터. 커밋 후속 페이지와 파일은 이후 병렬로 읽는다.
+ */
+export async function fetchPreviewBootstrap(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PreviewBootstrap> {
+  const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
+    "-F", `number=${pr.number}`, "-f", `query=${BOOTSTRAP_QUERY}`], root, { operation: "pr-preview-bootstrap" });
+  const repository = (JSON.parse(out) as { data?: { repository?: { nameWithOwner?: string; pullRequest?: SummaryPage } } }).data?.repository;
+  if (!repository?.nameWithOwner || !repository.pullRequest) throw new Error("GitHub pull request preview is not available.");
+  const value = repository.pullRequest;
+  if (!pr.headHash || value.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
+  return { repository: repository.nameWithOwner, title: value.title || pr.title, body: value.body ?? "", firstPage: value };
+}
 
 /**
  * 커밋 patch 없이 제목·작성자·OID만 페이지 단위로 읽어 초기 preview를 빠르게 만든다.
  * @param pr 표시 중인 head OID. 페이지마다 같아야 이력이 섞이지 않는다.
  * @param runner panel 수명과 cache를 결합한 read 실행기
+ * @param initial bootstrap에서 이미 읽은 첫 connection. 있으면 첫 요청을 반복하지 않는다.
  * @returns 원래 순서의 커밋 요약. 파일은 사용자가 선택할 때 별도로 읽는다.
  */
-export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestInfo, runner: GhExecute): Promise<PullRequestPreviewCommit[]> {
+export async function fetchPreviewCommitSummaries(root: string, pr: PullRequestInfo, runner: GhExecute, initial?: SummaryPage): Promise<PullRequestPreviewCommit[]> {
   let cursor: string | undefined;
   const seen = new Set<string>();
   const commits = new Map<string, PullRequestPreviewCommit>();
   do {
-    const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
-      "-F", `number=${pr.number}`, ...(cursor ? ["-f", `cursor=${cursor}`] : []), "-f", `query=${QUERY}`], root,
-      { operation: "pr-preview-commit-summaries" });
-    const value = (JSON.parse(out) as { data?: { repository?: { pullRequest?: { headRefOid?: string;
-      commits?: { nodes?: Array<{ commit?: CommitNode }>; pageInfo?: { hasNextPage?: boolean; endCursor?: string } } } } } }).data?.repository?.pullRequest;
+    let value = initial;
+    initial = undefined;
+    if (!value) {
+      const out = await runner(["api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
+        "-F", `number=${pr.number}`, ...(cursor ? ["-f", `cursor=${cursor}`] : []), "-f", `query=${QUERY}`], root,
+        { operation: "pr-preview-commit-summaries" });
+      value = (JSON.parse(out) as { data?: { repository?: { pullRequest?: SummaryPage } } }).data?.repository?.pullRequest;
+    }
     if (!pr.headHash || value?.headRefOid !== pr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
     if (!value.commits?.nodes || typeof value.commits.pageInfo?.hasNextPage !== "boolean") throw new Error("GitHub returned incomplete commit summaries.");
     for (const { commit } of value.commits.nodes) {

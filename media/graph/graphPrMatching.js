@@ -94,7 +94,7 @@
     for (const pr of pullRequests.slice(0, 3)) {
       const button = document.createElement("button");
       const title = `Show PR #${pr.number} details`;
-      const count = Number(commentCount?.(pr) ?? pr.commentCount) || 0;
+      const count = pr.commentCountComplete === false ? "…" : Number(commentCount?.(pr) ?? pr.commentCount) || 0;
       button.type = "button";
       button.className = `pr-row-button ${prColorClass(pr.number)}`;
       button.dataset.prNumber = String(pr.number);

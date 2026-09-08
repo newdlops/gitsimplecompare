@@ -2,7 +2,7 @@
 // - graphPanel 이 패널 수명주기와 그래프 로딩에 집중하도록 PR 조회/열기/preview 동작을 분리한다.
 import * as vscode from "vscode";
 import { LocalBranchStatus } from "../graph/graphTypes";
-import { PullRequestInfo, PullRequestService } from "../git/pullRequestService";
+import { PullRequestInfo, PullRequestOverview, PullRequestService } from "../git/pullRequestService";
 import { PullRequestStackService } from "../git/pullRequestStackService";
 import { searchPullRequests } from "../git/pullRequestSearchService";
 import {
@@ -77,6 +77,7 @@ export class GraphPullRequestPager {
 
   /** 저장소 수명 경계에서 이전 repository의 PR·cursor·metadata hint를 모두 버린다. */
   resetRepository(): void {
+    this.cancel("repositoryChanged");
     this.searchRequest?.abort(); this.searchRequest = undefined; this.repositoryEpoch++;
     this.pullRequests = []; this.nextCursor = undefined; this.hasMore = false;
     this.repository = ""; this.defaultBranch = ""; this.resetPublication();
@@ -204,8 +205,10 @@ export class GraphPullRequestPager {
   ): Promise<boolean> {
     try {
       const service = new PullRequestService(repoRoot);
-      const overview = await service.getOverview(localBranches, cursor, signal);
-      if (generation !== this.generation) {
+      const overview = await service.getOverview(localBranches, cursor, signal, initial => {
+        if (!signal.aborted && generation === this.generation && this.activeRequest?.signal === signal) this.publishOverview(initial, mode, post);
+      }, { repository: this.repository, pullRequests: this.pullRequests });
+      if (signal.aborted || generation !== this.generation) {
         logInfo("graph pull request stale skip", {
           repoRoot,
           reason,
@@ -214,23 +217,9 @@ export class GraphPullRequestPager {
         });
         return false;
       }
-      if (overview.available) {
-        // 성공 시에만 상태를 갱신한다. replace 는 첫 페이지로 교체, append 는 기존 목록 뒤에 병합한다.
-        this.pullRequests = mode === "replace"
-          ? overview.pullRequests
-          : mergePullRequests(this.pullRequests, overview.pullRequests);
-        this.nextCursor = overview.nextCursor;
-        this.hasMore = overview.hasMore;
-        this.repository = overview.repository || this.repository;
-        this.defaultBranch = overview.defaultBranch || this.defaultBranch;
-      }
-      const effectiveOverview = { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor };
-      const fingerprint = JSON.stringify(effectiveOverview);
-      const changed = this.lastOverviewFingerprint !== fingerprint;
-      if (changed) {
-        this.lastOverviewFingerprint = fingerprint;
-        post({ type: "pullRequestOverview", overview: effectiveOverview });
-      }
+      const changed = this.publishOverview(overview, mode, post);
+      // 동일한 큰 payload를 생략해도 사용자 refresh의 loading은 반드시 완료시킨다.
+      if (!changed) post({ type: "pullRequestOverviewRetained" });
       logInfo("graph pull request overview publication", {
         repoRoot,
         reason,
@@ -254,6 +243,26 @@ export class GraphPullRequestPager {
       }
       if (this.activeRequest?.signal === signal) this.activeRequest = undefined;
     }
+  }
+
+  /**
+   * 현재 세대가 검증한 첫/최종 snapshot을 게시하고 실패 시 이미 보이는 목록은 보존한다.
+   * @param overview 큰 PR의 후속 조회 중에는 detailsLoading과 항목별 완료 여부를 포함한다.
+   * @returns 화면 내용이 바뀌어 실제로 게시했으면 true
+   */
+  private publishOverview(overview: PullRequestOverview, mode: "replace" | "append", post: PostGraphMessage): boolean {
+    if (overview.available) {
+      this.pullRequests = mode === "replace" ? overview.pullRequests : mergePullRequests(this.pullRequests, overview.pullRequests);
+      this.nextCursor = overview.nextCursor; this.hasMore = overview.hasMore;
+      this.repository = overview.repository || this.repository;
+      this.defaultBranch = overview.defaultBranch || this.defaultBranch;
+    }
+    const effectiveOverview = { ...overview, pullRequests: this.pullRequests, hasMore: this.hasMore, nextCursor: this.nextCursor };
+    const fingerprint = JSON.stringify(effectiveOverview);
+    if (fingerprint === this.lastOverviewFingerprint) return false;
+    this.lastOverviewFingerprint = fingerprint;
+    post({ type: "pullRequestOverview", overview: effectiveOverview });
+    return true;
   }
 }
 
@@ -480,17 +489,16 @@ function mergePullRequest(
   current: PullRequestInfo,
   incoming: PullRequestInfo
 ): PullRequestInfo {
+  const reuseCommits = current.headHash && current.baseHash && current.headHash === incoming.headHash
+    && current.baseHash === incoming.baseHash && current.baseRefName === incoming.baseRefName
+    && current.commitHashesComplete === true && incoming.commitHashesComplete === false;
   return {
     ...current,
     ...incoming,
     headHash: incoming.headHash || current.headHash,
     baseHash: incoming.baseHash || current.baseHash,
     mergeHash: incoming.mergeHash || current.mergeHash,
-    commitHashes: current.headHash && current.headHash === incoming.headHash &&
-      current.commitHashesComplete !== false && incoming.commitHashesComplete === false
-      ? [...current.commitHashes] : [...incoming.commitHashes],
-    commitHashesComplete: current.headHash && current.headHash === incoming.headHash &&
-      current.commitHashesComplete !== false && incoming.commitHashesComplete === false
-      ? current.commitHashesComplete : incoming.commitHashesComplete,
+    commitHashes: reuseCommits ? [...current.commitHashes] : [...incoming.commitHashes],
+    commitHashesComplete: reuseCommits ? true : incoming.commitHashesComplete,
   };
 }

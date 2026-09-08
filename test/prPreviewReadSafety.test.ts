@@ -5,17 +5,16 @@ import { PullRequestService, type StagedPullRequestPreview } from "../src/git/pu
 import { PullRequestPreviewLazyReads } from "../src/webview/pullRequestPreviewLazyReads";
 import { prSafetyFixture } from "./helpers/prOperationSafetyFixture";
 
-test("40-commit previews share five initial reads, omit patch/timeline calls and reuse comment reads", async t => {
+test("40-commit previews share three initial reads, omit patch/timeline calls and reuse comment reads", async t => {
   const { root, pr } = await prSafetyFixture(t);
   const hashes = Array.from({ length: 39 }, (_, n) => (n + 1).toString(16).padStart(40, "0")).concat(pr.headHash!);
   const requests: string[][] = [];
   const cache = new GitHubReadCache(async (args, _root, options) => {
     requests.push([...args]); assert.ok(options.signal);
     await new Promise(resolve => setImmediate(resolve));
-    if (args[0] === "repo") return JSON.stringify({ nameWithOwner: "fixture/repo" });
-    if (args[0] === "pr") return JSON.stringify({ title: "PR", body: "body", headRefOid: pr.headHash });
-    if (args.includes("graphql")) return JSON.stringify({ data: { repository: { pullRequest: {
-      headRefOid: pr.headHash, commits: { nodes: hashes.map(oid => ({ commit: { oid, messageHeadline: `Commit ${oid}` } })), pageInfo: { hasNextPage: false } },
+    assert.notEqual(args[0], "repo"); assert.notEqual(args[0], "pr");
+    if (args.includes("graphql")) return JSON.stringify({ data: { repository: { nameWithOwner: "fixture/repo", pullRequest: {
+      title: "PR", body: "body", headRefOid: pr.headHash, commits: { nodes: hashes.map(oid => ({ commit: { oid, messageHeadline: `Commit ${oid}` } })), pageInfo: { hasNextPage: false } },
     } } } });
     if (args.some(arg => arg.includes("/files?"))) return JSON.stringify([{ filename: "tracked.txt", status: "modified", additions: 1, deletions: 1 }]);
     return "[]";
@@ -23,15 +22,16 @@ test("40-commit previews share five initial reads, omit patch/timeline calls and
   const service = new PullRequestService(root, (_root, snapshot, signal) => (args, cwd, options) =>
     cache.read(args, cwd, { ...options, signal, version: snapshot?.headHash, ttlMs: 30_000 }));
   const previews = await Promise.all(Array.from({ length: 3 }, () => service.getStagedPreview("main", { ...pr, commitHashes: hashes }, "source")));
-  assert.equal(requests.length, 5);
+  assert.equal(requests.length, 3);
+  assert.equal(previews[0].title, "PR"); assert.equal(previews[0].body, "body");
   assert.equal(previews[0].previewCommits.length, 40);
   assert.equal(previews[0].previewFiles.length, 1);
   assert.equal(previews[0].conversationLoaded, false);
   assert.ok(requests.every(args => !args.some(arg => arg.includes("/commits/") || arg.includes("/timeline?"))));
   await service.getStagedPreview("main", pr, "source");
-  assert.equal(requests.length, 5);
+  assert.equal(requests.length, 3);
   await service.getPreviewConversation(previews[0]);
-  assert.equal(requests.length, 7);
+  assert.equal(requests.length, 5);
   assert.equal(requests.filter(args => args.some(arg => arg.includes("pulls/42/comments?"))).length, 1);
 });
 

@@ -1,4 +1,9 @@
 {
+  "Loading pull requests…": "PR을 불러오는 중…",
+  "Loading remaining commits and comments…": "나머지 커밋과 댓글을 불러오는 중…",
+  "Loading pull request commits…": "PR 커밋을 불러오는 중…",
+  "Retry loading pull requests": "PR 다시 불러오기",
+  "Pull request commits are still loading. Refresh pull requests if loading failed.": "PR 커밋을 아직 불러오는 중입니다. 로딩에 실패했다면 PR을 새로고침하세요.",
   "Loading conversation…": "대화를 불러오는 중…",
   "Could not load details.": "상세 정보를 불러오지 못했습니다.",
   "Retry loading": "다시 불러오기",

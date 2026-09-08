@@ -5,6 +5,29 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72056] - 2026-09-08
+
+### Performance
+
+- Show the first PR list response while large PRs finish loading their remaining
+  commits and comments. Incomplete totals stay pending, and PR Git actions become
+  available after the complete commit snapshot is ready.
+- Reopening the PR list within 30 seconds reuses the visible data. Refreshes reuse
+  complete commit lists only when the repository, base and head still match;
+  concurrent list reads share the bounded GitHub request queue.
+- Fetch preview repository information, title, body and the first commit-summary
+  page together. Prepare local Git context alongside remote reads, reducing a
+  typical preview's initial GitHub calls from five to three.
+
+### Fixed
+
+- Keep visible PR rows and offer retry when background pagination fails. Preserve
+  search focus and Korean IME input when the complete list arrives. Unlock the
+  list toolbar after the first response, and clear loading when a refresh keeps
+  the same data without sending the full payload again.
+- Reject base changes during commit pagination before treating a snapshot as
+  complete or reusing it for Git operations.
+
 ## [0.1.72055] - 2026-09-07
 
 ### Fixed

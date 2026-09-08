@@ -61,6 +61,10 @@ export async function handlePullRequestAction(
     );
     return;
   }
+  if (pr.commitHashesComplete === false) {
+    vscode.window.showWarningMessage(vscode.l10n.t("Pull request commits are still loading. Refresh pull requests if loading failed."));
+    return;
+  }
   const baseAction = basePullRequestAction(selected);
   const options = operationOptionsForAction(selected);
   if (baseAction === "squash") {

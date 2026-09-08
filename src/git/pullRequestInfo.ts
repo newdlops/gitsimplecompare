@@ -34,6 +34,8 @@ export interface PullRequestInfo {
   reviewDecision?: string;
   updatedAt?: string;
   commentCount: number;
+  /** false면 review thread 후속 페이지가 남아 있어 댓글 합계를 아직 확정할 수 없다. */
+  commentCountComplete?: boolean;
   fileCount: number;
   /** PR head branch에 포함된 원래 commit OID 목록. PR git 작업에서 사용한다. */
   commitHashes: string[];
@@ -115,7 +117,7 @@ ${buildPullRequestCommentCountsQuery(reviewThreadPageSize)}
  */
 export function pullRequestInfoFromGraphQl(
   pr: GhPullRequestNode,
-  extraReviewCommentCount = 0
+  extraReviewCommentCount?: number
 ): PullRequestInfo {
   return {
     number: Number(pr.number) || 0,
@@ -132,6 +134,7 @@ export function pullRequestInfoFromGraphQl(
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,
     commentCount: totalPullRequestCommentCount(pr, extraReviewCommentCount),
+    commentCountComplete: extraReviewCommentCount !== undefined || !pr.reviewThreads?.pageInfo?.hasNextPage,
     fileCount: pr.files?.totalCount ?? 0,
     commitHashes: normalizePullRequestCommitHashes(pr),
     commitHashesComplete: !pr.commits?.pageInfo?.hasNextPage,

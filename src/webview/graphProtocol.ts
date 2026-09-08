@@ -116,6 +116,7 @@ export type ToWebviewMessage =
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "tagStatus"; tags: GitTagStatus[] }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
+  | { type: "pullRequestOverviewRetained" }
   | { type: "pullRequestStackSnapshot"; snapshot: PullRequestStackGraphSnapshot }
   | { type: "pullRequestStackError"; message: string }
   | { type: "pullRequestStackActionState"; busy: boolean }

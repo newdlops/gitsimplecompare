@@ -371,6 +371,12 @@
   cursor: pointer;
 }
 
+/* 커밋 목록이 완성되기 전에는 PR 쓰기 버튼을 비활성 색상으로 구분한다. */
+.pr-actions .pr-icon-action:disabled:not(.is-busy) {
+  color: var(--vscode-disabledForeground);
+  opacity: 0.65;
+}
+
 .icon-mini:hover,
 .message-copy:hover {
   background: var(--vscode-toolbar-hoverBackground);

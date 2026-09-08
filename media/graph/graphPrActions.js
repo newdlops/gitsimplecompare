@@ -5,7 +5,7 @@
   function init() {
     document.addEventListener("click", (event) => {
       const button = event.target.closest?.("[data-pr-operation]");
-      if (!button) return;
+      if (!button || button.disabled) return;
       event.preventDefault();
       event.stopPropagation();
       window.GscGraphPostMessage?.({
@@ -20,23 +20,24 @@
   }
 
   /** PR 단위 apply/revert 메뉴를 여는 버튼 HTML 을 만든다. */
-  function button(number) {
-    const title = `PR apply/revert actions for #${number}`;
-    return `<button type="button" class="pr-icon-action" data-pr-operation="${esc(number)}" title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
+  function button(number, ready = true) {
+    const title = ready ? `PR apply/revert actions for #${number}` : window.GscPrStackI18n?.loadingPrCommits;
+    return `<button type="button" class="pr-icon-action" ${ready ? "" : "disabled"} data-pr-operation="${esc(number)}" title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
       `<span class="codicon codicon-git-pull-request" aria-hidden="true"></span></button>`;
   }
 
   /** PR 카드에서 바로 실행할 apply/revert 버튼 묶음을 만든다. */
-  function directButtons(number) {
-    return operationButton(number, "rebase", "git-pull-request", `Rebase PR #${number} into current branch`) +
-      operationButton(number, "squash", "combine", `Squash cherry-pick PR #${number}`) +
-      operationButton(number, "rebaseRevert", "debug-reverse-continue", `Rebase revert PR #${number}`) +
-      operationButton(number, "squashRevert", "discard", `Squash revert PR #${number}`);
+  function directButtons(number, ready = true) {
+    return operationButton(number, "rebase", "git-pull-request", `Rebase PR #${number} into current branch`, ready) +
+      operationButton(number, "squash", "combine", `Squash cherry-pick PR #${number}`, ready) +
+      operationButton(number, "rebaseRevert", "debug-reverse-continue", `Rebase revert PR #${number}`, ready) +
+      operationButton(number, "squashRevert", "discard", `Squash revert PR #${number}`, ready);
   }
 
   /** PR 작업 하나를 바로 실행하는 아이콘 버튼 HTML 을 만든다. */
-  function operationButton(number, action, icon, title) {
-    return `<button type="button" id="pr-op-${esc(number)}-${esc(action)}" class="pr-icon-action" ` +
+  function operationButton(number, action, icon, title, ready) {
+    if (!ready) title = window.GscPrStackI18n?.loadingPrCommits;
+    return `<button type="button" ${ready ? "" : "disabled"} id="pr-op-${esc(number)}-${esc(action)}" class="pr-icon-action" ` +
       `data-pr-operation="${esc(number)}" data-pr-action="${esc(action)}" ` +
       `title="${esc(title)}" data-tooltip="${esc(title)}" aria-label="${esc(title)}">` +
       `<span class="codicon codicon-${esc(icon)}" aria-hidden="true"></span></button>`;

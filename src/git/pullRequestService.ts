@@ -4,9 +4,10 @@ import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import { runGh } from "./ghCli";
 import type { GhExecute } from "./ghRunner";
-import { fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
+import { fetchPreviewBootstrap, fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
 import { runGit } from "./gitExec";
 import { fetchPullRequestListPage } from "./pullRequestListService";
+import type { PullRequestListOptions, PullRequestListPage } from "./pullRequestListService";
 import { fetchPullRequestDetail } from "./pullRequestDetail";
 import type { PullRequestDetailInfo } from "./pullRequestDetail";
 import { fetchPullRequestChangedFiles, fetchPullRequestPreviewFiles } from "./pullRequestPreviewFiles";
@@ -38,6 +39,8 @@ export interface PullRequestOverview {
   currentBranch?: string;
   targetBranch?: string;
   error?: string;
+  /** 목록은 사용 가능하고 큰 PR의 커밋·댓글 후속 페이지를 채우는 중이다. */
+  detailsLoading?: boolean;
   hasMore: boolean;
   nextCursor?: string;
   pullRequests: PullRequestInfo[];
@@ -65,12 +68,6 @@ export interface StagedPullRequestPreview {
   existingPr?: PullRequestInfo;
 }
 
-interface GhPullRequestPreview {
-  title?: string;
-  body?: string;
-  headRefOid?: string;
-}
-
 /** 저장소 한 개의 GitHub PR POC 조회 서비스 */
 export class PullRequestService {
   constructor(public readonly repoRoot: string, private readonly previewRead = previewReadRunner) {}
@@ -78,27 +75,24 @@ export class PullRequestService {
   /**
    * gh CLI 로 저장소 PR 목록을 읽고, graph 배지용 PR commit 해시들을 붙인다.
    * @param localBranches 현재 로컬 브랜치 상태. current branch/target 추정에 사용한다.
+   * @param onProgress 후속 페이지를 기다리기 전에 표시할 불완전한 목록 callback
+   * @param previous 같은 저장소·base/head의 완성된 commit 목록을 재사용할 이전 상태
+   * @returns 모든 후속 페이지를 읽은 최종 overview. 오류면 이전 UI 목록을 보존할 실패 상태
    */
   async getOverview(
     localBranches: LocalBranchStatus[],
     cursor?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onProgress?: (overview: PullRequestOverview) => void,
+    previous?: PullRequestListOptions["previous"]
   ): Promise<PullRequestOverview> {
     try {
       throwIfAborted(signal);
-      const page = await fetchPullRequestListPage(this.repoRoot, cursor, signal);
-      const prs = page.pullRequests;
-      const current = localBranches.find((branch) => branch.current);
-      return {
-        available: true,
-        repository: page.repository,
-        defaultBranch: page.defaultBranch,
-        currentBranch: current?.name,
-        targetBranch: this.targetBranchFor(current, prs),
-        hasMore: Boolean(page.pageInfo?.hasNextPage),
-        nextCursor: page.pageInfo?.endCursor,
-        pullRequests: prs,
-      };
+      const page = await fetchPullRequestListPage(this.repoRoot, cursor, signal, undefined, {
+        previous,
+        onProgress: page => onProgress?.({ ...this.overviewForPage(page, localBranches), detailsLoading: true }),
+      });
+      return this.overviewForPage(page, localBranches);
     } catch (error) {
       if (signal?.aborted || isAbortError(error)) throw error;
       return {
@@ -109,6 +103,15 @@ export class PullRequestService {
         pullRequests: [],
       };
     }
+  }
+
+  /** 첫/최종 페이지에서 현재 branch 힌트를 계산해 목록 표시와 완료 상태를 일관되게 만든다. */
+  private overviewForPage(page: PullRequestListPage, branches: LocalBranchStatus[]): PullRequestOverview {
+    const current = branches.find(branch => branch.current);
+    return { available: true, repository: page.repository, defaultBranch: page.defaultBranch,
+      currentBranch: current?.name, targetBranch: this.targetBranchFor(current, page.pullRequests),
+      hasMore: Boolean(page.pageInfo?.hasNextPage), nextCursor: page.pageInfo?.endCursor,
+      pullRequests: page.pullRequests };
   }
 
   /**
@@ -123,33 +126,20 @@ export class PullRequestService {
     sourceBranch?: string,
     signal?: AbortSignal
   ): Promise<StagedPullRequestPreview> {
-    const currentBranch = await this.currentBranch();
-    const selectedSource = sourceBranch || existingPr?.headRefName || currentBranch;
-    const targetBranch = baseBranch || existingPr?.baseRefName || "";
-    const hasTargetBranch = Boolean(targetBranch);
-    const [targetRef, sourceRef] = await Promise.all([
-      hasTargetBranch ? resolvePreviewTargetRef(this.repoRoot, targetBranch) : Promise.resolve(""),
-      resolvePreviewTargetRef(this.repoRoot, selectedSource),
-    ]);
-    const [targetBranches, sourceBranches] = await Promise.all([previewTargetBranches(this.repoRoot, targetBranch, selectedSource), previewTargetBranches(this.repoRoot, selectedSource, targetBranch)]);
+    signal?.throwIfAborted();
     const effectivePr = (baseBranch && existingPr?.baseRefName && baseBranch !== existingPr.baseRefName)
       || (sourceBranch && existingPr?.headRefName && sourceBranch !== existingPr.headRefName)
       ? undefined
       : existingPr;
-    signal?.throwIfAborted();
     const runner = this.previewRead(this.repoRoot, effectivePr, signal);
-    const headRef = effectivePr ? await resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : "HEAD";
-    const [stagedFiles, repository, existingPreview, sourceIsLocal] = await Promise.all([
-      this.stagedFiles(),
-      this.repositoryName(signal, "pr-preview-repository", runner).catch(error => { if (effectivePr) throw error; return undefined; }),
-      this.existingPullRequestPreview(effectivePr, runner),
-      this.localBranchExists(selectedSource),
+    const [context, remote] = await Promise.all([
+      this.previewContext(baseBranch, existingPr, sourceBranch, effectivePr, signal),
+      this.previewRemote(effectivePr, runner, signal),
     ]);
-    if (effectivePr && existingPreview?.headRefOid !== effectivePr.headHash) throw new Error("The pull request head changed. Refresh pull requests before opening its preview.");
-    const [prPreviewFiles, prPreviewCommits] = await Promise.all([
-      this.existingPullRequestPreviewFiles(repository, effectivePr, runner),
-      effectivePr ? fetchPreviewCommitSummaries(this.repoRoot, effectivePr, runner) : Promise.resolve([]),
-    ]);
+    const { currentBranch, selectedSource, targetBranch, targetRef, sourceRef, targetBranches,
+      sourceBranches, headRef, stagedFiles, sourceIsLocal } = context;
+    const { repository, existingPreview, prPreviewFiles, prPreviewCommits } = remote;
+    const hasTargetBranch = Boolean(targetBranch);
     signal?.throwIfAborted();
     const hasRemotePreview = prPreviewFiles.length > 0 || prPreviewCommits.length > 0;
     const previewStagedFiles =
@@ -288,25 +278,39 @@ export class PullRequestService {
   }
 
   /**
-   * 기존 PR 기준으로 preview 를 연 경우 GitHub 에 저장된 실제 제목/본문을 읽는다.
-   * @param existingPr graph PR 목록에서 선택된 기존 PR 정보
-   * @returns GitHub PR 의 현재 title/body. 조회 실패 시 호출부가 staged preview 본문으로 fallback 한다.
+   * 원격 응답을 기다리는 동안 현재 작업트리와 branch 선택지를 병렬로 준비한다.
+   * @param effectivePr 사용자가 base/source를 바꿨으면 undefined여서 로컬 diff로 전환한다.
+   * @returns 캐시하지 않고 매번 새로 읽은 로컬 preview 문맥
    */
-  private async existingPullRequestPreview(
-    existingPr?: PullRequestInfo,
-    runner: GhExecute = runGh
-  ): Promise<GhPullRequestPreview | undefined> {
-    if (!existingPr?.number) {
-      return undefined;
-    }
-    const out = await runner([
-      "pr",
-      "view",
-      String(existingPr.number),
-      "--json",
-      "title,body,headRefOid",
-    ], this.repoRoot, { operation: "pr-preview-metadata" });
-    return JSON.parse(out) as GhPullRequestPreview;
+  private async previewContext(base?: string, pr?: PullRequestInfo, source?: string, effectivePr?: PullRequestInfo, signal?: AbortSignal) {
+    const currentBranch = await this.currentBranch();
+    signal?.throwIfAborted();
+    const selectedSource = source || pr?.headRefName || currentBranch;
+    const targetBranch = base || pr?.baseRefName || "";
+    const [targetRef, sourceRef, targetBranches, sourceBranches, headRef, stagedFiles, sourceIsLocal] = await Promise.all([
+      targetBranch ? resolvePreviewTargetRef(this.repoRoot, targetBranch) : Promise.resolve(""),
+      resolvePreviewTargetRef(this.repoRoot, selectedSource),
+      previewTargetBranches(this.repoRoot, targetBranch, selectedSource),
+      previewTargetBranches(this.repoRoot, selectedSource, targetBranch),
+      effectivePr ? resolvePreviewHeadRef(this.repoRoot, effectivePr.headRefName, effectivePr.headHash) : Promise.resolve("HEAD"),
+      this.stagedFiles(), this.localBranchExists(selectedSource),
+    ]);
+    signal?.throwIfAborted();
+    return { currentBranch, selectedSource, targetBranch, targetRef, sourceRef,
+      targetBranches, sourceBranches, headRef, stagedFiles, sourceIsLocal };
+  }
+
+  /** 원격 bootstrap을 한 번 읽은 뒤 파일·댓글을 가져오며 로컬 Git 준비와 독립적으로 실행한다. */
+  private async previewRemote(pr: PullRequestInfo | undefined, runner: GhExecute, signal?: AbortSignal) {
+    const existingPreview = pr ? await fetchPreviewBootstrap(this.repoRoot, pr, runner) : undefined;
+    const repository = existingPreview?.repository
+      ?? await this.repositoryName(signal, "pr-preview-repository", runner).catch(() => { signal?.throwIfAborted(); return undefined; });
+    signal?.throwIfAborted();
+    const [prPreviewFiles, prPreviewCommits] = await Promise.all([
+      this.existingPullRequestPreviewFiles(repository, pr, runner),
+      pr && existingPreview ? fetchPreviewCommitSummaries(this.repoRoot, pr, runner, existingPreview.firstPage) : Promise.resolve([]),
+    ]);
+    return { repository, existingPreview, prPreviewFiles, prPreviewCommits };
   }
 
   /**

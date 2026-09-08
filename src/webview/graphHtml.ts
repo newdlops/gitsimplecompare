@@ -102,6 +102,10 @@ export function buildGraphHtml(
   const showOutputTitle = vscode.l10n.t("Show Git Simple Compare Output");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
+    loadingPullRequests: vscode.l10n.t("Loading pull requests…"),
+    loadingPrDetails: vscode.l10n.t("Loading remaining commits and comments…"),
+    loadingPrCommits: vscode.l10n.t("Loading pull request commits…"),
+    retryPullRequests: vscode.l10n.t("Retry loading pull requests"),
     unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
     unavailableReason: vscode.l10n.t("Pull request stacks unavailable: {0}"),
     manageCount: vscode.l10n.t("Manage pull request stacks ({0} layers)"),

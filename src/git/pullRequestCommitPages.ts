@@ -5,13 +5,13 @@ import type { GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 
 const QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
-    headRefOid
+    headRefOid baseRefOid
     commits(first: 100, after: $cursor) { nodes { commit { oid } } pageInfo { hasNextPage endCursor } }
   } }
 }`;
 
 /**
- * 첫 페이지의 head를 고정하고 후속 commit 페이지를 원래 순서로 완성한다.
+ * 첫 페이지의 head와 알려진 base를 고정하고 후속 commit 페이지를 원래 순서로 완성한다.
  * @param node GitHub가 반환한 첫 commit connection과 head OID
  * @param result 성공 시에만 완성된 커밋 집합을 기록할 PR 정보
  * @param signal 호출 수명과 함께 취소할 신호
@@ -40,6 +40,7 @@ export async function completePullRequestCommits(
     signal?.throwIfAborted();
     const current = (JSON.parse(output) as { data?: { repository?: { pullRequest?: GhPullRequestNode } } }).data?.repository?.pullRequest;
     if (current?.headRefOid !== node.headRefOid) throw new Error(`PR #${node.number} head changed while reading commits. Refresh pull requests.`);
+    if (node.baseRefOid && current.baseRefOid !== node.baseRefOid) throw new Error(`PR #${node.number} base changed while reading commits. Refresh pull requests.`);
     const connection = current.commits;
     if (!connection?.nodes || typeof connection.pageInfo?.hasNextPage !== "boolean") {
       throw new Error("GitHub returned an incomplete pull request commit page.");

@@ -1,6 +1,6 @@
 // Graph용 PR 목록을 한 번의 저장소 조회와 제한된 후속 pagination으로 읽는 모듈.
-// - UI에 전달하기 전에 모든 commit OID와 기존 기준의 댓글 수를 완성한다.
-import { runGh } from "./ghCli";
+// - 첫 응답을 즉시 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
+import { readGitHub } from "./githubReadCache";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
 import { splitRepositoryName } from "./githubRepository";
@@ -22,6 +22,10 @@ const QUERY_TIMEOUT_MS = 30_000;
 export interface PullRequestListOptions {
   /** 요청당 허용 시간(밀리초). 미지정 시 30초이며 실패 시 기존 성공 목록을 유지한다. */
   requestTimeoutMs?: number;
+  /** 후속 조회가 있을 때만 호출한다. 표시용 snapshot이며 불완전한 commit은 Git 쓰기에 사용할 수 없다. */
+  onProgress?: (page: PullRequestListPage) => void;
+  /** 같은 repository·base/head OID의 완성된 commit 목록만 재사용한다. */
+  previous?: { repository: string; pullRequests: PullRequestInfo[] };
 }
 
 const PULL_REQUESTS_QUERY = `
@@ -73,7 +77,7 @@ export async function fetchPullRequestListPage(
   repoRoot: string,
   cursor?: string,
   signal?: AbortSignal,
-  runner: GhExecute = runGh,
+  runner: GhExecute = readGitHub,
   options: PullRequestListOptions = {}
 ): Promise<PullRequestListPage> {
   throwIfAborted(signal);
@@ -106,30 +110,44 @@ export async function fetchPullRequestListPage(
     const [owner, name] = splitRepositoryName(repository.nameWithOwner);
     const nodes = repository.pullRequests.nodes || [];
     const pullRequests = nodes.map((node) => pullRequestInfoFromGraphQl(node));
+    const previous = new Map(options.previous?.repository === repository.nameWithOwner
+      ? options.previous.pullRequests.map(pr => [pr.number, pr] as const) : []);
     const tasks: Array<() => Promise<void>> = [];
+    let reusedCommits = 0;
     nodes.forEach((node, index) => {
-      if (node.commits?.pageInfo?.hasNextPage) {
+      const pr = pullRequests[index];
+      const known = previous.get(pr.number);
+      if (pr.commitHashesComplete === false && known?.commitHashesComplete === true
+        && pr.headHash && pr.baseHash && pr.headHash === known.headHash && pr.baseHash === known.baseHash
+        && pr.baseRefName === known.baseRefName) {
+        pr.commitHashes = [...known.commitHashes]; pr.commitHashesComplete = true; reusedCommits++;
+      }
+      if (pr.commitHashesComplete === false) {
         tasks.push(() => appendCommitHashes(repoRoot, owner, name, node, pullRequests[index], controller.signal, measuredRunner));
       }
       if (node.reviewThreads?.pageInfo?.hasNextPage) {
         tasks.push(async () => {
           const counts = await fetchRemainingReviewThreadCommentCounts(repoRoot, owner, name, [node], controller.signal, measuredRunner);
           pullRequests[index].commentCount += counts.get(Number(node.number)) || 0;
+          pullRequests[index].commentCountComplete = true;
         });
       }
     });
+    const page = { repository: repository.nameWithOwner, defaultBranch: repository.defaultBranchRef?.name,
+      pullRequests, pageInfo: repository.pullRequests.pageInfo };
+    if (tasks.length) {
+      // 후속 task가 객체를 바꿔도 이미 게시한 표시용 snapshot은 바뀌지 않게 복사한다.
+      options.onProgress?.({ ...page, pullRequests: pullRequests.map(pr => ({ ...pr, commitHashes: [...pr.commitHashes] })) });
+      logInfo("graph pull request first page ready", { repoRoot, pullRequests: pullRequests.length,
+        elapsedMs: Date.now() - started, paginationTasks: tasks.length, reusedCommits });
+    }
     await completePagination(tasks, controller);
     throwIfAborted(controller.signal);
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks: tasks.length,
-      elapsedMs: Date.now() - started,
+      elapsedMs: Date.now() - started, reusedCommits,
     });
-    return {
-      repository: repository.nameWithOwner,
-      defaultBranch: repository.defaultBranchRef?.name,
-      pullRequests,
-      pageInfo: repository.pullRequests.pageInfo,
-    };
+    return page;
   } finally {
     signal?.removeEventListener("abort", cancel);
   }

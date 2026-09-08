@@ -260,5 +260,7 @@
     }
   });
 
-  window.GscGraphPrSearch = { all, bind, emptyMessage, filter, find, hasQuery, render };
+  /** 한글 조합 중 원격 목록 갱신이 입력 DOM을 교체하지 않도록 현재 조합 상태를 반환한다. */
+  function isComposing() { return composing; }
+  window.GscGraphPrSearch = { all, bind, emptyMessage, filter, find, hasQuery, isComposing, render };
 })();
