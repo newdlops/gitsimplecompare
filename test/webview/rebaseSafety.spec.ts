@@ -5,6 +5,55 @@ import { REBASE_RESTORE_CONFLICT_MESSAGE } from "../../src/git/rebasePlanSafety"
 import { dispatchWebviewMessage, mountGraphRenderer, readPostedMessages } from "./webviewHarness";
 
 for (const width of [390, 768, 1440]) {
+  test(`external rebase completion removes paused controls and allows a new plan at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : width === 768 ? 1024 : 900 });
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await mountGraphRenderer(page);
+    for (const file of ["graphRebase.css", "graphRebaseProgress.css"]) {
+      await page.addStyleTag({ path: join(process.cwd(), "media/graph", file) });
+    }
+    for (const file of ["graphRebase.js", "graphRebaseProgress.js"]) {
+      await page.addScriptTag({ path: join(process.cwd(), "media/graph", file) });
+    }
+    const hash = "a".repeat(40);
+    const plan = { branch: "feature/external-rebase", base: "b".repeat(40), baseReason: "selected",
+      commits: [{ hash, subject: "Edit commit in the terminal", body: "", files: [] }] };
+    await dispatchWebviewMessage(page, { type: "graph", data: {
+      rows: [hash, plan.base].map((commit, index) => ({
+        hash: commit, parents: index ? [] : [plan.base], refs: index ? ["main"] : ["HEAD"],
+        authorName: "Fixture", authorEmail: "fixture@example.test", dateIso: "2026-09-10T00:00:00.000Z",
+        subject: index ? "Base commit" : plan.commits[0].subject, color: 0, column: 0,
+      })),
+      edges: [{ fromRow: 0, toRow: 1, column: 0, fromColumn: 0, toColumn: 0, color: 0 }], laneCount: 1,
+    }, state: { loadedCount: 2, hasMore: false, loading: false, reset: true } });
+    await dispatchWebviewMessage(page, { type: "graphRebasePlan", plan });
+    await page.getByRole("button", { name: "Start rebase", exact: true }).click();
+    await dispatchWebviewMessage(page, { type: "graphRebasePaused", paused: {
+      hash, originalHash: hash, parent: plan.base, subject: "Edit commit in the terminal", files: [],
+    } });
+    await expect(page.getByRole("button", { name: "Continue rebase", exact: true })).toBeVisible();
+    await expect(page.locator("#graph-rebase-progress")).toContainText("Paused");
+    await page.mouse.move(10, 240);
+    await expect(page.getByRole("tooltip")).toBeHidden();
+    await page.screenshot({ path: `/tmp/gsc-external-rebase-paused-${width}.png` });
+    // native Git 종료 확인 뒤 production coordinator가 보내는 기존 정리 메시지다.
+    await dispatchWebviewMessage(page, { type: "graphRebaseClear" });
+    await expect(page.locator("#graph-rebase-bar")).toHaveCount(0);
+    await expect(page.locator("#graph-rebase-progress")).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveClass(/graph-rebase-mode/);
+    await expect(page.locator(".row")).toHaveCount(2);
+    await expect(page.locator(".rebase-row")).toHaveCount(0);
+    await page.screenshot({ path: `/tmp/gsc-external-rebase-cleared-${width}.png` });
+    await dispatchWebviewMessage(page, { type: "graphRebasePlan", plan });
+    const start = page.getByRole("button", { name: "Start rebase", exact: true });
+    await expect(start).toBeVisible();
+    await start.focus();
+    await page.keyboard.press("Enter");
+    expect((await readPostedMessages(page)).filter((message: any) => message.type === "runGraphRebase")).toHaveLength(2);
+    expect(errors).toEqual([]);
+  });
+
   test(`rebase plan identity and persistent restore-conflict guidance at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : width === 768 ? 1024 : 900 });
     const errors: string[] = [];

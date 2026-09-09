@@ -18,7 +18,7 @@ export type RefreshWatcherHandler = (
 
 /** focused 창에서만 감시할 안정적인 Git metadata 경로다. */
 export const FOCUSED_GIT_METADATA_GLOB =
-  "**/{.git/HEAD,.git/refs/**,.git/packed-refs,.git/MERGE_HEAD,.git/REBASE_HEAD,.git/CHERRY_PICK_HEAD,.git/REVERT_HEAD,.git/rebase-merge/**,.git/rebase-apply/**,.git/worktrees/**,.git/hooks/**,.husky/**,.githooks/**}";
+  "**/{.git/HEAD,.git/refs/**,.git/packed-refs,.git/MERGE_HEAD,.git/REBASE_HEAD,.git/CHERRY_PICK_HEAD,.git/REVERT_HEAD,.git/rebase-merge,.git/rebase-merge/**,.git/rebase-apply,.git/rebase-apply/**,.git/worktrees/**,.git/hooks/**,.husky/**,.githooks/**}";
 
 /** Git metadata 이벤트를 extension의 cache/refresh queue에 연결하는 최소 callback 묶음이다. */
 export interface GitMetadataRefreshTarget {

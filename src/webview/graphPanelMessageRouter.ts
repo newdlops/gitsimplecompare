@@ -15,7 +15,7 @@ import { GraphCommitDetailSender } from "./graphCommitDetails";
 import { logGraphWebviewPaint } from "./graphPerformance";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
-import { restoreGraphRebaseSession } from "./graphRebaseSession";
+import { GraphRebaseSessionSync, restoreGraphRebaseSession } from "./graphRebaseSession";
 import { sendGraphReflog } from "./graphReflog";
 import type {
   FromWebviewMessage,
@@ -93,8 +93,23 @@ export class GraphPanelMessageRouter {
   private readonly stackPublication = new GraphPullRequestStackPublication();
   private readonly commitDetails = new GraphCommitDetailSender();
   private pullRequestRequest: AbortController | undefined;
+  private readonly rebaseSessionSync: GraphRebaseSessionSync;
 
-  constructor(private readonly deps: GraphPanelMessageRouterDeps) {}
+  constructor(private readonly deps: GraphPanelMessageRouterDeps) {
+    this.rebaseSessionSync = new GraphRebaseSessionSync(message => this.deps.post(message));
+  }
+
+  /** 공통 post에서 실제 표시된 rebase 상태를 기록해 자동 갱신이 실행 전 계획을 지우지 않게 한다. */
+  observeRebaseMessage(message: ToWebviewMessage): void {
+    this.rebaseSessionSync.setRepository(this.repoRoot);
+    this.rebaseSessionSync.observe(message);
+  }
+
+  /** Graph fingerprint의 skip 여부와 무관하게 현재 native rebase 종료를 UI에 반영한다. */
+  synchronizeRebaseSession(reason: string): Promise<void> {
+    this.rebaseSessionSync.setRepository(this.repoRoot);
+    return this.rebaseSessionSync.refresh(reason);
+  }
 
   /** graph git action이 PR 번호를 실제 PR 정보로 해석할 현재 누적 목록을 반환한다. */
   get pullRequests() {
@@ -126,6 +141,8 @@ export class GraphPanelMessageRouter {
 
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
+    if (reason === "dispose") this.rebaseSessionSync.dispose();
+    else if (["repositoryChanged", "hidden", "windowUnfocused"].includes(reason)) this.rebaseSessionSync.invalidate();
     this.pullRequestRequest?.abort();
     this.pullRequestRequest = undefined;
     this.pullRequestPager.cancel(reason);
@@ -245,6 +262,7 @@ export class GraphPanelMessageRouter {
   /** ready/manual refresh에서 Graph와 rebase session을 복원하고 PR 갱신을 병렬 시작한다. */
   private async handleReload(reason: "ready" | "refresh"): Promise<void> {
     logInfo("graph reload requested", { repoRoot: this.repoRoot, reason });
+    await this.synchronizeRebaseSession(reason);
     const reloaded = await this.deps.withBusy("refresh-graph", () => this.deps.reloadGraph(reason));
     if (!reloaded) return;
     await restoreGraphRebaseSession(this.rebaseDeps());

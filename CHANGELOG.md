@@ -5,6 +5,36 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72060] - 2026-09-10
+
+### Fixed
+
+- Clear stale paused rebase controls after terminal Continue or Abort, including
+  operations that finish without changing HEAD. Reconcile Git operation state
+  independently of graph refreshes and on focus, reveal and manual refresh.
+- Observe rebase directory removal itself so terminal completion reaches the
+  graph even when individual metadata file events are coalesced.
+- Stop conflict decoration logs from triggering their own document refresh loop.
+  Keep existing highlights visible during metadata reads and reject stale
+  results for changed, closed or disposed editors.
+- Await the latest coalesced conflict refresh before reporting completion.
+  Discard obsolete repository results and recover correctly from partial context
+  updates without publishing incomplete state.
+- Validate the native operation and original todo before replacing rebase plans.
+  Preserve external edits and the original todo on failed writes, and reject
+  obsolete updates after external Continue, Abort or a restarted rebase.
+- Recognize abbreviated rebase commands and SHA-256 commit hashes when reading
+  paused state and updating remaining todo items.
+
+### Performance
+
+- Skip unchanged conflict tree, context and decoration updates while retaining
+  fresh content notifications for changed index stages.
+- Defer automatic Git content reads while conflict Result documents have unsaved
+  edits, preserving their save baseline and explicit Reload behavior.
+- Parse rebase todo lines once, index full commit hashes and skip repository
+  reads when Continue has no UI plan to apply.
+
 ## [0.1.72059] - 2026-09-08
 
 ### Performance

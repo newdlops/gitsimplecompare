@@ -3,6 +3,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { runGit } from "./gitExec";
+import { normalizeRebaseTodoAction } from "./rebaseTodoValidation";
 
 export interface RebaseTodoEntry {
   action: string;
@@ -158,7 +159,7 @@ function parseTodoEntries(raw: string): RebaseTodoEntry[] {
 function parseTodoEntry(line: string): RebaseTodoEntry {
   const [action = "", hash, ...subject] = line.split(/\s+/);
   return {
-    action,
+    action: normalizeRebaseTodoAction(action),
     hash: looksLikeHash(hash) ? hash : undefined,
     subject: subject.join(" ").trim() || undefined,
   };
@@ -199,7 +200,7 @@ function findEntryIndexByHash(entries: RebaseTodoEntry[], hash: string): number 
 
 /** rebase todo 의 두 번째 토큰이 commit hash 처럼 보이는지 확인한다. */
 function looksLikeHash(value: string | undefined): value is string {
-  return Boolean(value && /^[0-9a-f]{4,40}$/i.test(value));
+  return Boolean(value && /^[0-9a-f]{4,64}$/i.test(value));
 }
 
 /** 긴 commit hash 를 UI 메시지용으로 줄인다. */

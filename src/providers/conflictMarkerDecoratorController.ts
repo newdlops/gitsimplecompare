@@ -8,7 +8,7 @@ import {
   type ConflictSources,
 } from "../git/conflictService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import {
   scanConflictMarkers,
   type ConflictMarkerKind,
@@ -25,6 +25,12 @@ interface ConflictDecorations {
   marker: vscode.TextEditorDecorationType;
 }
 
+/** 에디터별로 마지막 적용 문서와 version을 보관해 다른 파일 편집의 재도색을 막는다. */
+interface AppliedDocument {
+  document: vscode.TextDocument;
+  version: number;
+}
+
 /**
  * 보이는 text editor 의 conflict marker 블록을 색상으로 구분한다.
  * - Current/Ours 는 파란색, Incoming/Theirs 는 초록색, Base 는 회색으로 표시해
@@ -33,6 +39,7 @@ interface ConflictDecorations {
 export class ConflictMarkerDecoratorController implements vscode.Disposable {
   private readonly decorations = createDecorationTypes();
   private readonly disposables: vscode.Disposable[] = [];
+  private readonly appliedDocuments = new WeakMap<vscode.TextEditor, AppliedDocument>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private requestSeq = 0;
   private disposed = false;
@@ -55,12 +62,14 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
         this.scheduleRefresh("visibleEditors")
       ),
       vscode.workspace.onDidChangeTextDocument((event) => {
-        if (hasVisibleDocument(event.document)) {
+        // OUTPUT 로그도 문서 변경 이벤트를 발생시킨다. 예약 전에 제외해야
+        // decoration 적용 로그 → OUTPUT 변경 → 재적용의 자기 갱신 순환을 끊는다.
+        if (event.contentChanges.length > 0 && this.isVisibleTarget(event.document)) {
           this.scheduleRefresh("documentChanged");
         }
       }),
       vscode.workspace.onDidSaveTextDocument((document) => {
-        if (hasVisibleDocument(document)) {
+        if (this.isVisibleTarget(document)) {
           this.scheduleRefresh("documentSaved");
         }
       })
@@ -108,7 +117,9 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     }
     this.refreshTimer = setTimeout(() => {
       this.refreshTimer = undefined;
-      void this.refreshVisibleEditors(reason, requestId);
+      void this.refreshVisibleEditors(reason, requestId).catch((error) => {
+        logError("conflict marker decorators refresh failed", error, { reason });
+      });
     }, delay);
   }
 
@@ -123,21 +134,28 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     requestId: number
   ): Promise<void> {
     for (const editor of vscode.window.visibleTextEditors) {
-      this.clearEditorDecorations(editor);
       if (requestId !== this.requestSeq || this.disposed) {
         return;
       }
-      if (
-        editor.document.uri.scheme !== "file" &&
-        !this.conflictOverlay?.ownsUri(editor.document.uri)
-      ) {
+      const document = editor.document;
+      if (!this.isVisibleTarget(document)) {
+        this.clearEditorDecorations(editor);
         continue;
       }
-      const groups = scanConflictMarkers(editor.document.getText());
+      const applied = this.appliedDocuments.get(editor);
+      // 편집 이벤트는 실제로 바뀐 문서만 갱신한다. 저장/탭 이동에서는 같은
+      // version이어도 출처 metadata를 다시 읽어 Git 작업 상태 변화에 대응한다.
+      if (reason === "documentChanged" && applied?.document === document &&
+          applied.version === document.version) {
+        continue;
+      }
+      const snapshot = { document, version: document.version };
+      const groups = scanConflictMarkers(document.getText());
       if (groups.blocks.length === 0) {
+        this.clearEditorDecorations(editor);
         continue;
       }
-      await this.applyEditorDecorations(editor, groups, reason, requestId);
+      await this.applyEditorDecorations(editor, snapshot, groups, reason, requestId);
     }
   }
 
@@ -145,12 +163,14 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
    * 한 에디터에 Current/Base/Incoming/Marker decoration 을 실제로 설정한다.
    * - 충돌 stage 메타데이터 조회가 실패해도 색상 구분은 계속 적용한다.
    * @param editor    적용 대상 에디터
+   * @param snapshot  파싱 당시 문서와 version. 조회 중 편집/닫기가 발생하면 폐기한다.
    * @param groups    conflict marker 파싱 결과
    * @param reason    갱신 원인
    * @param requestId stale 비동기 결과를 버리기 위한 요청 번호
    */
   private async applyEditorDecorations(
     editor: vscode.TextEditor,
+    snapshot: AppliedDocument,
     groups: ConflictMarkerScan,
     reason: string,
     requestId: number
@@ -159,10 +179,11 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     const service = conflictSession
       ? undefined
       : await this.registry.resolve(dirname(editor.document.uri.fsPath));
-    if (requestId !== this.requestSeq || this.disposed) {
+    if (!this.isCurrentEditor(editor, snapshot, requestId)) {
       return;
     }
     if (!service && !conflictSession) {
+      this.clearEditorDecorations(editor);
       logInfo("conflict marker decorators skipped", {
         reason,
         target: "no-repo",
@@ -183,10 +204,12 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    if (requestId !== this.requestSeq || this.disposed) {
+    if (!this.isCurrentEditor(editor, snapshot, requestId)) {
       return;
     }
 
+    // Git 조회가 끝날 때까지 기존 decoration을 유지하고, 각 역할의 최신 범위를
+    // 빈 배열을 거치는 중간 프레임 없이 바로 교체해 큰 충돌 파일의 깜박임을 막는다.
     const hovers = createHovers(sources);
     editor.setDecorations(
       this.decorations.current,
@@ -204,14 +227,45 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       this.decorations.marker,
       markerOptions(editor.document, groups.markers, hovers)
     );
+    this.appliedDocuments.set(editor, snapshot);
     logInfo("conflict marker decorators applied", {
       reason,
       path: rel,
+      documentVersion: snapshot.version,
       blocks: groups.blocks.length,
       currentLines: groups.current.length,
       baseLines: groups.base.length,
       incomingLines: groups.incoming.length,
     });
+  }
+
+  /**
+   * 이벤트 문서가 실제로 강조할 수 있는 보이는 문서인지 예약 전에 검사한다.
+   * @param document file 또는 controller 소유 Result 문서 후보
+   * @returns OUTPUT/다른 가상 문서/닫힌 문서는 false이며 로그도 남기지 않아 재귀 이벤트를 막는다.
+   */
+  private isVisibleTarget(document: vscode.TextDocument): boolean {
+    return !document.isClosed &&
+      (document.uri.scheme === "file" || !!this.conflictOverlay?.ownsUri(document.uri)) &&
+      hasVisibleDocument(document);
+  }
+
+  /**
+   * 비동기 조회 이후에도 같은 에디터/문서/version이 보이는 최신 요청인지 검증한다.
+   * @param editor 적용할 에디터 인스턴스
+   * @param snapshot conflict marker를 파싱한 문서와 version
+   * @param requestId 최신 예약과 비교할 요청 번호
+   * @returns 편집·탭 교체·닫기·dispose로 낡아진 결과이면 false
+   */
+  private isCurrentEditor(
+    editor: vscode.TextEditor,
+    snapshot: AppliedDocument,
+    requestId: number
+  ): boolean {
+    return !this.disposed && requestId === this.requestSeq &&
+      editor.document === snapshot.document && !snapshot.document.isClosed &&
+      snapshot.document.version === snapshot.version &&
+      vscode.window.visibleTextEditors.includes(editor);
   }
 
   /** 모든 보이는 에디터에서 이 컨트롤러가 만든 decoration 을 제거한다. */
@@ -226,6 +280,7 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
    * @param editor decoration 을 비울 에디터
    */
   private clearEditorDecorations(editor: vscode.TextEditor): void {
+    if (!this.appliedDocuments.delete(editor)) return;
     editor.setDecorations(this.decorations.current, []);
     editor.setDecorations(this.decorations.base, []);
     editor.setDecorations(this.decorations.incoming, []);

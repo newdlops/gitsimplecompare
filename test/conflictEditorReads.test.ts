@@ -207,3 +207,79 @@ test("suspend cancels running metadata and resuming can complete fresh details",
   coordinator.enrich(session); await settle();
   assert.equal(session.document.metadataState, "ready");
 });
+
+test("automatic refresh bursts do not read a dirty Result and preserve its CAS baseline", async () => {
+  const { state, session, coordinator } = fixture();
+  let reads = 0;
+  session.service.getConflictDocument = async () => {
+    reads++;
+    return { ...document(), result: "external bytes", resultVersion: "external" };
+  };
+  state.dirty = true;
+  session.content = "unsaved resolution";
+  for (let index = 0; index < 20; index++) {
+    await coordinator.refresh(session, `worktree:${index}`);
+  }
+  assert.equal(reads, 0);
+  assert.equal(session.content, "unsaved resolution");
+  assert.equal(session.document.resultVersion, "result-1");
+  assert.equal(session.pendingRefreshReason, "worktree:19");
+  state.dirty = false;
+  await coordinator.refresh(session, session.pendingRefreshReason!);
+  assert.equal(reads, 1);
+  assert.equal(session.content, "external bytes");
+  assert.equal(session.pendingRefreshReason, undefined);
+});
+
+test("a dirty document waiting behind other reads does not start a Git query", async () => {
+  const sessions = Array.from({ length: 3 }, () => fixture().session);
+  const pending = deferred<ConflictDocument>();
+  const dirty = new Set<TrustedConflictEditorSession>();
+  const started: TrustedConflictEditorSession[] = [];
+  for (const session of sessions) session.service.getConflictDocument = async () => {
+    started.push(session);
+    return pending.promise;
+  };
+  const coordinator = new ConflictEditorReadCoordinator({
+    isCurrent: () => true, isDirty: session => dirty.has(session),
+    commitDocument: applyConflictDocument, commitMetadata: () => {},
+    reopen: async () => {}, publishResolvedResult: async () => false, markResolved: () => {},
+  });
+  const reads = sessions.map(session => coordinator.refresh(session, "external"));
+  await settle();
+  assert.equal(started.length, 2);
+  dirty.add(sessions[2]);
+  pending.resolve(document());
+  await Promise.all(reads);
+  assert.equal(started.length, 2);
+  assert.equal(sessions[2].pendingRefreshReason, "external");
+});
+
+test("explicit Reload still reads a dirty Result and clears a fulfilled deferred request", async () => {
+  const { state, session, coordinator } = fixture();
+  let reads = 0;
+  session.service.getConflictDocument = async () => { reads++; return document(); };
+  state.dirty = true;
+  session.content = "unsaved";
+  session.pendingRefreshReason = "worktree:change";
+  session.busy = true;
+  assert.equal(await coordinator.refresh(session, "manualReload", true), true);
+  assert.equal(reads, 1);
+  assert.equal(state.commits.length, 1);
+  assert.equal(session.content, "original");
+  assert.equal(session.pendingRefreshReason, undefined);
+});
+
+test("a refresh deferred by a busy action keeps its reason until a successful read", async () => {
+  const { session, coordinator } = fixture();
+  session.busy = true;
+  await coordinator.refresh(session, "worktree:rename");
+  assert.equal(session.pendingRefreshReason, "worktree:rename");
+  session.busy = false;
+  session.service.getConflictDocument = async () => { throw new Error("temporary read failure"); };
+  await assert.rejects(coordinator.refresh(session, "retry"), /temporary read failure/);
+  assert.equal(session.pendingRefreshReason, "worktree:rename");
+  session.service.getConflictDocument = async () => document();
+  await coordinator.refresh(session, "retry");
+  assert.equal(session.pendingRefreshReason, undefined);
+});

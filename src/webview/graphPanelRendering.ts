@@ -78,3 +78,20 @@ export function postGraphWebviewMessage(
     )
   );
 }
+
+/**
+ * 비동기 작업 동안 지정 toolbar 버튼의 spinner를 표시하고 성공/실패 뒤 반드시 해제한다.
+ * @param key graphBusy 메시지가 가리키는 버튼 ID
+ * @param action 결과와 오류를 그대로 호출자에게 전달할 작업
+ * @param post 패널의 공통 메시지 전송 경계
+ * @returns action의 결과이며, 예외가 나더라도 busy 해제 메시지는 보낸다.
+ */
+export async function withGraphBusy<T>(
+  key: string,
+  action: () => Promise<T>,
+  post: (message: ToWebviewMessage) => void
+): Promise<T> {
+  post({ type: "graphBusy", key, busy: true });
+  try { return await action(); }
+  finally { post({ type: "graphBusy", key, busy: false }); }
+}

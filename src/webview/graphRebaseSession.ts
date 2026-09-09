@@ -1,6 +1,7 @@
 // 그래프 interactive rebase 세션의 기록/복원 흐름을 담당한다.
 // - git/rebaseSessionState 는 파일 저장만 담당하고, 이 모듈은 웹뷰 메시지와 Git 상태를 연결한다.
-import { ConflictService } from "../git/conflictService";
+import { ConflictService, type MergeOperation } from "../git/conflictService";
+import { isConflictMutationActive } from "../git/conflictMutationCoordinator";
 import { runGit } from "../git/gitExec";
 import { assertGitOperation, captureGitOperation } from "../git/operationControl";
 import { bindStartedRebase } from "../git/rebaseSessionIdentity";
@@ -20,7 +21,7 @@ import {
   updateRebaseSessionState,
 } from "../git/rebaseSessionState";
 import { readRebaseTodoProgress } from "../git/rebaseTodoProgress";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import type { GraphRebaseControlResult, GraphRebaseDeps } from "./graphRebaseActions";
 import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
 import type { ToWebviewMessage } from "./graphProtocol";
@@ -36,6 +37,121 @@ export interface GraphRebaseSessionStartInput {
 /** 세션 복원에 필요한 post 의존성 */
 export interface GraphRebaseSessionRestoreDeps extends GraphRebaseDeps {
   post: (message: ToWebviewMessage) => void;
+}
+
+/**
+ * 화면에 게시한 실행 상태를 실제 Git 작업과 맞춰 외부 Continue/Abort 뒤 남는 paused UI를 정리한다.
+ * - 전체 그래프 fingerprint나 느린 PR/commit 조회와 독립적으로 동작한다.
+ * - 실행 전 계획과 로컬 변경 복원 충돌 안내는 보존하고, 읽기 실패를 완료로 취급하지 않는다.
+ */
+export class GraphRebaseSessionSync {
+  private repoRoot = "";
+  private active = false;
+  private running = false;
+  private generation = 0;
+  private disposed = false;
+  private pendingReason?: string;
+  private refreshPromise?: Promise<void>;
+
+  /**
+   * UI 전송과 Git 읽기 경계를 주입한다. 기본 reader는 linked worktree의 native marker를 확인한다.
+   * @param post 현재 패널에 보낼 정리 메시지
+   * @param readOperation 테스트에서 외부 Git 완료와 응답 순서를 제어할 수 있는 작업 조회
+   */
+  constructor(
+    private readonly post: (message: ToWebviewMessage) => void,
+    private readonly readOperation: (repoRoot: string) => Promise<MergeOperation> =
+      repoRoot => new ConflictService(repoRoot).getOperation()
+  ) {}
+
+  /** 저장소 교체 시 이전 화면과 조회를 무효화해 다른 저장소의 계획에 오래된 결과를 보내지 않는다. */
+  setRepository(repoRoot: string): void {
+    if (this.repoRoot === repoRoot || this.disposed) return;
+    const hadRepository = Boolean(this.repoRoot);
+    this.repoRoot = repoRoot;
+    this.active = false;
+    this.running = false;
+    this.invalidate();
+    if (hadRepository) this.post({ type: "graphRebaseClear" });
+  }
+
+  /**
+   * 이미 UI로 보내는 메시지만 관찰해 계획/실행/정지/종료를 추적한다.
+   * @param message 패널의 공통 post 경계를 통과하는 protocol 메시지
+   */
+  observe(message: ToWebviewMessage): void {
+    if (this.disposed) return;
+    if (message.type === "graphRebasePlan" || message.type === "graphRebaseClear") {
+      this.active = false;
+      this.running = false;
+    } else if (message.type === "graphRebasePaused") {
+      this.active = true;
+      this.running = false;
+    } else if (message.type === "graphRebaseOperation") {
+      this.active = message.active;
+      this.running = false;
+    } else if (message.type === "graphRebaseProgress") {
+      this.active = message.progress.active;
+      this.running = message.progress.phase === "running";
+    } else return;
+    this.invalidate();
+  }
+
+  /** hide/저장소 변경/새 UI 상태에서 이미 시작한 조회만 폐기하고 현재 표시 상태는 보존한다. */
+  invalidate(): void {
+    this.generation++;
+    this.pendingReason = undefined;
+  }
+
+  /** 패널 폐기 후에는 Git 조회와 늦은 UI 게시를 모두 중단한다. */
+  dispose(): void {
+    this.disposed = true;
+    this.invalidate();
+  }
+
+  /**
+   * 외부 metadata 변경, 수동 refresh, focus/reveal에 Git 작업 종료를 확인한다.
+   * @param reason OUTPUT에 남길 동기화 원인
+   * @returns 이벤트 burst를 합친 최신 조회까지 기다리는 Promise
+   */
+  refresh(reason: string): Promise<void> {
+    if (!this.canRead()) return Promise.resolve();
+    this.pendingReason = reason;
+    if (!this.refreshPromise) this.refreshPromise = Promise.resolve().then(() => this.drain());
+    return this.refreshPromise;
+  }
+
+  /** 최신 후속 조회만 남기고 과거 읽기가 새 실행/저장소/계획을 정리하지 못하게 한다. */
+  private async drain(): Promise<void> {
+    try {
+      while (this.pendingReason && this.canRead()) {
+        const reason = this.pendingReason;
+        this.pendingReason = undefined;
+        const repoRoot = this.repoRoot;
+        const generation = this.generation;
+        try {
+          const operation = await this.readOperation(repoRoot);
+          if (generation !== this.generation || this.pendingReason || !this.canRead()) continue;
+          if (operation === "rebase") continue;
+          this.active = false;
+          this.post({ type: "graphRebaseClear" });
+          logInfo("graph rebase state reconciled", { repoRoot, reason, operation, previous: "active", active: false });
+        } catch (error) {
+          if (generation === this.generation && !this.disposed) {
+            logError("graph rebase state reconciliation failed", error, { repoRoot, reason });
+          }
+        }
+      }
+    } finally {
+      this.refreshPromise = undefined;
+    }
+  }
+
+  /** 확장의 자체 Start/Continue/Abort 중간 상태는 native 완료로 오인하지 않는다. */
+  private canRead(): boolean {
+    return !this.disposed && Boolean(this.repoRoot) && this.active && !this.running &&
+      !isConflictMutationActive(this.repoRoot);
+  }
 }
 
 /**

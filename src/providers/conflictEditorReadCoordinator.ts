@@ -134,6 +134,7 @@ export class ConflictEditorReadCoordinator {
   private async read(session: Session, { reason, allowBusy }: ReadRequest): Promise<boolean> {
     if (!this.host.isCurrent(session) || session.resolved || session.suspended) return false;
     if (session.busy && !allowBusy) { session.pendingRefreshReason = reason; return true; }
+    if (this.deferDirtyRead(session, reason, allowBusy)) return true;
     const generation = session.refreshGeneration;
     const started = Date.now();
     const controller = new AbortController();
@@ -143,11 +144,13 @@ export class ConflictEditorReadCoordinator {
       const document = await this.contentQueue.run(() => {
         if (!this.host.isCurrent(session) || session.resolved || session.suspended || generation !== session.refreshGeneration) controller.abort();
         controller.signal.throwIfAborted();
+        if (this.deferDirtyRead(session, reason, allowBusy)) return Promise.resolve(undefined);
         return session.service.getConflictDocument(session.rel, true, { deferMetadata: true, previous, signal: controller.signal });
       }, controller.signal,
         () => allowBusy ? -1 : this.host.isVisible?.(session) === false ? 1 : 0);
       if (controller.signal.aborted) return false;
       if (!this.host.isCurrent(session) || session.resolved || generation !== session.refreshGeneration) return false;
+      if (!document) return true;
       if (session.document.sourceVersion !== document.sourceVersion) this.metadataControllers.get(session)?.abort();
       preserveNewerMetadata(document, session.document);
       if (!allowBusy && this.host.isDirty(session)) { session.pendingRefreshReason = reason; return true; }
@@ -156,6 +159,7 @@ export class ConflictEditorReadCoordinator {
         return false;
       }
       if (allowBusy || !sameContent(session.document, document) || session.baselineStale) this.host.commitDocument(session, document, reason);
+      session.pendingRefreshReason = undefined;
       this.enrich(session);
       logInfo("native conflict content read finished", { repoRoot: session.service.repoRoot, rel: session.rel,
         reason, elapsedMs: Date.now() - started, metadataReused: document.metadataState === "ready" });
@@ -174,6 +178,26 @@ export class ConflictEditorReadCoordinator {
       controller.abort();
       if (this.controllers.get(session) === controller) this.controllers.delete(session);
     }
+  }
+
+  /**
+   * 이미 dirty인 Result는 읽어도 게시할 수 없으므로 Git/파일 IO 전에 자동 조회를 미룬다.
+   * - queue에 대기하는 동안 편집을 시작한 경우도 실제 task 실행 직전에 다시 검사한다.
+   * - 명시적 Reload/Save가 소유한 조회는 기존 allowBusy 계약에 따라 계속 허용한다.
+   * @param session 사용자 편집과 CAS 기준선을 보존할 session
+   * @param reason 저장 또는 명시적 재조회 이후 처리할 마지막 refresh 원인
+   * @param allowBusy 현재 action이 명시적으로 요청한 조회이면 true
+   * @returns 자동 조회를 미뤘으면 true이며 기준선과 document 내용은 바꾸지 않는다.
+   */
+  private deferDirtyRead(session: Session, reason: string, allowBusy: boolean): boolean {
+    if (allowBusy || !this.host.isDirty(session)) return false;
+    if (!session.pendingRefreshReason) {
+      logInfo("native conflict content read deferred", {
+        repoRoot: session.service.repoRoot, rel: session.rel, reason, target: "dirty-result",
+      });
+    }
+    session.pendingRefreshReason = reason;
+    return true;
   }
 }
 

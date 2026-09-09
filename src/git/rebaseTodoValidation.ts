@@ -2,6 +2,21 @@
 // - Git 은 시퀀스 에디터가 남긴 줄만 replay 하므로, UI payload 누락은 커밋 유실로 이어질 수 있다.
 import type { RebaseCommit, RebaseItem } from "./rebaseService";
 
+const ACTION_ALIASES = new Map([
+  ["p", "pick"], ["r", "reword"], ["e", "edit"], ["s", "squash"],
+  ["f", "fixup"], ["d", "drop"], ["x", "exec"], ["b", "break"],
+  ["l", "label"], ["t", "reset"], ["m", "merge"], ["u", "update-ref"],
+]);
+
+/**
+ * Git이 rebase.abbreviateCommands로 기록한 짧은 action을 공통 이름으로 바꾼다.
+ * @param action done/todo 한 줄의 첫 토큰
+ * @returns 알려진 축약형은 정식 이름, 나머지는 원문 그대로 반환한다.
+ */
+export function normalizeRebaseTodoAction(action: string): string {
+  return ACTION_ALIASES.get(action) ?? action;
+}
+
 /** rebase todo 범위 검증 결과 */
 export interface RebaseTodoCoverageValidation {
   ok: boolean;

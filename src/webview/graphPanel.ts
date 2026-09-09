@@ -19,7 +19,7 @@ import { syncGraphLocalRefs } from "./graphLocalRefs";
 import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, loadGraphLocalBranchData, mergeGraphBranchRefs, refreshGraphCheckout, resolveGraphBranchFilter } from "./graphBranchLoading";
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformancePhase } from "./graphPerformance";
 import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCommitWindowLoading";
-import { postGraphWebviewMessage, publishGraphRender } from "./graphPanelRendering";
+import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode } from "./graphRefreshCoordinator";
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -113,7 +113,7 @@ export class GitGraphPanel {
       localBranches: () => this.lastLocalBranches,
       extensionUri: this.extensionUri,
       post: (message) => this.post(message),
-      withBusy: (key, action) => this.withBusy(key, action),
+      withBusy: (key, action) => withGraphBusy(key, action, message => this.post(message)),
       reloadGraph: (cause) => this.runDirectGraph(cause),
       setBranchFilter: (message) => this.setBranchFilter(message),
       loadNextPage: (reset, direction) => this.loadNextPage(reset, direction),
@@ -178,21 +178,25 @@ export class GitGraphPanel {
       return;
     }
     const resumedRefresh = this.refreshCoordinator.setVisible(true);
+    if (vscode.window.state.focused) void this.messages.synchronizeRebaseSession("panelVisible");
     if (!resumedRefresh && this.remoteCatalogStatus === "pending" && vscode.window.state.focused) this.resumeBranchLoading();
   }
   /** 창 포커스가 빠지면 원격 read를 중단하고 복귀 시 local-first 세대를 다시 연다. */
   private handleWindowFocusChange(focused: boolean): void {
     const resumedRefresh = this.refreshCoordinator.setFocused(focused);
     if (!focused) return;
+    if (this.panel.visible) void this.messages.synchronizeRebaseSession("windowFocusedReconcile");
     if (!resumedRefresh && this.panel.visible && this.remoteCatalogStatus === "pending") this.resumeBranchLoading();
   }
   /** hide/focus 취소 뒤 fingerprint를 다시 확인하는 direct lifecycle로 안전하게 재개한다. */
   private resumeBranchLoading(): void { void this.runDirectGraph("ready"); }
   /** watcher 원인을 의미 fingerprint와 함께 lifecycle coordinator에 전달한다. */
   private async requestExternalRefresh(repoRoot: string, reason: string): Promise<void> {
+    const rebaseRead = this.panel.visible && vscode.window.state.focused
+      ? this.messages.synchronizeRebaseSession(reason) : undefined;
     // stack mutation만 PR 첫 페이지 refresh로 승격한다.
     const mode: GraphRefreshMode = reason === "stackSubmitted" || reason === "stackAdvanced" ? "pullRequests" : "stacks";
-    await this.refreshCoordinator.request({ repoRoot, cause: reason, mode });
+    await Promise.all([rebaseRead, this.refreshCoordinator.request({ repoRoot, cause: reason, mode })]);
   }
   /** ready/manual 요청은 한 번의 직접 Graph reload와 fingerprint baseline을 완료할 때까지 기다린다. */
   private async runDirectGraph(cause: string): Promise<boolean> {
@@ -585,15 +589,9 @@ export class GitGraphPanel {
   private postLoadState(reset: boolean, direction?: GraphLoadDirection): void {
     this.post({ type: "graphLoadState", state: this.makeLoadState(reset && !this.loading, direction) });
   }
-  /** 지정 toolbar key에 스피너를 켜고 fn의 성공/실패가 끝나면 반드시 원래 버튼 상태로 복원한다. */
-  private async withBusy<T>(key: string, fn: () => Promise<T>): Promise<T> {
-    this.post({ type: "graphBusy", key, busy: true });
-    try { return await fn(); }
-    finally { this.post({ type: "graphBusy", key, busy: false }); }
-  }
-
   /** 타입이 보장된 메시지를 공통 transport/수락 계측 경계로 전송한다. */
   private post(message: ToWebviewMessage): void {
+    this.messages.observeRebaseMessage(message);
     postGraphWebviewMessage(this.panel.webview, this.logService.repoRoot, message);
   }
 }
