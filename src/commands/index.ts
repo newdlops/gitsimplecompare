@@ -33,6 +33,7 @@ import {
 } from "./branchOperations";
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import { cleanupVscodeCache } from "./cleanupVscodeCache";
+import { cleanupStaleBranches } from "./cleanupStaleBranches";
 import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { openAiCommitPlan, type OpenAiCommitPlanArgs } from "./aiCommitPlan";
@@ -236,6 +237,9 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     ),
     vscode.commands.registerCommand("gitSimpleCompare.checkoutBranch", () =>
       checkoutBranch(deps)
+    ),
+    vscode.commands.registerCommand("gitSimpleCompare.cleanupStaleBranches", () =>
+      cleanupStaleBranches(deps)
     ),
     vscode.commands.registerCommand("gitSimpleCompare.branchSquashMerge", () =>
       branchSquashMerge(deps)

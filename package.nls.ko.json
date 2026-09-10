@@ -1,4 +1,6 @@
 {
+  "cmd.cleanupStaleBranches": "Stale 브랜치 정리…",
+  "cmd.cleanupStaleBranches.tooltip": "Stale 브랜치 정리… — 모든 원격에 없는 로컬 브랜치를 선택하여 삭제합니다",
   "ext.description": "git 브랜치 비교, 편집 가능한 diff, 충돌 해결, AI 커밋 플랜과 메시지를 지원하는 확장",
   "cmd.compareBranches": "현재 체크아웃과 비교...",
   "cmd.compareBranchesAdvanced": "임의의 두 브랜치 비교(고급)...",

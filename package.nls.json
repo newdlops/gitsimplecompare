@@ -1,4 +1,6 @@
 {
+  "cmd.cleanupStaleBranches": "Clean Up Stale Branches…",
+  "cmd.cleanupStaleBranches.tooltip": "Clean Up Stale Branches… — Select local branches absent from all remotes and delete them",
   "ext.description": "Compare git branches, review editable diffs, resolve conflicts, and create AI commit plans and messages.",
   "cmd.compareBranches": "Compare with Current Checkout...",
   "cmd.compareBranchesAdvanced": "Compare Any Two Branches (Advanced)...",

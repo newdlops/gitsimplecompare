@@ -43,6 +43,7 @@ async function run() {
   const commands2 = await vscode.commands.getCommands(true);
   import_strict.default.ok(commands2.includes("gitSimpleCompare.showChanges"), "Changes sidebar wrapper command was not registered.");
   import_strict.default.ok(commands2.includes("gitSimpleCompare.cleanupVscodeCache"), "VS Code cache cleanup command was not registered.");
+  import_strict.default.ok(commands2.includes("gitSimpleCompare.cleanupStaleBranches"), "Stale branch cleanup command was not registered.");
   import_strict.default.equal(commands2.includes("gitSimpleCompare.showReviews"), false, "Reviews sidebar wrapper command must not be registered.");
   await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
 }

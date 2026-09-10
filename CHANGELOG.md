@@ -5,6 +5,15 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72061] - 2026-09-10
+
+### Added
+
+- Clean up stale local branches from the Changes menu or Command Palette.
+  Compare exact branch names against every live remote, protect worktree branches,
+  recheck the selection before deletion, and require a separate confirmation for
+  unmerged history. Report partial failures and deleted commit IDs in OUTPUT.
+
 ## [0.1.72060] - 2026-09-10
 
 ### Fixed

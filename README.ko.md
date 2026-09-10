@@ -31,6 +31,7 @@ Marketplace ID: `newdlops.gitsimplecompare`
 11. **블록 작업자 Code Vision** — 함수, 클래스, 인터페이스, 메서드와 빈 줄로 구분된 전역 선언 묶음 위에 주요 Git 작업자를 표시합니다. 힌트를 클릭하면 편집기 거터에 라인 정렬된 작업자·날짜 열이 열립니다.
 12. **PR Stack 수명주기 관리** — Git Graph에 PR 흐름을 직접 표시하고, 레이어/worktree 생성, 후손 연쇄 restack, 의존성 순서 Submit/Sync, merge 후 Advance를 자동화합니다.
 13. **안전한 VS Code 캐시 정리** — 다시 생성 가능한 Workbench, 렌더러/GPU, 웹뷰, 확장 다운로드 캐시 크기를 확인하고 선택해 정리합니다. 설정, 설치된 확장, 프로젝트, 워크스페이스 상태 및 백업은 보존합니다.
+14. **Stale 로컬 브랜치 정리** — 모든 원격에 같은 이름이 없는 로컬 브랜치를 선택해 정리합니다. Worktree 사용 브랜치를 보호하며, 미병합 브랜치 삭제는 별도로 확인합니다.
 
 ## 사용 방법
 
@@ -41,6 +42,12 @@ Marketplace ID: `newdlops.gitsimplecompare`
 - 에디터 제목 표시줄의 비교 아이콘
 - 액티비티 바의 **Git Simple Compare** 아이콘에서 변경 파일 목록 확인
 - 명령 팔레트 → `Git Simple Compare: git 그래프 보기` (또는 변경 파일 뷰 툴바의 그래프 아이콘)
+
+### Stale 로컬 브랜치 정리
+
+**Changes → … → Stale 브랜치 정리…**를 누르거나 명령 팔레트에서 **Git Simple Compare: Stale 브랜치 정리…**를 실행합니다. 등록된 모든 원격을 직접 조회하므로 fetch하지 않은 브랜치와 오래된 원격 추적 정보도 정확히 구분합니다. Stale 브랜치는 어떤 원격에도 같은 이름이 없는 로컬 브랜치이며, 생성 시점이나 upstream 설정은 판별 기준이 아닙니다.
+
+정리할 브랜치를 선택한 뒤 이름을 확인하고 삭제합니다. 현재 또는 다른 worktree에서 체크아웃한 브랜치는 보호하며, 미병합 브랜치는 **강제 삭제**를 별도로 확인합니다. 삭제 전에 원격 연결과 설정, 브랜치 커밋, worktree 사용 여부를 다시 검사하고 실패나 상태 변경은 **Git Simple Compare** OUTPUT에 기록합니다. 원격 브랜치와 작업 파일은 보존합니다.
 
 ### VS Code 캐시 정리
 

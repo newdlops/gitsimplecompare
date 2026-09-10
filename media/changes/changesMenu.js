@@ -210,6 +210,41 @@
       return dropdownEl?.__anchor === anchor;
     }
 
-    return { closeDropdown, isDropdownAnchor, openDropdown, openContextMenu };
+    /**
+     * 섹션별 보기 전환과 Changes 전용 저장소 액션을 기존 SCM 메뉴에서 선택한다.
+     * @param sectionId 메뉴를 연 섹션 @param payload 현재 표시 상태
+     * @param scmMenu 확장이 지역화해 주입한 메뉴 트리 @param labels 보기 전환 라벨
+     * @returns 현재 섹션에 맞는 메뉴 항목이며 브랜치 정리는 Changes에만 노출한다.
+     */
+    function accordionMenuNodes(sectionId, payload, scmMenu, labels) {
+      const nodes = [];
+      const viewMode = sectionId === "changes" ? payload?.changes.viewMode
+        : sectionId === "compare" && payload?.compare.mode === "comparison" ? payload.compare.viewMode : undefined;
+      if (viewMode) {
+        nodes.push({
+          label: viewMode === "list" ? labels.viewAsTree : labels.viewAsList,
+          onClick: () => vscode.postMessage({ type: "toggleViewMode", section: sectionId }),
+        });
+      }
+      if (sectionId === "changes") {
+        const actions = ["configureRemoteBranch", "cleanupStaleBranches"]
+          .map(id => findMenuNode(scmMenu, id)).filter(Boolean);
+        if (nodes.length && actions.length) nodes.push({ separator: true });
+        nodes.push(...actions);
+      }
+      return nodes;
+    }
+
+    /** 주입된 SCM 하위 메뉴에서도 정확한 액션 ID에 해당하는 지역화된 행을 찾는다. */
+    function findMenuNode(nodes, id) {
+      for (const node of nodes || []) {
+        if (node?.id === id) return node;
+        const found = node?.submenu && findMenuNode(node.submenu, id);
+        if (found) return found;
+      }
+      return undefined;
+    }
+
+    return { closeDropdown, isDropdownAnchor, openDropdown, openContextMenu, accordionMenuNodes };
   };
 }());

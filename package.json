@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72060",
+  "version": "0.1.72061",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -177,6 +177,13 @@
         "shortTitle": "%cmd.cleanupVscodeCache%",
         "category": "Git Simple Compare",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "gitSimpleCompare.cleanupStaleBranches",
+        "title": "%cmd.cleanupStaleBranches.tooltip%",
+        "shortTitle": "%cmd.cleanupStaleBranches%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-branch-delete)"
       },
       {
         "command": "gitSimpleCompare.compareFileWithBranch",
@@ -738,6 +745,11 @@
           "command": "gitSimpleCompare.undoBranchOperation",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@6"
+        },
+        {
+          "command": "gitSimpleCompare.cleanupStaleBranches",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "1_ops@7"
         },
         {
           "command": "gitSimpleCompare.cleanupVscodeCache",

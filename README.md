@@ -29,6 +29,7 @@ updates between extension IDs. Your `gitSimpleCompare.*` settings remain availab
 11. **Block author Code Vision** — show the primary Git contributor above functions, classes, interfaces, methods, and blank-line-separated global declaration groups. Click the hint to open a line-aligned author/date column in the editor gutter.
 12. **Pull request stack lifecycle** — draw PR flow directly on the Git Graph and automate layer/worktree creation, descendant restacks, dependency-ordered submit/sync, and post-merge advancement.
 13. **Safe VS Code cache cleanup** — inspect regenerable workbench, renderer/GPU, webview, and extension-download caches by size, select what to remove, and keep settings, installed extensions, projects, workspace state, and backups intact.
+14. **Stale local branch cleanup** — select local branches whose names are absent from every configured remote, with worktree protection and a separate confirmation for unmerged history.
 
 ## Usage
 
@@ -39,6 +40,12 @@ updates between extension IDs. Your `gitSimpleCompare.*` settings remain availab
 - Editor title bar → comparison icon
 - Activity Bar → **Git Simple Compare** icon to see the changed-files view
 - Command Palette → `Git Simple Compare: Show Git Graph` (or the graph icon in the Changes view toolbar)
+
+### Stale local branch cleanup
+
+Open **Changes → … → Clean Up Stale Branches…**, or run **Git Simple Compare: Clean Up Stale Branches…** from the Command Palette. The command queries every configured remote directly, so unfetched branches and outdated remote-tracking refs do not affect the result. A stale branch is a local branch with no matching name on any remote; age and upstream configuration do not define staleness.
+
+Select the branches to remove and confirm their names. Checked-out branches in any worktree are protected. Unmerged branches require a separate **Force Delete** confirmation. Remote availability, remote settings, branch tips and worktree use are checked again before deletion; failures and changed branches are reported in the **Git Simple Compare** OUTPUT channel. Remote branches and working files are preserved.
 
 ### VS Code cache cleanup
 

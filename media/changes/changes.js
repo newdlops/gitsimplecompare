@@ -500,64 +500,6 @@
     return meatballAction();
   }
 
-  /** 아코디언 미트볼 메뉴 항목을 만든다(섹션별 보기 토글 + 상단 Changes 액션). */
-  function accordionMenuNodes(sectionId) {
-    const nodes = [];
-    const viewNode = viewModeMenuNode(sectionId);
-    if (viewNode) {
-      nodes.push(viewNode);
-    }
-    if (sectionId === "changes") {
-      const remoteBranchNode = findMenuNode(SCM_MENU, "configureRemoteBranch");
-      if (remoteBranchNode) {
-        if (nodes.length) {
-          nodes.push({ separator: true });
-        }
-        nodes.push(remoteBranchNode);
-      }
-    }
-    return nodes;
-  }
-
-  /** 주입된 SCM 메뉴 트리에서 특정 액션 ID 의 리프 항목을 찾는다. */
-  function findMenuNode(nodes, id) {
-    for (const node of nodes || []) {
-      if (node && node.id === id) {
-        return node;
-      }
-      if (node && node.submenu) {
-        const found = findMenuNode(node.submenu, id);
-        if (found) {
-          return found;
-        }
-      }
-    }
-    return undefined;
-  }
-
-  /** 파일 트리 섹션의 현재 보기 모드를 뒤집는 메뉴 항목을 만든다. */
-  function viewModeMenuNode(sectionId) {
-    if (!lastPayload) {
-      return undefined;
-    }
-    if (sectionId === "changes") {
-      return viewModeToggleNode("changes", lastPayload.changes.viewMode);
-    }
-    if (sectionId === "compare" && lastPayload.compare.mode === "comparison") {
-      return viewModeToggleNode("compare", lastPayload.compare.viewMode);
-    }
-    return undefined;
-  }
-
-  /** 특정 섹션의 트리/리스트 보기 전환 메뉴 항목. */
-  function viewModeToggleNode(section, viewMode) {
-    const toTree = viewMode === "list";
-    return {
-      label: toTree ? T.viewAsTree : T.viewAsList,
-      onClick: () => post("toggleViewMode", { section }),
-    };
-  }
-
   /** 커밋 입력 박스(메시지 textarea + 커밋 버튼) HTML. */
   function commitBoxHtml(commit) {
     if (!commit || !commit.hasRepo) {
@@ -1126,7 +1068,7 @@
           const section = el.closest(".section");
           openDropdown(
             el,
-            accordionMenuNodes(section ? section.dataset.section : undefined)
+            accordionMenuNodes(section?.dataset.section, lastPayload, SCM_MENU, T)
           );
         }
       });
@@ -1177,7 +1119,7 @@
   const { doCommit } = commitBox;
 
   // 드롭다운·context menu의 keyboard/focus 책임은 전용 모듈이 맡는다.
-  const { closeDropdown, isDropdownAnchor, openDropdown, openContextMenu } = window.__gscChangesMenu({
+  const { closeDropdown, isDropdownAnchor, openDropdown, openContextMenu, accordionMenuNodes } = window.__gscChangesMenu({
     vscode,
     esc,
     doCommit,

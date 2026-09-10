@@ -104,6 +104,7 @@ export function buildScmMenu(): MenuNode[] {
         sep,
         { id: "git.renameBranch", label: t("Rename Branch...") },
         { id: "git.deleteBranch", label: t("Delete Branch...") },
+        { id: "cleanupStaleBranches", label: t("Clean Up Stale Branches…") },
         sep,
         { id: "git.merge", label: t("Merge Branch...") },
         { id: "git.rebase", label: t("Rebase Branch...") },
@@ -287,6 +288,9 @@ export async function runScmAction(
       break;
     case "configureRemoteBranch":
       await vscode.commands.executeCommand("gitSimpleCompare.configureRemoteBranch");
+      break;
+    case "cleanupStaleBranches":
+      await vscode.commands.executeCommand("gitSimpleCompare.cleanupStaleBranches");
       break;
   }
 }
