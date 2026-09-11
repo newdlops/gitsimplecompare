@@ -13,6 +13,8 @@ body {
 
 body {
   display: grid;
+  /* 긴 저장소 요약이나 실패 로그가 단일 열을 패널 너비 밖으로 밀어내지 않게 한다. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 420px;
   color: var(--vscode-foreground);

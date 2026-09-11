@@ -218,14 +218,15 @@ function createPanelActions(
     reportError: (error, failedOperation) =>
       reportPanelError(error, failedOperation, deps.changesView.getActiveRepo()),
     formatError: errorText,
+    executionFailureOutput: commitFailureOutput,
     formatExecutionFailure: (error) =>
       formatAiCommitPlanExecutionFailure(error, repoRoot, activeExecutionHooks),
   };
 }
 
 /**
- * AI 플랜 실행 오류의 hook 출력을 공용 파서로 구조화하고 웹뷰에는 제한된 진단만 전달한다.
- * - stdout/stderr 원문은 OUTPUT에 별도 블록으로 남겨 웹뷰 데이터 크기와 민감 정보 노출을 줄인다.
+ * AI 플랜 실행 오류의 hook 출력을 공용 파서로 구조화하고 웹뷰 진단의 크기를 제한한다.
+ * - 원문은 OUTPUT에도 남기며, 패널의 로그 미리보기·전체 복사는 별도 출력 콜백을 사용한다.
  * @param error private git commit 또는 안전 검증에서 발생한 원본 오류
  * @param repoRoot hook 경로와 진단 파일 위치를 검증할 저장소 루트
  * @param activeHooks 실행 직전에 고정해 둔 활성 commit hook 이름

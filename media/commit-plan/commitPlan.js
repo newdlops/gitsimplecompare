@@ -5,6 +5,7 @@
   "use strict";
 
   const vscode = acquireVsCodeApi();
+  window.__gscCommitPlanFailureLog?.connect((message) => vscode.postMessage(message));
   const contextSummaryEl = document.getElementById("context-summary");
   const promptEl = document.getElementById("additional-prompt");
   const intentEl = document.getElementById("intent-label");

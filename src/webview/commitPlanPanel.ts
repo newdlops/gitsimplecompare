@@ -7,6 +7,7 @@ import type {
   CommitPlanResult,
 } from "../ai/commitPlanModel";
 import { buildCommitPlanHtml } from "./commitPlanHtml";
+import { CommitPlanFailureLog, type CommitPlanFailureLogPreview } from "./commitPlanFailureLog";
 import { presentCommitPlanExecutionProgress } from "./commitPlanExecutionPresentation";
 import {
   commitPlanContextPaths,
@@ -41,6 +42,7 @@ export class CommitPlanPanel {
   private webviewReady = false;
   private disposed = false;
   private sessionRevision = 0;
+  private readonly failureLog = new CommitPlanFailureLog();
 
   /**
    * 새 AI 커밋 플랜 패널을 열거나 기존 패널을 앞으로 가져와 세션을 교체한다.
@@ -132,6 +134,7 @@ export class CommitPlanPanel {
     options: ReturnType<typeof normalizeCommitPlanLaunchOptions>
   ): void {
     this.sessionRevision++;
+    this.failureLog.clear();
     this.cancelGeneration();
     this.context = context;
     this.actions = actions;
@@ -199,6 +202,10 @@ export class CommitPlanPanel {
         return;
       case "configure":
         await this.configure();
+        return;
+      case "copyFailureLog":
+        this.post({ type: "failureLogCopied", failureId: message.failureId,
+          ...await this.failureLog.copy(message.failureId) });
         return;
     }
   }
@@ -338,6 +345,7 @@ export class CommitPlanPanel {
       operation: "execute",
       message: vscode.l10n.t("Executing AI commit plan..."),
     });
+    this.failureLog.clear();
     this.post({ type: "executionStarted", total: result.groups.length });
     try {
       const completion = await this.actions.execute(
@@ -474,7 +482,10 @@ export class CommitPlanPanel {
     error: unknown
   ): Promise<void> {
     let failure: CommitPlanExecutionFailure | undefined;
+    let log: CommitPlanFailureLogPreview | undefined;
     if (operation === "execute") {
+      try { log = this.failureLog.capture(this.actions.executionFailureOutput(error)); }
+      catch { log = this.failureLog.capture(commitPlanErrorText(error)); }
       try {
         failure = await this.actions.formatExecutionFailure(error);
       } catch {
@@ -492,11 +503,13 @@ export class CommitPlanPanel {
       message:
         this.actions.formatError(error) || commitPlanErrorText(error),
       failure,
+      log,
     });
   }
 
   /** 현재 컨텍스트와 입력 기본값을 웹뷰에 보내 전체 편집 상태를 초기화한다. */
   private sendContext(): void {
+    this.failureLog.clear();
     this.post({
       type: "context",
       context: this.context,
@@ -526,6 +539,7 @@ export class CommitPlanPanel {
       return;
     }
     this.disposed = true;
+    this.failureLog.clear();
     this.cancelGeneration();
     if (CommitPlanPanel.current === this) {
       CommitPlanPanel.current = undefined;
@@ -548,6 +562,8 @@ function operationForMessage(message: CommitPlanFromWebview): CommitPlanOperatio
       return "execute";
     case "openFile":
       return "openFile";
+    case "copyFailureLog":
+      return "copyLog";
     case "configure":
     case "ready":
       return "configure";

@@ -5,6 +5,14 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72062] - 2026-09-11
+
+### Added
+
+- Read failed AI Commit Plan commit logs directly in the plan panel and copy the
+  complete failure output. Keep long log previews bounded, report clipboard errors
+  inline, and prevent copying a previous execution's log after a new run or session.
+
 ## [0.1.72061] - 2026-09-10
 
 ### Added

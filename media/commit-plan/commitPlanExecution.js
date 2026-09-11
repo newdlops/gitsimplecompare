@@ -262,6 +262,7 @@
    * @returns {void}
    */
   function clearFailure() {
+    window.__gscCommitPlanFailureLog?.clear();
     if (!failureEl) {
       return;
     }
@@ -481,7 +482,11 @@
     preserved.textContent = text(T.branchPreserved);
     preserved.hidden = !likelyHook;
 
-    failureEl.replaceChildren(title, identity, summary, list, truncated, preserved);
+    // 요약만 실패 알림으로 읽고, 긴 로그와 복사 버튼은 사용자가 직접 탐색하게 한다.
+    const details = document.createElement("div");
+    details.setAttribute("role", "alert");
+    details.append(title, identity, summary, list, truncated, preserved);
+    failureEl.replaceChildren(details);
     failureEl.hidden = false;
   }
 
@@ -511,6 +516,7 @@
       statusEl.dataset.executionState = "failed";
     }
     renderFailure(text(message.message), message.failure);
+    window.__gscCommitPlanFailureLog?.render(failureEl, message.log);
     renderExecutionSummary(text(message.message) || text(T.executionFailureTitle));
   }
 

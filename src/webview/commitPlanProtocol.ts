@@ -9,6 +9,7 @@ import {
   type CommitPlanResult,
 } from "../ai/commitPlanModel";
 import type * as vscode from "vscode";
+import type { CommitPlanFailureLogPreview, CommitPlanFailureLogCopyResult } from "./commitPlanFailureLog";
 import type {
   CommitPlanExecutionFailure,
   CommitPlanExecutionProgress,
@@ -41,6 +42,7 @@ export type CommitPlanOperation =
   | "generate"
   | "execute"
   | "openFile"
+  | "copyLog"
   | "configure";
 
 /** 패널을 열 때 함께 전달하는 초기 UI/생성 옵션. */
@@ -134,6 +136,9 @@ export interface CommitPlanPanelActions {
    */
   formatError(error: unknown): string;
 
+  /** 실행 실패의 stdout·stderr 원문을 추출한다. 전체 복사용으로 host 메모리에만 보관한다. */
+  executionFailureOutput(error: unknown): string;
+
   /**
    * 실행 오류의 hook/Git 출력을 웹뷰용 제한된 진단 데이터로 변환한다.
    * @param error AI 커밋 플랜 실행 중 발생한 원본 오류
@@ -171,7 +176,9 @@ export type CommitPlanToWebview =
       operation: CommitPlanOperation;
       message: string;
       failure?: CommitPlanExecutionFailure;
+      log?: CommitPlanFailureLogPreview;
     }
+  | ({ type: "failureLogCopied"; failureId: string } & CommitPlanFailureLogCopyResult)
   | { type: "completed"; message: string };
 
 /** 웹뷰가 extension host 로 요청할 수 있는 제한된 액션 메시지. */
@@ -181,6 +188,7 @@ export type CommitPlanFromWebview =
   | { type: "refreshContext"; prompt: string }
   | { type: "execute"; result: CommitPlanResult }
   | { type: "openFile"; path: string }
+  | { type: "copyFailureLog"; failureId: string }
   | { type: "configure" };
 
 /** 계획 실행 가능성 검증 결과. */
@@ -231,6 +239,9 @@ export function parseCommitPlanFromWebview(
       };
     case "configure":
       return { type: "configure" };
+    case "copyFailureLog":
+      return typeof value.failureId === "string" && /^[a-f0-9-]{36}$/.test(value.failureId)
+        ? { type: "copyFailureLog", failureId: value.failureId } : undefined;
     case "generate": {
       const prompt = clippedString(value.prompt, COMMIT_PLAN_LIMITS.promptChars);
       const intent = clippedString(value.intent, COMMIT_PLAN_LIMITS.intentChars);

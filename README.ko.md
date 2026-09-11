@@ -79,6 +79,8 @@ Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 
 
 변경 파일 뷰의 커밋 메시지 입력창 옆 AI 버튼으로 커밋 메시지를 생성할 수 있습니다. 선택한 AI CLI 에 staged diff 를 보내므로, 요약할 파일이나 hunk 를 먼저 스테이징해야 합니다. staged PR preview 에도 PR 제목/본문을 채우는 AI 버튼이 있습니다. AI Plan의 각 커밋 메시지도 단독 AI 커밋 메시지와 같은 subject/body 규칙 및 커밋 프롬프트 지시문을 사용합니다.
 
+AI Plan 실행 중 커밋이 실패하면 해당 커밋 번호의 실패 상세 아래에 **커밋 로그**가 표시됩니다. **로그 접기** / **로그 펼치기**로 표시를 전환하고, **로그 복사**로 수집된 stdout/stderr 전체를 클립보드에 복사할 수 있습니다. 긴 로그의 미리보기가 생략되어도 복사에는 전체 출력이 포함됩니다. 복사 결과는 로그 아래에 표시되며, 복사가 실패해도 로그를 유지해 다시 시도할 수 있습니다.
+
 이 기능은 로컬 CLI 를 비대화식으로 실행합니다. Claude Code 는 `claude -p`, Codex 는 `codex exec` 경로를 사용합니다. `Git Simple Compare: AI CLI 설정` 명령이나 커밋 AI 버튼 옆 gear 버튼에서 provider, 로그인/상태 흐름, 실행 파일 경로, 모델/profile 옵션, 추론 강도, 기본 응답 언어, 추가 프롬프트 지시문, timeout 을 설정할 수 있습니다. 모델과 추론 강도 선택기는 설치된 provider CLI metadata 를 불러옵니다. **커밋 플랜 설정** 그룹에서는 AI Plan에만 사용할 모델과 추론 강도를 provider별로 따로 고를 수 있습니다. 비워 두면 해당 provider의 일반 설정을 상속하고, 일반 설정도 비어 있으면 CLI 기본값을 사용합니다. Profile 설정은 계속 적용되며, CLI metadata에서 선택 모델과 최종 추론 강도가 호환되지 않는다고 확인되면 picker가 경고합니다.
 
 브라우저 callback 로그인이 localhost 에 도달하지 못하면 AI CLI 설정에서 callback 을 쓰지 않는 로그인 방식으로 바꾸세요. Claude Code 는 `setup-token`, `console`, 또는 `sso`, Codex 는 `device`, `api-key`, 또는 `access-token` 을 선택한 뒤 로그인 / 상태를 다시 실행하면 됩니다.

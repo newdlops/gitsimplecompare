@@ -18,6 +18,8 @@ import {
 interface CommitPlanResources {
   scriptUri: vscode.Uri;
   executionScriptUri: vscode.Uri;
+  failureLogScriptUri: vscode.Uri;
+  failureLogStyleUri: vscode.Uri;
   styleUri: vscode.Uri;
   codiconUri: vscode.Uri;
   sharedResources: SharedWebviewResources;
@@ -61,6 +63,8 @@ function commitPlanResources(
     "commitPlanExecution.js"
   );
   const styleFile = vscode.Uri.joinPath(mediaRoot, "commitPlan.css");
+  const failureLogScriptFile = vscode.Uri.joinPath(mediaRoot, "commitPlanFailureLog.js");
+  const failureLogStyleFile = vscode.Uri.joinPath(mediaRoot, "commitPlanFailureLog.css");
   const codiconFile = vscode.Uri.joinPath(
     extensionUri,
     "media",
@@ -71,6 +75,8 @@ function commitPlanResources(
     scriptFile,
     executionScriptFile,
     styleFile,
+    failureLogScriptFile,
+    failureLogStyleFile,
   ]);
   const sharedResources = sharedWebviewResources(webview, extensionUri);
   return {
@@ -79,6 +85,8 @@ function commitPlanResources(
       withVersion(executionScriptFile, version)
     ),
     styleUri: webview.asWebviewUri(withVersion(styleFile, version)),
+    failureLogScriptUri: webview.asWebviewUri(withVersion(failureLogScriptFile, version)),
+    failureLogStyleUri: webview.asWebviewUri(withVersion(failureLogStyleFile, version)),
     codiconUri: webview.asWebviewUri(withVersion(codiconFile, version)),
     sharedResources,
   };
@@ -154,8 +162,15 @@ function commitPlanI18n() {
       "No additional failure details were reported."
     ),
     failureItemsTruncated: vscode.l10n.t(
-      "Some failure details were omitted. See the Git Simple Compare output for the full process output."
+      "Some diagnostic items were omitted. Read or copy the commit log below for details."
     ),
+    commitLog: vscode.l10n.t("Commit log"),
+    showCommitLog: vscode.l10n.t("Show log"),
+    hideCommitLog: vscode.l10n.t("Hide log"),
+    copyCommitLog: vscode.l10n.t("Copy log"),
+    copyingCommitLog: vscode.l10n.t("Copying…"),
+    noCommitLog: vscode.l10n.t("No log output was captured for this failure."),
+    commitLogTruncated: vscode.l10n.t("Log preview shortened. Copy log includes the full output."),
     branchPreserved: vscode.l10n.t(
       "The real branch and Git index were preserved."
     ),
@@ -202,6 +217,7 @@ ${headHtml(resources, csp, title)}
     i18n
   )};</script>
   ${sharedWebviewScriptTags(resources.sharedResources, nonce)}
+  <script nonce="${nonce}" src="${resources.failureLogScriptUri}"></script>
   <script nonce="${nonce}" src="${resources.executionScriptUri}"></script>
   <script nonce="${nonce}" src="${resources.scriptUri}"></script>
 </body>
@@ -225,7 +241,7 @@ function executionStatusHtml(i18n: CommitPlanI18n): string {
     <span class="execution-bar-fill"></span>
   </div>
   <p id="execution-live" class="execution-live" aria-live="polite" aria-atomic="true"></p>
-  <div id="execution-failure" class="execution-failure" role="alert" hidden></div>
+  <div id="execution-failure" class="execution-failure" hidden></div>
 </section>`;
 }
 
@@ -248,6 +264,7 @@ function headHtml(
   ${sharedWebviewStyleTags(resources.sharedResources)}
   <link href="${resources.codiconUri}" rel="stylesheet" />
   <link href="${resources.styleUri}" rel="stylesheet" />
+  <link href="${resources.failureLogStyleUri}" rel="stylesheet" />
   <title>${htmlText(title)}</title>
 </head>`;
 }

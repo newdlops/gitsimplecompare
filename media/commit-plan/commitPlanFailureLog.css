@@ -1,0 +1,12 @@
+/* 실패 진단 아래에서 해당 커밋 로그를 읽고 복사하는 기존 테마 기반 보조 영역. */
+.execution-log { min-width: 0; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--vscode-panel-border); color: var(--vscode-foreground); }
+.execution-log-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.execution-log h4 { margin: 0; font-size: 1em; font-weight: 600; }
+.execution-log-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.execution-log-actions button { min-height: 28px; padding: 3px 10px; }
+.execution-log pre { max-height: 260px; tab-size: 4; line-height: 1.5; user-select: text; }
+.execution-log pre:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+.execution-log-note, .execution-log-copy-status { margin-top: 6px; overflow-wrap: anywhere; font-size: .9em; color: var(--vscode-descriptionForeground); }
+.execution-log-copy-status:empty { display: none; }
+.execution-log-copy-status[data-kind="error"] { color: var(--vscode-errorForeground); }
+.execution-failure-summary { overflow-wrap: anywhere; }
