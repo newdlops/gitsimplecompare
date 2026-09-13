@@ -5,6 +5,13 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72064] - 2026-09-13
+
+### Changed
+
+- Package the local branch inventory and stale cleanup improvements from 0.1.72063,
+  plus AI Commit Plan failure log viewing and copying from 0.1.72062, for Marketplace.
+
 ## [0.1.72063] - 2026-09-13
 
 ### Changed
