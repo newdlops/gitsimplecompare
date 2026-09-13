@@ -7,16 +7,26 @@ import { cleanupStaleBranches } from "../src/commands/cleanupStaleBranches";
 import { buildScmMenu, runScmAction } from "../src/commands/scmActions";
 import { tryAcquireRepoMutation, type CommandDeps } from "../src/commands/shared";
 import { runGit } from "../src/git/gitExec";
+import type { StaleBranch, StaleBranchInspection } from "../src/git/staleBranchService";
+import { StaleBranchPanel } from "../src/webview/staleBranchPanel";
 import {
   __errorMessages, __executedCommands, __informationMessages, __outputLines,
-  __quickPickItems, __resetOutputLines, __resetWindowMessages, __setQuickPickResult,
+  __resetOutputLines, __resetWindowMessages,
   __setWarningMessageResult, __warningMessages,
 } from "./helpers/vscodeMock";
 import { localBranches, staleBranchFixture, unmergedBranch } from "./helpers/staleBranchFixture";
 
+const inspections: StaleBranchInspection[] = [];
+let selection: ((inspection: StaleBranchInspection) => StaleBranch[] | undefined) | undefined;
+
 /** 실제 Git 저장소와 네이티브 선택창 응답 대역을 결합해 명령의 삭제 범위를 검증한다. */
 async function fixture(t: TestContext) {
   __resetWindowMessages(); __resetOutputLines();
+  inspections.length = 0; selection = undefined;
+  t.mock.method(StaleBranchPanel, "pick", async (_extensionUri, inspection: StaleBranchInspection) => {
+    inspections.push(inspection);
+    return selection?.(inspection);
+  });
   t.after(() => { __resetWindowMessages(); __resetOutputLines(); });
   const repo = await staleBranchFixture(t);
   const deps = {
@@ -28,19 +38,18 @@ async function fixture(t: TestContext) {
 
 /** 실제 선택창이 제공한 행에서만 지정한 브랜치를 선택한다. */
 function selectBranches(names: readonly string[]): void {
-  __setQuickPickResult(items => items.filter(item => names.includes((item as { branch: { name: string } }).branch.name)));
+  selection = inspection => inspection.branches.filter(branch => !branch.inUse && names.includes(branch.name));
 }
 
-test("command shows unselected candidates with merge status, deletes only selected branches and refreshes", async t => {
+test("command shows every local branch with status, deletes only selected stale branches and refreshes", async t => {
   const repo = await fixture(t);
   for (const name of ["chosen", "keep"]) await runGit(["branch", name], repo.root);
   selectBranches(["chosen"]);
   __setWarningMessageResult("Delete Local Branches");
   await cleanupStaleBranches(repo.deps);
   assert.deepEqual(await localBranches(repo.root), ["keep", "main"]);
-  const rows = __quickPickItems[0] as { label: string; description: string; picked: boolean }[];
-  assert.deepEqual(rows.map(row => row.label), ["chosen", "keep"]);
-  assert.equal(rows.every(row => !row.picked && row.description === "Merged into current HEAD"), true);
+  assert.deepEqual(inspections[0].localBranches.map(row => [row.name, row.remoteState]), [["chosen", "absent"], ["keep", "absent"], ["main", "present"]]);
+  assert.equal(inspections[0].branches.every(branch => branch.merged), true);
   assert.match(__warningMessages[0], /Delete 1 selected stale local branch/);
   assert.deepEqual(__executedCommands.map(command => command.id), ["gitSimpleCompare.refreshChanges"]);
   assert.deepEqual(__informationMessages, ["Deleted 1 stale local branch(es)."]);
@@ -94,10 +103,10 @@ test("force deletion requires a distinct affirmative answer with the exact remai
 test("a repository selection change while the picker is open keeps deletion bound to its displayed repository", async t => {
   const repo = await fixture(t);
   await runGit(["branch", "selected"], repo.root);
-  __setQuickPickResult(items => {
+  selection = inspection => {
     repo.deps.changesView.getActiveRepo = () => "/unrelated-repository";
-    return items;
-  });
+    return inspection.branches.filter(branch => !branch.inUse);
+  };
   __setWarningMessageResult("Delete Local Branches");
   await cleanupStaleBranches(repo.deps);
   assert.deepEqual(await localBranches(repo.root), ["main"]);
@@ -119,17 +128,17 @@ test("a concurrent Git operation prevents mutation and releasing it allows the n
   assert.deepEqual(await localBranches(repo.root), ["main"]);
 });
 
-test("no remotes, no stale branches and protected-only candidates have specific empty states", async t => {
+test("no remotes, no stale branches and protected-only candidates still open the complete local status view", async t => {
   const repo = await fixture(t);
   await cleanupStaleBranches(repo.deps);
-  assert.match(__informationMessages.at(-1)!, /No stale local branches/);
+  assert.deepEqual(inspections.at(-1)!.localBranches.map(branch => [branch.name, branch.remoteState]), [["main", "present"]]);
   await runGit(["update-ref", "-d", "refs/heads/main"], repo.remote);
   await cleanupStaleBranches(repo.deps);
-  assert.match(__informationMessages.at(-1)!, /1 local-only branch.*in use by worktrees/);
+  assert.deepEqual(inspections.at(-1)!.localBranches.map(branch => [branch.name, branch.remoteState, branch.inUse]), [["main", "absent", true]]);
   await runGit(["remote", "remove", "origin"], repo.root);
   await cleanupStaleBranches(repo.deps);
-  assert.match(__informationMessages.at(-1)!, /No remotes are configured/);
-  assert.equal(__quickPickItems.length, 0);
+  assert.deepEqual(inspections.at(-1)!.localBranches.map(branch => [branch.name, branch.remoteState]), [["main", "unconfigured"]]);
+  assert.equal(inspections.length, 3);
   assert.equal(__warningMessages.length, 0);
 });
 
@@ -139,7 +148,7 @@ test("an unreachable remote shows an actionable error and never opens a deletion
   await runGit(["remote", "add", "offline", join(repo.directory, "missing.git")], repo.root);
   await cleanupStaleBranches(repo.deps);
   assert.match(__errorMessages[0], /Could not check remote 'offline'.*Check the connection/);
-  assert.equal(__quickPickItems.length, 0);
+  assert.equal(inspections.length, 0);
   assert.deepEqual(await localBranches(repo.root), ["keep", "main"]);
 });
 

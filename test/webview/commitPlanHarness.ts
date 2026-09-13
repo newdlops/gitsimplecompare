@@ -34,7 +34,7 @@ function htmlBuilder(): Promise<any> {
 }
 
 /** VS Code가 주입하는 테마 변수만 재현하며 제품의 레이아웃·컨트롤 CSS는 실제 파일을 사용한다. */
-function themeCss(light: boolean): string {
+export function themeCss(light: boolean): string {
   const background = light ? "#ffffff" : "#1e1e1e";
   const surface = light ? "#f3f3f3" : "#252526";
   const foreground = light ? "#333333" : "#cccccc";

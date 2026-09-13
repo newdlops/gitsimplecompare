@@ -6,7 +6,8 @@ import {
   type StaleBranchCleanupResult, type StaleBranchInspection,
 } from "../git/staleBranchService";
 import { logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
-import { confirmStaleBranchCleanup, pickStaleBranches, showStaleBranchCleanupResult } from "../ui/staleBranchCleanup";
+import { confirmStaleBranchCleanup, showStaleBranchCleanupResult } from "../ui/staleBranchCleanup";
+import { StaleBranchPanel } from "../webview/staleBranchPanel";
 import { resolveCompareService, tryAcquireRepoMutation, type CommandDeps, type RepoMutationLease } from "./shared";
 
 /** 선택창을 포함한 같은 저장소의 정리 흐름이 중복 실행되지 않게 한다. */
@@ -34,10 +35,10 @@ export async function cleanupStaleBranches(deps: CommandDeps): Promise<void> {
     logInfo("stale branch inspection started", { repoRoot });
     const inspection = await inspectWithProgress(service);
     logInfo("stale branch inspection completed", {
-      repoRoot, remotes: inspection.remotes, candidates: inspection.branches.length,
+      repoRoot, remotes: inspection.remotes, local: inspection.localBranches.length, candidates: inspection.branches.length,
       protected: inspection.branches.filter(branch => branch.inUse).length,
     });
-    const selected = await pickStaleBranches(inspection);
+    const selected = await StaleBranchPanel.pick(deps.extensionUri, inspection);
     if (!selected) {
       logInfo("stale branch cleanup skipped", { repoRoot, reason: "empty-or-cancelled" });
       return;
@@ -91,7 +92,7 @@ export async function cleanupStaleBranches(deps: CommandDeps): Promise<void> {
 function inspectWithProgress(service: StaleBranchService): Thenable<StaleBranchInspection> {
   return vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
-    title: vscode.l10n.t("Checking all remotes for stale branches…"), cancellable: true,
+    title: vscode.l10n.t("Checking local branch status…"), cancellable: true,
   }, async (_progress, token) => {
     const controller = new AbortController();
     const subscription = token.onCancellationRequested(() => controller.abort());

@@ -1,0 +1,53 @@
+/* 로컬 브랜치를 중심으로 읽는 고밀도 현황 표. 공용 VS Code 토큰과 컨트롤을 재사용한다. */
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; min-width: 280px; overflow: hidden; line-height: 1.4; }
+header { padding: 16px 20px 12px; border-bottom: 1px solid var(--gsc-divider); background: var(--gsc-sidebar-bg); }
+.heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+h1 { margin: 0; font-size: 1.1em; font-weight: 600; }
+p { margin: 0; }
+.repo { overflow-wrap: anywhere; color: var(--gsc-muted); }
+#summary { margin-top: 8px; font-weight: 600; }
+.hint, .branch-meta, .commit-subject { color: var(--gsc-muted); font-size: .92em; }
+header .hint { margin-top: 6px; max-width: 80ch; }
+.filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 220px); gap: 12px; padding: 12px 20px 8px; }
+#notice { margin: 4px 20px 8px; padding: 8px 10px; border: 1px solid var(--gsc-border); border-radius: var(--gsc-radius-surface); }
+#shown { padding: 0 20px 8px; }
+main { flex: 1; min-height: 0; overflow: auto; padding: 0 20px; scrollbar-gutter: stable; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead { position: sticky; top: 0; z-index: 1; background: var(--gsc-bg); }
+th { padding: 8px; text-align: left; font-size: .92em; font-weight: 600; border-bottom: 1px solid var(--gsc-divider); }
+td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid var(--gsc-divider); overflow-wrap: anywhere; }
+.selection-column { width: 34px; text-align: center; }
+.status-column { width: 22%; }
+.latest-column { width: 29%; }
+input[type="checkbox"] { width: 15px; height: 15px; margin: 2px 0; accent-color: var(--gsc-action-bg); cursor: pointer; }
+input[type="checkbox"]:disabled { cursor: default; }
+.branch-name { display: block; font-weight: 600; cursor: pointer; }
+.branch-row:has(input:disabled) .branch-name { cursor: text; }
+.branch-row:hover { background: var(--gsc-hover); }
+.branch-row.selected { background: var(--vscode-list-inactiveSelectionBackground, var(--gsc-hover)); }
+.branch-meta, .branch-protection { margin-top: 4px; }
+.branch-protection { font-size: .92em; }
+.branch-status { display: inline-block; font-size: .92em; }
+.branch-status.stale { font-weight: 600; }
+.branch-hash { font-family: var(--gsc-code-font); font-size: .92em; }
+.commit-subject { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#empty { padding: 24px 8px; color: var(--gsc-muted); }
+footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--gsc-divider); background: var(--gsc-sidebar-bg); }
+.selection-summary { display: flex; flex-direction: column; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#error { color: var(--gsc-error); }
+[hidden] { display: none !important; }
+@media (max-width: 600px) {
+  header { padding: 12px; }
+  .filters { padding: 12px 12px 8px; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #notice { margin-right: 12px; margin-left: 12px; }
+  #shown { padding-right: 12px; padding-left: 12px; }
+  main { padding: 0 4px; }
+  .latest-column { display: none; }
+  .status-column { width: 34%; }
+  th, td { padding-right: 6px; padding-left: 6px; }
+  footer { padding: 12px; }
+  .actions { width: 100%; }
+  #review { flex: 1; }
+}

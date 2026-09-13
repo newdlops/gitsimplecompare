@@ -43,9 +43,11 @@ updates between extension IDs. Your `gitSimpleCompare.*` settings remain availab
 
 ### Stale local branch cleanup
 
-Open **Changes → … → Clean Up Stale Branches…**, or run **Git Simple Compare: Clean Up Stale Branches…** from the Command Palette. The command queries every configured remote directly, so unfetched branches and outdated remote-tracking refs do not affect the result. A stale branch is a local branch with no matching name on any remote; age and upstream configuration do not define staleness.
+Open **Changes → … → Local Branches & Stale Cleanup…**, or run **Git Simple Compare: Local Branches & Stale Cleanup…** from the Command Palette. The panel lists every local branch by its local name, with stale status, matching remotes, worktree protection, and its latest commit. Search the list or choose **Stale only** to find cleanup candidates. Branches that exist on a remote or are in use stay visible with disabled selection controls.
 
-Select the branches to remove and confirm their names. Checked-out branches in any worktree are protected. Unmerged branches require a separate **Force Delete** confirmation. Remote availability, remote settings, branch tips and worktree use are checked again before deletion; failures and changed branches are reported in the **Git Simple Compare** OUTPUT channel. Remote branches and working files are preserved.
+The command queries every configured remote directly, so unfetched branches and outdated remote-tracking refs do not affect the result. A stale branch is a local branch with no matching name on any remote; age and upstream configuration do not define staleness. Without configured remotes, the panel still shows local branches and marks their status as **Not checked**.
+
+Select the stale branches to remove, choose **Review deletion**, and confirm their names. Selected branches hidden by a search or filter are counted explicitly. Checked-out branches in any worktree are protected. Unmerged branches require a separate **Force Delete** confirmation. Remote availability, remote settings, branch tips and worktree use are checked again before deletion; failures and changed branches are reported in the **Git Simple Compare** OUTPUT channel. Remote branches and working files are preserved.
 
 ### VS Code cache cleanup
 

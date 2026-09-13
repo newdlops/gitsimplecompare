@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { GitError, runGit } from "../src/git/gitExec";
@@ -21,6 +21,11 @@ test("stale means an exact branch name absent from every live remote, including 
   const snapshot = await repo.service.inspect();
   assert.deepEqual(snapshot.remotes, ["origin", "upstream"]);
   assert.deepEqual(snapshot.branches.map(branch => branch.name), ["feature/local", "tag-only", "tracked-under-another-name"]);
+  assert.deepEqual(snapshot.localBranches.map(branch => branch.name), ["feature/local", "feature/unfetched", "main", "tag-only", "tracked-under-another-name"]);
+  assert.deepEqual(snapshot.localBranches.find(branch => branch.name === "feature/unfetched")?.matchingRemotes, ["upstream"]);
+  assert.equal(snapshot.localBranches.find(branch => branch.name === "main")?.current, true);
+  assert.deepEqual(snapshot.localBranches.find(branch => branch.name === "main")?.worktreePaths, [await realpath(repo.root)]);
+  await assert.rejects(repo.service.cleanup(snapshot, ["feature/unfetched"], true), /selection changed/);
   assert.equal(snapshot.branches.every(branch => branch.merged && !branch.inUse), true);
   assert.equal((await runGit(["for-each-ref", "refs/remotes/upstream/"], repo.root)).trim(), "", "원격 조회가 fetch나 tracking ref 변경을 수행하지 않는다");
 });
@@ -39,6 +44,7 @@ test("no configured remotes does not classify every branch as removable", async 
   await runGit(["remote", "remove", "origin"], repo.root);
   assert.deepEqual((await repo.service.inspect()).remotes, []);
   assert.deepEqual((await repo.service.inspect()).branches, []);
+  assert.deepEqual((await repo.service.inspect()).localBranches.map(branch => [branch.name, branch.remoteState, branch.current]), [["main", "unconfigured", true]]);
   assert.deepEqual(await localBranches(repo.root), ["main"]);
 });
 
@@ -48,6 +54,7 @@ test("current and linked worktree branches remain visible as protected and canno
   await runGit(["worktree", "add", "-b", "linked", join(repo.directory, "linked tree")], repo.root);
   const snapshot = await repo.service.inspect();
   assert.deepEqual(snapshot.branches.map(branch => [branch.name, branch.inUse]), [["linked", true], ["main", true]]);
+  assert.deepEqual(snapshot.localBranches.find(branch => branch.name === "linked")?.worktreePaths, [await realpath(join(repo.directory, "linked tree"))]);
   await assert.rejects(repo.service.cleanup(snapshot, ["linked"], true), /selection changed/);
   await assert.rejects(repo.service.cleanup(snapshot, ["main"], true), /selection changed/);
   assert.deepEqual(await localBranches(repo.root), ["linked", "main"]);

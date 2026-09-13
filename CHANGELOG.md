@@ -5,6 +5,16 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72063] - 2026-09-13
+
+### Changed
+
+- Show the complete local branch inventory in Stale Cleanup, with local names,
+  remote presence, worktree protection and latest commits. Add search, a stale-only
+  filter, protected selection controls and explicit counts for hidden selections.
+- Keep local branches visible when no remotes are configured, with unchecked status
+  and deletion disabled. Preserve the existing confirmation and Git recheck flow.
+
 ## [0.1.72062] - 2026-09-11
 
 ### Added

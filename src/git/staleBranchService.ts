@@ -17,12 +17,27 @@ export interface StaleBranch {
   inUse: boolean;
 }
 
+/** 원격 이름이 아닌 로컬 브랜치를 기준으로 표시할 전체 현황 한 행이다. */
+export interface InspectedLocalBranch extends StaleBranch {
+  /** 이 저장소/worktree의 현재 체크아웃 브랜치인지 나타낸다. */
+  current: boolean;
+  /** 원격이 없으면 stale로 단정하지 않고 확인할 기준이 없음을 표시한다. */
+  remoteState: "present" | "absent" | "unconfigured";
+  /** 정확히 같은 브랜치 이름을 가진 실제 원격의 이름만 보관한다. */
+  matchingRemotes: string[];
+  /** 사용 중인 브랜치를 목록에서 숨기지 않고 보호 이유와 위치를 설명한다. */
+  worktreePaths: string[];
+}
+
 /** 한 저장소와 원격 설정에 고정된 정리 후보 목록이다. */
 export interface StaleBranchInspection {
   repoRoot: string;
   remotes: string[];
   /** URL 등 원격 설정 원문을 UI/로그에 노출하지 않고 설정 변경만 검출한다. */
   remoteConfigHash: string;
+  /** 원격 존재 여부와 관계없이 모든 정상 로컬 브랜치를 이름순으로 유지한다. */
+  localBranches: InspectedLocalBranch[];
+  /** 삭제 서비스가 재검증할 stale 후보만 분리한다. 사용 중인 후보도 보호 상태로 남는다. */
   branches: StaleBranch[];
 }
 
@@ -56,17 +71,16 @@ export class StaleBranchService {
   constructor(public readonly repoRoot: string, private readonly git: StaleBranchGitRunner = runGit) {}
 
   /**
-   * 등록된 모든 원격에 동명 heads가 없는 로컬 브랜치를 찾는다.
+   * 모든 로컬 브랜치의 원격 존재 여부를 읽고 stale 후보를 별도로 분리한다.
    * - 실제 원격을 읽으므로 fetch하지 않은 브랜치와 삭제 뒤 남은 tracking ref도 정확히 처리한다.
    * @param signal 진행 알림의 취소 신호
-   * @returns 사용 중인 브랜치 보호 상태를 포함한 최신 후보 목록. 원격이 없으면 빈 목록이다.
+   * @returns 전체 로컬 현황과 보호 상태를 포함한 stale 후보. 원격이 없으면 후보만 비운다.
    */
   async inspect(signal?: AbortSignal): Promise<StaleBranchInspection> {
     checkCancelled(signal);
     const before = await this.remoteConfiguration(signal);
-    const inspection: StaleBranchInspection = { repoRoot: this.repoRoot, ...before, branches: [] };
-    if (!before.remotes.length) return inspection;
-    const remoteNames = new Set<string>();
+    const inspection: StaleBranchInspection = { repoRoot: this.repoRoot, ...before, localBranches: [], branches: [] };
+    const remoteNames = new Map<string, string[]>();
     // 원격 수가 많아도 Git/SSH 프로세스는 한 번에 최대 네 개만 만든다.
     for (let index = 0; index < before.remotes.length; index += 4) {
       const results = await Promise.allSettled(before.remotes.slice(index, index + 4).map(async remote => {
@@ -75,7 +89,9 @@ export class StaleBranchService {
           if (!line) continue;
           const match = /^([a-f\d]{40}|[a-f\d]{64})\trefs\/heads\/(.+)$/.exec(line);
           if (!match) throw new StaleBranchRemoteError(remote, new Error("Invalid remote branch response."));
-          remoteNames.add(match[2]);
+          const matches = remoteNames.get(match[2]) ?? [];
+          matches.push(remote);
+          remoteNames.set(match[2], matches);
         }
       }));
       checkCancelled(signal);
@@ -83,27 +99,32 @@ export class StaleBranchService {
       if (failure) throw failure.reason;
     }
     const [local, worktrees, after] = await Promise.all([
-      this.git(["for-each-ref", "--sort=refname", "--format=%(refname)%00%(objectname)%00%(symref)%00%(subject)", "refs/heads/"], this.repoRoot, { signal }),
+      this.git(["for-each-ref", "--sort=refname", "--format=%(refname)%00%(objectname)%00%(symref)%00%(HEAD)%00%(subject)", "refs/heads/"], this.repoRoot, { signal }),
       this.git(["worktree", "list", "--porcelain"], this.repoRoot, { signal }),
       this.remoteConfiguration(signal),
     ]);
     checkCancelled(signal);
     if (before.remoteConfigHash !== after.remoteConfigHash) throw new Error("Remote settings changed. Run stale branch cleanup again.");
-    const protectedRefs = new Set(parseWorktreePorcelain(worktrees).map(worktree => worktree.branchRef));
-    const branches = local.split("\n").flatMap(line => {
+    const worktreeList = parseWorktreePorcelain(worktrees);
+    const localBranches: InspectedLocalBranch[] = local.split("\n").flatMap(line => {
       if (!line) return [];
-      const [ref, hash, symref, ...subject] = line.split("\0");
+      const [ref, hash, symref, head, ...subject] = line.split("\0");
       if (!ref.startsWith("refs/heads/") || !/^(?:[a-f\d]{40}|[a-f\d]{64})$/.test(hash)) throw new Error("Invalid local branch response.");
       const name = ref.slice("refs/heads/".length);
-      if (symref || remoteNames.has(name)) return [];
-      return [{ name, hash, subject: subject.join("\0"), inUse: protectedRefs.has(ref), merged: false }];
+      if (symref) return [];
+      const matchingRemotes = [...new Set(remoteNames.get(name))].sort();
+      const worktreePaths = worktreeList.filter(worktree => worktree.branchRef === ref).map(worktree => worktree.path);
+      return [{ name, hash, subject: subject.join("\0"), inUse: head === "*" || worktreePaths.length > 0,
+        current: head === "*", merged: false, matchingRemotes, worktreePaths,
+        remoteState: !before.remotes.length ? "unconfigured" as const
+          : matchingRemotes.length ? "present" as const : "absent" as const }];
     });
-    if (branches.length) {
+    if (localBranches.length) {
       // HEAD가 없거나 손상됐으면 잘못된 병합 판정으로 후보를 내보내지 않고 Git 오류를 전달한다.
       const merged = new Set((await this.git(["for-each-ref", "--merged=HEAD", "--format=%(refname)", "refs/heads/"], this.repoRoot, { signal })).trim().split("\n"));
-      for (const branch of branches) branch.merged = merged.has(`refs/heads/${branch.name}`);
+      for (const branch of localBranches) branch.merged = merged.has(`refs/heads/${branch.name}`);
     }
-    return { ...inspection, branches };
+    return { ...inspection, localBranches, branches: localBranches.filter(branch => branch.remoteState === "absent") };
   }
 
   /**
