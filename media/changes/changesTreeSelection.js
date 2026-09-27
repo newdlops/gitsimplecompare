@@ -1,14 +1,21 @@
 // Changes 작업트리 파일/폴더의 다중 선택과 마퀴 선택 상태.
 // - DOM 선택, Ctrl/Cmd·Shift 범위 선택, 파일 열기 의도를 메인 renderer의 HTML 생성과 분리한다.
+// - 작업트리 행은 가상 스크롤로 일부만 DOM 에 있으므로, 선택 유효성·범위·폴더 경로는 행 모델(model)로 계산한다.
 (function () {
   "use strict";
 
-  /** root와 path helper를 주입해 작업트리 선택 API를 만든다. */
-  window.__gscChangesTreeSelection = function createChangesTreeSelection({ rootEl, closeDropdown, openWorkingPath, rowPaths }) {
+  /**
+   * root와 path helper, 작업트리 행 모델을 주입해 작업트리 선택 API를 만든다.
+   * @param {object} deps 선택 모듈 의존성
+   * @param {{ hasKey(key: string): boolean, orderedKeys(): string[], pathsForKey(key: string): string[] }} deps.model
+   *   화면 밖 행까지 포함한 작업트리 행 모델(선택 key 유효성, Shift 범위 순서, 폴더 하위 파일 경로)
+   */
+  window.__gscChangesTreeSelection = function createChangesTreeSelection({ rootEl, closeDropdown, openWorkingPath, rowPaths, model }) {
     let selection = new Set();
     let selectionAnchor = null;
     let suppressNextRowClick = false;
     let marquee = null;
+    const boundMarqueeSurfaces = new WeakSet();
     const MARQUEE_EXCLUDE_SELECTOR = ".commit-box, .group-header, .header-actions, .row-actions, button, textarea, input, select, a";
 
     /** 행의 그룹과 path를 조합한 안정적인 선택 key를 반환한다. */
@@ -17,13 +24,18 @@
       return `${group ? group.dataset.gkey : ""}:${row.dataset.path}`;
     }
 
-    /** 작업트리에서 선택 가능한 파일·폴더 행을 DOM 순서대로 반환한다. */
+    /** 현재 DOM 에 그려진 작업트리 파일·폴더 행을 DOM(=화면) 순서대로 반환한다. */
     function selectableRows() {
       return Array.from(rootEl.querySelectorAll(".wt-files .row.file, .wt-files .row.folder"));
     }
 
-    /** 드래그가 가능한 Changes 본문에 마퀴 선택 pointer lifecycle을 연결한다. */
+    /**
+     * 드래그가 가능한 Changes 본문에 마퀴 선택 pointer lifecycle을 연결한다.
+     * - 부분 렌더는 같은 section body 를 유지하므로 요소마다 한 번만 연결해 리스너가 누적되지 않게 한다.
+     */
     function bindMarqueeSelection(filesEl) {
+      if (boundMarqueeSurfaces.has(filesEl)) return;
+      boundMarqueeSurfaces.add(filesEl);
       filesEl.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || event.target.closest(MARQUEE_EXCLUDE_SELECTOR)) return;
         marquee = {
@@ -138,21 +150,22 @@
       return left.left <= right.right && left.right >= right.left && left.top <= right.bottom && left.bottom >= right.top;
     }
 
-    /** 사라진 행을 정리하고 현재 선택을 DOM class로 반영한다. */
+    /**
+     * 현재 payload 에 없는 선택을 정리하고, 그려져 있는 행에만 선택 class 를 반영한다.
+     * - 화면 밖(가상 스크롤로 DOM 에 없는) 행의 선택은 모델에 남아 있으면 유지한다.
+     */
     function applySelection() {
-      const rows = selectableRows();
-      const present = new Set(rows.map(rowKey));
-      selection.forEach((key) => { if (!present.has(key)) selection.delete(key); });
-      rows.forEach((row) => {
+      selection.forEach((key) => { if (!model.hasKey(key)) selection.delete(key); });
+      selectableRows().forEach((row) => {
         const selected = selection.has(rowKey(row));
         row.classList.toggle("selected", selected);
         row.classList.toggle("single-selected", selected && selection.size === 1);
       });
     }
 
-    /** anchor와 target 사이의 DOM 행을 Shift 범위로 선택한다. */
+    /** anchor와 target 사이의 행을 화면 순서(모델 기준, 접힌 폴더 제외)로 Shift 범위 선택한다. */
     function selectRange(targetKey) {
-      const keys = selectableRows().map(rowKey);
+      const keys = model.orderedKeys();
       const anchorIndex = selectionAnchor ? keys.indexOf(selectionAnchor) : -1;
       const targetIndex = keys.indexOf(targetKey);
       if (anchorIndex < 0 || targetIndex < 0) {
@@ -162,14 +175,13 @@
       selection = new Set(keys.slice(Math.min(anchorIndex, targetIndex), Math.max(anchorIndex, targetIndex) + 1));
     }
 
-    /** 같은 stage group 안에서 선택된 파일·폴더가 가리키는 실제 path를 중복 없이 모은다. */
+    /** 같은 stage group 안에서 선택된 파일·폴더가 가리키는 실제 path를 모델에서 중복 없이 모은다. */
     function selectedPathsOfKind(groupKey) {
       const prefix = `${groupKey}:`;
-      const rowsByKey = new Map(selectableRows().map((row) => [rowKey(row), row]));
       const paths = new Set();
       selection.forEach((key) => {
         if (!key.startsWith(prefix)) return;
-        rowPaths(rowsByKey.get(key)).forEach((path) => { if (path) paths.add(path); });
+        model.pathsForKey(key).forEach((path) => { if (path) paths.add(path); });
       });
       return [...paths];
     }

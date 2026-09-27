@@ -240,9 +240,12 @@
     }
   }
 
-  /** glyph 기반 파일 아이콘에 동적 글꼴/색/크기를 적용한다. */
-  function applyFileIconGlyphStyles() {
-    rootEl.querySelectorAll(".theme-file-icon-glyph").forEach((el) => {
+  /**
+   * glyph 기반 파일 아이콘에 동적 글꼴/색/크기를 적용한다.
+   * @param {ParentNode} scope 적용할 DOM 범위. 가상 스크롤로 새로 그린 행만 넘기면 전체를 다시 훑지 않는다
+   */
+  function applyFileIconGlyphStyles(scope = rootEl) {
+    scope.querySelectorAll(".theme-file-icon-glyph").forEach((el) => {
       el.style.fontFamily = el.dataset.fontFamily || "";
       el.style.color =
         el.dataset.fontColor || "var(--vscode-descriptionForeground)";
@@ -557,21 +560,15 @@
       `<span class="count">${count}</span>` +
       (conflictCount ? conflictBadgeHtml(conflictCount) : "") +
       `</button><span class="group-actions">${actions}</span></div>` +
-      fileTree(
-        nodes,
-        viewMode,
-        kind,
-        kind + "-files wt-files",
-        "",
-        undefined,
-        bodyId
-      ) +
+      // 파일 행은 가상 스크롤 목록이 mount 뒤 보이는 범위만 그린다.
+      workingList.groupFilesHtml(kind, nodes, viewMode, bodyId) +
       `</div>`
     );
   }
 
   /** Changes 섹션 본문(커밋 박스 + Staged 그룹 + Changes 그룹). */
   function changesBody(changes, commit, viewMode) {
+    workingList.beginRender();
     let html = commitBoxHtml(commit);
     if (changes.staged.length) {
       html += changesGroupHtml("staged", changes.staged, viewMode);
@@ -589,6 +586,22 @@
   function post(type, extra) {
     vscode.postMessage(Object.assign({ type }, extra));
   }
+
+  // Staged/Changes 파일 목록은 평면 행 모델 + 가상 스크롤 모듈이 그린다(수만 파일에서도 보이는 행만 DOM 유지).
+  const workingList = window.__gscChangesWorkingList({
+    rootEl,
+    state,
+    strings: T,
+    esc,
+    statusCodicon,
+    fileIconHtml,
+    statHtml,
+    conflictBadgeHtml,
+    rowActionsHtml,
+    bindRows: (container) => bindWorkingRows(container),
+    afterRowsRendered: (rows) => afterWorkingRowsRender(rows),
+    persistState: () => vscode.setState(state),
+  });
 
   // History의 HTML 생성을 별도 module로 유지해 이 파일은 상태 조정과 event binding에 집중한다.
   const { bindHistory, historyBody } = window.__gscChangesHistory({
@@ -675,6 +688,8 @@
     };
     rootEl.innerHTML = orderedSections(sectionHtml);
     window.__gscChangesInformationArchitecture?.organize(rootEl, T);
+    // 스크롤 복원 전에 작업트리 spacer 높이를 정해 두어야 scrollTop 이 잘리지 않는다.
+    workingList.attach(rootEl);
 
     applyFileIconGlyphStyles();
     applyCollapse();
@@ -683,6 +698,8 @@
     applySelection();
     window.__gscApplyWorkingOperation?.();
     restoreTransientUi(transient, previousCommitMessageRevision);
+    // 스크롤 위치를 되돌린 뒤에야 보이는 작업트리 행 범위를 정확히 계산할 수 있다.
+    workingList.renderVisibleRows();
     state.commitMessageRevision = p.commit?.messageRevision || 0;
     vscode.setState(state);
   }
@@ -731,20 +748,16 @@
       lastPayload.commit,
       delta.changes.viewMode
     );
-    applyFileIconGlyphStyles();
-    body.querySelectorAll(".row.folder").forEach(bindFolderToggle);
-    body.querySelectorAll(".wt-files .row.file").forEach((el) => {
-      el.addEventListener("click", (event) => onWorkingRowClick(event, el));
-      bindRowKeyboardAction(el, (event) => onWorkingRowClick(event, el));
-    });
+    workingList.attach(body);
+    applyFileIconGlyphStyles(body);
     bindMarqueeSelection(body);
     bindCommitBox(body);
     bindGroupActions(body);
-    bindRowActions(body);
     applyResize();
     applySelection();
     window.__gscApplyWorkingOperation?.();
     restoreTransientUi(transient, previousCommitMessageRevision);
+    workingList.renderVisibleRows();
     state.commitMessageRevision = lastPayload.commit?.messageRevision || 0;
     vscode.setState(state);
   }
@@ -869,14 +882,16 @@
     vscode,
   });
 
-  /** 폴더 접기/펼치기 또는 작업트리 폴더 선택을 연결한다. */
+  /**
+   * 비교 등 중첩 트리 폴더 행에 접기/펼치기를 연결한다.
+   * - 작업트리 폴더 행은 가상 스크롤 목록이 위임 리스너로 처리하므로 여기서 연결하지 않는다.
+   */
   function bindFolderToggle(el) {
-    el.addEventListener("click", (e) => {
+    if (el.closest(".wt-files")) {
+      return;
+    }
+    el.addEventListener("click", () => {
       if (consumeSuppressedRowClick()) {
-        return;
-      }
-      if (el.closest(".wt-files") && !e.target.closest(".twistie, .icon")) {
-        onWorkingRowClick(e, el);
         return;
       }
       toggleFolder(el);
@@ -997,6 +1012,7 @@
     clearSectionDropMarkers();
     applyResize();
     persistSizes();
+    workingList.scheduleRender();
   }
 
   /** 포인터 Y 위치가 섹션 위/아래 절반 중 어디인지 반환한다. */
@@ -1054,6 +1070,7 @@
         window.__gscStashes?.requestExpanded?.(rootEl, vscode);
         requestExpandedWorktrees();
         applyResize();
+        workingList.scheduleRender();
       });
     });
     requestExpandedWorktrees();
@@ -1080,12 +1097,8 @@
       bindRowKeyboardAction(el, selectRepository);
     });
     window.__gscCompare.bind(rootEl, vscode);
+    // 작업트리 행(단일 클릭=선택+비교, Ctrl/Cmd·Shift=다중 선택)은 가상 스크롤 목록이 위임 연결한다.
     rootEl.querySelectorAll(".row.folder").forEach(bindFolderToggle);
-    // 작업트리 변경 파일 → 단일 클릭=선택+비교, Ctrl/Cmd·Shift=다중 선택
-    rootEl.querySelectorAll(".wt-files .row.file").forEach((el) => {
-      el.addEventListener("click", (e) => onWorkingRowClick(e, el));
-      bindRowKeyboardAction(el, (event) => onWorkingRowClick(event, el));
-    });
     // 파일 트리 끝 너머(그룹 아래 빈 공간)에서도 드래그 선택이 시작되도록 Changes 섹션 본문 전체를
     // 마퀴 표면으로 삼는다. .wt-files 만 쓰면 행 높이 바깥에서는 selectbox 가 그려지지 않는다.
     const marqueeSurface = rootEl.querySelector(
@@ -1160,6 +1173,7 @@
     tw?.classList.toggle("codicon-chevron-down", !collapsed);
     tw?.classList.toggle("codicon-chevron-right", collapsed);
     syncDisclosureControl(toggle, !collapsed);
+    workingList.scheduleRender();
   }
 
   /** 행 우클릭 컨텍스트 메뉴 항목(파일이면 열기/비교 + stage 류, 폴더면 stage 류). */
@@ -1215,10 +1229,16 @@
     return nodes;
   }
 
-  /** 행이 가리키는 경로들(파일=자신, 폴더=다음 .children 안 모든 파일). */
+  /**
+   * 행이 가리키는 경로들(파일=자신, 폴더=모든 하위 파일).
+   * - 작업트리 폴더는 가상 스크롤로 자식 행이 DOM 에 없을 수 있어 행 모델에서 하위 파일을 모은다.
+   */
   function rowPaths(row) {
     if (row.classList.contains("file")) {
       return [row.dataset.path];
+    }
+    if (row.closest(".wt-files")) {
+      return workingList.pathsForRow(row);
     }
     const children = row.nextElementSibling;
     if (!children || !children.classList.contains("children")) {
@@ -1244,18 +1264,32 @@
     closeDropdown,
     openWorkingPath,
     rowPaths,
+    model: workingList,
   });
 
   // 행 action의 DOM 이벤트와 선택 상태 전환은 전용 모듈에 맡긴다.
-  const { bindRowActions } = window.__gscChangesWorkingTreeActions({
+  const { bindRowActions, bindWorkingRows } = window.__gscChangesWorkingTreeActions({
     actionPaths,
+    consumeSuppressedRowClick,
     isSelected,
+    onWorkingRowClick,
     openContextMenu,
     postWorkingAction,
     rowContextNodes,
     selectOnly,
+    toggleWorkingFolder: (row) => workingList.toggleFolder(row),
     vscode,
   });
+
+  /**
+   * 가상 스크롤이 새로 그린 작업트리 행에 아이콘 글꼴·선택·진행 표시를 적용한다.
+   * @param {HTMLElement[]} rows 방금 DOM 에 추가된 행
+   */
+  function afterWorkingRowsRender(rows) {
+    rows.forEach((row) => applyFileIconGlyphStyles(row));
+    applySelection();
+    window.__gscApplyWorkingOperation?.();
+  }
 
   /** 작업트리 파일 열기: 충돌은 resolver, 그 외 staged/unstaged 는 editable diff 로 연다. */
   function openWorkingPath(path, stage, status) {

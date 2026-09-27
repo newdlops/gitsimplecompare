@@ -28,11 +28,7 @@
     if (!isWorkingAction(action)) {
       return false;
     }
-    operation = {
-      action,
-      paths: normalizePaths(paths),
-      phase: "git",
-    };
+    operation = createOperation(action, paths, "git");
     lastOperation = operation;
     scheduleApply();
     return true;
@@ -41,11 +37,7 @@
   /** extension host 에서 보낸 실제 작업 상태로 busy 표시를 맞춘다. */
   function setOperation(active, action, paths, phase) {
     if (active && isWorkingAction(action)) {
-      operation = {
-        action,
-        paths: normalizePaths(paths),
-        phase: phase === "refresh" ? "refresh" : "git",
-      };
+      operation = createOperation(action, paths, phase === "refresh" ? "refresh" : "git");
       lastOperation = operation;
       cancelHide();
     } else {
@@ -77,7 +69,7 @@
       }
       let hasBusyRow = false;
       group.querySelectorAll(".wt-files .row").forEach((row) => {
-        if (rowMatches(row, operation.paths)) {
+        if (rowMatches(row, operation.matcher)) {
           hasBusyRow = true;
           markBusy(row, title);
         }
@@ -194,22 +186,43 @@
     el.title = title;
   }
 
-  /** 행 경로가 작업 대상 path 목록에 포함되는지 확인한다. */
-  function rowMatches(row, paths) {
+  /**
+   * 작업 대상 경로와 그 상위 폴더를 Set 으로 색인한다.
+   * - 수만 개 경로를 stage 할 때 행마다 전체 목록을 훑지 않도록(행 수 × 경로 수) 한 번만 만든다.
+   * @param {string[]} paths 정규화된 작업 대상 경로
+   * @returns {{ targets: Set<string>, ancestors: Set<string> }} 정확 일치/상위 폴더 색인
+   */
+  function createMatcher(paths) {
+    const targets = new Set(paths);
+    const ancestors = new Set();
+    for (const path of paths) {
+      for (let slash = path.indexOf("/"); slash > 0; slash = path.indexOf("/", slash + 1)) {
+        ancestors.add(path.slice(0, slash));
+      }
+    }
+    return { targets, ancestors };
+  }
+
+  /**
+   * 행 경로가 작업 대상에 포함되는지 확인한다.
+   * - 같은 경로, 대상 폴더 아래의 행, 대상 파일을 품은 폴더 행을 모두 busy 로 본다.
+   * @param {HTMLElement} row 검사할 행
+   * @param {{ targets: Set<string>, ancestors: Set<string> }} matcher createMatcher 결과
+   */
+  function rowMatches(row, matcher) {
     const rowPath = row.dataset.path || "";
     if (!rowPath) {
       return false;
     }
-    return paths.some((path) => pathMatches(rowPath, path));
-  }
-
-  /** 파일/폴더 경로 사이의 포함 관계까지 고려해 작업 대상 여부를 판단한다. */
-  function pathMatches(rowPath, targetPath) {
-    return (
-      rowPath === targetPath ||
-      rowPath.startsWith(`${targetPath}/`) ||
-      targetPath.startsWith(`${rowPath}/`)
-    );
+    if (matcher.targets.has(rowPath) || matcher.ancestors.has(rowPath)) {
+      return true;
+    }
+    for (let slash = rowPath.indexOf("/"); slash > 0; slash = rowPath.indexOf("/", slash + 1)) {
+      if (matcher.targets.has(rowPath.slice(0, slash))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** stage/unstage 액션이 어느 그룹에서 출발하는지 반환한다. */
@@ -241,6 +254,17 @@
   /** stage/unstage 만 작업 진행 상태 대상으로 삼는다. */
   function isWorkingAction(action) {
     return action === "stage" || action === "unstage";
+  }
+
+  /**
+   * 진행 중 작업 상태 객체를 만든다(경로 색인 포함).
+   * @param {string} action stage 또는 unstage
+   * @param {unknown} paths 대상 경로 목록. 비어 있으면 그룹 전체
+   * @param {"git" | "refresh"} phase 현재 단계
+   */
+  function createOperation(action, paths, phase) {
+    const normalized = normalizePaths(paths);
+    return { action, paths: normalized, matcher: createMatcher(normalized), phase };
   }
 
   /** 메시지 payload 의 경로 목록을 문자열 배열로 정규화한다. 빈 배열은 전체 그룹 작업을 뜻한다. */
