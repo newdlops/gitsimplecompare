@@ -37,6 +37,27 @@ export function isForcedGraphRefreshCause(cause: string): boolean {
   return cause.split(",").map((part) => part.trim()).some((part) => GRAPH_REFRESH_FORCE_CAUSES.has(part));
 }
 
+/** lifecycle 무효화 원인별로 panel 이 보존하거나 취소할 작업. */
+export interface GraphInvalidationPlan {
+  /** true 면 이미 게시한 커밋/범위를 유지하고 진행 중인 페이지 결과만 버린다. */
+  keepLoadedGraph: boolean;
+  /** true 면 진행 중인 PR 목록 조회를 취소한다. */
+  cancelPullRequests: boolean;
+}
+
+/**
+ * 무효화 원인에 따라 panel 이 무엇을 보존할지 정한다.
+ * - 숨김/창 포커스 해제는 잠깐 쉬는 것이므로 화면에 있는 그래프와 PR 조회를 버리지 않는다. 버리면 복귀 뒤
+ *   스크롤 한 번에 첫 페이지부터 다시 읽어 그래프가 300행으로 줄고, PR 목록은 다시 시작되지 않는다.
+ * - 저장소 교체·새 직접 reload·폐기는 이전 결과가 더 이상 맞지 않으므로 모두 버린다.
+ * @param reason coordinator 가 전달한 무효화 원인
+ * @returns 보존/취소 계획
+ */
+export function graphInvalidationPlan(reason: string): GraphInvalidationPlan {
+  const pause = reason === "hidden" || reason === "windowUnfocused";
+  return { keepLoadedGraph: pause, cancelPullRequests: !pause };
+}
+
 /** mode 둘 중 PR 목록 재조회 요구를 잃지 않는 더 강한 값을 고른다. */
 function strongestMode(left: GraphRefreshMode, right: GraphRefreshMode): GraphRefreshMode {
   const strength: Record<GraphRefreshMode, number> = { none: 0, stacks: 1, pullRequests: 2 };

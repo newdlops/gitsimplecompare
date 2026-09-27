@@ -153,6 +153,16 @@ export class GraphPanelMessageRouter {
   }
 
   /**
+   * 숨김/창 포커스 해제처럼 잠깐 쉬는 경계에서 rebase 동기화만 무효화한다.
+   * - 진행 중인 PR 목록 조회는 취소하지 않는다. 취소하면 캐시가 없어 결과가 버려지고 복귀 뒤 다시 시작되지 않는다.
+   * @param reason OUTPUT 로그에 남길 lifecycle 원인
+   */
+  pausePullRequestLifecycle(reason: string): void {
+    this.rebaseSessionSync.invalidate();
+    logInfo("graph pull request lifecycle paused", { repoRoot: this.repoRoot, reason });
+  }
+
+  /**
    * GitHub PR 첫 페이지와 그 결과를 반영한 stack snapshot을 차례로 보낸다.
    * @param reason OUTPUT 로그와 stale generation 식별에 남길 갱신 원인
    */

@@ -2,6 +2,7 @@
 // - 그래프 UI 가 필요로 하는 커밋 목록과, 노드 클릭 시 보여줄 상세 정보를 제공한다.
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
+import { runGitWithRevisions } from "./revisionInput";
 import { logInfo } from "../ui/outputLog";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
 import {
@@ -89,8 +90,8 @@ export class GitLogService {
     }
     const safeSkip = Math.max(0, Math.floor(skip));
     if (safeSkip === 0 && this.branchRefCache.getStats().indexedPages > 0) this.branchRefCache.invalidate();
-    const refArgs = refs.length > 0 ? refs : ["--branches", "--remotes", "--tags"];
-    const out = await runGit(
+    // 명시 ref(브랜치 필터 등)는 수천 개일 수 있어 stdin 으로 넘긴다.
+    const out = await runGitWithRevisions(
       [
         "log",
         "--topo-order",
@@ -99,8 +100,8 @@ export class GitLogService {
         "-z",
         `-n${safeLimit}`,
         ...(safeSkip > 0 ? [`--skip=${safeSkip}`] : []),
-        ...refArgs,
       ],
+      refs,
       this.repoRoot
     );
 
@@ -389,26 +390,32 @@ export class GitLogService {
   }
 
   /**
-   * 현재 페이지 커밋에 upstream 보다 앞선 로컬 브랜치 이름을 붙인다.
+   * 커밋 목록에 upstream 보다 앞선 로컬 브랜치 이름을 붙인다(필요하면 계산을 기다린다).
    * - 그래프에서 원격 기준점 이후의 로컬 전용 노드를 별도 스타일로 표시하기 위한 메타데이터다.
-   * @param commits 이번 그래프 페이지에 포함된 커밋 목록
-   * @returns 로컬 전용 브랜치 메타데이터가 붙은 커밋 수
+   * @param commits 그래프에 표시 중인 커밋 목록
+   * @returns 표시가 실제로 바뀐 커밋 수. 0 이면 호출자는 그래프를 다시 게시할 필요가 없다
    */
   async attachLocalOnlyBranches(commits: Commit[]): Promise<number> {
     if (!commits.length) {
       return 0;
     }
     const byHash = await this.localOnlyBranchCache.getMap().catch(() => new Map<string, string[]>());
-    let changed = 0;
-    for (const commit of commits) {
-      const branches = byHash.get(commit.hash);
-      delete commit.localOnlyBranches;
-      if (branches?.length) {
-        commit.localOnlyBranches = [...branches];
-        changed++;
-      }
+    return applyLocalOnlyMarkers(commits, byHash);
+  }
+
+  /**
+   * 이미 계산된 local-only 결과가 있으면 기다리지 않고 바로 붙인다.
+   * - 페이지 게시 전에 호출해, 캐시가 따뜻할 때 같은 페이지를 표시 때문에 두 번 게시하지 않게 한다.
+   * @param commits 그래프에 표시할 커밋 목록
+   * @returns 캐시 결과를 적용했으면 true(아직 계산 전이면 false)
+   */
+  applyWarmLocalOnlyBranches(commits: Commit[]): boolean {
+    const warm = this.localOnlyBranchCache.peek();
+    if (!warm) {
+      return false;
     }
-    return changed;
+    applyLocalOnlyMarkers(commits, warm);
+    return true;
   }
 
   /**
@@ -554,4 +561,33 @@ function virtualCommit(
     subject: kind === "ongoing" ? "Ongoing changes" : "Staged changes",
     kind,
   };
+}
+
+/**
+ * 커밋 목록에 local-only 표시를 붙이고, 표시가 이전과 달라진 커밋 수를 센다.
+ * - "표시가 있는 커밋 수"가 아니라 "바뀐 수"를 돌려줘야, 이미 표시된 커밋만 있는 페이지에서
+ *   그래프 전체를 다시 게시하는 낭비를 막을 수 있다.
+ * @param commits 표시를 붙일 커밋 목록(제자리 수정)
+ * @param byHash 커밋 hash → local-only 브랜치 이름
+ * @returns 표시가 추가·제거·변경된 커밋 수
+ */
+function applyLocalOnlyMarkers(
+  commits: Commit[],
+  byHash: ReadonlyMap<string, readonly string[]>
+): number {
+  let changed = 0;
+  for (const commit of commits) {
+    const next = byHash.get(commit.hash);
+    const previous = commit.localOnlyBranches ?? [];
+    const nextNames = next ?? [];
+    if (previous.length !== nextNames.length || previous.some((name, index) => name !== nextNames[index])) {
+      changed++;
+    }
+    if (nextNames.length) {
+      commit.localOnlyBranches = [...nextNames];
+    } else {
+      delete commit.localOnlyBranches;
+    }
+  }
+  return changed;
 }

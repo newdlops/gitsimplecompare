@@ -1,7 +1,7 @@
 // 특정 commit 주변만 graph 에 그리기 위한 git log window 로더.
 // - 오래된 PR 로 점프할 때 현재 HEAD 부터 대상까지 모든 중간 페이지를 로드하지 않게 한다.
 import { Commit } from "../graph/graphTypes";
-import { runGit } from "./gitExec";
+import { ALL_GRAPH_REF_ARGS, runGitWithRevisions } from "./revisionInput";
 import { gitLogPrettyFormat, parseGitLogOutput } from "./gitLogParse";
 
 /** 특정 commit 주변 window 크기 옵션 */
@@ -92,7 +92,7 @@ async function loadOrderedHashes(
   repoRoot: string,
   refs: string[]
 ): Promise<string[]> {
-  const out = await runGit(["rev-list", "--topo-order", ...refs], repoRoot);
+  const out = await runGitWithRevisions(["rev-list", "--topo-order"], explicitRefs(refs), repoRoot);
   return out.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
@@ -109,7 +109,7 @@ async function loadCommitSlice(
   limit: number,
   refs: string[]
 ): Promise<Commit[]> {
-  const out = await runGit([
+  const out = await runGitWithRevisions([
     "log",
     "--topo-order",
     "--decorate=short",
@@ -117,9 +117,18 @@ async function loadCommitSlice(
     "-z",
     `-n${limit}`,
     ...(skip > 0 ? [`--skip=${skip}`] : []),
-    ...refs,
-  ], repoRoot);
+  ], explicitRefs(refs), repoRoot);
   return parseGitLogOutput(out);
+}
+
+/**
+ * refArgs 결과를 runGitWithRevisions 입력으로 되돌린다.
+ * - 전체 범위(`--branches --remotes --tags`)면 빈 배열을, 명시 ref 면 그대로 반환해 stdin 으로 넘기게 한다.
+ * @param refs refArgs 가 만든 git 인자
+ * @returns 명시 ref 목록(전체 범위면 빈 배열)
+ */
+function explicitRefs(refs: string[]): string[] {
+  return refs.every((ref) => ALL_GRAPH_REF_ARGS.includes(ref)) ? [] : refs;
 }
 
 /**
