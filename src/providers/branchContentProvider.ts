@@ -2,7 +2,13 @@
 // - vscode.diff 의 한쪽(브랜치 버전)으로 쓰인다. 가상 문서이므로 자동으로 편집 불가.
 // - URI 에 담긴 ref/repoRoot/path 를 해석해 GitService 로 내용을 읽어 반환한다.
 import * as vscode from "vscode";
+import { FileTooLargeError } from "../git/largeChangeSet";
 import { GitServiceRegistry } from "../git/serviceRegistry";
+import {
+  currentDiffPreviewLimitBytes,
+  isLargeFilePreviewError,
+  largeFilePreviewError,
+} from "../ui/largeFilePreview";
 import { logError, logInfo } from "../ui/outputLog";
 import { COMPARE_SCHEME, parseRefUri } from "../utils/uri";
 
@@ -215,16 +221,33 @@ export class BranchContentProvider
     const key = cacheKey(ref, repoRoot, path);
     rememberKnownUri(key, uri);
     const cached = contentCache.get(key);
+    // diff 편집기 한도를 넘는 버전은 내용을 끝까지 읽지 않고 거부한다. 안내문을 내용처럼 돌려주면
+    // 실제 파일과 짝지은 diff·gutter 의 되돌리기가 그 안내문을 사용자 파일에 써 넣을 수 있다(fail closed).
+    const maxBytes = currentDiffPreviewLimitBytes();
     const promise =
       cached ??
       (ref === ":unstaged"
-        ? service.getWorkingContentWithoutStaged(relative)
-        : service.getFileContentAtRef(ref, relative));
+        ? service.getWorkingContentWithoutStaged(relative, { maxBytes })
+        : service.getFileContentAtRef(ref, relative, { maxBytes })
+      ).catch((error: unknown) => {
+        if (!(error instanceof FileTooLargeError)) {
+          throw error;
+        }
+        logInfo("branch content too large", { ref, path: relative, limit: error.limitBytes });
+        throw largeFilePreviewError(error);
+      });
     if (!cached) {
       contentCache.set(key, promise);
     }
     const content = await promise.catch((error) => {
-      if (contentCache.get(key) === promise) contentCache.delete(key);
+      // 크기 초과는 다시 읽어도 같으므로 거부 결과를 캐시에 남겨, quick diff 재요청마다 git 을 다시 읽지 않는다.
+      // index/작업트리 변경 이벤트가 오면 기존 무효화 경로가 캐시를 비운다.
+      if (isLargeFilePreviewError(error)) {
+        throw error;
+      }
+      if (contentCache.get(key) === promise) {
+        contentCache.delete(key);
+      }
       logError("branch content failed", error, { ref, path: relative });
       throw error;
     });

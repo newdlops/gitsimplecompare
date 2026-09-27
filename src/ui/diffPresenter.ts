@@ -5,6 +5,7 @@
 import * as vscode from "vscode";
 import { refreshBranchContent } from "../providers/branchContentProvider";
 import { beginDiffOpen } from "../providers/diffOpenGate";
+import { divertLargeWorkingFileDiff } from "./largeFilePreview";
 import { logInfo } from "./outputLog";
 import { makeDiffTitle, makeRefUri } from "../utils/uri";
 
@@ -94,6 +95,10 @@ export async function openHeadVsRemainingUnstagedDiff(
   repoRoot: string,
   relPath: string
 ): Promise<void> {
+  // 대용량 파일은 HEAD/index/작업본 세 벌을 메모리에 올리지 않고 파일 열기로 안내한다.
+  if (await divertLargeWorkingFileDiff(repoRoot, relPath)) {
+    return;
+  }
   const started = Date.now();
   const left = makeRefUri("HEAD", relPath, repoRoot);
   const right = makeRefUri(":unstaged", relPath, repoRoot);
@@ -179,6 +184,10 @@ export async function openHeadVsIndexDiff(
   relPath: string,
   leftRelPath?: string
 ): Promise<void> {
+  // staged 버전 크기는 작업트리 파일 크기로 가늠한다(삭제된 파일은 가상 문서의 크기 상한이 막는다).
+  if (await divertLargeWorkingFileDiff(repoRoot, relPath)) {
+    return;
+  }
   const left = makeRefUri("HEAD", leftRelPath ?? relPath, repoRoot);
   const right = makeRefUri(":0", relPath, repoRoot);
   const fileLabel = relPath.slice(relPath.lastIndexOf("/") + 1);
