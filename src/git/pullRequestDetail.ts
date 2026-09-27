@@ -2,7 +2,7 @@
 // - graph 최초 로드를 막지 않도록 changed files/review thread 정보는 PR 상세 drawer 가 열릴 때 조회한다.
 import { CommitFileChange } from "../graph/graphTypes";
 import { FileChangeStatus } from "./gitTypes";
-import { runGh } from "./ghCli";
+import { readGitHubInteractive } from "./githubReadCache";
 import { splitRepositoryName } from "./githubRepository";
 import { reviewThreadCommentCount } from "./pullRequestCommentCounts";
 
@@ -150,7 +150,7 @@ export async function fetchPullRequestDetail(
   number: number
 ): Promise<PullRequestDetailInfo> {
   const [owner, name] = splitRepositoryName(repository);
-  const out = await runGh([
+  const out = await readGitHubInteractive([
     "api",
     "graphql",
     "-F",
@@ -161,7 +161,7 @@ export async function fetchPullRequestDetail(
     `number=${number}`,
     "-f",
     `query=${PULL_REQUEST_DETAIL_QUERY}`,
-  ], cwd);
+  ], cwd, { operation: "pr-detail" });
   const parsed = JSON.parse(out) as GhPullRequestDetailResponse;
   const pr = parsed.data?.repository?.pullRequest;
   if (!pr) {
@@ -170,8 +170,11 @@ export async function fetchPullRequestDetail(
 
   const files = [...(pr.files?.nodes || [])];
   const threads = [...(pr.reviewThreads?.nodes || [])];
-  const fileState = await appendRemainingFiles(cwd, owner, name, number, pr.files?.pageInfo, files);
-  const threadState = await appendRemainingReviewThreads(cwd, owner, name, number, pr.reviewThreads?.pageInfo, threads);
+  // 파일 페이지와 review thread 페이지는 서로 독립이므로 동시에 이어 읽는다.
+  const [fileState, threadState] = await Promise.all([
+    appendRemainingFiles(cwd, owner, name, number, pr.files?.pageInfo, files),
+    appendRemainingReviewThreads(cwd, owner, name, number, pr.reviewThreads?.pageInfo, threads),
+  ]);
   const fileCommentCounts = reviewCommentCountsByPath(threads);
   const normalizedFiles = normalizeFiles(files, fileCommentCounts);
   const fileCommentCount = Array.from(fileCommentCounts.values()).reduce((sum, count) => sum + count, 0);
@@ -250,7 +253,9 @@ async function readFilesPage(
   number: number,
   cursor: string
 ): Promise<GhConnection<GhChangedFile>> {
-  const out = await runGh(graphQlArgs(owner, name, number, cursor, PULL_REQUEST_FILES_QUERY), cwd);
+  const out = await readGitHubInteractive(
+    graphQlArgs(owner, name, number, cursor, PULL_REQUEST_FILES_QUERY), cwd, { operation: "pr-detail-files" }
+  );
   const parsed = JSON.parse(out) as GhFilesPageResponse;
   return parsed.data?.repository?.pullRequest?.files || {};
 }
@@ -263,7 +268,9 @@ async function readReviewThreadsPage(
   number: number,
   cursor: string
 ): Promise<GhConnection<GhReviewThread>> {
-  const out = await runGh(graphQlArgs(owner, name, number, cursor, PULL_REQUEST_REVIEW_THREADS_QUERY), cwd);
+  const out = await readGitHubInteractive(
+    graphQlArgs(owner, name, number, cursor, PULL_REQUEST_REVIEW_THREADS_QUERY), cwd, { operation: "pr-detail-threads" }
+  );
   const parsed = JSON.parse(out) as GhReviewThreadsPageResponse;
   return parsed.data?.repository?.pullRequest?.reviewThreads || {};
 }

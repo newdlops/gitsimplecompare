@@ -2,6 +2,7 @@
 // - PR drawer 의 검색이 현재 로드된 페이지에 갇히지 않도록 GitHub GraphQL search 를 사용한다.
 // - 결과는 PullRequestInfo 로 정규화해 기존 preview/open/action 흐름에 그대로 합칠 수 있게 한다.
 import { readGitHub } from "./githubReadCache";
+import { readGitHubRepositoryName } from "./githubRepositoryName";
 import type { GhExecute } from "./ghRunner";
 import { completePullRequestCommits, mapPullRequestReads } from "./pullRequestCommitPages";
 import { splitRepositoryName } from "./githubRepository";
@@ -270,10 +271,9 @@ export function pullRequestCommitHashQuery(query: string): string | undefined {
   return /^[0-9a-f]{7,40}$/i.test(trimmed) ? trimmed.toLowerCase() : undefined;
 }
 
-/** gh repo view 로 owner/name 을 읽는다. */
-async function repositoryName(repoRoot: string, runner: GhExecute): Promise<string> {
-  const out = await runner(["repo", "view", "--json", "nameWithOwner"], repoRoot, { operation: "pr-search-repository" });
-  return (JSON.parse(out) as { nameWithOwner?: string }).nameWithOwner || "";
+/** gh 가 해석한 owner/name 을 읽는다. 원격 설정이 같으면 이전 결과를 재사용한다. */
+function repositoryName(repoRoot: string, runner: GhExecute): Promise<string> {
+  return readGitHubRepositoryName(repoRoot, runner, { operation: "pr-search-repository" });
 }
 
 /** GitHub search 문법에 맞는 PR 검색어를 만든다. */

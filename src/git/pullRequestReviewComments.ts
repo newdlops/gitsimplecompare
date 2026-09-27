@@ -1,6 +1,7 @@
 // 현재 브랜치의 GitHub PR inline review comment 를 읽는 서비스.
 // - provider/UI 계층이 gh CLI, repository 식별, REST pagination 을 직접 알지 않도록 분리한다.
-import { runGh } from "./ghCli";
+import { readGitHubInteractive } from "./githubReadCache";
+import { readGitHubRepositoryName } from "./githubRepositoryName";
 import { runGit } from "./gitExec";
 import { splitRepositoryName } from "./githubRepository";
 import { inheritReplyCommentLocations } from "./pullRequestCommentLocations";
@@ -72,9 +73,6 @@ interface GhPullRequestView {
   headRefName?: string;
 }
 
-interface GhRepositoryView {
-  nameWithOwner?: string;
-}
 
 interface GhReviewComment {
   id?: number | string;
@@ -139,7 +137,7 @@ export class PullRequestReviewCommentService {
     if (!currentBranch) {
       return undefined;
     }
-    const pr = await this.readCurrentPullRequest();
+    const pr = await this.readCurrentPullRequest(currentBranch);
     throwIfAborted(this.options.signal);
     if (!pr?.number) {
       return undefined;
@@ -171,15 +169,17 @@ export class PullRequestReviewCommentService {
   /**
    * gh 가 현재 브랜치에 연결된 PR 을 찾도록 한다.
    * - PR 이 없는 브랜치는 에디터 기능에서 정상적인 빈 상태이므로 undefined 로 처리한다.
+   * @param branch 조회 시점의 현재 브랜치(진행 중 조회 공유 범위를 브랜치별로 나눈다)
    */
-  private async readCurrentPullRequest(): Promise<GhPullRequestView | undefined> {
+  private async readCurrentPullRequest(branch: string): Promise<GhPullRequestView | undefined> {
     try {
-      const out = await runGh([
+      const out = await readGitHubInteractive([
         "pr",
         "view",
         "--json",
         "number,title,url,headRefName",
-      ], this.repoRoot, { signal: this.options.signal, operation: "pr-comment-view" });
+      // 인자에는 브랜치가 없으므로 브랜치를 세대로 넣어, checkout 직후 이전 브랜치의 진행 중 조회를 공유하지 않게 한다.
+      ], this.repoRoot, { signal: this.options.signal, operation: "pr-comment-view", version: branch });
       return JSON.parse(out) as GhPullRequestView;
     } catch (error) {
       if (isNoPullRequestError(error)) {
@@ -194,15 +194,14 @@ export class PullRequestReviewCommentService {
    * @returns GitHub REST route 에 사용할 owner/name 문자열
    */
   private async repositoryName(): Promise<string> {
-    const out = await runGh(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, {
+    const nameWithOwner = await readGitHubRepositoryName(this.repoRoot, readGitHubInteractive, {
       signal: this.options.signal,
       operation: "pr-comment-repository",
     });
-    const parsed = JSON.parse(out) as GhRepositoryView;
-    if (!parsed.nameWithOwner) {
+    if (!nameWithOwner) {
       throw new Error("GitHub repository name is not available.");
     }
-    return parsed.nameWithOwner;
+    return nameWithOwner;
   }
 
   /**
@@ -219,7 +218,7 @@ export class PullRequestReviewCommentService {
   ): Promise<PullRequestReviewComment[]> {
     const all: PullRequestReviewComment[] = [];
     for (let page = 1; page <= MAX_PAGES; page++) {
-      const out = await runGh([
+      const out = await readGitHubInteractive([
         "api",
         "-H",
         "Accept: application/vnd.github-commitcomment.full+json",

@@ -2,8 +2,10 @@
 // - git graph UI 가 gh CLI/remote URL/스테이징 diff 해석을 직접 알지 않도록 분리한다.
 import { CommitFileChange, LocalBranchStatus } from "../graph/graphTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
-import { runGh } from "./ghCli";
+import { readGitHubInteractive } from "./githubReadCache";
+import { readGitHubRepositoryName } from "./githubRepositoryName";
 import type { GhExecute } from "./ghRunner";
+import { fetchPullRequestRefs } from "./pullRequestRefLookup";
 import { fetchPreviewBootstrap, fetchPreviewCommitSummaries, fetchRemotePreviewCommit, previewReadRunner } from "./pullRequestPreviewRemote";
 import { runGit } from "./gitExec";
 import { fetchPullRequestListPage } from "./pullRequestListService";
@@ -239,6 +241,16 @@ export class PullRequestService {
   }
 
   /**
+   * PR 하나의 head/base commit 과 제목·상태만 가볍게 읽는다.
+   * - "PR 이 바뀌었는가"만 확인하는 새로고침이 PR 목록 전체와 꼬리 조회를 다시 받지 않게 한다.
+   * @param number 조회할 PR 번호
+   * @returns PR 정보. PR 이 없으면 undefined
+   */
+  getPullRequestRefs(number: number): Promise<PullRequestInfo | undefined> {
+    return fetchPullRequestRefs(this.repoRoot, number);
+  }
+
+  /**
    * PR preview Commits 탭에서 선택한 로컬 commit 의 파일 변경을 지연 조회한다.
    * @param hash 파일 변경을 읽을 commit hash
    * @returns 해당 commit 의 changed files
@@ -322,7 +334,7 @@ export class PullRequestService {
   private async existingPullRequestPreviewFiles(
     repository: string | undefined,
     existingPr?: PullRequestInfo,
-    runner: GhExecute = runGh
+    runner: GhExecute = readGitHubInteractive
   ): Promise<PullRequestPreviewFile[]> {
     if (!repository || !existingPr?.number) {
       return [];
@@ -343,11 +355,9 @@ export class PullRequestService {
     ).then(() => true, () => false);
   }
 
-  /** gh repo view 로 owner/name 을 읽는다. */
-  private async repositoryName(signal?: AbortSignal, operation = "pull-request-repository", runner: GhExecute = runGh): Promise<string> {
-    const out = await runner(["repo", "view", "--json", "nameWithOwner"], this.repoRoot, { signal, operation });
-    const parsed = JSON.parse(out) as { nameWithOwner?: string };
-    return parsed.nameWithOwner || "";
+  /** gh 가 해석한 owner/name 을 읽는다. 원격 설정이 같으면 이전 결과를 재사용한다. */
+  private repositoryName(signal?: AbortSignal, operation = "pull-request-repository", runner: GhExecute = readGitHubInteractive): Promise<string> {
+    return readGitHubRepositoryName(this.repoRoot, runner, { signal, operation });
   }
 
   /** 현재 branch 의 PR 이 있으면 그 base 를 target 으로 우선 사용한다. */

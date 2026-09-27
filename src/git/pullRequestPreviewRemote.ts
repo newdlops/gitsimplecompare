@@ -6,6 +6,11 @@ import type { PullRequestPreviewCommit } from "./pullRequestPreviewCommits";
 import { normalizePreviewStatus } from "./pullRequestPreviewFiles";
 
 const generations = new Map<string, number>();
+/**
+ * commit 상세(파일 목록) 캐시 시간. 같은 commit SHA 의 응답은 바뀌지 않으므로 길게 보관한다.
+ * - 크기 상한(128개/16MiB, 항목당 4MiB)은 GitHubReadCache 가 그대로 적용한다.
+ */
+const COMMIT_FILES_TTL_MS = 30 * 60_000;
 
 /** 명시적인 새로고침 때 mutable PR 응답만 새 세대로 읽고 immutable OID cache는 유지한다. */
 export function invalidatePreviewRemote(root: string): void { generations.set(root, (generations.get(root) ?? 0) + 1); }
@@ -92,7 +97,7 @@ export async function fetchRemotePreviewCommit(root: string, repository: string,
   const result: PullRequestPreviewCommit = { hash, shortHash: hash.slice(0, 7), title: hash.slice(0, 12), files: [], filesLoaded: true };
   for (let page = 1; ; page++) {
     const out = await readGitHub(["api", `repos/${repository}/commits/${hash}?per_page=100&page=${page}`], root,
-      { operation: "pr-preview-commit-files", signal, version: "commit", ttlMs: 120_000 });
+      { operation: "pr-preview-commit-files", signal, version: "commit", ttlMs: COMMIT_FILES_TTL_MS });
     const value = JSON.parse(out) as { sha?: string; files?: Array<{ filename: string; previous_filename?: string; status?: string; additions?: number; deletions?: number; patch?: string }> };
     if (value.sha !== hash || !Array.isArray(value.files)) throw new Error("GitHub returned incomplete commit files.");
     result.files.push(...value.files.map(file => ({ path: file.filename, oldPath: file.previous_filename,

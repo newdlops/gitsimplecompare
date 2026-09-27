@@ -122,3 +122,15 @@ function cancelled(): Error { return new DOMException("GitHub query cancelled.",
 const shared = new GitHubReadCache();
 /** production 조회가 전체 프로세스 한계와 cache를 공유하게 하는 진입점이다. */
 export const readGitHub = (args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> => shared.read(args, root, options);
+const interactive = new GitHubReadCache();
+/**
+ * 사용자가 직접 연 화면(PR 상세, 변경 파일, 에디터 리뷰 댓글)의 조회 진입점이다.
+ * - 시간 상한·동시 실행 제한·진행 요청 공유는 같지만, 백그라운드 PR 목록 조회와 슬롯을 나누지 않아
+ *   목록 꼬리 조회 뒤에 줄 서지 않는다. 완료 캐시는 쓰지 않는다.
+ * - 인자에 드러나지 않는 조회 조건(예: 현재 브랜치)이 있으면 options.version 에 넣어 공유 범위를 나눈다.
+ */
+export const readGitHubInteractive = (
+  args: readonly string[],
+  root: string,
+  options: GitHubReadOptions
+): Promise<string> => interactive.read(args, root, { ...options, ttlMs: 0 });

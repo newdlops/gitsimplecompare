@@ -218,14 +218,18 @@ export class ComparisonService {
    * - GitHub의 base/head 브랜치 이름을 로컬 ref 또는 head commit으로 해석해 파일 diff를
    *   열 때 기존 가상 문서 provider가 사용할 수 있는 ref를 함께 제공한다.
    * @param pr listPullRequests에서 선택한 Pull Request 정보
+   * @param reusableFiles head/base commit 이 그대로인 새로고침에서 재사용할 이전 변경 파일 목록(있으면 REST 조회 생략)
    * @returns PR 메타데이터와 API 잘림 여부를 포함한 비교 스냅샷
    */
-  async comparePullRequest(pr: PullRequestInfo): Promise<ComparisonSnapshot> {
+  async comparePullRequest(
+    pr: PullRequestInfo,
+    reusableFiles?: { files: FileChange[]; truncated: boolean }
+  ): Promise<ComparisonSnapshot> {
     assertPullRequest(pr);
     const [resolvedBaseRef, resolvedTargetRef, changedFiles] = await Promise.all([
       resolvePreviewTargetRef(this.repoRoot, pr.baseRefName),
       resolvePreviewHeadRef(this.repoRoot, pr.headRefName, pr.headHash),
-      this.pullRequests.getChangedFiles(pr.number),
+      reusableFiles ? Promise.resolve(reusableFiles) : this.pullRequests.getChangedFiles(pr.number),
     ]);
     // GitHub OID가 있으면 같은 이름의 stale local branch보다 authoritative commit을 우선한다.
     const sourceBaseRef = pr.baseHash || resolvedBaseRef;
@@ -321,9 +325,13 @@ export class ComparisonService {
   }
 
   /**
-   * PR refresh에 사용할 최신 PR 정보 또는 스냅샷 fallback을 선택한다.
+   * PR 비교를 최신 상태로 다시 만든다.
+   * - PR 목록 전체(80건 + 댓글·커밋 꼬리)를 받지 않고 그 PR 의 head/base commit 만 조회한다.
+   * - head/base commit 이 이전과 같으면 PR 의 변경 파일 목록도 같으므로 REST 파일 조회를 건너뛰고
+   *   로컬 merge-base·ref 해석만 다시 한다(fetch 로 commit 이 새로 생긴 경우 반영).
+   * - 조회가 실패하면 저장된 메타데이터로 파일 목록을 다시 읽는다.
    * @param snapshot pullRequest 메타데이터를 가진 이전 PR 스냅샷
-   * @returns 다시 조회한 changed-files 기반 스냅샷
+   * @returns 최신 PR 비교 스냅샷
    */
   private async refreshPullRequest(
     snapshot: ComparisonSnapshot
@@ -332,12 +340,15 @@ export class ComparisonService {
     if (!stored) {
       throw new Error("Pull request comparison metadata is missing.");
     }
-    const overview = await this.listPullRequests();
-    const current = overview.pullRequests.find(
-      (candidate) => candidate.number === stored.number
+    const current = await this.pullRequests.getPullRequestRefs(stored.number).catch(() => undefined);
+    const pr = current ?? fromSnapshotPullRequest(stored, snapshot);
+    const unchanged = Boolean(
+      current?.headHash && current.baseHash &&
+      current.headHash === stored.headHash && current.baseHash === stored.baseHash
     );
     return this.comparePullRequest(
-      current ?? fromSnapshotPullRequest(stored, snapshot)
+      pr,
+      unchanged ? { files: snapshot.changes, truncated: Boolean(snapshot.truncated) } : undefined
     );
   }
 

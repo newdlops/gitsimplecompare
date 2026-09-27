@@ -1,7 +1,7 @@
 // PR preview 의 Files changed 탭에 필요한 patch/comment 데이터를 읽는 모듈.
 // - 기존 drawer 상세는 가벼운 파일 트리에 집중하고, preview 는 GitHub PR처럼 diff snippet 과 review comment 를 함께 보여준다.
 import { CommitFileChange } from "../graph/graphTypes";
-import { runGh } from "./ghCli";
+import { readGitHubInteractive } from "./githubReadCache";
 import type { GhExecute } from "./ghRunner";
 import { FileChangeStatus } from "./gitTypes";
 import { splitRepositoryName } from "./githubRepository";
@@ -91,7 +91,7 @@ export async function fetchPullRequestPreviewFiles(
   cwd: string,
   repository: string,
   number: number,
-  runner: GhExecute = runGh
+  runner: GhExecute = readGitHubInteractive
 ): Promise<PullRequestPreviewFile[]> {
   const [owner, name] = splitRepositoryName(repository);
   const [filePage, comments] = await Promise.all([
@@ -140,7 +140,7 @@ async function readPullFiles(
   owner: string,
   name: string,
   number: number,
-  runner: GhExecute = runGh
+  runner: GhExecute = readGitHubInteractive
 ): Promise<PagedResult<GhPullFile>> {
   return readPagedResult<GhPullFile>(
     cwd,
@@ -189,7 +189,7 @@ async function readPagedResult<T>(
   name: string,
   route: string,
   headers: string[] = [],
-  runner: GhExecute = runGh
+  runner: GhExecute = readGitHubInteractive
 ): Promise<PagedResult<T>> {
   const all: T[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
