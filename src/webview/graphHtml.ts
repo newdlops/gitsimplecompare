@@ -32,6 +32,7 @@ export function buildGraphHtml(
   const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
   const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
   const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
+  const rowSyncScriptUri = script(webview, mediaRoot, "graphRowSync.js");
   const detailResizeScriptUri = script(webview, mediaRoot, "graphDetailResize.js");
   const performanceScriptUri = script(webview, mediaRoot, "graphPerformance.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
@@ -310,6 +311,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
   <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
+  <script nonce="${nonce}" src="${rowSyncScriptUri}"></script>
   <script nonce="${nonce}" src="${detailResizeScriptUri}"></script>
   <script nonce="${nonce}" src="${performanceScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>

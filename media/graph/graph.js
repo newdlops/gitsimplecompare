@@ -40,6 +40,11 @@
     detailEl,
     isDrawerMode,
   });
+  // branch/tag 상태 변경 때 바뀐 행만 교체하고, 가로 폭 측정은 다음 frame 으로 모은다.
+  const rowSync = window.GscGraphRowSync({
+    graphEl, graphContentEl, buildRow, rowRenderKey,
+    layout: () => ({ graphWidth: graphWidthForLaneCount(currentLaneCount) }),
+  });
 
   /** 레인 인덱스를 x 좌표로 변환한다. */
   function laneX(col) {
@@ -110,7 +115,7 @@
     for (let r = 0; r < currentRows.length; r++) {
       graphContentEl.appendChild(buildRow(currentRows[r], r, graphWidth));
     }
-    syncScrollableWidth(graphWidth);
+    rowSync.scheduleScrollableWidth();
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
     if (resetView && !restored) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
@@ -143,20 +148,6 @@
     graphContentEl.style.height = Math.max(graphContentHeight(), graphEl.clientHeight) + "px";
   }
 
-  /** row 내용이 가로로 길 때 그래프 컨텐츠 폭을 실제 row 폭에 맞춰 넓힌다. */
-  function syncScrollableWidth(graphWidth) {
-    const rowsRight = Array.from(graphContentEl.querySelectorAll(".row")).reduce(
-      (max, row) => Math.max(max, row.offsetLeft + row.scrollWidth + 24),
-      0
-    );
-    const graphRight = (graphWidth || graphWidthForLaneCount(currentLaneCount)) + 680;
-    const width = Math.max(graphEl.clientWidth, rowsRight, graphRight);
-    if (width > 0) {
-      graphContentEl.style.width = width + "px";
-      graphContentEl.style.minWidth = width + "px";
-    }
-  }
-
   /**
    * 커밋 한 행의 DOM(참조 배지 + 제목 + 작성자/날짜)을 만든다.
    * @param row       GraphRow
@@ -166,7 +157,7 @@
   function buildRow(row, index, leftInset) {
     const el = document.createElement("div");
     const localOnlyBranches = row.localOnlyBranches || [];
-    const displayRefs = window.GscGraphFeatures?.displayRefs?.(row) || row.refs || [];
+    const displayRefs = rowDisplayRefs(row);
     el.className =
       "row" +
       (row.hash === selectedHash ? " selected" : "") +
@@ -176,17 +167,14 @@
     el.style.right = "0";
     el.style.setProperty("--branch-color", rowDisplayColor(row));
     el.dataset.hash = row.hash;
+    el.dataset.index = String(index);
+    el.dataset.renderKey = rowRenderKey(row);
     el.dataset.subject = row.subject || "";
     el.dataset.dateIso = row.dateIso || "";
     el.dataset.refs = displayRefs.join("\t");
     el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
     el.title = rowTitle(row, displayRefs);
-    const refRenderer = window.GscGraphFeatures && window.GscGraphFeatures.refBadge;
-    const refs = displayRefs
-      .map((ref) =>
-        refRenderer ? refRenderer(ref, esc) : `<span class="ref${ref === "HEAD" ? " head" : ""}">${esc(ref)}</span>`
-      )
-      .join("");
+    const refs = refBadgesHtml(displayRefs);
     const date = formatDate(row.dateIso);
     const badge = localOnlyBranches.length ? `<span class="local-only-badge" title="${esc(`local only: ${localOnlyBranches.join(", ")}`)}">-local only-</span>` : "";
     el.innerHTML =
@@ -196,6 +184,28 @@
 
     el.addEventListener("click", () => selectCommit(row.hash));
     return el;
+  }
+  /** branch/tag 상태를 반영한 행의 표시 ref 목록. */
+  function rowDisplayRefs(row) {
+    return window.GscGraphFeatures?.displayRefs?.(row) || row.refs || [];
+  }
+  /** 표시 ref 들을 배지 HTML 로 만든다(tag push 상태 등 배지 모양 변화도 여기에 반영된다). */
+  function refBadgesHtml(displayRefs) {
+    const refRenderer = window.GscGraphFeatures && window.GscGraphFeatures.refBadge;
+    return displayRefs
+      .map((ref) => refRenderer ? refRenderer(ref, esc) : `<span class="ref${ref === "HEAD" ? " head" : ""}">${esc(ref)}</span>`)
+      .join("");
+  }
+  /** 행 DOM 을 다시 만들어야 하는지 비교할 key(배지 HTML·색·local-only·선택·종류)를 만든다. */
+  function rowRenderKey(row) {
+    return [refBadgesHtml(rowDisplayRefs(row)), rowDisplayColor(row), (row.localOnlyBranches || []).join("\t"),
+      row.hash === selectedHash ? "1" : "0", row.kind || ""].join("\n");
+  }
+  /** branch/tag 상태 반영 뒤 표시가 달라진 행만 교체하고 행 보조 기능을 다시 연결한다. */
+  function refreshRowDecorations() {
+    rowSync.patchRows(currentRows);
+    window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
+    window.GscGraphSearch?.update(graphEl, graphContentEl);
   }
   /** row 별 표시 색상을 한 번만 계산해 SVG edge/node 와 텍스트 row 가 같은 값을 공유하게 한다. */
   function rowDisplayColor(row) {
@@ -497,7 +507,7 @@
     });
     window.addEventListener("resize", () => {
       resizeGraphContent();
-      syncScrollableWidth();
+      rowSync.scheduleScrollableWidth();
       renderLoadTail();
       maybeLoadMore();
     });
@@ -518,20 +528,10 @@
       rowColorCache = new WeakMap();
       localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
       window.GscGraphRemote?.updateButton(openRemoteBtn, msg.branches);
-      graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
-      const graphWidth = graphWidthForLaneCount(currentLaneCount);
-      currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));
-      syncScrollableWidth(graphWidth);
-      window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-      window.GscGraphSearch?.update(graphEl, graphContentEl);
+      refreshRowDecorations();
     } else if (msg.type === "tagStatus") {
       window.GscGraphFeatures?.setTagStatus?.(msg.tags);
-      graphContentEl.querySelectorAll(".row").forEach((el) => el.remove());
-      const graphWidth = graphWidthForLaneCount(currentLaneCount);
-      currentRows.forEach((row, index) => graphContentEl.appendChild(buildRow(row, index, graphWidth)));
-      syncScrollableWidth(graphWidth);
-      window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-      window.GscGraphSearch?.update(graphEl, graphContentEl);
+      refreshRowDecorations();
     } else if (msg.type === "graphLoadState") {
       applyLoadState(msg.state, true);
     } else if (msg.type === "graphBusy") {
