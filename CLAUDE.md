@@ -26,8 +26,12 @@ VS Code 확장 "Git Simple Compare" 저장소입니다.
 - `git/rebaseService.ts` — 비대화식 인터랙티브 rebase(todo/메시지를 헬퍼 스크립트로 주입). 헬퍼는 `media/rebase/rebaseEditor.js`(ELECTRON_RUN_AS_NODE 로 구동).
 - `git/diffHunkService.ts` — `git diff` 를 파일/hunk 로 파싱하고 선택 hunk 만 `git apply --cached` 로 부분 스테이징해 분할 커밋.
 - `git/diffParse.ts` — `--name-status`/`--numstat` 출력 파서(서비스들이 공유).
+- `git/largeChangeSet.ts` — 대량 변경 정책(순수): bulk-checkin 임계값, stdin pathspec 전환, 라인 통계 생략 기준. `git/pathspecExec.ts` 가 경로가 많은 add/reset/checkout 을 stdin pathspec 으로 실행한다. `core.bigFileThreshold` 는 `git add` 에만 붙인다(hook 을 실행하는 commit 에 상속되면 diff 가 binary 로 바뀜). 대용량 파일(5MB 초과) 라인 통계는 blob 끼리 비교하는 diff 에만 `blobDiffSizeLimitArgs` 를 쓰고, 작업트리 diff 는 `largeFileExcludePathspecs` 로 먼저 제외한다(작업트리 diff 에 임계값만 걸면 해시 계산이 오히려 느려짐). diff 미리보기는 `ui/largeFilePreview.ts` 의 한도(`diffEditor.maxFileSize`)를 넘으면 `FileTooLargeError` 로 내용을 읽지 않는다(`git/fileContentReader.ts`).
 - `graph/graphLayout.ts` — 커밋 DAG → 레인/간선 배치(순수 함수, vscode 비의존). `graph/graphTypes.ts` 에 도메인 타입.
+- Graph 대형 저장소 경로: 페이지 계획·status∥log 병렬 읽기는 `webview/graphPageLoading.ts`, 명시 ref 는 `git/revisionInput.ts` 로 stdin 전달(argv 금지), local-only 는 원격 tip 제외 빠른 경로 + ahead 수 검증(`git/gitLocalOnlyBranches.ts`). commit-graph 가 없어 첫 페이지가 느리면 `ui/commitGraphOffer.ts` 가 사용자 동의 후에만 생성한다(`git/commitGraphStatus.ts`). 숨김/포커스 해제는 로드된 그래프·PR 조회를 보존한다(`graphInvalidationPlan`). 웹뷰 행 부분 갱신·폭 측정은 `media/graph/graphRowSync.js`.
+- GitHub 읽기: 백그라운드는 `readGitHub`, 사용자 조작(상세·변경 파일·에디터 댓글)은 `readGitHubInteractive`(별도 슬롯·시간 상한). `gh repo view` 는 `git/githubRepositoryName.ts` 로 원격 설정 기준 캐시, PR 변경 확인은 `git/pullRequestRefLookup.ts` 단일 조회.
 - `webview/{graphPanel,rebasePanel,splitPanel}.ts` — 각 웹뷰 패널 생애주기 + 메시지 라우팅. 프로토콜은 `webview/*Protocol.ts`, UI 는 `media/{graph,rebase,split}/`.
+- `media/changes/changesWorkingList.js` — Staged/Changes 목록을 평면 행 모델 + 가상 스크롤(고정 22px 행)로 렌더. 화면 밖 행이 DOM 에 없으므로 선택 범위·폴더 하위 경로는 DOM 이 아니라 이 모델(`orderedKeys`/`pathsForKey`/`hasKey`)로 계산한다.
 - `providers/conflictsController.ts` + `conflictsTreeProvider.ts` — 충돌 뷰 상태 조정 + 트리 표시.
 - `providers/branchContentProvider.ts` — 커스텀 URI 스킴(`gitsimplecompare:`)으로 특정 ref의 파일 내용을 읽기 전용 가상 문서로 제공한다.
 - `providers/changesTreeProvider.ts` + `changesTreeModel.ts` — 변경 파일 목록을 트리/리스트로 보여준다(모델은 순수 변환).

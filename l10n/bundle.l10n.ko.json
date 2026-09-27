@@ -1691,5 +1691,13 @@
   "Local changes need conflict resolution": "복원한 로컬 변경의 충돌을 해결해야 합니다",
   "Rebase was left paused because some edit files could not be saved. Save them successfully before continuing.": "편집 파일을 저장하지 못해 rebase를 일시 정지 상태로 유지했습니다. 파일을 저장한 뒤 계속 진행하세요.",
   "Git finished, but recovery is incomplete. Check the error and retry after resolving it. Recovery snapshots were kept.": "Git 작업은 끝났지만 복구가 완료되지 않았습니다. 오류를 해결한 뒤 다시 시도하세요. 복구 스냅샷은 보존되어 있습니다.",
-  "The operation is still paused. Resolve the remaining work in the Conflicts view, then continue there.": "작업이 아직 일시 정지 상태입니다. Conflicts 뷰에서 남은 작업을 해결하고 계속 진행하세요."
+  "The operation is still paused. Resolve the remaining work in the Conflicts view, then continue there.": "작업이 아직 일시 정지 상태입니다. Conflicts 뷰에서 남은 작업을 해결하고 계속 진행하세요.",
+  "This file is larger than {0} MB, so its contents are not loaded for comparison (diffEditor.maxFileSize). Open the file directly to view it.": "이 파일은 {0} MB보다 커서 비교용으로 내용을 불러오지 않습니다(diffEditor.maxFileSize). 파일을 직접 열어 확인하세요.",
+  "'{0}' is too large to compare ({1} MB, limit {2} MB).": "'{0}' 파일이 너무 커서 비교할 수 없습니다({1} MB, 한도 {2} MB).",
+  "Write commit-graph": "commit-graph 쓰기",
+  "Don't Ask Again": "다시 묻지 않기",
+  "Loading history in '{0}' took {1} ms because the repository has no commit-graph. Write one to make the Git Graph load faster? This runs 'git commit-graph write --reachable'.": "'{0}' 저장소에 commit-graph가 없어 이력을 읽는 데 {1} ms가 걸렸습니다. Git Graph가 더 빨리 열리도록 commit-graph를 쓸까요? 'git commit-graph write --reachable'을 실행합니다.",
+  "Writing commit-graph...": "commit-graph를 쓰는 중...",
+  "Commit-graph written. The Git Graph will load faster from the next refresh.": "commit-graph를 썼습니다. 다음 새로고침부터 Git Graph가 더 빨리 열립니다.",
+  "Could not write the commit-graph. See the Git Simple Compare output for details.": "commit-graph를 쓰지 못했습니다. 자세한 내용은 Git Simple Compare 출력을 확인하세요."
 }
