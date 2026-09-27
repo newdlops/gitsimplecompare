@@ -31,6 +31,11 @@ export interface RunGitOptions {
   beforeRetry?: () => Promise<void>;
   /** 호출 취소 시 실행 중인 git 프로세스도 종료할 신호다. */
   signal?: AbortSignal;
+  /**
+   * stdout 을 모을 최대 byte 수(기본 128MB). 넘으면 git 을 종료하고 `code` 가
+   * `ERR_CHILD_PROCESS_STDIO_MAXBUFFER` 인 GitError 로 실패한다(대용량 파일 미리보기 차단용).
+   */
+  maxBuffer?: number;
 }
 
 /** 성공한 Git 명령의 stdout/stderr를 손실 없이 함께 반환하는 결과다. */
@@ -167,7 +172,7 @@ export async function runGitDetailed(
 ): Promise<GitCommandOutput> {
   const normalized = normalizeOptions(options);
   return withGitRetry(args, normalized, () =>
-    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal)
+    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, undefined, normalized.maxBuffer)
   );
 }
 
@@ -177,6 +182,9 @@ export async function runGitDetailed(
  * @param args git 인자 배열
  * @param cwd 실행 디렉터리
  * @param env 기존 process.env에 덮어쓸 선택 환경
+ * @param signal 호출 취소 시 git 프로세스를 종료할 신호
+ * @param input stdin 으로 넘길 문자열/바이트
+ * @param maxBuffer stdout 을 모을 최대 byte 수. 넘으면 git 을 종료하고 실패한다
  * @returns 성공 시 두 출력 스트림, 실패 시 두 스트림을 담은 GitError
  */
 function runGitDetailedOnce(
@@ -184,7 +192,8 @@ function runGitDetailedOnce(
   cwd: string,
   env?: Record<string, string>,
   signal?: AbortSignal,
-  input?: GitInput
+  input?: GitInput,
+  maxBuffer = MAX_GIT_BUFFER_BYTES
 ): Promise<GitCommandOutput> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -196,7 +205,7 @@ function runGitDetailedOnce(
       args,
       {
         cwd,
-        maxBuffer: MAX_GIT_BUFFER_BYTES,
+        maxBuffer,
         windowsHide: true,
         encoding: "utf8",
         env: env ? { ...process.env, ...env } : undefined,
@@ -362,7 +371,8 @@ function normalizeOptions(
     "env" in options ||
     "retryOnLock" in options ||
     "beforeRetry" in options ||
-    "signal" in options
+    "signal" in options ||
+    "maxBuffer" in options
   ) {
     return options as RunGitOptions;
   }

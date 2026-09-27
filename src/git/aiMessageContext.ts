@@ -2,6 +2,7 @@
 // - UI/명령 레이어가 git CLI 세부 인자를 알지 않도록 git/ 경계 안에 둔다.
 import { FileChange } from "./gitTypes";
 import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { blobDiffSizeLimitArgs } from "./largeChangeSet";
 import { runGit } from "./gitExec";
 
 /** AI 커밋 메시지 생성에 사용할 변경 범위. */
@@ -42,8 +43,11 @@ export async function readCommitMessageContext(
   ]);
   if (staged.length > 0) {
     const [diff, status] = await Promise.all([
-      runGit(["diff", "--cached", "--patch", "-M", "--unified=30"], repoRoot)
-        .catch(() => ""),
+      // 대용량 파일은 "Binary files differ" 한 줄로 요약돼 patch 가 출력 버퍼 상한을 넘지 않는다.
+      runGit(
+        [...blobDiffSizeLimitArgs(), "diff", "--cached", "--patch", "-M", "--unified=30"],
+        repoRoot
+      ).catch(() => ""),
       runGit(["status", "--short"], repoRoot).catch(() => ""),
     ]);
     return commitContext(repoRoot, branch, "staged", staged, diff, status);
@@ -53,6 +57,7 @@ export async function readCommitMessageContext(
 
 /**
  * diff 계열 명령의 name-status/numstat 출력을 합쳐 파일 목록을 만든다.
+ * - numstat 에 대용량 blob 크기 임계값을 걸므로 baseArgs 는 blob 끼리 비교하는 diff(`--cached`)여야 한다.
  * @param repoRoot git 저장소 루트
  * @param baseArgs `git` 뒤에 붙일 diff 기본 인자
  */
@@ -62,7 +67,8 @@ async function readDiffFiles(
 ): Promise<AiChangeFile[]> {
   const [nameStatus, numstat] = await Promise.all([
     runGit([...baseArgs, "--name-status", "-z", "-M"], repoRoot).catch(() => ""),
-    runGit([...baseArgs, "--numstat", "-z", "-M"], repoRoot).catch(() => ""),
+    runGit([...blobDiffSizeLimitArgs(), ...baseArgs, "--numstat", "-z", "-M"], repoRoot)
+      .catch(() => ""),
   ]);
   return withCounts(parseNameStatusZ(nameStatus), parseNumstat(numstat));
 }

@@ -136,7 +136,10 @@ export async function stageChanges(
       if (targets.length) {
         await svc.stage(targets);
       } else {
-        await svc.stageAll();
+        // 전체 stage 는 화면의 미스테이징 수를 규모 힌트로 넘겨 대량이면 bulk-checkin 을 쓴다.
+        await svc.stageAll({
+          expectedFileCount: deps.changesView.getWorkingChangeCounts().unstaged,
+        });
       }
     }
   );

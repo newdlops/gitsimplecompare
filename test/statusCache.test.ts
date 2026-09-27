@@ -141,10 +141,12 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     run: (args: string[]) => Promise<string>;
   };
   runnable.run = async (args: string[]) => {
-    assert.equal(args[0], "diff");
+    assert.ok(args.includes("diff"));
     commands.push(args);
     return "";
   };
+  // 통계 diff 앞에는 대용량 blob 크기 임계값(`-c core.bigFileThreshold=...`)이 붙으므로 하위 명령만 비교한다.
+  const subcommands = () => commands.map((args) => args.find((arg) => arg === "status" || arg === "diff"));
 
   const statusOnly = await service.getStatusGroups({
     force: true,
@@ -154,18 +156,19 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     staged: [],
     unstaged: [{ status: "M", path: "tracked.txt", oldPath: undefined }],
   });
-  assert.deepEqual(commands.map((args) => args[0]), ["status"]);
+  assert.deepEqual(subcommands(), ["status"]);
 
   await service.getStatusGroups({ includeStats: false });
-  assert.deepEqual(commands.map((args) => args[0]), ["status"]);
+  assert.deepEqual(subcommands(), ["status"]);
 
   const withStats = await service.getStatusGroups();
-  assert.deepEqual(commands.map((args) => args[0]), [
+  // staged 가 비어 있으면 `diff --cached --numstat` 은 실행하지 않고 unstaged numstat 만 읽는다.
+  assert.deepEqual(subcommands(), [
     "status",
     "status",
-    "diff",
     "diff",
   ]);
+  assert.ok(!commands.some((args) => args.includes("--cached")));
   assert.deepEqual(withStats.unstaged[0], {
     status: "M",
     path: "tracked.txt",
@@ -174,7 +177,7 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     deletions: 0,
   });
   assert.deepEqual(await service.getStatusGroups(), withStats);
-  assert.equal(commands.length, 4, "통계를 포함한 완료 캐시는 status와 diff 모두 다시 실행하지 않는다");
+  assert.equal(commands.length, 3, "통계를 포함한 완료 캐시는 status와 diff 모두 다시 실행하지 않는다");
 });
 
 test("provider 통계 보강 결과는 authoritative GitService 캐시를 오염시키지 않는다", async (t) => {

@@ -77,24 +77,47 @@ function mapStatusCode(code: string): FileChangeStatus {
   return "AMDRCT".includes(code) ? (code as FileChangeStatus) : "M";
 }
 
+/** numstat 한 항목의 추가/삭제 라인 수. */
+export interface NumstatCount {
+  additions: number;
+  deletions: number;
+  /**
+   * git 이 "-" 로 표시한 항목이면 true. binary 파일이거나 `core.bigFileThreshold` 를 넘어
+   * 내용을 비교하지 않은 대용량 파일이다(라인 수는 호환을 위해 0 으로 둔다).
+   */
+  binary?: true;
+}
+
 /**
  * `git diff --numstat` 또는 `git diff --numstat -z` 출력을 경로별 {추가, 삭제} 라인 수 맵으로 파싱한다.
- * - 바이너리 파일은 "-"로 표시되며 0 으로 처리한다.
+ * - 바이너리(또는 크기 상한 초과) 파일은 "-"로 표시되며 0 으로 처리하고 binary 표시를 붙인다.
  * - `-z` 출력은 한글/공백/특수문자 경로가 quote 되지 않아 status path 와 안정적으로 매칭된다.
  * - 이름변경 표기("old => new", "{a => b}/c")는 새 경로 기준으로 정규화한다(근사).
  * @param raw git diff --numstat 원문 출력
  */
-export function parseNumstat(
-  raw: string
-): Map<string, { additions: number; deletions: number }> {
+export function parseNumstat(raw: string): Map<string, NumstatCount> {
   return raw.includes("\0") ? parseNumstatZ(raw) : parseNumstatLines(raw);
 }
 
+/**
+ * numstat 의 추가/삭제 칸을 라인 수 항목으로 바꾼다.
+ * @param added 추가 칸 원문("-" 가능)
+ * @param deleted 삭제 칸 원문("-" 가능)
+ */
+function numstatCount(added: string, deleted: string): NumstatCount {
+  const count: NumstatCount = {
+    additions: added === "-" ? 0 : Number(added) || 0,
+    deletions: deleted === "-" ? 0 : Number(deleted) || 0,
+  };
+  if (added === "-" && deleted === "-") {
+    count.binary = true;
+  }
+  return count;
+}
+
 /** 줄 단위 numstat 출력을 파싱한다. */
-function parseNumstatLines(
-  raw: string
-): Map<string, { additions: number; deletions: number }> {
-  const map = new Map<string, { additions: number; deletions: number }>();
+function parseNumstatLines(raw: string): Map<string, NumstatCount> {
+  const map = new Map<string, NumstatCount>();
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed) {
@@ -104,10 +127,8 @@ function parseNumstatLines(
     if (parts.length < 3) {
       continue;
     }
-    const additions = parts[0] === "-" ? 0 : Number(parts[0]) || 0;
-    const deletions = parts[1] === "-" ? 0 : Number(parts[1]) || 0;
     const path = normalizeRenamePath(parts.slice(2).join("\t"));
-    map.set(path, { additions, deletions });
+    map.set(path, numstatCount(parts[0], parts[1]));
   }
   return map;
 }
@@ -117,10 +138,8 @@ function parseNumstatLines(
  * - 일반 파일: `<add>\t<del>\t<path>\0`
  * - rename/copy: `<add>\t<del>\t\0<old>\0<new>\0` 이므로 새 경로를 사용한다.
  */
-function parseNumstatZ(
-  raw: string
-): Map<string, { additions: number; deletions: number }> {
-  const map = new Map<string, { additions: number; deletions: number }>();
+function parseNumstatZ(raw: string): Map<string, NumstatCount> {
+  const map = new Map<string, NumstatCount>();
   const tokens = raw.split("\0");
   for (let index = 0; index < tokens.length; index++) {
     const header = tokens[index];
@@ -131,15 +150,13 @@ function parseNumstatZ(
     if (parts.length < 3) {
       continue;
     }
-    const additions = parts[0] === "-" ? 0 : Number(parts[0]) || 0;
-    const deletions = parts[1] === "-" ? 0 : Number(parts[1]) || 0;
     let filePath = parts.slice(2).join("\t");
     if (!filePath) {
       index += 2;
       filePath = tokens[index] || "";
     }
     if (filePath) {
-      map.set(normalizeRenamePath(filePath), { additions, deletions });
+      map.set(normalizeRenamePath(filePath), numstatCount(parts[0], parts[1]));
     }
   }
   return map;

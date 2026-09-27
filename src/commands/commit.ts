@@ -143,7 +143,16 @@ async function runCommitWithLease(
     }
     deps.changesView.setCommitFailure(undefined);
     if (shouldStageAll(operation, hasStaged)) {
-      await service.stageAll();
+      // 화면의 미스테이징 수를 규모 힌트로 넘겨, 수천 파일이면 bulk-checkin 으로 stage 한다.
+      const expectedFileCount = deps.changesView.getWorkingChangeCounts().unstaged;
+      const stageStartedAt = Date.now();
+      await service.stageAll({ expectedFileCount });
+      logInfo("commit stage-all finished", {
+        root: service.repoRoot,
+        operation,
+        expectedFileCount,
+        durationMs: Date.now() - stageStartedAt,
+      });
     }
     commitAttempted = true;
     const gitCommitStartedAt = Date.now();

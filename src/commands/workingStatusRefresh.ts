@@ -2,6 +2,8 @@
 // - VS Code Git의 빠른 snapshot과 실제 Git CLI SoT 사이의 동기화 경계를 한곳에서 관리한다.
 // - stage/commit 전 요청이 늦게 끝나 최신 UI를 덮지 않도록 repo/request/generation을 모두 확인한다.
 import type { GitService, StatusGroups } from "../git/gitService";
+import { shouldComputeLineStats } from "../git/largeChangeSet";
+import { hasLineStatsWork } from "../git/statusStats";
 import {
   StatusSourceFence,
   statusRefreshFreshness,
@@ -337,7 +339,8 @@ function scheduleStatusStats(
   groups: StatusGroups,
   source: string
 ): void {
-  if (!groups.staged.length && !groups.unstaged.length) {
+  // 빈 목록이거나 모든 bucket 이 대량이라 통계를 생략하는 경우 numstat pass·재렌더를 예약하지 않는다.
+  if (!hasLineStatsWork(groups)) {
     return;
   }
   request.state.statsTimer = setTimeout(() => {
@@ -506,6 +509,8 @@ async function enrichStatusStats(
 
 /**
  * 같은 상태 항목에 직전 +/- 통계가 있으면 빠른 1차 렌더 동안만 이어받는다.
+ * - 통계를 생략하는 대량 bucket 은 뒤이은 보강 pass 가 없어 이어받은 값이 계속 낡은 채 남으므로
+ *   이어받지 않고 통계 없이 표시한다.
  * @param groups 새 provider/porcelain 상태 목록
  * @param previous 마지막으로 UI에 적용한 상태와 통계
  * @returns 새 상태 구조에 일치하는 기존 통계만 복사한 목록
@@ -526,13 +531,17 @@ function carryForwardStats(
       known.set(itemKey(bucket, item), item);
     }
   }
-  const carry = (bucket: "S" | "W", items: StatusGroups["staged"]) =>
-    items.map((item) => {
+  const carry = (bucket: "S" | "W", items: StatusGroups["staged"]) => {
+    if (!shouldComputeLineStats(items.length)) {
+      return items.map((item) => ({ ...item }));
+    }
+    return items.map((item) => {
       const stat = known.get(itemKey(bucket, item));
       return stat
         ? { ...item, additions: stat.additions, deletions: stat.deletions }
         : { ...item };
     });
+  };
   return {
     staged: carry("S", groups.staged),
     unstaged: carry("W", groups.unstaged),

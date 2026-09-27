@@ -3,13 +3,20 @@
 //   반드시 GitService 를 통해서만 git을 다룬다(경계 분리·재사용성).
 // - vscode API에 의존하지 않으므로 단위 테스트나 다른 환경에서도 그대로 쓸 수 있다.
 import * as path from "node:path";
-import { readFile, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitBranchListCache } from "./gitBranchListCache";
-import { GitError, runGit } from "./gitExec";
+import { runGit } from "./gitExec";
 import { runGitStatus } from "./gitStatusExec";
+import {
+  readFileAtRef,
+  readWorkingContentWithoutStaged,
+  type ContentReadOptions,
+} from "./fileContentReader";
+import { bulkCheckinConfigArgs } from "./largeChangeSet";
+import { runGitWithPaths } from "./pathspecExec";
 import { StashService, type StashSelection } from "./stashService";
-import { attachParsedStatusStats, attachStatusStats } from "./statusStats";
+import { attachStatusStats } from "./statusStats";
 import {
   appendIgnoreEntries,
   gitPathArgs,
@@ -22,7 +29,6 @@ import {
   parseNumstat,
   parsePorcelainGroups,
 } from "./diffParse";
-import { buildWorkingContentWithoutStaged } from "./unstagedView";
 import {
   cloneStatusGroups,
   StatusCache,
@@ -33,6 +39,13 @@ export type { StatusGroupOptions, StatusGroups } from "./statusCache";
 export type { IgnoreTarget, UntrackResult } from "./ignoreRules";
 // GitError 는 gitExec 로 옮겼지만, 기존 import 경로 호환을 위해 다시 내보낸다.
 export { GitError } from "./gitExec";
+
+export type { ContentReadOptions } from "./fileContentReader";
+/** `stageAll` 호출부가 전달할 수 있는 대상 규모 힌트. */
+export interface StageAllOptions {
+  /** stage 될 것으로 예상되는 파일 수. 대량이면 bulk-checkin 으로 blob 을 pack 하나에 기록한다. */
+  expectedFileCount?: number;
+}
 /**
  * 특정 저장소 루트에 묶인 git 작업 단위.
  * - 인스턴스는 repoRoot 하나에 대응한다. 여러 저장소를 다룰 땐 루트별로 생성한다.
@@ -116,6 +129,7 @@ export class GitService {
    * - 스테이징은 `git diff --cached --numstat -z`, 미스테이징은 `git diff --numstat -z` 로
    *   각각 추가/삭제 라인 수를 병합한다. `git diff`에 나오지 않는 미추적 파일은 파일을
    *   직접 읽어 추가 라인 수를 계산하고 삭제 라인은 0으로 표시한다.
+   * - 한 bucket 이 수천 파일을 넘으면(largeChangeSet 정책) 그 bucket 의 라인 통계는 생략한다.
    * - includeStats=false 면 porcelain 목록만 한 번 읽어 UI가 SoT 상태를 먼저 반영하게 한다.
    * @param options 강제 조회, 캐시 유효 시간, 라인 통계 포함 여부
    * @returns authoritative porcelain 상태를 기준으로 분류한 작업트리 변경 그룹
@@ -192,29 +206,21 @@ export class GitService {
 
   /**
    * authoritative git status 를 읽고 요청된 경우 diff 통계까지 병합한다.
+   * - 통계는 status 로 파일 수를 안 뒤에 붙인다. 그래야 수만 파일 bucket 의 numstat/미추적 파일 읽기를
+   *   largeChangeSet 정책에 따라 건너뛸 수 있다.
    * @param includeStats true면 staged/unstaged numstat과 미추적 파일 라인 수도 계산한다
    * @returns porcelain 기준 상태 그룹과 선택적으로 보강된 라인 통계
    */
   private async readStatusGroups(includeStats: boolean): Promise<StatusGroups> {
-    const status = runGitStatus(
-      ["status", "--porcelain", "-z", "--untracked-files=all"],
-      this.repoRoot
+    const groups = parsePorcelainGroups(
+      await runGitStatus(
+        ["status", "--porcelain", "-z", "--untracked-files=all"],
+        this.repoRoot
+      )
     );
-    if (!includeStats) {
-      return parsePorcelainGroups(await status);
-    }
-    const [statusOut, stagedNum, unstagedNum] = await Promise.all([
-      status,
-      // 커밋 0개(HEAD 없음) 등은 빈 출력으로 처리한다.
-      this.run(["diff", "--cached", "--numstat", "-z", "-M"]).catch(() => ""),
-      this.run(["diff", "--numstat", "-z", "-M"]).catch(() => ""),
-    ]);
-    return attachParsedStatusStats(
-      this.repoRoot,
-      parsePorcelainGroups(statusOut),
-      stagedNum,
-      unstagedNum
-    );
+    return includeStats
+      ? attachStatusStats(this.repoRoot, groups, (args) => this.run(args))
+      : groups;
   }
 
   /**
@@ -299,28 +305,47 @@ export class GitService {
   /**
    * 지정 경로들을 스테이징한다(`git add`).
    * - 대괄호나 pathspec magic이 있는 이름도 선택한 파일 그대로 처리한다.
+   * - 경로가 수천 개면 stdin pathspec 으로 넘겨 명령줄 한도를 피하고, bulk-checkin 으로
+   *   blob 을 pack 하나에 기록해 loose object 수만 개를 만드는 비용을 줄인다.
    * @param paths 저장소 상대 경로 목록
    */
   async stage(paths: string[]): Promise<void> {
     if (paths.length) {
-      await this.run(["--literal-pathspecs", "add", "--", ...paths]);
+      await runGitWithPaths(
+        [...bulkCheckinConfigArgs(paths.length), "--literal-pathspecs", "add"],
+        paths,
+        this.repoRoot
+      );
       this.invalidateStatusCache();
     }
   }
 
-  /** 모든 변경(추적·미추적·삭제)을 스테이징한다(`git add -A`). */
-  async stageAll(): Promise<void> {
-    await this.run(["add", "-A"]);
+  /**
+   * 모든 변경(추적·미추적·삭제)을 스테이징한다(`git add -A`).
+   * - 호출부가 아는 대상 파일 수가 크면 bulk-checkin 으로 실행해 대량 변경의 stage 시간을 줄인다.
+   * @param options expectedFileCount: 현재 화면의 미스테이징 파일 수 같은 대상 규모 힌트(모르면 생략)
+   */
+  async stageAll(options: StageAllOptions = {}): Promise<void> {
+    await this.run([
+      ...bulkCheckinConfigArgs(options.expectedFileCount),
+      "add",
+      "-A",
+    ]);
     this.invalidateStatusCache();
   }
 
   /**
    * 지정 경로들의 스테이징을 해제한다(`git reset HEAD --`).
+   * - 경로가 많으면 stdin pathspec 으로 넘겨 명령줄 한도를 피한다.
    * @param paths 저장소 상대 경로 목록
    */
   async unstage(paths: string[]): Promise<void> {
     if (paths.length) {
-      await this.run(["--literal-pathspecs", "reset", "-q", "HEAD", "--", ...paths]);
+      await runGitWithPaths(
+        ["--literal-pathspecs", "reset", "-q", "HEAD"],
+        paths,
+        this.repoRoot
+      );
       this.invalidateStatusCache();
     }
   }
@@ -344,9 +369,11 @@ export class GitService {
     const untracked = await this.listUntracked();
     const tracked = paths.filter((p) => !untracked.has(p));
     const toDelete = paths.filter((p) => untracked.has(p));
-    if (tracked.length) {
-      await this.run(["--literal-pathspecs", "checkout", "--", ...tracked]);
-    }
+    await runGitWithPaths(
+      ["--literal-pathspecs", "checkout"],
+      tracked,
+      this.repoRoot
+    );
     for (const rel of toDelete) {
       await rm(path.resolve(this.repoRoot, rel), { force: true });
     }
@@ -354,14 +381,17 @@ export class GitService {
   }
 
   /**
-   * 커밋한다(`git commit -m`).
+   * 커밋한다(`git commit --quiet -m`).
    * - 스테이징 여부 판단·스마트 커밋은 호출부(명령 레이어)가 담당한다.
    * - 여러 줄 메시지는 빈 줄 기준 문단으로 나눠 `-m` 을 반복해 subject/body 를 보존한다.
+   * - `--quiet` 는 성공 뒤 출력하는 "N files changed" 요약만 생략한다. 이 요약은 모든 변경 blob 의
+   *   diffstat 과 rename 탐지를 다시 계산하므로 수만 파일 커밋에서 수 초가 걸리지만 아무도 읽지 않는다.
+   *   hook 출력과 "nothing to commit" 같은 실패 출력은 그대로 남아 실패 진단에 쓰인다.
    * @param message 커밋 메시지
    * @param opts amend(마지막 커밋 수정) 여부
    */
   async commit(message: string, opts?: { amend?: boolean }): Promise<void> {
-    const args = ["commit"];
+    const args = ["commit", "--quiet"];
     if (opts?.amend) {
       args.push("--amend");
     }
@@ -439,57 +469,34 @@ export class GitService {
   }
 
   /**
-   * 특정 ref 시점의 파일 내용을 문자열로 반환한다.
-   * - `git show <ref>:<상대경로>` 사용. ref 가 `:0` 이면 index 의 stage 0 버전을 읽는다.
-   *   해당 ref 에 파일이 없으면(추가/삭제된 경우)
-   *   빈 문자열을 반환해 diff에서 "빈 쪽"으로 자연스럽게 표시되게 한다.
+   * 특정 ref 시점의 파일 내용을 문자열로 반환한다(fileContentReader 에 위임).
+   * - ref 가 `:0` 이면 index 의 stage 0 버전을 읽고, 해당 ref 에 파일이 없으면 빈 문자열을 반환한다.
+   * - maxBytes 를 주면 그보다 큰 내용은 읽다가 멈추고 FileTooLargeError 를 던진다(diff 미리보기 보호).
    * @param ref    git 참조(브랜치/커밋)
    * @param fsPath 파일 경로(절대 또는 저장소 상대)
+   * @param options maxBytes: 미리보기로 읽을 최대 byte 수(생략하면 git 출력 버퍼 기본 상한)
    */
-  async getFileContentAtRef(ref: string, fsPath: string): Promise<string> {
-    const rel = this.toRepoRelative(fsPath);
-    try {
-      const spec = ref === ":0" ? `:0:${rel}` : `${ref}:${rel}`;
-      return await this.run(["show", spec]);
-    } catch (err) {
-      // Git 실행 실패를 빈 파일로 캐시하지 않는다. fatal 오류도 tree/index에서 부재가 확인될 때만 허용한다.
-      if (err instanceof GitError && err.code === 128) {
-        const args = ref === ":0"
-          ? ["ls-files", "--stage", "-z", "--", rel]
-          : ["ls-tree", "-z", "--full-name", ref, "--", rel];
-        const entries = await this.run(["--literal-pathspecs", ...args]).catch(() => undefined);
-        if (entries === "") return "";
-        if (ref === "HEAD") {
-          // 첫 커밋 전의 유효한 unborn 브랜치만 빈 기준으로 허용한다. 잘못된 ref/손상된 객체는 오류다.
-          const branch = await this.run(["symbolic-ref", "--quiet", "HEAD"]).catch(() => undefined);
-          if (branch && await this.run(["for-each-ref", "--format=%(objectname)", branch.trim()]) === "") return "";
-        }
-      }
-      throw err;
-    }
+  getFileContentAtRef(
+    ref: string,
+    fsPath: string,
+    options: ContentReadOptions = {}
+  ): Promise<string> {
+    return readFileAtRef(this.repoRoot, ref, this.toRepoRelative(fsPath), options);
   }
 
   /**
-   * 작업트리에서 staged 변경만 제거한 가상 파일 내용을 만든다.
+   * 작업트리에서 staged 변경만 제거한 가상 파일 내용을 만든다(fileContentReader 에 위임).
    * - 부분 stage 뒤 남은 unstaged 변경만 HEAD 와 비교할 때 사용한다.
-   * - 실제 작업트리나 index 는 수정하지 않고 HEAD/index/working 세 버전을 라인 단위로 합성한다.
+   * - maxBytes 를 주면 대용량 파일은 읽지 않고 FileTooLargeError 를 던진다.
    * @param fsPath 파일 경로(절대 또는 저장소 상대)
-   * @returns staged 변경을 뺀 작업트리 내용. 실패 시 현재 작업트리 내용을 반환한다.
+   * @param options maxBytes: 버전 하나당 읽을 최대 byte 수
+   * @returns staged 변경을 뺀 작업트리 내용. 작업트리 파일이 없으면 빈 문자열
    */
-  async getWorkingContentWithoutStaged(fsPath: string): Promise<string> {
-    const rel = this.toRepoRelative(fsPath);
-    const workingPath = path.join(this.repoRoot, rel);
-    let content = "";
-    try {
-      content = await readFile(workingPath, "utf8");
-    } catch {
-      return "";
-    }
-    const [head, index] = await Promise.all([
-      this.getFileContentAtRef("HEAD", rel),
-      this.getFileContentAtRef(":0", rel),
-    ]);
-    return buildWorkingContentWithoutStaged(head, index, content);
+  getWorkingContentWithoutStaged(
+    fsPath: string,
+    options: ContentReadOptions = {}
+  ): Promise<string> {
+    return readWorkingContentWithoutStaged(this.repoRoot, this.toRepoRelative(fsPath), options);
   }
 
   /**

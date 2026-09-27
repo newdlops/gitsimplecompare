@@ -4,8 +4,29 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { StatusGroups } from "../git/gitService";
-import type { FileChange, FileChangeStatus } from "../git/gitTypes";
+import type { FileChange } from "../git/gitTypes";
 import { logInfo, logWarn } from "../ui/outputLog";
+import {
+  DEFAULT_VSCODE_GIT_STATUS_LIMIT,
+  classifyVscodeGitRepositoryTransition,
+  mapIndexStatus,
+  mapWorkingStatus,
+  normalizeGitApiPath,
+  uniqueChanges,
+  vscodeGitStatusMayBeTruncated,
+  vscodeGitWorkingStatusFingerprint,
+  type VscodeGitRepositoryIdentity,
+} from "./vscodeGitStatusModel";
+// 순수 판정 함수는 model 모듈로 옮겼지만 기존 import 경로 호환을 위해 다시 내보낸다.
+export {
+  classifyVscodeGitRepositoryTransition,
+  vscodeGitStatusMayBeTruncated,
+  vscodeGitWorkingStatusFingerprint,
+  type VscodeGitFingerprintChange,
+  type VscodeGitFingerprintState,
+  type VscodeGitRepositorySnapshot,
+  type VscodeGitRepositoryTransition,
+} from "./vscodeGitStatusModel";
 
 /** Changes 뷰 저장소 목록에 필요한 최소 정보. */
 export interface VscodeGitRepoInfo {
@@ -23,38 +44,6 @@ export interface VscodeGitStatusEvent {
     | "vscodeGit:repositoryClosed"
     | "vscodeGit:enablement";
   repoRoot?: string;
-}
-
-/** branch 이름과 HEAD commit을 분리해 상태 이벤트 의미를 판별하는 snapshot이다. */
-interface RepositoryIdentity {
-  branch: string;
-  head: string;
-}
-
-/** provider working-status fingerprint가 사용하는 변경 항목의 최소 구조다. */
-export interface VscodeGitFingerprintChange {
-  readonly uri: { readonly fsPath: string };
-  readonly renameUri?: { readonly fsPath: string };
-  readonly status: number;
-}
-
-/** index/working/untracked/merge 배열만 분리해 순수 fingerprint 테스트에 사용하는 구조다. */
-export interface VscodeGitFingerprintState {
-  readonly indexChanges: readonly VscodeGitFingerprintChange[];
-  readonly workingTreeChanges: readonly VscodeGitFingerprintChange[];
-  readonly untrackedChanges: readonly VscodeGitFingerprintChange[];
-  readonly mergeChanges: readonly VscodeGitFingerprintChange[];
-}
-
-/** branch/HEAD와 working fingerprint를 함께 비교하는 provider repository snapshot이다. */
-export interface VscodeGitRepositorySnapshot extends RepositoryIdentity {
-  statusFingerprint: string;
-}
-
-/** repository snapshot 변화에서 callback 이유와 status revision 증가 여부를 분리한 결과다. */
-export interface VscodeGitRepositoryTransition {
-  reasons: Array<"vscodeGit:head" | "vscodeGit:identity" | "vscodeGit:state">;
-  statusChanged: boolean;
 }
 
 /** 내장 Git 확장의 공개 API 중 이 확장이 사용하는 최소 표면. */
@@ -94,26 +83,6 @@ interface VscodeGitChange {
   readonly status: number;
 }
 
-const enum VscodeGitStatus {
-  IndexModified = 0,
-  IndexAdded = 1,
-  IndexDeleted = 2,
-  IndexRenamed = 3,
-  IndexCopied = 4,
-  Modified = 5,
-  Deleted = 6,
-  Untracked = 7,
-  Ignored = 8,
-  IntentToAdd = 9,
-  BothDeleted = 10,
-  AddedByUs = 11,
-  DeletedByThem = 12,
-  AddedByThem = 13,
-  DeletedByUs = 14,
-  BothAdded = 15,
-  BothModified = 16,
-}
-
 /**
  * VS Code 내장 Git 상태 캐시를 읽고 변경 이벤트를 전달한다.
  * - 조회 시 이미 활성화된 내장 Git만 연결하고, 비활성이면 건드리지 않은 채 CLI 경로로 폴백한다.
@@ -129,11 +98,13 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
   >();
   private readonly repositoryIdentities = new Map<
     VscodeGitRepository,
-    RepositoryIdentity
+    VscodeGitRepositoryIdentity
   >();
   private readonly repositoryStatusFingerprints =
     new Map<VscodeGitRepository, string>();
   private readonly repositoryRevisions = new Map<VscodeGitRepository, number>();
+  // git.statusLimit 때문에 목록이 잘린 것으로 판단한 저장소(잘림 상태 전환 로그용).
+  private readonly truncatedRepositories = new Set<VscodeGitRepository>();
 
   constructor(
     private readonly onDidChange: (event: VscodeGitStatusEvent) => void
@@ -187,6 +158,9 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     }
     const repo = this.findRepository(repoRoot);
     if (!repo) {
+      return undefined;
+    }
+    if (this.isTruncated(repo)) {
       return undefined;
     }
     const staged = uniqueChanges(
@@ -263,6 +237,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     this.repositoryIdentities.clear();
     this.repositoryStatusFingerprints.clear();
     this.repositoryRevisions.clear();
+    this.truncatedRepositories.clear();
   }
 
   /** 내장 Git 확장을 활성화하고 저장소 상태 이벤트를 연결한다. */
@@ -368,6 +343,36 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
     this.repositoryIdentities.delete(repo);
     this.repositoryStatusFingerprints.delete(repo);
     this.repositoryRevisions.delete(repo);
+    this.truncatedRepositories.delete(repo);
+  }
+
+  /**
+   * 내장 Git 이 `git.statusLimit` 에 걸려 변경 목록 일부만 들고 있는지 확인한다.
+   * - 내장 Git 은 status 항목이 한도를 넘으면 앞쪽 한도 개수만 남기고 나머지를 버린다(기본 10,000).
+   *   그 목록을 그대로 쓰면 Changes 가 정확히 한도 개수만 보여 주므로, 이때는 CLI 조회로 넘긴다.
+   * - 잘림 상태가 바뀔 때만 OUTPUT 에 남겨 상태 이벤트마다 로그가 쌓이지 않게 한다.
+   * @param repo 확인할 VS Code Git 저장소
+   * @returns 목록이 잘렸을 수 있으면 true(호출자는 CLI 로 폴백)
+   */
+  private isTruncated(repo: VscodeGitRepository): boolean {
+    const limit = vscode.workspace
+      .getConfiguration("git", repo.rootUri)
+      .get<number>("statusLimit", DEFAULT_VSCODE_GIT_STATUS_LIMIT);
+    const truncated = vscodeGitStatusMayBeTruncated(repo.state, limit);
+    if (truncated !== this.truncatedRepositories.has(repo)) {
+      if (truncated) {
+        this.truncatedRepositories.add(repo);
+      } else {
+        this.truncatedRepositories.delete(repo);
+      }
+      logInfo("vscode git status limit", {
+        root: repo.rootUri.fsPath,
+        limit,
+        truncated,
+        fallback: truncated ? "git-cli" : "vscodeGit",
+      });
+    }
+    return truncated;
   }
 
   /**
@@ -375,9 +380,9 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @param repoRoot 찾을 저장소 루트 절대 경로
    */
   private findRepository(repoRoot: string): VscodeGitRepository | undefined {
-    const normalized = normalizePath(repoRoot);
+    const normalized = normalizeGitApiPath(repoRoot);
     return this.api?.repositories.find(
-      (repo) => normalizePath(repo.rootUri.fsPath) === normalized
+      (repo) => normalizeGitApiPath(repo.rootUri.fsPath) === normalized
     );
   }
 
@@ -411,134 +416,12 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
 }
 
 /**
- * 인덱스 변경 상태를 FileChangeStatus 로 변환한다.
- * @param status VS Code Git Status enum 숫자값
- */
-function mapIndexStatus(status: number): FileChangeStatus | undefined {
-  switch (status) {
-    case VscodeGitStatus.IndexModified:
-      return "M";
-    case VscodeGitStatus.IndexAdded:
-      return "A";
-    case VscodeGitStatus.IndexDeleted:
-      return "D";
-    case VscodeGitStatus.IndexRenamed:
-      return "R";
-    case VscodeGitStatus.IndexCopied:
-      return "C";
-    default:
-      return isConflictStatus(status) ? "U" : undefined;
-  }
-}
-
-/**
- * 작업트리 변경 상태를 FileChangeStatus 로 변환한다.
- * @param status VS Code Git Status enum 숫자값
- */
-function mapWorkingStatus(status: number): FileChangeStatus | undefined {
-  switch (status) {
-    case VscodeGitStatus.Modified:
-      return "M";
-    case VscodeGitStatus.Deleted:
-      return "D";
-    case VscodeGitStatus.Untracked:
-    case VscodeGitStatus.IntentToAdd:
-      return "A";
-    case VscodeGitStatus.Ignored:
-      return undefined;
-    default:
-      return isConflictStatus(status) ? "U" : undefined;
-  }
-}
-
-/**
- * merge/rebase 충돌 상태인지 확인한다.
- * @param status VS Code Git Status enum 숫자값
- */
-function isConflictStatus(status: number): boolean {
-  return (
-    status >= VscodeGitStatus.BothDeleted &&
-    status <= VscodeGitStatus.BothModified
-  );
-}
-
-/**
- * 중복 상태 항목을 제거한다.
- * @param changes 병합 전 변경 목록
- */
-function uniqueChanges(changes: FileChange[]): FileChange[] {
-  const seen = new Set<string>();
-  const out: FileChange[] = [];
-  for (const change of changes) {
-    const key = `${change.status}\0${change.path}\0${change.oldPath ?? ""}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    out.push(change);
-  }
-  return out;
-}
-
-/**
- * VS Code Git의 working-status 배열을 순서와 경로 구분자에 안정적인 fingerprint로 만든다.
- * - branch/HEAD는 포함하지 않아 identity-only event가 direct-file fallback revision을 올리지 않는다.
- * @param state index/working/untracked/merge 변경 배열
- * @returns bucket·status·현재/rename 경로를 정렬해 결합한 문자열
- */
-export function vscodeGitWorkingStatusFingerprint(
-  state: VscodeGitFingerprintState
-): string {
-  const entries: string[] = [];
-  for (const [bucket, changes] of [
-    ["index", state.indexChanges],
-    ["working", state.workingTreeChanges],
-    ["untracked", state.untrackedChanges],
-    ["merge", state.mergeChanges],
-  ] as const) {
-    for (const change of changes) {
-      entries.push([
-        bucket,
-        change.status,
-        normalizePath(change.uri.fsPath),
-        change.renameUri ? normalizePath(change.renameUri.fsPath) : "",
-      ].join("\0"));
-    }
-  }
-  return entries.sort().join("\n");
-}
-
-/**
- * 이전/현재 repository snapshot을 head 우선 event와 독립 status revision으로 분류한다.
- * - head 변화는 full refresh 하나로 충분하고, same-head identity+status는 목록과 working 의미를 각각 보존한다.
- * - 실제 onDidChange에서 identity가 그대로면 fingerprint가 같아도 state를 보내 동일 M 파일의 통계 보강을 다시 예약한다.
- * @param previous 직전 branch/HEAD/working fingerprint
- * @param current 최신 branch/HEAD/working fingerprint
- * @returns emit할 이유 순서와 status revision 증가 여부
- */
-export function classifyVscodeGitRepositoryTransition(
-  previous: VscodeGitRepositorySnapshot,
-  current: VscodeGitRepositorySnapshot
-): VscodeGitRepositoryTransition {
-  const statusChanged =
-    previous.statusFingerprint !== current.statusFingerprint;
-  if (previous.head !== current.head) {
-    return { reasons: ["vscodeGit:head"], statusChanged };
-  }
-  const reasons: VscodeGitRepositoryTransition["reasons"] = [];
-  const branchChanged = previous.branch !== current.branch;
-  if (branchChanged) reasons.push("vscodeGit:identity");
-  if (statusChanged || !branchChanged) reasons.push("vscodeGit:state");
-  return { reasons, statusChanged };
-}
-
-/**
  * 저장소의 branch/HEAD 이동을 작업트리 상태 이벤트와 구분할 snapshot을 만든다.
  * - commit hash가 제공되는 VS Code Git API에서는 같은 branch의 새 commit도 identity 변화로 잡는다.
  * @param repo VS Code Git API 저장소 객체
  * @returns branch 이름과 HEAD commit을 분리한 비교 snapshot
  */
-function repositoryIdentity(repo: VscodeGitRepository): RepositoryIdentity {
+function repositoryIdentity(repo: VscodeGitRepository): VscodeGitRepositoryIdentity {
   return {
     branch: repo.state.HEAD?.name ?? "",
     head: repo.state.HEAD?.commit ?? "",
@@ -559,12 +442,4 @@ function repoRelativePath(
     return undefined;
   }
   return rel.replace(/\\/g, "/");
-}
-
-/**
- * 플랫폼별 경로 차이를 줄이기 위해 비교용 경로를 정규화한다.
- * @param value 절대 경로
- */
-function normalizePath(value: string): string {
-  return path.resolve(value).replace(/\\/g, "/");
 }

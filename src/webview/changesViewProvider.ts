@@ -138,6 +138,14 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   isVisible(): boolean {
     return this.view?.visible ?? false;
   }
+  /**
+   * 마지막으로 화면에 반영한 staged/unstaged 파일 수를 반환한다.
+   * - 명령 레이어가 `git add` 규모 힌트(대량이면 bulk-checkin)를 정할 때 추가 git 조회 없이 쓴다.
+   * @returns 현재 표시 중인 staged/unstaged 목록 길이
+   */
+  getWorkingChangeCounts(): { staged: number; unstaged: number } {
+    return { staged: this.staged.length, unstaged: this.unstaged.length };
+  }
   /** 작업트리 변경(스테이징/미스테이징)을 갱신한다(Changes 섹션). */
   setStatusGroups(groups: StatusGroups): void {
     const signature = statusGroupsRenderSignature(groups);

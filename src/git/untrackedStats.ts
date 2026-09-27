@@ -2,8 +2,10 @@
 // - git diff --numstat 이 다루지 않는 새 파일의 추가 라인 수를 UI 서비스들이 공유한다.
 import * as path from "node:path";
 import { readFile, stat } from "node:fs/promises";
+import { LINE_STATS_MAX_FILE_BYTES } from "./largeChangeSet";
 
-const MAX_EXACT_UNTRACKED_STAT_BYTES = 5 * 1024 * 1024;
+/** 정확한 줄 수를 세는 미추적 파일 크기 상한. 추적 파일 라인 통계의 대용량 기준과 같다. */
+const MAX_EXACT_UNTRACKED_STAT_BYTES = LINE_STATS_MAX_FILE_BYTES;
 
 interface CachedUntrackedStat {
   size: number;
