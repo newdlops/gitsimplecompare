@@ -115,6 +115,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @returns API 사용 가능 여부. false 면 호출자는 기존 CLI 기반 조회로 폴백해야 한다.
    */
   async ensureReady(): Promise<boolean> {
+    if (!builtinGitEnabled()) return false;
     if (this.api) {
       return true;
     }
@@ -129,16 +130,19 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @returns 즉시 재사용할 저장소가 없으면 undefined, 있으면 저장소 목록
    */
   async getRepositories(): Promise<VscodeGitRepoInfo[] | undefined> {
+    if (!builtinGitEnabled()) return undefined;
     if (!this.api) {
       this.attachActiveGitApi();
     }
     if (!this.api) {
       return undefined;
     }
-    const repositories = this.api.repositories.map((repo) => ({
-      root: repo.rootUri.fsPath,
-      branch: repo.state.HEAD?.name || "HEAD",
-    }));
+    const repositories = this.api.repositories
+      .filter((repo) => builtinGitEnabled(repo.rootUri.fsPath))
+      .map((repo) => ({
+        root: repo.rootUri.fsPath,
+        branch: repo.state.HEAD?.name || "HEAD",
+      }));
     // Git 확장이 활성화됐어도 최초 workspace scan 전의 []는 확정 결과가 아니므로 CLI 탐색을 허용한다.
     return repositories.length ? repositories : undefined;
   }
@@ -150,6 +154,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @returns 해당 저장소 상태. 내장 Git API 에 저장소가 없으면 undefined
    */
   async getStatusGroups(repoRoot: string): Promise<StatusGroups | undefined> {
+    if (!builtinGitEnabled(repoRoot)) return undefined;
     if (!this.api) {
       this.attachActiveGitApi();
     }
@@ -202,7 +207,10 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       return;
     }
     logInfo("vscode git api activation scheduled");
-    this.activation = this.activateGitApi();
+    // 이미 활성화된 확장의 getAPI가 동기적으로 실패해도 Promise 할당 뒤 재시도 가능 상태로 되돌린다.
+    this.activation = this.activateGitApi().finally(() => {
+      if (!this.api) this.activation = undefined;
+    });
   }
 
   /**
@@ -211,6 +219,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @returns 반환값 없이 즉시 사용할 수 있는 경우에만 API와 이벤트 구독을 준비한다.
    */
   private attachActiveGitApi(): void {
+    if (!builtinGitEnabled()) return;
     if (this.api || this.activation) {
       return;
     }
@@ -220,7 +229,9 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       return;
     }
     logInfo("active vscode git api attach scheduled");
-    this.activation = this.activateGitApi();
+    this.activation = this.activateGitApi().finally(() => {
+      if (!this.api) this.activation = undefined;
+    });
   }
 
   /** 등록한 VS Code 이벤트 리스너를 모두 해제한다. */
@@ -280,7 +291,6 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
         repositories: this.api.repositories.length,
       });
     } catch (error) {
-      this.activation = undefined;
       logWarn("vscode git api unavailable", {
         reason: error instanceof Error ? error.message : String(error),
       });
@@ -380,6 +390,7 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
    * @param repoRoot 찾을 저장소 루트 절대 경로
    */
   private findRepository(repoRoot: string): VscodeGitRepository | undefined {
+    if (!builtinGitEnabled(repoRoot)) return undefined;
     const normalized = normalizeGitApiPath(repoRoot);
     return this.api?.repositories.find(
       (repo) => normalizeGitApiPath(repo.rootUri.fsPath) === normalized
@@ -413,6 +424,17 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
       : undefined;
     return oldPath ? { status, path: filePath, oldPath } : { status, path: filePath };
   }
+}
+
+/**
+ * 워크스페이스와 저장소 리소스의 내장 Git 설정을 확인해 중단 직후의 오래된 API 상태 사용을 막는다.
+ * @param repoRoot 폴더별 git.enabled override도 확인할 저장소 루트, 생략하면 워크스페이스 설정만 확인
+ * @returns 해당 범위에서 내장 Git이 켜져 있으면 true
+ */
+function builtinGitEnabled(repoRoot?: string): boolean {
+  if (!vscode.workspace.getConfiguration("git").get<boolean>("enabled", true)) return false;
+  return !repoRoot || vscode.workspace.getConfiguration("git", vscode.Uri.file(repoRoot))
+    .get<boolean>("enabled", true);
 }
 
 /**

@@ -5,6 +5,19 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72066] - 2026-10-02
+
+### Added
+
+- Start or stop VS Code built-in Git from the Changes view menu or Command Palette.
+  Apply the setting to the current workspace and its explicit folder overrides,
+  while Git Simple Compare continues its own Git operations.
+
+### Fixed
+
+- Stop using built-in Git status snapshots when it is disabled, and recover
+  status integration when it is enabled again, including temporary API failures.
+
 ## [0.1.72064] - 2026-09-13
 
 ### Changed

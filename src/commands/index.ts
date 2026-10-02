@@ -18,6 +18,7 @@ import {
 import {
   changeSortOrder,
   setViewMode,
+  toggleBuiltinGit,
   toggleSectionViewMode,
   toggleVisibleSection,
 } from "./viewState";
@@ -162,6 +163,12 @@ const BLAME_BLOCK_COMMANDS = [
   "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
 ];
 
+const BUILTIN_GIT_COMMANDS = [
+  "gitSimpleCompare.toggleBuiltinGit",
+  "gitSimpleCompare.toggleBuiltinGit.checked",
+  "gitSimpleCompare.toggleBuiltinGit.unchecked",
+];
+
 /**
  * 모든 명령을 등록하고 Disposable 배열을 반환한다.
  * - 반환된 Disposable 들은 extension.ts 에서 context.subscriptions 에 등록한다.
@@ -170,6 +177,9 @@ const BLAME_BLOCK_COMMANDS = [
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
+    ...BUILTIN_GIT_COMMANDS.map((command) =>
+      vscode.commands.registerCommand(command, toggleBuiltinGit)
+    ),
     // provider/controller가 파일·git 이벤트 새로고침을 요청하면 같은 명령 경로로 합친다.
     deps.comparison.onDidRequestRefresh((request) => {
       void refreshExplorerComparison(deps, request.reason, false);

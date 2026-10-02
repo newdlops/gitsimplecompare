@@ -42,8 +42,9 @@ import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
 import { disposeWorkingStatusRefresh } from "./commands/workingStatusRefresh";
-import { syncViewContext } from "./commands/viewState";
+import { syncBuiltinGitContext, syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
+import { registerViewConfigurationEvents } from "./ui/viewConfiguration";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { disposePullRequestQuickEdit } from "./ui/pullRequestQuickEdit";
@@ -468,27 +469,22 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   // 10) 워크스페이스 폴더가 바뀌면 저장소 목록부터 다시 찾는다.
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      syncBuiltinGitContext();
       registry.invalidateResolveCache();
       invalidateStatusCachesForRefresh();
       pendingClearAllBranchContent = true;
       scheduleRefresh("workspaceFolders", 0);
     })
   );
-  // 11) 파일 아이콘/색상 테마가 바뀌면 Changes 웹뷰의 파일 아이콘도 다시 그린다.
+  // 11) 내장 Git 사용 전환과 표시 설정 변경을 각 상태·화면 갱신 경계에 연결한다.
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("workbench.iconTheme")) {
-        logInfo("file icon theme changed");
-        changesView.refresh();
-      }
-      if (event.affectsConfiguration("scm.diffDecorations")) {
-        logInfo("editor gutter setting changed");
-        changesView.refresh();
-      }
-    }),
-    vscode.window.onDidChangeActiveColorTheme(() => {
-      logInfo("color theme changed");
-      changesView.refresh();
+    ...registerViewConfigurationEvents({
+      onGitEnablementChanged: () => {
+        syncBuiltinGitContext();
+        invalidateStatusCachesForRefresh();
+        scheduleRefresh("vscodeGit:enablement", 0);
+      },
+      refreshView: () => changesView.refresh(),
     })
   );
   logInfo("extension activated");

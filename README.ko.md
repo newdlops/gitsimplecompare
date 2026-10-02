@@ -71,6 +71,8 @@ Git Simple Compare 뷰의 최상위 제목 표시줄에서 **VS Code 캐시 정�
 - 뷰 툴바에서 정렬 기준(**이름 / 경로 / 상태**)을 바꿉니다.
 - 파일을 클릭하면 diff 가 열립니다.
 
+Changes 제목 표시줄의 **…** 메뉴에서 **VS Code 기본 Git 사용 (워크스페이스)** 체크를 해제하면 현재 워크스페이스의 기본 Git 실행을 중단하고, 다시 선택하면 재개합니다. 워크스페이스의 `git.enabled`와 폴더별 명시적 설정을 함께 변경하며 Git Simple Compare는 자체 Git CLI로 계속 동작합니다. 네이티브 Git 머지 에디터와 기본 Git의 remote 추가 기능을 쓰려면 기본 Git을 켜 주세요.
+
 ### PR Stack
 
 Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 GitHub PR base/head 관계를 합친 Stack을 볼 수 있습니다. **Add Layer**는 부모 tip에서 자식 브랜치와 선택적 linked worktree를 만들고, **Restack**은 부모가 바뀐 레이어와 모든 후손을 안전 ref 아래 연쇄 rebase합니다. **Submit / Sync**는 부모부터 push하여 PR을 생성하거나 base·본문의 Stack 목록을 갱신하며, 재작성된 원격에만 명시적 force-with-lease를 사용합니다. 아래 PR이 merge되면 **Advance**가 자식을 이전 base로 승격하고 restack·PR 동기화·안전한 로컬 정리 제안을 이어서 수행합니다.

@@ -78,6 +78,9 @@ export class EventEmitter<T = unknown> { public event = () => ({ dispose() {} })
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
 export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}) };
 export const ViewColumn = { Active: 1 };
+export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
+/** 내장 Git API 사용 여부를 provider 테스트가 선택할 수 있게 하는 확장 조회 경계다. */
+export const extensions = { getExtension: (_id: string): unknown => undefined };
 export const ProgressLocation = { Notification: 15 };
 export const env = { remoteName: undefined as string | undefined, openExternal: async (uri: unknown) => { __externalUris.push(uri); if (externalResult instanceof Error) throw externalResult; return externalResult; }, clipboard: { writeText: async (value: string) => { __clipboardWrites.push(value); } } };
 export class Range { public readonly values: unknown[]; public constructor(...values: unknown[]) { this.values = values; } } export class MarkdownString { public readonly value: unknown; public constructor(value: unknown) { this.value = value; } }

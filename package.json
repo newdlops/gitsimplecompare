@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72065",
+  "version": "0.1.72066",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -231,6 +231,27 @@
         "shortTitle": "%cmd.configureAiCli%",
         "category": "Git Simple Compare",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGit",
+        "title": "%cmd.toggleBuiltinGit.tooltip%",
+        "shortTitle": "%cmd.toggleBuiltinGit%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.builtinGit.busy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGit.checked",
+        "title": "%cmd.builtinGit.checked.tooltip%",
+        "shortTitle": "%cmd.builtinGit.checked%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.builtinGit.busy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGit.unchecked",
+        "title": "%cmd.builtinGit.tooltip%",
+        "shortTitle": "%cmd.builtinGit%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.builtinGit.busy"
       },
       {
         "command": "gitSimpleCompare.configureUserProfile",
@@ -727,6 +748,16 @@
           "group": "1_ops@2"
         },
         {
+          "command": "gitSimpleCompare.toggleBuiltinGit.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.builtinGit.enabled",
+          "group": "4_settings@1"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGit.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.builtinGit.enabled",
+          "group": "4_settings@1"
+        },
+        {
           "command": "gitSimpleCompare.openAiCommitPlan",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@3"
@@ -1049,6 +1080,14 @@
         },
         {
           "command": "gitSimpleCompare.toggleSection.worktrees.hidden",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGit.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGit.unchecked",
           "when": "false"
         },
         {

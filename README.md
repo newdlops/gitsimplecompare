@@ -107,6 +107,8 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 - Change the sort order (**name / path / status**) from the view toolbar.
 - Click any file to open its diff.
 
+In the Changes view's **…** menu, clear **Use VS Code Built-in Git (Workspace)** to stop the built-in Git extension for the current workspace. Select it again to resume. This changes the workspace's `git.enabled` setting and any explicit folder overrides; Git Simple Compare continues using its own Git CLI. The native Git merge editor and built-in remote-add action require built-in Git to be enabled.
+
 ### Pull request stacks
 
 Open the layer button in the Git Graph toolbar to see a unified view of local parent metadata and GitHub PR base/head relationships. **Add Layer** creates a child branch and optional linked worktree from the selected parent. **Restack** previews and rebases that layer and all descendants with per-layer safety refs and integrated conflict Continue/Abort. **Submit / Sync** pushes root-to-leaf, creates missing PRs, updates existing bases and stack sections in PR bodies, and uses an explicit force-with-lease only for rewritten remote history. After a lower PR is merged, **Advance** promotes its children to the previous base, restacks and syncs their PRs, then offers safe local branch/worktree cleanup.
