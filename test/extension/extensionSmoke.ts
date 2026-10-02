@@ -1,6 +1,7 @@
 // 격리된 Extension Development Host에서 확장 manifest와 activation을 확인하는 PR-00 smoke.
 // - GitHub 인증·사용자 repository·사용자 window 없이 격리된 fixture에서 lifecycle과 Git 설정을 검증한다.
 import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import * as vscode from "vscode";
 import { GitService } from "../../src/git/gitService";
@@ -18,10 +19,61 @@ export async function run(): Promise<void> {
   assert.ok(commands.includes("gitSimpleCompare.cleanupStaleBranches"), "Stale branch cleanup command was not registered.");
   assert.ok(commands.includes("gitSimpleCompare.toggleBuiltinGit"), "Built-in Git toggle command was not registered.");
   assert.ok(commands.includes("gitSimpleCompare.toggleBuiltinGitUser"), "User-level built-in Git toggle command was not registered.");
+  assert.ok(commands.includes("gitSimpleCompare.configureGitExecutable"), "Git executable diagnosis command was not registered.");
   assert.equal(commands.includes("gitSimpleCompare.showReviews"), false, "Reviews sidebar wrapper command must not be registered.");
   await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
   await verifyBuiltinGitControl();
   await verifyBuiltinGitUserControl();
+  await verifyGitExecutableConfiguration();
+}
+
+/**
+ * 실제 확장 명령이 사용자·워크스페이스 Git 실행 경로를 재시작 없이 사용하는지 검증한다.
+ * - 격리 profile과 임시 저장소를 확인한 뒤 기록용 Git wrapper를 만들어 실제 stage 호출을 확인한다.
+ * @returns 설정 우선순위와 override 제거 후 상속을 검증하면 완료되는 Promise
+ */
+async function verifyGitExecutableConfiguration(): Promise<void> {
+  if (process.platform === "win32") return;
+  const root = process.env.GSC_EXTENSION_TEST_FIXTURE;
+  assert.ok(root);
+  assert.equal(vscode.workspace.workspaceFolders?.[0].uri.fsPath, root);
+  assert.equal(process.env.GSC_EXTENSION_TEST_PROFILE, path.join(path.dirname(root), "profile"));
+  const directory = path.join(path.dirname(root), "git executable tools");
+  const marker = path.join(directory, "executions.log");
+  await mkdir(directory);
+  /** wrapper 기록 파일의 경로를 POSIX shell의 리터럴로 인용해 공백을 보존한다. */
+  const quote = (value: string): string => "'" + value.replace(/'/g, "'\\''") + "'";
+  const wrappers = { user: path.join(directory, "user git"), workspace: path.join(directory, "workspace git") };
+  for (const [scope, executable] of Object.entries(wrappers)) {
+    await writeFile(executable, `#!/bin/sh\nprintf '%s|%s\\n' '${scope}' "$*" >> ${quote(marker)}\nexec git "$@"\n`, { mode: 0o755 });
+  }
+  /** 저장 전후의 설정 snapshot을 실제 VS Code 설정 서비스에서 새로 읽는다. */
+  const config = () => vscode.workspace.getConfiguration("gitSimpleCompare", vscode.Uri.file(root));
+  const original = config().inspect<string>("gitPath");
+  // unfocused Development Host도 실제 Changes의 활성 저장소를 먼저 확정하게 한다.
+  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "vscodeGit:repositoryOpened" });
+  /** 확장에 등록된 실제 stage 명령으로 실행 경로 적용을 확인한다. */
+  const expectExecution = async (scope: string): Promise<void> => {
+    await writeFile(marker, "");
+    await vscode.commands.executeCommand("gitSimpleCompare.stage", ["sample.txt"]);
+    const calls = (await readFile(marker, "utf8")).trim().split("\n");
+    const stageCalls = calls.filter(call => /\badd\b/.test(call));
+    assert.ok(stageCalls.some(call => call.startsWith(scope + "|")), `Production stage command did not use the ${scope} executable.`);
+    assert.ok(stageCalls.every(call => call.startsWith(scope + "|")), `Unexpected executable scope: ${stageCalls.join(", ")}`);
+  };
+  try {
+    await config().update("gitPath", wrappers.user, vscode.ConfigurationTarget.Global);
+    await expectExecution("user");
+    await config().update("gitPath", wrappers.workspace, vscode.ConfigurationTarget.Workspace);
+    assert.equal(config().inspect("gitPath")?.globalValue, wrappers.user);
+    await expectExecution("workspace");
+    await config().update("gitPath", undefined, vscode.ConfigurationTarget.Workspace);
+    await expectExecution("user");
+    console.log("Production Git commands used live user/workspace executables and inherited user defaults.");
+  } finally {
+    await config().update("gitPath", original?.workspaceValue, vscode.ConfigurationTarget.Workspace);
+    await config().update("gitPath", original?.globalValue, vscode.ConfigurationTarget.Global);
+  }
 }
 
 /**

@@ -26,6 +26,8 @@ export class GitError extends Error {
 }
 
 export interface RunGitOptions {
+  /** 진단처럼 특정 Git을 시험할 때만 사용하는 호출별 실행 파일 override다. */
+  executable?: string;
   env?: Record<string, string>;
   retryOnLock?: boolean;
   beforeRetry?: () => Promise<void>;
@@ -52,6 +54,30 @@ export type GitInput = string | Uint8Array;
 const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
 const MAX_GIT_BUFFER_BYTES = 128 * 1024 * 1024;
 
+/** VS Code 등 상위 계층이 저장소별 실행 경로를 공급하는 동기 경계다. */
+export type GitExecutableResolver = (cwd: string) => string | undefined;
+let executableResolver: GitExecutableResolver | undefined;
+
+/**
+ * 실행 파일 선택을 주입하되 Git 계층에 VS Code 설정 의존성을 넣지 않는다.
+ * @param resolver 명령의 cwd에 적용할 실행 파일을 반환하는 함수
+ * @returns 등록을 해제하는 함수. 더 최근에 등록된 resolver는 해제하지 않는다.
+ */
+export function setGitExecutableResolver(resolver: GitExecutableResolver): () => void {
+  executableResolver = resolver;
+  return () => { if (executableResolver === resolver) executableResolver = undefined; };
+}
+
+/**
+ * 호출별 override, 저장소별 설정, PATH의 git 순서로 실행 파일을 결정한다.
+ * @param cwd 설정 범위를 판단할 작업 디렉터리
+ * @param override 진단·테스트에 사용할 명시적 실행 파일
+ * @returns 셸 인자가 섞이지 않은 실행 파일 이름 또는 경로
+ */
+export function resolveGitExecutable(cwd: string, override?: string): string {
+  return (override ?? executableResolver?.(cwd))?.trim() || "git";
+}
+
 /**
  * 조회 전용 Git 출력을 작은 Buffer 조각으로 소비해 큰 blob 전체를 메모리에 쌓지 않는다.
  * - callback의 누적 상태를 중복 처리하지 않도록 자동 재시도하지 않는다.
@@ -64,7 +90,7 @@ export function runGitStream(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (options.signal?.aborted) { reject(options.signal.reason); return; }
-    const child = spawn("git", args, { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+    const child = spawn(resolveGitExecutable(cwd, options.executable), args, { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
       env: options.env ? { ...process.env, ...options.env } : undefined });
     let stderr = Buffer.alloc(0), failure: unknown;
     let killTimer: ReturnType<typeof setTimeout> | undefined;
@@ -171,8 +197,9 @@ export async function runGitDetailed(
   options?: Record<string, string> | RunGitOptions
 ): Promise<GitCommandOutput> {
   const normalized = normalizeOptions(options);
+  const executable = resolveGitExecutable(cwd, normalized.executable);
   return withGitRetry(args, normalized, () =>
-    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, undefined, normalized.maxBuffer)
+    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, undefined, normalized.maxBuffer, executable)
   );
 }
 
@@ -185,6 +212,7 @@ export async function runGitDetailed(
  * @param signal 호출 취소 시 git 프로세스를 종료할 신호
  * @param input stdin 으로 넘길 문자열/바이트
  * @param maxBuffer stdout 을 모을 최대 byte 수. 넘으면 git 을 종료하고 실패한다
+ * @param executable 재시도 전체에서 유지할 실행 파일
  * @returns 성공 시 두 출력 스트림, 실패 시 두 스트림을 담은 GitError
  */
 function runGitDetailedOnce(
@@ -193,7 +221,8 @@ function runGitDetailedOnce(
   env?: Record<string, string>,
   signal?: AbortSignal,
   input?: GitInput,
-  maxBuffer = MAX_GIT_BUFFER_BYTES
+  maxBuffer = MAX_GIT_BUFFER_BYTES,
+  executable = "git"
 ): Promise<GitCommandOutput> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -201,7 +230,7 @@ function runGitDetailedOnce(
       return;
     }
     const child = execFile(
-      "git",
+      executable,
       args,
       {
         cwd,
@@ -253,8 +282,9 @@ export async function runGitWithInput(
   options?: Record<string, string> | RunGitOptions
 ): Promise<string> {
   const normalized = normalizeOptions(options);
+  const executable = resolveGitExecutable(cwd, normalized.executable);
   return (await withGitRetry(args, normalized, () =>
-    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, input)
+    runGitDetailedOnce(args, cwd, normalized.env, normalized.signal, input, normalized.maxBuffer, executable)
   )).stdout;
 }
 
@@ -274,8 +304,9 @@ export async function runGitBuffer(
   options?: Record<string, string> | RunGitOptions
 ): Promise<Buffer> {
   const normalized = normalizeOptions(options);
+  const executable = resolveGitExecutable(cwd, normalized.executable);
   return withGitRetry(args, normalized, () =>
-    runGitBufferOnce(args, cwd, normalized.env, normalized.signal)
+    runGitBufferOnce(args, cwd, normalized.env, normalized.signal, executable)
   );
 }
 
@@ -312,13 +343,16 @@ async function withGitRetry<T>(args: string[], options: RunGitOptions, execute: 
  * @param args git 인자 배열
  * @param cwd 실행 디렉터리
  * @param env 기존 process.env에 덮어쓸 선택 환경
+ * @param signal 호출 취소 시 git 프로세스를 종료할 신호
+ * @param executable 재시도 전체에서 유지할 실행 파일
  * @returns 성공 stdout 원본 Buffer
  */
 function runGitBufferOnce(
   args: string[],
   cwd: string,
   env?: Record<string, string>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  executable = "git"
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -326,7 +360,7 @@ function runGitBufferOnce(
       return;
     }
     const child = execFile(
-      "git",
+      executable,
       args,
       {
         cwd,
@@ -369,6 +403,7 @@ function normalizeOptions(
   }
   if (
     "env" in options ||
+    "executable" in options ||
     "retryOnLock" in options ||
     "beforeRetry" in options ||
     "signal" in options ||

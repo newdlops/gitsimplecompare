@@ -16,10 +16,8 @@ import {
   compareExplorerFileWithBranch,
 } from "./compareFile";
 import {
-  type BuiltinGitScope,
   changeSortOrder,
   setViewMode,
-  toggleBuiltinGit,
   toggleSectionViewMode,
   toggleVisibleSection,
 } from "./viewState";
@@ -40,6 +38,7 @@ import { configureAiCli, loginAiCli } from "./aiSettings";
 import { generateCommitMessage } from "./aiMessages";
 import { openAiCommitPlan, type OpenAiCommitPlanArgs } from "./aiCommitPlan";
 import { registerCommitCommands } from "./registerCommitCommands";
+import { registerGitSettingsCommands } from "./registerGitSettings";
 import { configureUserProfile } from "./userProfile";
 import { configureRemoteBranch } from "./remoteBranch";
 import {
@@ -164,15 +163,6 @@ const BLAME_BLOCK_COMMANDS = [
   "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
 ];
 
-const BUILTIN_GIT_COMMANDS: Array<[string, BuiltinGitScope]> = [
-  ["gitSimpleCompare.toggleBuiltinGit", "workspace"],
-  ["gitSimpleCompare.toggleBuiltinGit.checked", "workspace"],
-  ["gitSimpleCompare.toggleBuiltinGit.unchecked", "workspace"],
-  ["gitSimpleCompare.toggleBuiltinGitUser", "user"],
-  ["gitSimpleCompare.toggleBuiltinGitUser.checked", "user"],
-  ["gitSimpleCompare.toggleBuiltinGitUser.unchecked", "user"],
-];
-
 /**
  * 모든 명령을 등록하고 Disposable 배열을 반환한다.
  * - 반환된 Disposable 들은 extension.ts 에서 context.subscriptions 에 등록한다.
@@ -181,9 +171,7 @@ const BUILTIN_GIT_COMMANDS: Array<[string, BuiltinGitScope]> = [
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
-    ...BUILTIN_GIT_COMMANDS.map(([command, scope]) =>
-      vscode.commands.registerCommand(command, () => toggleBuiltinGit(scope))
-    ),
+    ...registerGitSettingsCommands(deps),
     // provider/controller가 파일·git 이벤트 새로고침을 요청하면 같은 명령 경로로 합친다.
     deps.comparison.onDidRequestRefresh((request) => {
       void refreshExplorerComparison(deps, request.reason, false);

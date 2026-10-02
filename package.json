@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72067",
+  "version": "0.1.72068",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -231,6 +231,14 @@
         "shortTitle": "%cmd.configureAiCli%",
         "category": "Git Simple Compare",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "gitSimpleCompare.configureGitExecutable",
+        "title": "%cmd.configureGitExecutable.tooltip%",
+        "shortTitle": "%cmd.configureGitExecutable%",
+        "category": "Git Simple Compare",
+        "icon": "$(watch)",
+        "enablement": "!gitSimpleCompare.gitExecutable.busy"
       },
       {
         "command": "gitSimpleCompare.toggleBuiltinGit",
@@ -789,6 +797,11 @@
           "group": "4_settings@1"
         },
         {
+          "command": "gitSimpleCompare.configureGitExecutable",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "4_settings@2"
+        },
+        {
           "command": "gitSimpleCompare.openAiCommitPlan",
           "when": "view == gitSimpleCompare.changes",
           "group": "1_ops@3"
@@ -1228,6 +1241,13 @@
     "configuration": {
       "title": "Git Simple Compare",
       "properties": {
+        "gitSimpleCompare.gitPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "restricted": true,
+          "description": "%config.gitPath.desc%"
+        },
         "gitSimpleCompare.diffBase": {
           "type": "string",
           "enum": [

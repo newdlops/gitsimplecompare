@@ -1,4 +1,7 @@
 {
+  "cmd.configureGitExecutable": "Git Startup / Executable…",
+  "cmd.configureGitExecutable.tooltip": "Diagnose Git startup time and select an executable for user or workspace settings",
+  "config.gitPath.desc": "Git executable name or absolute path used by Git Simple Compare. Empty uses git from PATH. Use Git Startup / Executable to compare installed Git startup times and bypass a slow launcher. Takes effect on the next Git command. Workspace and folder settings take precedence over the user default.",
   "cmd.cleanupStaleBranches": "Local Branches & Stale Cleanup…",
   "cmd.cleanupStaleBranches.tooltip": "Local Branches & Stale Cleanup… — View every local branch, identify stale branches, and select branches to delete",
   "ext.description": "Compare git branches, review editable diffs, resolve conflicts, and create AI commit plans and messages.",

@@ -109,6 +109,8 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 
 In the Changes view's **…** menu, **Use VS Code Built-in Git (User)** changes the user's default `git.enabled` setting across workspaces. **Use VS Code Built-in Git (Workspace)** stops or resumes built-in Git for the current workspace, including any explicit folder overrides. Workspace and folder settings take precedence over the user default. Each menu item shows its own setting's state; Git Simple Compare continues using its own Git CLI. The native Git merge editor and built-in remote-add action require built-in Git to be enabled.
 
+Choose **Git Startup / Executable…** in the same menu to compare installed Git executables. The command checks `git --version` three times per candidate and shows the median startup time. Select a working candidate or enter a custom path, then save it for your user or this workspace. **Reset Git executable setting…** removes the selected scope's override. `gitSimpleCompare.gitPath` takes effect on the next Git command; workspace and folder values take precedence over the user default. On macOS, a direct Command Line Tools or Homebrew path can bypass a slow system launcher. This diagnoses startup time; repository work, remote requests and OS process delays require separate investigation. Results appear in **Git Simple Compare** Output.
+
 ### Pull request stacks
 
 Open the layer button in the Git Graph toolbar to see a unified view of local parent metadata and GitHub PR base/head relationships. **Add Layer** creates a child branch and optional linked worktree from the selected parent. **Restack** previews and rebases that layer and all descendants with per-layer safety refs and integrated conflict Continue/Abort. **Submit / Sync** pushes root-to-leaf, creates missing PRs, updates existing bases and stack sections in PR bodies, and uses an explicit force-with-lease only for rewritten remote history. After a lower PR is merged, **Advance** promotes its children to the previous base, restacks and syncs their PRs, then offers safe local branch/worktree cleanup.
@@ -127,6 +129,7 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 
 | Setting | Default | Description |
 | --- | --- | --- |
+| `gitSimpleCompare.gitPath` | empty | Git executable name or absolute path; empty uses `git` from PATH. Supports user, workspace and folder overrides |
 | `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
 | `gitSimpleCompare.blameBlock.show` | `true` | Show clickable contributor Code Vision above source blocks |

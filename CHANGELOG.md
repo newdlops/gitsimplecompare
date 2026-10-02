@@ -5,6 +5,16 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72068] - 2026-10-02
+
+### Added
+
+- Diagnose Git process startup and select a verified executable from the Changes
+  menu or Command Palette. Compare three startup samples, choose user or workspace
+  scope, and reset the override without changing repository or OS Git settings.
+- Apply the configured executable to every shared Git execution path, including
+  binary reads, streamed reads, and stdin commands, with live folder inheritance.
+
 ## [0.1.72067] - 2026-10-02
 
 ### Added

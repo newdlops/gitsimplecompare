@@ -45,6 +45,7 @@ import { disposeWorkingStatusRefresh } from "./commands/workingStatusRefresh";
 import { syncBuiltinGitContext, syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { registerViewConfigurationEvents } from "./ui/viewConfiguration";
+import { registerGitExecutableConfiguration } from "./ui/gitExecutableConfiguration";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { disposePullRequestQuickEdit } from "./ui/pullRequestQuickEdit";
@@ -71,6 +72,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0,
   });
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
+  context.subscriptions.push(registerGitExecutableConfiguration());
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
   context.subscriptions.push(new vscode.Disposable(disposeBranchContentCache));

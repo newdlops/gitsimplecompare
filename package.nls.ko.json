@@ -1,4 +1,7 @@
 {
+  "cmd.configureGitExecutable": "Git 실행 경로 진단·선택…",
+  "cmd.configureGitExecutable.tooltip": "Git 시작 시간을 진단하고 사용자 전역 또는 워크스페이스에서 사용할 실행 파일 선택",
+  "config.gitPath.desc": "Git Simple Compare에서 사용할 Git 실행 파일 이름 또는 절대 경로입니다. 비워 두면 PATH의 git을 사용합니다. Git 실행 경로 진단·선택에서 설치된 Git의 시작 시간을 비교해 느린 실행 경로를 우회할 수 있습니다. 다음 Git 명령부터 적용됩니다. 워크스페이스·폴더의 별도 설정이 사용자 기본값보다 우선합니다.",
   "cmd.cleanupStaleBranches": "로컬 브랜치 현황 및 Stale 정리…",
   "cmd.cleanupStaleBranches.tooltip": "로컬 브랜치 현황 및 Stale 정리… — 전체 로컬 브랜치에서 stale 여부를 확인하고 정리할 항목을 선택합니다",
   "ext.description": "git 브랜치 비교, 편집 가능한 diff, 충돌 해결, AI 커밋 플랜과 메시지를 지원하는 확장",
