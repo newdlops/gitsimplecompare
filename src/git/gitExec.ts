@@ -2,6 +2,7 @@
 // - 여러 git 서비스(GitService, GitLogService 등)가 공유하는 단일 실행 지점이다.
 //   execFile 로 셸을 거치지 않아 인자 이스케이프 문제가 없다.
 import { execFile, spawn, type ExecFileException } from "node:child_process";
+import { beginGitExecution } from "./gitExecutionDiagnostics";
 
 /** git 명령 실행 중 발생한 오류를 식별하기 위한 전용 에러 타입 */
 export class GitError extends Error {
@@ -90,8 +91,11 @@ export function runGitStream(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (options.signal?.aborted) { reject(options.signal.reason); return; }
-    const child = spawn(resolveGitExecutable(cwd, options.executable), args, { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
+    const executable = resolveGitExecutable(cwd, options.executable);
+    const timing = beginGitExecution(args, cwd, executable);
+    const child = spawn(executable, args, { cwd, windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
       env: options.env ? { ...process.env, ...options.env } : undefined });
+    timing?.spawnReturned();
     let stderr = Buffer.alloc(0), failure: unknown;
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     /** 종료 요청 뒤에도 남는 프로세스는 강제 종료하고 close에서 리스너/타이머를 정리한다. */
@@ -112,6 +116,7 @@ export function runGitStream(
     child.stdout.on("error", error => { failure ??= error; stop(); });
     child.stderr.on("error", error => { failure ??= error; stop(); });
     child.on("close", (code, signal) => {
+      timing?.finish(failure || code !== 0 ? "error" : "success", failure instanceof GitError ? failure.code : code ?? undefined);
       clearTimeout(killTimer);
       options.signal?.removeEventListener("abort", abort);
       if (failure) reject(failure);
@@ -229,6 +234,7 @@ function runGitDetailedOnce(
       reject(new GitError(`git ${args.join(" ")} cancelled`, ""));
       return;
     }
+    const timing = beginGitExecution(args, cwd, executable);
     const child = execFile(
       executable,
       args,
@@ -240,6 +246,7 @@ function runGitDetailedOnce(
         env: env ? { ...process.env, ...env } : undefined,
       },
       (error, stdout, stderr) => {
+        timing?.finish(error ? "error" : "success", error?.code ?? undefined);
         signal?.removeEventListener("abort", abort);
         if (error) {
           reject(
@@ -255,6 +262,7 @@ function runGitDetailedOnce(
         resolve({ stdout, stderr });
       }
     );
+    timing?.spawnReturned();
     /** AbortSignal과 child process를 연결해 supersede된 read가 남지 않게 한다. */
     const abort = () => child.kill();
     signal?.addEventListener("abort", abort, { once: true });
@@ -359,6 +367,7 @@ function runGitBufferOnce(
       reject(new GitError(`git ${args.join(" ")} cancelled`, ""));
       return;
     }
+    const timing = beginGitExecution(args, cwd, executable);
     const child = execFile(
       executable,
       args,
@@ -370,6 +379,7 @@ function runGitBufferOnce(
         env: env ? { ...process.env, ...env } : undefined,
       },
       (error, stdout, stderr) => {
+        timing?.finish(error ? "error" : "success", error?.code ?? undefined);
         signal?.removeEventListener("abort", abort);
         if (error) {
           const stderrText = stderr.toString("utf8");
@@ -387,6 +397,7 @@ function runGitBufferOnce(
         resolve(stdout);
       }
     );
+    timing?.spawnReturned();
     /** Buffer 실행도 호출 취소 시 자식 Git을 종료하고 이후 재시도를 막는다. */
     const abort = () => child.kill();
     signal?.addEventListener("abort", abort, { once: true });

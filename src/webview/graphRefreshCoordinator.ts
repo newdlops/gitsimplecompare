@@ -163,6 +163,15 @@ export class GraphRefreshLifecycleCoordinator {
     this.deps.info("graph refresh start", this.fields(request, generation, "direct"));
     try {
       const fingerprint = await this.readFingerprint(request, generation);
+      // read가 느린 동안 새 ready·숨김·저장소 전환이 발생하면 이전 세대는 전체 Git 조회를 시작하지 않는다.
+      // reload 이후의 검사만으로는 이미 실행한 status/log/branch 조회의 중복 비용을 막을 수 없다.
+      if (!this.isCurrentDirect(request.repoRoot, epoch, directSequence)) {
+        this.deps.info("graph refresh skip", {
+          ...this.fields(request, generation, graphRefreshFingerprintDigest(fingerprint)),
+          reason: "supersededBeforeReload",
+        });
+        return false;
+      }
       const context = { ...request, generation, fingerprint };
       await this.deps.reloadGraph(context);
       if (!this.isCurrentDirect(request.repoRoot, epoch, directSequence)) return false;

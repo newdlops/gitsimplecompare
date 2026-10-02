@@ -5,6 +5,22 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72069] - 2026-10-02
+
+### Fixed
+
+- Skip superseded Graph reloads before starting status, log and branch queries
+  when a slow fingerprint completes after another ready event, hiding the panel,
+  switching repositories or disposing it. Record the skipped generation in Output.
+- Run background status reads with `GIT_OPTIONAL_LOCKS=0` to avoid unnecessary
+  index writes and lock contention, including the fsmonitor fallback path.
+  Preserve complete untracked file results, cancellation and executable overrides.
+
+### Changed
+
+- Log slow Git process startup separately from total execution time in the
+  Git Simple Compare Output channel, without logging command arguments or content.
+
 ## [0.1.72068] - 2026-10-02
 
 ### Added

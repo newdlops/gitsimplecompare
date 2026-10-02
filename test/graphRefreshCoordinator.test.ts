@@ -252,6 +252,7 @@ test("동일 repository의 늦은 direct 완료와 repository switch/direct 실�
     error: () => undefined,
   });
   const oldDirect = coordinator.runDirect({ repoRoot: "/repo", cause: "first" });
+  await settle();
   const currentDirect = coordinator.runDirect({ repoRoot: "/repo", cause: "second" });
   second.resolve();
   assert.equal(await currentDirect, true);
@@ -261,7 +262,71 @@ test("동일 repository의 늦은 direct 완료와 repository switch/direct 실�
   coordinator.setRepository("/other");
   assert.equal(await switched, false);
   assert.equal(await coordinator.runDirect({ repoRoot: "/other", cause: "failed" }), false);
-  assert.deepEqual(reloads, ["first", "second", "first", "failed"]);
+  assert.deepEqual(reloads, ["first", "second", "failed"]);
+});
+
+test("늦은 direct fingerprint는 뒤 ready 요청의 전체 Git 조회를 중복 실행하지 않는다", async (t) => {
+  for (const oldestFirst of [true, false]) {
+    await t.test(oldestFirst ? "이전 read가 먼저 완료" : "최신 read가 먼저 완료", async () => {
+      const oldFingerprint = deferred<string>();
+      const newFingerprint = deferred<string>();
+      const reloads: GraphRefreshContext[] = [];
+      const events: string[] = [];
+      let reads = 0;
+      const coordinator = new GraphRefreshLifecycleCoordinator({
+        readFingerprint: () => reads++ === 0 ? oldFingerprint.promise : newFingerprint.promise,
+        reloadGraph: async (context) => { reloads.push(context); },
+        publishAfterReload: async () => undefined,
+        invalidateReload: () => undefined,
+        info: (event) => { events.push(event); },
+        error: () => undefined,
+      });
+      const oldReady = coordinator.runDirect({ repoRoot: "/repo", cause: "old-ready" });
+      const newReady = coordinator.runDirect({ repoRoot: "/repo", cause: "new-ready" });
+      if (oldestFirst) {
+        oldFingerprint.resolve("old");
+        assert.equal(await oldReady, false);
+        assert.equal(reloads.length, 0, "최신 read가 대기하는 동안 취소된 세대의 Git 조회를 시작하지 않는다");
+        newFingerprint.resolve("new");
+        assert.equal(await newReady, true);
+      } else {
+        newFingerprint.resolve("new");
+        assert.equal(await newReady, true);
+        oldFingerprint.resolve("old");
+        assert.equal(await oldReady, false);
+      }
+      assert.deepEqual(reloads.map(({ cause }) => cause), ["new-ready"]);
+      assert.ok(events.includes("graph refresh skip"), "중복 조회를 생략한 이유는 OUTPUT에서 확인할 수 있다");
+    });
+  }
+});
+
+test("direct fingerprint 대기 중 lifecycle 무효화는 뒤늦은 전체 Git 조회도 차단한다", async (t) => {
+  const invalidations = {
+    hidden: (coordinator: GraphRefreshLifecycleCoordinator) => coordinator.setVisible(false),
+    unfocused: (coordinator: GraphRefreshLifecycleCoordinator) => coordinator.setFocused(false),
+    repositoryChanged: (coordinator: GraphRefreshLifecycleCoordinator) => coordinator.setRepository("/other"),
+    disposed: (coordinator: GraphRefreshLifecycleCoordinator) => coordinator.dispose(),
+  };
+  for (const [reason, invalidate] of Object.entries(invalidations)) {
+    await t.test(reason, async () => {
+      const fingerprint = deferred<string>();
+      let reloads = 0;
+      const coordinator = new GraphRefreshLifecycleCoordinator({
+        readFingerprint: () => fingerprint.promise,
+        reloadGraph: async () => { reloads++; },
+        publishAfterReload: async () => undefined,
+        invalidateReload: () => undefined,
+        info: () => undefined,
+        error: () => undefined,
+      });
+      const ready = coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+      invalidate(coordinator);
+      fingerprint.resolve("late");
+      assert.equal(await ready, false);
+      assert.equal(reloads, 0, `${reason} 이후에는 무거운 Git 조회를 시작하지 않는다`);
+    });
+  }
 });
 
 test("direct refresh는 실행 중인 자동 세대를 취소해 늦은 baseline과 publication을 차단한다", async () => {

@@ -41,9 +41,10 @@ export class GitStatusFsMonitorGuard {
    * git status를 실행하고 fsmonitor IPC 오류가 관찰되면 이후 조회를 command-scope fallback으로 보낸다.
    * - 성공하면서 stderr 경고만 낸 경우 첫 stdout은 그대로 사용해 같은 전체 스캔을 즉시 반복하지 않는다.
    * - Git 자체가 실패한 경우에는 fallback으로 한 번 재시도해 Changes/Graph 로딩을 복구한다.
+   * - 조회 전용 status는 optional index lock/쓰기를 생략해 다른 Git 작업과 watcher에 불필요한 부담을 주지 않는다.
    * @param args status로 시작하는 Git 인자 배열
    * @param repoRoot status를 읽을 저장소 또는 linked worktree 루트
-   * @param options 취소 신호 등 저수준 Git 실행 옵션
+   * @param options 취소 신호·실행 파일·환경 등 저수준 옵션. 조회 정책의 GIT_OPTIONAL_LOCKS=0은 항상 유지한다.
    * @returns porcelain status stdout
    */
   async run(
@@ -51,10 +52,14 @@ export class GitStatusFsMonitorGuard {
     repoRoot: string,
     options?: RunGitOptions
   ): Promise<string> {
+    const readOptions: RunGitOptions = {
+      ...options,
+      env: { ...options?.env, GIT_OPTIONAL_LOCKS: "0" },
+    };
     const fallbackActive = (this.disabledUntil.get(repoRoot) ?? 0) > this.now();
     const command = fallbackActive ? withoutFsMonitor(args) : args;
     try {
-      const result = await this.runner(command, repoRoot, options);
+      const result = await this.runner(command, repoRoot, readOptions);
       if (!fallbackActive && hasFsMonitorFailure(result.stderr)) {
         this.activate(repoRoot, result.stderr);
       }
@@ -62,7 +67,7 @@ export class GitStatusFsMonitorGuard {
     } catch (error) {
       if (fallbackActive || !hasFsMonitorFailure(gitErrorOutput(error))) throw error;
       this.activate(repoRoot, gitErrorOutput(error));
-      return (await this.runner(withoutFsMonitor(args), repoRoot, options)).stdout;
+      return (await this.runner(withoutFsMonitor(args), repoRoot, readOptions)).stdout;
     }
   }
 

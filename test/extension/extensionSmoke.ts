@@ -45,21 +45,26 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
   const quote = (value: string): string => "'" + value.replace(/'/g, "'\\''") + "'";
   const wrappers = { user: path.join(directory, "user git"), workspace: path.join(directory, "workspace git") };
   for (const [scope, executable] of Object.entries(wrappers)) {
-    await writeFile(executable, `#!/bin/sh\nprintf '%s|%s\\n' '${scope}' "$*" >> ${quote(marker)}\nexec git "$@"\n`, { mode: 0o755 });
+    await writeFile(executable, `#!/bin/sh\nprintf '%s|%s|%s\\n' '${scope}' "\${GIT_OPTIONAL_LOCKS:-default}" "$*" >> ${quote(marker)}\nexec git "$@"\n`, { mode: 0o755 });
   }
   /** 저장 전후의 설정 snapshot을 실제 VS Code 설정 서비스에서 새로 읽는다. */
   const config = () => vscode.workspace.getConfiguration("gitSimpleCompare", vscode.Uri.file(root));
   const original = config().inspect<string>("gitPath");
   // unfocused Development Host도 실제 Changes의 활성 저장소를 먼저 확정하게 한다.
   await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "vscodeGit:repositoryOpened" });
-  /** 확장에 등록된 실제 stage 명령으로 실행 경로 적용을 확인한다. */
+  /** 실제 stage/refresh 명령으로 실행 경로 상속과 조회·변경 명령의 lock 정책을 함께 확인한다. */
   const expectExecution = async (scope: string): Promise<void> => {
     await writeFile(marker, "");
     await vscode.commands.executeCommand("gitSimpleCompare.stage", ["sample.txt"]);
+    await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "manual" });
     const calls = (await readFile(marker, "utf8")).trim().split("\n");
     const stageCalls = calls.filter(call => /\badd\b/.test(call));
     assert.ok(stageCalls.some(call => call.startsWith(scope + "|")), `Production stage command did not use the ${scope} executable.`);
     assert.ok(stageCalls.every(call => call.startsWith(scope + "|")), `Unexpected executable scope: ${stageCalls.join(", ")}`);
+    assert.ok(stageCalls.every(call => !call.startsWith(scope + "|0|")), "Stage must retain its normal index write policy.");
+    const statusCalls = calls.filter(call => /\bstatus\b/.test(call));
+    assert.ok(statusCalls.length > 0, "Production refresh command did not read Git status.");
+    assert.ok(statusCalls.every(call => call.startsWith(scope + "|0|")), `Background status must skip optional index writes: ${statusCalls.join(", ")}`);
   };
   try {
     await config().update("gitPath", wrappers.user, vscode.ConfigurationTarget.Global);
@@ -69,7 +74,7 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
     await expectExecution("workspace");
     await config().update("gitPath", undefined, vscode.ConfigurationTarget.Workspace);
     await expectExecution("user");
-    console.log("Production Git commands used live user/workspace executables and inherited user defaults.");
+    console.log("Production Git commands used live user/workspace executables; status stayed read-only while stage could write the index.");
   } finally {
     await config().update("gitPath", original?.workspaceValue, vscode.ConfigurationTarget.Workspace);
     await config().update("gitPath", original?.globalValue, vscode.ConfigurationTarget.Global);

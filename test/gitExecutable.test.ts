@@ -8,6 +8,7 @@ import {
   runGitStream, runGitWithInput, setGitExecutableResolver,
 } from "../src/git/gitExec";
 import { findGitExecutables, probeGitExecutable } from "../src/git/gitExecutableService";
+import { GitExecutionTiming, setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
 
 /** 테스트용 실행 파일을 실제 사용자 저장소와 분리하고 종료 때 임시 파일을 정리한다. */
 async function executableFixture(context: TestContext): Promise<string> {
@@ -18,6 +19,8 @@ async function executableFixture(context: TestContext): Promise<string> {
 
 /** 모든 실행 방식이 같은 resolver를 거치며 환경·stdin·바이너리 출력이 보존되는지 확인한다. */
 test("configured executable applies to text, detailed, stdin, binary and stream calls", async (context) => {
+  const timings: GitExecutionTiming[] = [];
+  context.after(setGitExecutionObserver(timing => timings.push(timing)));
   context.after(setGitExecutableResolver(() => process.execPath));
   const cwd = process.cwd();
   assert.equal(await runGit(["-e", "process.stdout.write(process.env.GSC_EXECUTABLE_TEST)"], cwd,
@@ -32,6 +35,9 @@ test("configured executable applies to text, detailed, stdin, binary and stream 
   const chunks: Buffer[] = [];
   await runGitStream(emit, cwd, chunk => chunks.push(Buffer.from(chunk)));
   assert.deepEqual(Buffer.concat(chunks), input);
+  assert.equal(timings.length, 5, "모든 실제 실행 경로가 공통 계측 경계에 연결돼 있다");
+  assert.ok(timings.every(timing => timing.outcome === "success" && timing.executable === process.execPath));
+  assert.equal(JSON.stringify(timings).includes("process.stdout"), false, "실행 인자와 본문은 계측 로그에 포함하지 않는다");
 });
 
 /** 잘못된 설정과 무관하게 호출자가 지정한 후보만 진단할 수 있는지 검증한다. */
@@ -74,8 +80,16 @@ test("executable paths with spaces and shell characters remain literal", { skip:
 /** 잘못 저장된 경로에서 다른 Git으로 조용히 변경되지 않고 원래 실행 오류를 반환하는지 확인한다. */
 test("missing configured Git fails without silently falling back", async (context) => {
   const cwd = await executableFixture(context);
+  const timings: GitExecutionTiming[] = [];
+  context.after(setGitExecutionObserver(timing => timings.push(timing)));
   context.after(setGitExecutableResolver(() => path.join(cwd, "missing-git")));
-  await assert.rejects(runGit(["--version"], cwd), (error: unknown) => error instanceof GitError && error.code === "ENOENT");
+  const expectMissing = (error: unknown) => error instanceof GitError && error.code === "ENOENT";
+  await assert.rejects(runGit(["--version"], cwd), expectMissing);
+  await assert.rejects(runGitWithInput(["--version"], cwd, "input"), expectMissing);
+  await assert.rejects(runGitBuffer(["--version"], cwd), expectMissing);
+  await assert.rejects(runGitStream(["--version"], cwd, () => undefined), expectMissing);
+  assert.equal(timings.length, 4);
+  assert.ok(timings.every(timing => timing.outcome === "error" && timing.code === "ENOENT"));
 });
 
 /** 실제 Git 진단이 세 샘플의 정확한 중앙값을 계산하는지 확인한다. */
