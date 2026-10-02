@@ -16,6 +16,7 @@ import {
   compareExplorerFileWithBranch,
 } from "./compareFile";
 import {
+  type BuiltinGitScope,
   changeSortOrder,
   setViewMode,
   toggleBuiltinGit,
@@ -163,10 +164,13 @@ const BLAME_BLOCK_COMMANDS = [
   "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
 ];
 
-const BUILTIN_GIT_COMMANDS = [
-  "gitSimpleCompare.toggleBuiltinGit",
-  "gitSimpleCompare.toggleBuiltinGit.checked",
-  "gitSimpleCompare.toggleBuiltinGit.unchecked",
+const BUILTIN_GIT_COMMANDS: Array<[string, BuiltinGitScope]> = [
+  ["gitSimpleCompare.toggleBuiltinGit", "workspace"],
+  ["gitSimpleCompare.toggleBuiltinGit.checked", "workspace"],
+  ["gitSimpleCompare.toggleBuiltinGit.unchecked", "workspace"],
+  ["gitSimpleCompare.toggleBuiltinGitUser", "user"],
+  ["gitSimpleCompare.toggleBuiltinGitUser.checked", "user"],
+  ["gitSimpleCompare.toggleBuiltinGitUser.unchecked", "user"],
 ];
 
 /**
@@ -177,8 +181,8 @@ const BUILTIN_GIT_COMMANDS = [
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
-    ...BUILTIN_GIT_COMMANDS.map((command) =>
-      vscode.commands.registerCommand(command, toggleBuiltinGit)
+    ...BUILTIN_GIT_COMMANDS.map(([command, scope]) =>
+      vscode.commands.registerCommand(command, () => toggleBuiltinGit(scope))
     ),
     // provider/controller가 파일·git 이벤트 새로고침을 요청하면 같은 명령 경로로 합친다.
     deps.comparison.onDidRequestRefresh((request) => {

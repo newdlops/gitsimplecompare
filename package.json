@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72066",
+  "version": "0.1.72067",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -252,6 +252,27 @@
         "shortTitle": "%cmd.builtinGit%",
         "category": "Git Simple Compare",
         "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.builtinGit.busy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGitUser",
+        "title": "%cmd.toggleBuiltinGitUser.tooltip%",
+        "shortTitle": "%cmd.toggleBuiltinGitUser%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.builtinGit.busy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGitUser.checked",
+        "title": "%cmd.builtinGitUser.checked.tooltip%",
+        "shortTitle": "%cmd.builtinGitUser.checked%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.builtinGit.busy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleBuiltinGitUser.unchecked",
+        "title": "%cmd.builtinGitUser.tooltip%",
+        "shortTitle": "%cmd.builtinGitUser%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.builtinGit.busy"
       },
       {
         "command": "gitSimpleCompare.configureUserProfile",
@@ -748,6 +769,16 @@
           "group": "1_ops@2"
         },
         {
+          "command": "gitSimpleCompare.toggleBuiltinGitUser.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.builtinGit.userEnabled",
+          "group": "4_settings@0"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGitUser.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.builtinGit.userEnabled",
+          "group": "4_settings@0"
+        },
+        {
           "command": "gitSimpleCompare.toggleBuiltinGit.checked",
           "when": "view == gitSimpleCompare.changes && gitSimpleCompare.builtinGit.enabled",
           "group": "4_settings@1"
@@ -1088,6 +1119,14 @@
         },
         {
           "command": "gitSimpleCompare.toggleBuiltinGit.unchecked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGitUser.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleBuiltinGitUser.unchecked",
           "when": "false"
         },
         {

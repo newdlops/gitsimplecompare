@@ -107,7 +107,7 @@ When a commit hook rejects a commit, common ESLint, TypeScript, Ruff, Prettier, 
 - Change the sort order (**name / path / status**) from the view toolbar.
 - Click any file to open its diff.
 
-In the Changes view's **…** menu, clear **Use VS Code Built-in Git (Workspace)** to stop the built-in Git extension for the current workspace. Select it again to resume. This changes the workspace's `git.enabled` setting and any explicit folder overrides; Git Simple Compare continues using its own Git CLI. The native Git merge editor and built-in remote-add action require built-in Git to be enabled.
+In the Changes view's **…** menu, **Use VS Code Built-in Git (User)** changes the user's default `git.enabled` setting across workspaces. **Use VS Code Built-in Git (Workspace)** stops or resumes built-in Git for the current workspace, including any explicit folder overrides. Workspace and folder settings take precedence over the user default. Each menu item shows its own setting's state; Git Simple Compare continues using its own Git CLI. The native Git merge editor and built-in remote-add action require built-in Git to be enabled.
 
 ### Pull request stacks
 

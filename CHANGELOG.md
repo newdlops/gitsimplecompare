@@ -5,6 +5,14 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72067] - 2026-10-02
+
+### Added
+
+- Control the user-level default for VS Code built-in Git alongside the workspace
+  option. Preserve workspace and folder overrides, show each scope's state in the
+  Changes menu, and allow the user command in windows without an open workspace.
+
 ## [0.1.72066] - 2026-10-02
 
 ### Added

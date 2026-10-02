@@ -60,7 +60,10 @@ async function main() {
       extensionDevelopmentPath: workspaceRoot,
       extensionTestsPath,
       ...(vscodeExecutablePath ? { vscodeExecutablePath } : { version: "1.85.0" }),
-      extensionTestsEnv: { GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot },
+      extensionTestsEnv: {
+        GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot,
+        GSC_EXTENSION_TEST_PROFILE: path.join(fixture.directory, "profile"),
+      },
       launchArgs: [
         fixture.repoRoot, "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
         `--user-data-dir=${path.join(fixture.directory, "profile")}`,
