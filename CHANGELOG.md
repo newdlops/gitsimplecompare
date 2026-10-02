@@ -5,6 +5,15 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72070] - 2026-10-03
+
+### Changed
+
+- Reuse the current worktree's HEAD and branch while checking Graph changes,
+  reducing the normal fingerprint read from four Git processes to two. Preserve
+  fingerprint results for linked worktrees, detached HEAD and symlink paths, with
+  the previous HEAD queries as a fallback for incomplete or unborn worktrees.
+
 ## [0.1.72069] - 2026-10-02
 
 ### Fixed
