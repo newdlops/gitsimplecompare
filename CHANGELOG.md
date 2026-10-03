@@ -5,6 +5,24 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72072] - 2026-10-04
+
+### Changed
+
+- Reuse the worktree list and remote branch tips already read for the Graph
+  refresh fingerprint when loading branch badges and filters, avoiding repeated
+  worktree, remote-ref and common-directory processes in the same reload.
+- Read commit-hook and common Git directories in one process and avoid repeating
+  a missing hooksPath lookup. Preserve lexical paths, Husky aliases and fallback
+  behavior for older Git versions and ambiguous path output.
+
+### Fixed
+
+- Terminate obsolete Graph fingerprint queries when a newer request supersedes
+  them, the window loses focus, the panel is hidden or disposed, or the repository
+  changes. Preserve refresh intent and log normal cancellation without showing
+  a Git failure notification.
+
 ## [0.1.72071] - 2026-10-03
 
 ### Changed

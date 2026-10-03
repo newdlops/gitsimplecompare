@@ -2,8 +2,11 @@
 // - watcher의 같은 delete 관측을 시간 창 없이 의미적으로 합쳐 불필요한 graph 재로드를 막는다.
 import { realpath } from "node:fs/promises";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { runGit, type RunGitOptions } from "./gitExec";
 import { parseWorktreePorcelain, type WorktreeInfo } from "./worktreeService";
+import { parseRemoteBranchTips, type GraphRemoteBranchTip } from "./graphBranchCatalog";
+
+const REF_SEPARATOR = "\x1f";
 
 /** Git graph에 영향을 주는 상태를 순서와 무관하게 표현한 짧은 식별자다. */
 export type GraphRefreshFingerprint = string;
@@ -19,7 +22,14 @@ export function createGraphRefreshFingerprint(parts: { head: string; symbolicHea
 }
 
 /** 테스트에서 실제 프로세스 실행 수와 fallback을 관찰할 수 있는 Git 조회 경계다. */
-export type GraphFingerprintRunner = (args: string[], repoRoot: string) => Promise<string>;
+export type GraphFingerprintRunner = (args: string[], repoRoot: string, options?: Pick<RunGitOptions, "signal">) => Promise<string>;
+
+/** 새로고침 판정과 첫 로드가 같은 Git 조회의 worktree·원격 ref를 공유하는 snapshot이다. */
+export interface GraphRefreshSnapshot {
+  fingerprint: GraphRefreshFingerprint;
+  worktrees: readonly WorktreeInfo[];
+  remoteTips?: readonly GraphRemoteBranchTip[];
+}
 
 /**
  * 현재 저장소의 Graph 의미 상태를 읽되 worktree 목록에 있는 HEAD/branch를 재사용한다.
@@ -27,37 +37,74 @@ export type GraphFingerprintRunner = (args: string[], repoRoot: string) => Promi
  * - worktree를 식별할 수 없거나 unborn/bare 상태이면 기존 HEAD 조회로 돌아가 오류 의미를 유지한다.
  * @param repoRoot 조회할 저장소 또는 linked worktree의 루트. 심볼릭 링크 경로도 허용한다.
  * @param runner 두 기본 조회와 필요한 경우의 HEAD fallback을 실행하는 경계
+ * @param signal 더 이상 필요하지 않은 Git 조회를 종료하는 호출 수명 신호
  * @returns 기존 네 가지 출력으로 만든 것과 같은 Graph fingerprint
  */
 export async function readGraphRefreshFingerprint(
-  repoRoot: string, runner: GraphFingerprintRunner = runGit
+  repoRoot: string, runner: GraphFingerprintRunner = runGit, signal?: AbortSignal
 ): Promise<GraphRefreshFingerprint> {
+  return (await readGraphRefreshSnapshot(repoRoot, runner, signal)).fingerprint;
+}
+
+/**
+ * fingerprint와 그 판정에 사용한 worktree·원격 ref를 함께 반환해 같은 reload의 재조회를 줄인다.
+ * @param repoRoot Git 저장소 루트, runner 실제 Git 실행 경계, signal 취소된 조회의 자식 프로세스 종료 신호
+ * @returns 의미 fingerprint와 같은 시점에 Git에서 읽은 worktree 목록·원격 tip
+ */
+export async function readGraphRefreshSnapshot(
+  repoRoot: string, runner: GraphFingerprintRunner = runGit, signal?: AbortSignal
+): Promise<GraphRefreshSnapshot> {
+  signal?.throwIfAborted();
+  const options = signal ? { signal } : undefined;
   const [refs, worktrees] = await Promise.all([
-    runner(["for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/remotes", "refs/tags"], repoRoot),
-    runner(["worktree", "list", "--porcelain"], repoRoot),
+    runner(["for-each-ref", `--format=%(refname)${REF_SEPARATOR}%(objectname)${REF_SEPARATOR}%(refname:short)`, "refs/heads", "refs/remotes", "refs/tags"], repoRoot, options),
+    runner(["worktree", "list", "--porcelain"], repoRoot, options),
   ]);
-  const current = await findCurrentWorktree(worktrees, repoRoot);
+  signal?.throwIfAborted();
+  const parsedWorktrees = parseWorktreePorcelain(worktrees);
+  const current = await findCurrentWorktree(parsedWorktrees, repoRoot);
   let head: string, symbolicHead: string;
   if (current && hasHeadIdentity(current)) {
     head = current.head;
     symbolicHead = current.branchRef ?? "DETACHED";
   } else {
     [head, symbolicHead] = await Promise.all([
-      runner(["rev-parse", "HEAD"], repoRoot),
-      runner(["symbolic-ref", "-q", "HEAD"], repoRoot).catch(() => "DETACHED"),
+      runner(["rev-parse", "HEAD"], repoRoot, options),
+      runner(["symbolic-ref", "-q", "HEAD"], repoRoot, options).catch(() => "DETACHED"),
     ]);
   }
-  return createGraphRefreshFingerprint({ head, symbolicHead, refs: refs.split("\n"), worktrees: worktrees.split("\n\n") });
+  signal?.throwIfAborted();
+  const refSnapshot = parseRefSnapshot(refs);
+  return {
+    fingerprint: createGraphRefreshFingerprint({ head, symbolicHead, refs: refSnapshot.refs, worktrees: worktrees.split("\n\n") }),
+    worktrees: parsedWorktrees,
+    ...(refSnapshot.remoteTips !== undefined ? { remoteTips: refSnapshot.remoteTips } : {}),
+  };
+}
+
+/**
+ * 추가 short-name 필드를 기존 fingerprint 형식으로 되돌리고 원격 catalog의 tip을 재사용한다.
+ * @param output full ref·object ID·Git이 해석한 short name을 구분자로 나눈 for-each-ref 출력
+ * @returns 기존 의미 ref 행과 원격 tip. 이전 형식·불완전 출력은 catalog 재조회를 유지한다.
+ */
+function parseRefSnapshot(output: string): { refs: string[]; remoteTips?: GraphRemoteBranchTip[] } {
+  const rows = output.split("\n").filter(Boolean).map(line => ({ line, fields: line.split(REF_SEPARATOR) }));
+  const complete = rows.every(({ fields }) => fields.length === 3 && fields[0].startsWith("refs/") && fields[1] && fields[2]);
+  return {
+    refs: rows.map(({ line, fields }) => fields.length === 3 ? `${fields[0]} ${fields[1]}` : line),
+    ...(complete ? {
+      remoteTips: parseRemoteBranchTips(rows.map(({ fields: [fullRef, hash, name] }) => [hash, name, fullRef].join(REF_SEPARATOR)).join("\n")),
+    } : {}),
+  };
 }
 
 /**
  * 직접 경로를 먼저 대조하고, symlink일 때만 실제 경로를 읽어 현재 worktree 항목을 찾는다.
- * @param output 이미 조회한 worktree porcelain. 경로 비교를 위해 기존 공용 파서를 재사용한다.
+ * @param worktrees 이미 파싱한 Git worktree 목록
  * @param repoRoot Git을 실행한 루트 경로
  * @returns 현재 worktree. 경로를 식별하지 못하면 undefined로 HEAD fallback을 요청한다.
  */
-async function findCurrentWorktree(output: string, repoRoot: string): Promise<WorktreeInfo | undefined> {
-  const worktrees = parseWorktreePorcelain(output);
+async function findCurrentWorktree(worktrees: readonly WorktreeInfo[], repoRoot: string): Promise<WorktreeInfo | undefined> {
   const root = path.resolve(repoRoot);
   const direct = worktrees.find((worktree) => path.resolve(worktree.path) === root);
   if (direct) return direct;

@@ -14,6 +14,15 @@ export async function readGraphWorktreeBranchStatus(
   repoRoot: string
 ): Promise<WorktreeBranchStatus[]> {
   const worktrees = await new WorktreeService(repoRoot).listWorktrees();
+  return createGraphWorktreeBranchStatus(worktrees);
+}
+
+/**
+ * 이미 Git에서 읽은 목록을 branch badge 데이터로 바꿔 같은 reload에서 worktree를 다시 조회하지 않는다.
+ * @param worktrees fingerprint나 독립 조회가 반환한 worktree 목록
+ * @returns 브랜치·경로 순으로 정렬한 점유 상태. 입력 목록은 변경하지 않는다.
+ */
+export function createGraphWorktreeBranchStatus(worktrees: readonly WorktreeInfo[]): WorktreeBranchStatus[] {
   return worktrees
     .filter(hasBranch)
     .map((worktree) => ({

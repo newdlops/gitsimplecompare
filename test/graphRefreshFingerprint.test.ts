@@ -5,9 +5,11 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
-  createGraphRefreshFingerprint, readGraphRefreshFingerprint, type GraphFingerprintRunner,
+  createGraphRefreshFingerprint, readGraphRefreshFingerprint, readGraphRefreshSnapshot, type GraphFingerprintRunner,
 } from "../src/git/graphRefreshFingerprint";
+import { createGraphWorktreeBranchStatus } from "../src/webview/graphWorktrees";
 import { runGit } from "../src/git/gitExec";
+import { parseRemoteBranchTips } from "../src/git/graphBranchCatalog";
 
 const head = "a".repeat(40);
 
@@ -33,6 +35,64 @@ test("fingerprint reads linked worktree HEAD and branch with only two Git proces
     head, symbolicHead: "refs/heads/main", refs: [`refs/heads/main ${head}`], worktrees: worktrees.split("\n\n"),
   }));
   assert.deepEqual(calls.map((args) => args[0]), ["for-each-ref", "worktree"]);
+});
+
+test("first Graph worktree badges reuse the fingerprint snapshot without another Git process", async () => {
+  const root = path.resolve("/fixture/main"), linked = path.resolve("/fixture/linked");
+  const raw = `worktree ${root}\nHEAD ${head}\nbranch refs/heads/main\n\nworktree ${linked}\nHEAD ${head}\nbranch refs/heads/linked\nlocked fixture\n\n`;
+  const calls: string[][] = [];
+  const snapshot = await readGraphRefreshSnapshot(root, fixtureRunner(raw, calls));
+  const badges = createGraphWorktreeBranchStatus(snapshot.worktrees);
+  assert.deepEqual(badges.map(row => [row.branch, row.path, row.isMain, row.locked]), [
+    ["linked", linked, false, "fixture"], ["main", root, true, undefined],
+  ]);
+  assert.equal(snapshot.worktrees.length, 2);
+  assert.equal(calls.length, 2);
+});
+
+test("remote snapshot preserves Git short names and symbolic HEAD fingerprint without another query", async () => {
+  const root = path.resolve("/fixture/main"), fs = "\x1f";
+  const refs = [
+    ["refs/heads/main", head, "main"],
+    ["refs/remotes/origin/main", head, "remotes/origin/main"],
+    ["refs/remotes/origin/HEAD", head, "origin/HEAD"],
+    ["refs/tags/v1", head, "v1"],
+  ];
+  const worktrees = `worktree ${root}\nHEAD ${head}\nbranch refs/heads/main\n\n`;
+  const calls: string[][] = [];
+  const snapshot = await readGraphRefreshSnapshot(root, async args => {
+    calls.push(args);
+    return args[0] === "for-each-ref" ? refs.map(row => row.join(fs)).join("\n") : worktrees;
+  });
+  assert.deepEqual(snapshot.remoteTips, [{ hash: head, name: "remotes/origin/main", fullRef: "refs/remotes/origin/main", kind: "remote" }]);
+  assert.equal(snapshot.fingerprint, createGraphRefreshFingerprint({
+    head, symbolicHead: "refs/heads/main", refs: refs.map(([ref, hash]) => `${ref} ${hash}`), worktrees: worktrees.split("\n\n"),
+  }));
+  assert.equal(calls.length, 2);
+});
+
+test("empty ref snapshot is complete while legacy rows keep the catalog fallback", async () => {
+  const root = path.resolve("/fixture/main");
+  const worktrees = `worktree ${root}\nHEAD ${head}\nbranch refs/heads/main\n\n`;
+  const empty = await readGraphRefreshSnapshot(root, async args => args[0] === "worktree" ? worktrees : "");
+  assert.deepEqual(empty.remoteTips, []);
+  const legacy = await readGraphRefreshSnapshot(root, fixtureRunner(worktrees, []));
+  assert.equal(legacy.remoteTips, undefined);
+});
+
+test("fingerprint cancellation reaches both Git commands and prevents later fallback launches", async () => {
+  const controller = new AbortController();
+  const signals: Array<AbortSignal | undefined> = [];
+  const actual = readGraphRefreshSnapshot("/fixture/repo", async (_args, _cwd, options) => {
+    signals.push(options?.signal);
+    return new Promise((_resolve, reject) => options?.signal?.addEventListener("abort", () => reject(options.signal?.reason), { once: true }));
+  }, controller.signal);
+  assert.deepEqual(signals, [controller.signal, controller.signal]);
+  controller.abort();
+  await assert.rejects(actual, error => error === controller.signal.reason);
+  let calls = 0;
+  await assert.rejects(readGraphRefreshSnapshot("/fixture/repo", async () => { calls++; return ""; }, controller.signal));
+  assert.equal(calls, 0);
 });
 
 test("detached SHA-256 worktree keeps the same HEAD identity without extra processes", async () => {
@@ -94,13 +154,16 @@ test("real repository fingerprints match the previous queries across branch, lin
   await writeFile(path.join(repo, "file.txt"), "base\n");
   git(["add", "file.txt"]);
   git(["commit", "--quiet", "-m", "fixture"]);
+  git(["update-ref", "refs/remotes/origin/main", "HEAD"]);
+  git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+  git(["branch", "origin/main"]);
   git(["worktree", "add", "-b", "linked", linked]);
   await symlink(repo, alias, process.platform === "win32" ? "junction" : "dir");
 
-  /** 실제 Git의 이전 네 조회와 새 두 조회가 같은 fingerprint를 만드는지 비교한다. */
+  /** 실제 Git의 기존 fingerprint·원격 catalog와 새 두 조회의 재사용 결과가 같은지 비교한다. */
   async function check(root: string): Promise<void> {
     const calls: string[][] = [];
-    const actual = await readGraphRefreshFingerprint(root, async (args, cwd) => {
+    const snapshot = await readGraphRefreshSnapshot(root, async (args, cwd) => {
       calls.push(args);
       return runGit(args, cwd, { env });
     });
@@ -110,7 +173,10 @@ test("real repository fingerprints match the previous queries across branch, lin
       runGit(["for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/remotes", "refs/tags"], root, { env }),
       runGit(["worktree", "list", "--porcelain"], root, { env }),
     ]);
-    assert.equal(actual, createGraphRefreshFingerprint({ head: oldHead, symbolicHead, refs: refs.split("\n"), worktrees: worktrees.split("\n\n") }));
+    assert.equal(snapshot.fingerprint, createGraphRefreshFingerprint({ head: oldHead, symbolicHead, refs: refs.split("\n"), worktrees: worktrees.split("\n\n") }));
+    const remoteOutput = await runGit(["for-each-ref", "--format=%(objectname)\x1f%(refname:short)\x1f%(refname)", "refs/remotes"], root, { env });
+    assert.deepEqual(snapshot.remoteTips, parseRemoteBranchTips(remoteOutput));
+    assert.ok(snapshot.remoteTips?.some(tip => tip.fullRef === "refs/remotes/origin/main"));
     assert.equal(calls.length, 2, "일반 경로·linked·symlink 모두 두 프로세스로 기존 결과를 유지한다");
   }
   await check(repo);

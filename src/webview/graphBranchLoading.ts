@@ -43,17 +43,26 @@ export class GraphBranchLoadingCoordinator {
    * @param generation begin이 발급한 remote read 세대
    * @param version semantic fingerprint에서 파생한 remote ref cache 버전
    * @param canStart 패널 visible/focus 상태를 마지막으로 확인하는 함수
+   * @param snapshot 같은 refresh fingerprint에서 이미 읽은 원격 tip. 빈 배열도 확정된 조회 결과다.
    * @returns ready/error 결과. 세대 교체나 숨김으로 취소되면 undefined
    */
   async loadRemote(
     repoRoot: string,
     generation: number,
     version: string,
-    canStart: () => boolean
+    canStart: () => boolean,
+    snapshot?: readonly GraphRemoteBranchTip[]
   ): Promise<GraphRemoteCatalogResult | undefined> {
     if (generation !== this.generation || repoRoot !== this.repoRoot || !canStart()) {
       logInfo("graph remote branches skipped", { repoRoot, generation, reason: "inactiveOrStale" });
       return undefined;
+    }
+    if (snapshot !== undefined) {
+      const branches = snapshot.map(tip => ({ ...tip }));
+      logInfo("graph remote branches complete", {
+        repoRoot, generation, version, count: branches.length, elapsedMs: 0, source: "fingerprint",
+      });
+      return { status: "ready", branches };
     }
     const controller = new AbortController();
     this.controller = controller;

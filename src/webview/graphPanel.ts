@@ -3,7 +3,8 @@
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
-import { graphRemoteRefVersion, readGraphRefreshFingerprint } from "../git/graphRefreshFingerprint";
+import { graphRemoteRefVersion, readGraphRefreshSnapshot } from "../git/graphRefreshFingerprint";
+import type { WorktreeInfo } from "../git/worktreeService";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
 import { Commit, GraphInvalidRef, LocalBranchStatus } from "../graph/graphTypes";
 import { logError, logInfo } from "../ui/outputLog";
@@ -14,7 +15,7 @@ import { buildGraphHtml } from "./graphHtml";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { GraphPanelMessageRouter } from "./graphPanelMessageRouter";
 import { sendGraphTagStatus } from "./graphTagStatus";
-import { readGraphWorktreeBranchStatus } from "./graphWorktrees";
+import { createGraphWorktreeBranchStatus, readGraphWorktreeBranchStatus } from "./graphWorktrees";
 import { syncGraphLocalRefs } from "./graphLocalRefs";
 import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, loadGraphLocalBranchData, mergeGraphBranchRefs, refreshGraphCheckout, resolveGraphBranchFilter } from "./graphBranchLoading";
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformancePhase } from "./graphPerformance";
@@ -132,7 +133,7 @@ export class GitGraphPanel {
       refreshAfterCheckoutAction: () => this.refreshAfterCheckoutAction(),
     });
     this.refreshCoordinator = new GraphRefreshLifecycleCoordinator({
-      readFingerprint: readGraphRefreshFingerprint,
+      readFingerprint: (repoRoot, signal) => readGraphRefreshSnapshot(repoRoot, undefined, signal),
       reloadGraph: async (context) => {
         this.resetLoadedGraph();
         await this.reloadGraph(context);
@@ -293,14 +294,16 @@ export class GitGraphPanel {
       repoRoot,
       generation,
       graphRemoteRefVersion(context.fingerprint),
-      () => this.panel.visible && vscode.window.state.focused
-    );
-    await this.sendBranches(graphGeneration, trace);
+      () => this.panel.visible && vscode.window.state.focused,
+      context.remoteTips
+    ).then(remote => ({ remote, elapsedMs: Date.now() - remoteStarted }));
+    await this.sendBranches(graphGeneration, trace, context.worktrees);
     if (!this.isGraphGenerationActive(graphGeneration)) return;
-    const remote = await remoteRead;
-    logGraphPerformancePhase(trace, "remoteBranches", Date.now() - remoteStarted, {
+    const { remote, elapsedMs } = await remoteRead;
+    logGraphPerformancePhase(trace, "remoteBranches", elapsedMs, {
       status: remote?.status ?? "cancelled",
       count: remote?.status === "ready" ? remote.branches.length : 0,
+      source: context.remoteTips !== undefined ? "fingerprint" : "catalog",
     });
     if (!remote || !this.isGraphGenerationActive(graphGeneration)) return;
     if (remote.status === "ready") {
@@ -324,12 +327,15 @@ export class GitGraphPanel {
   /** 로컬 브랜치 현황을 읽어 웹뷰의 그래프 ref 배지 렌더러로 보낸다. */
   private async sendBranches(
     expectedGeneration = this.loadGeneration,
-    trace: GraphPerformanceTrace | undefined = this.activePerformance
+    trace: GraphPerformanceTrace | undefined = this.activePerformance,
+    worktreeSnapshot?: readonly WorktreeInfo[]
   ): Promise<LocalBranchStatus[]> {
     const { branches, refs: branchRefs, worktrees, invalidRefs, timings } = await loadGraphLocalBranchData(
       this.logService.repoRoot,
       () => this.logService.getLocalBranchSnapshot(),
-      () => readGraphWorktreeBranchStatus(this.logService.repoRoot)
+      () => worktreeSnapshot
+        ? Promise.resolve(createGraphWorktreeBranchStatus(worktreeSnapshot))
+        : readGraphWorktreeBranchStatus(this.logService.repoRoot)
     );
     if (!this.isGraphGenerationActive(expectedGeneration)) return [];
     this.lastLocalBranches = branches;
@@ -340,7 +346,7 @@ export class GitGraphPanel {
     this.postBranchFilterOptions();
     publishInvalidGraphRefs(this.logService.repoRoot, invalidRefs, (message) => this.post(message));
     logGraphPerformancePhase(trace, "localBranches", timings.localBranchesMs, { count: branches.length });
-    logGraphPerformancePhase(trace, "worktrees", timings.worktreesMs, { count: worktrees.length });
+    logGraphPerformancePhase(trace, "worktrees", timings.worktreesMs, { count: worktrees.length, reused: worktreeSnapshot !== undefined });
     logGraphPerformancePhase(trace, "branchSnapshot", timings.totalMs);
     logInfo("graph branch status sent", {
       repoRoot: this.logService.repoRoot,

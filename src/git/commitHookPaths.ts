@@ -3,7 +3,10 @@
 import { homedir } from "node:os";
 import * as path from "node:path";
 import { realpath, stat } from "node:fs/promises";
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
+
+/** 경로·설정 읽기를 재사용하거나 테스트에서 실제 실행 수를 검증하는 Git 경계다. */
+export type CommitHookPathRunner = (args: string[], repoRoot: string) => Promise<string>;
 
 /** git config 에서 읽은 core.hooksPath 최종 값과 정의 위치. */
 export interface HookPathConfig {
@@ -39,11 +42,11 @@ export interface ResolvedHookDirectory {
 export async function resolveCommitHookDirectory(
   repoRoot: string
 ): Promise<ResolvedHookDirectory> {
-  const [config, effectiveDirectory, commonDirectory] = await Promise.all([
+  const [config, directories] = await Promise.all([
     readHooksPathConfig(repoRoot),
-    resolveEffectiveHooksPath(repoRoot),
-    resolveCommonGitDirectory(repoRoot),
+    readCommitHookGitDirectories(repoRoot),
   ]);
+  const { effectiveDirectory, commonDirectory } = directories;
   const canonicalEffectiveDirectory = await canonicalPath(effectiveDirectory);
   const lexicalHuskyLayout = isHuskyLayoutPath(effectiveDirectory);
   const canonicalHuskyLayout = isHuskyLayoutPath(canonicalEffectiveDirectory);
@@ -109,15 +112,18 @@ export async function resolveCommitHookDirectory(
  * @param repoRoot 설정 우선순위를 평가할 저장소 루트
  * @returns 설정이 없으면 빈 객체, 있으면 값/범위/파일 출처
  */
-async function readHooksPathConfig(repoRoot: string): Promise<HookPathConfig> {
-  const detailed = await runGit(
-    ["config", "--show-scope", "--show-origin", "--get", "core.hooksPath"],
-    repoRoot
-  ).catch(() => "");
+export async function readHooksPathConfig(repoRoot: string, runner: CommitHookPathRunner = runGit): Promise<HookPathConfig> {
+  let detailed = "";
+  try {
+    detailed = await runner(["config", "--show-scope", "--show-origin", "--get", "core.hooksPath"], repoRoot);
+  } catch (error) {
+    // --get의 조용한 종료 코드 1은 설정 없음이다. 같은 키를 재조회해 실행 대기를 더하지 않는다.
+    if (error instanceof GitError && error.code === 1 && !error.stderr.trim() && !error.stdout.trim()) return {};
+  }
   if (detailed.trim()) {
     return parseHooksPathConfig(detailed);
   }
-  const raw = await runGit(["config", "--get", "core.hooksPath"], repoRoot).catch(
+  const raw = await runner(["config", "--get", "core.hooksPath"], repoRoot).catch(
     () => ""
   );
   return raw ? { value: raw.replace(/(?:\r?\n)+$/, "") } : {};
@@ -164,12 +170,38 @@ export function parseHooksPathConfig(output: string): HookPathConfig {
 }
 
 /**
+ * effective hooks와 common-dir를 한 Git 프로세스로 읽되 모호한 출력은 기존 개별 조회로 복원한다.
+ * @param repoRoot 설정과 linked worktree를 평가할 루트, runner Git 실행 경계
+ * @returns Git이 해석한 두 절대 경로. 구형 Git·줄바꿈을 포함한 경로도 기존 동작을 유지한다.
+ */
+export async function readCommitHookGitDirectories(
+  repoRoot: string, runner: CommitHookPathRunner = runGit
+): Promise<{ effectiveDirectory: string; commonDirectory: string }> {
+  try {
+    // --path-format=absolute는 cwd의 symlink와 Husky 별칭까지 canonicalize하므로 사용하지 않는다.
+    const output = await runner(["rev-parse", "--git-path", "hooks", "--git-common-dir"], repoRoot);
+    const fields = output.replace(/\r?\n$/, "").split("\n");
+    if (fields.length === 2 && fields.every(value => !value.startsWith("--"))) {
+      const [hooks, common] = fields.map(value => value.trim());
+      return {
+        effectiveDirectory: path.isAbsolute(hooks) ? path.normalize(hooks) : path.resolve(repoRoot, hooks),
+        commonDirectory: path.isAbsolute(common) ? path.normalize(common) : path.resolve(repoRoot, common),
+      };
+    }
+  } catch { /* 경로 옵션이 없는 Git은 기존 개별 조회로 돌아간다. */ }
+  const [effectiveDirectory, commonDirectory] = await Promise.all([
+    resolveEffectiveHooksPath(repoRoot, runner), resolveCommonGitDirectory(repoRoot, runner),
+  ]);
+  return { effectiveDirectory, commonDirectory };
+}
+
+/**
  * 유효 hook 디렉터리를 Git 자체의 core.hooksPath/worktree/common-dir 규칙으로 해석한다.
  * @param repoRoot `git rev-parse --git-path hooks` 를 실행할 저장소
  * @returns 정규화된 절대 hook 디렉터리
  */
-export async function resolveEffectiveHooksPath(repoRoot: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", "hooks"], repoRoot)).trim();
+export async function resolveEffectiveHooksPath(repoRoot: string, runner: CommitHookPathRunner = runGit): Promise<string> {
+  const raw = (await runner(["rev-parse", "--git-path", "hooks"], repoRoot)).trim();
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(repoRoot, raw);
 }
 
@@ -178,8 +210,8 @@ export async function resolveEffectiveHooksPath(repoRoot: string): Promise<strin
  * @param repoRoot rev-parse를 실행할 현재 worktree 루트
  * @returns main/linked worktree가 함께 사용하는 git metadata 디렉터리
  */
-async function resolveCommonGitDirectory(repoRoot: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-common-dir"], repoRoot)).trim();
+async function resolveCommonGitDirectory(repoRoot: string, runner: CommitHookPathRunner = runGit): Promise<string> {
+  const raw = (await runner(["rev-parse", "--git-common-dir"], repoRoot)).trim();
   return path.isAbsolute(raw) ? path.normalize(raw) : path.resolve(repoRoot, raw);
 }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createGraphRefreshFingerprint, graphRemoteRefVersion } from "../src/git/graphRefreshFingerprint";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode } from "../src/webview/graphRefreshCoordinator";
+import type { WorktreeInfo } from "../src/git/worktreeService";
 
 /** 테스트가 reload/fingerprint 완료 시점을 시간 대기 없이 직접 제어할 수 있는 promise를 만든다. */
 function deferred<T>() {
@@ -13,6 +14,53 @@ function deferred<T>() {
 
 /** 비동기 coordinator가 background transaction을 시작/완료할 때까지 microtask만 비운다. */
 async function settle(): Promise<void> { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); }
+
+test("같은 refresh 세대의 worktree와 remote snapshot만 direct와 automatic reload에 전달한다", async () => {
+  const worktrees: WorktreeInfo[] = [{ path: "/repo", head: "a".repeat(40), branch: "main", branchRef: "refs/heads/main", isMain: true, detached: false, bare: false }];
+  const remoteTips = [{ hash: "a".repeat(40), name: "origin/main", fullRef: "refs/remotes/origin/main", kind: "remote" as const }];
+  const reloads: GraphRefreshContext[] = [];
+  let reads = 0;
+  const coordinator = new GraphRefreshLifecycleCoordinator({
+    readFingerprint: async () => ({ fingerprint: reads++ === 0 ? "base" : "changed", worktrees, remoteTips }),
+    reloadGraph: async context => { reloads.push(context); },
+    publishAfterReload: async () => undefined, invalidateReload: () => undefined, info: () => undefined, error: () => undefined,
+  });
+  await coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+  await coordinator.request({ repoRoot: "/repo", cause: "changed", mode: "none" });
+  await settle();
+  assert.equal(reloads.length, 2);
+  assert.ok(reloads.every(context => context.worktrees === worktrees));
+  assert.ok(reloads.every(context => context.remoteTips === remoteTips));
+});
+
+test("새 자동 요청과 lifecycle 무효화는 필요 없는 fingerprint 실행에 종료 신호를 전달한다", async t => {
+  for (const reason of ["newerRequest", "newerDirect", "hidden", "unfocused", "repositoryChanged", "disposed"]) {
+    await t.test(reason, async () => {
+      const signals: AbortSignal[] = [], failures: string[] = [];
+      const coordinator = new GraphRefreshLifecycleCoordinator({
+        readFingerprint: async (_root, signal) => {
+          assert.ok(signal); signals.push(signal);
+          return new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
+        },
+        reloadGraph: async () => undefined, publishAfterReload: async () => undefined,
+        invalidateReload: () => undefined, info: () => undefined, error: event => { failures.push(event); },
+      });
+      const old = coordinator.request({ repoRoot: "/repo", cause: "old", mode: "pullRequests", force: true });
+      let newer: Promise<unknown> | undefined;
+      if (reason === "newerRequest") newer = coordinator.request({ repoRoot: "/repo", cause: "new", mode: "none" });
+      else if (reason === "newerDirect") newer = coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+      else if (reason === "hidden") coordinator.setVisible(false);
+      else if (reason === "unfocused") coordinator.setFocused(false);
+      else if (reason === "repositoryChanged") coordinator.setRepository("/other");
+      else coordinator.dispose();
+      assert.equal(signals[0].aborted, true, reason);
+      await old;
+      coordinator.dispose();
+      await newer;
+      assert.deepEqual(failures, [], "정상 취소를 Git 실패 알림으로 게시하지 않는다");
+    });
+  }
+});
 
 /** production callback 경계를 기록하는 작은 coordinator harness를 만든다. */
 function createHarness(fingerprints: string[]) {

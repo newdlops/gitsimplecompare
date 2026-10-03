@@ -64,7 +64,9 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
     assert.ok(stageCalls.every(call => !call.startsWith(scope + "|0|")), "Stage must retain its normal index write policy.");
     const statusCalls = calls.filter(call => /\bstatus\b/.test(call));
     assert.ok(statusCalls.length > 0, "Production refresh command did not read Git status.");
-    assert.ok(statusCalls.every(call => call.startsWith(scope + "|0|")), `Background status must skip optional index writes: ${statusCalls.join(", ")}`);
+    // 설정 변경 전에 시작한 watcher 조회가 늦게 완료될 수 있어 scope와 읽기 전용 정책을 따로 검증한다.
+    assert.ok(statusCalls.some(call => call.startsWith(scope + "|0|")), `Production status did not use the ${scope} executable.`);
+    assert.ok(statusCalls.every(call => /^[^|]+\|0\|/.test(call)), `Background status must skip optional index writes: ${statusCalls.join(", ")}`);
   };
   try {
     await config().update("gitPath", wrappers.user, vscode.ConfigurationTarget.Global);

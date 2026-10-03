@@ -16,6 +16,36 @@ const FS = "\x1f";
 const remoteLine = (hash: string, name: string) => [hash, name, `refs/remotes/${name}`].join(FS);
 const settleAsyncRead = () => new Promise<void>((resolve) => setImmediate(resolve));
 
+test("same-refresh remote tips avoid all catalog processes and keep snapshot objects isolated", async () => {
+  let calls = 0;
+  const coordinator = new GraphBranchLoadingCoordinator(new GraphBranchCatalog(async () => { calls++; throw new Error("Repeated Git query"); }));
+  const tips = [{ hash: "tip", name: "origin/main", fullRef: "refs/remotes/origin/main", kind: "remote" as const }];
+  const generation = coordinator.begin("/repo");
+  const result = await coordinator.loadRemote("/repo", generation, "v1", () => true, tips);
+  assert.equal(result?.status, "ready");
+  if (result?.status !== "ready") throw new Error("Expected ready snapshot");
+  assert.deepEqual(result.branches, tips);
+  result.branches[0].name = "modified";
+  result.branches.push({ ...tips[0] });
+  assert.equal(tips[0].name, "origin/main");
+  assert.equal(tips.length, 1);
+  const empty = await coordinator.loadRemote("/repo", generation, "v1", () => true, []);
+  assert.deepEqual(empty, { status: "ready", branches: [] });
+  assert.equal(calls, 0);
+});
+
+test("remote snapshot cannot bypass hidden, changed-repository or cancelled-generation guards", async () => {
+  const coordinator = new GraphBranchLoadingCoordinator(new GraphBranchCatalog(async () => { throw new Error("Unexpected Git query"); }));
+  const generation = coordinator.begin("/one");
+  assert.equal(await coordinator.loadRemote("/one", generation, "v1", () => false, []), undefined);
+  coordinator.begin("/two");
+  assert.equal(await coordinator.loadRemote("/one", generation, "v1", () => true, []), undefined);
+  assert.equal(await coordinator.loadRemote("/two", generation, "v1", () => true, []), undefined);
+  const current = coordinator.begin("/two");
+  coordinator.cancel("hidden");
+  assert.equal(await coordinator.loadRemote("/two", current, "v1", () => true, []), undefined);
+});
+
 test("local branch data does not start a separate local refs scan", async () => {
   const calls: string[] = [];
   const local = await loadGraphLocalBranchData(
