@@ -25,8 +25,7 @@ import {
   type UntrackResult,
 } from "./ignoreRules";
 import {
-  parseNameStatusZ,
-  parseNumstat,
+  parseRawNumstatZ,
   parsePorcelainGroups,
 } from "./diffParse";
 import {
@@ -92,7 +91,7 @@ export class GitService {
   /**
    * 두 ref 사이에 변경된 파일 목록을 반환한다.
    * - diffBase 에 따라 두 점(base..target) 또는 세 점(base...target) 비교를 쓴다.
-   * - --name-status 출력을 파싱하며 이름변경/복사(Rxxx/Cxxx)도 처리한다.
+   * - --raw --numstat을 한 번 실행해 상태·이름변경·증감 라인 수를 함께 읽는다.
    * @param base     기준 ref(왼쪽)
    * @param target   대상 ref(오른쪽)
    * @param diffBase 비교 기준
@@ -104,20 +103,9 @@ export class GitService {
   ): Promise<FileChange[]> {
     const range =
       diffBase === "threeDot" ? `${base}...${target}` : `${base}..${target}`;
-    // 상태(추가/수정/이름변경)와 증감 라인 수를 각각 조회해 합친다.
-    const [nameStatus, numstat] = await Promise.all([
-      this.run(["diff", "--name-status", "-z", "-M", range]),
-      this.run(["diff", "--numstat", "-z", "-M", range]),
-    ]);
-    const counts = parseNumstat(numstat);
-    return parseNameStatusZ(nameStatus).map((change) => {
-      const stat = counts.get(change.path);
-      return {
-        ...change,
-        additions: stat?.additions,
-        deletions: stat?.deletions,
-      };
-    });
+    return parseRawNumstatZ(
+      await this.run(["diff", "--raw", "--numstat", "-z", "-M", range])
+    );
   }
 
   /**

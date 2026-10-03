@@ -5,6 +5,17 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72071] - 2026-10-03
+
+### Changed
+
+- Read branch-comparison and Graph-detail file states and line counts in one Git
+  diff process instead of two, sharing rename detection and preserving binary
+  results and literal filenames with whitespace, tabs, newlines and arrows.
+- Read the Graph's changed-worktree summary and HEAD from one porcelain-v2 status
+  process, avoiding a separate HEAD lookup and unnecessary upstream-count work.
+  Preserve clean, conflicted, detached and unborn-worktree behavior.
+
 ## [0.1.72070] - 2026-10-03
 
 ### Changed

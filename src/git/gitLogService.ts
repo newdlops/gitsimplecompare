@@ -4,7 +4,7 @@
 import { runGit } from "./gitExec";
 import { runGitWithRevisions } from "./revisionInput";
 import { logInfo } from "../ui/outputLog";
-import { parseNameStatusZ, parseNumstat } from "./diffParse";
+import { parsePorcelainSummaryZ, parseRawNumstatZ } from "./diffParse";
 import {
   Commit,
   CommitDetail,
@@ -209,13 +209,15 @@ export class GitLogService {
    * 현재 index/working tree 상태를 그래프 맨 위에 붙일 가상 커밋으로 만든다.
    * - uncommitted 변경이 없으면 빈 배열을 반환해 실제 git log 만 렌더링하게 한다.
    * - ongoing 은 working tree 전체(HEAD 대비 staged+unstaged), staged 는 index 스냅샷을 뜻한다.
+   * - porcelain v2 branch 헤더에서 HEAD를 함께 읽어 별도 rev-parse 실행 대기를 없앤다.
    */
   async getVirtualCommits(): Promise<Commit[]> {
-    const status = await runGitStatus(["status", "--porcelain=v1"], this.repoRoot);
-    if (!status.trim()) {
+    const { head, hasChanges } = parsePorcelainSummaryZ(await runGitStatus(
+      ["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z"], this.repoRoot
+    ));
+    if (!hasChanges) {
       return [];
     }
-    const head = await this.getHeadHash();
     const now = new Date().toISOString();
     return [
       virtualCommit("ongoing", ONGOING_COMMIT_HASH, [STAGED_COMMIT_HASH], now),
@@ -427,10 +429,7 @@ export class GitLogService {
     base: string,
     hash: string
   ): Promise<CommitFileChange[]> {
-    return this.getFilesFromDiff(
-      ["diff", "--name-status", "-M", "-z", base, hash],
-      ["diff", "--numstat", "-z", "-M", base, hash]
-    );
+    return this.getFilesFromDiff([base, hash]);
   }
 
   /**
@@ -444,14 +443,8 @@ export class GitLogService {
     const base = head ? "HEAD" : EMPTY_TREE;
     let files =
       kind === "ongoing"
-        ? await this.getFilesFromDiff(
-            ["diff", "--name-status", "-M", "-z", base],
-            ["diff", "--numstat", "-z", "-M", base]
-          )
-        : await this.getFilesFromDiff(
-            ["diff", "--cached", "--name-status", "-M", "-z", base],
-            ["diff", "--cached", "--numstat", "-z", "-M", base]
-          );
+        ? await this.getFilesFromDiff([base])
+        : await this.getFilesFromDiff(["--cached", base]);
     if (kind === "ongoing") {
       files = [...files, ...(await this.getUntrackedFiles(files))];
     }
@@ -473,32 +466,24 @@ export class GitLogService {
   }
 
   /**
-   * name-status 와 numstat 인자 쌍을 실행해 CommitFileChange 배열로 합친다.
-   * @param nameStatusArgs `git` 뒤에 붙일 name-status 인자
-   * @param numstatArgs    `git` 뒤에 붙일 numstat 인자
+   * 상태와 라인 통계를 한 diff에서 읽어 CommitFileChange 배열을 만든다.
+   * - Git 시작 전 보안 대기를 한 번만 거치고 같은 비교 시점의 결과를 사용한다.
+   * @param diffArgs 비교 대상 ref와 필요 시 --cached 옵션
+   * @returns 이름변경 경로와 추가/삭제 라인 수를 포함한 변경 파일 목록
    */
   private async getFilesFromDiff(
-    nameStatusArgs: string[],
-    numstatArgs: string[]
+    diffArgs: string[]
   ): Promise<CommitFileChange[]> {
-    const nameStatus = await runGit(
-      nameStatusArgs,
-      this.repoRoot
+    const raw = await runGit(
+      ["diff", "--raw", "--numstat", "-z", "-M", ...diffArgs], this.repoRoot
     );
-    const numstat = await runGit(
-      numstatArgs,
-      this.repoRoot
-    );
-    const counts = parseNumstat(numstat);
-
-    return parseNameStatusZ(nameStatus).map((change) => {
-      const stat = counts.get(change.path);
+    return parseRawNumstatZ(raw).map((change) => {
       return {
         status: change.status,
         path: change.path,
         oldPath: change.oldPath,
-        additions: stat?.additions ?? 0,
-        deletions: stat?.deletions ?? 0,
+        additions: change.additions ?? 0,
+        deletions: change.deletions ?? 0,
       };
     });
   }

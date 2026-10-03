@@ -26,6 +26,45 @@ export function parseNameStatusZ(raw: string): FileChange[] {
 }
 
 /**
+ * `git diff --raw --numstat -z`의 상태와 라인 통계를 한 번에 파싱한다.
+ * - raw 레코드의 상태/경로를 먼저 읽고 뒤따르는 numstat을 새 경로 기준으로 합친다.
+ * - 두 Git 프로세스의 실행 대기를 줄이고, 한 diff에서 계산한 이름변경 판단을 공유한다.
+ * - NUL로 구분된 경로는 공백·탭·줄바꿈·화살표를 포함해 원문 그대로 보존한다.
+ * @param raw 상태 레코드 뒤에 numstat 레코드가 이어지는 Git 원문 출력
+ * @returns Git 출력 순서의 파일 변경 목록과 추가/삭제 라인 수
+ */
+export function parseRawNumstatZ(raw: string): FileChange[] {
+  const tokens = raw.split("\0");
+  const changes: FileChange[] = [];
+  let index = 0;
+  while (tokens[index]?.startsWith(":")) {
+    const header = /^:[0-7]{6} [0-7]{6} [0-9a-f]+ [0-9a-f]+ ([ACDMRTUXB])\d*$/.exec(tokens[index++]);
+    if (!header) {
+      throw new Error("Invalid Git raw diff header");
+    }
+    const status = header[1] as FileChangeStatus;
+    const firstPath = tokens[index++];
+    if (!firstPath) {
+      throw new Error("Missing Git raw diff path");
+    }
+    if (status === "R" || status === "C") {
+      const newPath = tokens[index++];
+      if (!newPath) {
+        throw new Error("Missing Git raw diff destination path");
+      }
+      changes.push({ status, path: newPath, oldPath: firstPath });
+    } else {
+      changes.push({ status, path: firstPath });
+    }
+  }
+  const counts = parseNumstatTokens(tokens, index);
+  return changes.map((change) => {
+    const stat = counts.get(change.path);
+    return { ...change, additions: stat?.additions, deletions: stat?.deletions };
+  });
+}
+
+/**
  * `git status --porcelain -z --untracked-files=all` 출력을 스테이징/미스테이징 두 그룹으로 나눈다.
  * - XY 두 글자에서 X(인덱스)=스테이징, Y(작업트리)=미스테이징. 한 파일이 양쪽에 모두 나올 수 있다
  *   (예: "MM" → 스테이징된 수정 + 추가 미스테이징 수정).
@@ -70,6 +109,26 @@ export function parsePorcelainGroups(raw: string): {
 }
 
 /**
+ * porcelain v2의 branch 헤더와 변경 존재 여부를 동일한 status 출력에서 읽는다.
+ * - 실제 파일 레코드를 만나면 바로 반환해 이름변경의 원본 경로를 헤더로 오인하지 않는다.
+ * - 최초 커밋 전 `(initial)`은 HEAD 없음으로 처리하고 알 수 없는 확장 헤더는 무시한다.
+ * @param raw `git status --porcelain=v2 --branch -z`의 NUL 구분 출력
+ * @returns 그래프 가상 커밋 생성에 필요한 HEAD OID와 변경 존재 여부
+ */
+export function parsePorcelainSummaryZ(raw: string): { head?: string; hasChanges: boolean } {
+  let head: string | undefined;
+  for (const token of raw.split("\0")) {
+    if (!token) continue;
+    if (!token.startsWith("# ")) return { head, hasChanges: true };
+    if (token.startsWith("# branch.oid ")) {
+      const oid = token.slice("# branch.oid ".length);
+      head = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(oid) ? oid : undefined;
+    }
+  }
+  return { head, hasChanges: false };
+}
+
+/**
  * porcelain 상태 한 글자를 표시용 상태 코드로 변환한다(알 수 없으면 수정 M).
  * @param code 상태 한 글자(예: "M", "A", "D", "R", "C", "T")
  */
@@ -92,7 +151,7 @@ export interface NumstatCount {
  * `git diff --numstat` 또는 `git diff --numstat -z` 출력을 경로별 {추가, 삭제} 라인 수 맵으로 파싱한다.
  * - 바이너리(또는 크기 상한 초과) 파일은 "-"로 표시되며 0 으로 처리하고 binary 표시를 붙인다.
  * - `-z` 출력은 한글/공백/특수문자 경로가 quote 되지 않아 status path 와 안정적으로 매칭된다.
- * - 이름변경 표기("old => new", "{a => b}/c")는 새 경로 기준으로 정규화한다(근사).
+ * - NUL 경로는 원문을 보존하고, 줄 단위 이름변경 표기("old => new", "{a => b}/c")만 정규화한다.
  * @param raw git diff --numstat 원문 출력
  */
 export function parseNumstat(raw: string): Map<string, NumstatCount> {
@@ -139,9 +198,18 @@ function parseNumstatLines(raw: string): Map<string, NumstatCount> {
  * - rename/copy: `<add>\t<del>\t\0<old>\0<new>\0` 이므로 새 경로를 사용한다.
  */
 function parseNumstatZ(raw: string): Map<string, NumstatCount> {
+  return parseNumstatTokens(raw.split("\0"));
+}
+
+/**
+ * NUL 토큰의 지정 위치부터 numstat을 읽어 raw+numstat과 단독 numstat의 파싱을 공유한다.
+ * @param tokens NUL로 구분한 원문 토큰(경로의 공백과 특수문자를 그대로 유지)
+ * @param startIndex numstat 첫 레코드의 토큰 위치
+ * @returns 새 경로 기준의 라인 통계 맵
+ */
+function parseNumstatTokens(tokens: string[], startIndex = 0): Map<string, NumstatCount> {
   const map = new Map<string, NumstatCount>();
-  const tokens = raw.split("\0");
-  for (let index = 0; index < tokens.length; index++) {
+  for (let index = startIndex; index < tokens.length; index++) {
     const header = tokens[index];
     if (!header) {
       continue;
@@ -156,7 +224,7 @@ function parseNumstatZ(raw: string): Map<string, NumstatCount> {
       filePath = tokens[index] || "";
     }
     if (filePath) {
-      map.set(normalizeRenamePath(filePath), numstatCount(parts[0], parts[1]));
+      map.set(filePath, numstatCount(parts[0], parts[1]));
     }
   }
   return map;
