@@ -43,10 +43,11 @@ export class WorktreeService {
   /**
    * 현재 저장소에 등록된 모든 worktree 를 반환한다.
    * - main worktree, linked worktree, detached/bare/locked/prunable 상태를 모두 보존한다.
+   * @param signal 조회 결과를 더 이상 사용하지 않을 때 Git을 종료할 신호
    * @returns worktree 정보 배열. Git 출력 순서를 유지한다.
    */
-  async listWorktrees(): Promise<WorktreeInfo[]> {
-    const out = await runGit(["worktree", "list", "--porcelain"], this.repoRoot);
+  async listWorktrees(signal?: AbortSignal): Promise<WorktreeInfo[]> {
+    const out = await runGit(["worktree", "list", "--porcelain"], this.repoRoot, { signal });
     return parseWorktreePorcelain(out);
   }
 

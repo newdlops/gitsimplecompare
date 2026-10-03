@@ -8,16 +8,18 @@ import { logError, logInfo } from "../ui/outputLog";
  * @param repoRoot 저장소 루트
  * @param hash     reflog 항목이 가리키는 commit hash
  * @param limit    대상 commit 과 조상 방향으로 읽을 최대 commit 수
+ * @param signal   폐기된 점프 조회의 Git을 종료할 신호
  * @returns 대상 commit 이 포함된 window. Git 이 해당 hash 를 찾지 못하면 undefined
  */
 export async function loadGraphReflogCommitWindow(
   repoRoot: string,
   hash: string,
-  limit: number
+  limit: number,
+  signal?: AbortSignal
 ): Promise<CommitWindowResult | undefined> {
   const targetHash = hash.trim();
   try {
-    const result = await loadDirectCommitWindow(repoRoot, targetHash, limit);
+    const result = await loadDirectCommitWindow(repoRoot, targetHash, limit, signal);
     const found = result.commits.some((commit) => commit.hash === targetHash);
     logInfo("graph reflog commit window loaded", {
       repoRoot,
@@ -27,6 +29,7 @@ export async function loadGraphReflogCommitWindow(
     });
     return found ? result : undefined;
   } catch (error) {
+    if (signal?.aborted) throw error;
     logError("graph reflog commit window failed", error, { repoRoot, hash: targetHash });
     return undefined;
   }

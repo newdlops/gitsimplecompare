@@ -1,7 +1,7 @@
 // git log / rev-list 에 ref 범위를 넘기는 공용 실행 모듈.
 // - 브랜치 필터·원격 카탈로그 대기·손상 ref 모드에서는 수천 개 ref 이름이 명시되는데, 이를 argv 로 넘기면
 //   Windows 명령줄 한도(32K)를 넘고 macOS/Linux 에서도 프로세스 생성 비용이 커진다. 그래서 `--stdin` 으로 넘긴다.
-import { runGit, runGitWithInput } from "./gitExec";
+import { runGit, runGitWithInput, type RunGitOptions } from "./gitExec";
 
 /** ref 가 비었을 때 Graph 전체 범위를 뜻하는 git 인자. */
 export const ALL_GRAPH_REF_ARGS: readonly string[] = ["--branches", "--remotes", "--tags"];
@@ -13,15 +13,17 @@ export const ALL_GRAPH_REF_ARGS: readonly string[] = ["--branches", "--remotes",
  * @param args revision 앞까지의 git 인자(예: `["log", "--topo-order", ...]`)
  * @param refs 명시 ref 이름 목록. 비면 Graph 전체 범위
  * @param repoRoot git 을 실행할 저장소 루트
+ * @param options 폐기된 Graph 조회의 Git 프로세스를 종료할 취소 신호
  * @returns git stdout
  */
 export function runGitWithRevisions(
   args: readonly string[],
   refs: readonly string[],
-  repoRoot: string
+  repoRoot: string,
+  options?: Pick<RunGitOptions, "signal">
 ): Promise<string> {
   if (refs.length === 0) {
-    return runGit([...args, ...ALL_GRAPH_REF_ARGS], repoRoot);
+    return runGit([...args, ...ALL_GRAPH_REF_ARGS], repoRoot, options);
   }
-  return runGitWithInput([...args, "--stdin"], repoRoot, `${refs.join("\n")}\n`);
+  return runGitWithInput([...args, "--stdin"], repoRoot, `${refs.join("\n")}\n`, options);
 }

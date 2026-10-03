@@ -77,12 +77,14 @@ export class GitLogService {
    * @param skip  이미 로드한 커밋 수(앞에서 건너뛸 개수)
    * @param refs  대상 참조 목록(비면 --all)
    * @param includeLocalOnlyBranches true 면 로컬 전용 브랜치 표시 메타데이터까지 붙인다.
+   * @param signal 페이지 폐기 시 log 자식 프로세스를 종료하는 신호
    */
   async getCommitPage(
     limit: number,
     skip: number,
     refs: string[] = [],
-    includeLocalOnlyBranches = true
+    includeLocalOnlyBranches = true,
+    signal?: AbortSignal
   ): Promise<Commit[]> {
     const safeLimit = Math.max(0, Math.floor(limit));
     if (safeLimit === 0) {
@@ -102,9 +104,11 @@ export class GitLogService {
         ...(safeSkip > 0 ? [`--skip=${safeSkip}`] : []),
       ],
       refs,
-      this.repoRoot
+      this.repoRoot,
+      { signal }
     );
 
+    signal?.throwIfAborted();
     const commits = parseGitLogOutput(out);
     const branchStats = this.branchRefCache.indexPage({ commits, skip: safeSkip, allRefs: refs.length === 0 });
     logInfo("graph branch containment index page", {
@@ -178,10 +182,11 @@ export class GitLogService {
 
   /**
    * Graph 첫 로드가 정상 브랜치와 손상 ref를 동시에 판단할 수 있는 snapshot을 반환한다.
+   * @param signal Graph가 더 이상 사용하지 않을 로컬 ref 조회를 종료할 신호
    * @returns 정상 LocalBranchStatus와 UI에 경고할 누락-object ref 목록
    */
-  async getLocalBranchSnapshot(): Promise<GraphLocalBranchSnapshot> {
-    return readGraphLocalBranchSnapshot(this.repoRoot);
+  async getLocalBranchSnapshot(signal?: AbortSignal): Promise<GraphLocalBranchSnapshot> {
+    return readGraphLocalBranchSnapshot(this.repoRoot, undefined, undefined, signal);
   }
 
   /**
@@ -210,10 +215,11 @@ export class GitLogService {
    * - uncommitted 변경이 없으면 빈 배열을 반환해 실제 git log 만 렌더링하게 한다.
    * - ongoing 은 working tree 전체(HEAD 대비 staged+unstaged), staged 는 index 스냅샷을 뜻한다.
    * - porcelain v2 branch 헤더에서 HEAD를 함께 읽어 별도 rev-parse 실행 대기를 없앤다.
+   * @param signal 숨김·교체된 Graph의 status 프로세스를 종료할 신호
    */
-  async getVirtualCommits(): Promise<Commit[]> {
+  async getVirtualCommits(signal?: AbortSignal): Promise<Commit[]> {
     const { head, hasChanges } = parsePorcelainSummaryZ(await runGitStatus(
-      ["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z"], this.repoRoot
+      ["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z"], this.repoRoot, { signal }
     ));
     if (!hasChanges) {
       return [];

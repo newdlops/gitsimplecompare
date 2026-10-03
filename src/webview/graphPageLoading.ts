@@ -4,6 +4,45 @@ import type { GitLogService } from "../git/gitLogService";
 import type { Commit } from "../graph/graphTypes";
 import { type GraphPerformanceTrace, logGraphPerformancePhase } from "./graphPerformance";
 import type { GraphLoadDirection } from "./graphProtocol";
+import { logInfo } from "../ui/outputLog";
+
+/** 로컬 상태·페이지·점프 조회 중 현재 Graph가 사용하는 한 작업만 소유한다. */
+export class GraphReadLifecycleCoordinator {
+  private active: { controller: AbortController; repoRoot: string; cause: string } | undefined;
+
+  /**
+   * 새 읽기로 이전 읽기를 교체하고 Git까지 취소 신호를 전달한다.
+   * @param repoRoot 조회 저장소, cause OUTPUT에 남길 작업 종류, read 신호를 받는 비동기 조회
+   * @returns 현재 작업의 결과. 취소된 작업은 오류 알림 대신 undefined를 반환한다.
+   */
+  async run<T>(repoRoot: string, cause: string, read: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> {
+    this.cancel("superseded");
+    const active = { controller: new AbortController(), repoRoot, cause };
+    this.active = active;
+    try {
+      const value = await read(active.controller.signal);
+      active.controller.signal.throwIfAborted();
+      return value;
+    } catch (error) {
+      if (!active.controller.signal.aborted) throw error;
+      logInfo("graph read skipped", { repoRoot, cause, reason: "cancelled" });
+      return undefined;
+    } finally {
+      // 병렬 log/status 중 하나가 실패해도 아직 남아 있는 형제 조회를 종료한다.
+      active.controller.abort();
+      if (this.active === active) this.active = undefined;
+    }
+  }
+
+  /** 숨김·교체·폐기의 불필요한 읽기를 종료하되 새 작업의 controller는 침범하지 않는다. */
+  cancel(reason: string): void {
+    const active = this.active;
+    if (!active) return;
+    this.active = undefined;
+    active.controller.abort();
+    logInfo("graph read cancelled", { repoRoot: active.repoRoot, cause: active.cause, reason });
+  }
+}
 
 /** 페이지 요청을 실행하지 않고 현재 상태만 다시 알릴 이유. */
 export type GraphPageSkipReason = "alreadyLoading" | "noNewerCommits" | "noMoreCommits";
@@ -65,22 +104,23 @@ export interface GraphPageData {
  * 한 페이지의 git log 와 (첫 페이지면) 작업트리 status 를 동시에 읽는다.
  * - 큰 작업트리의 status 가 git log 를 막지 않게 병렬로 실행하고, 레이아웃 전에 둘 다 기다린다.
  * @param service 대상 저장소 로그 서비스
- * @param options 읽을 구간·ref 범위·가상 커밋 필요 여부·성능 trace
+ * @param options 읽을 구간·ref 범위·가상 커밋 필요 여부·성능 trace·Git 취소 신호
  * @returns 페이지 커밋, 가상 커밋, git log 소요 시간
  */
 export async function readGraphPageData(
-  service: GitLogService,
+  service: Pick<GitLogService, "getVirtualCommits" | "getCommitPage">,
   options: {
     skip: number;
     readLimit: number;
     refs: string[];
     readVirtualCommits: boolean;
     trace?: GraphPerformanceTrace;
+    signal?: AbortSignal;
   }
 ): Promise<GraphPageData> {
   const statusStarted = Date.now();
   const virtualRead = options.readVirtualCommits
-    ? service.getVirtualCommits().then((commits) => {
+    ? service.getVirtualCommits(options.signal).then((commits) => {
         logGraphPerformancePhase(options.trace, "status", Date.now() - statusStarted, {
           virtualCommits: commits.length,
         });
@@ -88,7 +128,7 @@ export async function readGraphPageData(
       })
     : Promise.resolve(undefined);
   const logStarted = Date.now();
-  const pageRead = service.getCommitPage(options.readLimit, options.skip, options.refs, false).then((page) => {
+  const pageRead = service.getCommitPage(options.readLimit, options.skip, options.refs, false, options.signal).then((page) => {
     const gitLogMs = Date.now() - logStarted;
     logGraphPerformancePhase(options.trace, "gitLog", gitLogMs, {
       skip: options.skip,

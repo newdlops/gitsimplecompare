@@ -9,6 +9,8 @@ export interface CommitWindowOptions {
   before: number;
   after: number;
   refs?: string[];
+  /** 점프 대상을 바꾸거나 Graph를 숨기면 진행 중인 Git을 종료한다. */
+  signal?: AbortSignal;
 }
 
 /** graph window 가 전체 로그에서 차지하는 위치 정보 */
@@ -48,13 +50,13 @@ export async function loadCommitWindowAroundWithRange(
   const before = Math.max(0, Math.floor(options.before));
   const after = Math.max(1, Math.floor(options.after));
   const refs = refArgs(options.refs || []);
-  const hashes = await loadOrderedHashes(repoRoot, refs);
+  const hashes = await loadOrderedHashes(repoRoot, refs, options.signal);
   const index = hashes.indexOf(targetHash);
   if (index < 0) {
     return { commits: [], startIndex: 0, targetIndex: -1, totalCount: hashes.length };
   }
   const startIndex = Math.max(0, index - before);
-  const commits = await loadCommitSlice(repoRoot, startIndex, before + after, refs);
+  const commits = await loadCommitSlice(repoRoot, startIndex, before + after, refs, options.signal);
   return { commits, startIndex, targetIndex: index, totalCount: hashes.length };
 }
 
@@ -65,15 +67,17 @@ export async function loadCommitWindowAroundWithRange(
  * @param repoRoot 저장소 루트
  * @param hash     그래프에 반드시 포함할 commit hash
  * @param limit    대상 commit 과 조상 방향으로 읽을 최대 개수
+ * @param signal   Graph 수명주기 변경 시 Git 프로세스를 종료할 신호
  */
 export async function loadDirectCommitWindow(
   repoRoot: string,
   hash: string,
-  limit: number
+  limit: number,
+  signal?: AbortSignal
 ): Promise<CommitWindowResult> {
   const targetHash = hash.trim();
   const safeLimit = Math.max(1, Math.floor(limit));
-  const commits = await loadCommitSlice(repoRoot, 0, safeLimit, [targetHash]);
+  const commits = await loadCommitSlice(repoRoot, 0, safeLimit, [targetHash], signal);
   const targetIndex = commits.findIndex((commit) => commit.hash === targetHash);
   return {
     commits,
@@ -90,9 +94,10 @@ export async function loadDirectCommitWindow(
  */
 async function loadOrderedHashes(
   repoRoot: string,
-  refs: string[]
+  refs: string[],
+  signal?: AbortSignal
 ): Promise<string[]> {
-  const out = await runGitWithRevisions(["rev-list", "--topo-order"], explicitRefs(refs), repoRoot);
+  const out = await runGitWithRevisions(["rev-list", "--topo-order"], explicitRefs(refs), repoRoot, { signal });
   return out.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
@@ -107,7 +112,8 @@ async function loadCommitSlice(
   repoRoot: string,
   skip: number,
   limit: number,
-  refs: string[]
+  refs: string[],
+  signal?: AbortSignal
 ): Promise<Commit[]> {
   const out = await runGitWithRevisions([
     "log",
@@ -117,7 +123,7 @@ async function loadCommitSlice(
     "-z",
     `-n${limit}`,
     ...(skip > 0 ? [`--skip=${skip}`] : []),
-  ], explicitRefs(refs), repoRoot);
+  ], explicitRefs(refs), repoRoot, { signal });
   return parseGitLogOutput(out);
 }
 

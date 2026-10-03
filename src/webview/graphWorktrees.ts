@@ -9,11 +9,13 @@ import { WorktreeInfo, WorktreeService } from "../git/worktreeService";
  * - detached worktree 는 특정 브랜치를 점유하지 않으므로 그래프 branch badge 에 표시하지 않는다.
  * @param repoRoot git worktree 명령을 실행할 저장소 루트
  * @returns 브랜치 이름별 worktree 점유 상태 목록
+ * @param signal 폐기된 Graph의 worktree 조회를 종료할 신호
  */
 export async function readGraphWorktreeBranchStatus(
-  repoRoot: string
+  repoRoot: string,
+  signal?: AbortSignal
 ): Promise<WorktreeBranchStatus[]> {
-  const worktrees = await new WorktreeService(repoRoot).listWorktrees();
+  const worktrees = await new WorktreeService(repoRoot).listWorktrees(signal);
   return createGraphWorktreeBranchStatus(worktrees);
 }
 

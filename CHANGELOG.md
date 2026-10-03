@@ -5,6 +5,17 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72073] - 2026-10-04
+
+### Fixed
+
+- Stop obsolete Graph log, status, local-branch, worktree and commit-window Git
+  queries when the panel is hidden, loses focus, changes repositories or is
+  disposed. Replaced reads cannot cancel newer requests or publish stale data.
+- Propagate cancellation through revision stdin and damaged-ref fallback paths.
+  Stop remaining sibling queries after a parallel read fails, while preserving
+  real errors and treating normal cancellation as an Output state transition.
+
 ## [0.1.72072] - 2026-10-04
 
 ### Changed

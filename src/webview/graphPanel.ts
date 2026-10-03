@@ -22,7 +22,7 @@ import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformanceP
 import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCommitWindowLoading";
 import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode, graphInvalidationPlan } from "./graphRefreshCoordinator";
-import { graphPageRange, graphPageSkipReason, readGraphPageData } from "./graphPageLoading";
+import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, readGraphPageData } from "./graphPageLoading";
 import { offerCommitGraphIfSlow } from "../ui/commitGraphOffer";
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
@@ -48,6 +48,7 @@ export class GitGraphPanel {
   private remoteCatalogStatus: GraphRemoteCatalogStatus = "ready";
   private remoteCatalogError: string | undefined;
   private readonly branchLoading = new GraphBranchLoadingCoordinator();
+  private readonly graphReads = new GraphReadLifecycleCoordinator();
   private activePerformance: GraphPerformanceTrace | undefined;
   /** 숨김/포커스 해제로 첫 페이지 게시 전 reload 가 끊겼으면 복귀 때 다시 읽는다. */
   private resumeReloadOnFocus = false;
@@ -261,7 +262,8 @@ export class GitGraphPanel {
     const trace = beginGraphPerformanceTrace(this.logService.repoRoot, "checkout", this.loadGeneration);
     this.activePerformance = trace;
     const branches = await this.sendBranches(this.loadGeneration, trace);
-    const refreshed = await refreshGraphCheckout(this.logService.repoRoot, this.commits, branches, this.currentBranchFilter().visibleRefs, syncGraphLocalRefs, () => this.logService.getVirtualCommits());
+    const refreshed = await this.graphReads.run(this.logService.repoRoot, "checkout", signal => refreshGraphCheckout(this.logService.repoRoot, this.commits, branches, this.currentBranchFilter().visibleRefs, syncGraphLocalRefs, () => this.logService.getVirtualCommits(signal)));
+    if (!refreshed) return;
     if (!refreshed.reused) {
       await this.runDirectGraph("checkout");
       return;
@@ -330,13 +332,15 @@ export class GitGraphPanel {
     trace: GraphPerformanceTrace | undefined = this.activePerformance,
     worktreeSnapshot?: readonly WorktreeInfo[]
   ): Promise<LocalBranchStatus[]> {
-    const { branches, refs: branchRefs, worktrees, invalidRefs, timings } = await loadGraphLocalBranchData(
+    const data = await this.graphReads.run(this.logService.repoRoot, "branches", signal => loadGraphLocalBranchData(
       this.logService.repoRoot,
-      () => this.logService.getLocalBranchSnapshot(),
+      () => this.logService.getLocalBranchSnapshot(signal),
       () => worktreeSnapshot
         ? Promise.resolve(createGraphWorktreeBranchStatus(worktreeSnapshot))
-        : readGraphWorktreeBranchStatus(this.logService.repoRoot)
-    );
+        : readGraphWorktreeBranchStatus(this.logService.repoRoot, signal)
+    ));
+    if (!data) return [];
+    const { branches, refs: branchRefs, worktrees, invalidRefs, timings } = data;
     if (!this.isGraphGenerationActive(expectedGeneration)) return [];
     this.lastLocalBranches = branches;
     this.invalidLocalRefs = invalidRefs;
@@ -414,10 +418,13 @@ export class GitGraphPanel {
     });
     let postedGraph = false;
     try {
-      const { virtualCommits, page, gitLogMs } = await readGraphPageData(pageService, {
+      const data = await this.graphReads.run(pageService.repoRoot, "page", signal => readGraphPageData(pageService, {
         skip, readLimit, refs: branchFilter.refs, trace: performanceTrace,
         readVirtualCommits: reset && shouldShowVirtualCommits(branchFilter, this.lastLocalBranches),
-      });
+        signal,
+      }));
+      if (!data) return;
+      const { virtualCommits, page, gitLogMs } = data;
       if (!this.isGraphGenerationActive(generation, pageService)) {
         pageService.cancelGraphBranchContainment("stalePage");
         logInfo("graph page load ignored", { reason: "staleGeneration", skip, limit: GRAPH_PAGE_SIZE });
@@ -473,8 +480,8 @@ export class GitGraphPanel {
   }
   /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
   private loadCommitWindow(hashes: string[]): Promise<string | undefined> {
-    return this.showCommitWindow("commitWindow", () => loadFilteredGraphCommitWindow(
-      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE
+    return this.showCommitWindow("commitWindow", signal => loadFilteredGraphCommitWindow(
+      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal
     ));
   }
   /**
@@ -483,8 +490,8 @@ export class GitGraphPanel {
    * @returns 그래프에 표시한 commit hash. Git 이 찾지 못하면 undefined
    */
   private loadReflogCommitWindow(hash: string): Promise<string | undefined> {
-    return this.showCommitWindow("reflogWindow", async () => {
-      const window = await loadReflogGraphWindow(this.logService.repoRoot, hash, GRAPH_PAGE_SIZE);
+    return this.showCommitWindow("reflogWindow", async signal => {
+      const window = await loadReflogGraphWindow(this.logService.repoRoot, hash, GRAPH_PAGE_SIZE, signal);
       return window && { ...window, startIndex: 0, totalCount: window.commits.length };
     });
   }
@@ -496,13 +503,13 @@ export class GitGraphPanel {
    */
   private async showCommitWindow(
     cause: "commitWindow" | "reflogWindow",
-    load: () => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>
+    load: (signal: AbortSignal) => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>
   ): Promise<string | undefined> {
     const generation = ++this.loadGeneration;
     const trace = beginGraphPerformanceTrace(this.logService.repoRoot, cause, generation);
     this.loading = true;
     try {
-      const window = await load();
+      const window = await this.graphReads.run(this.logService.repoRoot, cause, load);
       if (generation !== this.loadGeneration || !window) return undefined;
       this.virtualCommits = []; this.commits = window.commits;
       this.rangeStartIndex = window.startIndex; this.rangeTotalCount = window.totalCount;
@@ -520,6 +527,7 @@ export class GitGraphPanel {
   }
   /** 현재 패널의 누적 커밋/종료 상태를 초기화하고 이전 비동기 로드 결과를 무효화한다. */
   private resetLoadedGraph(): void {
+    this.graphReads.cancel("reset");
     this.logService.resetGraphBranchIndex();
     this.commits = []; this.virtualCommits = [];
     this.loading = false; this.exhausted = false;
@@ -532,6 +540,7 @@ export class GitGraphPanel {
    * - 로딩 표시가 남지 않도록 현재 상태를 다시 알린다.
    */
   private pauseLoadedGraph(): void {
+    this.graphReads.cancel("paused");
     if (this.activeReloadGeneration !== undefined || this.commits.length === 0) this.resumeReloadOnFocus = true;
     this.loadGeneration++;
     if (this.loading) { this.loading = false; this.postLoadState(false); }

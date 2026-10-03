@@ -6,7 +6,7 @@ import type {
   GraphLocalBranchSnapshot,
   LocalBranchStatus,
 } from "../graph/graphTypes";
-import { runGit, runGitWithInput } from "./gitExec";
+import { runGit, runGitWithInput, type RunGitOptions } from "./gitExec";
 import { parseTrack } from "./gitLogRefs";
 
 const FS = "\x1f";
@@ -14,14 +14,16 @@ const FS = "\x1f";
 /** Graph 로컬 브랜치 조회를 테스트에서 대체할 수 있는 stdout 실행 함수다. */
 export type GraphLocalBranchRunner = (
   args: string[],
-  repoRoot: string
+  repoRoot: string,
+  options?: Pick<RunGitOptions, "signal">
 ) => Promise<string>;
 
 /** 여러 ref tip을 한 프로세스에서 검증하도록 stdin 실행 경계를 대체하는 함수다. */
 export type GraphLocalBranchInputRunner = (
   args: string[],
   repoRoot: string,
-  input: string
+  input: string,
+  options?: Pick<RunGitOptions, "signal">
 ) => Promise<string>;
 
 /** object 접근 없이 읽을 수 있는 로컬 브랜치 후보 레코드다. */
@@ -72,32 +74,36 @@ function rawBranchFormat(): string {
  * @param repoRoot Git 저장소 또는 linked worktree 루트
  * @param runner 일반 git stdout 실행 함수
  * @param inputRunner stdin을 받는 batch git 실행 함수
+ * @param signal 숨김·저장소 교체 등으로 불필요해진 조회를 종료하는 신호
  * @returns 정상 브랜치와 Graph에서 제외할 손상 ref 목록
  */
 export async function readGraphLocalBranchSnapshot(
   repoRoot: string,
   runner: GraphLocalBranchRunner = runGit,
-  inputRunner: GraphLocalBranchInputRunner = runGitWithInput
+  inputRunner: GraphLocalBranchInputRunner = runGitWithInput,
+  signal?: AbortSignal
 ): Promise<GraphLocalBranchSnapshot> {
+  signal?.throwIfAborted();
   const format = richBranchFormat();
   try {
     const output = await runner(
       ["for-each-ref", "--sort=-committerdate", `--format=${format}`, "refs/heads"],
-      repoRoot
+      repoRoot, { signal }
     );
     return { branches: parseRichLocalBranches(output), invalidRefs: [] };
   } catch (primaryError) {
+    signal?.throwIfAborted();
     const rawOutput = await runner(
       ["for-each-ref", `--format=${rawBranchFormat()}`, "refs/heads", "refs/remotes"],
-      repoRoot
+      repoRoot, { signal }
     ).catch(() => { throw primaryError; });
     const { localRefs, knownRefs } = parseRawLocalRefs(rawOutput);
-    const validity = await verifyLocalRefTips(localRefs, repoRoot, inputRunner)
+    const validity = await verifyLocalRefTips(localRefs, repoRoot, inputRunner, signal)
       .catch(() => { throw primaryError; });
     const invalidRefs = invalidLocalRefs(localRefs, validity);
     if (invalidRefs.length === 0) throw primaryError;
     const validRefs = localRefs.filter((_ref, index) => validity[index]);
-    const metadata = await readCommitMetadata(validRefs, repoRoot, runner).catch(
+    const metadata = await readCommitMetadata(validRefs, repoRoot, runner, signal).catch(
       () => new Map<string, CommitMetadata>()
     );
     return {
@@ -157,14 +163,15 @@ function parseRawLocalRefs(output: string): {
 async function verifyLocalRefTips(
   refs: readonly RawLocalBranchRef[],
   repoRoot: string,
-  inputRunner: GraphLocalBranchInputRunner
+  inputRunner: GraphLocalBranchInputRunner,
+  signal?: AbortSignal
 ): Promise<boolean[]> {
   if (refs.length === 0) return [];
   const input = `${refs.map((ref) => `${ref.hash}^{commit}`).join("\n")}\n`;
   const output = await inputRunner(
     ["cat-file", "--batch-check=%(objectname) %(objecttype)"],
     repoRoot,
-    input
+    input, { signal }
   );
   const lines = output.trimEnd().split("\n");
   return refs.map((_ref, index) => /\scommit$/.test(lines[index] ?? ""));
@@ -184,13 +191,14 @@ function invalidLocalRefs(
 async function readCommitMetadata(
   refs: readonly RawLocalBranchRef[],
   repoRoot: string,
-  runner: GraphLocalBranchRunner
+  runner: GraphLocalBranchRunner,
+  signal?: AbortSignal
 ): Promise<Map<string, CommitMetadata>> {
   const hashes = [...new Set(refs.map((ref) => ref.hash))];
   if (hashes.length === 0) return new Map();
   const output = await runner(
     ["show", "--no-patch", "--no-walk=sorted", `--format=%H${FS}%cI${FS}%s`, ...hashes],
-    repoRoot
+    repoRoot, { signal }
   );
   const result = new Map<string, CommitMetadata>();
   for (const line of output.split("\n")) {

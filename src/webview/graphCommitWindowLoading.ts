@@ -26,21 +26,27 @@ export interface GraphReflogWindowResult {
  * @param hashes PR head 등 동일 대상을 나타낼 수 있는 후보 hash 목록
  * @param branchFilter 현재 Graph의 ref·표시 필터
  * @param pageSize target 뒤쪽에 유지할 최대 기본 commit 수
+ * @param signal 더 이상 표시하지 않을 점프 조회의 Git을 종료할 신호
  * @returns target을 포함한 filtered window, 찾지 못하면 undefined
  */
 export async function loadFilteredGraphCommitWindow(
   repoRoot: string,
   hashes: readonly string[],
   branchFilter: ResolvedGraphBranchFilter,
-  pageSize: number
+  pageSize: number,
+  signal?: AbortSignal
 ): Promise<GraphCommitWindowResult | undefined> {
   for (const hash of hashes) {
+    signal?.throwIfAborted();
     const targetHash = hash.trim();
     const window = await loadCommitWindowAroundWithRange(
       repoRoot,
       targetHash,
-      { before: 80, after: pageSize, refs: branchFilter.refs }
-    ).catch(() => ({ commits: [], startIndex: 0, targetIndex: -1, totalCount: 0 }));
+      { before: 80, after: pageSize, refs: branchFilter.refs, signal }
+    ).catch(error => {
+      if (signal?.aborted) throw error;
+      return { commits: [], startIndex: 0, targetIndex: -1, totalCount: 0 };
+    });
     if (!window.commits.some((commit) => commit.hash === targetHash)) continue;
     return {
       hash: targetHash,
@@ -57,14 +63,16 @@ export async function loadFilteredGraphCommitWindow(
  * @param repoRoot 대상 저장소 루트
  * @param hash reflog 항목이 가리키는 commit hash
  * @param pageSize 복구 window 최대 commit 수
+ * @param signal 숨김·저장소 교체 시 조회를 종료할 신호
  * @returns 실제 commit이 있으면 정규화한 hash와 commit 배열
  */
 export async function loadReflogGraphWindow(
   repoRoot: string,
   hash: string,
-  pageSize: number
+  pageSize: number,
+  signal?: AbortSignal
 ): Promise<GraphReflogWindowResult | undefined> {
   const targetHash = hash.trim();
-  const window = await loadGraphReflogCommitWindow(repoRoot, targetHash, pageSize);
+  const window = await loadGraphReflogCommitWindow(repoRoot, targetHash, pageSize, signal);
   return window ? { hash: targetHash, commits: window.commits } : undefined;
 }
