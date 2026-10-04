@@ -57,6 +57,14 @@ test("fsmonitor diagnostic matcher ignores unrelated status warnings", () => {
   assert.equal(hasFsMonitorFailure("warning: untracked cache is disabled"), false);
 });
 
+test("a deadline with fsmonitor diagnostics does not start a second scan", async () => {
+  let calls = 0;
+  const timeout = new GitError("Git read timed out", "error: fsmonitor daemon unavailable", "", Object.assign(new Error("timeout"), { code: "ETIMEDOUT" }));
+  const guard = new GitStatusFsMonitorGuard(async () => { calls++; throw timeout; }, () => undefined);
+  await assert.rejects(guard.run(["status"], "/repo"), error => error === timeout);
+  assert.equal(calls, 1);
+});
+
 test("readonly status preserves execution options and disables optional locks on fsmonitor retry", async () => {
   const calls: RunGitOptions[] = [];
   const controller = new AbortController();

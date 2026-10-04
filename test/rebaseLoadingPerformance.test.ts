@@ -19,8 +19,8 @@ import { commands } from "./helpers/vscodeMock";
 /** 실제 Git 프로세스는 그대로 실행하면서 조회 개수와 명령 종류만 기록한다. */
 function recordGitCalls(t: TestContext): string[][] {
   const calls: string[][] = [];
-  const original = childProcess.execFile;
-  t.mock.method(childProcess, "execFile", (...args: any[]) => {
+  const original = childProcess.spawn;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => {
     if (args[0] === "git") calls.push(args[1]);
     return (original as Function)(...args);
   });

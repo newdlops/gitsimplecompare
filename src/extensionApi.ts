@@ -2,6 +2,8 @@
 // - activation 조립 코드와 소비자 타입을 분리해 공개 표면이 생명주기 구현에 의존하지 않게 한다.
 import type * as vscode from "vscode";
 import type { ComparisonSnapshot } from "./git/comparisonService";
+import type { WorkingTreeSnapshot } from "./git/workingTreeStatusFormat";
+import type { SharedReadOptions } from "./git/sharedGitRead";
 
 /** 다른 확장이 활성 Explorer 비교 결과를 선택적으로 재사용하는 공개 API. */
 export interface GitSimpleCompareApi {
@@ -11,4 +13,10 @@ export interface GitSimpleCompareApi {
   onDidChangeComparison: vscode.Event<void>;
   /** 현재 표시 중인 직렬화 가능한 비교 스냅샷을 반환한다. */
   getComparison(): ComparisonSnapshot | undefined;
+  /** 비교 API v1을 유지하면서 선택적으로 사용할 수 있는 공유 Git 상태 공급자다. */
+  workingTreeStatus?: {
+    version: 1;
+    onDidChange: vscode.Event<string>;
+    getStatus(repoRoot: string, options?: SharedReadOptions): Promise<WorkingTreeSnapshot>;
+  };
 }

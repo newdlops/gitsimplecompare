@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readGraphRefreshSnapshot } from "../src/git/graphRefreshFingerprint";
@@ -17,8 +20,16 @@ async function gitChildren(): Promise<number[]> {
   const { stdout } = await execute("ps", ["-Ao", "pid=,ppid=,comm="], { encoding: "utf8" });
   return stdout.split("\n").flatMap(line => {
     const match = /^\s*(\d+)\s+(\d+)\s+(.+)$/.exec(line);
-    return match && Number(match[2]) === process.pid && /(?:^|\/|\()git\)?$/.test(match[3]) ? [Number(match[1])] : [];
+    return match && Number(match[2]) === process.pid && (/(?:^|\/|\()git\)?$/.test(match[3]) || path.basename(match[3]) === path.basename(process.execPath)) ? [Number(match[1])] : [];
   });
+}
+
+/** stdin의 기본 EOF 정책과 무관하게 대기하는 조회 fixture로 실제 spawn·취소·close를 검증한다. */
+async function suspendedGit(t: TestContext): Promise<{ root: string; executable: string }> {
+  const root = await mkdtemp(path.join(os.tmpdir(), "gsc-graph-reader-")), executable = path.join(root, "git-reader");
+  await writeFile(executable, `#!${process.execPath}\nsetInterval(() => {}, 1000);\n`, { mode: 0o755 });
+  t.after(() => rm(root, { recursive: true, force: true }));
+  return { root, executable };
 }
 
 /** 실제 자식 프로세스의 시작·종료를 짧은 상한 안에서 기다리며 timeout을 숨기지 않는다. */
@@ -32,12 +43,12 @@ async function waitForChildren(expected: number): Promise<number[]> {
   throw new Error(`Expected ${expected} owned Git children`);
 }
 
-test("폐기한 Graph의 지문 조회는 stdin을 기다리는 실제 Git 자식 두 개를 종료한다", { skip: process.platform === "win32" }, async t => {
+test("폐기한 Graph의 지문 조회는 Git 실행기에 속한 실제 자식 두 개를 종료한다", { skip: process.platform === "win32" }, async t => {
+  const fixture = await suspendedGit(t);
   const failures: string[] = [];
   const coordinator = new GraphRefreshLifecycleCoordinator({
     readFingerprint: (root, signal) => readGraphRefreshSnapshot(root, (_args, cwd, options) =>
-      // -w 없이 stdin의 해시만 계산하므로 저장소·index·작업트리를 수정하지 않는다.
-      runGit(["hash-object", "--stdin"], cwd, { signal: options?.signal }), signal),
+      runGit(["status"], cwd, { signal: options?.signal, executable: fixture.executable }), signal),
     reloadGraph: async () => { throw new Error("Cancelled read must not reload"); },
     publishAfterReload: async () => undefined, invalidateReload: () => undefined,
     info: () => undefined, error: event => { failures.push(event); },
@@ -46,7 +57,7 @@ test("폐기한 Graph의 지문 조회는 stdin을 기다리는 실제 Git 자�
     coordinator.dispose();
     for (const pid of await gitChildren()) process.kill(pid, "SIGTERM");
   });
-  const ready = coordinator.runDirect({ repoRoot: process.cwd(), cause: "ready" });
+  const ready = coordinator.runDirect({ repoRoot: fixture.root, cause: "ready" });
   const children = await waitForChildren(2);
   coordinator.dispose();
   assert.equal(await ready, false);
@@ -55,15 +66,16 @@ test("폐기한 Graph의 지문 조회는 stdin을 기다리는 실제 Git 자�
   for (const pid of children) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
-test("숨긴 Graph 본문 조회도 log와 status를 담당하는 실제 Git 자식 두 개를 종료한다", { skip: process.platform === "win32" }, async t => {
+test("숨긴 Graph 본문 조회도 log와 status를 담당하는 실제 자식 두 개를 종료한다", { skip: process.platform === "win32" }, async t => {
+  const fixture = await suspendedGit(t);
   const coordinator = new GraphReadLifecycleCoordinator();
-  const root = process.cwd();
+  const root = fixture.root;
   const service = {
     getCommitPage: async (_limit: number, _skip: number, _refs: string[], _local: boolean, signal?: AbortSignal) => {
-      await runGit(["hash-object", "--stdin"], root, { signal }); return [];
+      await runGit(["log"], root, { signal, executable: fixture.executable }); return [];
     },
     getVirtualCommits: async (signal?: AbortSignal) => {
-      await runGit(["hash-object", "--stdin"], root, { signal }); return [];
+      await runGit(["status"], root, { signal, executable: fixture.executable }); return [];
     },
   };
   t.after(async () => {

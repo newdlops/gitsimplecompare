@@ -40,8 +40,10 @@ interface UnstagedStatsSkip {
 export async function attachStatusStats(
   repoRoot: string,
   groups: StatusGroups,
-  run: RunGitLike
+  run: RunGitLike,
+  signal?: AbortSignal
 ): Promise<StatusGroups> {
+  signal?.throwIfAborted();
   if (!groups.staged.length && !groups.unstaged.length) {
     return { staged: [], unstaged: [] };
   }
@@ -50,10 +52,12 @@ export async function attachStatusStats(
   const stagedNum = hasLineStatsBucket(groups.staged.length)
     ? await run([...blobDiffSizeLimitArgs(), "diff", "--cached", "--numstat", "-z", "-M"]).catch(() => "")
     : "";
+  signal?.throwIfAborted();
   let unstagedNum = "";
   let skip: UnstagedStatsSkip = { paths: new Set(), allTracked: false };
   if (hasLineStatsBucket(groups.unstaged.length)) {
-    const large = await largeWorkingFiles(repoRoot, groups.unstaged);
+    const large = await largeWorkingFiles(repoRoot, groups.unstaged, signal);
+    signal?.throwIfAborted();
     if (large.length > MAX_LARGE_FILE_EXCLUDES) {
       skip = { paths: new Set(large), allTracked: true };
     } else {
@@ -69,7 +73,8 @@ export async function attachStatusStats(
       ]).catch(() => "");
     }
   }
-  return attachParsedStatusStats(repoRoot, groups, stagedNum, unstagedNum, skip);
+  signal?.throwIfAborted();
+  return attachParsedStatusStats(repoRoot, groups, stagedNum, unstagedNum, skip, signal);
 }
 
 /**
@@ -82,10 +87,11 @@ export async function attachStatusStats(
  */
 async function largeWorkingFiles(
   repoRoot: string,
-  changes: StatusGroups["unstaged"]
+  changes: StatusGroups["unstaged"], signal?: AbortSignal
 ): Promise<string[]> {
   const tracked = changes.filter((change) => TRACKED_WORKING_STATUSES.has(change.status));
   const sizes = await mapWithConcurrency(tracked, WORKING_SIZE_CONCURRENCY, async (change) => {
+    signal?.throwIfAborted();
     try {
       return (await stat(path.join(repoRoot, change.path))).size;
     } catch {
@@ -126,13 +132,13 @@ export async function attachParsedStatusStats(
   groups: StatusGroups,
   stagedNum: string,
   unstagedNum: string,
-  skip: UnstagedStatsSkip = { paths: new Set(), allTracked: false }
+  skip: UnstagedStatsSkip = { paths: new Set(), allTracked: false }, signal?: AbortSignal
 ): Promise<StatusGroups> {
   const staged = shouldComputeLineStats(groups.staged.length)
     ? withStagedStats(groups.staged, parseNumstat(stagedNum))
     : withoutStats(groups.staged);
   const unstaged = shouldComputeLineStats(groups.unstaged.length)
-    ? await withUnstagedStats(repoRoot, groups.unstaged, parseNumstat(unstagedNum), skip)
+    ? await withUnstagedStats(repoRoot, groups.unstaged, parseNumstat(unstagedNum), skip, signal)
     : withoutStats(groups.unstaged);
   return { staged, unstaged };
 }
@@ -171,12 +177,13 @@ function withUnstagedStats(
   repoRoot: string,
   changes: StatusGroups["unstaged"],
   counts: Map<string, NumstatCount>,
-  skip: UnstagedStatsSkip
+  skip: UnstagedStatsSkip, signal?: AbortSignal
 ): Promise<StatusGroups["unstaged"]> {
   return mapWithConcurrency(
     changes,
     UNTRACKED_STATS_CONCURRENCY,
     async (change) => {
+      signal?.throwIfAborted();
       const skipped =
         skip.paths.has(change.path) || (skip.allTracked && change.status !== "A");
       const stat = counts.get(change.path);
@@ -192,6 +199,7 @@ function withUnstagedStats(
       }
       if (change.status === "A") {
         const additions = await countUntrackedLines(repoRoot, change.path);
+        signal?.throwIfAborted();
         return additions === undefined
           ? { ...change }
           : { ...change, additions, deletions: 0 };

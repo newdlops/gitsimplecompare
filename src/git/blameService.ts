@@ -2,7 +2,9 @@
 // - git CLI 실행은 gitExec.runGit 만 사용해 git 접근 경계를 유지한다.
 // - VS Code API 에 의존하지 않아 provider/명령 레이어 밖에서도 재사용할 수 있다.
 import * as path from "node:path";
+import { stat } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
+import { readSharedBlame } from "./sharedBlameReads";
 
 /** git blame 한 줄에 대응하는 커밋/작성자 메타데이터. */
 export interface GitBlameLine {
@@ -51,7 +53,8 @@ export class GitBlameService {
    */
   async getFileBlame(
     fsPath: string,
-    range?: GitBlameRange
+    range?: GitBlameRange,
+    options: { signal?: AbortSignal } = {}
   ): Promise<GitBlameLine[]> {
     const rel = this.toRepoRelative(fsPath);
     const args = ["blame", "--line-porcelain"];
@@ -63,15 +66,19 @@ export class GitBlameService {
       );
     }
     args.push("--", rel);
-    try {
-      const out = await runGit(args, this.repoRoot);
-      return parseBlamePorcelain(out);
-    } catch (error) {
-      if (error instanceof GitError && isExpectedBlameMiss(error)) {
-        return [];
+    if (options.signal?.aborted) throw new DOMException("Git blame cancelled.", "AbortError");
+    const file = path.resolve(this.repoRoot, rel);
+    const disk = await stat(file).catch(() => undefined);
+    const key = JSON.stringify([this.repoRoot, file, normalizedRange, disk?.size, disk?.mtimeMs, disk?.ctimeMs]);
+    return readSharedBlame(this.repoRoot, key, async signal => {
+      try {
+        const out = await runGit(args, this.repoRoot, { signal });
+        return parseBlamePorcelain(out);
+      } catch (error) {
+        if (error instanceof GitError && isExpectedBlameMiss(error)) return [];
+        throw error;
       }
-      throw error;
-    }
+    }, options.signal);
   }
 
   /**

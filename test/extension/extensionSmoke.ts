@@ -1,11 +1,13 @@
 // 격리된 Extension Development Host에서 확장 manifest와 activation을 확인하는 PR-00 smoke.
 // - GitHub 인증·사용자 repository·사용자 window 없이 격리된 fixture에서 lifecycle과 Git 설정을 검증한다.
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import * as vscode from "vscode";
 import { GitService } from "../../src/git/gitService";
 import { VscodeGitStatusProvider } from "../../src/providers/vscodeGitStatusProvider";
+import type { GitSimpleCompareApi } from "../../src/extensionApi";
 
 /** Development Host가 extension manifest를 찾고 activation까지 완료하는지 검사한다. */
 export async function run(): Promise<void> {
@@ -20,11 +22,21 @@ export async function run(): Promise<void> {
   assert.ok(commands.includes("gitSimpleCompare.toggleBuiltinGit"), "Built-in Git toggle command was not registered.");
   assert.ok(commands.includes("gitSimpleCompare.toggleBuiltinGitUser"), "User-level built-in Git toggle command was not registered.");
   assert.ok(commands.includes("gitSimpleCompare.configureGitExecutable"), "Git executable diagnosis command was not registered.");
+  assert.ok(commands.includes("gitSimpleCompare.cleanupIdleGitProcesses"));
+  assert.ok(commands.includes("gitSimpleCompare.configureGitProcessCleanup"));
   assert.equal(commands.includes("gitSimpleCompare.showReviews"), false, "Reviews sidebar wrapper command must not be registered.");
   await vscode.commands.executeCommand("gitSimpleCompare.showChanges");
   await verifyBuiltinGitControl();
   await verifyBuiltinGitUserControl();
   await verifyGitExecutableConfiguration();
+  await verifyProcessSettingsAndSharedApi(extension.exports as GitSimpleCompareApi);
+  if (process.env.GSC_NATIVE_UI_CAPTURE) {
+    const prefix = process.env.GSC_NATIVE_UI_CAPTURE;
+    const menu = vscode.commands.executeCommand("gitSimpleCompare.configureGitProcessCleanup");
+    await writeFile(prefix + ".ready", "ready");
+    await waitFor(async () => readFile(prefix + ".done", "utf8").then(() => true, () => false));
+    await menu;
+  }
 }
 
 /**
@@ -45,7 +57,7 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
   const quote = (value: string): string => "'" + value.replace(/'/g, "'\\''") + "'";
   const wrappers = { user: path.join(directory, "user git"), workspace: path.join(directory, "workspace git") };
   for (const [scope, executable] of Object.entries(wrappers)) {
-    await writeFile(executable, `#!/bin/sh\nprintf '%s|%s|%s\\n' '${scope}' "\${GIT_OPTIONAL_LOCKS:-default}" "$*" >> ${quote(marker)}\nexec git "$@"\n`, { mode: 0o755 });
+    await writeFile(executable, `#!/bin/sh\nprintf '%s|%s|%s|%s\\n' '${scope}' "\${GIT_OPTIONAL_LOCKS:-default}" "\${GIT_INDEX_FILE:-real}" "$*" >> ${quote(marker)}\nexec git "$@"\n`, { mode: 0o755 });
   }
   /** 저장 전후의 설정 snapshot을 실제 VS Code 설정 서비스에서 새로 읽는다. */
   const config = () => vscode.workspace.getConfiguration("gitSimpleCompare", vscode.Uri.file(root));
@@ -65,8 +77,11 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
     const statusCalls = calls.filter(call => /\bstatus\b/.test(call));
     assert.ok(statusCalls.length > 0, "Production refresh command did not read Git status.");
     // 설정 변경 전에 시작한 watcher 조회가 늦게 완료될 수 있어 scope와 읽기 전용 정책을 따로 검증한다.
-    assert.ok(statusCalls.some(call => call.startsWith(scope + "|0|")), `Production status did not use the ${scope} executable.`);
-    assert.ok(statusCalls.every(call => /^[^|]+\|0\|/.test(call)), `Background status must skip optional index writes: ${statusCalls.join(", ")}`);
+    assert.ok(statusCalls.some(call => call.startsWith(scope + "|")), `Production status did not use the ${scope} executable.`);
+    assert.ok(statusCalls.every(call => {
+      const [, locks, index] = call.split("|");
+      return locks === "0" || (locks === "1" && /[/\\]gsc-status-index-[^/\\]+[/\\]index$/.test(index));
+    }), `Status may write only its private index: ${statusCalls.join(", ")}`);
   };
   try {
     await config().update("gitPath", wrappers.user, vscode.ConfigurationTarget.Global);
@@ -80,6 +95,52 @@ async function verifyGitExecutableConfiguration(): Promise<void> {
   } finally {
     await config().update("gitPath", original?.workspaceValue, vscode.ConfigurationTarget.Workspace);
     await config().update("gitPath", original?.globalValue, vscode.ConfigurationTarget.Global);
+  }
+}
+
+/** 실제 native 설정 우선순위·수동 명령과 UI 밖 API-only 저장소 이벤트를 검증한다. */
+async function verifyProcessSettingsAndSharedApi(api: GitSimpleCompareApi): Promise<void> {
+  const root = process.env.GSC_EXTENSION_TEST_FIXTURE!;
+  const config = () => vscode.workspace.getConfiguration("gitSimpleCompare", vscode.Uri.file(root));
+  const enabled = config().inspect<boolean>("gitProcessCleanup.enabled"), minutes = config().inspect<number>("gitProcessCleanup.idleMinutes");
+  try {
+    await config().update("gitProcessCleanup.enabled", false, vscode.ConfigurationTarget.Global);
+    await config().update("gitProcessCleanup.enabled", undefined, vscode.ConfigurationTarget.Workspace);
+    await vscode.commands.executeCommand("gitSimpleCompare.toggleGitProcessCleanupUser.unchecked");
+    assert.equal(config().get("gitProcessCleanup.enabled"), true);
+    await config().update("gitProcessCleanup.enabled", false, vscode.ConfigurationTarget.Workspace);
+    assert.equal(config().get("gitProcessCleanup.enabled"), false);
+    assert.equal(config().inspect("gitProcessCleanup.enabled")?.globalValue, true);
+    await vscode.commands.executeCommand("gitSimpleCompare.toggleGitProcessCleanupUser.checked");
+    assert.equal(config().get("gitProcessCleanup.enabled"), false);
+    await config().update("gitProcessCleanup.idleMinutes", 7, vscode.ConfigurationTarget.Global);
+    await config().update("gitProcessCleanup.idleMinutes", 3, vscode.ConfigurationTarget.Workspace);
+    assert.equal(config().get("gitProcessCleanup.idleMinutes"), 3);
+    await config().update("gitProcessCleanup.idleMinutes", undefined, vscode.ConfigurationTarget.Workspace);
+    assert.equal(config().get("gitProcessCleanup.idleMinutes"), 7);
+    await vscode.commands.executeCommand("gitSimpleCompare.cleanupIdleGitProcesses");
+    assert.equal(api.version, 1); assert.equal(typeof api.getComparison, "function");
+    const provider = api.workingTreeStatus; assert.ok(provider); assert.equal(provider.version, 1);
+    const external = path.join(path.dirname(root), "api-only-repository");
+    execFileSync("git", ["clone", "--no-hardlinks", root, external], { stdio: "pipe" });
+    const initial = await provider.getStatus(external); assert.equal(initial.branch, "main");
+    let notified = false;
+    const subscription = provider.onDidChange(changedRoot => { if (changedRoot === external) notified = true; });
+    try {
+      await writeFile(path.join(external, "sample.txt"), "API-only staged change\n");
+      execFileSync("git", ["add", "sample.txt"], { cwd: external, stdio: "pipe" });
+      await waitFor(async () => notified);
+      const before = await readFile(path.join(external, ".git/index"));
+      const current = await provider.getStatus(external);
+      assert.ok(current.groups.staged.some(file => file.path === "sample.txt"));
+      assert.deepEqual(await readFile(path.join(external, ".git/index")), before);
+    } finally { subscription.dispose(); }
+    console.log("PASS: global/workspace idle cleanup settings, manual command with auto off, shared API v1 and API-only metadata invalidation.");
+  } finally {
+    await config().update("gitProcessCleanup.enabled", enabled?.workspaceValue, vscode.ConfigurationTarget.Workspace);
+    await config().update("gitProcessCleanup.enabled", enabled?.globalValue, vscode.ConfigurationTarget.Global);
+    await config().update("gitProcessCleanup.idleMinutes", minutes?.workspaceValue, vscode.ConfigurationTarget.Workspace);
+    await config().update("gitProcessCleanup.idleMinutes", minutes?.globalValue, vscode.ConfigurationTarget.Global);
   }
 }
 
@@ -188,7 +249,7 @@ async function verifyBuiltinGitControl(): Promise<void> {
     await vscode.commands.executeCommand("gitSimpleCompare.toggleBuiltinGit.checked");
     assert.equal(vscode.workspace.getConfiguration("git").get("enabled"), false);
     assert.equal(vscode.workspace.getConfiguration("git").inspect("enabled")?.workspaceValue, false);
-    await waitFor(async () => !api.repositories.some((repo) => repo.rootUri.fsPath === root));
+    await waitFor(async () => !git.getAPI(1).repositories.some((repo) => repo.rootUri.fsPath === root));
     assert.equal(await provider.getRepositories(), undefined);
     assert.equal(await provider.getStatusGroups(root), undefined);
     assert.equal(await provider.ensureReady(), false);
@@ -202,7 +263,7 @@ async function verifyBuiltinGitControl(): Promise<void> {
 
     await vscode.commands.executeCommand("gitSimpleCompare.toggleBuiltinGit.unchecked");
     assert.equal(vscode.workspace.getConfiguration("git").get("enabled"), true);
-    await waitFor(async () => api.repositories.some((repo) => repo.rootUri.fsPath === root));
+    await waitFor(async () => git.getAPI(1).repositories.some((repo) => repo.rootUri.fsPath === root));
     await waitFor(async () => (await provider.getStatusGroups(root))?.staged
       .some((file) => file.path === "sample.txt") === true);
     assert.equal(vscode.workspace.getConfiguration("git").inspect("enabled")?.globalValue, globalEnabled);

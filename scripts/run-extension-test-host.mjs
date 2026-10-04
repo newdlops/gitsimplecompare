@@ -16,7 +16,7 @@ function installedVscodeExecutable() {
   const configured = process.env.GSC_VSCODE_EXECUTABLE;
   if (configured && existsSync(configured)) return configured;
   const candidates = process.platform === "darwin"
-    ? ["/Applications/Visual Studio Code.app/Contents/MacOS/Electron"]
+    ? ["/Applications/Visual Studio Code.app/Contents/MacOS/Code", "/Applications/Visual Studio Code.app/Contents/MacOS/Electron"]
     : process.platform === "win32"
       ? ["C:\\Program Files\\Microsoft VS Code\\Code.exe"]
       : ["/usr/share/code/code", "/usr/bin/code"];
@@ -40,6 +40,7 @@ async function createWorkspaceFixture() {
   git(["config", "user.email", "extension-smoke@example.invalid"]);
   git(["config", "core.hooksPath", path.join(directory, "hooks")]);
   git(["config", "commit.gpgSign", "false"]);
+  git(["config", "core.fsmonitor", "false"]);
   await writeFile(path.join(repoRoot, "sample.txt"), "base\n");
   git(["add", "sample.txt"]);
   git(["commit", "--quiet", "-m", "fixture"]);
@@ -63,11 +64,13 @@ async function main() {
       extensionTestsEnv: {
         GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot,
         GSC_EXTENSION_TEST_PROFILE: path.join(fixture.directory, "profile"),
+        ...(process.env.GSC_NATIVE_UI_CAPTURE ? { GSC_NATIVE_UI_CAPTURE: process.env.GSC_NATIVE_UI_CAPTURE } : {}),
       },
       launchArgs: [
         fixture.repoRoot, "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
         `--user-data-dir=${path.join(fixture.directory, "profile")}`,
         `--extensions-dir=${path.join(fixture.directory, "extensions")}`,
+        ...(process.env.GSC_TEST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.GSC_TEST_DEBUG_PORT}`] : []),
       ],
     });
     passed = code === 0;

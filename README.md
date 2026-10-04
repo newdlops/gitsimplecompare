@@ -111,6 +111,30 @@ In the Changes view's **…** menu, **Use VS Code Built-in Git (User)** changes 
 
 Choose **Git Startup / Executable…** in the same menu to compare installed Git executables. The command checks `git --version` three times per candidate and shows the median startup time. Select a working candidate or enter a custom path, then save it for your user or this workspace. **Reset Git executable setting…** removes the selected scope's override. `gitSimpleCompare.gitPath` takes effect on the next Git command; workspace and folder values take precedence over the user default. On macOS, a direct Command Line Tools or Homebrew path can bypass a slow system launcher. This diagnoses startup time; repository work, remote requests and OS process delays require separate investigation. Results appear in **Git Simple Compare** Output.
 
+### Idle Git cleanup and long-session performance
+
+Open **Changes → … → Clean Idle Git Processes…** to select eligible processes,
+or run **Git Simple Compare: Clean Idle Git Processes…** from the Command Palette.
+The manual command works while automatic cleanup is off. A monitor becomes
+eligible after continuously observed inactivity; process age and low CPU alone
+do not qualify it. Active repositories, other windows, writes and uncertain
+process identities remain protected. Results and skipped candidates are logged
+in **Git Simple Compare** Output. Monitor inspection currently supports macOS;
+extension-owned read cancellation and deadlines also work on other platforms.
+
+The same menu contains user and workspace automatic-cleanup toggles and
+**Idle Git Cleanup Settings…**. Automatic cleanup defaults to **off**, the idle
+interval to **5 minutes**, and checks run once per minute when enabled. Workspace
+and folder overrides take precedence over the user default.
+
+Read-only Git commands have a configurable **30-second** deadline. Status and
+blame consumers share work, cancel obsolete reads, and release their private
+caches on shutdown. Complete working-tree status uses a private index so repeated
+scans can reuse metadata without changing the real staged state. Tab Manager
+0.1.6619 or later can share that status instead of launching a separate query.
+These controls reduce extension-generated work; system memory pressure and OS
+process-execution delays can still affect Git latency.
+
 ### Pull request stacks
 
 Open the layer button in the Git Graph toolbar to see a unified view of local parent metadata and GitHub PR base/head relationships. **Add Layer** creates a child branch and optional linked worktree from the selected parent. **Restack** previews and rebases that layer and all descendants with per-layer safety refs and integrated conflict Continue/Abort. **Submit / Sync** pushes root-to-leaf, creates missing PRs, updates existing bases and stack sections in PR bodies, and uses an explicit force-with-lease only for rewritten remote history. After a lower PR is merged, **Advance** promotes its children to the previous base, restacks and syncs their PRs, then offers safe local branch/worktree cleanup.
@@ -130,6 +154,11 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | Setting | Default | Description |
 | --- | --- | --- |
 | `gitSimpleCompare.gitPath` | empty | Git executable name or absolute path; empty uses `git` from PATH. Supports user, workspace and folder overrides |
+| `gitSimpleCompare.gitProcessCleanup.enabled` | `false` | Automatically clean verified inactive extension-owned Git processes; supports user, workspace and folder overrides |
+| `gitSimpleCompare.gitProcessCleanup.idleMinutes` | `5` | Observed idle interval before cleanup, from 1 to 1440 minutes |
+| `gitSimpleCompare.gitReadTimeoutSeconds` | `30` | Read-only command deadline; 0 disables it. Writes and hooks are protected |
+| `gitSimpleCompare.workingTreeStatusCache` | `true` | Share complete status using an extension-owned private index cache |
+| `gitSimpleCompare.cancelUnusedGitReads` | `true` | Cancel shared status and blame reads after their last consumer leaves |
 | `gitSimpleCompare.diffBase` | `twoDot` | Branch diff base (`twoDot` = direct, `threeDot` = common ancestor) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | Include remote branches in the branch picker |
 | `gitSimpleCompare.blameBlock.show` | `true` | Show clickable contributor Code Vision above source blocks |

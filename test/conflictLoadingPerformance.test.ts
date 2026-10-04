@@ -28,15 +28,10 @@ async function conflicted(t: TestContext, linked = false) {
 
 /** Git은 실제로 실행하고 CLI 명령만 기록해 데이터 안전성과 조회 수를 함께 확인한다. */
 function callsFor(t: TestContext): string[][] {
-  const calls: string[][] = [], original = childProcess.execFile;
-  t.mock.method(childProcess, "execFile", (...args: any[]) => {
-    if (args[0] === "git") calls.push(args[1]);
-    return (original as Function)(...args);
-  });
-  const spawn = childProcess.spawn;
+  const calls: string[][] = [], original = childProcess.spawn;
   t.mock.method(childProcess, "spawn", (...args: any[]) => {
     if (args[0] === "git") calls.push(args[1]);
-    return (spawn as Function)(...args);
+    return (original as Function)(...args);
   });
   return calls;
 }

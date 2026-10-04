@@ -22,6 +22,8 @@ export interface StatusGroups {
 
 /** 작업트리 상태 조회의 캐시와 통계 포함 정책. */
 export interface StatusGroupOptions {
+  /** 이 소비자가 해제되면 공유 조회의 참조를 줄이고 마지막 소비자일 때 실제 Git을 취소한다. */
+  signal?: AbortSignal;
   /** true면 유효한 캐시나 진행 중 조회를 재사용하지 않고 새 조회를 시작한다. */
   force?: boolean;
   /** 완료된 캐시를 재사용할 최대 시간(ms). 기본값은 1000ms다. */
@@ -129,9 +131,12 @@ export class StatusCache<T> {
    */
   invalidate(): number {
     this.generation += 1;
-    this.entry = undefined;
+    this.discard();
     return this.generation;
   }
+
+  /** 강제 읽기에서는 외부 mutation 세대를 올리지 않고 완료/이전 pending 캐시만 버린다. */
+  discard(): void { this.entry = undefined; }
 
   /**
    * 현재 캐시 무효화 세대를 반환한다.

@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72073",
+  "version": "0.1.72074",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -679,6 +679,62 @@
         "shortTitle": "%cmd.deleteLocalPullRequestStack%",
         "category": "Git Simple Compare",
         "icon": "$(trash)"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupUser",
+        "title": "%cmd.toggleGitProcessCleanupUser.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupUser%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupUser.checked",
+        "title": "%cmd.toggleGitProcessCleanupUser.checked.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupUser.checked%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupUser.unchecked",
+        "title": "%cmd.toggleGitProcessCleanupUser.unchecked.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupUser.unchecked%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace",
+        "title": "%cmd.toggleGitProcessCleanupWorkspace.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupWorkspace%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.checked",
+        "title": "%cmd.toggleGitProcessCleanupWorkspace.checked.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupWorkspace.checked%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.unchecked",
+        "title": "%cmd.toggleGitProcessCleanupWorkspace.unchecked.tooltip%",
+        "shortTitle": "%cmd.toggleGitProcessCleanupWorkspace.unchecked%",
+        "category": "Git Simple Compare",
+        "enablement": "workspaceFolderCount != 0 && !gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.configureGitProcessCleanup",
+        "title": "%cmd.configureGitProcessCleanup.tooltip%",
+        "shortTitle": "%cmd.configureGitProcessCleanup%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.gitProcessCleanup.settingsBusy"
+      },
+      {
+        "command": "gitSimpleCompare.cleanupIdleGitProcesses",
+        "title": "%cmd.cleanupIdleGitProcesses.tooltip%",
+        "shortTitle": "%cmd.cleanupIdleGitProcesses%",
+        "category": "Git Simple Compare",
+        "enablement": "!gitSimpleCompare.gitProcessCleanup.busy"
       }
     ],
     "viewsContainers": {
@@ -975,6 +1031,36 @@
           "command": "gitSimpleCompare.refreshConflicts",
           "when": "view == gitSimpleCompare.conflicts",
           "group": "navigation@5"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupUser.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.gitProcessCleanup.userEnabled",
+          "group": "4_settings@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupUser.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.gitProcessCleanup.userEnabled",
+          "group": "4_settings@3"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.checked",
+          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.gitProcessCleanup.workspaceEnabled",
+          "group": "4_settings@4"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.unchecked",
+          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.gitProcessCleanup.workspaceEnabled",
+          "group": "4_settings@4"
+        },
+        {
+          "command": "gitSimpleCompare.configureGitProcessCleanup",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "4_settings@5"
+        },
+        {
+          "command": "gitSimpleCompare.cleanupIdleGitProcesses",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "4_settings@6"
         }
       ],
       "view/item/context": [
@@ -1231,6 +1317,22 @@
         },
         {
           "command": "gitSimpleCompare.openWorktree",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupUser.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupUser.unchecked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.checked",
+          "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.unchecked",
           "when": "false"
         }
       ]
@@ -1497,6 +1599,40 @@
           "default": 120000,
           "minimum": 10000,
           "description": "%config.aiCliTimeoutMs.desc%"
+        },
+        "gitSimpleCompare.gitProcessCleanup.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "%config.gitProcessCleanup.enabled.desc%"
+        },
+        "gitSimpleCompare.gitProcessCleanup.idleMinutes": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 1440,
+          "scope": "resource",
+          "description": "%config.gitProcessCleanup.idleMinutes.desc%"
+        },
+        "gitSimpleCompare.gitReadTimeoutSeconds": {
+          "type": "integer",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 3600,
+          "scope": "resource",
+          "description": "%config.gitReadTimeoutSeconds.desc%"
+        },
+        "gitSimpleCompare.workingTreeStatusCache": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "%config.workingTreeStatusCache.desc%"
+        },
+        "gitSimpleCompare.cancelUnusedGitReads": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "%config.cancelUnusedGitReads.desc%"
         }
       }
     }

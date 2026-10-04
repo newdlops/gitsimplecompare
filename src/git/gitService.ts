@@ -7,7 +7,7 @@ import { rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitBranchListCache } from "./gitBranchListCache";
 import { runGit } from "./gitExec";
-import { runGitStatus } from "./gitStatusExec";
+import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
 import {
   readFileAtRef,
   readWorkingContentWithoutStaged,
@@ -26,7 +26,6 @@ import {
 } from "./ignoreRules";
 import {
   parseRawNumstatZ,
-  parsePorcelainGroups,
 } from "./diffParse";
 import {
   cloneStatusGroups,
@@ -126,14 +125,19 @@ export class GitService {
     const maxAge = options.maxCacheAgeMs ?? 1000;
     const includeStats = options.includeStats ?? true;
     const detailLevel = includeStats ? 1 : 0;
-    if (!options.force) {
+    // 소비자 소유 signal이 있는 Promise를 legacy pending 캐시에 빌려주지 않는다.
+    if (options.signal) {
+      if (options.force) this.statusCache.discard();
+      return this.readStatusGroups(includeStats, options);
+    }
+    if (!options.force && includeStats && !options.signal) {
       const cached = this.statusCache.get(maxAge, detailLevel);
       if (cached) {
         return cached;
       }
     }
     return this.statusCache.read(
-      () => this.readStatusGroups(includeStats),
+      () => this.readStatusGroups(includeStats, options),
       detailLevel
     );
   }
@@ -146,6 +150,7 @@ export class GitService {
    */
   invalidateStatusCache(markMutation = true): void {
     this.statusCache.invalidate();
+    invalidateWorkingTreeSnapshot(this.repoRoot);
     if (markMutation) this.lastMutationAt = Date.now();
   }
 
@@ -183,11 +188,11 @@ export class GitService {
    * - `git status` 재스캔 없이 +/-를 붙이되 provider 결과는 authoritative 캐시에 저장하지 않는다.
    * @param groups staged/unstaged 로 이미 분류된 파일 목록
    */
-  async addStatusStats(groups: StatusGroups): Promise<StatusGroups> {
+  async addStatusStats(groups: StatusGroups, signal?: AbortSignal): Promise<StatusGroups> {
     const value = await attachStatusStats(
       this.repoRoot,
       cloneStatusGroups(groups),
-      (args) => this.run(args)
+      (args) => this.run(args, signal), signal
     );
     return cloneStatusGroups(value);
   }
@@ -199,15 +204,10 @@ export class GitService {
    * @param includeStats true면 staged/unstaged numstat과 미추적 파일 라인 수도 계산한다
    * @returns porcelain 기준 상태 그룹과 선택적으로 보강된 라인 통계
    */
-  private async readStatusGroups(includeStats: boolean): Promise<StatusGroups> {
-    const groups = parsePorcelainGroups(
-      await runGitStatus(
-        ["status", "--porcelain", "-z", "--untracked-files=all"],
-        this.repoRoot
-      )
-    );
+  private async readStatusGroups(includeStats: boolean, options: StatusGroupOptions): Promise<StatusGroups> {
+    const { groups } = await readWorkingTreeSnapshot(this.repoRoot, options);
     return includeStats
-      ? attachStatusStats(this.repoRoot, groups, (args) => this.run(args))
+      ? attachStatusStats(this.repoRoot, groups, (args) => this.run(args, options.signal), options.signal)
       : groups;
   }
 
@@ -531,8 +531,8 @@ export class GitService {
    * 이 인스턴스의 repoRoot 를 cwd 로 git 명령을 실행한다.
    * @param args git 인자 배열
    */
-  private run(args: string[]): Promise<string> {
-    return runGit(args, this.repoRoot);
+  private run(args: string[], signal?: AbortSignal): Promise<string> {
+    return runGit(args, this.repoRoot, { signal });
   }
 }
 

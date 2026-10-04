@@ -37,6 +37,7 @@ export class BlameDecoratorController implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private state = readBlameConfig();
   private requestSeq = 0;
+  private readController?: AbortController;
   private disposed = false;
 
   constructor(private readonly registry: GitServiceRegistry) {
@@ -60,6 +61,7 @@ export class BlameDecoratorController implements vscode.Disposable {
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (isActiveDocument(event.document) && event.document.isDirty) {
           this.requestSeq++;
+          this.readController?.abort();
           this.clearVisibleDecorations();
         }
       }),
@@ -131,6 +133,7 @@ export class BlameDecoratorController implements vscode.Disposable {
       return;
     }
     this.disposed = true;
+    this.readController?.abort();
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = undefined;
@@ -149,6 +152,7 @@ export class BlameDecoratorController implements vscode.Disposable {
    * @param reason 상태 변경을 일으킨 이벤트 이름(OUTPUT 추적용)
    */
   private applyConfigState(reason: string): void {
+    this.readController?.abort();
     const previous = this.getState();
     this.state = readBlameConfig();
     this.recreateDecorationIfNeeded(previous.lineVisible);
@@ -200,6 +204,7 @@ export class BlameDecoratorController implements vscode.Disposable {
       return;
     }
     const requestId = ++this.requestSeq;
+    this.readController?.abort();
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
@@ -242,8 +247,10 @@ export class BlameDecoratorController implements vscode.Disposable {
     }
 
     try {
+      const controller = new AbortController();
+      this.readController = controller;
       const blame = await new GitBlameService(service.repoRoot).getFileBlame(
-        editor.document.uri.fsPath
+        editor.document.uri.fsPath, undefined, { signal: controller.signal }
       );
       if (requestId !== this.requestSeq || !this.state.lineVisible) {
         return;

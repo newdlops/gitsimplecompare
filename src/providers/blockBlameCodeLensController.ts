@@ -7,6 +7,7 @@ import {
   type BlockBlameSummary,
 } from "../git/blockBlameModel";
 import { GitBlameService } from "../git/blameService";
+import { SharedGitRead } from "../git/sharedGitRead";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo } from "../ui/outputLog";
 import {
@@ -37,7 +38,7 @@ interface CachedSnapshot {
   /** 커밋/브랜치 변경 뒤 오래된 결과가 유지되지 않게 하는 만료 시각 */
   expiresAt: number;
   /** 진행 중 조회까지 공유하는 snapshot promise */
-  promise: Promise<BlockBlameSnapshot>;
+  read: SharedGitRead<BlockBlameSnapshot>;
 }
 
 /** 반복 viewport 요청이 같은 skip 로그를 쏟지 않게 하는 최근 로그 정보. */
@@ -94,6 +95,7 @@ export class BlockBlameCodeLensController
         }
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
+        void this.cache.get(document.uri.toString())?.read.dispose();
         this.cache.delete(document.uri.toString());
         this.skipLogs.delete(document.uri.toString());
       }),
@@ -138,8 +140,11 @@ export class BlockBlameCodeLensController
       return [];
     }
 
+    const controller = new AbortController();
+    const subscription = token.onCancellationRequested(() => controller.abort());
+    if (token.isCancellationRequested) controller.abort();
     try {
-      const snapshot = await this.getSnapshot(document);
+      const snapshot = await this.getSnapshot(document, controller.signal);
       if (
         token.isCancellationRequested ||
         document.version !== snapshot.documentVersion ||
@@ -152,11 +157,12 @@ export class BlockBlameCodeLensController
         .map((summary) => createBlockBlameCodeLens(document, summary))
         .filter((lens): lens is vscode.CodeLens => lens !== undefined);
     } catch (error) {
+      if (controller.signal.aborted) return [];
       logError("block blame code vision failed", error, {
         path: document.uri.fsPath,
       });
       return [];
-    }
+    } finally { subscription.dispose(); }
   }
 
   /**
@@ -189,6 +195,7 @@ export class BlockBlameCodeLensController
       return;
     }
     const documents = this.cache.size;
+    for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     this.changeEmitter.fire();
     logInfo("block blame code vision cache refreshed", { reason, documents });
@@ -200,6 +207,7 @@ export class BlockBlameCodeLensController
       return;
     }
     this.disposed = true;
+    for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     this.skipLogs.clear();
     for (const disposable of this.disposables.splice(0)) {
@@ -214,7 +222,8 @@ export class BlockBlameCodeLensController
    * @returns 블록별 주요 작업자 snapshot
    */
   private getSnapshot(
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
+    signal?: AbortSignal
   ): Promise<BlockBlameSnapshot> {
     const key = document.uri.toString();
     const cached = this.cache.get(key);
@@ -223,18 +232,20 @@ export class BlockBlameCodeLensController
       cached.documentVersion === document.version &&
       cached.expiresAt > Date.now()
     ) {
-      return cached.promise;
+      return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
     }
 
-    const promise = this.loadSnapshot(document);
+    if (cached) void cached.read.dispose();
+    const read = new SharedGitRead(abort => this.loadSnapshot(document, abort), value => value);
     const entry: CachedSnapshot = {
       documentVersion: document.version,
       expiresAt: Date.now() + CACHE_TTL_MS,
-      promise,
+      read,
     };
     this.cache.set(key, entry);
+    const promise = read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
     void promise.catch(() => {
-      if (this.cache.get(key) === entry) {
+      if (this.cache.get(key) === entry && !entry.read.hasConsumers()) {
         this.cache.delete(key);
       }
     });
@@ -247,13 +258,15 @@ export class BlockBlameCodeLensController
    * @returns 현재 문서 버전에 해당하는 snapshot
    */
   private async loadSnapshot(
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
+    signal: AbortSignal
   ): Promise<BlockBlameSnapshot> {
     const version = document.version;
     const [service, blocks] = await Promise.all([
       this.registry.resolve(dirname(document.uri.fsPath)),
       readSourceBlocks(document),
     ]);
+    if (signal.aborted) throw new DOMException("Blame cancelled.", "AbortError");
     if (!service) {
       this.logSkip(document, "no-repository");
       return { documentVersion: version, summaries: [] };
@@ -265,7 +278,7 @@ export class BlockBlameCodeLensController
 
     const selectedBlocks = blocks.slice(0, MAX_BLOCKS_PER_DOCUMENT);
     const blame = await new GitBlameService(service.repoRoot).getFileBlame(
-      document.uri.fsPath
+      document.uri.fsPath, undefined, { signal }
     );
     const summaries = selectedBlocks
       .map((block) => summarizeBlockBlame(block, blame))
@@ -291,6 +304,7 @@ export class BlockBlameCodeLensController
     reason: string,
     emitChange = true
   ): void {
+    void this.cache.get(uri.toString())?.read.dispose();
     const removed = this.cache.delete(uri.toString());
     if (emitChange) {
       this.changeEmitter.fire();
@@ -311,6 +325,7 @@ export class BlockBlameCodeLensController
     const next = readBlockBlameVisibility();
     const changed = next !== this.visible;
     this.visible = next;
+    for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     void syncBlockBlameContext(next);
     this.changeEmitter.fire();
@@ -327,6 +342,7 @@ export class BlockBlameCodeLensController
     const now = Date.now();
     for (const [key, value] of this.cache) {
       if (value.expiresAt <= now) {
+        void value.read.dispose();
         this.cache.delete(key);
       }
     }

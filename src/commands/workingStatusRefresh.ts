@@ -1,17 +1,17 @@
 // Changes 작업 상태의 조회 source 선택, 최신성 검증, 통계 보강을 조립한다.
 // - VS Code Git의 빠른 snapshot과 실제 Git CLI SoT 사이의 동기화 경계를 한곳에서 관리한다.
 // - stage/commit 전 요청이 늦게 끝나 최신 UI를 덮지 않도록 repo/request/generation을 모두 확인한다.
-import type { GitService, StatusGroups } from "../git/gitService";
+import type { StatusGroups } from "../git/gitService";
 import { shouldComputeLineStats } from "../git/largeChangeSet";
 import { hasLineStatsWork } from "../git/statusStats";
 import {
-  StatusSourceFence,
   statusRefreshFreshness,
   type StatusRefreshFreshness,
 } from "../git/statusCache";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { directFileFallbackAction } from "../utils/extensionRefreshPolicy";
 import type { CommandDeps } from "./shared";
+import { statesByActivation, stateFor, cancelPendingStats, type WorkingStatusRefreshState, type WorkingStatusRequest, type StatusStatsRequest } from './workingStatusRefreshState';
 
 /** 작업 상태 refresh 호출자가 선택할 수 있는 source 정책. */
 export interface RefreshWorkingChangesOptions {
@@ -19,36 +19,6 @@ export interface RefreshWorkingChangesOptions {
   forceGit?: boolean;
   /** direct-file/provider/manual 원인을 구분해 지연 CLI fallback을 제어한다. */
   reason?: string;
-}
-
-/** 저장소 하나의 최신 요청, provider fence, 지연된 통계 작업을 묶은 상태. */
-interface WorkingStatusRefreshState {
-  requestId: number;
-  readonly providerFence: StatusSourceFence;
-  statsTimer?: ReturnType<typeof setTimeout>;
-  statsRunning?: Promise<void>;
-  pendingStats?: StatusStatsRequest;
-  fallbackTimer?: ReturnType<typeof setTimeout>;
-  lastApplied?: StatusGroups;
-}
-
-/** 실행 중 numstat 뒤에 합쳐 둘 최신 통계 보강 요청. */
-interface StatusStatsRequest {
-  request: WorkingStatusRequest;
-  groups: StatusGroups;
-  source: string;
-}
-
-/** refresh 한 번의 비동기 최신성 검사에 필요한 불변 토큰. */
-interface WorkingStatusRequest {
-  deps: CommandDeps;
-  root: string;
-  service: GitService;
-  state: WorkingStatusRefreshState;
-  requestId: number;
-  generation: number;
-  providerRevision?: number;
-  startedAt: number;
 }
 
 // 자체 Git mutation 직후에는 provider가 아직 옛 index를 들 수 있어 우선 CLI를 읽는다.
@@ -60,10 +30,7 @@ const STATUS_STATS_DEBOUNCE_MS = 300;
 const DIRECT_FILE_FALLBACK_GRACE_MS = 240;
 // 한 status 조회 중 여러 ref watcher가 cache generation을 바꿔도 현재 refresh가 SoT 적용을 마치게 한다.
 const STATUS_GENERATION_RETRY_LIMIT = 3;
-const statesByActivation = new WeakMap<
-  CommandDeps,
-  Map<string, WorkingStatusRefreshState>
->();
+
 
 /**
  * 활성 저장소의 작업 상태를 빠른 목록과 지연된 +/- 통계의 두 단계로 UI에 반영한다.
@@ -81,7 +48,7 @@ export async function refreshWorkingStatus(
 
 /**
  * activation 종료 시 아직 시작하지 않은 fallback/stats 작업을 모두 취소한다.
- * - 실행 중 read-only 통계는 강제 종료하지 않고 requestId를 올려 완료 결과와 queued 후속 작업만 폐기한다.
+ * - 공유 상태 참조와 실행 중 통계도 해제하고 queued 후속 작업을 폐기한다.
  * @param deps 종료하는 activation의 공유 의존성 identity
  */
 export function disposeWorkingStatusRefresh(deps: CommandDeps): void {
@@ -89,6 +56,7 @@ export function disposeWorkingStatusRefresh(deps: CommandDeps): void {
   if (!repositories) return;
   for (const [root, state] of repositories) {
     state.requestId++;
+    state.statusController?.abort();
     cancelDeferredGitFallback(state, root, "activation-disposed", false);
     cancelPendingStats(state);
   }
@@ -127,6 +95,8 @@ async function refreshWorkingStatusAttempt(
     refreshReason,
     fallbackAction === "schedule"
   );
+  state.statusController?.abort();
+  state.statusController = new AbortController();
   const requestId = ++state.requestId;
   cancelPendingStats(state);
   const service = deps.registry.get(root);
@@ -173,6 +143,7 @@ async function refreshWorkingStatusAttempt(
     const authoritative = await service.getStatusGroups({
       force: forceGit || !!providerGroups,
       includeStats: false,
+      signal: state.statusController?.signal,
     });
     if (!isCurrentRequest(request, "git-read")) {
       return retryAfterGenerationChange(request, generationRetry, "git-read");
@@ -456,7 +427,9 @@ function enqueueStatusStats(stats: StatusStatsRequest): void {
  */
 function startStatusStats(stats: StatusStatsRequest): void {
   const state = stats.request.state;
-  const running = enrichStatusStats(stats.request, stats.groups, stats.source);
+  const controller = new AbortController();
+  state.statsController = controller;
+  const running = enrichStatusStats(stats.request, stats.groups, stats.source, controller.signal);
   state.statsRunning = running;
   void running.finally(() => {
     if (state.statsRunning !== running) return;
@@ -478,10 +451,11 @@ function startStatusStats(stats: StatusStatsRequest): void {
 async function enrichStatusStats(
   request: WorkingStatusRequest,
   groups: StatusGroups,
-  source: string
+  source: string,
+  signal: AbortSignal
 ): Promise<void> {
   try {
-    const enriched = await request.service.addStatusStats(groups);
+    const enriched = await request.service.addStatusStats(groups, signal);
     if (!isCurrentRequest(request, "stats")) {
       return;
     }
@@ -564,39 +538,12 @@ function cloneGroups(groups: StatusGroups): StatusGroups {
   };
 }
 
-/** 활성화/deps와 저장소에 대응하는 최신성 상태를 반환한다. */
-function stateFor(
-  deps: CommandDeps,
-  root: string
-): WorkingStatusRefreshState {
-  let repositories = statesByActivation.get(deps);
-  if (!repositories) {
-    repositories = new Map();
-    statesByActivation.set(deps, repositories);
-  }
-  let state = repositories.get(root);
-  if (!state) {
-    state = { requestId: 0, providerFence: new StatusSourceFence() };
-    repositories.set(root, state);
-  }
-  return state;
-}
-
 /** 저장소가 사라졌을 때 해당 활성화의 진행 중 요청과 통계 timer를 모두 무효화한다. */
 function invalidateActivationRequests(deps: CommandDeps): void {
   for (const [root, state] of statesByActivation.get(deps) ?? []) {
     state.requestId++;
+    state.statusController?.abort();
     cancelDeferredGitFallback(state, root, "active-repository-missing", false);
     cancelPendingStats(state);
   }
-}
-
-/** 새 상태 요청을 시작하기 전에 아직 실행되지 않은 numstat 보강 timer를 취소한다. */
-function cancelPendingStats(state: WorkingStatusRefreshState): void {
-  if (state.statsTimer) {
-    clearTimeout(state.statsTimer);
-    state.statsTimer = undefined;
-  }
-  // 실행 중인 read-only Git은 강제 종료하지 않되, 아직 시작하지 않은 과거 요청은 최신 요청으로 대체한다.
-  state.pendingStats = undefined;
 }

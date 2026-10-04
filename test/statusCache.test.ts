@@ -135,7 +135,7 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     assert.equal(root, "/unused");
     assert.equal(args[0], "status");
     commands.push(args);
-    return " M tracked.txt\0";
+    return "1 .M N... 100644 100644 100644 1111111111111111111111111111111111111111 1111111111111111111111111111111111111111 tracked.txt\0";
   });
   const runnable = service as unknown as {
     run: (args: string[]) => Promise<string>;
@@ -165,7 +165,6 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
   // staged 가 비어 있으면 `diff --cached --numstat` 은 실행하지 않고 unstaged numstat 만 읽는다.
   assert.deepEqual(subcommands(), [
     "status",
-    "status",
     "diff",
   ]);
   assert.ok(!commands.some((args) => args.includes("--cached")));
@@ -177,7 +176,37 @@ test("includeStats false는 porcelain 한 번만 읽고 기본 조회는 통계�
     deletions: 0,
   });
   assert.deepEqual(await service.getStatusGroups(), withStats);
-  assert.equal(commands.length, 3, "통계를 포함한 완료 캐시는 status와 diff 모두 다시 실행하지 않는다");
+  assert.equal(commands.length, 2, "공유 목록과 통계 완료 캐시는 status와 diff를 다시 실행하지 않는다");
+});
+
+test("a signalled status caller cannot lend its cancellation to an unsignalled caller", async t => {
+  const service = new GitService("/independent-status-consumers"), controller = new AbortController();
+  const owned = deferred<StatusGroups>(), independent = deferred<StatusGroups>();
+  const readers = service as unknown as { readStatusGroups: (stats: boolean, options: { signal?: AbortSignal }) => Promise<StatusGroups> };
+  t.mock.method(readers, "readStatusGroups", (_stats, options) => {
+    if (!options.signal) return independent.promise;
+    options.signal.addEventListener("abort", () => owned.reject(new DOMException("cancelled", "AbortError")), { once: true });
+    return owned.promise;
+  });
+  const first = service.getStatusGroups({ includeStats: true, signal: controller.signal });
+  const second = service.getStatusGroups({ includeStats: true });
+  const cancelled = assert.rejects(first, { name: "AbortError" });
+  const secondResult = second.then(value => ({ value }), error => ({ error }));
+  controller.abort(); await cancelled;
+  independent.resolve({ staged: [], unstaged: [] });
+  assert.deepEqual(await secondResult, { value: { staged: [], unstaged: [] } });
+});
+
+test("a signalled forced refresh invalidates the previous unsignalled ready cache", async t => {
+  const service = new GitService("/forced-status-consumers"); let latest: StatusGroups = { staged: [], unstaged: [] };
+  const readers = service as unknown as { readStatusGroups: () => Promise<StatusGroups> };
+  t.mock.method(readers, "readStatusGroups", async () => structuredClone(latest));
+  await service.getStatusGroups({ maxCacheAgeMs: 60_000 });
+  latest = { staged: [], unstaged: [{ status: "M", path: "updated.txt" }] };
+  const generation = service.getStatusGeneration();
+  assert.deepEqual(await service.getStatusGroups({ force: true, signal: new AbortController().signal }), latest);
+  assert.equal(service.getStatusGeneration(), generation, "forced reads must preserve the UI request's mutation fence");
+  assert.deepEqual(await service.getStatusGroups({ maxCacheAgeMs: 60_000 }), latest);
 });
 
 test("provider 통계 보강 결과는 authoritative GitService 캐시를 오염시키지 않는다", async (t) => {

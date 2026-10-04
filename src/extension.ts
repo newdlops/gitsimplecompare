@@ -46,6 +46,8 @@ import { syncBuiltinGitContext, syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { registerViewConfigurationEvents } from "./ui/viewConfiguration";
 import { registerGitExecutableConfiguration } from "./ui/gitExecutableConfiguration";
+import { registerGitProcessManagement, shutdownGitProcessManagement } from "./ui/gitProcessSettings";
+import { createPublicGitStatusApi, publicGitStatusRoots, shutdownPublicGitStatusApi } from "./providers/publicGitStatusApi";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
 import { disposePullRequestDiffComments } from "./ui/pullRequestDiffComments";
 import { disposePullRequestQuickEdit } from "./ui/pullRequestQuickEdit";
@@ -198,12 +200,14 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   const repositorySkipLog = new RepositoryRefreshSkipFence();
   /** 현재 보이는 refresh 소비자들이 실제로 읽는 저장소 root만 provider 필터에 전달한다. */
   const relevantRepositoryRoots = (): (string | undefined)[] => [
+    ...publicGitStatusRoots(),
     changesView.isVisible() ? changesView.getActiveRepo() : undefined,
     comparison.enabled ? comparison.peekComparison()?.repoRoot : undefined,
     conflictsVisible ? conflicts.current?.repoRoot : undefined,
   ];
   const vscodeGitStatus = new VscodeGitStatusProvider((event) => {
     const { reason, repoRoot } = event;
+    if (repoRoot && publicGitStatusRoots().includes(repoRoot)) registry.invalidateStatusCache(repoRoot);
     const graphRoot = GitGraphPanel.getOpenRepositoryRoot();
     const route = routeRepositoryEvent(
       reason, repoRoot, relevantRepositoryRoots(), graphRoot);
@@ -255,6 +259,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       prCommentDecorations.invalidateCache(reason),
     comparison,
   };
+  context.subscriptions.push(registerGitProcessManagement(() => changesView.getActiveRepo()));
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
   }
@@ -490,20 +495,16 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     })
   );
   logInfo("extension activated");
-  return {
-    version: 1,
-    onDidChangeComparison: comparison.onDidChangeComparison,
-    getComparison: () => comparison.getPublicComparison(),
-  };
+  return createPublicGitStatusApi(context, comparison, root => { registry.get(root); });
 }
 /**
  * 확장이 비활성화될 때 호출된다.
  * - renderer에 주입된 native DOM과 debugger bridge는 비동기 정리가 끝날 때까지 기다린다.
  */
 export async function deactivate(): Promise<void> {
-  const overlay = activeNativeDiffOverlay;
-  activeNativeDiffOverlay = undefined;
-  await overlay?.shutdown();
+  const overlay = activeNativeDiffOverlay; activeNativeDiffOverlay = undefined;
+  shutdownPublicGitStatusApi();
+  await Promise.all([overlay?.shutdown(), shutdownGitProcessManagement()]);
 }
 /**
  * VS Code Git 상태 이벤트가 단순 작업파일 변경인지 ref/checkout 변경인지 가볍게 구분한다.

@@ -3,6 +3,9 @@
 // - cooldown 뒤 원래 설정을 다시 시도해 daemon이 복구되면 자동으로 빠른 경로로 돌아간다.
 import { GitError, GitCommandOutput, RunGitOptions, runGitDetailed } from "./gitExec";
 import { logWarn } from "../ui/outputLog";
+import { ensureOwnedFsmonitor } from "./ownedFsmonitor";
+import { isOwnedStatusIndex } from "./statusIndexOwnership";
+import { isGitLifecycleError } from "./gitError";
 
 const FSMONITOR_RETRY_MS = 5 * 60 * 1_000;
 const FSMONITOR_ERROR = /fsmonitor(?:_ipc__send_query|.*(?:ipc|daemon)).*(?:error|failed|unavailable)/i;
@@ -54,7 +57,7 @@ export class GitStatusFsMonitorGuard {
   ): Promise<string> {
     const readOptions: RunGitOptions = {
       ...options,
-      env: { ...options?.env, GIT_OPTIONAL_LOCKS: "0" },
+      env: { ...options?.env, GIT_OPTIONAL_LOCKS: options?.allowPrivateIndexWrites && isOwnedStatusIndex(options.env?.GIT_INDEX_FILE) ? "1" : "0" },
     };
     const fallbackActive = (this.disabledUntil.get(repoRoot) ?? 0) > this.now();
     const command = fallbackActive ? withoutFsMonitor(args) : args;
@@ -65,7 +68,7 @@ export class GitStatusFsMonitorGuard {
       }
       return result.stdout;
     } catch (error) {
-      if (fallbackActive || !hasFsMonitorFailure(gitErrorOutput(error))) throw error;
+      if (options?.signal?.aborted || isGitLifecycleError(error) || fallbackActive || !hasFsMonitorFailure(gitErrorOutput(error))) throw error;
       this.activate(repoRoot, gitErrorOutput(error));
       return (await this.runner(withoutFsMonitor(args), repoRoot, readOptions)).stdout;
     }
@@ -85,11 +88,12 @@ export class GitStatusFsMonitorGuard {
 const sharedGuard = new GitStatusFsMonitorGuard();
 
 /** 확장 전체의 고빈도 status 호출이 공유하는 fsmonitor-aware 실행 진입점이다. */
-export function runGitStatus(
+export async function runGitStatus(
   args: string[],
   repoRoot: string,
   options?: RunGitOptions
 ): Promise<string> {
+  if (!options?.env?.GIT_INDEX_FILE && !options?.env?.GIT_DIR && !options?.env?.GIT_WORK_TREE) await ensureOwnedFsmonitor(repoRoot);
   return sharedGuard.run(args, repoRoot, options);
 }
 

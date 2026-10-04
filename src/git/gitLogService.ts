@@ -4,7 +4,7 @@
 import { runGit } from "./gitExec";
 import { runGitWithRevisions } from "./revisionInput";
 import { logInfo } from "../ui/outputLog";
-import { parsePorcelainSummaryZ, parseRawNumstatZ } from "./diffParse";
+import { parseRawNumstatZ } from "./diffParse";
 import {
   Commit,
   CommitDetail,
@@ -17,7 +17,7 @@ import { GitBranchRefCache } from "./gitBranchRefCache";
 import { invalidateGitBranchListCaches } from "./gitBranchListCache";
 import { GitGraphActionService } from "./gitGraphActionService";
 import type { RevertCommitResult } from "./gitGraphActionService";
-import { runGitStatus } from "./gitStatusExec";
+import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
 import { readGraphLocalBranchSnapshot } from "./graphLocalBranches";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
 import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
@@ -53,6 +53,7 @@ export class GitLogService {
     this.localOnlyBranchCache = new GitLocalOnlyBranchCache(repoRoot);
     this.graphActions = new GitGraphActionService(repoRoot, () => {
       this.invalidateCaches();
+      invalidateWorkingTreeSnapshot(repoRoot);
       invalidateGitBranchListCaches(repoRoot);
     });
   }
@@ -218,9 +219,7 @@ export class GitLogService {
    * @param signal 숨김·교체된 Graph의 status 프로세스를 종료할 신호
    */
   async getVirtualCommits(signal?: AbortSignal): Promise<Commit[]> {
-    const { head, hasChanges } = parsePorcelainSummaryZ(await runGitStatus(
-      ["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z"], this.repoRoot, { signal }
-    ));
+    const { head, hasChanges } = await readWorkingTreeSnapshot(this.repoRoot, { signal });
     if (!hasChanges) {
       return [];
     }

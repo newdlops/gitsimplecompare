@@ -5,6 +5,26 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72074] - 2026-10-04
+
+### Added
+
+- Add user and workspace controls for idle Git cleanup, a configurable observed
+  idle interval, and a manual process picker. Automatic cleanup defaults to off;
+  verified inactive monitors stop through Git's official command while active
+  repositories, other windows, writes and unverified processes stay protected.
+- Add a configurable 30-second read-only Git deadline and optional shared status
+  API for compatible extensions, including Tab Manager.
+
+### Fixed
+
+- Cancel obsolete status, statistics and blame reads, wait for owned processes
+  and resistant children to close, and release subscriptions and private caches
+  when the extension shuts down.
+- Share status reads between Changes, Graph and external consumers. Use a private
+  index cache to reduce repeated file scans while preserving complete untracked
+  filenames, staged state and the real index.
+
 ## [0.1.72073] - 2026-10-04
 
 ### Fixed

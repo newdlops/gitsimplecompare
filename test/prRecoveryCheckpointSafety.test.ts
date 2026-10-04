@@ -16,9 +16,9 @@ test("off-branch Undo rejects a ref update between validation and the final writ
   const external = await git(root, "commit-tree", await git(root, "rev-parse", "HEAD^{tree}"), "-p", result.afterHead, "-m", "external commit");
   await git(root, "switch", "source");
   const plan = await service.prepareUndo("main");
-  const execute = cp.execFile;
+  const execute = cp.spawn;
   let injected = false;
-  t.mock.method(cp, "execFile", ((file: string, args: string[], ...rest: any[]) => {
+  t.mock.method(cp, "spawn", ((file: string, args: string[], ...rest: any[]) => {
     if (!injected && file === "git" && args[0] === "update-ref" && args.includes("refs/heads/main")) {
       injected = true;
       cp.execFileSync("git", ["update-ref", "refs/heads/main", external, result.afterHead], { cwd: root });

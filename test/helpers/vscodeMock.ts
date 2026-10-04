@@ -84,4 +84,8 @@ export const extensions = { getExtension: (_id: string): unknown => undefined };
 export const ProgressLocation = { Notification: 15 };
 export const env = { remoteName: undefined as string | undefined, openExternal: async (uri: unknown) => { __externalUris.push(uri); if (externalResult instanceof Error) throw externalResult; return externalResult; }, clipboard: { writeText: async (value: string) => { __clipboardWrites.push(value); } } };
 export class Range { public readonly values: unknown[]; public constructor(...values: unknown[]) { this.values = values; } } export class MarkdownString { public readonly value: unknown; public constructor(value: unknown) { this.value = value; } }
+/** CodeLens 수명 검사에서 표시 타입과 provider 등록 경계를 제공한다. */
+export class CodeLens { constructor(public readonly range: unknown, public readonly command?: unknown) {} }
+export const SymbolKind = { Variable: 12, Constant: 13, Function: 11, Method: 5, Constructor: 8, Class: 4, Interface: 10, Enum: 9, Struct: 22, Namespace: 2, Module: 1 };
+export const languages = { registerCodeLensProvider: () => ({ dispose() {} }) };
 export class ThemeColor { public constructor(..._values: unknown[]) {} } export const OverviewRulerLane = { Right: 1 }; export const DecorationRangeBehavior = { ClosedClosed: 1 }; export const TextEditorRevealType = { InCenterIfOutsideViewport: 1 }; export const comments = { createCommentController: () => ({ dispose() {} }) }; export const CommentThreadCollapsibleState = { Collapsed: 1 }; export const CommentMode = { Preview: 1 }; export const EndOfLine = { CRLF: 1 }; export class WorkspaceEdit { public replace(..._values: unknown[]) {} }
