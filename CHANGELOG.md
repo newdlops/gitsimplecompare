@@ -5,6 +5,22 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72075] - 2026-10-04
+
+### Fixed
+
+- Own newly needed builtin Git filesystem monitors independently of the idle
+  cleanup setting, wait for monitor/read process groups to close on shutdown,
+  and prevent a preparation finishing after disposal from spawning new work.
+- Fall back without starting an unmanaged daemon when monitor startup fails;
+  close monitors that never become ready and preserve explicit caller hooks.
+- Detect detached monitors with a home working directory, relative IPC sockets
+  and linked worktrees. Count auxiliary webviews as part of their Code window.
+- Let opt-in idle cleanup recover verified detached monitors from prior sessions;
+  recheck window/terminal use and bind official stop to the selected Git directory
+  without inheriting unrelated Git directory or socket settings.
+- Prevent creation of unmanaged filesystem monitors by new worktree operations.
+
 ## [0.1.72074] - 2026-10-04
 
 ### Added

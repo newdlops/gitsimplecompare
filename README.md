@@ -127,6 +127,12 @@ The same menu contains user and workspace automatic-cleanup toggles and
 interval to **5 minutes**, and checks run once per minute when enabled. Workspace
 and folder overrides take precedence over the user default.
 
+On macOS, new builtin filesystem monitors started by this extension run as owned
+foreground children and close with the extension, even when automatic cleanup
+is off. Enabling automatic cleanup also recovers verified detached monitors
+left by an earlier VS Code session after the observed idle interval. Open
+workspaces, terminals and active Git operations remain protected.
+
 Read-only Git commands have a configurable **30-second** deadline. Status and
 blame consumers share work, cancel obsolete reads, and release their private
 caches on shutdown. Complete working-tree status uses a private index so repeated
@@ -154,7 +160,7 @@ The UI defaults to **English**. When VS Code's display language is set to Korean
 | Setting | Default | Description |
 | --- | --- | --- |
 | `gitSimpleCompare.gitPath` | empty | Git executable name or absolute path; empty uses `git` from PATH. Supports user, workspace and folder overrides |
-| `gitSimpleCompare.gitProcessCleanup.enabled` | `false` | Automatically clean verified inactive extension-owned Git processes; supports user, workspace and folder overrides |
+| `gitSimpleCompare.gitProcessCleanup.enabled` | `false` | Clean unused owned reads and verified inactive Git monitors, including detached monitors from earlier sessions; supports user, workspace and folder overrides |
 | `gitSimpleCompare.gitProcessCleanup.idleMinutes` | `5` | Observed idle interval before cleanup, from 1 to 1440 minutes |
 | `gitSimpleCompare.gitReadTimeoutSeconds` | `30` | Read-only command deadline; 0 disables it. Writes and hooks are protected |
 | `gitSimpleCompare.workingTreeStatusCache` | `true` | Share complete status using an extension-owned private index cache |

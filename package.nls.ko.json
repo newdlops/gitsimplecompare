@@ -246,7 +246,7 @@
   "cmd.configureGitProcessCleanup.tooltip": "상속된 정리 설정을 확인하고 사용자 전역 또는 워크스페이스의 유휴 시간을 설정합니다",
   "cmd.cleanupIdleGitProcesses": "유휴 Git 프로세스 지금 정리…",
   "cmd.cleanupIdleGitProcesses.tooltip": "검증된 유휴 Git 프로세스를 선택해 종료합니다. 사용 중인 저장소와 쓰기 작업은 보호합니다",
-  "config.gitProcessCleanup.enabled.desc": "유휴 상태가 확인된 확장 소유 Git 프로세스를 자동 정리합니다. 진행 중인 작업·다른 창·소유권이 불명확한 프로세스는 유지합니다. 1분마다 확인합니다.",
+  "config.gitProcessCleanup.enabled.desc": "미사용 확장 소유 Git 조회와 이전 실행에서 남은 검증된 유휴 감시자를 자동 정리합니다. 진행 중인 작업·다른 창·신원이 불명확한 프로세스는 유지합니다. 1분마다 확인합니다.",
   "config.gitProcessCleanup.idleMinutes.desc": "정리 가능한 Git 감시 프로세스의 유휴 관찰 시간(분)입니다. CPU 사용량이나 프로세스 나이만으로 유휴를 판정하지 않습니다.",
   "config.gitReadTimeoutSeconds.desc": "조회 전용 Git 명령의 제한 시간(초)입니다. 취소·시간 초과 시 검증된 자식과 함께 종료합니다. 쓰기 작업과 훅은 보호합니다. 0이면 시간 제한을 해제합니다.",
   "config.workingTreeStatusCache.desc": "변경 목록·그래프·지원되는 확장이 private index 캐시의 작업 상태를 공유합니다. 전체 미추적 파일을 보존하며 실제 index는 수정하지 않습니다.",

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { GitError, runGit, runGitBuffer, runGitStream, runGitWithInput, type RunGitOptions } from "../src/git/gitExec";
+import { gitProcesses } from "../src/git/gitProcessRegistry";
 
 /** 실제로 SIGTERM을 무시하는 부모·자식을 만들며 실패한 테스트에서도 해당 PID만 회수한다. */
 async function stubbornGit(t: TestContext, leaderExits = false) {
@@ -90,5 +91,17 @@ test("read deadline does not interrupt a write or hook-capable command", async t
   await writeFile(executable, `#!${process.execPath}\nsetTimeout(() => process.stdout.write('done'), 150);\n`, { mode: 0o755 });
   for (const args of [["commit"], ["fetch"], ["push"], ["config", "core.fsmonitor", "false"], ["branch", "new-branch"]]) {
     assert.equal(await runGit(args, root, { executable, readTimeoutMs: 20 } as RunGitOptions), "done");
+  }
+});
+
+test("repeated extension sessions leave no owned foreground Git monitors after awaited dispose", { skip: process.platform === "win32" }, async t => {
+  for (let session = 0; session < 3; session++) {
+    const fixture = await stubbornGit(t);
+    const pending = runGit(["fsmonitor--daemon", "run", "--no-detach"], fixture.root, fixture);
+    const rejected = assert.rejects(bounded(pending), error => error instanceof GitError);
+    const pids = await waitForReady(fixture.ready), pid = pids[0];
+    assert.equal(gitProcesses.ownsMonitor(pid, fixture.root), true);
+    await gitProcesses.dispose(); await rejected;
+    for (const child of pids) assert.throws(() => process.kill(child, 0), { code: "ESRCH" });
   }
 });

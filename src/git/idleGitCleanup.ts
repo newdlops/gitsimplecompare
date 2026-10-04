@@ -7,7 +7,7 @@ export interface GitMonitorProcess {
   owned: boolean; protectedReason?: string;
 }
 /** 한 시점의 보호 판단을 함께 담아 불완전한 OS 관찰을 유휴로 오인하지 않는다. */
-export interface GitMonitorSnapshot { monitors: GitMonitorProcess[]; complete: boolean; reason?: string }
+export interface GitMonitorSnapshot { monitors: GitMonitorProcess[]; complete: boolean; reason?: string; observedCode?: ProcessIdentity[] }
 export interface IdleGitCandidate extends GitMonitorProcess { idleSince: number }
 export interface GitCleanupResult { stopped: number; kept: number; failed: number }
 
@@ -51,7 +51,8 @@ export class IdleGitCleanup {
       }
       const idleSince = Math.max(this.idle.get(key)!.at, this.deps.lastUsed(monitor.repoRoot) ?? 0);
       if (now - idleSince < Math.max(1, Math.min(1440, minutes)) * 60_000) continue;
-      if (automatic && (!monitor.owned || this.deps.enabled?.(monitor.repoRoot) === false)) continue;
+      // 이전 세션에 남은 같은 사용자의 detached daemon도 OS에서 모든 사용 보호를 검증한 경우만 회수한다.
+      if (automatic && ((!monitor.owned && monitor.identity.ppid !== 1) || this.deps.enabled?.(monitor.repoRoot) === false)) continue;
       result.push({ ...monitor, idleSince });
     }
     for (const key of this.idle.keys()) if (!seen.has(key)) this.idle.delete(key);

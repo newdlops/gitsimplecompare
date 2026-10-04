@@ -246,7 +246,7 @@
   "cmd.configureGitProcessCleanup.tooltip": "Show inherited cleanup settings and choose the user or workspace idle interval",
   "cmd.cleanupIdleGitProcesses": "Clean Idle Git Processes…",
   "cmd.cleanupIdleGitProcesses.tooltip": "Select verified idle Git processes to stop; active repositories and writes are protected",
-  "config.gitProcessCleanup.enabled.desc": "Automatically clean verified extension-owned Git processes after inactivity. Active work, other windows and unverified ownership are preserved. Checks run once per minute.",
+  "config.gitProcessCleanup.enabled.desc": "Clean unused owned Git reads and verified inactive monitors, including detached monitors from earlier sessions. Active work, other windows and unverified processes are preserved. Checks run once per minute.",
   "config.gitProcessCleanup.idleMinutes.desc": "Minutes of observed inactivity before an eligible Git monitor can be cleaned. CPU usage or process age alone does not count as idle.",
   "config.gitReadTimeoutSeconds.desc": "Time limit for read-only Git commands. Cancelled or timed-out reads are terminated with their verified children. Writes and hooks are protected. Use 0 to disable the deadline.",
   "config.workingTreeStatusCache.desc": "Share working-tree status between Changes, Graph and supported extensions using a private index cache. All untracked files are preserved; the real index is not modified.",

@@ -3,7 +3,6 @@
 // - cooldown 뒤 원래 설정을 다시 시도해 daemon이 복구되면 자동으로 빠른 경로로 돌아간다.
 import { GitError, GitCommandOutput, RunGitOptions, runGitDetailed } from "./gitExec";
 import { logWarn } from "../ui/outputLog";
-import { ensureOwnedFsmonitor } from "./ownedFsmonitor";
 import { isOwnedStatusIndex } from "./statusIndexOwnership";
 import { isGitLifecycleError } from "./gitError";
 
@@ -93,7 +92,6 @@ export async function runGitStatus(
   repoRoot: string,
   options?: RunGitOptions
 ): Promise<string> {
-  if (!options?.env?.GIT_INDEX_FILE && !options?.env?.GIT_DIR && !options?.env?.GIT_WORK_TREE) await ensureOwnedFsmonitor(repoRoot);
   return sharedGuard.run(args, repoRoot, options);
 }
 

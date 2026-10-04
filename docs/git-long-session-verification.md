@@ -49,3 +49,22 @@
 - 두 VSIX를 `code --install-extension … --force`로 설치했다. manifest 버전과 빌드·패키지·설치된 `dist/extension.js`의 SHA-256 일치를 확인했다.
 - 설치한 동일 VSIX를 `vsce publish --packagePath`로 배포했으며 두 버전의 성공 응답과 exit 0을 확인했다. TLS 검증을 유지하고 Node의 macOS system CA를 사용했다.
 - 현재 열린 사용자 창은 강제로 reload하지 않았다. 이미 활성화된 이전 코드를 교체하려면 사용자가 `Developer: Reload Window`를 한 번 실행해야 한다. Mac이나 보안 서비스를 재시작하는 단계는 아니다.
+
+## 0.1.72075 — 종료·재실행 때 Git 감시자 누적 수정
+
+실제 잔존 Git은 일반 status/commit/push가 아니라 분리된 `fsmonitor--daemon run --detach`였다. 이 감시자들은 cwd가 `/Users/lky`였으므로 기존의 “cwd가 저장소 안에 있어야 한다” 검사가 모두 제외했다. 상대 IPC 소켓을 사용하는 이전 시험 저장소도 실제 `.git/HEAD`와 소켓이 남아 있었으며, 삭제된 저장소라고 추정해 종료하지 않았다. 감시자가 연 worktree 디렉터리·소켓·Git marker/backlink로 저장소를 입증하도록 수정했다. 보조 webview renderer는 workbench와 같은 window config로 묶어 Code 창 수를 계산한다.
+
+확장이 새로 시작하는 builtin 감시자는 자동 정리 옵션과 별개로 직접 소유한 foreground 자식이 된다. 모든 공통 Git 실행 경로에 준비를 연결하고 정상 종료 때 조회·감시자·검증된 자식의 close를 기다린다. 준비 실패·불명확한 별도 Git directory·다른 worktree 생성은 최종 command-scope 설정으로 detached 자동 시작을 우회한다. 명시적 사용자 hook과 마지막 config override는 보존한다. 준비가 끝나지 않는 감시자는 close 후 fallback하며, IPC 오류나 timeout은 반복해 시작 대기를 늘리지 않는다. 이미 실행 중인 외부 감시자 준비는 5초 동안 공유한다.
+
+자동 정리를 켜면 같은 사용자의 검증된 PPID 1 감시자도 연속 유휴 관찰 후 회수한다. 최종 stop 직전에 PID·사용자·시작 시각·실행 파일·소켓·저장소·새 Code 창·terminal cwd·Git 작업을 다시 확인한다. 공식 stop은 선택한 Git directory와 socket directory에 고정하고 상속 `GIT_*` 환경을 제거한다. 확장 소유권은 생성 시 기록한 realpath 증거로 `/var`와 `/private/var` 별칭도 검증한다.
+
+- 최종 전체 Node 회귀: 916 passed, 0 failed, 0 skipped. 기록: `/private/tmp/gsc-restart-full-tests-final.log`.
+- 최종 집중 검사: 58 passed, 0 failed, 0 skipped. 종료·PID/소켓 재사용·active Code/terminal·상속 Git 환경·hook·config 우선순위·worktree 생성·never-ready/IPC 실패·상태 목록/index 보존을 포함한다. 타입 검사와 diff check도 통과했다. Production 빌드와 0.1.72075 VSIX 패키징도 exit 0으로 완료했다.
+- 실제 native Git 세션을 세 번 시작·종료했다. 각 세션의 foreground 감시자가 제품 검사에서 owned로 확인됐고 dispose 완료 뒤 잔여 프로세스는 매번 0개였다. 기록: `/private/tmp/gsc-real-restart-lifecycle.json`.
+- 제품의 유휴 서비스로 실제 대상 네 개를 5분 이상 연속 관찰하고 공식 stop으로 종료했다. 당시 Git은 21개에서 17개로 줄었으며 대상 PID 잔존 0, 실패 0이었다. 나머지 17개는 열린 Code 창·터미널이 있는 저장소라 보호했다. 기록: `/private/tmp/gsc-restart-actual-cleanup.json`.
+- 한 번의 독립 검토에서 Important 네 개(never-ready 잔존, 설정 범위/hook 보존, 최종 사용 재검증, 상속 환경 redirect)를 발견했다. 각각 실패 재현 후 수정했으며 최종 검사를 통과했다. 수정 후 별도 재검토를 반복하지 않았다.
+- 사용자 전역 `gitSimpleCompare.gitProcessCleanup.enabled=true`, 유휴 기준 5분을 적용했다. JSONC 주석과 다른 설정을 보존했으며 변경 전 파일을 `/private/tmp/gsc-settings-before-72075.jsonc`에 백업했다. 제품 기본값 off와 기존 workspace/folder override는 유지한다.
+
+이번 검증에는 추가 VS Code 시험 창이나 실제 사용자 창의 반복 종료·재실행을 사용하지 않았다. 정상 Host 종료 경계와 native Git 자식의 반복 수명은 검증했으나 부모가 SIGKILL로 강제 종료되는 경우에는 다음 세션의 opt-in 유휴 정리가 검증된 잔존 감시자를 회수한다. 일반적으로 소유권을 알 수 없는 Git을 CPU 0%나 나이만으로 종료하지 않는다. 이 수정으로 시스템 swap이나 보안 계층의 Git 실행 대기를 해결했다고 주장하지 않는다.
+
+0.1.72075 VSIX를 사용자 VS Code에 설치했고 manifest 버전 및 빌드·VSIX·설치된 `dist/extension.js`의 SHA-256 일치를 확인했다(`7e3b465b6ff471704edfd35c860019731765cfa9dc7d96b26c55cb61e6ba81ac`). 설치된 동일 VSIX의 SHA-256은 `53da15c6e2df3725858d57e784e1db0053dbe395d114a45e2bbfc015aa3c0c25`이며 기록은 `/private/tmp/gsc-release-72075-verification.json`에 보관했다. 이미 활성화된 창의 새 코드 적용에는 `Developer: Reload Window`가 한 번 필요하다.

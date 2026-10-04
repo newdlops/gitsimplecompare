@@ -8,6 +8,15 @@ import type { RunGitOptions, GitInput } from "./gitExec";
 /** 설정 계층이 Git 조회 제한 시간만 주입하는 순수 실행 정책 경계다. */
 export type GitReadTimeoutResolver = (cwd: string) => number;
 let timeoutResolver: GitReadTimeoutResolver | undefined;
+interface PreparedGitProcess { options: RunGitOptions; args?: string[] }
+type GitProcessPreparation = (args: readonly string[], cwd: string, options: RunGitOptions) => Promise<PreparedGitProcess>;
+let preparation: GitProcessPreparation | undefined;
+
+/** Git/OS 정책이 실행 직전의 환경만 준비하게 하며 UI·설정 접근은 실행기에 넣지 않는다. */
+export function setGitProcessPreparation(prepare: GitProcessPreparation): () => void {
+  preparation = prepare;
+  return () => { if (preparation === prepare) preparation = undefined; };
+}
 
 /** 저장소별 설정 연결을 해제할 때 더 최근 등록을 유지한다. */
 export function setGitReadTimeoutResolver(resolver: GitReadTimeoutResolver): () => void {
@@ -28,8 +37,12 @@ export interface GitProcessOutput { stdout: Buffer; stderr: Buffer }
  * @param onData 존재하면 stdout을 모으지 않고 스트림으로 소비한다.
  * @returns close 확인 뒤 성공 출력 또는 GitError
  */
-export function executeGitProcess(executable: string, args: string[], cwd: string, options: RunGitOptions,
+export async function executeGitProcess(executable: string, args: string[], cwd: string, options: RunGitOptions,
   input?: GitInput, onData?: (chunk: Buffer) => void): Promise<GitProcessOutput> {
+  if (!options.signal?.aborted && preparation) {
+    const prepared = await preparation(args, cwd, { ...options, executable });
+    options = prepared.options; args = prepared.args ?? args;
+  }
   return new Promise((resolve, reject) => {
     const policy = gitCommandPolicy(args);
     if (options.signal?.aborted) { reject(executionError("ABORT_ERR", "Git command cancelled.")); return; }
@@ -37,10 +50,12 @@ export function executeGitProcess(executable: string, args: string[], cwd: strin
       reject(executionError("GIT_READ_STOPPING", "A previous Git read is still stopping. See Git Simple Compare Output.")); return;
     }
     const timeout = options.readTimeoutMs ?? timeoutResolver?.(cwd) ?? 30_000;
-    const group = policy.readOnly && process.platform !== "win32";
+    const group = (policy.readOnly || policy.monitor === true) && process.platform !== "win32";
     const timing = beginGitExecution(args, cwd, executable);
+    const env = options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
+    if (env) for (const name of options.clearEnv ?? []) delete env[name];
     const child = spawn(executable, args, { cwd, windowsHide: true, detached: group, stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
-      env: options.env ? { ...process.env, ...options.env } : undefined });
+      env });
     timing?.spawnReturned();
     const id = gitProcesses.register(child, cwd, policy.command, policy.readOnly, group, policy.monitor);
     const stdout: Buffer[] = [], stderr: Buffer[] = [];
@@ -51,7 +66,7 @@ export function executeGitProcess(executable: string, args: string[], cwd: strin
     /** 실패·취소를 한 번만 기록한다. 쓰기는 호출자가 명시한 취소 때만 기존처럼 TERM한다. */
     const stop = (error: unknown, reason: string) => {
       failure ??= error;
-      if (policy.readOnly) void gitProcesses.requestStop(id, reason);
+      if (policy.readOnly || policy.monitor) void gitProcesses.requestStop(id, reason);
       else if (!closed) child.kill("SIGTERM");
     };
     /** 소비자 취소를 실제 실행 수명에 연결하고 추가 재시도를 차단한다. */

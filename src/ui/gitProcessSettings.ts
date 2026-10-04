@@ -50,7 +50,9 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
     const seconds = configuration(cwd).get<number>("gitReadTimeoutSeconds", 30);
     return Number.isFinite(seconds) ? Math.max(0, Math.min(3600, seconds)) * 1000 : 30_000;
   });
-  const resetMonitor = setOwnedFsmonitorPolicy(enabled, logInfo);
+  const resetMonitor = setOwnedFsmonitorPolicy(logInfo);
+  const hostExit = () => gitProcesses.stopOnHostExit();
+  process.once("exit", hostExit);
   const resetBlame = setBlameReadCancellationPolicy(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true));
   const resetStatusPolicy = setWorkingTreeSnapshotPolicy(repo => ({ useCache: configuration(repo).get<boolean>("workingTreeStatusCache", true),
     cancelUnused: configuration(repo).get<boolean>("cancelUnusedGitReads", true) }), logInfo);
@@ -179,11 +181,12 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
   /** timer·구독을 먼저 멈춘 뒤 소유 조회 종료와 캐시 삭제를 같은 완료 Promise로 묶는다. */
   const dispose = () => {
     if (disposed) return; disposed = true;
-    clearTimeout(observation); scheduler.dispose(); service.reset(); gitProcesses.dispose();
-    shutdown = Promise.all([disposeWorkingTreeSnapshots(), disposeSharedBlameReads()]).then(() => undefined);
+    clearTimeout(observation); scheduler.dispose(); service.reset(); resetMonitor();
+    shutdown = Promise.all([gitProcesses.dispose(), disposeWorkingTreeSnapshots(), disposeSharedBlameReads()])
+      .then(() => undefined).finally(() => process.removeListener("exit", hostExit));
     void shutdown.catch(() => undefined);
     for (const subscription of subscriptions) subscription.dispose();
-    resetTimeout(); resetMonitor(); resetLogger(); resetStatusPolicy(); resetBlame();
+    resetTimeout(); resetLogger(); resetStatusPolicy(); resetBlame();
   };
   activeShutdown = async () => { dispose(); await shutdown; };
   return { dispose };

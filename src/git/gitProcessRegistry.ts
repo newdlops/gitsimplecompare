@@ -1,5 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import path from "node:path";
+import { realpathSync } from "node:fs";
 import { readProcessIdentities, sameProcess, type ProcessIdentity } from "./processIdentity";
 
 /** 민감한 Git 인자 없이 프로세스 정리 상태를 기록하는 주입 경계다. */
@@ -9,6 +10,7 @@ export interface OwnedGitProcess {
   readOnly: boolean; monitor?: boolean; state: "running" | "stopping"; stoppingAt?: number;
 }
 interface ProcessRecord extends OwnedGitProcess {
+  canonicalRoot?: string;
   child: ChildProcess; group: boolean; reason?: string; members?: ProcessIdentity[];
   killTimer?: ReturnType<typeof setTimeout>; stopping?: Promise<void>;
   directClosed?: boolean; completion: Promise<void>; complete: () => void;
@@ -43,7 +45,9 @@ export class GitProcessRegistry {
     let complete!: () => void;
     const completion = new Promise<void>(resolve => { complete = resolve; });
     this.activity.set(root, Date.now());
-    this.records.set(id, { id, child, repoRoot: root, command, readOnly, group, monitor, pid: child.pid, startedAt: Date.now(), state: "running", completion, complete });
+    let canonicalRoot: string | undefined;
+    if (monitor) try { canonicalRoot = realpathSync.native(root); } catch { /* 경로 증거가 없으면 별칭 소유권을 추측하지 않는다. */ }
+    this.records.set(id, { id, child, repoRoot: root, canonicalRoot, command, readOnly, group, monitor, pid: child.pid, startedAt: Date.now(), state: "running", completion, complete });
     return id;
   }
 
@@ -77,10 +81,10 @@ export class GitProcessRegistry {
   /** 필요 없어진 조회만 TERM→KILL로 종료한다. 진행 중 쓰기는 별도의 명시적 취소만 처리한다. */
   requestStop(id: number, reason: string): Promise<void> {
     const record = this.records.get(id);
-    if (!record || !record.readOnly) return Promise.resolve();
+    if (!record || (!record.readOnly && !record.monitor)) return Promise.resolve();
     if (record.stopping) return record.stopping;
     record.state = "stopping"; record.stoppingAt = Date.now(); record.reason = reason;
-    this.log("git read termination requested", { ...this.detail(record), reason });
+    this.log("git owned process termination requested", { ...this.detail(record), reason });
     record.stopping = this.terminate(record);
     return record.stopping;
   }
@@ -93,12 +97,13 @@ export class GitProcessRegistry {
 
   /** 진행 중 조회·쓰기가 해당 저장소 또는 하위 경로를 사용하는지 확인한다. */
   isBusy(repoRoot: string): boolean {
-    return [...this.records.values()].some(record => !record.monitor && containsPath(repoRoot, record.repoRoot));
+    return [...this.records.values()].some(record => !record.monitor && containsPath(this.knownCanonicalRoot(repoRoot), this.knownCanonicalRoot(record.repoRoot)));
   }
 
   /** 포그라운드로 직접 생성해 child 객체를 보유한 감시자만 자동 정리 소유권을 인정한다. */
   ownsMonitor(pid: number, repoRoot: string): boolean {
-    return [...this.records.values()].some(record => record.monitor && record.pid === pid && record.repoRoot === path.resolve(repoRoot) && this.leaderAlive(record));
+    return [...this.records.values()].some(record => record.monitor && record.pid === pid
+      && (record.repoRoot === path.resolve(repoRoot) || record.canonicalRoot === path.resolve(repoRoot)) && this.leaderAlive(record));
   }
 
   /** 이미 소비자가 해제된 읽기에만 종료를 재시도하고 실제 close가 확인된 경우 true를 반환한다. */
@@ -113,14 +118,34 @@ export class GitProcessRegistry {
   }
 
   /** 마지막 실제 Git 사용 시각을 반환한다. 한 번도 사용하지 않은 저장소는 알 수 없음이다. */
-  lastUsed(repoRoot: string): number | undefined { return this.activity.get(path.resolve(repoRoot)); }
+  lastUsed(repoRoot: string): number | undefined {
+    const root = this.knownCanonicalRoot(repoRoot);
+    const times = [...this.activity].filter(([item]) => this.knownCanonicalRoot(item) === root).map(([, time]) => time);
+    return times.length ? Math.max(...times) : undefined;
+  }
+
+  /** 직접 소유한 감시자의 최초 realpath 증거만 써 /var·symlink 별칭의 활동 기록을 합친다. */
+  private knownCanonicalRoot(repoRoot: string): string {
+    const root = path.resolve(repoRoot);
+    return [...this.records.values()].find(record => record.monitor && record.repoRoot === root)?.canonicalRoot ?? root;
+  }
 
   /** 최근 사용한 저장소 목록으로 자동 정리의 범위를 제한한다. */
   roots(): string[] { return [...this.activity.keys()]; }
 
-  /** 확장 종료 때 필요한 조회를 모두 해제하지만 쓰기·hook의 수명은 바꾸지 않는다. */
-  dispose(): void {
-    for (const record of this.records.values()) if (record.readOnly) void this.requestStop(record.id, "extension-dispose");
+  /** 확장 종료 때 소유 조회·감시자의 실제 close까지 기다리며 쓰기·hook은 보호한다. */
+  async dispose(): Promise<void> {
+    const owned = [...this.records.values()].filter(record => record.readOnly || record.monitor);
+    await Promise.all(owned.map(async record => { await this.requestStop(record.id, "extension-dispose"); await record.completion; }));
+  }
+
+  /** 정상 Host exit의 동기 경계에서는 직접 소유한 살아 있는 child/group에만 TERM을 전달한다. */
+  stopOnHostExit(): void {
+    for (const record of this.records.values()) {
+      if ((!record.readOnly && !record.monitor) || !this.leaderAlive(record)) continue;
+      try { if (record.group && record.pid) process.kill(-record.pid, "SIGTERM"); else record.child.kill("SIGTERM"); }
+      catch { /* OS가 이미 종료한 직접 자식에는 추가 신호를 보내지 않는다. */ }
+    }
   }
 
   /** 최초 그룹 검증이 실패하면 소유한 child만 종료하고 불확실한 다른 PID는 보호한다. */
@@ -159,7 +184,7 @@ export class GitProcessRegistry {
           try { process.kill(member.pid, "SIGKILL"); } catch { /* 조회 뒤 자연 종료한 구성원이다. */ }
         }
       } else if (this.leaderAlive(record)) record.child.kill("SIGKILL");
-      this.log("git read forced termination requested", this.detail(record));
+      this.log("git owned process forced termination requested", this.detail(record));
     } catch {
       if (this.leaderAlive(record)) record.child.kill("SIGKILL");
       this.log("git descendant ownership unavailable", this.detail(record));

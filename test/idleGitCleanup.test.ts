@@ -20,13 +20,20 @@ function setup(owned = true, beforeStop?: (canStop: () => boolean) => Promise<vo
     setLastUsed: (value: number) => { lastUsed = value; }, snapshot };
 }
 
-test("automatic cleanup waits for observed inactivity and leaves unowned monitors for manual selection", async () => {
+test("opt-in automatic cleanup recovers detached monitors left by a previous VS Code session", async () => {
   const fixture = setup(false);
   assert.deepEqual(await fixture.service.candidates(5), []);
   fixture.setNow(300001);
   assert.equal((await fixture.service.candidates(5)).length, 1);
-  assert.deepEqual(await fixture.service.candidates(5, true), []);
+  assert.equal((await fixture.service.candidates(5, true)).length, 1);
   assert.equal(fixture.stopped.length, 0);
+});
+
+test("an unowned foreground monitor remains protected from automatic cleanup", async () => {
+  const fixture = setup(false); fixture.snapshot.monitors[0].identity.ppid = 99;
+  await fixture.service.candidates(1); fixture.setNow(61000);
+  assert.equal((await fixture.service.candidates(1)).length, 1);
+  assert.deepEqual(await fixture.service.candidates(1, true), []);
 });
 
 test("a write starting during OS revalidation preserves the selected monitor", async () => {

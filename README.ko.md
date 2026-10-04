@@ -103,6 +103,14 @@ AI Plan 실행 중 커밋이 실패하면 해당 커밋 번호의 실패 상세 
 
 커밋 hook이 커밋을 거부하면 ESLint, TypeScript, Ruff, Prettier, pre-commit, Husky와 일반 파일 검사 출력을 커밋 입력창 아래에 표시합니다. 보고된 파일을 클릭해 해당 행을 열고 수정·스테이징한 뒤 **커밋 다시 시도**를 누를 수 있습니다. **전체 출력 보기**는 생략하지 않은 프로세스 출력을 `Git Simple Compare` OUTPUT 채널에서 엽니다.
 
+### 유휴 Git 정리와 종료 시 프로세스 회수
+
+**변경 파일 → … → 유휴 Git 프로세스 정리…**에서 정리 가능한 프로세스를 선택할 수 있습니다. 같은 메뉴의 사용자 전역·워크스페이스 자동 정리 옵션과 유휴 시간 설정을 사용하면, 이전 VS Code 실행에서 남은 감시자도 연속 유휴 관찰 후 회수합니다. 자동 정리는 기본 꺼짐이며 유휴 시간은 기본 **5분**, 확인 주기는 **1분**입니다. 워크스페이스·폴더 설정은 사용자 전역 설정보다 우선합니다.
+
+macOS에서 확장이 새로 띄우는 Git 파일 감시자는 자동 정리 설정과 관계없이 확장이 직접 소유하고 종료 때 회수합니다. 열린 VS Code 창·터미널·진행 중인 Git 작업과 사용 여부를 확인할 수 없는 프로세스는 보호합니다. CPU 0%나 오래 실행됐다는 이유만으로 종료하지 않습니다. 정리·보호·실패 기록은 **Git Simple Compare OUTPUT**에서 확인할 수 있습니다.
+
+조회 명령은 기본 **30초** 제한과 취소를 적용하며 쓰기·hook은 보호합니다. 공유 상태 조회와 private index 캐시는 실제 staged 상태를 바꾸지 않고 중복 작업을 줄입니다. Tab Manager 0.1.6619 이상도 같은 조회를 공유합니다. 이 기능은 확장이 만드는 작업을 줄이며 시스템 메모리 압력이나 OS 실행 지연은 별도 영향을 줄 수 있습니다.
+
 ### 좌→우 반영
 
 파일↔브랜치 diff 가 활성화되면 에디터 제목 표시줄에 **좌측 내용을 우측에 반영**(→) 버튼이 나타납니다. 작업 파일 전체를 브랜치 버전으로 교체하며, 에디터 편집으로 적용되므로 저장 전에 검토·실행취소·수정할 수 있습니다.
@@ -116,6 +124,11 @@ UI 기본 언어는 **영어**입니다. VS Code 표시 언어를 한국어(`ko`
 | 설정 | 기본값 | 설명 |
 | --- | --- | --- |
 | `gitSimpleCompare.gitPath` | 빈 값 | Git 실행 파일 이름 또는 절대 경로. 비우면 PATH의 `git` 사용. 사용자 전역·워크스페이스·폴더별 설정 지원 |
+| `gitSimpleCompare.gitProcessCleanup.enabled` | `false` | 미사용 소유 조회와 이전 실행에서 남은 검증된 유휴 감시자 자동 정리. 사용자 전역·워크스페이스·폴더별 설정 지원 |
+| `gitSimpleCompare.gitProcessCleanup.idleMinutes` | `5` | 정리 전 연속 유휴 관찰 시간. 1~1440분 |
+| `gitSimpleCompare.gitReadTimeoutSeconds` | `30` | 조회 명령 제한 시간. 0은 제한 없음. 쓰기·hook은 보호 |
+| `gitSimpleCompare.workingTreeStatusCache` | `true` | 확장 소유 private index 캐시로 전체 변경 상태 조회 공유 |
+| `gitSimpleCompare.cancelUnusedGitReads` | `true` | 마지막 소비자가 사라지면 공유 상태·blame 조회 취소 |
 | `gitSimpleCompare.diffBase` | `twoDot` | 브랜치 비교 기준 (`twoDot`=직접 비교, `threeDot`=공통 조상 기준) |
 | `gitSimpleCompare.includeRemoteBranches` | `true` | 브랜치 선택 목록에 원격 브랜치 포함 여부 |
 | `gitSimpleCompare.blameBlock.show` | `true` | 소스 블록 선언 위에 클릭 가능한 작업자 Code Vision 표시 |

@@ -6,7 +6,6 @@ import { runGit, withGitConfigOverrides } from "./gitExec";
 import { isGitLifecycleError } from "./gitError";
 import { runGitStatus } from "./gitStatusExec";
 import { registerStatusIndex } from "./statusIndexOwnership";
-import { ensureOwnedFsmonitor } from "./ownedFsmonitor";
 import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "./workingTreeStatusFormat";
 
 /** 실제 index를 복사하되 모든 상태 캐시 쓰기를 확장 소유 디렉터리로만 보내는 저장소별 캐시다. */
@@ -26,7 +25,6 @@ export class PrivateStatusIndex {
    */
   async read(signal: AbortSignal, useCache = true): Promise<WorkingTreeSnapshot> {
     if (signal.aborted) throw new DOMException("Git read cancelled.", "AbortError");
-    await ensureOwnedFsmonitor(this.root);
     if (!useCache || process.env.GIT_INDEX_FILE || process.env.GIT_DIR || process.env.GIT_WORK_TREE
       || await stat(path.join(this.root, ".gitmodules")).then(() => true, () => false)) return this.authoritative(signal);
     try {

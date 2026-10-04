@@ -7,14 +7,8 @@ export interface GitCommandPolicy { command: string; readOnly: boolean; monitor?
  * @returns 시간 제한·자동 종료를 적용해도 되는 조회인지와 민감하지 않은 명령 이름
  */
 export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
-  const withValue = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
-  let index = 0;
-  for (; index < args.length; index++) {
-    if (withValue.has(args[index])) { index++; continue; }
-    if (args[index] === "--version" || args[index] === "--exec-path") return { command: "version", readOnly: true };
-    if (args[index].startsWith("-")) continue;
-    break;
-  }
+  const index = gitCommandIndex(args);
+  if (args[index] === "--version" || args[index] === "--exec-path") return { command: "version", readOnly: true };
   const command = args[index] ?? "unknown", rest = args.slice(index + 1);
   const safeName = /^[a-z][a-z0-9-]*$/.test(command) ? command : "unknown";
   const reads = new Set(["status", "log", "show", "diff", "diff-files", "diff-index", "diff-tree", "rev-parse",
@@ -31,4 +25,17 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
     && !rest.some(value => ["--delete", "-d"].includes(value));
   if (command === "fsmonitor--daemon") readOnly = rest[0] === "status";
   return { command: safeName, readOnly, ...(command === "fsmonitor--daemon" && rest[0] === "run" && rest.includes("--no-detach") ? { monitor: true } : {}) };
+}
+
+/** 전역 옵션의 값과 하위 명령/파일명을 구분해 안전한 명령 범위 override 삽입 위치를 반환한다. */
+export function gitCommandIndex(args: readonly string[]): number {
+  const withValue = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
+  let index = 0;
+  for (; index < args.length; index++) {
+    if (withValue.has(args[index])) { index++; continue; }
+    if (args[index] === "--version" || args[index] === "--exec-path") return index;
+    if (args[index].startsWith("-")) continue;
+    break;
+  }
+  return index;
 }
