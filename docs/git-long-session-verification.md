@@ -68,3 +68,7 @@
 이번 검증에는 추가 VS Code 시험 창이나 실제 사용자 창의 반복 종료·재실행을 사용하지 않았다. 정상 Host 종료 경계와 native Git 자식의 반복 수명은 검증했으나 부모가 SIGKILL로 강제 종료되는 경우에는 다음 세션의 opt-in 유휴 정리가 검증된 잔존 감시자를 회수한다. 일반적으로 소유권을 알 수 없는 Git을 CPU 0%나 나이만으로 종료하지 않는다. 이 수정으로 시스템 swap이나 보안 계층의 Git 실행 대기를 해결했다고 주장하지 않는다.
 
 0.1.72075 VSIX를 사용자 VS Code에 설치했고 manifest 버전 및 빌드·VSIX·설치된 `dist/extension.js`의 SHA-256 일치를 확인했다(`7e3b465b6ff471704edfd35c860019731765cfa9dc7d96b26c55cb61e6ba81ac`). 설치된 동일 VSIX의 SHA-256은 `53da15c6e2df3725858d57e784e1db0053dbe395d114a45e2bbfc015aa3c0c25`이며 기록은 `/private/tmp/gsc-release-72075-verification.json`에 보관했다. 이미 활성화된 창의 새 코드 적용에는 `Developer: Reload Window`가 한 번 필요하다.
+
+구현 커밋 `9dfdd90`을 origin/main에 푸시했다. 설치된 동일 0.1.72075 VSIX로 `vsce publish --packagePath`를 실행해 published 성공 응답과 exit 0을 확인했다. TLS 검증을 유지하며 Node system CA를 사용했다.
+
+2026-10-04 10:08:31 UTC에 [공개 Marketplace manifest](https://newdlops.gallery.vsassets.io/_apis/public/gallery/publisher/newdlops/extension/gitsimplecompare/0.1.72075/assetbyname/Microsoft.VisualStudio.Code.Manifest)의 HTTP 200과 name/publisher/version 일치를 확인했다. 공개 반영 기록은 `/private/tmp/gsc-marketplace-72075-verification.json`에 보관했다.

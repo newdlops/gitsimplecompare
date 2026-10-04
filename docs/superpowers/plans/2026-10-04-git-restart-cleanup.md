@@ -50,8 +50,8 @@
 
 - [x] 실제 설치된 창·터미널과 unused daemon 매핑을 확인하고 검증 가능한 대상만 정리한다.
 - [x] 전체 Node 회귀, build, scoped review를 확인한다.
-- [ ] 버전 0.1.72075 패키지·설치·커밋·푸시·vsce publish를 진행한다(기존 사용자 승인).
-- [ ] 설치 artifact/배포 manifest 및 검증 범위를 기록한다.
+- [x] 버전 0.1.72075 패키지·설치·커밋·푸시·vsce publish를 진행한다(기존 사용자 승인).
+- [x] 설치 artifact/배포 manifest 및 검증 범위를 기록한다.
 
 ## Progress
 
@@ -66,3 +66,5 @@
 - Final focused verification: 58 passed / 0 failed / 0 skipped, 타입 검사·diff check 통과. handshake IPC 오류를 반복 대기하지 않는 검사도 수정 전 실패·수정 후 통과했다. 기록: `/private/tmp/gsc-restart-final-focused.log`.
 - User settings: 사용자 전역 `gitSimpleCompare.gitProcessCleanup.enabled=true`, 유휴 기준 5분. JSONC 주석과 다른 설정을 보존했고 변경 전 파일은 `/private/tmp/gsc-settings-before-72075.jsonc`에 백업했다. 제품 기본값 off와 기존 workspace/folder override는 유지한다.
 - Final whole-suite verification: 마지막 handshake 수정까지 반영해 전체 Node 916 passed / 0 failed / 0 skipped, production 빌드·VSIX 패키징 exit 0. 전체 기록: `/private/tmp/gsc-restart-full-tests-final.log`.
+- Release: 구현 커밋 `9dfdd90`을 origin/main에 푸시했다. 0.1.72075 VSIX 설치와 빌드·패키지·설치 binary SHA-256 일치를 확인했다. 설치한 동일 VSIX로 `vsce publish --packagePath`를 실행했고 published 성공 응답/exit 0을 확인했다.
+- Task 3 complete: 2026-10-04 10:08:31 UTC에 공개 Marketplace manifest HTTP 200 및 `newdlops/gitsimplecompare/0.1.72075` 일치를 확인했다. 기록: `/private/tmp/gsc-marketplace-72075-verification.json`. 추가 VS Code 창·Mac/SentinelOne 재시작 없이 완료했다. 기존 열린 창에는 한 번의 `Developer: Reload Window`가 필요하다.
