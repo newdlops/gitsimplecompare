@@ -6,6 +6,8 @@ import { readProcessIdentities, sameProcess, type ProcessIdentity } from "./proc
 import { runGit, type RunGitOptions } from "./gitExec";
 import type { GitMonitorSnapshot, IdleGitCandidate } from "./idleGitCleanup";
 import { forgetPreparedFsmonitor } from "./ownedFsmonitor";
+import os from "node:os";
+import { SharedMonitorInspection } from "./sharedMonitorInspection";
 
 interface OpenPath { pid: number; file: string }
 
@@ -36,6 +38,11 @@ const systemInspection: GitMonitorInspectionDeps = {
  */
 export async function inspectGitMonitors(protectedRoots: readonly string[], deps: GitMonitorInspectionDeps = systemInspection): Promise<GitMonitorSnapshot> {
   if (deps.platform !== "darwin" || deps.uid === undefined) return { complete: false, monitors: [], reason: "unsupported-monitor-ownership-platform" };
+  const started = Date.now(); let stage = "processes";
+  /** 병렬 OS 조회도 실제 실패한 경계를 보존하고 다른 조회의 성공으로 덮어쓰지 않는다. */
+  const atStage = async <T>(name: string, action: () => Promise<T>): Promise<T> => {
+    try { return await action(); } catch (error) { throw { stage: name, cause: error }; }
+  };
   try {
     const processes = await deps.processes();
     const ownedUser = processes.filter(item => item.uid === deps.uid);
@@ -43,14 +50,15 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     if (!git.length) return { complete: true, monitors: [] };
     const code = ownedUser.filter(item => /Visual Studio Code|Code Helper|VSCodium/.test(item.executable));
     const [cwdOutput, socketOutput, codeOutput] = await Promise.all([
-      deps.openPaths(["-u", String(deps.uid), "-d", "cwd"]),
-      deps.openPaths(["-a", "-p", git.map(item => item.pid).join(","), "-U"]),
-      code.length ? deps.openPaths(["-a", "-p", code.map(item => item.pid).join(",")]) : Promise.resolve(""),
+      atStage("working-directories", () => deps.openPaths(["-a", "-u", String(deps.uid), "-d", "cwd"])),
+      atStage("git-sockets", () => deps.openPaths(["-a", "-p", git.map(item => item.pid).join(","), "-U"])),
+      code.length ? atStage("code-open-files", () => deps.openPaths(["-a", "-p", code.map(item => item.pid).join(",")])) : Promise.resolve(""),
     ]);
     const workingDirectories = parseLsofPaths(cwdOutput);
     const sockets = parseLsofPaths(socketOutput).filter(item => item.file.endsWith("/fsmonitor--daemon.ipc"));
     const relativePids = relativeSocketPids(socketOutput);
     if (relativePids.length) {
+      stage = "relative-git-sockets";
       const open = parseLsofPaths(await deps.openPaths(["-a", "-p", relativePids.join(",")]));
       for (const pid of relativePids) {
         const possible = new Set<string>();
@@ -83,6 +91,7 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     }
     const rendererPids = code.filter(item => /Code Helper \(Renderer\)|VSCodium Helper \(Renderer\)/.test(item.executable)).map(item => item.pid);
     // 웹뷰는 별도 renderer라도 같은 window-config를 상속한다. renderer 개수로 창을 세면 정상 매핑도 항상 불완전해진다.
+    stage = "code-window-identities";
     const windowCount = await deps.windowCount(rendererPids);
     if (code.length && (!workspaceFiles.length || windowCount === undefined || workspaceFiles.length < windowCount)) return { complete: false, monitors: [], reason: "code-window-usage-unavailable" };
     // cwd 밖의 --git-dir/환경으로 쓰는 Git도 보호한다. 저장소를 입증하지 못한 일반 Git이 있으면 모든 감시자 정리를 보류한다.
@@ -103,11 +112,39 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
       monitors.push({ identity, repoRoot: root, socket: socket.file, socketIdentity,
         owned: deps.owned(identity.pid, root), protectedReason: usedByCode ? "open-code-workspace-or-document" : usedByProcess ? "active-terminal-or-process" : otherGitActive ? "other-git-process-active" : undefined });
     }
+    stage = "final-process-identities";
     const latest = await deps.processes();
     if (latest.some(item => item.uid === deps.uid && /Visual Studio Code|Code Helper|VSCodium/.test(item.executable)
       && !code.some(before => sameProcess(before, item)))) return { complete: false, monitors: [], reason: "code-window-usage-changed" };
-    return { complete: true, observedCode: code, monitors: monitors.filter(item => sameProcess(item.identity, latest.find(current => current.pid === item.identity.pid))) };
-  } catch { return { complete: false, monitors: [], reason: "process-or-socket-inspection-unavailable" }; }
+    return { complete: true, observedCode: code, monitors: monitors.filter(item => sameProcess(item.identity, latest.find(current => current.pid === item.identity.pid))), diagnostic: { elapsedMs: Date.now() - started } };
+  } catch (error) {
+    const wrapped = error as { stage?: string; cause?: unknown };
+    const cause = (wrapped?.cause ?? error) as { code?: unknown; killed?: boolean; signal?: string };
+    const code = typeof cause?.code === "string" && /^[A-Z0-9_]+$/.test(cause.code) ? cause.code : typeof cause?.code === "number" ? `EXIT_${cause.code}` : "INSPECTION_ERROR";
+    return { complete: false, monitors: [], reason: "process-or-socket-inspection-unavailable", diagnostic: {
+      stage: wrapped?.stage ?? stage, code, timedOut: code === "ETIMEDOUT" || !!cause?.killed, elapsedMs: Date.now() - started,
+    } };
+  }
+}
+
+let sharedInspection: SharedMonitorInspection | undefined;
+
+/**
+ * 유휴 후보 관찰만 창 사이에서 공유하고 소비 시 현재 창의 소유권·보호 경로를 다시 적용한다.
+ * @param protectedRoots 이 창에서 열린 저장소와 문서. 다른 창의 설정/소유권과 섞지 않는다.
+ * @returns 최대 15초 완료 관찰. 실제 stop은 inspectGitMonitors로 새 관찰을 수행한다.
+ */
+export async function readSharedGitMonitorInspection(protectedRoots: readonly string[]): Promise<GitMonitorSnapshot> {
+  if (process.platform !== "darwin" || process.getuid?.() === undefined) return inspectGitMonitors(protectedRoots);
+  sharedInspection ??= new SharedMonitorInspection(path.join(os.tmpdir(), `gitsimplecompare-monitor-inspection-v1-${process.getuid!()}`),
+    () => inspectGitMonitors([], { ...systemInspection, owned: () => false }));
+  return applyLocalMonitorProtection(await sharedInspection.read(), protectedRoots, systemInspection.owned);
+}
+
+/** 공유된 OS 관찰은 변경하지 않고 현재 창의 활성 경로와 소유 프로세스만 새 결과에 덧붙인다. */
+export function applyLocalMonitorProtection(snapshot: GitMonitorSnapshot, protectedRoots: readonly string[], owned: GitMonitorInspectionDeps["owned"]): GitMonitorSnapshot {
+  return { ...snapshot, monitors: snapshot.monitors.map(item => ({ ...item, owned: owned(item.identity.pid, item.repoRoot),
+    protectedReason: protectedRoots.some(root => containsPath(root, item.repoRoot) || containsPath(item.repoRoot, root)) ? "open-code-workspace-or-document" : item.protectedReason })) };
 }
 
 /** 실행 옵션 전체는 보관/로그하지 않고 동일 창을 나타내는 window-config 식별자 개수만 반환한다. */
@@ -136,7 +173,7 @@ export async function stopGitMonitor(candidate: IdleGitCandidate, canStop: () =>
   const target = snapshot.monitors.find(item => sameProcess(candidate.identity, item.identity) && item.repoRoot === candidate.repoRoot
     && item.socket === candidate.socket && item.socketIdentity === candidate.socketIdentity);
   if (!snapshot.complete || !target || target.protectedReason) throw new DOMException("Repository use changed before stop.", "AbortError");
-  const cwd = parseLsofPaths(await deps.openPaths(["-u", String(deps.uid), "-d", "cwd"]));
+  const cwd = parseLsofPaths(await deps.openPaths(["-a", "-u", String(deps.uid), "-d", "cwd"]));
   const latest = await deps.processes();
   const before = latest.find(item => item.pid === candidate.identity.pid);
   const socketIdentity = await deps.socketIdentity(candidate.socket);

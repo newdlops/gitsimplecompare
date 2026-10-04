@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import path from "node:path";
 import { IdleGitCleanup, type IdleGitCandidate, type GitCleanupResult } from "../git/idleGitCleanup";
-import { inspectGitMonitors, stopGitMonitor } from "../git/gitMonitorInspection";
+import { readSharedGitMonitorInspection, stopGitMonitor } from "../git/gitMonitorInspection";
 import { gitProcesses, type OwnedGitProcess } from "../git/gitProcessRegistry";
 import { GitCleanupScheduler } from "../git/gitCleanupScheduler";
 import { setGitReadTimeoutResolver } from "../git/gitProcessRunner";
@@ -56,7 +56,11 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
   const resetBlame = setBlameReadCancellationPolicy(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true));
   const resetStatusPolicy = setWorkingTreeSnapshotPolicy(repo => ({ useCache: configuration(repo).get<boolean>("workingTreeStatusCache", true),
     cancelUnused: configuration(repo).get<boolean>("cancelUnusedGitReads", true) }), logInfo);
-  const service = new IdleGitCleanup({ inspect: () => inspectGitMonitors(protectedPaths()), stop: (candidate, canStop) => stopGitMonitor(candidate,
+  const service = new IdleGitCleanup({ inspect: async () => {
+    const snapshot = await readSharedGitMonitorInspection(protectedPaths());
+    if (snapshot.complete) logInfo("git monitor inspection completed", { ...snapshot.diagnostic, monitors: snapshot.monitors.length });
+    return snapshot;
+  }, stop: (candidate, canStop) => stopGitMonitor(candidate,
     () => canStop() && Date.now() - Math.max(candidate.idleSince, gitProcesses.lastUsed(candidate.repoRoot) ?? 0) >= idleMinutes(candidate.repoRoot) * 60_000, protectedPaths),
     busy: repo => gitProcesses.isBusy(repo), lastUsed: repo => gitProcesses.lastUsed(repo), enabled, log: logInfo });
   let manualBusy = false, settingsBusy = false, disposed = false;

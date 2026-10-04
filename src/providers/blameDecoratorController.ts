@@ -53,6 +53,17 @@ export class BlameDecoratorController implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor(() =>
         this.scheduleRefresh("activeEditor")
       ),
+      vscode.window.onDidChangeWindowState(state => {
+        if (state.focused) {
+          this.scheduleRefresh("windowFocused");
+          logInfo("blame line decoration resumed", { reason: "window-focused" });
+        } else {
+          this.requestSeq++; this.readController?.abort();
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+          this.refreshTimer = undefined;
+          logInfo("blame line decoration suspended", { reason: "window-unfocused" });
+        }
+      }),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (isActiveDocument(document)) {
           this.scheduleRefresh("documentSaved");
@@ -200,7 +211,7 @@ export class BlameDecoratorController implements vscode.Disposable {
    * @param reason refresh 를 예약한 이벤트 이름
    */
   private scheduleRefresh(reason: string): void {
-    if (!this.state.lineVisible || this.disposed) {
+    if (!this.state.lineVisible || this.disposed || !vscode.window.state.focused) {
       return;
     }
     const requestId = ++this.requestSeq;
@@ -223,6 +234,7 @@ export class BlameDecoratorController implements vscode.Disposable {
     reason: string,
     requestId: number
   ): Promise<void> {
+    if (this.disposed || !vscode.window.state.focused || requestId !== this.requestSeq) return;
     const editor = vscode.window.activeTextEditor;
     this.clearVisibleDecorations();
     if (!this.state.lineVisible || !editor || !this.decoration) {
@@ -238,7 +250,7 @@ export class BlameDecoratorController implements vscode.Disposable {
     }
 
     const service = await this.registry.resolve(dirname(editor.document.uri.fsPath));
-    if (requestId !== this.requestSeq || !this.state.lineVisible) {
+    if (requestId !== this.requestSeq || !this.state.lineVisible || !vscode.window.state.focused) {
       return;
     }
     if (!service) {
@@ -252,7 +264,7 @@ export class BlameDecoratorController implements vscode.Disposable {
       const blame = await new GitBlameService(service.repoRoot).getFileBlame(
         editor.document.uri.fsPath, undefined, { signal: controller.signal }
       );
-      if (requestId !== this.requestSeq || !this.state.lineVisible) {
+      if (requestId !== this.requestSeq || !this.state.lineVisible || !vscode.window.state.focused) {
         return;
       }
       editor.setDecorations(
@@ -266,6 +278,7 @@ export class BlameDecoratorController implements vscode.Disposable {
         lineVisible: this.state.lineVisible,
       });
     } catch (error) {
+      if (requestId !== this.requestSeq || this.readController?.signal.aborted || this.disposed) return;
       logInfo("blame decorator failed", {
         reason,
         message: error instanceof Error ? error.message : String(error),

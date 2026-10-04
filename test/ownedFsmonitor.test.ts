@@ -139,3 +139,14 @@ test("a broken handshake stops retrying instead of adding ten more Git startup d
   const pid = Number(await readFile(f.ready, "utf8"));
   assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
+
+test("reference and remote-reference queries do not prepare an index monitor", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "never-ready");
+  t.after(() => gitProcesses.dispose());
+  for (const args of [["show-ref", "--verify", "--quiet", "refs/stash"], ["reflog", "show", "refs/stash"],
+    ["reflog", "list"], ["ls-remote", "--tags", "origin"], ["check-ref-format", "refs/tags/release"]]) {
+    assert.equal(await runGit(args, f.root), "inherited", `${args[0]} must not override monitor config for an index-free read`);
+  }
+  await assert.rejects(readFile(f.preparing), { code: "ENOENT" });
+  await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});

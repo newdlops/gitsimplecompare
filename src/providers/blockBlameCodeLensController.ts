@@ -7,6 +7,7 @@ import {
   type BlockBlameSummary,
 } from "../git/blockBlameModel";
 import { GitBlameService } from "../git/blameService";
+import { readBlameCacheIdentity } from "../git/blameCacheIdentity";
 import { SharedGitRead } from "../git/sharedGitRead";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo } from "../ui/outputLog";
@@ -29,6 +30,9 @@ interface BlockBlameSnapshot {
   documentVersion: number;
   /** 선언 위치 순서로 정렬된 블록별 작업자 요약 */
   summaries: BlockBlameSummary[];
+  /** 완료 snapshot도 다음 viewport에서 실제 HEAD/index/파일 버전을 확인한다. */
+  repoRoot?: string;
+  cacheIdentity?: string;
 }
 
 /** 같은 문서에 들어오는 여러 viewport 요청이 한 Git 프로세스를 공유하기 위한 캐시 항목. */
@@ -39,6 +43,8 @@ interface CachedSnapshot {
   expiresAt: number;
   /** 진행 중 조회까지 공유하는 snapshot promise */
   read: SharedGitRead<BlockBlameSnapshot>;
+  repoRoot?: string;
+  cacheIdentity?: string;
 }
 
 /** 반복 viewport 요청이 같은 skip 로그를 쏟지 않게 하는 최근 로그 정보. */
@@ -66,6 +72,7 @@ export class BlockBlameCodeLensController
   private visible = readBlockBlameVisibility();
   private registered = false;
   private disposed = false;
+  private readonly readControllers = new Set<AbortController>();
 
   /**
    * 저장소 탐색 레지스트리를 주입받아 문서별 GitBlameService 를 지연 생성한다.
@@ -84,6 +91,7 @@ export class BlockBlameCodeLensController
     this.registered = true;
     this.disposables.push(
       vscode.languages.registerCodeLensProvider({ scheme: "file" }, this),
+      vscode.window.onDidChangeWindowState(state => this.handleWindowFocus(state.focused)),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (document.uri.scheme === "file") {
           this.invalidateDocument(document.uri, "documentSaved");
@@ -128,7 +136,7 @@ export class BlockBlameCodeLensController
     document: vscode.TextDocument,
     token: vscode.CancellationToken
   ): Promise<vscode.CodeLens[]> {
-    if (!this.visible || token.isCancellationRequested) {
+    if (this.disposed || !this.visible || !vscode.window.state.focused || token.isCancellationRequested) {
       return [];
     }
     if (document.uri.scheme !== "file") {
@@ -141,6 +149,7 @@ export class BlockBlameCodeLensController
     }
 
     const controller = new AbortController();
+    this.readControllers.add(controller);
     const subscription = token.onCancellationRequested(() => controller.abort());
     if (token.isCancellationRequested) controller.abort();
     try {
@@ -149,6 +158,7 @@ export class BlockBlameCodeLensController
         token.isCancellationRequested ||
         document.version !== snapshot.documentVersion ||
         document.isDirty ||
+        !vscode.window.state.focused ||
         !this.visible
       ) {
         return [];
@@ -162,7 +172,21 @@ export class BlockBlameCodeLensController
         path: document.uri.fsPath,
       });
       return [];
-    } finally { subscription.dispose(); }
+    } finally { subscription.dispose(); this.readControllers.delete(controller); }
+  }
+
+  /** focus를 잃으면 표시 소비자만 취소하고 복귀 시 최신 HEAD/문서로 CodeLens를 다시 요청한다. */
+  private handleWindowFocus(focused: boolean): void {
+    if (this.disposed) return;
+    if (!focused) {
+      for (const controller of this.readControllers) controller.abort();
+      logInfo("block blame code vision suspended", { reason: "window-unfocused", reads: this.readControllers.size });
+    } else {
+      const hadCache = this.cache.size > 0;
+      this.refresh("windowFocused");
+      if (!hadCache) this.changeEmitter.fire();
+      logInfo("block blame code vision resumed", { reason: "window-focused" });
+    }
   }
 
   /**
@@ -207,6 +231,8 @@ export class BlockBlameCodeLensController
       return;
     }
     this.disposed = true;
+    for (const controller of this.readControllers) controller.abort();
+    this.readControllers.clear();
     for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     this.skipLogs.clear();
@@ -221,7 +247,7 @@ export class BlockBlameCodeLensController
    * @param document blame 과 언어 심볼을 결합할 저장된 문서
    * @returns 블록별 주요 작업자 snapshot
    */
-  private getSnapshot(
+  private async getSnapshot(
     document: vscode.TextDocument,
     signal?: AbortSignal
   ): Promise<BlockBlameSnapshot> {
@@ -232,11 +258,20 @@ export class BlockBlameCodeLensController
       cached.documentVersion === document.version &&
       cached.expiresAt > Date.now()
     ) {
-      return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
+      if (cached.read.hasConsumers() || !cached.repoRoot) return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
+      const identity = await readBlameCacheIdentity(cached.repoRoot, document.uri.fsPath);
+      if (signal?.aborted) throw new DOMException("Blame cancelled.", "AbortError");
+      // 같은 오래된 완료 값을 검사하던 다른 viewport가 먼저 새 세대를 만들었으면 그 조회를 공유한다.
+      if (this.cache.get(key) !== cached) return this.getSnapshot(document, signal);
+      if (identity && identity === cached.cacheIdentity) return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
     }
 
     if (cached) void cached.read.dispose();
-    const read = new SharedGitRead(abort => this.loadSnapshot(document, abort), value => value);
+    const read = new SharedGitRead(async abort => {
+      const value = await this.loadSnapshot(document, abort);
+      entry.repoRoot = value.repoRoot; entry.cacheIdentity = value.cacheIdentity;
+      return value;
+    }, value => value);
     const entry: CachedSnapshot = {
       documentVersion: document.version,
       expiresAt: Date.now() + CACHE_TTL_MS,
@@ -266,7 +301,7 @@ export class BlockBlameCodeLensController
       this.registry.resolve(dirname(document.uri.fsPath)),
       readSourceBlocks(document),
     ]);
-    if (signal.aborted) throw new DOMException("Blame cancelled.", "AbortError");
+    if (signal.aborted || !vscode.window.state.focused) throw new DOMException("Blame cancelled.", "AbortError");
     if (!service) {
       this.logSkip(document, "no-repository");
       return { documentVersion: version, summaries: [] };
@@ -277,6 +312,7 @@ export class BlockBlameCodeLensController
     }
 
     const selectedBlocks = blocks.slice(0, MAX_BLOCKS_PER_DOCUMENT);
+    const cacheIdentity = await readBlameCacheIdentity(service.repoRoot, document.uri.fsPath);
     const blame = await new GitBlameService(service.repoRoot).getFileBlame(
       document.uri.fsPath, undefined, { signal }
     );
@@ -290,7 +326,7 @@ export class BlockBlameCodeLensController
       truncated: blocks.length > selectedBlocks.length,
       blameLines: blame.length,
     });
-    return { documentVersion: version, summaries };
+    return { documentVersion: version, summaries, repoRoot: service.repoRoot, cacheIdentity };
   }
 
   /**

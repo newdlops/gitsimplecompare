@@ -38,7 +38,11 @@ export function __setInformationMessageResult(result: string | undefined): void 
 export function __setQuickPickResult(result: unknown | ((items: readonly unknown[]) => unknown)): void { quickPickResult = result; }
 
 export const window = {
+  state: { focused: true },
+  activeTextEditor: undefined as any,
   visibleTextEditors: [] as any[],
+  onDidChangeWindowState: (_callback: (state: { focused: boolean }) => void) => ({ dispose() {} }),
+  onDidChangeActiveTextEditor: (_callback: (editor: any) => void) => ({ dispose() {} }),
   createOutputChannel: () => ({
     append(value: string) { __outputLines.push(value); },
     appendLine(value: string) { __outputLines.push(value); },
@@ -76,7 +80,12 @@ export const authentication = {
 };
 export class EventEmitter<T = unknown> { public event = () => ({ dispose() {} }); public fire(_value: T) {} public dispose() {} }
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
-export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}) };
+export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}),
+  onDidSaveTextDocument: (_callback: (document: any) => void) => ({ dispose() {} }),
+  onDidChangeTextDocument: (_callback: (event: any) => void) => ({ dispose() {} }),
+  onDidCloseTextDocument: (_callback: (document: any) => void) => ({ dispose() {} }),
+  onDidChangeConfiguration: (_callback: (event: any) => void) => ({ dispose() {} }),
+};
 export const ViewColumn = { Active: 1 };
 export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
 /** 내장 Git API 사용 여부를 provider 테스트가 선택할 수 있게 하는 확장 조회 경계다. */

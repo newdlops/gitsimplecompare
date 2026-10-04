@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { inspectGitMonitors, stopGitMonitor, parseCodeWindowCount, type GitMonitorInspectionDeps } from "../src/git/gitMonitorInspection";
+import { inspectGitMonitors, stopGitMonitor, parseCodeWindowCount, applyLocalMonitorProtection, type GitMonitorInspectionDeps } from "../src/git/gitMonitorInspection";
 import type { ProcessIdentity } from "../src/git/processIdentity";
 
 /** 홈 cwd로 분리된 Git 감시자와 OS 경계만 재현하고 제품의 저장소/사용 판정은 그대로 실행한다. */
@@ -135,4 +135,42 @@ test("a Code window or terminal appearing after the first stop inspection preven
     await assert.rejects(stopGitMonitor(candidate, () => true, () => [], f.deps), { name: "AbortError" });
     assert.equal(stopped, false);
   }
+});
+
+test("cwd inspection intersects user and descriptor selections instead of protecting every open file", async () => {
+  const f = fixture();
+  const original = f.deps.openPaths;
+  f.deps.openPaths = async args => args.includes("-d") && !args.includes("-a")
+    ? `p77\0\nfcwd\0n/Users/test\0\np88\0\nf9\0n${f.root}/old-file.txt\0\n` : original(args);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.monitors[0].protectedReason, undefined);
+});
+
+test("incomplete inspection retains a safe stage and error code without leaking command output", async () => {
+  const f = fixture();
+  f.deps.openPaths = async args => {
+    if (args.includes("-U")) throw Object.assign(new Error("private argv and repository details"), { code: "ETIMEDOUT", killed: true });
+    return "";
+  };
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, false);
+  assert.deepEqual(snapshot.monitors, []);
+  const diagnostic = (snapshot as unknown as { diagnostic: { stage: string; code: string; timedOut: boolean } }).diagnostic;
+  assert.equal(diagnostic?.stage, "git-sockets");
+  assert.equal(diagnostic?.code, "ETIMEDOUT");
+  assert.equal(diagnostic?.timedOut, true);
+  assert.doesNotMatch(JSON.stringify(snapshot), /private argv/);
+});
+
+test("shared observations apply each window's ownership and protection independently", async () => {
+  const f = fixture(), shared = await inspectGitMonitors([], f.deps);
+  const first = applyLocalMonitorProtection(shared, [f.root], () => true);
+  const second = applyLocalMonitorProtection(shared, [], () => false);
+  assert.equal(first.monitors[0].owned, true);
+  assert.equal(first.monitors[0].protectedReason, "open-code-workspace-or-document");
+  assert.equal(second.monitors[0].owned, false);
+  assert.equal(second.monitors[0].protectedReason, undefined);
+  assert.equal(shared.monitors[0].owned, false);
+  assert.equal(shared.monitors[0].protectedReason, undefined);
 });

@@ -5,6 +5,20 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72076] - 2026-10-04
+
+### Changed
+
+- Skip filesystem-monitor preparation for stash reflog, reference, remote-tag
+  and ref-name queries. Treat these queries as cancellable reads while keeping
+  reflog writes protected.
+- Share idle-monitor OS inspection between Code windows, reduce lsof working
+  directory output, back off after incomplete inspection, and log the failing
+  inspection stage. Official monitor stop still checks fresh process/socket use.
+- Reuse blame for unchanged file, HEAD and index identities for up to one minute,
+  including linked worktrees. Limit retained result memory and cancel display
+  consumers while the Code window is unfocused; resume with fresh CodeLens state.
+
 ## [0.1.72075] - 2026-10-04
 
 ### Fixed

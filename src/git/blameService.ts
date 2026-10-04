@@ -5,6 +5,7 @@ import * as path from "node:path";
 import { stat } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
 import { readSharedBlame } from "./sharedBlameReads";
+import { readBlameCacheIdentity } from "./blameCacheIdentity";
 
 /** git blame 한 줄에 대응하는 커밋/작성자 메타데이터. */
 export interface GitBlameLine {
@@ -68,8 +69,9 @@ export class GitBlameService {
     args.push("--", rel);
     if (options.signal?.aborted) throw new DOMException("Git blame cancelled.", "AbortError");
     const file = path.resolve(this.repoRoot, rel);
-    const disk = await stat(file).catch(() => undefined);
-    const key = JSON.stringify([this.repoRoot, file, normalizedRange, disk?.size, disk?.mtimeMs, disk?.ctimeMs]);
+    const identity = await readBlameCacheIdentity(this.repoRoot, file);
+    const disk = identity ? undefined : await stat(file).catch(() => undefined);
+    const key = JSON.stringify([this.repoRoot, file, normalizedRange, identity, disk?.size, disk?.mtimeMs, disk?.ctimeMs]);
     return readSharedBlame(this.repoRoot, key, async signal => {
       try {
         const out = await runGit(args, this.repoRoot, { signal });
@@ -78,7 +80,7 @@ export class GitBlameService {
         if (error instanceof GitError && isExpectedBlameMiss(error)) return [];
         throw error;
       }
-    }, options.signal);
+    }, options.signal, identity ? 60_000 : 0);
   }
 
   /**

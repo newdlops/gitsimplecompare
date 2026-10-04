@@ -72,3 +72,19 @@
 구현 커밋 `9dfdd90`을 origin/main에 푸시했다. 설치된 동일 0.1.72075 VSIX로 `vsce publish --packagePath`를 실행해 published 성공 응답과 exit 0을 확인했다. TLS 검증을 유지하며 Node system CA를 사용했다.
 
 2026-10-04 10:08:31 UTC에 [공개 Marketplace manifest](https://newdlops.gallery.vsassets.io/_apis/public/gallery/publisher/newdlops/extension/gitsimplecompare/0.1.72075/assetbyname/Microsoft.VisualStudio.Code.Manifest)의 HTTP 200과 name/publisher/version 일치를 확인했다. 공개 반영 기록은 `/private/tmp/gsc-marketplace-72075-verification.json`에 보관했다.
+
+## 0.1.72076 — 참조 준비·OS 검사·blame 중복 조회 절감
+
+`show-ref`, `reflog` 조회, `ls-remote`, `check-ref-format`는 index를 읽지 않으므로 실행 전에 config/status/fsmonitor를 준비하지 않는다. reflog 쓰기와 기존 쓰기/hook 보호는 유지한다.
+
+Git 감시자 후보 검사는 사용자별 임시 snapshot과 단일 lease로 Code 창 사이에서 공유한다. 성공 관찰은 시작 시각부터 15초 재사용하고 실패는 1/2/4/8분으로 재시도 간격을 늘린다. 기다리는 요청은 30초 상한에서 불완전 관찰로 정리를 보류한다. 공유 결과에는 창별 소유권·보호 경로를 따로 적용하며 실제 종료는 항상 새로운 OS 검사와 PID·소켓·사용 상태 재검증을 거친다. lsof cwd 조회에 AND 조건을 적용해 일반 열린 파일을 cwd로 오인하던 문제도 수정했다. 실패 로그에는 단계·코드·timeout·시간을 남긴다.
+
+blame은 Git 명령 없이 확인한 파일·HEAD·index·관련 metadata가 같으면 최대 60초 재사용한다. linked/detached/unborn HEAD와 packed refs를 처리하며 식별 불가 metadata와 reftable은 완료 캐시를 우회한다. 완료 결과는 LRU 128개·추정 16MiB 범위로 관리한다. 비활성 창에서는 신규 decoration/CodeLens 조회를 건너뛰고 진행 중 표시 소비자를 취소하며 focus가 돌아오면 최신 identity를 확인해 다시 표시한다.
+
+- 최종 전체 Node 검사: 937 passed, 0 failed, 0 skipped, exit=0, 537575.392ms. `/private/tmp/gsc-optimization-full-tests-final.log`.
+- 최종 관련 검사: 52 passed, 0 failed, 0 skipped. 타입 검사·production bundle·diff check·0.1.72076 VSIX 패키징 통과. 초기 전체 검사 timeout과 이후 `/dev/null` 설정 identity의 두 실패는 계획의 ledger에 별도로 남겼으며 원인을 재현해 수정한 뒤 최종 전체 결과를 확인했다.
+- 독립 reviewer 1회에서 Critical/Important 지적 없음. 보류된 reftable 판정은 완료 캐시 우회로 추가 보강했고 전체 검사에 포함했다. PID 재사용 때 공유 lease의 일시적 가용성 제한과 외부 `blame.ignoreRevsFile` 등의 변경이 최대 60초 뒤 반영되는 점은 후속 개선으로 남겼다.
+- 실제 OS 관찰에서 잘못된 cwd 조건의 출력은 2,742,088 bytes/540ms, 수정된 조건은 28,141 bytes/379ms였다. 제품 공유 검사는 최초 4861ms, 재사용 20ms였다. 17개 감시자는 모두 사용 중인 경로로 보호됐으며 이번 작업에서 실제 감시자를 종료하지 않았다.
+- 실제 `.gitignore` blame은 1200ms 간격 두 요청에 Git 실행 1회였으며 최초 446ms, 재사용 2ms, 두 결과 모두 15줄이었다. 원시 기록은 `/private/tmp/gsc-optimization-blame-probe.json`에 보관했다.
+
+위 시간은 단일 관측이다. 추가 VS Code 창·장기 사용 UI 시험·Mac/SentinelOne 재시작을 수행하지 않았으며 swap이나 OS 보안 계층의 대기가 해결됐다고 주장하지 않는다. 기존 설정과 stash 표시 설정은 변경하지 않았다.

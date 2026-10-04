@@ -7,7 +7,11 @@ export interface GitMonitorProcess {
   owned: boolean; protectedReason?: string;
 }
 /** 한 시점의 보호 판단을 함께 담아 불완전한 OS 관찰을 유휴로 오인하지 않는다. */
-export interface GitMonitorSnapshot { monitors: GitMonitorProcess[]; complete: boolean; reason?: string; observedCode?: ProcessIdentity[] }
+export interface GitMonitorSnapshot {
+  monitors: GitMonitorProcess[]; complete: boolean; reason?: string; observedCode?: ProcessIdentity[];
+  /** 민감한 argv/출력 본문 없이 실패 경계와 공유·재시도 상태만 남긴다. */
+  diagnostic?: { stage?: string; code?: string; timedOut?: boolean; elapsedMs?: number; source?: "fresh" | "shared" | "backoff"; retryAfterMs?: number };
+}
 export interface IdleGitCandidate extends GitMonitorProcess { idleSince: number }
 export interface GitCleanupResult { stopped: number; kept: number; failed: number }
 
@@ -34,7 +38,7 @@ export class IdleGitCleanup {
     const snapshot = await this.deps.inspect(), now = this.deps.now?.() ?? Date.now();
     if (!snapshot.complete) {
       this.reset();
-      this.deps.log("git idle inspection skipped", { reason: snapshot.reason ?? "incomplete-process-mapping" });
+      this.deps.log("git idle inspection skipped", { reason: snapshot.reason ?? "incomplete-process-mapping", ...snapshot.diagnostic });
       return [];
     }
     const result: IdleGitCandidate[] = [], seen = new Set<string>();

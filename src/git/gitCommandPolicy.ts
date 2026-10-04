@@ -12,7 +12,7 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
   const command = args[index] ?? "unknown", rest = args.slice(index + 1);
   const safeName = /^[a-z][a-z0-9-]*$/.test(command) ? command : "unknown";
   const reads = new Set(["status", "log", "show", "diff", "diff-files", "diff-index", "diff-tree", "rev-parse",
-    "rev-list", "ls-files", "ls-tree", "cat-file", "check-ignore", "check-attr", "merge-base", "for-each-ref", "blame", "describe", "name-rev"]);
+    "rev-list", "ls-files", "ls-tree", "cat-file", "check-ignore", "check-attr", "merge-base", "for-each-ref", "blame", "describe", "name-rev", "show-ref", "ls-remote", "check-ref-format"]);
   let readOnly = reads.has(command);
   if (command === "config") readOnly = rest.some(value => ["--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"].includes(value))
     && !rest.some(value => ["--add", "--replace-all", "--unset", "--unset-all", "--rename-section", "--remove-section", "--edit", "-e"].includes(value));
@@ -21,6 +21,9 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
   if (command === "worktree") readOnly = rest[0] === "list";
   if (command === "remote") readOnly = rest[0] === "get-url";
   if (command === "stash") readOnly = ["list", "show"].includes(rest[0]);
+  // reflog 기본 동작은 show지만 delete/expire/write/drop 등 변경 명령은 자동 종료에서 계속 보호한다.
+  if (command === "reflog") readOnly = rest.length === 0 || ["show", "list", "exists"].includes(rest[0])
+    || (rest[0].startsWith("-") && !rest.some(value => ["delete", "expire", "write", "drop"].includes(value)));
   if (command === "symbolic-ref") readOnly = rest.filter(value => !value.startsWith("-")).length === 1
     && !rest.some(value => ["--delete", "-d"].includes(value));
   if (command === "fsmonitor--daemon") readOnly = rest[0] === "status";

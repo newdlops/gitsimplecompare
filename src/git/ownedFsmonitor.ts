@@ -10,7 +10,7 @@ let generation = 0, active = false;
 const preparing = new Map<string, Promise<boolean | undefined>>();
 const prepared = new Map<string, MonitorPreparation>();
 const controllers = new Set<AbortController>();
-const withoutIndex = new Set(["config", "fsmonitor--daemon", "version", "rev-parse", "rev-list", "log", "show", "cat-file", "ls-tree", "for-each-ref", "merge-base", "describe", "name-rev", "remote", "branch", "worktree", "symbolic-ref"]);
+const withoutIndex = new Set(["config", "fsmonitor--daemon", "version", "rev-parse", "rev-list", "log", "show", "cat-file", "ls-tree", "for-each-ref", "merge-base", "describe", "name-rev", "remote", "branch", "worktree", "symbolic-ref", "show-ref", "reflog", "ls-remote", "check-ref-format"]);
 
 /** 공식 stop 뒤에는 다음 조회에서 소켓 준비와 소유권을 새로 확인한다. */
 export function forgetPreparedFsmonitor(root: string): void {
