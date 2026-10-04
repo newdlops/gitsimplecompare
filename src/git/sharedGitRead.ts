@@ -1,6 +1,10 @@
 /** 같은 세대의 진행 중 조회를 공유하되 소비자별 취소가 서로를 중단시키지 않는 순수 수명 도우미다. */
-interface PendingRead<T> { generation: number; controller: AbortController; promise: Promise<T>; users: Set<symbol>; finished: boolean }
-export interface SharedReadOptions { signal?: AbortSignal; force?: boolean; maxCacheAgeMs?: number }
+interface PendingRead<T> { generation: number; controller: AbortController; promise: Promise<T>; users: Set<symbol>; finished: boolean; started: boolean }
+export interface SharedReadOptions {
+  signal?: AbortSignal; force?: boolean; maxCacheAgeMs?: number;
+  /** 실제 파일 변경을 관찰한 소비자 요청은 이미 시작한 forced 조회 뒤에도 최신 세대를 예약한다. */
+  changed?: boolean;
+}
 
 /** 세대/force/TTL과 마지막 소비자 해제를 하나의 실제 조회 수명에 연결한다. */
 export class SharedGitRead<T> {
@@ -16,7 +20,12 @@ export class SharedGitRead<T> {
 
   /** 진행 중 force 요청은 한 최신 세대로 합치고 이미 필요 없는 결과가 캐시에 들어가는 것을 막는다. */
   read(options: SharedReadOptions = {}): Promise<T> {
-    if (options.force && this.forcedGeneration !== this.generation) {
+    if (options.changed) {
+      this.ready = undefined;
+      // 아직 시작하지 않은 최신 pass는 이후 파일 상태를 읽으므로 변경 알림을 함께 합친다.
+      if (!this.pending || (this.pending.started && this.pending.generation === this.generation)) this.invalidate();
+      if (options.force) this.forcedGeneration = this.generation;
+    } else if (options.force && this.forcedGeneration !== this.generation) {
       this.generation++; this.ready = undefined; this.forcedGeneration = this.generation;
     }
     return this.latest(options);
@@ -69,9 +78,9 @@ export class SharedGitRead<T> {
 
   /** pending 등록을 먼저 마친 뒤 loader를 시작해 동시 호출의 중복 spawn을 막는다. */
   private start(): PendingRead<T> {
-    const pending: PendingRead<T> = { generation: this.generation, controller: new AbortController(), users: new Set(), finished: false, promise: undefined! };
+    const pending: PendingRead<T> = { generation: this.generation, controller: new AbortController(), users: new Set(), finished: false, started: false, promise: undefined! };
     this.pending = pending;
-    pending.promise = Promise.resolve().then(() => this.loader(pending.controller.signal)).then(value => {
+    pending.promise = Promise.resolve().then(() => { pending.started = true; return this.loader(pending.controller.signal); }).then(value => {
       if (pending.generation === this.generation && !pending.controller.signal.aborted && !this.lifetime.signal.aborted) {
         this.ready = { at: Date.now(), value: this.clone(value), generation: pending.generation };
       }

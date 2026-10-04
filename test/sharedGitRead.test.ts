@@ -2,6 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { SharedGitRead } from "../src/git/sharedGitRead";
 
+/** 실제 loader의 완료만 제어하며 공유 서비스의 세대 판단은 제품 코드를 실행한다. */
+function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
+  let resolve!: (value: T) => void;
+  return { promise: new Promise<T>(done => { resolve = done; }), resolve };
+}
+
+/** 실제 외부 변경은 이미 force로 시작한 조회 뒤에도 최신 pass를 요구한다. */
+test("observed change after a forced read starts cannot accept its stale result", async () => {
+  const first = deferred<string>(), next = deferred<string>(); let calls = 0;
+  const shared = new SharedGitRead(async () => { calls++; return calls === 1 ? first.promise : next.promise; }, value => value);
+  const graph = shared.read({ force: true });
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  const tab = shared.read({ force: true, changed: true });
+  first.resolve("stale");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 2, "Observed changes require a follow-up beyond an already forced generation.");
+  next.resolve("latest");
+  assert.deepEqual(await Promise.all([graph, tab]), ["latest", "latest"]);
+  await shared.dispose();
+});
+
+/** loader 시작 전 알림들과 이전 pass 뒤 예약된 알림들은 한 최신 실행으로 합친다. */
+test("observed changes coalesce before a loader starts and while its latest pass is queued", async () => {
+  const first = deferred<string>(), next = deferred<string>(); let calls = 0;
+  const shared = new SharedGitRead(async () => { calls++; return calls === 1 ? first.promise : next.promise; }, value => value);
+  const initial = [shared.read({ changed: true }), shared.read({ changed: true })];
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  const changed = Array.from({ length: 8 }, () => shared.read({ changed: true }));
+  first.resolve("stale");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 2);
+  next.resolve("latest");
+  assert.deepEqual(await Promise.all([...initial, ...changed]), Array(10).fill("latest"));
+  assert.equal(calls, 2);
+  await shared.dispose();
+});
+
 /** 실제 공유 서비스의 loader 경계에서 결과 완료 순서만 제어한다. */
 function fixture() {
   const reads: { signal: AbortSignal; resolve: (value: number) => void; reject: (error: Error) => void }[] = [];

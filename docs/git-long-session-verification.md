@@ -13,8 +13,10 @@
 - 전체 Node 검사: 889 passed, 0 failed, 0 skipped. 소유 프로세스 그룹, TERM 저항 자식, 읽기 timeout, 쓰기 보호, PID 재사용, 정리 취소, 공유 조회의 독립 취소·강제 새로고침, private index 정확성·racy-clean·split/sparse/linked worktree를 포함한다.
 - VS Code 시험 호스트에서 사용자/워크스페이스 상속, 유휴 설정, 자동 정리 off 상태의 수동 명령, 기존 비교 API, 공유 API, API 전용 저장소의 metadata 변경, staged 목록과 index 보존을 확인했다.
 - Tab Manager와 GSC를 함께 실행한 시험에서 별도 v1 status가 실행되지 않고 공유 API를 사용하는 것을 확인했다. 기본 Git을 끈 상태의 PR 파일/댓글·삭제 항목·변경 필터, 비활성 창의 파일 이벤트 지연, 수동 새로고침, Git on/off 전환, 유휴 시 polling 없음도 통과했다.
-- 집중 코드 검토에서 중요도가 높은 프로세스 소유권·취소·최신성·정리 경쟁 조건에 대한 잔여 지적이 없었다.
-- Tab Manager 추가 검토에서 외부 변경의 force 세대 누락과 선택적 GSC 활성화 실패 시 CLI fallback 차단을 발견해 수정했다. 추가 VS Code 창 없는 Node 계약 검사 5개가 수정 전 3개 실패, 수정 후 5개 통과했다. 이후 제품 코드의 수정 범위는 이 두 경계이며 위 native 통합 시험은 이 추가 수정 전에 수행했다.
+- GSC 프로세스 소유권·취소·캐시 정리의 집중 검토에서 중요도가 높은 잔여 지적이 없었다.
+- Tab Manager 추가 검토에서 외부 변경의 세대 누락과 선택적 GSC 활성화 실패 시 CLI fallback 차단을 발견해 수정했다. 추가 VS Code 창 없는 Node 계약 검사 5개가 수정 전 3개 실패, 수정 후 5개 통과했다.
+- GSC에서 이미 forced 조회가 시작된 경우도 실제 `SharedGitRead`로 재현했다. 실제 변경을 나타내는 `changed` 옵션과 loader 시작 경계로 최신 pass를 예약하며 시작 전·예약 중 변경은 합친다. 실제 서비스 검사 6개가 통과했고, native 통합 시험은 이 추가 경계 수정 전에 수행했다. 최초 전체 889개 결과에는 이후 추가한 검사 2개가 포함되지 않는다.
+- 최종 경계 수정 뒤 공유 조회·상태 캐시·private index·CodeLens 관련 검사 28개를 worker 1개로 실행해 모두 통과했다. GSC 타입 검사와 마지막 범위의 재검토도 통과했다.
 - 실제 QuickPick/InputBox 시각 캡처는 완료하지 못했다. 첫 캡처 도구의 placeholder 인식이 실패했고 후속 시험은 기존 기본 Git 상태 전환 대기에서 timeout됐다. 이를 시각 QA 통과로 간주하지 않는다. 사용자 메모리 압력 관찰 이후 추가 시험 창 실행을 중단했다.
 
 ## 실제 저장소 순차 조회
