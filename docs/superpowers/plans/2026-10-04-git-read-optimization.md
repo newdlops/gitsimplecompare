@@ -64,7 +64,7 @@
 
 - [x] `npm run check-types`, production bundle, `git diff --check`, 전체 `npm test` 통과 확인.
 - [x] 변경 전체를 별도 reviewer로 한 번 검토하고 중요 문제는 재현 검사→수정→전체 검사로 검증한다.
-- [ ] 소스 변경과 실제 측정/제약을 기록하고 기존 설치·배포 흐름으로 적용한다. main 통합 직전 현재 상태를 다시 확인한다.
+- [x] 소스 변경과 실제 측정/제약을 기록하고 기존 설치·배포 흐름으로 적용한다. main 통합 직전 현재 상태를 다시 확인한다.
 
 ## Evidence and decisions
 
@@ -78,7 +78,7 @@
 
 - Task 1: complete — 참조 준비/분류 2개 회귀 실패 확인 후 수정. `/private/tmp/gsc-optimization-refs-green.log`: 14 passed.
 - Task 2: complete — cwd 과잉 선택/진단 누락 실패 확인 후 수정. 두 실제 Node host 포함 `/private/tmp/gsc-optimization-inspection-green.log`: 25 passed. Native 관찰 complete=true, 17/17 protected; 공유 최초 4861ms, 재사용 20ms.
-- Task 3: 기본 구현 검증 — 캐시/metadata/메모리 회귀 6개와 focus 3개, 상위 CodeLens HEAD 변경 회귀의 실패를 확인 후 수정. `/private/tmp/gsc-optimization-blame-final-focused.log`: 11 passed.
+- Task 3: complete — 캐시/metadata/메모리 회귀 6개와 focus 3개, 상위 CodeLens HEAD 변경 회귀의 실패를 확인 후 수정. `/private/tmp/gsc-optimization-blame-final-focused.log`: 11 passed. 이후 추가 회귀까지 최종 전체 937개에 포함했다.
 - Typecheck/compile/diff-check: 최종 제품 변경 뒤 모두 passed. VSIX `0.1.72076` 패키징 exit=0.
 - First full suite: 248개 개별 검사가 통과한 뒤 전체 900000ms 제한으로 종료(exit=1). 개별 실패 없음; 전체 통과로 취급하지 않는다. 종료 뒤 OS 확인 Git 17개, 추가 fixture/테스트 Git 잔류 없음.
 - Full suite retry: 사용자 global/system config를 격리한 `env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 npm test`로 검증했다. 실제 사용자 설정 파일은 수정하지 않았다.
@@ -97,3 +97,6 @@
 - Final focused: 52 passed, 0 failed, 0 skipped, 14122.949ms. 기록: `/private/tmp/gsc-optimization-final-focused.log`.
 - Final full suite: 937 passed, 0 failed, 0 skipped, exit=0, 537575.392ms. 기록: `/private/tmp/gsc-optimization-full-tests-final.log`. 타입 검사와 패키징도 최종 변경 뒤 exit=0으로 확인했다.
 - Pre-integration: origin fetch exit=0; main/origin/main은 모두 `20a1996`이며 main 작업 트리는 clean이다. 설치·배포는 기존 사용자 요청에 따라 같은 검증 VSIX로 진행한다.
+- Integration: 구현 `d647a03`을 main에 fast-forward 후 origin/main에 푸시했다. 임시 worktree는 clean 상태에서 제거했고 원본 node_modules는 보존했다.
+- Installation/publish: `code --install-extension /private/tmp/gitsimplecompare-0.1.72076.vsix --force`와 동일 VSIX의 `vsce publish --packagePath` 모두 exit=0. main 빌드·VSIX·설치 코드 SHA-256은 `30126e7b7c67fbabc63059a9c46d09d0880ad9287ea9f7b6182f044eda9900cc`로 같으며 VSIX SHA-256은 `db24c73bf5a253edb88745ce95723885af7d557c431348c6c65a81ddb6a19911`이다. 기록: `/private/tmp/gsc-optimization-release-verification.json`.
+- Public verification: 2026-10-04 12:27:28 UTC에 공개 exact-version manifest의 HTTP 200과 name/publisher/version `newdlops.gitsimplecompare`/`0.1.72076` 일치를 확인했다. 기록: `/private/tmp/gsc-marketplace-72076-verification.json`. 사용자 창은 강제로 reload하지 않았으므로 활성 host의 새 코드 적용에는 `Developer: Reload Window`가 한 번 필요하다.

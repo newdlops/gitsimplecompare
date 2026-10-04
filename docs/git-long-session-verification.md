@@ -88,3 +88,9 @@ blame은 Git 명령 없이 확인한 파일·HEAD·index·관련 metadata가 같
 - 실제 `.gitignore` blame은 1200ms 간격 두 요청에 Git 실행 1회였으며 최초 446ms, 재사용 2ms, 두 결과 모두 15줄이었다. 원시 기록은 `/private/tmp/gsc-optimization-blame-probe.json`에 보관했다.
 
 위 시간은 단일 관측이다. 추가 VS Code 창·장기 사용 UI 시험·Mac/SentinelOne 재시작을 수행하지 않았으며 swap이나 OS 보안 계층의 대기가 해결됐다고 주장하지 않는다. 기존 설정과 stash 표시 설정은 변경하지 않았다.
+
+구현 커밋 `d647a03`을 main에 fast-forward로 통합하고 origin/main에 푸시했다. 0.1.72076 VSIX를 설치했고 main 빌드·VSIX·설치된 `dist/extension.js`의 SHA-256이 `30126e7b7c67fbabc63059a9c46d09d0880ad9287ea9f7b6182f044eda9900cc`로 일치했다. 설치한 동일 VSIX의 SHA-256은 `db24c73bf5a253edb88745ce95723885af7d557c431348c6c65a81ddb6a19911`이며 `/private/tmp/gsc-optimization-release-verification.json`에 기록했다.
+
+설치한 동일 파일의 `vsce publish --packagePath`가 published 성공 응답과 exit=0으로 완료됐다. TLS 검증을 유지하고 Node system CA를 사용했다. 열린 사용자 창을 강제로 reload하지 않았으므로 새 코드 적용에는 `Developer: Reload Window`가 한 번 필요하다.
+
+2026-10-04 12:27:28 UTC에 [공개 Marketplace manifest](https://newdlops.gallery.vsassets.io/_apis/public/gallery/publisher/newdlops/extension/gitsimplecompare/0.1.72076/assetbyname/Microsoft.VisualStudio.Code.Manifest)의 HTTP 200과 name/publisher/version 일치를 확인했다. 배포 성공 이후 초기 조회의 404와 이전 공개 버전 반환은 최종 반영 이후 확인된 값으로 대체했다. 기록은 `/private/tmp/gsc-marketplace-72076-verification.json`에 보관했다.
