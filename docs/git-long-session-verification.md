@@ -41,3 +41,11 @@
 - 과거 관측에서 Git 진입 전 OS 보안 계층의 실행 대기도 확인됐다. 담당 제품과 메모리 압력의 기여도를 아직 분리하지 못했다. 이번 수정은 확장에서 발생시키는 중복 조회·전체 파일 탐색·버려진 프로세스를 줄이며 OS 메모리·보안 대기를 해결했다고 주장하지 않는다.
 
 수정 버전 적용 후 같은 창을 오래 사용하면서 Output의 Git startup/전체 실행시간, 활성 조회 수, 동시간대 swapin/swapout 증가량을 대조해야 장기 사용 개선을 판정할 수 있다.
+
+## 릴리스 확인
+
+- GSC 0.1.72074: `93b4060` 기능 커밋과 `a838996` 최신성 경계 수정 커밋을 origin/main에 푸시했다.
+- Tab Manager 0.1.6619: `2b0f0d3`을 origin/main에 푸시했다.
+- 두 VSIX를 `code --install-extension … --force`로 설치했다. manifest 버전과 빌드·패키지·설치된 `dist/extension.js`의 SHA-256 일치를 확인했다.
+- 설치한 동일 VSIX를 `vsce publish --packagePath`로 배포했으며 두 버전의 성공 응답과 exit 0을 확인했다. TLS 검증을 유지하고 Node의 macOS system CA를 사용했다.
+- 현재 열린 사용자 창은 강제로 reload하지 않았다. 이미 활성화된 이전 코드를 교체하려면 사용자가 `Developer: Reload Window`를 한 번 실행해야 한다. Mac이나 보안 서비스를 재시작하는 단계는 아니다.

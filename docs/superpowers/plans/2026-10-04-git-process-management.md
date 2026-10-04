@@ -62,9 +62,11 @@
 
 - [x] Run full relevant tests, typecheck and production build; obtain a focused fresh review of important process/cache risks.
 - [x] Verify native UI functionality and rendered UI where tooling permits; report any unverified visual behavior explicitly.
-- [ ] Bump version, commit, push, package/install and publish with vsce.
-- [ ] Report installed commands/settings and measured improvements; retain outstanding OS-level diagnosis if long-session latency persists.
+- [x] Bump version, commit, push, package/install and publish with vsce.
+- [x] Report installed commands/settings and measured improvements; retain outstanding OS-level diagnosis if long-session latency persists.
 
 ## Verification record
 
 See [observed results and remaining long-session/visual checks](../../git-long-session-verification.md). Core Node tests: 889 passed. Native command and Tab Manager integration tests passed. Visual capture remains unverified; no additional test host is started under the observed memory load.
+
+Released GSC 0.1.72074 and Tab Manager 0.1.6619: committed and pushed to main, installed locally, and published with `vsce publish --packagePath`. Built, packaged and installed extension binaries matched. Final relevant serial checks passed: 28 GSC and 5 Tab Manager. OS-level latency and extended-session verification remain open as recorded above.
