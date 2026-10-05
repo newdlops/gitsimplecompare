@@ -112,4 +112,18 @@ connection을 나누며 목록 개수나 데이터 양을 줄이지 않는다.
   `f85030aff58d8801e913b93d8fe6b7adcc811647591734ff01ef7bacdba7b39c`다.
   `/private/tmp/gsc-pr-loading-release-verification.json`.
 
-설치와 공개 배포 결과는 명령 완료 후 이 절에 추가한다.
+- 구현 커밋 `7034b5c`을 main에 fast-forward로 통합하고 origin/main에 푸시했다.
+  0.1.72077 VSIX를 사용자 VS Code에 설치했으며 main 빌드·VSIX·설치된
+  `dist/extension.js`가 위 SHA-256으로 일치했다.
+- 설치한 동일 VSIX의 `vsce publish --packagePath`가 published 성공 응답과 exit 0으로
+  완료됐다. TLS 검증을 유지하고 Node system CA를 사용했다.
+  `/private/tmp/gsc-pr-loading-publish.log`.
+- 시험용 `gsc-owned-read-*`·`gsc-graph-reader-*` 프로세스는 마지막 확인에서 없었다.
+  열린 사용자 창을 강제로 reload하지 않았으며 새 코드 적용에는
+  `Developer: Reload Window`가 한 번 필요하다.
+
+2026-10-05 05:11 UTC에 [공개 Marketplace manifest](https://newdlops.gallery.vsassets.io/_apis/public/gallery/publisher/newdlops/extension/gitsimplecompare/0.1.72077/assetbyname/Microsoft.VisualStudio.Code.Manifest)의
+HTTP 200과 name/publisher/version 일치를 확인했다. 배포 직후의 404는 반영 완료 뒤
+정상 응답으로 바뀌었다. `/private/tmp/gsc-pr-marketplace-72077-verification.json`.
+작업용 임시 worktree와 그 안의 node_modules symlink를 정리했으며 실제 공유 의존성은
+보존했다. 설치한 VSIX와 원시 검증 기록은 `/private/tmp`에 유지한다.
