@@ -71,7 +71,7 @@ HEAD와 사용자 index hash도 조회 전후 같았다. 전체 native traversal
 
 Impeccable 검사에서 Codicon과 테스트용 Menlo/12px는 VS Code 재현에 필요한 값이다.
 해당 파일·해당 값에만 이유를 기록해 예외 처리했다. 기존 CSS의 10/12/14/16px 및
-5px radius advisory 15건은 변경 줄 밖의 기존 항목으로 남겼다. 전체 스타일 감사나
+5px radius advisory 14건은 변경 줄 밖의 기존 항목으로 남겼다. 전체 스타일 감사나
 임의의 기존 화면 재설계는 이번 작업에 포함하지 않았다. 디자인 sidecar는 현재
 DESIGN.md의 typography·경계·로컬 브랜치 정리 지침과 동기화했다.
 
@@ -97,4 +97,11 @@ DESIGN.md의 typography·경계·로컬 브랜치 정리 지침과 동기화했�
 - VSIX: `/private/tmp/gitsimplecompare-0.1.72084.vsix`.
 - VSIX SHA-256: `3b54b42b63b8c9f6eb22770eb45032598a31cf186892b434f1d1552c6e7a4478`.
 - 실행 번들 SHA-256: `6d3d098de61f44475f5d051f93fb7ff201639b0614f7375e8bc1d355cdb28ff4`.
-- Marketplace 게시와 공개 VSIX 일치는 게시 완료 후 기록한다.
+- 구현 커밋 `8003d26`을 origin/main에 푸시했다.
+- `env NODE_OPTIONS=--use-system-ca vsce publish --packagePath
+  /private/tmp/gitsimplecompare-0.1.72084.vsix`로 Marketplace 게시에 성공했다.
+  Node 기본 CA의 issuer 오류는 macOS 신뢰 저장소로 해결했으며 TLS 검증은 유지했다.
+- 정확한 0.1.72084 공개 VSIX를 내려받아 전체 패키지 SHA-256이 위 값과 같음을 확인했다.
+  공개 package.json의 publisher/version과 실행 번들도 설치·검증한 파일과 일치했다.
+  공개 검증 시각은 2026-10-06 02:37:50 KST다.
+  영수증은 `/private/tmp/gsc-cold-history-pr-full-20261006/public-release-receipt.json`에 있다.
