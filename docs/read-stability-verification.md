@@ -101,5 +101,11 @@ consumers time out; the extension cannot force the OS to release that process.
 - Marketplace public manifest returned HTTP 200 and identified
   `newdlops.gitsimplecompare` version `0.1.72078` (verified 06:35 UTC).
   Public registration processing completed after the initial temporary 404s.
+- Direct public-package audit (06:56 UTC): downloaded the versioned Marketplace
+  package, decoded its HTTP gzip compression, and confirmed both the complete VSIX
+  and bundled code match the tested and installed SHA-256 values above. Marketplace
+  also reports the same package checksum. The remote main commit, source invariants,
+  test coverage and saved complete-response timing comparisons were rechecked.
+  Receipt: `/private/tmp/gsc-stability-current-public-verification.json`.
 - The isolated validation worktree was removed after merging; logs and standalone
   comparison artifacts remain in `/private/tmp`.
