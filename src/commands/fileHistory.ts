@@ -1,7 +1,8 @@
 // History 섹션 관련 명령 — 활성 에디터 파일의 커밋 목록 조회와 커밋 diff 열기.
 // - 저장소 탐지/사용자 메시지는 명령 레이어에서 처리하고, 실제 git log 조회는 FileHistoryService 에 맡긴다.
 import * as vscode from "vscode";
-import { EMPTY_TREE_REF, FileHistoryService } from "../git/fileHistoryService";
+import { EMPTY_TREE_REF } from "../git/fileHistoryService";
+import { readFileHistorySnapshot } from "../git/fileHistoryReadCache";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
 import { fileHistoryResourceLocation } from "../utils/fileHistoryResource";
@@ -25,18 +26,35 @@ export interface OpenFileHistoryCommitArgs {
   title?: string;
 }
 
-interface FileHistoryCacheEntry {
-  repoRoot: string;
-  path: string;
-  commits: Awaited<ReturnType<FileHistoryService["listFileHistory"]>>;
-  loadedAt: number;
+let latestHistoryRequestId = 0;
+let activeHistory: { key: string; controller: AbortController } | undefined;
+
+/**
+ * 탭/창/Host의 소비자 수명을 실제 Git 조회 신호로 연결한다.
+ * @returns 확장 dispose 때 소비자와 모든 이벤트 구독을 해제하는 Disposable
+ */
+export function registerFileHistoryLifetime(): vscode.Disposable {
+  const subscriptions = [
+    vscode.window.onDidChangeWindowState(state => { if (!state.focused) cancelFileHistoryRefresh("window-unfocused"); }),
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+      const key = editor?.document.uri ? historyResourceKey(editor.document.uri) : undefined;
+      if (activeHistory && activeHistory.key !== key) cancelFileHistoryRefresh("active-editor-changed");
+    }),
+  ];
+  return new vscode.Disposable(() => { cancelFileHistoryRefresh("extension-dispose"); for (const subscription of subscriptions) subscription.dispose(); });
 }
 
-const historyCache = new Map<string, FileHistoryCacheEntry>();
-const pendingLoads = new Map<string, Promise<FileHistoryCacheEntry>>();
-const MAX_HISTORY_CACHE_ENTRIES = 40;
-let historyCacheGeneration = 0;
-let latestHistoryRequestId = 0;
+/** 선택을 잃은 소비자만 취소하고 오래된 성공·오류가 새 파일의 UI를 바꾸지 않게 한다. */
+export function cancelFileHistoryRefresh(reason: string): void {
+  latestHistoryRequestId++;
+  if (activeHistory) { activeHistory.controller.abort(); activeHistory = undefined; logInfo("file history consumer cancelled", { reason }); }
+}
+
+/** 파일/가상 diff 리소스의 같은 실제 대상은 같은 소비자 신호를 공유한다. */
+function historyResourceKey(uri: vscode.Uri): string | undefined {
+  const location = fileHistoryResourceLocation(uri);
+  return location?.kind === "workingFile" ? location.fsPath : location ? `${location.repoRoot}\0${location.relPath}` : undefined;
+}
 
 /**
  * 현재 활성 에디터 파일의 git history 를 읽어 Changes 웹뷰 History 섹션에 반영한다.
@@ -55,12 +73,14 @@ export async function refreshFileHistory(
   const reason = request.reason ?? "command";
   const uri = request.uri ?? vscode.window.activeTextEditor?.document.uri;
   if (!uri) {
+    cancelFileHistoryRefresh("no-active-file");
     deps.changesView.setFileHistory({ commits: [] });
     logInfo("file history skipped", { reason, reasonDetail: "no-active-file" });
     return;
   }
   const location = fileHistoryResourceLocation(uri);
   if (!location) {
+    cancelFileHistoryRefresh("unsupported-resource");
     deps.changesView.setFileHistory({
       commits: [],
       message: vscode.l10n.t(
@@ -74,11 +94,18 @@ export async function refreshFileHistory(
     });
     return;
   }
+  const key = historyResourceKey(uri)!;
+  if (activeHistory?.key !== key) {
+    activeHistory?.controller.abort();
+    activeHistory = { key, controller: new AbortController() };
+  }
+  const signal = activeHistory.controller.signal;
   const repositoryLookupPath =
     location.kind === "workingFile"
       ? dirNameOf(location.fsPath)
       : location.repoRoot;
   const service = await deps.registry.resolve(repositoryLookupPath);
+  if (requestId !== latestHistoryRequestId || signal.aborted) return;
   if (!service) {
     deps.changesView.setFileHistory({
       commits: [],
@@ -97,28 +124,9 @@ export async function refreshFileHistory(
     location.kind === "workingFile"
       ? service.toRepoRelative(location.fsPath)
       : location.relPath;
-  const cacheKey = fileHistoryCacheKey(service.repoRoot, relPath);
-  const forceReload = shouldForceHistoryReload(reason, request.force);
-  if (forceReload) {
-    invalidateHistoryCache(reason);
-  }
-  const cached = historyCache.get(cacheKey);
-  if (cached && !forceReload) {
-    deps.changesView.setFileHistory(cached);
-    logInfo("file history cache hit", {
-      reason,
-      root: service.repoRoot,
-      path: relPath,
-      resourceKind: location.kind,
-      commits: cached.commits.length,
-      ageMs: Date.now() - cached.loadedAt,
-    });
-    return;
-  }
-
   try {
-    const entry = await loadFileHistoryCached(service.repoRoot, relPath, cacheKey);
-    if (requestId !== latestHistoryRequestId) {
+    const entry = await readFileHistorySnapshot(service.repoRoot, relPath, { signal, force: request.force });
+    if (requestId !== latestHistoryRequestId || signal.aborted) {
       logInfo("file history render skipped", {
         reason,
         root: service.repoRoot,
@@ -134,9 +142,13 @@ export async function refreshFileHistory(
       path: relPath,
       resourceKind: location.kind,
       commits: entry.commits.length,
+      source: entry.source,
       elapsed: Date.now() - started,
     });
   } catch (error) {
+    if (signal.aborted || requestId !== latestHistoryRequestId || error instanceof Error && error.name === "AbortError") {
+      logInfo("file history render skipped", { reason, reasonDetail: "cancelled-or-superseded" }); return;
+    }
     deps.changesView.setFileHistory({
       repoRoot: service.repoRoot,
       path: relPath,
@@ -185,104 +197,6 @@ export async function openFileHistoryCommit(
     oldPath: arg.oldPath,
     commit: arg.headRef,
   });
-}
-
-/**
- * 특정 파일의 캐시 키를 만든다.
- * @param repoRoot 저장소 루트
- * @param relPath 저장소 상대 경로
- */
-function fileHistoryCacheKey(repoRoot: string, relPath: string): string {
-  return `${repoRoot}\0${relPath}`;
-}
-
-/**
- * 히스토리를 반드시 다시 읽어야 하는 refresh 사유인지 판정한다.
- * - 탭 전환/뷰 재표시는 캐시를 쓰고, 수동 새로고침이나 ref 변경은 최신 커밋 목록을 다시 읽는다.
- * @param reason refresh 요청 사유
- * @param force 명시 강제 갱신 플래그
- */
-function shouldForceHistoryReload(reason: string, force?: boolean): boolean {
-  if (force) {
-    return true;
-  }
-  return reason
-    .split(",")
-    .map((part) => part.trim())
-    .some(
-      (part) =>
-        part === "command" ||
-        part === "commit" ||
-        part === "checkoutBranch" ||
-        part.startsWith("branchOperation") ||
-        part === "workspaceFolders" ||
-        part.startsWith("git:") ||
-        part.startsWith("commit:") ||
-        part.startsWith("checkout:")
-    );
-}
-
-/**
- * git ref 변경/수동 새로고침처럼 히스토리 기준이 바뀔 수 있는 이벤트에서 캐시를 비운다.
- * - 진행 중인 로드도 재사용하지 않도록 pending map 을 비우고 generation 을 올린다.
- * @param reason 캐시 무효화 사유
- */
-function invalidateHistoryCache(reason: string): void {
-  if (!historyCache.size && !pendingLoads.size) {
-    return;
-  }
-  historyCache.clear();
-  pendingLoads.clear();
-  historyCacheGeneration++;
-  logInfo("file history cache invalidated", { reason });
-}
-
-/**
- * 같은 파일의 중복 로드를 합치면서 git history 를 읽고 캐시에 저장한다.
- * @param repoRoot 저장소 루트
- * @param relPath 저장소 상대 경로
- * @param cacheKey 캐시 키
- */
-async function loadFileHistoryCached(
-  repoRoot: string,
-  relPath: string,
-  cacheKey: string
-): Promise<FileHistoryCacheEntry> {
-  const pending = pendingLoads.get(cacheKey);
-  if (pending) {
-    return pending;
-  }
-  const generation = historyCacheGeneration;
-  const promise = new FileHistoryService(repoRoot)
-    .listFileHistory(relPath)
-    .then((commits) => {
-      const entry = { repoRoot, path: relPath, commits, loadedAt: Date.now() };
-      if (generation === historyCacheGeneration) {
-        historyCache.set(cacheKey, entry);
-        pruneHistoryCache();
-      }
-      return entry;
-    })
-    .finally(() => {
-      pendingLoads.delete(cacheKey);
-    });
-  pendingLoads.set(cacheKey, promise);
-  return promise;
-}
-
-/**
- * 히스토리 캐시가 과도하게 커지지 않도록 오래된 항목부터 제거한다.
- */
-function pruneHistoryCache(): void {
-  while (historyCache.size > MAX_HISTORY_CACHE_ENTRIES) {
-    const oldest = [...historyCache.entries()].sort(
-      (a, b) => a[1].loadedAt - b[1].loadedAt
-    )[0]?.[0];
-    if (!oldest) {
-      return;
-    }
-    historyCache.delete(oldest);
-  }
 }
 
 /**

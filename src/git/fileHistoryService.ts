@@ -99,11 +99,13 @@ export class FileHistoryService {
    * - raw 상태와 numstat 을 같은 log 프로세스에서 받아 커밋 수에 비례한 프로세스 생성을 막는다.
    * @param relPath 저장소 루트 기준 상대 경로
    * @param limit 최대 커밋 수. 오래된 파일에서 UI refresh 가 무거워지지 않게 제한한다.
+   * @param options 조회 소비자의 취소 신호와 검증한 불변 HEAD. 없으면 기존 HEAD 조회를 유지한다.
    * @returns 메타데이터와 해당 커밋의 파일 상태/라인 통계를 결합한 히스토리
    */
   async listFileHistory(
     relPath: string,
-    limit = 60
+    limit = 60,
+    options: { signal?: AbortSignal; revision?: string } = {}
   ): Promise<FileHistoryEntry[]> {
     const normalizedPath = normalizeGitPath(relPath);
     if (!normalizedPath) {
@@ -120,12 +122,27 @@ export class FileHistoryService {
         `--max-count=${Math.max(1, limit)}`,
         "--date=relative",
         HISTORY_LOG_FORMAT,
+        ...(options.revision ? [options.revision] : []),
         "--",
         literalGitPathspec(normalizedPath),
       ],
-      this.repoRoot
+      this.repoRoot,
+      { signal: options.signal }
     );
     return parseFileHistoryLog(raw, normalizedPath);
+  }
+
+  /**
+   * 캐시된 커밋의 상대 시각만 단일 no-walk 조회로 갱신해 전체 rename 이력을 다시 탐색하지 않는다.
+   * @param entries 변경하지 않고 복사할 검증된 이력
+   * @param signal 더 이상 표시하지 않는 파일의 조회까지 해제하는 신호
+   * @returns 커밋·rename·통계는 유지하고 Git의 현재 상대 시각만 반영한 사본
+   */
+  async refreshRelativeDates(entries: FileHistoryEntry[], signal?: AbortSignal): Promise<FileHistoryEntry[]> {
+    if (!entries.length) return [];
+    const raw = await runGit(["log", "--no-walk=unsorted", "--format=%H%x00%ar", ...entries.map(entry => entry.hash), "--"], this.repoRoot, { signal });
+    const dates = new Map(raw.trimEnd().split("\n").map(line => line.split("\0") as [string, string]));
+    return entries.map(entry => ({ ...entry, relativeDate: dates.get(entry.hash) ?? entry.relativeDate }));
   }
 }
 

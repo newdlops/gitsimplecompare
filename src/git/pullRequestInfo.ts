@@ -37,6 +37,8 @@ export interface PullRequestInfo {
   /** false면 review thread 후속 페이지가 남아 있어 댓글 합계를 아직 확정할 수 없다. */
   commentCountComplete?: boolean;
   fileCount: number;
+  /** false면 기본 목록만 받은 상태여서 파일 수를 아직 확정할 수 없다. */
+  fileCountComplete?: boolean;
   /** PR head branch에 포함된 원래 commit OID 목록. PR git 작업에서 사용한다. */
   commitHashes: string[];
   /** false면 후속 commit 페이지가 남아 있어 Git 쓰기 작업에 사용할 수 없다. */
@@ -77,6 +79,17 @@ export interface GhPullRequestNode extends GhPullRequestCommentCounts {
 
 /** 목록/번호/커밋 검색에서 재사용하는 기본 PullRequest GraphQL selection */
 export const PULL_REQUEST_INFO_QUERY = buildPullRequestInfoQuery();
+
+/**
+ * PR 80개의 정렬 조회에서도 가벼운 기본 정보를 먼저 받는 selection이다.
+ * 커밋·review connection은 포함하지 않아 상세 묶음의 네트워크 대기가 첫 목록을 막지 않는다.
+ * @returns connection 집계·Git OID·review 판정 없이 바로 표시할 제목·상태·브랜치·작성자 정보
+ */
+export const PULL_REQUEST_SUMMARY_QUERY = `
+        number title state url
+        headRefName baseRefName
+        author { login }
+        isDraft updatedAt`;
 
 /**
  * 목록 크기에 맞춰 중첩 connection의 첫 페이지 크기를 조절한 selection을 만든다.
@@ -138,6 +151,7 @@ export function pullRequestInfoFromGraphQl(
     commentCount: totalPullRequestCommentCount(pr, extraReviewCommentCount),
     commentCountComplete: extraReviewCommentCount !== undefined || !pr.reviewThreads?.pageInfo?.hasNextPage,
     fileCount: pr.files?.totalCount ?? 0,
+    fileCountComplete: Number.isSafeInteger(pr.files?.totalCount),
     commitHashes: normalizePullRequestCommitHashes(pr),
     commitHashesComplete: !pr.commits?.pageInfo?.hasNextPage,
     labels: normalizePullRequestLabels(pr.labels),

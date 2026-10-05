@@ -90,3 +90,42 @@ test("an unchanged refresh clears loading and renews the list cache without repl
   await button.click();
   expect((await readPostedMessages(page)).filter((message: any) => message.type === "refreshPullRequests")).toHaveLength(1);
 });
+
+for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
+  test(`eighty summary rows are interactive while metadata streams without losing focus at ${width}px`, async ({ page }) => {
+    const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+    await page.setViewportSize({ width, height }); await mountList(page, width === 390);
+    const basic = { ...overview(false), pullRequests: Array.from({ length: 80 }, (_, index) => ({
+      ...overview(false).pullRequests[0], number: 42 + index, commitHashes: ["head"], commentCount: 0, fileCountComplete: false,
+      title: `Improve loading ${index + 1}: preserve complete histories and long branch names`,
+    })) };
+    await dispatchWebviewMessage(page, { type: "graphBusy", key: "graph-pr-list", busy: true });
+    await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: basic });
+    const toolbar = page.getByRole("button", { name: "Show pull requests", exact: true });
+    await expect(toolbar).toBeEnabled(); await toolbar.click();
+    await expect(page.locator(".pr-card")).toHaveCount(80);
+    await expect(page.locator("#pr-op-42-squash")).toBeDisabled();
+    await expect(page.locator('.pr-meta-chip[title="Total PR comments"]').first()).toHaveText("…");
+    await expect(page.locator('.pr-meta-chip[title="Changed files"]').first()).toHaveText("…");
+    const input = page.getByRole("searchbox"); await input.fill("loading");
+    const card = await page.locator('[data-show-pr="42"]').elementHandle();
+    await page.screenshot({ path: `/private/tmp/gsc-history-pr-20261006/pr-summary-${width}.png`, fullPage: true });
+    const streamed = { ...basic, pullRequests: basic.pullRequests.map((pr, index) => index < 20
+      ? { ...pr, fileCountComplete: true, commitHashesComplete: true, commentCountComplete: true, commitHashes: ["first", "head"], commentCount: 12 }
+      : pr) };
+    await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: streamed });
+    await expect(input).toBeFocused(); await expect(input).toHaveValue("loading");
+    expect(await card!.evaluate(element => element.isConnected)).toBe(true);
+    await expect(page.locator("#pr-op-42-squash")).toBeEnabled();
+    await expect(page.locator("#pr-op-121-squash")).toBeDisabled();
+    const complete = { ...streamed, detailsLoading: false, pullRequests: streamed.pullRequests.map(pr => ({ ...pr,
+      fileCountComplete: true, commitHashesComplete: true, commentCountComplete: true, commitHashes: ["first", "head"], commentCount: 12 })) };
+    await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: complete });
+    await expect(page.locator("#pr-op-121-squash")).toBeEnabled();
+    await expect(input).toBeFocused();
+    await expect(page.locator(".pr-list-footer")).toHaveText("All loaded");
+    await page.screenshot({ path: `/private/tmp/gsc-history-pr-20261006/pr-complete-${width}.png`, fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}

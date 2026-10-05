@@ -37,6 +37,16 @@ function nodePage(args: readonly string[], nodes: IdentifiedNode[]): string {
 /** 큐와 취소의 microtask가 진행될 때까지 기다리며 벽시계 시간 가정은 하지 않는다. */
 function settle(): Promise<void> { return new Promise(resolve => setImmediate(resolve)); }
 
+/** 실제 첫 root 응답처럼 중첩 commit/review 정보를 제거해 얕은 표시의 완료 플래그를 검증한다. */
+function summaryPage(nodes: IdentifiedNode[]): string {
+  const response = JSON.parse(page(nodes));
+  for (const node of response.data.repository.pullRequests.nodes) {
+    delete node.commits; delete node.reviewThreads; delete node.files; delete node.comments; delete node.labels;
+    delete node.headRefOid; delete node.baseRefOid; delete node.mergeCommit; delete node.reviewDecision;
+  }
+  return JSON.stringify(response);
+}
+
 test("identity-first PR loading preserves all 80 records, full fields, and the opaque page cursor", async () => {
   const nodes = records();
   let heavyRoot = false;
@@ -148,7 +158,7 @@ test("a missing root node identity fails before starting metadata reads", async 
     const result = JSON.parse(page(records(1)));
     result.data.repository.pullRequests.nodes = [null];
     return JSON.stringify(result);
-  }), /identities.*not available/i);
+  }), /identities.*(?:not available|incomplete)/i);
   assert.equal(metadataReads, 0);
 });
 
@@ -171,7 +181,7 @@ test("the first metadata network failure cancels peers and retains the original 
   const error = await observed;
   assert.equal(error.message, "metadata request failed");
   assert.equal(cancelled, 3);
-  assert.equal(published, 0);
+  assert.equal(published, 1, "the validated summary was published before a later metadata failure");
 });
 
 test("GraphQL errors in a metadata batch do not publish otherwise complete PR information", async () => {
@@ -183,5 +193,64 @@ test("GraphQL errors in a metadata batch do not publish otherwise complete PR in
     response.errors = [{ message: "metadata field failed" }];
     return JSON.stringify(response);
   }, { onProgress: () => { published++; } }), /not available/i);
-  assert.equal(published, 0);
+  assert.equal(published, 1, "only the validated summary may be published when detailed fields fail");
+});
+
+test("all eighty basic PR rows become available before any slow metadata batch finishes", async () => {
+  const nodes = records(); const snapshots: any[] = [];
+  const waiting: Array<() => void> = [];
+  const result = fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") {
+      const query = args.find(arg => arg.startsWith("query="))!;
+      assert.match(query, /number title state url/); assert.doesNotMatch(query, /commits\(|reviewThreads\(/);
+      return summaryPage(nodes);
+    }
+    return new Promise(resolve => waiting.push(() => resolve(nodePage(args, nodes))));
+  }, { onProgress: snapshot => snapshots.push(snapshot) });
+  await settle();
+  assert.equal(waiting.length, 4); assert.equal(snapshots.length, 1);
+  assert.deepEqual(snapshots[0].pullRequests.map((pr: any) => pr.number), nodes.map(pr => pr.number));
+  assert.ok(snapshots[0].pullRequests.every((pr: any) => pr.title && pr.commitHashesComplete === false && pr.commentCountComplete === false));
+  assert.equal(snapshots[0].pullRequests[0].fileCountComplete, false);
+  assert.deepEqual(snapshots[0].pullRequests[0].commitHashes, []);
+  for (const complete of waiting) complete();
+  const final = await result;
+  assert.equal(final.pullRequests.length, 80); assert.equal(final.pullRequests[0].commentCount, 5);
+  assert.equal(final.pullRequests[0].fileCount, 11); assert.equal(final.pullRequests[0].fileCountComplete, true);
+  assert.deepEqual(final.pullRequests[0].commitHashes, ["start-1", "head-1"]);
+  assert.equal(snapshots[0].pullRequests[0].commentCountComplete, false, "later hydration must not mutate a published summary");
+});
+
+test("completed metadata batches start commit pagination while slower metadata batches are still running", async () => {
+  const nodes = records(); nodes[0].commits = { nodes: [{ commit: { oid: "start-1" } }], pageInfo: { hasNextPage: true, endCursor: "tail-1" } };
+  const metadata: Array<() => void> = []; let commitTailStarted = false, active = 0, maximum = 0;
+  const result = fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    active++; maximum = Math.max(maximum, active);
+    try {
+      if (options.operation === "graph-pr-list-page") return summaryPage(nodes);
+      if (options.operation === "graph-pr-list-nodes") return await new Promise<string>(resolve => metadata.push(() => resolve(nodePage(args, nodes))));
+      assert.equal(options.operation, "graph-pr-commit-page"); commitTailStarted = true;
+      return JSON.stringify({ data: { repository: { pullRequest: { headRefOid: "head-1", baseRefOid: "base-1", commits: {
+        nodes: [{ commit: { oid: "middle-1" } }, { commit: { oid: "head-1" } }], pageInfo: { hasNextPage: false },
+      } } } } });
+    } finally { active--; }
+  });
+  void result.catch(() => undefined);
+  await settle(); assert.equal(metadata.length, 4);
+  metadata[0](); await settle();
+  assert.equal(commitTailStarted, true, "pagination should overlap the other three metadata requests");
+  for (const complete of metadata.slice(1)) complete();
+  const page = await result;
+  assert.deepEqual(page.pullRequests[0].commitHashes, ["start-1", "middle-1", "head-1"]);
+  assert.equal(page.pullRequests[0].commitHashesComplete, true); assert.equal(page.pullRequests.length, 80);
+  assert.ok(maximum <= 4); assert.equal(active, 0);
+});
+
+test("a metadata node cannot replace the summary with a different PR number under the same global ID", async () => {
+  const nodes = records(1);
+  await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") return summaryPage(nodes);
+    const response = JSON.parse(nodePage(args, nodes)); response.data.nodes[0].number = 99;
+    return JSON.stringify(response);
+  }), /identity|incomplete/i);
 });

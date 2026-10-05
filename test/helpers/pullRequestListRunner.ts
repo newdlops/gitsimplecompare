@@ -9,7 +9,8 @@ import type { GhExecute } from "../../src/git/ghRunner";
  * @returns ID와 필수 연결을 가진 직렬화 가능한 GraphQL PR node
  */
 function completeNode(node: GhPullRequestNode): GhPullRequestNode {
-  return { ...node, id: node.id || `fixture-pr-${node.number}`,
+  return { title: `Pull request ${node.number}`, state: "OPEN", url: `https://github.com/owner/repo/pull/${node.number}`,
+    headRefName: `feature-${node.number}`, baseRefName: "main", ...node, id: node.id || `fixture-pr-${node.number}`,
     files: { totalCount: 0, ...node.files }, comments: { totalCount: 0, ...node.comments },
     commits: { ...node.commits, nodes: node.commits?.nodes || [],
       pageInfo: { hasNextPage: false, ...node.commits?.pageInfo } },

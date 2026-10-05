@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.72083] - 2026-10-06
+
+### Changed
+
+- Reuse file history when HEAD and history interpretation are unchanged,
+  preserving rename tracking and line statistics. Refresh relative dates without
+  repeating the full history walk, and restore validated results after a host
+  restart from a bounded, atomic, user-local cache.
+- Share file history reads, limit concurrent loaders to two, and cancel obsolete
+  consumers on file changes, window blur and shutdown. Prevent late results or
+  errors from replacing the newly selected file.
+- Show all 80 PR titles, states and branches after the first lightweight GitHub
+  response. Load full metadata in bounded batches and start commit/comment
+  pagination as each batch completes, preserving complete final results.
+- Display unknown file counts as an ellipsis during PR loading, and preserve
+  existing disabled Git actions, search focus and row state until data is ready.
+
 ## [0.1.72082] - 2026-10-06
 
 ### Fixed

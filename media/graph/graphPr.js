@@ -473,7 +473,7 @@
       `<span class="pr-branch-flow" ${tooltipAttrs(`${pr.headRefName} into ${pr.baseRefName}`)}>` +
       `<span class="codicon codicon-git-branch" aria-hidden="true"></span><span>${esc(pr.headRefName)}</span>` +
       `<span class="codicon codicon-arrow-right" aria-hidden="true"></span><span>${esc(pr.baseRefName)}</span></span>` +
-      metaChip("files", Number(pr.fileCount) || 0, "Changed files") +
+      metaChip("files", pr.fileCountComplete === false ? "…" : Number(pr.fileCount) || 0, "Changed files") +
       metaChip("git-commit", commitCount(pr), "Commits") +
       metaChip("comment-discussion", commentCount(pr), "Total PR comments") +
       `</div>`;

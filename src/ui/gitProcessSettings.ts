@@ -10,6 +10,7 @@ import { setOwnedFsmonitorPolicy } from "../git/ownedFsmonitor";
 import { setWorkingTreeSnapshotPolicy, invalidateWorkingTreeSnapshots, disposeWorkingTreeSnapshots } from "../git/workingTreeSnapshot";
 import { setBlameReadCancellationPolicy, disposeSharedBlameReads } from "../git/sharedBlameReads";
 import { beginGitHubReadLifetime } from "../git/githubReadCache";
+import { beginFileHistoryReadLifetime } from "../git/fileHistoryReadCache";
 import { clearGitHubRepositoryNameCache } from "../git/githubRepositoryName";
 import { logError, logInfo } from "./outputLog";
 
@@ -46,6 +47,8 @@ function protectedPaths(): string[] {
  */
 export function registerGitProcessManagement(activeRoot: () => string | undefined, storageDirectory?: string): vscode.Disposable {
   const stopGitHubReads = beginGitHubReadLifetime();
+  const stopHistoryReads = beginFileHistoryReadLifetime(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true), logInfo,
+    storageDirectory ? path.join(storageDirectory, "git-file-history-v1") : undefined);
   const subscriptions: vscode.Disposable[] = [];
   const root = () => activeRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const enabled = (repoRoot: string) => configuration(repoRoot).get<boolean>(ENABLED, false);
@@ -192,7 +195,7 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
     if (disposed) return; disposed = true;
     clearTimeout(observation); scheduler.dispose(); service.reset(); resetMonitor();
     clearGitHubRepositoryNameCache();
-    shutdown = Promise.all([gitProcesses.dispose(), disposeWorkingTreeSnapshots(), disposeSharedBlameReads(), stopGitHubReads()])
+    shutdown = Promise.all([gitProcesses.dispose(), disposeWorkingTreeSnapshots(), disposeSharedBlameReads(), stopGitHubReads(), stopHistoryReads()])
       .then(() => undefined).finally(() => process.removeListener("exit", hostExit));
     void shutdown.catch(() => undefined);
     for (const subscription of subscriptions) subscription.dispose();

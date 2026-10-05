@@ -60,6 +60,7 @@ import type { RefreshRequest } from "./refreshChangesView";
 import {
   openFileHistoryCommit,
   refreshFileHistory,
+  registerFileHistoryLifetime,
   type FileHistoryRefreshRequest,
   type OpenFileHistoryCommitArgs,
 } from "./fileHistory";
@@ -171,6 +172,7 @@ const BLAME_BLOCK_COMMANDS = [
  */
 export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
   return [
+    registerFileHistoryLifetime(),
     ...registerGitSettingsCommands(deps),
     // provider/controller가 파일·git 이벤트 새로고침을 요청하면 같은 명령 경로로 합친다.
     deps.comparison.onDidRequestRefresh((request) => {
