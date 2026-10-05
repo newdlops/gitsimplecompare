@@ -224,8 +224,8 @@ export class PullRequestService {
    * @returns PR 상세 drawer 데이터
    */
   async getDetail(number: number): Promise<PullRequestDetailInfo> {
-    const repository = await this.repositoryName();
-    return fetchPullRequestDetail(this.repoRoot, repository, number);
+    // gh가 현재 remote/GH_REPO를 직접 치환하므로 별도 repo view 네트워크 요청이 필요 없다.
+    return fetchPullRequestDetail(this.repoRoot, "{owner}/{repo}", number);
   }
 
   /**
@@ -236,8 +236,8 @@ export class PullRequestService {
    * @returns 상태·이전 경로·라인 증감이 정규화된 파일 목록과 API 상한 도달 여부
    */
   async getChangedFiles(number: number): Promise<PullRequestChangedFilesResult> {
-    const repository = await this.repositoryName();
-    return fetchPullRequestChangedFiles(this.repoRoot, repository, number);
+    // REST endpoint에도 같은 치환 규칙을 적용해 선택한 PR 파일 조회를 즉시 시작한다.
+    return fetchPullRequestChangedFiles(this.repoRoot, "{owner}/{repo}", number);
   }
 
   /**

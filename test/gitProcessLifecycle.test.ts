@@ -32,28 +32,47 @@ if (process.env.GSC_CHILD === '1') {
   return { root, ready, executable, env: { GSC_READY: ready, GSC_LEADER_EXITS: leaderExits ? '1' : '0' } };
 }
 
-/** 준비 파일은 자식이 신호 처리기를 등록한 뒤 작성되므로 시작 경쟁 없이 취소를 시험한다. */
+/**
+ * 신호 처리기 등록 뒤 작성한 준비 파일을 기다려 OS 실행 지연과 종료 시간을 분리한다.
+ * - 시작에는 최대 10초를 허용하지만, 취소 뒤 종료 상한은 bounded의 5초를 유지한다.
+ * @param file 실제 fixture가 부모·자식 PID를 게시할 파일
+ * @returns 두 프로세스가 신호를 받을 준비를 끝냈을 때의 PID 배열
+ */
 async function waitForReady(file: string): Promise<number[]> {
-  for (let i = 0; i < 100; i++) {
+  const deadline = Date.now() + 10000;
+  while (Date.now() < deadline) {
     try { return JSON.parse(await readFile(file, "utf8")); } catch { await new Promise(r => setTimeout(r, 20)); }
   }
   throw new Error("Fixture did not start.");
 }
 
+/** 시작 대기 중의 실패도 즉시 관찰해 준비 실패 뒤 unhandled rejection을 남기지 않는다. */
+function observedFailure(pending: Promise<unknown>): Promise<unknown> {
+  return pending.then(() => undefined, error => error);
+}
+
+/** 실제 Git 오류를 검증한다. 기본 close 상한은 5초이고 deadline 검사는 남은 대기 시간을 더한다. */
+async function expectGitFailure(observed: Promise<unknown>, code?: string, timeoutMs = 5000): Promise<void> {
+  const error = await bounded(observed, timeoutMs);
+  assert.ok(error instanceof GitError);
+  if (code) assert.equal(error.code, code);
+}
+
 /** 제한 시간 내 close가 발생하지 않으면 무한히 대기하지 않고 실제 수명 정책의 실패를 보고한다. */
-async function bounded<T>(pending: Promise<T>): Promise<T> {
+async function bounded<T>(pending: Promise<T>, timeoutMs = 5000): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   try { return await Promise.race([pending, new Promise<T>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Owned Git did not close after termination.")), 5000);
+    timer = setTimeout(() => reject(new Error("Owned Git did not close after termination.")), timeoutMs);
   })]); } finally { clearTimeout(timer!); }
 }
 
 test("leader close preserves cleanup of a resistant child with independent stdio", { skip: process.platform === "win32" }, async t => {
   const fixture = await stubbornGit(t, true), controller = new AbortController();
+  t.after(() => controller.abort());
   const pending = runGit(["status"], fixture.root, { ...fixture, signal: controller.signal });
-  const rejected = assert.rejects(bounded(pending), error => error instanceof GitError && error.code === "ABORT_ERR");
+  const observed = observedFailure(pending);
   const pids = await waitForReady(fixture.ready);
-  controller.abort(); await rejected;
+  controller.abort(); await expectGitFailure(observed, "ABORT_ERR");
   for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
@@ -61,26 +80,31 @@ for (const kind of ["text", "buffer", "stream", "stdin"] as const) {
   test(`${kind} cancellation closes a SIGTERM-resistant Git process and its child`, { skip: process.platform === "win32" }, async t => {
     const fixture = await stubbornGit(t);
     const controller = new AbortController();
+    t.after(() => controller.abort());
     const options = { ...fixture, signal: controller.signal };
     const pending = kind === "text" ? runGit(["status"], fixture.root, options)
       : kind === "buffer" ? runGitBuffer(["show"], fixture.root, options)
       : kind === "stdin" ? runGitWithInput(["cat-file", "--batch"], fixture.root, "input", options)
       : runGitStream(["show"], fixture.root, () => undefined, options);
-    const rejected = assert.rejects(bounded(pending), error => error instanceof GitError && error.code === "ABORT_ERR");
+    const observed = observedFailure(pending);
     const pids = await waitForReady(fixture.ready);
     controller.abort();
-    await rejected;
+    await expectGitFailure(observed, "ABORT_ERR");
     for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
   });
 }
 
 test("read deadline closes stubborn children and reports ETIMEDOUT", { skip: process.platform === "win32" }, async t => {
   const fixture = await stubbornGit(t);
-  const options = { ...fixture, readTimeoutMs: 1000 } as RunGitOptions;
+  // OS 시작 대기(최대 10초) 전에 deadline이 fixture를 죽이지 않도록 충분히 뒤에 둔다.
+  // 전체 대기는 deadline 15초 + 기존 종료 상한 5초에 고정하며 시작 시간만큼 다시 늘리지 않는다.
+  const readTimeoutMs = 15000, started = Date.now();
+  const options = { ...fixture, readTimeoutMs } as RunGitOptions;
   const pending = runGit(["-c", "credential.helper=", "--literal-pathspecs", "status"], fixture.root, options);
-  const rejected = assert.rejects(bounded(pending), error => error instanceof GitError && error.code === "ETIMEDOUT");
+  const observed = observedFailure(pending);
   const pids = await waitForReady(fixture.ready);
-  await rejected;
+  await expectGitFailure(observed, "ETIMEDOUT", Math.max(1, started + readTimeoutMs + 5000 - Date.now()));
+  assert.ok(Date.now() - started >= readTimeoutMs, "the configured deadline must not fire early");
   for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
@@ -98,10 +122,10 @@ test("repeated extension sessions leave no owned foreground Git monitors after a
   for (let session = 0; session < 3; session++) {
     const fixture = await stubbornGit(t);
     const pending = runGit(["fsmonitor--daemon", "run", "--no-detach"], fixture.root, fixture);
-    const rejected = assert.rejects(bounded(pending), error => error instanceof GitError);
+    const observed = observedFailure(pending);
     const pids = await waitForReady(fixture.ready), pid = pids[0];
     assert.equal(gitProcesses.ownsMonitor(pid, fixture.root), true);
-    await gitProcesses.dispose(); await rejected;
+    await gitProcesses.dispose(); await expectGitFailure(observed);
     for (const child of pids) assert.throws(() => process.kill(child, 0), { code: "ESRCH" });
   }
 });

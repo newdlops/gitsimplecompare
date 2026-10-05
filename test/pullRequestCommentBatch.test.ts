@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchRemainingReviewThreadCommentCounts } from "../src/git/pullRequestCommentCounts";
-import { fetchPullRequestListPage, type PullRequestListPage } from "../src/git/pullRequestListService";
+import type { PullRequestListPage } from "../src/git/pullRequestListService";
+import { fetchFixturePullRequestListPage as fetchPullRequestListPage } from "./helpers/pullRequestListRunner";
 import type { GhPullRequestNode } from "../src/git/pullRequestInfo";
 
 /** 각 PR의 첫 댓글 cursor와 독립 합산 값을 가진 목록 응답을 만든다. */

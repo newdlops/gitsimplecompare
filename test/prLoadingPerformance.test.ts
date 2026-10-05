@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchPullRequestListPage, type PullRequestListPage } from "../src/git/pullRequestListService";
+import type { PullRequestListPage } from "../src/git/pullRequestListService";
+import { fetchFixturePullRequestListPage as fetchPullRequestListPage } from "./helpers/pullRequestListRunner";
 import { pullRequestInfoFromGraphQl, type GhPullRequestNode } from "../src/git/pullRequestInfo";
 import { PullRequestService, type PullRequestOverview } from "../src/git/pullRequestService";
 import { GraphPullRequestPager } from "../src/webview/graphPullRequests";

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { GhExecute } from "../src/git/ghRunner";
 import type { GhPullRequestNode } from "../src/git/pullRequestInfo";
-import { fetchPullRequestListPage } from "../src/git/pullRequestListService";
+import { fetchPullRequestListPage as readPullRequestListPage } from "../src/git/pullRequestListService";
+import { fetchFixturePullRequestListPage as fetchPullRequestListPage, withPullRequestMetadata } from "./helpers/pullRequestListRunner";
 import { fetchRemainingReviewThreadCommentCounts } from "../src/git/pullRequestCommentCounts";
 
 /** 첫 PR 페이지의 저장소·기본 branch·cursor를 실제 GraphQL 응답 형태로 만든다. */
@@ -48,7 +49,7 @@ function pagedPullRequest(number: number): GhPullRequestNode {
   } };
 }
 
-test("one request returns the same 80 PR records and repository metadata without repo view", async () => {
+test("a light root query and bounded node reads preserve 80 PR records without repo view", async () => {
   const requested: string[][] = [];
   const nodes = Array.from({ length: 80 }, (_, index) => ({
     number: index + 1, headRefOid: `commit-${index}`, baseRefName: "main", headRefName: `feature-${index}`,
@@ -56,19 +57,27 @@ test("one request returns the same 80 PR records and repository metadata without
     comments: { totalCount: 2 }, reviewThreads: { nodes: [{ comments: { totalCount: 3 } }] },
   }));
   const runner: GhExecute = async (args, cwd, options) => {
-    requested.push([...args]);
     assert.equal(cwd, "/repo");
     assert.equal(options.operation, "graph-pr-list-page");
     assert.ok(args.includes("owner={owner}") && args.includes("name={repo}"));
     assert.ok(args.includes("limit=80"));
     const query = args.find((arg) => arg.startsWith("query="))!;
-    assert.match(query, /commits\(first: 30\)/);
-    assert.match(query, /reviewThreads\(first: 20\)/);
+    assert.doesNotMatch(query, /commits\(|reviewThreads\(/);
     assert.match(query, /nameWithOwner/);
     return firstPage(nodes, true);
   };
-  const result = await fetchPullRequestListPage("/repo", undefined, undefined, runner);
-  assert.equal(requested.length, 1);
+  const metadataRunner = withPullRequestMetadata(runner);
+  const result = await readPullRequestListPage("/repo", undefined, undefined, async (args, cwd, options) => {
+    requested.push([...args]);
+    if (options.operation === "graph-pr-list-nodes") {
+      const query = args.find(arg => arg.startsWith("query="))!;
+      assert.match(query, /commits\(first: 30\)/);
+      assert.match(query, /reviewThreads\(first: 20\)/);
+      assert.ok(args.filter(arg => arg.startsWith("ids[]=")).length <= 20);
+    }
+    return metadataRunner(args, cwd, options);
+  });
+  assert.equal(requested.length, 5);
   assert.equal(result.repository, "owner/repository");
   assert.equal(result.defaultBranch, "main");
   assert.equal(result.pullRequests.length, 80);

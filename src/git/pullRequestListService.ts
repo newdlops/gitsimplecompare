@@ -1,5 +1,5 @@
-// Graph용 PR 목록을 한 번의 저장소 조회와 제한된 후속 pagination으로 읽는 모듈.
-// - 첫 응답을 즉시 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
+// Graph용 PR 목록을 얕은 ID 조회와 제한된 정보/pagination 조회로 읽는 모듈.
+// - 전체 메타데이터가 준비되면 먼저 알리고, 최종 반환 전에는 모든 commit OID와 댓글 수를 완성한다.
 import { readGitHub } from "./githubReadCache";
 import { completePullRequestCommits } from "./pullRequestCommitPages";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
@@ -14,6 +14,8 @@ import { logError, logInfo } from "../ui/outputLog";
 const PULL_REQUEST_PAGE_SIZE = 80;
 const COMMIT_PREVIEW_PAGE_SIZE = 30;
 const REVIEW_THREAD_PREVIEW_PAGE_SIZE = 20;
+/** 정렬된 80개 connection 아래에서 중첩 정보를 한꺼번에 확장하지 않는 묶음 크기다. */
+const PULL_REQUEST_METADATA_BATCH_SIZE = 20;
 /** 큰 PR 여러 개가 있어도 동시에 실행하는 추가 GitHub 요청은 네 개로 제한한다. */
 const MAX_PARALLEL_REQUESTS = 4;
 /** 응답 없는 네트워크 한 건이 Graph PR 목록을 무기한 붙잡지 않도록 하는 대기 상한이다. */
@@ -36,13 +38,23 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
     defaultBranchRef { name }
     pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
-${buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE_SIZE)}
+        id
       }
       pageInfo { hasNextPage endCursor }
     }
   }
 }`;
 
+/** 원래 목록과 같은 전체 필드를 global ID로 직접 읽어 무거운 root connection을 피한다. */
+const PULL_REQUEST_NODES_QUERY = `
+query($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on PullRequest {
+      id
+${buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE_SIZE)}
+    }
+  }
+}`;
 
 /** Graph 목록과 stack이 같은 응답에서 재사용할 저장소 정보 및 완성된 PR 페이지다. */
 export interface PullRequestListPage {
@@ -53,11 +65,12 @@ export interface PullRequestListPage {
 }
 
 interface GhListResponse {
+  errors?: unknown[];
   data?: {
     repository?: {
       nameWithOwner?: string;
       defaultBranchRef?: { name?: string };
-      pullRequests?: { nodes?: GhPullRequestNode[]; pageInfo?: GhPageInfo };
+      pullRequests?: { nodes?: Array<GhPullRequestNode | null>; pageInfo?: GhPageInfo };
     };
   };
 }
@@ -71,7 +84,7 @@ interface GhListResponse {
  * @param cursor 이전 PR 페이지의 endCursor. 없으면 첫 페이지
  * @param signal 패널 수명주기와 연결된 선택적 취소 신호
  * @param runner production gh 또는 지연/실패를 제어하는 테스트 실행기
- * @param options 요청당 대기 상한. 전체 PR 페이지 수나 반환 데이터는 제한하지 않는다.
+ * @param options 요청당 대기 상한·진행 callback·이전 완성 목록. 반환 데이터를 제한하지 않는다.
  * @returns commit과 댓글 pagination을 완료한 PR 페이지. 취소·조회 실패는 그대로 던진다.
  */
 export async function fetchPullRequestListPage(
@@ -113,12 +126,27 @@ export async function fetchPullRequestListPage(
       "-f", `query=${PULL_REQUESTS_QUERY}`,
     ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page" });
     throwIfAborted(controller.signal);
-    const repository = (JSON.parse(output) as GhListResponse).data?.repository;
-    if (!repository?.nameWithOwner || !repository.pullRequests) {
+    const response = JSON.parse(output) as GhListResponse;
+    const repository = response.data?.repository;
+    if (response.errors?.length || !repository?.nameWithOwner || !Array.isArray(repository.pullRequests?.nodes)
+      || typeof repository.pullRequests.pageInfo?.hasNextPage !== "boolean") {
       throw new Error("GitHub pull request list is not available.");
     }
     const [owner, name] = splitRepositoryName(repository.nameWithOwner);
-    const nodes = repository.pullRequests.nodes || [];
+    const references = repository.pullRequests.nodes || [];
+    logInfo("graph pull request list identities ready", {
+      repoRoot, pullRequests: references.length, elapsedMs: Date.now() - started,
+      metadataBatches: Math.ceil(references.length / PULL_REQUEST_METADATA_BATCH_SIZE),
+    });
+    const metadataStarted = Date.now();
+    let nodes: GhPullRequestNode[];
+    try { nodes = await readPullRequestNodes(repoRoot, references, controller, measuredRunner); }
+    catch (error) { throw paginationFailure(error, requestFailure?.error); }
+    throwIfAborted(controller.signal);
+    logInfo("graph pull request metadata ready", {
+      repoRoot, pullRequests: nodes.length, elapsedMs: Date.now() - started,
+      metadataElapsedMs: Date.now() - metadataStarted,
+    });
     const pullRequests = nodes.map((node) => pullRequestInfoFromGraphQl(node));
     const previous = new Map(options.previous?.repository === repository.nameWithOwner
       ? options.previous.pullRequests.map(pr => [pr.number, pr] as const) : []);
@@ -169,7 +197,7 @@ export async function fetchPullRequestListPage(
         elapsedMs: Date.now() - started, paginationTasks: tasks.length, reusedCommits });
     }
     try { await completePagination(tasks, controller, scheduleProgress); }
-    catch (error) { throw requestFailure?.error ?? error; }
+    catch (error) { throw paginationFailure(error, requestFailure?.error); }
     throwIfAborted(controller.signal);
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks: tasks.length,
@@ -180,6 +208,78 @@ export async function fetchPullRequestListPage(
     clearTimeout(progressTimer);
     signal?.removeEventListener("abort", cancel);
   }
+}
+
+/**
+ * 정렬된 목록의 global ID를 작은 묶음으로 직접 조회하고 모든 PR 필드를 원래 순서로 돌려준다.
+ * - 기존 페이지 크기·cursor·commit/review 첫 페이지 크기는 유지한다.
+ * - measuredRunner의 공통 슬롯을 써 실제 네트워크 동시 실행은 네 개를 넘지 않는다.
+ * - 누락·중복·다른 ID·GraphQL 부분 오류는 전체 조회 오류로 처리해 불완전한 성공을 막는다.
+ * @param repoRoot gh가 host와 인증 문맥을 해석할 저장소 루트
+ * @param references 첫 root connection에서 받은 PR global ID 목록
+ * @param controller 모든 조회의 취소·첫 실패를 공유하는 수명주기
+ * @param runner 요청 시간 상한과 동시 실행을 적용한 실행기
+ * @returns 모든 필드가 준비된 PR node 배열. 순서는 root connection과 같다.
+ */
+async function readPullRequestNodes(
+  repoRoot: string,
+  references: Array<GhPullRequestNode | null>,
+  controller: AbortController,
+  runner: GhExecute
+): Promise<GhPullRequestNode[]> {
+  const ids = references.map(node => node?.id);
+  if (ids.some(id => typeof id !== "string" || !id.trim()) || new Set(ids).size !== ids.length) {
+    throw new Error("GitHub pull request identities are not available.");
+  }
+  const nodes = new Array<GhPullRequestNode>(references.length);
+  const tasks: Array<() => Promise<void>> = [];
+  for (let offset = 0; offset < ids.length; offset += PULL_REQUEST_METADATA_BATCH_SIZE) {
+    const batch = ids.slice(offset, offset + PULL_REQUEST_METADATA_BATCH_SIZE) as string[];
+    tasks.push(async () => {
+      const output = await runner([
+        "api", "graphql", ...batch.flatMap(id => ["-F", `ids[]=${id}`]), "-f", `query=${PULL_REQUEST_NODES_QUERY}`,
+      ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-nodes" });
+      throwIfAborted(controller.signal);
+      const response = JSON.parse(output) as { errors?: unknown[]; data?: { nodes?: Array<GhPullRequestNode | null> } };
+      if (response.errors?.length || !Array.isArray(response.data?.nodes) || response.data.nodes.length !== batch.length) {
+        throw new Error("GitHub pull request information is not available.");
+      }
+      const byId = new Map<string, GhPullRequestNode>();
+      for (const node of response.data.nodes) {
+        if (!node?.id || !batch.includes(node.id) || byId.has(node.id) || !Number.isSafeInteger(node.number) || Number(node.number) <= 0
+          || !hasPullRequestNodeConnections(node)) {
+          throw new Error("GitHub pull request identity is incomplete.");
+        }
+        byId.set(node.id, node);
+      }
+      for (let index = 0; index < batch.length; index++) nodes[offset + index] = byId.get(batch[index])!;
+    });
+  }
+  await completePagination(tasks, controller, () => {});
+  return nodes;
+}
+
+/**
+ * 조회한 commit·review 연결의 nodes/pageInfo와 파일·대화 합계가 응답에 실제로 있는지 확인한다.
+ * - pagination이 남아 있는 정상 연결은 허용하며, 빠진 연결을 빈 완료 목록으로 해석하지 않는다.
+ * @param node 직접 ID 조회에서 받은 PR 메타데이터
+ * @returns 요청한 연결과 합계 필드가 모두 있으면 true
+ */
+function hasPullRequestNodeConnections(node: GhPullRequestNode): boolean {
+  return Array.isArray(node.commits?.nodes) && typeof node.commits?.pageInfo?.hasNextPage === "boolean"
+    && Array.isArray(node.reviewThreads?.nodes) && typeof node.reviewThreads?.pageInfo?.hasNextPage === "boolean"
+    && Number.isSafeInteger(node.comments?.totalCount) && Number(node.comments?.totalCount) >= 0
+    && Number.isSafeInteger(node.files?.totalCount) && Number(node.files?.totalCount) >= 0;
+}
+
+/**
+ * peer 취소가 첫 네트워크 오류를 숨기지 않되, JSON/identity 오류는 취소 오류로 바꾸지 않는다.
+ * @param error 작업 그룹에서 관찰한 첫 오류
+ * @param requestError 실제 실행 경계에서 취소 전 기록한 원래 요청 오류
+ * @returns 사용자에게 전달할 원래 실패 또는 외부 취소 오류
+ */
+function paginationFailure(error: unknown, requestError: unknown): unknown {
+  return error instanceof Error && error.name === "AbortError" ? requestError ?? error : error;
 }
 
 /**

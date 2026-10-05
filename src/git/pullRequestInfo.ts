@@ -52,6 +52,8 @@ export interface GhPageInfo {
 
 /** 목록/검색 GraphQL 쿼리가 공통으로 받는 PullRequest node 형태 */
 export interface GhPullRequestNode extends GhPullRequestCommentCounts {
+  /** 얕은 목록 응답과 직접 node 조회를 같은 PR에 연결하는 GitHub global ID */
+  id?: string;
   number?: number;
   title?: string;
   state?: string;

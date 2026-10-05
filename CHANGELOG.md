@@ -5,6 +5,23 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72077] - 2026-10-05
+
+### Changed
+
+- Load the same 80 Pull Requests through a light ordered identity query and
+  batches of 20 complete records, with at most four concurrent requests. Keep
+  cursor ordering, every commit, review comment count and early display intact.
+- Start selected PR details and Explorer changed-file reads immediately using
+  GitHub CLI repository placeholders, removing the preceding repository lookup
+  and honoring the current `GH_REPO` selection.
+
+### Fixed
+
+- Reject missing or duplicate PR identities, incomplete metadata connections
+  and GraphQL partial errors instead of displaying a partial successful page.
+  Cancel peer requests on failure while preserving the original error.
+
 ## [0.1.72076] - 2026-10-04
 
 ### Changed
