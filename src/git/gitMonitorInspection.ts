@@ -32,6 +32,17 @@ const systemInspection: GitMonitorInspectionDeps = {
 };
 
 /**
+ * 저장소 사용을 확인해야 할 Code 프로세스인지 실행 파일로 판별한다.
+ * - 창 종료 뒤 독립적으로 남는 crashpad는 workspace를 열거나 Git을 사용하는 host가 아니다.
+ * @param identity OS가 확인한 PID·실행 파일 신원. argv를 읽거나 저장하지 않는다.
+ * @returns Code 실행 파일이며 별도 crash reporter가 아닐 때 true
+ */
+function isCodeWorkspaceProcess(identity: ProcessIdentity): boolean {
+  return /Visual Studio Code|Code Helper|VSCodium/.test(identity.executable)
+    && path.basename(identity.executable) !== "chrome_crashpad_handler";
+}
+
+/**
  * macOS에서 같은 사용자 Git의 감시 소켓과 다른 프로세스/Code 창 사용을 함께 확인한다.
  * @param protectedRoots 현재 확장의 workspace·열린 문서 등 항상 보호할 경로
  * @returns 소유권/활성 사용을 검증한 목록. 미지원·부분 관찰은 complete=false다.
@@ -48,7 +59,7 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     const ownedUser = processes.filter(item => item.uid === deps.uid);
     const git = ownedUser.filter(item => path.basename(item.executable) === "git");
     if (!git.length) return { complete: true, monitors: [] };
-    const code = ownedUser.filter(item => /Visual Studio Code|Code Helper|VSCodium/.test(item.executable));
+    const code = ownedUser.filter(isCodeWorkspaceProcess);
     const [cwdOutput, socketOutput, codeOutput] = await Promise.all([
       atStage("working-directories", () => deps.openPaths(["-a", "-u", String(deps.uid), "-d", "cwd"])),
       atStage("git-sockets", () => deps.openPaths(["-a", "-p", git.map(item => item.pid).join(","), "-U"])),
@@ -114,7 +125,7 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     }
     stage = "final-process-identities";
     const latest = await deps.processes();
-    if (latest.some(item => item.uid === deps.uid && /Visual Studio Code|Code Helper|VSCodium/.test(item.executable)
+    if (latest.some(item => item.uid === deps.uid && isCodeWorkspaceProcess(item)
       && !code.some(before => sameProcess(before, item)))) return { complete: false, monitors: [], reason: "code-window-usage-changed" };
     return { complete: true, observedCode: code, monitors: monitors.filter(item => sameProcess(item.identity, latest.find(current => current.pid === item.identity.pid))), diagnostic: { elapsedMs: Date.now() - started } };
   } catch (error) {
@@ -184,7 +195,7 @@ export async function stopGitMonitor(candidate: IdleGitCandidate, canStop: () =>
   try {
     const knownMonitors = new Set(snapshot.monitors.map(item => item.identity.pid));
     const newGit = latest.some(item => item.uid === deps.uid && path.basename(item.executable) === "git" && !knownMonitors.has(item.pid));
-    const newCode = latest.some(item => item.uid === deps.uid && /Visual Studio Code|Code Helper|VSCodium/.test(item.executable)
+    const newCode = latest.some(item => item.uid === deps.uid && isCodeWorkspaceProcess(item)
       && !snapshot.observedCode?.some(previous => sameProcess(previous, item)));
     const terminalUse = cwd.some(item => item.pid !== candidate.identity.pid && containsPath(candidate.repoRoot, item.file));
     const newlyProtected = protectedRoots().some(item => containsPath(candidate.repoRoot, item) || containsPath(item, candidate.repoRoot));

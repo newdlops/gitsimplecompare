@@ -84,6 +84,61 @@ test("webview renderers sharing a workbench window do not block otherwise comple
   assert.equal(result.monitors[0].protectedReason, undefined);
 });
 
+test("orphaned Code crash reporters do not stand in for an open editor workspace", async () => {
+  for (const app of ["Visual Studio Code", "Visual Studio Code - Insiders", "VSCodium"]) {
+    const f = fixture(), crashpad = { ...f.monitor, pid: 88,
+      executable: `/Applications/${app}.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler` };
+    f.setProcesses([f.monitor, crashpad]);
+    const snapshot = await inspectGitMonitors([], f.deps);
+    assert.equal(snapshot.complete, true, app);
+    assert.equal(snapshot.monitors.length, 1);
+    assert.equal(snapshot.monitors[0].protectedReason, undefined);
+    assert.deepEqual(snapshot.observedCode, []);
+  }
+});
+
+test("a crash reporter appearing during inspection does not invalidate an otherwise complete snapshot", async () => {
+  const f = fixture(), crashpad = { ...f.monitor, pid: 88,
+    executable: "/Applications/Visual Studio Code.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler" };
+  f.setProcesses([f.monitor], [f.monitor, crashpad]);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.monitors.length, 1);
+});
+
+test("a real Code process alongside its crash reporter still requires complete workspace mapping", async () => {
+  const f = fixture(), code = { ...f.monitor, pid: 88,
+    executable: "/Applications/Visual Studio Code.app/Contents/MacOS/Electron" };
+  const crashpad = { ...code, pid: 89,
+    executable: "/Applications/Visual Studio Code.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler" };
+  f.setProcesses([f.monitor, code, crashpad]);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, false);
+  assert.equal(snapshot.reason, "code-window-usage-unavailable");
+});
+
+test("a mapped real Code renderer stays protected when an orphaned crash reporter is also present", async () => {
+  const f = fixture(), renderer = { ...f.monitor, pid: 88, executable: "/Code Helper (Renderer)" };
+  const crashpad = { ...f.monitor, pid: 89,
+    executable: "/Applications/Visual Studio Code.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler" };
+  f.setProcesses([f.monitor, renderer, crashpad]);
+  f.setCodeFiles("p88\0\nf6\0n/code/User/workspaceStorage/abc/state.vscdb\0\n");
+  f.text.set("/code/User/workspaceStorage/abc/workspace.json", JSON.stringify({ folder: `file://${f.root}` }));
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.monitors[0].protectedReason, "open-code-workspace-or-document");
+  assert.deepEqual(snapshot.observedCode?.map(item => item.pid), [renderer.pid]);
+});
+
+test("other Code helper binaries remain subject to workspace-use verification", async () => {
+  const f = fixture(), unknownHelper = { ...f.monitor, pid: 88,
+    executable: "/Applications/Visual Studio Code.app/Contents/Helpers/chrome_crashpad_handler_other" };
+  f.setProcesses([f.monitor, unknownHelper]);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, false);
+  assert.equal(snapshot.reason, "code-window-usage-unavailable");
+});
+
 test("window-config counting merges auxiliary renderers and rejects missing PID or configuration", () => {
   const output = " 88 /Code Helper --type=renderer --vscode-window-config=vscode:first\n89 /Code Helper --vscode-window-config=vscode:first\n90 /Code Helper --vscode-window-config=vscode:second\n";
   assert.equal(parseCodeWindowCount(output, [88, 89, 90]), 2);
@@ -135,6 +190,17 @@ test("a Code window or terminal appearing after the first stop inspection preven
     await assert.rejects(stopGitMonitor(candidate, () => true, () => [], f.deps), { name: "AbortError" });
     assert.equal(stopped, false);
   }
+});
+
+test("a new crash reporter after the stop snapshot does not prevent verified monitor shutdown", async () => {
+  const f = fixture(), crashpad = { ...f.monitor, pid: 88,
+    executable: "/Applications/Visual Studio Code.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler" };
+  const candidate = { ...(await inspectGitMonitors([], f.deps)).monitors[0], idleSince: 0 };
+  let reads = 0, stopped = false;
+  f.deps.processes = async () => stopped ? [crashpad] : ++reads < 3 ? [f.monitor] : [f.monitor, crashpad];
+  f.deps.stop = async () => { stopped = true; };
+  await stopGitMonitor(candidate, () => true, () => [], f.deps);
+  assert.equal(stopped, true);
 });
 
 test("cwd inspection intersects user and descriptor selections instead of protecting every open file", async () => {

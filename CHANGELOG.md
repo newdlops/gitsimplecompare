@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72080] - 2026-10-05
+
+### Fixed
+
+- Recognize orphaned VS Code crash reporters during idle Git inspection.
+  Closing the editor can leave crashpad running; its presence no longer makes
+  workspace usage unavailable or cancels a verified monitor shutdown. Actual
+  editor hosts, workspace mapping, terminal activity and PID/socket checks
+  continue to protect active repositories.
+
 ## [0.1.72079] - 2026-10-05
 
 ### Changed
