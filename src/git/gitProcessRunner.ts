@@ -3,6 +3,7 @@ import { GitError } from "./gitError";
 import { beginGitExecution } from "./gitExecutionDiagnostics";
 import { gitCommandPolicy } from "./gitCommandPolicy";
 import { gitProcesses } from "./gitProcessRegistry";
+import { isOwnedStatusIndex } from "./statusIndexOwnership";
 import type { RunGitOptions, GitInput } from "./gitExec";
 
 /** 설정 계층이 Git 조회 제한 시간만 주입하는 순수 실행 정책 경계다. */
@@ -51,9 +52,12 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     }
     const timeout = options.readTimeoutMs ?? timeoutResolver?.(cwd) ?? 30_000;
     const group = (policy.readOnly || policy.monitor === true) && process.platform !== "win32";
-    const timing = beginGitExecution(args, cwd, executable);
-    const env = options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
+    const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
     if (env) for (const name of options.clearEnv ?? []) delete env[name];
+    // 조회가 실제 index를 갱신해 watcher·전용 상태 캐시의 재스캔을 유발하지 않게 한다.
+    // 캐시 쓰기는 최종 환경이 등록된 소유 index를 가리키는 경우에만 허용한다.
+    if (policy.readOnly && env) env.GIT_OPTIONAL_LOCKS = options.allowPrivateIndexWrites && isOwnedStatusIndex(env.GIT_INDEX_FILE) ? "1" : "0";
+    const timing = beginGitExecution(args, cwd, executable, Date.now, env);
     const child = spawn(executable, args, { cwd, windowsHide: true, detached: group, stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
       env });
     timing?.spawnReturned();

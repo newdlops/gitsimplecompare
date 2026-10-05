@@ -6,6 +6,8 @@ import { runGit, withGitConfigOverrides } from "./gitExec";
 import { isGitLifecycleError } from "./gitError";
 import { runGitStatus } from "./gitStatusExec";
 import { registerStatusIndex } from "./statusIndexOwnership";
+import type { StatusIndexWarmCache } from "./statusIndexWarmCache";
+import { restoreStatusIndexMetadata, statusIndexStagingIdentity } from "./statusIndexStagingIdentity";
 import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "./workingTreeStatusFormat";
 
 /** 실제 index를 복사하되 모든 상태 캐시 쓰기를 확장 소유 디렉터리로만 보내는 저장소별 캐시다. */
@@ -13,9 +15,13 @@ export class PrivateStatusIndex {
   private directory?: string;
   private index?: string;
   private fingerprint?: string;
+  private warmFingerprint?: string;
   private unregister?: () => void;
+  private publishedAt = 0;
 
-  constructor(private readonly root: string, private readonly log: (event: string, fields: Record<string, unknown>) => void) {}
+  /** 저장 공간이 주입되면 세션을 넘겨 Git의 검증 가능한 전용 index만 재사용한다. */
+  constructor(private readonly root: string, private readonly log: (event: string, fields: Record<string, unknown>) => void,
+    private readonly warmCache?: StatusIndexWarmCache) {}
 
   /**
    * normal 상태의 미추적 디렉터리만 추가 열거해 전체 파일 결과를 보존한다.
@@ -44,7 +50,13 @@ export class PrivateStatusIndex {
           for (const file of output.split("\0")) if (file) files.add(file);
         }
         for (const file of files) parsed.entries.push({ xy: "??", path: file });
-        if (before.key === (await indexIdentity(source)).key) return workingTreeSnapshot(this.root, parsed);
+        if (before.key === (await indexIdentity(source)).key) {
+          // 최초 완료와 원본 변경 때는 게시하고 반복 조회는 디스크 쓰기를 30초에 한 번으로 제한한다.
+          if (this.warmCache && this.warmFingerprint && !signal.aborted && Date.now() - this.publishedAt >= 30000) {
+            this.publishedAt = Date.now(); await this.warmCache.store(this.root, this.warmFingerprint!, this.index!);
+          }
+          return workingTreeSnapshot(this.root, parsed);
+        }
         this.fingerprint = undefined;
         this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-changed-during-read" });
       }
@@ -59,7 +71,7 @@ export class PrivateStatusIndex {
   /** 실행 close 뒤에 호출하며 생성한 디렉터리만 삭제한다. */
   async dispose(): Promise<void> {
     const directory = this.directory;
-    this.unregister?.(); this.unregister = undefined; this.directory = undefined; this.index = undefined; this.fingerprint = undefined;
+    this.unregister?.(); this.unregister = undefined; this.directory = undefined; this.index = undefined; this.fingerprint = undefined; this.warmFingerprint = undefined;
     if (directory) await rm(directory, { recursive: true, force: true });
   }
 
@@ -75,27 +87,38 @@ export class PrivateStatusIndex {
       this.directory = await mkdtemp(path.join(os.tmpdir(), "gsc-status-index-"));
       this.index = path.join(this.directory, "index"); this.unregister = registerStatusIndex(this.index);
     }
-    if (this.fingerprint === source.key) return;
-    if (source.bytes) {
-      await writeFile(this.index!, source.bytes, { mode: 0o600 });
+    if (this.fingerprint === source.key) {
+      // private status가 mtime을 늦췄어도 다음 조회의 racy-clean 경계는 실제 index보다 늦어지지 않는다.
+      if (source.mtime !== undefined) await utimes(this.index!, source.mtime / 1000, Math.floor(source.mtime / 1000));
+      return;
+    }
+    // stat·UNTR·FSMN 갱신만으로 다시 전체 탐색하지 않되 stage/파일 의미 변경은 반드시 분리한다.
+    const staging = this.warmCache && source.bytes ? statusIndexStagingIdentity(source.bytes) : undefined;
+    this.warmFingerprint = staging ? `staging-v1:${source.file}:${staging}` : undefined;
+    const warmed = this.warmFingerprint ? await this.warmCache?.load(this.root, this.warmFingerprint) : undefined;
+    const bytes = warmed && source.bytes ? restoreStatusIndexMetadata(warmed.bytes, source.bytes) ?? source.bytes : source.bytes;
+    if (bytes) {
+      await writeFile(this.index!, bytes, { mode: 0o600 });
       // 새 사본의 mtime이 늦으면 racy-clean 파일의 수정을 놓치므로 원본보다 이른 시각을 보존한다.
-      await utimes(this.index!, source.mtime! / 1000, Math.floor(source.mtime! / 1000));
+      const mtime = source.mtime!;
+      await utimes(this.index!, mtime / 1000, Math.floor(mtime / 1000));
     }
     else await rm(this.index!, { force: true });
     this.fingerprint = source.key;
+    this.publishedAt = 0;
   }
 }
 
-interface IndexIdentity { key: string; bytes?: Buffer; mtime?: number }
+interface IndexIdentity { key: string; file: string; bytes?: Buffer; mtime?: number }
 /** stat 전후와 내용 hash를 대조해 같은 이름의 index 교체와 도중 쓰기를 검출한다. */
 async function indexIdentity(file: string): Promise<IndexIdentity> {
   try {
     const before = await stat(file), bytes = await readFile(file), after = await stat(file);
     const metadata = (info: typeof before) => `${info.dev}:${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`;
     if (metadata(before) !== metadata(after)) throw new Error("Index changed while reading.");
-    return { key: `${file}:${metadata(after)}:${createHash("sha256").update(bytes).digest("hex")}`, bytes, mtime: after.mtimeMs };
+    return { key: `${file}:${metadata(after)}:${createHash("sha256").update(bytes).digest("hex")}`, file, bytes, mtime: after.mtimeMs };
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { key: `${file}:missing` };
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { key: `${file}:missing`, file };
     throw error;
   }
 }

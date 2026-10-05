@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { beginGitExecution, GitExecutionTiming, setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
+import { registerStatusIndex } from "../src/git/statusIndexOwnership";
 
 test("execution timing separates synchronous spawn from completion without logging argument values", (t) => {
   const timings: GitExecutionTiming[] = [];
@@ -52,4 +53,34 @@ test("fast spawn failures keep their error code so retry delays can be diagnosed
   assert.equal(timings[0]?.code, "EMFILE");
   assert.equal(timings[0]?.elapsedMs, 0);
   assert.equal(timings[0]?.outcome, "error");
+});
+
+test("status diagnostics classify private ownership and mode without leaking index paths or environment values", t => {
+  const timings: GitExecutionTiming[] = [];
+  t.after(setGitExecutionObserver(timing => timings.push(timing)));
+  const index = "/private/secret-index", environment = { GIT_INDEX_FILE: index, GIT_OPTIONAL_LOCKS: "1", TOKEN: "secret-token" };
+  const unregister = registerStatusIndex(index); t.after(unregister);
+  const probe = beginGitExecution(["-c", "password=secret", "status", "--untracked-files=normal", "--", "--untracked-files=all"], "/repo", "/git", () => 10, environment)!;
+  environment.GIT_OPTIONAL_LOCKS = "0"; unregister(); probe.finish("success");
+  assert.equal(timings[0].statusIndex, "private");
+  assert.equal(timings[0].statusUntracked, "normal");
+  assert.equal(timings[0].optionalLocks, "1");
+  assert.equal(JSON.stringify(timings).includes("secret"), false);
+});
+
+test("status diagnostics distinguish configured, complete and skipped untracked scans with bounded fields", t => {
+  const timings: GitExecutionTiming[] = [];
+  t.after(setGitExecutionObserver(timing => timings.push(timing)));
+  const cases = [
+    { args: ["status"], env: {}, index: "repository", mode: "configured", locks: "unset" },
+    { args: ["status", "-uall"], env: { GIT_OPTIONAL_LOCKS: "0" }, index: "repository", mode: "all", locks: "0" },
+    { args: ["status", "-uno"], env: { GIT_INDEX_FILE: "/caller", GIT_OPTIONAL_LOCKS: "garbage" }, index: "caller", mode: "none", locks: "unset" },
+  ];
+  for (const expected of cases) {
+    beginGitExecution(expected.args, "/repo", "/git", () => 10, expected.env)!.finish("success");
+    const actual = timings.at(-1)!;
+    assert.equal(actual.statusIndex, expected.index); assert.equal(actual.statusUntracked, expected.mode); assert.equal(actual.optionalLocks, expected.locks);
+  }
+  beginGitExecution(["commit", "-m", "secret"], "/repo", "/git", () => 10, { GIT_OPTIONAL_LOCKS: "1" })!.finish("success");
+  assert.equal(timings.at(-1)?.statusIndex, undefined);
 });

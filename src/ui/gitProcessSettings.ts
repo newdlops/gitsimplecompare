@@ -41,9 +41,10 @@ function protectedPaths(): string[] {
 /**
  * 조회 제한·자동 정리·사용자/워크스페이스 UI를 등록하며 모든 timer와 구독을 소유한다.
  * @param activeRoot Changes에서 선택한 저장소. 전역 설정의 우선순위를 결정할 때만 사용한다.
+ * @param storageDirectory 사용자별 확장 저장 공간. 있으면 세션 간 전용 index 캐시를 보존한다.
  * @returns extension dispose 때 해제할 전체 기능 구독
  */
-export function registerGitProcessManagement(activeRoot: () => string | undefined): vscode.Disposable {
+export function registerGitProcessManagement(activeRoot: () => string | undefined, storageDirectory?: string): vscode.Disposable {
   const stopGitHubReads = beginGitHubReadLifetime();
   const subscriptions: vscode.Disposable[] = [];
   const root = () => activeRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -58,7 +59,8 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
   process.once("exit", hostExit);
   const resetBlame = setBlameReadCancellationPolicy(repo => configuration(repo).get<boolean>("cancelUnusedGitReads", true));
   const resetStatusPolicy = setWorkingTreeSnapshotPolicy(repo => ({ useCache: configuration(repo).get<boolean>("workingTreeStatusCache", true),
-    cancelUnused: configuration(repo).get<boolean>("cancelUnusedGitReads", true) }), logInfo);
+    cancelUnused: configuration(repo).get<boolean>("cancelUnusedGitReads", true) }), logInfo,
+    storageDirectory ? path.join(storageDirectory, "git-status-index-v1") : undefined);
   const service = new IdleGitCleanup({ inspect: async () => {
     const snapshot = await readSharedGitMonitorInspection(protectedPaths());
     if (snapshot.complete) logInfo("git monitor inspection completed", { ...snapshot.diagnostic, monitors: snapshot.monitors.length });

@@ -261,7 +261,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
       prCommentDecorations.invalidateCache(reason),
     comparison,
   };
-  context.subscriptions.push(registerGitProcessManagement(() => changesView.getActiveRepo()));
+  context.subscriptions.push(registerGitProcessManagement(() => changesView.getActiveRepo(), context.globalStorageUri.fsPath));
   for (const disposable of registerCommands(deps)) {
     context.subscriptions.push(disposable);
   }

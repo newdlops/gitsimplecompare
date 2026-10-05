@@ -227,3 +227,91 @@ package version과 번들 SHA-256은 production VSIX의 내용과 일치한다.
 버전 지정 공개 VSIX의 SHA-256도 위 로컬 패키지와 일치했다. 초기 최신 버전 조회에는
 0.1.72080이 남아 있었으나 마지막 재조회에서 최신 0.1.72081 반영을 확인했다.
 Marketplace `lastUpdated` 값은 `2026-10-05T12:59:10.823Z`였다.
+
+## 0.1.72082 후속 원인 확인과 수정 — 2026-10-06
+
+0.1.72081에 남아 있던 재로드 후 간헐적인 status 지연을 계속 추적했다.
+Mac과 SentinelOne은 재시작하지 않았으며, 수정 적용에는 검증 대상 Code 창의
+Reload Window만 사용했다. 최초 0.1.72082 후보는 설치해서 계측했지만 게시하지 않았다.
+
+### 확인한 원인
+
+- 기존 상위 status 경로 외의 읽기 API가 실제 index의 stat 정보를 갱신할 수 있었다.
+  text·buffer·stdin·stream의 실제 Git 회귀 검사 8개 중 7개가 수정 전 실패했다.
+  모든 읽기 실행의 최종 환경에서 optional index 쓰기를 막고, 등록된 확장 소유
+  index를 명시적으로 허용한 호출만 캐시 쓰기를 할 수 있게 수정했다.
+- 세션 안에서 준비된 전용 index는 다음 Host로 이어지지 않았다. 미추적 파일의
+  첫 디렉터리 탐색이 반복되었으며, 실 저장소의 초기 탐색은 수초가 걸렸다.
+  이전 세션에서 Git이 준비한 전용 index를 확장 global storage에 원자적으로
+  보존한다. 조회 결과를 저장하는 방식이 아니므로 이후 수정·stage·ignore·미추적
+  파일은 매번 Git으로 다시 확인한다.
+- 처음에는 실제 index의 전체 bytes·stat 식별자로만 복원을 허용했다. 실제 linked
+  worktree index 31,803개 entry의 staging 의미는 동일한데 inode·크기·hash만 달라져
+  준비된 탐색 캐시를 잃는 사례를 확인했다. 작성 주체는 확인하지 않았다.
+  경로·OID·mode·merge stage·assume-valid·intent-to-add로 복원 가능 여부를 판별해
+  metadata-only 갱신을 구분하고, 실제 Git index 경로가 바뀌면 재사용하지 않는다.
+- 복원한 index의 tracked stat을 그대로 쓰면 늦어진 index mtime 때문에 racy-clean
+  수정을 놓칠 수 있었다. 실제 index의 tracked stat으로 다시 맞추고 원본보다
+  늦지 않은 mtime을 적용했다. trustctime을 껐을 때 같은 크기의 수정도 Git의
+  전체 조회와 일치하는 회귀 검사로 확인했다.
+
+전체 index v2/v3/v4와 SHA-1/SHA-256은 지원한다. split·sparse·skip-worktree 및
+알 수 없는 형식은 세션 간 복원을 적용하지 않고 기존 조회 경로를 유지한다.
+캐시는 32개 파일·128MiB·단일 32MiB·7일로 제한한다. 손상·쓰기 실패·동시 게시를
+복구하며, 한 시간 지난 우리 UUID 게시 임시 파일만 회수한다. 실제 repository
+index나 다른 프로세스의 파일은 캐시 저장·정리 대상으로 사용하지 않는다.
+
+### 검사와 실제 창 결과
+
+최종 수정 범위의 실제 Git 및 단위 검사 76개가 모두 통과했다. 타입 검사와
+diff 공백 검사, production 빌드·패키징도 성공했다. 새 검사는 원본 index 보존,
+stage/flags 무효화, metadata-only 복원, racy-clean 수정, legacy 캐시 바인딩,
+split·sparse·linked worktree 결과, 손상·제한·동시 게시를 포함한다.
+
+같은 fixture에서 dispose·reopen을 40회 반복했을 때 캐시는 한 개만 남았고,
+세션 전용 파일 및 실행 중인 등록 Git 읽기는 남지 않았다. 원본 index bytes와
+metadata도 유지됐다. 실제 Code의 무제한 장기 실행을 대신하는 검사는 아니다.
+
+앞선 넓은 Node 검사 실행은 15분 상한에 도달하기 전 886개가 통과했고, 완료하지
+못한 파일 구간을 이어 실행한 141개도 통과했다. 경계 파일 일부가 겹치며 이
+실행은 최종 semantic identity 보강 전이었다. 최종 버전의 전체 일괄 검사 성공으로
+집계하지 않고 위 최종 수정 범위의 76개 결과를 별도로 기록한다.
+
+임시 Git 경로 설정은 원래 bytes와 hash로 복원했다. 설치한 번들의 임시 Trace2
+계측도 복원한 뒤 production VSIX로 교체했고, 설치 파일과 검증 패키지의 hash가
+일치했다. 아래는 임시 계측 없이 일반 사용자 창에서 나온 OUTPUT 결과다.
+
+- 새 Host 활성화: `2026-10-05T15:46:28.531Z` (한국 시간 10월 6일 00:46).
+- 시작 후 전용 index cache 복원 두 번 모두 `identity: staging`이었다.
+- 변경 목록 87개는 새 Host에서 1,620ms에 적용됐다. 이후 조회는
+  1,894ms·243ms·1,561ms·841ms였다. 파일 통계는 별도 실행이다.
+- 그래프 최초 paint는 698ms, local-only 후속 paint는 전체 경과 765ms였다.
+- stash 43개, worktree 9개(그중 linked 8개)가 표시되는 기록을 확인했다.
+- PR 80개 목록은 첫 page 준비 6,783ms, pagination까지 완료 8,101ms였다.
+  이번 변경은 해당 GitHub 네트워크 구간을 추가로 줄이지 않는다.
+- 이 관찰 구간에서 status timeout은 없었다. 활성 파일의 이력 조회는 여전히
+  Git 실행 3,516~7,814ms가 걸렸다. 이력 탐색까지 즉시 완료된다는 결론은 내리지 않는다.
+- 실제 창 실행 전후 snapshot은 모두 기존 fsmonitor 16개·일반 Git 0개였다.
+  다른 창/터미널 사용 여부가 불확실한 감시자를 강제로 종료하지 않았다.
+
+이번 변경에는 화면 구조나 컨트롤 변경이 없다. 그래프 paint는 제품의 런타임
+로그로 확인했으며 0.1.72082의 새 화면 캡처나 다중 viewport 검사는 수행하지 않았다.
+
+### 최종 패키지와 자료
+
+0.1.72082 production VSIX는 124개 파일이다. src·test·개발 문서와 임시 계측은
+포함하지 않으며, 추출한 번들과 production 빌드·실제 설치 파일이 일치한다.
+
+- VSIX SHA-256: `c407756b0f63c2249f76b07a1616e3e979cabe8880cbb911cd837b74dd65a930`
+- 번들 SHA-256: `cb90e5a49a270966af25d499bf299c6074f885bc97ad50425abb05d2ad4380ab`
+
+후속 원시 자료는 `/private/tmp/gsc-remaining-20261005`에 보관한다.
+
+- `actual-staging-comparison.json`: 실제 index가 달라져도 staging 의미가 같은 사례
+- `metadata-identity-before.log`: metadata-only 갱신 후 복원 실패 재현
+- `final-cache-tests.log`, `final-cache-types.log`: 최종 76개 검사와 타입 검사
+- `full-release-tests.log`, `remaining-release-tests.log`: 앞선 넓은 검사 실행의 범위와 상한
+- `final-package-verification.json`, `final-installed-verification.json`: 최종 패키지·설치 일치
+- `actual-trace-setting-verification.json`, `direct-profile-verification.json`: 임시 설정·계측 복원
+- `actual-production-72082.log`, `final-runtime-verification.json`: 일반 빌드의 실제 사용자 창 기록
+- `final-process-*-ui.txt`, `final-git-*-ui.json`: 실제 창 실행 전후 Git 프로세스 snapshot

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72082] - 2026-10-06
+
+### Fixed
+
+- Prevent read-only Git commands from refreshing the repository index across
+  text, binary, stdin and streaming execution. Allow optional index writes only
+  for a registered extension-owned index, preserving staging and write commands.
+- Reuse a validated private status index across Extension Host restarts to avoid
+  repeated cold untracked-file scans. Continue querying Git for fresh results,
+  invalidate on staging changes, and retain warmed scans through metadata-only
+  index refreshes. Rebind tracked-file metadata and preserve racy-clean detection;
+  keep session-local fallbacks for unsupported split and sparse index formats.
+- Bound the persistent index cache to 32 files / 128 MiB with age-based cleanup,
+  atomic publication and recovery from corruption or unavailable storage. Clean
+  abandoned publication files without touching active sessions or user Git files.
+- Record status index ownership, untracked scan mode and optional lock policy in
+  Git Simple Compare OUTPUT without exposing environment values or index paths.
+
 ## [0.1.72081] - 2026-10-05
 
 ### Changed
