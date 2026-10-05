@@ -2,6 +2,7 @@
 // - 의미 fingerprint, visibility, generation, 후속 PR 게시를 한 곳에서 소유한다.
 import type { WorktreeInfo } from "../git/worktreeService";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
+import { SharedGitRead } from "../git/sharedGitRead";
 
 /** Graph reload 뒤에 필요한 PR 게시 강도를 나타낸다. */
 export type GraphRefreshMode = "none" | "stacks" | "pullRequests";
@@ -22,6 +23,13 @@ export interface GraphRefreshLifecycleDeps {
 }
 
 interface ResolvedRequest extends GraphRefreshRequest, GraphRefreshRead { sequence: number; }
+
+/** 공유 snapshot의 배열과 worktree/ref 객체를 복사해 서로 다른 소비자의 수정이 섞이지 않게 한다. */
+function cloneFingerprintRead(value: string | GraphRefreshRead): string | GraphRefreshRead {
+  return typeof value === "string" ? value : { ...value,
+    worktrees: value.worktrees?.map(item => ({ ...item })),
+    remoteTips: value.remoteTips?.map(item => ({ ...item })) };
+}
 
 /** semantic fingerprint 전체를 안정적으로 축약한 OUTPUT 식별자다. */
 export function graphRefreshFingerprintDigest(fingerprint: string): string {
@@ -85,7 +93,7 @@ export class GraphRefreshLifecycleCoordinator {
   private deferred: GraphRefreshRequest | undefined;
   private unreadIntent: Pick<GraphRefreshRequest, "mode" | "force"> = { mode: "none", force: false };
   private readonly fingerprintControllers = new Set<AbortController>();
-  private automaticFingerprintController: AbortController | undefined;
+  private fingerprintRead?: SharedGitRead<string | GraphRefreshRead>;
 
   /** coordinator에 Git/UI adapter를 주입해 테스트에서 deferred promise로 제어할 수 있게 한다. */
   constructor(private readonly deps: GraphRefreshLifecycleDeps) {}
@@ -102,6 +110,8 @@ export class GraphRefreshLifecycleCoordinator {
     this.unreadIntent = { mode: "none", force: false };
     this.epoch++;
     this.cancelFingerprintReads("repositoryChanged");
+    void this.fingerprintRead?.dispose();
+    this.fingerprintRead = new SharedGitRead(signal => this.deps.readFingerprint(repoRoot, signal), cloneFingerprintRead);
     this.deps.invalidateReload("repositoryChanged");
   }
 
@@ -302,13 +312,12 @@ export class GraphRefreshLifecycleCoordinator {
   ): Promise<GraphRefreshRead> {
     const started = Date.now();
     const controller = new AbortController();
-    if (automatic) {
-      this.automaticFingerprintController?.abort();
-      this.automaticFingerprintController = controller;
-    }
     this.fingerprintControllers.add(controller);
     try {
-      const value = await this.deps.readFingerprint(request.repoRoot, controller.signal);
+      // 진행 조회를 abort/spawn으로 교체하지 않는다. 실행 중 변경 알림은 최신 pass 하나로 합친다.
+      const value = automatic
+        ? await this.fingerprintRead!.read({ signal: controller.signal, changed: true, maxCacheAgeMs: 0 })
+        : await this.deps.readFingerprint(request.repoRoot, controller.signal);
       controller.signal.throwIfAborted();
       const snapshot = typeof value === "string" ? { fingerprint: value } : value;
       this.deps.info("graph performance fingerprint", {
@@ -325,7 +334,6 @@ export class GraphRefreshLifecycleCoordinator {
       // Promise.all의 한 조회가 실패했을 때 아직 실행 중인 나머지 Git도 남겨두지 않는다.
       controller.abort();
       this.fingerprintControllers.delete(controller);
-      if (this.automaticFingerprintController === controller) this.automaticFingerprintController = undefined;
     }
   }
 
@@ -333,6 +341,7 @@ export class GraphRefreshLifecycleCoordinator {
   private cancelFingerprintReads(reason: string): void {
     const active = [...this.fingerprintControllers].filter(controller => !controller.signal.aborted);
     for (const controller of active) controller.abort();
+    this.fingerprintRead?.invalidate();
     if (active.length) this.deps.info("graph fingerprint reads cancelled", { repoRoot: this.repository, reason, count: active.length });
   }
 

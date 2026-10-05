@@ -67,7 +67,7 @@
    * @param data GraphData
    * @param state 확장에서 전달한 페이지 로딩 상태
    */
-  function renderGraph(data, state) {
+  function renderGraph(data, state, delta) {
     const resetView = Boolean(state && state.reset);
     const preserveView = resetView || state?.loadDirection === "newer";
     const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
@@ -83,7 +83,8 @@
     rowColorCache = new WeakMap();
     localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
     currentLaneCount = data.laneCount || 1;
-    graphContentEl.innerHTML = "";
+    const incremental = window.GscGraphDataUpdates.prepare(graphContentEl, delta);
+    if (!incremental) delta = undefined;
 
     if (!currentRows.length) {
       resizeGraphContent();
@@ -97,7 +98,8 @@
     const bodyHeight = currentRows.length * ROW_H;
     resizeGraphContent();
 
-    graphContentEl.appendChild(window.GscGraphSvgRender.render({
+    window.GscGraphDataUpdates.placeSvg(graphContentEl, window.GscGraphSvgRender.render({
+      svg: incremental ? graphContentEl.querySelector("svg") : undefined, delta,
       rows: currentRows,
       edges: currentEdges,
       graphWidth,
@@ -112,9 +114,8 @@
     }));
 
     // 2) 텍스트 행(그래프 폭만큼 왼쪽 여백)
-    for (let r = 0; r < currentRows.length; r++) {
-      graphContentEl.appendChild(buildRow(currentRows[r], r, graphWidth));
-    }
+    window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta);
+    if (delta) refreshRowDecorations();
     rowSync.scheduleScrollableWidth();
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
@@ -276,12 +277,18 @@
    * @param hash 선택할 커밋 해시
    */
   function selectCommit(hash) {
+    window.dispatchEvent(new CustomEvent("gsc-detail-selection", { detail: { hash } }));
+    setDetailLabel("commit details");
     selectedHash = hash;
     const rows = graphContentEl.querySelectorAll(".row:not([data-reflog-virtual])");
-    rows.forEach((el) => el.classList.toggle("selected", el.dataset.hash === hash));
+    rows.forEach(el => {
+      el.classList.toggle("selected", el.dataset.hash === hash);
+      const row = currentRows[Number(el.dataset.index)];
+      if (row) el.dataset.renderKey = rowRenderKey(row);
+    });
     vscode.postMessage({ type: "selectCommit", hash: hash });
     if (isDrawerMode()) {
-      setDetailVisible(true);
+      setDetailVisible(true, false);
     }
   }
 
@@ -460,20 +467,10 @@
    * 상세 패널 표시/숨김 상태를 바꾼다.
    * - 넓은 화면에서는 사이드 패널을 접고, 좁은 화면에서는 오른쪽 drawer 를 열고 닫는다.
    */
-  function setDetailVisible(visible) {
-    document.body.classList.toggle("detail-open", visible);
-    document.body.classList.toggle("detail-collapsed", !visible);
-    if (toggleDetailBtn) {
-      toggleDetailBtn.title = visible ? `Hide ${detailLabel}` : `Show ${detailLabel}`;
-      toggleDetailBtn.dataset.tooltip = toggleDetailBtn.title;
-      toggleDetailBtn.setAttribute("aria-label", toggleDetailBtn.title);
-      toggleDetailBtn.setAttribute("aria-expanded", visible ? "true" : "false");
-      const icon = toggleDetailBtn.querySelector(".codicon");
-      if (icon) {
-        icon.classList.toggle("codicon-layout-sidebar-right", visible);
-        icon.classList.toggle("codicon-layout-sidebar-right-off", !visible);
-      }
-    }
+  function setDetailVisible(visible, notify = true) {
+    window.GscGraphDetailVisibility.setVisible(visible, {
+      button: toggleDetailBtn, label: detailLabel, hash: selectedHash, post: message => vscode.postMessage(message)
+    }, notify);
   }
 
   /** 상세 패널이 현재 보여주는 내용 종류를 toggle button 문구에 반영한다. */
@@ -518,7 +515,7 @@
     const msg = event.data;
     if (msg.type === "graph") {
       const receivedAt = Date.now();
-      renderGraph(msg.data, msg.state);
+      renderGraph(msg.data, msg.state, msg.delta);
       window.GscGraphPerformance?.report?.(vscode, msg.performance, receivedAt, Date.now());
     } else if (msg.type === "graphHealth") {
       renderGraphHealth(msg.notice);
@@ -538,6 +535,8 @@
       setButtonBusy(msg.key, msg.busy);
     } else if (msg.type === "commitDetail") {
       renderDetail(msg.detail);
+    } else if (msg.type === "graphDetailResume" && detailLabel === "commit details" && selectedHash && document.body.classList.contains("detail-open")) {
+      vscode.postMessage({ type: "selectCommit", hash: selectedHash });
     } else if (msg.type === "error") {
       detailEl.innerHTML = `<p class="placeholder">Error: ${esc(msg.message)}</p>`;
       setDetailVisible(true);
@@ -585,7 +584,7 @@
     root: detailEl,
     show(label) {
       setDetailLabel(label || "details");
-      setDetailVisible(true);
+      setDetailVisible(true, false);
     },
     hide() {
       setDetailVisible(false);

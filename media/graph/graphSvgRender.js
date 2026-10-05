@@ -16,6 +16,7 @@
 
   /** GraphData rows/edges 를 하나의 SVG 요소로 렌더링한다. */
   function render(options) {
+    if (options.svg?.__gscEdgeElements && options.delta) return update(options.svg, options);
     const edgeBranchNames = makeEdgeBranchNames(options.rows, options.edges);
     const highlightModel = window.GscGraphCompactRender?.makeLaneHighlightModel?.(options.edges, edgeBranchNames);
     const svg = svgEl("svg", {
@@ -23,14 +24,69 @@
       height: options.bodyHeight,
     });
     svg.__gscLaneHighlightModel = highlightModel;
+    svg.__gscEdges = svgEl("g", { class: "graph-edge-layer" });
+    svg.__gscNodes = svgEl("g", { class: "graph-node-layer" });
+    svg.append(svg.__gscEdges, svg.__gscNodes);
+    svg.__gscEdgeElements = []; svg.__gscNodeElements = [];
+    svg.__gscEdgeValues = []; svg.__gscNodeKeys = []; svg.__gscEdgeKeys = [];
     for (let edgeIndex = 0; edgeIndex < options.edges.length; edgeIndex++) {
-      appendEdge(svg, options.edges[edgeIndex], edgeIndex, edgeBranchNames[edgeIndex], options);
+      renderEdgeEntry(svg, edgeIndex, edgeBranchNames[edgeIndex], options);
     }
     for (let rowIndex = 0; rowIndex < options.rows.length; rowIndex++) {
-      appendNode(svg, options.rows[rowIndex], rowIndex, options);
+      renderNodeEntry(svg, rowIndex, options);
     }
     window.GscGraphCompactRender?.raiseMarkers?.(svg);
     return svg;
+  }
+
+  /** 작은 페이지 추가는 기존 SVG node/path를 유지하고 연결/표시가 바뀐 요소만 교체한다. */
+  function update(svg, options) {
+    const names = makeEdgeBranchNames(options.rows, options.edges);
+    svg.__gscLaneHighlightModel = window.GscGraphCompactRender?.makeLaneHighlightModel?.(options.edges, names);
+    svg.setAttribute("width", options.graphWidth); svg.setAttribute("height", options.bodyHeight);
+    for (let index = 0; index < options.edges.length; index++) {
+      const key = `${names[index]}|${options.edgeDisplayColor(options.edges[index])}`;
+      if (svg.__gscEdgeValues[index] !== options.edges[index] || svg.__gscEdgeKeys[index] !== key) renderEdgeEntry(svg, index, names[index], options);
+    }
+    for (let index = 0; index < options.rows.length; index++) {
+      if (svg.__gscNodeKeys[index] !== nodeKey(options.rows[index], options)) renderNodeEntry(svg, index, options);
+    }
+    window.GscGraphCompactRender?.raiseMarkers?.(svg);
+    return svg;
+  }
+
+  /** 실제 node 모양·좌표·툴팁을 바꾸는 입력만 key에 포함해 동일한 요소를 계속 사용한다. */
+  function nodeKey(row, options) {
+    return JSON.stringify([row.column, row.originalColumn, row.compacted, row.kind,
+      options.rowDisplayColor(row), window.GscGraphFeatures?.nodeClass(row), options.rowTitle(row)]);
+  }
+
+  /** lane marker가 root로 이동해도 소유 요소를 추적해 다음 변경 때 정확히 제거한다. */
+  function ownedElements(fragment) {
+    return [...fragment.childNodes, ...fragment.querySelectorAll(".compact-continuation")];
+  }
+
+  /** edge 한 개의 path/hit target/compact marker만 교체하며 기존 edge 배열의 위치를 유지한다. */
+  function renderEdgeEntry(svg, index, name, options) {
+    for (const node of svg.__gscEdgeElements[index] || []) node.remove();
+    const fragment = document.createDocumentFragment();
+    appendEdge(fragment, options.edges[index], index, name, options);
+    svg.__gscEdgeElements[index] = ownedElements(fragment);
+    svg.__gscEdgeValues[index] = options.edges[index];
+    svg.__gscEdgeKeys[index] = `${name}|${options.edgeDisplayColor(options.edges[index])}`;
+    const next = svg.__gscEdgeElements[index + 1]?.find(node => node.parentNode === svg.__gscEdges);
+    svg.__gscEdges.insertBefore(fragment, next || null);
+  }
+
+  /** node 한 개의 circle/local-only ring/compact marker를 교체한다. 다른 node는 재생성하지 않는다. */
+  function renderNodeEntry(svg, index, options) {
+    for (const node of svg.__gscNodeElements[index] || []) node.remove();
+    const fragment = document.createDocumentFragment();
+    appendNode(fragment, options.rows[index], index, options);
+    svg.__gscNodeElements[index] = ownedElements(fragment);
+    svg.__gscNodeKeys[index] = nodeKey(options.rows[index], options);
+    const next = svg.__gscNodeElements[index + 1]?.find(node => node.parentNode === svg.__gscNodes);
+    svg.__gscNodes.insertBefore(fragment, next || null);
   }
 
   /** 하나의 edge path 또는 생략된 compact edge 를 SVG 에 추가한다. */

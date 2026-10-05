@@ -6,6 +6,18 @@ import { Commit, GraphData, GraphEdge, GraphRow } from "./graphTypes";
 /** 동시에 보이는 lane 끼리 같은 색상 계열을 피하기 위한 색상 family 수. */
 const LANE_COLOR_FAMILY_COUNT = 16;
 
+/** 페이지 경계에서 재사용할 레인 스윕 상태. 배열은 checkpoint 시점의 독립 사본이다. */
+export interface GraphLayoutCheckpoint {
+  rowIndex: number; edgeIndex: number; lanes: (string | null)[]; laneColor: number[];
+  nextColorSeed: number; maxLanes: number;
+}
+/** 증분 호출만 주입하는 재개 상태이며 기존 단일 layoutGraph 호출의 결과는 동일하다. */
+export interface GraphLayoutOptions {
+  resume?: GraphLayoutCheckpoint & { data: GraphData };
+  indexByHash?: ReadonlyMap<string, number>;
+  checkpoint?: (value: GraphLayoutCheckpoint) => void;
+}
+
 /**
  * 커밋 배열을 그래프 레이아웃(행/간선/레인 수)으로 변환한다.
  * - 위에서 아래로 훑으며 각 레인이 "도달을 기다리는 부모 해시"를 들고 있게 한다.
@@ -14,24 +26,26 @@ const LANE_COLOR_FAMILY_COUNT = 16;
  * @param commits 자식→부모 순으로 정렬된 커밋 배열
  * @returns 웹뷰가 그릴 수 있는 GraphData
  */
-export function layoutGraph(commits: Commit[]): GraphData {
-  const indexByHash = new Map<string, number>();
-  commits.forEach((c, i) => indexByHash.set(c.hash, i));
+export function layoutGraph(commits: Commit[], options: GraphLayoutOptions = {}): GraphData {
+  const indexByHash = options.indexByHash ?? new Map(commits.map((commit, index) => [commit.hash, index]));
+  const resume = options.resume;
 
-  const lanes: (string | null)[] = []; // 각 레인이 기다리는 부모 해시
-  const laneColor: number[] = []; // 각 레인의 색상 인덱스
-  let nextColorSeed = 0;
+  const lanes: (string | null)[] = resume ? [...resume.lanes] : []; // 각 레인이 기다리는 부모 해시
+  const laneColor: number[] = resume ? [...resume.laneColor] : []; // 각 레인의 색상 인덱스
+  let nextColorSeed = resume?.nextColorSeed ?? 0;
   const newColor = (targetLane?: number): number => {
     const color = chooseLaneColor(lanes, laneColor, nextColorSeed, targetLane);
     nextColorSeed = color + 1;
     return color;
   };
 
-  const rows: GraphRow[] = [];
-  const edges: GraphEdge[] = [];
-  let maxLanes = 0;
+  const rows: GraphRow[] = resume?.data.rows.slice(0, resume.rowIndex) ?? [];
+  const edges: GraphEdge[] = resume?.data.edges.slice(0, resume.edgeIndex) ?? [];
+  let maxLanes = resume?.maxLanes ?? 0;
 
-  for (let r = 0; r < commits.length; r++) {
+  for (let r = resume?.rowIndex ?? 0; r < commits.length; r++) {
+    if (r % 128 === 0) options.checkpoint?.({ rowIndex: r, edgeIndex: edges.length,
+      lanes: [...lanes], laneColor: [...laneColor], nextColorSeed, maxLanes });
     const commit = commits[r];
 
     // 1) 이 커밋을 기다리던 레인들(자식에서 내려온 간선의 도착점)을 찾는다.
@@ -64,7 +78,7 @@ export function layoutGraph(commits: Commit[]): GraphData {
       lanes[column] = commit.hash; // 일단 점유(아래에서 부모로 교체)
     }
 
-    rows.push(toRow(commit, column, color));
+    rows.push(toGraphRow(commit, column, color));
 
     // 3) 부모들에게 레인을 배정하고 간선을 만든다.
     assignParents(commit, column, color, {
@@ -79,12 +93,19 @@ export function layoutGraph(commits: Commit[]): GraphData {
 
     maxLanes = Math.max(maxLanes, lanes.length);
   }
+  if (commits.length % 128 === 0) options.checkpoint?.({ rowIndex: commits.length, edgeIndex: edges.length,
+    lanes: [...lanes], laneColor: [...laneColor], nextColorSeed, maxLanes });
 
   // 부모가 로드된 경우, 간선의 도착 열을 부모 노드의 실제 열로 보정한다.
-  for (const edge of edges) {
-    if (edge.toRow < rows.length) {
-      edge.toColumn = rows[edge.toRow].column;
-    }
+  let source = -1, parentIndex = 0;
+  for (let index = 0; index < edges.length; index++) {
+    const edge = edges[index];
+    if (source !== edge.fromRow) { source = edge.fromRow; parentIndex = 0; }
+    const parent = commits[source].parents[parentIndex++];
+    const toRow = indexByHash.get(parent) ?? rows.length;
+    const toColumn = rows[toRow]?.column ?? edge.column;
+    // prefix의 dangling 간선도 새로 로드한 부모에 연결하되 이전 게시 객체는 수정하지 않는다.
+    if (edge.toRow !== toRow || edge.toColumn !== toColumn) edges[index] = { ...edge, toRow, toColumn };
   }
 
   return { rows, edges, laneCount: Math.max(maxLanes, 1) };
@@ -95,7 +116,7 @@ interface SweepState {
   lanes: (string | null)[];
   laneColor: number[];
   edges: GraphEdge[];
-  indexByHash: Map<string, number>;
+  indexByHash: ReadonlyMap<string, number>;
   rowIndex: number;
   totalRows: number;
   newColor: (targetLane?: number) => number;
@@ -340,12 +361,12 @@ function virtualIncomingLane(
  * @param column 노드 열
  * @param color  레인 색상
  */
-function toRow(commit: Commit, column: number, color: number): GraphRow {
+export function toGraphRow(commit: Commit, column: number, color: number): GraphRow {
   return {
     hash: commit.hash,
-    parents: commit.parents,
-    refs: commit.refs,
-    localOnlyBranches: commit.localOnlyBranches,
+    parents: [...commit.parents],
+    refs: [...commit.refs],
+    localOnlyBranches: commit.localOnlyBranches ? [...commit.localOnlyBranches] : undefined,
     authorName: commit.authorName,
     authorEmail: commit.authorEmail,
     dateIso: commit.dateIso,

@@ -27,7 +27,7 @@ export function layoutGraphData(
  * @param virtualCommits staged/working tree 가상 커밋 목록
  * @returns 레이아웃에 사용할 최종 커밋 목록
  */
-function graphCommits(
+export function graphCommits(
   commits: readonly Commit[],
   virtualCommits: readonly Commit[]
 ): Commit[] {

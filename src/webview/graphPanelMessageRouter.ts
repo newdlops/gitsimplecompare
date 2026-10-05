@@ -2,6 +2,7 @@
 // - GraphPanel은 패널 수명주기와 커밋 paging 상태만 소유하고, 명령 분기는 이 router에 위임한다.
 import * as vscode from "vscode";
 import { GitLogService, EMPTY_TREE } from "../git/gitLogService";
+import { gitHubReadContext, snapshotGitHubEnvironment } from "../git/githubReadContext";
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo, showOutputLog } from "../ui/outputLog";
@@ -73,6 +74,8 @@ export interface GraphPanelMessageRouterDeps {
   ) => Promise<void>;
   /** 이전/다음 커밋 페이지를 요청한다. */
   loadNextPage: (reset: boolean, direction?: GraphLoadDirection) => Promise<void>;
+  /** webview가 놓친 revision을 Git 재조회 없이 현재 누적 모델로 복구한다. */
+  resyncGraph?: () => void;
   /** 후보 hash 중 이미 누적 그래프에 있는 첫 hash를 반환한다. */
   loadedCommitHash: (hashes: string[]) => string | undefined;
   /** 후보 commit 주변 window를 새 그래프로 불러온다. */
@@ -93,7 +96,19 @@ export class GraphPanelMessageRouter {
   private readonly stackPublication = new GraphPullRequestStackPublication();
   private readonly commitDetails = new GraphCommitDetailSender();
   private pullRequestRequest: AbortController | undefined;
+  private pullRequestDetail?: { number: number; requestId?: string; controller: AbortController };
+  private detailPaused = false;
   private readonly rebaseSessionSync: GraphRebaseSessionSync;
+
+  /** 상세 선택·닫기·수명 변경 때 현재 패널이 소유한 소비자를 해제하고 재조회 가능한 상태를 보낸다. */
+  private cancelDetailLoading(reason: string): void {
+    this.commitDetails.cancel(reason);
+    const request = this.pullRequestDetail;
+    if (request) {
+      request.controller.abort(); this.pullRequestDetail = undefined;
+      this.deps.post({ type: "graphDetailCancelled", number: request.number, reason, requestId: request.requestId });
+    } else this.deps.post({ type: "graphDetailCancelled", reason });
+  }
 
   constructor(private readonly deps: GraphPanelMessageRouterDeps) {
     this.rebaseSessionSync = new GraphRebaseSessionSync(message => this.deps.post(message));
@@ -141,6 +156,7 @@ export class GraphPanelMessageRouter {
 
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
+    if (["repositoryChanged", "dispose", "hidden", "windowUnfocused"].includes(reason)) this.cancelDetailLoading(reason);
     if (reason === "dispose") this.rebaseSessionSync.dispose();
     else if (["repositoryChanged", "hidden", "windowUnfocused"].includes(reason)) this.rebaseSessionSync.invalidate();
     this.pullRequestRequest?.abort();
@@ -158,8 +174,16 @@ export class GraphPanelMessageRouter {
    * @param reason OUTPUT 로그에 남길 lifecycle 원인
    */
   pausePullRequestLifecycle(reason: string): void {
+    this.detailPaused = true;
+    this.cancelDetailLoading(reason);
     this.rebaseSessionSync.invalidate();
     logInfo("graph pull request lifecycle paused", { repoRoot: this.repoRoot, reason });
+  }
+
+  /** 보존한 패널이 실제 다시 보일 때 현재 상세 소비자가 취소된 요청을 다시 시작하게 한다. */
+  resumeDetailLoading(): void {
+    if (!this.detailPaused) return;
+    this.detailPaused = false; this.deps.post({ type: "graphDetailResume" });
   }
 
   /**
@@ -170,6 +194,9 @@ export class GraphPanelMessageRouter {
     this.cancelPullRequestLoading("superseded");
     const controller = new AbortController();
     this.pullRequestRequest = controller;
+    const context = await gitHubReadContext(this.repoRoot, snapshotGitHubEnvironment(), ["repo"]);
+    if (controller.signal.aborted || this.pullRequestRequest !== controller) return;
+    this.deps.post({ type: "pullRequestContext", context });
     const refreshed = await this.pullRequestPager.refresh(
       this.repoRoot,
       this.deps.localBranches(),
@@ -199,10 +226,15 @@ export class GraphPanelMessageRouter {
         logGraphWebviewPaint(this.repoRoot, message);
       } else if (message.type === "loadMore") {
         await this.deps.loadNextPage(false, message.direction || "older");
+      } else if (message.type === "resyncGraph") {
+        this.deps.resyncGraph?.();
       } else if (message.type === "setBranchFilter") {
         await this.deps.setBranchFilter(message);
       } else if (message.type === "selectCommit") {
+        this.cancelDetailLoading("selectionChanged");
         await this.commitDetails.send(message.hash, this.deps.logService(), this.deps.post);
+      } else if (message.type === "cancelGraphDetail") {
+        this.cancelDetailLoading("closed");
       } else if (await this.handlePullRequestMessage(message)) {
         return;
       } else if (message.type === "refreshReflog") {
@@ -304,7 +336,12 @@ export class GraphPanelMessageRouter {
       );
       await this.sendPullRequestStacks();
     } else if (message.type === "refreshPullRequestDetail") {
-      await sendGraphPullRequestDetail(this.repoRoot, message.number, this.deps.post);
+      if (this.pullRequestDetail?.number === message.number && this.pullRequestDetail.requestId === message.requestId) return true;
+      this.cancelDetailLoading("selectionChanged");
+      const request = { number: message.number, requestId: message.requestId, controller: new AbortController() };
+      this.pullRequestDetail = request;
+      try { await sendGraphPullRequestDetail(this.repoRoot, message.number, this.deps.post, request.controller.signal, message.requestId); }
+      finally { if (this.pullRequestDetail === request) this.pullRequestDetail = undefined; }
     } else if (message.type === "openPullRequest") {
       await openGraphPullRequest(this.repoRoot, this.pullRequestPager.items, message.number);
     } else if (message.type === "previewStagedPullRequest") {

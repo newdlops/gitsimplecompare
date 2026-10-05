@@ -3,6 +3,7 @@
 //   실제 기능 로직은 git/providers/ui/commands 모듈에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { GitServiceRegistry } from "./git/serviceRegistry";
+import { clearUntrackedStatsCache } from "./git/untrackedStats";
 import {
   BranchContentProvider,
   clearBranchContentCache,
@@ -77,7 +78,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(registerGitExecutableConfiguration());
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
-  context.subscriptions.push(new vscode.Disposable(disposeBranchContentCache));
+  context.subscriptions.push(new vscode.Disposable(() => { disposeBranchContentCache(); clearUntrackedStatsCache(); }));
   // 1) 저장소별 GitService 를 공유하는 레지스트리
   const registry = new GitServiceRegistry();
   const comparison = new ComparisonController();
@@ -198,9 +199,10 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());
   const repositorySkipLog = new RepositoryRefreshSkipFence();
-  /** 현재 보이는 refresh 소비자들이 실제로 읽는 저장소 root만 provider 필터에 전달한다. */
+  /** 뷰·비교·hunk editor가 읽는 저장소 root를 metadata event 필터에 전달한다. */
   const relevantRepositoryRoots = (): (string | undefined)[] => [
     ...publicGitStatusRoots(),
+    ...hunkCheckboxes.repositoryRoots(),
     changesView.isVisible() ? changesView.getActiveRepo() : undefined,
     comparison.enabled ? comparison.peekComparison()?.repoRoot : undefined,
     conflictsVisible ? conflicts.current?.repoRoot : undefined,
@@ -276,7 +278,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(registerActiveDiffTracker());
   // 8) view/title 토글 버튼이 현재 보기 모드를 반영하도록 컨텍스트 키 초기화
   syncViewContext(deps);
-  // 9) Git 메타데이터/VS Code Git 상태 이벤트에 맞춰 보이는 뷰만 갱신한다.
+  // 9) Git 메타데이터/VS Code Git 상태 이벤트에 맞춰 보이는 소비자만 갱신한다.
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const pendingRefreshReasons = new Set<string>();
   let refreshDeferredLogged = false;
@@ -417,7 +419,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     skipLog: repositorySkipLog,
     invalidateStatus: (repoRoot) => registry.invalidateStatusCache(repoRoot),
     queueRepository: (repoRoot) => {
-      pendingBranchCacheRoots.add(repoRoot);
+      pendingBranchCacheRoots.add(repoRoot); hunkCheckboxes.refresh();
     },
     queueGraph: (repoRoot) => pendingGraphRefreshRoots.add(repoRoot),
     scheduleRefresh,
@@ -444,6 +446,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
         }
         return;
       }
+      hunkCheckboxes.refresh();
       if (gitWatcher.setFocused(true)) {
         logInfo("git metadata watcher resumed", { reason: "window-focused" });
       }
@@ -497,10 +500,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   logInfo("extension activated");
   return createPublicGitStatusApi(context, comparison, root => { registry.get(root); });
 }
-/**
- * 확장이 비활성화될 때 호출된다.
- * - renderer에 주입된 native DOM과 debugger bridge는 비동기 정리가 끝날 때까지 기다린다.
- */
+/** 확장 비활성화 때 renderer DOM·debugger bridge와 소유 Git 프로세스의 비동기 정리를 기다린다. */
 export async function deactivate(): Promise<void> {
   const overlay = activeNativeDiffOverlay; activeNativeDiffOverlay = undefined;
   shutdownPublicGitStatusApi();

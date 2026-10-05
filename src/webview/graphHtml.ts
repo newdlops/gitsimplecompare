@@ -34,6 +34,8 @@ export function buildGraphHtml(
   const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
   const rowSyncScriptUri = script(webview, mediaRoot, "graphRowSync.js");
   const detailResizeScriptUri = script(webview, mediaRoot, "graphDetailResize.js");
+  const detailVisibilityScriptUri = script(webview, mediaRoot, "graphDetailVisibility.js");
+  const dataUpdatesScriptUri = script(webview, mediaRoot, "graphDataUpdates.js");
   const performanceScriptUri = script(webview, mediaRoot, "graphPerformance.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
   const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
@@ -42,6 +44,7 @@ export function buildGraphHtml(
   const prActionsScriptUri = script(webview, mediaRoot, "graphPrActions.js");
   const prStacksScriptUri = script(webview, mediaRoot, "graphPrStacks.js");
   const prScriptUri = script(webview, mediaRoot, "graphPr.js");
+  const prViewStateScriptUri = script(webview, mediaRoot, "graphPrViewState.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
@@ -61,6 +64,7 @@ export function buildGraphHtml(
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
   const compactStyleUri = style(webview, mediaRoot, "graphCompact.css");
   const prStyleUri = style(webview, mediaRoot, "graphPr.css");
+  const prFilesStyleUri = style(webview, mediaRoot, "graphPrFiles.css");
   const prLabelsStyleUri = style(webview, mediaRoot, "graphPrLabels.css");
   const prStacksStyleUri = style(webview, mediaRoot, "graphPrStacks.css");
   const controlsStyleUri = style(webview, mediaRoot, "graphControls.css");
@@ -107,6 +111,7 @@ export function buildGraphHtml(
     loadingPrDetails: vscode.l10n.t("Loading remaining commits and comments…"),
     loadingPrCommits: vscode.l10n.t("Loading pull request commits…"),
     retryPullRequests: vscode.l10n.t("Retry loading pull requests"),
+    retryPrDetails: vscode.l10n.t("Retry loading changed files"),
     unavailable: vscode.l10n.t("Pull request stack data is unavailable."),
     unavailableReason: vscode.l10n.t("Pull request stacks unavailable: {0}"),
     manageCount: vscode.l10n.t("Manage pull request stacks ({0} layers)"),
@@ -165,6 +170,7 @@ export function buildGraphHtml(
   <link href="${worktreeStyleUri}" rel="stylesheet" />
   <link href="${compactStyleUri}" rel="stylesheet" />
   <link href="${prStyleUri}" rel="stylesheet" />
+  <link href="${prFilesStyleUri}" rel="stylesheet" />
   <link href="${prLabelsStyleUri}" rel="stylesheet" />
   <link href="${prStacksStyleUri}" rel="stylesheet" />
   <link href="${controlsStyleUri}" rel="stylesheet" />
@@ -306,6 +312,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${prMatchingScriptUri}"></script>
   <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
   <script nonce="${nonce}" src="${prStacksScriptUri}"></script>
+  <script nonce="${nonce}" src="${prViewStateScriptUri}"></script>
   <script nonce="${nonce}" src="${prScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>
@@ -313,6 +320,8 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${viewportScriptUri}"></script>
   <script nonce="${nonce}" src="${rowSyncScriptUri}"></script>
   <script nonce="${nonce}" src="${detailResizeScriptUri}"></script>
+  <script nonce="${nonce}" src="${detailVisibilityScriptUri}"></script>
+  <script nonce="${nonce}" src="${dataUpdatesScriptUri}"></script>
   <script nonce="${nonce}" src="${performanceScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>

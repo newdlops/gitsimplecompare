@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.1.72079] - 2026-10-05
+
+### Changed
+
+- Cancel obsolete commit and PR detail consumers on selection, drawer close,
+  panel hide and window blur. Reuse one commit header query for both summary
+  and complete detail, and keep other shared consumers running.
+- Patch PR drawer content in place, preserve search composition, focus, scroll
+  and file trees, and bound visited detail caches to 32 entries / 8 MiB.
+- Reuse warmed repository names without spawning Git config queries. Validate
+  remote, global/include configuration, authentication, HEAD and linked-worktree
+  changes with asynchronous shared file metadata probes.
+- Coalesce automatic graph fingerprint notifications into one latest follow-up,
+  reuse layout checkpoints, send revisioned graph deltas, and preserve unchanged
+  text rows and SVG elements when adding pages. Recover missed messages without
+  another Git read.
+- Limit untracked file reads to four workers while retaining every file and its
+  order; cap retained line statistics at 4,096 entries / 1 MiB.
+- Share in-flight hunk reads, invalidate only changed files where possible, and
+  wait for replaced reads to actually close before starting their successors.
+- Find GitHub CLI on the captured PATH before initializing a login shell, while
+  retaining executable overrides and shell fallback.
+
+### Fixed
+
+- Keep changed-file statistics and the detail retry button visible in narrow
+  PR drawers, and preserve selected graph rows during incremental refresh.
+
 All notable changes to **Git Simple Compare** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),

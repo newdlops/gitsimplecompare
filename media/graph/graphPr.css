@@ -113,6 +113,8 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   overflow: auto;
 }
 
@@ -257,6 +259,8 @@
 
 .pr-detail-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid var(--vscode-panel-border);
@@ -264,6 +268,7 @@
 
 .pr-detail-section h3 {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -278,148 +283,6 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-}
-
-.pr-file-tree,
-.pr-folder-children {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.pr-file-tree {
-  display: grid;
-  gap: 1px;
-  overflow-x: auto;
-}
-
-.pr-file-folder {
-  min-width: 0;
-}
-
-.pr-folder-row,
-.pr-file-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: max-content;
-  min-height: 24px;
-  padding: 2px 8px 2px var(--indent, 8px);
-  border: 0;
-  border-radius: 3px;
-  color: var(--vscode-foreground);
-  background: transparent;
-  font: inherit;
-  text-align: left;
-}
-
-.pr-folder-row {
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.pr-folder-row:hover,
-.pr-folder-row:focus-visible,
-.pr-commit-item:hover,
-.pr-commit-item:focus-visible {
-  outline: none;
-  background: var(--vscode-list-hoverBackground);
-}
-
-/* 변경 파일 행: 클릭/Enter 로 diff 를 여므로 hover/focus 어포던스를 준다. */
-.pr-file-row {
-  cursor: pointer;
-}
-
-.pr-file-row:hover,
-.pr-file-row:focus-visible {
-  outline: none;
-  background: var(--vscode-list-hoverBackground);
-}
-
-.pr-folder-children.collapsed {
-  display: none;
-}
-
-.pr-folder-children {
-  margin-left: 22px;
-  border-left: 1px solid var(--vscode-tree-indentGuidesStroke, var(--vscode-panel-border));
-}
-
-.pr-folder-row .twistie,
-.pr-file-row .twistie {
-  flex: 0 0 14px;
-  font-size: 12px;
-}
-
-.pr-file-row .icon,
-.pr-file-row .extension-icon,
-.pr-folder-row .codicon:not(.twistie) {
-  flex: 0 0 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pr-file-row .name,
-.pr-folder-row .path {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pr-file-row .name {
-  flex: 1 1 auto;
-}
-
-.pr-file-row .stat {
-  flex: 0 0 auto;
-  margin-left: auto;
-  font-size: 0.85em;
-}
-
-.pr-file-comment-bubble {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 3px;
-  min-width: 22px;
-  height: 18px;
-  justify-content: center;
-  padding: 0 5px;
-  border: 1px solid var(--pr-accent, var(--vscode-charts-purple, #b180d7));
-  border-radius: 999px;
-  color: var(--pr-accent, var(--vscode-charts-purple, #b180d7));
-  background: color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 12%, transparent);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.pr-file-row[data-status="A"] .name,
-.pr-file-row[data-status="A"] .icon {
-  color: var(--vscode-gitDecoration-addedResourceForeground);
-}
-
-.pr-file-row[data-status="M"] .name,
-.pr-file-row[data-status="M"] .icon,
-.pr-file-row[data-status="T"] .name,
-.pr-file-row[data-status="T"] .icon {
-  color: var(--vscode-gitDecoration-modifiedResourceForeground);
-}
-
-.pr-file-row[data-status="D"] .name,
-.pr-file-row[data-status="D"] .icon {
-  color: var(--vscode-gitDecoration-deletedResourceForeground);
-}
-
-.pr-file-row[data-status="R"] .name,
-.pr-file-row[data-status="R"] .icon,
-.pr-file-row[data-status="C"] .name,
-.pr-file-row[data-status="C"] .icon {
-  color: var(--vscode-gitDecoration-renamedResourceForeground);
 }
 
 .pr-commit-list {

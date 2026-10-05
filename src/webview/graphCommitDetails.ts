@@ -8,6 +8,7 @@ import {
 } from "../git/gitLogService";
 import { CommitDetail } from "../graph/graphTypes";
 import { ToWebviewMessage } from "./graphProtocol";
+import { logInfo } from "../ui/outputLog";
 
 type DetailResult =
   | { ok: true; detail: CommitDetail }
@@ -16,6 +17,14 @@ type DetailResult =
 /** CommitDetail 메시지를 순서 보장과 함께 보내는 sender */
 export class GraphCommitDetailSender {
   private generation = 0;
+  private request?: AbortController;
+
+  /** 선택 변경·패널 해제 시 이 sender의 소비자만 취소해 공유 실행의 다른 독자를 보호한다. */
+  cancel(reason: string): void {
+    this.generation++;
+    this.request?.abort(); this.request = undefined;
+    logInfo("graph commit detail cancelled", { reason });
+  }
 
   /**
    * 선택 커밋의 상세를 웹뷰로 보낸다.
@@ -30,18 +39,24 @@ export class GraphCommitDetailSender {
     logService: GitLogService,
     post: (message: ToWebviewMessage) => void
   ): Promise<void> {
-    const current = ++this.generation;
-    const detailPromise: Promise<DetailResult> = logService.getCommitDetail(hash).then(
+    this.cancel("selectionChanged");
+    const current = this.generation;
+    const controller = new AbortController(); this.request = controller;
+    const summaryPromise = isVirtualCommit(hash) ? undefined :
+      getCommitDetailSummary(logService.repoRoot, hash, controller.signal);
+    const detailPromise: Promise<DetailResult> = logService.getCommitDetail(hash, controller.signal, summaryPromise).then(
       (detail) => ({ ok: true, detail }),
       (error) => ({ ok: false, error })
     );
-    if (!isVirtualCommit(hash)) {
-      const summary = await getCommitDetailSummary(logService.repoRoot, hash).catch(() => undefined);
+    if (summaryPromise) {
+      const summary = await summaryPromise.catch(() => undefined);
       if (summary && current === this.generation) {
         post({ type: "commitDetail", detail: summary });
       }
     }
     const result = await detailPromise;
+    if (current !== this.generation || controller.signal.aborted) return;
+    if (this.request === controller) this.request = undefined;
     if (!result.ok) {
       throw result.error;
     }

@@ -11,6 +11,7 @@ import {
 import { createDiffMutationGuard } from "./diffMutationGuard";
 import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
 import { runGitLiteralPaths as runGit } from "./gitExec";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
 
@@ -70,21 +71,23 @@ export class DiffHunkService {
    * 특정 파일의 staged/unstaged 변경만 파싱해 반환한다.
    * - editable diff checkbox 초기 렌더처럼 파일 하나만 필요한 경로에서 전체 diff 파싱을 피한다.
    * @param relPath 저장소 상대 파일 경로
+   * @param signal 파일 표시 소비자가 더 이상 필요하지 않을 때 Git과 후속 파일 I/O를 취소한다.
    */
-  async getFileWorkingDiff(relPath: string): Promise<DiffFile[]> {
+  async getFileWorkingDiff(relPath: string, signal?: AbortSignal): Promise<DiffFile[]> {
     const [staged, unstaged, untrackedOut] = await Promise.all([
-      runGit(["diff", "--cached", "--no-color", "--", relPath], this.repoRoot),
-      runGit(["diff", "--no-color", "--", relPath], this.repoRoot),
+      runGit(["diff", "--cached", "--no-color", "--", relPath], this.repoRoot, { signal }),
+      runGit(["diff", "--no-color", "--", relPath], this.repoRoot, { signal }),
       runGit(
         ["ls-files", "--others", "--exclude-standard", "-z", "--", relPath],
-        this.repoRoot
-      ).catch(() => ""),
+        this.repoRoot, { signal }
+      ).catch(() => { signal?.throwIfAborted(); return ""; }),
     ]);
     const unstagedFiles = parseDiff(unstaged, "unstaged");
+    signal?.throwIfAborted();
     const untrackedFiles = await parseUntrackedFiles(
       this.repoRoot,
       untrackedOut,
-      new Set(unstagedFiles.map((file) => file.path))
+      new Set(unstagedFiles.map((file) => file.path)), signal
     );
     return [...parseDiff(staged, "staged"), ...unstagedFiles, ...untrackedFiles];
   }
@@ -95,8 +98,8 @@ export class DiffHunkService {
    * @param relPath 저장소 상대 경로
    * @returns UTF-8 파일 내용
    */
-  async readWorkingFile(relPath: string): Promise<string> {
-    return fs.promises.readFile(path.join(this.repoRoot, relPath), "utf8");
+  async readWorkingFile(relPath: string, signal?: AbortSignal): Promise<string> {
+    return fs.promises.readFile(path.join(this.repoRoot, relPath), { encoding: "utf8", signal });
   }
 
   /**
@@ -446,21 +449,15 @@ function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
   return files;
 }
 
-/** 미추적 파일 목록을 line stage 가능한 new-file diff 로 변환한다. */
+/** 전체 미추적 파일의 순서를 유지하며 최대 4개 I/O로 new-file diff를 만든다. 취소 뒤 새 읽기는 시작하지 않는다. */
 async function parseUntrackedFiles(
   repoRoot: string,
   raw: string,
-  skipPaths: Set<string>
+  skipPaths: Set<string>,
+  signal?: AbortSignal
 ): Promise<DiffFile[]> {
-  const paths = raw.split("\0").filter((item) => item.length > 0);
-  const files: DiffFile[] = [];
-  for (const relPath of paths) {
-    if (skipPaths.has(relPath)) {
-      continue;
-    }
-    files.push(await untrackedFileToDiff(repoRoot, relPath));
-  }
-  return files;
+  const paths = raw.split("\0").filter(item => item.length > 0 && !skipPaths.has(item));
+  return mapWithConcurrency(paths, 4, relPath => untrackedFileToDiff(repoRoot, relPath, signal), signal);
 }
 
 /**
@@ -471,16 +468,20 @@ async function parseUntrackedFiles(
  */
 async function untrackedFileToDiff(
   repoRoot: string,
-  relPath: string
+  relPath: string,
+  signal?: AbortSignal
 ): Promise<DiffFile> {
+  signal?.throwIfAborted();
   const fullPath = path.join(repoRoot, relPath);
   const header = newFileHeader(relPath, await fileMode(fullPath));
   try {
     const stats = await fs.promises.stat(fullPath);
+    signal?.throwIfAborted();
     if (stats.size > MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES) {
       return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
     }
-    const buffer = await fs.promises.readFile(fullPath);
+    const buffer = await fs.promises.readFile(fullPath, { signal });
+    signal?.throwIfAborted();
     if (buffer.includes(0)) {
       return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
     }
@@ -494,6 +495,7 @@ async function untrackedFileToDiff(
       binary: false,
     };
   } catch {
+    signal?.throwIfAborted();
     return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
   }
 }

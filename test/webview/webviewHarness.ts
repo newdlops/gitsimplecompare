@@ -43,7 +43,7 @@ export async function mountGraphRenderer(page: Page): Promise<void> {
   await assets(
     page,
     ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphHealth.css", "graph/graphDetail.css"],
-    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graph.js"]
+    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphDetailVisibility.js", "graph/graphDataUpdates.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graph.js"]
   );
   const font = (await readFile(media("codicons", "codicon.ttf"))).toString("base64");
   await page.addStyleTag({

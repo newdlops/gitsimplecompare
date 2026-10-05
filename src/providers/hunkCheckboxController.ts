@@ -2,13 +2,16 @@
 // - checkbox UI 는 native overlay 로만 표시하고, fallback decoration/CodeLens 경로는 사용하지 않는다.
 // - 체크 상태만 관리하고, 실제 부분 stage 는 DiffHunkService 의 선택 적용 로직을 재사용한다.
 import * as vscode from "vscode";
+import * as path from "node:path";
+import { ScopedGitReadCache } from "../git/scopedGitReadCache";
+import { registerHunkCacheEvents, skipInvalidatedHunkSnapshot } from "./hunkCacheEvents";
 import { DiffFile, DiffHunkService, HunkSelection } from "../git/diffHunkService";
 import { buildWorkingContentWithoutStagedView } from "../git/unstagedView";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { activeHunkDiffTarget, activeHunkWorkingModifiedUri, refreshHunkDiffDocuments, type ActiveHunkDiffTarget } from "./hunkDiffContext";
 import { CheckboxLine, CheckboxSide, checkboxLineSides, checkboxLines } from "./hunkCheckboxLines";
-import { activeTargetForModifiedUri, isVisibleHunkModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
+import { activeTargetForModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
 import { checkboxLinesForDisplayedDiff, lineIdsForVisibleChange } from "./hunkVisibleLineMap";
 import { isAnyDiffOpenInProgress } from "./diffOpenGate";
 
@@ -62,7 +65,7 @@ export class HunkCheckboxController {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
   private readonly selected = new Map<string, Map<string, CheckboxSide | undefined>>();
   private revision = 0;
-  private readonly baseCache = new Map<string, HunkOverlayBase | undefined>();
+  private readonly baseCache = new ScopedGitReadCache<HunkOverlayBase | undefined>(64);
 
   readonly onDidChangeHunkControls = this.onDidChangeEmitter.event;
 
@@ -71,11 +74,12 @@ export class HunkCheckboxController {
   /** provider 와 상태 갱신 리스너를 등록한다. */
   register(): vscode.Disposable {
     return vscode.Disposable.from(
+      new vscode.Disposable(() => this.baseCache.invalidate()),
       vscode.window.tabGroups.onDidChangeTabs(() => this.requestRender()),
       vscode.window.tabGroups.onDidChangeTabGroups(() => this.requestRender()),
       vscode.window.onDidChangeActiveTextEditor(() => this.requestRender()),
       vscode.window.onDidChangeVisibleTextEditors(() => this.requestRender()),
-      vscode.workspace.onDidSaveTextDocument((document) => isVisibleHunkModifiedUri(document.uri) && this.refresh()),
+      registerHunkCacheEvents(target => this.refresh(target)),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(`gitSimpleCompare.${MODE_CONFIG}`)) {
           this.requestRender();
@@ -156,7 +160,7 @@ export class HunkCheckboxController {
     }
     const targets = visibleHunkTargets();
     const snapshots = await Promise.all(
-      targets.map((target) => this.snapshotForTarget(target))
+      targets.map(target => skipInvalidatedHunkSnapshot(target.relPath, () => this.snapshotForTarget(target)))
     );
     return snapshots.filter((item): item is HunkOverlaySnapshot => !!item);
   }
@@ -168,6 +172,8 @@ export class HunkCheckboxController {
    */
   setNativeOverlayAvailable(_available: boolean): void {}
 
+  /** 표시 중인 hunk diff의 저장소도 metadata watcher가 HEAD/index 변경을 관찰하게 한다. */
+  repositoryRoots(): string[] { return [...new Set(visibleHunkTargets().map(target => target.repoRoot))]; }
   /** 현재 editable diff 에 체크된 line id 가 있는지 빠르게 확인한다. */
   hasCheckedForActiveDiff(): boolean {
     const uri = activeHunkWorkingModifiedUri();
@@ -274,7 +280,7 @@ export class HunkCheckboxController {
     });
     if (!lineIds.length) {
       this.selected.delete(uri.toString());
-      this.refresh();
+      this.refresh(activeTarget);
       if (showNoopWarning) {
         vscode.window.showWarningMessage(
           action === "stage"
@@ -305,7 +311,7 @@ export class HunkCheckboxController {
       });
       this.selected.delete(uri.toString());
       refreshHunkDiffDocuments(activeTarget);
-      this.refresh();
+      this.refresh(activeTarget);
       await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
         reason: `hunkCheckbox:${action}`,
       });
@@ -388,17 +394,16 @@ export class HunkCheckboxController {
     this.requestRender();
   }
 
-  /** 현재 모드의 라인 컨트롤 재계산을 요청한다. */
-  refresh(): void {
+  /** 지정 파일만 무효화하고 target 생략은 HEAD/index 변경처럼 전체 기준을 다시 계산한다. */
+  refresh(target?: Pick<ActiveHunkDiffTarget, "repoRoot" | "relPath">): void {
     this.revision++;
-    this.baseCache.clear();
+    this.baseCache.invalidate(target ? path.resolve(target.repoRoot, target.relPath) : undefined);
+    logInfo("hunk checkbox cache invalidated", { path: target?.relPath, scope: target ? "file" : "all", entries: this.baseCache.size() });
     this.onDidChangeEmitter.fire();
   }
 
   /** checkbox 체크 상태만 바뀐 경우 git diff/표시 줄 매핑 캐시를 유지한 채 화면만 다시 그린다. */
-  renderCheckedState(): void {
-    this.requestRender();
-  }
+  renderCheckedState(): void { this.requestRender(); }
 
   /** git 재조회 없이 현재 checkbox 상태만 renderer 에 다시 전달한다. */
   private requestRender(): void {
@@ -415,25 +420,16 @@ export class HunkCheckboxController {
       target.repoRoot,
       target.relPath,
       target.stage,
-      this.revision,
+      target.baseRef,
     ].join("\0");
-    if (this.baseCache.has(key)) {
-      return this.baseCache.get(key);
-    }
-    const context = await this.resolveContext(uri, target);
-    if (!context || context.file.binary) {
-      this.baseCache.set(key, undefined);
-      return undefined;
-    }
-    const base: HunkOverlayBase = {
-      uri: uri.toString(),
-      path: context.file.path,
-      action: context.file.stage === "staged" ? "unstage" : "stage",
-      file: context.file,
-      lines: await this.overlayLines(context, target),
-    };
-    this.baseCache.set(key, base);
-    return base;
+    return this.baseCache.read(key, path.resolve(target.repoRoot, target.relPath), async signal => {
+      const context = await this.resolveContext(uri, target, signal);
+      if (!context || context.file.binary) return undefined;
+      const lines = await this.overlayLines(context, target, signal);
+      signal.throwIfAborted();
+      return { uri: uri.toString(), path: context.file.path,
+        action: context.file.stage === "staged" ? "unstage" : "stage", file: context.file, lines };
+    });
   }
 
   /** URI 하나에 대한 renderer 전달용 snapshot 을 만든다. */
@@ -467,7 +463,8 @@ export class HunkCheckboxController {
   /** 문서 URI 에 해당하는 staged/unstaged diff 파일 컨텍스트를 찾는다. */
   private async resolveContext(
     uri: vscode.Uri,
-    target?: ActiveHunkDiffTarget
+    target?: ActiveHunkDiffTarget,
+    signal?: AbortSignal
   ): Promise<HunkFileContext | undefined> {
     const fromActive = activeTargetForModifiedUri(uri);
     const fromTarget = target ? targetToFileTarget(target) : undefined;
@@ -477,7 +474,7 @@ export class HunkCheckboxController {
       return undefined;
     }
     const service = new DiffHunkService(fileTarget.repoRoot);
-    const files = await service.getFileWorkingDiff(fileTarget.relPath);
+    const files = await service.getFileWorkingDiff(fileTarget.relPath, signal);
     const stage = "stage" in fileTarget ? fileTarget.stage : "unstaged";
     const file = files.find(
       (item) => item.stage === stage && item.path === fileTarget.relPath
@@ -495,7 +492,8 @@ export class HunkCheckboxController {
    */
   private async overlayLines(
     context: HunkFileContext,
-    target: ActiveHunkDiffTarget
+    target: ActiveHunkDiffTarget,
+    signal?: AbortSignal
   ): Promise<CheckboxLine[]> {
     const started = Date.now();
     try {
@@ -505,7 +503,7 @@ export class HunkCheckboxController {
       ]);
       const view =
         context.virtualUnstaged && context.file.stage === "unstaged"
-          ? await this.virtualUnstagedView(context)
+          ? await this.virtualUnstagedView(context, signal)
           : undefined;
       const mapped = checkboxLinesForDisplayedDiff(
         context.file,
@@ -529,6 +527,7 @@ export class HunkCheckboxController {
       });
       return mapped.lines;
     } catch (error) {
+      signal?.throwIfAborted();
       logError("hunk checkbox visible line map failed", error, {
         path: context.file.path,
       });
@@ -546,13 +545,14 @@ export class HunkCheckboxController {
 
   /** :unstaged 가상 문서에서 git index/working 줄을 표시 문서 줄로 옮기는 보정 정보를 만든다. */
   private async virtualUnstagedView(
-    context: HunkFileContext
+    context: HunkFileContext,
+    signal?: AbortSignal
   ): Promise<ReturnType<typeof buildWorkingContentWithoutStagedView>> {
     const gitService = this.registry.get(context.service.repoRoot);
     const [head, index, working] = await Promise.all([
-      gitService.getFileContentAtRef("HEAD", context.file.path),
-      gitService.getFileContentAtRef(":0", context.file.path),
-      context.service.readWorkingFile(context.file.path).catch(() => ""),
+      gitService.getFileContentAtRef("HEAD", context.file.path, { signal }),
+      gitService.getFileContentAtRef(":0", context.file.path, { signal }),
+      context.service.readWorkingFile(context.file.path, signal).catch(() => { signal?.throwIfAborted(); return ""; }),
     ]);
     return buildWorkingContentWithoutStagedView(head, index, working);
   }

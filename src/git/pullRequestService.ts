@@ -223,9 +223,9 @@ export class PullRequestService {
    * @param number 조회할 PR 번호
    * @returns PR 상세 drawer 데이터
    */
-  async getDetail(number: number): Promise<PullRequestDetailInfo> {
+  async getDetail(number: number, signal?: AbortSignal): Promise<PullRequestDetailInfo> {
     // gh가 현재 remote/GH_REPO를 직접 치환하므로 별도 repo view 네트워크 요청이 필요 없다.
-    return fetchPullRequestDetail(this.repoRoot, "{owner}/{repo}", number);
+    return fetchPullRequestDetail(this.repoRoot, "{owner}/{repo}", number, signal);
   }
 
   /**

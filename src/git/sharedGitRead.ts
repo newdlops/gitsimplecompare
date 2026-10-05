@@ -81,7 +81,10 @@ export class SharedGitRead<T> {
   private start(): PendingRead<T> {
     const pending: PendingRead<T> = { generation: this.generation, controller: new AbortController(), users: new Set(), finished: false, started: false, promise: undefined! };
     this.pending = pending;
-    pending.promise = Promise.resolve().then(() => { pending.started = true; return this.loader(pending.controller.signal); }).then(value => {
+    pending.promise = Promise.resolve().then(() => {
+      pending.controller.signal.throwIfAborted();
+      pending.started = true; return this.loader(pending.controller.signal);
+    }).then(value => {
       if (pending.generation === this.generation && !pending.controller.signal.aborted && !this.lifetime.signal.aborted) {
         this.ready = { at: Date.now(), value: this.clone(value), generation: pending.generation };
       }

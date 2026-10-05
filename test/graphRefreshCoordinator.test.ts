@@ -13,7 +13,7 @@ function deferred<T>() {
 }
 
 /** 비동기 coordinator가 background transaction을 시작/완료할 때까지 microtask만 비운다. */
-async function settle(): Promise<void> { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); }
+async function settle(): Promise<void> { await new Promise<void>(resolve => setImmediate(resolve)); }
 
 test("같은 refresh 세대의 worktree와 remote snapshot만 direct와 automatic reload에 전달한다", async () => {
   const worktrees: WorktreeInfo[] = [{ path: "/repo", head: "a".repeat(40), branch: "main", branchRef: "refs/heads/main", isMain: true, detached: false, bare: false }];
@@ -29,12 +29,11 @@ test("같은 refresh 세대의 worktree와 remote snapshot만 direct와 automati
   await coordinator.request({ repoRoot: "/repo", cause: "changed", mode: "none" });
   await settle();
   assert.equal(reloads.length, 2);
-  assert.ok(reloads.every(context => context.worktrees === worktrees));
-  assert.ok(reloads.every(context => context.remoteTips === remoteTips));
+  for (const context of reloads) { assert.deepEqual(context.worktrees, worktrees); assert.deepEqual(context.remoteTips, remoteTips); }
 });
 
-test("새 자동 요청과 lifecycle 무효화는 필요 없는 fingerprint 실행에 종료 신호를 전달한다", async t => {
-  for (const reason of ["newerRequest", "newerDirect", "hidden", "unfocused", "repositoryChanged", "disposed"]) {
+test("lifecycle 무효화와 direct 교체는 필요 없는 fingerprint 실행에 종료 신호를 전달한다", async t => {
+  for (const reason of ["newerDirect", "hidden", "unfocused", "repositoryChanged", "disposed"]) {
     await t.test(reason, async () => {
       const signals: AbortSignal[] = [], failures: string[] = [];
       const coordinator = new GraphRefreshLifecycleCoordinator({
@@ -46,9 +45,9 @@ test("새 자동 요청과 lifecycle 무효화는 필요 없는 fingerprint 실�
         invalidateReload: () => undefined, info: () => undefined, error: event => { failures.push(event); },
       });
       const old = coordinator.request({ repoRoot: "/repo", cause: "old", mode: "pullRequests", force: true });
+      await settle();
       let newer: Promise<unknown> | undefined;
-      if (reason === "newerRequest") newer = coordinator.request({ repoRoot: "/repo", cause: "new", mode: "none" });
-      else if (reason === "newerDirect") newer = coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
+      if (reason === "newerDirect") newer = coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
       else if (reason === "hidden") coordinator.setVisible(false);
       else if (reason === "unfocused") coordinator.setFocused(false);
       else if (reason === "repositoryChanged") coordinator.setRepository("/other");
@@ -180,10 +179,12 @@ test("동일 lifecycle에서 뒤 요청의 fingerprint가 먼저 끝나도 이�
     error: () => undefined,
   });
   const older = coordinator.request({ repoRoot: "/repo", cause: "old", mode: "stacks" });
+  await settle();
   const newer = coordinator.request({ repoRoot: "/repo", cause: "new", mode: "pullRequests" });
+  first.resolve("older");
+  await settle();
   second.resolve("newest");
   await newer;
-  first.resolve("older");
   await older;
   await settle();
   assert.deepEqual(reloads.map(({ cause }) => cause), ["new"]);
@@ -205,10 +206,12 @@ test("강한 stack intent read가 늦게 끝나도 뒤 watcher의 최신 fingerp
   });
   await coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
   const first = coordinator.request({ repoRoot: "/repo", cause: "stackSubmitted", mode: "pullRequests" });
+  await settle();
   const second = coordinator.request({ repoRoot: "/repo", cause: "stable-git-state", mode: "stacks" });
+  strong.resolve("stable");
+  await settle();
   weak.resolve("stable");
   await second;
-  strong.resolve("stable");
   await first;
   await settle();
   assert.deepEqual(reloads, ["ready", "stable-git-state"]);
@@ -424,11 +427,33 @@ test("direct refresh는 아직 fingerprint를 읽는 자동 요청의 늦은 sch
   });
   await coordinator.runDirect({ repoRoot: "/repo", cause: "ready" });
   const watcher = coordinator.request({ repoRoot: "/repo", cause: "head", mode: "stacks" });
+  await settle();
   await coordinator.runDirect({ repoRoot: "/repo", cause: "refresh" });
   watcherFingerprint.resolve("late-watcher");
   await watcher;
   await settle();
   assert.deepEqual(reloads, ["ready", "refresh"]);
+});
+
+test("실행 중 watcher burst 20건은 abort/spawn 없이 최신 fingerprint pass 한 건으로 합친다", async () => {
+  const first = deferred<string>(), latest = deferred<string>();
+  const signals: AbortSignal[] = [], reloads: GraphRefreshContext[] = [], modes: GraphRefreshMode[] = [];
+  const coordinator = new GraphRefreshLifecycleCoordinator({
+    readFingerprint: async (_root, signal) => { signals.push(signal!); return signals.length === 1 ? first.promise : latest.promise; },
+    reloadGraph: async context => { reloads.push(context); },
+    publishAfterReload: async (_context, mode) => { modes.push(mode); },
+    invalidateReload: () => undefined, info: () => undefined, error: () => undefined,
+  });
+  const initial = coordinator.request({ repoRoot: "/repo", cause: "stackSubmitted", mode: "pullRequests" });
+  await settle();
+  const burst = Array.from({ length: 20 }, (_, index) => coordinator.request({ repoRoot: "/repo", cause: `watcher:${index}`, mode: "none" }));
+  assert.equal(signals.length, 1); assert.equal(signals[0].aborted, false);
+  first.resolve("obsolete"); await settle();
+  assert.equal(signals.length, 2);
+  latest.resolve("current"); await Promise.all([initial, ...burst]); await settle();
+  assert.deepEqual(reloads.map(item => [item.cause, item.fingerprint]), [["watcher:19", "current"]]);
+  assert.deepEqual(modes, ["pullRequests"]);
+  coordinator.dispose();
 });
 
 test("ref와 worktree 출력 순서는 fingerprint에 영향을 주지 않는다", () => {

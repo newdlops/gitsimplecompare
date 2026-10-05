@@ -330,12 +330,15 @@ function isAbortError(error: unknown): boolean {
 export async function sendGraphPullRequestDetail(
   repoRoot: string,
   number: number,
-  post: PostGraphMessage
+  post: PostGraphMessage,
+  signal?: AbortSignal,
+  requestId?: string
 ): Promise<void> {
   const service = new PullRequestService(repoRoot);
   try {
-    const detail = await service.getDetail(number);
-    post({ type: "pullRequestDetail", number, detail });
+    const detail = await service.getDetail(number, signal);
+    signal?.throwIfAborted();
+    post({ type: "pullRequestDetail", number, detail, ...(requestId ? { requestId } : {}) });
     logInfo("graph pull request detail sent", {
       repoRoot,
       number,
@@ -343,9 +346,10 @@ export async function sendGraphPullRequestDetail(
       fileCommentCount: detail.fileCommentCount,
     });
   } catch (error) {
+    if (signal?.aborted) { logInfo("graph pull request detail cancelled", { repoRoot, number }); return; }
     const message = error instanceof Error ? error.message : String(error);
     logError("graph pull request detail failed", error, { repoRoot, number });
-    post({ type: "pullRequestDetailError", number, message });
+    post({ type: "pullRequestDetailError", number, message, ...(requestId ? { requestId } : {}) });
   }
 }
 

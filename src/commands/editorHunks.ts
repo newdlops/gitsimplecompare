@@ -219,7 +219,7 @@ async function applyEditorHunkAction(
       );
     }
     refreshHunkDiffDocuments(activeTarget);
-    deps.hunkCheckboxes.refresh();
+    deps.hunkCheckboxes.refresh(activeTarget);
     await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: `editorHunks:${action}`,
     });

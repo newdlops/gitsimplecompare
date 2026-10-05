@@ -15,12 +15,14 @@ const FS = LOG_FIELD_SEPARATOR;
  */
 export async function getCommitDetailSummary(
   repoRoot: string,
-  hash: string
+  hash: string,
+  signal?: AbortSignal
 ): Promise<CommitDetail> {
   const headerFormat = ["%H", "%P", "%an", "%ae", "%aI", "%B"].join(FS);
   const header = await runGit(
     ["show", "-s", `--pretty=format:${headerFormat}`, hash],
-    repoRoot
+    repoRoot,
+    { signal }
   );
   const parts = header.split(FS);
   const parents = parts[1] ? parts[1].split(" ").filter(Boolean) : [];

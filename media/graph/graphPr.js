@@ -5,8 +5,8 @@
 
   let overview = { available: false, pullRequests: [] };
   let activeDetail = { kind: "none" };
-  let pullRequestDetails = new Map();
-  let pendingDetails = new Set();
+  const details = window.GscGraphPrViewState.create(message => window.GscGraphPostMessage?.(message));
+  let hostContext = "", detailPaused = false, lastDetailKey = "", lastDetailValue;
   let prListLoading = false;
   let lastOverviewAt = 0;
   let hoverCard;
@@ -26,6 +26,11 @@
     document.getElementById("detail")?.addEventListener("click", handleDetailClick);
     document.getElementById("detail")?.addEventListener("keydown", handleDetailKeydown);
     window.addEventListener("message", handleMessage);
+    window.addEventListener("gsc-detail-selection", () => { activeDetail = { kind: "none" }; details.cancel(); });
+    window.addEventListener("gsc-detail-visibility", event => {
+      if (!event.detail?.visible) details.cancel();
+      else if (activeDetail.kind === "pr") { detailPaused = false; renderPullRequestDetail(activeDetail.number); }
+    });
   }
 
   /** 버튼 click handler 를 연결한다. */
@@ -36,19 +41,22 @@
   /** 확장에서 온 graph/PR 메시지를 반영한다. */
   function handleMessage(event) {
     const msg = event.data;
-    if (msg.type === "pullRequestOverview") {
+    if (msg.type === "pullRequestContext") {
+      hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
+    } else if (msg.type === "graphDetailCancelled") {
+      details.cancel(msg.number, msg.requestId);
+      if (["hidden", "windowUnfocused"].includes(msg.reason)) detailPaused = true;
+    } else if (msg.type === "graphDetailResume") {
+      detailPaused = false; schedulePrRender();
+    } else if (msg.type === "pullRequestOverview") {
       prListLoading = Boolean(msg.overview?.detailsLoading);
       if (msg.overview?.available) lastOverviewAt = Date.now();
       overview = mergeOverviewUpdate(overview, msg.overview);
+      details.setContext(`${hostContext}|${overview.repository || ""}`);
       // 자동 조회의 toolbar spinner가 큰 PR의 후속 페이지 동안 목록 열기까지 막지 않게 한다.
       const listButton = document.getElementById("graph-pr-list");
       if (listButton && overview.available) listButton.disabled = false;
-      if (activeDetail.kind === "overview" && !window.GscGraphPrSearch?.isComposing?.()) {
-        renderOverviewDetail();
-      } else if (activeDetail.kind === "pr") {
-        renderPullRequestDetail(activeDetail.number);
-      }
-      applyDecorations();
+      schedulePrRender();
     } else if (msg.type === "pullRequestOverviewRetained") {
       // 동일 데이터의 refresh 완료는 행/검색 DOM을 다시 만들지 않고 footer만 갱신한다.
       prListLoading = false;
@@ -57,27 +65,28 @@
       const footer = activeDetail.kind === "overview" && detailRoot()?.querySelector(".pr-list-footer");
       if (footer) footer.outerHTML = prListFooter();
     } else if (msg.type === "pullRequestDetail") {
-      pendingDetails.delete(Number(msg.number));
-      pullRequestDetails.set(Number(msg.number), { status: "ready", detail: msg.detail });
-      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) { renderPullRequestDetail(activeDetail.number); }
-      applyDecorations();
+      if (details.accept(msg, findPr(msg.number), { status: "ready", detail: msg.detail })) schedulePrRender();
     } else if (msg.type === "pullRequestDetailError") {
-      pendingDetails.delete(Number(msg.number));
-      pullRequestDetails.set(Number(msg.number), { status: "error", message: msg.message });
-      if (activeDetail.kind === "pr" && Number(activeDetail.number) === Number(msg.number)) {
-        renderPullRequestDetail(activeDetail.number);
-      }
+      if (details.accept(msg, findPr(msg.number), { status: "error", message: msg.message })) schedulePrRender();
     } else if (msg.type === "commitVisibility") {
       window.GscGraphPrMatching?.handleCommitVisibility?.(msg);
-    } else if (msg.type === "graph" || msg.type === "branchStatus" || msg.type === "tagStatus") {
+    } else if (msg.type === "graph" || msg.type === "graphDelta" || msg.type === "branchStatus" || msg.type === "tagStatus") {
       // graph/branchStatus/tagStatus 는 모두 그래프 row 를 다시 그린다. row 가 재생성되면 PR 배지가
       // 함께 사라지므로, 이 스크립트가 graph.js 보다 먼저 message 를 받는 점을 이용해 rAF 로 재배치를 예약한다.
       hideHoverCard();
-      requestAnimationFrame(applyDecorations);
-      if (activeDetail.kind === "pr") {
-        requestAnimationFrame(() => renderPullRequestDetail(activeDetail.number));
-      }
+      schedulePrRender();
     }
+  }
+
+  /** 진행 메시지 여러 건을 한 프레임으로 합치고 선택 화면과 실제 변경된 부분만 다시 그린다. */
+  function schedulePrRender() {
+    window.GscGraphPrViewState.schedule(() => {
+      if (!detailPaused && document.body.classList.contains("detail-open")) {
+        if (activeDetail.kind === "overview" && !window.GscGraphPrSearch?.isComposing?.()) renderOverviewDetail();
+        else if (activeDetail.kind === "pr") renderPullRequestDetail(activeDetail.number, false);
+      }
+      applyDecorations();
+    });
   }
 
   /**
@@ -116,6 +125,9 @@
    *   카드의 data-show-pr 로 새어 상세가 잘못 열린다.
    */
   function handleDetailClick(event) {
+    if (event.target.closest?.("[data-pr-detail-retry]")) {
+      details.retry(findPr(activeDetail.number)); renderPullRequestDetail(activeDetail.number); return;
+    }
     if (event.target.closest?.("[data-pr-operation]")) {
       // 직접 실행/메뉴 버튼은 문서 레벨 graphPrActions 리스너가 처리한다.
       return;
@@ -232,6 +244,7 @@
 
   /** toolbar PR 버튼에서 전체 PR 목록 drawer 를 연다. */
   function showOverviewDetail(refresh) {
+    window.GscGraphPostMessage?.({ type: "cancelGraphDetail" }); details.cancel(); detailPaused = false;
     activeDetail = { kind: "overview" };
     if (refresh) prListLoading = true;
     renderOverviewDetail();
@@ -259,7 +272,7 @@
 	        ? `${prs.length} pull requests (refresh failed${overview.error ? ": " + overview.error : ""})`
 	        : `PR data unavailable${overview.error ? ": " + overview.error : ""}`;
 	    const searchHtml = (overview.available || prs.length) ? (window.GscGraphPrSearch?.render?.(prs.length, filteredPrs.length) || "") : "";
-	    root.innerHTML = `<div class="pr-detail-shell">` +
+	    window.GscGraphPrViewState.updateHtml(root, `<div class="pr-detail-shell">` +
 	      `<section class="pr-detail-header">` +
 	      `<div class="pr-detail-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
 	      `<h2>Pull Requests</h2></div>` +
@@ -267,7 +280,7 @@
 	      searchHtml +
 	      `</section>` +
 	      `<section class="pr-detail-list">${filteredPrs.length ? filteredPrs.map(prListCard).join("") : `<p class="pr-empty">${esc(prListEmptyMessage(status))}</p>`}${prListFooter()}</section>` +
-	      `</div>`;
+	      `</div>`);
 	    const shell = root.querySelector(".pr-detail-shell");
 	    if (shell) { shell.addEventListener("scroll", handlePrListScroll); shell.scrollTop = previousScroll; }
 	    window.GscGraphPrSearch?.bind?.(root, () => {
@@ -339,7 +352,7 @@
   }
 
   /** 선택한 PR 상세를 drawer 에 렌더링한다. */
-  function renderPullRequestDetail(number) {
+  function renderPullRequestDetail(number, force = true) {
     const root = detailRoot();
     if (!root) {
       return;
@@ -347,6 +360,7 @@
     const pr = findPr(number);
     if (activeDetail.kind !== "pr" || Number(activeDetail.number) !== Number(number)) {
       window.GscGraphPrFiles?.reset?.();
+      window.GscGraphPostMessage?.({ type: "cancelGraphDetail" }); details.cancel();
     }
     activeDetail = { kind: "pr", number };
     window.GscGraphDetailHost?.show?.("PR details");
@@ -355,8 +369,10 @@
       return;
     }
     requestPullRequestDetail(number);
-    const detailState = pullRequestDetails.get(Number(number));
-    root.innerHTML = `<div class="pr-detail-shell ${prColorClass(pr.number)}">` +
+    const detailState = details.get(pr), signature = JSON.stringify(pr);
+    if (!force && lastDetailKey === signature && lastDetailValue === detailState && root.querySelector(".pr-back-button")) return;
+    lastDetailKey = signature; lastDetailValue = detailState;
+    window.GscGraphPrViewState.updateHtml(root, `<div class="pr-detail-shell ${prColorClass(pr.number)}">` +
       `<section class="pr-detail-header">` +
       `<button type="button" class="pr-back-button" data-pr-overview ${tooltipAttrs("Show pull request list")}>` +
       `<span class="codicon codicon-arrow-left" aria-hidden="true"></span></button>` +
@@ -371,16 +387,12 @@
       (!overview.available && pr.commitHashesComplete === false ? prListFooter() : "") +
       changedFilesSection(detailState) +
       relatedCommitsSection(pr) +
-      `</div>`;
+      `</div>`);
   }
 
   /** PR 상세에 필요한 changed files 를 아직 읽지 않았다면 확장에 요청한다. */
   function requestPullRequestDetail(number) {
-    if (pullRequestDetails.has(Number(number)) || pendingDetails.has(Number(number))) {
-      return;
-    }
-    pendingDetails.add(Number(number));
-    window.GscGraphPostMessage?.({ type: "refreshPullRequestDetail", number: Number(number) });
+    if (!detailPaused) details.request(findPr(number));
   }
 
   /** PR 상세 drawer 의 changed files tree 섹션 HTML 을 만든다. */
@@ -393,7 +405,8 @@
     if (state.status === "error") {
       return `<section class="pr-detail-section">` +
         sectionHeading("files", "Changed files", iconCount("warning", "!", "Changed files failed to load")) +
-        `<p class="pr-empty">${esc(state.message || "Failed to load changed files.")}</p></section>`;
+        `<p class="pr-empty">${esc(state.message || "Failed to load changed files.")}</p>` +
+        `<button type="button" class="gsc-button" data-pr-detail-retry ${tooltipAttrs(window.GscPrStackI18n?.retryPrDetails || "Retry loading changed files")}>${esc(window.GscPrStackI18n?.retryPrDetails || "Retry loading changed files")}</button></section>`;
     }
     const detail = state.detail || { files: [], fileCount: 0, fileCommentCount: 0 };
     const note = detail.filesTruncated || detail.reviewThreadsTruncated
@@ -546,7 +559,7 @@
 	  /** PR 번호를 안정적인 팔레트 class 로 바꾼다. */
 	  function prColorClass(number) { return window.GscGraphPrMatching?.colorClass?.(number) || `pr-color-${Math.abs(Number(number) || 0) % 8}`; }
 	  /** badge/card 에 표시할 PR 댓글 총 개수를 반환한다. */
-	  function commentCount(pr) { const detail = pullRequestDetails.get(Number(pr.number))?.detail; if (!detail && pr.commentCountComplete === false) return "…"; const count = detail?.commentCount ?? pr.commentCount; return Number.isFinite(Number(count)) ? Number(count) : 0; }
+	  function commentCount(pr) { const detail = details.get(pr)?.detail; if (!detail && pr.commentCountComplete === false) return "…"; const count = detail?.commentCount ?? pr.commentCount; return Number.isFinite(Number(count)) ? Number(count) : 0; }
 	  /** badge/card 에 표시할 PR 커밋 수를 반환한다. */
 	  function commitCount(pr) { return pr.commitHashesComplete === false ? "…" : Array.isArray(pr.commitHashes) ? pr.commitHashes.length : 0; }
 	  /** 전체 commit hash 를 짧은 표시용 hash 로 줄인다. */

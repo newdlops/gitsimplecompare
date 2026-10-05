@@ -3,6 +3,7 @@
 import type * as vscode from "vscode";
 import type { Commit } from "../graph/graphTypes";
 import { layoutGraphData } from "./graphLayoutData";
+import { GraphRenderCache } from "./graphRenderCache";
 import {
   createGraphRenderPerformance,
   type GraphPerformanceTrace,
@@ -33,8 +34,10 @@ export interface GraphRenderRequest {
  */
 export function publishGraphRender(
   request: GraphRenderRequest,
-  post: (message: ToWebviewMessage) => void
+  post: (message: ToWebviewMessage) => void,
+  cache?: GraphRenderCache
 ): void {
+  if (cache) { cache.publish(request, post); return; }
   const started = Date.now();
   const data = layoutGraphData(
     [...request.commits],
@@ -67,7 +70,7 @@ export function postGraphWebviewMessage(
 ): void {
   const started = Date.now();
   const posted = webview.postMessage(message);
-  if (message.type !== "graph" || !message.performance) return;
+  if ((message.type !== "graph" && message.type !== "graphDelta") || !message.performance) return;
   const performance = message.performance;
   void Promise.resolve(posted).then(
     (accepted) => logGraphPostMessageResult(

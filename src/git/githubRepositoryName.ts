@@ -1,7 +1,7 @@
 // 같은 원격·서버·인증 문맥에서 저장소 이름을 재사용하며 소비자 취소를 독립적으로 처리한다.
-import { runGit } from "./gitExec";
 import type { GhExecute, GhRunnerOptions } from "./ghRunner";
-import { gitHubReadContext, snapshotGitHubEnvironment } from "./githubReadContext";
+import { snapshotGitHubEnvironment } from "./githubReadContext";
+import { readGitHubRemoteContext, clearGitHubRemoteContextCache } from "./githubRemoteContext";
 import { SharedGitRead } from "./sharedGitRead";
 
 interface CachedName { key: string; name?: string; readers: Map<GhExecute, SharedGitRead<string>>; }
@@ -16,11 +16,10 @@ const active = new Set<SharedGitRead<string>>();
 export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecute, options: GhRunnerOptions): Promise<string> {
   options.signal?.throwIfAborted();
   const env = snapshotGitHubEnvironment(options.env);
-  const gitEnv = Object.fromEntries(Object.entries(env).filter((item): item is [string, string] => typeof item[1] === "string"));
-  const remote = await runGit(["config", "--get-regexp", "^remote\\..*\\.(url|gh-resolved)$"], repoRoot,
-    { signal: options.signal, env: gitEnv }).catch(() => { options.signal?.throwIfAborted(); return undefined; });
+  const remote = await readGitHubRemoteContext(repoRoot, env, options.signal)
+    .catch(() => { options.signal?.throwIfAborted(); return undefined; });
   options.signal?.throwIfAborted();
-  const key = JSON.stringify([remote, gitHubReadContext(repoRoot, env, ["repo", "view"])]);
+  const key = remote ?? `unavailable:${Math.random()}`;
   let entry = remote === undefined ? undefined : cache.get(repoRoot);
   if (!entry || entry.key !== key) {
     entry = { key, readers: new Map() };
@@ -54,6 +53,7 @@ export async function readGitHubRepositoryName(repoRoot: string, runner: GhExecu
 
 /** 인증 변경·확장 종료 때 캐시를 비우고 소유한 진행 조회를 취소한다. 늦은 완료는 재삽입하지 않는다. */
 export function clearGitHubRepositoryNameCache(): void {
+  clearGitHubRemoteContextCache();
   cache.clear();
   for (const reader of active) void reader.dispose().catch(() => undefined);
 }

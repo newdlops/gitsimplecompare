@@ -149,3 +149,11 @@ export interface GraphData {
   edges: GraphEdge[];
   laneCount: number;
 }
+
+/** 순서가 같은 누적 페이지에서 추가 행/간선과 실제로 바뀐 prefix 값만 전송하는 패치다. */
+export interface GraphDataDelta {
+  baseRevision: number; revision: number;
+  rowStart: number; rows: GraphRow[]; rowUpdates: Array<{ index: number; row: GraphRow }>;
+  edgeStart: number; edges: GraphEdge[]; edgeUpdates: Array<{ index: number; edge: GraphEdge }>;
+  laneCount: number;
+}

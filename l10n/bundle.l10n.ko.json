@@ -1,4 +1,5 @@
 {
+  "Retry loading changed files": "변경 파일 다시 불러오기",
   "Git Startup / Executable": "Git 실행 경로 진단·선택",
   "Compare startup times and select Git. Repository, network and OS delays need separate diagnosis.": "시작 시간을 비교해 Git을 선택하세요. 저장소·네트워크·OS 지연은 별도 진단이 필요합니다.",
   "user settings": "사용자 전역 설정",

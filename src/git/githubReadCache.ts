@@ -30,10 +30,12 @@ export class GitHubReadCache {
    * @param options ttlMs=0은 완료 캐시를 무효화하고 진행 요청만 공유한다. 취소는 소비자별이다.
    * @returns UTF-8 응답. 마지막 소비자가 취소하면 소유 CLI의 종료도 요청한다.
    */
-  read(args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> {
+  async read(args: readonly string[], root: string, options: GitHubReadOptions): Promise<string> {
     if (this.disposed || options.signal?.aborted) return Promise.reject(cancelled());
     const env = snapshotGitHubEnvironment(options.env);
-    const key = JSON.stringify([root, gitHubReadContext(root, env, args), options.version || "", args]);
+    const context = await gitHubReadContext(root, env, args);
+    if (this.disposed || options.signal?.aborted) throw cancelled();
+    const key = JSON.stringify([root, context, options.version || "", args]);
     const ttl = options.ttlMs ?? 0;
     this.sweep();
     const cached = this.cache.get(key);

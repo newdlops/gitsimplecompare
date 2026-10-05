@@ -3,6 +3,7 @@
 import * as path from "node:path";
 import { readFile, stat } from "node:fs/promises";
 import { LINE_STATS_MAX_FILE_BYTES } from "./largeChangeSet";
+import { LruCache } from "../utils/lruCache";
 
 /** 정확한 줄 수를 세는 미추적 파일 크기 상한. 추적 파일 라인 통계의 대용량 기준과 같다. */
 const MAX_EXACT_UNTRACKED_STAT_BYTES = LINE_STATS_MAX_FILE_BYTES;
@@ -10,10 +11,19 @@ const MAX_EXACT_UNTRACKED_STAT_BYTES = LINE_STATS_MAX_FILE_BYTES;
 interface CachedUntrackedStat {
   size: number;
   mtimeMs: number;
+  ctimeMs: number;
+  ino: number;
   additions: number | undefined;
 }
 
-const cache = new Map<string, CachedUntrackedStat>();
+const cache = new LruCache<string, CachedUntrackedStat>(4096, 1024 * 1024,
+  (file) => Buffer.byteLength(file) + 128);
+
+/** 확장 종료·검사에서 미추적 파일 경로와 완료 통계를 해제한다. */
+export function clearUntrackedStatsCache(): void { cache.clear(); }
+
+/** 장기 사용 검사에 필요한 캐시 항목 수와 추정 보관 비용을 반환한다. */
+export function untrackedStatsCacheStats() { return cache.stats(); }
 
 /**
  * 미추적 파일의 추가 라인 수를 계산한다.
@@ -25,16 +35,19 @@ const cache = new Map<string, CachedUntrackedStat>();
  */
 export async function countUntrackedLines(
   repoRoot: string,
-  relPath: string
+  relPath: string,
+  signal?: AbortSignal
 ): Promise<number | undefined> {
+  signal?.throwIfAborted();
   const fullPath = path.join(repoRoot, relPath);
   try {
     const fileStat = await stat(fullPath);
+    signal?.throwIfAborted();
     const cached = cache.get(fullPath);
     if (
       cached &&
       cached.size === fileStat.size &&
-      cached.mtimeMs === fileStat.mtimeMs
+      cached.mtimeMs === fileStat.mtimeMs && cached.ctimeMs === fileStat.ctimeMs && cached.ino === fileStat.ino
     ) {
       return cached.additions;
     }
@@ -42,15 +55,18 @@ export async function countUntrackedLines(
       cache.set(fullPath, {
         size: fileStat.size,
         mtimeMs: fileStat.mtimeMs,
+        ctimeMs: fileStat.ctimeMs, ino: fileStat.ino,
         additions: undefined,
       });
       return undefined;
     }
-    const raw = await readFile(fullPath);
+    const raw = await readFile(fullPath, { signal });
+    signal?.throwIfAborted();
     if (raw.length === 0) {
       cache.set(fullPath, {
         size: fileStat.size,
         mtimeMs: fileStat.mtimeMs,
+        ctimeMs: fileStat.ctimeMs, ino: fileStat.ino,
         additions: 0,
       });
       return 0;
@@ -61,6 +77,7 @@ export async function countUntrackedLines(
         cache.set(fullPath, {
           size: fileStat.size,
           mtimeMs: fileStat.mtimeMs,
+          ctimeMs: fileStat.ctimeMs, ino: fileStat.ino,
           additions: undefined,
         });
         return undefined;
@@ -72,10 +89,13 @@ export async function countUntrackedLines(
     cache.set(fullPath, {
       size: fileStat.size,
       mtimeMs: fileStat.mtimeMs,
+      ctimeMs: fileStat.ctimeMs, ino: fileStat.ino,
       additions: lines,
     });
     return lines;
   } catch {
+    signal?.throwIfAborted();
+    cache.delete(fullPath);
     return undefined;
   }
 }

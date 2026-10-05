@@ -152,9 +152,10 @@ test("repository lookup cancellation is independent for consumers sharing the sa
     const registered = new Promise<void>(accept => { secondReady = accept; });
     const originalRead = SharedGitRead.prototype.read;
     let consumers = 0;
-    t.mock.method(SharedGitRead.prototype, "read", function(this: SharedGitRead<unknown>, options = {}) {
+    t.mock.method(SharedGitRead.prototype, "read", function(this: SharedGitRead<unknown>, options: { maxCacheAgeMs?: number } = {}) {
       const pending = originalRead.call(this, options);
-      if (++consumers === 2) secondReady();
+      // config probe도 SharedGitRead를 사용하므로 gh 이름 조회의 소비자 등록만 관찰한다.
+      if (options.maxCacheAgeMs === 0 && ++consumers === 2) secondReady();
       return pending;
     });
     let sharedSignal: AbortSignal | undefined, calls = 0;

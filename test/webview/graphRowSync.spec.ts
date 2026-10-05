@@ -52,7 +52,7 @@ test("branch/tag status updates keep unchanged graph rows and replace only rows 
       rows: document.querySelectorAll("#graph-content > .row").length,
     };
   });
-  expect(identity).toEqual({ kept: true, selectedReplaced: true, rows: ROWS });
+  expect(identity).toEqual({ kept: true, selectedReplaced: false, rows: ROWS });
   await expect(page.locator('#graph-content > .row[data-hash="h5"]')).toHaveClass(/selected/);
 });
 

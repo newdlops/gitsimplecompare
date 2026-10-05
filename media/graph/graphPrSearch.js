@@ -12,6 +12,7 @@
   let latestRequestId = "";
   let composing = false;
   let pendingAppend = false;
+  const bound = new WeakSet();
   let repositoryState = { status: "idle", query: "", pullRequests: [], hasMore: false, totalCount: 0 };
 
   /** PR 목록 헤더에 들어갈 검색 컨트롤 HTML 을 만든다. */
@@ -40,6 +41,10 @@
     if (!input) {
       return;
     }
+    const more = root.querySelector("[data-pr-search-more]");
+    if (more && !bound.has(more)) { bound.add(more); more.addEventListener("click", () => loadMore(onChange)); }
+    if (bound.has(input)) return;
+    bound.add(input);
     input.addEventListener("compositionstart", () => { composing = true; });
     input.addEventListener("compositionend", () => {
       composing = false;
@@ -64,7 +69,6 @@
       }
     });
     clear?.addEventListener("click", () => update("", onChange));
-    root.querySelector("[data-pr-search-more]")?.addEventListener("click", () => loadMore(onChange));
     if (focusAfterRender) {
       requestAnimationFrame(() => focusInput(input));
     }

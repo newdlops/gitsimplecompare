@@ -34,7 +34,7 @@ export function compactGraphData(
  * @param maxLanes 표시할 최대 레인 수
  * @returns column 이 접힌 row
  */
-function compactRow(row: GraphRow, maxLanes: number): GraphRow {
+export function compactRow(row: GraphRow, maxLanes: number): GraphRow {
   const column = compactColumn(row.column, maxLanes);
   return {
     ...row,
@@ -50,7 +50,7 @@ function compactRow(row: GraphRow, maxLanes: number): GraphRow {
  * @param maxLanes 표시할 최대 레인 수
  * @returns column 들이 접힌 edge
  */
-function compactEdge(edge: GraphEdge, maxLanes: number): GraphEdge {
+export function compactEdge(edge: GraphEdge, maxLanes: number): GraphEdge {
   const column = compactColumn(edge.column, maxLanes);
   const fromColumn = compactColumn(edge.fromColumn, maxLanes);
   const toColumn = compactColumn(edge.toColumn, maxLanes);

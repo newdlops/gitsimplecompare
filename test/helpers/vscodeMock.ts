@@ -41,6 +41,8 @@ export const window = {
   state: { focused: true },
   activeTextEditor: undefined as any,
   visibleTextEditors: [] as any[],
+  tabGroups: { all: [] as any[], activeTabGroup: { activeTab: undefined as any },
+    onDidChangeTabs: (_callback: () => void) => ({ dispose() {} }), onDidChangeTabGroups: (_callback: () => void) => ({ dispose() {} }) },
   onDidChangeWindowState: (_callback: (state: { focused: boolean }) => void) => ({ dispose() {} }),
   onDidChangeActiveTextEditor: (_callback: (editor: any) => void) => ({ dispose() {} }),
   createOutputChannel: () => ({
@@ -79,6 +81,14 @@ export const authentication = {
   ): Promise<{ accessToken: string } | undefined> => undefined,
 };
 export class EventEmitter<T = unknown> { public event = () => ({ dispose() {} }); public fire(_value: T) {} public dispose() {} }
+/** editor 소비자 수명 검사에 필요한 실제 VS Code Disposable·diff tab 계약의 최소 대역이다. */
+export class Disposable {
+  constructor(private readonly close: () => void) {}
+  dispose() { this.close(); }
+  static from(...items: Array<{ dispose(): void }>) { return new Disposable(() => { for (const item of items) item.dispose(); }); }
+}
+/** diff 입력은 instanceof 경계를 그대로 통과시켜 실제 target 해석 함수를 검사한다. */
+export class TabInputTextDiff { constructor(public readonly original: any, public readonly modified: any) {} }
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
 export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}),
   onDidSaveTextDocument: (_callback: (document: any) => void) => ({ dispose() {} }),

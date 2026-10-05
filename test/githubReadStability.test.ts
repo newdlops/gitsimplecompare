@@ -62,9 +62,17 @@ test("queued reads execute with the environment captured when they were requeste
   const requests = Array.from({ length: 5 }, (_, index) => cache.read(["api", String(index)], "/repo", { operation: "test", ...{ env } }));
   const observed = Promise.allSettled(requests);
   try {
-    await settle();
+    const until = Date.now() + 2000;
+    while (responses.length < 4) {
+      assert.ok(Date.now() < until, "four captured-environment executions did not start");
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
     env.GH_REPO = "owner/new";
-    responses[0].resolve("value"); await settle();
+    responses[0].resolve("value");
+    while (responses.length < 5) {
+      assert.ok(Date.now() < until, "captured-environment queued execution did not start");
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
     assert.equal(environments[4], "owner/old");
   } finally {
     for (let turn = 0; turn < 6; turn++) { for (const response of responses) response.resolve("value"); await settle(); }

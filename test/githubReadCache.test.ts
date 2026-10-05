@@ -7,6 +7,15 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 /** queued worker가 다음 요청을 시작할 때까지 microtask를 소비한다. */
 function settle(): Promise<void> { return new Promise(resolve => setImmediate(resolve)); }
 
+/** 비동기 metadata 검사 뒤 실제 실행이 시작됐는지 제한 시간 안에 관찰한다. */
+async function waitFor(condition: () => boolean): Promise<void> {
+  const until = Date.now() + 2000;
+  while (!condition()) {
+    assert.ok(Date.now() < until, "execution did not reach the expected state");
+    await new Promise(resolve => setTimeout(resolve, 2));
+  }
+}
+
 test("three consumers share one read and cancelling one keeps the other two", async () => {
   const response = deferred<string>(); let calls = 0; let signal: AbortSignal | undefined;
   const cache = new GitHubReadCache(async (_args, _root, options) => { calls++; signal = options.signal; return response.promise; });
@@ -28,8 +37,8 @@ test("the global read queue never exceeds four active requests", async () => {
     try { return await response.promise; } finally { active--; }
   });
   const results = Array.from({ length: 15 }, (_, n) => cache.read(["api", String(n)], "/repo", { operation: "test" }));
-  await settle(); assert.equal(reads.length, 4);
-  for (let n = 0; n < 15; n++) { reads[n].resolve("ok"); await settle(); }
+  await waitFor(() => reads.length === 4); assert.equal(reads.length, 4);
+  for (let n = 0; n < 15; n++) { await waitFor(() => reads.length > n); reads[n].resolve("ok"); await settle(); }
   await Promise.all(results); assert.equal(maximum, 4);
 });
 

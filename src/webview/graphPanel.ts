@@ -21,6 +21,7 @@ import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRe
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformancePhase } from "./graphPerformance";
 import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCommitWindowLoading";
 import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
+import { GraphRenderCache } from "./graphRenderCache";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode, graphInvalidationPlan } from "./graphRefreshCoordinator";
 import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, readGraphPageData } from "./graphPageLoading";
 import { offerCommitGraphIfSlow } from "../ui/commitGraphOffer";
@@ -35,6 +36,7 @@ export class GitGraphPanel {
   private commits: Commit[] = [];
   private virtualCommits: Commit[] = [];
   private disposed = false;
+  private readonly renderCache = new GraphRenderCache();
   private loading = false;
   private exhausted = false;
   private rangeStartIndex = 0;
@@ -124,6 +126,7 @@ export class GitGraphPanel {
       reloadGraph: (cause) => this.runDirectGraph(cause),
       setBranchFilter: (message) => this.setBranchFilter(message),
       loadNextPage: (reset, direction) => this.loadNextPage(reset, direction),
+      resyncGraph: () => { logInfo("graph transport resync", { repoRoot: this.logService.repoRoot }); this.renderCache.resetTransport(); this.postGraph(false, "older", undefined, "localOnly"); },
       loadedCommitHash: (hashes) => hashes
         .map((hash) => hash.trim())
         .find((hash) => this.commits.some((commit) => commit.hash === hash)),
@@ -169,6 +172,7 @@ export class GitGraphPanel {
   /** 패널과 리스너를 정리한다. */
   private dispose(): void {
     this.disposed = true;
+    this.renderCache.clear();
     this.refreshCoordinator.dispose();
     this.messages.cancelPullRequestLoading("dispose");
     this.branchLoading.cancel("dispose"); this.logService.cancelGraphBranchContainment("dispose");
@@ -185,6 +189,7 @@ export class GitGraphPanel {
       return;
     }
     const resumedRefresh = this.refreshCoordinator.setVisible(true);
+    if (vscode.window.state.focused) this.messages.resumeDetailLoading();
     if (vscode.window.state.focused) void this.messages.synchronizeRebaseSession("panelVisible");
     if (!resumedRefresh && this.needsResumedReload() && vscode.window.state.focused) this.resumeBranchLoading();
   }
@@ -192,6 +197,7 @@ export class GitGraphPanel {
   private handleWindowFocusChange(focused: boolean): void {
     const resumedRefresh = this.refreshCoordinator.setFocused(focused);
     if (!focused) return;
+    if (this.panel.visible) this.messages.resumeDetailLoading();
     if (this.panel.visible) void this.messages.synchronizeRebaseSession("windowFocusedReconcile");
     if (!resumedRefresh && this.panel.visible && this.needsResumedReload()) this.resumeBranchLoading();
   }
@@ -565,7 +571,7 @@ export class GitGraphPanel {
     publishGraphRender({
       commits, virtualCommits: commits === this.commits ? this.virtualCommits : [],
       compact: this.branchFilter.compact, state: this.makeLoadState(reset, direction), trace, kind,
-    }, (message) => this.post(message));
+    }, (message) => this.post(message), this.renderCache);
   }
   /** 웹뷰가 무한 스크롤을 갱신하도록 현재 count/loading/reset/direction 상태를 만든다. */
   private makeLoadState(reset: boolean, direction?: GraphLoadDirection): GraphLoadState {

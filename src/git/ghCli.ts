@@ -2,7 +2,8 @@
 // - PR 목록/상세 서비스가 gh 실행 방식을 공유하고, 각 서비스는 데이터 해석에만 집중하게 한다.
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, stat } from "node:fs/promises";
+import path from "node:path";
 import { ManagedGhError, runManagedGhRead } from "./ghManagedRead";
 
 const GH_RETRY_DELAYS_MS = [250, 500, 900, 1400];
@@ -61,7 +62,9 @@ export async function runGh(
   cwd: string,
   options: RunGhOptions = {}
 ): Promise<string> {
-  const executable = await resolveGhExecutable(options.env ?? process.env);
+  if (options.signal?.aborted) throw createGhAbortError(args, options);
+  options = { ...options, env: { ...(options.env ?? process.env) } };
+  const executable = await resolveGhExecutable(options.env!, cwd);
   for (let attempt = 0; ; attempt++) {
     if (options.signal?.aborted) {
       throw createGhAbortError(args, options);
@@ -128,22 +131,31 @@ function runGhOnce(
  * - macOS GUI 앱에서 빠지기 쉬운 login shell PATH 와 Homebrew 기본 경로를 보완한다.
  * @returns execFile 에 전달할 gh 실행 파일 경로. 찾지 못하면 기존 PATH 조회를 위해 "gh" 를 반환한다.
  */
-async function resolveGhExecutable(env: NodeJS.ProcessEnv): Promise<string> {
-  const context = JSON.stringify([env.GITHUB_CLI_PATH, env.PATH, env.SHELL]);
+async function resolveGhExecutable(env: NodeJS.ProcessEnv, cwd: string): Promise<string> {
+  const relative = (env.GITHUB_CLI_PATH && !path.isAbsolute(env.GITHUB_CLI_PATH)) ||
+    env.PATH?.split(path.delimiter).some(directory => !path.isAbsolute(directory));
+  const context = JSON.stringify([env.GITHUB_CLI_PATH, env.PATH, env.SHELL, relative ? cwd : ""]);
   if (ghExecutableContext !== context) {
-    ghExecutableContext = context; ghExecutablePromise = discoverGhExecutable(env);
+    ghExecutableContext = context; ghExecutablePromise = discoverGhExecutable(env, cwd);
   }
-  ghExecutablePromise ||= discoverGhExecutable(env);
+  ghExecutablePromise ||= discoverGhExecutable(env, cwd);
   return ghExecutablePromise;
 }
 
 /** gh 실행 파일 후보를 순서대로 확인해 첫 번째 실행 가능 경로를 반환한다. */
-async function discoverGhExecutable(env: NodeJS.ProcessEnv): Promise<string> {
-  const configured = await executablePath(env.GITHUB_CLI_PATH);
+async function discoverGhExecutable(env: NodeJS.ProcessEnv, cwd: string): Promise<string> {
+  const configured = await executablePath(env.GITHUB_CLI_PATH && path.resolve(cwd, env.GITHUB_CLI_PATH));
   if (configured) {
     return configured;
   }
-  const shellPath = await discoverGhFromShell(env);
+  // 이미 실행 환경에 존재하는 gh는 login shell의 초기화 스크립트를 실행하지 않고 찾는다.
+  for (const directory of env.PATH === undefined ? [] : env.PATH.split(path.delimiter)) {
+    for (const name of process.platform === "win32" ? ["gh.exe", "gh"] : ["gh"]) {
+      const found = await executablePath(path.resolve(cwd, directory, name));
+      if (found) return found;
+    }
+  }
+  const shellPath = await discoverGhFromShell(env, cwd);
   if (shellPath) {
     return shellPath;
   }
@@ -157,14 +169,15 @@ async function discoverGhExecutable(env: NodeJS.ProcessEnv): Promise<string> {
 }
 
 /** login shell 의 PATH 에서 gh 위치를 찾는다. */
-async function discoverGhFromShell(env: NodeJS.ProcessEnv): Promise<string | undefined> {
+async function discoverGhFromShell(env: NodeJS.ProcessEnv, cwd: string): Promise<string | undefined> {
   if (process.platform === "win32") {
     return undefined;
   }
   const shells = Array.from(new Set([env.SHELL, "/bin/zsh", "/bin/bash", "/bin/sh"].filter(isNonEmptyString)));
   for (const shell of shells) {
-    const out = await execText(shell, ["-lc", "command -v gh"], env).catch(() => "");
-    const found = await executablePath(out.trim().split(/\r?\n/)[0]);
+    const out = await execText(shell, ["-lc", "command -v gh"], env, cwd).catch(() => "");
+    const candidate = out.trim().split(/\r?\n/)[0];
+    const found = await executablePath(candidate && path.resolve(cwd, candidate));
     if (found) {
       return found;
     }
@@ -180,16 +193,16 @@ async function executablePath(path: string | undefined): Promise<string | undefi
   }
   try {
     await access(trimmed, constants.X_OK);
-    return trimmed;
+    return (await stat(trimmed)).isFile() ? trimmed : undefined;
   } catch {
     return undefined;
   }
 }
 
 /** 짧은 보조 명령을 실행하고 stdout 을 반환한다. */
-function execText(command: string, args: string[], env: NodeJS.ProcessEnv): Promise<string> {
+function execText(command: string, args: string[], env: NodeJS.ProcessEnv, cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(command, args, { encoding: "utf8", maxBuffer: 1024 * 1024, env, timeout: 3000 }, (error, stdout) => {
+    execFile(command, args, { cwd, encoding: "utf8", maxBuffer: 1024 * 1024, env, timeout: 3000 }, (error, stdout) => {
       if (error) {
         reject(error);
         return;

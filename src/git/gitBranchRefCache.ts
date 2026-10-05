@@ -2,10 +2,11 @@
 // - tip seed와 DAG 전파를 분리해 첫 Graph post가 색인 작업을 기다리지 않게 한다.
 import type { Commit, CommitBranchInfo, LocalBranchStatus } from "../graph/graphTypes";
 import { logError, logInfo } from "../ui/outputLog";
-import { runGit } from "./gitExec";
+import { runGit, type RunGitOptions } from "./gitExec";
+import { SharedGitRead } from "./sharedGitRead";
 import { parseBranchRefRecords } from "./gitLogRefs";
 
-type GitRunner = (args: string[], repoRoot: string) => Promise<string>;
+type GitRunner = (args: string[], repoRoot: string, options?: RunGitOptions) => Promise<string>;
 const MAX_WARMUP_PAGES = 4;
 const MAX_WARMUP_COMMITS = 1_200;
 const SLOW_WARMUP_MS = 100;
@@ -34,7 +35,7 @@ export class GitBranchRefCache {
   private readonly seededKinds = new Set<CommitBranchInfo["kind"]>();
   private readonly pages: BranchRefCachePage[] = [];
   private readonly queuedPages: BranchRefCachePage[] = [];
-  private containsPromises = new Map<string, Promise<CommitBranchInfo[]>>();
+  private containsPromises = new Map<string, SharedGitRead<CommitBranchInfo[]>>();
   private memberships = new Map<string, Map<string, CommitBranchInfo>>();
   private indexedHashes = new Set<string>();
   private nextSkip = 0;
@@ -71,8 +72,10 @@ export class GitBranchRefCache {
    * @param hash 포함 여부를 판정할 커밋 hash
    * @returns current → local → remote 순으로 정렬된 정확한 branch 목록
    */
-  async getBranchesContainingCommit(hash: string): Promise<CommitBranchInfo[]> {
+  async getBranchesContainingCommit(hash: string, signal?: AbortSignal): Promise<CommitBranchInfo[]> {
+    signal?.throwIfAborted();
     await this.warmupPromise;
+    signal?.throwIfAborted();
     const indexed = this.memberships.get(hash);
     // 부모에게 전파 중인 membership은 다른 자식을 아직 만나지 않았을 수 있다.
     // 두 catalog와 해당 커밋의 topo 방문이 모두 완료돼야 정확한 결과로 재사용한다.
@@ -82,19 +85,20 @@ export class GitBranchRefCache {
     let cached = this.containsPromises.get(hash);
     if (!cached) {
       this.stats.fallbacks++;
-      const generation = this.generation;
-      cached = this.loadBranchesContainingCommit(hash).catch((error) => {
+      cached = new SharedGitRead(ownedSignal => this.loadBranchesContainingCommit(hash, ownedSignal), cloneBranches);
+      this.containsPromises.set(hash, cached);
+    }
+    try { return await cached.read({ signal, maxCacheAgeMs: Number.POSITIVE_INFINITY }); }
+    catch (error) {
+        if (signal?.aborted) throw error;
         // 이전 snapshot의 늦은 실패가 같은 hash의 새 요청을 지우지 않게 소유권을 확인한다.
         if (this.containsPromises.get(hash) === cached) this.containsPromises.delete(hash);
         logError("graph branch containment fallback failed", error, {
-          repoRoot: this.repoRoot, hash, generation,
+          repoRoot: this.repoRoot, hash, generation: this.generation,
         });
         // 상세 파일/메시지는 계속 보여주되 실패를 영구적인 빈 branch 결과로 캐시하지 않는다.
         return [];
-      });
-      this.containsPromises.set(hash, cached);
     }
-    return cloneBranches(await cached);
   }
 
   /**
@@ -266,11 +270,11 @@ export class GitBranchRefCache {
    * @param hash 포함 여부를 검사할 커밋 해시
    * @returns 현재 branch 목록. Git 실패는 호출자에게 전파해 빈 성공 결과와 구분한다.
    */
-  private async loadBranchesContainingCommit(hash: string): Promise<CommitBranchInfo[]> {
+  private async loadBranchesContainingCommit(hash: string, signal?: AbortSignal): Promise<CommitBranchInfo[]> {
     const format = ["%(objectname)", "%(HEAD)", "%(refname:short)", "%(refname)"].join(this.separator);
     const output = await this.runner(
       ["for-each-ref", "--contains", hash, `--format=${format}`, "refs/heads", "refs/remotes"],
-      this.repoRoot
+      this.repoRoot, { signal }
     );
     return parseBranchRefRecords(output, this.separator).map(toBranchInfo);
   }

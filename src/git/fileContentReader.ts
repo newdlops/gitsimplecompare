@@ -9,6 +9,8 @@ import { buildWorkingContentWithoutStaged } from "./unstagedView";
 
 /** 파일 내용 읽기 옵션(diff 미리보기용 크기 상한). */
 export interface ContentReadOptions {
+  /** 호출자가 닫기·선택 변경으로 더 이상 필요하지 않은 Git/파일 읽기를 취소할 신호. */
+  signal?: AbortSignal;
   /** 버전 하나당 읽을 최대 byte 수. 넘으면 FileTooLargeError 를 던진다. */
   maxBytes?: number;
 }
@@ -31,15 +33,16 @@ export async function readFileAtRef(
   rel: string,
   options: ContentReadOptions = {}
 ): Promise<string> {
-  const run = (args: string[]) => runGit(args, repoRoot);
+  const run = (args: string[]) => runGit(args, repoRoot, { signal: options.signal });
   try {
     const spec = ref === ":0" ? `:0:${rel}` : `${ref}:${rel}`;
     return await runGit(
       ["show", spec],
       repoRoot,
-      options.maxBytes === undefined ? undefined : { maxBuffer: options.maxBytes }
+      { signal: options.signal, ...(options.maxBytes === undefined ? {} : { maxBuffer: options.maxBytes }) }
     );
   } catch (err) {
+    options.signal?.throwIfAborted();
     if (
       options.maxBytes !== undefined &&
       err instanceof GitError &&
@@ -88,8 +91,9 @@ export async function readWorkingContentWithoutStaged(
   }
   let content = "";
   try {
-    content = await readFile(workingPath, "utf8");
+    content = await readFile(workingPath, { encoding: "utf8", signal: options.signal });
   } catch {
+    options.signal?.throwIfAborted();
     return "";
   }
   const [head, index] = await Promise.all([

@@ -4,6 +4,7 @@
 import {
   CommitDetail,
   GraphData,
+  GraphDataDelta,
   LocalBranchStatus,
   WorktreeBranchStatus,
 } from "../graph/graphTypes";
@@ -109,21 +110,25 @@ export interface GraphHealthNotice {
 
 /** 확장 → 웹뷰 메시지 */
 export type ToWebviewMessage =
-  | { type: "graph"; data: GraphData; state: GraphLoadState; performance?: GraphRenderPerformance }
+  | { type: "graph"; data: GraphData; revision?: number; state: GraphLoadState; performance?: GraphRenderPerformance }
+  | { type: "graphDelta"; delta: GraphDataDelta; state: GraphLoadState; performance?: GraphRenderPerformance }
   | { type: "graphLoadState"; state: GraphLoadState }
   | { type: "graphHealth"; notice?: GraphHealthNotice }
   | { type: "branchStatus"; branches: LocalBranchStatus[]; worktrees?: WorktreeBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "tagStatus"; tags: GitTagStatus[] }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }
+  | { type: "pullRequestContext"; context: string }
   | { type: "pullRequestOverviewRetained" }
   | { type: "pullRequestStackSnapshot"; snapshot: PullRequestStackGraphSnapshot }
   | { type: "pullRequestStackError"; message: string }
   | { type: "pullRequestStackActionState"; busy: boolean }
   | { type: "pullRequestSearchResult"; requestId: string; result: PullRequestSearchResult }
   | { type: "pullRequestSearchError"; requestId: string; query: string; message: string }
-  | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo }
-  | { type: "pullRequestDetailError"; number: number; message: string }
+  | { type: "pullRequestDetail"; number: number; detail: PullRequestDetailInfo; requestId?: string }
+  | { type: "pullRequestDetailError"; number: number; message: string; requestId?: string }
+  | { type: "graphDetailCancelled"; number?: number; reason: string; requestId?: string }
+  | { type: "graphDetailResume" }
   | { type: "graphRepositorySearchResult"; requestId: string; result: GraphRepositorySearchResult }
   | { type: "graphRepositorySearchError"; requestId: string; query: string; message: string }
   | { type: "graphReflog"; entries: ReflogEntry[]; scannedObjects?: boolean }
@@ -140,6 +145,7 @@ export type ToWebviewMessage =
 
 /** 웹뷰 → 확장 메시지 */
 export type FromWebviewMessage =
+  | { type: "resyncGraph" }
   | { type: "ready" }
   | { type: "refresh" }
   | { type: "showGraphOutput" }
@@ -172,7 +178,8 @@ export type FromWebviewMessage =
   | { type: "refreshReflog"; includeUnreachable?: boolean }
   | { type: "searchPullRequests"; requestId: string; query: string; cursor?: string }
   | { type: "loadMorePullRequests" }
-  | { type: "refreshPullRequestDetail"; number: number }
+  | { type: "refreshPullRequestDetail"; number: number; requestId?: string }
+  | { type: "cancelGraphDetail" }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
   | { type: "showReflogCommit"; requestId: string; hash: string }
   | { type: "ensureHeadVisible"; requestId: string }

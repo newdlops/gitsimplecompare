@@ -27,6 +27,8 @@ import {
   PushCurrentResult,
 } from "./pushService";
 import { countUntrackedLines } from "./untrackedStats";
+import { getCommitDetailSummary } from "./commitDetailSummary";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 export type { RevertCommitResult } from "./gitGraphActionService";
 
@@ -128,31 +130,26 @@ export class GitLogService {
    * 커밋 한 개의 상세(메시지/작성자/변경 파일+증감)를 반환한다.
    * - 변경 파일은 첫 부모(루트면 빈 트리)와의 diff 로 구한다.
    * @param hash 대상 커밋 해시
+   * @param signal 상세 소비자의 취소 신호, summary 이미 시작한 헤더 조회를 공유할 선택적 Promise
    */
-  async getCommitDetail(hash: string): Promise<CommitDetail> {
+  async getCommitDetail(hash: string, signal?: AbortSignal, summary?: Promise<CommitDetail>): Promise<CommitDetail> {
+    signal?.throwIfAborted();
     if (isVirtualCommitHash(hash)) {
-      return this.getVirtualCommitDetail(hash);
+      return this.getVirtualCommitDetail(hash, signal);
     }
-    const headerFormat = ["%H", "%P", "%an", "%ae", "%aI", "%B"].join(FS);
-    const header = await runGit(
-      ["show", "-s", `--pretty=format:${headerFormat}`, hash],
-      this.repoRoot
-    );
-    const parts = header.split(FS);
-    const parents = parts[1] ? parts[1].split(" ").filter(Boolean) : [];
-    const base = parents[0] ?? EMPTY_TREE;
+    // 요약 선표시와 전체 상세가 같은 header future를 사용해 git show를 한 번만 실행한다.
+    const header = await (summary ?? getCommitDetailSummary(this.repoRoot, hash, signal));
+    signal?.throwIfAborted();
+    const base = header.parents[0] ?? EMPTY_TREE;
 
     const [files, branches] = await Promise.all([
-      this.getCommitFiles(base, hash),
-      this.branchRefCache.getBranchesContainingCommit(hash),
+      this.getCommitFiles(base, header.hash, signal),
+      this.branchRefCache.getBranchesContainingCommit(header.hash, signal),
     ]);
+    signal?.throwIfAborted();
     return {
-      hash: parts[0],
-      parents,
-      authorName: parts[2] ?? "",
-      authorEmail: parts[3] ?? "",
-      authorDateIso: parts[4] ?? "",
-      message: parts.slice(5).join(FS).trimEnd(),
+      ...header,
+      loading: undefined,
       branches,
       files,
     };
@@ -432,26 +429,27 @@ export class GitLogService {
    */
   private async getCommitFiles(
     base: string,
-    hash: string
+    hash: string,
+    signal?: AbortSignal
   ): Promise<CommitFileChange[]> {
-    return this.getFilesFromDiff([base, hash]);
+    return this.getFilesFromDiff([base, hash], signal);
   }
 
   /**
    * 가상 커밋 detail 을 만든다.
    * @param hash ongoing/staged 가상 커밋 해시
    */
-  private async getVirtualCommitDetail(hash: string): Promise<CommitDetail> {
+  private async getVirtualCommitDetail(hash: string, signal?: AbortSignal): Promise<CommitDetail> {
     const kind: GraphRowKind =
       hash === ONGOING_COMMIT_HASH ? "ongoing" : "staged";
-    const head = await this.getHeadHash();
+    const head = await this.getHeadHash(signal);
     const base = head ? "HEAD" : EMPTY_TREE;
     let files =
       kind === "ongoing"
-        ? await this.getFilesFromDiff([base])
-        : await this.getFilesFromDiff(["--cached", base]);
+        ? await this.getFilesFromDiff([base], signal)
+        : await this.getFilesFromDiff(["--cached", base], signal);
     if (kind === "ongoing") {
-      files = [...files, ...(await this.getUntrackedFiles(files))];
+      files = [...files, ...(await this.getUntrackedFiles(files, signal))];
     }
     const parent = kind === "ongoing" ? STAGED_COMMIT_HASH : head;
     return {
@@ -477,10 +475,11 @@ export class GitLogService {
    * @returns 이름변경 경로와 추가/삭제 라인 수를 포함한 변경 파일 목록
    */
   private async getFilesFromDiff(
-    diffArgs: string[]
+    diffArgs: string[],
+    signal?: AbortSignal
   ): Promise<CommitFileChange[]> {
     const raw = await runGit(
-      ["diff", "--raw", "--numstat", "-z", "-M", ...diffArgs], this.repoRoot
+      ["diff", "--raw", "--numstat", "-z", "-M", ...diffArgs], this.repoRoot, { signal }
     );
     return parseRawNumstatZ(raw).map((change) => {
       return {
@@ -498,31 +497,33 @@ export class GitLogService {
    * @param existing 이미 diff 로 찾은 파일 목록(중복 방지용)
    */
   private async getUntrackedFiles(
-    existing: CommitFileChange[]
+    existing: CommitFileChange[],
+    signal?: AbortSignal
   ): Promise<CommitFileChange[]> {
     const seen = new Set(existing.map((file) => file.path));
     const out = await runGit(
       ["ls-files", "--others", "--exclude-standard", "-z"],
-      this.repoRoot
+      this.repoRoot, { signal }
     );
     const paths = out
       .split("\0")
       .filter((path) => path.length > 0 && !seen.has(path));
-    return Promise.all(
-      paths.map(async (path) => ({
+    return mapWithConcurrency(paths, 4,
+      async (path) => ({
         status: "A" as const,
         path,
-        additions: (await countUntrackedLines(this.repoRoot, path)) ?? 0,
+        additions: (await countUntrackedLines(this.repoRoot, path, signal)) ?? 0,
         deletions: 0,
-      }))
+      }), signal
     );
   }
 
   /** 현재 HEAD 해시를 반환한다. 아직 커밋이 없으면 undefined 를 반환한다. */
-  private async getHeadHash(): Promise<string | undefined> {
+  private async getHeadHash(signal?: AbortSignal): Promise<string | undefined> {
     try {
-      return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
+      return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot, { signal })).trim();
     } catch {
+      signal?.throwIfAborted();
       return undefined;
     }
   }
