@@ -152,7 +152,9 @@ export class GitProcessRegistry {
   private async terminate(record: ProcessRecord): Promise<void> {
     try {
       if (record.group && record.pid) {
-        const processes = await readProcessIdentities();
+        const inspectionStartedAt = Date.now();
+        const processes = await readProcessIdentities({ processGroup: record.pid });
+        this.log("git owned process group inspected", { ...this.detail(record), inspectionMs: Date.now() - inspectionStartedAt, processCount: processes.length });
         const leader = processes.find(item => item.pid === record.pid);
         if (this.leaderAlive(record) && leader?.pgid === record.pid && leader.uid === process.getuid?.()) {
           record.members = processes.filter(item => item.pgid === record.pid && item.uid === leader.uid);
@@ -173,7 +175,8 @@ export class GitProcessRegistry {
     if (!this.records.has(record.id)) return;
     try {
       if (record.members?.length) {
-        const current = await readProcessIdentities();
+        // 기존 구성원 PID와 현재 그룹을 함께 읽어 TERM 이후 생성된 자식도 놓치지 않는다.
+        const current = await readProcessIdentities({ pids: record.members.map(member => member.pid), processGroup: record.group ? record.pid : undefined });
         // 살아 있는 최초 구성원이 그룹 소유권을 입증할 때만 TERM 이후 생성된 같은 그룹 자식도 포함한다.
         if (record.group && record.members.some(member => sameProcess(member, current.find(item => item.pid === member.pid)))) {
           const known = new Set(record.members.map(item => item.pid));
@@ -198,7 +201,7 @@ export class GitProcessRegistry {
     const descendants = record.members?.filter(item => item.pid !== record.pid) ?? [];
     if (!descendants.length) { this.finish(record); return; }
     try {
-      const current = await readProcessIdentities();
+      const current = await readProcessIdentities({ pids: descendants.map(member => member.pid) });
       if (!descendants.some(member => sameProcess(member, current.find(item => item.pid === member.pid)))) { this.finish(record); return; }
     } catch { this.log("git descendant close inspection unavailable", this.detail(record)); }
     // 부모 stdio와 독립적인 자식까지 처리하며 관찰할 수 없는 PID에는 신호를 보내지 않는다.

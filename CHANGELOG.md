@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.72081] - 2026-10-05
+
+### Changed
+
+- Inspect only the owned process group and known descendant PIDs when cancelling
+  Git reads on macOS, avoiding repeated full-system process snapshots. Keep
+  user, process group, executable and start-time checks before signalling;
+  retain descendant cleanup and protection for writes and other applications.
+- Log owned-group inspection time and process count in Git Simple Compare
+  OUTPUT to distinguish cancellation inspection from Git execution delays.
+
 ## [0.1.72080] - 2026-10-05
 
 ### Fixed
