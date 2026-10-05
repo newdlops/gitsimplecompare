@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72084] - 2026-10-06
+
+### Changed
+
+- Show the first complete file-history commits while the same native Git process
+  continues rename-aware traversal. Preserve all final commits and statistics,
+  cache only validated complete results, and retain keyboard focus and drafts
+  when loading finishes.
+- Fetch up to 100 commit IDs and review threads per initial PR metadata page,
+  reducing supplemental requests while still following every remaining page.
+
+### Fixed
+
+- Mark cancelled history previews as paused instead of complete, and keep the
+  loading status visible beside the file name in a short History section.
+- Preserve the original PR pagination error when a fast supplemental request
+  fails before its metadata batch finishes.
+
 ## [0.1.72083] - 2026-10-06
 
 ### Changed

@@ -781,6 +781,16 @@ body:focus-within .row.selected:hover {
   text-overflow: ellipsis;
 }
 
+/* 조회 중 안내는 파일명 옆에 고정해 섹션의 짧은 높이에서도 커밋과 함께 보인다. */
+.history-loading {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .history-files {
   overflow-x: hidden;
 }

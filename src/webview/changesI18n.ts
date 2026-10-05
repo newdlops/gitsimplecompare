@@ -202,6 +202,8 @@ export function changesWebviewI18n(): Record<string, string> {
     history: vscode.l10n.t("History"),
     noHistoryFile: vscode.l10n.t("No file is currently open."),
     noHistory: vscode.l10n.t("No commits for the current file."),
+    loadingHistory: vscode.l10n.t("Loading file history..."),
+    loadingEarlierHistory: vscode.l10n.t("Loading earlier commits..."),
     openHistoryCommit: vscode.l10n.t("Open File Change"),
     stashes: vscode.l10n.t("Stashes"),
     noStashes: vscode.l10n.t("No stashes."),

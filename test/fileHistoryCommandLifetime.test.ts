@@ -42,7 +42,8 @@ test("switching files cancels the former consumer and a late Git error cannot re
   await refreshFileHistory(f.deps, { uri: Uri.file("/repo/new.ts") as any, reason: "activeEditor" });
   assert.equal(cancelled, true); assert.equal(f.posted.at(-1).path, "new.ts");
   old.reject(new Error("old command failed after switching tabs")); await first; await settle();
-  assert.equal(f.posted.length, 1); assert.equal(f.posted[0].commits[0].title, "new.ts");
+  const complete = f.posted.filter(value => !value.loading);
+  assert.equal(complete.length, 1); assert.equal(complete[0].commits[0].title, "new.ts");
 });
 
 test("an older repository lookup completing after a newer file does not even start its Git history", async t => {
@@ -52,7 +53,8 @@ test("an older repository lookup completing after a newer file does not even sta
   const first = refreshFileHistory(f.deps, { uri: Uri.file("/repo/old.ts") as any });
   await settle(); await refreshFileHistory(f.deps, { uri: Uri.file("/repo/new.ts") as any });
   old.resolve(f.service); await first;
-  assert.deepEqual(f.reads, ["new.ts"]); assert.equal(f.posted.length, 1); assert.equal(f.posted[0].path, "new.ts");
+  assert.deepEqual(f.reads, ["new.ts"]); assert.equal(f.posted.filter(value => !value.loading).length, 1);
+  assert.ok(f.posted.every(value => value.path === "new.ts"));
 });
 
 test("refresh reasons alone do not discard unchanged histories while explicit force still reloads", async t => {
@@ -63,4 +65,18 @@ test("refresh reasons alone do not discard unchanged histories while explicit fo
   assert.equal(f.reads.length, 1); assert.equal(f.posted.at(-1).source, "memory");
   await refreshFileHistory(f.deps, { uri, reason: "command", force: true });
   assert.equal(f.reads.length, 2); assert.equal(f.posted.at(-1).source, "git");
+});
+
+test("cancelling a displayed history prefix marks it paused and rejects late completion", async t => {
+  const f = fixture(t), complete = deferred<FileHistoryEntry[]>();
+  const commit = { hash: "a".repeat(40), title: "first commit", path: "file.ts" } as FileHistoryEntry;
+  f.reader.history = async (_root, _file, _revision, _signal, progress) => {
+    progress?.([commit]); return complete.promise;
+  };
+  const refresh = refreshFileHistory(f.deps, { uri: Uri.file("/repo/file.ts") as any });
+  await settle(); assert.equal(f.posted.at(-1).loading, true); assert.equal(f.posted.at(-1).commits.length, 1);
+  cancelFileHistoryRefresh("window-blur");
+  assert.deepEqual(f.posted.at(-1).commits, []); assert.match(f.posted.at(-1).message, /paused.*Refresh/);
+  complete.resolve([commit]); await refresh; await settle();
+  assert.match(f.posted.at(-1).message, /paused.*Refresh/); assert.equal(f.posted.at(-1).loading, undefined);
 });

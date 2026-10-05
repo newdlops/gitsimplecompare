@@ -10,10 +10,10 @@ import { buildPullRequestInfoQuery, pullRequestInfoFromGraphQl, PULL_REQUEST_SUM
 import type { GhPageInfo, GhPullRequestNode, PullRequestInfo } from "./pullRequestInfo";
 import { logError, logInfo } from "../ui/outputLog";
 
-/** 화면의 기존 PR 페이지 크기를 유지하고 중첩 connection만 작게 시작한다. */
+/** 가벼운 80개 요약 뒤에는 최대 connection 크기로 후속 네트워크 왕복을 줄인다. */
 const PULL_REQUEST_PAGE_SIZE = 80;
-const COMMIT_PREVIEW_PAGE_SIZE = 30;
-const REVIEW_THREAD_PREVIEW_PAGE_SIZE = 20;
+const COMMIT_PREVIEW_PAGE_SIZE = 100;
+const REVIEW_THREAD_PREVIEW_PAGE_SIZE = 100;
 /** 정렬된 80개 connection 아래에서 중첩 정보를 한꺼번에 확장하지 않는 묶음 크기다. */
 const PULL_REQUEST_METADATA_BATCH_SIZE = 20;
 /** 큰 PR 여러 개가 있어도 동시에 실행하는 추가 GitHub 요청은 네 개로 제한한다. */
@@ -109,6 +109,11 @@ export async function fetchPullRequestListPage(
   let progressTimer: ReturnType<typeof setTimeout> | undefined;
   const pagination: Promise<void>[] = [];
   let paginationError: { error: unknown } | undefined;
+  /** 내부 peer 취소가 동시에 도착한 실제 네트워크/pagination 실패를 숨기지 않게 한다. */
+  const ensureActive = () => {
+    if (controller.signal.aborted) throw requestFailure?.error ?? paginationError?.error
+      ?? new DOMException("Graph pull request request was cancelled.", "AbortError");
+  };
   const requestQueue = new PriorityReadQueue(MAX_PARALLEL_REQUESTS);
   const measuredRunner: GhExecute = async (args, cwd, options) => {
     throwIfAborted(options.signal);
@@ -129,7 +134,7 @@ export async function fetchPullRequestListPage(
       ...(cursor ? ["-f", `cursor=${cursor}`] : []),
       "-f", `query=${PULL_REQUESTS_QUERY}`,
     ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page" });
-    throwIfAborted(controller.signal);
+    ensureActive();
     const response = JSON.parse(output) as GhListResponse;
     const repository = response.data?.repository;
     if (response.errors?.length || !repository?.nameWithOwner || !Array.isArray(repository.pullRequests?.nodes)
@@ -200,7 +205,7 @@ export async function fetchPullRequestListPage(
     let nodes: GhPullRequestNode[];
     try { nodes = await readPullRequestNodes(repoRoot, references, controller, measuredRunner, hydrate); }
     catch (error) { throw paginationFailure(error, requestFailure?.error ?? paginationError?.error); }
-    throwIfAborted(controller.signal);
+    ensureActive();
     logInfo("graph pull request metadata ready", { repoRoot, pullRequests: nodes.length, elapsedMs: Date.now() - started,
       metadataElapsedMs: Date.now() - metadataStarted });
     if (paginationTasks) {
@@ -210,7 +215,7 @@ export async function fetchPullRequestListPage(
     }
     await Promise.allSettled(pagination);
     if (paginationError) throw paginationFailure(paginationError.error, requestFailure?.error);
-    throwIfAborted(controller.signal);
+    ensureActive();
     logInfo("graph pull request page complete", {
       repoRoot, pullRequests: pullRequests.length, requests, paginationTasks,
       elapsedMs: Date.now() - started, reusedCommits,

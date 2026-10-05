@@ -2,7 +2,8 @@
 // - UI/명령 레이어와 분리해 저장소 루트 + 상대 경로만으로 재사용할 수 있게 한다.
 // - 커밋별 diff 프로세스를 만들지 않고 `git log` 한 번에서 메타데이터/raw/numstat 을 함께 읽는다.
 import type { FileChangeStatus } from "./gitTypes";
-import { runGit } from "./gitExec";
+import { runGit, runGitStream } from "./gitExec";
+import { FileHistoryStream } from "./fileHistoryStream";
 
 /** root commit 의 부모처럼 사용할 Git empty tree 객체 해시. */
 export const EMPTY_TREE_REF = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -99,20 +100,19 @@ export class FileHistoryService {
    * - raw 상태와 numstat 을 같은 log 프로세스에서 받아 커밋 수에 비례한 프로세스 생성을 막는다.
    * @param relPath 저장소 루트 기준 상대 경로
    * @param limit 최대 커밋 수. 오래된 파일에서 UI refresh 가 무거워지지 않게 제한한다.
-   * @param options 조회 소비자의 취소 신호와 검증한 불변 HEAD. 없으면 기존 HEAD 조회를 유지한다.
+   * @param options 취소 신호·불변 HEAD·표시 전용 앞부분 observer. 최종 결과는 모든 레코드를 포함한다.
    * @returns 메타데이터와 해당 커밋의 파일 상태/라인 통계를 결합한 히스토리
    */
   async listFileHistory(
     relPath: string,
     limit = 60,
-    options: { signal?: AbortSignal; revision?: string } = {}
+    options: { signal?: AbortSignal; revision?: string; onProgress?: (entries: FileHistoryEntry[]) => void } = {}
   ): Promise<FileHistoryEntry[]> {
     const normalizedPath = normalizeGitPath(relPath);
     if (!normalizedPath) {
       return [];
     }
-    const raw = await runGit(
-      [
+    const args = [
         "log",
         "--follow",
         "--raw",
@@ -125,10 +125,15 @@ export class FileHistoryService {
         ...(options.revision ? [options.revision] : []),
         "--",
         literalGitPathspec(normalizedPath),
-      ],
-      this.repoRoot,
-      { signal: options.signal }
-    );
+      ];
+    if (options.onProgress) {
+      const stream = new FileHistoryStream(raw => parseFileHistoryLog(raw, normalizedPath), entries => {
+        options.signal?.throwIfAborted(); options.onProgress?.(entries);
+      });
+      await runGitStream(args, this.repoRoot, chunk => stream.push(chunk), { signal: options.signal, env: { GIT_FLUSH: "1" } });
+      return stream.finish();
+    }
+    const raw = await runGit(args, this.repoRoot, { signal: options.signal });
     return parseFileHistoryLog(raw, normalizedPath);
   }
 

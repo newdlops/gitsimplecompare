@@ -254,3 +254,31 @@ test("a metadata node cannot replace the summary with a different PR number unde
     return JSON.stringify(response);
   }), /identity|incomplete/i);
 });
+
+test("connections larger than the maximum first page still complete every commit and review thread", async () => {
+  const nodes = records(1), hashes = Array.from({ length: 133 }, (_, index) => `commit-${index}`);
+  nodes[0].headRefOid = hashes.at(-1);
+  nodes[0].commits = { nodes: hashes.slice(0, 100).map(oid => ({ commit: { oid } })), pageInfo: { hasNextPage: true, endCursor: "commit-100" } };
+  nodes[0].reviewThreads = { nodes: Array.from({ length: 100 }, () => ({ comments: { totalCount: 2 } })), pageInfo: { hasNextPage: true, endCursor: "review-100" } };
+  const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") return summaryPage(nodes);
+    if (options.operation === "graph-pr-list-nodes") return nodePage(args, nodes);
+    if (options.operation === "graph-pr-commit-page") return JSON.stringify({ data: { repository: { pullRequest: {
+      headRefOid: nodes[0].headRefOid, baseRefOid: "base-1", commits: { nodes: hashes.slice(100).map(oid => ({ commit: { oid } })), pageInfo: { hasNextPage: false } },
+    } } } });
+    assert.equal(options.operation, "graph-pr-review-thread-count-page");
+    return JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: Array.from({ length: 51 }, () => ({ comments: { totalCount: 2 } })), pageInfo: { hasNextPage: false } } } } } });
+  });
+  assert.deepEqual(result.pullRequests[0].commitHashes, hashes); assert.equal(result.pullRequests[0].commitHashesComplete, true);
+  assert.equal(result.pullRequests[0].commentCount, 304); assert.equal(result.pullRequests[0].commentCountComplete, true);
+});
+
+test("a supplemental failure arriving as metadata completes preserves its real error", async () => {
+  const nodes = records(1);
+  nodes[0].reviewThreads!.pageInfo = { hasNextPage: true, endCursor: "review-next" };
+  await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") return summaryPage(nodes);
+    if (options.operation === "graph-pr-list-nodes") return nodePage(args, nodes);
+    throw new Error("review failed immediately");
+  }), /review failed immediately/);
+});

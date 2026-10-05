@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-26T09:13:34Z",
+  "generatedAt": "2026-10-05T17:28:17Z",
   "title": "Design System: Git Simple Compare",
   "extensions": {
     "colorMeta": {
@@ -143,7 +143,7 @@
   ],
   "narrative": {
     "northStar": "The Native Control Room",
-    "overview": "Git Simple Compare는 Changes, Graph, staged PR Preview와 native PR comments/suggestions를 VS Code 작업 흐름 안에서 연결한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·다음 행동을 명확히 보여준다.",
+    "overview": "Git Simple Compare는 VS Code가 원래 제공했을 법한 작업 제어면처럼 느껴져야 한다. 화면은 차분하고 고밀도이며, 장식보다 현재 상태·대상·다음 행동을 명확히 보여준다. Graph, diff, Changes는 같은 간격·상태·포커스 문법을 공유한다.\n\n개인 개발자의 빠른 키보드 흐름을 우선한다. Changes와 Graph는 현재 저장소·브랜치·변경 상태를 즉시 드러내고, staged Pull Request Preview는 게시 전 대상과 결과를 명확히 확인하게 한다. 구획은 정렬, 여백, 얇은 경계와 VS Code 표면 토큰으로 만든다.",
     "keyCharacteristics": [
       "VS Code 테마와 글꼴을 그대로 따르는 네이티브성",
       "2·4·6·8·12·16·24px 리듬의 차분한 고밀도",
@@ -182,21 +182,46 @@
         "name": "The Flat-by-Default Rule",
         "body": "정적인 목록, 통계, 파일 블록에는 그림자를 사용하지 않는다.",
         "section": "elevation"
+      },
+      {
+        "name": "The Editor Is the Typographic Authority Rule",
+        "body": "코드와 diff는 사용자의 editor font 설정을 따르고, 나머지는 workbench font를 따른다. 별도 웹 폰트를 내려받지 않는다.",
+        "section": "typography"
+      },
+      {
+        "name": "The Density Comes from Rhythm Rule",
+        "body": "10px 이하의 본문 글자로 정보를 억지로 압축하지 않는다. 밀도는 행 높이, 정렬, 점진적 공개로 만든다.",
+        "section": "typography"
+      },
+      {
+        "name": "The Border Has One Owner Rule",
+        "body": "맞닿는 두 영역의 경계는 한쪽만 그린다. 선택, focus, validation border가 같은 픽셀에 겹치지 않게 한다.",
+        "section": "elevation"
+      },
+      {
+        "name": "Local Branch Status and Stale Cleanup",
+        "body": "로컬 refs/heads를 행 기준으로 삼아 전체·stale·삭제 가능 수와 worktree 보호 사유를 표시한다. 삭제 가능한 stale 행만 선택하며, 실제 삭제 전 이름 확인과 Git 재검증을 거친다. 좁은 폭에서는 최신 커밋 열을 생략하고 이름·상태·보호 사유·선택을 유지한다.",
+        "section": "layout"
       }
     ],
     "dos": [
       "Do VS Code 의미 토큰과 Codicon을 사용하고 고대비 테마까지 확인한다.",
-      "Do Changes, Graph, Preview, native comments/suggestions에서 일관된 상태와 행동을 제공한다.",
+      "Do Changes, Graph, staged Preview가 같은 저장소·브랜치·상태 모델을 읽도록 설계한다.",
       "Do 화면에 보이는 모든 action에 hover, focus, active, disabled, pending, success, error 상태를 정의한다.",
-      "Do 긴 파일명, 1,000개 파일, 수천 개 댓글, binary/renamed/deleted 파일, 한국어/영어 혼합을 정상 상태로 취급한다."
+      "Do staged Preview 게시 전 대상 브랜치와 변경 범위를 표시하고, 기존 PR은 기본 브라우저의 GitHub 페이지에서 확인하게 한다.",
+      "Do 긴 파일명, 1,000개 파일, 수천 개 댓글, binary/renamed/deleted 파일, 한국어/영어 혼합을 정상 상태로 취급한다.",
+      "Do destructive action 전에 대상과 영향을 보여주고, 가능한 경우 undo 또는 정확한 복구 경로를 제공한다.",
+      "Do webview state를 다시 열었을 때 filter, selection, layout, draft를 합리적인 범위에서 복원한다."
     ],
     "donts": [
       "Don't GitHub 웹 UI를 그대로 복제하거나 별도의 화려한 SaaS 디자인 언어를 만든다.",
       "Don't 상단 toolbar 한 줄에 모든 기능을 같은 위계의 icon button으로 놓는다.",
       "Don't hover에서만 발견 가능한 핵심 행동을 만든다.",
       "Don't outline: none을 대체 focus 표시 없이 사용한다.",
+      "Don't 고정 hex, 고정 흰색/검정, 임의 상태색으로 테마 토큰을 우회한다.",
       "Don't 단순 build/typecheck 통과를 visual QA 완료로 간주한다.",
-      "Don't branch/index context가 달라진 뒤 Preview를 새로고침하지 않고 staged PR을 publish한다."
+      "Don't 새 push로 댓글 위치가 오래되었을 때 draft를 조용히 새 head에 제출한다.",
+      "Don't 외부 백엔드나 새로운 프런트엔드 프레임워크를 UI 정리의 전제조건으로 추가한다."
     ]
   }
 }

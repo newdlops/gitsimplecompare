@@ -140,3 +140,33 @@ test("a reopened reader restores a validated persistent history and corruption f
   cache = new FileHistoryReadCache(f.reader, () => true, () => undefined, store);
   assert.equal((await cache.read("/repo", "file.ts")).source, "git"); assert.equal(f.counts().logs, 2);
 });
+
+test("coalesced consumers receive isolated previews; partial results are never persisted or reused after failure", async t => {
+  const f = fixture(), gate = deferred<FileHistoryEntry[]>(); let publish!: (entries: FileHistoryEntry[]) => void, stores = 0;
+  f.reader.history = async (_root, _file, _ref, _signal, progress) => { publish = progress!; return gate.promise; };
+  const cache = new FileHistoryReadCache(f.reader, () => true, () => undefined, {
+    load: async () => undefined, store: async () => { stores++; },
+  }); t.after(() => cache.dispose());
+  const a: any[] = [], b: any[] = [];
+  const first = cache.read("/repo", "file.ts", { onProgress: value => { a.push(value); if (value.commits.length) value.commits[0].title = "mutated"; } });
+  const second = cache.read("/repo", "file.ts", { onProgress: value => b.push(value) });
+  const failures = Promise.allSettled([first, second]); await settle(); publish([record()]);
+  assert.equal(a.at(-1).loading, true); assert.equal(b.at(-1).commits[0].title, "Initial"); assert.equal(stores, 0);
+  gate.reject(new Error("Git failed after partial output")); assert.ok((await failures).every(result => result.status === "rejected"));
+  f.reader.history = async () => [record("Complete retry")];
+  const retry = await cache.read("/repo", "file.ts"); assert.equal(retry.source, "git");
+  assert.equal(retry.commits[0].title, "Complete retry"); assert.equal(stores, 1); assert.equal(retry.loading, undefined);
+});
+
+test("a cancelled preview consumer gets no late update while the remaining consumer receives the same shared Git result", async t => {
+  const f = fixture(), gate = deferred<FileHistoryEntry[]>(); let publish!: (entries: FileHistoryEntry[]) => void;
+  f.reader.history = async (_root, _file, _ref, _signal, progress) => { publish = progress!; return gate.promise; };
+  const cache = new FileHistoryReadCache(f.reader); t.after(() => cache.dispose());
+  const controller = new AbortController(), a: any[] = [], b: any[] = [];
+  const first = cache.read("/repo", "file.ts", { signal: controller.signal, onProgress: value => a.push(value) });
+  const cancelled = assert.rejects(first, { name: "AbortError" });
+  const second = cache.read("/repo", "file.ts", { onProgress: value => b.push(value) });
+  await settle(); controller.abort(); await cancelled; const count = a.length;
+  publish([record()]); assert.equal(a.length, count); assert.equal(b.at(-1).commits.length, 1);
+  gate.resolve([record(), record("Earlier", "c".repeat(40))]); assert.equal((await second).commits.length, 2);
+});

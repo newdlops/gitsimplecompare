@@ -1732,5 +1732,8 @@
   "Select idle processes to stop. Active repositories and Git writes are protected.": "종료할 유휴 프로세스를 선택하세요. 사용 중인 저장소와 Git 쓰기 작업은 보호합니다.",
   "Cleaning idle Git processes…": "유휴 Git 프로세스 정리 중…",
   "Git cleanup: {0} stopped, {1} kept, {2} failed. Details are in Git Simple Compare Output.": "Git 정리: {0}개 종료, {1}개 유지, {2}개 실패. 자세한 내용은 Git Simple Compare 출력에서 확인하세요.",
-  "Could not inspect or clean Git processes. See Git Simple Compare Output.": "Git 프로세스를 확인하거나 정리하지 못했습니다. Git Simple Compare 출력을 확인하세요."
+  "Could not inspect or clean Git processes. See Git Simple Compare Output.": "Git 프로세스를 확인하거나 정리하지 못했습니다. Git Simple Compare 출력을 확인하세요.",
+  "Loading file history...": "파일 이력을 불러오는 중...",
+  "Loading earlier commits...": "이전 커밋을 불러오는 중...",
+  "History loading paused. Refresh to load all commits.": "이력 조회가 중단됐습니다. 새로고침하여 전체 커밋을 불러오세요."
 }

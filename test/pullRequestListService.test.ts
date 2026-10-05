@@ -71,8 +71,8 @@ test("a light root query and bounded node reads preserve 80 PR records without r
     requested.push([...args]);
     if (options.operation === "graph-pr-list-nodes") {
       const query = args.find(arg => arg.startsWith("query="))!;
-      assert.match(query, /commits\(first: 30\)/);
-      assert.match(query, /reviewThreads\(first: 20\)/);
+      assert.match(query, /commits\(first: 100\)/);
+      assert.match(query, /reviewThreads\(first: 100\)/);
       assert.ok(args.filter(arg => arg.startsWith("ids[]=")).length <= 20);
     }
     return metadataRunner(args, cwd, options);

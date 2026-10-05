@@ -27,7 +27,7 @@ export interface OpenFileHistoryCommitArgs {
 }
 
 let latestHistoryRequestId = 0;
-let activeHistory: { key: string; controller: AbortController } | undefined;
+let activeHistory: { key: string; controller: AbortController; cancelDisplay?: () => void } | undefined;
 
 /**
  * 탭/창/Host의 소비자 수명을 실제 Git 조회 신호로 연결한다.
@@ -47,7 +47,7 @@ export function registerFileHistoryLifetime(): vscode.Disposable {
 /** 선택을 잃은 소비자만 취소하고 오래된 성공·오류가 새 파일의 UI를 바꾸지 않게 한다. */
 export function cancelFileHistoryRefresh(reason: string): void {
   latestHistoryRequestId++;
-  if (activeHistory) { activeHistory.controller.abort(); activeHistory = undefined; logInfo("file history consumer cancelled", { reason }); }
+  if (activeHistory) { activeHistory.controller.abort(); activeHistory.cancelDisplay?.(); activeHistory = undefined; logInfo("file history consumer cancelled", { reason }); }
 }
 
 /** 파일/가상 diff 리소스의 같은 실제 대상은 같은 소비자 신호를 공유한다. */
@@ -124,8 +124,18 @@ export async function refreshFileHistory(
     location.kind === "workingFile"
       ? service.toRepoRelative(location.fsPath)
       : location.relPath;
+  let partial = false;
+  activeHistory.cancelDisplay = () => {
+    if (partial) deps.changesView.setFileHistory({ repoRoot: service.repoRoot, path: relPath, commits: [],
+      message: vscode.l10n.t("History loading paused. Refresh to load all commits.") });
+  };
   try {
-    const entry = await readFileHistorySnapshot(service.repoRoot, relPath, { signal, force: request.force });
+    const entry = await readFileHistorySnapshot(service.repoRoot, relPath, { signal, force: request.force, onProgress: snapshot => {
+      if (requestId !== latestHistoryRequestId || signal.aborted) return;
+      partial = true; deps.changesView.setFileHistory(snapshot);
+      if (snapshot.commits.length) logInfo("file history first render ready", { reason, root: service.repoRoot,
+        path: relPath, commits: snapshot.commits.length, elapsed: Date.now() - started });
+    } });
     if (requestId !== latestHistoryRequestId || signal.aborted) {
       logInfo("file history render skipped", {
         reason,
@@ -135,7 +145,7 @@ export async function refreshFileHistory(
       });
       return;
     }
-    deps.changesView.setFileHistory(entry);
+    partial = false; deps.changesView.setFileHistory(entry);
     logInfo("file history refreshed", {
       reason,
       root: service.repoRoot,
@@ -146,6 +156,7 @@ export async function refreshFileHistory(
       elapsed: Date.now() - started,
     });
   } catch (error) {
+    partial = false;
     if (signal.aborted || requestId !== latestHistoryRequestId || error instanceof Error && error.name === "AbortError") {
       logInfo("file history render skipped", { reason, reasonDetail: "cancelled-or-superseded" }); return;
     }

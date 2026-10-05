@@ -35,6 +35,8 @@ export interface FileHistoryView {
   path?: string;
   commits: FileHistoryEntry[];
   message?: string;
+  /** true이면 native 조회가 진행 중이며 commits는 완성된 앞부분만 표시한다. */
+  loading?: boolean;
 }
 
 /** Changes 웹뷰 Worktrees 섹션에 표시할 worktree 행 상태. */

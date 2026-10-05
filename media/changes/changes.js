@@ -53,6 +53,8 @@
       history: "History",
       noHistoryFile: "No file is currently open.",
       noHistory: "No commits for the current file.",
+      loadingHistory: "Loading file history...",
+      loadingEarlierHistory: "Loading earlier commits...",
       openHistoryCommit: "Open File Change",
       stashes: "Stashes",
       stashSelected: "Stash Selected Changes",
