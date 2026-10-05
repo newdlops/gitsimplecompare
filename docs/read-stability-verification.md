@@ -17,6 +17,8 @@ Version: 0.1.72078. Baseline: 0.1.72077 (`f1d28a1`). Date: 2026-10-05.
   cache entries. Environment snapshots and hashed context keys separate hosts,
   repositories, credentials and executable choices. CLI config file metadata
   invalidates changed authentication/configuration without reading credentials.
+  Environment/configuration precedence follows the
+  [GitHub CLI environment manual](https://cli.github.com/manual/gh_help_environment).
 - Extension disposal cancels queued and active GitHub reads and awaits actual
   closure alongside existing Git cleanup. An old activation cannot dispose the
   next activation's cache.
@@ -80,10 +82,24 @@ No additional VS Code development/test windows, macOS reboot or SentinelOne
 restart was performed. UI code and user settings were unchanged; live UI visual
 verification and multi-day soak testing are not claimed. Forced descendant cleanup
 is verified on macOS/POSIX; Windows uses the directly owned child. External Git
-processes and security-service queues remain outside this ownership policy.
+processes and security-service queues remain outside this ownership policy. If
+the OS prevents an owned process from closing, its slot stays occupied and queued
+consumers time out; the extension cannot force the OS to release that process.
 
 ## Release
 
-The full regression and production packaging passed. The versioned VSIX contains
-120 files and excludes sources, tests, docs, dependencies and source maps.
-Installation and Marketplace verification are recorded after publishing.
+- Source commit: `c4a14df` (pushed to `origin/main`).
+- VSIX: `/private/tmp/gitsimplecompare-0.1.72078.vsix`, 120 files; source, tests,
+  docs, dependencies and source maps are excluded.
+- VSIX SHA-256: `d262d0791187ecb50fdd4f440a5e56d47aeeaac73d090714810c70ae669efb41`.
+- Bundle SHA-256: `63843edde7402af57b785c14c82fcbaaba1cb42cf15eac6266973b57e1229f2c`.
+  The source build, VSIX bundle and installed bundle match.
+- Installed: `/Users/lky/.vscode/extensions/newdlops.gitsimplecompare-0.1.72078`.
+  Installation succeeded; existing Code windows still require a reload to use it.
+- `env NODE_OPTIONS=--use-system-ca vsce publish --packagePath
+  /private/tmp/gitsimplecompare-0.1.72078.vsix` succeeded (observed 06:30 UTC).
+- Marketplace public manifest returned HTTP 200 and identified
+  `newdlops.gitsimplecompare` version `0.1.72078` (verified 06:35 UTC).
+  Public registration processing completed after the initial temporary 404s.
+- The isolated validation worktree was removed after merging; logs and standalone
+  comparison artifacts remain in `/private/tmp`.
