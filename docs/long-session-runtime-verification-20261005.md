@@ -105,3 +105,15 @@ SHA-256이 일치했다.
 
 - VSIX SHA-256: `bf481c05637a4e9b8ed7cdecec974dddd30b9cbe633d91087db8dd7abcebd8d0`
 - 번들 SHA-256: `18198cd560a9f51a71532f36407425cbf2f690af58deeabd905fb41025408988`
+
+## 설치·배포 확인
+
+수정 커밋 `94b321cd531cd264bc7d9544c88fd53eb61d9490`을 `origin/main`에 푸시했다.
+같은 VSIX를 사용자 VS Code에 설치했으며, 설치된 package version은 0.1.72080이고
+`dist/extension.js`의 SHA-256은 위 production 번들과 일치했다.
+
+`vsce publish --packagePath`가 0.1.72080 게시 성공을 반환했다. Marketplace의
+버전 지정 공개 VSIX를 다시 다운로드한 SHA-256도 로컬 VSIX와 일치했다.
+게시 직후 일반 Marketplace 버전 조회에는 0.1.72079가 표시됐으므로 검색·자동 업데이트
+목록의 반영까지 확인했다고 주장하지 않는다. 설치 뒤에도 실제 VS Code 창은 닫힌 상태였고,
+사용자 창의 장기 사용 UI 측정은 위 검증 범위에 적은 대로 남아 있다.
