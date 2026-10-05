@@ -1,5 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+test("pre-cancelled forced and changed reads do not discard a valid shared cache", async () => {
+  let calls = 0;
+  const shared = new SharedGitRead(async () => ++calls, value => value);
+  assert.equal(await shared.read({ maxCacheAgeMs: 10000 }), 1);
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(shared.read({ force: true, changed: true, signal: controller.signal }), /cancelled/i);
+  assert.equal(await shared.read({ maxCacheAgeMs: 10000 }), 1);
+  assert.equal(calls, 1);
+  await shared.dispose();
+});
+
+test("a pre-cancelled mutation notification cannot force an active consumer into another Git read", async () => {
+  let complete!: (value: string) => void, calls = 0;
+  const shared = new SharedGitRead(async () => ++calls === 1 ? new Promise<string>(resolve => { complete = resolve; }) : "unexpected", value => value);
+  const pending = shared.read();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(shared.read({ force: true, changed: true, signal: controller.signal }), /cancelled/i);
+  complete("original");
+  assert.equal(await pending, "original");
+  assert.equal(calls, 1);
+  await shared.dispose();
+});
 import { SharedGitRead } from "../src/git/sharedGitRead";
 
 /** 실제 loader의 완료만 제어하며 공유 서비스의 세대 판단은 제품 코드를 실행한다. */

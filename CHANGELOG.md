@@ -5,6 +5,22 @@ All notable changes to **Git Simple Compare** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.72078] - 2026-10-05
+
+### Fixed
+
+- Keep GitHub read slots occupied until owned CLI processes and verified
+  descendants close. Include queue waits in read deadlines, cancel pending
+  reads on extension shutdown, and isolate successive activation lifetimes.
+- Honor fresh-read requests and shorter cache lifetimes. Separate cached
+  responses by repository, server, authentication and CLI environment;
+  capture the environment before queueing and detect CLI configuration changes.
+- Keep repository-name lookup cancellation independent for each consumer, and
+  prevent pre-cancelled Git reads from invalidating another consumer's cache.
+- Reject missing PR detail pages, repeated cursors, incomplete file counts and
+  HEAD/base changes during pagination. Cancel peer pages on failure while
+  preserving complete file data, exact comment counts and existing page limits.
+
 ## [0.1.72077] - 2026-10-05
 
 ### Changed

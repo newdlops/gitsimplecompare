@@ -28,7 +28,7 @@ before(async () => {
     'const target=route ? (route.includes("{owner}/{repo}")?configured:route.split("/").slice(1,3).join("/")) : owner==="{owner}"&&name==="{repo}"?configured:owner+"/"+name;',
     'const prefix=target.replace("/","-");',
     'if(route){out([{filename:prefix+"-a.ts",status:"renamed",previous_filename:"old.ts",additions:2,deletions:1}]);process.exit(0)}',
-    'out({data:{repository:{pullRequest:{number:42,comments:{totalCount:2},files:{totalCount:2,nodes:[{path:prefix+"-a.ts",changeType:"MODIFIED",additions:2,deletions:1},{path:prefix+"-b.ts",changeType:"ADDED",additions:3,deletions:0}],pageInfo:{hasNextPage:false}},reviewThreads:{nodes:[{path:prefix+"-a.ts",comments:{totalCount:3}},{path:prefix+"-b.ts",comments:{totalCount:1}}],pageInfo:{hasNextPage:false}}}}}});',
+    'out({data:{repository:{pullRequest:{number:42,headRefOid:"head",baseRefOid:"base",comments:{totalCount:2},files:{totalCount:2,nodes:[{path:prefix+"-a.ts",changeType:"MODIFIED",additions:2,deletions:1},{path:prefix+"-b.ts",changeType:"ADDED",additions:3,deletions:0}],pageInfo:{hasNextPage:false}},reviewThreads:{nodes:[{path:prefix+"-a.ts",comments:{totalCount:3}},{path:prefix+"-b.ts",comments:{totalCount:1}}],pageInfo:{hasNextPage:false}}}}}});',
   ].join("\n"));
   await chmod(executable, 0o755);
   process.env.GITHUB_CLI_PATH = executable;

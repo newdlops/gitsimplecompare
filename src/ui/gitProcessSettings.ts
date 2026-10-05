@@ -9,6 +9,8 @@ import { setGitReadTimeoutResolver } from "../git/gitProcessRunner";
 import { setOwnedFsmonitorPolicy } from "../git/ownedFsmonitor";
 import { setWorkingTreeSnapshotPolicy, invalidateWorkingTreeSnapshots, disposeWorkingTreeSnapshots } from "../git/workingTreeSnapshot";
 import { setBlameReadCancellationPolicy, disposeSharedBlameReads } from "../git/sharedBlameReads";
+import { beginGitHubReadLifetime } from "../git/githubReadCache";
+import { clearGitHubRepositoryNameCache } from "../git/githubRepositoryName";
 import { logError, logInfo } from "./outputLog";
 
 type Scope = "user" | "workspace";
@@ -42,6 +44,7 @@ function protectedPaths(): string[] {
  * @returns extension dispose 때 해제할 전체 기능 구독
  */
 export function registerGitProcessManagement(activeRoot: () => string | undefined): vscode.Disposable {
+  const stopGitHubReads = beginGitHubReadLifetime();
   const subscriptions: vscode.Disposable[] = [];
   const root = () => activeRoot() ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const enabled = (repoRoot: string) => configuration(repoRoot).get<boolean>(ENABLED, false);
@@ -186,7 +189,8 @@ export function registerGitProcessManagement(activeRoot: () => string | undefine
   const dispose = () => {
     if (disposed) return; disposed = true;
     clearTimeout(observation); scheduler.dispose(); service.reset(); resetMonitor();
-    shutdown = Promise.all([gitProcesses.dispose(), disposeWorkingTreeSnapshots(), disposeSharedBlameReads()])
+    clearGitHubRepositoryNameCache();
+    shutdown = Promise.all([gitProcesses.dispose(), disposeWorkingTreeSnapshots(), disposeSharedBlameReads(), stopGitHubReads()])
       .then(() => undefined).finally(() => process.removeListener("exit", hostExit));
     void shutdown.catch(() => undefined);
     for (const subscription of subscriptions) subscription.dispose();

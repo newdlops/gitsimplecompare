@@ -20,6 +20,7 @@ export class SharedGitRead<T> {
 
   /** 진행 중 force 요청은 한 최신 세대로 합치고 이미 필요 없는 결과가 캐시에 들어가는 것을 막는다. */
   read(options: SharedReadOptions = {}): Promise<T> {
+    if (this.lifetime.signal.aborted || options.signal?.aborted) return Promise.reject(cancelled());
     if (options.changed) {
       this.ready = undefined;
       // 아직 시작하지 않은 최신 pass는 이후 파일 상태를 읽으므로 변경 알림을 함께 합친다.

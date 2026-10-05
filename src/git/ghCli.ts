@@ -3,6 +3,7 @@
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import { access } from "node:fs/promises";
+import { ManagedGhError, runManagedGhRead } from "./ghManagedRead";
 
 const GH_RETRY_DELAYS_MS = [250, 500, 900, 1400];
 const GH_REQUIRED_MESSAGE =
@@ -17,9 +18,14 @@ const GH_PATH_CANDIDATES = [
 ];
 
 let ghExecutablePromise: Promise<string> | undefined;
+let ghExecutableContext: string | undefined;
 
 /** gh 실행을 취소·관찰 가능한 review 서비스에서 전달하는 선택 옵션. */
 export interface RunGhOptions {
+  /** 요청 시 복사한 환경. 인증·서버·저장소 문맥이 대기 중 바뀌어도 같은 환경에서 실행한다. */
+  env?: NodeJS.ProcessEnv;
+  /** read cache만 지정하는 조회 수명 정책. 명시적 GitHub 쓰기에는 자동 정리를 적용하지 않는다. */
+  managedRead?: boolean;
   /** 패널 해제나 최신 요청 교체 때 자식 gh 프로세스를 중단하는 신호 */
   signal?: AbortSignal;
   /** 대형 diff 응답처럼 기본 stdout 상한을 늘려야 할 때의 byte 상한 */
@@ -55,7 +61,7 @@ export async function runGh(
   cwd: string,
   options: RunGhOptions = {}
 ): Promise<string> {
-  const executable = await resolveGhExecutable();
+  const executable = await resolveGhExecutable(options.env ?? process.env);
   for (let attempt = 0; ; attempt++) {
     if (options.signal?.aborted) {
       throw createGhAbortError(args, options);
@@ -88,6 +94,12 @@ function runGhOnce(
   cwd: string,
   options: RunGhOptions
 ): Promise<string> {
+  if (options.managedRead) {
+    return runManagedGhRead(executable, args, cwd, options).catch(error => {
+      if (error instanceof ManagedGhError) throw createGhError(args, error, error.stdout, error.stderr, options);
+      throw createGhError(args, error, "", "", options);
+    });
+  }
   return new Promise((resolve, reject) => {
     execFile(
       executable,
@@ -97,6 +109,7 @@ function runGhOnce(
         encoding: "utf8",
         maxBuffer: options.maxBufferBytes ?? 32 * 1024 * 1024,
         signal: options.signal,
+        env: options.env,
       },
       (error, stdout, stderr) => {
         if (error) {
@@ -115,18 +128,22 @@ function runGhOnce(
  * - macOS GUI 앱에서 빠지기 쉬운 login shell PATH 와 Homebrew 기본 경로를 보완한다.
  * @returns execFile 에 전달할 gh 실행 파일 경로. 찾지 못하면 기존 PATH 조회를 위해 "gh" 를 반환한다.
  */
-async function resolveGhExecutable(): Promise<string> {
-  ghExecutablePromise ||= discoverGhExecutable();
+async function resolveGhExecutable(env: NodeJS.ProcessEnv): Promise<string> {
+  const context = JSON.stringify([env.GITHUB_CLI_PATH, env.PATH, env.SHELL]);
+  if (ghExecutableContext !== context) {
+    ghExecutableContext = context; ghExecutablePromise = discoverGhExecutable(env);
+  }
+  ghExecutablePromise ||= discoverGhExecutable(env);
   return ghExecutablePromise;
 }
 
 /** gh 실행 파일 후보를 순서대로 확인해 첫 번째 실행 가능 경로를 반환한다. */
-async function discoverGhExecutable(): Promise<string> {
-  const configured = await executablePath(process.env.GITHUB_CLI_PATH);
+async function discoverGhExecutable(env: NodeJS.ProcessEnv): Promise<string> {
+  const configured = await executablePath(env.GITHUB_CLI_PATH);
   if (configured) {
     return configured;
   }
-  const shellPath = await discoverGhFromShell();
+  const shellPath = await discoverGhFromShell(env);
   if (shellPath) {
     return shellPath;
   }
@@ -140,13 +157,13 @@ async function discoverGhExecutable(): Promise<string> {
 }
 
 /** login shell 의 PATH 에서 gh 위치를 찾는다. */
-async function discoverGhFromShell(): Promise<string | undefined> {
+async function discoverGhFromShell(env: NodeJS.ProcessEnv): Promise<string | undefined> {
   if (process.platform === "win32") {
     return undefined;
   }
-  const shells = Array.from(new Set([process.env.SHELL, "/bin/zsh", "/bin/bash", "/bin/sh"].filter(isNonEmptyString)));
+  const shells = Array.from(new Set([env.SHELL, "/bin/zsh", "/bin/bash", "/bin/sh"].filter(isNonEmptyString)));
   for (const shell of shells) {
-    const out = await execText(shell, ["-lc", "command -v gh"]).catch(() => "");
+    const out = await execText(shell, ["-lc", "command -v gh"], env).catch(() => "");
     const found = await executablePath(out.trim().split(/\r?\n/)[0]);
     if (found) {
       return found;
@@ -170,9 +187,9 @@ async function executablePath(path: string | undefined): Promise<string | undefi
 }
 
 /** 짧은 보조 명령을 실행하고 stdout 을 반환한다. */
-function execText(command: string, args: string[]): Promise<string> {
+function execText(command: string, args: string[], env: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(command, args, { encoding: "utf8", maxBuffer: 1024 * 1024 }, (error, stdout) => {
+    execFile(command, args, { encoding: "utf8", maxBuffer: 1024 * 1024, env, timeout: 3000 }, (error, stdout) => {
       if (error) {
         reject(error);
         return;

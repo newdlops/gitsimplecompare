@@ -8,6 +8,8 @@ import { runGit } from "../src/git/gitExec";
 import { clearGitHubRepositoryNameCache, readGitHubRepositoryName } from "../src/git/githubRepositoryName";
 import type { PullRequestInfo } from "../src/git/pullRequestInfo";
 import { fetchPullRequestRefs } from "../src/git/pullRequestRefLookup";
+import type { GhExecute } from "../src/git/ghRunner";
+import { SharedGitRead } from "../src/git/sharedGitRead";
 
 process.env.GIT_CONFIG_NOSYSTEM = "1";
 process.env.GIT_CONFIG_GLOBAL = process.platform === "win32" ? "NUL" : "/dev/null";
@@ -138,4 +140,54 @@ test("저장소 이름은 원격 설정이 같으면 gh repo view 를 한 번만
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("repository lookup cancellation is independent for consumers sharing the same runner", async t => {
+  clearGitHubRepositoryNameCache();
+  const { root } = await createRepo();
+  try {
+    await runGit(["remote", "add", "origin", "https://github.com/owner/repo.git"], root);
+    let resolve!: (value: string) => void, started!: () => void, secondReady!: () => void;
+    const ready = new Promise<void>(accept => { started = accept; });
+    const registered = new Promise<void>(accept => { secondReady = accept; });
+    const originalRead = SharedGitRead.prototype.read;
+    let consumers = 0;
+    t.mock.method(SharedGitRead.prototype, "read", function(this: SharedGitRead<unknown>, options = {}) {
+      const pending = originalRead.call(this, options);
+      if (++consumers === 2) secondReady();
+      return pending;
+    });
+    let sharedSignal: AbortSignal | undefined, calls = 0;
+    const runner: GhExecute = async (_args, _cwd, options) => {
+      calls++; sharedSignal = options.signal; started();
+      return new Promise(accept => { resolve = accept; });
+    };
+    const controller = new AbortController();
+    const first = readGitHubRepositoryName(root, runner, { operation: "test", signal: controller.signal });
+    const observed = first.then(() => undefined, error => error);
+    await ready;
+    const second = readGitHubRepositoryName(root, runner, { operation: "test" });
+    // 고정 시간 대기 대신 실제 두 번째 소비자 등록을 관찰한다.
+    await registered; controller.abort();
+    assert.equal((await observed).name, "AbortError");
+    assert.equal(sharedSignal?.aborted, false);
+    resolve(JSON.stringify({ nameWithOwner: "owner/repo" }));
+    assert.equal(await second, "owner/repo"); assert.equal(calls, 1);
+  } finally { clearGitHubRepositoryNameCache(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("repository names do not survive an authentication or host environment change", async () => {
+  clearGitHubRepositoryNameCache();
+  const { root } = await createRepo();
+  try {
+    await runGit(["remote", "add", "origin", "https://github.com/owner/repo.git"], root);
+    let calls = 0;
+    const runner: GhExecute = async () => JSON.stringify({ nameWithOwner: `owner/repo-${++calls}` });
+    for (const env of [ { GH_TOKEN: "fixture-a", GH_HOST: "one.example" },
+      { GH_TOKEN: "fixture-b", GH_HOST: "one.example" }, { GH_TOKEN: "fixture-b", GH_HOST: "two.example" } ]) {
+      const first = await readGitHubRepositoryName(root, runner, { operation: "test", env });
+      assert.equal(await readGitHubRepositoryName(root, runner, { operation: "test", env }), first);
+    }
+    assert.equal(calls, 3);
+  } finally { clearGitHubRepositoryNameCache(); await rm(root, { recursive: true, force: true }); }
 });
