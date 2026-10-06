@@ -133,7 +133,9 @@ function validSnapshot(value: GitMonitorSnapshot): boolean {
     const id = item?.identity;
     return id && [id.pid, id.ppid, id.pgid, id.uid].every(Number.isInteger) && typeof id.started === "string" && typeof id.executable === "string"
       && typeof item.repoRoot === "string" && typeof item.socket === "string" && typeof item.socketIdentity === "string";
-  }) && (value.observedCode === undefined || Array.isArray(value.observedCode));
+  }) && (value.observedCode === undefined || Array.isArray(value.observedCode))
+    && (value.emptyWorkspaces === undefined || Array.isArray(value.emptyWorkspaces) && value.emptyWorkspaces.every(item =>
+      item && typeof item.storage === "string" && typeof item.editorsDigest === "string" && /^[a-f0-9]{64}$/.test(item.editorsDigest)));
 }
 
 /** 공유 경계가 불완전하면 감시자 후보를 반환하지 않아 정리를 보류한다. */

@@ -8,6 +8,7 @@ import type { GitMonitorSnapshot, IdleGitCandidate } from "./idleGitCleanup";
 import { forgetPreparedFsmonitor } from "./ownedFsmonitor";
 import os from "node:os";
 import { SharedMonitorInspection } from "./sharedMonitorInspection";
+import { readCodeWorkspaceUsage, readCodeEditorState, emptyCodeWorkspaceUnchanged } from "./codeWorkspaceUsage";
 
 interface OpenPath { pid: number; file: string }
 
@@ -18,6 +19,7 @@ export interface GitMonitorInspectionDeps {
   windowCount(pids: readonly number[]): Promise<number | undefined>;
   openPaths(args: string[]): Promise<string>;
   readText(file: string): Promise<string>;
+  readEditorState(database: string): Promise<string | undefined>;
   canonical(file: string): Promise<string>;
   socketIdentity(file: string): Promise<string | undefined>;
   owned(pid: number, root: string): boolean;
@@ -27,6 +29,7 @@ const systemInspection: GitMonitorInspectionDeps = {
   platform: process.platform, uid: process.getuid?.(), processes: readProcessIdentities, openPaths: lsof,
   windowCount: readCodeWindowCount,
   readText: file => readFile(file, "utf8"), canonical: realpath,
+  readEditorState: readCodeEditorState,
   socketIdentity: async file => { const info = await stat(file); return info.isSocket() ? `${info.dev}:${info.ino}` : undefined; },
   owned: (pid, root) => gitProcesses.ownsMonitor(pid, root),
 };
@@ -84,22 +87,9 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     const openFiles = parseLsofPaths(codeOutput);
     const workspaceFiles = [...new Set(openFiles.filter(item => /[/\\]workspaceStorage[/\\][^/\\]+[/\\]state\.vscdb(?:-wal|-shm)?$/.test(item.file))
       .map(item => path.join(path.dirname(item.file), "workspace.json")))];
-    const codeRoots: string[] = [];
-    for (const file of workspaceFiles) {
-      try {
-        const workspace = JSON.parse(await deps.readText(file)) as { folder?: string; workspace?: string };
-        if (workspace.folder?.startsWith("file:")) codeRoots.push(await deps.canonical(fileUriPath(workspace.folder)));
-        else if (workspace.workspace?.startsWith("file:")) {
-          const configFile = fileUriPath(workspace.workspace);
-          const config = JSON.parse(await deps.readText(configFile)) as { folders?: { path?: string; uri?: string }[] };
-          for (const folder of config.folders ?? []) {
-            if (folder.path) codeRoots.push(await deps.canonical(path.resolve(path.dirname(configFile), folder.path)));
-            else if (folder.uri?.startsWith("file:")) codeRoots.push(await deps.canonical(fileUriPath(folder.uri)));
-            else return { complete: false, monitors: [], reason: "unmapped-code-workspace" };
-          }
-        } else return { complete: false, monitors: [], reason: "unmapped-code-workspace" };
-      } catch { return { complete: false, monitors: [], reason: "unreadable-code-workspace" }; }
-    }
+    const usage = await readCodeWorkspaceUsage(workspaceFiles, deps);
+    if (!usage.complete) return { ...usage, monitors: [] };
+    const codeRoots = usage.roots;
     const rendererPids = code.filter(item => /Code Helper \(Renderer\)|VSCodium Helper \(Renderer\)/.test(item.executable)).map(item => item.pid);
     // 웹뷰는 별도 renderer라도 같은 window-config를 상속한다. renderer 개수로 창을 세면 정상 매핑도 항상 불완전해진다.
     stage = "code-window-identities";
@@ -127,7 +117,9 @@ export async function inspectGitMonitors(protectedRoots: readonly string[], deps
     const latest = await deps.processes();
     if (latest.some(item => item.uid === deps.uid && isCodeWorkspaceProcess(item)
       && !code.some(before => sameProcess(before, item)))) return { complete: false, monitors: [], reason: "code-window-usage-changed" };
-    return { complete: true, observedCode: code, monitors: monitors.filter(item => sameProcess(item.identity, latest.find(current => current.pid === item.identity.pid))), diagnostic: { elapsedMs: Date.now() - started } };
+    return { complete: true, observedCode: code, emptyWorkspaces: usage.emptyWorkspaces,
+      monitors: monitors.filter(item => sameProcess(item.identity, latest.find(current => current.pid === item.identity.pid))),
+      diagnostic: { elapsedMs: Date.now() - started, emptyWindows: usage.emptyWorkspaces.length } };
   } catch (error) {
     const wrapped = error as { stage?: string; cause?: unknown };
     const cause = (wrapped?.cause ?? error) as { code?: unknown; killed?: boolean; signal?: string };
@@ -147,7 +139,7 @@ let sharedInspection: SharedMonitorInspection | undefined;
  */
 export async function readSharedGitMonitorInspection(protectedRoots: readonly string[]): Promise<GitMonitorSnapshot> {
   if (process.platform !== "darwin" || process.getuid?.() === undefined) return inspectGitMonitors(protectedRoots);
-  sharedInspection ??= new SharedMonitorInspection(path.join(os.tmpdir(), `gitsimplecompare-monitor-inspection-v1-${process.getuid!()}`),
+  sharedInspection ??= new SharedMonitorInspection(path.join(os.tmpdir(), `gitsimplecompare-monitor-inspection-v2-${process.getuid!()}`),
     () => inspectGitMonitors([], { ...systemInspection, owned: () => false }));
   return applyLocalMonitorProtection(await sharedInspection.read(), protectedRoots, systemInspection.owned);
 }
@@ -184,15 +176,19 @@ export async function stopGitMonitor(candidate: IdleGitCandidate, canStop: () =>
   const target = snapshot.monitors.find(item => sameProcess(candidate.identity, item.identity) && item.repoRoot === candidate.repoRoot
     && item.socket === candidate.socket && item.socketIdentity === candidate.socketIdentity);
   if (!snapshot.complete || !target || target.protectedReason) throw new DOMException("Repository use changed before stop.", "AbortError");
-  const cwd = parseLsofPaths(await deps.openPaths(["-a", "-u", String(deps.uid), "-d", "cwd"]));
-  const latest = await deps.processes();
-  const before = latest.find(item => item.pid === candidate.identity.pid);
-  const socketIdentity = await deps.socketIdentity(candidate.socket);
-  const root = await repositoryForSocket(candidate.socket, deps);
-  if (!sameProcess(candidate.identity, before) || root !== candidate.repoRoot || socketIdentity !== candidate.socketIdentity) throw new Error("Monitor ownership changed before stop.");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
+    for (const proof of snapshot.emptyWorkspaces ?? []) {
+      if (!await emptyCodeWorkspaceUnchanged(proof, deps)) throw new DOMException("An empty Code window changed before stop.", "AbortError");
+    }
+    // 빈 창 DB를 기다린 뒤의 상태를 사용해야 그 사이 시작된 다른 앱의 Git/터미널도 보호한다.
+    const cwd = parseLsofPaths(await deps.openPaths(["-a", "-u", String(deps.uid), "-d", "cwd"]));
+    const latest = await deps.processes();
+    const before = latest.find(item => item.pid === candidate.identity.pid);
+    const socketIdentity = await deps.socketIdentity(candidate.socket);
+    const root = await repositoryForSocket(candidate.socket, deps);
+    if (!sameProcess(candidate.identity, before) || root !== candidate.repoRoot || socketIdentity !== candidate.socketIdentity) throw new Error("Monitor ownership changed before stop.");
     const knownMonitors = new Set(snapshot.monitors.map(item => item.identity.pid));
     const newGit = latest.some(item => item.uid === deps.uid && path.basename(item.executable) === "git" && !knownMonitors.has(item.pid));
     const newCode = latest.some(item => item.uid === deps.uid && isCodeWorkspaceProcess(item)
@@ -275,11 +271,4 @@ async function repositoryForSocket(socket: string, deps: GitMonitorInspectionDep
     return target && await deps.canonical(path.resolve(root, target)) === gitDir ? root : undefined;
   }
   catch { return undefined; }
-}
-
-/** 로컬 file URI만 OS 경로로 되돌리며 다른 호스트의 저장소는 관찰하지 않는다. */
-function fileUriPath(uri: string): string {
-  const value = new URL(uri);
-  if (value.host && value.host !== "localhost") throw new Error("Non-local workspace.");
-  return decodeURIComponent(value.pathname);
 }

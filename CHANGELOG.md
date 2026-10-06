@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.72086] - 2026-10-06
+
+### Fixed
+
+- Recognize verified folderless VS Code windows during idle Git inspection.
+  Check Code's empty-window backup record and read its editor state without
+  modifying the database, so a Welcome window no longer blocks all cleanup.
+- Protect local files, unsaved associated files and both sides of diffs in
+  folderless windows. Recheck empty-window evidence before stopping a monitor,
+  and preserve it when a document or workspace opens during inspection.
+- Keep unknown windows, unsupported editor formats and incomplete OS observations
+  protected. Record safe failure codes and verified empty-window counts in Output,
+  and separate the new inspection cache from earlier failure backoff records.
+
 ## [0.1.72085] - 2026-10-06
 
 ### Changed

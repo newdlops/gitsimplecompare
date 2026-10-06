@@ -1,5 +1,6 @@
 import { sameProcess, type ProcessIdentity } from "./processIdentity";
 import { type GitProcessLogger } from "./gitProcessRegistry";
+import type { EmptyCodeWorkspace } from "./codeWorkspaceUsage";
 
 /** OS 검사에서 저장소·소켓까지 확인한 감시 프로세스다. */
 export interface GitMonitorProcess {
@@ -9,8 +10,10 @@ export interface GitMonitorProcess {
 /** 한 시점의 보호 판단을 함께 담아 불완전한 OS 관찰을 유휴로 오인하지 않는다. */
 export interface GitMonitorSnapshot {
   monitors: GitMonitorProcess[]; complete: boolean; reason?: string; observedCode?: ProcessIdentity[];
+  /** 빈 창의 열린 문서가 종료 검사 사이에 바뀌면 감시자 종료를 보류한다. */
+  emptyWorkspaces?: EmptyCodeWorkspace[];
   /** 민감한 argv/출력 본문 없이 실패 경계와 공유·재시도 상태만 남긴다. */
-  diagnostic?: { stage?: string; code?: string; timedOut?: boolean; elapsedMs?: number; source?: "fresh" | "shared" | "backoff"; retryAfterMs?: number };
+  diagnostic?: { stage?: string; code?: string; timedOut?: boolean; elapsedMs?: number; emptyWindows?: number; source?: "fresh" | "shared" | "backoff"; retryAfterMs?: number };
 }
 export interface IdleGitCandidate extends GitMonitorProcess { idleSince: number }
 export interface GitCleanupResult { stopped: number; kept: number; failed: number }

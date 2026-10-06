@@ -17,12 +17,83 @@ function fixture(linked = false) {
     platform: "darwin", uid: 501, processes: async () => ++reads === 1 ? processes : latest,
     windowCount: async pids => pids.length,
     openPaths: async args => args.includes("-d") ? cwd : args.includes("-U") ? `p77\0\nf18\0n${socket}\0\n` : codeFiles,
-    readText: async file => { const value = text.get(file); if (value === undefined) throw new Error("Missing fixture file"); return value; },
+    readText: async file => { const value = text.get(file); if (value === undefined) throw Object.assign(new Error("Missing fixture file"), { code: "ENOENT" }); return value; },
+    readEditorState: async database => text.get(database),
     canonical: async file => file, socketIdentity: async () => socketType ? "disk:42" : undefined, owned: () => false,
   };
   return { root, socket, monitor, deps, text, setProcesses: (value: ProcessIdentity[], after = value) => { processes = value; latest = after; reads = 0; },
     setCwd: (value: string) => { cwd = value; }, setCodeFiles: (value: string) => { codeFiles = value; }, setSocketType: (value: boolean) => { socketType = value; } };
 }
+
+/** 실제 빈 창 ID·백업 기록·welcome/file 탭을 OS fixture에 추가한다. */
+function addEmptyWindow(f: ReturnType<typeof fixture>, file?: string): void {
+  const storage = "/code/User/workspaceStorage/1791253333828";
+  const renderer = { ...f.monitor, pid: 88, executable: "/Code Helper (Renderer)" };
+  f.setProcesses([f.monitor, renderer]);
+  f.setCodeFiles(`p88\0\nf6\0n${storage}/state.vscdb\0\n`);
+  f.text.set("/code/User/globalStorage/storage.json", JSON.stringify({ backupWorkspaces: { emptyWindows: [{ backupFolder: "1791253333828" }] } }));
+  f.text.set(`${storage}/state.vscdb`, JSON.stringify({ "editorpart.state": { serializedGrid: { root: { type: "leaf", data: { editors: [file
+    ? { id: "workbench.editors.files.fileEditorInput", value: JSON.stringify({ resourceJSON: { scheme: "file", path: file } }) }
+    : { id: "workbench.editors.gettingStartedInput", value: "{}" }] } } } } }));
+}
+
+test("a verified empty Code window allows idle monitor inspection and official stop", async () => {
+  const f = fixture(); addEmptyWindow(f);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.diagnostic?.emptyWindows, 1);
+  assert.equal(snapshot.monitors[0].protectedReason, undefined);
+  let stopped = false;
+  f.deps.stop = async () => { stopped = true; f.setProcesses([]); };
+  await stopGitMonitor({ ...snapshot.monitors[0], idleSince: 0 }, () => true, () => [], f.deps);
+  assert.equal(stopped, true);
+});
+
+test("local documents open in another folderless Code window protect their Git monitor", async () => {
+  const f = fixture(); addEmptyWindow(f, `${f.root}/src/file.txt`);
+  const snapshot = await inspectGitMonitors([], f.deps);
+  assert.equal(snapshot.complete, true);
+  assert.equal(snapshot.monitors[0].protectedReason, "open-code-workspace-or-document");
+});
+
+test("an editor or workspace opening during empty-window revalidation cancels official stop", async () => {
+  for (const kind of ["editor", "workspace"] as const) {
+    const f = fixture(); addEmptyWindow(f);
+    const snapshot = await inspectGitMonitors([], f.deps);
+    let stopped = false, reads = 0;
+    f.deps.stop = async () => { stopped = true; };
+    const original = f.deps.readEditorState;
+    f.deps.readEditorState = async database => {
+      if (++reads === 2) {
+        if (kind === "workspace") f.text.set(database.replace("state.vscdb", "workspace.json"), JSON.stringify({ folder: `file://${f.root}` }));
+        else addEmptyWindow(f, `${f.root}/new-file.txt`);
+      }
+      return original(database);
+    };
+    await assert.rejects(stopGitMonitor({ ...snapshot.monitors[0], idleSince: 0 }, () => true, () => [], f.deps), { name: "AbortError" });
+    assert.equal(stopped, false, kind);
+  }
+});
+
+test("foreign Git, terminal and Code activity beginning during the editor DB read prevents monitor stop", async () => {
+  for (const kind of ["git", "terminal", "code"] as const) {
+    const f = fixture(); addEmptyWindow(f);
+    const snapshot = await inspectGitMonitors([], f.deps);
+    let stopped = false, reads = 0;
+    f.deps.stop = async () => { stopped = true; };
+    const original = f.deps.readEditorState;
+    f.deps.readEditorState = async database => {
+      if (++reads === 2) {
+        if (kind === "terminal") f.setCwd(`p77\0\nfcwd\0n/Users/test\0\np99\0\nfcwd\0n${f.root}/src\0\n`);
+        else f.setProcesses([f.monitor, { ...f.monitor, pid: 88, executable: "/Code Helper (Renderer)" },
+          { ...f.monitor, pid: 99, executable: kind === "git" ? "/usr/bin/git" : "/Code Helper (Plugin)" }]);
+      }
+      return original(database);
+    };
+    await assert.rejects(stopGitMonitor({ ...snapshot.monitors[0], idleSince: 0 }, () => true, () => [], f.deps), { name: "AbortError" });
+    assert.equal(stopped, false, kind);
+  }
+});
 
 for (const linked of [false, true]) {
   test(`detached Git monitor with home cwd maps to its ${linked ? "linked" : "normal"} worktree socket`, async () => {
