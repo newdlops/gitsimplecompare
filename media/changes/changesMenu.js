@@ -70,7 +70,7 @@
     }
 
     /** menuitem 사이의 키보드 이동과 submenu 진입·복귀를 연결한다. */
-    function bindMenuKeyboard(stack, reposition, renderTop) {
+    function bindMenuKeyboard(stack, renderTop) {
       const menu = dropdownEl;
       menu.addEventListener("keydown", (event) => {
         // capture 단계의 Escape 또는 menuitem의 Enter가 이미 메뉴를 닫았으면 처리를 끝낸다.
@@ -94,7 +94,6 @@
           event.preventDefault();
           stack.pop();
           renderTop();
-          reposition();
         }
       });
     }
@@ -134,7 +133,6 @@
             event.stopPropagation();
             stack.pop();
             renderTop();
-            reposition();
           });
           dropdownEl.append(back, menuDivider());
         }
@@ -163,7 +161,6 @@
             if (hasSubmenu) {
               stack.push({ nodes: node.submenu, title: node.label });
               renderTop();
-              reposition();
             } else if (node.onClick) {
               node.onClick();
               closeDropdown();
@@ -176,11 +173,12 @@
           });
           dropdownEl.append(item);
         }
+        // focusin에서 즉시 tooltip을 측정하므로 최종 메뉴 좌표를 먼저 적용한다.
+        reposition();
         focusMenuItem(Array.from(dropdownEl.querySelectorAll('[role="menuitem"]')), 0);
       };
-      bindMenuKeyboard(stack, reposition, renderTop);
+      bindMenuKeyboard(stack, renderTop);
       renderTop();
-      reposition();
       document.addEventListener("mousedown", onDocDown, true);
       document.addEventListener("keydown", onDocKey, true);
     }

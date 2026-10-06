@@ -1,7 +1,26 @@
-/* Changes의 정보 영역은 card를 만들지 않고 section 위계만 한 단계 분리한다. */
-.changes-region { display: flex; flex: 0 0 auto; flex-direction: column; gap: 0; min-height: 0; }
+/* Repository / Working Changes / Tools의 공통 구조와 제목을 한 곳에서 소유한다.
+   - 카드 장식 없이 정렬과 의미 토큰을 쓰며 sash의 기준 위치를 보존한다. */
+.changes-region {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
 .changes-region + .changes-region { margin-top: 8px; }
-.changes-region__title { margin: 0; padding: 0 8px 3px; color: var(--vscode-descriptionForeground); font-size: 10px; font-weight: 600; letter-spacing: .04em; line-height: 16px; text-transform: uppercase; }
+.changes-region__title {
+  margin: 0;
+  padding: 0 8px 3px;
+  color: var(--vscode-descriptionForeground);
+  font-size: var(--gsc-font-label-size);
+  font-weight: 600;
+  letter-spacing: .04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+.changes-region--repository .changes-region__title { padding-top: 5px; }
 .changes-region--repository,
 .changes-region--working,
 .changes-region--tools { min-height: 48px; overflow: hidden auto; }

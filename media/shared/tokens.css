@@ -35,6 +35,13 @@
   --gsc-deleted: var(--vscode-gitDecoration-deletedResourceForeground);
   --gsc-font: var(--vscode-font-family);
   --gsc-font-size: var(--vscode-font-size);
+  /* 작은 상태 텍스트와 tooltip을 본문·코드 크기 및 glyph 크기와 구분한다. */
+  --gsc-font-label-size: 11px;
+  --gsc-font-caption-size: 12px;
+  /* VS Code Codicon의 기본/진행 표시/작은 배지 기하 규격이다. */
+  --gsc-icon-size: 16px;
+  --gsc-icon-small-size: 14px;
+  --gsc-icon-compact-size: 12px;
   --gsc-code-font: var(--vscode-editor-font-family);
   --gsc-code-font-size: var(--vscode-editor-font-size);
   --gsc-space-1: 2px;
@@ -103,7 +110,9 @@
   .gsc-surface *::before,
   .gsc-surface *::after {
     scroll-behavior: auto !important;
-    transition-duration: 1ms !important;
+    /* 1ms도 기본 transition-property:all을 활성화해 메뉴/tooltip 좌표 측정을 늦춘다. */
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }

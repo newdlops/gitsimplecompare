@@ -1,0 +1,564 @@
+/* Changes의 공통 파일 행·작업 상태·History·Stash 목록 스타일. */
+/* ── 공통 행 ── */
+.row {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  line-height: 22px;
+  /* 헤더(아코디언 타이틀)와 구분되도록 본문 행을 들여쓴다.
+     헤더 타이틀(좌측 24px)에 맞춰 행 내용이 한 단계 안쪽에서 시작하게 한다. */
+  padding-left: 20px;
+  padding-right: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.row[role="button"]:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+/* 다중 선택 강조(VS Code 리스트 선택과 동일 톤). hover 보다 우선. */
+.row.selected,
+.row.selected:hover {
+  background: var(
+    --vscode-list-inactiveSelectionBackground,
+    var(--vscode-list-activeSelectionBackground, rgba(127, 127, 127, 0.28))
+  );
+  color: var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground));
+}
+
+body:focus-within .row.selected,
+body:focus-within .row.selected:hover {
+  background: var(
+    --vscode-list-activeSelectionBackground,
+    var(--vscode-list-inactiveSelectionBackground, rgba(127, 127, 127, 0.28))
+  );
+  color: var(
+    --vscode-list-activeSelectionForeground,
+    var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground))
+  );
+}
+
+.row.single-selected {
+  box-shadow: inset 0 0 0 1px
+    var(--vscode-list-focusOutline, var(--vscode-focusBorder));
+}
+
+.row.conflict {
+  box-shadow: inset 3px 0 0 var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.row .icon {
+  flex: 0 0 16px;
+  margin-right: 4px;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.row.file > .icon {
+  margin-right: 2px;
+}
+
+.row .extension-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  margin-right: 4px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.95;
+}
+
+.row .extension-icon img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.row .theme-file-icon-glyph {
+  font-size: var(--gsc-icon-size);
+  line-height: 16px;
+}
+
+.row.selected .extension-icon {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.row.selected .name,
+.row.selected .dir,
+.row.selected .icon,
+.row.selected .stat {
+  color: inherit;
+}
+
+.row .name {
+  flex: 0 0 auto;
+}
+
+/* ── Repositories ── */
+.repo .branch {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.repo .branch .codicon {
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.repo .badge {
+  margin-left: 8px;
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+}
+
+.repo.active .name {
+  font-weight: 600;
+}
+
+.repo .icon.codicon-pass-filled {
+  color: var(--vscode-charts-green, var(--vscode-gitDecoration-addedResourceForeground));
+}
+
+/* ── 파일 트리(Compare 는 가로 스크롤) ── */
+.files {
+  overflow-x: auto;
+}
+
+.rows {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* 작업트리(Staged/Changes) 목록은 가로 스크롤 대신 이름을 줄임표 처리하고
+   통계·액션을 오른쪽에 고정한다 → hover 액션이 항상 보이고 다중선택이 편하다(VS Code SCM 동일). */
+.wt-files {
+  overflow-x: hidden;
+}
+
+.wt-files .rows {
+  width: auto;
+  min-width: 0;
+}
+
+.wt-files .row {
+  --row-actions-width: 68px;
+  position: relative;
+  padding-right: 6px;
+}
+
+/* 작업트리 목록은 가상 스크롤이다: .rows 가 전체 높이 spacer 가 되고, 보이는 행만 절대 위치로 놓인다.
+   중첩 .children 대신 --depth 단계마다 17px(16px 들여쓰기 + 1px guide) 들여쓰고, 기존 indent guide 를 배경으로 그린다.
+   높이·top·--depth 는 CSP 때문에 JS(CSSOM)로 설정한다. */
+.wt-files .rows {
+  position: relative;
+}
+
+.wt-files .row.vrow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding-left: calc(20px + var(--depth, 0) * 17px);
+}
+
+.wt-files .row.vrow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--depth, 0) * 17px);
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0 16px,
+    var(--vscode-tree-indentGuidesStroke, transparent) 16px 17px
+  );
+  pointer-events: none;
+}
+
+.working-op-status {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 7px;
+  align-items: center;
+  margin: 2px 6px 6px;
+  padding: 6px 7px;
+  border: 1px solid var(--vscode-progressBar-background, var(--vscode-focusBorder));
+  border-radius: 4px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+  box-shadow: 0 1px 4px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.24));
+}
+
+.working-op-status .codicon {
+  grid-row: 1 / 3;
+  color: var(--vscode-progressBar-background, var(--vscode-icon-foreground));
+}
+
+.working-op-text,
+.working-op-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.working-op-text {
+  font-weight: 600;
+}
+
+.working-op-detail {
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+.working-op-track {
+  grid-column: 1 / -1;
+  position: relative;
+  overflow: hidden;
+  height: 2px;
+  margin-top: 2px;
+  background: var(--vscode-progressBar-background, var(--vscode-focusBorder));
+  opacity: 0.28;
+}
+
+.working-op-track span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  background: var(--vscode-progressBar-background, var(--vscode-focusBorder));
+  animation: working-op-slide 1.15s ease-in-out infinite;
+}
+
+@keyframes working-op-slide {
+  from {
+    transform: translateX(-115%);
+  }
+  to {
+    transform: translateX(255%);
+  }
+}
+
+.wt-files .row:hover,
+.wt-files .row:focus-within,
+.wt-files .row.single-selected {
+  padding-right: calc(var(--row-actions-width) + 6px);
+}
+
+.wt-files .row.operation-pending {
+  padding-right: calc(var(--row-actions-width) + 6px);
+  opacity: 0.62;
+}
+
+.wt-files .row.operation-pending::after {
+  content: "\eb19";
+  position: absolute;
+  top: 3px;
+  right: 7px;
+  z-index: 4;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  font-family: codicon;
+  font-size: var(--gsc-icon-small-size);
+  line-height: 14px;
+  color: var(--vscode-progressBar-background, var(--vscode-icon-foreground));
+  animation: codicon-spin 1.5s steps(30) infinite;
+}
+
+.group.operation-pending .group-title::after {
+  content: "\eb19";
+  display: inline-block;
+  margin-left: 6px;
+  font-family: codicon;
+  font-size: 13px;
+  color: var(--vscode-progressBar-background, var(--vscode-icon-foreground));
+  animation: codicon-spin 1.5s steps(30) infinite;
+}
+
+.working-op-active .group-action,
+.working-op-active .row-action[data-act="stage"],
+.working-op-active .row-action[data-act="unstage"] {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.wt-files .row .name,
+.wt-files .row .dir {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-files .row .stat {
+  margin-left: auto;
+}
+
+.row .dir {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+.row .stat {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  font-size: 0.9em;
+}
+
+.row .twistie {
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-foreground);
+}
+
+/* 상태별 색(파일명·아이콘) — SCM 과 동일 톤 */
+.row[data-status="A"] .name,
+.row[data-status="A"] .icon {
+  color: var(--vscode-gitDecoration-addedResourceForeground);
+}
+.row[data-status="M"] .name,
+.row[data-status="M"] .icon,
+.row[data-status="T"] .name,
+.row[data-status="T"] .icon {
+  color: var(--vscode-gitDecoration-modifiedResourceForeground);
+}
+.row[data-status="D"] .name,
+.row[data-status="D"] .icon {
+  color: var(--vscode-gitDecoration-deletedResourceForeground);
+}
+.row[data-status="D"] .name {
+  text-decoration: line-through;
+}
+.row[data-status="R"] .name,
+.row[data-status="R"] .icon,
+.row[data-status="C"] .name,
+.row[data-status="C"] .icon {
+  color: var(--vscode-gitDecoration-renamedResourceForeground);
+}
+.row[data-status="U"] .name,
+.row[data-status="U"] .icon {
+  color: var(--vscode-inputValidation-errorForeground, #f14c4c);
+}
+
+.add {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #587c0c);
+}
+.del {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, #ad0707);
+}
+
+.children {
+  border-left: 1px solid var(--vscode-tree-indentGuidesStroke, transparent);
+  margin-left: 16px;
+}
+
+.children.collapsed {
+  display: none;
+}
+
+.empty {
+  /* 빈 안내 문구도 본문 들여쓰기에 맞춘다. */
+  padding: 6px 12px 6px 20px;
+  color: var(--vscode-descriptionForeground);
+}
+
+/* ── History(현재 파일의 커밋 목록) ── */
+.history-current-file {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  line-height: 24px;
+  padding: 0 12px 0 20px;
+  color: var(--vscode-foreground);
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
+
+.history-current-file .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-current-file .dir {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 조회 중 안내는 파일명 옆에 고정해 섹션의 짧은 높이에서도 커밋과 함께 보인다. */
+.history-loading {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.history-files {
+  overflow-x: hidden;
+}
+
+.history-files .rows {
+  width: auto;
+  min-width: 0;
+}
+
+.history-commit {
+  position: relative;
+  padding-right: 6px;
+}
+
+.history-commit .history-hash {
+  flex: 0 0 auto;
+  margin-right: 7px;
+  color: var(--vscode-gitDecoration-submoduleResourceForeground, var(--vscode-descriptionForeground));
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+}
+
+.history-commit .history-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-commit .history-meta {
+  flex: 0 1 auto;
+  min-width: 48px;
+  max-width: 45%;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.history-commit .stat {
+  margin-left: 8px;
+}
+
+.history-item.collapsed .history-details {
+  display: none;
+}
+
+.history-details {
+  padding: 4px 12px 8px 52px;
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+}
+
+.history-message {
+  box-sizing: border-box;
+  max-height: 220px;
+  margin: 0 0 7px;
+  padding: 6px 7px;
+  overflow: auto;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 3px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-input-background));
+  font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  font-size: var(--vscode-font-size);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.history-file-link {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-textLink-foreground, var(--vscode-foreground));
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-file-link:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.history-file-link:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.history-file-link .codicon {
+  flex: 0 0 16px;
+  margin-right: 4px;
+}
+
+.history-file-link .extension-icon {
+  flex: 0 0 16px;
+  margin-right: 5px;
+}
+
+.history-file-link .name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-file-link .stat {
+  margin-left: 8px;
+}
+
+/* ── Stashes(브랜치처럼 펼쳐서 파일 보기) ── */
+.stash {
+  display: flex;
+  flex-direction: column;
+}
+
+.stash.collapsed .stash-files {
+  display: none;
+}
+
+.stash-header .name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stash-meta {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  white-space: nowrap;
+}

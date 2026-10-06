@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72085] - 2026-10-06
+
+### Changed
+
+- Align Changes region labels and conflict counts with the shared 11px label
+  scale, and use the documented 4px surface radius for menus.
+- Share caption and native icon size tokens, remove ineffective icon size
+  overrides, and separate sidebar shell, file lists and actions into bounded
+  style modules while preserving their cascade order.
+
+### Fixed
+
+- Position root and nested menus before giving keyboard focus so tooltips stay
+  beside the focused item. Apply transitions immediately in reduced-motion mode
+  to prevent a delayed menu position from leaving tooltips at the old coordinates.
+
 ## [0.1.72084] - 2026-10-06
 
 ### Changed

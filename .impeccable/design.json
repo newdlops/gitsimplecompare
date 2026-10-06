@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-05T17:28:17Z",
+  "generatedAt": "2026-10-06T00:18:07.457546+00:00",
   "title": "Design System: Git Simple Compare",
   "extensions": {
     "colorMeta": {
@@ -51,6 +51,22 @@
       "code": {
         "displayName": "Editor Code",
         "purpose": "diff, 경로, SHA, suggestion."
+      },
+      "caption": {
+        "displayName": "Workbench Caption",
+        "purpose": "12px tooltip과 보조 설명. shared font caption 토큰을 재사용한다."
+      },
+      "icon": {
+        "displayName": "Native Icon",
+        "purpose": "16px Codicon 기본 glyph와 파일 아이콘. 사용자 아이콘 테마는 자체 글꼴과 크기를 유지한다."
+      },
+      "icon-small": {
+        "displayName": "Progress Icon",
+        "purpose": "좁은 진행 상태의 14px glyph. 본문 글자 위계와 구분한다."
+      },
+      "icon-compact": {
+        "displayName": "Compact Badge Icon",
+        "purpose": "작은 충돌 수 배지의 12px glyph. 11px label 텍스트와 함께 쓴다."
       }
     },
     "shadows": [

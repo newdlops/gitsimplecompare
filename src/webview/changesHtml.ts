@@ -50,6 +50,8 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesWorktrees.css"),
     vscode.Uri.joinPath(mediaRoot, "changesInformationArchitecture.css"),
     vscode.Uri.joinPath(mediaRoot, "changes.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesFiles.css"),
+    vscode.Uri.joinPath(mediaRoot, "changesActions.css"),
   ]);
   const scriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.js"), version)
@@ -111,6 +113,12 @@ export function buildChangesHtml(
   const styleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.css"), version)
   );
+  const filesStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesFiles.css"), version)
+  );
+  const actionsStyleUri = webview.asWebviewUri(
+    withVersion(vscode.Uri.joinPath(mediaRoot, "changesActions.css"), version)
+  );
   const compareStyleUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesCompare.css"), version)
   );
@@ -156,6 +164,8 @@ export function buildChangesHtml(
   ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${filesStyleUri}" rel="stylesheet" />
+  <link href="${actionsStyleUri}" rel="stylesheet" />
   <link href="${compareStyleUri}" rel="stylesheet" />
   <link href="${commitBoxStyleUri}" rel="stylesheet" />
   <link href="${aiPlanStyleUri}" rel="stylesheet" />

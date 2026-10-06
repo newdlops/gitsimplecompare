@@ -41,6 +41,26 @@ typography:
     fontWeight: 600
     lineHeight: 1.25
     letterSpacing: "0.02em"
+  caption:
+    fontFamily: "var(--vscode-font-family)"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.35
+  icon:
+    fontFamily: "codicon"
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1
+  icon-small:
+    fontFamily: "codicon"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1
+  icon-compact:
+    fontFamily: "codicon"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1
   code:
     fontFamily: "var(--vscode-editor-font-family)"
     fontSize: "var(--vscode-editor-font-size)"
@@ -186,7 +206,15 @@ VS Code의 표면 토큰으로 만든다. 중요한 상태는 색상 하나가 �
 - **Title** (600, 12px, 1.35): 섹션 제목, 파일 그룹, 인스펙터 블록 제목.
 - **Body** (400, VS Code 기본 크기, 1.4): 설명, 댓글, 목록 주요 텍스트.
 - **Label** (600, 11px, 0.02em): 짧은 상태, 표 머리글, compact control 라벨.
+- **Caption** (400, 12px, 1.35): 툴팁과 보조 설명. `--gsc-font-caption-size`를 재사용한다.
 - **Code** (400, 편집기 설정 크기, 1.45): diff, 경로, SHA, 명령, 코드 suggestion.
+
+영역 제목과 충돌 수 배지에는 `--gsc-font-label-size`(11px)를 사용한다.
+Codicon의 기본 glyph와 파일 아이콘은 16px(`--gsc-icon-size`), 좁은 진행
+표시는 14px(`--gsc-icon-small-size`), 작은 충돌 배지는 12px
+(`--gsc-icon-compact-size`)다. 아이콘 크기는 글자 본문의 위계가 아니라 glyph
+기하 규격이다. 아이콘 버튼과 메뉴 glyph는 Codicon 기본 크기를 상속하며,
+사용자 파일 아이콘 테마가 제공한 크기·글꼴은 그대로 존중한다.
 
 긴 설명과 댓글 본문은 읽기 폭을 72ch 이하로 제한한다. 파일 경로와 SHA는 줄임표로
 축약하되 hover tooltip과 접근 가능한 전체 이름을 제공한다. PR 제목과 사용자 작성

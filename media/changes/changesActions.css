@@ -1,0 +1,360 @@
+/* Changes의 커밋 입력·파일 그룹 액션·메뉴 스타일. Codicon glyph 크기는 라이브러리를 따른다. */
+/* ── 커밋 박스(메시지 + 커밋 버튼) ── */
+.commit-box {
+  padding: 6px 12px 8px;
+}
+
+.commit-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 26px;
+  max-height: 200px;
+  resize: none;
+  padding: 4px 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.commit-input:focus-visible {
+  border-color: var(--vscode-focusBorder);
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.commit-input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.commit-bar {
+  align-items: stretch;
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.commit-btn,
+.commit-caret,
+.commit-ai-btn,
+.commit-ai-settings-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  border: 1px solid var(--vscode-button-border, transparent);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.commit-btn {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 3px 8px;
+  border-radius: 2px 0 0 2px;
+}
+
+.commit-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-caret {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-left: 1px solid
+    var(--vscode-button-separator, rgba(255, 255, 255, 0.25));
+  border-radius: 0 2px 2px 0;
+}
+
+.commit-ai-btn {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 3px;
+  min-width: 42px;
+  padding: 3px 7px;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.commit-ai-settings-btn {
+  flex: 0 0 26px;
+  justify-content: center;
+  padding: 0;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+.commit-ai-label {
+  white-space: nowrap;
+}
+
+.commit-btn:hover,
+.commit-caret:hover,
+.commit-ai-btn:hover,
+.commit-ai-settings-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.commit-ai-btn:disabled,
+.commit-ai-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+  background: var(--vscode-button-secondaryBackground);
+}
+
+/* 작업중: 버튼 본래 아이콘(check/sparkle)을 그대로 돌리면 "아이콘이 회전"해 보이므로,
+   글리프를 로딩 스피너(codicon-loading)로 바꾼 뒤 회전시켜 제대로 된 스피너로 보이게 한다. */
+.commit-ai-btn.busy .codicon::before,
+.commit-btn.busy .codicon::before {
+  content: "\eb19";
+}
+
+.commit-ai-btn.busy .codicon,
+.commit-btn.busy .codicon {
+  animation: codicon-spin 1.5s steps(30) infinite;
+}
+
+/* 커밋 진행중: 버튼을 비활성으로 보이게 하되 스피너는 계속 돌게 둔다. */
+.commit-btn.busy,
+.commit-btn:disabled,
+.commit-caret:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.commit-btn:focus-visible,
+.commit-caret:focus-visible,
+.commit-ai-btn:focus-visible,
+.commit-ai-settings-btn:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* ── Staged / Changes 그룹(VS Code SCM 의 리소스 그룹처럼 접기 헤더로 구분) ── */
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 접힌 그룹은 헤더만 남기고 파일 목록을 숨긴다. */
+.group.collapsed .files {
+  display: none;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  line-height: 22px;
+  user-select: none;
+}
+
+.group-toggle {
+  appearance: none;
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px 0 8px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.group-header:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.group-header .twistie {
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--gsc-icon-size);
+}
+
+.group-title {
+  font-weight: 700;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+}
+
+.group-header .count {
+  margin-left: 6px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.group.has-conflicts .group-header {
+  box-shadow: inset 3px 0 0 var(--vscode-inputValidation-errorBorder, #f14c4c);
+}
+
+.group-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding-right: 12px;
+  opacity: 0;
+}
+
+.group-header:hover .group-actions,
+.group-header:focus-within .group-actions {
+  opacity: 1;
+}
+
+.group-action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+}
+
+.group-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+/* ── 행 hover 인라인 액션(stage/unstage/discard) ── */
+.row-actions {
+  flex: 0 0 auto;
+  display: none;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.row:hover .row-actions,
+.row:focus-within .row-actions,
+.row.single-selected .row-actions {
+  display: inline-flex;
+}
+
+.row-action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-family: inherit;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+  cursor: pointer;
+}
+
+.row-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.row-action:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.wt-files .row-actions {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  z-index: 3;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--row-actions-width);
+  height: 18px;
+  margin-left: 0;
+}
+
+/* ── 미트볼/커밋 드롭다운 메뉴(드릴다운) ── */
+.menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  max-width: 320px;
+  padding: 4px 0;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  border: 1px solid
+    var(--vscode-menu-border, var(--vscode-editorWidget-border, transparent));
+  border-radius: var(--gsc-radius-surface);
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  color: var(--vscode-menu-selectionForeground, inherit);
+  background: var(
+    --vscode-menu-selectionBackground,
+    var(--vscode-list-hoverBackground)
+  );
+}
+
+/* 메뉴 항목은 hover 배경만으로 키보드 포커스를 대체하지 않는다.
+   고대비 테마에서도 현재 roving-tabindex 대상을 식별할 수 있게 focus border를 남긴다. */
+.menu-item:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.menu-label {
+  flex: 1 1 auto;
+}
+
+.menu-check {
+  flex: 0 0 16px;
+}
+
+.menu-sub {
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.menu-back {
+  color: var(--vscode-descriptionForeground);
+}
+
+.menu-sep {
+  height: 0;
+  margin: 4px 0;
+  border-top: 1px solid
+    var(
+      --vscode-menu-separatorBackground,
+      var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35))
+    );
+}

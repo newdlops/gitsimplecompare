@@ -5,15 +5,6 @@
     "ignoreValues": [
       {
         "rule": "design-system-font",
-        "value": "codicon",
-        "files": [
-          "test/webview/fileHistoryLoading.spec.ts"
-        ],
-        "createdAt": "2026-10-05T17:28:12.536Z",
-        "reason": "Assistant decided: the browser fixture embeds the extension Codicon font to reproduce VS Code; DESIGN.md explicitly requires Codicon."
-      },
-      {
-        "rule": "design-system-font",
         "value": "menlo",
         "files": [
           "test/webview/fileHistoryLoading.spec.ts"
@@ -23,21 +14,12 @@
       },
       {
         "rule": "design-system-font",
-        "value": "codicon",
+        "value": "gsc-test-codicon",
         "files": [
-          "media/changes/changes.css"
+          "test/webview/webviewHarness.ts"
         ],
-        "createdAt": "2026-10-05T17:30:01.492Z",
-        "reason": "Assistant decided: these existing toolbar pseudo-elements render Codicon glyphs, the icon system explicitly required by DESIGN.md; this is not a body or display font."
-      },
-      {
-        "rule": "design-system-font-size",
-        "value": "12px",
-        "files": [
-          "test/webview/fileHistoryLoading.spec.ts"
-        ],
-        "createdAt": "2026-10-05T17:31:50.459Z",
-        "reason": "Assistant decided: this is the fixture --vscode-editor-font-size, supplying a representative user editor setting as required by DESIGN.md; product font sizes remain theme variables."
+        "createdAt": "2026-10-06T00:21:38.305Z",
+        "reason": "Assistant decided: this test-only FontFace alias embeds media/codicons/codicon.ttf, the same documented Codicon glyphs used by the product; it isolates browser fixture loading and is not a product typeface."
       }
     ]
   }

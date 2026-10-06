@@ -75,6 +75,8 @@ Impeccable 검사에서 Codicon과 테스트용 Menlo/12px는 VS Code 재현에 
 임의의 기존 화면 재설계는 이번 작업에 포함하지 않았다. 디자인 sidecar는 현재
 DESIGN.md의 typography·경계·로컬 브랜치 정리 지침과 동기화했다.
 
+위 14건은 이후 0.1.72085의 [UI 스타일 권고 정리](ui-style-recommendations-verification-20261006.md)에서 해결했다.
+
 ## 실측 자료
 
 `/private/tmp/gsc-cold-history-pr-full-20261006/`에 원본을 보관했다.
