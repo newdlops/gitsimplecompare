@@ -92,4 +92,10 @@ Impeccable 최종 제품 코드 검사에는 원래 14건이 모두 없어졌다
 - VSIX SHA-256: `eb4561e32e3be97ae0692346164f03d2552931d1160cdbd4f0e6f60863a36188`.
 - 실행 번들 SHA-256: `bc9acd6c99b2f78e3807a3f93cc654bdb474e9afaa0519fe4b86d7e20f1a3865`.
 - 실제 활성화/조회 OUTPUT은 같은 검증 디렉터리의 `runtime-current.log`에 보관했다.
-- Marketplace 게시와 공개 패키지 일치는 게시 완료 후 기록한다.
+- 구현 커밋 `1b2a25e`을 origin/main에 푸시했다.
+- `env NODE_OPTIONS=--use-system-ca vsce publish --packagePath
+  /private/tmp/gitsimplecompare-0.1.72085.vsix`로 Marketplace 게시에 성공했다.
+- 정확한 0.1.72085 공개 VSIX를 내려받아 위 VSIX SHA-256과 전체 bytes가 같음을 확인했다.
+  공개 publisher/version과 실행 번들·CSS·메뉴 JS·shared tokens도 소스/설치 파일과 일치했다.
+  공개 검증 시각은 2026-10-06 09:40:31 KST다.
+  영수증은 `/private/tmp/gsc-ui-style-20261006/public-release-receipt.json`에 있다.
