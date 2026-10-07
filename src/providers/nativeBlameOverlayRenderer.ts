@@ -1,6 +1,7 @@
 // 네이티브 blame 거터의 라인 배치, 재사용, hover와 편집기 폭 복원을 담당한다.
 // - CDP 편집기 탐색과 분리해 표시 수명과 스크롤 비용을 독립적으로 검증한다.
-export const NATIVE_BLAME_PATCH_VERSION = 5;
+import { nativeBlameHoverRendererScript, nativeBlameHoverStyles } from "./nativeBlameHoverRenderer";
+export const NATIVE_BLAME_PATCH_VERSION = 6;
 
 /**
  * workbench renderer에 상주하며 Monaco margin row와 blame label을 동기화하는 patch 본문을 만든다.
@@ -49,7 +50,7 @@ export function nativeBlameOverlayRendererScript(): string {
           '.gsc-native-blame-row{position:absolute;left:0;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:auto;color:var(--vscode-editorCodeLens-foreground);background:var(--vscode-editorGutter-background);border-right:1px solid var(--vscode-editorIndentGuide-background1,transparent);font:inherit;cursor:default;}',
           '.gsc-native-blame-row:hover,.gsc-native-blame-row:focus-visible{color:var(--vscode-editor-foreground);}',
           '.gsc-native-blame-row:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px;}',
-          '.gsc-native-blame-hover{position:fixed;box-sizing:border-box;z-index:2600;max-width:min(420px,calc(100vw - 16px));max-height:calc(100vh - 16px);padding:8px 12px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--vscode-editorHoverWidget-foreground,var(--vscode-foreground));background:var(--vscode-editorHoverWidget-background,var(--vscode-editorWidget-background));border:1px solid var(--vscode-editorHoverWidget-border,var(--vscode-widget-border));border-radius:3px;box-shadow:0 2px 8px var(--vscode-widget-shadow);font-family:var(--vscode-font-family);font-size:var(--vscode-font-size,13px);line-height:1.5;}'
+          ${JSON.stringify(nativeBlameHoverStyles())}
         ].join('\\n');
       }
       function cleanupDom() {
@@ -260,14 +261,19 @@ export function nativeBlameOverlayRendererScript(): string {
           label = document.createElement('span');
           label.className = 'gsc-native-blame-row';
           label.tabIndex = 0;
-          label.addEventListener('pointerenter', function () { showHover(label); });
+          label.setAttribute('role','button'); label.setAttribute('aria-haspopup','dialog'); label.setAttribute('aria-expanded','false');
+          label.addEventListener('pointerenter', function (event) { hoverUI.enter(label,event); });
           label.addEventListener('focus', function () { showHover(label); });
           label.addEventListener('blur', function () {
             // Monaco가 클릭 뒤 본문으로 focus를 옮겨도 포인터가 머무르는 상세는 유지한다.
-            if (!label.matches(':hover') && !(state.hover && state.hover.matches(':hover'))) hideHover();
+            hoverUI.leave();
           });
           label.addEventListener('pointerleave', function (event) {
-            if (!state.hover || !state.hover.contains(event.relatedTarget)) hideHover();
+            if (!state.hover || !state.hover.contains(event.relatedTarget)) hoverUI.leave();
+          });
+          label.addEventListener('click', function () { showHover(label); });
+          label.addEventListener('keydown', function (event) {
+            if(event.key==='Enter' || event.key===' ') {event.preventDefault();showHover(label);}
           });
           label.setAttribute('data-gsc-line', String(line.line));
           state.labels.set(line.line, label);
@@ -284,48 +290,14 @@ export function nativeBlameOverlayRendererScript(): string {
           label.setAttribute('aria-label', tooltip);
         }
       }
-      /** Escape로 열린 hover를 닫는다. editor 입력과 기본 키 동작은 그대로 유지한다. */
-      function onHoverKey(event) {
-        if (event.key === 'Escape') hideHover();
-      }
+      ${nativeBlameHoverRendererScript()}
       /** 활성 라인의 tooltip과 접근성 참조만 해제해 탭 전환·cleanup에 잔여 DOM을 남기지 않는다. */
       function hideHover() {
-        if (state.hoverAnchor) state.hoverAnchor.removeAttribute('aria-describedby');
-        if (state.hover) state.hover.remove();
-        state.hover = null;
-        state.hoverAnchor = null;
-        document.removeEventListener('keydown', onHoverKey, true);
+        hoverUI.hide();
       }
       /** label의 plain text 상세를 즉시 보여 주고 좁은 창에서도 viewport 안에 배치한다. */
       function showHover(label) {
-        if (!label || !label.isConnected) return;
-        if (state.hoverAnchor === label && state.hover) return;
-        hideHover();
-        var hover = document.createElement('div');
-        hover.id = 'gsc-native-blame-hover';
-        hover.className = 'gsc-native-blame-hover';
-        hover.setAttribute('role', 'tooltip');
-        hover.textContent = label.getAttribute('data-tooltip') || label.textContent;
-        var dom = editorDom(state.editor);
-        var root = dom && dom.closest('.monaco-workbench') || document.body;
-        root.appendChild(hover);
-        state.hover = hover;
-        state.hoverAnchor = label;
-        label.setAttribute('aria-describedby', hover.id);
-        document.addEventListener('keydown', onHoverKey, true);
-        hover.addEventListener('pointerleave', function (event) {
-          if (!label.contains(event.relatedTarget)) hideHover();
-        });
-        var anchor = label.getBoundingClientRect();
-        var box = hover.getBoundingClientRect();
-        var left = anchor.right - 1;
-        var top = anchor.top;
-        if (left + box.width > window.innerWidth - 8) {
-          left = anchor.left;
-          top = anchor.bottom - 1;
-        }
-        hover.style.left = Math.max(8, Math.min(left, window.innerWidth - box.width - 8)) + 'px';
-        hover.style.top = Math.max(8, Math.min(top, window.innerHeight - box.height - 8)) + 'px';
+        hoverUI.show(label);
       }
       function paint() {
         var snapshot = state.snapshot;
@@ -387,6 +359,7 @@ export function nativeBlameOverlayRendererScript(): string {
 
       window.__gscNativeBlameOverlay = {
         version: VERSION,
+        updateHover: hoverUI.update,
         render: function (snapshot) {
           if (!snapshot) return teardown();
           clearFollowUpPaints();

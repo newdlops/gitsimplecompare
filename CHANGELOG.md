@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72089] - 2026-10-07
+
+### Changed
+
+- Match the native Git blame hover with author identity, relative and exact dates,
+  the complete commit message, co-authors and actual file/addition/deletion counts.
+  Use VS Code theme colors for statistics and native Codicons for commit actions.
+- Load commit details only when a gutter entry opens. Share pending and completed
+  reads for the same commit, bound the cache and reject obsolete hover responses.
+- Open all files changed by the selected commit, copy its full hash, open supported
+  remote commit pages and access blame settings, including with built-in Git disabled.
+
+### Fixed
+
+- Keep keyboard focus during detail loading and retry, retain actions below long
+  messages, and prevent Escape from reopening a hover under an unmoved pointer.
+- Distinguish working-tree lines and empty commits without offering invalid actions.
+
 ## [0.1.72088] - 2026-10-07
 
 ### Changed

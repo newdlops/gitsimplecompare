@@ -20,24 +20,6 @@
         ],
         "createdAt": "2026-10-06T00:21:38.305Z",
         "reason": "Assistant decided: this test-only FontFace alias embeds media/codicons/codicon.ttf, the same documented Codicon glyphs used by the product; it isolates browser fixture loading and is not a product typeface."
-      },
-      {
-        "rule": "design-system-font",
-        "value": "arial",
-        "files": [
-          "test/webview/nativeBlameOverlay.spec.ts"
-        ],
-        "createdAt": "2026-10-06T23:16:12.216Z",
-        "reason": "Agent: this browser fixture initializes the VS Code font token for testing; the production hover uses the font token prescribed by DESIGN.md."
-      },
-      {
-        "rule": "overused-font",
-        "value": "arial",
-        "files": [
-          "test/webview/nativeBlameOverlay.spec.ts"
-        ],
-        "createdAt": "2026-10-06T23:24:33.657Z",
-        "reason": "Agent: Arial only initializes the VS Code font token in a browser test fixture. Product typography is prescribed by DESIGN.md and uses VS Code theme font tokens; this finding does not call for a product redesign."
       }
     ]
   }

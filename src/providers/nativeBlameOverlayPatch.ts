@@ -2,6 +2,7 @@
 // - main process CDP는 대상 Monaco editor instance를 찾고 renderer patch에 연결한다.
 // - renderer는 Monaco의 lineDecorationsWidth를 늘린 뒤 margin row와 같은 top에 label을 배치한다.
 import type { BlockBlameGutterSnapshot } from "../ui/blockBlameGutter";
+import type { BlameHoverResponse } from "./blameHoverProtocol";
 import {
   mainEvalExpression,
   rendererEvalExpression,
@@ -19,6 +20,20 @@ const CODE_EDITOR_METHODS = [
   "createDecorationsCollection",
   "getLayoutInfo",
 ];
+
+/**
+ * 상세 응답만 기존 popup에 적용한다. editor/heap 재탐색이나 gutter snapshot 교체를 수행하지 않는다.
+ * @param response 원래 hover 요청의 식별자를 유지한 상세/오류/복사 결과, hints 소유 workbench 창
+ * @returns 공용 CDP 연결에서 실행할 main process expression
+ */
+export function blameOverlayHoverResponseExpression(response: BlameHoverResponse, hints: NativeOverlayWorkspaceHints): string {
+  const expression = `(function(){var overlay=window.__gscNativeBlameOverlay;return overlay&&overlay.updateHover?overlay.updateHover(${JSON.stringify(response)}):"blame-hover-unavailable";})()`;
+  return mainEvalExpression(RENDERER_BINDING, hints, `
+    var out = [];
+    for (var i = 0; i < wins.length; i++) out.push(await evalWindow(wins[i], ${JSON.stringify(expression)}));
+    return out.join('|');
+  `);
+}
 
 /**
  * Runtime.queryObjects 결과에서 URI가 일치하는 살아 있는 Monaco code editor를 renderer 전역에 연결한다.

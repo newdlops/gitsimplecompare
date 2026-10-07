@@ -4,6 +4,8 @@
 import * as vscode from "vscode";
 import { isUncommittedBlameCommit } from "../git/blockBlameModel";
 import type { GitBlameLine } from "../git/blameService";
+import type { BlameCommitSummary } from "../git/blameHoverService";
+import type { BlameHoverLabels } from "../providers/blameHoverProtocol";
 
 const MAX_VISIBLE_AUTHOR_WIDTH = 18;
 const MIN_AUTHOR_COLUMN_WIDTH_CH = 23;
@@ -18,6 +20,8 @@ export interface BlockBlameGutterLine {
   label: string;
   /** label hover에서 보여 줄 전체 identity, revision, summary의 plain text */
   tooltip: string;
+  /** 상세를 지연 조회하고 동일 커밋 메타데이터를 공유하기 위한 전체 SHA */
+  commit?: string;
 }
 
 /** workbench renderer가 한 편집기의 blame 거터를 그리는 데 필요한 전체 snapshot. */
@@ -30,6 +34,13 @@ export interface BlockBlameGutterSnapshot {
   lines: BlockBlameGutterLine[];
   /** 현재 편집기 글꼴로 pixel 폭을 계산할 때 사용할 문자 단위 권장 폭 */
   columnWidthCh: number;
+  /** presenter가 이미 확인한 저장소. renderer 요청에서 임의 경로를 받지 않는다. */
+  repoRoot?: string;
+  /** 라인마다 반복하지 않고 SHA로 공유하는 초기 커밋 메타데이터 */
+  commits?: Record<string, BlameCommitSummary>;
+  /** VS Code 표시 언어와 지역화된 팝업 안내 */
+  locale?: string;
+  hoverLabels?: BlameHoverLabels;
 }
 
 /** snapshot 적용 뒤 presenter 로그와 활성 상태가 사용할 집계 결과. */
@@ -75,12 +86,13 @@ export class BlockBlameGutter implements vscode.Disposable {
    * - 문서 밖 라인과 중복 레코드를 제거한 뒤 파일 순서로 정렬한다.
    * - 유효한 라인이 없으면 기존 snapshot을 건드리지 않아 refresh 실패 시 깜빡임을 막는다.
    * @param document URI, version, lineCount를 제공하는 현재 저장 문서
-   * @param blame 현재 파일 전체의 Git blame 결과
+   * @param blame 현재 파일 전체의 Git blame 결과, repoRoot presenter가 검증한 저장소 루트
    * @returns 적용한 유효 라인 수와 서로 다른 작성자 수
    */
   apply(
     document: vscode.TextDocument,
-    blame: readonly GitBlameLine[]
+    blame: readonly GitBlameLine[],
+    repoRoot?: string
   ): BlockBlameGutterResult {
     if (this.disposed) {
       return { lineCount: 0, authorCount: 0 };
@@ -94,6 +106,10 @@ export class BlockBlameGutter implements vscode.Disposable {
       revision: document.version,
       lines: entries.map((entry) => entry.line),
       columnWidthCh: blockBlameColumnWidth(entries),
+      repoRoot,
+      commits: initialCommitSummaries(blame),
+      locale: vscode.env.language,
+      hoverLabels: blameHoverLabels(),
     };
     this.currentSnapshot = snapshot;
     this.changeEmitter.fire(snapshot);
@@ -158,10 +174,48 @@ function blockBlameGutterEntries(
         line: blameLine.line,
         label: blockBlameGutterLabel(blameLine),
         tooltip: blockBlameTooltip(blameLine),
+        commit: blameLine.commit,
       },
     });
   }
   return entries.sort((left, right) => left.line.line - right.line.line);
+}
+
+/**
+ * 최초 팝업에 필요한 기존 blame 정보를 커밋별로 한 번만 저장한다. 아직 전체 메시지/통계는 조회하지 않는다.
+ * @param blame 이미 읽은 파일의 라인별 레코드
+ * @returns 전체 SHA를 키로 하는 초기 작성자·시간·메시지. 미커밋은 확정 identity 대신 상태를 표시한다.
+ */
+function initialCommitSummaries(blame: readonly GitBlameLine[]): Record<string, BlameCommitSummary> {
+  const commits: Record<string, BlameCommitSummary> = Object.create(null);
+  for (const line of blame) {
+    if (commits[line.commit]) continue;
+    const working = isUncommittedBlameCommit(line.commit);
+    const date = line.authorTime === undefined ? undefined : new Date(line.authorTime * 1000);
+    commits[line.commit] = {
+      hash: line.commit,
+      authorName: working ? vscode.l10n.t("Working tree") : displayAuthor(line.authorName),
+      authorEmail: working ? "" : line.authorMail.trim(),
+      authorDateIso: !working && date && !isNaN(date.getTime()) ? date.toISOString() : "",
+      message: working ? vscode.l10n.t("Changes on this line have not been committed.") : line.summary,
+    };
+  }
+  return commits;
+}
+
+/** host에서 번역한 안내와 버튼 tooltip을 snapshot 전체에 한 번만 포함한다. */
+function blameHoverLabels(): BlameHoverLabels {
+  return {
+    title: vscode.l10n.t("Commit details"), loading: vscode.l10n.t("Loading commit details…"),
+    error: vscode.l10n.t("Could not load commit details."), retry: vscode.l10n.t("Retry"),
+    copied: vscode.l10n.t("Commit hash copied"), copyHash: vscode.l10n.t("Copy Commit Hash"),
+    openCommit: vscode.l10n.t("Open Commit Changes"), openRemote: vscode.l10n.t("Open Commit in Browser"),
+    settings: vscode.l10n.t("Open Blame Settings"), coAuthor: vscode.l10n.t("Co-author"),
+    filesChanged: vscode.l10n.t("{0} files changed"), fileChanged: vscode.l10n.t("{0} file changed"),
+    noChanges: vscode.l10n.t("No file changes"), insertions: vscode.l10n.t("{0} insertions (+)"),
+    deletions: vscode.l10n.t("{0} deletions (-)"), binaryFiles: vscode.l10n.t("{0} binary or large files"),
+    unknownDate: vscode.l10n.t("Unknown date"),
+  };
 }
 
 /**

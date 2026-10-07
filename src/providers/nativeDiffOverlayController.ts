@@ -31,8 +31,10 @@ import { NativeOverlayConnection } from "./nativeOverlayConnection";
 import {
   blameOverlayCleanupExpression,
   blameOverlayInjectionExpression,
+  blameOverlayHoverResponseExpression,
   nativeBlameOverlayRendererScript,
 } from "./nativeBlameOverlayPatch";
+import type { BlameHoverResponse } from "./blameHoverProtocol";
 
 /** workbench renderer overlay 의 주입/갱신/클릭 bridge 를 관리한다. */
 export class NativeDiffOverlayController {
@@ -62,7 +64,7 @@ export class NativeDiffOverlayController {
     conflictActions?: ConflictOverlayActionHandler,
     private readonly blockBlame?: BlockBlamePresenter
   ) {
-    this.rendererEvents = new NativeDiffOverlayEvents(hunkCheckboxes, conflictActions);
+    this.rendererEvents = new NativeDiffOverlayEvents(hunkCheckboxes, conflictActions, blockBlame);
     this.connection = new NativeOverlayConnection(
       globalStorageUri,
       (payload) => this.rendererEvents.handle(payload)
@@ -87,7 +89,8 @@ export class NativeDiffOverlayController {
           )]
         : []),
       ...(this.blockBlame
-        ? [this.blockBlame.onDidChangeGutter(() =>
+        ? [this.blockBlame.onDidChangeHover(response => { void this.updateBlameHover(response); }),
+          this.blockBlame.onDidChangeGutter(() =>
             this.scheduleRender("blockBlame", 0)
           )]
         : []),
@@ -126,6 +129,16 @@ export class NativeDiffOverlayController {
     );
     this.scheduleRender("startup", 0);
     return disposable;
+  }
+
+  /** 현재 소유 창의 popup만 갱신한다. 응답의 문서/라인/request 검증은 renderer에서도 다시 수행한다. */
+  private async updateBlameHover(response: BlameHoverResponse): Promise<void> {
+    if (this.disposed || !this.blameSurfaceMayExist || !vscode.window.state.focused) return;
+    try {
+      await this.connection.evaluateMain(blameOverlayHoverResponseExpression(response, this.hints()), 8000);
+    } catch (error) {
+      if (!this.disposed) logError("native blame hover response failed", error, { commit: response.commit, requestId: response.requestId });
+    }
   }
 
   /** 짧은 debounce 뒤 renderer overlay 를 다시 그린다. */

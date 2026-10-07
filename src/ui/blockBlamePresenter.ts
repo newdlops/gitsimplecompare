@@ -13,6 +13,7 @@ import {
   type BlockBlameGutterSnapshot,
 } from "./blockBlameGutter";
 import { logError, logInfo } from "./outputLog";
+import { BlockBlameHoverPresenter } from "./blockBlameHoverPresenter";
 
 const BLOCK_BLAME_SHOW_CONFIG = "gitSimpleCompare.blameBlock.show";
 const REFRESH_DELAY_MS = 120;
@@ -45,8 +46,10 @@ interface ActiveBlockBlame {
  */
 export class BlockBlamePresenter implements vscode.Disposable {
   private readonly gutter = new BlockBlameGutter();
+  private readonly hover = new BlockBlameHoverPresenter(() => this.gutter.snapshot());
   /** 네이티브 overlay가 거터 snapshot 교체와 해제를 구독하는 이벤트. */
   readonly onDidChangeGutter = this.gutter.onDidChangeGutter;
+  readonly onDidChangeHover = this.hover.onDidChangeHover;
   private readonly disposables: vscode.Disposable[] = [];
   private active?: ActiveBlockBlame;
   private pending?: BlockBlameRequest;
@@ -72,6 +75,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
     }
     this.registered = true;
     this.disposables.push(
+      this.hover.register(this.gutter.onDidChangeGutter),
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (
           (this.active || this.pending) &&
@@ -203,7 +207,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
         return;
       }
 
-      const gutterResult = this.gutter.apply(target.document, blame);
+      const gutterResult = this.gutter.apply(target.document, blame, target.service.repoRoot);
       if (gutterResult.lineCount === 0) {
         logInfo("block blame gutter skipped", {
           reason: "no-valid-lines",
@@ -270,6 +274,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
     for (const disposable of this.disposables.splice(0)) {
       disposable.dispose();
     }
+    this.hover.dispose();
     this.gutter.dispose();
   }
 
@@ -280,6 +285,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
   gutterSnapshot(): BlockBlameGutterSnapshot | undefined {
     return this.gutter.snapshot();
   }
+
+  /** 현재 gutter의 상세 요청·복사·탐색만 좁은 hover presenter에 위임한다. */
+  handleRendererAction(value: unknown): void { this.hover.handleRendererAction(value); }
 
   /**
    * 요청 URI/문서 버전/라인 범위/저장소를 검증하고 표시할 에디터를 확보한다.

@@ -31,9 +31,10 @@ export function parseNameStatusZ(raw: string): FileChange[] {
  * - 두 Git 프로세스의 실행 대기를 줄이고, 한 diff에서 계산한 이름변경 판단을 공유한다.
  * - NUL로 구분된 경로는 공백·탭·줄바꿈·화살표를 포함해 원문 그대로 보존한다.
  * @param raw 상태 레코드 뒤에 numstat 레코드가 이어지는 Git 원문 출력
+ * @param preserveBinary true면 numstat의 '-' 표시도 보존한다. 기존 호출의 0 라인 수 계약은 유지한다.
  * @returns Git 출력 순서의 파일 변경 목록과 추가/삭제 라인 수
  */
-export function parseRawNumstatZ(raw: string): FileChange[] {
+export function parseRawNumstatZ(raw: string, preserveBinary = false): Array<FileChange & { binary?: true }> {
   const tokens = raw.split("\0");
   const changes: FileChange[] = [];
   let index = 0;
@@ -60,7 +61,8 @@ export function parseRawNumstatZ(raw: string): FileChange[] {
   const counts = parseNumstatTokens(tokens, index);
   return changes.map((change) => {
     const stat = counts.get(change.path);
-    return { ...change, additions: stat?.additions, deletions: stat?.deletions };
+    return { ...change, additions: stat?.additions, deletions: stat?.deletions,
+      ...(preserveBinary && stat?.binary ? { binary: true as const } : {}) };
   });
 }
 

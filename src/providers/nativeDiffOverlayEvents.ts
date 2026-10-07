@@ -3,6 +3,7 @@
 import { HunkCheckboxController } from "./hunkCheckboxController";
 import { rememberHunkContextLine } from "./hunkContextLineStore";
 import { logInfo, logWarn } from "../ui/outputLog";
+import type { BlameHoverActionHandler } from "./blameHoverProtocol";
 import type {
   ConflictOverlayAction,
   ConflictOverlayActionHandler,
@@ -32,7 +33,8 @@ export class NativeDiffOverlayEvents {
 
   constructor(
     private readonly hunkCheckboxes: HunkCheckboxController,
-    private readonly conflictActions?: ConflictOverlayActionHandler
+    private readonly conflictActions?: ConflictOverlayActionHandler,
+    private readonly blameHover?: BlameHoverActionHandler
   ) {}
 
   /**
@@ -42,6 +44,10 @@ export class NativeDiffOverlayEvents {
   handle(payload: string): void {
     try {
       const parsed = JSON.parse(payload) as OverlayEventPayload;
+      if (parsed.type === "blameHover") {
+        this.blameHover?.handleRendererAction(parsed);
+        return;
+      }
       if (parsed.type === "conflictAction") {
         this.handleConflictAction(parsed);
         return;
