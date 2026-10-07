@@ -107,4 +107,8 @@ export class Range { public readonly values: unknown[]; public constructor(...va
 export class CodeLens { constructor(public readonly range: unknown, public readonly command?: unknown) {} }
 export const SymbolKind = { Variable: 12, Constant: 13, Function: 11, Method: 5, Constructor: 8, Class: 4, Interface: 10, Enum: 9, Struct: 22, Namespace: 2, Module: 1 };
 export const languages = { registerCodeLensProvider: () => ({ dispose() {} }) };
-export class ThemeColor { public constructor(..._values: unknown[]) {} } export const OverviewRulerLane = { Right: 1 }; export const DecorationRangeBehavior = { ClosedClosed: 1 }; export const TextEditorRevealType = { InCenterIfOutsideViewport: 1 }; export const comments = { createCommentController: () => ({ dispose() {} }) }; export const CommentThreadCollapsibleState = { Collapsed: 1 }; export const CommentMode = { Preview: 1 }; export const EndOfLine = { CRLF: 1 }; export class WorkspaceEdit { public replace(..._values: unknown[]) {} }
+/** 파일 장식 검증에서 실제 VS Code와 같은 값 표면을 제공한다. */
+export class FileDecoration { public propagate = false; constructor(public badge?: string, public tooltip?: string, public color?: ThemeColor) {} }
+/** 감시 범위 검증에서 workspace 폴더와 glob을 그대로 보존한다. */
+export class RelativePattern { constructor(public base: unknown, public pattern: string) {} }
+export class ThemeColor { public constructor(public readonly id: string) {} } export const OverviewRulerLane = { Right: 1 }; export const DecorationRangeBehavior = { ClosedClosed: 1 }; export const TextEditorRevealType = { InCenterIfOutsideViewport: 1 }; export const comments = { createCommentController: () => ({ dispose() {} }) }; export const CommentThreadCollapsibleState = { Collapsed: 1 }; export const CommentMode = { Preview: 1 }; export const EndOfLine = { CRLF: 1 }; export class WorkspaceEdit { public replace(..._values: unknown[]) {} }

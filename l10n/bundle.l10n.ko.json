@@ -1735,5 +1735,13 @@
   "Could not inspect or clean Git processes. See Git Simple Compare Output.": "Git 프로세스를 확인하거나 정리하지 못했습니다. Git Simple Compare 출력을 확인하세요.",
   "Loading file history...": "파일 이력을 불러오는 중...",
   "Loading earlier commits...": "이전 커밋을 불러오는 중...",
-  "History loading paused. Refresh to load all commits.": "이력 조회가 중단됐습니다. 새로고침하여 전체 커밋을 불러오세요."
+  "History loading paused. Refresh to load all commits.": "이력 조회가 중단됐습니다. 새로고침하여 전체 커밋을 불러오세요.",
+  "Index Modified": "스테이징된 수정",
+  "Index Added": "스테이징된 추가",
+  "Index Deleted": "스테이징된 삭제",
+  "Index Renamed": "스테이징된 이름 변경",
+  "Index Copied": "스테이징된 복사",
+  "Intent to Add": "추가 예정",
+  "Intent to Rename": "이름 변경 예정",
+  "Merge conflict": "병합 충돌"
 }

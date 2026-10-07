@@ -15,6 +15,7 @@ import {
 import { logError, logInfo } from "./outputLog";
 
 const BLOCK_BLAME_SHOW_CONFIG = "gitSimpleCompare.blameBlock.show";
+const REFRESH_DELAY_MS = 120;
 
 /** GitServiceRegistry가 파일 경로에서 찾은 저장소 서비스 타입. */
 type ResolvedGitService = NonNullable<
@@ -50,6 +51,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
   private active?: ActiveBlockBlame;
   private pending?: BlockBlameRequest;
   private requestSeq = 0;
+  private readController?: AbortController;
+  private refreshTimer?: ReturnType<typeof setTimeout>;
   private registered = false;
   private disposed = false;
 
@@ -71,22 +74,22 @@ export class BlockBlamePresenter implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (
-          this.active &&
-          editor?.document.uri.toString() !== this.active.request.uri
+          (this.active || this.pending) &&
+          editor?.document.uri.toString() !== (this.active?.request ?? this.pending)?.uri
         ) {
           this.clear("activeEditorChanged");
         }
       }),
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (
-          this.active?.request.uri === event.document.uri.toString() &&
+          (this.active?.request ?? this.pending)?.uri === event.document.uri.toString() &&
           event.contentChanges.length > 0
         ) {
           this.clear("documentChanged");
         }
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
-        if (this.active?.request.uri === document.uri.toString()) {
+        if ((this.active?.request ?? this.pending)?.uri === document.uri.toString()) {
           this.clear("documentClosed");
         }
       }),
@@ -134,7 +137,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
   /**
    * Git 변경 뒤에도 사용자가 펼친 blame 열을 유지하면서 최신 라인 정보를 다시 읽는다.
    * - 기존 snapshot은 새 조회가 성공할 때까지 남겨 짧은 상태 이벤트에도 열이 깜빡이지 않게 한다.
-   * - 연속 refresh는 요청 순번으로 오래된 결과만 버리고 마지막 조회 결과를 적용한다.
+   * - 연속 refresh는 짧게 합치고 이전 소비자를 취소해 마지막 조회 결과만 적용한다.
    * @param reason OUTPUT에서 저장소 갱신 원인을 추적할 문자열
    */
   refresh(reason: string): void {
@@ -147,7 +150,13 @@ export class BlockBlamePresenter implements vscode.Disposable {
       uri: request.uri,
       symbol: request.symbolName,
     });
-    void this.loadAndApply(request, `repositoryRefresh:${reason}`, true);
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    this.requestSeq++;
+    this.readController?.abort();
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+      void this.loadAndApply(request, `repositoryRefresh:${reason}`, true);
+    }, REFRESH_DELAY_MS);
   }
 
   /**
@@ -162,6 +171,10 @@ export class BlockBlamePresenter implements vscode.Disposable {
     preserveCurrent: boolean
   ): Promise<void> {
     const requestId = ++this.requestSeq;
+    this.readController?.abort();
+    const controller = new AbortController();
+    this.readController = controller;
+    const startedAt = Date.now();
     this.pending = request;
     try {
       const target = await this.resolveTarget(request, !preserveCurrent);
@@ -170,7 +183,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       }
       const blame = await new GitBlameService(
         target.service.repoRoot
-      ).getFileBlame(target.document.uri.fsPath);
+      ).getFileBlame(target.document.uri.fsPath, undefined, { signal: controller.signal });
       if (!this.canApplyResult(target, request, requestId)) {
         return;
       }
@@ -218,10 +231,11 @@ export class BlockBlamePresenter implements vscode.Disposable {
           fileLines: target.document.lineCount,
           lines: gutterResult.lineCount,
           authors: gutterResult.authorCount,
+          durationMs: Date.now() - startedAt,
         }
       );
     } catch (error) {
-      if (requestId !== this.requestSeq) {
+      if (requestId !== this.requestSeq || controller.signal.aborted) {
         return;
       }
       logError("block blame gutter failed", error, {
@@ -238,6 +252,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
     } finally {
       if (requestId === this.requestSeq) {
         this.pending = undefined;
+        this.readController = undefined;
       }
     }
   }
@@ -384,6 +399,10 @@ export class BlockBlamePresenter implements vscode.Disposable {
    */
   private clear(reason: string): void {
     this.requestSeq++;
+    this.readController?.abort();
+    this.readController = undefined;
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.pending = undefined;
     this.gutter.clear();
     if (this.active) {

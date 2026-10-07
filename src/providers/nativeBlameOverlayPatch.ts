@@ -8,7 +8,8 @@ import {
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
 
-const PATCH_VERSION = 2;
+import { NATIVE_BLAME_PATCH_VERSION as PATCH_VERSION } from "./nativeBlameOverlayRenderer";
+export { nativeBlameOverlayRendererScript } from "./nativeBlameOverlayRenderer";
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 const REMOTE_OBJECT_GROUP = "gsc-native-blame-discovery";
 const CODE_EDITOR_METHODS = [
@@ -46,7 +47,13 @@ const BIND_EDITOR_FUNCTION = `function (uri) {
   window.__gscNativeBlameEditor = item;
   window.__gscNativeBlameEditorConstructor = item.constructor;
   try {
-    if (typeof WeakRef === 'function') window.__gscNativeBlameEditorRef = new WeakRef(item);
+    if (typeof WeakRef === 'function') {
+      window.__gscNativeBlameEditorRef = new WeakRef(item);
+      var service = item._codeEditorService;
+      if (service && typeof service.listCodeEditors === 'function') {
+        window.__gscNativeBlameEditorServiceRef = new WeakRef(service);
+      }
+    }
   } catch (_) {}
   return 'editor-bound:' + uri;
 }`;
@@ -123,7 +130,9 @@ export function blameOverlayInjectionExpression(
           : 'editor-instances-missing';
       }
       async function cachedEditor(debuggerApi) {
-        var expression = '(function(uri){var item=window.__gscNativeBlameEditor;try{if((!item||!item.getDomNode||!item.getDomNode()||!item.getDomNode().isConnected)&&window.__gscNativeBlameEditorRef)item=window.__gscNativeBlameEditorRef.deref();var model=item&&item.getModel&&item.getModel();var current=model&&model.uri&&model.uri.toString();var dom=item&&item.getDomNode&&item.getDomNode();if(current===uri&&dom&&dom.isConnected&&dom.offsetParent!==null){window.__gscNativeBlameEditor=item;return "editor-cached:"+uri;}}catch(_){}return "editor-cache-miss";})(' + JSON.stringify(snapshot.uri) + ')';
+        // 최초 탐색에서 얻은 editor service의 목록을 재사용해 다른 탭에서도 heap query를 생략한다.
+        // 내부 service를 제공하지 않는 VS Code 버전은 기존 constructor 탐색으로 안전하게 돌아간다.
+        var expression = '(function(uri){var items=[];try{var service=window.__gscNativeBlameEditorServiceRef&&window.__gscNativeBlameEditorServiceRef.deref();if(service&&typeof service.listCodeEditors==="function")items=service.listCodeEditors();if(window.__gscNativeBlameEditor)items=items.concat([window.__gscNativeBlameEditor]);if(window.__gscNativeBlameEditorRef)items=items.concat([window.__gscNativeBlameEditorRef.deref()]);}catch(_){}return (' + ${JSON.stringify(BIND_EDITOR_FUNCTION)} + ').call(items,uri);})(' + JSON.stringify(snapshot.uri) + ')';
         return String(resultValue(await remoteValue(debuggerApi, expression)) || 'editor-cache-empty');
       }
       async function cachedConstructor(debuggerApi) {
@@ -199,7 +208,7 @@ export function blameOverlayInjectionExpression(
         var debuggerApi = await ensureWindow(w);
         try {
           var cached = await cachedEditor(debuggerApi);
-          if (/^editor-cached:/.test(cached)) return cached;
+          if (/^editor-bound:/.test(cached)) return cached.replace('editor-bound:', 'editor-cached:');
           var constructorBound = await cachedConstructor(debuggerApi);
           if (/^editor-bound:/.test(constructorBound)) return constructorBound;
           return await discoverEditor(debuggerApi);
@@ -214,15 +223,17 @@ export function blameOverlayInjectionExpression(
 
       var out = [];
       for (var i = 0; i < wins.length; i++) {
+        var startedAt = Date.now();
         var installed = await evalWindow(wins[i], installExpr);
         var prepared = await prepareBlameEditor(wins[i]);
+        var discoveryMs = Date.now() - startedAt;
         if (!/^editor-(?:cached|bound):/.test(prepared)) {
           out.push(installed + ',err:' + wins[i].id + ':' + prepared);
           continue;
         }
         var renderExpr = 'window.__gscNativeBlameOverlay&&window.__gscNativeBlameOverlay.render(' + JSON.stringify(snapshot) + ')';
         var rendered = await evalWindow(wins[i], renderExpr);
-        out.push(installed + ',' + prepared + ',' + rendered);
+        out.push(installed + ',' + prepared + ',' + rendered + ',discoveryMs=' + discoveryMs + ',durationMs=' + (Date.now() - startedAt));
       }
       return out.join('|');
     `
@@ -242,340 +253,11 @@ export function blameOverlayCleanupExpression(
     hints,
     `
       var out = [];
-      var cleanupExpr = '(function(){if(window.__gscNativeBlameOverlay)return window.__gscNativeBlameOverlay.render(null);document.querySelectorAll(".gsc-native-blame-layer,.gsc-native-blame-row").forEach(function(node){node.remove();});var style=document.getElementById("gsc-native-blame-style");if(style)style.remove();return "cleaned-fallback";})()';
+      var cleanupExpr = '(function(){if(window.__gscNativeBlameOverlay)return window.__gscNativeBlameOverlay.render(null);document.querySelectorAll(".gsc-native-blame-layer,.gsc-native-blame-row,.gsc-native-blame-hover").forEach(function(node){node.remove();});var style=document.getElementById("gsc-native-blame-style");if(style)style.remove();return "cleaned-fallback";})()';
       for (var i = 0; i < wins.length; i++) {
         out.push(await evalWindow(wins[i], cleanupExpr));
       }
       return out.join('|');
     `
   );
-}
-
-/**
- * workbench renderer에 상주하며 Monaco margin row와 blame label을 동기화하는 patch 본문을 만든다.
- * @returns renderer execution context에서 eval할 JavaScript source
- */
-export function nativeBlameOverlayRendererScript(): string {
-  return `
-    (function () {
-      var VERSION = ${PATCH_VERSION};
-      var STYLE_ID = 'gsc-native-blame-style';
-      var previous = window.__gscNativeBlameOverlay;
-      if (previous && previous.version !== VERSION) {
-        try { previous.render(null); } catch (_) {}
-      }
-      var state = window.__gscNativeBlameOverlayState;
-      if (!state || state.version !== VERSION) {
-        state = {
-          version: VERSION,
-          snapshot: null,
-          editor: null,
-          originalLineDecorationsWidth: undefined,
-          baseLineDecorationsWidth: 10,
-          extraWidth: 0,
-          frame: 0,
-          repaintTimers: [],
-          observer: null,
-          observerTarget: null,
-          editorDisposables: []
-        };
-        window.__gscNativeBlameOverlayState = state;
-      }
-
-      function ensureStyle() {
-        var style = document.getElementById(STYLE_ID);
-        if (!style) {
-          style = document.createElement('style');
-          style.id = STYLE_ID;
-          document.head.appendChild(style);
-        }
-        style.textContent = [
-          '.gsc-native-blame-layer{position:absolute;top:0;height:100%;z-index:70;overflow:hidden;pointer-events:none;background:var(--vscode-editorGutter-background);}',
-          '.gsc-native-blame-row{position:absolute;left:0;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:auto;color:var(--vscode-editorCodeLens-foreground);background:var(--vscode-editorGutter-background);border-right:1px solid var(--vscode-editorIndentGuide-background1,transparent);font:inherit;cursor:default;}',
-          '.gsc-native-blame-row:hover{color:var(--vscode-editor-foreground);}'
-        ].join('\\n');
-      }
-      function cleanupDom() {
-        Array.prototype.slice.call(document.querySelectorAll('.gsc-native-blame-layer,.gsc-native-blame-row')).forEach(function (node) {
-          try { node.remove(); } catch (_) {}
-        });
-      }
-      function clearFollowUpPaints() {
-        (state.repaintTimers || []).forEach(function (timer) {
-          try { clearTimeout(timer); } catch (_) {}
-        });
-        state.repaintTimers = [];
-      }
-      function schedulePaint() {
-        if (state.frame) return;
-        state.frame = requestAnimationFrame(function () {
-          state.frame = 0;
-          try { paint(); } catch (_) {}
-        });
-      }
-      function scheduleFollowUpPaints() {
-        clearFollowUpPaints();
-        [80, 240, 800, 1800].forEach(function (delay) {
-          state.repaintTimers.push(setTimeout(schedulePaint, delay));
-        });
-      }
-      function editorUri(editor) {
-        try {
-          var model = editor && editor.getModel && editor.getModel();
-          return model && model.uri && model.uri.toString ? model.uri.toString() : '';
-        } catch (_) { return ''; }
-      }
-      function editorDom(editor) {
-        try { return editor && editor.getDomNode ? editor.getDomNode() : null; } catch (_) { return null; }
-      }
-      function isUsableEditor(editor, uri) {
-        var dom = editorDom(editor);
-        return !!(editor && typeof editor.updateOptions === 'function' && typeof editor.getLayoutInfo === 'function' && dom && dom.isConnected && editorUri(editor) === uri);
-      }
-      function disposeEditorListeners() {
-        (state.editorDisposables || []).forEach(function (disposable) {
-          try { disposable.dispose(); } catch (_) {}
-        });
-        state.editorDisposables = [];
-        if (state.observer) {
-          try { state.observer.disconnect(); } catch (_) {}
-        }
-        state.observer = null;
-        state.observerTarget = null;
-      }
-      function restoreEditorWidth() {
-        var editor = state.editor;
-        disposeEditorListeners();
-        if (editor) {
-          try {
-            editor.updateOptions({ lineDecorationsWidth: state.originalLineDecorationsWidth });
-          } catch (_) {}
-        }
-        if (window.__gscNativeBlameEditor === editor) window.__gscNativeBlameEditor = null;
-        state.editor = null;
-        state.originalLineDecorationsWidth = undefined;
-        state.baseLineDecorationsWidth = 10;
-        state.extraWidth = 0;
-      }
-      function measureCharacterWidth(dom) {
-        var sample = document.createElement('span');
-        sample.textContent = '00000000000000000000';
-        sample.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;left:-10000px;top:0;';
-        var code = dom.querySelector('.view-lines .view-line');
-        if (code) {
-          var computed = window.getComputedStyle(code);
-          sample.style.fontFamily = computed.fontFamily;
-          sample.style.fontSize = computed.fontSize;
-          sample.style.fontWeight = computed.fontWeight;
-          sample.style.letterSpacing = computed.letterSpacing;
-        }
-        dom.appendChild(sample);
-        var width = sample.getBoundingClientRect().width / 20;
-        sample.remove();
-        return Number.isFinite(width) && width > 2 ? width : 8;
-      }
-      function desiredExtraWidth(dom, snapshot) {
-        var preferred = Math.ceil(measureCharacterWidth(dom) * Math.max(1, Number(snapshot.columnWidthCh) || 23) + 16);
-        var maximum = Math.max(88, Math.min(260, Math.floor(dom.clientWidth * 0.42)));
-        return Math.max(88, Math.min(maximum, preferred));
-      }
-      function bindEditorEvents(editor) {
-        disposeEditorListeners();
-        ['onDidScrollChange', 'onDidLayoutChange', 'onDidChangeModel'].forEach(function (name) {
-          try {
-            if (typeof editor[name] === 'function') state.editorDisposables.push(editor[name](schedulePaint));
-          } catch (_) {}
-        });
-        try {
-          if (typeof editor.onDidDispose === 'function') {
-            state.editorDisposables.push(editor.onDidDispose(function () {
-              cleanupDom();
-              state.editor = null;
-              window.__gscNativeBlameEditor = null;
-            }));
-          }
-        } catch (_) {}
-      }
-      function configureEditor(snapshot) {
-        var editor = window.__gscNativeBlameEditor;
-        if (!isUsableEditor(editor, snapshot.uri)) return 'no-matching-editor';
-        if (state.editor && state.editor !== editor) {
-          cleanupDom();
-          restoreEditorWidth();
-        }
-        var dom = editorDom(editor);
-        var extraWidth = desiredExtraWidth(dom, snapshot);
-        if (!state.editor) {
-          var rawOptions = editor.getRawOptions ? editor.getRawOptions() : {};
-          state.editor = editor;
-          state.originalLineDecorationsWidth = rawOptions && rawOptions.lineDecorationsWidth;
-          state.baseLineDecorationsWidth = typeof state.originalLineDecorationsWidth === 'number'
-            ? state.originalLineDecorationsWidth
-            : 10;
-          bindEditorEvents(editor);
-        }
-        state.extraWidth = extraWidth;
-        editor.updateOptions({ lineDecorationsWidth: state.baseLineDecorationsWidth + extraWidth });
-        return 'configured:' + extraWidth;
-      }
-      function isOwnNode(node) {
-        return !!(node && node.nodeType === 1 && (
-          (node.classList && (node.classList.contains('gsc-native-blame-layer') || node.classList.contains('gsc-native-blame-row'))) ||
-          (node.closest && node.closest('.gsc-native-blame-layer,.gsc-native-blame-row'))
-        ));
-      }
-      function observeMargin(margin) {
-        if (!margin || typeof MutationObserver === 'undefined' || state.observerTarget === margin) return;
-        if (state.observer) {
-          try { state.observer.disconnect(); } catch (_) {}
-        }
-        state.observerTarget = margin;
-        state.observer = new MutationObserver(function (mutations) {
-          var changed = mutations.some(function (mutation) {
-            if (isOwnNode(mutation.target)) return false;
-            if (mutation.type !== 'childList') return true;
-            var nodes = Array.prototype.slice.call(mutation.addedNodes || []).concat(Array.prototype.slice.call(mutation.removedNodes || []));
-            return !nodes.length || !nodes.every(isOwnNode);
-          });
-          if (changed) schedulePaint();
-        });
-        try {
-          state.observer.observe(margin, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['style', 'class', 'data-line-number']
-          });
-        } catch (_) {}
-      }
-      function rowLineNumber(row) {
-        if (!row || !row.querySelector) return 0;
-        var lineElement = row.querySelector('.line-numbers');
-        var direct = row.getAttribute && row.getAttribute('data-line-number');
-        var data = lineElement && lineElement.getAttribute && lineElement.getAttribute('data-line-number');
-        if (direct && /^\\d+$/.test(direct)) return Number(direct);
-        if (data && /^\\d+$/.test(data)) return Number(data);
-        var text = [
-          lineElement && lineElement.getAttribute && lineElement.getAttribute('aria-label'),
-          lineElement && lineElement.getAttribute && lineElement.getAttribute('title'),
-          lineElement && lineElement.textContent
-        ].filter(Boolean).join(' ');
-        var match = /(?:^|\\D)(\\d+)(?:\\D|$)/.exec(text);
-        return match ? Number(match[1]) : 0;
-      }
-      function styleNumber(row, name, fallback) {
-        var value = parseFloat(row && row.style && row.style[name] || '');
-        return Number.isFinite(value) ? value : fallback;
-      }
-      function ensureLayer(margin, left, width) {
-        var layer = margin.querySelector('.gsc-native-blame-layer');
-        if (!layer) {
-          layer = document.createElement('div');
-          layer.className = 'gsc-native-blame-layer';
-          margin.appendChild(layer);
-        }
-        layer.style.left = Math.max(0, left) + 'px';
-        layer.style.width = Math.max(0, width) + 'px';
-        return layer;
-      }
-      function makeLineMap(snapshot) {
-        var map = new Map();
-        (snapshot.lines || []).forEach(function (line) {
-          var number = Number(line.line) || 0;
-          if (number > 0 && !map.has(number)) map.set(number, line);
-        });
-        return map;
-      }
-      function appendLabel(layer, row, line, hostTop) {
-        var label = document.createElement('span');
-        label.className = 'gsc-native-blame-row';
-        var rowRect = row.getBoundingClientRect();
-        label.style.top = (rowRect.top - hostTop) + 'px';
-        label.style.height = Math.max(12, rowRect.height || styleNumber(row, 'height', 18)) + 'px';
-        label.textContent = String(line.label || '');
-        label.title = String(line.tooltip || line.label || '');
-        label.setAttribute('data-tooltip', label.title);
-        label.setAttribute('aria-label', label.title);
-        label.setAttribute('data-gsc-line', String(line.line || ''));
-        layer.appendChild(label);
-      }
-      function paint() {
-        var snapshot = state.snapshot;
-        var editor = state.editor;
-        if (!snapshot || !isUsableEditor(editor, snapshot.uri)) {
-          cleanupDom();
-          state.lastPaint = 'paint:no-editor';
-          return state.lastPaint;
-        }
-        var dom = editorDom(editor);
-        var margin = dom && dom.querySelector('.margin-view-overlays');
-        var host = dom && (dom.querySelector('.overflow-guard') || dom);
-        if (!margin || !host) {
-          cleanupDom();
-          state.lastPaint = 'paint:no-margin';
-          return state.lastPaint;
-        }
-        ensureStyle();
-        observeMargin(margin);
-        var layout = editor.getLayoutInfo();
-        var layer = ensureLayer(host, Number(layout.contentLeft || 0) - state.extraWidth, state.extraWidth);
-        layer.textContent = '';
-        var hostTop = host.getBoundingClientRect().top;
-        var lineMap = makeLineMap(snapshot);
-        var used = new Set();
-        var placed = 0;
-        Array.prototype.slice.call(margin.children || []).forEach(function (row) {
-          if (row === layer || isOwnNode(row)) return;
-          var lineNumber = rowLineNumber(row);
-          var line = lineMap.get(lineNumber);
-          if (!line || used.has(lineNumber)) return;
-          used.add(lineNumber);
-          appendLabel(layer, row, line, hostTop);
-          placed++;
-        });
-        state.lastPaint = 'paint:native:' + placed + '/' + lineMap.size + ':width=' + state.extraWidth;
-        return state.lastPaint;
-      }
-      function teardown() {
-        state.snapshot = null;
-        if (state.frame) {
-          try { cancelAnimationFrame(state.frame); } catch (_) {}
-          state.frame = 0;
-        }
-        clearFollowUpPaints();
-        cleanupDom();
-        restoreEditorWidth();
-        var style = document.getElementById(STYLE_ID);
-        if (style) {
-          try { style.remove(); } catch (_) {}
-        }
-        return 'cleaned';
-      }
-
-      window.__gscNativeBlameOverlay = {
-        version: VERSION,
-        render: function (snapshot) {
-          if (!snapshot) return teardown();
-          clearFollowUpPaints();
-          state.snapshot = snapshot;
-          state.lastPaint = '';
-          var configured = configureEditor(snapshot);
-          if (!/^configured:/.test(configured)) {
-            cleanupDom();
-            return configured;
-          }
-          ensureStyle();
-          schedulePaint();
-          scheduleFollowUpPaints();
-          return new Promise(function (resolve) {
-            setTimeout(function () {
-              var result = state.lastPaint || paint();
-              resolve('render-scheduled:' + configured + ':' + result);
-            }, 90);
-          });
-        }
-      };
-      return 'gsc-native-blame-installed:' + VERSION;
-    })()
-  `;
 }

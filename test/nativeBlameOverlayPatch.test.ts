@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
+import { NATIVE_BLAME_PATCH_VERSION } from "../src/providers/nativeBlameOverlayRenderer";
 import type { BlockBlameGutterSnapshot } from "../src/ui/blockBlameGutter";
 import {
   blameOverlayCleanupExpression,
@@ -43,6 +45,42 @@ test("blame renderer는 본문 attachment 대신 margin row에 label을 배치�
   assert.doesNotThrow(() => new Function(script));
 });
 
+test("탭 이동 뒤에는 editor service를 재사용해 heap 조회 없이 현재 URI를 바인딩한다", async () => {
+  let heapQueries = 0;
+  /** DOM/model 계약만 제공해 URI·가시성·focused 선택을 실제 injection에서 검사한다. */
+  const editor = (uri: string, focused: boolean) => ({
+    getModel: () => ({ uri: { toString: () => uri } }),
+    getDomNode: () => ({ isConnected: true, offsetParent: {}, clientWidth: 1000, clientHeight: 800,
+      classList: { contains: (name: string) => name === "focused" && focused } }),
+    updateOptions() {}, getLayoutInfo() {},
+  });
+  const other = editor("file:///repo/other.ts", false), target = editor(SNAPSHOT.uri, true);
+  const service = { listCodeEditors: () => [other, target] };
+  const rendererWindow: any = {
+    __gscNativeBlameEditor: other,
+    __gscNativeBlameEditorServiceRef: new WeakRef(service),
+    __gscNativeBlameOverlay: { version: NATIVE_BLAME_PATCH_VERSION, render: () => "render-scheduled:native" },
+  };
+  const renderer = vm.createContext({ window: rendererWindow, WeakRef });
+  const debuggerApi = {
+    isAttached: () => true, on() {}, removeListener() {},
+    async sendCommand(method: string, params: any) {
+      if (method === "Runtime.queryObjects") { heapQueries++; throw new Error("unexpected heap query"); }
+      if (method === "Runtime.evaluate") return { result: { value: await vm.runInContext(params.expression, renderer) } };
+      return {};
+    },
+  };
+  const browserWindow = { id: 7, getTitle: () => "repo - Visual Studio Code", isFocused: () => true,
+    webContents: { debugger: debuggerApi, getURL: () => "vscode-file://workbench.html" } };
+  const context = vm.createContext({ global: {}, process: {},
+    require: () => ({ BrowserWindow: { getAllWindows: () => [browserWindow] } }) });
+  const result = await vm.runInContext(blameOverlayInjectionExpression(nativeBlameOverlayRendererScript(), SNAPSHOT, HINTS), context);
+  assert.equal(heapQueries, 0);
+  assert.equal(rendererWindow.__gscNativeBlameEditor, target);
+  assert.match(result, /editor-cached:file:\/\/\/repo\/src\/example.ts/);
+  assert.match(result, /discoveryMs=\d+/);
+});
+
 test("injection은 URI가 같은 Monaco editor를 찾은 뒤 거터 renderer를 실행한다", () => {
   const renderer = nativeBlameOverlayRendererScript();
   const expression = blameOverlayInjectionExpression(
@@ -69,5 +107,6 @@ test("cleanup은 renderer state를 통해 원래 거터 폭과 DOM을 함께 복
   );
   assert.match(cleanup, /__gscNativeBlameOverlay\.render\(null\)/);
   assert.match(cleanup, /gsc-native-blame-layer/);
+  assert.match(cleanup, /gsc-native-blame-hover/);
   assert.doesNotThrow(() => new Function(`return ${cleanup}`));
 });

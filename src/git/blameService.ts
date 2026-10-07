@@ -46,7 +46,7 @@ export class GitBlameService {
 
   /**
    * 파일의 라인별 blame 정보를 조회한다.
-   * - `--line-porcelain` 을 사용해 라인마다 완전한 메타데이터를 받아 파싱한다.
+   * - `--porcelain` 으로 커밋 메타데이터의 반복 출력을 줄이고 파서에서 라인별 정보를 복원한다.
    * - untracked 파일처럼 blame 이 불가능한 대상은 빈 배열로 반환해 UI 가 조용히 비우게 한다.
    * @param fsPath 저장소 상대 또는 절대 파일 경로
    * @param range 선택적 1-based inclusive 범위. 블록 상세 팝업이 필요한 라인만 읽을 때 사용한다.
@@ -58,7 +58,7 @@ export class GitBlameService {
     options: { signal?: AbortSignal } = {}
   ): Promise<GitBlameLine[]> {
     const rel = this.toRepoRelative(fsPath);
-    const args = ["blame", "--line-porcelain"];
+    const args = ["blame", "--porcelain"];
     const normalizedRange = normalizeBlameRange(range);
     if (normalizedRange) {
       args.push(
@@ -114,26 +114,29 @@ function normalizeBlameRange(
 }
 
 /**
- * `git blame --line-porcelain` 출력을 라인 모델로 변환한다.
+ * `git blame --porcelain` 또는 `--line-porcelain` 출력을 라인 모델로 변환한다.
  * - 각 레코드는 해시/원본라인/결과라인 헤더로 시작하고, 탭으로 시작하는 실제 소스 라인에서 끝난다.
+ * - 이미 나온 커밋의 메타데이터가 생략되면 같은 조회 안에서만 저장한 값을 복원한다.
  * @param output git blame porcelain 출력 전체
  * @returns 파싱된 blame 라인 목록
  */
 export function parseBlamePorcelain(output: string): GitBlameLine[] {
   const result: GitBlameLine[] = [];
+  const commits = new Map<string, Partial<GitBlameLine>>();
   let current: Partial<GitBlameLine> | undefined;
 
   for (const rawLine of output.split("\n")) {
     const line = rawLine.replace(/\r$/, "");
-    const header = /^([0-9a-f]{40}) \d+ (\d+)(?: \d+)?$/.exec(line);
+    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)(?: \d+)?$/.exec(line);
     if (header) {
       current = {
-        commit: header[1],
-        line: Number(header[2]),
         authorName: "",
         authorMail: "",
         summary: "",
         filename: "",
+        ...commits.get(header[1]),
+        commit: header[1],
+        line: Number(header[2]),
       };
       continue;
     }
@@ -143,6 +146,15 @@ export function parseBlamePorcelain(output: string): GitBlameLine[] {
     if (line.startsWith("\t")) {
       current.content = line.slice(1);
       result.push(normalizeBlameLine(current));
+      // line/content는 각 레코드의 값이므로 커밋 캐시에 포함하지 않는다.
+      commits.set(current.commit!, {
+        authorName: current.authorName,
+        authorMail: current.authorMail,
+        authorTime: current.authorTime,
+        authorTz: current.authorTz,
+        summary: current.summary,
+        filename: current.filename,
+      });
       current = undefined;
       continue;
     }

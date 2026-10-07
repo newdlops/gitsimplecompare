@@ -64,6 +64,32 @@ export function parseRawNumstatZ(raw: string): FileChange[] {
   });
 }
 
+/** NUL porcelain 한 항목의 인덱스/작업트리 상태와 원본 경로를 보존하는 공통 구조다. */
+export interface PorcelainEntry {
+  xy: string;
+  path: string;
+  oldPath?: string;
+}
+
+/**
+ * porcelain v1의 NUL 경계를 읽어 공백·개행 경로와 rename/copy 원본을 손실 없이 반환한다.
+ * - 표시 계층도 원래 XY를 사용하게 해 미추적 파일과 staged 추가를 구별할 수 있다.
+ * @param raw `git status --porcelain -z` 또는 공유 snapshot의 호환 출력
+ * @returns Git 출력 순서의 상태 항목. rename/copy 원본은 독립 항목으로 만들지 않는다.
+ */
+export function parsePorcelainEntries(raw: string): PorcelainEntry[] {
+  const tokens = raw.split("\0");
+  const entries: PorcelainEntry[] = [];
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (!token) continue;
+    const xy = token.slice(0, 2);
+    const oldPath = /[RC]/.test(xy) ? tokens[++index] : undefined;
+    entries.push({ xy, path: token.slice(3), ...(oldPath === undefined ? {} : { oldPath }) });
+  }
+  return entries;
+}
+
 /**
  * `git status --porcelain -z --untracked-files=all` 출력을 스테이징/미스테이징 두 그룹으로 나눈다.
  * - XY 두 글자에서 X(인덱스)=스테이징, Y(작업트리)=미스테이징. 한 파일이 양쪽에 모두 나올 수 있다
@@ -77,24 +103,16 @@ export function parsePorcelainGroups(raw: string): {
   staged: FileChange[];
   unstaged: FileChange[];
 } {
-  const tokens = raw.split("\0").filter((t) => t.length > 0);
   const staged: FileChange[] = [];
   const unstaged: FileChange[] = [];
-  let i = 0;
-  while (i < tokens.length) {
-    const entry = tokens[i++];
-    const x = entry[0];
-    const y = entry[1];
-    const filePath = entry.slice(3); // 2글자 상태 + 공백 이후
-    // 이름변경/복사면 원본 경로 토큰이 뒤따른다.
-    const oldPath =
-      x === "R" || x === "C" || y === "R" || y === "C" ? tokens[i++] : undefined;
+  for (const { xy, path: filePath, oldPath } of parsePorcelainEntries(raw)) {
+    const [x, y] = xy;
 
     if (x === "?" && y === "?") {
       unstaged.push({ status: "A", path: filePath });
       continue;
     }
-    if (x === "U" || y === "U" || entry.slice(0, 2) === "AA" || entry.slice(0, 2) === "DD") {
+    if (x === "U" || y === "U" || xy === "AA" || xy === "DD") {
       unstaged.push({ status: "U", path: filePath, oldPath });
       continue;
     }

@@ -6,7 +6,6 @@ import { isUncommittedBlameCommit } from "../git/blockBlameModel";
 import type { GitBlameLine } from "../git/blameService";
 
 const MAX_VISIBLE_AUTHOR_WIDTH = 18;
-const MAX_HOVER_SUMMARY_LENGTH = 180;
 const MIN_AUTHOR_COLUMN_WIDTH_CH = 23;
 const MAX_AUTHOR_COLUMN_WIDTH_CH = 34;
 const AUTHOR_COLUMN_HORIZONTAL_PADDING_CH = 2;
@@ -219,7 +218,7 @@ function blameAuthorKey(line: GitBlameLine): string {
 
 /**
  * 거터 label hover에 표시할 전체 identity, revision, 날짜, summary를 plain text로 만든다.
- * - DOM `title`과 접근성 label에서 같은 내용을 안전하게 재사용할 수 있도록 Markdown 명령은 넣지 않는다.
+ * - renderer hover와 접근성 label이 같은 전체 해시·메시지를 안전하게 표시하도록 plain text만 사용한다.
  * @param line Git blame 라인
  * @returns 줄바꿈으로 구분한 상세 tooltip 문자열
  */
@@ -230,12 +229,12 @@ function blockBlameTooltip(line: GitBlameLine): string {
     : author;
   const revision = isUncommittedBlameCommit(line.commit)
     ? vscode.l10n.t("Working tree")
-    : shortHash(line.commit);
+    : line.commit;
   return [
     vscode.l10n.t("Line {0}", line.line),
     identity,
     `${revision} · ${blameDate(line)}`,
-    truncate(line.summary.trim(), MAX_HOVER_SUMMARY_LENGTH),
+    line.summary.trim(),
   ]
     .filter(Boolean)
     .join("\n");
@@ -266,15 +265,6 @@ function blameDate(line: GitBlameLine): string {
   return Number.isNaN(date.getTime())
     ? vscode.l10n.t("Unknown date")
     : date.toISOString().slice(0, 10);
-}
-
-/**
- * 전체 커밋 해시를 tooltip에서 구분하기 충분한 8자로 줄인다.
- * @param commit Git blame의 전체 commit hash
- * @returns 앞 8자리 hash
- */
-function shortHash(commit: string): string {
-  return commit.slice(0, 8);
 }
 
 /**
@@ -324,17 +314,4 @@ function truncateToDisplayWidth(value: string, maxWidth: number): string {
     usedWidth += width;
   }
   return `${result}${ellipsis}`;
-}
-
-/**
- * 문자열을 Unicode code point 기준으로 줄여 한글이나 emoji 중간 분리를 피한다.
- * @param value 원본 표시 문자열
- * @param max 허용할 최대 글자 수
- * @returns 원문 또는 마지막 한 글자를 말줄임표로 바꾼 문자열
- */
-function truncate(value: string, max: number): string {
-  const characters = Array.from(value);
-  return characters.length <= max
-    ? value
-    : `${characters.slice(0, Math.max(1, max - 1)).join("")}…`;
 }

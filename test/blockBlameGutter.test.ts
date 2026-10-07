@@ -82,9 +82,19 @@ test("block blame은 본문 decoration 없이 정렬된 거터 snapshot만 만�
   );
   assert.match(snapshot?.lines[0].label ?? "", /^Alice · 2023-11-14$/);
   assert.match(snapshot?.lines[0].tooltip ?? "", /Line 1\nAlice <alice@example.com>/);
+  assert.ok(snapshot?.lines[0].tooltip.includes(COMMIT_A));
 
   gutter.clear();
   assert.equal(gutter.snapshot(), undefined);
+});
+
+test("hover는 긴 메시지와 전체 커밋 해시를 생략하지 않는다", () => {
+  const summary = "Commit message <script> stays plain text. ".repeat(20);
+  const gutter = new BlockBlameGutter();
+  gutter.apply(textDocument(1), [blameLine(1, { summary })]);
+  const tooltip = gutter.snapshot()!.lines[0].tooltip;
+  assert.ok(tooltip.includes(COMMIT_A));
+  assert.ok(tooltip.endsWith(summary.trim()));
 });
 
 test("미커밋 라인과 긴 작성자는 거터 폭 안에서 안전하게 표시된다", () => {

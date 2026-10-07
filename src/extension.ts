@@ -5,9 +5,7 @@ import * as vscode from "vscode";
 import { GitServiceRegistry } from "./git/serviceRegistry";
 import { clearUntrackedStatsCache } from "./git/untrackedStats";
 import {
-  BranchContentProvider,
-  clearBranchContentCache,
-  disposeBranchContentCache,
+  BranchContentProvider, clearBranchContentCache, disposeBranchContentCache,
   releaseBranchContentDocument,
 } from "./providers/branchContentProvider";
 import { ChangesViewProvider } from "./webview/changesViewProvider";
@@ -32,6 +30,7 @@ import { resolveComparisonRefIdentity, type ComparisonSnapshot } from "./git/com
 import { registerComparisonFileDecorations } from "./providers/comparisonFileDecorations";
 import { ComparisonScmProvider, DeletedComparisonGutterController } from "./providers/comparisonScmProvider";
 import { VscodeGitStatusProvider } from "./providers/vscodeGitStatusProvider";
+import { registerWorkingTreeFileDecorations } from "./providers/workingTreeFileDecorations";
 import { registerLocalChangesWatcher } from "./providers/localChangesWatcher";
 import {
   createGitMetadataRefreshHandler,
@@ -498,7 +497,9 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     })
   );
   logInfo("extension activated");
-  return createPublicGitStatusApi(context, comparison, root => { registry.get(root); });
+  const api = createPublicGitStatusApi(context, comparison, root => { registry.get(root); });
+  registerWorkingTreeFileDecorations(context, registry, api);
+  return api;
 }
 /** 확장 비활성화 때 renderer DOM·debugger bridge와 소유 Git 프로세스의 비동기 정리를 기다린다. */
 export async function deactivate(): Promise<void> {

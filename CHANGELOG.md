@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.72088] - 2026-10-07
+
+### Changed
+
+- Reduce repeated blame metadata and aggregate source-block ownership through a
+  shared line index. Reuse the native editor service and update visible gutter
+  rows in place to reduce loading and scrolling work.
+- Retry document symbols briefly while a language extension starts, and cancel
+  obsolete blame consumers when editors close, change or hide the gutter.
+
+### Fixed
+
+- Show a native-themed commit popup on gutter hover, click or keyboard focus,
+  including the full commit ID, author, email, date and summary. Preserve focus
+  inside the popup and dismiss stale details when the editor changes.
+- Restore working-tree colors, status badges and tooltips in the default Explorer,
+  editor tabs and Tab Manager's Explorer when built-in Git is disabled. Share the
+  existing status cache and refresh on saved edits, external changes, staging and
+  commits even while the Changes view is hidden.
+- Respect workspace and decoration settings, release fallback decorations when
+  built-in Git resumes, and prevent the Projects catalog from scanning repositories
+  outside the current workspace.
+
 ## [0.1.72086] - 2026-10-06
 
 ### Fixed

@@ -3,9 +3,9 @@
 // - 이 모듈은 VS Code 이벤트, 설정, 문서별 비동기 캐시의 생애주기만 담당한다.
 import * as vscode from "vscode";
 import {
-  summarizeBlockBlame,
   type BlockBlameSummary,
 } from "../git/blockBlameModel";
+import { summarizeFileBlame } from "../git/blockBlameBatch";
 import { GitBlameService } from "../git/blameService";
 import { readBlameCacheIdentity } from "../git/blameCacheIdentity";
 import { SharedGitRead } from "../git/sharedGitRead";
@@ -21,6 +21,8 @@ const SHOW_CONFIG_KEY = "blameBlock.show";
 const FULL_SHOW_CONFIG_KEY = `${CONFIG_SECTION}.${SHOW_CONFIG_KEY}`;
 const BLOCK_CONTEXT_KEY = "gitSimpleCompare.blame.block.visible";
 const CACHE_TTL_MS = 60_000;
+const EMPTY_CACHE_TTL_MS = 500;
+const SYMBOL_RETRY_DELAYS_MS = [250, 750, 1500];
 const SKIP_LOG_TTL_MS = 15_000;
 const MAX_BLOCKS_PER_DOCUMENT = 400;
 
@@ -69,6 +71,7 @@ export class BlockBlameCodeLensController
   private readonly disposables: vscode.Disposable[] = [];
   private readonly cache = new Map<string, CachedSnapshot>();
   private readonly skipLogs = new Map<string, SkipLogRecord>();
+  private readonly symbolRetries = new Map<string, { version: number; attempts: number; timer?: ReturnType<typeof setTimeout> }>();
   private visible = readBlockBlameVisibility();
   private registered = false;
   private disposed = false;
@@ -103,6 +106,7 @@ export class BlockBlameCodeLensController
         }
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
+        this.clearSymbolRetry(document.uri.toString());
         void this.cache.get(document.uri.toString())?.read.dispose();
         this.cache.delete(document.uri.toString());
         this.skipLogs.delete(document.uri.toString());
@@ -180,6 +184,10 @@ export class BlockBlameCodeLensController
     if (this.disposed) return;
     if (!focused) {
       for (const controller of this.readControllers) controller.abort();
+      for (const retry of this.symbolRetries.values()) {
+        if (retry.timer) clearTimeout(retry.timer);
+        retry.timer = undefined;
+      }
       logInfo("block blame code vision suspended", { reason: "window-unfocused", reads: this.readControllers.size });
     } else {
       const hadCache = this.cache.size > 0;
@@ -231,6 +239,7 @@ export class BlockBlameCodeLensController
       return;
     }
     this.disposed = true;
+    for (const key of this.symbolRetries.keys()) this.clearSymbolRetry(key);
     for (const controller of this.readControllers) controller.abort();
     this.readControllers.clear();
     for (const cached of this.cache.values()) void cached.read.dispose();
@@ -270,6 +279,8 @@ export class BlockBlameCodeLensController
     const read = new SharedGitRead(async abort => {
       const value = await this.loadSnapshot(document, abort);
       entry.repoRoot = value.repoRoot; entry.cacheIdentity = value.cacheIdentity;
+      // 언어 서버 초기화 전의 빈 심볼/저장소 결과를 정상 blame과 같은 60초 동안 유지하지 않는다.
+      entry.expiresAt = Date.now() + (value.repoRoot ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS);
       return value;
     }, value => value);
     const entry: CachedSnapshot = {
@@ -296,6 +307,7 @@ export class BlockBlameCodeLensController
     document: vscode.TextDocument,
     signal: AbortSignal
   ): Promise<BlockBlameSnapshot> {
+    const startedAt = Date.now();
     const version = document.version;
     const [service, blocks] = await Promise.all([
       this.registry.resolve(dirname(document.uri.fsPath)),
@@ -308,16 +320,17 @@ export class BlockBlameCodeLensController
     }
     if (blocks.length === 0) {
       this.logSkip(document, "no-supported-symbols");
+      this.scheduleSymbolRetry(document);
       return { documentVersion: version, summaries: [] };
     }
 
     const selectedBlocks = blocks.slice(0, MAX_BLOCKS_PER_DOCUMENT);
+    this.clearSymbolRetry(document.uri.toString());
     const cacheIdentity = await readBlameCacheIdentity(service.repoRoot, document.uri.fsPath);
     const blame = await new GitBlameService(service.repoRoot).getFileBlame(
       document.uri.fsPath, undefined, { signal }
     );
-    const summaries = selectedBlocks
-      .map((block) => summarizeBlockBlame(block, blame))
+    const summaries = summarizeFileBlame(selectedBlocks, blame)
       .filter((summary) => summary.primaryContributor !== undefined);
     logInfo("block blame code vision loaded", {
       path: service.toRepoRelative(document.uri.fsPath),
@@ -325,6 +338,7 @@ export class BlockBlameCodeLensController
       displayed: summaries.length,
       truncated: blocks.length > selectedBlocks.length,
       blameLines: blame.length,
+      durationMs: Date.now() - startedAt,
     });
     return { documentVersion: version, summaries, repoRoot: service.repoRoot, cacheIdentity };
   }
@@ -341,6 +355,7 @@ export class BlockBlameCodeLensController
     emitChange = true
   ): void {
     void this.cache.get(uri.toString())?.read.dispose();
+    this.clearSymbolRetry(uri.toString());
     const removed = this.cache.delete(uri.toString());
     if (emitChange) {
       this.changeEmitter.fire();
@@ -361,6 +376,7 @@ export class BlockBlameCodeLensController
     const next = readBlockBlameVisibility();
     const changed = next !== this.visible;
     this.visible = next;
+    for (const key of this.symbolRetries.keys()) this.clearSymbolRetry(key);
     for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     void syncBlockBlameContext(next);
@@ -382,6 +398,39 @@ export class BlockBlameCodeLensController
         this.cache.delete(key);
       }
     }
+  }
+
+  /**
+   * 언어 서버 시작 전의 빈 심볼 결과는 보이는 활성 문서에서 최대 세 번 다시 요청한다.
+   * - 일반 텍스트·심볼이 없는 파일은 제한 뒤 멈춰 Git 조회나 무한 polling을 만들지 않는다.
+   * @param document 심볼이 아직 없었던 저장 문서. version이 바뀌면 기존 재시도를 폐기한다.
+   */
+  private scheduleSymbolRetry(document: vscode.TextDocument): void {
+    const key = document.uri.toString();
+    if (this.disposed || !this.visible || !vscode.window.state.focused || vscode.window.activeTextEditor?.document.uri.toString() !== key) return;
+    let retry = this.symbolRetries.get(key);
+    if (retry && retry.version !== document.version) { this.clearSymbolRetry(key); retry = undefined; }
+    if (!retry) { retry = { version: document.version, attempts: 0 }; this.symbolRetries.set(key, retry); }
+    if (retry.timer || retry.attempts >= SYMBOL_RETRY_DELAYS_MS.length) return;
+    const delay = SYMBOL_RETRY_DELAYS_MS[retry.attempts++];
+    retry.timer = setTimeout(() => {
+      retry!.timer = undefined;
+      if (this.disposed || !this.visible || !vscode.window.state.focused || document.isDirty || document.version !== retry!.version
+        || vscode.window.activeTextEditor?.document.uri.toString() !== key) return;
+      const cached = this.cache.get(key);
+      if (cached?.read.hasConsumers()) return;
+      void cached?.read.dispose();
+      this.cache.delete(key);
+      this.changeEmitter.fire();
+      logInfo("block blame code vision symbols retried", { path: document.uri.fsPath, attempt: retry!.attempts, delayMs: delay });
+    }, delay);
+  }
+
+  /** 문서 변경·성공·종료 때 해당 URI의 재시도 timer와 제한 횟수를 함께 해제한다. */
+  private clearSymbolRetry(key: string): void {
+    const retry = this.symbolRetries.get(key);
+    if (retry?.timer) clearTimeout(retry.timer);
+    this.symbolRetries.delete(key);
   }
 
   /**
