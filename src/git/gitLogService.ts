@@ -2,6 +2,7 @@
 // - 그래프 UI 가 필요로 하는 커밋 목록과, 노드 클릭 시 보여줄 상세 정보를 제공한다.
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
+import type { PushExecutionOptions } from "./sequentialPush";
 import { runGitWithRevisions } from "./revisionInput";
 import { logInfo } from "../ui/outputLog";
 import { parseRawNumstatZ } from "./diffParse";
@@ -323,8 +324,8 @@ export class GitLogService {
   }
 
   /** 현재 브랜치 push와 upstream 보정을 변경 전용 서비스에 위임한다. */
-  pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
-    return this.graphActions.pushCurrent(plan);
+  pushCurrent(plan?: PushCurrentPlan, options?: PushExecutionOptions): Promise<PushCurrentResult> {
+    return this.graphActions.pushCurrent(plan, options);
   }
 
   /** 현재 브랜치 force push를 변경 전용 서비스에 위임한다. */

@@ -9,7 +9,7 @@ import { ChangeDiffArgs, SortKey, ViewMode } from "../providers/changesTreeModel
 import type { RepoInfo } from "../commands/shared";
 import type { StashView } from "../commands/stash";
 import { editorGutterSettingAllowsMarkers } from "../providers/comparisonScmProvider";
-import { logError, logInfo } from "../ui/outputLog";
+import { logInfo } from "../ui/outputLog";
 import { FileIconThemeResolver } from "./fileIconTheme";
 import { buildChangesHtml } from "./changesHtml";
 import { buildChangesRenderPayload, buildWorkingChangesRenderPayload } from "./changesRenderPayload";
@@ -19,7 +19,8 @@ import { routeCommitHookMessage } from "./changesCommitHookMessages";
 import { routeChangesAiMessage } from "./changesAiMessages";
 import { routeChangesStashMessage } from "./changesStashMessages";
 import { routeChangesWorktreeMessage } from "./changesWorktreeMessages";
-import { runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
+import { openComparisonWorkingFile, runCommitOperation, runWorkingTreeOperation } from "./changesWebviewOperations";
+import { isRepositorySetupAction, REPOSITORY_SETUP_COMMANDS, type RepositorySetupState } from "./changesOnboardingProtocol";
 import {
   TREE_SECTIONS,
   VISIBLE_SECTIONS,
@@ -41,6 +42,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = "gitSimpleCompare.changes";
   private view?: vscode.WebviewView;
   private repositories: RepoInfo[] = [];
+  private repositorySetup: RepositorySetupState = { phase: "scanning" };
   private activeRepo?: string;
   private comparison?: BranchComparison;
   private draft: ComparisonDraft = {};
@@ -107,6 +109,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   setRepositories(repos: RepoInfo[], preferredRoot?: string): void {
     const previousRoot = this.activeRepo;
     this.repositories = repos;
+    if (this.repositorySetup.phase === "scanning") this.repositorySetup = { phase: "idle" };
     if (!this.activeRepo || !repos.some((r) => r.root === this.activeRepo)) {
       this.activeRepo =
         repos.find((repo) => repo.root === preferredRoot)?.root ??
@@ -133,6 +136,15 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /** 전체 refresh가 workspace를 다시 탐색하지 않도록 마지막 저장소 목록의 복사본을 반환한다. */
   getRepositories(): RepoInfo[] {
     return this.repositories.map((repo) => ({ ...repo }));
+  }
+  /** 조회 오류에서 다시 검색할 때만 로딩 상태를 표시하고 진행 중인 Git 작업은 유지한다. */
+  beginRepositoryDiscovery(): void {
+    if (!this.activeRepo && this.repositorySetup.phase !== "running") this.setRepositorySetupState({ phase: "scanning" });
+  }
+  /** 온보딩의 조회·진행·오류·완료 상태를 보관해 뷰를 다시 열어도 올바르게 표시한다. */
+  setRepositorySetupState(state: RepositorySetupState): void {
+    this.repositorySetup = { ...state };
+    this.render();
   }
   /** Changes 웹뷰가 현재 화면에 보이는지 확인한다(자동 git refresh 게이트로 사용). */
   isVisible(): boolean {
@@ -339,8 +351,9 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   /**
    * 저장소를 전환한다. 브랜치가 다르므로 비교/초안/작업변경을 초기화하고 다시 읽는다.
    * @param root 새 활성 저장소 루트
+   * @param options refresh=false이면 caller가 전체 refresh를 기다리므로 개별 status/stash 조회를 생략한다.
    */
-  private selectRepo(root: string): void {
+  selectRepo(root: string, options: { refresh?: boolean } = {}): void {
     if (root === this.activeRepo) {
       return;
     }
@@ -357,9 +370,11 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     this.clearCommitFailure();
     this.render();
     void vscode.commands.executeCommand("gitSimpleCompare.clearExplorerComparison");
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
-    // stash 메타데이터만 새 저장소 기준으로 바꾸고, workspace 공용 worktree 목록은 보존한다.
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+    if (options.refresh !== false) {
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshWorkingChanges");
+      // stash 메타데이터만 새 저장소 기준으로 바꾸고, workspace 공용 worktree 목록은 보존한다.
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshStashes");
+    }
   }
   /** 현재 상태 렌더를 다음 tick 으로 예약해 연속 상태 변경을 한 번의 postMessage 로 합친다. */
   private render(): void {
@@ -391,6 +406,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
   private renderState() {
     return {
       repositories: this.repositories,
+      repositorySetup: this.repositorySetup,
       activeRepo: this.activeRepo,
       comparison: this.comparison,
       comparisonEnabled: this.comparisonEnabled(),
@@ -470,7 +486,15 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     if (routeChangesWorktreeMessage(msg)) {
       return;
     }
-    if (msg.type === "ready") {
+    if (msg.type === "repositorySetup" && isRepositorySetupAction(msg.action)) {
+      void vscode.commands.executeCommand(REPOSITORY_SETUP_COMMANDS[msg.action]);
+    } else if (msg.type === "repositorySetupRetry") {
+      void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges");
+    } else if (msg.type === "repositorySetupDiagnose") {
+      void vscode.commands.executeCommand("gitSimpleCompare.configureGitExecutable");
+    } else if (msg.type === "repositorySetupOpenCompleted" && this.repositorySetup.repositoryRoot) {
+      void vscode.commands.executeCommand("gitSimpleCompare.openRepository", { directory: this.repositorySetup.repositoryRoot });
+    } else if (msg.type === "ready") {
       this.lastRenderPayloadJson = "";
       this.render();
       this.requestRefresh("viewReady");
@@ -503,43 +527,7 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
       msg.path &&
       this.comparison
     ) {
-      const comparison = this.comparison;
-      const change = comparison.changes.find((item) => item.path === msg.path);
-      if (!change) {
-        return;
-      }
-      const args: ChangeDiffArgs = { comparison, change };
-      // 명령 등록 누락·열기 실패도 boolean false와 같은 fallback 경로로 합쳐
-      // 웹뷰 이벤트 Promise가 처리되지 않은 rejection으로 남지 않게 한다.
-      void Promise.resolve(
-        vscode.commands.executeCommand<boolean>(
-          "gitSimpleCompare.openComparisonFile",
-          { repoRoot: comparison.repoRoot, path: change.path }
-        )
-      )
-        .catch((error) => {
-          logError("comparison working file command failed", error, {
-            repoRoot: comparison.repoRoot,
-            path: change.path,
-          });
-          return false;
-        })
-        .then(async (handled) => {
-          if (handled) {
-            return;
-          }
-          try {
-            await vscode.commands.executeCommand(
-              "gitSimpleCompare.openChangeDiff",
-              args
-            );
-          } catch (error) {
-            logError("comparison diff fallback failed", error, {
-              repoRoot: comparison.repoRoot,
-              path: change.path,
-            });
-          }
-        });
+      void openComparisonWorkingFile(this.comparison, msg.path);
     } else if (msg.type === "openDiff" && msg.path && this.comparison) {
       const change = this.comparison.changes.find((c) => c.path === msg.path);
       if (change) {

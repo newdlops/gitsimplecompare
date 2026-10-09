@@ -46,6 +46,7 @@ import { syncBuiltinGitContext, syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { registerViewConfigurationEvents } from "./ui/viewConfiguration";
 import { registerGitExecutableConfiguration } from "./ui/gitExecutableConfiguration";
+import { registerBuiltinGitControl } from "./ui/builtinGitControl";
 import { registerGitProcessManagement, shutdownGitProcessManagement } from "./ui/gitProcessSettings";
 import { createPublicGitStatusApi, publicGitStatusRoots, shutdownPublicGitStatusApi } from "./providers/publicGitStatusApi";
 import { BlockBlamePresenter } from "./ui/blockBlamePresenter";
@@ -73,8 +74,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   logInfo("extension activating", {
     workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0,
   });
-  context.subscriptions.push(new vscode.Disposable(disposeOutputLog));
-  context.subscriptions.push(registerGitExecutableConfiguration());
+  context.subscriptions.push(new vscode.Disposable(disposeOutputLog), registerGitExecutableConfiguration(), registerBuiltinGitControl(context));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestDiffComments));
   context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
   context.subscriptions.push(new vscode.Disposable(() => { disposeBranchContentCache(); clearUntrackedStatsCache(); }));
@@ -244,7 +244,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(vscodeGitStatus);
   // 6) 명령 등록(핸들러는 commands 모듈에 위임)
   const deps: CommandDeps = {
-    globalStorageUri: context.globalStorageUri,
+    globalStorageUri: context.globalStorageUri, globalState: context.globalState,
     registry,
     changesView,
     extensionUri: context.extensionUri,

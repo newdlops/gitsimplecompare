@@ -11,6 +11,7 @@ import {
 import type { RepoInfo } from "../commands/shared";
 import type { StashView } from "../commands/stash";
 import type { FileIconThemeResolver } from "./fileIconTheme";
+import type { RepositorySetupState } from "./changesOnboardingProtocol";
 import type {
   ComparisonDraft,
   FileHistoryView,
@@ -22,6 +23,7 @@ import type {
 /** ChangesViewProvider 의 현재 렌더 관련 상태 묶음. */
 export interface ChangesRenderState {
   repositories: RepoInfo[];
+  repositorySetup?: RepositorySetupState;
   activeRepo?: string;
   comparison?: BranchComparison;
   comparisonEnabled: boolean;
@@ -59,6 +61,7 @@ export function buildChangesRenderPayload(
   fileIcons: FileIconThemeResolver
 ) {
   return {
+    onboarding: state.repositorySetup ?? { phase: "idle" },
     repos: state.repositories.map((r) => ({
       root: r.root,
       name: baseName(r.root),

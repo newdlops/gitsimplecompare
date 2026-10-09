@@ -10,6 +10,8 @@ import {
 } from "../git/pullRequestPublishService";
 import type { PullRequestInfo } from "../git/pullRequestInfo";
 import { logError, logInfo } from "../ui/outputLog";
+import { SequentialPushError } from "../git/sequentialPush";
+import { pushFailureText, reportPushProgress } from "../ui/pushProgress";
 
 /** 웹뷰가 현재 화면의 PR 게시 입력을 extension에 전달하는 메시지이다. */
 export interface PullRequestPreviewPublishMessage {
@@ -107,7 +109,7 @@ export class PullRequestPreviewPublisher {
           title: vscode.l10n.t("Publishing Pull Request to GitHub..."),
           cancellable: false,
         },
-        () => publishService.publishPreview({
+        (progress) => publishService.publishPreview({
           sourceBranch: context.sourceBranch,
           targetBranch: msg.targetBranch,
           remote: remote.name,
@@ -115,7 +117,7 @@ export class PullRequestPreviewPublisher {
           body: msg.body,
           draft: mode === "draft",
           commitMessage,
-        })
+        }, { onProgress: event => reportPushProgress(this.repoRoot, progress, event, false) })
       );
       logInfo("PR preview publish completed", {
         repoRoot: this.repoRoot,
@@ -294,9 +296,13 @@ async function showPublishCompleted(
 }
 
 /** 게시 중 일부 단계가 끝난 오류에는 사용자가 복구할 수 있도록 남은 로컬/원격 상태를 덧붙인다. */
-function publishErrorText(error: unknown): string {
+export function publishErrorText(error: unknown): string {
   if (!(error instanceof PullRequestPublishError)) {
     return error instanceof Error ? error.message : String(error);
+  }
+  if (error.originalError instanceof SequentialPushError) {
+    const detail = pushFailureText(error.originalError);
+    return error.committed ? vscode.l10n.t("{0} The staged changes were committed locally.", detail) : detail;
   }
   if (error.pushed) {
     return vscode.l10n.t(

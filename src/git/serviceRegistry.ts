@@ -2,7 +2,7 @@
 // - 같은 저장소에 대해 매번 새 인스턴스를 만들 필요가 없고, 프로바이더/명령 등
 //   여러 레이어가 동일한 인스턴스를 공유하도록 하는 단일 진입점이다(재사용성).
 import { GitService } from "./gitService";
-import { detectRepoRoot, detectRepositoryIdentity } from "./repositoryDiscovery";
+import { detectRepositoryIdentity, type DetectedRepositoryIdentity } from "./repositoryDiscovery";
 
 /** 저장소 탐색과 함께 얻은 공유 GitService/브랜치 결과. */
 export interface ResolvedRepositoryIdentity {
@@ -20,6 +20,15 @@ export class GitServiceRegistry {
     string,
     { at: number; root: string | undefined }
   >();
+  /** 같은 세대의 cold root/branch 조회만 공유한다. branch의 시간 기반 캐시는 만들지 않는다. */
+  private readonly pendingDiscovery = new Map<string, Promise<DetectedRepositoryIdentity | undefined>>();
+  private discoveryGeneration = 0;
+
+  /**
+   * production은 공통 Git 탐색을 사용하고 테스트는 지연·무효화 경계만 대체한다.
+   * @param discover root와 branch를 같은 실행에서 반환할 저장소 탐색기
+   */
+  constructor(private readonly discover = detectRepositoryIdentity) {}
 
   /**
    * 저장소 루트에 해당하는 GitService 를 반환한다(없으면 생성해 캐싱).
@@ -44,12 +53,11 @@ export class GitServiceRegistry {
     if (cached && Date.now() - cached.at < 5000) {
       return cached.root ? this.get(cached.root) : undefined;
     }
-    const root = await detectRepoRoot(cwd);
-    this.resolveCache.set(cwd, { at: Date.now(), root });
-    if (!root) {
+    const identity = await this.discoverOnce(cwd);
+    if (!identity) {
       return undefined;
     }
-    return this.get(root);
+    return this.get(identity.root);
   }
 
   /**
@@ -72,14 +80,30 @@ export class GitServiceRegistry {
         return { service, branch: "" };
       }
     }
-    const identity = await detectRepositoryIdentity(cwd);
-    this.resolveCache.set(cwd, {
-      at: Date.now(),
-      root: identity?.root,
-    });
+    const identity = await this.discoverOnce(cwd);
     return identity
       ? { service: this.get(identity.root), branch: identity.branch }
       : undefined;
+  }
+
+  /**
+   * 같은 경로의 진행 중 root/branch 조회를 공유하고 완료 후에는 즉시 해제한다.
+   * - Clone/Init 후 무효화되면 이전 조회가 늦게 완료해도 새 negative/root 캐시를 덮어쓰지 않는다.
+   * @param cwd 실제 Git 탐색 경로 @returns 현재 요청이 확인한 identity 또는 비저장소 결과
+   */
+  private async discoverOnce(cwd: string): Promise<DetectedRepositoryIdentity | undefined> {
+    const existing = this.pendingDiscovery.get(cwd);
+    if (existing) return existing;
+    const generation = this.discoveryGeneration;
+    const pending = Promise.resolve().then(() => this.discover(cwd)).then(identity => {
+      if (generation === this.discoveryGeneration) {
+        this.resolveCache.set(cwd, { at: Date.now(), root: identity?.root });
+      }
+      return identity;
+    });
+    this.pendingDiscovery.set(cwd, pending);
+    try { return await pending; }
+    finally { if (this.pendingDiscovery.get(cwd) === pending) this.pendingDiscovery.delete(cwd); }
   }
 
   /**
@@ -101,8 +125,10 @@ export class GitServiceRegistry {
     this.cache.get(repoRoot)?.invalidateStatusCache(false);
   }
 
-  /** 저장소 루트 탐지 캐시를 비운다. */
+  /** 저장소 루트 탐지 세대를 바꿔 완료 캐시와 진행 중 조회를 다음 탐색에서 재사용하지 않는다. */
   invalidateResolveCache(): void {
+    this.discoveryGeneration++;
     this.resolveCache.clear();
+    this.pendingDiscovery.clear();
   }
 }

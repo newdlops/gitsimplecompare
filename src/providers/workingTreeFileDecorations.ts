@@ -305,6 +305,7 @@ export function registerWorkingTreeFileDecorations(context: vscode.ExtensionCont
  * 현재 workspace의 resource만 허용하고 내장 Git과 자체 장식의 설정 우선순위를 존중한다.
  * - Projects 카탈로그의 외부 저장소 URI 때문에 창마다 모든 저장소의 status를 읽지 않게 한다.
  * @param uri Explorer·resourceUri 트리가 장식을 요청한 파일/폴더
+ * - 자동 갱신만 중단한 경우에는 기본 Git이 장식을 계속 제공하므로 중복 배지를 만들지 않는다.
  * @returns 현재 열린 workspace 범위이며 내장 Git이 꺼지고 장식이 켜져 있으면 true
  */
 function usesFallback(uri: vscode.Uri): boolean {

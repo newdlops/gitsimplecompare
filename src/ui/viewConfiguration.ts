@@ -19,9 +19,11 @@ export function registerViewConfigurationEvents(
 ): vscode.Disposable[] {
   return [
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration("git.enabled")) {
+      if (event.affectsConfiguration("git.enabled") || event.affectsConfiguration("git.autorefresh") ||
+          event.affectsConfiguration("gitSimpleCompare.useBuiltinGitStatus")) {
         logInfo("vscode git setting changed", {
           enabled: vscode.workspace.getConfiguration("git").get<boolean>("enabled", true),
+          automaticRefresh: vscode.workspace.getConfiguration("git").get<boolean>("autorefresh", true),
         });
         callbacks.onGitEnablementChanged();
       }

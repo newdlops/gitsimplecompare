@@ -3,6 +3,7 @@
 // - 실제 Git 실행은 공유 실행기(runGit)와 push 전용 서비스만 사용한다.
 import { detectOperation } from "./conflictService";
 import { runGit } from "./gitExec";
+import type { PushExecutionOptions } from "./sequentialPush";
 import { invalidateRemoteTagCache } from "./gitTagService";
 import { readGraphLocalBranchSnapshot } from "./graphLocalBranches";
 import { isUnpushedLocalHead, splitRemoteRef } from "./gitRefNames";
@@ -201,10 +202,9 @@ export class GitGraphActionService {
   }
 
   /** upstream 자동 설정 계획에 따라 현재 브랜치를 push하고 ref 캐시를 비운다. */
-  async pushCurrent(plan?: PushCurrentPlan): Promise<PushCurrentResult> {
-    const result = await pushCurrentWithAutoUpstream(this.repoRoot, plan);
-    this.invalidateRefs();
-    return result;
+  async pushCurrent(plan?: PushCurrentPlan, options?: PushExecutionOptions): Promise<PushCurrentResult> {
+    try { return await pushCurrentWithAutoUpstream(this.repoRoot, plan, options); }
+    finally { this.invalidateRefs(); }
   }
 
   /** 사용자가 선택한 force 정책으로 현재 브랜치를 push하고 ref 캐시를 비운다. */

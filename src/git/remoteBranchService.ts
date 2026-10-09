@@ -1,6 +1,7 @@
 // 현재 브랜치의 upstream remote 를 웹 브랜치 URL 로 변환하는 git 서비스.
 // - UI 레이어가 remote URL 형식(git@, ssh://, https://)을 직접 해석하지 않도록 분리한다.
 import { runGit } from "./gitExec";
+import { pushBranchCommits, type PushExecutionOptions } from "./sequentialPush";
 
 /** 현재 브랜치 upstream 을 웹에서 열기 위한 링크 정보 */
 export type RemoteBranchLink =
@@ -151,7 +152,8 @@ export class RemoteBranchService {
    */
   async pushCurrentBranchToRemote(
     remote: string,
-    remoteBranch: string
+    remoteBranch: string,
+    options: PushExecutionOptions = {}
   ): Promise<RemoteBranchSetupResult> {
     const targetBranch = remoteBranch.trim();
     const state = await this.getCurrentBranchRemoteState();
@@ -162,10 +164,10 @@ export class RemoteBranchService {
       throw new Error(`No git remote found: ${remote}`);
     }
     await this.assertValidRemoteBranchName(targetBranch);
-    await runGit(
-      ["push", "-u", remote, `HEAD:refs/heads/${targetBranch}`],
-      this.repoRoot
-    );
+    const head = (await runGit(["rev-parse", "--verify", `refs/heads/${state.branch}^{commit}`], this.repoRoot)).trim();
+    await pushBranchCommits(this.repoRoot, {
+      branch: state.branch, head, remote, targetRef: `refs/heads/${targetBranch}`,
+    }, { ...options, setUpstream: true });
     return {
       branch: state.branch,
       upstream: `${remote}/${targetBranch}`,

@@ -427,14 +427,17 @@ export class VscodeGitStatusProvider implements vscode.Disposable {
 }
 
 /**
- * 워크스페이스와 저장소 리소스의 내장 Git 설정을 확인해 중단 직후의 오래된 API 상태 사용을 막는다.
+ * 내장 Git 활성화와 자동 갱신 설정을 확인해 중단 동안 오래된 API 상태를 사용하는 것을 막는다.
  * @param repoRoot 폴더별 git.enabled override도 확인할 저장소 루트, 생략하면 워크스페이스 설정만 확인
- * @returns 해당 범위에서 내장 Git이 켜져 있으면 true
+ * @returns 재사용을 명시적으로 선택하고 해당 범위의 내장 Git과 자동 갱신이 켜져 있으면 true
  */
 function builtinGitEnabled(repoRoot?: string): boolean {
-  if (!vscode.workspace.getConfiguration("git").get<boolean>("enabled", true)) return false;
-  return !repoRoot || vscode.workspace.getConfiguration("git", vscode.Uri.file(repoRoot))
-    .get<boolean>("enabled", true);
+  if (!vscode.workspace.getConfiguration("gitSimpleCompare").get<boolean>("useBuiltinGitStatus", false)) return false;
+  const config = vscode.workspace.getConfiguration("git");
+  if (!config.get<boolean>("enabled", true) || !config.get<boolean>("autorefresh", true)) return false;
+  if (!repoRoot) return true;
+  const resourceConfig = vscode.workspace.getConfiguration("git", vscode.Uri.file(repoRoot));
+  return resourceConfig.get<boolean>("enabled", true) && resourceConfig.get<boolean>("autorefresh", true);
 }
 
 /**

@@ -6,7 +6,9 @@ import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
 import { getCurrentPushPlan } from "../git/pushService";
 import { RemoteBranchService } from "../git/remoteBranchService";
-import { logInfo } from "../ui/outputLog";
+import { logInfo, showErrorWithOutput } from "../ui/outputLog";
+import { SequentialPushError } from "../git/sequentialPush";
+import { isPushCancelled, pushFailureText, withPushProgress } from "../ui/pushProgress";
 import {
   confirmForcePushCurrentPlan,
   confirmPushCurrentPlan,
@@ -110,9 +112,7 @@ export async function pushCurrent(deps: GraphSyncActionDeps): Promise<void> {
       targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
       reason: plan.mode === "setUpstream" ? plan.reason : undefined,
     });
-    const result = await withGraphProgress(vscode.l10n.t("Pushing..."), () =>
-      deps.logService.pushCurrent(plan)
-    );
+    const result = await withPushProgress(deps.logService.repoRoot, options => deps.logService.pushCurrent(plan, options));
     logInfo("graph push completed", {
       repoRoot: deps.logService.repoRoot,
       mode: result.mode,
@@ -122,8 +122,14 @@ export async function pushCurrent(deps: GraphSyncActionDeps): Promise<void> {
       targetUpstream:
         result.mode === "setUpstream" ? result.targetUpstream : undefined,
       reason: result.mode === "setUpstream" ? result.reason : undefined,
+      execution: result.execution,
     });
   } catch (err) {
+    if (err instanceof SequentialPushError) {
+      await deps.refreshGraph();
+      if (!isPushCancelled(err)) showErrorWithOutput("graph push stopped", err, pushFailureText(err));
+      return;
+    }
     if (isForcePushRequiredError(err)) {
       await showForcePushRequiredMessage(err);
       return;

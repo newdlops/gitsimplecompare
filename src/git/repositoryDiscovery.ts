@@ -36,15 +36,24 @@ export async function detectRepositoryIdentity(
       ["rev-parse", "--show-toplevel", "--abbrev-ref", "HEAD"],
       cwd
     );
-    const [root = "", branch = ""] = out.trim().split(/\r?\n/);
-    return root ? { root, branch: branch || "HEAD" } : undefined;
+    return parseIdentityOutput(out, false);
   } catch (error) {
     // unborn HEAD는 종료 코드는 실패지만 성공한 --show-toplevel/--abbrev-ref 출력(root, HEAD)은 stdout에 남긴다.
     // 그 출력을 재사용해 root와 branch를 다시 묻는 두 프로세스를 만들지 않고, 일반 비저장소 실패는 즉시 끝낸다.
-    const [root = "", branch = ""] =
-      error instanceof GitError ? error.stdout.trim().split(/\r?\n/) : [];
-    return root
-      ? { root, branch: branch && branch !== "HEAD" ? branch : "" }
-      : undefined;
+    return error instanceof GitError ? parseIdentityOutput(error.stdout, true) : undefined;
   }
+}
+
+/**
+ * 브랜치에는 개행이 없으므로 마지막 행만 분리해 개행을 포함한 실제 root도 그대로 보존한다.
+ * @param output root와 branch를 순서대로 출력한 rev-parse stdout
+ * @param unborn HEAD 부재 오류에서 받은 부분 출력인지 여부
+ * @returns 실제 root와 브랜치 identity. 부분 출력의 HEAD는 아직 커밋이 없는 상태로 구분한다.
+ */
+function parseIdentityOutput(output: string, unborn: boolean): DetectedRepositoryIdentity | undefined {
+  const text = output.replace(/\r?\n$/, "");
+  const separator = text.lastIndexOf("\n");
+  const root = separator < 0 ? text : text.slice(0, separator).replace(/\r$/, "");
+  const branch = separator < 0 ? "" : text.slice(separator + 1).trim();
+  return root ? { root, branch: unborn ? (branch && branch !== "HEAD" ? branch : "") : branch || "HEAD" } : undefined;
 }

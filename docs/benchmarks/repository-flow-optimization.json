@@ -1,0 +1,171 @@
+{
+  "measuredAt": "2026-10-09T12:31:36.608Z",
+  "scope": "Recent repository onboarding and sequential push Git reads",
+  "conditions": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "node": "v22.22.2",
+    "outgoingCommits": 30,
+    "rawObjectMiB": 50,
+    "remote": "disposable local bare repository",
+    "repeats": 3,
+    "note": "Local measurements include Git startup, validation and push. Internet latency and real compressed transfer size are not represented."
+  },
+  "reproduce": "node scripts/benchmark-repository-flows.mjs",
+  "summary": {
+    "pushGitExecutions": {
+      "before": 500,
+      "after": 123,
+      "reductionPercent": 75.4
+    },
+    "pushGitReads": {
+      "before": 470,
+      "after": 93,
+      "reductionPercent": 80.2
+    },
+    "pushMedianMs": {
+      "before": 9209,
+      "after": 3911
+    },
+    "concurrentDiscoveryExecutions": {
+      "before": 10,
+      "after": 1
+    }
+  },
+  "before": {
+    "scenario": "30 outgoing commits, 50 MiB raw objects, local bare remote",
+    "discovery": {
+      "elapsedMs": 112,
+      "executions": 10,
+      "reads": 10,
+      "commands": {
+        "rev-parse": 10
+      }
+    },
+    "pushes": [
+      {
+        "elapsedMs": 12824,
+        "executions": 500,
+        "reads": 470,
+        "commands": {
+          "symbolic-ref": 33,
+          "remote": 34,
+          "config": 230,
+          "for-each-ref": 99,
+          "rev-parse": 64,
+          "ls-remote": 1,
+          "merge-base": 6,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      },
+      {
+        "elapsedMs": 7811,
+        "executions": 500,
+        "reads": 470,
+        "commands": {
+          "symbolic-ref": 33,
+          "remote": 34,
+          "config": 230,
+          "for-each-ref": 99,
+          "rev-parse": 64,
+          "ls-remote": 1,
+          "merge-base": 6,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      },
+      {
+        "elapsedMs": 9209,
+        "executions": 500,
+        "reads": 470,
+        "commands": {
+          "symbolic-ref": 33,
+          "remote": 34,
+          "config": 230,
+          "for-each-ref": 99,
+          "rev-parse": 64,
+          "ls-remote": 1,
+          "merge-base": 6,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      }
+    ]
+  },
+  "after": {
+    "scenario": "30 outgoing commits, 50 MiB raw objects, local bare remote",
+    "discovery": {
+      "elapsedMs": 25,
+      "executions": 1,
+      "reads": 1,
+      "commands": {
+        "rev-parse": 1
+      }
+    },
+    "pushes": [
+      {
+        "elapsedMs": 4985,
+        "executions": 123,
+        "reads": 93,
+        "commands": {
+          "symbolic-ref": 2,
+          "remote": 3,
+          "config": 43,
+          "for-each-ref": 37,
+          "rev-parse": 2,
+          "ls-remote": 1,
+          "merge-base": 2,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      },
+      {
+        "elapsedMs": 3911,
+        "executions": 123,
+        "reads": 93,
+        "commands": {
+          "symbolic-ref": 2,
+          "remote": 3,
+          "config": 43,
+          "for-each-ref": 37,
+          "rev-parse": 2,
+          "ls-remote": 1,
+          "merge-base": 2,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      },
+      {
+        "elapsedMs": 3624,
+        "executions": 123,
+        "reads": 93,
+        "commands": {
+          "symbolic-ref": 2,
+          "remote": 3,
+          "config": 43,
+          "for-each-ref": 37,
+          "rev-parse": 2,
+          "ls-remote": 1,
+          "merge-base": 2,
+          "rev-list": 2,
+          "cat-file": 1,
+          "push": 30
+        }
+      }
+    ]
+  },
+  "verification": {
+    "relatedTestsPassed": 89,
+    "nativeOnboardingGitEnabled": true,
+    "nativeOnboardingGitDisabled": true,
+    "nativeProductionSequentialPush": "50 MiB raw objects; three confirmed updates; worktree and native settings preserved",
+    "build": "npm run compile",
+    "types": "npm run check-types"
+  }
+}

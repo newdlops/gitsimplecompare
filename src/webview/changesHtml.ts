@@ -27,6 +27,8 @@ export function buildChangesHtml(
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "changes");
   const version = resourceVersion([
     vscode.Uri.joinPath(mediaRoot, "changes.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesOnboarding.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesOnboarding.css"),
     vscode.Uri.joinPath(mediaRoot, "changesCompare.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAi.js"),
     vscode.Uri.joinPath(mediaRoot, "changesAiPlan.js"),
@@ -56,6 +58,8 @@ export function buildChangesHtml(
   const scriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changes.js"), version)
   );
+  const onboardingScriptUri = webview.asWebviewUri(withVersion(vscode.Uri.joinPath(mediaRoot, "changesOnboarding.js"), version));
+  const onboardingStyleUri = webview.asWebviewUri(withVersion(vscode.Uri.joinPath(mediaRoot, "changesOnboarding.css"), version));
   const aiScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesAi.js"), version)
   );
@@ -164,6 +168,7 @@ export function buildChangesHtml(
   ${sharedWebviewStyleTags(sharedResources)}
   <link href="${codiconUri}" rel="stylesheet" />
   <link href="${styleUri}" rel="stylesheet" />
+  <link href="${onboardingStyleUri}" rel="stylesheet" />
   <link href="${filesStyleUri}" rel="stylesheet" />
   <link href="${actionsStyleUri}" rel="stylesheet" />
   <link href="${compareStyleUri}" rel="stylesheet" />
@@ -182,6 +187,7 @@ export function buildChangesHtml(
     menu
   )};window.__gscCommitMenu=${JSON.stringify(commitMenu)};</script>
   ${sharedWebviewScriptTags(sharedResources, nonce)}
+  <script nonce="${nonce}" src="${onboardingScriptUri}"></script>
   <script nonce="${nonce}" src="${operationScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreesScriptUri}"></script>
   <script nonce="${nonce}" src="${compareScriptUri}"></script>

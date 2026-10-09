@@ -134,6 +134,9 @@ async function runChangesRefreshPass(
     logInfo("changes refresh finished", { runId, lane });
   } catch (error) {
     logError("changes refresh failed", error, { runId, reason, lane });
+    if (lane === "local" && !deps.changesView.getActiveRepo()) {
+      deps.changesView.setRepositorySetupState({ phase: "error", message: vscode.l10n.t("Could not find a Git repository. Retry or check the Git executable.") });
+    }
     vscode.window.showErrorMessage(
       vscode.l10n.t(
         "Git Simple Compare refresh failed. See the Git Simple Compare output for details."
@@ -175,6 +178,7 @@ async function refreshChangesViewOnce(
   // repositoryLoad가 먼저 실패해도 이미 시작한 status Promise가 unhandled rejection으로 남지 않게 한다.
   void prefetchedWorking?.catch(() => undefined);
   if (repositoryLoad) {
+    deps.changesView.beginRepositoryDiscovery();
     const repositories = await repositoryLoad;
     const preferredRoot = resolvePreferredRepositoryRoot(repositories);
     deps.changesView.setRepositories(repositories, preferredRoot);

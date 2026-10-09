@@ -327,30 +327,8 @@
 
   /** Repositories 섹션 본문(저장소명 + 현재 브랜치). */
   function reposBody(repos) {
-    if (!repos.length) {
-      return `<p class="empty">${esc(T.noRepos)}</p>`;
-    }
-    return repos
-      .map(
-        (r) =>
-          `<div class="row repo${r.active ? " active" : ""}" role="button" tabindex="0" ` +
-          `data-root="${esc(r.root)}" title="${esc(r.root)}" aria-label="${esc(
-            `${T.change}: ${r.name}`
-          )}">` +
-          `<span class="icon codicon ${
-            r.active ? "codicon-pass-filled" : "codicon-repo"
-          }"></span>` +
-          `<span class="name">${esc(r.name)}</span>` +
-          (r.branch
-            ? `<span class="branch"><span class="codicon codicon-git-branch">` +
-              `</span>${esc(r.branch)}</span>`
-            : "") +
-          (r.active ? `<span class="badge">${esc(T.current)}</span>` : "") +
-          `</div>`
-      )
-      .join("");
+    return window.__gscChangesOnboarding.repositoriesHtml(repos, T, esc);
   }
-
   /**
    * 행 hover 시 노출되는 인라인 액션 묶음 HTML.
    * - 파일이면 "파일 열기"(편집 화면) 아이콘을 먼저 둔다.
@@ -624,6 +602,11 @@
     const previousCommitMessageRevision = state.commitMessageRevision || 0;
     closeDropdown();
     lastPayload = p;
+    if (!p.repos.length) {
+      rootEl.innerHTML = window.__gscChangesOnboarding.render(p.onboarding, T, esc);
+      window.__gscChangesOnboarding.bind(rootEl, post, p.onboarding);
+      return;
+    }
     state.visibleSections = normalizeVisibleSections(p.visibleSections);
     currentFileIcons = (p.fileIcons && p.fileIcons.icons) || {};
     loadFileIconFonts(p.fileIcons && p.fileIcons.fonts);

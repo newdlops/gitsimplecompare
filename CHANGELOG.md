@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.1.72090] - 2026-10-09
+
+### Added
+
+- Start with Git Simple Compare from the Source Control welcome. Clone by URL
+  or SSH, choose public/private/organization GitHub repositories, open an
+  existing repository, or initialize a folder through the extension's own Git.
+- Connect completed setup to Changes, including after opening a folder or
+  adding a repository to the workspace. Offer progress, cancellation, retry
+  and Git executable diagnosis while preserving existing folders and files.
+- Automatically push commits oldest first when a normal push has multiple
+  outgoing commits and at least 50 MiB of new Git objects before compression.
+  Show confirmed progress, stop on failure or cancellation, and resume from the
+  actual remote tip while protecting concurrent updates with explicit leases.
+
+### Changed
+
+- Use the extension's own Git CLI by default. The optional VS Code Git status
+  reuse setting leaves `git.enabled`, `git.autorefresh` and `git.autofetch`
+  unchanged, including existing user and workspace overrides.
+- Share simultaneous repository discovery, reject obsolete cache results,
+  remove duplicate onboarding refreshes and keep branch reads fresh.
+- Consolidate push validation and stream object-size metadata to reduce repeated
+  Git execution and output buffering while retaining source/destination checks.
+
+### Fixed
+
+- Keep startup clone and initialization available with built-in Git disabled,
+  using independent GitHub authentication and transient clone credentials.
+- Preserve repository paths containing newlines during combined discovery and
+  honor reduced-motion preferences in onboarding progress indicators.
+
 ## [0.1.72089] - 2026-10-07
 
 ### Changed

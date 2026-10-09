@@ -1,8 +1,8 @@
 // 현재 브랜치 push 를 준비/실행하는 git 서비스.
 // - 일반 push 가 upstream 이름 불일치나 미설정 상태에서 실패하지 않도록, remote 가 있으면
 //   현재 로컬 브랜치명과 같은 remote branch 로 publish/upstream 설정할 계획을 계산한다.
-import { createHash } from "node:crypto";
 import { GitError, runGit } from "./gitExec";
+import { pushBranchCommits, pushConfigurationFingerprint, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
 
 /** 확인 당시의 커밋·목적 ref·설정 세대다. URL 원문은 로그에 노출하지 않도록 해시만 보존한다. */
 interface PushSnapshot {
@@ -51,7 +51,7 @@ export type PushCurrentPlan =
   | SetUpstreamPushCurrentPlan;
 
 /** 현재 브랜치 push 결과. UI/명령 레이어가 관찰 로그를 남길 때 사용한다. */
-export type PushCurrentResult = PushCurrentPlan;
+export type PushCurrentResult = PushCurrentPlan & { execution?: PushExecutionResult };
 
 interface PushTarget {
   branch?: string;
@@ -79,7 +79,7 @@ export async function getCurrentPushPlan(
   const [head, refInfo, configFingerprint, pushDefault, customPush] = await Promise.all([
     runGit(["rev-parse", "--verify", `${sourceRef}^{commit}`], repoRoot),
     runGit(["for-each-ref", "--format=%(push:remoteref)%00%(push)%00%(upstream:remoteref)", sourceRef], repoRoot),
-    pushConfigFingerprint(repoRoot),
+    pushConfigurationFingerprint(repoRoot),
     optionalGit(["config", "--get", "push.default"], repoRoot),
     optionalGit(["config", "--get-all", `remote.${plan.remote}.push`], repoRoot),
   ]);
@@ -106,11 +106,12 @@ export async function getCurrentPushPlan(
  */
 export async function pushCurrentWithAutoUpstream(
   repoRoot: string,
-  plan?: PushCurrentPlan
+  plan?: PushCurrentPlan,
+  options: PushExecutionOptions = {}
 ): Promise<PushCurrentResult> {
   const resolved = plan ?? (await getCurrentPushPlan(repoRoot));
-  await executePush(repoRoot, resolved);
-  return resolved;
+  const execution = await executePush(repoRoot, resolved, undefined, options);
+  return { ...resolved, execution };
 }
 
 /**
@@ -140,7 +141,45 @@ export async function forcePushCurrent(
  * @param plan 사용자 확인 당시 계획
  * @param force 선택한 force 정책. 없으면 일반 push
  */
-async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: ForcePushMode): Promise<void> {
+async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: ForcePushMode, options: PushExecutionOptions = {}): Promise<PushExecutionResult | undefined> {
+  await validatePushPlan(repoRoot, plan);
+  let execution: PushExecutionResult | undefined;
+  if (!force) {
+    execution = await pushBranchCommits(repoRoot, {
+      branch: plan.branch!, remote: plan.remote!, head: plan.snapshot.head, targetRef: plan.snapshot.targetRef,
+    }, { ...options, setUpstream: false, requireCurrentBranch: true,
+      approvedConfigurationFingerprint: plan.snapshot.configFingerprint });
+  } else {
+    const args = ["push"];
+    if (force === "force") args.push("--force");
+    if (force === "forceWithLease") {
+      args.push(`--force-with-lease=${plan.snapshot.targetRef}:${plan.snapshot.remoteHead}`);
+    }
+    args.push(plan.remote!, `${plan.snapshot.head}:${plan.snapshot.targetRef}`);
+    await runGit(args, repoRoot, { retryOnLock: false });
+  }
+  if (plan.mode === "setUpstream") {
+    try {
+      const source = (await runGit(["rev-parse", "--verify", `refs/heads/${plan.branch}`], repoRoot)).trim();
+      if (source !== plan.snapshot.head || await pushConfigurationFingerprint(repoRoot) !== plan.snapshot.configFingerprint) {
+        throw new Error("Push completed, but local branch settings changed. The upstream was not changed; refresh to check the result.");
+      }
+      await runGit(["branch", `--set-upstream-to=${plan.targetUpstream}`, "--", plan.branch], repoRoot, { retryOnLock: false });
+    } catch (error) {
+      if (execution?.strategy === "sequential") throw new SequentialPushError(error, execution);
+      throw error;
+    }
+  }
+  return execution;
+}
+
+/**
+ * 사용자 확인 이후 첫 실행 전에 전체 계획이 유지되는지 검증한다.
+ * - 각 전송 직전의 branch/source/config 검사는 pushBranchCommits가 한 번씩 담당한다.
+ * @param repoRoot 저장소 루트 @param plan 사용자에게 확인받은 계획
+ * @returns 계획이 일치하면 완료하고 변경됐다면 원격 mutation 전에 실패한다.
+ */
+async function validatePushPlan(repoRoot: string, plan: PushCurrentPlan): Promise<void> {
   const current = await getCurrentPushPlan(repoRoot);
   if (!plan.snapshot || plan.branch !== current.branch || plan.remote !== current.remote ||
       plan.mode !== current.mode || plan.upstream !== current.upstream ||
@@ -148,34 +187,6 @@ async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: Forc
       plan.snapshot.configFingerprint !== current.snapshot.configFingerprint) {
     throw new Error("Push target or local commits changed after confirmation. Refresh and try again.");
   }
-  const args = ["push"];
-  if (force === "force") args.push("--force");
-  if (force === "forceWithLease") {
-    args.push(`--force-with-lease=${plan.snapshot.targetRef}:${plan.snapshot.remoteHead}`);
-  }
-  args.push(plan.remote!, `${plan.snapshot.head}:${plan.snapshot.targetRef}`);
-  await runGit(args, repoRoot, { retryOnLock: false });
-  if (plan.mode === "setUpstream") {
-    const source = (await runGit(["rev-parse", "--verify", `refs/heads/${plan.branch}`], repoRoot)).trim();
-    if (source !== plan.snapshot.head || await pushConfigFingerprint(repoRoot) !== plan.snapshot.configFingerprint) {
-      throw new Error("Push completed, but local branch settings changed. The upstream was not changed; refresh to check the result.");
-    }
-    await runGit(["branch", `--set-upstream-to=${plan.targetUpstream}`, "--", plan.branch], repoRoot, { retryOnLock: false });
-  }
-}
-
-/**
- * push 대상·옵션에 영향을 주는 설정을 해시로 묶어 확인 이후 URL/refspec 변경을 검출한다.
- * @param repoRoot 설정을 읽을 저장소
- * @returns 자격 증명이나 remote URL 원문을 담지 않는 비교용 해시
- */
-async function pushConfigFingerprint(repoRoot: string): Promise<string> {
-  const output = await runGit(["config", "--null", "--get-regexp", "^(branch\\.|remote\\.|push\\.|url\\.)"], repoRoot)
-    .catch(error => {
-      if (error instanceof GitError && error.code === 1) return "";
-      throw error;
-    });
-  return createHash("sha256").update(output).digest("hex");
 }
 
 /**

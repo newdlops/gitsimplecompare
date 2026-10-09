@@ -1,0 +1,45 @@
+/* 기존 사이드바의 여백·본문 크기·버튼 토큰을 사용하는 작은 온보딩 영역. */
+.gsc-onboarding {
+  width: 100%;
+  max-width: 460px;
+  padding: var(--gsc-space-12) var(--gsc-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gsc-space-6);
+  color: var(--gsc-fg);
+}
+.gsc-onboarding-mark { color: var(--gsc-muted); font-size: 16px; align-self: flex-start; }
+.gsc-onboarding h1 { margin: 0; font-size: 13px; line-height: 1.35; font-weight: 600; }
+.gsc-onboarding p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.gsc-onboarding-intro, .gsc-onboarding-note { color: var(--gsc-muted); }
+.gsc-onboarding-note { font-size: var(--gsc-font-caption-size); }
+.gsc-onboarding-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gsc-space-4); }
+.gsc-onboarding .gsc-button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--gsc-space-4);
+  min-height: 28px;
+  height: auto;
+  padding: var(--gsc-space-4) var(--gsc-space-6);
+  text-align: left;
+  white-space: normal;
+}
+.gsc-onboarding .gsc-button > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.gsc-onboarding .gsc-button .codicon { flex-shrink: 0; }
+.gsc-onboarding-feedback, .gsc-onboarding-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gsc-space-4);
+  font-size: var(--gsc-font-caption-size);
+  line-height: 1.5;
+}
+.gsc-onboarding-feedback .codicon, .gsc-onboarding-error .codicon { flex-shrink: 0; margin-top: 2px; }
+.gsc-onboarding-error { color: var(--gsc-error); }
+.gsc-onboarding-recovery { display: flex; flex-wrap: wrap; gap: var(--gsc-space-4); }
+.gsc-onboarding-recovery .gsc-button { width: auto; }
+.gsc-onboarding-path { color: var(--gsc-muted); font-family: var(--gsc-code-font); font-size: var(--gsc-font-caption-size); }
+@media (max-width: 280px) { .gsc-onboarding { padding: var(--gsc-space-8) var(--gsc-space-4); } }
+/* 회전 대신 고정 Git 아이콘과 실제 진행 문구로 동작 줄이기 상태를 전달한다. */
+@media (prefers-reduced-motion: reduce) {
+  .gsc-onboarding .codicon-loading.codicon-modifier-spin { animation: none !important; }
+}

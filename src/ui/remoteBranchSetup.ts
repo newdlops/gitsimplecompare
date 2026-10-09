@@ -8,8 +8,9 @@ import {
   RemoteBranchUnsetResult,
   RemoteTrackingBranch,
 } from "../git/remoteBranchService";
-import { isForcePushRequiredError, gitErrorText } from "../git/pushErrors";
+import { isForcePushRequiredError } from "../git/pushErrors";
 import { logInfo } from "./outputLog";
+import { isPushCancelled, pushFailureText, withPushProgress } from "./pushProgress";
 
 export type RemoteBranchSetupReason = "manual" | "pull" | "openRemoteBranch";
 
@@ -418,13 +419,7 @@ async function publishCurrentBranch(
     return { status: "canceled" };
   }
   try {
-    const result = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: vscode.l10n.t("Pushing..."),
-      },
-      () => service.pushCurrentBranchToRemote(remote, remoteBranch)
-    );
+    const result = await withPushProgress(repoRoot, options => service.pushCurrentBranchToRemote(remote, remoteBranch, options));
     logInfo("remote branch published and configured", {
       repoRoot,
       branch: result.branch,
@@ -435,12 +430,13 @@ async function publishCurrentBranch(
     );
     return { status: "published", result };
   } catch (err) {
+    if (isPushCancelled(err)) return { status: "canceled" };
     if (isForcePushRequiredError(err)) {
       await vscode.window.showWarningMessage(
         vscode.l10n.t(
           "Push was rejected because the remote branch is not a fast-forward update. Use Force Push only if you intend to overwrite the remote branch."
         ),
-        { modal: true, detail: gitErrorText(err) }
+        { modal: true, detail: pushFailureText(err) }
       );
       return { status: "unavailable" };
     }

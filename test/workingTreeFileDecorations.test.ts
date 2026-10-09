@@ -44,6 +44,7 @@ function fixture(t: TestContext, roots = ["/repo"]) {
   const resolverRoots = [...roots];
   const resolutions: string[] = [];
   let decorationsEnabled = true;
+  let automaticRefresh = true;
   const saved = signal<{ uri: ReturnType<typeof Uri.file> }>();
   const created = signal<{ files: ReturnType<typeof Uri.file>[] }>();
   const deleted = signal<{ files: ReturnType<typeof Uri.file>[] }>();
@@ -82,7 +83,7 @@ function fixture(t: TestContext, roots = ["/repo"]) {
   t.mock.method(workspace, "getConfiguration", (_section: string, uri?: { fsPath: string }) => ({
     get: (key: string, fallback: unknown) => key === "enabled"
       ? enabled.get(roots.find(root => uri?.fsPath === root || uri?.fsPath.startsWith(root + path.sep)) ?? "") ?? outsideEnabled
-      : key === "decorations.enabled" ? decorationsEnabled : fallback,
+      : key === "decorations.enabled" ? decorationsEnabled : key === "autorefresh" ? automaticRefresh : fallback,
   }));
   t.mock.method(workspace, "onDidChangeConfiguration", configured.event);
   t.mock.method(workspace, "onDidSaveTextDocument", saved.event);
@@ -106,6 +107,7 @@ function fixture(t: TestContext, roots = ["/repo"]) {
     outsideRoot: (root: string, porcelain: string) => { outsideEnabled = false; resolverRoots.push(root); values.set(root, porcelain); },
     read: (file = "nested/changed.txt", root = roots[0]) => provider.provideFileDecoration(Uri.file(path.join(root, file)) as vscode.Uri, token),
     configure: (value: boolean, root = roots[0]) => { enabled.set(root, value); configured.fire({ affectsConfiguration: key => key === "git.enabled" }); },
+    automaticRefresh: (value: boolean) => { automaticRefresh = value; configured.fire({ affectsConfiguration: key => key === "git.autorefresh" }); },
     decorations: (value: boolean) => { decorationsEnabled = value; configured.fire({ affectsConfiguration: key => key === "git.decorations.enabled" }); },
     focus: (value: boolean) => { window.state = { focused: value }; focused.fire(window.state); },
     load: (next: typeof loader) => { loader = next; },
@@ -145,6 +147,27 @@ test("real shared Git status decorates saved/staged/renamed/untracked files with
   assert.equal(at("deleted.txt")?.badge, "D");
   assert.equal(at("deleted.txt")?.propagate, false);
   assert.deepEqual(await readFile(path.join(root, ".git/index")), before);
+});
+
+test("paused native automatic refresh does not duplicate native badges; disabling Git transfers decoration ownership", async t => {
+  const f = fixture(t);
+  f.configure(true);
+  await settle();
+  assert.equal(await f.read(), undefined);
+  f.automaticRefresh(false);
+  await settle();
+  assert.equal(await f.read(), undefined);
+  f.configure(false);
+  await settle();
+  assert.equal((await f.read())?.badge, "M");
+  f.values.set("/repo", "?? nested/changed.txt\0");
+  f.saved.fire({ uri: Uri.file("/repo/nested/changed.txt") });
+  t.mock.timers.tick(180);
+  await settle();
+  assert.equal((await f.read())?.badge, "U");
+  f.configure(true);
+  await settle();
+  assert.equal(await f.read(), undefined);
 });
 
 test("XY precedence distinguishes untracked, staged, working, intent-to-add and all merge conflicts", () => {

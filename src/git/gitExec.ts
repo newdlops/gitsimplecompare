@@ -49,6 +49,20 @@ export async function runGitStream(args: string[], cwd: string, onData: (chunk: 
 }
 
 /**
+ * cat-file --batch-check에 stdin을 보내면서 stdout은 작은 조각으로 소비한다.
+ * - 입력·출력 모두 공통 소유 실행기에 연결해 취소·close·조회 제한을 유지한다.
+ * - 소비자가 일부 출력을 읽은 뒤 같은 작업을 다시 실행하지 않도록 자동 재시도하지 않는다.
+ * @param args 실제 Git 인자 @param cwd 저장소 루트
+ * @param input 끝까지 전달할 객체 ID 등 stdin 데이터
+ * @param onData 출력 조각을 동기로 소비할 함수. 던진 오류는 프로세스 종료 뒤 그대로 전달한다.
+ * @param options 실행 환경·취소·조회 제한 정책 @returns 실제 close 확인 뒤 완료되는 Promise
+ */
+export async function runGitStreamWithInput(args: string[], cwd: string, input: GitInput,
+  onData: (chunk: Buffer) => void, options: RunGitOptions = {}): Promise<void> {
+  await executeGitProcess(resolveGitExecutable(cwd, options.executable), args, cwd, options, input, onData);
+}
+
+/**
  * 기존 command-scope Git 설정을 보존하며 새 override를 환경 뒤에 추가한다.
  * @param env 호출 환경. process.env나 입력 객체를 변경하지 않는다.
  * @param overrides 자식 Git에도 상속할 Git 설정 key/value

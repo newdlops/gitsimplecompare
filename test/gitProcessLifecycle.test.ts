@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
-import { GitError, runGit, runGitBuffer, runGitStream, runGitWithInput, type RunGitOptions } from "../src/git/gitExec";
+import { GitError, runGit, runGitBuffer, runGitStream, runGitStreamWithInput, runGitWithInput, type RunGitOptions } from "../src/git/gitExec";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
 
 /** 실제로 SIGTERM을 무시하는 부모·자식을 만들며 실패한 테스트에서도 해당 PID만 회수한다. */
@@ -76,7 +76,7 @@ test("leader close preserves cleanup of a resistant child with independent stdio
   for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
-for (const kind of ["text", "buffer", "stream", "stdin"] as const) {
+for (const kind of ["text", "buffer", "stream", "stdin", "stdinStream"] as const) {
   test(`${kind} cancellation closes a SIGTERM-resistant Git process and its child`, { skip: process.platform === "win32" }, async t => {
     const fixture = await stubbornGit(t);
     const controller = new AbortController();
@@ -85,6 +85,7 @@ for (const kind of ["text", "buffer", "stream", "stdin"] as const) {
     const pending = kind === "text" ? runGit(["status"], fixture.root, options)
       : kind === "buffer" ? runGitBuffer(["show"], fixture.root, options)
       : kind === "stdin" ? runGitWithInput(["cat-file", "--batch"], fixture.root, "input", options)
+      : kind === "stdinStream" ? runGitStreamWithInput(["cat-file", "--batch-check"], fixture.root, "input", () => undefined, options)
       : runGitStream(["show"], fixture.root, () => undefined, options);
     const observed = observedFailure(pending);
     const pids = await waitForReady(fixture.ready);

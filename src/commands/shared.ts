@@ -19,6 +19,8 @@ import type { ConflictEditorOverlayController } from "../providers/conflictEdito
 
 /** 명령들이 의존하는 공유 객체 묶음(DI 컨테이너 역할) */
 export interface CommandDeps {
+  /** 온보딩 완료 뒤 새로 열린 창에 Changes 진입을 이어 줄 확장 전용 상태 저장소. */
+  globalState: vscode.Memento;
   /** 현재 VS Code 인스턴스의 user-data-dir을 안전하게 역산할 확장 전역 저장소 URI */
   globalStorageUri: vscode.Uri;
   registry: GitServiceRegistry;

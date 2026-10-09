@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72089",
+  "version": "0.1.72090",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -48,6 +48,41 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "gitSimpleCompare.getStarted",
+        "title": "%cmd.getStarted%",
+        "category": "Git Simple Compare",
+        "icon": "$(repo)",
+        "enablement": "!gitSimpleCompare.onboarding.busy"
+      },
+      {
+        "command": "gitSimpleCompare.cloneRepository",
+        "title": "%cmd.cloneRepository%",
+        "category": "Git Simple Compare",
+        "icon": "$(repo-clone)",
+        "enablement": "!gitSimpleCompare.onboarding.busy"
+      },
+      {
+        "command": "gitSimpleCompare.cloneFromGitHub",
+        "title": "%cmd.cloneFromGitHub%",
+        "category": "Git Simple Compare",
+        "icon": "$(github)",
+        "enablement": "!gitSimpleCompare.onboarding.busy"
+      },
+      {
+        "command": "gitSimpleCompare.openRepository",
+        "title": "%cmd.openRepository%",
+        "category": "Git Simple Compare",
+        "icon": "$(folder-opened)",
+        "enablement": "!gitSimpleCompare.onboarding.busy"
+      },
+      {
+        "command": "gitSimpleCompare.initializeRepository",
+        "title": "%cmd.initializeRepository%",
+        "category": "Git Simple Compare",
+        "icon": "$(repo-create)",
+        "enablement": "!gitSimpleCompare.onboarding.busy"
+      },
       {
         "command": "gitSimpleCompare.compareBranches",
         "title": "%cmd.compareBranches%",
@@ -768,6 +803,16 @@
       {
         "view": "gitSimpleCompare.conflicts",
         "contents": "%welcome.conflicts%"
+      },
+      {
+        "view": "scm",
+        "contents": "%welcome.repositorySetup%",
+        "when": "!config.git.enabled"
+      },
+      {
+        "view": "scm",
+        "contents": "%welcome.repositorySetupEntry%",
+        "when": "config.git.enabled"
       }
     ],
     "menus": {
@@ -1061,6 +1106,31 @@
           "command": "gitSimpleCompare.cleanupIdleGitProcesses",
           "when": "view == gitSimpleCompare.changes",
           "group": "4_settings@6"
+        },
+        {
+          "command": "gitSimpleCompare.getStarted",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "0_setup@0"
+        },
+        {
+          "command": "gitSimpleCompare.cloneRepository",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "0_setup@1"
+        },
+        {
+          "command": "gitSimpleCompare.cloneFromGitHub",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "0_setup@2"
+        },
+        {
+          "command": "gitSimpleCompare.openRepository",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "0_setup@3"
+        },
+        {
+          "command": "gitSimpleCompare.initializeRepository",
+          "when": "view == gitSimpleCompare.changes",
+          "group": "0_setup@4"
         }
       ],
       "view/item/context": [
@@ -1633,6 +1703,12 @@
           "default": true,
           "scope": "resource",
           "description": "%config.cancelUnusedGitReads.desc%"
+        },
+        "gitSimpleCompare.useBuiltinGitStatus": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "description": "%config.useBuiltinGitStatus.desc%"
         }
       }
     }

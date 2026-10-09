@@ -3,6 +3,7 @@
 // - 일반 PR 게시에서는 force push를 사용하지 않아 원격이 앞서거나 분기된 경우 Git이 안전하게 중단한다.
 import { runGh } from "./ghCli";
 import { runGit } from "./gitExec";
+import { pushBranchCommits, type PushExecutionOptions } from "./sequentialPush";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import { resolvePreviewTargetRef } from "./pullRequestPreviewTarget";
 
@@ -165,7 +166,8 @@ export class PullRequestPublishService {
    * @returns 생성된 PR 정보와 실제 remote/head/commit 결과
    */
   async publishPreview(
-    options: PublishPreviewPullRequestOptions
+    options: PublishPreviewPullRequestOptions,
+    pushOptions: PushExecutionOptions = {}
   ): Promise<PublishPreviewPullRequestResult> {
     const context = await this.inspect(options.sourceBranch, options.targetBranch);
     const remote = context.remotes.find((item) => item.name === options.remote);
@@ -206,7 +208,7 @@ export class PullRequestPublishService {
         context.sourceBranch
       );
       phase = "push";
-      await this.publishBranch(context.sourceBranch, remote.name, remote.branch);
+      await this.publishBranch(context.sourceBranch, remote.name, remote.branch, pushOptions);
       pushed = true;
       const commitHash = await this.resolveCommit(context.sourceBranch);
       phase = "create";
@@ -254,18 +256,19 @@ export class PullRequestPublishService {
   async publishBranch(
     localBranch: string,
     remote: string,
-    remoteBranch = localBranch
+    remoteBranch = localBranch,
+    options: PushExecutionOptions = {}
   ): Promise<string> {
     const branch = requiredValue(localBranch, "Local branch is required.");
     const target = requiredValue(remoteBranch, "Remote branch is required.");
     if (!(await this.listRemotes()).includes(remote)) {
       throw new Error(`Git remote '${remote}' is not available.`);
     }
-    await runGit(["show-ref", "--verify", `refs/heads/${branch}`], this.repoRoot);
-    await runGit(
-      ["push", "-u", remote, `${branch}:refs/heads/${target}`],
-      this.repoRoot
-    );
+    const head = (await runGit(["rev-parse", "--verify", `refs/heads/${branch}^{commit}`], this.repoRoot)).trim();
+    await runGit(["check-ref-format", "--branch", target], this.repoRoot);
+    await pushBranchCommits(this.repoRoot, {
+      branch, head, remote, targetRef: `refs/heads/${target}`,
+    }, { ...options, setUpstream: true });
     return target;
   }
 

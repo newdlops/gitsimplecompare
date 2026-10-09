@@ -1,9 +1,36 @@
 // Changes 웹뷰에서 시작한 장시간 명령과 즉시 진행 상태 메시지를 조립한다.
 // - provider 의 상태/렌더 책임과 command 실행 중 busy 표시 책임을 분리한다.
 import * as vscode from "vscode";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
+import type { BranchComparison } from "../git/gitTypes";
+import type { ChangeDiffArgs } from "../providers/changesTreeModel";
 
 let commitOperationActive = false;
+
+/**
+ * 비교 파일을 작업 문서로 열고 불가능하거나 실패하면 기존 diff로 안전하게 이어 준다.
+ * @param comparison 현재 provider에 표시한 비교 snapshot
+ * @param path 웹뷰가 선택한 실제 비교 목록 안의 파일 경로
+ * @returns 작업 파일 또는 diff 열기 시도가 끝나는 Promise. 오류는 OUTPUT에만 기록한다.
+ */
+export async function openComparisonWorkingFile(comparison: BranchComparison, path: string): Promise<void> {
+  const change = comparison.changes.find(item => item.path === path);
+  if (!change) return;
+  let handled = false;
+  try {
+    handled = await vscode.commands.executeCommand<boolean>("gitSimpleCompare.openComparisonFile",
+      { repoRoot: comparison.repoRoot, path: change.path });
+  } catch (error) {
+    logError("comparison working file command failed", error, { repoRoot: comparison.repoRoot, path: change.path });
+  }
+  if (handled) return;
+  try {
+    const args: ChangeDiffArgs = { comparison, change };
+    await vscode.commands.executeCommand("gitSimpleCompare.openChangeDiff", args);
+  } catch (error) {
+    logError("comparison diff fallback failed", error, { repoRoot: comparison.repoRoot, path: change.path });
+  }
+}
 
 /** stage/unstage 진행 상태를 웹뷰에 전달할 수 있는 provider 최소 계약. */
 export interface WorkingTreeOperationHost {

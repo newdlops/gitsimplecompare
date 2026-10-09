@@ -90,7 +90,20 @@ export class Disposable {
 /** diff 입력은 instanceof 경계를 그대로 통과시켜 실제 target 해석 함수를 검사한다. */
 export class TabInputTextDiff { constructor(public readonly original: any, public readonly modified: any) {} }
 export const Uri = { file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => fsPath }), parse: (value: string) => ({ toString: () => value }), from: (value: unknown) => value, joinPath: (...parts: any[]) => parts.at(-1) };
-export const commands = { executeCommand: async (id: string, ...args: unknown[]) => { __executedCommands.push({ id, args }); } }; export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}),
+const registeredCommands = new Map<string, (...args: any[]) => unknown>();
+/** 명령 등록과 실제 callback dispatch를 재현해 온보딩 등록부터 실행까지 검증한다. */
+export const commands = {
+  registerCommand: (id: string, callback: (...args: any[]) => unknown) => {
+    registeredCommands.set(id, callback);
+    return new Disposable(() => { if (registeredCommands.get(id) === callback) registeredCommands.delete(id); });
+  },
+  getCommands: async () => [...registeredCommands.keys()],
+  executeCommand: async (id: string, ...args: unknown[]) => {
+    __executedCommands.push({ id, args });
+    return registeredCommands.get(id)?.(...args);
+  },
+};
+export const workspace = { isTrusted: true, textDocuments: [], getConfiguration: () => ({ get: () => false }), openTextDocument: async () => ({}),
   onDidSaveTextDocument: (_callback: (document: any) => void) => ({ dispose() {} }),
   onDidChangeTextDocument: (_callback: (event: any) => void) => ({ dispose() {} }),
   onDidCloseTextDocument: (_callback: (document: any) => void) => ({ dispose() {} }),

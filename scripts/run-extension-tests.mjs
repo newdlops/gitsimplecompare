@@ -8,6 +8,8 @@ import { build } from "esbuild";
 
 const workspaceRoot = process.cwd();
 const outputDirectory = path.join(workspaceRoot, "out-test-extension");
+const smokeName = process.argv.includes("--push") ? "pushSmoke"
+  : process.argv.includes("--onboarding") ? "repositoryOnboardingSmoke" : "extensionSmoke";
 const TIMEOUT_MS = 15 * 60 * 1000;
 const TERMINATION_GRACE_MS = 5 * 1000;
 
@@ -18,8 +20,8 @@ async function bundleExtensionSmoke() {
   }
   await rm(outputDirectory, { recursive: true, force: true });
   await build({
-    entryPoints: [path.join(workspaceRoot, "test", "extension", "extensionSmoke.ts")],
-    outfile: path.join(outputDirectory, "extensionSmoke.js"),
+    entryPoints: [path.join(workspaceRoot, "test", "extension", `${smokeName}.ts`)],
+    outfile: path.join(outputDirectory, `${smokeName}.js`),
     bundle: true,
     platform: "node",
     format: "cjs",
@@ -49,6 +51,7 @@ function runExtensionHost() {
       cwd: workspaceRoot,
       stdio: "inherit",
       detached: process.platform !== "win32",
+      env: { ...process.env, GSC_EXTENSION_TEST_KIND: smokeName },
     });
     let finished = false;
     let interrupted = false;

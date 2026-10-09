@@ -9,7 +9,9 @@ import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { gitErrorText, isForcePushRequiredError } from "../git/pushErrors";
 import { getCurrentPushPlan } from "../git/pushService";
+import { SequentialPushError } from "../git/sequentialPush";
 import { logInfo, showErrorWithOutput } from "../ui/outputLog";
+import { isPushCancelled, pushFailureText, withPushProgress } from "../ui/pushProgress";
 import {
   confirmForcePushCurrentPlan,
   confirmPushCurrentPlan,
@@ -148,6 +150,8 @@ export function buildScmMenu(): MenuNode[] {
     { id: "git.showOutput", label: t("Show Git Output") },
     sep,
     { id: "git.clone", label: t("Clone...") },
+    { id: "cloneFromGitHub", label: t("Clone from GitHub...") },
+    { id: "openRepository", label: t("Open Repository...") },
     { id: "git.init", label: t("Initialize Repository...") },
   ];
 }
@@ -221,6 +225,15 @@ export async function runScmAction(
 
   if (action === "forcePush") {
     await forcePushCurrentBranch(deps);
+    return;
+  }
+
+  const setupCommands: Record<string, string> = {
+    "git.clone": "gitSimpleCompare.cloneRepository", "git.init": "gitSimpleCompare.initializeRepository",
+    cloneFromGitHub: "gitSimpleCompare.cloneFromGitHub", openRepository: "gitSimpleCompare.openRepository",
+  };
+  if (Object.prototype.hasOwnProperty.call(setupCommands, action)) {
+    await vscode.commands.executeCommand(setupCommands[action]);
     return;
   }
 
@@ -329,13 +342,7 @@ async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
       targetUpstream: plan.mode === "setUpstream" ? plan.targetUpstream : undefined,
       reason: plan.mode === "setUpstream" ? plan.reason : undefined,
     });
-    const result = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: vscode.l10n.t("Pushing..."),
-      },
-      () => logService.pushCurrent(plan)
-    );
+    const result = await withPushProgress(service.repoRoot, options => logService.pushCurrent(plan, options));
     logInfo("scm push completed", {
       repoRoot: service.repoRoot,
       mode: result.mode,
@@ -345,23 +352,22 @@ async function pushCurrentBranch(deps: CommandDeps): Promise<void> {
       targetUpstream:
         result.mode === "setUpstream" ? result.targetUpstream : undefined,
       reason: result.mode === "setUpstream" ? result.reason : undefined,
+      execution: result.execution,
     });
   } catch (err) {
-    if (isForcePushRequiredError(err)) {
+    if (isPushCancelled(err)) return;
+    if (!(err instanceof SequentialPushError) && isForcePushRequiredError(err)) {
       await showForcePushRequiredMessage(err);
       return;
     }
     showErrorWithOutput(
       "push failed",
       err,
-      vscode.l10n.t("Push failed: {0}", gitErrorText(err))
+      vscode.l10n.t("Push failed: {0}", pushFailureText(err))
     );
     return;
   }
   vscode.window.showInformationMessage(vscode.l10n.t("Push completed."));
-  void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-    reason: "push",
-  });
 }
 
 /**
