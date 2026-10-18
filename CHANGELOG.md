@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.72092] - 2026-10-18
+
+### Changed
+
+- Prepare push plans without traversing the upstream commit history, and reuse
+  the current configuration read to retain the lightweight path for small repos.
+
+### Fixed
+
+- Preserve native Git handling of missing, moved, tagged and corrupt upstream
+  objects, custom tracking mappings and unusual remote names during push planning.
+
 ## [0.1.72091] - 2026-10-18
 
 ### Changed

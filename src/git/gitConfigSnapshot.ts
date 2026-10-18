@@ -26,6 +26,9 @@ export class GitConfigSnapshot {
 
   /** @param key 설정 이름 @returns 원래 순서를 보존한 모든 값의 복사본 */
   getAll(key: string): string[] { return [...(this.values.get(normalizedKey(key)) ?? [])]; }
+
+  /** @returns subsection 대소문자를 보존한 정규화된 설정 키의 새 배열. 내부 맵은 노출하지 않는다. */
+  keys(): string[] { return [...this.values.keys()]; }
 }
 
 /**

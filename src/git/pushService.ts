@@ -74,12 +74,14 @@ interface PushTarget {
 export async function getCurrentPushPlan(
   repoRoot: string
 ): Promise<PushCurrentPlan> {
-  const [checkout, remotes, { config, fingerprint: configFingerprint }] = await Promise.all([
+  const [checkout, { config, fingerprint: configFingerprint }, upstreamCommit] = await Promise.all([
     readGitCommitCheckoutIdentity(repoRoot),
-    listRemotes(repoRoot), readPushConfiguration(repoRoot),
+    readPushConfiguration(repoRoot),
+    readPushCommitTarget(repoRoot, "@{upstream}"),
   ]);
   const { branch, branchRef: sourceRef } = checkout;
   if (!branch) throw new Error("Cannot push while HEAD is detached.");
+  const remotes = await listRemotes(repoRoot, config);
   const configuredRemotes = [
     validRemoteConfig(config, remotes, `branch.${branch}.pushRemote`),
     validRemoteConfig(config, remotes, "remote.pushDefault"),
@@ -88,18 +90,32 @@ export async function getCurrentPushPlan(
   const candidateRemote = firstRemote([...configuredRemotes, remotes.includes("origin") ? "origin" : undefined, remotes[0]]);
   const candidateTracking = candidateRemote ? `refs/remotes/${candidateRemote}/${branch}` : undefined;
   const refInfo = await runGit(["for-each-ref",
-    "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(upstream:short)%00%(upstream:track)%00%(push:remoteref)%00%(push)%00%(upstream:remoteref)",
+    "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(upstream:short)%00%(upstream)%00%(push:remoteref)%00%(push)%00%(upstream:remoteref)",
     sourceRef, ...(candidateTracking ? [candidateTracking] : [])], repoRoot);
   const refRows = new Map(refInfo.trimEnd().split("\n").map(line => { const fields = line.split("\0"); return [fields[0], fields] as const; }));
   const row = refRows.get(sourceRef);
   if (!row || row[1] !== checkout.head || row[2] !== "*") throw new Error("Cannot read the current branch commit. Refresh the checked-out branch before pushing.");
-  const [, head, , upstreamRaw, track, pushRef, trackingRef, upstreamRef] = row;
+  const [, head, , upstreamRaw, upstreamTrackingRef, pushRef, trackingRef, upstreamRef] = row;
   const upstream = upstreamRaw || undefined;
-  const plan = toPushPlan({ branch, remotes, upstream, upstreamGone: /\[gone\]/i.test(track), remote: firstRemote([
+  const remote = firstRemote([
     ...configuredRemotes,
     upstream ? splitRemoteBranch(upstream, remotes)?.remote : undefined,
     remotes.includes("origin") ? "origin" : undefined, remotes[0],
-  ]) });
+  ]);
+  const selectedTracking = remote ? `refs/remotes/${remote}/${branch}` : "";
+  // ref 이름·원본 OID만 읽어 이력 순회를 피하고, upstream의 commit 여부는 별도로 검증한다.
+  const referenceTips = new Map([...refRows].map(([ref, fields]) => [ref, fields[1]]));
+  const queriedRefs = new Set([sourceRef, candidateTracking]);
+  const additionalRefs = [...new Set([upstreamTrackingRef, trackingRef, selectedTracking]
+    .filter(ref => ref && !queriedRefs.has(ref) && !referenceTips.has(ref)))];
+  if (additionalRefs.length) {
+    for (const [ref, oid] of await readTrackingHeads(repoRoot, additionalRefs)) referenceTips.set(ref, oid);
+  }
+  const upstreamTip = referenceTips.get(upstreamTrackingRef);
+  // blob·결측 객체는 Git처럼 gone으로 분류하고, 초기 힌트와 다른 OID만 대상 객체를 다시 검증한다.
+  const upstreamGone = Boolean(upstreamTrackingRef && (!upstreamTip ||
+    (upstreamTip !== upstreamCommit && !await readPushCommitTarget(repoRoot, upstreamTip))));
+  const plan = toPushPlan({ branch, remotes, upstream, upstreamGone, remote });
   if (!plan.remote) throw new Error("No push remote is configured.");
   const pushDefault = config.get("push.default")?.trim();
   const customPush = config.getAll(`remote.${plan.remote}.push`).join("\n").trim();
@@ -110,18 +126,37 @@ export async function getCurrentPushPlan(
   if (!targetRef?.startsWith("refs/")) throw new Error("Could not determine the current branch push target. Check the push configuration.");
   const tracking = plan.mode === "setUpstream"
     ? `refs/remotes/${plan.remote}/${plan.branch}` : trackingRef;
-  const remoteHead = !tracking ? "" : tracking === candidateTracking
-    ? refRows.get(tracking)?.[1] ?? "" : await readTrackingHead(repoRoot, tracking);
+  const remoteHead = !tracking ? "" : referenceTips.get(tracking) ?? "";
   return { ...plan, snapshot: { head, targetRef, configFingerprint, remoteHead } };
 }
 
 /**
- * 사용자 refspec이 기본 추적 위치와 다를 때만 추가 조회하며, 이름이 접두사인 자식 ref는 채택하지 않는다.
- * @param repoRoot 저장소 루트 @param ref 정확한 추적 ref 이름 @returns 그 ref의 OID 또는 부재일 때 빈 문자열
+ * 이력 순회 없이 ref/OID가 실제 commit으로 해석되는지 확인하고 태그는 Git에 맡겨 peel한다.
+ * - 현재 upstream 조회는 병렬 힌트다. 미설정/변경 시 실제 metadata OID를 반드시 다시 검증한다.
+ * - 정확한 OID의 손상·실행 중단 오류는 gone으로 숨기지 않고 호출부에 전달한다.
+ * @param repoRoot 저장소 루트 @param ref 초기 @{upstream} 또는 metadata에서 고정한 원본 OID
+ * @returns commit으로 해석되는 OID. 정상적인 결측/비commit이면 undefined
  */
-async function readTrackingHead(repoRoot: string, ref: string): Promise<string> {
-  const output = await runGit(["for-each-ref", "--format=%(refname)%00%(objectname)", ref], repoRoot);
-  return output.trimEnd().split("\n").map(line => line.split("\0")).find(fields => fields[0] === ref)?.[1] ?? "";
+async function readPushCommitTarget(repoRoot: string, ref: string): Promise<string | undefined> {
+  return runGit(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`], repoRoot)
+    .then(output => output.trim() || undefined)
+    .catch(error => {
+      if (error instanceof GitError && (error.code === 1 || (ref === "@{upstream}" && error.code === 128))) return undefined;
+      throw error;
+    });
+}
+
+/**
+ * 사용자 refspec/upstream이 기본 추적 위치와 다를 때 필요한 ref를 한 번에 읽는다.
+ * - OID만 읽어 이력을 열지 않으며, 접두사로 일치하는 자식 ref를 요청한 ref로 채택하지 않는다.
+ * @param repoRoot 저장소 루트 @param refs 정확한 ref 이름 목록
+ * @returns 실제로 존재하는 요청 ref와 OID의 새 맵. 없는 ref는 키가 없다.
+ */
+async function readTrackingHeads(repoRoot: string, refs: string[]): Promise<Map<string, string>> {
+  const requested = new Set(refs);
+  const output = await runGit(["for-each-ref", "--format=%(refname)%00%(objectname)", ...refs], repoRoot);
+  return new Map(output.trimEnd().split("\n").map(line => line.split("\0"))
+    .filter(fields => requested.has(fields[0])).map(([ref, oid]) => [ref, oid]));
 }
 
 /**
@@ -268,14 +303,24 @@ function toPushPlan(target: PushTarget): Omit<PlainPushCurrentPlan, "snapshot"> 
 }
 
 /**
- * 저장소에 등록된 remote 이름 목록을 반환한다.
+ * 같은 계획에서 이미 읽은 설정을 재사용해 Git 순서의 remote 목록을 반환한다.
+ * - 빈 subsection·손실 디코딩 등 모호한 키는 native git remote로 폴백해 기존 해석을 보존한다.
  * - 실행 실패는 실제 원인을 호출부로 전달해 remote 미설정과 구분한다.
  * @param repoRoot git 저장소 루트 경로
- * @returns remote 이름 배열
+ * @param config 같은 계획의 최신 설정 snapshot @returns native 정렬·공백 처리 규칙의 remote 이름 배열
  */
-async function listRemotes(repoRoot: string): Promise<string[]> {
-  const out = await optionalGit(["remote"], repoRoot);
-  return (out ?? "")
+async function listRemotes(repoRoot: string, config: GitConfigSnapshot): Promise<string[]> {
+  const names = new Set<string>(), prefix = "remote.";
+  let nativeFallback = false;
+  for (const key of config.keys()) {
+    if (!key.startsWith(prefix) || key === "remote.pushdefault") continue;
+    const end = key.lastIndexOf(".");
+    if (end <= prefix.length || /[\r\n\uFFFD]/.test(key)) { nativeFallback = true; break; }
+    names.add(key.slice(prefix.length, end));
+  }
+  const out = nativeFallback ? ((await optionalGit(["remote"], repoRoot)) ?? "")
+    : [...names].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))).join("\n");
+  return out
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
