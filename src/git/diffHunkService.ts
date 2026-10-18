@@ -11,9 +11,8 @@ import {
 import { createDiffMutationGuard } from "./diffMutationGuard";
 import { applyPatch, safeUnlink, tempIndexPath } from "./gitPatchApply";
 import { runGitLiteralPaths as runGit } from "./gitExec";
-import { mapWithConcurrency } from "../utils/mapWithConcurrency";
-
-const MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES = 5 * 1024 * 1024;
+import { readWorkingDiff } from "./diffWorkingRead";
+import { runGitWithPaths } from "./pathspecExec";
 
 /** hunk 가 어느 diff 영역에서 왔는지 나타낸다. */
 export type DiffStage = "staged" | "unstaged";
@@ -48,23 +47,7 @@ export class DiffHunkService {
 
   /** staged/unstaged 변경을 파일/hunk 로 파싱해 반환한다. */
   async getWorkingDiff(): Promise<DiffFile[]> {
-    const [staged, unstaged, untrackedOut] = await Promise.all([
-      runGit(["diff", "--cached", "--no-color"], this.repoRoot),
-      runGit(["diff", "--no-color"], this.repoRoot),
-      runGit(["ls-files", "--others", "--exclude-standard", "-z"], this.repoRoot)
-        .catch(() => ""),
-    ]);
-    const unstagedFiles = parseDiff(unstaged, "unstaged");
-    const untrackedFiles = await parseUntrackedFiles(
-      this.repoRoot,
-      untrackedOut,
-      new Set(unstagedFiles.map((file) => file.path))
-    );
-    return [
-      ...parseDiff(staged, "staged"),
-      ...unstagedFiles,
-      ...untrackedFiles,
-    ];
+    return readWorkingDiff(this.repoRoot);
   }
 
   /**
@@ -74,22 +57,19 @@ export class DiffHunkService {
    * @param signal 파일 표시 소비자가 더 이상 필요하지 않을 때 Git과 후속 파일 I/O를 취소한다.
    */
   async getFileWorkingDiff(relPath: string, signal?: AbortSignal): Promise<DiffFile[]> {
-    const [staged, unstaged, untrackedOut] = await Promise.all([
-      runGit(["diff", "--cached", "--no-color", "--", relPath], this.repoRoot, { signal }),
-      runGit(["diff", "--no-color", "--", relPath], this.repoRoot, { signal }),
-      runGit(
-        ["ls-files", "--others", "--exclude-standard", "-z", "--", relPath],
-        this.repoRoot, { signal }
-      ).catch(() => { signal?.throwIfAborted(); return ""; }),
-    ]);
-    const unstagedFiles = parseDiff(unstaged, "unstaged");
-    signal?.throwIfAborted();
-    const untrackedFiles = await parseUntrackedFiles(
-      this.repoRoot,
-      untrackedOut,
-      new Set(unstagedFiles.map((file) => file.path)), signal
-    );
-    return [...parseDiff(staged, "staged"), ...unstagedFiles, ...untrackedFiles];
+    return this.getFilesWorkingDiff([relPath], signal);
+  }
+
+  /**
+   * 선택 파일을 묶어 최신 diff를 읽어 파일마다 Git 세 개를 새로 실행하지 않는다.
+   * - 명령줄 한도 안의 묶음을 차례로 읽고 각 묶음 안의 staged/unstaged/미추적 조회만 병렬화한다.
+   * - 캐시하지 않아 변경 직전과 lock 재시도 때 실제 파일/index 상태를 다시 검증할 수 있다.
+   * @param relPaths literal 저장소 상대 경로 목록. 빈 목록은 전체 조회 없이 빈 배열을 반환한다.
+   * @param signal 소비자가 필요 없어진 뒤 후속 묶음과 파일 읽기를 중단할 신호
+   * @returns 각 stage/path별 최신 header와 hunk. 단일 파일 조회와 같은 hunk ID를 사용한다.
+   */
+  async getFilesWorkingDiff(relPaths: readonly string[], signal?: AbortSignal): Promise<DiffFile[]> {
+    return readWorkingDiff(this.repoRoot, relPaths, signal);
   }
 
   /**
@@ -195,6 +175,7 @@ export class DiffHunkService {
     const patchParts: string[] = [];
     const binaryPaths: string[] = [];
     const resetPaths: string[] = [];
+    assertWholeFileTypeSelections(files, picked);
 
     for (const file of files) {
       if (file.stage !== "staged") {
@@ -207,7 +188,7 @@ export class DiffHunkService {
         }
         continue;
       }
-      if (isNewFile(file) && selectionCoversAllChanges(file, sel)) {
+      if ((isNewFile(file) || isDeletedFile(file)) && selectionCoversAllChanges(file, sel)) {
         resetPaths.push(file.path);
         continue;
       }
@@ -235,16 +216,10 @@ export class DiffHunkService {
       true,
       guard.beforeRetry
     );
-    for (const filePath of resetPaths) {
-      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot, {
-        beforeRetry: guard.beforeRetry,
-      });
-    }
-    for (const filePath of binaryPaths) {
-      await runGit(["reset", "HEAD", "--", filePath], this.repoRoot, {
-        beforeRetry: guard.beforeRetry,
-      });
-    }
+    // 전체 선택한 추가/삭제 파일과 binary는 reset을 묶어 index 재조회와 lock 획득을 반복하지 않는다.
+    await runGitWithPaths(["--literal-pathspecs", "reset", "HEAD"], [...resetPaths, ...binaryPaths], this.repoRoot, {
+      beforeRetry: guard.beforeRetry,
+    });
   }
 
   /**
@@ -394,165 +369,47 @@ export class DiffHunkService {
   }
 }
 
-/** `git diff` 원문을 DiffFile 배열로 파싱한다. */
-function parseDiff(raw: string, stage: DiffStage): DiffFile[] {
-  const files: DiffFile[] = [];
-  let current: DiffFile | undefined;
-  let headerLines: string[] = [];
-  let hunkLines: string[] | undefined;
-  let hunkIndex = 0;
-
-  const flushHunk = (): void => {
-    if (current && hunkLines) {
-      while (hunkLines[hunkLines.length - 1] === "") {
-        hunkLines.pop();
-      }
-      current.hunks.push({
-        id: `${current.stage}:${current.path}#${hunkIndex++}`,
-        text: hunkLines.join("\n"),
-      });
-      hunkLines = undefined;
-    }
-  };
-  const flushFile = (): void => {
-    flushHunk();
-    if (current) {
-      // 파일 하나만 조회해도 전체 diff와 같은 header가 되도록 출력 끝의 구분 개행만 제거한다.
-      while (headerLines[headerLines.length - 1] === "") headerLines.pop();
-      current.header = headerLines.join("\n");
-      files.push(current);
-    }
-  };
-
-  for (const line of raw.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      flushFile();
-      const match = /^diff --git a\/(.+) b\/(.+)$/.exec(line);
-      const filePath = match ? match[2] : line.slice("diff --git ".length);
-      current = { stage, path: filePath, header: "", hunks: [], binary: false };
-      headerLines = [line];
-      hunkLines = undefined;
-      hunkIndex = 0;
-    } else if (current && line.startsWith("@@")) {
-      flushHunk();
-      hunkLines = [line];
-    } else if (hunkLines) {
-      hunkLines.push(line);
-    } else if (current) {
-      headerLines.push(line);
-      if (line.startsWith("Binary files")) {
-        current.binary = true;
-      }
-    }
-  }
-  flushFile();
-  return files;
-}
-
-/** 전체 미추적 파일의 순서를 유지하며 최대 4개 I/O로 new-file diff를 만든다. 취소 뒤 새 읽기는 시작하지 않는다. */
-async function parseUntrackedFiles(
-  repoRoot: string,
-  raw: string,
-  skipPaths: Set<string>,
-  signal?: AbortSignal
-): Promise<DiffFile[]> {
-  const paths = raw.split("\0").filter(item => item.length > 0 && !skipPaths.has(item));
-  return mapWithConcurrency(paths, 4, relPath => untrackedFileToDiff(repoRoot, relPath, signal), signal);
-}
-
-/**
- * 미추적 파일 하나를 `/dev/null → working file` 형태의 synthetic diff 로 만든다.
- * - 큰 미추적 파일은 extension host 를 막지 않도록 line hunk 를 만들지 않는다.
- * @param repoRoot 저장소 루트
- * @param relPath 저장소 상대 경로
- */
-async function untrackedFileToDiff(
-  repoRoot: string,
-  relPath: string,
-  signal?: AbortSignal
-): Promise<DiffFile> {
-  signal?.throwIfAborted();
-  const fullPath = path.join(repoRoot, relPath);
-  const header = newFileHeader(relPath, await fileMode(fullPath));
-  try {
-    const stats = await fs.promises.stat(fullPath);
-    signal?.throwIfAborted();
-    if (stats.size > MAX_SYNTHETIC_UNTRACKED_DIFF_BYTES) {
-      return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
-    }
-    const buffer = await fs.promises.readFile(fullPath, { signal });
-    signal?.throwIfAborted();
-    if (buffer.includes(0)) {
-      return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
-    }
-    const content = buffer.toString("utf8");
-    const hunk = newFileHunk(content);
-    return {
-      stage: "unstaged",
-      path: relPath,
-      header,
-      hunks: hunk ? [{ id: `unstaged:${relPath}#0`, text: hunk }] : [],
-      binary: false,
-    };
-  } catch {
-    signal?.throwIfAborted();
-    return { stage: "unstaged", path: relPath, header, hunks: [], binary: true };
-  }
-}
-
-/** new-file diff header 를 만든다. */
-function newFileHeader(relPath: string, mode: string): string {
-  return [
-    `diff --git a/${relPath} b/${relPath}`,
-    `new file mode ${mode}`,
-    "index 0000000..0000000",
-    "--- /dev/null",
-    `+++ b/${relPath}`,
-  ].join("\n");
-}
-
-/** 파일 모드를 git diff header 에 들어가는 100644/100755 형태로 만든다. */
-async function fileMode(fullPath: string): Promise<string> {
-  try {
-    const stat = await fs.promises.stat(fullPath);
-    return stat.mode & 0o111 ? "100755" : "100644";
-  } catch {
-    return "100644";
-  }
-}
-
-/** 파일 내용을 new-file hunk 본문으로 만든다. */
-function newFileHunk(content: string): string | undefined {
-  const split = splitContent(content);
-  if (!split.lines.length) {
-    return undefined;
-  }
-  const lines = split.lines.map((line) => `+${line}`);
-  if (!split.finalNewline) {
-    lines.push("\\ No newline at end of file");
-  }
-  return `@@ -0,0 +${rangeText(1, split.lines.length)} @@\n${lines.join("\n")}`;
-}
-
-/** 문자열을 patch line 배열과 마지막 개행 여부로 나눈다. */
-function splitContent(content: string): { lines: string[]; finalNewline: boolean } {
-  if (!content.length) {
-    return { lines: [], finalNewline: false };
-  }
-  const finalNewline = content.endsWith("\n");
-  const lines = content.split("\n");
-  if (finalNewline) {
-    lines.pop();
-  }
-  return { lines, finalNewline };
-}
-
 /** 파일이 HEAD 에 없던 new-file diff 인지 확인한다. */
 function isNewFile(file: DiffFile): boolean {
   return /(^|\n)--- \/dev\/null(\n|$)/.test(file.header);
 }
 
-/** 선택 정보가 파일 안의 모든 변경 라인을 포함하는지 확인한다. */
+/** @param file Git diff 항목 @returns 삭제되어 index 복원이 필요한 파일이면 true */
+function isDeletedFile(file: DiffFile): boolean {
+  return /(^|\n)\+\+\+ \/dev\/null(\n|$)/.test(file.header);
+}
+
+/**
+ * 파일 종류 변경의 D/A 구간을 일부만 선택했을 때 전체 reset으로 확대되는 것을 막는다.
+ * - 같은 경로의 구간은 hunk ID가 겹치므로 종류 변경은 모든 구간의 전체 선택만 허용한다.
+ * @param files 최신 diff 목록 @param picked stage/path별 사용자 선택
+ * @throws 복수 구간 경로에 부분 선택이 있으면 index에 쓰기 전에 오류를 반환한다.
+ */
+function assertWholeFileTypeSelections(files: readonly DiffFile[], picked: ReadonlyMap<string, HunkSelection>): void {
+  const groups = new Map<string, DiffFile[]>();
+  for (const file of files) {
+    if (file.stage !== "staged") continue;
+    const key = selectionKey(file.stage, file.path);
+    if (!picked.has(key)) continue;
+    const group = groups.get(key);
+    if (group) group.push(file);
+    else groups.set(key, [file]);
+  }
+  for (const [key, group] of groups) {
+    if (group.length < 2) continue;
+    const selection = picked.get(key)!;
+    if (!selection.binary && !selection.hunkIds.length && !selection.lineIds?.length) continue;
+    if (!group.every(file => file.binary ? selection.binary : selectionCoversAllChanges(file, selection))) {
+      throw new Error("File type changes must be unstaged as a whole file.");
+    }
+  }
+}
+
+/**
+ * 부분 선택을 전체 reset으로 확장하지 않도록 파일의 모든 변경 줄이 선택됐는지 확인한다.
+ * @param file 현재 diff 파일 @param selection line ID가 있으면 hunk ID보다 우선하는 선택 정보
+ * @returns 모든 변경 줄이 실제 선택에 포함됐으면 true
+ */
 function selectionCoversAllChanges(
   file: DiffFile,
   selection: HunkSelection | undefined
@@ -570,7 +427,7 @@ function selectionCoversAllChanges(
         continue;
       }
       found = true;
-      if (!hunkIds.has(hunk.id) && !lineIds.has(`${hunk.id}:${index}`)) {
+      if (!lineIds.has(`${hunk.id}:${index}`) && !(lineIds.size === 0 && hunkIds.has(hunk.id))) {
         return false;
       }
     }
@@ -581,11 +438,6 @@ function selectionCoversAllChanges(
 /** hunk body 의 변경 라인 여부. */
 function isChangeLine(line: string): boolean {
   return line.startsWith("+") || line.startsWith("-");
-}
-
-/** unified diff range 텍스트. */
-function rangeText(start: number, count: number): string {
-  return count === 1 ? String(start) : `${start},${count}`;
 }
 
 /** 선택 키는 같은 파일의 staged/unstaged hunk 를 구분해야 한다. */

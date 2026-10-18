@@ -27,11 +27,16 @@ export interface PullRequestListOptions {
   requestTimeoutMs?: number;
   /** 첫 표시와 후속 정보 완성 때 호출한다. 불완전한 commit은 Git 쓰기에 사용할 수 없다. */
   onProgress?: (page: PullRequestListPage) => void;
-  /** 같은 repository·base/head OID의 완성된 commit 목록만 재사용한다. */
+  /** 같은 repository·base/head OID의 완성된 commit 목록과 파일 수만 재사용한다. */
   previous?: { repository: string; pullRequests: PullRequestInfo[] };
 }
 
-const PULL_REQUESTS_QUERY = `
+const PULL_REQUESTS_QUERY = buildPullRequestListQuery(false);
+const PULL_REQUEST_SNAPSHOT_QUERY = buildPullRequestListQuery(true);
+
+/** @param includeMutableMetadata 재사용할 이전 연결이 있으면 최신 가변 정보도 첫 왕복에 읽는다. @returns 80개 목록 조회 GraphQL */
+function buildPullRequestListQuery(includeMutableMetadata: boolean): string {
+  return `
 query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
   repository(owner: $owner, name: $name) {
     nameWithOwner
@@ -39,23 +44,29 @@ query($owner: String!, $name: String!, $limit: Int!, $cursor: String) {
     pullRequests(first: $limit, after: $cursor, states: [OPEN, CLOSED, MERGED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       nodes {
         id
-${PULL_REQUEST_SUMMARY_QUERY}
+${includeMutableMetadata ? buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE_SIZE, false) : PULL_REQUEST_SUMMARY_QUERY}
       }
       pageInfo { hasNextPage endCursor }
     }
   }
 }`;
+}
 
 /** 원래 목록과 같은 전체 필드를 global ID로 직접 읽어 무거운 root connection을 피한다. */
-const PULL_REQUEST_NODES_QUERY = `
+const PULL_REQUEST_NODES_QUERY = buildPullRequestNodesQuery(true);
+
+/** @param includeStableConnections 최신 OID로 재사용을 검증하지 못했으면 commit/file도 요청한다. @returns ID 조회 GraphQL */
+function buildPullRequestNodesQuery(includeStableConnections: boolean): string {
+  return `
 query($ids: [ID!]!) {
   nodes(ids: $ids) {
     ... on PullRequest {
       id
-${buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE_SIZE)}
+${buildPullRequestInfoQuery(COMMIT_PREVIEW_PAGE_SIZE, REVIEW_THREAD_PREVIEW_PAGE_SIZE, includeStableConnections)}
     }
   }
 }`;
+}
 
 /** Graph 목록과 stack이 같은 응답에서 재사용할 저장소 정보 및 완성된 PR 페이지다. */
 export interface PullRequestListPage {
@@ -128,11 +139,12 @@ export async function fetchPullRequestListPage(
     }, options.signal ?? controller.signal);
   };
   try {
+    const reuseMetadata = !cursor && !!options.previous?.pullRequests.some(pr => pr.commitHashesComplete === true && pr.fileCountComplete === true);
     const output = await measuredRunner([
       "api", "graphql", "-F", "owner={owner}", "-F", "name={repo}",
       "-F", `limit=${PULL_REQUEST_PAGE_SIZE}`,
       ...(cursor ? ["-f", `cursor=${cursor}`] : []),
-      "-f", `query=${PULL_REQUESTS_QUERY}`,
+      "-f", `query=${reuseMetadata ? PULL_REQUEST_SNAPSHOT_QUERY : PULL_REQUESTS_QUERY}`,
     ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-page" });
     ensureActive();
     const response = JSON.parse(output) as GhListResponse;
@@ -144,6 +156,9 @@ export async function fetchPullRequestListPage(
     const [owner, name] = splitRepositoryName(repository.nameWithOwner);
     const references = repository.pullRequests.nodes || [];
     validateSummaryNodes(references);
+    if (reuseMetadata && references.some(node => !hasMutableNodeConnections(node!))) {
+      throw new Error("GitHub pull request information is incomplete.");
+    }
     const previous = new Map(options.previous?.repository === repository.nameWithOwner
       ? options.previous.pullRequests.map(pr => [pr.number, pr] as const) : []);
     const summaries = references.map(node => {
@@ -160,7 +175,7 @@ export async function fetchPullRequestListPage(
     logInfo("graph pull request summary ready", { repoRoot, pullRequests: summaries.length, elapsedMs: Date.now() - started });
     logInfo("graph pull request list identities ready", {
       repoRoot, pullRequests: references.length, elapsedMs: Date.now() - started,
-      metadataBatches: Math.ceil(references.length / PULL_REQUEST_METADATA_BATCH_SIZE),
+      metadataBatchSize: PULL_REQUEST_METADATA_BATCH_SIZE,
     });
     const metadataStarted = Date.now();
     const pullRequests = summaries;
@@ -176,14 +191,15 @@ export async function fetchPullRequestListPage(
       if (options.onProgress && !progressTimer && !controller.signal.aborted) progressTimer = setTimeout(publish, 100);
     };
     /** 검증한 metadata 묶음은 다른 느린 묶음을 기다리지 않고 후속 connection 조회를 시작한다. */
-    const hydrate = (nodes: GhPullRequestNode[], offset: number) => {
+    const hydrate = (nodes: GhPullRequestNode[], positions: readonly number[], reused = 0) => {
+      reusedCommits += reused;
       const tasks: Array<() => Promise<void>> = [];
       nodes.forEach((node, index) => {
-        const pr = pullRequestInfoFromGraphQl(node); pullRequests[offset + index] = pr;
+        const pr = pullRequestInfoFromGraphQl(node); pullRequests[positions[index]] = pr;
         if (reuseCommitSnapshot(pr, previous.get(pr.number))) reusedCommits++;
         if (pr.commitHashesComplete === false) tasks.push(() => appendCommitHashes(repoRoot, owner, name, node, pr, controller.signal, measuredRunner));
       });
-      const reviews = nodes.map((node, index) => ({ node, pr: pullRequests[offset + index] }))
+      const reviews = nodes.map((node, index) => ({ node, pr: pullRequests[positions[index]] }))
         .filter(({ node }) => node.reviewThreads?.pageInfo?.hasNextPage);
       for (let reviewOffset = 0; reviewOffset < reviews.length; reviewOffset += 4) {
         const batch = reviews.slice(reviewOffset, reviewOffset + 4);
@@ -202,11 +218,28 @@ export async function fetchPullRequestListPage(
       pagination.push(completion); void completion.catch(() => undefined);
       scheduleProgress();
     };
+    const pending: GhPullRequestNode[] = [], pendingPositions: number[] = [];
+    const reused: GhPullRequestNode[] = [], reusedPositions: number[] = [];
+    references.forEach((reference, index) => {
+      const node = reference!;
+      const known = previous.get(node.number!);
+      if (reuseMetadata && canReuseStableConnections(node, known)) {
+        reused.push({ ...node, files: { totalCount: known!.fileCount }, commits: {
+          nodes: known!.commitHashes.map(oid => ({ commit: { oid } })), pageInfo: { hasNextPage: false },
+        } });
+        reusedPositions.push(index);
+      } else { pending.push(node); pendingPositions.push(index); }
+    });
+    if (reused.length) hydrate(reused, reusedPositions, reused.length);
     let nodes: GhPullRequestNode[];
-    try { nodes = await readPullRequestNodes(repoRoot, references, controller, measuredRunner, hydrate); }
+    try {
+      nodes = await readPullRequestNodes(repoRoot, pending, controller, measuredRunner,
+        (batch, offset) => hydrate(batch, pendingPositions.slice(offset, offset + batch.length)));
+    }
     catch (error) { throw paginationFailure(error, requestFailure?.error ?? paginationError?.error); }
     ensureActive();
-    logInfo("graph pull request metadata ready", { repoRoot, pullRequests: nodes.length, elapsedMs: Date.now() - started,
+    logInfo("graph pull request metadata ready", { repoRoot, pullRequests: references.length, metadataPullRequests: nodes.length,
+      metadataBatches: Math.ceil(pending.length / PULL_REQUEST_METADATA_BATCH_SIZE), reusedCommits, elapsedMs: Date.now() - started,
       metadataElapsedMs: Date.now() - metadataStarted });
     if (paginationTasks) {
       publish();
@@ -268,7 +301,7 @@ function publishProgress(page: PullRequestListPage, callback: PullRequestListOpt
  * @param references 첫 root connection에서 받은 PR global ID 목록
  * @param controller 모든 조회의 취소·첫 실패를 공유하는 수명주기
  * @param runner 요청 시간 상한과 동시 실행을 적용한 실행기
- * @param onBatch 검증한 묶음과 원래 목록 위치를 알려 후속 페이지를 즉시 시작할 콜백
+ * @param onBatch 검증한 묶음과 요청 목록 안의 위치를 알려 후속 페이지를 즉시 시작할 콜백
  * @returns 모든 필드가 준비된 PR node 배열. 순서는 root connection과 같다.
  */
 async function readPullRequestNodes(
@@ -285,31 +318,58 @@ async function readPullRequestNodes(
   const nodes = new Array<GhPullRequestNode>(references.length);
   const tasks: Array<() => Promise<void>> = [];
   for (let offset = 0; offset < ids.length; offset += PULL_REQUEST_METADATA_BATCH_SIZE) {
-    const batch = ids.slice(offset, offset + PULL_REQUEST_METADATA_BATCH_SIZE) as string[];
+    const batch = references.slice(offset, offset + PULL_REQUEST_METADATA_BATCH_SIZE) as GhPullRequestNode[];
     tasks.push(async () => {
-      const output = await runner([
-        "api", "graphql", ...batch.flatMap(id => ["-F", `ids[]=${id}`]), "-f", `query=${PULL_REQUEST_NODES_QUERY}`,
-      ], repoRoot, { signal: controller.signal, operation: "graph-pr-list-nodes" });
-      throwIfAborted(controller.signal);
-      const response = JSON.parse(output) as { errors?: unknown[]; data?: { nodes?: Array<GhPullRequestNode | null> } };
-      if (response.errors?.length || !Array.isArray(response.data?.nodes) || response.data.nodes.length !== batch.length) {
-        throw new Error("GitHub pull request information is not available.");
-      }
-      const byId = new Map<string, GhPullRequestNode>();
-      const expectedNumbers = new Map(batch.map((id, index) => [id, references[offset + index]!.number]));
-      for (const node of response.data.nodes) {
-        if (!node?.id || !batch.includes(node.id) || byId.has(node.id) || !Number.isSafeInteger(node.number) || Number(node.number) <= 0
-          || node.number !== expectedNumbers.get(node.id) || !hasPullRequestNodeConnections(node)) {
-          throw new Error("GitHub pull request identity is incomplete.");
+      const current = await readPullRequestNodeBatch(repoRoot, batch, controller.signal, runner);
+      for (let index = 0; index < batch.length; index++) {
+        if (!hasPullRequestNodeConnections(current[index])) {
+          throw new Error("GitHub pull request information is incomplete.");
         }
-        byId.set(node.id, node);
+        nodes[offset + index] = current[index];
       }
-      for (let index = 0; index < batch.length; index++) nodes[offset + index] = byId.get(batch[index])!;
-      onBatch(nodes.slice(offset, offset + batch.length), offset);
+      onBatch(current, offset);
     });
   }
   await completePagination(tasks, controller, () => {});
   return nodes;
+}
+
+/**
+ * 같은 head/base·대상 branch에서 완료한 commit과 파일 수만 네트워크 재수집 없이 쓴다.
+ * @param node 이번 요청에서 받은 최신 PR OID @param known 같은 저장소의 이전 완료 결과
+ * @returns 양쪽 연결 모두 완전하고 OID·branch가 일치하면 true. 댓글·라벨·상태는 별도로 새로 읽는다.
+ */
+function canReuseStableConnections(node: GhPullRequestNode, known: PullRequestInfo | undefined): boolean {
+  return !!node.headRefOid && !!node.baseRefOid && known?.commitHashesComplete === true && known.fileCountComplete === true
+    && Number.isSafeInteger(known.fileCount) && known.fileCount >= 0
+    && node.headRefOid === known.headHash && node.baseRefOid === known.baseHash && node.baseRefName === known.baseRefName;
+}
+
+/**
+ * ID와 PR 번호를 서로 검증하며 재사용하지 못한 node의 전체 연결을 요청 순서대로 읽는다.
+ * @param references 첫 요약 또는 재검증에서 받은 요청 대상
+ * @returns 중복·누락·부분 오류 없이 실제 요청한 PR만 담은 node 목록. 연결의 최종 검증은 병합 뒤 수행한다.
+ */
+async function readPullRequestNodeBatch(repoRoot: string, references: readonly GhPullRequestNode[], signal: AbortSignal,
+  runner: GhExecute): Promise<GhPullRequestNode[]> {
+  throwIfAborted(signal);
+  const ids = references.map(node => node.id!);
+  const output = await runner(["api", "graphql", ...ids.flatMap(id => ["-F", `ids[]=${id}`]),
+    "-f", `query=${PULL_REQUEST_NODES_QUERY}`], repoRoot,
+  { signal, operation: "graph-pr-list-nodes" });
+  throwIfAborted(signal);
+  const response = JSON.parse(output) as { errors?: unknown[]; data?: { nodes?: Array<GhPullRequestNode | null> } };
+  if (response.errors?.length || !Array.isArray(response.data?.nodes) || response.data.nodes.length !== ids.length) {
+    throw new Error("GitHub pull request information is not available.");
+  }
+  const byId = new Map<string, GhPullRequestNode>();
+  const numbers = new Map(references.map(node => [node.id, node.number]));
+  for (const node of response.data.nodes) {
+    if (!node?.id || !ids.includes(node.id) || byId.has(node.id) || !Number.isSafeInteger(node.number) || Number(node.number) <= 0
+      || node.number !== numbers.get(node.id)) throw new Error("GitHub pull request identity is incomplete.");
+    byId.set(node.id, node);
+  }
+  return ids.map(id => byId.get(id)!);
 }
 
 /**
@@ -320,9 +380,14 @@ async function readPullRequestNodes(
  */
 function hasPullRequestNodeConnections(node: GhPullRequestNode): boolean {
   return Array.isArray(node.commits?.nodes) && typeof node.commits?.pageInfo?.hasNextPage === "boolean"
-    && Array.isArray(node.reviewThreads?.nodes) && typeof node.reviewThreads?.pageInfo?.hasNextPage === "boolean"
-    && Number.isSafeInteger(node.comments?.totalCount) && Number(node.comments?.totalCount) >= 0
+    && hasMutableNodeConnections(node)
     && Number.isSafeInteger(node.files?.totalCount) && Number(node.files?.totalCount) >= 0;
+}
+
+/** @param node 최신 API 응답 @returns 댓글 연결과 후속 cursor 유무를 실제로 수신했으면 true */
+function hasMutableNodeConnections(node: GhPullRequestNode): boolean {
+  return Array.isArray(node.reviewThreads?.nodes) && typeof node.reviewThreads?.pageInfo?.hasNextPage === "boolean"
+    && Number.isSafeInteger(node.comments?.totalCount) && Number(node.comments?.totalCount) >= 0;
 }
 
 /**

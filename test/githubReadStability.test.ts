@@ -115,13 +115,14 @@ test("queued timeouts reject without spawning behind four still-closing executio
   } finally { for (const response of responses) response.resolve("closed"); await settle(); }
 });
 
-test("disposal rejects consumers immediately but waits for execution close and blocks new reads", async t => {
-  const response = deferred<string>(); let calls = 0;
+test("disposal rejects consumers immediately but waits for execution close and blocks new reads", { timeout: 10_000 }, async t => {
+  const response = deferred<string>(), started = deferred<void>(); let calls = 0;
   t.after(() => response.resolve("closed"));
-  const cache = new GitHubReadCache(async () => { calls++; return response.promise; });
+  const cache = new GitHubReadCache(async () => { calls++; started.resolve(); return response.promise; });
   const pending = cache.read(["api"], "/repo", { operation: "test" });
   const observed = pending.then(() => undefined, error => error);
-  await settle();
+  // 인증 환경의 비동기 파일 조회까지 끝나 실제 실행기가 시작된 뒤 dispose의 종료 대기를 검증한다.
+  await started.promise;
   let finished = false;
   const disposing = (cache as GitHubReadCache & { dispose(): Promise<void> }).dispose().then(() => { finished = true; });
   try {

@@ -96,9 +96,10 @@ export const PULL_REQUEST_SUMMARY_QUERY = `
  * - 작은 첫 페이지를 쓰는 호출자는 pageInfo를 따라 나머지 데이터를 반드시 보완한다.
  * @param commitPageSize PR별 첫 commit 페이지 크기. 검색 등 기존 호출은 100을 유지한다.
  * @param reviewThreadPageSize PR별 첫 review thread 페이지 크기
+ * @param includeStableConnections false면 같은 head/base로 검증한 캐시에서 채울 commit/file 연결을 생략한다.
  * @returns 공통 PR 필드와 지정한 connection 크기를 포함한 GraphQL selection
  */
-export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPageSize = 100): string {
+export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPageSize = 100, includeStableConnections = true): string {
   return `
         number
         title
@@ -115,11 +116,11 @@ export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPage
         updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
 ${buildPullRequestCommentCountsQuery(reviewThreadPageSize)}
-        files(first: 1) { totalCount }
+${includeStableConnections ? `        files(first: 1) { totalCount }
         commits(first: ${commitPageSize}) {
           nodes { commit { oid } }
           pageInfo { hasNextPage endCursor }
-        }`;
+        }` : ""}`;
 }
 
 /**

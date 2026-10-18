@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { GhExecute } from "../src/git/ghRunner";
-import type { GhPullRequestNode } from "../src/git/pullRequestInfo";
+import { pullRequestInfoFromGraphQl, type GhPullRequestNode } from "../src/git/pullRequestInfo";
 import { fetchPullRequestListPage } from "../src/git/pullRequestListService";
 
 type IdentifiedNode = GhPullRequestNode & { id: string; __typename: "PullRequest" };
@@ -53,7 +53,9 @@ test("identity-first PR loading preserves all 80 records, full fields, and the o
   let identityRequests = 0;
   const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
     if (options.operation === "graph-pr-list-page") {
-      heavyRoot = /commits\(|reviewThreads\(/.test(args.find(arg => arg.startsWith("query=")) || "");
+      const query = args.find(arg => arg.startsWith("query=")) || "";
+      heavyRoot = /commits\(|reviewThreads\(/.test(query);
+      assert.doesNotMatch(query, /headRefOid|baseRefOid/, "cold loading has no reusable snapshot and needs no early OID lookup");
       assert.ok(args.includes("limit=80"));
       return page(nodes);
     }
@@ -281,4 +283,111 @@ test("a supplemental failure arriving as metadata completes preserves its real e
     if (options.operation === "graph-pr-list-nodes") return nodePage(args, nodes);
     throw new Error("review failed immediately");
   }), /review failed immediately/);
+});
+
+/** 요청한 필드만 돌려줘 실제 GraphQL의 생략된 connection을 캐시로 완성하는 경계를 검증한다. */
+function projectedPage(args: readonly string[], nodes: IdentifiedNode[], summary: boolean): string {
+  const query = args.find(arg => arg.startsWith("query=")) || "";
+  const response = JSON.parse(summary ? query.includes("reviewThreads(") ? page(nodes) : summaryPage(nodes) : nodePage(args, nodes));
+  if (summary) {
+    if (query.includes("headRefOid")) response.data.repository.pullRequests.nodes.forEach((node: GhPullRequestNode, index: number) => {
+      node.headRefOid = nodes[index].headRefOid; node.baseRefOid = nodes[index].baseRefOid;
+    });
+  }
+  for (const node of summary ? response.data.repository.pullRequests.nodes : response.data.nodes) {
+    if (!query.includes("commits(")) delete node.commits;
+    if (!query.includes("files(")) delete node.files;
+  }
+  return JSON.stringify(response);
+}
+
+test("refreshing eighty unchanged PRs avoids stable connections while preserving fresh comments, labels and state", async () => {
+  const nodes = records();
+  const previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+  nodes[0].comments = { totalCount: 12 }; nodes[0].reviewDecision = "CHANGES_REQUESTED";
+  nodes[0].labels = { nodes: [{ name: "updated", color: "ff0000" }] }; nodes[0].title = "Fresh title";
+  let stableReads = 0, requests = 0;
+  const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    const summary = options.operation === "graph-pr-list-page";
+    requests++;
+    if (!summary && /commits\(|files\(/.test(args.find(arg => arg.startsWith("query=")) || "")) stableReads++;
+    return projectedPage(args, nodes, summary);
+  }, { previous });
+  assert.equal(result.pullRequests.length, 80);
+  assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
+  assert.deepEqual(result.pullRequests[79].commitHashes, ["start-80", "head-80"]);
+  assert.equal(result.pullRequests[0].fileCount, 11); assert.equal(result.pullRequests[79].fileCount, 90);
+  assert.equal(result.pullRequests[0].commentCount, 15); assert.equal(result.pullRequests[0].title, "Fresh title");
+  assert.deepEqual(result.pullRequests[0].labels, [{ name: "updated", color: "ff0000", description: undefined }]);
+  assert.equal(result.pullRequests[0].reviewDecision, "CHANGES_REQUESTED");
+  assert.ok(result.pullRequests.every(pr => pr.commitHashesComplete && pr.fileCountComplete && pr.commentCountComplete));
+  assert.equal(stableReads, 0, "unchanged commit/file connections must not be downloaded again");
+  assert.equal(requests, 1, "the fresh mutable fields and verified stable connections need only one round trip");
+  assert.equal(previous.pullRequests[0].commentCount, 5, "the previous successful snapshot must remain immutable");
+});
+
+test("a changed refresh head rereads only that PR before completing the cached list", async () => {
+  const nodes = records(), previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+  nodes[39].headRefOid = "new-head"; nodes[39].files = { totalCount: 99 };
+  nodes[39].commits = { nodes: [{ commit: { oid: "new-start" } }, { commit: { oid: "new-head" } }], pageInfo: { hasNextPage: false } };
+  const heavy: string[][] = [];
+  const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    if (options.operation === "graph-pr-list-page") {
+      return projectedPage(args, nodes, true);
+    }
+    if (/commits\(/.test(args.find(arg => arg.startsWith("query=")) || "")) heavy.push(args.filter(arg => arg.startsWith("ids[]=")));
+    return projectedPage(args, nodes, false);
+  }, { previous });
+  assert.deepEqual(result.pullRequests.map(pr => pr.number), Array.from({ length: 80 }, (_, index) => index + 1));
+  assert.deepEqual(result.pullRequests[39].commitHashes, ["new-start", "new-head"]);
+  assert.equal(result.pullRequests[39].fileCount, 99);
+  assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
+  assert.deepEqual(result.pullRequests[79].commitHashes, ["start-80", "head-80"]);
+  assert.deepEqual(heavy, [["ids[]=PR-40"]], "a stale reusable connection must only reread its changed identity");
+});
+
+for (const boundary of ["repository", "head", "base", "baseName", "incompleteCommits", "incompleteFiles"] as const) {
+  test(`stable connection reuse respects its immutable snapshot boundary: ${boundary}`, async () => {
+    const nodes = records(1), previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+    const known = previous.pullRequests[0]; known.commitHashes = ["wrong-old-commit"]; known.fileCount = 999;
+    if (boundary === "repository") previous.repository = "other/repo";
+    if (boundary === "head") known.headHash = "old-head";
+    if (boundary === "base") known.baseHash = "old-base";
+    if (boundary === "baseName") known.baseRefName = "old-base-name";
+    if (boundary === "incompleteCommits") known.commitHashesComplete = false;
+    if (boundary === "incompleteFiles") known.fileCountComplete = false;
+    const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) =>
+      projectedPage(args, nodes, options.operation === "graph-pr-list-page"), { previous });
+    assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
+    assert.equal(result.pullRequests[0].fileCount, 11);
+  });
+}
+
+test("a cached refresh rejects missing mutable connections before publishing a successful snapshot", async () => {
+  const nodes = records(1), previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+  let published = 0;
+  await assert.rejects(fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    const summary = options.operation === "graph-pr-list-page", response = JSON.parse(projectedPage(args, nodes, summary));
+    if (summary) delete response.data.repository.pullRequests.nodes[0].reviewThreads;
+    return JSON.stringify(response);
+  }, { previous, onProgress: () => { published++; } }), /not available|incomplete/i);
+  assert.equal(published, 0);
+});
+
+test("a cached refresh counts review tails without redownloading complete commit connections", async () => {
+  const nodes = records(1), previous = { repository: "owner/repo", pullRequests: nodes.map(node => pullRequestInfoFromGraphQl(node)) };
+  nodes[0].reviewThreads = { nodes: Array.from({ length: 100 }, () => ({ comments: { totalCount: 2 } })),
+    pageInfo: { hasNextPage: true, endCursor: "review-next" } };
+  let requests = 0;
+  const result = await fetchPullRequestListPage("/repo", undefined, undefined, async (args, _root, options) => {
+    requests++;
+    if (options.operation === "graph-pr-review-thread-count-page") return JSON.stringify({ data: { repository: { pullRequest: {
+      reviewThreads: { nodes: [{ comments: { totalCount: 7 } }], pageInfo: { hasNextPage: false } },
+    } } } });
+    return projectedPage(args, nodes, options.operation === "graph-pr-list-page");
+  }, { previous });
+  assert.equal(result.pullRequests[0].commentCount, 209);
+  assert.equal(result.pullRequests[0].commentCountComplete, true);
+  assert.deepEqual(result.pullRequests[0].commitHashes, ["start-1", "head-1"]);
+  assert.equal(requests, 2);
 });

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.72093] - 2026-10-18
+
+### Changed
+
+- Refresh an unchanged 80-PR page in one GitHub request. Reuse complete commit
+  lists and file counts only after checking the latest repository, head, base
+  and target branch; always refresh titles, states, labels and review comments.
+- Fetch full metadata only for changed PRs while preserving list order, cursor,
+  complete pagination and cancellation. Keep the initial loading path lightweight.
+- Batch selected-file hunk validation and whole-file unstage operations to avoid
+  starting separate Git processes for every selected path.
+
+### Fixed
+
+- Preserve rename detection compatibility, literal filenames and fresh checks
+  after index-lock retries during multi-file hunk actions.
+- Restore deleted index entries correctly, retain unselected lines when
+  unstaging new files and preserve both sections of file-type changes.
+- Require whole-file unstage for file-type changes so partial selections cannot
+  unstage additional content.
+
 ## [0.1.72092] - 2026-10-18
 
 ### Changed

@@ -2,10 +2,12 @@
 // - git lock 대기 뒤에는 현재 diff 와 충돌 상태를 다시 확인한 다음에만 변경 작업을 재시도한다.
 import type { DiffFile, HunkSelection } from "./diffHunkService";
 import { runGit } from "./gitExec";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 export interface DiffFileProvider {
   repoRoot: string;
   getFileWorkingDiff(relPath: string): Promise<DiffFile[]>;
+  getFilesWorkingDiff?(relPaths: readonly string[]): Promise<DiffFile[]>;
 }
 
 export interface DiffMutationGuard {
@@ -28,12 +30,28 @@ export function createDiffMutationGuard(
   const paths = [...new Set(selections.map((selection) => selection.path))];
   const assertSafe = async (): Promise<void> => {
     await assertNoConflicts(provider.repoRoot);
-    const currentFiles = (
-      await Promise.all(paths.map((path) => provider.getFileWorkingDiff(path)))
-    ).flat();
+    // 묶음 조회가 가능한 provider는 선택 범위만 한 번씩 읽는다. 매 검증마다 새로 조회해 재시도도 보호한다.
+    const currentFiles = provider.getFilesWorkingDiff
+      ? await provider.getFilesWorkingDiff(paths)
+      : (await Promise.all(paths.map((path) => provider.getFileWorkingDiff(path)))).flat();
     const current = new Map(
       currentFiles.map((file) => [fileKey(file.stage, file.path), fingerprint(file)])
     );
+    if (provider.getFilesWorkingDiff) {
+      // renameLimit 때문에 전체/선택 범위의 A·D·R 분류가 달라질 수 있다.
+      // 불일치 경로만 기존 단일 파일 해석으로 다시 읽고, 실제 변경은 아래 비교에서 계속 거절한다.
+      const retryPaths = new Set<string>();
+      for (const [key, value] of expected) {
+        if (current.get(key) !== value) retryPaths.add(key.slice(key.indexOf("\0") + 1));
+      }
+      if (retryPaths.size) {
+        const retried = await mapWithConcurrency([...retryPaths], 4, path => provider.getFileWorkingDiff(path));
+        for (const path of retryPaths) {
+          current.delete(fileKey("staged", path)); current.delete(fileKey("unstaged", path));
+        }
+        for (const file of retried.flat()) current.set(fileKey(file.stage, file.path), fingerprint(file));
+      }
+    }
     for (const [key, value] of expected) {
       if (current.get(key) !== value) {
         throw new Error(

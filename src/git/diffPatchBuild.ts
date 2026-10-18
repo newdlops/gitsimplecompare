@@ -72,7 +72,7 @@ export function filePatchForUnstage(
       })
     )
     .filter((part): part is string => !!part);
-  return parts.length ? file.header + "\n" + parts.join("\n") : undefined;
+  return parts.length ? unstagePatchHeader(file) + "\n" + parts.join("\n") : undefined;
 }
 
 /** hunk 안의 선택 라인만 남기고 hunk header count 를 다시 계산한다. */
