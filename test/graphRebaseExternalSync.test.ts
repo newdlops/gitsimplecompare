@@ -219,6 +219,7 @@ for (const trigger of ["manual", "focus", "reveal"] as const) {
     t.after(() => { window.state = previousState; });
     const panel = Object.assign(Object.create(GitGraphPanel.prototype), {
       messages: router, panel: { visible: true }, remoteCatalogStatus: "ready",
+      workingTree: { resume: () => undefined },
       refreshCoordinator: { setFocused: () => false, setVisible: () => false },
     });
     if (trigger === "manual") await router.handle({ type: "refresh" });

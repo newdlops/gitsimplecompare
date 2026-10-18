@@ -16,6 +16,7 @@ function fixture(stage?: string) {
   const service = { repoRoot: "/first", reindexGraphBranchContainment: () => step("containment") };
   const panel: any = Object.assign(Object.create(GitGraphPanel.prototype), {
     logService: service, loadGeneration: 7, disposed: false, commits: [], virtualCommits: [], rangeStartIndex: 0,
+    workingTree: { cancel: () => undefined },
     sendBranches: async () => { await step("branches"); return []; },
     graphReads: { run: async () => { await step("virtual"); return { reused: true, virtualCommits: [] }; } },
     currentBranchFilter: () => ({ visibleRefs: [], refs: [] }),

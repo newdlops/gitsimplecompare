@@ -37,6 +37,9 @@ export type GraphSearchFetchTarget = "refs" | "tags";
 /** graph 무한 스크롤에서 추가 로드할 방향 */
 export type GraphLoadDirection = "newer" | "older";
 
+/** 커밋 페이지와 독립적으로 읽는 작업트리 상태. 안내가 없으면 최신 조회가 완료된 상태다. */
+export interface GraphWorkingTreeState { loading: boolean; message: string; detail?: string; }
+
 /** 그래프 페이지 로딩 상태(웹뷰의 무한 스크롤/상태 표시용) */
 export interface GraphLoadState {
   loadedCount: number;
@@ -47,13 +50,15 @@ export interface GraphLoadState {
   reset: boolean;
   /** 같은 저장소 안에서 커밋 표시 색상을 재렌더 사이에 고정하기 위한 범위 식별자 */
   colorScope?: string;
+  /** 상태를 아직 모르거나 읽지 못했을 때 clean과 구분하는 별도 안내. */
+  workingTree?: GraphWorkingTreeState | null;
 }
 
 /** extension graph post부터 webview frame까지 같은 성능 흐름을 식별하는 metadata다. */
 export interface GraphRenderPerformance {
   traceId: string;
   cause: string;
-  kind: "initial" | "pagination" | "localOnly" | "checkout" | "window";
+  kind: "initial" | "pagination" | "localOnly" | "checkout" | "window" | "workingTree";
   extensionStartedAt: number;
   sentAt: number;
 }

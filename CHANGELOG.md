@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72095] - 2026-10-18
+
+### Changed
+
+- Display the first Git Graph history without waiting for working-tree status.
+  Keep commit selection and pagination available while virtual rows load.
+- Show independent loading, paused and unavailable working-tree states with
+  localized recovery guidance while keeping commit history visible.
+
+### Fixed
+
+- Preserve loaded history, selection and the visible commit when working-tree
+  rows arrive after the initial graph.
+- Resume pending status after an unsuccessful commit-window jump, retain status
+  errors across focus changes and avoid posting to disposed graph webviews.
+
 ## [0.1.72094] - 2026-10-18
 
 ### Changed

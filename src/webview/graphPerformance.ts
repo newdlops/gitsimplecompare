@@ -2,6 +2,7 @@
 // - 화면 상태나 Git 로직을 소유하지 않고 시간 필드와 OUTPUT 이벤트만 표준화한다.
 import { logError, logInfo } from "../ui/outputLog";
 import type { GraphRenderPerformance } from "./graphProtocol";
+import type { loadGraphLocalBranchData } from "./graphBranchLoading";
 
 /** 한 Graph reload/pagination 안의 단계들을 묶는 extension-host trace다. */
 export interface GraphPerformanceTrace {
@@ -53,6 +54,25 @@ export function logGraphPerformancePhase(
   if (!trace) return;
   logInfo("graph performance phase", {
     ...traceFields(trace), phase, elapsedMs, totalElapsedMs: Date.now() - trace.startedAt, ...fields,
+  });
+}
+
+/**
+ * 첫 로드의 branch/worktree 조회와 게시 정보를 한 경계에서 기록한다.
+ * @param trace 현재 Graph 흐름, data 같은 세대의 로컬 snapshot, reusedWorktrees fingerprint 재사용 여부
+ * @param repoRoot 저장소 경계, filterMode 게시한 필터 모드. ref/커밋 원문은 추가로 기록하지 않는다.
+ */
+export function logGraphBranchSnapshot(
+  trace: GraphPerformanceTrace | undefined, data: Awaited<ReturnType<typeof loadGraphLocalBranchData>>,
+  reusedWorktrees: boolean, repoRoot: string, filterMode: string
+): void {
+  const { branches, worktrees, timings } = data;
+  logGraphPerformancePhase(trace, "localBranches", timings.localBranchesMs, { count: branches.length });
+  logGraphPerformancePhase(trace, "worktrees", timings.worktreesMs, { count: worktrees.length, reused: reusedWorktrees });
+  logGraphPerformancePhase(trace, "branchSnapshot", timings.totalMs);
+  logInfo("graph branch status sent", {
+    repoRoot, branches: branches.length, worktrees: worktrees.length,
+    current: branches.find(branch => branch.current)?.name, filterMode,
   });
 }
 

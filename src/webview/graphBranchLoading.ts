@@ -1,6 +1,8 @@
 // Graph 브랜치 카탈로그의 로컬 우선 표시와 단일 최종 hydration 순서를 조정하는 모듈.
 import { GraphBranchCatalog } from "../git/graphBranchCatalog";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
+import type { GitLogService } from "../git/gitLogService";
+import type { WorktreeInfo } from "../git/worktreeService";
 import type {
   Commit,
   GraphInvalidRef,
@@ -11,6 +13,7 @@ import type {
 import { logError, logInfo } from "../ui/outputLog";
 import { buildBranchFilterSnapshot, resolveBranchFilter } from "./graphBranchFilter";
 import type { GraphBranchFilterSnapshot, GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter } from "./graphBranchFilter";
+import { createGraphWorktreeBranchStatus, readGraphWorktreeBranchStatus } from "./graphWorktrees";
 
 /** local-first 브랜치 hydration이 패널에 제공하는 현재 상태다. */
 export type GraphRemoteCatalogStatus = "pending" | "ready" | "error";
@@ -138,6 +141,19 @@ export async function loadGraphLocalBranchData(
       totalMs: Date.now() - started,
     },
   };
+}
+
+/**
+ * 현재 서비스의 브랜치와 이미 읽은 worktree를 연결해 중복 worktree 프로세스를 줄인다.
+ * @param service 대상 저장소 로그 서비스, worktrees fingerprint의 선택 snapshot, signal 조회 수명
+ * @returns 기존 병렬 조회와 같은 로컬 branch/ref/worktree 및 단계별 시간
+ */
+export function readGraphLocalBranchData(
+  service: Pick<GitLogService, "repoRoot" | "getLocalBranchSnapshot">,
+  worktrees: readonly WorktreeInfo[] | undefined, signal: AbortSignal
+): ReturnType<typeof loadGraphLocalBranchData> {
+  return loadGraphLocalBranchData(service.repoRoot, () => service.getLocalBranchSnapshot(signal),
+    () => worktrees ? Promise.resolve(createGraphWorktreeBranchStatus(worktrees)) : readGraphWorktreeBranchStatus(service.repoRoot, signal));
 }
 
 /** 현재 상태를 웹뷰가 즉시 그릴 수 있는 branch-filter 메시지 payload로 만든다. */

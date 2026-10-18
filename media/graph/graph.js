@@ -415,9 +415,12 @@
     } else {
       statusEl.textContent = `${loaded} commits, complete`;
     }
+    const workingTree = loadState.workingTree;
+    if (workingTree?.message) statusEl.textContent += ` · ${workingTree.message}`;
+    statusEl.title = workingTree?.detail || statusEl.textContent;
     statusEl.classList.toggle(
       "loading",
-      loadState.loading && graphHealthNotice?.level !== "error"
+      Boolean(loadState.loading || workingTree?.loading) && graphHealthNotice?.level !== "error"
     );
   }
 
