@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72097] - 2026-10-19
+
+### Changed
+
+- Share filesystem monitor preparation between working-tree status and literal
+  untracked-file expansion to avoid a second wait for the same stalled monitor.
+- Keep configuration-specific monitor preparation separate while preserving
+  the original commands' filename matching and complete file results.
+
 ## [0.1.72096] - 2026-10-19
 
 ### Changed

@@ -49,7 +49,8 @@ export function setOwnedFsmonitorPolicy(log: GitProcessLogger): () => void {
 export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions = {}, globals: readonly string[] = []): Promise<boolean | undefined> {
   if (!active || process.platform !== "darwin") return undefined;
   const source = { ...process.env, ...options.env };
-  const scope: string[] = [...globals];
+  const monitorGlobals = monitorPreparationGlobals(globals);
+  const scope: string[] = [...monitorGlobals];
   for (const name of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_PARAMETERS"]) scope.push(source[name] ?? "");
   for (let index = 0; index < Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0)); index++) {
     const name = source[`GIT_CONFIG_KEY_${index}`] ?? "";
@@ -61,9 +62,28 @@ export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions 
   const existing = preparing.get(key);
   if (existing) return existing;
   const current = generation;
-  const pending = prepare(root, key, options, current, globals).finally(() => { if (preparing.get(key) === pending) preparing.delete(key); });
+  const pending = prepare(root, key, options, current, monitorGlobals).finally(() => { if (preparing.get(key) === pending) preparing.delete(key); });
   preparing.set(key, pending);
   return pending;
+}
+
+/**
+ * 감시자와 무관한 파일명 해석 옵션만 준비 문맥에서 제외해 status와 미추적 파일 열거가 같은 확인을 공유한다.
+ * - 실제 호출의 인자는 그대로 두고 config·include·namespace 등 나머지 전역 옵션은 유지한다.
+ * @param globals Git 하위 명령 앞의 전역 옵션. 값을 받는 옵션의 다음 인자는 제거하지 않는다.
+ * @returns 감시자 식별 및 제외 경로 응답 확인에 사용할 별도 인자 배열
+ */
+function monitorPreparationGlobals(globals: readonly string[]): string[] {
+  const pathspecOptions = new Set(["--literal-pathspecs", "--glob-pathspecs", "--noglob-pathspecs", "--icase-pathspecs"]);
+  const withValue = new Set(["-c", "-C", "--git-dir", "--work-tree", "--namespace", "--config-env"]);
+  const result: string[] = [];
+  for (let index = 0; index < globals.length; index++) {
+    const option = globals[index];
+    if (pathspecOptions.has(option)) continue;
+    result.push(option);
+    if (withValue.has(option) && index + 1 < globals.length) result.push(globals[++index]);
+  }
+  return result;
 }
 
 /** 명시적 false는 유지하며 불명확한 별도 Git directory에는 감시자를 새로 생성하지 않는다. */

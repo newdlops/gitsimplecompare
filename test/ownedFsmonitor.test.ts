@@ -150,6 +150,26 @@ test("an existing listening daemon with a stalled query is bypassed once for con
   await assert.rejects(readFile(f.count), { code: "ENOENT" }, "an existing user's daemon must not be restarted");
 });
 
+test("status and literal untracked expansion share the same stalled monitor probe", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t, "unresponsive");
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["status", "--porcelain=v2", "--untracked-files=normal"], f.root), "false");
+  assert.equal(await runGit(["--literal-pathspecs", "ls-files", "--others", "--exclude-standard", "-z", "--", "untracked/"], f.root), "false");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query", "literal filenames must not add another stalled monitor query");
+  assert.equal((await readFile(f.preparing, "utf8")).trim(), "ready");
+});
+
+test("pathspec-only flags share a healthy monitor while changed Git configuration keeps a separate preparation", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "existing");
+  t.after(() => gitProcesses.dispose());
+  await Promise.all([runGit(["status"], f.root), runGit(["--literal-pathspecs", "ls-files", "-z"], f.root)]);
+  await runGit(["--glob-pathspecs", "diff"], f.root);
+  await runGit(["--noglob-pathspecs", "--icase-pathspecs", "diff"], f.root);
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query", "only filename matching differs across the reads");
+  await runGit(["-c", "include.path=/a/different/config", "--literal-pathspecs", "diff"], f.root);
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim().split("\n").length, 2, "configuration must remain part of monitor identity");
+});
+
 test("a newly owned daemon that listens but never answers is closed before the fallback read", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
   const f = await fixture(t, "owned-unresponsive");
   t.after(() => gitProcesses.dispose());
