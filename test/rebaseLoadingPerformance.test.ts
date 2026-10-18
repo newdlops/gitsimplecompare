@@ -142,7 +142,7 @@ test("conflict listing reads index only and diagnostics exclude untracked scans 
   await writeFile(join(root, "untracked.txt"), "untracked\n");
   const calls = recordGitCalls(t);
   assert.deepEqual(await new ConflictService(root).listConflicts(), ["tracked.txt"]);
-  assert.deepEqual(calls, [["ls-files", "--unmerged", "-z"]]);
+  assert.deepEqual(calls, [["-c", "core.fsmonitor=false", "ls-files", "--unmerged", "-z"]]);
   const diagnostics = await readRebaseContinueDiagnostics(root);
   assert.deepEqual(diagnostics.unmergedFiles, ["tracked.txt"]);
   assert.deepEqual(diagnostics.markerFiles, ["tracked.txt"]);

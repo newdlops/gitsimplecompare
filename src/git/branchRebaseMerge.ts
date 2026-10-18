@@ -10,6 +10,7 @@ import { listUnmergedFiles } from "./unmergedFiles";
 import { OperationUndoStore as BranchOperationUndoStore } from "./operationUndoStore";
 import { logError, logInfo } from "../ui/outputLog";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
+import { BranchRebaseCompletionError } from "./branchRebaseCompletionError";
 import {
   dropPreservedLocalChangesStash,
   restorePreservedLocalChangesStash,
@@ -63,7 +64,10 @@ interface PendingBranchRebaseMerge {
   preservedStashHash?: string;
   createdAt: number;
   nativeOperation?: import("./operationControl").GitOperationIdentity;
+  completedHead?: string;
+  allowMissingUndo?: boolean;
   restoreHead?: string;
+  localChangesRestored?: boolean;
 }
 
 /**
@@ -93,9 +97,6 @@ export async function runBranchRebaseMerge(
     } finally {
       logInfo("branch rebase git finished", { repoRoot: input.repoRoot, elapsedMs: Date.now() - started });
     }
-    const rebasedHead = await currentHead(input.repoRoot);
-    const result = await completePendingBranchRebaseMerge(input.repoRoot, pending, rebasedHead);
-    return resumeToRunResult(input, result, rebasedHead);
   } catch (err) {
     if (await isRebaseConflictState(input.repoRoot)) {
       pending.nativeOperation = await captureGitOperation(input.repoRoot);
@@ -114,6 +115,23 @@ export async function runBranchRebaseMerge(
     await cleanupFailedStart(input.repoRoot, pending).catch(error => logError("branch rebase pending cleanup failed", error));
     throw err instanceof Error ? err : new Error(String(err));
   }
+  // exit 0 뒤에는 브랜치가 이미 이동했으므로 시작 실패 복구/충돌 재검사를 실행하지 않는다.
+  try {
+    const rebasedHead = await currentHead(input.repoRoot);
+    pending.completedHead = rebasedHead;
+    await writePendingBranchRebaseMerge(input.repoRoot, pending);
+    const result = await completePendingBranchRebaseMerge(input.repoRoot, pending, rebasedHead);
+    return resumeToRunResult(input, result, rebasedHead);
+  } catch (error) {
+    logError("branch rebase finalization failed; result and recovery state preserved", error, {
+      repoRoot: input.repoRoot, branch: pending.branch, afterHead: pending.completedHead,
+      snapshotRef: pending.snapshotRef, localChangesRestored: pending.localChangesRestored === true,
+    });
+    throw new BranchRebaseCompletionError(error, {
+      ...pending, afterHead: pending.completedHead,
+      preservedStashHash: pending.localChangesRestored ? undefined : pending.preservedStashHash,
+    });
+  }
 }
 
 /**
@@ -128,6 +146,16 @@ export async function finishPendingBranchRebaseMergeAfterContinue(
   if (!pending) {
     return { status: "none" };
   }
+  if (pending.completedHead) {
+    await assertCurrentBranchHead(repoRoot, pending.branch, pending.completedHead, "resuming completed branch rebase processing");
+    if (await detectOperation(repoRoot) !== "none") {
+      throw new Error("Another Git operation is in progress. Completed rebase recovery was left unchanged.");
+    }
+    if (pending.restoreHead && !pending.localChangesRestored && await hasUnmergedChanges(repoRoot)) {
+      return { status: "restoreConflicts", branch: pending.branch, preservedStashHash: pending.preservedStashHash };
+    }
+    return completePendingBranchRebaseMerge(repoRoot, pending, pending.completedHead, pending.allowMissingUndo === true);
+  }
   if (await isRebaseConflictState(repoRoot)) {
     return {
       status: "pending",
@@ -136,6 +164,10 @@ export async function finishPendingBranchRebaseMergeAfterContinue(
   }
   const rebasedHead = await currentHead(repoRoot);
   await assertControlledTransition(repoRoot, pending.nativeOperation, "continue");
+  pending.completedHead = rebasedHead;
+  // Continue 영수증을 검증한 기존 버전 작업만 출처 없는 Undo를 새로 만들지 않고 완료할 수 있다.
+  pending.allowMissingUndo = true;
+  await writePendingBranchRebaseMerge(repoRoot, pending);
   return completePendingBranchRebaseMerge(repoRoot, pending, rebasedHead, true);
 }
 
@@ -208,6 +240,17 @@ export async function restorePendingBranchRebaseMergeLocalChangesForBranch(
 }
 
 /**
+ * Undo가 ref/index를 바꾸기 전에 같은 작업의 불확실한 stash 복원 시도를 차단한다.
+ * @param repoRoot 작업 저장소 @param branch Undo 대상 브랜치 @param snapshotRef 승인된 작업 snapshot
+ */
+export async function assertPendingBranchRebaseMergeLocalChangesRestoreSafe(
+  repoRoot: string, branch: string, snapshotRef: string
+): Promise<void> {
+  const pending = await readPendingBranchRebaseMerge(repoRoot);
+  if (pending?.branch === branch && pending.snapshotRef === snapshotRef) assertLocalChangesRestoreNotAttempted(pending);
+}
+
+/**
  * rebase 완료 후 보존 stash 를 복원하고 pending 상태를 정리한다.
  * @param repoRoot git 저장소 루트
  * @param pending 저장된 rebase merge 상태
@@ -232,7 +275,10 @@ async function completePendingBranchRebaseMerge(
     rebasedHead,
     "completing branch rebase merge"
   );
+  assertLocalChangesRestoreNotAttempted(pending);
   await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", allowMissingUndo);
+  // Undo 기록을 기다리는 동안 외부 commit/checkout이 생겼으면 그 상태에 stash를 적용하지 않는다.
+  await assertCurrentBranchHead(repoRoot, pending.branch, rebasedHead, "restoring branch rebase local changes");
   try {
     await restorePendingLocalChanges(
       repoRoot,
@@ -354,7 +400,10 @@ function normalizeState(value: unknown): PendingBranchRebaseMerge | undefined {
     createdAt: typeof item.createdAt === "number" ? item.createdAt : 0,
     nativeOperation: item.nativeOperation && typeof item.nativeOperation === "object"
       ? item.nativeOperation as import("./operationControl").GitOperationIdentity : undefined,
+    completedHead: typeof item.completedHead === "string" ? item.completedHead : undefined,
+    allowMissingUndo: item.allowMissingUndo === true,
     restoreHead: typeof item.restoreHead === "string" ? item.restoreHead : undefined,
+    localChangesRestored: item.localChangesRestored === true,
   };
 }
 
@@ -388,11 +437,22 @@ async function restorePendingLocalChanges(
   pending: PendingBranchRebaseMerge,
   failureMessage: string
 ): Promise<void> {
-  if (!pending.preservedStashHash) {
+  assertLocalChangesRestoreNotAttempted(pending);
+  if (!pending.preservedStashHash || pending.localChangesRestored) {
     return;
   }
-  await writePendingBranchRebaseMerge(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
+  pending.restoreHead = await currentHead(repoRoot);
+  await writePendingBranchRebaseMerge(repoRoot, pending);
   await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
+  pending.localChangesRestored = true;
+  await writePendingBranchRebaseMerge(repoRoot, pending);
+}
+
+/** apply/drop 도중 실패한 stash는 부분 적용 여부를 추정할 수 없어 공통 복원 경로에서 재적용하지 않는다. */
+function assertLocalChangesRestoreNotAttempted(pending: PendingBranchRebaseMerge): void {
+  if (pending.preservedStashHash && pending.restoreHead && !pending.localChangesRestored) {
+    throw new Error("Preserved local changes restoration was already attempted. Review the working tree and preserved stash before retrying. The rebase result and recovery snapshot were kept.");
+  }
 }
 
 /** 현재 HEAD commit hash 를 반환한다. */

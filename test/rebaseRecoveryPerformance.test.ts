@@ -135,6 +135,6 @@ test("branch rebase checks index conflicts without rescanning worktree diffs", a
   await git(root, "switch", "main");
   const calls = recordGitCalls(t);
   assert.equal((await new BranchOperationService(root).rebaseMerge("source")).status, "completed");
-  assert.ok(calls.some(args => args[0] === "ls-files" && args.includes("--unmerged")));
+  assert.ok(calls.some(args => args.includes("ls-files") && args.includes("--unmerged") && args.includes("core.fsmonitor=false")));
   assert.equal(calls.some(args => args[0] === "diff" && args.includes("--diff-filter=U")), false);
 });

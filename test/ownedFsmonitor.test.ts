@@ -8,10 +8,11 @@ import { gitProcesses } from "../src/git/gitProcessRegistry";
 import { setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
 
 /** 실제 foreground 자식과 status handshake를 사용하되 파일 감시/사용자 저장소는 만들지 않는다. */
-async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing" | "broken-status" = false, configDelay = 0) {
+async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing" | "broken-status" | "unresponsive" | "owned-unresponsive" | "query-error" | "owned-query-error" = false, configDelay = 0) {
   const root = await mkdtemp(path.join(os.tmpdir(), "gsc-fsmonitor-session-"));
   const executable = path.join(root, "git-fixture"), ready = path.join(root, "monitor.pid"), count = path.join(root, "starts"), preparing = path.join(root, "preparing");
   const statusChecks = path.join(root, "status-checks");
+  const queryChecks = path.join(root, "query-checks"), queryPid = path.join(root, "query.pid");
   await writeFile(executable, `#!${process.execPath}
 const fs = require('node:fs');
   const args = process.argv.slice(2);
@@ -21,7 +22,7 @@ const command = args[at];
 if (command === 'config') { fs.appendFileSync(${JSON.stringify(preparing)}, 'ready\\n'); setTimeout(()=>process.stdout.write('true\\n'), ${configDelay}); }
 else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   fs.appendFileSync(${JSON.stringify(statusChecks)}, 'check\\n');
-  if (${fail === "existing"}) process.exit(0);
+  if (${fail === "existing" || fail === "unresponsive" || fail === "query-error"}) process.exit(0);
   if (${fail === "never-ready"}) process.exit(1);
   try { process.kill(Number(fs.readFileSync(${JSON.stringify(ready)},'utf8')),0); } catch { process.exit(1); }
   if (${fail === "broken-status"}) process.exit(2);
@@ -29,6 +30,11 @@ else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   fs.appendFileSync(${JSON.stringify(count)}, 'start\\n');
   if (${fail === true}) process.exit(3);
   fs.writeFileSync(${JSON.stringify(ready)}, String(process.pid)); setInterval(()=>{},1000);
+} else if (command === 'status' && args.includes(':(top,exclude)**')) {
+  fs.appendFileSync(${JSON.stringify(queryChecks)}, 'query\\n');
+  fs.writeFileSync(${JSON.stringify(queryPid)}, String(process.pid));
+  if (${fail === "query-error" || fail === "owned-query-error"}) process.exit(1);
+  if (${fail === "unresponsive" || fail === "owned-unresponsive"}) setInterval(()=>{},1000);
 } else {
   let value='inherited';
   for(let i=0;i<Number(process.env.GIT_CONFIG_COUNT||0);i++) if(process.env['GIT_CONFIG_KEY_'+i]==='core.fsmonitor') value=process.env['GIT_CONFIG_VALUE_'+i];
@@ -42,7 +48,7 @@ else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   });
   t.after(setGitExecutableResolver(() => executable));
   const reset = setOwnedFsmonitorPolicy(() => undefined); t.after(reset);
-  return { root, ready, count, preparing, reset, statusChecks };
+  return { root, ready, count, preparing, reset, statusChecks, queryChecks, queryPid };
 }
 
 test("ordinary index reads start one owned foreground monitor independently of idle cleanup settings", { skip: process.platform !== "darwin" }, async t => {
@@ -129,7 +135,60 @@ test("a confirmed existing monitor is reused during a burst without repeated Git
   const f = await fixture(t, "existing");
   await runGit(["diff"], f.root); await runGit(["status"], f.root);
   assert.equal((await readFile(f.preparing, "utf8")).trim(), "ready");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
   await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});
+
+test("an existing listening daemon with a stalled query is bypassed once for concurrent and later reads", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t, "unresponsive");
+  t.after(() => gitProcesses.dispose());
+  assert.deepEqual(await Promise.all([runGit(["diff"], f.root), runGit(["ls-files", "-z"], f.root)]), ["false", "false"]);
+  assert.equal(await runGit(["status", "--porcelain"], f.root), "false");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query", "a stalled IPC probe must be shared and cached");
+  const pid = Number(await readFile(f.queryPid, "utf8"));
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" }, "the probe must close before full scans begin");
+  await assert.rejects(readFile(f.count), { code: "ENOENT" }, "an existing user's daemon must not be restarted");
+});
+
+test("a newly owned daemon that listens but never answers is closed before the fallback read", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t, "owned-unresponsive");
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "false");
+  for (const file of [f.ready, f.queryPid]) {
+    const pid = Number(await readFile(file, "utf8"));
+    assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+  }
+});
+
+test("a query failure with exit one cannot be mistaken for a missing daemon and restart the user's daemon", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "query-error");
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "false");
+  await assert.rejects(readFile(f.count), { code: "ENOENT" });
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
+});
+
+test("an owned daemon query failure is not retried as a missing socket", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "owned-query-error");
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "false");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
+  const pid = Number(await readFile(f.ready, "utf8"));
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+});
+
+test("session disposal cancels a pending daemon query without starting the waiting index read", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t, "unresponsive");
+  t.after(() => gitProcesses.dispose());
+  const pending = runGit(["diff"], f.root);
+  // 선행 query 시작을 파일로 관찰해 임의의 sleep 뒤 취소하는 경쟁 조건을 피한다.
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try { await readFile(f.queryPid); break; } catch { await new Promise(resolve => setTimeout(resolve, 20)); }
+  }
+  const pid = Number(await readFile(f.queryPid, "utf8"));
+  f.reset();
+  await assert.rejects(pending, error => (error as { code?: string }).code === "ABORT_ERR");
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
 test("a broken handshake stops retrying instead of adding ten more Git startup delays", { skip: process.platform !== "darwin" }, async t => {

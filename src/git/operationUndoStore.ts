@@ -217,7 +217,8 @@ export class OperationUndoStore {
     if (expectedGitDir && gitDir !== expectedGitDir) throw staleUndo();
     const operation = detectOperationInGitDir(gitDir);
     const [indexText, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
-      runGit(["ls-files", "--stage", "-z"], this.repoRoot),
+      // 확정 index의 mode/OID/stage만 필요하므로 fsmonitor IPC와 작업트리 검색을 생략한다.
+      runGit(["-c", "core.fsmonitor=false", "ls-files", "--stage", "-z"], this.repoRoot),
       readConflictOperationEpochAt(gitDir, head),
       fileIdentity(path.join(gitDir, "logs/HEAD")),
       fileIdentity(path.join(gitDir, "SQUASH_MSG")),

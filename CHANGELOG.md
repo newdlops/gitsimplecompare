@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72096] - 2026-10-19
+
+### Changed
+
+- Start the initial GitHub PR request alongside rebase restoration and local
+  stack loading, while preserving complete metadata and final snapshot order.
+- Check built-in filesystem monitor responses before the first index operation
+  and bypass an unresponsive monitor within the command scope.
+- Read conflict stages and Undo index snapshots without filesystem monitor IPC.
+
+### Fixed
+
+- Keep a completed native rebase separate from failed-start recovery when Undo
+  recording or local-change restoration fails afterward.
+- Preserve the completed branch, stash and recovery snapshot for safe follow-up
+  processing, and prevent uncertain stash restoration from running twice.
+- Suppress stale PR and rebase publications after repository changes or disposal.
+
 ## [0.1.72095] - 2026-10-18
 
 ### Changed

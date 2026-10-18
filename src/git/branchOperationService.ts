@@ -10,6 +10,7 @@ import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import { OperationUndoStore as BranchOperationUndoStore, type OperationUndoPlan as BranchOperationUndoPlan } from "./operationUndoStore";
 import { logError } from "../ui/outputLog";
 import {
+  assertPendingBranchRebaseMergeLocalChangesRestoreSafe,
   restorePendingBranchRebaseMergeLocalChangesForBranch,
   runBranchRebaseMerge,
 } from "./branchRebaseMerge";
@@ -18,6 +19,7 @@ import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
+import { BranchRebaseCompletionError } from "./branchRebaseCompletionError";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -114,8 +116,9 @@ export class BranchOperationService {
     const targetHead = await this.resolveCommit(targetRef);
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
     const preserved = await this.preserveLocalChanges(`before rebase onto '${targetRef}'`);
+    let result: Awaited<ReturnType<typeof runBranchRebaseMerge>>;
     try {
-      const result = await runBranchRebaseMerge({
+      result = await runBranchRebaseMerge({
         repoRoot: this.repoRoot,
         branch,
         targetRef,
@@ -124,23 +127,8 @@ export class BranchOperationService {
         snapshotRef,
         preservedStashHash: preserved?.hash,
       });
-      // 정상 완료의 Undo는 하위 완료 경로에서 이미 기록했다. stash 복원으로 index가 바뀌거나
-      // 충돌로 멈춘 경우만 최종 상태를 다시 기록해 같은 snapshot을 두 번 읽지 않는다.
-      if (result.status !== "completed" || preserved?.hash) {
-        await this.undoStore.capture(branch, snapshotRef,
-          await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
-      }
-      return {
-        status: result.status,
-        branch,
-        sourceBranch: targetRef,
-        beforeHead,
-        afterHead: result.afterHead,
-        snapshotRef,
-        preservedStashHash: result.preservedStashHash,
-        rebaseTodo: result.rebaseTodo,
-      };
     } catch (err) {
+      if (err instanceof BranchRebaseCompletionError) throw err;
       const { restored, notice } = await recoverFailedRebaseStart({
         repoRoot: this.repoRoot, branch, beforeHead, snapshotRef, preservedStashHash: preserved?.hash,
       });
@@ -151,6 +139,28 @@ export class BranchOperationService {
       error.message += notice;
       throw error;
     }
+    // Git 실행 결과가 확정된 뒤의 기록 실패도 시작 실패 복구로 되돌리지 않는다.
+    try {
+      if (result.status !== "completed" || preserved?.hash) {
+        await this.undoStore.capture(branch, snapshotRef,
+          await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
+      }
+    } catch (error) {
+      if (result.status === "completed") {
+        throw new BranchRebaseCompletionError(error, { branch, snapshotRef, afterHead: result.afterHead });
+      }
+      throw this.withPreservedStashNotice(error, preserved, branch);
+    }
+    return {
+      status: result.status,
+      branch,
+      sourceBranch: targetRef,
+      beforeHead,
+      afterHead: result.afterHead,
+      snapshotRef,
+      preservedStashHash: result.preservedStashHash,
+      rebaseTodo: result.rebaseTodo,
+    };
   }
 
   /**
@@ -163,6 +173,7 @@ export class BranchOperationService {
   async undoLastOperation(branchName?: string, approvedPlan?: BranchOperationUndoPlan): Promise<BranchOperationUndoResult> {
     const plan = approvedPlan ?? await this.prepareUndo(branchName);
     const { branch, restoredHead } = plan;
+    await assertPendingBranchRebaseMergeLocalChangesRestoreSafe(this.repoRoot, branch, plan.snapshotRef);
     await this.undoStore.undo(plan);
     await restorePendingBranchRebaseMergeLocalChangesForBranch(
       this.repoRoot,
@@ -179,7 +190,9 @@ export class BranchOperationService {
 
   /** 확인창 대기 중 작업이나 HEAD가 바뀌는 것을 감지하도록 Undo 대상을 고정한다. */
   async prepareUndo(branchName?: string): Promise<BranchOperationUndoPlan> {
-    return this.undoStore.prepare(branchName);
+    const plan = await this.undoStore.prepare(branchName);
+    await assertPendingBranchRebaseMergeLocalChangesRestoreSafe(this.repoRoot, plan.branch, plan.snapshotRef);
+    return plan;
   }
 
   /**

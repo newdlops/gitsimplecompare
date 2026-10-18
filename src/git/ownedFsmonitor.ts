@@ -10,6 +10,8 @@ let generation = 0, active = false;
 const preparing = new Map<string, Promise<boolean | undefined>>();
 const prepared = new Map<string, MonitorPreparation>();
 const controllers = new Set<AbortController>();
+// 준비 과정의 IPC 확인도 공통 Git 실행기를 쓰되 같은 준비 Promise를 다시 기다리지 않는다.
+const preparationSignals = new WeakSet<AbortSignal>();
 const withoutIndex = new Set(["config", "fsmonitor--daemon", "version", "rev-parse", "rev-list", "log", "show", "cat-file", "ls-tree", "for-each-ref", "merge-base", "describe", "name-rev", "remote", "branch", "worktree", "symbolic-ref", "show-ref", "reflog", "ls-remote", "check-ref-format"]);
 
 /** 공식 stop 뒤에는 다음 조회에서 소켓 준비와 소유권을 새로 확인한다. */
@@ -66,6 +68,7 @@ export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions 
 
 /** 명시적 false는 유지하며 불명확한 별도 Git directory에는 감시자를 새로 생성하지 않는다. */
 async function prepareGitOptions(args: readonly string[], root: string, options: RunGitOptions): Promise<{ options: RunGitOptions; args?: string[] }> {
+  if (options.signal && preparationSignals.has(options.signal)) return { options };
   const command = gitCommandPolicy(args);
   const crossWorktree = ["clone", "submodule"].includes(command.command) || (command.command === "worktree" && !command.readOnly);
   if (!active || process.platform !== "darwin" || (withoutIndex.has(command.command) && !crossWorktree)) return { options };
@@ -87,9 +90,18 @@ async function prepareGitOptions(args: readonly string[], root: string, options:
 async function prepare(root: string, key: string, options: RunGitOptions, current: number, globals: readonly string[]): Promise<boolean | undefined> {
   const check = () => active && generation === current;
   const controller = new AbortController(); controllers.add(controller);
+  preparationSignals.add(controller.signal);
   const readOptions: RunGitOptions = { executable: options.executable, env: options.env, readTimeoutMs: 2000, retryOnLock: false, signal: controller.signal };
   let entry: MonitorPreparation | undefined;
   let monitor: Promise<void> | undefined;
+  let queryFailed = false;
+  /** 모든 경로를 제외한 조회로 실제 IPC 응답만 확인한다. 파일 스캔·index 쓰기는 수행하지 않는다. */
+  const confirmQuery = async () => {
+    try {
+      await runGit([...globals, "status", "--porcelain=v2", "--untracked-files=no", "--ignore-submodules=all", "--", ":(top,exclude)**"], root,
+        { ...readOptions, readTimeoutMs: 1000 });
+    } catch (error) { queryFailed = true; throw error; }
+  };
   try {
     let configured: string;
     try { configured = (await runGit([...globals, "config", "--bool", "--get", "core.fsmonitor"], root, readOptions)).trim(); }
@@ -100,13 +112,17 @@ async function prepare(root: string, key: string, options: RunGitOptions, curren
     }
     if (!check()) return false;
     if (configured !== "true") { prepared.set(key, { ready: false, foreground: false, expires: Date.now() + 5000 }); return false; }
-    try {
-      await runGit(["fsmonitor--daemon", "status"], root, readOptions);
+    let listening = false;
+    try { await runGit(["fsmonitor--daemon", "status"], root, readOptions); listening = true; }
+    catch (error) { if (!(error instanceof GitError) || error.code !== 1 || !check()) throw error; }
+    if (listening) {
+      if (!check()) return false;
+      // status는 socket 연결만 확인하므로 FSEvents 응답이 막힌 daemon도 성공할 수 있다.
+      await confirmQuery();
       if (!check()) return false;
       // 같은 새로고침의 status/diff/ls-files마다 추가 Git 두 개를 실행하지 않는다.
       prepared.set(key, { ready: true, foreground: false, expires: Date.now() + 5000 }); return true;
     }
-    catch (error) { if (!(error instanceof GitError) || error.code !== 1 || !check()) throw error; }
     entry = { ready: false, foreground: true, expires: 0 }; prepared.set(key, entry);
     const own = entry;
     monitor = runGit(["fsmonitor--daemon", "run", "--no-detach"], root, { executable: options.executable, env: options.env, retryOnLock: false, signal: controller.signal })
@@ -117,20 +133,23 @@ async function prepare(root: string, key: string, options: RunGitOptions, curren
       await new Promise(resolve => setTimeout(resolve, 50));
       try {
         await runGit(["fsmonitor--daemon", "status"], root, readOptions);
-        if (!check() || prepared.get(key) !== entry) return false;
-        entry.ready = true;
-        logger?.("owned git monitor ready", { repoRoot: root }); return true;
       } catch (error) {
         // 아직 없는 소켓(exit=1)만 재확인한다. 시간 초과/IPC 오류를 반복하면 새 Git 실행 지연이 누적된다.
         if (!(error instanceof GitError) || error.code !== 1) break;
+        continue;
       }
+      if (!check() || prepared.get(key) !== entry) return false;
+      try { await confirmQuery(); } catch { break; }
+      if (!check() || prepared.get(key) !== entry) return false;
+      entry.ready = true;
+      logger?.("owned git monitor ready", { repoRoot: root }); return true;
     }
     // 시작만 하고 ready가 되지 않는 child를 남기지 않고 실제 close 후 fallback을 반환한다.
     controller.abort(); await monitor;
   } catch { /* 설정/미지원 Git/보안 계층 지연은 command-scope false로 복구한다. */ }
-  finally { if (!entry || prepared.get(key) !== entry) controllers.delete(controller); }
-  if (check() && (!entry || prepared.get(key) !== entry)) prepared.set(key, { ready: false, foreground: false, expires: Date.now() + 5000 });
-  logger?.("git monitor startup bypassed", { repoRoot: root, reason: "not-ready-or-unavailable" });
+  finally { preparationSignals.delete(controller.signal); if (!entry || prepared.get(key) !== entry) controllers.delete(controller); }
+  if (check() && (!entry || prepared.get(key) !== entry)) prepared.set(key, { ready: false, foreground: false, expires: Date.now() + (queryFailed ? 60_000 : 5000) });
+  logger?.("git monitor startup bypassed", { repoRoot: root, reason: queryFailed ? "unresponsive-query" : "not-ready-or-unavailable" });
   return false;
 }
 

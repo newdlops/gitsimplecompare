@@ -228,11 +228,10 @@ export class GitGraphPanel {
   private async runDirectGraph(cause: string): Promise<boolean> {
     return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause });
   }
-  /** 저장소 교체도 직접 baseline을 확정한 뒤 local stack과 비차단 PR hydration을 같은 순서로 복원한다. */
+  /** 저장소 교체도 직접 baseline 확정 뒤 공통 수명에서 local stack과 원격 PR을 병렬 복원한다. */
   private async reloadRepository(): Promise<void> {
     if (!await this.runDirectGraph("ready") || this.disposed) return;
-    await this.messages.sendPullRequestStacks();
-    void this.messages.refreshPullRequests("ready");
+    void this.messages.refreshPullRequests("ready", true);
   }
   /** lifecycle 경계에서 늦은 결과를 무효화한다. 숨김/포커스 해제는 화면의 그래프와 PR 조회를 보존한다. */
   private invalidateRefreshWork(reason: string): void {

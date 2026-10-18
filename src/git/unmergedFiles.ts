@@ -12,7 +12,7 @@ export interface UnmergedStageEntry { stage: 1 | 2 | 3; mode: string; oid: strin
 export async function readUnmergedStages(
   repoRoot: string, rel: string, indexEnv: Record<string, string> = {}, signal?: AbortSignal
 ): Promise<Map<1 | 2 | 3, UnmergedStageEntry>> {
-  const raw = await runGit(["ls-files", "--unmerged", "-z", "--", rel], repoRoot,
+  const raw = await runGit(["-c", "core.fsmonitor=false", "ls-files", "--unmerged", "-z", "--", rel], repoRoot,
     { env: { GIT_LITERAL_PATHSPECS: "1", ...indexEnv }, signal });
   return parseUnmergedStages(raw, new Set([rel])).get(rel)!;
 }
@@ -28,7 +28,7 @@ export async function readUnmergedStageMaps(
 ): Promise<ReadonlyMap<string, Map<1 | 2 | 3, UnmergedStageEntry>>> {
   const paths = new Set(rels);
   if (!paths.size) return new Map();
-  const raw = await runGit(["ls-files", "--unmerged", "-z", "--", ...paths], repoRoot,
+  const raw = await runGit(["-c", "core.fsmonitor=false", "ls-files", "--unmerged", "-z", "--", ...paths], repoRoot,
     { env: { GIT_LITERAL_PATHSPECS: "1" }, signal });
   return parseUnmergedStages(raw, paths);
 }
@@ -51,11 +51,12 @@ function parseUnmergedStages(raw: string, paths: ReadonlySet<string>): Map<strin
  * 작업트리/미추적 파일을 검색하지 않고 stage 1/2/3에 남은 충돌 경로를 반환한다.
  * - 동일 경로의 여러 stage는 하나로 합치고 NUL 구분으로 특수 문자 파일명을 보존한다.
  * - 매번 실제 index를 읽어 Resolve/Continue 직후의 변경도 즉시 반영한다.
+ * - 확정된 stage 조회에는 fsmonitor가 필요 없어 명령 범위에서 IPC를 비활성화한다.
  * @param repoRoot 저장소 루트 또는 linked worktree 루트
  * @returns Git index 순서의 중복 없는 충돌 경로
  */
 export async function listUnmergedFiles(repoRoot: string, signal?: AbortSignal): Promise<string[]> {
-  const out = await runGit(["ls-files", "--unmerged", "-z"], repoRoot, { signal });
+  const out = await runGit(["-c", "core.fsmonitor=false", "ls-files", "--unmerged", "-z"], repoRoot, { signal });
   const paths = out.split("\0").filter(Boolean).map(entry => {
     const separator = entry.indexOf("\t");
     if (separator < 0) throw new Error("Invalid unmerged index entry.");

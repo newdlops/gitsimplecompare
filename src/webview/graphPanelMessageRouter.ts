@@ -100,6 +100,7 @@ export class GraphPanelMessageRouter {
   private pullRequestRequest: AbortController | undefined;
   private pullRequestDetail?: { number: number; requestId?: string; controller: AbortController };
   private detailPaused = false;
+  private repositoryEpoch = 0;
   private readonly rebaseSessionSync: GraphRebaseSessionSync;
   private readonly actionRefresh: GraphActionRefreshQueue;
   private readonly activeActionKeys = new Set<string>();
@@ -171,6 +172,7 @@ export class GraphPanelMessageRouter {
 
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
+    if (reason === "repositoryChanged" || reason === "dispose") this.repositoryEpoch++;
     if (["repositoryChanged", "dispose", "hidden", "windowUnfocused"].includes(reason)) this.cancelDetailLoading(reason);
     if (reason === "dispose") { this.rebaseSessionSync.dispose(); this.actionRefresh.dispose(); }
     else if (["repositoryChanged", "hidden", "windowUnfocused"].includes(reason)) this.rebaseSessionSync.invalidate();
@@ -202,28 +204,35 @@ export class GraphPanelMessageRouter {
   }
 
   /**
-   * GitHub PR 첫 페이지와 그 결과를 반영한 stack snapshot을 차례로 보낸다.
+   * GitHub PR 첫 페이지와 그 결과를 반영한 stack snapshot을 보낸다.
    * @param reason OUTPUT 로그와 stale generation 식별에 남길 갱신 원인
+   * @param initialLocalStack 초기 로컬 stack을 원격 조회와 병렬로 게시하되 최종 snapshot보다 먼저 마친다.
    */
-  async refreshPullRequests(reason: string): Promise<void> {
+  async refreshPullRequests(reason: string, initialLocalStack = false): Promise<void> {
     this.cancelPullRequestLoading("superseded");
     const controller = new AbortController();
     this.pullRequestRequest = controller;
-    const context = await gitHubReadContext(this.repoRoot, snapshotGitHubEnvironment(), ["repo"]);
-    if (controller.signal.aborted || this.pullRequestRequest !== controller) return;
-    this.deps.post({ type: "pullRequestContext", context });
-    const refreshed = await this.pullRequestPager.refresh(
-      this.repoRoot,
-      this.deps.localBranches(),
-      reason,
-      this.deps.post
-    );
-    if (!refreshed || controller.signal.aborted || this.pullRequestRequest !== controller) {
-      logInfo("graph pull request stack stale skip", { repoRoot: this.repoRoot, reason });
-      return;
+    const repoRoot = this.repoRoot;
+    const current = () => !controller.signal.aborted && this.pullRequestRequest === controller && this.repoRoot === repoRoot;
+    // 새 공통 수명을 먼저 소유해 local stack 시작이 PR 소비자를 취소하지 않게 한다.
+    const localStack = initialLocalStack ? this.sendPullRequestStacks() : Promise.resolve();
+    logInfo("graph pull request hydration started", { repoRoot, reason, parallelLocalStack: initialLocalStack });
+    try {
+      const context = await gitHubReadContext(repoRoot, snapshotGitHubEnvironment(), ["repo"]);
+      if (!current()) return;
+      this.deps.post({ type: "pullRequestContext", context });
+      const refreshed = await this.pullRequestPager.refresh(repoRoot, this.deps.localBranches(), reason, this.deps.post);
+      if (!refreshed || !current()) {
+        logInfo("graph pull request stack stale skip", { repoRoot, reason });
+        return;
+      }
+      // 원격 overview는 즉시 표시하면서 늦은 빈 local snapshot이 최종 결과를 덮지 않게 한다.
+      await localStack;
+      if (!current()) return;
+      await this.sendPullRequestStacks();
+    } finally {
+      if (this.pullRequestRequest === controller) this.pullRequestRequest = undefined;
     }
-    await this.sendPullRequestStacks();
-    if (this.pullRequestRequest === controller) this.pullRequestRequest = undefined;
   }
 
   /**
@@ -318,15 +327,25 @@ export class GraphPanelMessageRouter {
 
   /** ready/manual refresh에서 Graph와 rebase session을 복원하고 PR 갱신을 병렬 시작한다. */
   private async handleReload(reason: "ready" | "refresh"): Promise<void> {
-    logInfo("graph reload requested", { repoRoot: this.repoRoot, reason });
+    const repoRoot = this.repoRoot, epoch = this.repositoryEpoch;
+    const current = () => this.repoRoot === repoRoot && this.repositoryEpoch === epoch;
+    logInfo("graph reload requested", { repoRoot, reason });
     const reloaded = await this.deps.withBusy("refresh-graph", async () => {
       await this.synchronizeRebaseSession(reason);
+      if (!current()) return false;
       return this.deps.reloadGraph(reason);
     });
-    if (!reloaded) return;
-    await restoreGraphRebaseSession(this.rebaseDeps());
-    await this.sendPullRequestStacks();
-    void this.deps.withBusy("graph-pr-list", () => this.refreshPullRequests(reason));
+    if (!reloaded || !current()) return;
+    // PR 네트워크를 먼저 시작해 rebase 복원과 local stack 조회를 기다리는 직렬 구간을 없앤다.
+    void this.deps.withBusy("graph-pr-list", () => this.refreshPullRequests(reason, true));
+    const deps = this.rebaseDeps();
+    try {
+      await restoreGraphRebaseSession({ ...deps, post: message => { if (current()) deps.post(message); } });
+    } catch (error) {
+      // 이전 저장소·폐기된 패널의 복원 오류는 새 화면에 게시하지 않고 현재 수명의 오류만 상위로 보낸다.
+      if (current()) throw error;
+      logInfo("graph rebase session restore stale error skipped", { repoRoot, reason });
+    }
   }
 
   /**
