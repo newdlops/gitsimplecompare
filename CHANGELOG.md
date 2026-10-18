@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.72094] - 2026-10-18
+
+### Changed
+
+- Finalize the maintenance release containing the PR refresh and multi-file
+  hunk optimizations from 0.1.72093.
+
 ## [0.1.72093] - 2026-10-18
 
 ### Changed
