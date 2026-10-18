@@ -13,6 +13,8 @@ import { readRebaseTodoProgress } from "../src/git/rebaseTodoProgress";
 import { readRebaseControlState } from "../src/webview/graphRebaseControlState";
 import { focusRebaseConflicts } from "../src/webview/graphRebaseConflictFocus";
 import { refreshAfterRebaseControl } from "../src/webview/graphRebaseUtils";
+import { beginGraphRebaseSession } from "../src/webview/graphRebaseSession";
+import { readRebaseSessionState } from "../src/git/rebaseSessionState";
 import { commitText, git, safetyFixture } from "./helpers/gitSafetyFixture";
 import { commands } from "./helpers/vscodeMock";
 
@@ -106,6 +108,31 @@ test("rebase coverage validation reloads current commits without reading file di
   assert.equal(await git(root, "rev-parse", "HEAD"), second);
 });
 
+test("starting a prepared rebase session reuses file lists and reloads original commit metadata", async t => {
+  const { root, head } = await safetyFixture(t, "rebase-session-fast");
+  await commitText(root, "first\n", "original subject\n\noriginal body");
+  await commitText(root, "second\n", "second");
+  const commits = await new RebaseService(root).getCommits(head);
+  const items = commits.map(commit => ({ hash: commit.hash, action: "reword" as const, message: "new message", files: commit.files }));
+  const calls = recordGitCalls(t);
+  await beginGraphRebaseSession({ base: head, root: false, items }, { logService: new GitLogService(root) });
+  assert.equal(calls.filter(args => args[0] === "log").length, 1);
+  assert.equal(calls.some(args => args[0] === "diff-tree" || args[0] === "diff"), false);
+  const state = await readRebaseSessionState(root);
+  assert.deepEqual(state?.plan.commits, JSON.parse(JSON.stringify(commits)));
+  assert.deepEqual(state?.items, JSON.parse(JSON.stringify(items)));
+});
+
+test("rebase session fills missing file lists from Git instead of persisting empty recovery data", async t => {
+  const { root, head } = await safetyFixture(t, "rebase-session-files");
+  const hash = await commitText(root, "first\n", "first");
+  const items = [{ hash, action: "pick" as const }];
+  const calls = recordGitCalls(t);
+  await beginGraphRebaseSession({ base: head, root: false, items }, { logService: new GitLogService(root) });
+  assert.equal(calls.filter(args => args[0] === "diff-tree").length, 1);
+  assert.equal((await readRebaseSessionState(root))?.plan.commits[0].files[0].path, "tracked.txt");
+});
+
 test("conflict listing reads index only and diagnostics exclude untracked scans without hiding tracked edits", async t => {
   const { root, head } = await safetyFixture(t, "conflict-index-fast");
   await commitText(root, "main\n", "main");
@@ -169,7 +196,7 @@ test("todo and diagnostics read the linked worktree metadata and immediately obs
   const calls = recordGitCalls(t);
   const progress = await readRebaseTodoProgress(linked);
   assert.equal(progress?.total, 1);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   assert.equal(await readRebaseTodoProgress(root), undefined);
   const diagnostics = await readRebaseContinueDiagnostics(linked);
   assert.deepEqual(diagnostics.rebaseMessageConflicts, ["tracked.txt"]);

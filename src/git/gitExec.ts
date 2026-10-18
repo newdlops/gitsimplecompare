@@ -122,6 +122,17 @@ export async function runGitBuffer(args: string[], cwd: string, options?: Record
 }
 
 /**
+ * cat-file --batch 등에 stdin을 전달하고 binary 출력을 UTF-8 변환 없이 반환한다.
+ * @param args 실제 Git 인자 @param cwd 저장소 루트 @param input 끝까지 전달할 표준 입력
+ * @param options 공통 실행·취소·버퍼 정책 @returns close가 확인된 원본 stdout 바이트
+ */
+export async function runGitBufferWithInput(args: string[], cwd: string, input: GitInput, options?: Record<string, string> | RunGitOptions): Promise<Buffer> {
+  const normalized = normalizeOptions(options);
+  const executable = resolveGitExecutable(cwd, normalized.executable);
+  return withGitRetry(args, normalized, () => executeGitProcess(executable, args, cwd, normalized, input).then(output => output.stdout));
+}
+
+/**
  * 일시적인 자원·안전한 lock 실패만 재시도한다. 취소·시간 초과·부분 mutation은 재실행하지 않는다.
  * @param args 하위 명령과 전역 옵션을 포함한 실제 인자
  * @param options 취소 신호, beforeRetry, retryOnLock

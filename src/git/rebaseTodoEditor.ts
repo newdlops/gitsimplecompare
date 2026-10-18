@@ -10,11 +10,7 @@ import {
   collectHistoryExcludePaths,
   isRebaseFileAmendExecLine,
 } from "./rebaseFileExcludes";
-import {
-  hasFileRewriteForItem,
-  hasFileRewriteSelection,
-  rebaseFileRewriteExecLine,
-} from "./rebaseFileRewriteOps";
+import { RebaseFileRewritePlanner } from "./rebaseFileRewriteOps";
 
 /** rebase todo 동기화 결과 */
 export interface RebaseTodoUpdateResult {
@@ -61,6 +57,8 @@ export async function updateInProgressRebaseTodo(
   const canRewriteFileOps = Boolean(options.editorScript);
   const historyExcludePaths = collectHistoryExcludePaths(items);
   const rewriteItems = items.filter((item) => item.action !== "drop");
+  const rewritePlanner = new RebaseFileRewritePlanner(repoRoot, rewriteItems, historyExcludePaths,
+    options.nodePath ?? process.execPath, options.editorScript ?? "");
   const lines = raw.split("\n");
   const parsedLines = lines.map(parseTodoCommitLine);
   for (const parsed of parsedLines) {
@@ -73,7 +71,7 @@ export async function updateInProgressRebaseTodo(
   });
   const missingChangedFileHashes = changedHashes.filter((hash) => {
     const item = itemByHash.get(hash);
-    return Boolean(item && hasFileExcludeSelection(item, rewriteItems) &&
+    return Boolean(item && rewritePlanner.hasRewrite(item) &&
       !pending.has(item.hash) && !isPausedHash(hash, paused));
   });
   if (missingChangedEditHashes.length || missingChangedFileHashes.length) {
@@ -83,7 +81,7 @@ export async function updateInProgressRebaseTodo(
   const next: string[] = [];
   const pausedItem = paused ? findItemForPaused(items, paused) : undefined;
   const pausedExec = canRewriteFileOps && pausedItem
-    ? await fileExcludeExecLine(repoRoot, pausedItem, rewriteItems, historyExcludePaths, options)
+    ? (await rewritePlanner.execLine(pausedItem))?.line
     : undefined;
   if (pausedExec) {
     next.push(pausedExec);
@@ -119,13 +117,7 @@ export async function updateInProgressRebaseTodo(
     ) {
       index++;
     }
-    const execLine = await fileExcludeExecLine(
-      repoRoot,
-      item,
-      rewriteItems,
-      historyExcludePaths,
-      options
-    );
+    const execLine = (await rewritePlanner.execLine(item))?.line;
     if (execLine) {
       next.push(execLine);
     }
@@ -270,39 +262,4 @@ function findItemForPaused(
 /** 현재 멈춰 있는 커밋 자체는 todo 에 없어도 누락 경고 대상이 아니다. */
 function isPausedHash(hash: string, paused?: RebasePausedState): boolean {
   return Boolean(paused && (paused.hash === hash || paused.originalHash === hash));
-}
-
-/**
- * rebase todo 에 넣을 파일 제외 amend exec 줄을 만든다.
- * @param item rebase todo 항목
- * @param historyExcludePaths 계획 전체에 적용할 파일 제외 경로
- * @param options helper 경로 옵션
- * @returns 제외 작업이 없거나 helper 경로가 없으면 undefined
- */
-async function fileExcludeExecLine(
-  repoRoot: string,
-  item: RebaseItem,
-  items: RebaseItem[],
-  historyExcludePaths: string[],
-  options: RebaseTodoUpdateOptions
-): Promise<string | undefined> {
-  if (item.action === "drop" || !options.editorScript) {
-    return undefined;
-  }
-  return (await rebaseFileRewriteExecLine(
-    repoRoot,
-    item,
-    items,
-    historyExcludePaths,
-    options.nodePath ?? process.execPath,
-    options.editorScript
-  ))?.line;
-}
-
-/**
- * 사용자가 파일 단위 제외 상태를 선택해 둔 항목인지 확인한다.
- * @param item rebase todo 항목
- */
-function hasFileExcludeSelection(item: RebaseItem, items: RebaseItem[]): boolean {
-  return hasFileRewriteForItem(item, items) || hasFileRewriteSelection(item);
 }

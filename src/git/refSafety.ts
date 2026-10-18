@@ -2,6 +2,7 @@
 // - 오래 걸리는 PR/branch 작업 중 사용자가 브랜치를 바꾸거나 ref 가 외부에서 움직이면
 //   reset/update-ref 가 다른 작업의 커밋을 덮지 않도록 명시적으로 중단한다.
 import { runGit } from "./gitExec";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
 
 /**
  * 현재 checkout 된 브랜치가 기대 브랜치와 기대 HEAD 를 그대로 가리키는지 확인한다.
@@ -18,8 +19,7 @@ export async function assertCurrentBranchHead(
   expectedHead: string,
   reason: string
 ): Promise<void> {
-  const currentBranch = await readCurrentBranch(repoRoot);
-  const currentHead = await readCurrentHead(repoRoot);
+  const { branch: currentBranch, head: currentHead } = await readGitCheckoutIdentity(repoRoot);
   if (currentBranch !== branch || currentHead !== expectedHead) {
     throw new Error(
       "Ref safety check failed before " +
@@ -80,23 +80,6 @@ export async function assertTargetDescendsFrom(
       `${reason}: target ${shortHash(targetHead)} is not based on ` +
       `${shortHash(baseHead)}. The operation was stopped before moving the branch ref.`
   );
-}
-
-/**
- * 현재 checkout 된 로컬 브랜치 이름을 읽는다.
- * - detached HEAD 이면 빈 문자열을 반환해 호출자가 안전하게 오류 메시지를 만들 수 있게 한다.
- * @param repoRoot git 저장소 루트
- */
-async function readCurrentBranch(repoRoot: string): Promise<string> {
-  return (await runGit(["symbolic-ref", "--short", "HEAD"], repoRoot).catch(() => "")).trim();
-}
-
-/**
- * 현재 HEAD commit hash 를 읽는다.
- * @param repoRoot git 저장소 루트
- */
-async function readCurrentHead(repoRoot: string): Promise<string> {
-  return readCommit(repoRoot, "HEAD");
 }
 
 /**

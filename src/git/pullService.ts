@@ -1,9 +1,12 @@
 // pull 중 로컬 변경을 안전하게 보존하고 충돌 rollback 을 지원하는 git 서비스.
 // - graph/command UI 는 이 서비스의 결과만 보고 사용자 메시지와 뷰 갱신을 담당한다.
 // - git 상태 변경은 runGit 을 통해서만 수행해 git 접근 경계를 유지한다.
-import { detectOperation } from "./conflictService";
+import { detectOperation, detectOperationInGitDir } from "./conflictService";
 import { GitError, runGit } from "./gitExec";
 import { PullRollbackStore, type PullRollbackSnapshot } from "./pullRollbackStore";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
+import { readGitConfigSnapshot } from "./gitConfigSnapshot";
+import { hasWorkingTreeChanges } from "./workingTreeChanges";
 export type { PullRollbackSnapshot } from "./pullRollbackStore";
 
 type LocalChangeBlocker = "none" | "tracked" | "untracked" | "mixed";
@@ -43,10 +46,10 @@ export class PullService {
    * @returns 완료 또는 충돌 상태. 충돌 상태에는 rollback 에 필요한 snapshot 이 포함될 수 있다.
    */
   async pullCurrent(): Promise<PullCurrentResult> {
-    await this.assertNoOperationInProgress();
-    const head = await this.currentHead();
-    const branch = await this.currentBranch();
-    await this.assertPullTargetAvailable(branch);
+    const { head, branch, gitDir } = await readGitCheckoutIdentity(this.repoRoot);
+    const operation = detectOperationInGitDir(gitDir);
+    if (operation !== "none") throw new Error(`Cannot pull while ${operation} is in progress.`);
+    const target = await this.readPullTarget(branch);
     const hadLocalChanges = await this.hasLocalChanges();
 
     try {
@@ -55,6 +58,10 @@ export class PullService {
       const state = await this.tryIsConflictState(err);
       if (state.conflicted) {
         return this.conflictResult("pull", hadLocalChanges, undefined, err);
+      }
+      // pull 자체의 fetch 결과로 부재를 판별해 별도 ls-remote 연결을 만들지 않는다.
+      if (err instanceof GitError && /couldn't find remote ref|no such ref was fetched/i.test(err.stderr)) {
+        throw new Error(`Configured upstream '${target.remote}/${target.mergeRef.replace(/^refs\/heads\//, "")}' was not found. Choose another upstream or recreate the remote branch before pulling.`);
       }
       const blocker = classifyLocalChangeBlocker(err);
       if (!hadLocalChanges || blocker === "none") {
@@ -189,8 +196,7 @@ export class PullService {
 
   /** 작업트리나 index 에 커밋되지 않은 변경이 있는지 확인한다. */
   async hasLocalChanges(): Promise<boolean> {
-    const out = await runGit(["status", "--porcelain=v1", "-z"], this.repoRoot);
-    return out.length > 0;
+    return hasWorkingTreeChanges(this.repoRoot);
   }
 
   /** 현재 브랜치의 upstream 변경을 merge pull 방식으로 가져온다. */
@@ -211,62 +217,27 @@ export class PullService {
     await this.popSnapshot(snapshot);
   }
 
-  /** 진행 중인 merge/rebase/cherry-pick/revert 가 있으면 pull 을 시작하지 않도록 막는다. */
-  private async assertNoOperationInProgress(): Promise<void> {
-    const operation = await detectOperation(this.repoRoot);
-    if (operation !== "none") {
-      throw new Error(`Cannot pull while ${operation} is in progress.`);
-    }
-  }
-
   /** 현재 HEAD 해시를 읽어 rollback 기준점으로 사용한다. */
   private async currentHead(): Promise<string> {
     return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
   }
 
-  /** 현재 브랜치 이름을 읽는다. detached HEAD 면 표시용 이름을 반환한다. */
-  private async currentBranch(): Promise<string> {
-    return (await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], this.repoRoot).catch(
-      error => {
-        if (error instanceof GitError && error.code === 1) return "DETACHED";
-        throw error;
-      }
-    )).trim();
-  }
-
   /**
-   * 현재 브랜치의 upstream ref 가 원격에 존재하는지 pull 전에 확인한다.
-   * - 사라진 upstream 때문에 direct pull 또는 임시 stash 경로가 불필요하게 실행되는 상황을 피한다.
+   * 현재 브랜치의 upstream 설정을 한 번 읽고 원격 존재 확인은 native pull의 fetch에 맡긴다.
    * @param branch 현재 브랜치 이름
+   * @returns 같은 조회에서 확인한 remote와 merge ref. 미설정·detached HEAD는 pull 전에 거부한다.
    */
-  private async assertPullTargetAvailable(branch: string): Promise<void> {
+  private async readPullTarget(branch: string): Promise<{ remote: string; mergeRef: string }> {
     if (!branch || branch === "DETACHED") {
       throw new Error("Cannot pull while HEAD is detached.");
     }
-    const remote = (
-      await runGit(["config", "--get", `branch.${branch}.remote`], this.repoRoot).catch(
-        error => missingConfigValue(error)
-      )
-    ).trim();
-    const mergeRef = (
-      await runGit(["config", "--get", `branch.${branch}.merge`], this.repoRoot).catch(
-        error => missingConfigValue(error)
-      )
-    ).trim();
+    const config = await readGitConfigSnapshot(this.repoRoot, "^branch\\.");
+    const remote = config.get(`branch.${branch}.remote`)?.trim();
+    const mergeRef = config.get(`branch.${branch}.merge`)?.trim();
     if (!remote || !mergeRef) {
       throw new Error(`Branch '${branch}' has no upstream configured.`);
     }
-    try {
-      await runGit(["ls-remote", "--exit-code", remote, mergeRef], this.repoRoot);
-    } catch (error) {
-      if (!(error instanceof GitError) || error.code !== 2) throw error;
-      throw new Error(
-        `Configured upstream '${remote}/${mergeRef.replace(
-          /^refs\/heads\//,
-          ""
-        )}' was not found. Choose another upstream or recreate the remote branch before pulling.`
-      );
-    }
+    return { remote, mergeRef };
   }
 
   /**
@@ -374,12 +345,6 @@ export class PullService {
       errorMessage: err instanceof Error ? err.message : String(err),
     };
   }
-}
-
-/** 설정 키 부재(exit 1)만 빈 값으로 바꾸고 인증·실행·파일 오류는 그대로 전달한다. */
-function missingConfigValue(error: unknown): string {
-  if (error instanceof GitError && error.code === 1) return "";
-  throw error;
 }
 
 /** unknown 오류를 사용자/로그에 넣기 좋은 짧은 문자열로 변환한다. */

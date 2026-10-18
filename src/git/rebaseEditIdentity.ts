@@ -15,7 +15,7 @@ export async function assertRebaseEditIdentity(
 ): Promise<GitOperationIdentity> {
   const current = await captureGitOperation(repoRoot);
   const expected = paused.operation;
-  const progress = await readRebaseTodoProgress(repoRoot);
+  const progress = await readRebaseTodoProgress(repoRoot, current.gitDir);
   const item = progress?.items.find(entry => entry.role === "current");
   const original = progress?.currentHash;
   if (!expected || current.operation !== "rebase" || current.gitDir !== expected.gitDir ||

@@ -16,6 +16,7 @@
   const graphContent = document.getElementById("graph-content");
   let plan = null;
   let items = [];
+  let itemIndexes = new Map();
   let originalOrder = [];
   let drag = null;
   let pendingDrop = null;
@@ -43,12 +44,12 @@
   }
   /** 원본 todo 해시와 rebase 중 새로 생긴 paused 해시를 같은 항목으로 매핑한다. */
   function itemIndexForHash(hash) {
-    const direct = items.findIndex((item) => item.hash === hash);
+    const direct = itemIndexes.get(hash) ?? -1;
     if (direct >= 0) {
       return direct;
     }
     if (paused?.hash === hash && paused.originalHash) {
-      return items.findIndex((item) => item.hash === paused.originalHash);
+      return itemIndexes.get(paused.originalHash) ?? -1;
     }
     return -1;
   }
@@ -156,7 +157,9 @@
         historyExcludePaths: saved.historyExcludePaths || [], fileMoves: saved.fileMoves || [], originalOrder: 0 };
     });
     originalOrder = commits.length ? commits.map((commit) => commit.hash) : items.map((item) => item.hash);
-    items.forEach((item, index) => { const original = originalOrder.indexOf(item.hash); item.originalOrder = original >= 0 ? original : index; });
+    const originalIndexes = new Map(originalOrder.map((hash, index) => [hash, index]));
+    items.forEach((item, index) => { item.originalOrder = originalIndexes.get(item.hash) ?? index; });
+    itemIndexes = new Map(items.map((item, index) => [item.hash, index]));
     if (pendingDrop && itemHashSet().has(pendingDrop.targetHash)) {
       reorderByVisualTarget(pendingDrop.hash, pendingDrop.targetHash, pendingDrop.after);
     }
@@ -169,6 +172,7 @@
   function clearPlan() {
     plan = null;
     items = [];
+    itemIndexes.clear();
     originalOrder = [];
     paused = null;
     operationActive = false;
@@ -179,10 +183,7 @@
     document.body.classList.remove("graph-rebase-mode");
     document.getElementById("graph-rebase-bar")?.remove();
     graphContent.querySelectorAll(".rebase-row").forEach((row) => {
-      row.classList.remove("rebase-row");
-      row.querySelector(".rebase-order")?.remove();
-      row.querySelector(".rebase-action-marker")?.remove();
-      row.querySelector(".rebase-row-actions")?.remove();
+      window.GscGraphRebaseRows.clear(row);
     });
     window.GscGraphDetail?.refresh?.();
   }
@@ -234,25 +235,18 @@
       return;
     }
     const hashes = itemHashSet();
-    const layout = rebaseVisualLayout();
+    const layout = window.GscGraphRebaseRows.layout(graphContent, visualItems(), hashes);
     graphContent.querySelectorAll(".row").forEach((row) => {
-      row.classList.toggle("rebase-row", hashes.has(row.dataset.hash));
-      row.classList.remove("rebase-preview-moved");
-      row.style.transform = "";
-      row.querySelector(".rebase-order")?.remove();
-      row.querySelector(".rebase-action-marker")?.remove();
-      row.querySelector(".rebase-row-actions")?.remove();
       const index = itemIndexForHash(row.dataset.hash);
       const item = index >= 0 ? items[index] : undefined;
       if (item) {
         const slot = layout.byHash.get(row.dataset.hash);
-        if (slot && slot.dy !== 0) {
-          row.style.transform = `translateY(${slot.dy}px)`;
-          row.classList.add("rebase-preview-moved");
-        }
-        row.appendChild(orderBadge(item));
-        row.appendChild(actionMarker(item));
-        row.appendChild(actionButtons(item));
+        const transform = slot?.dy ? `translateY(${slot.dy}px)` : "";
+        if (row.style.transform !== transform) row.style.transform = transform;
+        row.classList.toggle("rebase-preview-moved", Boolean(slot?.dy));
+        window.GscGraphRebaseRows.decorate(row, item, ACTIONS, setAction);
+      } else if (row.classList.contains("rebase-row")) {
+        window.GscGraphRebaseRows.clear(row);
       }
     });
     window.GscGraphRebasePreview?.applyNodeTransforms?.(graphContent, layout.byHash);
@@ -263,46 +257,6 @@
       visualItems(),
       planDiffersFromGraph()
     );
-  }
-
-  /** 원래 todo 순서 번호 배지를 만든다(드래그 후에도 바뀌지 않는다). */
-  function orderBadge(item) {
-    const badge = document.createElement("span");
-    badge.className = "rebase-order";
-    badge.textContent = String(item.originalOrder + 1);
-    badge.title = `Original rebase order ${item.originalOrder + 1}`;
-    return badge;
-  }
-
-  /** 현재 todo action 을 표시하는 마커를 만든다. */
-  function actionMarker(item) {
-    const markerEl = document.createElement("span");
-    markerEl.className = `rebase-action-marker action-${item.action}`;
-    markerEl.textContent = item.action;
-    markerEl.title = `Rebase action: ${item.action}`;
-    return markerEl;
-  }
-
-  /** row hover 시 보이는 rebase action 아이콘 묶음을 만든다. */
-  function actionButtons(item) {
-    const box = document.createElement("span");
-    box.className = "rebase-row-actions";
-    for (const action of ACTIONS) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `rebase-action-button${item.action === action.action ? " active" : ""}`;
-      button.title = action.tooltip;
-      button.dataset.tooltip = action.tooltip;
-      button.setAttribute("aria-label", action.tooltip);
-      button.dataset.action = action.action;
-      button.innerHTML = `<span class="codicon codicon-${action.icon}" aria-hidden="true"></span>`;
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        setAction(item.hash, action.action);
-      });
-      box.appendChild(button);
-    }
-    return box;
   }
 
   /** 특정 커밋의 rebase action 을 바꾸고 필요한 메시지를 입력받는다. */
@@ -357,8 +311,8 @@
     if (paused || operationActive) changedDuringOperation.add(item.hash);
     if (item.action === "pick") {
       item.action = "reword";
+      renderPlan();
     }
-    renderPlan();
   }
 
   /** drawer 편집 UI 에서 커밋 단위 파일 제외를 토글한다. */
@@ -445,6 +399,7 @@
     const insertAt = targetIndex < 0 ? 0 : targetIndex + (after ? 1 : 0);
     visual.splice(insertAt, 0, item);
     items = visual.reverse();
+    itemIndexes = new Map(items.map((item, index) => [item.hash, index]));
     renderPlan();
   }
 
@@ -453,39 +408,6 @@
     return Boolean(plan?.onto) ||
       items.some((item, index) => item.hash !== originalOrder[index]) ||
       items.some((item) => item.action !== "pick" || item.excludePaths?.length || item.historyExcludePaths?.length || item.fileMoves?.length);
-  }
-
-  /** rebase todo 의 현재 순서를 그래프 row 위치로 투영한다. */
-  function rebaseVisualLayout() {
-    const hashes = itemHashSet();
-    const rowByHash = new Map();
-    graphContent.querySelectorAll(".row").forEach((row) => {
-      if (hashes.has(row.dataset.hash)) {
-        rowByHash.set(row.dataset.hash, row);
-      }
-    });
-    const slots = Array.from(rowByHash.values())
-      .sort((a, b) => a.offsetTop - b.offsetTop)
-      .map((row) => ({
-        top: row.offsetTop,
-        y: row.offsetTop + row.offsetHeight / 2,
-      }));
-    const byHash = new Map();
-    visualItems().forEach((item, index) => {
-      const row = rowByHash.get(item.hash);
-      const slot = slots[index];
-      if (!row || !slot) {
-        return;
-      }
-      byHash.set(item.hash, {
-        item,
-        row,
-        top: slot.top,
-        y: slot.y,
-        dy: slot.top - row.offsetTop,
-      });
-    });
-    return { byHash };
   }
 
   /** drop marker 를 대상 row 위/아래에 표시한다. */

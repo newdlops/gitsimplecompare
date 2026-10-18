@@ -74,7 +74,12 @@ test("Preview HTML composes CSP nonce and localized diff text", () => {
   assert.equal(summary.html, '<button class="ds-pr-row" title="Preview staged changes for feature/localize → main" aria-label="Preview staged changes for feature/localize → main" data-tooltip="Preview staged changes for feature/localize → main"><span class="ds-pr-id">feature/localize → main</span><strong class="ds-pr-title">Localize staged PR preview</strong><span class="ds-pr-id">3 staged files</span><span class="ds-pr-need">Ready to publish</span><span class="ds-pr-id">local</span></button>');
   for (const value of ["Search pull requests", "repo #418", "Harden review draft recovery", "Your review", "2 failed", "ds-pr-checks", "<time", "12m"]) assert.equal(summary.html.includes(value) || search.html.includes(value), false);
   for (const value of ["feature/localize → main", "3 staged files", "Ready to publish", "Localize staged PR preview", "title=", "aria-label=", "data-tooltip="]) assert.equal(summary.html.includes(value), true);
-  assert.equal(design.schemaVersion, 2); assert.ok(design.extensions.colorMeta); assert.match(search.css, /\.ds-search/); assert.match(summary.css, /\.ds-pr-row/); assert.match(JSON.stringify(design.narrative), /native PR comments\/suggestions/);
+  assert.equal(design.schemaVersion, 2); assert.ok(design.extensions.colorMeta); assert.match(search.css, /\.ds-search/); assert.match(summary.css, /\.ds-pr-row/);
+  // 오래된 서술 문구 대신 현재 디자인이 정한 기존 PR·staged Preview 이동 경계를 검증한다.
+  const previewRule = design.narrative.rules.find((rule: { name: string }) => rule.name === "The Graph-to-Preview Rule");
+  assert.ok(previewRule);
+  assert.match(previewRule.body, /기존 PR은 GitHub에서/);
+  assert.match(previewRule.body, /numberless staged PR action은 local Preview/);
 });
 
 test("V10 localization asset cleanup preserves native PR concepts", async () => {

@@ -1,8 +1,9 @@
 // 머지/리베이스 충돌 해결에 필요한 git 작업을 모은 서비스 모듈.
 // - 충돌 파일 조회, ours/theirs 수용, 해결 표시, 진행 중 작업(merge/rebase 등)의
 //   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
-import * as fs from "node:fs";
 import * as path from "node:path";
+import { detectOperationInGitDir, readConflictOperationSnapshot } from "./conflictOperationEpoch";
+export { detectOperationInGitDir } from "./conflictOperationEpoch";
 import {
   describeFileSource,
   readConflictOperationContext,
@@ -10,12 +11,15 @@ import {
 } from "./conflictContextService";
 import {
   ConflictContentService,
+  type ConflictContentDocument,
   type ConflictContentKind,
   type ConflictResultState,
   type ConflictWorkingResult,
 } from "./conflictContentService";
 import { runGit } from "./gitExec";
 import { listUnmergedFiles } from "./unmergedFiles";
+import { ConflictCommitReader } from "./conflictCommitReader";
+import { allReads } from "../utils/readGroup";
 import { controlGitOperation, type GitOperationIdentity } from "./operationControl";
 import {
   cleanupRebaseMessageQueue,
@@ -88,6 +92,14 @@ export interface ConflictDocumentReadOptions {
   signal?: AbortSignal;
 }
 
+/** 공통 표시 조회의 파일별 이전 설명과 전체 묶음의 취소 신호다. */
+export interface ConflictDocumentBatchReadOptions {
+  previous?: ReadonlyMap<string, ConflictDocument>;
+  signal?: AbortSignal;
+  /** 공통 조회 도중 개별 탭이 닫히면 해당 파일의 아직 시작하지 않은 읽기를 생략한다. */
+  isNeeded?: (rel: string) => boolean;
+}
+
 /**
  * 진행 중인 git 작업 종류를 git 디렉터리의 마커 파일로 판별한다(공유 함수).
  * - ConflictService 와 RebaseService 가 함께 사용한다.
@@ -100,25 +112,6 @@ export async function detectOperation(
   const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], repoRoot, { signal })).trim();
   signal?.throwIfAborted();
   return detectOperationInGitDir(path.resolve(repoRoot, gitDirRaw));
-}
-
-/** 이미 확인한 worktree Git directory의 현재 marker를 읽어 중복 rev-parse 실행을 피한다. */
-export function detectOperationInGitDir(gitDir: string): MergeOperation {
-  const has = (name: string): boolean => fs.existsSync(path.join(gitDir, name));
-
-  if (has("rebase-merge") || has("rebase-apply")) {
-    return "rebase";
-  }
-  if (has("MERGE_HEAD")) {
-    return "merge";
-  }
-  if (has("CHERRY_PICK_HEAD")) {
-    return "cherry-pick";
-  }
-  if (has("REVERT_HEAD")) {
-    return "revert";
-  }
-  return "none";
 }
 
 /**
@@ -135,8 +128,8 @@ export class ConflictService {
    * 현재 충돌(unmerged) 상태인 파일들의 저장소 상대 경로 목록을 반환한다.
    * - 작업트리 diff 없이 index의 unmerged stage만 읽고 특수 문자 경로를 보존한다.
    */
-  async listConflicts(): Promise<string[]> {
-    return listUnmergedFiles(this.repoRoot);
+  async listConflicts(signal?: AbortSignal): Promise<string[]> {
+    return listUnmergedFiles(this.repoRoot, signal);
   }
 
   /**
@@ -248,26 +241,39 @@ export class ConflictService {
     fullResult = false,
     options: ConflictDocumentReadOptions = {}
   ): Promise<ConflictDocument> {
-    const [operation, contents] = await Promise.all([
-      this.getOperation(options.signal),
-      this.content.readDocument(rel, fullResult, options.signal),
-    ]);
-    const previous = options.previous;
-    const reusable = previous?.sourceVersion === contents.sourceVersion && previous.operation === operation
-      && previous.rel === rel && (!previous.metadataState || previous.metadataState === "ready");
-    const document: ConflictDocument = {
-      ...contents, rel, operation,
-      context: reusable ? previous.context : { operation },
-      base: { label: "Base", ref: "index stage 1", ...contents.base },
-      current: { label: "Current", ref: "index stage 2", ...(reusable ? previous.current : {}), ...contents.current },
-      incoming: { label: "Incoming", ref: "index stage 3", ...(reusable ? previous.incoming : {}), ...contents.incoming },
-      metadataState: reusable ? "ready" : "pending",
-    };
-    if (reusable || options.deferMetadata) return document;
+    const snapshot = readConflictOperationSnapshot(this.repoRoot, options.signal);
+    const [{ operation }, contents] = await allReads([
+      snapshot,
+      this.content.readDocument(rel, fullResult, options.signal, snapshot.then(value => value.epoch)),
+    ], options.signal);
+    const document = contentDocument(rel, operation, contents, options.previous);
+    if (document.metadataState === "ready" || options.deferMetadata) return document;
     const metadata = await this.getConflictDocumentMetadata(document, options.signal);
     return metadata ? { ...document, context: metadata.context, metadataState: "ready",
       current: { ...document.current, ...metadata.sources.current },
       incoming: { ...document.incoming, ...metadata.sources.incoming } } : document;
+  }
+
+  /**
+   * 같은 갱신에 필요한 미해결 문서들을 공통 Git 조회와 제한된 파일 IO로 읽는다.
+   * - 설명은 같은 원본의 이전 값만 재사용하고 새 설명 조회는 편집기 표시 이후로 미룬다.
+   * @param rels 저장소 상대 경로 @param fullResult 전체 Result가 필요하면 true
+   * @param options 파일별 이전 설명과 모든 소비자의 읽기 취소 신호
+   * @returns 경로별 문서 또는 실패. 작업 epoch·index·속성은 이 호출에서 새로 읽는다.
+   */
+  async getConflictDocuments(
+    rels: readonly string[], fullResult = false, options: ConflictDocumentBatchReadOptions = {}
+  ): Promise<ReadonlyMap<string, PromiseSettledResult<ConflictDocument>>> {
+    options.signal?.throwIfAborted();
+    const paths = [...new Set(rels)]; paths.forEach(rel => this.content.absPath(rel));
+    if (!paths.length) return new Map();
+    const snapshot = readConflictOperationSnapshot(this.repoRoot, options.signal);
+    const [{ operation }, contents] = await allReads([
+      snapshot, this.content.readDocuments(paths, fullResult, options.signal, snapshot.then(value => value.epoch), options.isNeeded),
+    ], options.signal);
+    return new Map([...contents].map(([rel, result]) => [rel, result.status === "rejected" ? result : {
+      status: "fulfilled", value: contentDocument(rel, operation, result.value, options.previous?.get(rel)),
+    }]));
   }
 
   /**
@@ -276,10 +282,11 @@ export class ConflictService {
    * @returns 같은 source의 설명. 조회 중 Git 작업이 바뀌었으면 undefined이며 바이트는 반환하지 않는다.
    */
   async getConflictDocumentMetadata(document: ConflictDocument, signal?: AbortSignal): Promise<ConflictDocumentMetadata | undefined> {
-    const [sources, context] = await Promise.all([
-      this.getConflictSources(document.rel, document.operation, signal),
-      readConflictOperationContext(this.repoRoot, document.operation, document.rel, signal),
-    ]);
+    const commits = new ConflictCommitReader(this.repoRoot, signal);
+    const [sources, context] = await allReads([
+      this.getConflictSources(document.rel, document.operation, signal, commits),
+      readConflictOperationContext(this.repoRoot, document.operation, document.rel, signal, commits),
+    ], signal);
     signal?.throwIfAborted();
     const sourceVersion = await this.content.readSourceVersion(document.rel, signal);
     return sourceVersion === document.sourceVersion ? { sourceVersion, sources, context } : undefined;
@@ -292,17 +299,18 @@ export class ConflictService {
   async getConflictSources(
     rel?: string,
     knownOperation?: MergeOperation,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    commits = new ConflictCommitReader(this.repoRoot, signal)
   ): Promise<ConflictSources> {
     const operation = knownOperation ?? await this.getOperation(signal);
-    const refs = await this.conflictRefs(operation, signal);
+    const refs = await this.conflictRefs(operation, commits);
     const [currentFile, incomingFile] = rel
-      ? await Promise.all([
+      ? await allReads([
           describeFileSource(this.repoRoot, refs.current.fileRef, rel, signal),
           refs.incoming.fileRef
             ? describeFileSource(this.repoRoot, refs.incoming.fileRef, rel, signal)
             : Promise.resolve(undefined),
-        ])
+        ], signal)
       : [];
     return {
       operation,
@@ -371,6 +379,11 @@ export class ConflictService {
     fullResult = false
   ): Promise<ConflictWorkingResult> {
     return this.content.readResult(rel, fullResult);
+  }
+
+  /** 같은 외부 해결 갱신의 파일들을 제한된 IO로 읽고 경로별 성공/실패를 반환한다. */
+  async getWorkingResults(rels: readonly string[], fullResult = false, signal?: AbortSignal): Promise<ReadonlyMap<string, PromiseSettledResult<ConflictWorkingResult>>> {
+    return this.content.readResults(rels, fullResult, signal);
   }
 
   /**
@@ -454,14 +467,14 @@ export class ConflictService {
    * 진행 중 작업에 맞춰 Current/Incoming 의 ref 와 커밋 해시를 계산한다.
    * @param operation 현재 git 작업 종류
    */
-  private async conflictRefs(operation: MergeOperation, signal?: AbortSignal): Promise<{
+  private async conflictRefs(operation: MergeOperation, commits: ConflictCommitReader): Promise<{
     current: { ref: string; fileRef: string; commit?: string; subject?: string };
     incoming: { ref: string; fileRef?: string; commit?: string; subject?: string };
   }> {
-    const [current, incoming] = await Promise.all([
-      this.describeRef("HEAD", signal),
-      this.incomingConflictRef(operation, signal),
-    ]);
+    const [current, incoming] = await allReads([
+      commits.read("HEAD"),
+      this.incomingConflictRef(operation, commits),
+    ], commits.signal);
     return {
       current: { ref: "HEAD", fileRef: "HEAD", ...current },
       incoming,
@@ -473,14 +486,14 @@ export class ConflictService {
    * - rebase-merges의 merge todo나 exec가 시작한 nested Git 작업은 REBASE_HEAD보다
    *   MERGE_HEAD/CHERRY_PICK_HEAD/REVERT_HEAD가 실제 Incoming 출처이므로 우선한다.
    */
-  private async incomingConflictRef(operation: MergeOperation, signal?: AbortSignal): Promise<{
+  private async incomingConflictRef(operation: MergeOperation, commits: ConflictCommitReader): Promise<{
     ref: string;
     fileRef?: string;
     commit?: string;
     subject?: string;
   }> {
     if (operation === "revert") {
-      return { ref: "reverse side of REVERT_HEAD", ...await this.describeRef("REVERT_HEAD", signal) };
+      return { ref: "reverse side of REVERT_HEAD", ...await commits.read("REVERT_HEAD") };
     }
     if (operation !== "rebase") {
       const ref = operation === "merge"
@@ -488,36 +501,43 @@ export class ConflictService {
         : operation === "cherry-pick"
           ? "CHERRY_PICK_HEAD"
           : "theirs";
-      return { ref, fileRef: ref, ...await this.describeRef(ref, signal) };
+      return { ref, fileRef: ref, ...await commits.read(ref) };
     }
-    const [merge, cherryPick, revert, replay] = await Promise.all([
-      this.describeRef("MERGE_HEAD", signal),
-      this.describeRef("CHERRY_PICK_HEAD", signal),
-      this.describeRef("REVERT_HEAD", signal),
-      this.describeRef("REBASE_HEAD", signal),
-    ]);
-    if (merge.commit) return { ref: "MERGE_HEAD", fileRef: "MERGE_HEAD", ...merge };
-    if (cherryPick.commit) {
+    const [merge, cherryPick, revert, replay] = await allReads([
+      commits.readPresentRef("MERGE_HEAD"),
+      commits.readPresentRef("CHERRY_PICK_HEAD"),
+      commits.readPresentRef("REVERT_HEAD"),
+      commits.readPresentRef("REBASE_HEAD"),
+    ], commits.signal);
+    if (merge?.commit) return { ref: "MERGE_HEAD", fileRef: "MERGE_HEAD", ...merge };
+    if (cherryPick?.commit) {
       return { ref: "CHERRY_PICK_HEAD", fileRef: "CHERRY_PICK_HEAD", ...cherryPick };
     }
-    if (revert.commit) {
+    if (revert?.commit) {
       return { ref: "reverse side of REVERT_HEAD", ...revert };
     }
     return { ref: "REBASE_HEAD", fileRef: "REBASE_HEAD", ...replay };
   }
 
-  /**
-   * ref 를 커밋 해시와 제목으로 해석한다. ref 가 없으면 undefined 값으로 UI 가 ref 이름만 보여주게 한다.
-   * @param ref git ref 이름
-   */
-  private async describeRef(
-    ref: string, signal?: AbortSignal
-  ): Promise<{ commit?: string; subject?: string }> {
-    const output = await runGit(["show", "-s", "--format=%H%x00%s", ref, "--"], this.repoRoot, { signal })
-      .catch(() => { signal?.throwIfAborted(); return ""; });
-    const [commit, subject] = (output.split(/\r?\n/).find(Boolean) || "").split("\0");
-    if (!commit) return {};
-    return { commit, subject: subject || undefined };
-  }
+}
 
+/**
+ * 방금 읽은 원본/CAS 데이터에 같은 파일·source·작업의 준비된 설명만 결합한다.
+ * @param rel 상대 경로 @param operation 현재 작업 종류 @param contents 새로 읽은 콘텐츠
+ * @param previous 이 파일에서 이전에 표시한 문서. 원본이 바뀌면 설명은 pending으로 되돌린다.
+ * @returns 현재 콘텐츠를 항상 보존하는 표시 문서
+ */
+function contentDocument(
+  rel: string, operation: MergeOperation, contents: ConflictContentDocument, previous?: ConflictDocument
+): ConflictDocument {
+  const reusable = previous?.sourceVersion === contents.sourceVersion && previous.operation === operation
+    && previous.rel === rel && (!previous.metadataState || previous.metadataState === "ready");
+  return {
+    ...contents, rel, operation,
+    context: reusable ? previous.context : { operation },
+    base: { label: "Base", ref: "index stage 1", ...contents.base },
+    current: { label: "Current", ref: "index stage 2", ...(reusable ? previous.current : {}), ...contents.current },
+    incoming: { label: "Incoming", ref: "index stage 3", ...(reusable ? previous.incoming : {}), ...contents.incoming },
+    metadataState: reusable ? "ready" : "pending",
+  };
 }

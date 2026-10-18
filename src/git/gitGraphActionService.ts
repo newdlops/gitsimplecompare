@@ -51,6 +51,17 @@ export class GitGraphActionService {
   ) {}
 
   /**
+   * checkout 전 대상 ref의 존재와 현재 선택 여부만 읽어 전체 브랜치의 이력 계산을 피한다.
+   * @param name 전환할 정확한 로컬 브랜치 이름 @returns 대상 이름/선택 상태 또는 존재하지 않으면 undefined
+   */
+  async getLocalBranchCheckoutState(name: string): Promise<{ name: string; current: boolean } | undefined> {
+    const ref = `refs/heads/${name}`;
+    const output = await runGit(["for-each-ref", "--format=%(refname)%00%(HEAD)", ref], this.repoRoot);
+    const fields = output.trimEnd().split("\n").map(line => line.split("\0")).find(row => row[0] === ref);
+    return fields ? { name, current: fields[1] === "*" } : undefined;
+  }
+
+  /**
    * 선택한 로컬 브랜치로 전환하고 성공 시 ref 캐시를 비운다.
    * @param branchName 전환할 로컬 브랜치 이름
    * @param merge 작업트리 변경을 3-way merge하며 전환할지 여부
@@ -186,8 +197,8 @@ export class GitGraphActionService {
 
   /** 모든 원격 브랜치를 fetch/prune하고 변경된 ref 조회 캐시를 비운다. */
   async fetchAll(): Promise<void> {
-    await runGit(["fetch", "--all", "--prune"], this.repoRoot);
-    this.invalidateRefs();
+    try { await runGit(["fetch", "--all", "--prune"], this.repoRoot); }
+    finally { this.invalidateRefs(); }
   }
 
   /** 로컬 tag ref만 원격 상태와 동기화한다. */

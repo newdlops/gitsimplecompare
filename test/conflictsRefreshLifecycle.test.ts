@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { ConflictService, type MergeOperation } from "../src/git/conflictService";
 import { PullService } from "../src/git/pullService";
+import type { PullRollbackSnapshot } from "../src/git/pullRollbackStore";
 import type { GitServiceRegistry } from "../src/git/serviceRegistry";
 import { ConflictsController, type ConflictsRefreshSnapshot } from "../src/providers/conflictsController";
 import type { ConflictsTreeProvider } from "../src/providers/conflictsTreeProvider";
@@ -52,10 +53,12 @@ function fixture(t: TestContext) {
     operation: "rebase" as MergeOperation,
     resolves: 0,
     reads: [] as string[],
+    rollbackReads: [] as string[],
     trees: [] as Array<{ root: string; conflicts: string[] }>,
     notifications: [] as ConflictsRefreshSnapshot[],
     contexts: [] as unknown[][],
     list: async (_root: string): Promise<string[]> => ["conflict.txt"],
+    rollback: async (_root: string): Promise<PullRollbackSnapshot | undefined> => undefined,
     setContext: async (_key: string, _value: boolean): Promise<void> => {},
     notify: (_snapshot: ConflictsRefreshSnapshot): void => {},
   };
@@ -66,7 +69,10 @@ function fixture(t: TestContext) {
     return state.list(this.repoRoot);
   });
   t.mock.method(ConflictService.prototype, "getOperation", async () => state.operation);
-  t.mock.method(PullService.prototype, "findLatestPullRollbackSnapshot", async () => undefined);
+  t.mock.method(PullService.prototype, "findLatestPullRollbackSnapshot", async function () {
+    state.rollbackReads.push(this.repoRoot);
+    return state.rollback(this.repoRoot);
+  });
   t.mock.method(vscode.commands, "executeCommand", async (id: string, ...args: unknown[]) => {
     assert.equal(id, "setContext");
     state.contexts.push(args);
@@ -87,8 +93,52 @@ function fixture(t: TestContext) {
   } as unknown as ConflictsTreeProvider;
   const controller = new ConflictsController(registry, provider);
   t.after(() => controller.dispose());
-  return { state, controller };
+  return { state, controller, registry };
 }
+
+test("an obsolete conflict read does not start a rollback lookup before refreshing the new repository", async t => {
+  const { state, controller } = fixture(t);
+  const pending = deferred<string[]>();
+  state.list = async root => root === "/repo/a" ? pending.promise : ["latest.txt"];
+  const first = controller.refresh();
+  await settle();
+  state.root = "/repo/b";
+  const latest = controller.refresh();
+  pending.resolve(["old.txt"]);
+  await Promise.all([first, latest]);
+  t.diagnostic(`Rollback lookups: ${state.rollbackReads.join(", ")}`);
+  assert.deepEqual(state.rollbackReads, ["/repo/b"]);
+  assert.deepEqual(state.notifications.map(snapshot => snapshot.repoRoot), ["/repo/b"]);
+});
+
+test("a refresh superseded during repository resolution skips obsolete conflict reads", async t => {
+  const { state, controller, registry } = fixture(t);
+  const pending = deferred<{ repoRoot: string }>();
+  let resolves = 0;
+  t.mock.method(registry, "resolve", async () => ++resolves === 1 ? pending.promise : { repoRoot: "/repo/b" });
+  const first = controller.refresh();
+  await settle();
+  const latest = controller.refresh();
+  pending.resolve({ repoRoot: "/repo/a" });
+  await Promise.all([first, latest]);
+  assert.deepEqual(state.reads, ["/repo/b"]);
+  assert.equal(controller.current?.repoRoot, "/repo/b");
+});
+
+test("a current refresh still waits for rollback availability before publishing", async t => {
+  const { state, controller } = fixture(t);
+  const pending = deferred<PullRollbackSnapshot | undefined>();
+  state.rollback = () => pending.promise;
+  const first = controller.refresh();
+  await settle();
+  assert.equal(state.rollbackReads.length, 1);
+  assert.equal(state.notifications.length, 0);
+  assert.equal(state.contexts.length, 0);
+  pending.resolve({ id: "current" } as PullRollbackSnapshot);
+  await first;
+  assert.equal(state.contexts.find(([key]) => String(key).endsWith(".pullRollbackAvailable"))?.[1], true);
+  assert.equal(state.notifications.length, 1);
+});
 
 test("all callers in a refresh burst wait for the latest state and obsolete results stay unpublished", async t => {
   const { state, controller } = fixture(t);
@@ -174,6 +224,7 @@ test("dispose discards pending reads and prevents new refresh work", async t => 
   assert.equal(state.trees.length, 0);
   assert.equal(state.contexts.length, 0);
   assert.equal(state.notifications.length, 0);
+  assert.equal(state.rollbackReads.length, 0, "Dispose must not start an unrelated recovery lookup");
 });
 
 test("identical lists avoid tree and context churn while still notifying content subscribers", async t => {

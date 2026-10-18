@@ -7,7 +7,7 @@ import {
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
 
-const PATCH_VERSION = 4;
+const PATCH_VERSION = 5;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 
 /** conflict renderer patch 설치와 snapshot render를 한 main-process expression으로 만든다. */
@@ -17,7 +17,8 @@ export function conflictOverlayInjectionExpression(
   hints: NativeOverlayWorkspaceHints
 ): string {
   const rendererEval = rendererEvalExpression(rendererScript);
-  const snapshotJson = JSON.stringify(snapshot);
+  // 블록별 action은 CodeLens가 처리한다. 전체 파일 overlay에는 큰 marker 목록을 전송하지 않는다.
+  const snapshotJson = JSON.stringify({ ...snapshot, blocks: [] });
   return mainEvalExpression(
     RENDERER_BINDING,
     hints,
@@ -245,7 +246,7 @@ export function nativeConflictOverlayRendererScript(): string {
         root.setAttribute('aria-label', presentation.title);
         root.setAttribute('aria-busy', snapshot.busy ? 'true' : 'false');
         root.setAttribute('data-gsc-session', snapshot.sessionId);
-        var paintKey = [snapshot.sessionId, snapshot.revision, snapshot.editorVersion, state.collapsed ? '1' : '0'].join(':');
+        var paintKey = state.visualKey + ':' + (state.collapsed ? '1' : '0');
         root.setAttribute('data-gsc-paint-key', paintKey);
         root.addEventListener('mousedown', stopEditorEvent, true);
         root.addEventListener('pointerdown', stopEditorEvent, true);
@@ -316,7 +317,7 @@ export function nativeConflictOverlayRendererScript(): string {
           state.lastPaint = 'paint:no-editor';
           return state.lastPaint;
         }
-        var paintKey = [snapshot.sessionId, snapshot.revision, snapshot.editorVersion, state.collapsed ? '1' : '0'].join(':');
+        var paintKey = state.visualKey + ':' + (state.collapsed ? '1' : '0');
         var existing = document.querySelector('.' + ROOT_CLASS);
         if (
           existing &&
@@ -380,9 +381,14 @@ export function nativeConflictOverlayRendererScript(): string {
         version: VERSION,
         render: function (snapshot) {
           state.generation = (state.generation || 0) + 1;
+          // 편집 revision은 action 검증에만 쓰고, 실제 표시 내용이 같으면 DOM과 키보드 focus를 보존한다.
+          var visualKey = snapshot ? JSON.stringify([snapshot.uri, snapshot.sessionId, snapshot.busy,
+            snapshot.canAcceptBoth, snapshot.canMarkResolved, snapshot.canOpenMergeEditor, snapshot.presentation]) : '';
+          var samePresentation = state.visualKey === visualKey;
+          state.visualKey = visualKey;
           state.snapshot = snapshot || null;
-          clearTimers();
           if (!snapshot) {
+            clearTimers();
             if (state.frame) {
               try { cancelAnimationFrame(state.frame); } catch (_) {}
               state.frame = 0;
@@ -397,7 +403,7 @@ export function nativeConflictOverlayRendererScript(): string {
           ensureStyle();
           ensureObserver();
           schedulePaint();
-          scheduleFollowUps();
+          if (!samePresentation) scheduleFollowUps();
           return 'render-scheduled:conflict:last=' + state.lastPaint;
         }
       };

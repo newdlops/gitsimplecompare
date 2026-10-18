@@ -68,6 +68,23 @@ test("thirty refresh events during a read become one latest follow-up and never 
   assert.equal(session.content, "latest");
 });
 
+test("a superseded read is cancelled before the latest refresh starts", async () => {
+  const { state, session, coordinator } = fixture();
+  let reads = 0, firstSignal: AbortSignal | undefined;
+  session.service.getConflictDocument = async (_rel, _full, options = {}) => {
+    reads++;
+    if (reads > 1) return { ...document(), result: "latest", resultVersion: "latest-version" };
+    firstSignal = options.signal;
+    return new Promise((_resolve, reject) => options.signal!.addEventListener("abort", () => reject(options.signal!.reason), { once: true }));
+  };
+  const old = coordinator.refresh(session, "old-index"); await settle();
+  const latest = coordinator.refresh(session, "latest-index");
+  assert.equal(firstSignal?.aborted, true);
+  assert.equal(await old, true); assert.equal(await latest, true);
+  assert.equal(reads, 2); assert.equal(state.commits.length, 1);
+  assert.equal(session.content, "latest");
+});
+
 test("content refresh completes before slow metadata; later metadata preserves dirty Result and CAS baseline", async () => {
   const { state, session, coordinator } = fixture();
   const details = deferred<ConflictDocumentMetadata | undefined>();

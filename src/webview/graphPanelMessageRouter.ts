@@ -13,6 +13,8 @@ import {
 } from "./graphActions";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
+import { deferGraphActionRefresh, GraphActionRefreshQueue } from "./graphActionRefresh";
+import { createGraphRefreshErrorNotice } from "./graphHealth";
 import { logGraphWebviewPaint } from "./graphPerformance";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
 import { handleGraphRebaseMessage, isGraphRebaseMessage } from "./graphRebaseRouter";
@@ -99,6 +101,8 @@ export class GraphPanelMessageRouter {
   private pullRequestDetail?: { number: number; requestId?: string; controller: AbortController };
   private detailPaused = false;
   private readonly rebaseSessionSync: GraphRebaseSessionSync;
+  private readonly actionRefresh: GraphActionRefreshQueue;
+  private readonly activeActionKeys = new Set<string>();
 
   /** 상세 선택·닫기·수명 변경 때 현재 패널이 소유한 소비자를 해제하고 재조회 가능한 상태를 보낸다. */
   private cancelDetailLoading(reason: string): void {
@@ -112,6 +116,17 @@ export class GraphPanelMessageRouter {
 
   constructor(private readonly deps: GraphPanelMessageRouterDeps) {
     this.rebaseSessionSync = new GraphRebaseSessionSync(message => this.deps.post(message));
+    this.actionRefresh = new GraphActionRefreshQueue({
+      currentRepository: () => this.deps.logService().repoRoot,
+      refresh: kind => kind === "checkout" ? this.deps.refreshAfterCheckoutAction() : this.deps.refreshAfterGraphAction(),
+      info: (event, fields) => logInfo(event, fields),
+      error: (error, request) => {
+        logError("graph action refresh failed", error, { ...request });
+        if (this.deps.logService().repoRoot === request.repoRoot) {
+          this.deps.post({ type: "graphHealth", notice: createGraphRefreshErrorNotice(error, true) });
+        }
+      },
+    });
   }
 
   /** 공통 post에서 실제 표시된 rebase 상태를 기록해 자동 갱신이 실행 전 계획을 지우지 않게 한다. */
@@ -157,7 +172,7 @@ export class GraphPanelMessageRouter {
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
     if (["repositoryChanged", "dispose", "hidden", "windowUnfocused"].includes(reason)) this.cancelDetailLoading(reason);
-    if (reason === "dispose") this.rebaseSessionSync.dispose();
+    if (reason === "dispose") { this.rebaseSessionSync.dispose(); this.actionRefresh.dispose(); }
     else if (["repositoryChanged", "hidden", "windowUnfocused"].includes(reason)) this.rebaseSessionSync.invalidate();
     this.pullRequestRequest?.abort();
     this.pullRequestRequest = undefined;
@@ -304,8 +319,10 @@ export class GraphPanelMessageRouter {
   /** ready/manual refresh에서 Graph와 rebase session을 복원하고 PR 갱신을 병렬 시작한다. */
   private async handleReload(reason: "ready" | "refresh"): Promise<void> {
     logInfo("graph reload requested", { repoRoot: this.repoRoot, reason });
-    await this.synchronizeRebaseSession(reason);
-    const reloaded = await this.deps.withBusy("refresh-graph", () => this.deps.reloadGraph(reason));
+    const reloaded = await this.deps.withBusy("refresh-graph", async () => {
+      await this.synchronizeRebaseSession(reason);
+      return this.deps.reloadGraph(reason);
+    });
     if (!reloaded) return;
     await restoreGraphRebaseSession(this.rebaseDeps());
     await this.sendPullRequestStacks();
@@ -424,14 +441,25 @@ export class GraphPanelMessageRouter {
   /** 일반 checkout/fetch/push 같은 Graph action을 busy 표시와 함께 실행한다. */
   private async handleGitAction(message: GraphActionMessage): Promise<void> {
     const busyKey = actionBusyId(message) ?? GRAPH_BUSY_BUTTON_IDS[message.type];
+    const service = this.deps.logService();
+    if (busyKey && this.activeActionKeys.has(busyKey)) {
+      logInfo("graph action skipped", { repoRoot: service.repoRoot, action: message.type, reason: "alreadyRunning", busyKey });
+      return;
+    }
+    const refresh = deferGraphActionRefresh(this.actionRefresh, service.repoRoot);
     const action = () => handleGraphAction(message, {
-      logService: this.deps.logService(),
+      logService: service,
       pullRequests: () => this.pullRequestPager.items,
-      refreshCheckout: this.deps.refreshAfterCheckoutAction,
-      refreshGraph: this.deps.refreshAfterGraphAction,
+      refreshCheckout: refresh.refreshCheckout,
+      refreshGraph: refresh.refreshGraph,
       post: this.deps.post,
     });
-    await (busyKey ? this.deps.withBusy(busyKey, action) : action());
+    if (busyKey) this.activeActionKeys.add(busyKey);
+    try { await (busyKey ? this.deps.withBusy(busyKey, action) : action()); }
+    finally {
+      if (busyKey) this.activeActionKeys.delete(busyKey);
+      refresh.complete();
+    }
   }
 
   /** virtual commit 또는 일반 부모→commit 파일 diff를 연다. */

@@ -129,12 +129,15 @@ async function runBranchOperation(
       snapshotRef: result.snapshotRef,
     });
     await deps.refreshGraph();
-    await offerBranchOperationUndo(
+    void offerBranchOperationUndo(
       deps,
       operation === "squash"
         ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", source.branch, result.branch)
         : vscode.l10n.t("Current branch '{0}' rebased onto '{1}'.", result.branch, source.branch)
-    );
+    ).catch(error => {
+      logError("branch operation undo failed", error, { repoRoot: deps.logService.repoRoot });
+      vscode.window.showErrorMessage(vscode.l10n.t("Branch operation failed: {0}", errText(error)));
+    });
   } catch (err) {
     await handleBranchOperationError(deps, err, operation, source.branch);
   }

@@ -3,6 +3,7 @@ import { lstat, readFile } from "node:fs/promises";
 import * as path from "node:path";
 import { assertConflictRelativePath } from "./conflictPathSafety";
 import { runGit } from "./gitExec";
+import { mapWithConcurrency } from "../utils/mapWithConcurrency";
 
 /**
  * 복귀 커밋에서 바뀌는 경로를 조사하므로 node_modules 등 ignored 트리 전체를 순회하지 않는다.
@@ -27,12 +28,8 @@ export async function recoveryOverwritePaths(
       for (const name of replayed.split("\0")) if (name) names.add(name);
     }
   }
-  const paths = new Set<string>();
-  for (const name of names) {
-    const leaf = await recoveryLeaf(repoRoot, name);
-    if (leaf) paths.add(leaf);
-  }
-  return [...paths];
+  const leaves = await mapWithConcurrency([...names], 4, name => recoveryLeaf(repoRoot, name));
+  return [...new Set(leaves.filter((leaf): leaf is string => leaf !== undefined))];
 }
 
 /** Git이 사용하는 실제 복귀 marker만 읽고 오래된 ORIG_HEAD를 다른 작업에 적용하지 않는다. */

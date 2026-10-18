@@ -8,11 +8,13 @@ import {
 /**
  * rebase continue 전후의 done/todo 진행률을 OUTPUT 로그용 객체로 만든다.
  * @param repoRoot 저장소 루트
+ * @param knownGitDir 이번 작업에서 이미 확인한 worktree Git directory. 진행률 자체는 새로 읽는다.
  */
 export async function rebaseProgressLogDetail(
-  repoRoot: string
+  repoRoot: string,
+  knownGitDir?: string
 ): Promise<Record<string, unknown>> {
-  const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
+  const progress = await readRebaseTodoProgress(repoRoot, knownGitDir).catch(() => undefined);
   if (!progress) {
     return { todoActive: false };
   }

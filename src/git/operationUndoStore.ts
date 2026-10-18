@@ -1,9 +1,10 @@
 // 브랜치/PR Undo snapshot을 작업 ID, worktree, Git 작업 세대와 연결해 다른 변경의 폐기를 막는다.
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { detectOperation, type MergeOperation } from "./conflictService";
-import { readConflictOperationEpoch } from "./conflictOperationEpoch";
+import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
+import { readConflictOperationEpochAt } from "./conflictOperationEpoch";
+import { readGitCheckoutIdentity, readGitDirectory } from "./repositoryIdentity";
 import { controlGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
@@ -60,10 +61,11 @@ export class OperationUndoStore {
    * @param snapshotRef 시작 commit을 보존한 Git ref
    */
   async start(branch: string, beforeHead: string, snapshotRef: string): Promise<void> {
+    const gitDir = await this.gitDir();
     await this.write({
       version: 1, id: randomUUID(), branch, beforeHead, snapshotRef,
-      gitDir: await this.gitDir(), phase: "prepared",
-    });
+      gitDir, phase: "prepared",
+    }, gitDir);
   }
 
   /**
@@ -74,15 +76,16 @@ export class OperationUndoStore {
    * @param allowMissing 이전 버전에서 시작한 rebase의 완료를 허용하되 Undo 기록은 추정하지 않는다.
    */
   async capture(branch: string, snapshotRef: string, phase: "completed" | "squash" | "rebase" | "replay", allowMissing = false): Promise<void> {
-    const binding = await this.read(branch);
+    const gitDir = await this.gitDir();
+    const binding = await this.read(branch, gitDir);
     // 업데이트 전 시작한 rebase는 계속할 수 있지만 출처 없는 자동 Undo 기록은 새로 만들지 않는다.
     if (!binding && allowMissing) return;
     if (!binding || binding.snapshotRef !== snapshotRef) throw staleUndo();
     await this.assertSnapshot(binding);
-    const state = await this.readState();
+    const state = await this.readState(gitDir);
     if (phase === "rebase") {
       if (state.operation !== "rebase" || !state.rebase) throw staleUndo();
-      const owner = await this.rebaseBranch();
+      const owner = await this.rebaseBranch(gitDir);
       if (owner !== branch) throw staleUndo();
     } else if (phase === "replay") {
       if (state.branch !== branch || !["cherry-pick", "revert"].includes(state.operation)) throw staleUndo();
@@ -90,7 +93,7 @@ export class OperationUndoStore {
       throw staleUndo();
     }
     if (phase === "squash" && state.head !== binding.beforeHead) throw staleUndo();
-    await this.write({ ...binding, phase, state });
+    await this.write({ ...binding, phase, state }, gitDir);
     logInfo("operation recovery recorded", {
       repoRoot: this.repoRoot, family: this.family, branch, snapshotRef, phase, id: binding.id,
     });
@@ -176,13 +179,12 @@ export class OperationUndoStore {
    * @param plan 복원 중인 작업
    */
   async assertRestored(plan: OperationUndoPlan): Promise<void> {
-    const branch = await this.currentBranch();
-    const head = (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
+    const { branch, head, gitDir } = await readGitCheckoutIdentity(this.repoRoot);
     const offBranch = this.family === "pull-request" && plan.worktreeBranch !== plan.branch;
     const targetHead = offBranch
       ? (await runGit(["rev-parse", "--verify", `refs/heads/${plan.branch}^{commit}`], this.repoRoot)).trim() : head;
     if (branch !== (offBranch ? plan.worktreeBranch : plan.branch) || targetHead !== plan.restoredHead ||
-        (offBranch && head !== plan.worktreeHead) || await detectOperation(this.repoRoot) !== "none") {
+        (offBranch && head !== plan.worktreeHead) || detectOperationInGitDir(gitDir) !== "none") {
       throw staleUndo();
     }
   }
@@ -207,16 +209,16 @@ export class OperationUndoStore {
 
   /**
    * HEAD, index와 Git 작업 표식의 세대를 읽는다. 조회 실패는 빈 결과로 바꾸지 않는다.
+   * @param expectedGitDir 같은 capture에서 복구 기록을 읽은 디렉터리. 현재 Git identity와 다르면 중단한다.
    * @returns Undo의 출처 및 변경 여부를 확인하는 현재 상태
    */
-  private async readState(): Promise<RepositoryState> {
-    const gitDir = await this.gitDir();
-    const [branch, head, operation, indexText, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
-      this.currentBranch(),
-      runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot),
-      detectOperation(this.repoRoot),
+  private async readState(expectedGitDir?: string): Promise<RepositoryState> {
+    const { gitDir, branch, head } = await readGitCheckoutIdentity(this.repoRoot);
+    if (expectedGitDir && gitDir !== expectedGitDir) throw staleUndo();
+    const operation = detectOperationInGitDir(gitDir);
+    const [indexText, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
       runGit(["ls-files", "--stage", "-z"], this.repoRoot),
-      readConflictOperationEpoch(this.repoRoot),
+      readConflictOperationEpochAt(gitDir, head),
       fileIdentity(path.join(gitDir, "logs/HEAD")),
       fileIdentity(path.join(gitDir, "SQUASH_MSG")),
       this.rebaseIdentity(gitDir),
@@ -261,9 +263,9 @@ export class OperationUndoStore {
     return "";
   }
 
-  /** detached rebase의 원래 브랜치를 Git metadata에서 찾는다. */
-  private async rebaseBranch(): Promise<string> {
-    const gitDir = await this.gitDir();
+  /** @param knownGitDir 같은 호출에서 검증한 디렉터리 @returns detached rebase의 원래 브랜치 */
+  private async rebaseBranch(knownGitDir?: string): Promise<string> {
+    const gitDir = knownGitDir ?? await this.gitDir();
     for (const directory of ["rebase-merge", "rebase-apply"]) {
       try {
         return (await readFile(path.join(gitDir, directory, "head-name"), "utf8")).trim().replace(/^refs\/heads\//, "");
@@ -280,35 +282,44 @@ export class OperationUndoStore {
     catch (error) { if (error instanceof GitError && error.code === 1) return ""; throw error; }
   }
 
-  /** 연결 정보가 없는 이전 버전의 snapshot은 자동 복구 대상으로 추정하지 않는다. */
-  private async read(branch: string): Promise<Binding | undefined> {
+  /**
+   * 연결 정보가 없는 이전 snapshot은 자동 복구 대상으로 추정하지 않는다.
+   * @param branch 소유 브랜치 @param knownGitDir 같은 capture의 경로. 뒤의 readState에서 실제 identity를 재검증한다.
+   * @returns 검증한 기록 또는 정상 부재일 때 undefined
+   */
+  private async read(branch: string, knownGitDir?: string): Promise<Binding | undefined> {
     let raw: string;
-    try { raw = await readFile(await this.file(branch), "utf8"); }
+    try { raw = await readFile(await this.file(branch, knownGitDir), "utf8"); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
     const value = JSON.parse(raw) as Binding;
-    if (value.version !== 1 || value.branch !== branch || value.gitDir !== await this.gitDir() ||
+    if (value.version !== 1 || value.branch !== branch || value.gitDir !== (knownGitDir ?? await this.gitDir()) ||
         typeof value.id !== "string" || typeof value.beforeHead !== "string" || typeof value.snapshotRef !== "string" ||
         !["prepared", "completed", "squash", "rebase", "replay", "restoring"].includes(value.phase)) throw staleUndo();
     return value;
   }
 
-  /** atomic rename으로 중단된 기록 쓰기가 정상 snapshot으로 보이지 않게 한다. */
-  private async write(binding: Binding): Promise<void> {
-    const file = await this.file(binding.branch);
+  /**
+   * atomic rename으로 중단된 쓰기를 정상 snapshot으로 오인하지 않게 한다.
+   * @param binding 쓸 작업 기록 @param knownGitDir 같은 호출에서 검증한 쓰기 경로. binding의 소유 경로와 비교한다.
+   */
+  private async write(binding: Binding, knownGitDir?: string): Promise<void> {
+    const gitDir = knownGitDir ?? await this.gitDir();
+    if (binding.gitDir !== gitDir) throw staleUndo();
+    const file = await this.file(binding.branch, gitDir);
     await mkdir(path.dirname(file), { recursive: true });
     const temporary = `${file}.${randomUUID()}.tmp`;
     try { await writeFile(temporary, JSON.stringify(binding), { flag: "wx" }); await rename(temporary, file); }
     finally { await rm(temporary, { force: true }); }
   }
 
-  /** 브랜치 이름의 slash/특수 문자가 파일 경계를 바꾸지 않도록 hex key를 사용한다. */
-  private async file(branch: string): Promise<string> {
-    return path.join(await this.gitDir(), "gitsimplecompare", `${this.family}-operation-undo`, `${Buffer.from(branch).toString("hex")}.json`);
+  /** @param branch hex로 변환할 소유 브랜치 @param knownGitDir 같은 호출의 경로 @returns 브랜치별 기록 파일 경로 */
+  private async file(branch: string, knownGitDir?: string): Promise<string> {
+    return path.join(knownGitDir ?? await this.gitDir(), "gitsimplecompare", `${this.family}-operation-undo`, `${Buffer.from(branch).toString("hex")}.json`);
   }
 
   /** linked worktree끼리 복구 기록을 공유하지 않도록 실제 개별 git-dir를 사용한다. */
   private async gitDir(): Promise<string> {
-    return realpath((await runGit(["rev-parse", "--absolute-git-dir"], this.repoRoot)).trim());
+    return readGitDirectory(this.repoRoot);
   }
 }
 

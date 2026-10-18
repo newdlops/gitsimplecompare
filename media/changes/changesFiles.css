@@ -160,18 +160,21 @@ body:focus-within .row.selected:hover {
 /* 작업트리 목록은 가상 스크롤이다: .rows 가 전체 높이 spacer 가 되고, 보이는 행만 절대 위치로 놓인다.
    중첩 .children 대신 --depth 단계마다 17px(16px 들여쓰기 + 1px guide) 들여쓰고, 기존 indent guide 를 배경으로 그린다.
    높이·top·--depth 는 CSP 때문에 JS(CSSOM)로 설정한다. */
-.wt-files .rows {
+.wt-files .rows,
+.virtual-compare-files .rows {
   position: relative;
 }
 
-.wt-files .row.vrow {
+.wt-files .row.vrow,
+.virtual-compare-files .row.vrow {
   position: absolute;
   left: 0;
   right: 0;
   padding-left: calc(20px + var(--depth, 0) * 17px);
 }
 
-.wt-files .row.vrow::before {
+.wt-files .row.vrow::before,
+.virtual-compare-files .row.vrow::before {
   content: "";
   position: absolute;
   top: 0;

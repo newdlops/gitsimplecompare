@@ -50,11 +50,12 @@ test("conflict previews and stage acceptance use the same immutable blob despite
   assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), current.current.content);
 });
 
-test("conflict content opens in eight Git reads without waiting for commit history or todo analysis", async t => {
+test("conflict content opens in four Git reads without waiting for commit history or todo analysis", async t => {
   const { root } = await conflicted(t);
   const service = new ConflictService(root), calls = callsFor(t);
   const document = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true });
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 4);
+  assert.equal(calls.filter(args => args[0] === "cat-file").length, 1);
   assert.equal(calls.some(args => ["log", "show", "ls-tree"].includes(args[0])), false);
   assert.match(document.result, /<<<<<<< HEAD/);
   assert.equal(document.current.content, "main\n");
@@ -77,7 +78,7 @@ test("unchanged conflict refresh reuses metadata but still reads fresh content a
   const calls = callsFor(t);
   await writeFile(join(root, "tracked.txt"), "new on-disk resolution\n");
   const refreshed = await service.getConflictDocument("tracked.txt", true, { deferMetadata: true, previous });
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 3);
   assert.equal(calls.some(args => args[0] === "cat-file"), false);
   assert.equal(refreshed.context, previous.context);
   assert.equal(refreshed.metadataState, "ready");
@@ -98,11 +99,11 @@ test("unchanged conflict refresh reuses metadata but still reads fresh content a
 });
 
 for (const linked of [false, true]) {
-  test(`operation capture uses three fresh reads and rejects todo changes (${linked ? "linked" : "main"} worktree)`, async t => {
+  test(`operation capture uses one fresh read and rejects todo changes (${linked ? "linked" : "main"} worktree)`, async t => {
     const { root } = await conflicted(t, linked);
     const calls = callsFor(t);
     const before = await captureGitOperation(root);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 1);
     assert.equal(before.operation, "rebase");
     assert.equal(before.epoch, await readConflictOperationEpoch(root));
     await appendFile(join(before.gitDir, "rebase-merge", "git-rebase-todo"), "\n# external todo edit\n");

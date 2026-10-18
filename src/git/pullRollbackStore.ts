@@ -1,10 +1,11 @@
 // Pull 복구 stash와 해당 worktree에서 시작한 작업의 관계를 보존한다.
 // - stash 목록은 worktree가 공유하므로 목록의 최신 항목만으로 복구 대상을 선택하지 않는다.
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { detectOperation } from "./conflictService";
-import { GitError, runGit } from "./gitExec";
+import { detectOperationInGitDir } from "./conflictService";
+import { runGit } from "./gitExec";
+import { readGitCheckoutIdentity, readGitDirectory, type GitCheckoutIdentity } from "./repositoryIdentity";
 import { runStash } from "./stashExec";
 
 const PREFIX = "GSC_PULL_ROLLBACK";
@@ -64,9 +65,8 @@ export class PullRollbackStore {
    * @param expectedHead 이 단계에서 작업 중이어야 할 HEAD
    */
   async bind(snapshot: PullRollbackSnapshot, phase: Phase, expectedHead: string): Promise<void> {
-    await this.assertOrigin(snapshot.branch, expectedHead);
-    const gitDir = await this.gitDir();
-    const operation = await detectOperation(this.repoRoot);
+    const { gitDir } = await this.originIdentity(snapshot.branch, expectedHead);
+    const operation = detectOperationInGitDir(gitDir);
     const merge = phase === "pull" ? await readMarker(path.join(gitDir, "MERGE_HEAD")) : undefined;
     if ((phase === "pull" && (operation !== "merge" || !merge)) ||
         (phase !== "pull" && operation !== "none")) throw staleRecovery();
@@ -93,10 +93,10 @@ export class PullRollbackStore {
   async find(purpose: Purpose = "rollback"): Promise<PullRollbackSnapshot | undefined> {
     const binding = await this.readBinding();
     if (!binding) return undefined;
-    const branch = await this.currentBranch();
+    const { branch, head, gitDir } = await readGitCheckoutIdentity(this.repoRoot);
+    if (gitDir !== binding.gitDir) throw staleRecovery();
     if (branch !== binding.snapshot.branch) return undefined;
-    const head = (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
-    const operation = await detectOperation(this.repoRoot);
+    const operation = detectOperationInGitDir(gitDir);
     if (purpose === "resolvedPull") {
       if (binding.phase !== "pull" || operation !== "none" || !binding.merge) return undefined;
       const parents = (await runGit(["show", "-s", "--format=%P", "HEAD"], this.repoRoot)).trim();
@@ -137,9 +137,17 @@ export class PullRollbackStore {
    * @param head 기대하는 HEAD OID
    */
   async assertOrigin(branch: string, head: string): Promise<void> {
-    const currentBranch = await this.currentBranch();
-    const currentHead = (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
-    if (currentBranch !== branch || currentHead !== head) throw staleRecovery();
+    await this.originIdentity(branch, head);
+  }
+
+  /**
+   * 같은 시점의 브랜치·HEAD·worktree 디렉터리를 읽어 별도 조회 사이에 다른 checkout이 끼지 않게 한다.
+   * @param branch 기대하는 로컬 브랜치 @param head 기대하는 OID @returns 검증한 현재 checkout identity
+   */
+  private async originIdentity(branch: string, head: string): Promise<GitCheckoutIdentity> {
+    const current = await readGitCheckoutIdentity(this.repoRoot);
+    if (current.branch !== branch || current.head !== head) throw staleRecovery();
+    return current;
   }
 
   /**
@@ -150,8 +158,8 @@ export class PullRollbackStore {
   async apply(snapshot: PullRollbackSnapshot, resetHead?: string): Promise<void> {
     if (!(await this.list()).some(item => item.hash === snapshot.hash && item.id === snapshot.id)) throw staleRecovery();
     if (resetHead) {
-      if (await detectOperation(this.repoRoot) !== "none") throw staleRecovery();
-      await this.assertOrigin(snapshot.branch, resetHead);
+      const { gitDir } = await this.originIdentity(snapshot.branch, resetHead);
+      if (detectOperationInGitDir(gitDir) !== "none") throw staleRecovery();
     } else {
       await this.assertCurrent(snapshot, "automatic");
     }
@@ -180,18 +188,7 @@ export class PullRollbackStore {
 
   /** linked worktree의 개별 git-dir를 실제 경로로 정규화하여 상태 파일을 분리한다. */
   private async gitDir(): Promise<string> {
-    const directory = (await runGit(["rev-parse", "--absolute-git-dir"], this.repoRoot)).trim();
-    return realpath(directory);
-  }
-
-  /** detached HEAD만 정상 결측으로 취급하고 실행/설정 오류는 호출부로 전달한다. */
-  private async currentBranch(): Promise<string | undefined> {
-    try {
-      return (await runGit(["symbolic-ref", "--quiet", "--short", "HEAD"], this.repoRoot)).trim();
-    } catch (error) {
-      if (error instanceof GitError && error.code === 1) return undefined;
-      throw error;
-    }
+    return readGitDirectory(this.repoRoot);
   }
 
   /** 저장된 작업 정보는 필수 식별자가 유효하고 이 worktree에 속할 때만 사용한다. */

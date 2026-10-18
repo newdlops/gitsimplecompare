@@ -2,13 +2,12 @@
 // - UI 의 파일 단위 선택을 Git 이 실행할 수 있는 JSON 작업 파일과 patch 파일로 변환한다.
 // - patch 는 .git metadata 아래에 저장해 extension reload 후에도 rebase todo 의 exec 가 계속 참조할 수 있게 한다.
 import * as fs from "node:fs/promises";
+import { writeSync } from "node:fs";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { runGit, runGitStream } from "./gitExec";
 import type { RebaseFileExcludeOp } from "./rebaseFileExcludes";
 import { buildFileExcludeOps, rebaseFileAmendExecLine } from "./rebaseFileExcludes";
 import type { RebaseFileMove, RebaseItem } from "./rebaseService";
-
-const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** rebaseEditor.js amend 모드가 적용할 patch 작업 */
 export interface RebaseFilePatchOp {
@@ -46,26 +45,113 @@ export async function rebaseFileRewriteExecLine(
   nodePath: string,
   editorScript: string
 ): Promise<{ line: string; opFile: string } | undefined> {
-  if (item.action === "drop") {
-    return undefined;
+  return new RebaseFileRewritePlanner(repoRoot, items, historyExcludePaths, nodePath, editorScript).execLine(item);
+}
+
+/** 작업 한 번에만 존재하는 파일 이동 색인과 metadata 경로. HEAD나 native todo 상태는 캐시하지 않는다. */
+export class RebaseFileRewritePlanner {
+  private readonly from = new Map<string, RebaseFileMove[]>();
+  private readonly to = new Map<string, RebaseFileMove[]>();
+  private readonly hashes: Set<string>;
+  private directory?: Promise<string>;
+
+  /** 전체 todo의 이동 선택을 한 번 색인한다. 경로 조회/Git 실행은 실제 rewrite가 필요할 때까지 미룬다. */
+  constructor(
+    private readonly repoRoot: string,
+    items: RebaseItem[],
+    private readonly historyExcludePaths: string[],
+    private readonly nodePath: string,
+    private readonly editorScript: string
+  ) {
+    this.hashes = new Set(items.map(item => item.hash));
+    for (const move of collectFileMoves(items)) {
+      const from = this.from.get(move.sourceHash), to = this.to.get(move.targetHash);
+      if (from) from.push(move);
+      else this.from.set(move.sourceHash, [move]);
+      if (to) to.push(move);
+      else this.to.set(move.targetHash, [move]);
+    }
   }
-  const files = [
-    ...buildFileExcludeOps(item, historyExcludePaths),
-    ...fileMoveRestoreOps(item, items),
-  ];
-  const patches = await fileMovePatchOps(repoRoot, item, items);
-  if (files.length === 0 && patches.length === 0) {
-    return undefined;
+
+  /** 항목 자체의 제외/이동 선택과 다른 커밋에서 들어오는 patch 유무를 확인한다. */
+  hasRewrite(item: RebaseItem): boolean {
+    return hasFileRewriteSelection(item) || this.movesFor(this.to, item.hash).length > 0;
   }
-  const opFile = await writeRewriteOps(repoRoot, {
-    version: 2,
-    files: uniqueRestoreOps(files),
-    patches,
-  });
-  return {
-    line: rebaseFileAmendExecLine(nodePath, editorScript, opFile),
-    opFile,
-  };
+
+  /** 현재 항목의 JSON/patch를 만들고 native todo exec 줄을 반환한다. 선택이 없으면 Git을 실행하지 않는다. */
+  async execLine(item: RebaseItem): Promise<{ line: string; opFile: string } | undefined> {
+    if (item.action === "drop") return undefined;
+    const files = [...buildFileExcludeOps(item, this.historyExcludePaths),
+      ...this.movesFor(this.from, item.hash).map(move => ({
+        path: move.sourcePath, oldPath: move.sourceOldPath, status: move.sourceOldPath ? "R" : undefined,
+      }))];
+    const patches = await this.patchOps(item);
+    if (!files.length && !patches.length) return undefined;
+    const opFile = path.join(await this.opsDirectory(), uniqueName("ops", "json"));
+    const ops: RebaseFileRewriteOps = { version: 2, files: uniqueRestoreOps(files), patches };
+    await fs.writeFile(opFile, `${JSON.stringify(ops)}\n`, "utf8");
+    return { line: rebaseFileAmendExecLine(this.nodePath, this.editorScript, opFile), opFile };
+  }
+
+  /** 계획에 있는 전체 해시는 O(1)로 조회하고, 별도 호출자가 준 축약 해시만 기존 prefix 규칙으로 찾는다. */
+  private movesFor(index: Map<string, RebaseFileMove[]>, hash: string): RebaseFileMove[] {
+    if (this.hashes.has(hash)) return index.get(hash) ?? [];
+    return Array.from(index).filter(([key]) => sameHash(key, hash)).flatMap(([, moves]) => moves);
+  }
+
+  /** 같은 source→target의 파일을 묶어 patch를 만든다. 인자 크기는 경로 수/바이트로 제한한다. */
+  private async patchOps(item: RebaseItem): Promise<RebaseFilePatchOp[]> {
+    const groups = new Map<string, RebaseFileMove[]>();
+    for (const move of this.movesFor(this.to, item.hash)) {
+      const group = groups.get(move.sourceHash);
+      if (group) group.push(move);
+      else groups.set(move.sourceHash, [move]);
+    }
+    const ops: RebaseFilePatchOp[] = [];
+    for (const moves of groups.values()) {
+      let batch: RebaseFileMove[] = [], bytes = 0;
+      for (const move of moves) {
+        const size = Buffer.byteLength(move.sourcePath) + Buffer.byteLength(move.sourceOldPath ?? "") + 2;
+        if (batch.length && (batch.length >= 96 || bytes + size > 24 * 1024)) {
+          ops.push(await this.writePatch(batch));
+          batch = []; bytes = 0;
+        }
+        batch.push(move); bytes += size;
+      }
+      if (batch.length) ops.push(await this.writePatch(batch));
+    }
+    return ops;
+  }
+
+  /** root를 포함한 source 변경을 한 번 읽어 binary patch로 저장한다. rename의 old/new 경로는 같은 batch에 둔다. */
+  private async writePatch(moves: RebaseFileMove[]): Promise<RebaseFilePatchOp> {
+    const move = moves[0];
+    const paths = uniquePaths(moves.flatMap(entry => [entry.sourceOldPath, entry.sourcePath]));
+    const patchPath = path.join(await this.opsDirectory(), uniqueName("move", "patch"));
+    const handle = await fs.open(patchPath, "wx", 0o600);
+    let bytes = 0, complete = false;
+    try {
+      // 큰 binary patch를 문자열로 모으지 않는다. 작은 stdout 조각을 바로 기록해 메모리 사용을 제한한다.
+      await runGitStream(["diff-tree", "--root", "--no-commit-id", "--no-ext-diff", "-r", "-p", "--binary", "--full-index", "-M",
+        move.sourceHash, "--", ...paths], this.repoRoot, (chunk) => {
+        let offset = 0;
+        while (offset < chunk.length) offset += writeSync(handle.fd, chunk, offset, chunk.length - offset);
+        bytes += chunk.length;
+      }, { env: { GIT_LITERAL_PATHSPECS: "1" } });
+      if (!bytes) throw new Error(`No patch found for ${move.sourcePath} in ${move.sourceHash.slice(0, 10)}.`);
+      complete = true;
+    } finally {
+      await handle.close();
+      if (!complete) await fs.unlink(patchPath).catch(() => undefined);
+    }
+    return { ...move, patchPath, paths };
+  }
+
+  /** linked worktree 전용 작업 디렉터리를 한 번만 확인한다. 캐시는 이 planner 인스턴스에만 남는다. */
+  private opsDirectory(): Promise<string> {
+    this.directory ??= gitMetadataDirectory(this.repoRoot);
+    return this.directory;
+  }
 }
 
 /**
@@ -92,45 +178,6 @@ export function hasFileRewriteForItem(
 ): boolean {
   return hasFileRewriteSelection(item) ||
     collectFileMoves(items).some((move) => sameHash(move.targetHash, item.hash));
-}
-
-/** source 커밋에서 제거해야 하는 파일 이동 작업을 restore op 로 바꾼다. */
-function fileMoveRestoreOps(
-  item: RebaseItem,
-  items: RebaseItem[]
-): RebaseFileExcludeOp[] {
-  return collectFileMoves(items)
-    .filter((move) => sameHash(move.sourceHash, item.hash))
-    .map((move) => ({
-      path: move.sourcePath,
-      oldPath: move.sourceOldPath,
-      status: move.sourceOldPath ? "R" : undefined,
-    }));
-}
-
-/** target 커밋에서 적용해야 하는 파일 이동 patch 작업을 만든다. */
-async function fileMovePatchOps(
-  repoRoot: string,
-  item: RebaseItem,
-  items: RebaseItem[]
-): Promise<RebaseFilePatchOp[]> {
-  const ops: RebaseFilePatchOp[] = [];
-  for (const move of collectFileMoves(items)) {
-    if (!sameHash(move.targetHash, item.hash)) {
-      continue;
-    }
-    const paths = uniquePaths([move.sourceOldPath, move.sourcePath]);
-    const patchPath = await writeMovePatch(repoRoot, move, paths);
-    ops.push({
-      sourceHash: move.sourceHash,
-      sourcePath: move.sourcePath,
-      sourceOldPath: move.sourceOldPath,
-      targetHash: move.targetHash,
-      patchPath,
-      paths,
-    });
-  }
-  return ops;
 }
 
 /** 전체 todo 에서 유효한 파일 이동 작업만 중복 없이 모은다. */
@@ -160,54 +207,17 @@ function collectFileMoves(items: RebaseItem[]): RebaseFileMove[] {
   return moves;
 }
 
-/** source 커밋의 파일 변경 patch 를 git metadata 아래에 저장한다. */
-async function writeMovePatch(
-  repoRoot: string,
-  move: RebaseFileMove,
-  paths: string[]
-): Promise<string> {
-  const parent = await firstParent(repoRoot, move.sourceHash);
-  const patch = await runGit(
-    ["diff", "--binary", "--full-index", "-M", parent, move.sourceHash, "--", ...paths],
-    repoRoot
-  );
-  if (!patch.trim()) {
-    throw new Error(`No patch found for ${move.sourcePath} in ${move.sourceHash.slice(0, 10)}.`);
-  }
-  const file = await gitMetadataPath(
-    repoRoot,
-    `gitsimplecompare/rebase-ops/move-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`
-  );
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, patch, "utf8");
-  return file;
+/** git metadata 상대 디렉터리를 현재 linked worktree의 절대 경로로 바꾸고 생성한다. */
+async function gitMetadataDirectory(repoRoot: string): Promise<string> {
+  const raw = (await runGit(["rev-parse", "--git-path", "gitsimplecompare/rebase-ops"], repoRoot)).replace(/\r?\n$/, "");
+  const directory = path.resolve(repoRoot, raw);
+  await fs.mkdir(directory, { recursive: true });
+  return directory;
 }
 
-/** amend 작업 JSON 을 git metadata 아래에 저장한다. */
-async function writeRewriteOps(
-  repoRoot: string,
-  ops: RebaseFileRewriteOps
-): Promise<string> {
-  const file = await gitMetadataPath(
-    repoRoot,
-    `gitsimplecompare/rebase-ops/ops-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
-  );
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, `${JSON.stringify(ops)}\n`, "utf8");
-  return file;
-}
-
-/** git metadata 상대 경로를 linked worktree 안전 절대 경로로 바꾼다. */
-async function gitMetadataPath(repoRoot: string, rel: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", rel], repoRoot)).trim();
-  return path.resolve(repoRoot, raw);
-}
-
-/** 커밋의 첫 부모를 구한다. 루트 커밋이면 empty tree 를 반환한다. */
-async function firstParent(repoRoot: string, hash: string): Promise<string> {
-  return (
-    await runGit(["rev-parse", `${hash}^`], repoRoot).catch(() => EMPTY_TREE)
-  ).trim();
+/** 같은 작업 내 여러 JSON/patch가 서로 덮어쓰지 않도록 고유 파일명을 반환한다. */
+function uniqueName(prefix: string, extension: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
 }
 
 /** restore op 중복을 제거한다. */

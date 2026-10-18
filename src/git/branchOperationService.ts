@@ -4,7 +4,8 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
-import { detectOperation } from "./conflictService";
+import { detectOperation, detectOperationInGitDir } from "./conflictService";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
 import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import { OperationUndoStore as BranchOperationUndoStore, type OperationUndoPlan as BranchOperationUndoPlan } from "./operationUndoStore";
 import { logError } from "../ui/outputLog";
@@ -15,6 +16,8 @@ import {
 import { runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
+import { listUnmergedFiles } from "./unmergedFiles";
+import { hasWorkingTreeChanges } from "./workingTreeChanges";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
 export interface BranchOperationResult {
@@ -54,16 +57,16 @@ export class BranchOperationService {
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
   async squashMerge(sourceBranch: string): Promise<BranchOperationResult> {
-    await this.assertReadyForBranchOperation();
+    const { branch, head: beforeHead } = await this.assertReadyForBranchOperation();
     await this.assertSourceBranch(sourceBranch);
-    const branch = await this.currentBranch();
     this.assertDifferentBranches(branch, sourceBranch);
-    const beforeHead = await this.currentHead();
     if (await this.hasLocalChanges()) {
       return this.squashMergeWithLocalChanges(sourceBranch, branch, beforeHead);
     }
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
     try {
+      // 준비 중 외부 checkout/commit을 건드리지 않도록 native merge 직전에 다시 검증한다.
+      await assertCurrentBranchHead(this.repoRoot, branch, beforeHead, "starting branch squash merge");
       await runGit(["merge", "--squash", sourceBranch], this.repoRoot, {
         env: { GIT_EDITOR: "true", HUSKY: "0" },
       });
@@ -106,10 +109,8 @@ export class BranchOperationService {
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
   async rebaseMerge(targetRef: string): Promise<BranchOperationResult> {
-    await this.assertReadyForBranchOperation();
-    const branch = await this.currentBranch();
+    const { branch, head: beforeHead } = await this.assertReadyForBranchOperation();
     this.assertDifferentBranches(branch, targetRef);
-    const beforeHead = await this.currentHead();
     const targetHead = await this.resolveCommit(targetRef);
     const snapshotRef = await this.createSnapshot(branch, beforeHead);
     const preserved = await this.preserveLocalChanges(`before rebase onto '${targetRef}'`);
@@ -123,8 +124,12 @@ export class BranchOperationService {
         snapshotRef,
         preservedStashHash: preserved?.hash,
       });
-      await this.undoStore.capture(branch, snapshotRef,
-        await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
+      // 정상 완료의 Undo는 하위 완료 경로에서 이미 기록했다. stash 복원으로 index가 바뀌거나
+      // 충돌로 멈춘 경우만 최종 상태를 다시 기록해 같은 snapshot을 두 번 읽지 않는다.
+      if (result.status !== "completed" || preserved?.hash) {
+        await this.undoStore.capture(branch, snapshotRef,
+          await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
+      }
       return {
         status: result.status,
         branch,
@@ -185,15 +190,21 @@ export class BranchOperationService {
     return this.prepareUndo(branchName).then(() => true, () => false);
   }
 
-  /** 브랜치 작업 전 진행 중인 git 작업과 unmerged 파일이 없는지 확인한다. */
-  private async assertReadyForBranchOperation(): Promise<void> {
-    const operation = await detectOperation(this.repoRoot);
+  /**
+   * 한 번 읽은 worktree·HEAD·브랜치로 시작 조건을 확인한다. 호출 간 상태는 재사용하지 않는다.
+   * @returns 진행 중 작업/충돌이 없고 로컬 브랜치를 가리키는 새 checkout identity
+   */
+  private async assertReadyForBranchOperation() {
+    const checkout = await readGitCheckoutIdentity(this.repoRoot);
+    const operation = detectOperationInGitDir(checkout.gitDir);
     if (operation !== "none") {
       throw new Error(`Cannot start branch operation while ${operation} is in progress.`);
     }
     if (await this.hasUnmergedChanges()) {
       throw new Error("Resolve unmerged files before running a branch operation.");
     }
+    if (!checkout.branch) throw new Error("Branch operations require a checked-out local branch.");
+    return checkout;
   }
 
   /**
@@ -221,15 +232,6 @@ export class BranchOperationService {
     }
   }
 
-  /** 현재 로컬 브랜치 이름을 반환한다. detached HEAD 는 브랜치 작업 대상에서 제외한다. */
-  private async currentBranch(): Promise<string> {
-    const branch = (await runGit(["symbolic-ref", "--short", "HEAD"], this.repoRoot).catch(() => "")).trim();
-    if (!branch) {
-      throw new Error("Branch operations require a checked-out local branch.");
-    }
-    return branch;
-  }
-
   /** 현재 HEAD commit hash 를 반환한다. */
   private async currentHead(): Promise<string> {
     return (await runGit(["rev-parse", "--verify", "HEAD"], this.repoRoot)).trim();
@@ -237,19 +239,17 @@ export class BranchOperationService {
 
   /** 현재 작업트리나 index 에 커밋되지 않은 변경이 있는지 확인한다. */
   private async hasLocalChanges(): Promise<boolean> {
-    return (await runGit(["status", "--porcelain=v1", "-z"], this.repoRoot)).length > 0;
+    return hasWorkingTreeChanges(this.repoRoot);
   }
 
   /** index 에 unmerged 상태로 남은 파일이 있는지 확인한다. */
   private async hasUnmergedChanges(): Promise<boolean> {
-    return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], this.repoRoot).catch(() => "")).length > 0;
+    return (await listUnmergedFiles(this.repoRoot).catch(() => [])).length > 0;
   }
 
   /** squash merge 후 commit 할 변경이 있는지 확인한다. */
   private async hasPendingChanges(): Promise<boolean> {
-    const staged = await runGit(["diff", "--cached", "--quiet"], this.repoRoot).then(() => false, () => true);
-    const unstaged = await runGit(["diff", "--quiet"], this.repoRoot).then(() => false, () => true);
-    return staged || unstaged;
+    return this.hasPendingChangesIn(this.repoRoot);
   }
 
   /** 현재 브랜치용 branch operation undo snapshot ref 를 생성한다. */
@@ -381,14 +381,12 @@ export class BranchOperationService {
 
   /** 지정한 worktree 에 commit 할 변경이 있는지 확인한다. */
   private async hasPendingChangesIn(cwd: string): Promise<boolean> {
-    const staged = await runGit(["diff", "--cached", "--quiet"], cwd).then(() => false, () => true);
-    const unstaged = await runGit(["diff", "--quiet"], cwd).then(() => false, () => true);
-    return staged || unstaged;
+    return (await runGit(["status", "--porcelain=v1", "-z", "--untracked-files=no"], cwd)).length > 0;
   }
 
   /** 지정한 worktree 에 충돌로 남은 unmerged index entry 가 있는지 확인한다. */
   private async hasUnmergedChangesIn(cwd: string): Promise<boolean> {
-    return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], cwd).catch(() => "")).length > 0;
+    return (await listUnmergedFiles(cwd).catch(() => [])).length > 0;
   }
 
   /** 로컬 변경을 임시 stash 로 보존해 branch rebase merge 가 clean tree 에서 시작되도록 한다. */

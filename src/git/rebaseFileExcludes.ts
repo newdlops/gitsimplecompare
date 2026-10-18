@@ -56,11 +56,18 @@ export function buildFileExcludeOps(
     ...(item.excludePaths ?? []),
   ]);
   const files = item.files ?? [];
+  if (!selected.length) return [];
+  const filesByPath = new Map<string, RebaseFileExcludeFile[]>();
+  for (const file of files) {
+    for (const path of new Set([file.path, file.oldPath].filter((path): path is string => Boolean(path)))) {
+      const matches = filesByPath.get(path);
+      if (matches) matches.push(file);
+      else filesByPath.set(path, [file]);
+    }
+  }
   const ops: RebaseFileExcludeOp[] = [];
   for (const selectedPath of selected) {
-    const matched = files.filter(
-      (file) => file.path === selectedPath || file.oldPath === selectedPath
-    );
+    const matched = filesByPath.get(selectedPath) ?? [];
     if (matched.length === 0) {
       ops.push({ path: selectedPath });
       continue;
@@ -125,7 +132,8 @@ function editorCmdForTodo(nodePath: string, editorScript: string): string {
  * @param value 인자 문자열
  */
 function quoteArg(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  // native rebase의 exec는 Git의 POSIX shell을 거치므로 $, backtick, 공백도 문자 그대로 보존한다.
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 /**

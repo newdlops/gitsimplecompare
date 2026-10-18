@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { runGit } from "./gitExec";
 import { readRebaseTodoProgress } from "./rebaseTodoProgress";
 import type { RebaseItem } from "./rebaseService";
+import { logInfo } from "../ui/outputLog";
 
 interface RebaseMessageQueueState {
   version: 1;
@@ -48,10 +49,11 @@ export async function initializeRebaseMessageQueue(
   editorScript: string,
   nodePath = process.execPath
 ): Promise<Record<string, string>> {
-  const state = await stateFor(repoRoot, editorScript, nodePath);
+  const file = await gitPath(repoRoot, STATE_REL);
+  const state = stateFor(file, editorScript, nodePath);
   await writeQueue(state.queuePath, messagesForItems(items));
-  await writeState(repoRoot, state);
-  return editorEnv(repoRoot, state);
+  await writeState(file, state);
+  return editorEnv(repoRoot, state, file);
 }
 
 /**
@@ -68,17 +70,18 @@ export async function refreshRebaseMessageQueueForContinue(
   items: RebaseItem[],
   options: RebaseMessageQueueOptions = {}
 ): Promise<RebaseMessageQueueRefreshResult | undefined> {
-  const state = await readState(repoRoot);
+  const file = await gitPath(repoRoot, STATE_REL);
+  const state = await readStateFile(file);
   if (!state) {
     return undefined;
   }
   let queueLength: number | undefined;
   if (items.length > 0) {
-    const queue = await messagesForActiveTodo(repoRoot, items, options);
+    const queue = await messagesForActiveTodo(repoRoot, items, options, path.dirname(path.dirname(file)));
     queueLength = queue.length;
     await writeQueue(state.queuePath, queue);
   }
-  return { env: editorEnv(repoRoot, state), queueLength };
+  return { env: await editorEnv(repoRoot, state, file), queueLength };
 }
 
 /**
@@ -89,8 +92,9 @@ export async function refreshRebaseMessageQueueForContinue(
 export async function rebaseContinueEditorEnv(
   repoRoot: string
 ): Promise<Record<string, string> | undefined> {
-  const state = await readState(repoRoot);
-  return state ? editorEnv(repoRoot, state) : undefined;
+  const file = await gitPath(repoRoot, STATE_REL);
+  const state = await readStateFile(file);
+  return state ? editorEnv(repoRoot, state, file) : undefined;
 }
 
 /**
@@ -99,10 +103,11 @@ export async function rebaseContinueEditorEnv(
  * @param repoRoot 저장소 루트
  */
 export async function cleanupRebaseMessageQueue(repoRoot: string): Promise<void> {
-  const state = await readState(repoRoot);
+  const file = await gitPath(repoRoot, STATE_REL);
+  const state = await readStateFile(file);
   await Promise.all([
     state ? fs.rm(state.queuePath, { force: true }).catch(() => undefined) : undefined,
-    gitPath(repoRoot, STATE_REL).then((file) => fs.rm(file, { force: true })).catch(() => undefined),
+    fs.rm(file, { force: true }).catch(() => undefined),
   ]);
 }
 
@@ -111,14 +116,15 @@ function messagesForItems(items: RebaseItem[]): (string | null)[] {
   return items.filter((item) => MESSAGE_ACTIONS.has(item.action)).map(messageForItem);
 }
 
-/** 진행 중인 Git todo 와 현재 UI 계획을 맞춰 남은 메시지 큐를 만든다. */
+/** 이번 호출에서 확인한 worktree 경로의 todo를 새로 읽어 남은 메시지 큐를 만든다. */
 async function messagesForActiveTodo(
   repoRoot: string,
   items: RebaseItem[],
-  options: RebaseMessageQueueOptions
+  options: RebaseMessageQueueOptions,
+  gitDir: string
 ): Promise<(string | null)[]> {
-  const todo = await readTodoCommitLines(repoRoot);
-  const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
+  const todo = await readTodoCommitLines(gitDir);
+  const progress = await readRebaseTodoProgress(repoRoot, gitDir).catch(() => undefined);
   const current = progress?.items.find((item) => item.role === "current");
   const currentInTodo = Boolean(
     current?.hash && todo.some((line) => sameHash(line.hash, current.hash!))
@@ -140,9 +146,9 @@ async function messagesForActiveTodo(
   return queue;
 }
 
-/** git-rebase-todo 에 남아 있는 commit action 줄만 읽는다. */
-async function readTodoCommitLines(repoRoot: string): Promise<TodoCommitLine[]> {
-  const todoPath = await findTodoPath(repoRoot);
+/** 이미 확인한 worktree의 git-rebase-todo에서 남은 commit action 줄만 새로 읽는다. */
+async function readTodoCommitLines(gitDir: string): Promise<TodoCommitLine[]> {
+  const todoPath = await findTodoPath(gitDir);
   if (!todoPath) {
     return [];
   }
@@ -150,10 +156,10 @@ async function readTodoCommitLines(repoRoot: string): Promise<TodoCommitLine[]> 
   return raw.split(/\r?\n/).map(parseTodoCommitLine).filter((line): line is TodoCommitLine => Boolean(line));
 }
 
-/** rebase-merge/rebase-apply 중 실제 todo 파일 경로를 찾는다. */
-async function findTodoPath(repoRoot: string): Promise<string | undefined> {
+/** 같은 조회에서 확인한 Git directory 아래에서 실제 todo 파일 경로를 찾는다. */
+async function findTodoPath(gitDir: string): Promise<string | undefined> {
   for (const dir of ["rebase-merge", "rebase-apply"]) {
-    const candidate = await gitPath(repoRoot, `${dir}/git-rebase-todo`);
+    const candidate = path.join(gitDir, dir, "git-rebase-todo");
     if (await fs.access(candidate).then(() => true).catch(() => false)) {
       return candidate;
     }
@@ -163,7 +169,7 @@ async function findTodoPath(repoRoot: string): Promise<string | undefined> {
 
 /** todo 한 줄에서 메시지 editor 대상이 될 수 있는 commit action 을 파싱한다. */
 function parseTodoCommitLine(line: string): TodoCommitLine | undefined {
-  const match = /^\s*(pick|reword|edit|squash|fixup|drop)\s+([0-9a-f]{4,40})\b/i.exec(line);
+  const match = /^\s*(pick|reword|edit|squash|fixup|drop)\s+([0-9a-f]{4,64})\b/i.exec(line);
   return match ? { action: match[1].toLowerCase(), hash: match[2] } : undefined;
 }
 
@@ -183,15 +189,15 @@ function sameHash(left: string, right: string): boolean {
   return left === right || left.startsWith(right) || right.startsWith(left);
 }
 
-/** 저장할 상태 객체를 만든다. */
-async function stateFor(
-  repoRoot: string,
+/** 이번 호출에서 해석한 상태 파일과 같은 worktree metadata 아래에 메시지 큐를 둔다. */
+function stateFor(
+  stateFile: string,
   editorScript: string,
   nodePath: string
-): Promise<RebaseMessageQueueState> {
+): RebaseMessageQueueState {
   return {
     version: 1,
-    queuePath: await gitPath(repoRoot, QUEUE_REL),
+    queuePath: path.join(path.dirname(stateFile), path.basename(QUEUE_REL)),
     editorScript,
     nodePath,
   };
@@ -203,16 +209,14 @@ async function writeQueue(file: string, queue: (string | null)[]): Promise<void>
   await fs.writeFile(file, JSON.stringify(queue), "utf8");
 }
 
-/** 상태 파일을 쓴다. */
-async function writeState(repoRoot: string, state: RebaseMessageQueueState): Promise<void> {
-  const file = await gitPath(repoRoot, STATE_REL);
+/** 이미 해석한 상태 파일 경로에 새 큐의 실행 정보를 저장한다. */
+async function writeState(file: string, state: RebaseMessageQueueState): Promise<void> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(state), "utf8");
 }
 
-/** 저장된 상태 파일을 읽는다. */
-async function readState(repoRoot: string): Promise<RebaseMessageQueueState | undefined> {
-  const file = await gitPath(repoRoot, STATE_REL);
+/** 상태 내용은 캐시하지 않고 지정한 실제 파일에서 매번 읽어 새 큐나 삭제를 즉시 반영한다. */
+async function readStateFile(file: string): Promise<RebaseMessageQueueState | undefined> {
   const raw = await fs.readFile(file, "utf8").catch(() => "");
   if (!raw) {
     return undefined;
@@ -228,15 +232,40 @@ async function readState(repoRoot: string): Promise<RebaseMessageQueueState | un
     : undefined;
 }
 
-/** 저장된 상태를 git env 로 변환한다. */
-function editorEnv(repoRoot: string, state: RebaseMessageQueueState): Record<string, string> {
+/**
+ * 현재 큐와 이번 호출에서 해석한 상태 파일로 editor 환경을 만든다.
+ * - 사용자 메시지가 하나도 없는 큐는 Git 기본 메시지를 그대로 받아 helper 시작 비용을 줄인다.
+ * - Git directory는 저장 상태나 큐 위치에서 재사용하지 않고 현재 worktree의 상태 파일에서 구한다.
+ * @param repoRoot 이번 Git 작업의 저장소 루트
+ * @param state 버전 1 형식의 저장된 helper 실행 정보
+ * @param stateFile 이번 호출에서 새로 해석한 상태 파일의 절대 경로
+ * @returns Start/Continue/Skip의 Git 프로세스에 전달할 환경 변수
+ */
+async function editorEnv(repoRoot: string, state: RebaseMessageQueueState, stateFile: string): Promise<Record<string, string>> {
+  const nativeEditor = await hasOnlyDefaultMessages(state.queuePath);
+  logInfo("rebase message editor selected", { repoRoot, editor: nativeEditor ? "native" : "queue" });
   return {
     ELECTRON_RUN_AS_NODE: "1",
-    GIT_EDITOR: `"${state.nodePath}" "${state.editorScript}" msg`,
+    GIT_EDITOR: nativeEditor ? "true" : `"${state.nodePath}" "${state.editorScript}" msg`,
     GIT_SEQUENCE_EDITOR: "true",
     GSC_MSG_QUEUE: state.queuePath,
     GSC_REPO_ROOT: repoRoot,
+    GSC_REBASE_GIT_DIR: path.dirname(path.dirname(stateFile)),
   };
+}
+
+/**
+ * 실제 큐가 null 항목만 가진 배열인지 매번 확인해 중간 정지 뒤 새 메시지를 즉시 반영한다.
+ * @param file 현재 상태가 가리키는 메시지 큐 파일
+ * @returns 빈 배열을 포함해 전부 null이면 true. 파일/JSON/타입이 불명확하면 기존 helper를 유지한다.
+ */
+async function hasOnlyDefaultMessages(file: string): Promise<boolean> {
+  try {
+    const queue: unknown = JSON.parse(await fs.readFile(file, "utf8"));
+    return Array.isArray(queue) && queue.every(message => message === null);
+  } catch {
+    return false;
+  }
 }
 
 /** git metadata 상대 경로를 linked worktree 에서도 유효한 절대 경로로 변환한다. */

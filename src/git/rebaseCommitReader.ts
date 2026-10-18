@@ -10,6 +10,12 @@ interface CommitRecord {
   body: string;
 }
 
+/** 확정된 커밋의 첫 부모와 같은 조회에서 계산한 변경 파일 목록이다. */
+export interface RebaseCommitDetails {
+  parent?: string;
+  files: RebaseCommitFile[];
+}
+
 /**
  * rebase 범위의 커밋을 오래된 순서로 읽고 필요할 때만 파일 정보를 보강한다.
  * - 첫 log에서 확정한 OID를 diff-tree stdin으로 전달하므로 두 조회 사이 HEAD 이동에도 서로 섞이지 않는다.
@@ -41,11 +47,20 @@ export async function readRebaseCommits(
  * @returns 해당 커밋의 파일 상태/라인 통계
  */
 export async function readRebaseCommitFiles(repoRoot: string, hash: string): Promise<RebaseCommitFile[]> {
+  return (await readRebaseCommitDetails(repoRoot, hash)).files;
+}
+
+/**
+ * 기존 파일 조회가 이미 읽는 첫 부모를 함께 반환해 별도 hash^ 조회를 피한다.
+ * @param repoRoot 저장소 루트 @param hash 파일 목록과 부모를 읽을 확정 커밋 OID
+ * @returns 같은 커밋의 첫 부모와 변경 파일. 루트 커밋에는 parent가 없다.
+ */
+export async function readRebaseCommitDetails(repoRoot: string, hash: string): Promise<RebaseCommitDetails> {
   const records = parseCommitRecords(await runGit([
     "log", "-1", "--format=%H%x00%P%x00%s%x00%b", "-z", hash, "--",
   ], repoRoot));
   const files = await readCommitFiles(repoRoot, records);
-  return files.get(records[0]?.hash) ?? [];
+  return { parent: records[0]?.parent, files: files.get(records[0]?.hash) ?? [] };
 }
 
 /**

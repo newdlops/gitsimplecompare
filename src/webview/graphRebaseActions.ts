@@ -231,14 +231,14 @@ async function continueGraphRebaseLocked(
 ): Promise<GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   const conflicts = new ConflictService(repoRoot);
-  const operation = await conflicts.getOperation();
   const expected = await captureGitOperation(repoRoot);
+  const operation = expected.operation;
   logInfo("graph rebase continue requested", {
     repoRoot,
     operation,
     items: items.length,
     changedHashes: changedHashes.length,
-    ...(await rebaseProgressLogDetail(repoRoot)),
+    ...(await rebaseProgressLogDetail(repoRoot, expected.gitDir)),
   });
   if (operation !== "rebase") {
     logInfo("graph rebase continue skipped", {
@@ -261,7 +261,7 @@ async function continueGraphRebaseLocked(
   } else {
     logInfo("graph rebase continue paused edit missing", {
       repoRoot,
-      ...(await rebaseProgressLogDetail(repoRoot)),
+      ...(await rebaseProgressLogDetail(repoRoot, expected.gitDir)),
     });
   }
   await assertGitOperation(repoRoot, expected);
@@ -278,7 +278,7 @@ async function continueGraphRebaseLocked(
     changedHashes: changedHashes.length,
     missingChangedEditHashes: todo.missingChangedEditHashes.length,
     missingChangedFileHashes: todo.missingChangedFileHashes.length,
-    ...(await rebaseProgressLogDetail(repoRoot)),
+    ...(await rebaseProgressLogDetail(repoRoot, expected.gitDir)),
   });
   if (
     todo.missingChangedEditHashes.length > 0 ||
@@ -312,7 +312,7 @@ async function continueGraphRebaseLocked(
       repoRoot,
       paused: paused?.hash,
       original: paused?.originalHash,
-      ...(await rebaseProgressLogDetail(repoRoot)),
+      ...(await rebaseProgressLogDetail(repoRoot, expected.gitDir)),
     });
   } else {
     logInfo("graph rebase edit commit amend skipped", {
@@ -325,7 +325,7 @@ async function continueGraphRebaseLocked(
   try {
     logInfo("graph rebase continue running", {
       repoRoot,
-      ...(await rebaseProgressLogDetail(repoRoot)),
+      ...(await rebaseProgressLogDetail(repoRoot, expected.gitDir)),
     });
     const current = paused ? await assertRebaseEditIdentity(repoRoot, paused, amended) : await captureGitOperation(repoRoot);
     if (!paused) {

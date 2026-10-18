@@ -3,10 +3,7 @@
 (function () {
   "use strict";
 
-  let localBranches = new Map();
-  let localBranchColors = new Map();
-  let tagStatuses = new Map();
-  let remoteTagsByHash = new Map();
+  const references = window.GscGraphReferenceState();
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -15,21 +12,6 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
-  }
-
-  /** 확장에서 받은 로컬 브랜치 상태를 ref 이름으로 빠르게 찾을 수 있게 저장한다. */
-  function setLocalBranches(branches) {
-    localBranches = new Map();
-    localBranchColors = new Map();
-    (branches || []).forEach((branch) => {
-      localBranches.set(branch.name, branch);
-    });
-    Array.from(localBranches.keys()).forEach((name) => {
-      localBranchColors.set(
-        name,
-        window.GscGraphColors?.branchColor?.(name)
-      );
-    });
   }
 
   /** 로컬 브랜치 상태를 CSS class 조합으로 변환한다. */
@@ -55,7 +37,7 @@
   /** 브랜치 이름에 대해 현재 그래프 세션에서 고정된 색상을 반환한다. */
   function branchColor(name, baseIndex) {
     return (
-      localBranchColors.get(name) ||
+      references.colors.get(name) ||
       window.GscGraphColors?.branchColor?.(name, baseIndex) ||
       ""
     );
@@ -74,7 +56,7 @@
       return branchColor(localOnlyBranch, row.color);
     }
     const branchRef = (row.refs || []).find((ref) =>
-      isSplitLocalBranch(localBranches.get(ref))
+      isSplitLocalBranch(references.branches.get(ref))
     );
     return branchRef
       ? branchColor(branchRef, row.color)
@@ -95,7 +77,7 @@
     if (branches.length === 1) {
       return branches[0];
     }
-    const current = branches.find((branch) => localBranches.get(branch)?.current);
+    const current = branches.find((branch) => references.branches.get(branch)?.current);
     return current || [...branches].sort()[0];
   }
 
@@ -123,25 +105,11 @@
       : { remote: raw.slice(0, slash), name: raw.slice(slash + 1) };
   }
 
-  /** 확장에서 받은 tag 상태를 이름/해시 기준으로 찾아볼 수 있게 저장한다. */
-  function setTagStatus(tags) {
-    tagStatuses = new Map();
-    remoteTagsByHash = new Map();
-    (tags || []).forEach((tag) => {
-      tagStatuses.set(tag.name, tag);
-      (tag.remoteTargets || []).forEach((target) => {
-        const refs = remoteTagsByHash.get(target.hash) || [];
-        refs.push({ name: tag.name, remote: target.remote, hash: target.hash });
-        remoteTagsByHash.set(target.hash, refs);
-      });
-    });
-  }
-
   /** row 에 실제 로컬 ref 와 원격 전용 tag ref 를 합쳐 표시용 ref 목록을 만든다. */
   function displayRefs(row) {
     const refs = [...(row.refs || [])];
     const seen = new Set(refs);
-    (remoteTagsByHash.get(row.hash) || []).forEach((tag) => {
+    (references.remoteTags.get(row.hash) || []).forEach((tag) => {
       const ref = `remote-tag:${tag.remote}/${tag.name}`;
       if (!seen.has(ref)) {
         refs.push(ref);
@@ -186,7 +154,7 @@
     }
     if (isTagRef(ref)) {
       const name = tagName(ref);
-      const status = tagStatuses.get(name);
+      const status = references.tags.get(name);
       const title = localTagTitle(name, status);
       return `<span class="${localTagClass(status)}" role="button" tabindex="0" data-tag-name="${safeEsc(
         name
@@ -198,7 +166,7 @@
     }
     if (isRemoteTagRef(ref)) {
       const info = remoteTagInfo(ref);
-      const target = (tagStatuses.get(info.name)?.remoteTargets || []).find(
+      const target = (references.tags.get(info.name)?.remoteTargets || []).find(
         (item) => item.remote === info.remote
       );
       const title = `Remote tag ${info.remote}/${info.name}`;
@@ -213,10 +181,12 @@
     if (isVirtualRef(ref)) {
       return virtualBadge(ref, safeEsc);
     }
-    const branch = localBranches.get(ref);
+    const branch = references.branches.get(ref);
     if (branch) {
       const attrs = branch.current
-        ? ` data-branch-name="${safeEsc(branch.name)}" data-branch-kind="local"`
+        ? ` role="button" tabindex="0" data-branch-name="${safeEsc(branch.name)}" data-branch-kind="local" aria-label="${safeEsc(
+            `Branch actions for ${branch.name}`
+          )}"`
         : ` role="button" tabindex="0" data-checkout-branch="${safeEsc(
             branch.name
           )}" data-branch-name="${safeEsc(
@@ -348,7 +318,7 @@
     return [
       "node",
       row.kind ? `${row.kind}-node` : "",
-      refs.some((ref) => localBranches.has(ref)) || localOnly ? "local-node" : "",
+      refs.some((ref) => references.branches.has(ref)) || localOnly ? "local-node" : "",
       localOnly ? "local-only-node" : "",
       refs.some(isTagRef) ? "tag-node" : "",
     ]
@@ -370,10 +340,7 @@
     attachRefActionMenu(root);
     attachGraphContextMenu(root);
     attachRowDrag(root);
-    root.querySelectorAll(".node").forEach((node) => {
-      if (node.dataset.dragBound === "1") {
-        return;
-      }
+    root.querySelectorAll('.node:not([data-drag-bound="1"])').forEach((node) => {
       node.dataset.dragBound = "1";
       node.addEventListener("pointerdown", (event) => startNodeDrag(event, node));
     });
@@ -395,11 +362,8 @@
 
   /** 커밋 행 전체를 노드 drag handle 로 등록한다. */
   function attachRowDrag(root) {
-    root.querySelectorAll(".row").forEach((row) => {
+    root.querySelectorAll('.row:not([data-drag-bound="1"]):not([data-reflog-virtual])').forEach((row) => {
       if (row.dataset.reflogVirtual === "1") {
-        return;
-      }
-      if (row.dataset.dragBound === "1") {
         return;
       }
       row.dataset.dragBound = "1";
@@ -561,7 +525,7 @@
 
   /** undo commit 을 허용할 수 있는 현재 local HEAD 브랜치인지 확인한다. */
   function undoableHeadBranch(hash) {
-    const branch = Array.from(localBranches.values()).find((item) => item.current);
+    const branch = Array.from(references.branches.values()).find((item) => item.current);
     return Boolean(
       branch &&
         branch.hash === hash &&
@@ -571,7 +535,7 @@
 
   /** 특정 커밋에 붙은 로컬 브랜치 목록을 찾는다. */
   function branchesAtHash(hash) {
-    return Array.from(localBranches.values()).filter(
+    return Array.from(references.branches.values()).filter(
       (branch) => branch.hash === hash && !branch.current
     );
   }
@@ -593,7 +557,9 @@
     nodeClass,
     refBadge,
     rowColor,
-    setLocalBranches,
-    setTagStatus,
+    setLocalBranches: references.setLocalBranches,
+    setTagStatus: references.setTagStatus,
+    /** 마지막 브랜치/태그 메시지의 영향 범위를 반환한다. null이면 전체 행을 확인해야 한다. */
+    referenceChanges: () => references.changes,
   };
 })();

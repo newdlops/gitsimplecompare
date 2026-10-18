@@ -390,14 +390,15 @@ async function runFileAction(
       );
     }
     await controller.refresh();
-    await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason: "conflictFileAction",
-    });
     await dropPullSnapshotAfterResolvedRestore(controller);
     await dropRebaseStashesAfterResolvedRestore(controller);
   } finally {
     release();
   }
+  // 저장소 변경과 복구 정리가 끝나면 lease를 풀어 무거운 표시 갱신이 다음 해결 동작을 막지 않게 한다.
+  await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
+    reason: "conflictFileAction",
+  });
 }
 
 /**

@@ -25,10 +25,9 @@ interface GraphSyncActionDeps {
 
 /** 원격 branch ref 를 가져오고 그래프를 다시 읽는다. tag 는 별도 액션에서 처리한다. */
 export async function fetchAll(deps: GraphSyncActionDeps): Promise<void> {
-  await withGraphProgress(vscode.l10n.t("Fetching..."), () =>
-    deps.logService.fetchAll()
-  );
-  await deps.refreshGraph();
+  try {
+    await withGraphProgress(vscode.l10n.t("Fetching..."), () => deps.logService.fetchAll());
+  } finally { await deps.refreshGraph(); }
   vscode.window.showInformationMessage(vscode.l10n.t("Fetch completed."));
 }
 
@@ -75,9 +74,9 @@ export async function pullCurrent(deps: GraphSyncActionDeps): Promise<void> {
     );
   }
   await deps.refreshGraph();
-  await refreshSideViews("graphPull");
+  void refreshSideViews("graphPull").catch(error => showErrorWithOutput("graph pull side refresh failed", error, gitErrorText(error)));
   if (result.status === "conflicts") {
-    await showPullConflictActions(result);
+    void showPullConflictActions(result).catch(error => showErrorWithOutput("graph pull conflict action failed", error, gitErrorText(error)));
     return;
   }
   logInfo("graph pull completed", {
@@ -181,7 +180,7 @@ export async function forcePushCurrent(deps: GraphSyncActionDeps): Promise<void>
     reason: result.mode === "setUpstream" ? result.reason : undefined,
   });
   await deps.refreshGraph();
-  await refreshSideViews("graphForcePush");
+  void refreshSideViews("graphForcePush").catch(error => showErrorWithOutput("graph force push side refresh failed", error, gitErrorText(error)));
   vscode.window.showInformationMessage(vscode.l10n.t("Force push completed."));
 }
 

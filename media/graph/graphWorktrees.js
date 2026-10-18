@@ -14,7 +14,11 @@
       .replace(/"/g, "&quot;");
   }
 
-  /** 확장에서 받은 worktree 점유 상태를 branch 이름 기준으로 저장한다. */
+  /**
+   * @param worktrees 확장에서 받은 전체 worktree 점유 상태
+   * @returns 배지 이름·경로·잠금 상태가 달라진 브랜치의 참조 범위. 같은 입력은 빈 집합이다.
+   * 수신 객체를 복사해 호출자의 후속 편집이 이전 비교 기준을 바꾸지 않게 한다.
+   */
   function setWorktrees(worktrees) {
     const next = new Map();
     (worktrees || []).forEach((item) => {
@@ -22,7 +26,7 @@
         return;
       }
       const list = next.get(item.branch) || [];
-      list.push(item);
+      list.push({ ...item });
       next.set(item.branch, list);
     });
     next.forEach((list) =>
@@ -31,7 +35,17 @@
         String(a.path || "").localeCompare(String(b.path || ""))
       )
     );
+    const keys = new Set();
+    for (const branch of new Set([...worktreesByBranch.keys(), ...next.keys()])) {
+      if (displayKey(worktreesByBranch.get(branch)) !== displayKey(next.get(branch))) keys.add(`branch:${branch}`);
+    }
     worktreesByBranch = next;
+    return { keys, hashes: new Set() };
+  }
+
+  /** @param worktrees 정렬된 한 브랜치의 worktree 목록 @returns 배지와 tooltip에 영향을 주는 값의 비교 key */
+  function displayKey(worktrees) {
+    return JSON.stringify((worktrees || []).map(item => [worktreeLabel(item), item.path, item.locked, item.prunable]));
   }
 
   /** branch ref 에 붙일 worktree 보조 배지를 포함해 ref HTML 을 보강한다. */
@@ -123,12 +137,7 @@
     features.refBadge = wrapped;
   }
 
-  window.addEventListener("message", (event) => {
-    if (event.data?.type === "branchStatus") {
-      setWorktrees(event.data.worktrees || []);
-    }
-  });
-
+  // 메시지 처리와 DOM 갱신은 graph.js가 한 번 조정한다. 독립 listener가 변경 범위를 먼저 소모하지 않는다.
   window.GscGraphWorktrees = { setWorktrees };
   install();
 })();

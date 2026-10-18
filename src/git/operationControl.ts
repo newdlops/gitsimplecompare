@@ -1,6 +1,6 @@
 // Continue/Skip/Abort를 확인한 Git 작업 세대에 고정하고 후속 복구에 실행 영수증을 전달한다.
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
 import { readConflictOperationEpochAt } from "./conflictOperationEpoch";
@@ -8,6 +8,7 @@ import { runGit } from "./gitExec";
 import { preserveOperationEdits } from "./operationRecoveryBackup";
 import { logError, logInfo } from "../ui/outputLog";
 import { finishControlledRebaseSession } from "./rebaseSessionState";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
 
 /** worktree, 작업 생성 세대와 현재 todo/HEAD를 함께 고정한 제어 대상이다. */
 export interface GitOperationIdentity {
@@ -31,12 +32,7 @@ interface ControlReceipt {
  * @returns 확인창과 실행 직전 비교에 사용할 불변 값
  */
 export async function captureGitOperation(repoRoot: string): Promise<GitOperationIdentity> {
-  const [gitDirText, head, branch] = await Promise.all([
-    runGit(["rev-parse", "--absolute-git-dir"], repoRoot),
-    runGit(["rev-parse", "--verify", "HEAD"], repoRoot),
-    runGit(["branch", "--show-current"], repoRoot),
-  ]);
-  const gitDir = await realpath(gitDirText.trim());
+  const { gitDir, head, branch } = await readGitCheckoutIdentity(repoRoot);
   const operation = detectOperationInGitDir(gitDir);
   const [epoch, generation] = await Promise.all([
     readConflictOperationEpochAt(gitDir, head), operationGeneration(gitDir, operation),

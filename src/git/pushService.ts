@@ -2,7 +2,9 @@
 // - 일반 push 가 upstream 이름 불일치나 미설정 상태에서 실패하지 않도록, remote 가 있으면
 //   현재 로컬 브랜치명과 같은 remote branch 로 publish/upstream 설정할 계획을 계산한다.
 import { GitError, runGit } from "./gitExec";
-import { pushBranchCommits, pushConfigurationFingerprint, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
+import { pushBranchCommits, pushConfigurationFingerprint, readPushConfiguration, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
+import type { GitConfigSnapshot } from "./gitConfigSnapshot";
+import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
 
 /** 확인 당시의 커밋·목적 ref·설정 세대다. URL 원문은 로그에 노출하지 않도록 해시만 보존한다. */
 interface PushSnapshot {
@@ -72,18 +74,35 @@ interface PushTarget {
 export async function getCurrentPushPlan(
   repoRoot: string
 ): Promise<PushCurrentPlan> {
-  const plan = toPushPlan(await resolvePushTarget(repoRoot));
-  if (!plan.branch) throw new Error("Cannot push while HEAD is detached.");
-  if (!plan.remote) throw new Error("No push remote is configured.");
-  const sourceRef = `refs/heads/${plan.branch}`;
-  const [head, refInfo, configFingerprint, pushDefault, customPush] = await Promise.all([
-    runGit(["rev-parse", "--verify", `${sourceRef}^{commit}`], repoRoot),
-    runGit(["for-each-ref", "--format=%(push:remoteref)%00%(push)%00%(upstream:remoteref)", sourceRef], repoRoot),
-    pushConfigurationFingerprint(repoRoot),
-    optionalGit(["config", "--get", "push.default"], repoRoot),
-    optionalGit(["config", "--get-all", `remote.${plan.remote}.push`], repoRoot),
+  const [checkout, remotes, { config, fingerprint: configFingerprint }] = await Promise.all([
+    readGitCommitCheckoutIdentity(repoRoot),
+    listRemotes(repoRoot), readPushConfiguration(repoRoot),
   ]);
-  const [pushRef, trackingRef, upstreamRef] = refInfo.trim().split("\0");
+  const { branch, branchRef: sourceRef } = checkout;
+  if (!branch) throw new Error("Cannot push while HEAD is detached.");
+  const configuredRemotes = [
+    validRemoteConfig(config, remotes, `branch.${branch}.pushRemote`),
+    validRemoteConfig(config, remotes, "remote.pushDefault"),
+    validRemoteConfig(config, remotes, `branch.${branch}.remote`),
+  ];
+  const candidateRemote = firstRemote([...configuredRemotes, remotes.includes("origin") ? "origin" : undefined, remotes[0]]);
+  const candidateTracking = candidateRemote ? `refs/remotes/${candidateRemote}/${branch}` : undefined;
+  const refInfo = await runGit(["for-each-ref",
+    "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(upstream:short)%00%(upstream:track)%00%(push:remoteref)%00%(push)%00%(upstream:remoteref)",
+    sourceRef, ...(candidateTracking ? [candidateTracking] : [])], repoRoot);
+  const refRows = new Map(refInfo.trimEnd().split("\n").map(line => { const fields = line.split("\0"); return [fields[0], fields] as const; }));
+  const row = refRows.get(sourceRef);
+  if (!row || row[1] !== checkout.head || row[2] !== "*") throw new Error("Cannot read the current branch commit. Refresh the checked-out branch before pushing.");
+  const [, head, , upstreamRaw, track, pushRef, trackingRef, upstreamRef] = row;
+  const upstream = upstreamRaw || undefined;
+  const plan = toPushPlan({ branch, remotes, upstream, upstreamGone: /\[gone\]/i.test(track), remote: firstRemote([
+    ...configuredRemotes,
+    upstream ? splitRemoteBranch(upstream, remotes)?.remote : undefined,
+    remotes.includes("origin") ? "origin" : undefined, remotes[0],
+  ]) });
+  if (!plan.remote) throw new Error("No push remote is configured.");
+  const pushDefault = config.get("push.default")?.trim();
+  const customPush = config.getAll(`remote.${plan.remote}.push`).join("\n").trim();
   // Git은 명시적인 push refspec이 없으면 push:remoteref를 비울 수 있다.
   const defaultRef = !customPush && pushDefault !== "nothing"
     ? (["upstream", "tracking"].includes(pushDefault ?? "") ? upstreamRef : sourceRef) : "";
@@ -91,9 +110,18 @@ export async function getCurrentPushPlan(
   if (!targetRef?.startsWith("refs/")) throw new Error("Could not determine the current branch push target. Check the push configuration.");
   const tracking = plan.mode === "setUpstream"
     ? `refs/remotes/${plan.remote}/${plan.branch}` : trackingRef;
-  const remoteHead = tracking
-    ? (await runGit(["for-each-ref", "--format=%(objectname)", tracking], repoRoot)).trim() : "";
-  return { ...plan, snapshot: { head: head.trim(), targetRef, configFingerprint, remoteHead } };
+  const remoteHead = !tracking ? "" : tracking === candidateTracking
+    ? refRows.get(tracking)?.[1] ?? "" : await readTrackingHead(repoRoot, tracking);
+  return { ...plan, snapshot: { head, targetRef, configFingerprint, remoteHead } };
+}
+
+/**
+ * 사용자 refspec이 기본 추적 위치와 다를 때만 추가 조회하며, 이름이 접두사인 자식 ref는 채택하지 않는다.
+ * @param repoRoot 저장소 루트 @param ref 정확한 추적 ref 이름 @returns 그 ref의 OID 또는 부재일 때 빈 문자열
+ */
+async function readTrackingHead(repoRoot: string, ref: string): Promise<string> {
+  const output = await runGit(["for-each-ref", "--format=%(refname)%00%(objectname)", ref], repoRoot);
+  return output.trimEnd().split("\n").map(line => line.split("\0")).find(fields => fields[0] === ref)?.[1] ?? "";
 }
 
 /**
@@ -190,59 +218,6 @@ async function validatePushPlan(repoRoot: string, plan: PushCurrentPlan): Promis
 }
 
 /**
- * 현재 브랜치의 push 대상 remote/upstream 상태를 계산한다.
- * - remote 선택은 Git 의 push remote 우선순위에 가깝게 branch.pushRemote, remote.pushDefault,
- *   branch.remote, 기존 upstream remote, origin, 첫 remote 순서로 고른다.
- * - upstream 의 gone 여부는 for-each-ref 의 track 문자열을 사용해 stale remote tracking 상태를 반영한다.
- * @param repoRoot git 저장소 루트 경로
- * @returns 자동 upstream 설정 여부를 판단하는 데 필요한 현재 브랜치 push 메타데이터
- */
-async function resolvePushTarget(repoRoot: string): Promise<PushTarget> {
-  const branch = await optionalGit(
-    ["symbolic-ref", "--quiet", "--short", "HEAD"],
-    repoRoot
-  );
-  const remotes = await listRemotes(repoRoot);
-  if (!branch) {
-    return { remotes, upstreamGone: false };
-  }
-
-  const [upstreamInfo, branchPushRemote, remotePushDefault, branchRemote] =
-    await Promise.all([
-      optionalGit(
-        [
-          "for-each-ref",
-          "--format=%(upstream:short)%00%(upstream:track)",
-          `refs/heads/${branch}`,
-        ],
-        repoRoot
-      ),
-      validRemoteConfig(repoRoot, remotes, `branch.${branch}.pushRemote`),
-      validRemoteConfig(repoRoot, remotes, "remote.pushDefault"),
-      validRemoteConfig(repoRoot, remotes, `branch.${branch}.remote`),
-    ]);
-  const [upstreamRaw, track] = (upstreamInfo ?? "").split("\0");
-  const upstream = upstreamRaw || undefined;
-  const upstreamRemote = upstream
-    ? splitRemoteBranch(upstream, remotes)?.remote
-    : undefined;
-  return {
-    branch,
-    remotes,
-    upstream,
-    upstreamGone: /\[gone\]/i.test(track ?? ""),
-    remote: firstRemote([
-      branchPushRemote,
-      remotePushDefault,
-      branchRemote,
-      upstreamRemote,
-      remotes.includes("origin") ? "origin" : undefined,
-      remotes[0],
-    ]),
-  };
-}
-
-/**
  * 현재 push 계획에서 upstream 설정이 필요한 이유를 계산한다.
  * - 반환값이 있으면 remote branch 생성 가능성이 있으므로 UI 확인이 필요하다.
  * @param target 현재 브랜치의 push 대상 후보 정보
@@ -309,17 +284,17 @@ async function listRemotes(repoRoot: string): Promise<string[]> {
 /**
  * git config 에 저장된 remote 이름이 실제 remote 목록에 있을 때만 반환한다.
  * - branch.remote 값이 `.` 이거나 삭제된 remote 를 가리키면 push 대상으로 쓰지 않는다.
- * @param repoRoot git 저장소 루트 경로
+ * @param config 같은 계획에서 새로 읽은 설정 snapshot
  * @param remotes 현재 저장소의 remote 이름 목록
  * @param key 읽을 git config 키
  * @returns 유효한 remote 이름 또는 undefined
  */
-async function validRemoteConfig(
-  repoRoot: string,
+function validRemoteConfig(
+  config: GitConfigSnapshot,
   remotes: string[],
   key: string
-): Promise<string | undefined> {
-  const remote = await optionalGit(["config", "--get", key], repoRoot);
+): string | undefined {
+  const remote = config.get(key)?.trim();
   return remote && remotes.includes(remote) ? remote : undefined;
 }
 

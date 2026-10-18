@@ -6,8 +6,9 @@ import * as path from "node:path";
 import { detectOperation } from "./conflictService";
 import { assertControlledTransition, captureGitOperation } from "./operationControl";
 import { runGit } from "./gitExec";
+import { listUnmergedFiles } from "./unmergedFiles";
 import { OperationUndoStore as BranchOperationUndoStore } from "./operationUndoStore";
-import { logError } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import {
   dropPreservedLocalChangesStash,
@@ -85,7 +86,13 @@ export async function runBranchRebaseMerge(
   const pending = pendingState(input);
   try {
     await writePendingBranchRebaseMerge(input.repoRoot, pending);
-    await runGit(["rebase", input.targetHead], input.repoRoot, { env: rebaseEnv() });
+    const started = Date.now();
+    logInfo("branch rebase git starting", { repoRoot: input.repoRoot, branch: input.branch, targetRef: input.targetRef });
+    try {
+      await runGit(["rebase", input.targetHead], input.repoRoot, { env: rebaseEnv() });
+    } finally {
+      logInfo("branch rebase git finished", { repoRoot: input.repoRoot, elapsedMs: Date.now() - started });
+    }
     const rebasedHead = await currentHead(input.repoRoot);
     const result = await completePendingBranchRebaseMerge(input.repoRoot, pending, rebasedHead);
     return resumeToRunResult(input, result, rebasedHead);
@@ -129,7 +136,7 @@ export async function finishPendingBranchRebaseMergeAfterContinue(
   }
   const rebasedHead = await currentHead(repoRoot);
   await assertControlledTransition(repoRoot, pending.nativeOperation, "continue");
-  return completePendingBranchRebaseMerge(repoRoot, pending, rebasedHead);
+  return completePendingBranchRebaseMerge(repoRoot, pending, rebasedHead, true);
 }
 
 /**
@@ -205,11 +212,13 @@ export async function restorePendingBranchRebaseMergeLocalChangesForBranch(
  * @param repoRoot git 저장소 루트
  * @param pending 저장된 rebase merge 상태
  * @param rebasedHead rebase 가 끝난 현재 브랜치 HEAD
+ * @param allowMissingUndo 이전 확장 버전에서 시작한 Continue만 출처 없는 Undo를 만들지 않고 완료할 수 있다.
  */
 async function completePendingBranchRebaseMerge(
   repoRoot: string,
   pending: PendingBranchRebaseMerge,
-  rebasedHead: string
+  rebasedHead: string,
+  allowMissingUndo = false
 ): Promise<BranchRebaseMergeResumeResult> {
   await assertCurrentBranchHead(
     repoRoot,
@@ -223,7 +232,7 @@ async function completePendingBranchRebaseMerge(
     rebasedHead,
     "completing branch rebase merge"
   );
-  await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", true);
+  await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", allowMissingUndo);
   try {
     await restorePendingLocalChanges(
       repoRoot,
@@ -360,7 +369,7 @@ async function isRebaseConflictState(repoRoot: string): Promise<boolean> {
 
 /** index 에 unmerged entry 가 남아 있는지 확인한다. */
 async function hasUnmergedChanges(repoRoot: string): Promise<boolean> {
-  return (await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot).catch(() => "")).length > 0;
+  return (await listUnmergedFiles(repoRoot).catch(() => [])).length > 0;
 }
 
 /** 시작 실패 뒤 자신이 쓴 pending만 정리한다. 사용자가 옮긴 브랜치는 이동하지 않는다. */
@@ -379,10 +388,10 @@ async function restorePendingLocalChanges(
   pending: PendingBranchRebaseMerge,
   failureMessage: string
 ): Promise<void> {
-  await writePendingBranchRebaseMerge(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   if (!pending.preservedStashHash) {
     return;
   }
+  await writePendingBranchRebaseMerge(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
 }
 

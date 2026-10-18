@@ -15,7 +15,11 @@ export function syncGraphLocalRefs(
   visibleRefs: Set<string>
 ): boolean {
   const localNames = new Set(branches.map((branch) => branch.name));
+  const byHash = new Map<string, Commit>();
   for (const commit of commits) {
+    // 동일 해시가 여러 행에 있어도 기존 find와 같이 첫 행에 ref를 붙인다.
+    const hash = commit.hash;
+    if (!byHash.has(hash)) byHash.set(hash, commit);
     commit.refs = commit.refs.filter(
       (ref) => ref !== "HEAD" && !localNames.has(ref)
     );
@@ -27,7 +31,7 @@ export function syncGraphLocalRefs(
     if (!visibleRefs.has(branch.name)) {
       continue;
     }
-    const commit = commits.find((item) => item.hash === branch.hash);
+    const commit = byHash.get(branch.hash);
     if (!commit) {
       continue;
     }

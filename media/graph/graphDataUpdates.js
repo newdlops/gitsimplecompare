@@ -50,18 +50,49 @@
   /** SVG가 이미 첫 위치에 있으면 이동하지 않아 keyboard focus와 hover 상태를 유지한다. */
   function placeSvg(root, svg) { if (root.firstChild !== svg) root.prepend(svg); }
 
-  /** 이미 있는 행은 유지하고 변경 행 교체·신규 행 추가·폭 변경만 반영한다. */
-  function renderRows(root, rows, width, build, delta) {
-    if (!delta) { rows.forEach((row, index) => root.appendChild(build(row, index, width))); return; }
-    const existing = new Map([...root.querySelectorAll(":scope > .row:not([data-reflog-virtual])")].map(node => [Number(node.dataset.index), node]));
-    for (const item of delta.rowUpdates) existing.get(item.index)?.replaceWith(build(item.row, item.index, width));
+  /** @param elementAt 기존 행 인덱스 조회 함수. 이미 있는 행을 유지하고 변경·추가 행과 실제 레인 폭 변화만 반영한다. */
+  function renderRows(root, rows, width, build, delta, elementAt) {
+    if (!delta) {
+      const fragment = document.createDocumentFragment();
+      rows.forEach((row, index) => fragment.appendChild(build(row, index, width)));
+      root.appendChild(fragment);
+      return;
+    }
+    const previousWidth = root.querySelector(":scope > .row")?.style.left;
+    for (const item of delta.rowUpdates) {
+      const existing = elementAt?.(item.index) || root.querySelector(`:scope > .row[data-index="${item.index}"]:not([data-reflog-virtual])`);
+      existing?.replaceWith(build(item.row, item.index, width));
+    }
     const fragment = document.createDocumentFragment();
     for (let index = delta.rowStart; index < rows.length; index++) fragment.appendChild(build(rows[index], index, width));
     root.appendChild(fragment);
-    for (const node of root.querySelectorAll(":scope > .row")) if (node.style.left !== `${width}px`) node.style.left = `${width}px`;
+    if (previousWidth !== `${width}px`) {
+      for (const node of root.querySelectorAll(":scope > .row")) if (node.style.left !== `${width}px`) node.style.left = `${width}px`;
+    }
+  }
+
+  /** @param left 이전 배열 @param right 새 배열 @returns 색상 선택에 쓰는 이름/부모 순서가 같으면 true */
+  function equalValues(left, right) {
+    return (left || []).length === (right || []).length && (left || []).every((value, index) => value === right[index]);
+  }
+
+  /**
+   * HEAD·제목 등 표시만 바뀐 delta에서만 색상 캐시와 local-only 전파를 재사용한다.
+   * @param delta 검증된 증분 데이터 @param previous 이전 전체 모델 @param next 새 전체 모델
+   * @returns 레인·간선·부모·브랜치 의미 입력이 모두 같으면 true. 추가/재배치/compact 변경은 기존 경로로 보낸다.
+   */
+  function reusableColors(delta, previous, next) {
+    if (!delta || delta.rows.length || delta.edges.length || delta.edgeUpdates.length || previous.laneCount !== next.laneCount ||
+      previous.rows.length !== next.rows.length || previous.edges.length !== next.edges.length) return false;
+    return delta.rowUpdates.every(({ index, row }) => {
+      const before = previous.rows[index];
+      return before && ["hash", "column", "color", "kind", "originalColumn", "compacted"].every(key => before[key] === row[key]) &&
+        equalValues(before.parents, row.parents) && equalValues(before.localOnlyBranches, row.localOnlyBranches) &&
+        equalValues((before.refs || []).filter(ref => ref !== "HEAD"), (row.refs || []).filter(ref => ref !== "HEAD"));
+    });
   }
 
   window.addEventListener("message", handleMessage, true);
-  window.GscGraphDataUpdates = { prepare, placeSvg, renderRows,
+  window.GscGraphDataUpdates = { prepare, placeSvg, renderRows, reusableColors,
     stats: () => ({ revision, rows: model.rows.length, edges: model.edges.length, waiting }) };
 })();

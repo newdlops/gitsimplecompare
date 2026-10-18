@@ -21,6 +21,7 @@ export function buildGraphHtml(
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "graph");
   const scriptUri = script(webview, mediaRoot, "graph.js");
   const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
+  const referenceStateScriptUri = script(webview, mediaRoot, "graphReferenceState.js");
   const worktreeScriptUri = script(webview, mediaRoot, "graphWorktrees.js");
   const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
   const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
@@ -37,6 +38,7 @@ export function buildGraphHtml(
   const detailVisibilityScriptUri = script(webview, mediaRoot, "graphDetailVisibility.js");
   const dataUpdatesScriptUri = script(webview, mediaRoot, "graphDataUpdates.js");
   const performanceScriptUri = script(webview, mediaRoot, "graphPerformance.js");
+  const actionFeedbackScriptUri = script(webview, mediaRoot, "graphActionFeedback.js");
   const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
   const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
   const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
@@ -49,6 +51,8 @@ export function buildGraphHtml(
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
   const rebaseDetailScriptUri = script(webview, mediaRoot, "graphRebaseDetail.js");
+  const rebaseFilesScriptUri = script(webview, mediaRoot, "graphRebaseFiles.js");
+  const rebaseRowsScriptUri = script(webview, mediaRoot, "graphRebaseRows.js");
   const rebaseMovesScriptUri = script(webview, mediaRoot, "graphRebaseMoves.js");
   const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
   const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
@@ -298,6 +302,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}">window.GscPrStackI18n = ${prStackI18n};</script>
   ${sharedWebviewScriptTags(sharedResources, nonce)}
   <script nonce="${nonce}" src="${colorScriptUri}"></script>
+  <script nonce="${nonce}" src="${referenceStateScriptUri}"></script>
   <script nonce="${nonce}" src="${featureScriptUri}"></script>
   <script nonce="${nonce}" src="${worktreeScriptUri}"></script>
   <script nonce="${nonce}" src="${searchScriptUri}"></script>
@@ -323,6 +328,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${detailVisibilityScriptUri}"></script>
   <script nonce="${nonce}" src="${dataUpdatesScriptUri}"></script>
   <script nonce="${nonce}" src="${performanceScriptUri}"></script>
+  <script nonce="${nonce}" src="${actionFeedbackScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>
@@ -332,6 +338,8 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${reflogScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseFilesScriptUri}"></script>
+  <script nonce="${nonce}" src="${rebaseRowsScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseMovesScriptUri}"></script>
   <script nonce="${nonce}" src="${rebasePreviewScriptUri}"></script>
   <script nonce="${nonce}" src="${rebaseScriptUri}"></script>

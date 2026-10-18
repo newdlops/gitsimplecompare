@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.72091] - 2026-10-18
+
+### Changed
+
+- Reduce Git preparation and refresh work for checkout, rebase/merge, push,
+  fetch and pull. Batch tracking counts for large branch lists and keep small
+  or already current lists on the lightweight read path.
+- Avoid redundant message editor startup during rebase when commit messages
+  remain unchanged, and reuse verified worktree paths for custom messages.
+- Share conflict metadata and content reads, cancel obsolete requests and
+  refresh saved resolutions without repeatedly scanning unchanged documents.
+- Keep Graph checkout updates local to changed rows and reuse existing graph
+  layout, file-list state and keyboard focus. Virtualize large Changes and
+  rebase file lists while preserving the complete selection and edit plan.
+
+### Fixed
+
+- Preserve rebase messages for SHA-256 repositories and keep custom-message
+  queues correct across edit pauses, conflicts and linked worktrees.
+- Keep cancellation, undo and recovery checks intact while reducing duplicate
+  repository queries, and reject obsolete refresh results after context changes.
+- Align the PR preview design-contract test with the current Graph-to-Preview
+  navigation rule instead of an obsolete narrative phrase.
+
 ## [0.1.72090] - 2026-10-09
 
 ### Added

@@ -32,25 +32,22 @@
     const paused = window.GscGraphRebaseContext?.paused?.() || null;
     const isPausedHere = paused &&
       (paused.originalHash === detail.hash || paused.hash === detail.hash);
-    const paths = historyPaths();
     const actionOptions = ACTIONS.map((action) =>
       `<option value="${action}"${item.action === action ? " selected" : ""}>${action}</option>`
     ).join("");
-    const files = (item.files || detail.files || []).map((file) =>
-      fileRowHtml(item, file, paths, isPausedHere, Boolean(paused), esc)
-    ).join("");
+    const files = item.files || detail.files || [];
     return (
       `<section class="rebase-detail-editor" data-rebase-hash="${esc(detail.hash)}">` +
-      `<div class="rebase-detail-title"><span class="codicon codicon-edit"></span>` +
+      `<div class="rebase-detail-title"><span class="codicon codicon-edit" aria-hidden="true"></span>` +
       `<strong>Interactive rebase edit</strong></div>` +
       `<label class="field"><span>Action</span><select id="rebase-detail-action" ` +
       `${title("Choose rebase action for this commit", esc)}>${actionOptions}</select></label>` +
       `<label class="field message"><span>Commit message</span>` +
-      `<textarea id="rebase-detail-message" spellcheck="false" ` +
+      `<textarea id="rebase-detail-message" name="rebase-commit-message" autocomplete="off" spellcheck="false" ` +
       `${title("Edit the commit message used by reword or squash", esc)}>${esc(itemMessage(item))}</textarea></label>` +
       editPanelHtml(item, isPausedHere, Boolean(paused), esc) +
-      `<div class="files-title"><span>Changed files</span><span class="count">${(item.files || detail.files || []).length}</span></div>` +
-      `<div class="rebase-detail-files">${files || `<p>No changed files.</p>`}</div>` +
+      `<div class="files-title" id="rebase-detail-files-title"><span>Changed files</span><span class="count">${files.length}</span></div>` +
+      `<div class="rebase-detail-files">${files.length ? "" : `<p>No changed files.</p>`}</div>` +
       `</section>`
     );
   }
@@ -86,9 +83,9 @@
     return (
       `<div class="file-row" data-status="${esc(file.status)}" data-path="${esc(file.path)}"` +
       `${file.status.startsWith("D") ? " data-deleted=\"1\"" : ""} title="${esc(displayPath(file))}">` +
-      `<span class="twistie"></span>` +
-      `<span class="icon codicon ${statusCodicon(file.status)}"></span>` +
-      `<span class="extension-icon codicon codicon-file"></span>` +
+      `<span class="twistie" aria-hidden="true"></span>` +
+      `<span class="icon codicon ${statusCodicon(file.status)}" aria-hidden="true"></span>` +
+      `<span class="extension-icon codicon codicon-file" aria-hidden="true"></span>` +
       `<span class="name">${esc(fileName)}</span>${dirHtml}${statHtml(file)}` +
       `<span class="file-rewrite-actions">${editButton}` +
       moveSelectHtml(item, file, esc) +
@@ -160,13 +157,34 @@
 
   /** 파일 제외 토글 버튼을 만든다. */
   function toggleButton(kind, active, inactiveLabel, activeLabel, inactiveTooltip, activeTooltip, esc) {
-    const label = active ? activeLabel : inactiveLabel;
-    const tooltip = active ? activeTooltip : inactiveTooltip;
-    const icon = active ? "add" : kind === "history" ? "history" : "exclude";
+    const { label, tooltip, icon } = toggleState(kind, active, inactiveLabel, activeLabel, inactiveTooltip, activeTooltip);
     const activeClass = active ? " active" : "";
     return `<button type="button" data-exclude="${kind}" class="icon-action${activeClass}" ` +
       `aria-pressed="${active ? "true" : "false"}" ${title(`${label}. ${tooltip}`, esc)}>` +
       `<span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`;
+  }
+
+  /** 제외 버튼 표시 상태를 반환해 초기 HTML과 조작 후 DOM 갱신에서 같은 문구를 사용한다. */
+  function toggleState(kind, active, inactiveLabel, activeLabel, inactiveTooltip, activeTooltip) {
+    return { label: active ? activeLabel : inactiveLabel, tooltip: active ? activeTooltip : inactiveTooltip,
+      icon: active ? "add" : kind === "history" ? "history" : "exclude" };
+  }
+
+  /** 제외 후 버튼 상태만 갱신한다. 행과 입력 요소를 유지해 포커스와 스크롤을 보존한다. */
+  function refreshExclusions(section, item, history) {
+    for (const button of section.querySelectorAll("[data-exclude]")) {
+      const path = button.closest(".file-row").dataset.path;
+      const isHistory = button.dataset.exclude === "history";
+      const active = isHistory ? history.has(path) : (item.excludePaths || []).includes(path);
+      const next = isHistory
+        ? toggleState("history", active, "Remove from history", "Include in history", "Remove this file from every commit in this rebase range", "Add this file back to commits in this rebase range")
+        : toggleState("commit", active, "Omit here", "Include here", "Remove this file change from only this commit", "Add this file change back to this commit");
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+      button.title = button.dataset.tooltip = `${next.label}. ${next.tooltip}`;
+      button.setAttribute("aria-label", button.title);
+      button.firstElementChild.className = `codicon codicon-${next.icon}`;
+    }
   }
 
   /** drawer 안에 들어가는 일반 action 버튼을 만든다. */
@@ -192,6 +210,14 @@
       return;
     }
     const hash = section.dataset.rebaseHash || detail.hash;
+    const context = window.GscGraphRebaseContext;
+    const item = context.itemForHash(hash);
+    const files = item.files || detail.files || [];
+    let history = historyPaths();
+    const paused = context.paused();
+    const isPausedHere = paused && (paused.originalHash === hash || paused.hash === hash);
+    window.GscGraphRebaseFiles.mount(section.querySelector(".rebase-detail-files"), files,
+      (file) => fileRowHtml(item, file, history, isPausedHere, Boolean(paused), escapeHtml));
     const actionSelect = section.querySelector("#rebase-detail-action");
     actionSelect?.addEventListener("change", (event) => {
       window.GscGraphRebaseContext?.updateAction?.(hash, event.target.value);
@@ -203,23 +229,24 @@
         actionSelect.value = "reword";
       }
     });
-    section.querySelectorAll("[data-exclude]").forEach((button) => {
-      button.addEventListener("click", () => {
+    section.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-exclude]");
+        if (!button) return;
         const path = button.closest(".file-row")?.dataset.path || "";
         if (button.dataset.exclude === "history") {
           window.GscGraphRebaseContext?.toggleHistoryExclude?.(path);
         } else {
           window.GscGraphRebaseContext?.toggleCommitExclude?.(hash, path);
         }
-        window.GscGraphDetail?.refresh?.();
-      });
+        history = historyPaths();
+        refreshExclusions(section, item, history);
     });
-    window.GscGraphRebaseMoves?.bind?.(section, hash, () => window.GscGraphDetail?.refresh?.());
+    window.GscGraphRebaseMoves?.bind?.(section, hash);
     section.querySelector('[data-rebase-action="start-edit-rebase"]')?.addEventListener("click", () => {
       document.getElementById("graph-rebase-run")?.click();
     });
     section.querySelector('[data-rebase-action="open-first-edit-file"]')?.addEventListener("click", () => {
-      const path = section.querySelector(".file-row:not([data-deleted])")?.dataset.path || "";
+      const path = files.find((file) => !file.status.startsWith("D"))?.path || "";
       openEditFile(hash, path);
     });
     section.querySelector('[data-rebase-action="continue-rebase"]')?.addEventListener("click", () => {
@@ -228,11 +255,16 @@
     section.querySelector('[data-rebase-action="abort-rebase"]')?.addEventListener("click", () => {
       window.GscGraphRebaseContext?.abortRebase?.();
     });
-    section.querySelectorAll('[data-rebase-action="open-edit-file"]').forEach((button) => {
-      button.addEventListener("click", () => {
+    section.addEventListener("click", (event) => {
+        const button = event.target.closest('[data-rebase-action="open-edit-file"]');
+        if (!button) return;
         openEditFile(hash, button.closest(".file-row")?.dataset.path || "");
-      });
     });
+  }
+
+  /** 나중에 생성하는 가상 행에서도 호스트 문자열이 HTML로 해석되지 않게 이스케이프한다. */
+  function escapeHtml(text) {
+    return String(text ?? "").replace(/[&<>\"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
   }
 
   /** edit 정지 지점의 파일을 확장 호스트에 요청해 editable diff 로 연다. */

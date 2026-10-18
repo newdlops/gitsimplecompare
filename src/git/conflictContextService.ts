@@ -4,7 +4,9 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { MergeOperation } from "./conflictService";
-import { runGit } from "./gitExec";
+import { runGit, runGitStreamWithInput } from "./gitExec";
+import { ConflictCommitReader } from "./conflictCommitReader";
+import { allReads } from "../utils/readGroup";
 
 /** 충돌 문맥에서 표시할 commit/ref 식별 정보다. */
 export interface ConflictCommitIdentity {
@@ -101,7 +103,6 @@ const ACTION_ALIASES: Record<string, string> = {
   x: "exec",
 };
 const MAX_VISIBLE_FUTURE_CHANGES = 6;
-const MAX_HASHES_PER_QUERY = 64;
 const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 
 /**
@@ -115,17 +116,18 @@ const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 export async function readConflictOperationContext(
   repoRoot: string,
   operation: MergeOperation,
-  rel: string, signal?: AbortSignal
+  rel: string, signal?: AbortSignal,
+  commits = new ConflictCommitReader(repoRoot, signal)
 ): Promise<ConflictOperationContext> {
   const targetRef = operationTargetRef(operation);
-  const [branch, operationTarget] = await Promise.all([
-    readCurrentBranch(repoRoot, signal),
-    targetRef ? describeCommit(repoRoot, targetRef, targetRef, signal) : Promise.resolve(undefined),
-  ]);
+  const [branch, operationTarget] = await allReads([
+    readCurrentBranch(commits, signal),
+    targetRef ? describeCommit(commits, targetRef, targetRef) : Promise.resolve(undefined),
+  ], signal);
   if (operation !== "rebase") {
     return { operation, branch, operationTarget };
   }
-  const rebase = await readRebaseConflictContext(repoRoot, rel, signal);
+  const rebase = await readRebaseConflictContext(repoRoot, rel, signal, commits);
   return {
     operation,
     branch: rebase?.branch || branch,
@@ -172,9 +174,9 @@ export async function describeFileSource(
  */
 async function readRebaseConflictContext(
   repoRoot: string,
-  rel: string, signal?: AbortSignal
+  rel: string, signal: AbortSignal | undefined, commits: ConflictCommitReader
 ): Promise<RebaseConflictContext | undefined> {
-  const state = await readRebaseState(repoRoot, signal);
+  const state = await readRebaseState(commits, signal);
   signal?.throwIfAborted();
   if (!state) {
     return undefined;
@@ -196,7 +198,7 @@ async function readRebaseConflictContext(
     (entry.kind === "other" && entry.action !== "label") ||
     (entry.kind === "commit" && (entry.action === "edit" || !entry.hash))
   ).length;
-  const currentHash = await resolveCommit(repoRoot, "REBASE_HEAD", signal) || state.stoppedSha;
+  const currentHash = (await commits.read("REBASE_HEAD"))?.commit || state.stoppedSha;
   const lastDone = doneEntries[doneEntries.length - 1];
   const currentCommit = findTodoCommit(done, currentHash) || done[done.length - 1];
   const current = lastDone?.kind === "commit" ? currentCommit : lastDone || currentCommit;
@@ -205,15 +207,15 @@ async function readRebaseConflictContext(
   );
   const total = doneSteps.length + todoSteps.length;
   const todoStateComplete = state.backend === "rebase-merge" && state.hasDone && state.hasTodo;
-  const [touches, originalPathKnown] = await Promise.all([
+  const [touches, originalPathKnown] = await allReads([
     todoStateComplete
       ? commitsTouchingPath(repoRoot, rel, remainingCommits.map(({ entry }) => entry.hash!), signal)
       : Promise.resolve(undefined),
     currentHash ? originalCommitUsesPath(repoRoot, currentHash, rel, signal) : Promise.resolve(false),
-  ]);
+  ], signal);
   const future = touches
     ? remainingCommits.flatMap(({ entry, sequenceIndex }) => {
-        const touched = findTouch(touches, entry.hash!);
+        const touched = touches.get(entry.hash!.toLowerCase());
         return touched
           ? [{
               action: entry.action,
@@ -233,17 +235,17 @@ async function readRebaseConflictContext(
     : futurePathChangeCount > 0
       ? "changed-later"
       : "expected-final";
-  const [originalHead, onto, currentIdentity] = await Promise.all([
+  const [originalHead, onto, currentIdentity] = await allReads([
     state.originalHead
-      ? describeCommit(repoRoot, state.originalHead, "original branch tip", signal)
+      ? describeCommit(commits, state.originalHead, "original branch tip")
       : Promise.resolve(undefined),
     state.onto
-      ? describeCommit(repoRoot, state.onto, "onto", signal)
+      ? describeCommit(commits, state.onto, "onto")
       : Promise.resolve(undefined),
     currentHash
-      ? describeCommit(repoRoot, currentHash, "REBASE_HEAD", signal)
+      ? describeCommit(commits, currentHash, "REBASE_HEAD")
       : Promise.resolve(undefined),
-  ]);
+  ], signal);
   return {
     branch: normalizeBranchName(state.headName),
     originalHead,
@@ -276,21 +278,16 @@ async function readRebaseConflictContext(
 
 /**
  * linked worktree에서도 유효한 rebase 상태 디렉터리를 찾고 필요한 파일을 읽는다.
- * @param repoRoot 저장소 루트
+ * @param commits 이번 요청에서만 branch/Git directory를 공유하는 reader
  * @returns 첫 번째로 존재하는 rebase backend 상태 또는 undefined
  */
 async function readRebaseState(
-  repoRoot: string, signal?: AbortSignal
+  commits: ConflictCommitReader, signal?: AbortSignal
 ): Promise<RebaseStateSnapshot | undefined> {
+  const identity = await commits.checkout().catch(() => { signal?.throwIfAborted(); return undefined; });
+  if (!identity) return undefined;
   for (const backend of ["rebase-merge", "rebase-apply"]) {
-    const raw = await runGit(
-      ["rev-parse", "--git-path", backend],
-      repoRoot, { signal }
-    ).catch(() => { signal?.throwIfAborted(); return ""; });
-    if (!raw.trim()) {
-      continue;
-    }
-    const directory = path.resolve(repoRoot, raw.trim());
+    const directory = path.join(identity.gitDir, backend);
     const exists = await fs.stat(directory).then((value) => value.isDirectory()).catch(() => false);
     if (!exists) {
       continue;
@@ -387,40 +384,52 @@ function findTodoCommit(
 }
 
 /**
- * 남은 commit 목록에서 현재 경로를 변경하는 commit만 한정된 Git 호출로 찾는다.
+ * 남은 commit 전체를 stdin으로 한 번에 보내 경로 변경을 검사하고 todo hash로 색인한다.
+ * - 인자 길이 제한 때문에 수십 번 프로세스를 띄우지 않고, 파일별/화면 표시 한도로 검사 범위를 줄이지 않는다.
  * @param repoRoot 저장소 루트
  * @param rel 검사할 현재 경로
  * @param hashes todo 순서의 commit 해시 목록
- * @returns 경로를 변경하는 commit들, 조회 실패 시 불확실성을 나타내는 undefined
+ * @returns 요청한 전체/축약 hash별 변경 commit. 조회 실패는 불확실성을 나타내는 undefined다.
  */
 async function commitsTouchingPath(
   repoRoot: string,
   rel: string,
   hashes: string[], signal?: AbortSignal
-): Promise<PathTouchCommit[] | undefined> {
-  const result: PathTouchCommit[] = [];
-  for (let start = 0; start < hashes.length; start += MAX_HASHES_PER_QUERY) {
-    signal?.throwIfAborted();
-    const chunk = hashes.slice(start, start + MAX_HASHES_PER_QUERY);
-    const raw = await runGit(
-      [
-        "log",
-        "--no-walk=unsorted",
-        "-M",
-        "--format=%x1e%H%x1f%s%x00",
-        "-z",
-        ...chunk,
-        "--",
-        rel,
-      ],
-      repoRoot,
-      { env: LITERAL_PATH_ENV, signal }
-    ).catch(() => { signal?.throwIfAborted(); return undefined; });
-    if (raw === undefined) {
-      return undefined;
+): Promise<Map<string, PathTouchCommit> | undefined> {
+  signal?.throwIfAborted();
+  const result = new Map<string, PathTouchCommit>();
+  if (!hashes.length) return result;
+  const unique = [...new Set(hashes)];
+  // todo에서 실제로 쓰는 hash 길이만 색인해 반복적인 전체 배열 탐색과 불필요한 prefix 할당을 피한다.
+  const lengths = new Set(unique.map(hash => hash.length));
+  const requested = new Set(unique.map(hash => hash.toLowerCase()));
+  /** 완성된 NUL record만 해석해 전체 stdout 크기 상한과 모든 결과를 합치는 임시 문자열을 피한다. */
+  const accept = (raw: string) => {
+    const touch = parsePathTouchCommit(raw);
+    if (!touch) return;
+    for (const length of lengths) {
+      const prefix = touch.commit.slice(0, length).toLowerCase();
+      if (requested.has(prefix) && !result.has(prefix)) result.set(prefix, touch);
     }
-    result.push(...parsePathTouchCommits(raw));
-  }
+  };
+  const fragments: Buffer[] = [];
+  try {
+    await runGitStreamWithInput(
+      ["log", "--no-walk=unsorted", "-M", "--format=%x1e%H%x1f%s%x00", "-z", "--stdin", "--", rel],
+      repoRoot, unique.join("\n") + "\n", chunk => {
+        let start = 0, end: number;
+        while ((end = chunk.indexOf(0, start)) >= 0) {
+          if (fragments.length) {
+            fragments.push(chunk.subarray(start, end)); accept(Buffer.concat(fragments).toString("utf8")); fragments.length = 0;
+          } else accept(chunk.toString("utf8", start, end));
+          start = end + 1;
+        }
+        // UTF-8 문자가 chunk 사이에서 나뉘어도 record 전체 바이트를 모은 뒤 한 번만 디코딩한다.
+        if (start < chunk.length) fragments.push(Buffer.from(chunk.subarray(start)));
+      }, { env: LITERAL_PATH_ENV, signal }
+    );
+  } catch { signal?.throwIfAborted(); return undefined; }
+  if (fragments.length) accept(Buffer.concat(fragments).toString("utf8"));
   return result;
 }
 
@@ -445,28 +454,18 @@ async function originalCommitUsesPath(
 }
 
 /**
- * NUL/record separator가 포함된 `git log` 출력을 commit 정보로 변환한다.
- * @param raw `--format=%x1e%H%x1f%s%x00 -z` 출력
+ * NUL로 구분한 `git log` record 하나를 해석하고 subject 안의 구분 문자도 보존한다.
+ * @param raw `--format=%x1e%H%x1f%s%x00 -z`에서 읽은 완성된 record
  */
-function parsePathTouchCommits(raw: string): PathTouchCommit[] {
-  return raw.split("\x1e").flatMap((record) => {
-    const clean = record.replace(/^[\0\r\n]+|[\0\r\n]+$/g, "");
-    if (!clean) {
-      return [];
-    }
-    const separator = clean.indexOf("\x1f");
-    const commit = (separator >= 0 ? clean.slice(0, separator) : clean).trim();
-    const subject = separator >= 0 ? clean.slice(separator + 1).trim() : "";
-    return commit ? [{ commit, subject: subject || undefined }] : [];
-  });
-}
-
-/** todo 축약 해시에 대응하는 실제 path 변경 commit을 찾는다. */
-function findTouch(
-  touches: PathTouchCommit[],
-  hash: string
-): PathTouchCommit | undefined {
-  return touches.find((touch) => hashMatches(touch.commit, hash));
+function parsePathTouchCommit(raw: string): PathTouchCommit | undefined {
+  const marker = raw.indexOf("\x1e");
+  if (marker < 0) return undefined;
+  const separator = raw.indexOf("\x1f", marker + 1);
+  if (separator < 0) return undefined;
+  const commit = raw.slice(marker + 1, separator).trim();
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(commit)) return undefined;
+  const subject = raw.slice(separator + 1).trim();
+  return { commit, subject: subject || undefined };
 }
 
 /** 두 전체/축약 commit 해시가 같은 객체를 가리키는지 확인한다. */
@@ -490,40 +489,23 @@ function operationTargetRef(operation: MergeOperation): string | undefined {
 
 /**
  * ref/hash를 전체 commit과 제목으로 설명한다.
- * @param repoRoot 저장소 루트
+ * @param commits 이번 metadata 조회에서만 공유하는 commit reader
  * @param ref 해석할 ref 또는 hash
  * @param label UI에 보존할 의미 있는 ref 라벨
  */
 async function describeCommit(
-  repoRoot: string,
+  commits: ConflictCommitReader,
   ref: string,
-  label = ref, signal?: AbortSignal
+  label = ref
 ): Promise<ConflictCommitIdentity | undefined> {
-  const commit = await resolveCommit(repoRoot, ref, signal);
-  if (!commit) {
-    return undefined;
-  }
-  const subject = (
-    await runGit(["show", "-s", "--format=%s", commit], repoRoot, { signal })
-      .catch(() => { signal?.throwIfAborted(); return ""; })
-  ).trim();
-  return { ref: label, commit, subject: subject || undefined };
-}
-
-/** ref/hash를 전체 commit hash로 정규화한다. */
-async function resolveCommit(repoRoot: string, ref: string, signal?: AbortSignal): Promise<string | undefined> {
-  const output = await runGit(
-    ["rev-parse", "--verify", `${ref}^{commit}`],
-    repoRoot, { signal }
-  ).catch(() => { signal?.throwIfAborted(); return ""; });
-  return output.split(/\r?\n/).find(Boolean)?.trim() || undefined;
+  const value = await commits.read(ref);
+  return value ? { ref: label, ...value } : undefined;
 }
 
 /** 현재 checkout branch를 읽고 rebase detached HEAD에서는 빈 값으로 둔다. */
-async function readCurrentBranch(repoRoot: string, signal?: AbortSignal): Promise<string | undefined> {
-  const output = await runGit(["branch", "--show-current"], repoRoot, { signal })
-    .catch(() => { signal?.throwIfAborted(); return ""; });
-  return output.trim() || undefined;
+async function readCurrentBranch(commits: ConflictCommitReader, signal?: AbortSignal): Promise<string | undefined> {
+  const identity = await commits.checkout().catch(() => { signal?.throwIfAborted(); return undefined; });
+  return identity?.branch || undefined;
 }
 
 /** rebase head-name의 refs/heads 접두사를 사용자용 branch 이름에서 제거한다. */

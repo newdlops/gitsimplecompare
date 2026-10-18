@@ -20,7 +20,6 @@ import {
   startRebaseSessionState,
   updateRebaseSessionState,
 } from "../git/rebaseSessionState";
-import { readRebaseTodoProgress } from "../git/rebaseTodoProgress";
 import { logError, logInfo } from "../ui/outputLog";
 import type { GraphRebaseControlResult, GraphRebaseDeps } from "./graphRebaseActions";
 import { graphRebaseTodoProgressMessage } from "./graphRebaseTodoProgress";
@@ -167,7 +166,9 @@ export async function beginGraphRebaseSession(
 ): Promise<string> {
   const repoRoot = deps.logService.repoRoot;
   const service = new RebaseService(repoRoot);
+  const started = Date.now();
   const plan = await buildSessionPlan(repoRoot, service, input);
+  const readPlanMs = Date.now() - started;
   const saved = await startRebaseSessionState(repoRoot, plan, input.items);
   logInfo("graph rebase session recorded", {
     repoRoot,
@@ -177,6 +178,8 @@ export async function beginGraphRebaseSession(
     base: input.base,
     root: input.root,
     onto: input.onto,
+    readPlanMs,
+    elapsedMs: Date.now() - started,
   });
   return saved.path;
 }
@@ -271,10 +274,7 @@ export async function restoreGraphRebaseSession(
   }
 
   const service = new RebaseService(repoRoot);
-  const paused = await service.getPausedEditState().catch(() => undefined);
-  const stopped = await service.getStoppedState().catch(() => undefined);
-  const progress = await readRebaseTodoProgress(repoRoot).catch(() => undefined);
-  const conflicts = await conflictService.listConflicts().catch(() => []);
+  const { paused, stopped, progress, conflicts } = await service.getRuntimeState(expected);
   const phase = conflicts.length > 0 ? "conflicts" : paused ? "paused" : progress ? "stopped" : state.phase;
   await updateRebaseSessionState(repoRoot, {
     action: "restore",
@@ -321,21 +321,31 @@ export async function restoreGraphRebaseSession(
   return true;
 }
 
-/** 저장된 세션 plan 을 현재 Git 상태와 UI todo 로 조립한다. */
+/**
+ * 저장할 세션 계획의 커밋 범위·메시지는 새로 읽고 불변 OID의 파일 목록은 기존 계획에서 재사용한다.
+ * - 실행 버튼에서 같은 전체 범위의 rename/numstat을 다시 계산하지 않는다.
+ * - 파일 목록이 없는 호출이나 현재 범위의 새 커밋은 기존 전체 조회로 보강한다.
+ * @param repoRoot 대상 저장소 @param service 현재 범위를 읽을 Git 서비스
+ * @param input 실행 기준과 UI가 이미 가진 todo/파일 정보 @returns 복원 가능한 원래 커밋 메타데이터
+ */
 async function buildSessionPlan(
   repoRoot: string,
   service: RebaseService,
   input: GraphRebaseSessionStartInput
 ): Promise<RebasePlanInfo> {
-  const [branch, upstream, commits, checkout] = await Promise.all([
+  const [branch, upstream, metadata, checkout] = await Promise.all([
     runGit(["branch", "--show-current"], repoRoot).then((out) => out.trim()),
     runGit(
       ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
       repoRoot
     ).then((out) => out.trim()).catch(() => undefined),
-    service.getCommits(input.base, input.root),
+    service.getCommits(input.base, input.root, false),
     captureRebaseCheckout(repoRoot),
   ]);
+  const knownFiles = new Map(input.items.filter(item => Array.isArray(item.files)).map(item => [item.hash, item.files!]));
+  const commits = metadata.every(commit => knownFiles.has(commit.hash))
+    ? metadata.map(commit => ({ ...commit, files: knownFiles.get(commit.hash)! }))
+    : await service.getCommits(input.base, input.root);
   return {
     branch,
     checkout,

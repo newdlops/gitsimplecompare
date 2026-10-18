@@ -6,15 +6,17 @@ import {
   ConflictService,
   type ConflictSource,
   type ConflictSources,
+  type ConflictDocument,
 } from "../git/conflictService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo } from "../ui/outputLog";
 import {
-  scanConflictMarkers,
   type ConflictMarkerKind,
   type ConflictMarkerScan,
 } from "../utils/conflictMarkerModel";
+import { scanConflictDocument } from "../utils/conflictDocumentScan";
 import type { ConflictEditorOverlayController } from "./conflictEditorOverlayController";
+import type { ConflictsController } from "./conflictsController";
 
 const REFRESH_DELAY_MS = 120;
 
@@ -29,6 +31,9 @@ interface ConflictDecorations {
 interface AppliedDocument {
   document: vscode.TextDocument;
   version: number;
+  metadata?: ConflictDocument;
+  sources?: ConflictSources;
+  sourceGeneration: number;
 }
 
 /**
@@ -41,12 +46,15 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private readonly appliedDocuments = new WeakMap<vscode.TextEditor, AppliedDocument>();
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  private pendingReason: string | undefined;
   private requestSeq = 0;
+  private sourceGeneration = 0;
   private disposed = false;
 
   constructor(
     private readonly registry: GitServiceRegistry,
-    private readonly conflictOverlay?: ConflictEditorOverlayController
+    private readonly conflictOverlay?: ConflictEditorOverlayController,
+    private readonly conflicts?: Pick<ConflictsController, "onDidRefresh">
   ) {}
 
   /**
@@ -56,10 +64,10 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
   register(): vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() =>
-        this.scheduleRefresh("activeEditor")
+        this.invalidateSources("activeEditor")
       ),
       vscode.window.onDidChangeVisibleTextEditors(() =>
-        this.scheduleRefresh("visibleEditors")
+        this.invalidateSources("visibleEditors")
       ),
       vscode.workspace.onDidChangeTextDocument((event) => {
         // OUTPUT 로그도 문서 변경 이벤트를 발생시킨다. 예약 전에 제외해야
@@ -70,12 +78,29 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       }),
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (this.isVisibleTarget(document)) {
-          this.scheduleRefresh("documentSaved");
+          this.invalidateSources("documentSaved");
         }
       })
     );
+    if (this.conflictOverlay) this.disposables.push(this.conflictOverlay.onDidChangeOverlay(() => {
+      // 타이핑으로 발생한 overlay 신호가 이미 예약된 marker 도색을 다시 미루지 않게 한다.
+      const changed = vscode.window.visibleTextEditors.some(editor => {
+        const session = this.conflictOverlay?.sessionForUri(editor.document.uri);
+        return session && this.appliedDocuments.get(editor)?.metadata !== session.document;
+      });
+      if (changed) this.scheduleRefresh("metadataChanged");
+    }));
+    if (this.conflicts) this.disposables.push(this.conflicts.onDidRefresh(() => {
+      this.invalidateSources("gitStateChanged");
+    }));
     this.scheduleRefresh("register", 0);
     return this;
+  }
+
+  /** 저장·탭 이동·Git 갱신은 출처 세대를 올려 진행 중 조회가 늦게 와도 이전 hover를 재사용하지 않게 한다. */
+  private invalidateSources(reason: string): void {
+    this.sourceGeneration++;
+    this.scheduleRefresh(reason);
   }
 
   /**
@@ -91,6 +116,7 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = undefined;
     }
+    this.pendingReason = undefined;
     this.requestSeq++;
     this.clearVisibleDecorations();
     for (const decoration of Object.values(this.decorations)) {
@@ -112,13 +138,16 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       return;
     }
     const requestId = ++this.requestSeq;
+    this.pendingReason = strongerRefreshReason(this.pendingReason, reason);
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
     this.refreshTimer = setTimeout(() => {
       this.refreshTimer = undefined;
-      void this.refreshVisibleEditors(reason, requestId).catch((error) => {
-        logError("conflict marker decorators refresh failed", error, { reason });
+      const nextReason = this.pendingReason ?? reason;
+      this.pendingReason = undefined;
+      void this.refreshVisibleEditors(nextReason, requestId).catch((error) => {
+        logError("conflict marker decorators refresh failed", error, { reason: nextReason });
       });
     }, delay);
   }
@@ -133,6 +162,7 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     reason: string,
     requestId: number
   ): Promise<void> {
+    const sourceReads = new Map<string, Promise<ConflictSources>>();
     for (const editor of vscode.window.visibleTextEditors) {
       if (requestId !== this.requestSeq || this.disposed) {
         return;
@@ -143,19 +173,21 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
         continue;
       }
       const applied = this.appliedDocuments.get(editor);
+      const session = this.conflictOverlay?.sessionForUri(document.uri);
+      if (reason === "metadataChanged" && !session && applied?.document === document &&
+          applied.version === document.version && applied.sourceGeneration === this.sourceGeneration) continue;
       // 편집 이벤트는 실제로 바뀐 문서만 갱신한다. 저장/탭 이동에서는 같은
       // version이어도 출처 metadata를 다시 읽어 Git 작업 상태 변화에 대응한다.
-      if (reason === "documentChanged" && applied?.document === document &&
-          applied.version === document.version) {
-        continue;
-      }
-      const snapshot = { document, version: document.version };
-      const groups = scanConflictMarkers(document.getText());
+      if ((reason === "documentChanged" || reason === "metadataChanged") && applied?.document === document &&
+          applied.version === document.version && applied.metadata === session?.document &&
+          applied.sourceGeneration === this.sourceGeneration) continue;
+      const snapshot = { document, version: document.version, metadata: session?.document, sourceGeneration: this.sourceGeneration };
+      const groups = scanConflictDocument(document);
       if (groups.blocks.length === 0) {
         this.clearEditorDecorations(editor);
         continue;
       }
-      await this.applyEditorDecorations(editor, snapshot, groups, reason, requestId);
+      await this.applyEditorDecorations(editor, snapshot, groups, reason, requestId, sourceReads);
     }
   }
 
@@ -173,7 +205,8 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     snapshot: AppliedDocument,
     groups: ConflictMarkerScan,
     reason: string,
-    requestId: number
+    requestId: number,
+    sourceReads: Map<string, Promise<ConflictSources>>
   ): Promise<void> {
     const conflictSession = this.conflictOverlay?.sessionForUri(editor.document.uri);
     const service = conflictSession
@@ -194,9 +227,24 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
 
     const repoRoot = conflictSession?.service.repoRoot ?? service!.repoRoot;
     const rel = conflictSession?.rel ?? service!.toRepoRelative(editor.document.uri.fsPath);
-    let sources: ConflictSources | undefined;
+    let sources: ConflictSources | undefined = conflictSession ? {
+      // 출처를 아직 확인 중이거나 읽지 못했으면 nested/replay 역할을 단정하지 않고 stage 이름만 표시한다.
+      operation: conflictSession.document.metadataState && conflictSession.document.metadataState !== "ready"
+        ? "none" : conflictSession.document.operation,
+      current: conflictSession.document.current,
+      incoming: conflictSession.document.incoming,
+    } : undefined;
     try {
-      sources = await new ConflictService(repoRoot).getConflictSources();
+      if (!conflictSession) {
+        const applied = this.appliedDocuments.get(editor);
+        if ((reason === "documentChanged" || reason === "metadataChanged") && applied?.document === snapshot.document && applied.sourceGeneration === this.sourceGeneration) {
+          sources = applied.sources;
+        } else {
+          let pending = sourceReads.get(repoRoot);
+          if (!pending) { pending = new ConflictService(repoRoot).getConflictSources(); sourceReads.set(repoRoot, pending); }
+          sources = await pending;
+        }
+      }
     } catch (error) {
       logInfo("conflict marker metadata unavailable", {
         reason,
@@ -208,9 +256,10 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
       return;
     }
 
-    // Git 조회가 끝날 때까지 기존 decoration을 유지하고, 각 역할의 최신 범위를
-    // 빈 배열을 거치는 중간 프레임 없이 바로 교체해 큰 충돌 파일의 깜박임을 막는다.
+    // 소유 세션은 이미 게시된 출처를 사용해 편집마다 Git을 다시 실행하지 않는다.
+    // 역할별 범위도 빈 중간 프레임 없이 교체해 큰 충돌 파일의 깜박임을 막는다.
     const hovers = createHovers(sources);
+    snapshot.sources = sources;
     editor.setDecorations(
       this.decorations.current,
       lineOptions(editor.document, groups.current, hovers.current)
@@ -286,6 +335,12 @@ export class ConflictMarkerDecoratorController implements vscode.Disposable {
     editor.setDecorations(this.decorations.incoming, []);
     editor.setDecorations(this.decorations.marker, []);
   }
+}
+
+/** 저장/Git 상태 확인 요청이 뒤늦은 타이핑·overlay 이벤트에 덮이지 않도록 갱신 목적을 합친다. */
+function strongerRefreshReason(current: string | undefined, next: string): string {
+  const priority = (reason: string): number => reason === "metadataChanged" ? 0 : reason === "documentChanged" ? 1 : 2;
+  return current && priority(current) > priority(next) ? current : next;
 }
 
 /** 역할별 decoration type 을 만든다. */
@@ -411,7 +466,7 @@ function plainHover(text: string): vscode.MarkdownString {
 }
 
 /**
- * line number 배열을 VS Code DecorationOptions 로 변환한다.
+ * 연속된 본문 줄을 한 range로 묶어 VS Code로 전송하는 decoration 수를 줄인다.
  * @param document 적용 대상 문서
  * @param lines    zero-based line number 배열
  * @param hover    각 라인에 붙일 hover
@@ -421,10 +476,13 @@ function lineOptions(
   lines: number[],
   hover: vscode.MarkdownString
 ): vscode.DecorationOptions[] {
-  return lines.map((line) => ({
-    range: document.lineAt(line).range,
-    hoverMessage: hover,
-  }));
+  const options: vscode.DecorationOptions[] = [];
+  for (let index = 0; index < lines.length; index++) {
+    const start = lines[index];
+    while (index + 1 < lines.length && lines[index + 1] === lines[index] + 1) index++;
+    options.push({ range: new vscode.Range(document.lineAt(start).range.start, document.lineAt(lines[index]).range.end), hoverMessage: hover });
+  }
+  return options;
 }
 
 /**

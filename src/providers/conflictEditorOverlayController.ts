@@ -16,6 +16,7 @@ import { buildConflictCodeLensState, isConflictActionCurrent,
   trustedConflictActionContext, trustedConflictBlockSession,
   type ConflictCodeLensState, type TrustedConflictActionContext } from "./conflictEditorSessionAccess";
 import { ConflictEditorReadCoordinator } from "./conflictEditorReadCoordinator";
+import { ConflictResolvedRefreshCoordinator } from "./conflictResolvedRefreshCoordinator";
 
 export type { ConflictCodeLensState, TrustedConflictActionContext } from "./conflictEditorSessionAccess";
 
@@ -69,6 +70,13 @@ implements vscode.Disposable, ConflictResultResourceHost {
     publishResolvedResult: (session, reason) => this.publishResolvedResult(session, reason),
     markResolved: (session, reason) => this.markResolved(session, reason),
   });
+  private readonly resolvedReads = new ConflictResolvedRefreshCoordinator({
+    isCurrent: session => this.isCurrent(session),
+    isVisible: session => vscode.window.visibleTextEditors.some(editor => editor.document.uri.toString() === session.uri.toString()),
+    publish: (session, result, reason) => this.updateWorkingResult(session, result, reason),
+    markResolved: (session, reason) => this.markResolved(session, reason),
+    refreshUnresolved: (session, reason) => this.scheduleSessionRefresh(session.uri, reason, 0),
+  });
 
   readonly onDidChangeOverlay = this.onDidChangeOverlayEmitter.event;
   readonly onDidChangeCodeLenses = this.onDidChangeCodeLensesEmitter.event;
@@ -94,7 +102,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
       vscode.window.onDidChangeActiveTextEditor((editor) =>
         this.onActiveTextEditorChanged(editor)
       ),
-      vscode.window.onDidChangeVisibleTextEditors(() => this.fireUiChanged("visibleEditors")),
+      vscode.window.onDidChangeVisibleTextEditors(() => { this.reads.prioritizeVisibleMetadata(); this.fireUiChanged("visibleEditors"); }),
       vscode.workspace.onDidChangeTextDocument((event) =>
         this.onDocumentChanged(event.document)
       ),
@@ -315,6 +323,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     if (!this.isCurrent(session)) return;
     session.suspended = true;
     this.reads.cancel(session);
+    this.resolvedReads.cancel(session);
     session.busy = false;
     session.revision++;
     this.fireUiChanged(reason);
@@ -324,6 +333,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.resolvedReads.dispose();
     for (const controller of this.opening) controller.abort();
     this.opening.clear();
     if (this.uiRefreshTimer) clearTimeout(this.uiRefreshTimer);
@@ -468,6 +478,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
       session.revision++;
       this.scheduleSessionRefresh(session.uri, "conflictEditorResumed", 0);
     }
+    this.reads.prioritizeVisibleMetadata();
     this.fireUiChanged("activeEditor");
   }
 
@@ -487,7 +498,7 @@ implements vscode.Disposable, ConflictResultResourceHost {
     if (timer) clearTimeout(timer);
     this.refreshTimers.delete(key);
     const session = this.sessions.get(key);
-    if (session) this.reads.cancel(session);
+    if (session) { this.reads.cancel(session); this.resolvedReads.cancel(session); }
     session?.watcher?.dispose();
     if (this.sessions.delete(key)) this.fireUiChanged("documentClosed");
   }
@@ -495,11 +506,13 @@ implements vscode.Disposable, ConflictResultResourceHost {
   /** ConflictsController가 index를 갱신하면 같은 저장소 session을 다시 검증한다. */
   private onConflictsRefreshed(snapshot: ConflictsRefreshSnapshot): void {
     const visible = new Set(vscode.window.visibleTextEditors.map(editor => editor.document.uri.toString()));
+    const conflicts = new Set(snapshot.conflicts);
+    const resolved: TrustedConflictEditorSession[] = [];
     const sessions = [...this.sessions.values()].sort((a, b) => Number(visible.has(b.uri.toString())) - Number(visible.has(a.uri.toString())));
     for (const session of sessions) {
       if (session.service.repoRoot !== snapshot.repoRoot) continue;
       if (session.resolved) {
-        if (snapshot.conflicts.includes(session.rel) && !session.suspended) {
+        if (conflicts.has(session.rel) && !session.suspended) {
           session.suspended = true;
           session.revision++;
           this.fireUiChanged("resolvedSessionReconflicted");
@@ -507,24 +520,15 @@ implements vscode.Disposable, ConflictResultResourceHost {
         continue;
       }
       session.refreshGeneration++;
-      if (!snapshot.conflicts.includes(session.rel)) {
-        void this.publishResolvedResult(session, "conflictsRefreshResolved")
-          .then(async (published) => {
-            if (!published || !this.isCurrent(session)) return;
-            const latest = await session.service.listConflicts();
-            if (this.isCurrent(session) && !latest.includes(session.rel)) {
-              this.markResolved(session, "conflictsRefreshResolved");
-            }
-          })
-          .catch((error) => logError(
-            "native conflict external resolution refresh failed",
-            error,
-            { repoRoot: session.service.repoRoot, rel: session.rel }
-          ));
+      if (!conflicts.has(session.rel)) {
+        if (session.busy) session.pendingRefreshReason = "conflictsRefreshResolved";
+        else resolved.push(session);
       } else {
         this.scheduleSessionRefresh(session.uri, "conflictsRefresh", 0);
       }
     }
+    void this.resolvedReads.refresh(snapshot.repoRoot, resolved, "conflictsRefreshResolved")
+      .catch(error => logError("native conflict external resolution refresh failed", error, { repoRoot: snapshot.repoRoot }));
   }
 
   /** 저장/외부 갱신 burst를 session별 마지막 조회 하나로 합친다. */

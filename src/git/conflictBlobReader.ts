@@ -1,10 +1,13 @@
 // 불변 index blob의 표시용 내용만 제한된 메모리로 읽고 OID별로 재사용한다.
-import { runGitStream } from "./gitExec";
+import { readConflictBlobBatch } from "./conflictBlobBatch";
+import { allReads } from "../utils/readGroup";
 
 export const MAX_CONFLICT_TEXT_BYTES = 512 * 1024;
-interface Preview { kind: "text" | "binary"; content: string; truncated?: boolean }
+export interface ConflictBlobPreview { kind: "text" | "binary"; content: string; truncated?: boolean }
+type Preview = ConflictBlobPreview;
 interface Cached { value: Preview; cost: number }
-interface Pending { controller: AbortController; promise: Promise<Preview>; users: number }
+interface ReadGroup { controller: AbortController; users: number; completion: Promise<unknown> }
+interface Pending { group: ReadGroup; promise: Promise<Preview> }
 
 /** 전체 저장소 합계 16MiB/128개 LRU와 소비자별 취소를 가진 blob 미리보기 저장소다. */
 export class ConflictBlobReader {
@@ -25,37 +28,79 @@ export class ConflictBlobReader {
       this.cache.delete(key); this.cache.set(key, cached);
       return Promise.resolve({ ...cached.value });
     }
+    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(oid)) return Promise.reject(new Error("Invalid conflict blob OID."));
     let entry = this.pending.get(key);
-    if (!entry || entry.controller.signal.aborted) {
-      const controller = new AbortController();
-      entry = { controller, users: 0, promise: Promise.resolve({ kind: "text", content: "" }) };
-      const owned = entry;
-      entry.promise = readPreview(root, oid, controller.signal).then(value => {
-        if (!controller.signal.aborted && this.pending.get(key) === owned) {
-          const cost = value.content.length * 2 + key.length * 2 + 256;
-          this.cache.set(key, { value, cost }); this.bytes += cost;
-          while (this.bytes > 16 * 1024 * 1024 || this.cache.size > 128) {
-            const oldest = this.cache.keys().next().value!;
-            this.bytes -= this.cache.get(oldest)!.cost; this.cache.delete(oldest);
-          }
-        }
-        return value;
-      }).finally(() => { if (this.pending.get(key) === owned) this.pending.delete(key); });
-      this.pending.set(key, entry);
+    if (!entry || entry.group.controller.signal.aborted) {
+      this.startBatch(root, [oid]);
+      entry = this.pending.get(key)!;
     }
     return this.subscribe(entry, signal);
   }
 
-  /** 공유 조회의 한 소비자만 취소한다. 반환 객체 복사로 다른 문서가 캐시를 변경할 수 없게 한다. */
+  /**
+   * 같은 문서의 새 stage blob을 하나의 cat-file 스트림으로 읽는다.
+   * - 완료된 OID와 다른 편집기가 읽는 OID는 재사용하고, 새 OID만 16개 단위로 묶는다.
+   * @param oids 실제 index에서 읽은 불변 blob OID. 중복은 한 번만 요청한다.
+   * @returns 각 OID의 독립적인 표시 값. 캐시된 원본과 작업트리/attributes는 변경하지 않는다.
+   */
+  async readMany(root: string, oids: readonly string[], signal?: AbortSignal): Promise<ReadonlyMap<string, Preview>> {
+    signal?.throwIfAborted();
+    const unique = [...new Set(oids)];
+    if (unique.some(oid => !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(oid))) throw new Error("Invalid conflict blob OID.");
+    const missing = unique.filter(oid => {
+      const key = JSON.stringify([root, oid]);
+      return !this.cache.has(key) && (!this.pending.has(key) || this.pending.get(key)!.group.controller.signal.aborted);
+    });
+    for (let start = 0; start < missing.length; start += 16) this.startBatch(root, missing.slice(start, start + 16));
+    const values = await allReads(unique.map(async oid => [oid, await this.read(root, oid, signal)] as const), signal);
+    return new Map(values);
+  }
+
+  /** 같은 배치의 구독 수를 공유해 한 stage의 완료나 취소가 다른 소비자를 중단하지 않게 한다. */
+  private startBatch(root: string, oids: string[]): void {
+    const group: ReadGroup = { controller: new AbortController(), users: 0, completion: Promise.resolve() };
+    const batch = readConflictBlobBatch(root, oids, MAX_CONFLICT_TEXT_BYTES, group.controller.signal);
+    group.completion = batch;
+    for (const oid of oids) {
+      const key = JSON.stringify([root, oid]);
+      const entry: Pending = { group, promise: Promise.resolve({ kind: "text", content: "" }) };
+      entry.promise = batch.then(values => {
+        const value = values.get(oid)!;
+        if (!group.controller.signal.aborted && this.pending.get(key) === entry) this.remember(key, value);
+        return value;
+      }).finally(() => { if (this.pending.get(key) === entry) this.pending.delete(key); });
+      this.pending.set(key, entry);
+    }
+  }
+
+  /** 메모리/객체 수 상한 안에서 완료된 immutable 표시 값만 LRU에 보관한다. */
+  private remember(key: string, value: Preview): void {
+    const cost = value.content.length * 2 + key.length * 2 + 256;
+    this.cache.set(key, { value, cost }); this.bytes += cost;
+    while (this.bytes > 16 * 1024 * 1024 || this.cache.size > 128) {
+      const oldest = this.cache.keys().next().value!;
+      this.bytes -= this.cache.get(oldest)!.cost; this.cache.delete(oldest);
+    }
+  }
+
+  /**
+   * 공유 조회의 한 소비자만 취소하고 반환 객체 복사로 캐시를 보호한다.
+   * - 마지막 소비자는 실제 Git close까지 기다려 다음 조회가 종료 중인 프로세스와 겹치지 않는다.
+   * - 다른 소비자가 남아 있으면 그 조회는 유지하고 취소한 소비자만 즉시 반환한다.
+   */
   private subscribe(entry: Pending, signal?: AbortSignal): Promise<Preview> {
-    entry.users++;
+    entry.group.users++;
     return new Promise((resolve, reject) => {
       let finished = false;
       const finish = (value?: Preview, error?: unknown) => {
         if (finished) return;
         finished = true; signal?.removeEventListener("abort", abort);
-        if (--entry.users === 0) entry.controller.abort();
-        if (error !== undefined) reject(error); else resolve({ ...value! });
+        const last = --entry.group.users === 0;
+        if (last) entry.group.controller.abort();
+        if (error !== undefined && last) {
+          void entry.group.completion.then(() => reject(error), () => reject(error));
+        } else if (error !== undefined) reject(error);
+        else resolve({ ...value! });
       };
       const abort = () => finish(undefined, signal?.reason);
       signal?.addEventListener("abort", abort, { once: true });
@@ -63,30 +108,6 @@ export class ConflictBlobReader {
       if (signal?.aborted) abort();
     });
   }
-}
-
-/**
- * 전체 스트림의 UTF-8/NUL 유효성을 검사하되 표시할 512KiB만 보존한다.
- * - 미리보기 뒤에 invalid byte가 있어도 binary로 분류하고 UTF-8 조각 경계를 스트리밍 검증한다.
- * - replace ref에 영향을 받지 않는 실제 index 객체만 캐시에 넣는다.
- */
-async function readPreview(root: string, oid: string, signal: AbortSignal): Promise<Preview> {
-  const prefix: Buffer[] = [];
-  let size = 0, kept = 0, binary = false;
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  await runGitStream(["cat-file", "blob", oid], root, chunk => {
-    size += chunk.length;
-    if (!binary) {
-      try { if (chunk.includes(0)) binary = true; else decoder.decode(chunk, { stream: true }); }
-      catch { binary = true; }
-    }
-    if (binary) { prefix.length = 0; return; }
-    const take = Math.min(chunk.length, MAX_CONFLICT_TEXT_BYTES - kept);
-    if (take > 0) { prefix.push(Buffer.from(chunk.subarray(0, take))); kept += take; }
-  }, { signal, env: { GIT_NO_REPLACE_OBJECTS: "1" } });
-  if (!binary) { try { decoder.decode(); } catch { binary = true; } }
-  return binary ? { kind: "binary", content: "" }
-    : { kind: "text", content: Buffer.concat(prefix).toString("utf8"), truncated: size > MAX_CONFLICT_TEXT_BYTES || undefined };
 }
 
 export const conflictBlobReader = new ConflictBlobReader();

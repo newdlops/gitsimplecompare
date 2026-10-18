@@ -81,10 +81,10 @@
     transform 80ms ease-out,
     box-shadow 80ms ease-out,
     background 80ms ease-out;
-  will-change: transform;
 }
 
 .row.rebase-row.dragging-row {
+  will-change: transform;
   background: color-mix(in srgb, var(--branch-color, #61afef) 18%, var(--vscode-list-hoverBackground));
 }
 
@@ -343,6 +343,17 @@
 .rebase-detail-editor .rebase-detail-files {
   max-height: 180px;
   overflow: auto;
+  overflow-anchor: none;
+}
+
+.rebase-detail-editor .rebase-file-window {
+  position: relative;
+}
+
+.rebase-detail-editor .rebase-file-window > .file-row {
+  position: absolute;
+  right: 0;
+  left: 0;
 }
 
 .rebase-detail-editor .file-row {
@@ -485,88 +496,8 @@
   background: var(--vscode-button-background);
 }
 
-.rebase-detail-editor [data-tooltip]::after {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 50%;
-  z-index: 2200;
-  width: max-content;
-  max-width: min(420px, calc(100vw - 24px));
-  padding: 4px 7px;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-  border-radius: 3px;
-  opacity: 0;
-  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
-  font-size: 12px;
-  line-height: 16px;
-  white-space: normal;
-  content: attr(data-tooltip);
-  pointer-events: none;
-  background: #252526;
-  background-color: #252526 !important;
-  background-image: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
-  transform: translateX(-50%);
-  transition: none;
-}
+/* 툴팁은 shared/instantTooltip의 단일 overlay를 사용해 스크롤 영역과 가상 행의 폭을 늘리지 않는다. */
 
-.rebase-detail-editor [data-tooltip]:hover::after,
-.rebase-detail-editor [data-tooltip]:focus-visible::after {
-  opacity: 1 !important;
-  background: #252526 !important;
-  background-color: #252526 !important;
-}
-
-#graph-rebase-bar button[data-tooltip]:hover::after,
-#graph-rebase-bar button[data-tooltip]:focus-visible::after,
-#graph-rebase-squash-option[data-tooltip]:hover::after,
-#graph-rebase-squash-option[data-tooltip]:focus-within::after,
-.rebase-action-button[data-tooltip]:hover::after,
-.rebase-action-button[data-tooltip]:focus-visible::after {
-  opacity: 1 !important;
-  background: #252526 !important;
-}
-
-#graph-rebase-bar button[data-tooltip]::after,
-#graph-rebase-squash-option[data-tooltip]::after,
-.rebase-action-button[data-tooltip]::after {
-  position: absolute;
-  z-index: 10000;
-  padding: 4px 7px;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
-  border-radius: 3px;
-  opacity: 0;
-  color: var(--vscode-editorHoverWidget-foreground, #f3f3f3);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 16px;
-  white-space: normal;
-  content: attr(data-tooltip);
-  pointer-events: none;
-  width: max-content;
-  max-width: min(420px, calc(100vw - 24px));
-  background: #252526 !important;
-  background-color: #252526 !important;
-  background-image: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
-  transition: none;
-}
-
-#graph-rebase-bar button[data-tooltip]::after,
-#graph-rebase-squash-option[data-tooltip]::after,
-.rebase-action-button[data-tooltip]::after {
-  top: calc(100% + 5px);
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-#graph-rebase-bar button[data-tooltip]:hover::after,
-#graph-rebase-bar button[data-tooltip]:focus-visible::after,
-#graph-rebase-squash-option[data-tooltip]:hover::after,
-#graph-rebase-squash-option[data-tooltip]:focus-within::after,
-.rebase-action-button[data-tooltip]:hover::after,
-.rebase-action-button[data-tooltip]:focus-visible::after {
-  opacity: 1 !important;
-  background: #252526 !important;
-  background-color: #252526 !important;
+@media (prefers-reduced-motion: reduce) {
+  .row.rebase-row { transition: none; }
 }

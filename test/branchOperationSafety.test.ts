@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { BranchOperationService } from "../src/git/branchOperationService";
 import { ConflictService } from "../src/git/conflictService";
 import { finishPendingBranchRebaseMergeAfterContinue } from "../src/git/branchRebaseMerge";
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
+import { OperationUndoStore } from "../src/git/operationUndoStore";
 import { runGit } from "../src/git/gitExec";
 import { commitText, git, safetyFixture } from "./helpers/gitSafetyFixture";
 
@@ -179,6 +180,47 @@ test("a continued branch rebase records its completed HEAD for later Undo", asyn
   assert.equal((await finishPendingBranchRebaseMergeAfterContinue(root)).status, "completed");
   await service.undoLastOperation();
   assert.equal(await git(root, "rev-parse", "HEAD"), before);
+});
+
+test("completed rebase preserves local edits and untracked files through Undo", async t => {
+  const { root, before, service } = await branchFixture(t);
+  await writeFile(join(root, "other.txt"), "keep local work\n");
+  await writeFile(join(root, "untracked.txt"), "keep untracked work\n");
+  const result = await service.rebaseMerge("source");
+  assert.equal(result.status, "completed"); assert.ok(result.preservedStashHash);
+  assert.equal(await git(root, "stash", "list"), "");
+  assert.equal(await readFile(join(root, "other.txt"), "utf8"), "keep local work\n");
+  assert.equal(await readFile(join(root, "untracked.txt"), "utf8"), "keep untracked work\n");
+  await service.undoLastOperation();
+  assert.equal(await git(root, "rev-parse", "HEAD"), before);
+  assert.equal(await readFile(join(root, "other.txt"), "utf8"), "keep local work\n");
+  assert.equal(await readFile(join(root, "untracked.txt"), "utf8"), "keep untracked work\n");
+});
+
+test("a fresh completed rebase never silently accepts a missing Undo binding", async t => {
+  const { root, service } = await branchFixture(t);
+  const capture = OperationUndoStore.prototype.capture;
+  let removed = false;
+  t.mock.method(OperationUndoStore.prototype, "capture", async function (this: OperationUndoStore, ...args: Parameters<typeof capture>) {
+    if (!removed && args[2] === "completed") {
+      removed = true;
+      await rm(join(root, ".git", "gitsimplecompare", "branch-operation-undo", `${Buffer.from("main").toString("hex")}.json`));
+    }
+    return capture.apply(this, args);
+  });
+  await assert.rejects(service.rebaseMerge("source"), /no longer matches/);
+  assert.equal(removed, true); assert.equal(await git(root, "status", "--porcelain"), "");
+  assert.equal(await git(root, "rev-parse", "HEAD"), await git(root, "rev-parse", "source"));
+});
+
+test("continuing an older rebase without an Undo binding still completes without inventing ownership", async t => {
+  const { root, service } = await branchFixture(t, true);
+  await service.rebaseMerge("source");
+  await rm(join(root, ".git", "gitsimplecompare", "branch-operation-undo", `${Buffer.from("main").toString("hex")}.json`));
+  await writeFile(join(root, "tracked.txt"), "resolved\n"); await git(root, "add", "tracked.txt");
+  await new ConflictService(root).continueOperation("rebase");
+  assert.equal((await finishPendingBranchRebaseMergeAfterContinue(root)).status, "completed");
+  assert.equal(await service.hasUndoSnapshot(), false);
 });
 
 test("Undo never applies a pending stash owned by an earlier externally aborted rebase", async (t) => {

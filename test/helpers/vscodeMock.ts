@@ -110,12 +110,36 @@ export const workspace = { isTrusted: true, textDocuments: [], getConfiguration:
   onDidChangeConfiguration: (_callback: (event: any) => void) => ({ dispose() {} }),
 };
 export const ViewColumn = { Active: 1 };
+/** native FileSystemProvider의 타입·변경 이벤트 값을 실제 VS Code API와 동일하게 제공한다. */
+export const FileType = { Unknown: 0, File: 1, Directory: 2, SymbolicLink: 64 };
+export const FileChangeType = { Changed: 1, Created: 2, Deleted: 3 };
+/** native provider의 저장 거부/누락 오류를 코드까지 검사할 최소 FileSystemError 대역이다. */
+export class FileSystemError extends Error {
+  constructor(message: string, public readonly code = "Unknown") { super(message); this.name = "FileSystemError"; }
+  /** 현재 저장할 수 없는 provider 상태를 표현한다. */
+  static Unavailable(message = "Unavailable"): FileSystemError { return new FileSystemError(message, "Unavailable"); }
+  /** readonly resource와 금지된 파일 조작을 표현한다. */
+  static NoPermissions(message = "No permissions"): FileSystemError { return new FileSystemError(message, "NoPermissions"); }
+  /** 수명이 끝난 session URI 조회 실패를 표현한다. */
+  static FileNotFound(message = "File not found"): FileSystemError { return new FileSystemError(String(message), "FileNotFound"); }
+}
 export const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
 /** 내장 Git API 사용 여부를 provider 테스트가 선택할 수 있게 하는 확장 조회 경계다. */
 export const extensions = { getExtension: (_id: string): unknown => undefined };
 export const ProgressLocation = { Notification: 15 };
 export const env = { remoteName: undefined as string | undefined, openExternal: async (uri: unknown) => { __externalUris.push(uri); if (externalResult instanceof Error) throw externalResult; return externalResult; }, clipboard: { writeText: async (value: string) => { __clipboardWrites.push(value); } } };
-export class Range { public readonly values: unknown[]; public constructor(...values: unknown[]) { this.values = values; } } export class MarkdownString { public readonly value: unknown; public constructor(value: unknown) { this.value = value; } }
+/** decoration 범위가 실제로 덮는 시작/끝 위치와 기존 생성 인자를 함께 관찰한다. */
+export class Range {
+  public readonly values: unknown[];
+  public readonly start: { line: number; character: number };
+  public readonly end: { line: number; character: number };
+  public constructor(...values: unknown[]) {
+    this.values = values;
+    this.start = typeof values[0] === "number" ? { line: values[0], character: values[1] as number } : values[0] as typeof this.start;
+    this.end = typeof values[0] === "number" ? { line: values[2] as number, character: values[3] as number } : values[1] as typeof this.end;
+  }
+}
+export class MarkdownString { public readonly value: unknown; public constructor(value: unknown) { this.value = value; } }
 /** CodeLens 수명 검사에서 표시 타입과 provider 등록 경계를 제공한다. */
 export class CodeLens { constructor(public readonly range: unknown, public readonly command?: unknown) {} }
 export const SymbolKind = { Variable: 12, Constant: 13, Function: 11, Method: 5, Constructor: 8, Class: 4, Interface: 10, Enum: 9, Struct: 22, Namespace: 2, Module: 1 };

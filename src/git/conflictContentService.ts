@@ -3,7 +3,7 @@
 // - 모든 경로 인자는 literal pathspec으로 취급해 특수 파일명이 다른 파일까지 확장되지 않게 한다.
 import * as path from "node:path";
 import { unmergedSourceVersion } from "./conflictContentIdentity";
-import { readUnmergedStages, type UnmergedStageEntry } from "./unmergedFiles";
+import { readUnmergedStageMaps, readUnmergedStages, type UnmergedStageEntry } from "./unmergedFiles";
 import { readConflictOperationEpoch } from "./conflictOperationEpoch";
 import { assertConflictRelativePath, resolveSafeConflictWorkingPath } from "./conflictPathSafety";
 import { resolveConflictRegularFileMode } from "./conflictFileMode";
@@ -16,8 +16,11 @@ import {
 } from "./conflictWorktreeCas";
 import { runGit, runGitBuffer, runGitWithInput } from "./gitExec";
 import { acceptAllConflictBlocks } from "../utils/conflictMarkerModel";
-import { decodeUtf8 } from "../utils/textEncoding";
-import { conflictBlobReader, MAX_CONFLICT_TEXT_BYTES } from "./conflictBlobReader";
+import { readConflictWorkingResult, conflictBothPreview } from "./conflictContentPreview";
+import { readConflictStage } from "./conflictContentStage";
+import { readConflictDiffAttribute, readConflictDiffAttributes } from "./conflictAttributes";
+import { allReads } from "../utils/readGroup";
+import { conflictBlobReader } from "./conflictBlobReader";
 
 /** 충돌 stage나 작업 파일 내용을 UI가 안전하게 다룰 수 있도록 분류한 종류다. */
 export type ConflictContentKind =
@@ -70,6 +73,12 @@ export interface ConflictContentDocument {
 
 const LITERAL_PATH_ENV = { GIT_LITERAL_PATHSPECS: "1" };
 
+/** 하나의 표시 묶음에서 방금 읽은 index와 속성이다. 쓰기 검증에는 사용하지 않는다. */
+interface FreshContentInputs {
+  entries: Map<1 | 2 | 3, UnmergedStageEntry>;
+  forcedBinary: boolean;
+}
+
 /**
  * 한 저장소의 conflict stage/working-result 바이트를 안전하게 다루는 서비스다.
  */
@@ -83,9 +92,9 @@ export class ConflictContentService {
    */
   async readSourceVersion(rel: string, signal?: AbortSignal): Promise<string> {
     this.assertRelativePath(rel);
-    const [entries, epoch] = await Promise.all([
+    const [entries, epoch] = await allReads([
       this.readUnmergedStages(rel, undefined, signal), readConflictOperationEpoch(this.repoRoot, signal),
-    ]);
+    ], signal);
     this.assertStillConflicted(entries);
     return unmergedSourceVersion(entries, epoch);
   }
@@ -93,33 +102,38 @@ export class ConflictContentService {
   /**
    * 세 index stage와 작업트리 Result를 한 번에 읽는다.
    * @param rel 저장소 상대 충돌 경로
+   * @param freshEpoch 같은 호출에서 새로 시작한 epoch 조회. 이전 호출 결과나 캐시는 전달하지 않는다.
    * @returns source commit 정보가 제외된 콘텐츠 문서
    */
   async readDocument(
     rel: string,
     fullResult = false,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    freshEpoch?: Promise<string>,
+    freshInputs?: FreshContentInputs
   ): Promise<ConflictContentDocument> {
     this.assertRelativePath(rel);
-    const [entries, forcedBinary, operationEpoch] = await Promise.all([
-      this.readUnmergedStages(rel, undefined, signal),
-      this.isDiffDisabled(rel, signal),
-      readConflictOperationEpoch(this.repoRoot, signal),
-    ]);
+    const [entries, forcedBinary, operationEpoch] = await allReads([
+      freshInputs ? Promise.resolve(freshInputs.entries) : this.readUnmergedStages(rel, undefined, signal),
+      freshInputs ? Promise.resolve(freshInputs.forcedBinary) : readConflictDiffAttribute(this.repoRoot, rel, signal),
+      freshEpoch ?? readConflictOperationEpoch(this.repoRoot, signal),
+    ], signal);
     this.assertStillConflicted(entries);
-    const [base, current, incoming, result] = await Promise.all([
-      this.readStage(1, entries, forcedBinary, true, signal),
-      this.readStage(2, entries, forcedBinary, true, signal),
-      this.readStage(3, entries, forcedBinary, true, signal),
+    const previews = conflictBlobReader.readMany(this.repoRoot,
+      forcedBinary ? [] : [...entries.values()].filter(entry => entry.mode !== "160000" && entry.mode !== "120000").map(entry => entry.oid), signal);
+    const [base, current, incoming, result] = await allReads([
+      previews.then(values => readConflictStage(this.repoRoot, 1, entries, forcedBinary, true, signal, values)),
+      previews.then(values => readConflictStage(this.repoRoot, 2, entries, forcedBinary, true, signal, values)),
+      previews.then(values => readConflictStage(this.repoRoot, 3, entries, forcedBinary, true, signal, values)),
       this.readWorkingResult(
         rel,
         forcedBinary,
         !fullResult,
         [...entries.values()].some((entry) => entry.mode === "160000"), signal
       ),
-    ]);
+    ], signal);
     signal?.throwIfAborted();
-    const both = this.bothPreview(current, incoming, result);
+    const both = conflictBothPreview(current, incoming, result);
     return {
       base,
       current,
@@ -134,6 +148,44 @@ export class ConflictContentService {
   }
 
   /**
+   * 여러 미해결 파일의 공통 index·속성·epoch를 한 번씩 새로 읽는다.
+   * - 묶음 안의 작업 파일은 하나씩 읽고 한 파일의 실패는 다른 문서와 분리한다.
+   * - 묶음 조회의 source identity는 표시 전용이며 mutation은 기존 최신 검증을 다시 수행한다.
+   * @param rels 저장소 상대 경로 @param fullResult native 문서용 전체 Result가 필요하면 true
+   * @param signal 모든 소비자 해제 시 공통 읽기와 진행 중 파일 읽기를 취소한다.
+   * @param freshEpoch 같은 호출에서 새로 읽는 작업 epoch. 호출 사이에 재사용하지 않는다.
+   * @param isNeeded 개별 소비자가 모두 닫힌 경로의 파일 IO를 시작 전에 생략하는 선택 검사
+   * @returns 각 경로의 콘텐츠 또는 실패. 이미 해결된 경로도 파일별 실패로 반환한다.
+   */
+  async readDocuments(
+    rels: readonly string[], fullResult = false, signal?: AbortSignal, freshEpoch?: Promise<string>,
+    isNeeded?: (rel: string) => boolean
+  ): Promise<ReadonlyMap<string, PromiseSettledResult<ConflictContentDocument>>> {
+    signal?.throwIfAborted();
+    const paths = [...new Set(rels)]; paths.forEach(rel => this.assertRelativePath(rel));
+    if (!paths.length) return new Map();
+    const [stages, attributes, epoch] = await allReads([
+      readUnmergedStageMaps(this.repoRoot, paths, signal), readConflictDiffAttributes(this.repoRoot, paths, signal),
+      freshEpoch ?? readConflictOperationEpoch(this.repoRoot, signal),
+    ], signal);
+    const results = new Map<string, PromiseSettledResult<ConflictContentDocument>>();
+    for (const rel of paths) {
+      signal?.throwIfAborted();
+      try {
+        if (isNeeded && !isNeeded(rel)) {
+          throw Object.assign(new Error("Conflict document read is no longer needed."), { name: "AbortError" });
+        }
+        const value = await this.readDocument(rel, fullResult, signal, Promise.resolve(epoch), {
+          entries: stages.get(rel)!, forcedBinary: attributes.get(rel) === true,
+        });
+        results.set(rel, { status: "fulfilled", value });
+      } catch (reason) { signal?.throwIfAborted(); results.set(rel, { status: "rejected", reason }); }
+    }
+    signal?.throwIfAborted();
+    return results;
+  }
+
+  /**
    * mutation 이후 실제 작업트리 Result 상태만 다시 읽는다.
    * @param rel 저장소 상대 경로
    * @returns 해소된 파일의 현재 표시 상태
@@ -145,9 +197,37 @@ export class ConflictContentService {
     this.assertRelativePath(rel);
     return this.readWorkingResult(
       rel,
-      await this.isDiffDisabled(rel),
+      await readConflictDiffAttribute(this.repoRoot, rel),
       !fullResult
     );
+  }
+
+  /**
+   * 외부 일괄 해결 뒤의 Result들을 한 attributes 조회와 최대 4개 파일 IO로 읽는다.
+   * @param rels 저장소 상대 경로 목록 @param fullResult native 문서용 전체 본문을 읽으면 true
+   * @param signal 닫힘/새 갱신으로 필요 없어질 때 읽기만 취소하는 신호
+   * @returns 파일별 성공/실패. 한 파일의 IO 실패가 다른 열린 문서의 갱신을 막지 않는다.
+   */
+  async readResults(rels: readonly string[], fullResult = false, signal?: AbortSignal): Promise<ReadonlyMap<string, PromiseSettledResult<ConflictWorkingResult>>> {
+    const paths = [...new Set(rels)]; paths.forEach(rel => this.assertRelativePath(rel));
+    const attributes = await readConflictDiffAttributes(this.repoRoot, paths, signal);
+    const results = new Map<string, PromiseSettledResult<ConflictWorkingResult>>();
+    let next = 0;
+    const workers = Array.from({ length: Math.min(4, paths.length) }, async () => {
+      while (next < paths.length) {
+        signal?.throwIfAborted();
+        const rel = paths[next++];
+        try {
+          const value = await this.readWorkingResult(rel, attributes.get(rel) === true, !fullResult, false, signal);
+          results.set(rel, { status: "fulfilled", value });
+        } catch (reason) { signal?.throwIfAborted(); results.set(rel, { status: "rejected", reason }); }
+      }
+    });
+    const completed = await Promise.allSettled(workers);
+    signal?.throwIfAborted();
+    const failed = completed.find(result => result.status === "rejected");
+    if (failed?.status === "rejected") throw failed.reason;
+    return results;
   }
 
   /**
@@ -159,7 +239,7 @@ export class ConflictContentService {
     this.assertRelativePath(rel);
     const entries = await this.readUnmergedStages(rel);
     this.assertStillConflicted(entries);
-    const forcedBinary = await this.isDiffDisabled(rel);
+    const forcedBinary = await readConflictDiffAttribute(this.repoRoot, rel);
     return (await this.readWorkingResult(
       rel, forcedBinary, false, [...entries.values()].some((entry) => entry.mode === "160000")
     )).version;
@@ -215,15 +295,15 @@ export class ConflictContentService {
     this.assertRelativePath(rel);
     const [entries, forcedBinary] = await Promise.all([
       this.readUnmergedStages(rel),
-      this.isDiffDisabled(rel),
+      readConflictDiffAttribute(this.repoRoot, rel),
     ]);
     this.assertStillConflicted(entries);
     const actualSourceVersion = await this.sourceVersion(entries);
     this.assertSourceVersion(actualSourceVersion, expectedSourceVersion);
     const sourceVersion = expectedSourceVersion ?? actualSourceVersion;
     const [current, incoming, result] = await Promise.all([
-      this.readStage(2, entries, forcedBinary, false),
-      this.readStage(3, entries, forcedBinary, false),
+      readConflictStage(this.repoRoot, 2, entries, forcedBinary, false),
+      readConflictStage(this.repoRoot, 3, entries, forcedBinary, false),
       this.readWorkingResult(rel, forcedBinary, false),
     ]);
     if (!current.exists || !incoming.exists || current.kind !== "text" || incoming.kind !== "text") {
@@ -346,86 +426,11 @@ export class ConflictContentService {
     this.assertRelativePath(rel);
     return path.resolve(this.repoRoot, rel);
   }
-  /** index stage 객체를 text/binary/submodule/symlink/absent로 분류한다. */
-  private async readStage(
-    stage: 1 | 2 | 3,
-    entries: Map<1 | 2 | 3, UnmergedStageEntry>,
-    forcedBinary: boolean,
-    truncate = true,
-    signal?: AbortSignal
-  ): Promise<ConflictContentSide> {
-    const entry = entries.get(stage);
-    if (!entry) return { stage, exists: false, kind: "absent", content: "" };
-    if (entry.mode === "160000") {
-      return { stage, exists: true, kind: "submodule", oid: entry.oid, mode: entry.mode, content: "" };
-    }
-    if (entry.mode !== "120000" && truncate) {
-      const preview = forcedBinary ? { kind: "binary" as const, content: "" }
-        : await conflictBlobReader.read(this.repoRoot, entry.oid, signal);
-      return { stage, exists: true, oid: entry.oid, mode: entry.mode, ...preview };
-    }
-    const buffer = await runGitBuffer(["cat-file", "blob", entry.oid], this.repoRoot, { signal, env: { GIT_NO_REPLACE_OBJECTS: "1" } });
-    if (entry.mode === "120000") {
-      return {
-        stage, exists: true, kind: "symlink", oid: entry.oid, mode: entry.mode,
-        content: decodeUtf8(buffer) || "",
-      };
-    }
-    const decoded = forcedBinary ? undefined : decodeUtf8(buffer);
-    const truncated = decoded !== undefined && truncate && buffer.length > MAX_CONFLICT_TEXT_BYTES;
-    return {
-      stage,
-      exists: true,
-      kind: decoded === undefined ? "binary" : "text",
-      oid: entry.oid,
-      mode: entry.mode,
-      truncated: truncated || undefined,
-      content: decoded === undefined
-        ? ""
-        : truncated
-          ? buffer.subarray(0, MAX_CONFLICT_TEXT_BYTES).toString("utf8")
-          : decoded,
-    };
-  }
-
-  /** 작업트리 Result를 링크를 따라가지 않고 읽고 표시 크기만 제한한다. */
-  private async readWorkingResult(
-    rel: string,
-    forcedBinary: boolean,
-    truncate = true,
-    knownSubmodule = false,
-    signal?: AbortSignal
+  /** 공통 no-follow reader로 Result를 읽되 mutation과 표시 모두 전체 원문 version을 유지한다. */
+  private readWorkingResult(
+    rel: string, forcedBinary: boolean, truncate = true, knownSubmodule = false, signal?: AbortSignal
   ): Promise<ConflictWorkingResult> {
-    const absolute = await this.safeWorkingPath(rel);
-    const snapshot = await readConflictWorkingLeaf(absolute, signal);
-    if (snapshot.kind === "absent") {
-      return { content: "", state: { exists: false, kind: "absent" }, version: snapshot.version };
-    }
-    if (snapshot.kind === "symlink") {
-      return {
-        content: decodeUtf8(snapshot.buffer!) || "",
-        state: { exists: true, kind: "symlink" },
-        version: snapshot.version,
-      };
-    }
-    if (snapshot.kind === "nonfile") {
-      return {
-        content: "",
-        state: { exists: true, kind: knownSubmodule ? "submodule" : "nonfile" },
-        version: snapshot.version,
-      };
-    }
-    const buffer = snapshot.buffer!;
-    const decoded = forcedBinary ? undefined : decodeUtf8(buffer);
-    if (decoded === undefined) {
-      return { content: "", state: { exists: true, kind: "binary" }, version: snapshot.version };
-    }
-    const truncated = truncate && buffer.length > MAX_CONFLICT_TEXT_BYTES;
-    return {
-      content: truncated ? buffer.subarray(0, MAX_CONFLICT_TEXT_BYTES).toString("utf8") : decoded,
-      state: { exists: true, kind: "text", truncated: truncated || undefined },
-      version: snapshot.version,
-    };
+    return readConflictWorkingResult(this.repoRoot, rel, forcedBinary, truncate, knownSubmodule, signal);
   }
 
   /** unmerged index의 stage 1/2/3 mode와 OID를 NUL 안전 형식으로 읽는다. */
@@ -436,35 +441,6 @@ export class ConflictContentService {
     return readUnmergedStages(this.repoRoot, rel, indexEnv, signal);
   }
 
-  /** `.gitattributes`의 `-diff`가 현재 경로를 binary로 강제하는지 읽는다. */
-  private async isDiffDisabled(rel: string, signal?: AbortSignal): Promise<boolean> {
-    const raw = await runGit(
-      ["check-attr", "-z", "diff", "--", rel],
-      this.repoRoot,
-      { env: LITERAL_PATH_ENV, signal }
-    ).catch(() => { signal?.throwIfAborted(); return ""; });
-    return raw.split("\0")[2] === "unset";
-  }
-
-  /** 미리보기 범위 안에서 완전한 marker가 있고 두 text side가 존재하는지 계산한다. */
-  private bothPreview(
-    current: ConflictContentSide,
-    incoming: ConflictContentSide,
-    result: ConflictWorkingResult
-  ): { available: boolean; content: string } {
-    if (
-      !current.exists || !incoming.exists ||
-      current.kind !== "text" || incoming.kind !== "text" ||
-      current.truncated || incoming.truncated ||
-      result.state.kind !== "text" || result.state.truncated
-    ) {
-      return { available: false, content: "" };
-    }
-    const combined = acceptAllConflictBlocks(result.content);
-    return combined !== undefined && combined !== result.content
-      ? { available: true, content: combined }
-      : { available: false, content: "" };
-  }
 
   /** 경로가 저장소 밖으로 탈출하거나 절대 경로가 되는 것을 거부한다. */
   private assertRelativePath(rel: string): void {

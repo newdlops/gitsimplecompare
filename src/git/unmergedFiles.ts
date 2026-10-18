@@ -14,14 +14,37 @@ export async function readUnmergedStages(
 ): Promise<Map<1 | 2 | 3, UnmergedStageEntry>> {
   const raw = await runGit(["ls-files", "--unmerged", "-z", "--", rel], repoRoot,
     { env: { GIT_LITERAL_PATHSPECS: "1", ...indexEnv }, signal });
-  const entries = new Map<1 | 2 | 3, UnmergedStageEntry>();
+  return parseUnmergedStages(raw, new Set([rel])).get(rel)!;
+}
+
+/**
+ * 같은 표시 갱신의 literal 경로들을 한 index 조회로 읽는다. 호출 사이의 캐시는 두지 않는다.
+ * @param repoRoot 저장소 루트 @param rels 경로 검증을 마친 소규모 표시 요청 묶음
+ * @param signal 모든 소비자가 닫혔을 때 공통 읽기만 취소하는 신호
+ * @returns 요청 경로별 stage map. 이미 해결된 파일은 빈 map이며 다른 파일은 포함하지 않는다.
+ */
+export async function readUnmergedStageMaps(
+  repoRoot: string, rels: readonly string[], signal?: AbortSignal
+): Promise<ReadonlyMap<string, Map<1 | 2 | 3, UnmergedStageEntry>>> {
+  const paths = new Set(rels);
+  if (!paths.size) return new Map();
+  const raw = await runGit(["ls-files", "--unmerged", "-z", "--", ...paths], repoRoot,
+    { env: { GIT_LITERAL_PATHSPECS: "1" }, signal });
+  return parseUnmergedStages(raw, paths);
+}
+
+/** NUL 경계를 보존해 요청한 정확한 경로의 stage만 구분하고 해결된 경로의 빈 map도 유지한다. */
+function parseUnmergedStages(raw: string, paths: ReadonlySet<string>): Map<string, Map<1 | 2 | 3, UnmergedStageEntry>> {
+  const files = new Map([...paths].map(rel => [rel, new Map<1 | 2 | 3, UnmergedStageEntry>()]));
   for (const record of raw.split("\0")) {
     const match = /^(\d+) ([0-9a-f]{4,64}) ([123])\t/.exec(record);
-    if (!match || record.slice(record.indexOf("\t") + 1) !== rel) continue;
+    if (!match) continue;
+    const entries = files.get(record.slice(record.indexOf("\t") + 1));
+    if (!entries) continue;
     const stage = Number(match[3]) as 1 | 2 | 3;
     entries.set(stage, { stage, mode: match[1], oid: match[2] });
   }
-  return entries;
+  return files;
 }
 
 /**
@@ -31,8 +54,8 @@ export async function readUnmergedStages(
  * @param repoRoot 저장소 루트 또는 linked worktree 루트
  * @returns Git index 순서의 중복 없는 충돌 경로
  */
-export async function listUnmergedFiles(repoRoot: string): Promise<string[]> {
-  const out = await runGit(["ls-files", "--unmerged", "-z"], repoRoot);
+export async function listUnmergedFiles(repoRoot: string, signal?: AbortSignal): Promise<string[]> {
+  const out = await runGit(["ls-files", "--unmerged", "-z"], repoRoot, { signal });
   const paths = out.split("\0").filter(Boolean).map(entry => {
     const separator = entry.indexOf("\t");
     if (separator < 0) throw new Error("Invalid unmerged index entry.");

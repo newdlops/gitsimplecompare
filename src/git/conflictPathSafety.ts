@@ -3,11 +3,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-/** 저장소 상대 경로가 비어 있거나 절대/상위 경로로 탈출하면 즉시 거부한다. */
+/** 저장소 밖 경로와 실제 파일명에 쓸 수 없는 NUL을 거부해 stdin 경로 구분자 주입도 막는다. */
 export function assertConflictRelativePath(repoRoot: string, rel: string): void {
   const root = path.resolve(repoRoot);
   const absolute = path.resolve(root, rel);
-  if (!rel || path.isAbsolute(rel) || (absolute !== root && !absolute.startsWith(`${root}${path.sep}`))) {
+  if (!rel || rel.includes("\0") || path.isAbsolute(rel) || (absolute !== root && !absolute.startsWith(`${root}${path.sep}`))) {
     throw new Error("Conflict path must stay inside the repository.");
   }
 }

@@ -21,7 +21,8 @@ export class IncrementalGraphLayout {
     for (let row = 0; row < commits.length; row++) index.set(commits[row].hash, row);
     let changed = Math.min(this.data.rows.length, commits.length);
     for (let row = 0; row < changed; row++) {
-      if (!sameStructure(this.data.rows[row], commits[row])) { changed = row; break; }
+      const stagedPredecessor = this.data.rows[row - 1]?.kind === "staged" || commits[row - 1]?.kind === "staged";
+      if (!sameStructure(this.data.rows[row], commits[row], stagedPredecessor)) { changed = row; break; }
     }
     // 기존 알고리즘은 로드 밖의 추가 부모 lane을 비운다. 새 merge 부모가 보이면 그 자식부터 재계산한다.
     for (let row = 0; row < changed; row++) {
@@ -65,9 +66,9 @@ export class IncrementalGraphLayout {
   }
 }
 
-/** 문자열 직렬화 없이 기존 immutable 행의 HEAD 위치·부모·가상 종류만 비교한다. */
-function sameStructure(row: GraphRow, commit: Commit): boolean {
-  return row.hash === commit.hash && row.kind === commit.kind && row.refs.includes("HEAD") === commit.refs.includes("HEAD") &&
+/** @param row 이전 행 @param commit 새 커밋 @param headAffectsLanes staged 직후라 HEAD가 가상 진입 레인을 바꾸면 true @returns 레인 재배치가 필요 없으면 true */
+function sameStructure(row: GraphRow, commit: Commit, headAffectsLanes: boolean): boolean {
+  return row.hash === commit.hash && row.kind === commit.kind && (!headAffectsLanes || row.refs.includes("HEAD") === commit.refs.includes("HEAD")) &&
     equalArray(row.parents, commit.parents);
 }
 

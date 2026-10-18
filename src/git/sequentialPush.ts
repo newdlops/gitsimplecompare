@@ -2,6 +2,7 @@
 // 병합으로 들어온 곁가지 커밋은 merge commit과 함께 전송해 목적 브랜치를 항상 fast-forward한다.
 import { createHash } from "node:crypto";
 import { GitError, runGit, runGitWithInput, runGitStreamWithInput, type RunGitOptions } from "./gitExec";
+import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 
 /** 압축 전 신규 Git 객체 합계가 이 값 이상인 다중 커밋 push를 분할한다. */
 export const SEQUENTIAL_PUSH_THRESHOLD_BYTES = 50 * 1024 * 1024;
@@ -77,6 +78,9 @@ interface TransferPlan {
   estimatedBytes?: number;
   reason: string;
 }
+
+/** 최근 후보의 원본 부모를 함께 읽어 추가 Git 조회 없이 선형 이력과 전체 두 커밋 경계를 판정한다. */
+interface RecentPushCommits { commits: string[]; oldestParents: string[]; headParents: string[]; }
 
 const defaultRunner: PushGitRunner = { run: runGit, input: runGitWithInput, inputStream: runGitStreamWithInput };
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
@@ -181,12 +185,22 @@ async function prepareTransfer(
   if (remoteHead && !(await isAncestor(root, remoteHead, target.head, runner, runOptions))) {
     return single("remoteNotAncestor");
   }
-  let commits = (await runner.run([
-    "rev-list", "--first-parent", "--reverse", target.head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
-  ], root, runOptions)).trim().split(/\r?\n/).filter(Boolean);
-  if (commits.some(commit => !OID.test(commit))) throw new Error("Could not read the outgoing commit sequence.");
+  const recent = await readRecentFirstParentCommits(root, target, remoteHead, runner, runOptions);
+  // 한 커밋은 분할하지 않으므로 이미 확인한 remoteHead → target.head 조상 관계를 다시 읽지 않는다.
+  if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit");
+  const complete = remoteHead ? recent.oldestParents[0] === remoteHead : recent.oldestParents.length === 0;
+  // 직전 first-parent조차 원격 tip의 후손이 아니면 더 오래된 조상도 후손일 수 없다.
+  // 두 번째 부모에서 원격 이력이 합쳐진 merge 하나만 보낼 때 전체 목록과 이진 탐색을 생략한다.
+  // HEAD의 부모가 하나면 기존 remote→HEAD 검증만으로 그 부모도 후손임을 안다.
+  if (remoteHead && !complete && recent.headParents.length > 1 &&
+      !(await isAncestor(root, remoteHead, recent.commits[0], runner, runOptions))) return single("singleCommit");
+  const estimatedBytes = await estimateObjectBytes(root, target.head, remoteHead, runner, runOptions);
+  if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
+  // 실제 분할할 큰 push만 전체 전송 순서를 만든다. 작은 push는 확장 호스트에 긴 commit 배열을 남기지 않는다.
+  let commits = complete ? recent.commits : await readFirstParentCommits(root, target, remoteHead, runner, runOptions);
+  if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
   // 원격 tip이 merge의 두 번째 부모에 있을 때도 첫 전송이 반드시 그 tip의 후손이어야 한다.
-  if (remoteHead && commits.length && !(await isAncestor(root, remoteHead, commits[0], runner, runOptions))) {
+  if (remoteHead && commits[0] !== recent.commits[0] && !(await isAncestor(root, remoteHead, commits[0], runner, runOptions))) {
     // 일반 first-parent 조상은 첫 커밋만 확인한다. 곁가지 remote tip일 때만 이진 탐색한다.
     let low = 1, high = commits.length;
     while (low < high) {
@@ -197,9 +211,43 @@ async function prepareTransfer(
     commits = commits.slice(low);
   }
   if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
-  const estimatedBytes = await estimateObjectBytes(root, target.head, remoteHead, runner, runOptions);
-  if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
   return { commits, remoteHead, strategy: "sequential", estimatedBytes, reason: "largePush" };
+}
+
+/**
+ * @param root 저장소 루트 @param target 승인한 source @param remoteHead 제외할 실제 원격 tip
+ * @param runner 공유 Git 실행기 @param runOptions 원본 DAG·취소 정책 @returns 큰 push의 오래된 순서 OID 목록
+ */
+async function readFirstParentCommits(
+  root: string, target: BranchPushTarget, remoteHead: string, runner: PushGitRunner, runOptions: RunGitOptions
+): Promise<string[]> {
+  const commits = (await runner.run([
+    "rev-list", "--first-parent", "--reverse", target.head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
+  ], root, runOptions)).trim().split(/\r?\n/).filter(Boolean);
+  if (commits.some(commit => !OID.test(commit))) throw new Error("Could not read the outgoing commit sequence.");
+  return commits;
+}
+
+/**
+ * @param root 저장소 루트 @param target 고정 source @param remoteHead 실제 원격 tip
+ * @param runner Git 실행 경계 @param runOptions 원본 DAG·취소 정책 @returns 최신 두 후보와 실제 부모 OID
+ * max-count는 reverse 전에 적용된다. 메시지는 출력하지 않고 NUL 필드로 해시와 부모만 구분한다.
+ */
+async function readRecentFirstParentCommits(
+  root: string, target: BranchPushTarget, remoteHead: string, runner: PushGitRunner, runOptions: RunGitOptions
+): Promise<RecentPushCommits> {
+  const output = await runner.run([
+    "rev-list", "--first-parent", "--reverse", "--max-count=2", "--format=%H%x00%P", "--no-commit-header",
+    target.head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
+  ], root, runOptions);
+  const entries = output.trimEnd().split(/\r?\n/).filter(Boolean).map(line => {
+    const [hash, rawParents] = line.split("\0");
+    const parents = rawParents ? rawParents.split(" ") : [];
+    if (!OID.test(hash) || rawParents === undefined || parents.some(parent => !OID.test(parent))) throw new Error("Could not read the outgoing commit sequence.");
+    return { hash, parents };
+  });
+  if (entries.length > 2 || (entries.length === 2 && entries[1].parents[0] !== entries[0].hash)) throw new Error("Could not read the outgoing commit sequence.");
+  return { commits: entries.map(entry => entry.hash), oldestParents: entries[0]?.parents || [], headParents: entries.at(-1)?.parents || [] };
 }
 
 /**
@@ -274,9 +322,17 @@ async function estimateObjectBytes(root: string, head: string, remoteHead: strin
  * @param options 취소·조회 환경 @returns 민감한 원문을 포함하지 않는 SHA-256 해시
  */
 export async function pushConfigurationFingerprint(root: string, runner = defaultRunner, options: RunGitOptions = {}): Promise<string> {
-  const output = await runner.run(["config", "--null", "--get-regexp", "^(branch\\.|remote\\.|push\\.|url\\.)"], root, options)
-    .catch(error => { if (error instanceof GitError && error.code === 1) return ""; throw error; });
-  return createHash("sha256").update(output).digest("hex");
+  return (await readPushConfiguration(root, runner, options)).fingerprint;
+}
+
+/**
+ * 승인 해시를 만드는 바로 그 설정 원문을 대상 선택에도 제공해 별도 config 실행을 피한다.
+ * @param root 저장소 루트 @param runner Git 실행 경계 @param options 취소 등 실행 옵션
+ * @returns 같은 호출에서 읽은 설정 값과 기존 규칙의 SHA-256 fingerprint
+ */
+export async function readPushConfiguration(root: string, runner = defaultRunner, options: RunGitOptions = {}) {
+  const config = await readGitConfigSnapshot(root, "^(branch\\.|remote\\.|push\\.|url\\.)", options, runner.run.bind(runner));
+  return { config, fingerprint: createHash("sha256").update(config.raw).digest("hex") };
 }
 
 /** 다음 mutation 직전에 취소를 확인한다. 이미 성공한 원격 업데이트를 rollback하지 않는다. */

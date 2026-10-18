@@ -178,7 +178,8 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(hunkCheckboxes.register());
   const conflictMarkerDecorations = new ConflictMarkerDecoratorController(
     registry,
-    conflictOverlay
+    conflictOverlay,
+    conflicts
   );
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blameDecorations = new BlameDecoratorController(registry);

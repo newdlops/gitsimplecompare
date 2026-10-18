@@ -265,17 +265,23 @@ export class GitGraphPanel {
   }
   /** checkout 이후에는 기존 graph 페이지를 재사용해 HEAD/가상 노드만 빠르게 갱신한다. */
   private async refreshAfterCheckoutAction(): Promise<void> {
-    const trace = beginGraphPerformanceTrace(this.logService.repoRoot, "checkout", this.loadGeneration);
+    const service = this.logService, repoRoot = service.repoRoot, generation = this.loadGeneration;
+    /** 같은 패널 저장소·세대가 유지되면 true이고, 뒤늦은 checkout 조회를 버릴 때 원인을 기록한다. */
+    const current = () => { const active = this.isGraphGenerationActive(generation, service); if (!active) logInfo("graph checkout refresh skipped", { repoRoot, generation, reason: "staleGeneration" }); return active; };
+    const trace = beginGraphPerformanceTrace(repoRoot, "checkout", generation);
     this.activePerformance = trace;
-    const branches = await this.sendBranches(this.loadGeneration, trace);
-    const refreshed = await this.graphReads.run(this.logService.repoRoot, "checkout", signal => refreshGraphCheckout(this.logService.repoRoot, this.commits, branches, this.currentBranchFilter().visibleRefs, syncGraphLocalRefs, () => this.logService.getVirtualCommits(signal)));
-    if (!refreshed) return;
+    const branches = await this.sendBranches(generation, trace);
+    if (!current()) return;
+    const commits = this.commits, visibleRefs = this.currentBranchFilter().visibleRefs;
+    const refreshed = await this.graphReads.run(repoRoot, "checkout", signal => refreshGraphCheckout(repoRoot, commits, branches, visibleRefs, syncGraphLocalRefs, () => service.getVirtualCommits(signal)));
+    if (!refreshed || !current()) return;
     if (!refreshed.reused) {
       await this.runDirectGraph("checkout");
       return;
     }
     this.virtualCommits = refreshed.virtualCommits;
-    await this.logService.reindexGraphBranchContainment(this.commits, this.rangeStartIndex, this.currentBranchFilter().refs);
+    await service.reindexGraphBranchContainment(commits, this.rangeStartIndex, this.currentBranchFilter().refs);
+    if (!current()) return;
     this.postGraph(false, "older", trace, "checkout");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: "graphCheckout",

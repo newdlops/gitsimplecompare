@@ -84,15 +84,12 @@ export class ConflictResultSaveCoordinator {
           rel: session.rel,
         });
         throw vscode.FileSystemError.Unavailable(localizeConflictActionError(error));
+      } finally {
+        // 저장을 마쳤으면 잠금을 풀어 표시용 조회가 다른 파일의 변경을 막지 않게 한다.
+        release();
       }
       try {
-        const result = await session.service.getWorkingResult(session.rel, true);
-        if (this.overlay.isCurrent(session)) {
-          this.overlay.updateWorkingResult(session, result, "nativeSaveBaseline");
-          if (!session.resolved) {
-            await this.overlay.refreshSession(session, "nativeSaveContext", true);
-          }
-        }
+        await this.refreshSavedBaseline(session);
       } catch (error) {
         logError("native conflict Result saved but context refresh failed", error, {
           repoRoot: session.service.repoRoot,
@@ -105,9 +102,24 @@ export class ConflictResultSaveCoordinator {
         }
       }
     } finally {
-      release();
       if (ownsBusy) this.overlay.setBusy(session, false);
     }
+  }
+
+  /**
+   * unresolved는 full document 한 번으로 본문/출처/저장 version을 함께 갱신한다.
+   * - 편집/닫힘 때문에 그 조회를 게시하지 못했을 때만 기존 Result 전용 조회로 기준선을 보강한다.
+   * - resolved 문서는 기존대로 Result만 읽으며 suspended/닫힌 문서는 추가 IO를 시작하지 않는다.
+   * @param session 실제 CAS 쓰기를 끝낸 현재 native session
+   */
+  private async refreshSavedBaseline(session: TrustedConflictEditorSession): Promise<void> {
+    if (!this.overlay.isCurrent(session) || session.suspended) return;
+    if (!session.resolved) {
+      const refreshed = await this.overlay.refreshSession(session, "nativeSaveContext", true);
+      if (refreshed || !this.overlay.isCurrent(session) || session.resolved || session.suspended) return;
+    }
+    const result = await session.service.getWorkingResult(session.rel, true);
+    if (this.overlay.isCurrent(session) && !session.suspended) this.overlay.updateWorkingResult(session, result, "nativeSaveBaseline");
   }
 
   /** 현재 native buffer를 provider CAS로 저장하며 outer action 중에는 이 save만 허용한다. */

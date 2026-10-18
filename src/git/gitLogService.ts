@@ -19,7 +19,7 @@ import { invalidateGitBranchListCaches } from "./gitBranchListCache";
 import { GitGraphActionService } from "./gitGraphActionService";
 import type { RevertCommitResult } from "./gitGraphActionService";
 import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
-import { readGraphLocalBranchSnapshot } from "./graphLocalBranches";
+import { GraphLocalBranchTrackingReader } from "./graphLocalBranchTracking";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
 import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
 import {
@@ -50,8 +50,10 @@ export class GitLogService {
   private readonly branchRefCache: GitBranchRefCache;
   private readonly localOnlyBranchCache: GitLocalOnlyBranchCache;
   private readonly graphActions: GitGraphActionService;
+  private readonly branchTracking: GraphLocalBranchTrackingReader;
 
   constructor(public readonly repoRoot: string) {
+    this.branchTracking = new GraphLocalBranchTrackingReader(repoRoot);
     this.branchRefCache = new GitBranchRefCache(repoRoot, FS);
     this.localOnlyBranchCache = new GitLocalOnlyBranchCache(repoRoot);
     this.graphActions = new GitGraphActionService(repoRoot, () => {
@@ -185,7 +187,7 @@ export class GitLogService {
    * @returns 정상 LocalBranchStatus와 UI에 경고할 누락-object ref 목록
    */
   async getLocalBranchSnapshot(signal?: AbortSignal): Promise<GraphLocalBranchSnapshot> {
-    return readGraphLocalBranchSnapshot(this.repoRoot, undefined, undefined, signal);
+    return this.branchTracking.read(signal);
   }
 
   /**
@@ -231,6 +233,11 @@ export class GitLogService {
   /** 로컬 브랜치 전환을 변경 전용 서비스에 위임한다. */
   checkoutLocalBranch(branchName: string, merge = false): Promise<void> {
     return this.graphActions.checkoutLocalBranch(branchName, merge);
+  }
+
+  /** 정확한 checkout 대상의 존재/선택 상태만 읽어 모든 브랜치의 ahead/behind 계산을 피한다. */
+  getLocalBranchCheckoutState(name: string): Promise<{ name: string; current: boolean } | undefined> {
+    return this.graphActions.getLocalBranchCheckoutState(name);
   }
 
   /** 원격 추적 브랜치 생성과 전환을 변경 전용 서비스에 위임한다. */

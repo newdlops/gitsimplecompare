@@ -6,7 +6,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
 import { detectOperation } from "./conflictService";
-import { readRebaseCommits, readRebaseCommitFiles } from "./rebaseCommitReader";
+import { readRebaseCommits, readRebaseCommitDetails } from "./rebaseCommitReader";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { amendRebaseEdit } from "./rebaseEditApply";
 import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
@@ -14,14 +14,15 @@ import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, RE
 import {
   collectHistoryExcludePaths,
 } from "./rebaseFileExcludes";
-import { rebaseFileRewriteExecLine } from "./rebaseFileRewriteOps";
+import { RebaseFileRewritePlanner } from "./rebaseFileRewriteOps";
 import {
   cleanupRebaseMessageQueue,
   initializeRebaseMessageQueue,
 } from "./rebaseMessageQueue";
 import { usableRebaseOntoTarget } from "./rebaseOntoTarget";
-import { readRebaseTodoProgress } from "./rebaseTodoProgress";
+import { readRebaseTodoProgress, type RebaseTodoProgress } from "./rebaseTodoProgress";
 import { validateRebaseTodoCoverage } from "./rebaseTodoValidation";
+import { logError, logInfo } from "../ui/outputLog";
 
 /** rebase 계획에서 커밋별로 보여줄 변경 파일 한 건 */
 export interface RebaseCommitFile {
@@ -79,6 +80,15 @@ export interface RebaseStoppedState {
   /** git rebase 상태 파일의 원본 todo 커밋 해시(stopped-sha). */
   originalHash?: string;
 }
+
+/** 한 번의 최신 작업 검증 안에서 함께 읽은 복원용 rebase 상태다. */
+export interface RebaseRuntimeState {
+  operation: GitOperationIdentity;
+  conflicts: string[];
+  progress?: RebaseTodoProgress;
+  stopped?: RebaseStoppedState;
+  paused?: RebasePausedState;
+}
 /** 현재 브랜치에서 그래프 rebase UI 가 편집할 계획 범위 */
 export interface RebasePlanInfo {
   branch: string;
@@ -117,9 +127,10 @@ export class RebaseService {
    * rebase 대상 커밋들을 오래된 것부터(rebase todo 순서로) 반환한다.
    * @param base 편집 대상의 직전 커밋(이 커밋은 포함되지 않음)
    * @param root true 면 HEAD 의 전체 조상 커밋을 root 부터 반환한다.
+   * @param includeFiles false면 파일 diff 없이 현재 커밋 범위와 원본 메시지만 새로 읽는다.
    */
-  async getCommits(base: string, root = false): Promise<RebaseCommit[]> {
-    return readRebaseCommits(this.repoRoot, base, root);
+  async getCommits(base: string, root = false, includeFiles = true): Promise<RebaseCommit[]> {
+    return readRebaseCommits(this.repoRoot, base, root, includeFiles);
   }
 
   /**
@@ -248,17 +259,21 @@ export class RebaseService {
     }
 
     const todoLines: string[] = [];
+    const todoStarted = Date.now();
     const opFiles: string[] = [];
     const historyExcludePaths = collectHistoryExcludePaths(items);
     const rewriteItems = todoItems.filter((item) => item.action !== "drop");
+    const rewritePlanner = new RebaseFileRewritePlanner(this.repoRoot, rewriteItems, historyExcludePaths, process.execPath, editorScript);
     for (const item of todoItems) {
       todoLines.push(`${item.action} ${item.hash}`);
-      const rewrite = await rebaseFileRewriteExecLine(this.repoRoot, item, rewriteItems, historyExcludePaths, process.execPath, editorScript);
+      const rewrite = await rewritePlanner.execLine(item);
       if (rewrite) {
         opFiles.push(rewrite.opFile);
         todoLines.push(rewrite.line);
       }
     }
+    logInfo("rebase todo prepared", { repoRoot: this.repoRoot, items: todoItems.length,
+      fileRewriteExecs: opFiles.length, elapsedMs: Date.now() - todoStarted });
 
     const todoFile = tempPath("todo");
     let keepTempFiles = false;
@@ -359,23 +374,57 @@ export class RebaseService {
       return undefined;
     }
     const operation = await captureGitOperation(this.repoRoot);
-    const progress = await readRebaseTodoProgress(this.repoRoot).catch(() => undefined);
+    const progress = await readRebaseTodoProgress(this.repoRoot, operation.gitDir).catch(() => undefined);
     const currentAction = progress?.items.find((item) => item.role === "current")?.action;
     if (currentAction !== "edit") {
       return undefined;
     }
-    const hash = operation.head;
-    const originalHash = await this.currentOriginalHash();
-    const parent = await this.parentOf(hash);
-    const state = {
-      hash,
-      originalHash,
-      parent,
-      files: await this.getCommitFiles(hash),
-      operation,
-    };
+    const originalHash = await this.currentOriginalHash(operation.gitDir, Promise.resolve(progress));
+    const state = await this.readPausedEditDetails(operation, originalHash);
     await assertGitOperation(this.repoRoot, operation);
     return state;
+  }
+
+  /**
+   * 복원에 필요한 HEAD·index·todo·정지 위치를 같은 호출의 작업 identity에서 함께 읽는다.
+   * - 호출 사이의 캐시는 두지 않으며 설명 조회가 실패해도 정지 위치/진행률은 반환한다.
+   * - index 조회 실패는 충돌 없음으로 확정하지 않아 edit 상태를 추정하지 않는다.
+   * @param expected 복원 시작 때 확인한 identity. 제공되면 읽기 시작 전에 실제 작업과 재검증한다.
+   * @returns 작업이 끝까지 일치한 복원 상태. 읽는 도중 Native Continue/Abort가 바뀌면 실패한다.
+   */
+  async getRuntimeState(expected?: GitOperationIdentity): Promise<RebaseRuntimeState> {
+    const operation = expected ? { ...expected } : await captureGitOperation(this.repoRoot);
+    if (expected) await assertGitOperation(this.repoRoot, operation);
+    const rebase = operation.operation === "rebase";
+    const progressRead = rebase
+      ? readRebaseTodoProgress(this.repoRoot, operation.gitDir).catch(() => undefined) : Promise.resolve(undefined);
+    /**
+     * 각 단계의 index를 독립적으로 읽어 충돌 목록과 조회 성공 여부를 함께 보존한다.
+     * @param phase 첫 조회인지 최종 확인인지 나타내는 오류 로그 구분
+     * @returns 성공한 경로 목록과 known=true, 실패하면 빈 목록과 known=false
+     */
+    const readConflicts = (phase: "initial" | "final") => listUnmergedFiles(this.repoRoot).then(files => ({ files, known: true })).catch(error => {
+      logError("rebase runtime conflict read failed", error, { repoRoot: this.repoRoot, phase });
+      return { files: [] as string[], known: false };
+    });
+    const [conflicts, progress, originalHash] = await Promise.all([
+      readConflicts("initial"), progressRead,
+      rebase ? this.currentOriginalHash(operation.gitDir, progressRead) : Promise.resolve(undefined),
+    ]);
+    let paused: RebasePausedState | undefined;
+    if (rebase && conflicts.known && !conflicts.files.length
+      && progress?.items.find(item => item.role === "current")?.action === "edit") {
+      paused = await this.readPausedEditDetails(operation, originalHash).catch(error => {
+        logError("rebase runtime paused details read failed", error, { repoRoot: this.repoRoot });
+        return undefined;
+      });
+    }
+    // 파일 metadata를 기다리는 동안 외부 도구가 index를 바꿨을 수 있어 마지막 목록은 새로 확인한다.
+    const latest = rebase ? await readConflicts("final") : conflicts;
+    if (!latest.known || latest.files.length) paused = undefined;
+    await assertGitOperation(this.repoRoot, operation);
+    return { operation, conflicts: latest.known ? latest.files : conflicts.files, progress, paused,
+      stopped: rebase ? { hash: operation.head, originalHash } : undefined };
   }
 
   /**
@@ -401,11 +450,13 @@ export class RebaseService {
   }
 
   /**
-   * 커밋 한 건의 변경 파일 목록을 첫 부모 기준으로 반환한다.
-   * @param hash 대상 커밋 해시
+   * 현재 edit 커밋의 첫 부모와 파일을 같은 metadata 조회에서 읽는다.
+   * @param operation 이번 호출에서 실제로 확인한 작업 identity @param originalHash 원래 todo 항목의 OID
+   * @returns identity가 포함된 edit 상태. 호출자가 전체 읽기를 마친 뒤 작업 일치를 다시 확인한다.
    */
-  private async getCommitFiles(hash: string): Promise<RebaseCommitFile[]> {
-    return readRebaseCommitFiles(this.repoRoot, hash);
+  private async readPausedEditDetails(operation: GitOperationIdentity, originalHash: string | undefined): Promise<RebasePausedState> {
+    const { parent, files } = await readRebaseCommitDetails(this.repoRoot, operation.head);
+    return { hash: operation.head, originalHash, parent, files, operation };
   }
 
   /**
@@ -443,10 +494,9 @@ export class RebaseService {
     return (await listUnmergedFiles(this.repoRoot)).length > 0;
   }
 
-  /** rebase-merge/rebase-apply 내부 상태 파일을 조용히 읽는다. */
-  private async readRebaseStateFile(name: string): Promise<string | undefined> {
-    const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], this.repoRoot)).trim();
-    const gitDir = path.resolve(this.repoRoot, gitDirRaw);
+  /** 이미 확인한 Git directory가 있으면 경로 조회만 재사용하고 rebase 상태 파일은 새로 읽는다. */
+  private async readRebaseStateFile(name: string, knownGitDir?: string): Promise<string | undefined> {
+    const gitDir = knownGitDir ?? path.resolve(this.repoRoot, (await runGit(["rev-parse", "--git-dir"], this.repoRoot)).trim());
     for (const dir of ["rebase-merge", "rebase-apply"]) {
       const file = path.join(gitDir, dir, name);
       const value = await fs.promises.readFile(file, "utf8").catch(() => "");
@@ -457,10 +507,15 @@ export class RebaseService {
     return undefined;
   }
 
-  /** rebase 상태 파일이 비어 있을 때 done/todo 진행률에서 원본 todo 해시를 보강한다. */
-  private async currentOriginalHash(): Promise<string | undefined> {
-    return (await this.readRebaseStateFile("stopped-sha")) ??
-      (await readRebaseTodoProgress(this.repoRoot).catch(() => undefined))?.currentHash;
+  /**
+   * stopped-sha가 없으면 같은 호출의 진행률을 공유하거나 새로 읽어 원래 항목을 확인한다.
+   * @param knownGitDir 이번 호출에서 확인한 worktree 전용 Git directory
+   * @param freshProgress 이번 호출에서 시작한 진행률 조회. 이전 호출의 결과/캐시는 전달하지 않는다.
+   * @returns 원래 todo 항목의 OID. 상태 파일과 진행률 모두 없으면 undefined
+   */
+  private async currentOriginalHash(knownGitDir?: string, freshProgress?: Promise<RebaseTodoProgress | undefined>): Promise<string | undefined> {
+    return (await this.readRebaseStateFile("stopped-sha", knownGitDir)) ??
+      (await (freshProgress ?? readRebaseTodoProgress(this.repoRoot, knownGitDir).catch(() => undefined)))?.currentHash;
   }
 
 }

@@ -43,6 +43,8 @@ export function buildChangesHtml(
     vscode.Uri.joinPath(mediaRoot, "changesTreeSelection.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingTreeActions.js"),
     vscode.Uri.joinPath(mediaRoot, "changesWorkingList.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesPresentation.js"),
+    vscode.Uri.joinPath(mediaRoot, "changesViewState.js"),
     vscode.Uri.joinPath(mediaRoot, "changesHistory.js"),
     vscode.Uri.joinPath(mediaRoot, "changesSectionLayout.js"),
     vscode.Uri.joinPath(mediaRoot, "changesCommitBox.css"),
@@ -108,6 +110,8 @@ export function buildChangesHtml(
   const workingListScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesWorkingList.js"), version)
   );
+  const presentationScriptUri = webview.asWebviewUri(withVersion(vscode.Uri.joinPath(mediaRoot, "changesPresentation.js"), version));
+  const viewStateScriptUri = webview.asWebviewUri(withVersion(vscode.Uri.joinPath(mediaRoot, "changesViewState.js"), version));
   const historyScriptUri = webview.asWebviewUri(
     withVersion(vscode.Uri.joinPath(mediaRoot, "changesHistory.js"), version)
   );
@@ -197,6 +201,8 @@ export function buildChangesHtml(
   <script nonce="${nonce}" src="${treeSelectionScriptUri}"></script>
   <script nonce="${nonce}" src="${workingTreeActionsScriptUri}"></script>
   <script nonce="${nonce}" src="${workingListScriptUri}"></script>
+  <script nonce="${nonce}" src="${presentationScriptUri}"></script>
+  <script nonce="${nonce}" src="${viewStateScriptUri}"></script>
   <script nonce="${nonce}" src="${historyScriptUri}"></script>
   <script nonce="${nonce}" src="${sectionLayoutScriptUri}"></script>
   <script nonce="${nonce}" src="${commitBoxScriptUri}"></script>

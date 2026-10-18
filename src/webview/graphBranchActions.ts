@@ -46,7 +46,7 @@ export async function checkoutBranch(
   deps: GraphBranchActionDeps,
   branchName: string
 ): Promise<boolean> {
-  const branch = await findLocalBranch(deps, branchName);
+  const branch = await deps.logService.getLocalBranchCheckoutState(branchName);
   if (!branch) {
     vscode.window.showWarningMessage(
       vscode.l10n.t("Branch not found: {0}", branchName)

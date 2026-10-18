@@ -32,6 +32,8 @@
    */
   window.__gscChangesWorkingList = function createChangesWorkingList(deps) {
     const { rootEl, state, strings, esc } = deps;
+    const containerClass = deps.containerClass || "wt-files";
+    const sectionName = deps.sectionName || "changes";
     /** kind(staged/unstaged) → 현재 payload 기준 그룹 모델. */
     let groups = new Map();
     let focusedKey = null;
@@ -60,6 +62,8 @@
     function beginRender() {
       restoreFocusKey = activeRowKey();
       groups = new Map();
+      resizeObserver?.disconnect();
+      observed.clear();
     }
 
     /**
@@ -75,7 +79,7 @@
       const group = buildGroup(kind, nodes, viewMode);
       groups.set(kind, group);
       return (
-        `<div id="${esc(elementId)}" class="files ${esc(kind)}-files wt-files" ` +
+        `<div id="${esc(elementId)}" class="files ${esc(kind)}-files ${esc(containerClass)}" ` +
         `data-working-kind="${esc(kind)}"><div class="rows"></div></div>`
       );
     }
@@ -153,7 +157,7 @@
      * @param {ParentNode} scope 방금 innerHTML 로 교체한 범위(root 또는 Changes section body)
      */
     function attach(scope) {
-      scope.querySelectorAll(".wt-files[data-working-kind]").forEach((container) => {
+      scope.querySelectorAll(`.${containerClass}[data-working-kind]`).forEach((container) => {
         const group = groups.get(container.dataset.workingKind);
         if (!group) {
           return;
@@ -167,6 +171,7 @@
           deps.bindRows(container);
           container.addEventListener("focusin", onFocusIn);
           container.addEventListener("focusout", onFocusOut);
+          container.addEventListener("keydown", onTab);
         }
         observeLayout(container.closest(".group") || container);
       });
@@ -213,7 +218,7 @@
 
     /** Changes 섹션의 세로 스크롤 컨테이너(section body)를 찾는다. */
     function currentScroller() {
-      return rootEl.querySelector('.section[data-section="changes"] > .section-body');
+      return rootEl.querySelector(`.section[data-section="${sectionName}"] > .section-body`);
     }
 
     /** 다음 animation frame 에 보이는 범위를 다시 계산하도록 예약한다(scroll/resize 폭주를 한 번으로 합친다). */
@@ -337,6 +342,8 @@
       const template = document.createElement("template");
       template.innerHTML = rowHtml(group, row, index);
       const element = template.content.firstElementChild;
+      element.classList.add("vrow");
+      element.dataset.index = String(index);
       // CSP 가 style 속성을 막으므로 위치·들여쓰기는 CSSOM 으로 준다(들여쓰기 폭은 CSS 기본값 사용).
       element.style.top = `${index * ROW_HEIGHT}px`;
       element.style.setProperty("--depth", String(row.depth));
@@ -351,6 +358,7 @@
      * @returns {string} 행 HTML
      */
     function rowHtml(group, row, index) {
+      if (deps.rowHtml) return deps.rowHtml(group, row, index);
       const layout = `data-index="${index}"`;
       const node = row.node;
       if (node.kind === "folder") {
@@ -481,8 +489,8 @@
     /** document.activeElement 가 작업트리 행이면 그 key 를 반환한다. */
     function activeRowKey() {
       const active = document.activeElement;
-      const row = active?.closest?.(".wt-files .row");
-      if (!row || row !== active) {
+      const row = active?.closest?.(`.${containerClass} .row`);
+      if (!row || (!deps.focusChildren && row !== active)) {
         return null;
       }
       const kind = row.closest("[data-working-kind]")?.dataset.workingKind || "";
@@ -492,7 +500,7 @@
     /** 행 포커스를 추적해 스크롤로 화면을 벗어나도 그 행을 계속 그려 둔다(pin). */
     function onFocusIn(event) {
       const row = event.target.closest?.(".row");
-      if (row && row === event.target) {
+      if (row && (deps.focusChildren || row === event.target)) {
         focusedKey = activeRowKey();
       }
     }
@@ -500,9 +508,41 @@
     /** 포커스가 작업트리 행 밖으로 나가면 pin 을 해제한다. */
     function onFocusOut(event) {
       const next = event.relatedTarget;
-      if (!next || !next.closest?.(".wt-files .row")) {
+      if (!next || !next.closest?.(`.${containerClass} .row`)) {
         focusedKey = null;
       }
+    }
+
+    /** Tab이 DOM 창 끝을 넘어도 다음 모델 행을 표시해 모든 파일/폴더에 순서대로 접근하게 한다. */
+    function onTab(event) {
+      if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
+      const row = event.target.closest(".row.vrow");
+      const kind = row?.closest("[data-working-kind]")?.dataset.workingKind;
+      const group = groups.get(kind);
+      if (!row || !group) return;
+      const controls = focusableControls(row);
+      if (event.target !== (event.shiftKey ? controls[0] : controls.at(-1))) return;
+      const index = Number(row.dataset.index) + (event.shiftKey ? -1 : 1);
+      if (index < 0 || index >= group.rows.length) return;
+      const scroller = currentScroller();
+      if (!scroller) return;
+      event.preventDefault();
+      const top = group.rowsEl.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop + index * ROW_HEIGHT;
+      if (top < scroller.scrollTop) scroller.scrollTop = top;
+      else if (top + ROW_HEIGHT > scroller.scrollTop + scroller.clientHeight) scroller.scrollTop = top + ROW_HEIGHT - scroller.clientHeight;
+      renderNow();
+      const next = group.rendered.get(group.rows[index].key);
+      if (next) {
+        const targets = focusableControls(next);
+        (event.shiftKey ? targets.at(-1) : targets[0])?.focus({ preventScroll: true });
+      }
+      scheduleRender();
+    }
+
+    /** 행 자체와 하위 컨트롤을 화면 순서로 반환한다. 비교 이름 버튼과 실제 diff 버튼도 함께 다룬다. */
+    function focusableControls(row) {
+      const controls = Array.from(row.querySelectorAll('[tabindex="0"],button:not(:disabled),select:not(:disabled)'));
+      return row.tabIndex === 0 ? [row, ...controls] : controls;
     }
 
     /** 새 payload 렌더 전에 작업트리 행에 있던 포커스를 같은 key 의 새 행으로 돌려준다. */
@@ -515,7 +555,7 @@
       const group = groups.get(key.slice(0, key.indexOf(":")));
       const element = group?.rendered.get(key);
       if (element && !rootEl.contains(document.activeElement)) {
-        element.focus({ preventScroll: true });
+        focusableControls(element)[0]?.focus({ preventScroll: true });
       }
     }
 

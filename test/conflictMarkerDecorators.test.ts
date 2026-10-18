@@ -89,10 +89,13 @@ function setup(t: TestContext, editors: TestEditor[], overlayScheme?: string) {
   const saved = eventSource<any>();
   const active = eventSource<any>();
   const visible = eventSource<any>();
+  const metadataChanged = eventSource<void>();
+  const gitChanged = eventSource<any>();
   const state = {
     reads: 0, resolves: 0, logs: [] as string[],
     feedbackDocument: undefined as TestEditor["document"] | undefined,
     metadata: async (): Promise<ConflictSources> => SOURCES,
+    sessionDocument: { ...SOURCES, metadataState: "ready" } as any,
   };
   let kind = 0;
   install(t, vscodeMock.window, "visibleTextEditors", editors);
@@ -100,7 +103,7 @@ function setup(t: TestContext, editors: TestEditor[], overlayScheme?: string) {
   install(t, vscodeMock.window, "onDidChangeVisibleTextEditors", visible.event);
   install(t, vscodeMock.workspace, "onDidChangeTextDocument", changed.event);
   install(t, vscodeMock.workspace, "onDidSaveTextDocument", saved.event);
-  install(t, vscodeMock.MarkdownString.prototype, "appendText", function () { return this; });
+  install(t, vscodeMock.MarkdownString.prototype, "appendText", function (this: any, value: string) { this.value = value; return this; });
   t.mock.method(vscodeMock.window, "createTextEditorDecorationType", () => ({ kind: kind++, dispose() {} }));
   t.mock.method(vscodeMock.window, "createOutputChannel", () => ({
     append() {}, show() {}, dispose() {},
@@ -123,15 +126,16 @@ function setup(t: TestContext, editors: TestEditor[], overlayScheme?: string) {
     },
   } as unknown as GitServiceRegistry;
   const overlay = overlayScheme ? {
+    onDidChangeOverlay: metadataChanged.event,
     ownsUri: (uri: vscode.Uri) => uri.scheme === overlayScheme,
     sessionForUri: (uri: vscode.Uri) => uri.scheme === overlayScheme
-      ? { service: { repoRoot: "/repo" }, rel: "conflict.ts" } : undefined,
+      ? { service: { repoRoot: "/repo" }, rel: "conflict.ts", document: state.sessionDocument } : undefined,
   } as unknown as ConflictEditorOverlayController : undefined;
-  const controller = new ConflictMarkerDecoratorController(registry, overlay);
+  const controller = new ConflictMarkerDecoratorController(registry, overlay, { onDidRefresh: gitChanged.event });
   controller.register();
   t.after(() => { controller.dispose(); disposeOutputLog(); });
   return {
-    state, controller, changed, saved, active, visible,
+    state, controller, changed, saved, active, visible, metadataChanged, gitChanged,
     /** debounce를 진행한 뒤 Promise/OUTPUT 이벤트가 모두 끝날 때까지 한 tick 기다린다. */
     async advance(ms = 130) { t.mock.timers.tick(ms); await setImmediate(); },
     /** 실제 내용 편집으로 문서 version을 증가시키고 contentChanges 이벤트를 전달한다. */
@@ -190,7 +194,7 @@ test("an edit in another visible file does not repaint an unchanged conflict edi
   assert.equal(file.calls.length, applied);
 });
 
-test("existing highlights stay visible until slow metadata can replace them", async t => {
+test("existing highlights stay visible until fresh save metadata can replace them", async t => {
   const file = createEditor();
   const h = setup(t, [file]);
   await h.advance(0);
@@ -198,6 +202,7 @@ test("existing highlights stay visible until slow metadata can replace them", as
   const pending = deferredSources();
   h.state.metadata = () => pending.promise;
   h.edit(file, "prefix\n" + MARKERS);
+  h.saved.fire(file.document);
   await h.advance();
   assert.equal(h.state.reads, 2);
   assert.equal(file.calls.length, applied, "Do not clear highlights while waiting for Git");
@@ -206,6 +211,54 @@ test("existing highlights stay visible until slow metadata can replace them", as
   assert.equal(file.calls.length, applied + 4);
   assert.equal(file.calls.at(-4)?.options[0].range.start.line, 2);
   assert.ok(file.calls.at(-4)?.options[0].hoverMessage);
+});
+
+test("plain file typing shares source metadata until Git refresh or Save invalidates it", async t => {
+  const file = createEditor(), h = setup(t, [file]); await h.advance(0);
+  for (let index = 0; index < 30; index++) { h.edit(file, `prefix ${index}\n` + MARKERS); await h.advance(); }
+  assert.equal(h.state.reads, 1);
+  assert.equal(file.calls.length, 31 * 4);
+  h.gitChanged.fire({}); await h.advance(); assert.equal(h.state.reads, 2);
+  h.edit(file, "another edit\n" + MARKERS); await h.advance(); assert.equal(h.state.reads, 2);
+  h.saved.fire(file.document); await h.advance(); assert.equal(h.state.reads, 3);
+});
+
+test("owned typing signals do not postpone the document decoration timer", async t => {
+  const file = createEditor(MARKERS, "gitsimplecompare-conflict");
+  const h = setup(t, [file], "gitsimplecompare-conflict"); await h.advance(0);
+  const applied = file.calls.length;
+  h.edit(file, "prefix\n" + MARKERS); await h.advance(80);
+  h.metadataChanged.fire(); await h.advance(40);
+  assert.equal(file.calls.length, applied + 4);
+  assert.equal(file.calls.at(-4)?.options[0].range.start.line, 2);
+});
+
+test("Git source invalidation survives a later owned metadata notification", async t => {
+  const file = createEditor(), owned = createEditor(MARKERS, "gitsimplecompare-conflict");
+  const h = setup(t, [file, owned], "gitsimplecompare-conflict"); await h.advance(0);
+  assert.equal(h.state.reads, 1);
+  h.gitChanged.fire({});
+  h.state.sessionDocument = { ...h.state.sessionDocument };
+  h.metadataChanged.fire(); await h.advance();
+  assert.equal(h.state.reads, 2);
+  assert.equal(file.calls.length, 8); assert.equal(owned.calls.length, 8);
+});
+
+test("a metadata event during a slow Save refresh cannot restore stale source hovers", async t => {
+  const file = createEditor(), owned = createEditor(MARKERS, "gitsimplecompare-conflict");
+  const h = setup(t, [file, owned], "gitsimplecompare-conflict"); await h.advance(0);
+  const pending = deferredSources(); h.state.metadata = () => pending.promise;
+  h.saved.fire(file.document); await h.advance();
+  h.state.sessionDocument = { ...h.state.sessionDocument };
+  h.metadataChanged.fire(); await h.advance();
+  pending.resolve({ ...SOURCES, incoming: { ...SOURCES.incoming, subject: "Fresh Git source after Save" } });
+  await h.advance(0);
+  const hover = file.calls.at(-2)?.options[0].hoverMessage as vscode.MarkdownString;
+  assert.match(hover.value, /Fresh Git source after Save/);
+  const reads = h.state.reads;
+  h.edit(file, "prefix\n" + MARKERS); await h.advance();
+  assert.equal(h.state.reads, reads);
+  assert.match((file.calls.at(-2)?.options[0].hoverMessage as vscode.MarkdownString).value, /Fresh Git source after Save/);
 });
 
 test("resolving markers removes highlights once without reading Git again", async t => {
@@ -264,7 +317,7 @@ test("disposing the controller prevents an in-flight repaint", async t => {
   assert.equal(h.state.logs.some(line => line.includes("decorators applied")), false);
 });
 
-test("owned custom Result documents still update after real edits and metadata errors", async t => {
+test("owned Result edits reuse published sources without starting Git reads", async t => {
   const file = createEditor(MARKERS, "gitsimplecompare-conflict");
   const h = setup(t, [file], "gitsimplecompare-conflict");
   await h.advance(0);
@@ -275,7 +328,27 @@ test("owned custom Result documents still update after real edits and metadata e
   assert.equal(h.state.resolves, 0);
   assert.equal(file.calls.length, applied + 4);
   assert.equal(file.calls.at(-4)?.options[0].range.start.line, 2);
-  assert.ok(h.state.logs.some(line => line.includes("metadata unavailable")));
+  assert.equal(h.state.reads, 0);
+  h.state.sessionDocument = { operation: "rebase", metadataState: "pending",
+    current: { label: "Current", ref: "index stage 2" }, incoming: { label: "Incoming", ref: "index stage 3" } };
+  h.metadataChanged.fire(); await h.advance();
+  assert.equal(file.calls.length, applied + 8);
+  assert.equal(h.state.reads, 0);
+  const pendingHover = file.calls.at(-2)?.options[0].hoverMessage as vscode.MarkdownString;
+  assert.match(pendingHover.value, /index stage 3/); assert.doesNotMatch(pendingHover.value, /nested|replayed/);
+  h.metadataChanged.fire(); await h.advance();
+  assert.equal(file.calls.length, applied + 8, "Unchanged metadata must not repaint");
+});
+
+test("compacted body ranges preserve gaps, Base sections and marker lines", async t => {
+  const block = "<<<<<<< HEAD\ncurrent 1\ncurrent 2\n||||||| base\nbase 1\n=======\nincoming 1\nincoming 2\n>>>>>>> side\n";
+  const file = createEditor(block + "unchanged gap\n" + block, "gitsimplecompare-conflict");
+  const h = setup(t, [file], "gitsimplecompare-conflict"); await h.advance(0);
+  const [current, base, incoming, markers] = file.calls.slice(-4);
+  assert.deepEqual(current.options.map(option => [option.range.start.line, option.range.end.line]), [[1, 2], [11, 12]]);
+  assert.deepEqual(base.options.map(option => [option.range.start.line, option.range.end.line]), [[4, 4], [14, 14]]);
+  assert.deepEqual(incoming.options.map(option => [option.range.start.line, option.range.end.line]), [[6, 7], [16, 17]]);
+  assert.equal(markers.options.length, 8); assert.equal(h.state.reads, 0);
 });
 
 test("large conflict blocks and split editors keep independent decoration state", async t => {
@@ -286,8 +359,10 @@ test("large conflict blocks and split editors keep independent decoration state"
   right.document = left.document;
   const h = setup(t, [left, right]);
   await h.advance(0);
-  assert.equal(left.calls.at(-4)?.options.length, 17_117);
-  assert.equal(right.calls.at(-2)?.options.length, 181);
+  assert.equal(left.calls.at(-4)?.options.length, 1);
+  assert.equal(right.calls.at(-2)?.options.length, 1);
+  assert.equal(left.calls.at(-4)?.options[0].range.end.line, 17_117);
+  assert.equal(right.calls.at(-2)?.options[0].range.end.line, 17_299);
   h.edit(left, "prefix\n" + text);
   await h.advance();
   assert.equal(left.calls.length, 8);

@@ -2,10 +2,11 @@
 // - unmerged index, rebase message 의 conflict 목록, unresolved 파일 marker, staged/unstaged 불일치를 분리해 읽는다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { detectOperation, type MergeOperation } from "./conflictService";
-import { containsConflictMarkers } from "./conflictMarkers";
+import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
 import { runGit } from "./gitExec";
 import { listUnmergedFiles } from "./unmergedFiles";
+import { findRebaseMarkerFiles } from "./rebaseMarkerScanner";
+import { logInfo } from "../ui/outputLog";
 
 /** rebase continue 판단에 필요한 작업트리/메타데이터 진단 결과 */
 export interface RebaseContinueDiagnostics {
@@ -23,8 +24,6 @@ interface StatusEntry {
   path: string;
 }
 
-const MAX_MARKER_SCAN_BYTES = 2 * 1024 * 1024;
-
 /**
  * 현재 rebase continue 상태를 진단한다.
  * - marker 검사는 Git 이 아직 unmerged 로 보는 파일에만 한정한다.
@@ -35,12 +34,14 @@ const MAX_MARKER_SCAN_BYTES = 2 * 1024 * 1024;
 export async function readRebaseContinueDiagnostics(
   repoRoot: string
 ): Promise<RebaseContinueDiagnostics> {
+  const started = Date.now();
+  const directory = readDiagnosticsGitDirectory(repoRoot);
   const [operation, unmergedFiles, statusOut, messageConflicts] = await Promise.all([
-    detectOperation(repoRoot).catch(() => "none" as const),
+    directory.then(gitDir => gitDir ? detectOperationInGitDir(gitDir) : "none" as const).catch(() => "none" as const),
     listUnmergedFiles(repoRoot).catch(() => []),
     runGit(["status", "--porcelain=v1", "-z", "--untracked-files=no"], repoRoot,
       { GIT_OPTIONAL_LOCKS: "0" }).catch(() => ""),
-    readRebaseMessageConflicts(repoRoot),
+    directory.then(readRebaseMessageConflicts),
   ]);
   const statusEntries = parseStatusEntries(statusOut);
   const stagedFiles = unique(
@@ -53,7 +54,9 @@ export async function readRebaseContinueDiagnostics(
       .filter((entry) => isUnstagedStatus(entry))
       .map((entry) => entry.path)
   );
-  const markerFiles = await findMarkerFiles(repoRoot, unmergedFiles);
+  const markerFiles = await findRebaseMarkerFiles(repoRoot, unmergedFiles);
+  logInfo("rebase continue diagnostics read", { repoRoot, operation, unmerged: unmergedFiles.length,
+    markers: markerFiles.length, staged: stagedFiles.length, unstaged: unstagedFiles.length, elapsedMs: Date.now() - started });
   return {
     operation,
     unmergedFiles,
@@ -65,13 +68,21 @@ export async function readRebaseContinueDiagnostics(
 }
 
 /**
- * rebase message 의 `# Conflicts:` 섹션에서 파일 목록을 읽는다.
- * @param repoRoot 저장소 루트
+ * 이번 진단에서 공유할 Git directory를 실제 Git에서 읽고 경로 끝의 공백·줄바꿈을 보존한다.
+ * @param repoRoot 진단할 저장소 또는 linked worktree 루트
+ * @returns 명령 출력의 마지막 줄바꿈 하나만 제거한 절대 경로. Git 조회 실패/빈 출력은 undefined
  */
-async function readRebaseMessageConflicts(repoRoot: string): Promise<string[]> {
-  const raw = (await runGit(["rev-parse", "--git-dir"], repoRoot).catch(() => "")).trim();
-  if (!raw) return [];
-  const gitDir = path.resolve(repoRoot, raw);
+async function readDiagnosticsGitDirectory(repoRoot: string): Promise<string | undefined> {
+  const raw = (await runGit(["rev-parse", "--absolute-git-dir"], repoRoot).catch(() => "")).replace(/\r?\n$/, "");
+  return raw ? path.resolve(repoRoot, raw) : undefined;
+}
+
+/**
+ * rebase message 의 `# Conflicts:` 섹션에서 파일 목록을 읽는다.
+ * @param gitDir 이번 진단에서 확인한 worktree 전용 Git directory
+ */
+async function readRebaseMessageConflicts(gitDir: string | undefined): Promise<string[]> {
+  if (!gitDir) return [];
   const contents = await Promise.all(
     ["rebase-merge/message", "rebase-apply/final-commit"].map((rel) =>
       fs.readFile(path.join(gitDir, rel), "utf8").catch(() => "")
@@ -141,38 +152,6 @@ function isStagedStatus(entry: StatusEntry): boolean {
 /** status Y 컬럼이 working tree 변경을 뜻하는지 확인한다. */
 function isUnstagedStatus(entry: StatusEntry): boolean {
   return entry.y !== " " && entry.y !== "?" && entry.y !== "!";
-}
-
-/**
- * 아직 unmerged 인 후보 파일 본문에 conflict marker 줄이 남아 있는지 찾는다.
- * @param repoRoot 저장소 루트
- * @param files    검사할 저장소 상대 경로 목록
- */
-async function findMarkerFiles(repoRoot: string, files: string[]): Promise<string[]> {
-  const found: string[] = [];
-  for (const file of files) {
-    if (!isSafeRelativePath(file)) {
-      continue;
-    }
-    const abs = path.resolve(repoRoot, file);
-    const stat = await fs.stat(abs).catch(() => undefined);
-    if (!stat?.isFile() || stat.size > MAX_MARKER_SCAN_BYTES) {
-      continue;
-    }
-    const content = await fs.readFile(abs, "utf8").catch(() => undefined);
-    if (!content || content.includes("\0")) {
-      continue;
-    }
-    if (containsConflictMarkers(content)) {
-      found.push(file);
-    }
-  }
-  return unique(found);
-}
-
-/** 저장소 밖 경로 접근을 막기 위해 상대 경로 형태인지 확인한다. */
-function isSafeRelativePath(file: string): boolean {
-  return Boolean(file && !path.isAbsolute(file) && !file.split(/[\\/]/).includes(".."));
 }
 
 /** 순서를 유지한 중복 제거를 수행한다. */

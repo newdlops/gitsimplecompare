@@ -15,6 +15,7 @@ const MESSAGE_ACTIONS = new Set(["reword", "squash"]);
 function git(args) {
   cp.execFileSync("git", args, {
     cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+    env: { ...process.env, GIT_LITERAL_PATHSPECS: "1" },
     stdio: "inherit",
   });
 }
@@ -24,6 +25,7 @@ function gitQuietOk(args) {
   try {
     cp.execFileSync("git", args, {
       cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+      env: { ...process.env, GIT_LITERAL_PATHSPECS: "1" },
       stdio: "ignore",
     });
     return true;
@@ -43,16 +45,37 @@ function gitPath(relPath) {
   return path.resolve(cwd, raw);
 }
 
-// rebase done 파일의 마지막 commit action 을 읽는다.
+/**
+ * Git이 넘긴 메시지 파일과 같은 metadata directory에 속하는 절대 경로 hint만 사용한다.
+ * - 다른 worktree나 오래된 세션의 hint는 무시해 기존 Git 경로 조회로 복귀한다.
+ * @returns 소유가 일치하면 정규화한 Git directory. hint가 없거나 확인할 수 없으면 undefined.
+ */
+function messageGitDir() {
+  const hint = process.env.GSC_REBASE_GIT_DIR;
+  if (!hint || !path.isAbsolute(hint) || !targetFile) {
+    return undefined;
+  }
+  try {
+    const cwd = process.env.GSC_REPO_ROOT || process.cwd();
+    const gitDir = fs.realpathSync(hint);
+    const messageDir = fs.realpathSync(path.dirname(path.resolve(cwd, targetFile)));
+    return gitDir === messageDir ? gitDir : undefined;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+// 현재 메시지 파일의 worktree에서 live done을 새로 읽어 마지막 commit action을 반환한다.
 function currentRebaseAction() {
+  const gitDir = messageGitDir();
   for (const dir of ["rebase-merge", "rebase-apply"]) {
-    const donePath = gitPath(`${dir}/done`);
+    const donePath = gitDir ? path.join(gitDir, dir, "done") : gitPath(`${dir}/done`);
     if (!fs.existsSync(donePath)) {
       continue;
     }
     const lines = fs.readFileSync(donePath, "utf8").split(/\r?\n/).reverse();
     for (const line of lines) {
-      const match = /^\s*(pick|reword|edit|squash|fixup|drop)\s+[0-9a-f]{4,40}\b/i.exec(line);
+      const match = /^\s*(pick|reword|edit|squash|fixup|drop)\s+[0-9a-f]{4,64}\b/i.exec(line);
       if (match) {
         return match[1].toLowerCase();
       }
@@ -122,14 +145,70 @@ function restoreFileChange(op) {
   }
 }
 
-// 저장해 둔 source commit patch 를 현재 target commit 에 적용하고 관련 경로를 stage 한다.
+/** 부모/인덱스 경로를 NUL 안전하게 읽는다. 이름의 줄바꿈이나 pathspec 문법을 경로 그대로 취급한다. */
+function gitOutput(args, input) {
+  return cp.execFileSync("git", args, {
+    cwd: process.env.GSC_REPO_ROOT || process.cwd(),
+    env: { ...process.env, GIT_LITERAL_PATHSPECS: "1" },
+    input,
+    maxBuffer: 128 * 1024 * 1024,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+}
+
+/** 경로 목록을 argv 대신 NUL stdin으로 전달해 파일 수가 많아도 OS 인자 한도를 넘지 않는다. */
+function gitWithPaths(args, paths) {
+  gitOutput([...args, "--pathspec-from-file=-", "--pathspec-file-nul"], Buffer.from(paths.join("\0") + "\0"));
+}
+
+/** ls-tree/ls-files처럼 stdin pathspec을 받지 않는 조회는 경로 수와 UTF-8 바이트로 나눈다. */
+function pathBatches(paths) {
+  const batches = [];
+  let batch = [], bytes = 0;
+  for (const entry of paths) {
+    const size = Buffer.byteLength(entry) + 1;
+    if (batch.length && (batch.length >= 192 || bytes + size > 24 * 1024)) {
+      batches.push(batch); batch = []; bytes = 0;
+    }
+    batch.push(entry); bytes += size;
+  }
+  if (batch.length) batches.push(batch);
+  return batches;
+}
+
+/**
+ * 모든 제외/이동 source 경로를 함께 부모 상태로 되돌린다.
+ * - 부모 또는 인덱스에 있는 경로만 넘겨 history 제외의 미존재 경로를 조용히 보존한다.
+ * - restore는 추가 파일 삭제와 삭제 파일 복구를 한 번에 처리한다. rename은 old/new 경로를 같이 넘긴다.
+ * - 오래된 Git의 미지원 명령/옵션만 기존 개별 복원으로 대체하고 실제 IO/충돌 오류는 rebase를 멈춘다.
+ */
+function restoreFileChanges(ops) {
+  const paths = Array.from(new Set(ops.flatMap(op => [op.oldPath, op.path]).filter(Boolean)));
+  if (!paths.length) return;
+  const parent = gitOutput(["rev-list", "--parents", "-n", "1", "HEAD"]).toString("ascii").trim().split(/\s+/)[1];
+  try {
+    if (!parent) {
+      gitWithPaths(["rm", "-r", "-f", "--ignore-unmatch"], paths);
+      return;
+    }
+    const known = new Set();
+    for (const batch of pathBatches(paths)) {
+      for (const command of [["ls-tree", "--name-only", "-r", "-z", parent], ["ls-files", "--cached", "-z"]]) {
+        const output = gitOutput([...command, "--", ...batch]).toString("utf8");
+        for (const entry of output.split("\0")) if (entry) known.add(entry);
+      }
+    }
+    if (known.size) gitWithPaths(["restore", "--source", parent, "--staged", "--worktree"], Array.from(known));
+  } catch (error) {
+    const reason = String(error.stderr || error.message || "");
+    if (!/unknown (?:option|switch)\W+pathspec-(?:from-file|file-nul)|git: ['"]restore['"] is not a git command/i.test(reason)) throw error;
+    for (const op of ops) restoreFileChange(op);
+  }
+}
+
+// --3way는 --index를 포함하므로 patch 경로만 바로 stage된다. rename의 사라진 oldPath에 add를 다시 실행하지 않는다.
 function applyMovePatch(op) {
   git(["apply", "--3way", "--recount", "--binary", op.patchPath]);
-  if (op.paths.length > 0) {
-    git(["add", "-A", "--", ...op.paths]);
-  } else {
-    git(["add", "-A"]);
-  }
 }
 
 // index 에 amend 할 변경이 남아 있는지 확인한다.
@@ -171,9 +250,7 @@ try {
     }
   } else if (mode === "amend") {
     const ops = readAmendOps(targetFile);
-    for (const op of ops.files) {
-      restoreFileChange(op);
-    }
+    restoreFileChanges(ops.files);
     for (const op of ops.patches) {
       applyMovePatch(op);
     }

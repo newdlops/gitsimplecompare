@@ -79,6 +79,31 @@ for (const width of [390, 768, 1440]) {
     for (const button of await overlay.getByRole("button").all()) {
       await expect(button).toHaveAttribute("title", /.+/); await expect(button).toHaveAttribute("aria-label", /.+/);
     }
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+    await reload.focus();
+    const editing = await page.evaluate(async () => {
+      const w = window as any, node = document.querySelector(".gsc-native-conflict-overlay")!;
+      const focused = document.activeElement, body = node.querySelector(".gsc-native-conflict-body")!;
+      body.scrollTop = 20; const scrollTop = body.scrollTop, snapshot = w.__gscNativeConflictOverlayState.snapshot;
+      const samples: number[] = [];
+      for (let index = 1; index <= 60; index++) {
+        const start = performance.now();
+        w.__gscNativeConflictOverlay.render({ ...snapshot, revision: snapshot.revision + index, editorVersion: index + 1 });
+        samples.push(performance.now() - start);
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      }
+      samples.sort((a, b) => a - b);
+      return { sameNode: node === document.querySelector(".gsc-native-conflict-overlay"),
+        focusPreserved: focused === document.activeElement, scrollPreserved: scrollTop === body.scrollTop,
+        p95: samples[Math.ceil(samples.length * .95) - 1], revision: snapshot.revision + 60 };
+    });
+    expect(editing.sameNode).toBe(true); expect(editing.focusPreserved).toBe(true); expect(editing.scrollPreserved).toBe(true);
+    expect(editing.p95).toBeLessThan(16);
+    await page.keyboard.press("Enter");
+    expect(await page.evaluate(() => (window as any).__actions.at(-1))).toMatchObject({ action: "reload", revision: editing.revision, editorVersion: 61 });
+    console.log(`Conflict overlay ${width}px, 6x CPU: edit render P95 ${editing.p95.toFixed(2)}ms; DOM/focus/scroll retained`);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
     await page.screenshot({ path: `/tmp/gsc-72058-conflict-ready-${width}.png` });
     await render(true);
     await expect(reload).toBeDisabled();

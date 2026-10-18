@@ -13,18 +13,15 @@
   /** 파일 row 에 들어갈 target commit 선택 UI 를 만든다. */
   function moveSelectHtml(item, file, esc) {
     const items = window.GscGraphRebaseContext?.items?.() || [];
-    const targets = items.filter((target) => target.hash !== item.hash && target.action !== "drop");
-    if (targets.length === 0) {
+    if (!items.some((target) => target.hash !== item.hash && target.action !== "drop")) {
       return "";
     }
     const selected = moveForFile(item, file.path)?.targetHash || "";
+    const selectedItem = selected ? window.GscGraphRebaseContext.itemForHash(selected) : null;
     const tooltip = "Move this file change to another commit in this rebase plan";
     const options = [
       `<option value="">Keep here</option>`,
-      ...targets.map((target, index) => {
-        const label = `#${index + 1} ${shortHash(target.hash)} ${target.subject || ""}`.trim();
-        return `<option value="${esc(target.hash)}"${target.hash === selected ? " selected" : ""}>${esc(label)}</option>`;
-      }),
+      selectedItem ? `<option value="${esc(selected)}" selected>${esc(targetLabel(selectedItem))}</option>` : "",
     ].join("");
     return `<select class="file-move-target" data-move-file="1" ` +
       `data-source-old-path="${esc(file.oldPath || "")}" title="${esc(tooltip)}" ` +
@@ -32,9 +29,13 @@
   }
 
   /** detail section 안의 파일 이동 select 이벤트를 연결한다. */
-  function bind(section, sourceHash, refresh) {
-    section.querySelectorAll("[data-move-file]").forEach((select) => {
-      select.addEventListener("change", () => {
+  function bind(section, sourceHash) {
+    section.addEventListener("focusin", prepareTargets);
+    // native select는 pointerdown 직후 열리므로 click보다 먼저 선택지를 채운다.
+    section.addEventListener("pointerdown", prepareTargets);
+    section.addEventListener("change", (event) => {
+        const select = event.target.closest("[data-move-file]");
+        if (!select) return;
         const row = select.closest(".file-row");
         updateFileMove(
           sourceHash,
@@ -42,9 +43,31 @@
           select.dataset.sourceOldPath || "",
           select.value || ""
         );
-        refresh();
-      });
     });
+  }
+
+  /** 현재 상자를 열 때만 전체 대상 커밋을 만든다. 가상 행마다 커밋 수만큼 option을 복제하지 않는다. */
+  function prepareTargets(event) {
+    const select = event.target.closest("[data-move-file]");
+    if (!select) return;
+    const sourceHash = select.closest("[data-rebase-hash]")?.dataset.rebaseHash;
+    const context = window.GscGraphRebaseContext;
+    const source = context.itemForHash(sourceHash);
+    const targets = context.items().filter((target) => target.hash !== source?.hash && target.action !== "drop");
+    const key = targets.map((target) => target.hash).join(",");
+    if (select.dataset.targets === key) return;
+    const selected = select.value;
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(new Option("Keep here", ""));
+    for (const target of targets) fragment.appendChild(new Option(targetLabel(target), target.hash));
+    select.replaceChildren(fragment);
+    select.value = selected;
+    select.dataset.targets = key;
+  }
+
+  /** 원래 rebase 순서와 해시/제목으로 대상을 표시해 필터·재정렬 뒤에도 커밋을 식별하게 한다. */
+  function targetLabel(target) {
+    return `#${target.originalOrder + 1} ${shortHash(target.hash)} ${target.subject || ""}`.trim();
   }
 
   /** rebase continue 때 이번 작업 중 실제로 변경된 source/target 해시를 반환한다. */
@@ -59,6 +82,8 @@
       return;
     }
     const moves = (item.fileMoves || []).filter((move) => move.sourcePath !== sourcePath);
+    const previous = moveForFile(item, sourcePath)?.targetHash;
+    if (previous) dirtyHashes.add(previous);
     if (targetHash && targetHash !== sourceHash) {
       moves.push({
         sourceHash,

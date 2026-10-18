@@ -98,8 +98,8 @@ export class ConflictsController implements vscode.Disposable {
       while (!this.disposed) {
         const requestId = this.requestSeq;
         try {
-          const state = await this.readState();
-          if (this.isCurrent(requestId)) await this.applyState(state, requestId);
+          const state = await this.readState(requestId);
+          if (state && this.isCurrent(requestId)) await this.applyState(state, requestId);
           else logInfo("conflicts refresh skipped", { requestId, reason: "superseded" });
         } catch (error) {
           if (this.disposed) return;
@@ -122,10 +122,13 @@ export class ConflictsController implements vscode.Disposable {
 
   /**
    * 저장소와 충돌/작업/복구 상태를 읽되 명령 대상이나 표시 상태는 아직 바꾸지 않는다.
-   * @returns 비동기 조회가 모두 끝난 한 저장소의 후보 상태
+   * - 이미 폐기된 요청은 다음 단계의 Git 조회를 시작하지 않아 최신 갱신을 지연시키지 않는다.
+   * @param requestId 각 조회 단계 사이에서 최신 요청인지 확인할 세대
+   * @returns 현재 요청의 후보 상태. 더 최신 요청이나 dispose로 폐기됐으면 undefined
    */
-  private async readState(): Promise<ConflictsReadState> {
+  private async readState(requestId: number): Promise<ConflictsReadState | undefined> {
     const repoRoot = await this.resolveRepoRoot();
+    if (!this.isCurrent(requestId)) return undefined;
     if (!repoRoot) {
       return { repoRoot: "", conflicts: [], operation: "none", pullRollbackAvailable: false };
     }
@@ -136,6 +139,7 @@ export class ConflictsController implements vscode.Disposable {
       service.listConflicts(),
       service.getOperation(),
     ]);
+    if (!this.isCurrent(requestId)) return undefined;
     const snapshot =
       conflicts.length > 0 || operation !== "none"
         ? await new PullService(repoRoot).findLatestPullRollbackSnapshot()

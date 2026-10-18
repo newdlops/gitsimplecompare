@@ -13,7 +13,7 @@ for (const width of [390, 768, 1440]) {
     for (const file of ["graphRebase.css", "graphRebaseProgress.css"]) {
       await page.addStyleTag({ path: join(process.cwd(), "media/graph", file) });
     }
-    for (const file of ["graphRebase.js", "graphRebaseProgress.js"]) {
+    for (const file of ["graphRebaseRows.js", "graphRebase.js", "graphRebaseProgress.js"]) {
       await page.addScriptTag({ path: join(process.cwd(), "media/graph", file) });
     }
     const hash = "a".repeat(40);
@@ -62,7 +62,7 @@ for (const width of [390, 768, 1440]) {
     for (const file of ["graphRebase.css", "graphRebaseProgress.css"]) {
       await page.addStyleTag({ path: join(process.cwd(), "media/graph", file) });
     }
-    for (const file of ["graphRebase.js", "graphRebaseProgress.js"]) {
+    for (const file of ["graphRebaseRows.js", "graphRebase.js", "graphRebaseProgress.js"]) {
       await page.addScriptTag({ path: join(process.cwd(), "media/graph", file) });
     }
     const checkout = { gitDir: "/fixture/.git", branch: "refs/heads/feature/rebase-safety", head: "a".repeat(40) };

@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   const vscode = acquireVsCodeApi();
-  window.GscGraphPostMessage = (message) => vscode.postMessage(message);
+  window.GscGraphPostMessage = (message) => window.GscGraphActionFeedback.post(vscode, message);
 
   // 레이아웃 상수(픽셀)
   const ROW_H = 30; // 한 행 높이
@@ -34,7 +34,9 @@
   let loadState = { loadedCount: 0, hasMore: false, hasMoreBefore: false, loading: false, reset: true };
   let graphHealthNotice = null;
   let rowColorCache = new WeakMap();
+  let rowBadgeCache = new WeakMap();
   let localColorResolver = null;
+  let renderedColorScope;
   const detailResize = window.GscGraphDetailResize?.create?.({
     splitterEl,
     detailEl,
@@ -68,6 +70,9 @@
    * @param state 확장에서 전달한 페이지 로딩 상태
    */
   function renderGraph(data, state, delta) {
+    const keepColors = !state?.reset && state?.colorScope === renderedColorScope && window.GscGraphDataUpdates.reusableColors(
+      delta, { rows: currentRows, edges: currentEdges, laneCount: currentLaneCount }, data);
+    const previousHeight = graphContentHeight();
     const resetView = Boolean(state && state.reset);
     const preserveView = resetView || state?.loadDirection === "newer";
     const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
@@ -80,8 +85,11 @@
     currentRows = data.rows || [];
     currentEdges = data.edges || [];
     window.GscGraphColors?.beginStableColorFrame?.(state?.colorScope, currentRows);
-    rowColorCache = new WeakMap();
-    localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
+    renderedColorScope = state?.colorScope;
+    if (!keepColors) {
+      rowColorCache = new WeakMap();
+      localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
+    }
     currentLaneCount = data.laneCount || 1;
     const incremental = window.GscGraphDataUpdates.prepare(graphContentEl, delta);
     if (!incremental) delta = undefined;
@@ -89,6 +97,7 @@
     if (!currentRows.length) {
       resizeGraphContent();
       graphContentEl.innerHTML = '<p class="empty">' + (loadState.loading ? "Loading..." : "No commits.") + "</p>";
+      rowSync.indexRows(currentRows);
       renderLoadTail();
       updateLoadStatus();
       return;
@@ -96,7 +105,7 @@
 
     const graphWidth = graphWidthForLaneCount(currentLaneCount);
     const bodyHeight = currentRows.length * ROW_H;
-    resizeGraphContent();
+    if (!keepColors || previousHeight !== graphContentHeight()) resizeGraphContent();
 
     window.GscGraphDataUpdates.placeSvg(graphContentEl, window.GscGraphSvgRender.render({
       svg: incremental ? graphContentEl.querySelector("svg") : undefined, delta,
@@ -114,8 +123,9 @@
     }));
 
     // 2) 텍스트 행(그래프 폭만큼 왼쪽 여백)
-    window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta);
-    if (delta) refreshRowDecorations();
+    window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta, rowSync.elementAt);
+    rowSync.indexRows(currentRows, delta);
+    if (delta && !keepColors) refreshRowDecorations();
     rowSync.scheduleScrollableWidth();
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
@@ -175,7 +185,7 @@
     el.dataset.refs = displayRefs.join("\t");
     el.dataset.localOnlyBranches = localOnlyBranches.join("\t");
     el.title = rowTitle(row, displayRefs);
-    const refs = refBadgesHtml(displayRefs);
+    const refs = rowRefBadgesHtml(row);
     const date = formatDate(row.dateIso);
     const badge = localOnlyBranches.length ? `<span class="local-only-badge" title="${esc(`local only: ${localOnlyBranches.join(", ")}`)}">-local only-</span>` : "";
     el.innerHTML =
@@ -197,14 +207,26 @@
       .map((ref) => refRenderer ? refRenderer(ref, esc) : `<span class="ref${ref === "HEAD" ? " head" : ""}">${esc(ref)}</span>`)
       .join("");
   }
+  /** @param row immutable graph 행 @returns 표시 상태가 바뀌기 전까지 재사용할 배지 HTML. 색·선택·행 좌표는 포함하지 않는다. */
+  function rowRefBadgesHtml(row) {
+    let html = rowBadgeCache.get(row);
+    if (html === undefined) { html = refBadgesHtml(rowDisplayRefs(row)); rowBadgeCache.set(row, html); }
+    return html;
+  }
+  /** @param indices 참조 상태에 의존하는 행 집합. 팔레트/초기화처럼 범위를 모르면 전체 배지 캐시를 비운다. */
+  function invalidateRowBadges(indices) {
+    if (indices) indices.forEach(index => rowBadgeCache.delete(currentRows[index]));
+    else rowBadgeCache = new WeakMap();
+  }
   /** 행 DOM 을 다시 만들어야 하는지 비교할 key(배지 HTML·색·local-only·선택·종류)를 만든다. */
   function rowRenderKey(row) {
-    return [refBadgesHtml(rowDisplayRefs(row)), rowDisplayColor(row), (row.localOnlyBranches || []).join("\t"),
+    return [rowRefBadgesHtml(row), rowDisplayColor(row), (row.localOnlyBranches || []).join("\t"),
       row.hash === selectedHash ? "1" : "0", row.kind || ""].join("\n");
   }
-  /** branch/tag 상태 반영 뒤 표시가 달라진 행만 교체하고 행 보조 기능을 다시 연결한다. */
-  function refreshRowDecorations() {
-    rowSync.patchRows(currentRows);
+  /** @param indices 변경 정보에 의존하는 행 위치. 생략하면 전체 행을 비교하고, 빈 집합이면 후속 DOM 작업도 생략한다. */
+  function refreshRowDecorations(indices) {
+    if (indices?.size === 0) return;
+    rowSync.patchRows(currentRows, indices);
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
     window.GscGraphSearch?.update(graphEl, graphContentEl);
   }
@@ -272,20 +294,21 @@
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
-  /**
-   * 커밋을 선택 상태로 만들고 상세를 요청한다.
-   * @param hash 선택할 커밋 해시
-   */
+  /** 해시에 해당하는 커밋을 선택하고 상세를 요청한다. 이전/현재 선택 행만 갱신한다. */
   function selectCommit(hash) {
     window.dispatchEvent(new CustomEvent("gsc-detail-selection", { detail: { hash } }));
     setDetailLabel("commit details");
+    const previousHash = selectedHash;
     selectedHash = hash;
-    const rows = graphContentEl.querySelectorAll(".row:not([data-reflog-virtual])");
-    rows.forEach(el => {
-      el.classList.toggle("selected", el.dataset.hash === hash);
+    // 선택 상태가 바뀐 두 행만 갱신한다. 큰 그래프에서 모든 ref 배지를 다시 계산하지 않는다.
+    for (const changedHash of new Set([previousHash, hash])) {
+      if (!changedHash) continue;
+      const el = graphContentEl.querySelector(`.row[data-hash="${CSS.escape(changedHash)}"]:not([data-reflog-virtual])`);
+      if (!el) continue;
+      el.classList.toggle("selected", changedHash === hash);
       const row = currentRows[Number(el.dataset.index)];
       if (row) el.dataset.renderKey = rowRenderKey(row);
-    });
+    }
     vscode.postMessage({ type: "selectCommit", hash: hash });
     if (isDrawerMode()) {
       setDetailVisible(true, false);
@@ -486,10 +509,10 @@
     window.GscGraphCompactRender?.bindNavigation(graphEl, graphContentEl);
     window.GscGraphCompactRender?.bindLaneHighlight(graphContentEl);
     graphEl.addEventListener("scroll", maybeLoadMore);
-    refreshBtn.addEventListener("click", () => vscode.postMessage({ type: "refresh" }));
+    refreshBtn.addEventListener("click", () => window.GscGraphPostMessage({ type: "refresh" }));
     healthOutputBtn?.addEventListener("click", () => vscode.postMessage({ type: "showGraphOutput" }));
     [["fetch-graph", "fetch"], ["fetch-tags-graph", "fetchTags"], ["pull-graph", "pull"], ["push-graph", "push"], ["force-push-graph", "forcePush"]].forEach(([id, type]) =>
-      document.getElementById(id)?.addEventListener("click", () => vscode.postMessage({ type }))
+      document.getElementById(id)?.addEventListener("click", () => window.GscGraphPostMessage({ type }))
     );
     window.GscGraphRemote?.bind(openRemoteBtn, (message) => vscode.postMessage(message));
     document.getElementById("jump-head")?.addEventListener("click", () => window.GscGraphHeadJump?.jumpToHead(graphEl, graphContentEl));
@@ -520,19 +543,30 @@
     } else if (msg.type === "graphHealth") {
       renderGraphHealth(msg.notice);
     } else if (msg.type === "branchStatus") {
-      window.GscGraphWorktrees?.setWorktrees?.(msg.worktrees);
-      window.GscGraphFeatures && window.GscGraphFeatures.setLocalBranches(msg.branches);
-      rowColorCache = new WeakMap();
-      localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
+      const worktreeChanges = window.GscGraphWorktrees?.setWorktrees?.(msg.worktrees);
+      const changed = window.GscGraphFeatures?.setLocalBranches?.(msg.branches);
       window.GscGraphRemote?.updateButton(openRemoteBtn, msg.branches);
-      refreshRowDecorations();
+      if (changed !== false || worktreeChanges?.keys.size) {
+        const indices = rowSync.affectedRows(window.GscGraphFeatures?.referenceChanges?.(), worktreeChanges);
+        if (indices?.size === 0) return;
+        invalidateRowBadges(indices);
+        // 이름별 색이 같으면 local-only edge 전파는 유지하고 상태가 바뀐 행의 색만 다시 평가한다.
+        if (indices) indices.forEach(index => rowColorCache.delete(currentRows[index]));
+        else {
+          rowColorCache = new WeakMap();
+          localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
+        }
+        refreshRowDecorations(indices);
+      }
     } else if (msg.type === "tagStatus") {
-      window.GscGraphFeatures?.setTagStatus?.(msg.tags);
-      refreshRowDecorations();
+      if (window.GscGraphFeatures?.setTagStatus?.(msg.tags) !== false) {
+        const indices = rowSync.affectedRows(window.GscGraphFeatures?.referenceChanges?.());
+        invalidateRowBadges(indices); refreshRowDecorations(indices);
+      }
     } else if (msg.type === "graphLoadState") {
       applyLoadState(msg.state, true);
     } else if (msg.type === "graphBusy") {
-      setButtonBusy(msg.key, msg.busy);
+      window.GscGraphActionFeedback.setBusy(msg.key, msg.busy);
     } else if (msg.type === "commitDetail") {
       renderDetail(msg.detail);
     } else if (msg.type === "graphDetailResume" && detailLabel === "commit details" && selectedHash && document.body.classList.contains("detail-open")) {
@@ -542,42 +576,6 @@
       setDetailVisible(true);
     }
   });
-
-  // 작업 진행중 스피너로 바꾼 버튼의 원래 아이콘 class 를 보관한다(복원용).
-  const buttonBusyIcons = new Map();
-
-  /**
-   * 툴바 버튼에 작업 진행중 상태를 반영한다.
-   * - busy 면 아이콘을 회전 스피너(codicon-loading + spin)로 바꾸고 버튼을 비활성화해 중복 실행을 막는다.
-   * - 끝나면 원래 아이콘/활성 상태로 되돌린다.
-   * @param id   대상 버튼 DOM id
-   * @param busy 진행중 여부
-   */
-  function setButtonBusy(id, busy) {
-    const button = document.getElementById(id);
-    const icon = button?.querySelector(".codicon");
-    if (!button || !icon) {
-      return;
-    }
-    if (busy) {
-      if (!buttonBusyIcons.has(id)) {
-        buttonBusyIcons.set(id, icon.className);
-      }
-      icon.className = "codicon codicon-loading codicon-modifier-spin";
-      button.classList.add("is-busy");
-      button.setAttribute("aria-busy", "true");
-      button.disabled = true;
-    } else {
-      const original = buttonBusyIcons.get(id);
-      if (original !== undefined) {
-        icon.className = original;
-        buttonBusyIcons.delete(id);
-      }
-      button.classList.remove("is-busy");
-      button.removeAttribute("aria-busy");
-      button.disabled = false;
-    }
-  }
 
   initEvents();
   window.GscGraphDetailHost = {

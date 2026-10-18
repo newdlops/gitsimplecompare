@@ -12,7 +12,8 @@
     onWorkingRowClick,
     openContextMenu,
     postWorkingAction,
-    rowContextNodes,
+    strings,
+    openWorkingPath,
     selectOnly,
     toggleWorkingFolder,
     vscode,
@@ -123,6 +124,69 @@
         postWorkingAction(el.dataset.act, paths);
       }
     }
+
+  /** 행 우클릭 컨텍스트 메뉴 항목(파일이면 열기/비교 + stage 류, 폴더면 stage 류). */
+  function rowContextNodes(row, kind) {
+    const nodes = [];
+    if (row.classList.contains("file")) {
+      const path = row.dataset.path;
+      nodes.push({
+        label: strings.openFile,
+        onClick: () => vscode.postMessage({ type: "openFile", path }),
+      });
+      nodes.push({
+        label: strings.openChanges,
+        onClick: () => openWorkingPath(path, kind, row.dataset.status),
+      });
+      nodes.push({ separator: true });
+    }
+    const paths = actionPaths(row);
+    if (kind === "staged") {
+      nodes.push({
+        label: strings.unstage,
+        onClick: () => postWorkingAction("unstage", paths),
+      });
+    } else {
+      nodes.push({
+        label: strings.stage,
+        onClick: () => postWorkingAction("stage", paths),
+      });
+      nodes.push({
+        label: strings.discard,
+        onClick: () => vscode.postMessage({ type: "discard", paths }),
+      });
+    }
+    nodes.push({ separator: true });
+    const ignoreTargets = ignorePaths(row);
+    if (ignoreTargets.length) {
+      nodes.push({
+        label: strings.addToGitignore,
+        onClick: () =>
+          vscode.postMessage({ type: "addToGitignore", paths: ignoreTargets }),
+      });
+      nodes.push({
+        label: strings.addToExclude,
+        onClick: () =>
+          vscode.postMessage({ type: "addToExclude", paths: ignoreTargets }),
+      });
+      nodes.push({ separator: true });
+    }
+    nodes.push({
+      label: strings.stashSelected,
+      onClick: () => vscode.postMessage({ type: "stashSelected", paths }),
+    });
+    return nodes;
+  }
+
+  /** ignore/exclude 컨텍스트 메뉴의 대상 경로. 폴더는 파일로 펼치지 않고 폴더 패턴으로 보낸다. */
+  function ignorePaths(row) {
+    if (row.classList.contains("folder")) {
+      const path = row.dataset.path || "";
+      return path ? [path.endsWith("/") ? path : path + "/"] : [];
+    }
+    return actionPaths(row);
+  }
+
 
     return { bindRowActions, bindWorkingRows };
   };

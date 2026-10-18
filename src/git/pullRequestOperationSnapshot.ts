@@ -15,6 +15,7 @@ import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestReb
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { OperationUndoStore, type OperationUndoPlan } from "./operationUndoStore";
 import { logInfo } from "../ui/outputLog";
+import { hasWorkingTreeChanges } from "./workingTreeChanges";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -51,11 +52,7 @@ export class PullRequestOperationSnapshot {
    * fsmonitor daemon 상태와 무관한 정확한 결과를 위해 이 명령에서만 fsmonitor를 끈다.
    */
   async hasLocalChanges(): Promise<boolean> {
-    const output = await runGit(
-      ["-c", "core.fsmonitor=false", "status", "--porcelain=v1", "-z"],
-      this.repoRoot
-    );
-    return output.length > 0;
+    return hasWorkingTreeChanges(this.repoRoot, true);
   }
 
   /** 현재 index에 unmerged entry가 하나라도 있으면 true를 반환한다. */

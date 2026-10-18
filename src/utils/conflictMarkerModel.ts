@@ -126,13 +126,15 @@ export function conflictBlockChoiceEdit(
 export function acceptAllConflictBlocks(raw: string): string | undefined {
   const parsed = parseConflictMarkers(raw);
   if (!parsed.valid || parsed.blocks.length === 0) return undefined;
-  let result = raw;
-  for (const block of [...parsed.blocks].reverse()) {
-    const replacement = raw.slice(block.currentStart, block.currentEnd) +
-      raw.slice(block.incomingStart, block.incomingEnd);
-    result = `${result.slice(0, block.startOffset)}${replacement}${result.slice(block.endOffset)}`;
+  const parts: string[] = [];
+  let offset = 0;
+  for (const block of parsed.blocks) {
+    parts.push(raw.slice(offset, block.startOffset),
+      raw.slice(block.currentStart, block.currentEnd), raw.slice(block.incomingStart, block.incomingEnd));
+    offset = block.endOffset;
   }
-  return result;
+  parts.push(raw.slice(offset));
+  return parts.join("");
 }
 
 /** 내부 offset을 노출하지 않는 직렬화 가능한 block으로 줄인다. */
@@ -261,8 +263,7 @@ function isCompleteBlock(active: Partial<ParsedBlock> | undefined): active is Om
 }
 
 /** CRLF/LF와 마지막 newline 유무를 보존하면서 각 줄의 byte가 아닌 JS offset을 계산한다. */
-function splitLines(raw: string): TextLine[] {
-  const lines: TextLine[] = [];
+function* splitLines(raw: string): Generator<TextLine> {
   let start = 0;
   let line = 0;
   while (start < raw.length) {
@@ -274,9 +275,8 @@ function splitLines(raw: string): TextLine[] {
     const contentEnd = newline > start && raw.charCodeAt(newline - 1) === 13
       ? newline - 1
       : newline;
-    lines.push({ line, start, end, text: raw.slice(start, contentEnd) });
+    yield { line, start, end, text: raw.slice(start, contentEnd) };
     start = end;
     line++;
   }
-  return lines;
 }

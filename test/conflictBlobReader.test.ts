@@ -82,3 +82,55 @@ test("last-consumer cancellation closes the Git process and a later read succeed
   await rejected; await closed;
   assert.equal((await reader.read(root, oid)).content, "base\n");
 });
+
+/** Git 응답을 한 바이트씩 분할해도 빈 blob·UTF-8·본문 안의 가짜 헤더를 정확히 구분한다. */
+test("one batch preserves byte framing, UTF-8 and empty blobs across every stream boundary", async t => {
+  const { root } = await safetyFixture(t, "conflict-blob-batch");
+  const file = join(root, "blob.txt"), reader = new ConflictBlobReader();
+  const contents = ["", "한글🙂\n" + "a".repeat(40) + " blob 5\nhello\n", "third stage\n"];
+  const oids: string[] = [];
+  for (const content of contents) { await writeFile(file, content); oids.push(await git(root, "hash-object", "-w", file)); }
+  const original = childProcess.spawn; let calls = 0;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => {
+    calls++;
+    const child = (original as Function)(...args), emit = child.stdout.emit;
+    child.stdout.emit = function (event: string, ...values: any[]) {
+      if (event !== "data" || !Buffer.isBuffer(values[0])) return emit.call(this, event, ...values);
+      for (const byte of values[0]) emit.call(this, event, Buffer.from([byte]));
+      return true;
+    };
+    return child;
+  });
+  const values = await reader.readMany(root, [...oids, oids[1]]);
+  for (let index = 0; index < oids.length; index++) assert.equal(values.get(oids[index])?.content, contents[index]);
+  assert.equal(calls, 1);
+  values.get(oids[1])!.content = "consumer edit";
+  assert.equal((await reader.readMany(root, oids)).get(oids[1])?.content, contents[1]);
+  assert.equal(calls, 1);
+});
+
+/** 한 stage의 다른 소비자가 남아 있으면 문서 전체 취소도 같은 배치를 중단하지 않는다. */
+test("cancelling a batch consumer preserves another editor reading a different stage", async t => {
+  const { root, head } = await safetyFixture(t, "conflict-blob-batch-cancel");
+  const first = await git(root, "rev-parse", `${head}:tracked.txt`), file = join(root, "other.txt");
+  await writeFile(file, "other stage\n"); const second = await git(root, "hash-object", "-w", file);
+  const reader = new ConflictBlobReader(), controller = new AbortController();
+  const cancelled = reader.readMany(root, [first, second], controller.signal);
+  const retained = reader.read(root, second);
+  const rejection = assert.rejects(cancelled, { name: "AbortError" }); controller.abort();
+  await rejection;
+  assert.equal((await retained).content, "other stage\n");
+  assert.equal((await reader.read(root, first)).content, "base\n");
+});
+
+/** 배치 뒤쪽의 missing 객체가 있으면 앞쪽 미리보기도 완료된 cache로 게시하지 않는다. */
+test("a partial batch failure cannot publish a cache entry or leak an unhandled rejection", async t => {
+  const { root, head } = await safetyFixture(t, "conflict-blob-batch-missing");
+  const oid = await git(root, "rev-parse", `${head}:tracked.txt`), reader = new ConflictBlobReader();
+  const original = childProcess.spawn; let calls = 0;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => { calls++; return (original as Function)(...args); });
+  await assert.rejects(reader.readMany(root, [oid, "f".repeat(40)]));
+  assert.equal(calls, 1);
+  assert.equal((await reader.read(root, oid)).content, "base\n");
+  assert.equal(calls, 2);
+});

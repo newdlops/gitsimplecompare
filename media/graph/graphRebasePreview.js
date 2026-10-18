@@ -5,12 +5,13 @@
 
   /** todo 순서가 바뀐 커밋 node 를 새 위치로 옮긴다. */
   function applyNodeTransforms(graphContent, layout) {
+    const nodes = new Map(Array.from(graphContent.querySelectorAll(".node"), (node) => [node.dataset.hash, node]));
     graphContent.querySelectorAll(".node.rebase-preview-moved-node").forEach((node) => {
       node.removeAttribute("transform");
       node.classList.remove("rebase-preview-moved-node");
     });
     layout.forEach((slot, hash) => {
-      const node = nodeForHash(graphContent, hash);
+      const node = nodes.get(hash);
       if (!node || slot.dy === 0) {
         return;
       }

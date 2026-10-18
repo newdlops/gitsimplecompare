@@ -2,7 +2,7 @@
 // - controller의 수명주기/refresh와 분리해 모든 클릭 검증이 같은 active URI/version 규칙을 사용한다.
 import * as vscode from "vscode";
 import { buildConflictOverlayPresentation } from "../ui/conflictOverlayPresentation";
-import { scanConflictMarkers } from "../utils/conflictMarkerModel";
+import { scanConflictDocument } from "../utils/conflictDocumentScan";
 import type { TrustedConflictEditorSession } from "./conflictEditorOverlayController";
 import type {
   ConflictOverlayActionPayload,
@@ -33,7 +33,7 @@ export function buildConflictCodeLensState(
     return undefined;
   }
   const markerScan = !session.virtual && session.document.resultState.kind === "text"
-    ? scanConflictMarkers(document.getText())
+    ? scanConflictDocument(document)
     : { blocks: [] };
   const snapshot: ConflictOverlaySnapshot = {
     uri: session.uri.toString(),

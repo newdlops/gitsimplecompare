@@ -314,11 +314,83 @@
     });
   }
 
+  /**
+   * 비교 목록을 작업트리와 같은 가상 스크롤 모델로 만든다. 화면 밖 파일도 원본 모델에 모두 남는다.
+   * @param deps 상태/아이콘/HTML 생성 함수와 VS Code 메시지 브리지
+   * @returns HTML 생성, mount, 가시 범위 갱신 API
+   */
+  function createFileTree(deps) {
+    const { rootEl, state, strings, esc, vscode } = deps;
+    let gutter;
+    const list = window.__gscChangesWorkingList({ ...deps,
+      sectionName: "compare", containerClass: "virtual-compare-files", focusChildren: true,
+      rowHtml: (group, row) => rowHtml(row.node, group.viewMode, group.folderConflicts.get(row.node) || 0),
+      bindRows: bindRows,
+      afterRowsRendered: (rows) => rows.forEach(deps.applyFileIconGlyphStyles),
+      persistState: () => vscode.setState(state),
+    });
+
+    /** 비교 결과 전체 모델을 등록하고 빈 상태 또는 높이 spacer를 반환한다. */
+    function fileTree(nodes, viewMode, _kind, _extraClass, emptyText, nextGutter, elementId) {
+      gutter = nextGutter;
+      if (!nodes.length) return `<p class="empty">${esc(emptyText)}</p>`;
+      return list.groupFilesHtml("compare", nodes, viewMode, elementId || "comparison-files");
+    }
+
+    /** 파일/폴더의 기존 시각 언어와 tooltip을 유지하는 평면 행 HTML을 만든다. */
+    function rowHtml(node, viewMode, conflicts) {
+      if (node.kind === "folder") {
+        const key = `compare:${node.path}`, collapsed = !!state.folders[key];
+        const title = conflicts ? `${node.path} - ${strings.conflicts}` : node.path;
+        return `<div class="row folder${conflicts ? " conflict" : ""}" role="button" tabindex="0" aria-expanded="${!collapsed}" ` +
+          `data-folder-key="${esc(key)}" data-path="${esc(node.path)}" title="${esc(title)}" aria-label="${esc(title)}">` +
+          `<span class="twistie codicon codicon-chevron-${collapsed ? "right" : "down"}" aria-hidden="true"></span>` +
+          `<span class="icon codicon codicon-folder${collapsed ? "" : "-opened"}" aria-hidden="true"></span>` +
+          `<span class="name">${esc(node.name)}</span>` + (conflicts ? deps.conflictBadgeHtml(conflicts) : "") + `</div>`;
+      }
+      const change = node.change;
+      const slash = change.path.lastIndexOf("/");
+      const name = change.path.slice(slash + 1), dir = slash < 0 ? "" : change.path.slice(0, slash);
+      const title = `${fileActionLabel(strings, change, gutter)}: ${change.path}`;
+      return `<div class="row file${change.status === "U" ? " conflict" : ""}" role="group" ` +
+        `aria-label="${esc(change.path)}" data-status="${esc(change.status)}" data-path="${esc(change.path)}" ` +
+        `data-stage="compare" title="${esc(title)}">` +
+        `<span class="twistie" aria-hidden="true"></span><span class="icon codicon ${deps.statusCodicon(change.status)}" aria-hidden="true"></span>` +
+        deps.fileIconHtml(change.path) +
+        `<span class="name" role="button" tabindex="0" title="${esc(title)}" aria-label="${esc(title)}">${esc(name)}</span>` +
+        (viewMode === "list" && dir ? `<span class="dir">${esc(dir)}</span>` : "") +
+        deps.statHtml(change) + (change.status === "U" ? deps.conflictBadgeHtml(0) : "") +
+        rowActionsHtml(strings, esc, true) + `</div>`;
+    }
+
+    /** 동적으로 생성되는 행에도 click/Enter/Space를 위임해 이벤트 수를 목록 크기와 무관하게 유지한다. */
+    function bindRows(container) {
+      /** 현재 행의 폴더를 토글하거나 파일/명시적 diff를 연다. */
+      function activate(event) {
+        const row = event.target.closest(".row");
+        if (!row || !container.contains(row)) return;
+        if (event.type === "keydown" && !["Enter", " "].includes(event.key)) return;
+        const action = event.target.closest(".row-action");
+        if (event.type === "keydown") {
+          if (action) return; // native button의 click 한 번만 사용한다.
+          event.preventDefault();
+        }
+        if (row.classList.contains("folder")) list.toggleFolder(row);
+        else vscode.postMessage({ type: action ? "openDiff" : "openComparisonFile", path: row.dataset.path });
+      }
+      container.addEventListener("click", activate);
+      container.addEventListener("keydown", activate);
+    }
+
+    return { fileTree, beginRender: list.beginRender, attach: list.attach, renderVisibleRows: list.renderVisibleRows, scheduleRender: list.scheduleRender };
+  }
+
   window.__gscCompare = {
     defaults,
     rowActionsHtml,
     fileActionLabel,
     render,
     bind,
+    createFileTree,
   };
 })();

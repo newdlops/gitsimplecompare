@@ -4,6 +4,7 @@ import type { ConflictDocument, ConflictDocumentMetadata } from "../git/conflict
 import { logError, logInfo } from "../ui/outputLog";
 import type { TrustedConflictEditorSession as Session } from "./conflictEditorOverlayController";
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
+import { ConflictDocumentReadQueue } from "./conflictDocumentReadQueue";
 
 /** controller의 provider/UI 갱신을 안전한 session에만 위임하는 최소 경계다. */
 export interface ConflictEditorReadHost {
@@ -23,17 +24,21 @@ interface PendingRead { next?: ReadRequest; promise: Promise<boolean> }
 /** 진행 중 내용 조회 하나와 마지막 후속 요청 하나만 유지해 이벤트 burst를 합친다. */
 export class ConflictEditorReadCoordinator {
   private readonly reads = new WeakMap<Session, PendingRead>();
-  private readonly metadataReads = new WeakSet<Session>();
-  private readonly contentQueue = new PriorityReadQueue(2);
+  private readonly metadataReads = new Set<Session>();
+  private readonly contentQueue = new ConflictDocumentReadQueue();
   private readonly metadataQueue = new PriorityReadQueue(1);
   private readonly controllers = new WeakMap<Session, AbortController>();
   private readonly metadataControllers = new WeakMap<Session, AbortController>();
+  private activeMetadata?: { session: Session; controller: AbortController };
 
   constructor(private readonly host: ConflictEditorReadHost) {}
 
   /** 아직 session이 없는 첫 열기도 내용 조회 슬롯을 공유하고 사용자 요청을 우선한다. */
   load(service: Session["service"], rel: string, signal: AbortSignal): Promise<ConflictDocument> {
-    return this.contentQueue.run(() => service.getConflictDocument(rel, true, { deferMetadata: true, signal }), signal, () => -1);
+    return this.contentQueue.read(service, rel, undefined, signal, () => -1).then(document => {
+      if (!document) throw new Error("Missing initial conflict document.");
+      return document;
+    });
   }
 
   /** close/resolve/suspend된 session의 대기 및 실행 중 조회를 중단하고 늦은 응답을 무효화한다. */
@@ -60,6 +65,8 @@ export class ConflictEditorReadCoordinator {
     const pending = this.reads.get(session);
     if (pending) {
       pending.next = { reason, allowBusy: allowBusy || !!pending.next?.allowBusy };
+      // 게시할 수 없게 된 이전 조회는 실제 Git도 중단해 마지막 요청이 슬롯을 빨리 사용하게 한다.
+      this.controllers.get(session)?.abort();
       return pending.promise;
     }
     const state: PendingRead = { next: { reason, allowBusy }, promise: Promise.resolve(false) };
@@ -94,6 +101,7 @@ export class ConflictEditorReadCoordinator {
     void this.metadataQueue.run(() => {
       if (!this.canPublishMetadata(session, document)) return Promise.resolve(undefined);
       if (session.busy) { session.pendingRefreshReason = "conflictMetadataDeferred"; return Promise.resolve(undefined); }
+      this.activeMetadata = { session, controller };
       return session.service.getConflictDocumentMetadata(document, controller.signal);
     },
       controller.signal, () => this.host.isVisible?.(session) === false ? 1 : 0).then(metadata => {
@@ -117,10 +125,28 @@ export class ConflictEditorReadCoordinator {
     }).finally(() => {
       const cancelled = controller.signal.aborted;
       controller.abort();
+      if (this.activeMetadata?.controller === controller) this.activeMetadata = undefined;
       this.metadataReads.delete(session);
       this.metadataControllers.delete(session);
       if (cancelled || session.document.sourceVersion !== document.sourceVersion) this.enrich(session);
     });
+    this.prioritizeVisibleMetadata();
+  }
+
+  /**
+   * 현재 화면의 요청이 대기하면 숨겨진 문서의 실행 중 설명 조회를 취소해 슬롯을 먼저 넘긴다.
+   * - Result/쓰기 작업은 취소하지 않으며 숨겨진 문서는 기존 finally 경로로 한 번만 다시 예약한다.
+   * - active/visible editor 이벤트에서도 호출해 이미 queue에 있던 문서의 우선순위 변경을 반영한다.
+   */
+  prioritizeVisibleMetadata(): void {
+    const active = this.activeMetadata;
+    if (!active || active.controller.signal.aborted || this.host.isVisible?.(active.session) !== false) return;
+    const waiting = [...this.metadataReads].some(session => session !== active.session && this.host.isCurrent(session)
+      && !session.resolved && !session.suspended && !session.busy && session.document.metadataState === "pending"
+      && !this.metadataControllers.get(session)?.signal.aborted && this.host.isVisible?.(session) === true);
+    if (!waiting) return;
+    active.controller.abort();
+    logInfo("native conflict hidden metadata yielded to visible editor", { repoRoot: active.session.service.repoRoot, rel: active.session.rel });
   }
 
   /** 마지막으로 게시한 동일 source의 미완성 설명에만 응답을 반영할 수 있다. */
@@ -141,13 +167,12 @@ export class ConflictEditorReadCoordinator {
     this.controllers.set(session, controller);
     try {
       const previous = session.document;
-      const document = await this.contentQueue.run(() => {
+      const document = await this.contentQueue.read(session.service, session.rel, previous, controller.signal,
+        () => allowBusy ? -1 : this.host.isVisible?.(session) === false ? 1 : 0, () => {
         if (!this.host.isCurrent(session) || session.resolved || session.suspended || generation !== session.refreshGeneration) controller.abort();
         controller.signal.throwIfAborted();
-        if (this.deferDirtyRead(session, reason, allowBusy)) return Promise.resolve(undefined);
-        return session.service.getConflictDocument(session.rel, true, { deferMetadata: true, previous, signal: controller.signal });
-      }, controller.signal,
-        () => allowBusy ? -1 : this.host.isVisible?.(session) === false ? 1 : 0);
+        return !this.deferDirtyRead(session, reason, allowBusy);
+      });
       if (controller.signal.aborted) return false;
       if (!this.host.isCurrent(session) || session.resolved || generation !== session.refreshGeneration) return false;
       if (!document) return true;

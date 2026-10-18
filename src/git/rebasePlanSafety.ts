@@ -1,18 +1,15 @@
 // UI가 준비한 interactive rebase를 원래 worktree/브랜치/HEAD에 고정한다.
-import { realpath } from "node:fs/promises";
 import { runGit } from "./gitExec";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
 
 /** 동일 HEAD의 다른 브랜치도 구분하는 rebase 계획의 checkout 기준이다. */
 export interface RebaseCheckoutIdentity { gitDir: string; branch: string; head: string; }
 
-/** 계획을 만들기 전 현재 checkout을 읽고 detached HEAD는 거부한다. */
+/** 계획을 만들기 전 checkout을 한 번 새로 읽고 detached HEAD는 거부한다. */
 export async function captureRebaseCheckout(repoRoot: string): Promise<RebaseCheckoutIdentity> {
-  const [directory, branch, head] = await Promise.all([
-    runGit(["rev-parse", "--absolute-git-dir"], repoRoot),
-    runGit(["symbolic-ref", "HEAD"], repoRoot),
-    runGit(["rev-parse", "--verify", "HEAD"], repoRoot),
-  ]);
-  return { gitDir: await realpath(directory.trim()), branch: branch.trim(), head: head.trim() };
+  const { gitDir, branchRef: branch, head } = await readGitCheckoutIdentity(repoRoot);
+  if (!branch) throw new Error("Interactive rebase requires a checked-out local branch.");
+  return { gitDir, branch, head };
 }
 
 /** 실행 직전에 계획을 준비한 checkout과 같은지 검증하고 변경 시 Git을 시작하지 않는다. */
