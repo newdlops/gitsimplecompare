@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.72099] - 2026-10-19
+
+### Changed
+
+- Return the first complete working-tree snapshot in large repositories without
+  waiting for Git to build an optional untracked-directory cache. Bound native
+  Git enumeration to four concurrent reads and preserve ignore rules, nested
+  repositories, literal filenames and staged changes.
+- Prepare the directory cache afterward in a separate extension-owned index,
+  then reuse it for later reads and new sessions without changing the real index.
+- Share the configured overall read deadline across the initial scan, honor an
+  unlimited timeout, and cancel queued and running work when the read ends.
+
 ## [0.1.72098] - 2026-10-19
 
 ### Changed

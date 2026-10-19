@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 const MAX_INDEX_BYTES = 32 * 1024 * 1024;
 const OPTIONAL_EXTENSIONS = new Set(["TREE", "REUC", "UNTR", "FSMN", "EOIE", "IEOT"]);
-interface ParsedIndex { identity: string; objectBytes: number; metadataOffsets?: number[] }
+interface ParsedIndex { identity: string; objectBytes: number; metadataOffsets?: number[]; directoryCount?: number; hasUntrackedCache?: boolean }
 
 /**
  * Git index의 스테이징 의미만 해시해 stat·감시 토큰 갱신으로 전용 캐시를 잃지 않게 한다.
@@ -13,6 +13,16 @@ interface ParsedIndex { identity: string; objectBytes: number; metadataOffsets?:
  */
 export function statusIndexStagingIdentity(bytes: Buffer): string | undefined {
   return parseIndex(bytes)?.identity;
+}
+
+/**
+ * 큰 index의 첫 디렉터리 탐색에만 필요한 형태 정보를 stage 검증과 한 번에 읽는다.
+ * @param bytes 실제 index의 검증 전 사본
+ * @returns 검증된 stage 의미·추적 파일의 parent 수·기존 UNTR 유무. 미지원 형식은 undefined
+ */
+export function statusIndexStagingInfo(bytes: Buffer): { identity: string; directoryCount: number; hasUntrackedCache: boolean } | undefined {
+  const parsed = parseIndex(bytes, false, true);
+  return parsed && { identity: parsed.identity, directoryCount: parsed.directoryCount!, hasUntrackedCache: parsed.hasUntrackedCache! };
 }
 
 /**
@@ -38,9 +48,10 @@ export function restoreStatusIndexMetadata(cached: Buffer, source: Buffer): Buff
  * 알려진 전체 index 형식의 stage 의미와 선택적인 stat 위치를 파싱한다.
  * @param bytes checksum을 포함한 index
  * @param collectMetadata stat 재바인딩에 필요한 entry 위치를 수집할지 여부
+ * @param collectDirectories 큰 저장소의 첫 탐색 판정에 필요한 parent 디렉터리 수를 수집할지 여부
  * @returns 지원/검증된 의미와 위치. 알 수 없는 구성은 undefined로 복구한다.
  */
-function parseIndex(bytes: Buffer, collectMetadata = false): ParsedIndex | undefined {
+function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories = false): ParsedIndex | undefined {
   if (bytes.length < 32 || bytes.length > MAX_INDEX_BYTES || bytes.subarray(0, 4).toString() !== "DIRC") return undefined;
   const version = bytes.readUInt32BE(4);
   if (![2, 3, 4].includes(version)) return undefined;
@@ -53,6 +64,8 @@ function parseIndex(bytes: Buffer, collectMetadata = false): ParsedIndex | undef
   let cursor = 12;
   let previous: Buffer = Buffer.alloc(0);
   const metadataOffsets = collectMetadata ? [] as number[] : undefined;
+  const directories = collectDirectories ? new Set<string>() : undefined;
+  let hasUntrackedCache = false;
   try {
     for (let entry = 0; entry < count; entry++) {
       const start = cursor;
@@ -78,6 +91,7 @@ function parseIndex(bytes: Buffer, collectMetadata = false): ParsedIndex | undef
       if (nul < cursor || nul >= end) return undefined;
       const name = version === 4 ? Buffer.concat([previous.subarray(0, previous.length - removed), bytes.subarray(cursor, nul)]) : bytes.subarray(cursor, nul);
       if (!name.length || (flags & 0x0fff) !== Math.min(name.length, 0x0fff)) return undefined;
+      if (directories) { const slash = name.lastIndexOf(47); if (slash >= 0) directories.add(name.subarray(0, slash).toString("utf8")); }
       const meaning = Buffer.alloc(8);
       meaning.writeUInt16BE(flags & 0xb000); meaning.writeUInt16BE(extended & 0x2000, 2); meaning.writeUInt32BE(name.length, 4);
       digest.update(bytes.subarray(start + 24, start + 28));
@@ -95,9 +109,10 @@ function parseIndex(bytes: Buffer, collectMetadata = false): ParsedIndex | undef
       if (cursor + 8 > end) return undefined;
       const signature = bytes.subarray(cursor, cursor + 4).toString(), size = bytes.readUInt32BE(cursor + 4);
       if (!OPTIONAL_EXTENSIONS.has(signature) || cursor + 8 + size > end) return undefined;
+      if (signature === "UNTR") hasUntrackedCache = true;
       cursor += 8 + size;
     }
-    return cursor === end ? { identity: digest.digest("hex"), objectBytes, metadataOffsets } : undefined;
+    return cursor === end ? { identity: digest.digest("hex"), objectBytes, metadataOffsets, directoryCount: directories?.size, hasUntrackedCache } : undefined;
   } catch { return undefined; }
 }
 

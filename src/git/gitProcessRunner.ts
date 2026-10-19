@@ -25,6 +25,15 @@ export function setGitReadTimeoutResolver(resolver: GitReadTimeoutResolver): () 
   return () => { if (timeoutResolver === resolver) timeoutResolver = undefined; };
 }
 
+/**
+ * 여러 Git 조회를 조합하는 서비스도 같은 저장소별 시간 제한과 명시적 0을 공유하게 한다.
+ * @param cwd 실행 저장소 루트 @param override 호출자가 지정한 선택적 밀리초 제한
+ * @returns 설정 값 또는 기본 30초. 0은 사용자가 제한을 해제한 경우다.
+ */
+export function resolveGitReadTimeout(cwd: string, override?: number): number {
+  return override ?? timeoutResolver?.(cwd) ?? 30_000;
+}
+
 /** 원본 바이트 출력은 Buffer로 유지하고 텍스트 변환은 공개 실행기가 맡는다. */
 export interface GitProcessOutput { stdout: Buffer; stderr: Buffer }
 
@@ -50,7 +59,7 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     if (policy.readOnly && gitProcesses.hasBlockedRead(cwd)) {
       reject(executionError("GIT_READ_STOPPING", "A previous Git read is still stopping. See Git Simple Compare Output.")); return;
     }
-    const timeout = options.readTimeoutMs ?? timeoutResolver?.(cwd) ?? 30_000;
+    const timeout = resolveGitReadTimeout(cwd, options.readTimeoutMs);
     const group = (policy.readOnly || policy.monitor === true) && process.platform !== "win32";
     const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
     if (env) for (const name of options.clearEnv ?? []) delete env[name];
