@@ -15,21 +15,21 @@ import { buildGraphHtml } from "./graphHtml";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { GraphPanelMessageRouter } from "./graphPanelMessageRouter";
 import { sendGraphTagStatus } from "./graphTagStatus";
-import { syncGraphLocalRefs } from "./graphLocalRefs";
-import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, readGraphLocalBranchData, mergeGraphBranchRefs, refreshGraphCheckout, resolveGraphBranchFilter } from "./graphBranchLoading";
+import { canReuseGraphHistory, syncGraphReferenceTips } from "./graphHistoryReuse";
+import type { GraphActionRefreshKind } from "./graphActionRefresh";
+import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, readGraphLocalBranchData, mergeGraphBranchRefs, resolveGraphBranchFilter } from "./graphBranchLoading";
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformancePhase, logGraphBranchSnapshot } from "./graphPerformance";
 import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCommitWindowLoading";
 import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
 import { GraphRenderCache } from "./graphRenderCache";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode, graphInvalidationPlan } from "./graphRefreshCoordinator";
-import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, readGraphPageData } from "./graphPageLoading";
+import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, integrateGraphPage, readGraphPageData } from "./graphPageLoading";
 import { offerCommitGraphIfSlow } from "../ui/commitGraphOffer";
 import { GraphWorkingTreeLoading } from "./graphWorkingTreeLoading";
+import { attachGraphLocalOnlyMarkers } from "./graphLocalOnlyLoading";
 /** 그래프 무한 스크롤에서 한 번에 읽을 커밋 수. 히스토리 끝까지 반복 로드한다. */
 const GRAPH_PAGE_SIZE = 300;
-/**
- * git 그래프 웹뷰 패널. 동시에 하나만 유지한다(있으면 재사용).
- */
+/** git 그래프 웹뷰 패널. 동시에 하나만 유지한다(있으면 재사용). */
 export class GitGraphPanel {
   private static current: GitGraphPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -42,6 +42,7 @@ export class GitGraphPanel {
   private rangeStartIndex = 0;
   private rangeTotalCount: number | undefined;
   private loadGeneration = 0;
+  private reconcilePageOrder = false;
   private branchFilter: GraphBranchFilterState = { mode: "all", selected: [], compact: true };
   private lastLocalBranches: LocalBranchStatus[] = [];
   private invalidLocalRefs: GraphInvalidRef[] = [];
@@ -89,11 +90,7 @@ export class GitGraphPanel {
     });
     GitGraphPanel.current = new GitGraphPanel(panel, extensionUri, logService);
   }
-  /**
-   * 현재 열린 Graph가 표시하는 저장소 root를 Git 조회 없이 반환한다.
-   * - refresh routing 전용 read-only accessor이며 panel 상태나 log cache를 변경하지 않는다.
-   * @returns 열린 Graph의 정확한 repository root, 패널이 없으면 undefined
-   */
+  /** refresh routing에 필요한 Graph root만 Git/cache 변경 없이 반환한다. 패널이 없으면 undefined다. */
   static getOpenRepositoryRoot(): string | undefined {
     return GitGraphPanel.current?.logService.repoRoot;
   }
@@ -141,7 +138,7 @@ export class GitGraphPanel {
         .find((hash) => this.commits.some((commit) => commit.hash === hash)),
       loadCommitWindow: (hashes) => this.loadCommitWindow(hashes),
       loadReflogCommitWindow: (hash) => this.loadReflogCommitWindow(hash),
-      refreshAfterGraphAction: () => this.refreshAfterGraphAction(),
+      refreshAfterGraphAction: (kind) => this.refreshAfterGraphAction(kind),
       refreshAfterFetchAction: () => this.refreshAfterFetchAction(),
       refreshAfterCheckoutAction: () => this.refreshAfterCheckoutAction(),
     });
@@ -226,7 +223,8 @@ export class GitGraphPanel {
   }
   /** ready/manual 요청은 한 번의 직접 Graph reload와 fingerprint baseline을 완료할 때까지 기다린다. */
   private async runDirectGraph(cause: string): Promise<boolean> {
-    return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause });
+    return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause },
+      cause === "checkout" || cause === "references" ? context => this.refreshGraphReferences(context) : undefined);
   }
   /** 저장소 교체도 직접 baseline 확정 뒤 공통 수명에서 local stack과 원격 PR을 병렬 복원한다. */
   private async reloadRepository(): Promise<void> {
@@ -263,8 +261,8 @@ export class GitGraphPanel {
     await this.loadNextPage(true, "older", trace);
   }
   /** git graph action 이후 그래프와 Changes 뷰를 다시 읽는다. */
-  private async refreshAfterGraphAction(): Promise<void> {
-    await this.runDirectGraph("graphAction");
+  private async refreshAfterGraphAction(kind: GraphActionRefreshKind = "graph"): Promise<void> {
+    await this.runDirectGraph(kind === "references" ? "references" : "graphAction");
     void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
       reason: "graphAction",
     });
@@ -275,28 +273,43 @@ export class GitGraphPanel {
   }
   /** checkout 이후에는 기존 graph 페이지를 재사용해 HEAD/가상 노드만 빠르게 갱신한다. */
   private async refreshAfterCheckoutAction(): Promise<void> {
+    await this.runDirectGraph("checkout");
+    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason: "graphCheckout" });
+  }
+  /** 같은 도달 가능 이력은 보존하고 ref/HEAD부터 게시한다. 증명하지 못하면 전체 Git log를 읽는다. */
+  private async refreshGraphReferences(context: GraphRefreshContext): Promise<void> {
+    if (this.rangeStartIndex !== 0 || this.branchFilter.mode !== "all" || this.invalidLocalRefs.length || !context.previous ||
+      !context.remoteTips || !canReuseGraphHistory(context.previous.fingerprint, context.fingerprint, this.commits)) {
+      this.resetLoadedGraph(); await this.reloadGraph(context); return;
+    }
     this.workingTree.cancel("checkout");
-    const service = this.logService, repoRoot = service.repoRoot, generation = this.loadGeneration;
+    this.graphReads.cancel("checkout"); this.branchLoading.cancel("checkout");
+    const service = this.logService, repoRoot = service.repoRoot, generation = ++this.loadGeneration;
+    service.cancelGraphBranchContainment("checkout");
+    this.loading = false;
     /** 같은 패널 저장소·세대가 유지되면 true이고, 뒤늦은 checkout 조회를 버릴 때 원인을 기록한다. */
     const current = () => { const active = this.isGraphGenerationActive(generation, service); if (!active) logInfo("graph checkout refresh skipped", { repoRoot, generation, reason: "staleGeneration" }); return active; };
-    const trace = beginGraphPerformanceTrace(repoRoot, "checkout", generation);
+    const trace = beginGraphPerformanceTrace(repoRoot, context.cause, generation);
     this.activePerformance = trace;
-    const branches = await this.sendBranches(generation, trace);
+    const branches = await this.sendBranches(generation, trace, context.worktrees);
     if (!current()) return;
-    const commits = this.commits, visibleRefs = this.currentBranchFilter().visibleRefs;
-    const refreshed = await this.graphReads.run(repoRoot, "checkout", signal => refreshGraphCheckout(repoRoot, commits, branches, visibleRefs, syncGraphLocalRefs, () => service.getVirtualCommits(signal)));
-    if (!refreshed || !current()) return;
-    if (!refreshed.reused) {
-      await this.runDirectGraph("checkout");
-      return;
-    }
-    this.virtualCommits = refreshed.virtualCommits;
-    await service.reindexGraphBranchContainment(commits, this.rangeStartIndex, this.currentBranchFilter().refs);
-    if (!current()) return;
+    const commits = this.commits, filter = this.currentBranchFilter();
+    if (this.invalidLocalRefs.length) { this.resetLoadedGraph(); await this.reloadGraph(context); return; }
+    this.lastRemoteTips = context.remoteTips.map(tip => ({ ...tip }));
+    this.lastBranchRefs = mergeGraphBranchRefs(this.lastBranchRefs.filter(ref => ref.kind === "local"), this.lastRemoteTips);
+    this.remoteCatalogStatus = "ready"; this.remoteCatalogError = undefined;
+    service.seedGraphBranchTips(branches, this.lastRemoteTips);
+    this.reconcilePageOrder = true;
+    syncGraphReferenceTips(commits, context.previous.fingerprint, context.fingerprint);
+    this.postBranchFilterOptions();
+    this.virtualCommits = [];
+    if (shouldShowVirtualCommits(filter, branches)) this.workingTree.start(trace);
     this.postGraph(false, "older", trace, "checkout");
-    void vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", {
-      reason: "graphCheckout",
-    });
+    // HEAD를 먼저 보내고 상세용 포함 관계를 준비한다. 후속 조회가 queue 전체를 붙잡지 않는다.
+    void service.reindexGraphBranchContainment(commits, this.rangeStartIndex, filter.refs)
+      .catch(error => { if (current()) logError("graph checkout containment failed", error, { repoRoot, generation }); });
+    this.attachLocalOnlyMarkers(generation, service, "older", trace);
+    logInfo("graph history reused", { repoRoot, cause: context.cause, loadedCount: commits.length, generation });
   }
   /** 로컬 상태를 먼저 보내고 remote catalog까지 확정한 뒤 최종 첫 페이지를 정확히 한 번 읽는다. */
   private async reloadGraph(context: GraphRefreshContext): Promise<void> {
@@ -410,7 +423,9 @@ export class GitGraphPanel {
       this.exhausted = false;
       direction = "older";
     }
-    const { skip, readLimit } = graphPageRange(direction, this.rangeStartIndex, this.commits.length, GRAPH_PAGE_SIZE);
+    const reconcile = !reset && this.reconcilePageOrder;
+    const { skip, readLimit } = reconcile ? { skip: 0, readLimit: this.commits.length + GRAPH_PAGE_SIZE + 1 }
+      : graphPageRange(direction, this.rangeStartIndex, this.commits.length, GRAPH_PAGE_SIZE);
     if (readLimit <= 0) {
       this.postLoadState(reset, direction);
       return;
@@ -437,19 +452,12 @@ export class GitGraphPanel {
         return;
       }
       if (reset) void offerCommitGraphIfSlow(pageService.repoRoot, gitLogMs);
-      const pageCommits = direction === "older" ? page.slice(0, GRAPH_PAGE_SIZE) : page;
+      const pageCommits = direction === "older" ? page.slice(0, reconcile ? readLimit - 1 : GRAPH_PAGE_SIZE) : page;
       const nextCommits = filterCommitRefs(pageCommits, branchFilter);
-      if (direction === "newer") {
-        this.commits.unshift(...nextCommits);
-        this.rangeStartIndex = skip;
-      } else {
-        this.commits.push(...nextCommits);
-        this.exhausted = page.length <= GRAPH_PAGE_SIZE;
-        if (this.exhausted) this.rangeTotalCount = this.rangeStartIndex + this.commits.length;
-      }
-      if (this.rangeTotalCount !== undefined) {
-        this.exhausted = this.rangeStartIndex + this.commits.length >= this.rangeTotalCount;
-      }
+      Object.assign(this, integrateGraphPage({ commits: this.commits, rangeStartIndex: this.rangeStartIndex,
+        rangeTotalCount: this.rangeTotalCount, exhausted: this.exhausted }, nextCommits, skip, direction,
+        page.length > (reconcile ? readLimit - 1 : GRAPH_PAGE_SIZE), reconcile));
+      this.reconcilePageOrder = false;
       // local-only 결과가 이미 계산돼 있으면 게시 전에 붙여, 같은 페이지를 표시 때문에 두 번 게시하지 않는다.
       const localOnlyWarm = pageService.applyWarmLocalOnlyBranches(this.commits);
       this.loading = false;
@@ -470,17 +478,9 @@ export class GitGraphPanel {
     }
   }
   /** local-only 표시를 백그라운드로 계산하고, 표시가 실제로 바뀐 경우에만 그래프를 다시 게시한다. */
-  private attachLocalOnlyMarkers(
-    generation: number, pageService: GitLogService, direction: GraphLoadDirection, trace: GraphPerformanceTrace | undefined
-  ): void {
-    const started = Date.now();
-    void pageService.attachLocalOnlyBranches(this.commits).then((changedCount) => {
-      if (!this.isGraphGenerationActive(generation, pageService) || changedCount === 0) return;
-      this.postGraph(false, direction, trace, "localOnly");
-      logInfo("graph local-only markers sent", {
-        repoRoot: pageService.repoRoot, changedCount, loadedCount: this.commits.length, elapsed: Date.now() - started,
-      });
-    }).catch((err) => logError("graph local-only markers failed", err, { repoRoot: pageService.repoRoot }));
+  private attachLocalOnlyMarkers(generation: number, pageService: GitLogService, direction: GraphLoadDirection, trace: GraphPerformanceTrace | undefined): void {
+    attachGraphLocalOnlyMarkers(pageService, this.commits, () => this.isGraphGenerationActive(generation, pageService),
+      () => this.postGraph(false, direction, trace, "localOnly"));
   }
   /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
   private loadCommitWindow(hashes: string[]): Promise<string | undefined> {
@@ -539,6 +539,7 @@ export class GitGraphPanel {
     this.graphReads.cancel("reset");
     this.logService.resetGraphBranchIndex();
     this.commits = []; this.virtualCommits = [];
+    this.reconcilePageOrder = false;
     this.loading = false; this.exhausted = false;
     this.rangeStartIndex = 0; this.rangeTotalCount = undefined;
     this.loadGeneration++;

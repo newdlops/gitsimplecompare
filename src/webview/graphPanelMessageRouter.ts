@@ -13,7 +13,7 @@ import {
 } from "./graphActions";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
-import { deferGraphActionRefresh, GraphActionRefreshQueue } from "./graphActionRefresh";
+import { deferGraphActionRefresh, GraphActionRefreshQueue, type GraphActionRefreshKind } from "./graphActionRefresh";
 import { createGraphRefreshErrorNotice } from "./graphHealth";
 import { logGraphWebviewPaint } from "./graphPerformance";
 import { generateGraphRebaseAiPlan } from "./graphRebaseAiActions";
@@ -85,7 +85,7 @@ export interface GraphPanelMessageRouterDeps {
   /** reflog commit 주변 복구용 window를 불러온다. */
   loadReflogCommitWindow: (hash: string) => Promise<string | undefined>;
   /** 일반 Git action 뒤 Graph와 Changes를 갱신한다. */
-  refreshAfterGraphAction: () => Promise<void>;
+  refreshAfterGraphAction: (kind?: GraphActionRefreshKind) => Promise<void>;
   /** fetch 뒤 Graph ref와 commit을 갱신한다. */
   refreshAfterFetchAction: () => Promise<void>;
   /** checkout 뒤 가능한 경우 현재 Graph paging을 재사용한다. */
@@ -119,7 +119,7 @@ export class GraphPanelMessageRouter {
     this.rebaseSessionSync = new GraphRebaseSessionSync(message => this.deps.post(message));
     this.actionRefresh = new GraphActionRefreshQueue({
       currentRepository: () => this.deps.logService().repoRoot,
-      refresh: kind => kind === "checkout" ? this.deps.refreshAfterCheckoutAction() : this.deps.refreshAfterGraphAction(),
+      refresh: kind => kind === "checkout" ? this.deps.refreshAfterCheckoutAction() : this.deps.refreshAfterGraphAction(kind),
       info: (event, fields) => logInfo(event, fields),
       error: (error, request) => {
         logError("graph action refresh failed", error, { ...request });
@@ -465,7 +465,8 @@ export class GraphPanelMessageRouter {
       logInfo("graph action skipped", { repoRoot: service.repoRoot, action: message.type, reason: "alreadyRunning", busyKey });
       return;
     }
-    const refresh = deferGraphActionRefresh(this.actionRefresh, service.repoRoot);
+    const referencesOnly = ["push", "forcePush", "renameBranch", "createBranch", "cloneBranch", "deleteBranch"].includes(message.type);
+    const refresh = deferGraphActionRefresh(this.actionRefresh, service.repoRoot, referencesOnly ? "references" : "graph");
     const action = () => handleGraphAction(message, {
       logService: service,
       pullRequests: () => this.pullRequestPager.items,

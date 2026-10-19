@@ -40,7 +40,8 @@ async function commit(root: string, message: string): Promise<string> {
 test("숨김/포커스 해제는 화면의 그래프와 PR 조회를 보존하고, 저장소 교체·새 reload 는 모두 버린다", () => {
   assert.deepEqual(graphInvalidationPlan("hidden"), { keepLoadedGraph: true, cancelPullRequests: false });
   assert.deepEqual(graphInvalidationPlan("windowUnfocused"), { keepLoadedGraph: true, cancelPullRequests: false });
-  for (const reason of ["repositoryChanged", "directSupersede", "dispose"]) {
+  assert.deepEqual(graphInvalidationPlan("directSupersede"), { keepLoadedGraph: true, cancelPullRequests: true });
+  for (const reason of ["repositoryChanged", "dispose"]) {
     assert.deepEqual(graphInvalidationPlan(reason), { keepLoadedGraph: false, cancelPullRequests: true });
   }
 });

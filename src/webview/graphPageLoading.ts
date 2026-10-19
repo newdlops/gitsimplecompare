@@ -91,6 +91,29 @@ export function graphPageRange(
   return { skip: rangeStartIndex + loadedCount, readLimit: pageSize + 1 };
 }
 
+/** 페이지 게시 전까지 유지할 실제 커밋과 조회 범위 상태다. */
+export interface GraphPageProgress {
+  commits: Commit[]; rangeStartIndex: number; rangeTotalCount: number | undefined; exhausted: boolean;
+}
+
+/**
+ * 새 페이지를 누적하거나 ref 갱신 뒤 새 topo 순서의 첫 범위로 교체한다.
+ * @param current 기존 행과 범위 @param page 이번에 표시할 행 @param skip 실제 Git 시작 offset
+ * @param direction older/newer @param hasMore Git이 추가 한 행으로 확인한 뒤쪽 이력 존재 여부
+ * @param replace true이면 metadata 갱신 뒤의 offset을 새 Git 순서와 한 번 재조정한다.
+ * @returns UI 게시 전에 원자적으로 적용할 새 행·범위·종료 상태
+ */
+export function integrateGraphPage(current: GraphPageProgress, page: Commit[], skip: number,
+  direction: GraphLoadDirection, hasMore: boolean, replace = false): GraphPageProgress {
+  const commits = replace ? page : direction === "newer" ? [...page, ...current.commits] : [...current.commits, ...page];
+  const rangeStartIndex = replace ? 0 : direction === "newer" ? skip : current.rangeStartIndex;
+  let rangeTotalCount = replace ? undefined : current.rangeTotalCount;
+  let exhausted = direction === "newer" && !replace ? current.exhausted : !hasMore;
+  if (exhausted && (direction === "older" || replace)) rangeTotalCount = rangeStartIndex + commits.length;
+  if (rangeTotalCount !== undefined) exhausted = rangeStartIndex + commits.length >= rangeTotalCount;
+  return { commits, rangeStartIndex, rangeTotalCount, exhausted };
+}
+
 /** 한 페이지 읽기 결과. */
 export interface GraphPageData {
   /** 첫 페이지에서 함께 읽은 staged/working 가상 커밋. 읽지 않았으면 undefined */

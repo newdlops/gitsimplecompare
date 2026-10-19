@@ -4,7 +4,6 @@ import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
 import type { GitLogService } from "../git/gitLogService";
 import type { WorktreeInfo } from "../git/worktreeService";
 import type {
-  Commit,
   GraphInvalidRef,
   GraphLocalBranchSnapshot,
   LocalBranchStatus,
@@ -184,18 +183,6 @@ export function resolveGraphBranchFilter(
   requireExplicitRefs = false
 ): ResolvedGraphBranchFilter {
   return resolveBranchFilter(state, refs, remoteStatus, requireExplicitRefs);
-}
-
-/** checkout 뒤 기존 Graph 페이지를 재사용할 수 있는지 판정하고 virtual commit 갱신을 수행한다. */
-export async function refreshGraphCheckout(
-  repoRoot: string, commits: Commit[], branches: LocalBranchStatus[], visibleRefs: Set<string>,
-  syncLocalRefs: (commits: Commit[], branches: LocalBranchStatus[], visibleRefs: Set<string>) => boolean,
-  getVirtualCommits: () => Promise<Commit[]>
-): Promise<{ reused: boolean; virtualCommits: Commit[] }> {
-  if (!syncLocalRefs(commits, branches, visibleRefs)) return { reused: false, virtualCommits: [] };
-  const virtualCommits = await getVirtualCommits();
-  logInfo("graph checkout refresh finished", { repoRoot, loadedCount: commits.length });
-  return { reused: true, virtualCommits };
 }
 
 /**

@@ -106,6 +106,24 @@ test("a quick working-tree result joins the first history payload without an ext
   assert.equal(f.messages.filter(message => message.type === "graph" || message.type === "graphDelta").length, 1);
 });
 
+test("paging after ref reuse reconciles a changed topo order without dropping or duplicating commits", { timeout: 5000 }, async t => {
+  const f = fixture(t);
+  await f.panel.loadNextPage(true);
+  f.panel.reconcilePageOrder = true;
+  const reordered = [...f.commits.slice(250, 350), ...f.commits.slice(0, 250), ...f.commits.slice(350)];
+  const reads: number[][] = [];
+  f.service.getCommitPage = async (limit: number, skip: number) => { reads.push([limit, skip]); return reordered.slice(skip, skip + limit); };
+  await f.panel.loadNextPage(false, "older");
+  assert.deepEqual(reads, [[601, 0]]);
+  assert.deepEqual(f.panel.commits.map((commit: Commit) => commit.hash), reordered.slice(0, 600).map(commit => commit.hash));
+  assert.equal(new Set(f.panel.commits.map((commit: Commit) => commit.hash)).size, 600);
+  assert.equal(f.panel.reconcilePageOrder, false);
+  await f.panel.loadNextPage(false, "older");
+  assert.deepEqual(reads.at(-1), [301, 600]);
+  assert.equal(f.panel.commits.length, 601);
+  assert.equal(f.panel.exhausted, true);
+});
+
 test("a late working-tree result preserves all loaded pages and explicitly clears serialized pending state", { timeout: 5000 }, async t => {
   const f = fixture(t);
   await f.panel.loadNextPage(true);

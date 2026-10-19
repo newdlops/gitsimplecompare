@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.72100] - 2026-10-19
+
+### Changed
+
+- Refresh HEAD and branch badges after checkout and push without waiting for
+  working-tree status or commit-containment preparation. Reuse loaded history
+  only when current ref tips and known parent links prove it is unchanged.
+- Share action refreshes with the graph lifecycle so matching watcher events
+  do not reload the same result, and defer hidden-panel reads until visible.
+- Reconcile pagination with Git's current ordering after history reuse, and
+  include stash, recovery refs and linked-worktree HEADs in refresh decisions.
+
+### Fixed
+
+- Notify the open graph immediately after Changes checkout, branch rebase,
+  squash merge and Undo, including failed or conflict-paused operations.
+- Preserve fresh HEAD, remote aliases and renamed branch badges while keeping
+  late status results from overwriting newer operations.
+
 ## [0.1.72099] - 2026-10-19
 
 ### Changed

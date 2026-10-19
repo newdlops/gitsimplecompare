@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
 import { pickBranch } from "../ui/quickPick";
 import { logError, logInfo } from "../ui/outputLog";
+import { GitGraphPanel } from "../webview/graphPanel";
 import {
   focusCheckoutConflicts,
   isCheckoutConflictError,
@@ -40,6 +41,7 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
 
   const logService = new GitLogService(service.repoRoot);
   let checkedOutBranch = picked.name;
+  let graphRefreshRequested = false;
   try {
     try {
       if (picked.kind === "remote") {
@@ -66,11 +68,14 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
       if (result === "cancelled") {
         return;
       }
+      GitGraphPanel.refreshOpen(service.repoRoot, "checkoutBranch");
+      graphRefreshRequested = true;
       if (await focusCheckoutConflicts(service.repoRoot)) {
         return;
       }
     }
     service.invalidateStatusCache();
+    if (!graphRefreshRequested) GitGraphPanel.refreshOpen(service.repoRoot, "checkoutBranch");
     logInfo("branch checkout finished", {
       repoRoot: service.repoRoot,
       branch: checkedOutBranch,
@@ -81,6 +86,7 @@ export async function checkoutBranch(deps: CommandDeps): Promise<void> {
       reason: "checkoutBranch",
     });
   } catch (err) {
+    GitGraphPanel.refreshOpen(service.repoRoot, "checkoutBranch");
     const message = err instanceof Error ? err.message : String(err);
     logError("branch checkout failed", err, {
       repoRoot: service.repoRoot,

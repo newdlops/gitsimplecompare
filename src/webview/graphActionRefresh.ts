@@ -1,5 +1,5 @@
 // Git 명령 완료와 표시용 새로고침을 분리하고, 겹친 요청은 최신 후속 조회 하나로 합친다.
-export type GraphActionRefreshKind = "checkout" | "graph";
+export type GraphActionRefreshKind = "checkout" | "references" | "graph";
 interface Request { repoRoot: string; kind: GraphActionRefreshKind; }
 
 /** 패널 수명과 현재 저장소를 확인하면서 실제 화면 조회를 호출하는 경계다. */
@@ -29,7 +29,8 @@ export class GraphActionRefreshQueue {
       return;
     }
     const previous = this.pending;
-    this.pending = { repoRoot, kind: previous?.repoRoot === repoRoot && previous.kind === "graph" ? "graph" : kind };
+    const strength = { checkout: 0, references: 1, graph: 2 };
+    this.pending = { repoRoot, kind: previous?.repoRoot === repoRoot && strength[previous.kind] > strength[kind] ? previous.kind : kind };
     this.deps.info(previous ? "graph action refresh coalesced" : "graph action refresh queued", { repoRoot, kind: this.pending.kind });
     if (!this.running) {
       this.running = true;
@@ -61,17 +62,20 @@ export class GraphActionRefreshQueue {
  * @param queue 패널이 소유한 표시용 조회 큐 @param repoRoot 명령 시작 시 고정한 저장소
  * @returns 기존 action 의존성에 넣을 함수들과 busy 해제 뒤 호출할 complete 함수
  */
-export function deferGraphActionRefresh(queue: GraphActionRefreshQueue, repoRoot: string) {
+export function deferGraphActionRefresh(queue: GraphActionRefreshQueue, repoRoot: string, graphKind: "references" | "graph" = "graph") {
   let pending: GraphActionRefreshKind | undefined;
   let complete = false;
   /** @param kind 명령이 요청한 갱신 강도 @returns 즉시 완료되며 Git 명령은 화면 조회를 기다리지 않는다. */
   const request = async (kind: GraphActionRefreshKind): Promise<void> => {
     if (complete) queue.request(repoRoot, kind);
-    else pending = pending === "graph" ? "graph" : kind;
+    else {
+      const strength = { checkout: 0, references: 1, graph: 2 };
+      pending = pending && strength[pending] > strength[kind] ? pending : kind;
+    }
   };
   return {
     refreshCheckout: () => request("checkout"),
-    refreshGraph: () => request("graph"),
+    refreshGraph: () => request(graphKind),
     /** 명령 완료/실패의 busy 해제가 게시된 뒤 보류한 요청 하나를 전달한다. */
     complete: () => {
       if (complete) return;

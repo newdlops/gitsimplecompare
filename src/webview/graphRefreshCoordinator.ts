@@ -9,7 +9,7 @@ export type GraphRefreshMode = "none" | "stacks" | "pullRequests";
 /** 외부 요청이 coordinator에 전달하는 최소 정보다. */
 export interface GraphRefreshRequest { repoRoot: string; cause: string; mode: GraphRefreshMode; force?: boolean; }
 /** Graph reload callback이 stale 여부를 판단할 수 있도록 전달하는 실행 문맥이다. */
-export interface GraphRefreshContext extends GraphRefreshRead { repoRoot: string; cause: string; generation: number; }
+export interface GraphRefreshContext extends GraphRefreshRead { repoRoot: string; cause: string; generation: number; previous?: GraphRefreshRead; }
 /** Git reader가 이미 읽은 데이터도 현재 refresh 세대에만 전달하는 결과다. */
 export interface GraphRefreshRead { fingerprint: string; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
 /** UI adapter가 주입하는 Git read, reload, publication, invalidation, logging 경계다. */
@@ -42,6 +42,7 @@ export function graphRefreshFingerprintDigest(fingerprint: string): string {
 export const GRAPH_REFRESH_FORCE_CAUSES = new Set([
   "manual", "stackSubmitted", "stackAdvanced", "stackParentEdited", "localStackDeleted",
   "stackRestackContinue", "stackRestackAbort", "commit", "graphAction",
+  "checkoutBranch", "branchOperationCompleted", "branchOperationConflicts", "branchOperationUndo",
 ]);
 
 /** comma-delimited reason에서 정확히 일치한 force cause가 있는지 반환한다. */
@@ -61,13 +62,14 @@ export interface GraphInvalidationPlan {
  * 무효화 원인에 따라 panel 이 무엇을 보존할지 정한다.
  * - 숨김/창 포커스 해제는 잠깐 쉬는 것이므로 화면에 있는 그래프와 PR 조회를 버리지 않는다. 버리면 복귀 뒤
  *   스크롤 한 번에 첫 페이지부터 다시 읽어 그래프가 300행으로 줄고, PR 목록은 다시 시작되지 않는다.
- * - 저장소 교체·새 직접 reload·폐기는 이전 결과가 더 이상 맞지 않으므로 모두 버린다.
+ * - 새 직접 reload는 조회만 취소하고 이미 게시한 이력은 재사용 판정까지 보존한다.
+ * - 저장소 교체·폐기는 이전 결과를 모두 버린다.
  * @param reason coordinator 가 전달한 무효화 원인
  * @returns 보존/취소 계획
  */
 export function graphInvalidationPlan(reason: string): GraphInvalidationPlan {
   const pause = reason === "hidden" || reason === "windowUnfocused";
-  return { keepLoadedGraph: pause, cancelPullRequests: !pause };
+  return { keepLoadedGraph: pause || reason === "directSupersede", cancelPullRequests: !pause };
 }
 
 /** mode 둘 중 PR 목록 재조회 요구를 잃지 않는 더 강한 값을 고른다. */
@@ -87,6 +89,7 @@ export class GraphRefreshLifecycleCoordinator {
   private directSequence = 0;
   private generation = 0;
   private baseline: string | undefined;
+  private baselineRead?: GraphRefreshRead;
   private running: ResolvedRequest | undefined;
   private directRunning = false;
   private pending: ResolvedRequest | undefined;
@@ -103,6 +106,7 @@ export class GraphRefreshLifecycleCoordinator {
     if (this.repository === repoRoot) return;
     this.repository = repoRoot;
     this.baseline = undefined;
+    this.baselineRead = undefined;
     this.running = undefined;
     this.directRunning = false;
     this.pending = undefined;
@@ -159,10 +163,12 @@ export class GraphRefreshLifecycleCoordinator {
     }
   }
 
-  /** ready/manual처럼 호출자가 await하는 직접 reload를 정확히 한 번 실행하고 baseline까지 확정한다. */
-  async runDirect(request: Pick<GraphRefreshRequest, "repoRoot" | "cause">): Promise<boolean> {
+  /** ready/manual/명령 reload를 한 번 실행한다. reload 경계는 검증된 DAG 재사용 경로로 바꿀 수 있다. */
+  async runDirect(request: Pick<GraphRefreshRequest, "repoRoot" | "cause">,
+    reload: (context: GraphRefreshContext) => Promise<void> = this.deps.reloadGraph): Promise<boolean> {
     if (this.disposed) return false;
     this.setRepository(request.repoRoot);
+    if (!this.canRun()) { this.defer({ ...request, mode: "none", force: true }); return false; }
     const superseded = !!(
       this.running || this.directRunning || this.pending || this.deferred ||
       this.unreadIntent.force || this.unreadIntent.mode !== "none"
@@ -193,10 +199,11 @@ export class GraphRefreshLifecycleCoordinator {
         });
         return false;
       }
-      const context = { ...request, ...snapshot, generation, fingerprint };
-      await this.deps.reloadGraph(context);
+      const context = { ...request, ...snapshot, generation, fingerprint, ...(this.baselineRead ? { previous: cloneFingerprintRead(this.baselineRead) as GraphRefreshRead } : {}) };
+      await reload(context);
       if (!this.isCurrentDirect(request.repoRoot, epoch, directSequence)) return false;
       this.baseline = fingerprint;
+      this.baselineRead = { ...snapshot, fingerprint };
       this.deps.info("graph refresh complete", this.fields(request, generation, graphRefreshFingerprintDigest(fingerprint)));
       return true;
     } catch (error) {
@@ -257,6 +264,7 @@ export class GraphRefreshLifecycleCoordinator {
       if (!superseded) await this.deps.publishAfterReload(context, request.mode);
       if (!this.isCurrent(request.repoRoot, epoch) || this.running !== request) return;
       this.baseline = request.fingerprint;
+      this.baselineRead = { fingerprint: request.fingerprint, worktrees: request.worktrees, remoteTips: request.remoteTips };
       this.deps.info("graph refresh complete", this.fields(request, generation, digest));
     } catch (error) {
       if (this.isCurrent(request.repoRoot, epoch)) this.deps.error("graph refresh error", error, this.fields(request, generation, digest));

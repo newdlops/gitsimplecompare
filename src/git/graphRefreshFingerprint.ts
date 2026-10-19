@@ -38,7 +38,7 @@ export interface GraphRefreshSnapshot {
  * @param repoRoot 조회할 저장소 또는 linked worktree의 루트. 심볼릭 링크 경로도 허용한다.
  * @param runner 두 기본 조회와 필요한 경우의 HEAD fallback을 실행하는 경계
  * @param signal 더 이상 필요하지 않은 Git 조회를 종료하는 호출 수명 신호
- * @returns 기존 네 가지 출력으로 만든 것과 같은 Graph fingerprint
+ * @returns HEAD·전체 ref·다른 worktree의 HEAD까지 포함한 Graph fingerprint
  */
 export async function readGraphRefreshFingerprint(
   repoRoot: string, runner: GraphFingerprintRunner = runGit, signal?: AbortSignal
@@ -47,7 +47,7 @@ export async function readGraphRefreshFingerprint(
 }
 
 /**
- * fingerprint와 그 판정에 사용한 worktree·원격 ref를 함께 반환해 같은 reload의 재조회를 줄인다.
+ * 전체 ref(복구·stash 포함)와 worktree를 읽고 원격 tip을 함께 반환해 같은 reload의 재조회를 줄인다.
  * @param repoRoot Git 저장소 루트, runner 실제 Git 실행 경계, signal 취소된 조회의 자식 프로세스 종료 신호
  * @returns 의미 fingerprint와 같은 시점에 Git에서 읽은 worktree 목록·원격 tip
  */
@@ -57,7 +57,7 @@ export async function readGraphRefreshSnapshot(
   signal?.throwIfAborted();
   const options = signal ? { signal } : undefined;
   const [refs, worktrees] = await Promise.all([
-    runner(["for-each-ref", `--format=%(refname)${REF_SEPARATOR}%(objectname)${REF_SEPARATOR}%(refname:short)`, "refs/heads", "refs/remotes", "refs/tags"], repoRoot, options),
+    runner(["for-each-ref", `--format=%(refname)${REF_SEPARATOR}%(objectname)${REF_SEPARATOR}%(refname:short)`], repoRoot, options),
     runner(["worktree", "list", "--porcelain"], repoRoot, options),
   ]);
   signal?.throwIfAborted();

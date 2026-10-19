@@ -10,6 +10,7 @@ import {
 } from "../git/branchOperationService";
 import type { BranchInfo } from "../git/gitTypes";
 import { logError, logInfo } from "../ui/outputLog";
+import { GitGraphPanel } from "../webview/graphPanel";
 import { CommandDeps, resolveCompareService } from "./shared";
 
 type BranchOperationKind = "squash" | "rebase";
@@ -78,11 +79,12 @@ export async function undoBranchOperation(deps: CommandDeps): Promise<void> {
     });
     service.invalidateStatusCache();
     service.invalidateBranchCache();
-    await refreshAfterBranchOperation("branchOperationUndo");
+    await refreshAfterBranchOperation(service.repoRoot, "branchOperationUndo");
     vscode.window.showInformationMessage(
       vscode.l10n.t("Branch operation undone on '{0}'.", result.branch)
     );
   } catch (err) {
+    GitGraphPanel.refreshOpen(service.repoRoot, "branchOperationUndo");
     logError("branch operation undo failed", err, { repoRoot: service.repoRoot });
     vscode.window.showErrorMessage(
       vscode.l10n.t("Branch operation undo failed: {0}", errorText(err))
@@ -170,6 +172,7 @@ async function runBranchOperation(
     deps.registry.get(picked.repoRoot).invalidateBranchCache();
     await handleBranchOperationResult(result, operation, picked.repoRoot);
   } catch (err) {
+    GitGraphPanel.refreshOpen(picked.repoRoot, "branchOperationCompleted");
     logError("branch command operation failed", err, {
       repoRoot: picked.repoRoot,
       sourceBranch,
@@ -228,7 +231,7 @@ async function handleBranchOperationResult(
       snapshotRef: result.snapshotRef,
       preservedStashHash: result.preservedStashHash,
     });
-    await refreshAfterBranchOperation("branchOperationConflicts");
+    await refreshAfterBranchOperation(repoRoot, "branchOperationConflicts");
     await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
     vscode.window.showWarningMessage(
       operation === "rebase"
@@ -249,7 +252,7 @@ async function handleBranchOperationResult(
     beforeHead: shortHash(result.beforeHead),
     afterHead: shortHash(result.afterHead),
   });
-  await refreshAfterBranchOperation("branchOperationCompleted");
+  await refreshAfterBranchOperation(repoRoot, "branchOperationCompleted");
   vscode.window.showInformationMessage(
     operation === "squash"
       ? vscode.l10n.t("Branch '{0}' squash-merged into '{1}'.", result.sourceBranch, result.branch)
@@ -283,9 +286,10 @@ async function confirmBranchOperation(
 
 /**
  * branch operation 이후 관련 뷰를 갱신한다.
- * @param reason refresh 로그와 debounce 구분에 사용할 사유
+ * @param repoRoot 실제 작업한 저장소 @param reason refresh 로그와 debounce 구분에 사용할 사유
  */
-async function refreshAfterBranchOperation(reason: string): Promise<void> {
+async function refreshAfterBranchOperation(repoRoot: string, reason: string): Promise<void> {
+  GitGraphPanel.refreshOpen(repoRoot, reason);
   await vscode.commands.executeCommand("gitSimpleCompare.refreshChanges", { reason });
   await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
 }
