@@ -2,19 +2,14 @@
 // - 언어 심볼/표시 변환은 blockBlameCodeLensPresentation에, Git 집계는 git 계층에 위임한다.
 // - 이 모듈은 VS Code 이벤트, 설정, 문서별 비동기 캐시의 생애주기만 담당한다.
 import * as vscode from "vscode";
-import {
-  type BlockBlameSummary,
-} from "../git/blockBlameModel";
-import { summarizeFileBlame } from "../git/blockBlameBatch";
-import { GitBlameService } from "../git/blameService";
-import { readBlameCacheIdentity } from "../git/blameCacheIdentity";
+import type { PreparedFileBlame } from "../git/blameService";
+import { isBlameRepositoryScopeCurrent, readBlameCacheIdentity } from "../git/blameCacheIdentity";
 import { SharedGitRead } from "../git/sharedGitRead";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo } from "../ui/outputLog";
-import {
-  createBlockBlameCodeLens,
-  readSourceBlocks,
-} from "./blockBlameCodeLensPresentation";
+import { createBlockBlameCodeLens } from "./blockBlameCodeLensPresentation";
+import { BlockBlameSourceCache } from "./blockBlameSourceCache";
+import { loadBlockBlameSnapshot, type BlockBlameSnapshot } from "./blockBlameSnapshotLoader";
 
 const CONFIG_SECTION = "gitSimpleCompare";
 const SHOW_CONFIG_KEY = "blameBlock.show";
@@ -24,29 +19,19 @@ const CACHE_TTL_MS = 60_000;
 const EMPTY_CACHE_TTL_MS = 500;
 const SYMBOL_RETRY_DELAYS_MS = [250, 750, 1500];
 const SKIP_LOG_TTL_MS = 15_000;
-const MAX_BLOCKS_PER_DOCUMENT = 400;
-
-/** 한 문서 버전에서 언어 심볼과 Git blame 을 결합한 캐시 결과. */
-interface BlockBlameSnapshot {
-  /** 조회 시점 TextDocument.version */
-  documentVersion: number;
-  /** 선언 위치 순서로 정렬된 블록별 작업자 요약 */
-  summaries: BlockBlameSummary[];
-  /** 완료 snapshot도 다음 viewport에서 실제 HEAD/index/파일 버전을 확인한다. */
-  repoRoot?: string;
-  cacheIdentity?: string;
-}
 
 /** 같은 문서에 들어오는 여러 viewport 요청이 한 Git 프로세스를 공유하기 위한 캐시 항목. */
 interface CachedSnapshot {
   /** 캐시에 들어간 TextDocument.version */
   documentVersion: number;
+  languageId: string;
   /** 커밋/브랜치 변경 뒤 오래된 결과가 유지되지 않게 하는 만료 시각 */
   expiresAt: number;
   /** 진행 중 조회까지 공유하는 snapshot promise */
   read: SharedGitRead<BlockBlameSnapshot>;
   repoRoot?: string;
   cacheIdentity?: string;
+  bytes: number;
 }
 
 /** 반복 viewport 요청이 같은 skip 로그를 쏟지 않게 하는 최근 로그 정보. */
@@ -70,12 +55,15 @@ export class BlockBlameCodeLensController
 
   private readonly disposables: vscode.Disposable[] = [];
   private readonly cache = new Map<string, CachedSnapshot>();
+  private readonly sources = new BlockBlameSourceCache();
   private readonly skipLogs = new Map<string, SkipLogRecord>();
   private readonly symbolRetries = new Map<string, { version: number; attempts: number; timer?: ReturnType<typeof setTimeout> }>();
   private visible = readBlockBlameVisibility();
   private registered = false;
   private disposed = false;
   private readonly readControllers = new Set<AbortController>();
+  private preload?: { key: string; controller: AbortController };
+  private providerRequests = 0;
 
   /**
    * 저장소 탐색 레지스트리를 주입받아 문서별 GitBlameService 를 지연 생성한다.
@@ -98,6 +86,7 @@ export class BlockBlameCodeLensController
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (document.uri.scheme === "file") {
           this.invalidateDocument(document.uri, "documentSaved");
+          if (document.uri.toString() === vscode.window.activeTextEditor?.document.uri.toString()) this.preloadActiveDocument();
         }
       }),
       vscode.workspace.onDidChangeTextDocument((event) => {
@@ -106,20 +95,27 @@ export class BlockBlameCodeLensController
         }
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
+        if (this.preload?.key === document.uri.toString()) this.cancelPreload();
+        this.sources.invalidate(document.uri.toString());
         this.clearSymbolRetry(document.uri.toString());
         void this.cache.get(document.uri.toString())?.read.dispose();
         this.cache.delete(document.uri.toString());
         this.skipLogs.delete(document.uri.toString());
       }),
       vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (this.preload?.key !== editor?.document.uri.toString()) this.cancelPreload();
         if (editor?.document.uri.scheme === "file") {
           this.evictExpiredCache();
           this.changeEmitter.fire();
+          this.preloadActiveDocument();
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration(FULL_SHOW_CONFIG_KEY)) {
           this.applyConfiguration("configuration");
+        }
+        if (event.affectsConfiguration("editor.codeLens")) {
+          this.cancelPreload(); this.preloadActiveDocument();
         }
       })
     );
@@ -127,6 +123,7 @@ export class BlockBlameCodeLensController
     logInfo("block blame code vision provider registered", {
       visible: this.visible,
     });
+    this.preloadActiveDocument();
     return this;
   }
 
@@ -153,6 +150,7 @@ export class BlockBlameCodeLensController
     }
 
     const controller = new AbortController();
+    this.providerRequests++;
     this.readControllers.add(controller);
     const subscription = token.onCancellationRequested(() => controller.abort());
     if (token.isCancellationRequested) controller.abort();
@@ -171,7 +169,7 @@ export class BlockBlameCodeLensController
         .map((summary) => createBlockBlameCodeLens(document, summary))
         .filter((lens): lens is vscode.CodeLens => lens !== undefined);
     } catch (error) {
-      if (controller.signal.aborted) return [];
+      if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) return [];
       logError("block blame code vision failed", error, {
         path: document.uri.fsPath,
       });
@@ -183,6 +181,7 @@ export class BlockBlameCodeLensController
   private handleWindowFocus(focused: boolean): void {
     if (this.disposed) return;
     if (!focused) {
+      this.cancelPreload();
       for (const controller of this.readControllers) controller.abort();
       for (const retry of this.symbolRetries.values()) {
         if (retry.timer) clearTimeout(retry.timer);
@@ -190,9 +189,9 @@ export class BlockBlameCodeLensController
       }
       logInfo("block blame code vision suspended", { reason: "window-unfocused", reads: this.readControllers.size });
     } else {
-      const hadCache = this.cache.size > 0;
-      this.refresh("windowFocused");
-      if (!hadCache) this.changeEmitter.fire();
+      // 완료 결과는 다음 요청에서 실제 identity를 확인한다. 포커스만으로 심볼까지 버리지 않는다.
+      this.changeEmitter.fire();
+      this.preloadActiveDocument();
       logInfo("block blame code vision resumed", { reason: "window-focused" });
     }
   }
@@ -219,7 +218,24 @@ export class BlockBlameCodeLensController
   }
 
   /**
-   * Git HEAD/index 또는 작업 파일 상태가 바뀌었을 때 모든 blame snapshot 을 버린다.
+   * Block Author 클릭에 쓸 전체 blame을 다시 조회하지 않고 검증해 돌려준다.
+   * @param document 클릭 대상 저장 문서, signal 탭 변경/취소 신호
+   * @returns HEAD/index/파일/설정과 중첩 저장소 경계까지 같은 완료 결과. 없으면 일반 Git 경로로 복귀한다.
+   */
+  async preparedFile(document: vscode.TextDocument, signal?: AbortSignal): Promise<PreparedFileBlame | undefined> {
+    const cached = this.cache.get(document.uri.toString());
+    const snapshot = cached?.read.peek(Infinity);
+    if (!cached || !snapshot?.repoRoot || !snapshot.cacheIdentity || !snapshot.fileBlame) return undefined;
+    if (!await this.isCurrentSnapshot(document, cached, signal)) return undefined;
+    signal?.throwIfAborted();
+    if (document.isDirty || document.version !== cached.documentVersion || document.languageId !== cached.languageId
+      || this.disposed || !this.visible || !vscode.window.state.focused || this.cache.get(document.uri.toString()) !== cached
+      || !cached.read.peek(Infinity)) return undefined;
+    return { repoRoot: snapshot.repoRoot, cacheIdentity: snapshot.cacheIdentity, blame: snapshot.fileBlame };
+  }
+
+  /**
+   * 저장소 이벤트 뒤 완료 snapshot은 metadata로 재검증하고 진행 중 이전 조회만 취소한다.
    * @param reason OUTPUT 채널에서 무효화 원인을 추적할 문자열
    */
   refresh(reason: string): void {
@@ -227,10 +243,13 @@ export class BlockBlameCodeLensController
       return;
     }
     const documents = this.cache.size;
-    for (const cached of this.cache.values()) void cached.read.dispose();
-    this.cache.clear();
+    this.cancelPreload();
+    for (const [key, cached] of this.cache) {
+      if (!cached.read.peek(Infinity)) { void cached.read.dispose(); this.cache.delete(key); }
+    }
     this.changeEmitter.fire();
-    logInfo("block blame code vision cache refreshed", { reason, documents });
+    logInfo("block blame code vision cache revalidation requested", { reason, documents, retained: this.cache.size });
+    this.preloadActiveDocument();
   }
 
   /** provider 등록, 이벤트 emitter, 진행 중 캐시 참조를 모두 정리한다. */
@@ -239,6 +258,8 @@ export class BlockBlameCodeLensController
       return;
     }
     this.disposed = true;
+    this.cancelPreload();
+    this.sources.clear();
     for (const key of this.symbolRetries.keys()) this.clearSymbolRetry(key);
     for (const controller of this.readControllers) controller.abort();
     this.readControllers.clear();
@@ -260,37 +281,43 @@ export class BlockBlameCodeLensController
     document: vscode.TextDocument,
     signal?: AbortSignal
   ): Promise<BlockBlameSnapshot> {
+    signal?.throwIfAborted();
+    if (this.disposed || !this.visible || !vscode.window.state.focused || document.isDirty) throw new DOMException("Blame cancelled.", "AbortError");
     const key = document.uri.toString();
     const cached = this.cache.get(key);
     if (
       cached &&
-      cached.documentVersion === document.version &&
-      cached.expiresAt > Date.now()
+      cached.documentVersion === document.version && cached.languageId === document.languageId
     ) {
-      if (cached.read.hasConsumers() || !cached.repoRoot) return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
-      const identity = await readBlameCacheIdentity(cached.repoRoot, document.uri.fsPath);
-      if (signal?.aborted) throw new DOMException("Blame cancelled.", "AbortError");
+      if (cached.read.hasConsumers() || (!cached.repoRoot && cached.expiresAt > Date.now())) {
+        return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
+      }
+      const current = await this.isCurrentSnapshot(document, cached, signal);
       // 같은 오래된 완료 값을 검사하던 다른 viewport가 먼저 새 세대를 만들었으면 그 조회를 공유한다.
       if (this.cache.get(key) !== cached) return this.getSnapshot(document, signal);
-      if (identity && identity === cached.cacheIdentity) return cached.read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
+      if (current) return cached.read.peek(Infinity)!;
     }
 
     if (cached) void cached.read.dispose();
     const read = new SharedGitRead(async abort => {
       const value = await this.loadSnapshot(document, abort);
       entry.repoRoot = value.repoRoot; entry.cacheIdentity = value.cacheIdentity;
+      entry.bytes = value.fileBlame?.reduce((sum, line) => sum + 256 + 2 * (line.commit.length + line.authorName.length
+        + line.authorMail.length + line.summary.length + line.filename.length + line.content.length), 0) ?? 0;
       // 언어 서버 초기화 전의 빈 심볼/저장소 결과를 정상 blame과 같은 60초 동안 유지하지 않는다.
       entry.expiresAt = Date.now() + (value.repoRoot ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS);
       return value;
     }, value => value);
     const entry: CachedSnapshot = {
       documentVersion: document.version,
+      languageId: document.languageId,
       expiresAt: Date.now() + CACHE_TTL_MS,
       read,
+      bytes: 0,
     };
     this.cache.set(key, entry);
     const promise = read.read({ signal, maxCacheAgeMs: CACHE_TTL_MS });
-    void promise.catch(() => {
+    void promise.then(() => this.pruneSnapshotCache(), () => {
       if (this.cache.get(key) === entry && !entry.read.hasConsumers()) {
         this.cache.delete(key);
       }
@@ -299,7 +326,7 @@ export class BlockBlameCodeLensController
   }
 
   /**
-   * 저장소 탐색과 DocumentSymbol 조회를 병렬로 실행한 뒤 파일 blame 을 블록별로 집계한다.
+   * 독립 loader에 조회를 위임하고 빈 심볼의 제한된 재시도만 컨트롤러 수명에 연결한다.
    * @param document 저장된 file 문서
    * @returns 현재 문서 버전에 해당하는 snapshot
    */
@@ -307,43 +334,63 @@ export class BlockBlameCodeLensController
     document: vscode.TextDocument,
     signal: AbortSignal
   ): Promise<BlockBlameSnapshot> {
-    const startedAt = Date.now();
-    const version = document.version;
-    const [service, blocks] = await Promise.all([
-      this.registry.resolve(dirname(document.uri.fsPath)),
-      readSourceBlocks(document),
-    ]);
-    if (signal.aborted || !vscode.window.state.focused) throw new DOMException("Blame cancelled.", "AbortError");
-    if (!service) {
-      this.logSkip(document, "no-repository");
-      return { documentVersion: version, summaries: [] };
-    }
-    if (blocks.length === 0) {
-      this.logSkip(document, "no-supported-symbols");
-      this.scheduleSymbolRetry(document);
-      return { documentVersion: version, summaries: [] };
-    }
+    const snapshot = await loadBlockBlameSnapshot(document, this.registry, this.sources, signal);
+    signal.throwIfAborted();
+    if (snapshot.skipReason) {
+      this.logSkip(document, snapshot.skipReason);
+      if (snapshot.skipReason === "no-supported-symbols") this.scheduleSymbolRetry(document);
+    } else this.clearSymbolRetry(document.uri.toString());
+    return snapshot;
+  }
 
-    const selectedBlocks = blocks.slice(0, MAX_BLOCKS_PER_DOCUMENT);
-    this.clearSymbolRetry(document.uri.toString());
-    const lookupMs = Date.now() - startedAt, blameStartedAt = Date.now();
-    const cacheIdentity = await readBlameCacheIdentity(service.repoRoot, document.uri.fsPath);
-    const blame = await new GitBlameService(service.repoRoot).getFileBlame(
-      document.uri.fsPath, undefined, { signal }
-    );
-    const blameMs = Date.now() - blameStartedAt, summaryStartedAt = Date.now();
-    const summaries = summarizeFileBlame(selectedBlocks, blame)
-      .filter((summary) => summary.primaryContributor !== undefined);
-    logInfo("block blame code vision loaded", {
-      path: service.toRepoRelative(document.uri.fsPath),
-      symbols: blocks.length,
-      displayed: summaries.length,
-      truncated: blocks.length > selectedBlocks.length,
-      blameLines: blame.length,
-      lookupMs, blameMs, summaryMs: Date.now() - summaryStartedAt,
-      durationMs: Date.now() - startedAt,
-    });
-    return { documentVersion: version, summaries, repoRoot: service.repoRoot, cacheIdentity };
+  /** 완료 값은 기존 TTL 안에서도 metadata로 검증한다. 검증 중 문서/설정/캐시가 바뀌면 재사용하지 않는다. */
+  private async isCurrentSnapshot(document: vscode.TextDocument, cached: CachedSnapshot, signal?: AbortSignal): Promise<boolean> {
+    signal?.throwIfAborted();
+    if (!cached.repoRoot || !cached.cacheIdentity || cached.expiresAt <= Date.now() || !cached.read.peek(Infinity) || cached.documentVersion !== document.version
+      || cached.languageId !== document.languageId || document.isDirty || this.disposed || !this.visible || !vscode.window.state.focused) return false;
+    const [identity, sameScope] = await Promise.all([
+      readBlameCacheIdentity(cached.repoRoot, document.uri.fsPath),
+      isBlameRepositoryScopeCurrent(cached.repoRoot, document.uri.fsPath),
+    ]);
+    signal?.throwIfAborted();
+    return !!identity && sameScope && identity === cached.cacheIdentity && !this.disposed && this.visible && !document.isDirty
+      && vscode.window.state.focused && document.version === cached.documentVersion && document.languageId === cached.languageId
+      && cached.expiresAt > Date.now() && this.cache.get(document.uri.toString()) === cached && !!cached.read.peek(Infinity);
+  }
+
+  /** VS Code provider 지연 전에 활성 저장 파일 하나만 준비하며 나중의 provider 소비자와 같은 조회를 공유한다. */
+  private preloadActiveDocument(): void {
+    const document = vscode.window.activeTextEditor?.document;
+    if (this.disposed || !this.visible || !vscode.window.state.focused || !document || document.isDirty || document.uri.scheme !== "file"
+      || !vscode.workspace.getConfiguration("editor", document.uri).get<boolean>("codeLens", true)) return;
+    if (this.preload?.key === document.uri.toString()) return;
+    this.cancelPreload();
+    const preload = { key: document.uri.toString(), controller: new AbortController() };
+    this.preload = preload;
+    const requests = this.providerRequests, version = document.version;
+    void this.getSnapshot(document, preload.controller.signal).then(() => {
+      if (this.preload === preload && !preload.controller.signal.aborted && version === document.version && requests === this.providerRequests) {
+        this.changeEmitter.fire();
+      }
+    }).catch(error => {
+      if (!preload.controller.signal.aborted && !(error instanceof Error && error.name === "AbortError")) {
+        logError("block blame code vision preload failed", error, { path: document.uri.fsPath });
+      }
+    }).finally(() => { if (this.preload === preload) this.preload = undefined; });
+  }
+
+  /** 활성 탭/포커스/문서 수명이 끝나면 선행 소비자만 취소하고 다른 provider 소비자는 유지한다. */
+  private cancelPreload(): void { this.preload?.controller.abort(); this.preload = undefined; }
+
+  /** 완료 blame이 탭마다 쌓이지 않게 8문서/16MiB를 제한하되 활성 파일과 진행 중 소비자는 보호한다. */
+  private pruneSnapshotCache(): void {
+    let bytes = [...this.cache.values()].reduce((sum, entry) => sum + entry.bytes, 0);
+    const active = vscode.window.activeTextEditor?.document.uri.toString();
+    for (const [key, entry] of this.cache) {
+      if ((this.cache.size > 8 || bytes > 16 * 1024 * 1024) && key !== active && !entry.read.hasConsumers()) {
+        this.cache.delete(key); bytes -= entry.bytes; void entry.read.dispose();
+      }
+    }
   }
 
   /**
@@ -357,6 +404,8 @@ export class BlockBlameCodeLensController
     reason: string,
     emitChange = true
   ): void {
+    if (this.preload?.key === uri.toString()) this.cancelPreload();
+    this.sources.invalidate(uri.toString());
     void this.cache.get(uri.toString())?.read.dispose();
     this.clearSymbolRetry(uri.toString());
     const removed = this.cache.delete(uri.toString());
@@ -379,11 +428,13 @@ export class BlockBlameCodeLensController
     const next = readBlockBlameVisibility();
     const changed = next !== this.visible;
     this.visible = next;
+    this.cancelPreload();
     for (const key of this.symbolRetries.keys()) this.clearSymbolRetry(key);
     for (const cached of this.cache.values()) void cached.read.dispose();
     this.cache.clear();
     void syncBlockBlameContext(next);
     this.changeEmitter.fire();
+    if (next) this.preloadActiveDocument();
     if (changed || reason !== "configuration") {
       logInfo("block blame code vision configuration applied", {
         reason,
@@ -396,7 +447,7 @@ export class BlockBlameCodeLensController
   private evictExpiredCache(): void {
     const now = Date.now();
     for (const [key, value] of this.cache) {
-      if (value.expiresAt <= now) {
+      if (value.expiresAt <= now && key !== vscode.window.activeTextEditor?.document.uri.toString()) {
         void value.read.dispose();
         this.cache.delete(key);
       }
@@ -476,14 +527,4 @@ function readBlockBlameVisibility(): boolean {
  */
 async function syncBlockBlameContext(visible: boolean): Promise<void> {
   await vscode.commands.executeCommand("setContext", BLOCK_CONTEXT_KEY, visible);
-}
-
-/**
- * 저장소 탐색 시작점으로 사용할 파일의 디렉터리 경로를 구한다.
- * @param fsPath 플랫폼 파일 경로
- * @returns 마지막 경로 구분자 앞부분
- */
-function dirname(fsPath: string): string {
-  const index = Math.max(fsPath.lastIndexOf("/"), fsPath.lastIndexOf("\\"));
-  return index >= 0 ? fsPath.slice(0, index) : fsPath;
 }

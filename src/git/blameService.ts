@@ -40,6 +40,13 @@ export interface GitBlameRange {
   endLine: number;
 }
 
+/** Code Vision에서 읽은 파일 전체 blame을 저장소/파일 identity 검증 뒤 거터에 전달하는 불변 결과다. */
+export interface PreparedFileBlame {
+  repoRoot: string;
+  cacheIdentity: string;
+  blame: readonly GitBlameLine[];
+}
+
 /**
  * 저장소 루트에 묶인 blame 조회 서비스.
  * - 컨트롤러는 저장소 탐지만 GitServiceRegistry 에 맡기고, 실제 blame 실행은 이 서비스가 담당한다.
@@ -53,12 +60,13 @@ export class GitBlameService {
    * - untracked 파일처럼 blame 이 불가능한 대상은 빈 배열로 반환해 UI 가 조용히 비우게 한다.
    * @param fsPath 저장소 상대 또는 절대 파일 경로
    * @param range 선택적 1-based inclusive 범위. 블록 상세 팝업이 필요한 라인만 읽을 때 사용한다.
+   * @param options 소비자 취소 신호와 실제 조회에 사용한 캐시 identity를 받는 선택 콜백
    * @returns 1-based 라인 번호 순서의 blame 라인 목록
    */
   async getFileBlame(
     fsPath: string,
     range?: GitBlameRange,
-    options: { signal?: AbortSignal } = {}
+    options: { signal?: AbortSignal; onCacheIdentity?: (identity: string | undefined) => void } = {}
   ): Promise<GitBlameLine[]> {
     const rel = this.toRepoRelative(fsPath);
     const args = ["blame", "--porcelain"];
@@ -73,6 +81,9 @@ export class GitBlameService {
     if (options.signal?.aborted) throw new DOMException("Git blame cancelled.", "AbortError");
     const file = path.resolve(this.repoRoot, rel);
     const identity = await readBlameCacheIdentity(this.repoRoot, file);
+    options.signal?.throwIfAborted();
+    // 소비자는 실제 조회에 쓴 identity를 함께 보관하므로 같은 metadata를 직렬로 다시 읽지 않는다.
+    options.onCacheIdentity?.(identity);
     const disk = identity ? undefined : await stat(file).catch(() => undefined);
     const key = JSON.stringify([this.repoRoot, file, normalizedRange, identity, disk?.size, disk?.mtimeMs, disk?.ctimeMs]);
     return readSharedBlame(this.repoRoot, key, async signal => {

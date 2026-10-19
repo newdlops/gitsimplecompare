@@ -181,7 +181,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   );
   context.subscriptions.push(conflictMarkerDecorations.register());
   const blockBlameCodeLens = new BlockBlameCodeLensController(registry);
-  const blockBlamePresenter = new BlockBlamePresenter(registry);
+  const blockBlamePresenter = new BlockBlamePresenter(registry, (document, signal) => blockBlameCodeLens.preparedFile(document, signal));
   context.subscriptions.push(blockBlameCodeLens.register(), blockBlamePresenter.register());
   const prCommentDecorations = new PullRequestCommentController(
     registry,

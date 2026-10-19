@@ -7,7 +7,7 @@ import {
   type BlockBlameRequest,
 } from "../git/blockBlameModel";
 import { GitBlameService } from "../git/blameService";
-import type { GitBlameLine } from "../git/blameService";
+import type { GitBlameLine, PreparedFileBlame } from "../git/blameService";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
 import {
   BlockBlameGutter,
@@ -31,6 +31,7 @@ interface BlockBlameTarget {
   document: vscode.TextDocument;
   /** Git blame 실행과 상대 경로 로그에 사용할 저장소 서비스 */
   service: ResolvedGitService;
+  preparedBlame?: readonly GitBlameLine[];
 }
 
 /** 현재 편집기에 펼쳐진 블록 blame의 식별 정보. */
@@ -60,13 +61,15 @@ export class BlockBlamePresenter implements vscode.Disposable {
   private refreshTimer?: ReturnType<typeof setTimeout>;
   private registered = false;
   private disposed = false;
-  private rendered?: { document: vscode.TextDocument; blame: GitBlameLine[]; repoRoot: string };
+  private rendered?: { document: vscode.TextDocument; blame: readonly GitBlameLine[]; repoRoot: string };
 
   /**
    * 저장소 탐색에 사용할 공유 레지스트리를 주입한다.
    * @param registry 경로를 저장소별 GitService로 해석하는 레지스트리
+   * @param preparedFile 현재 metadata까지 검증된 Code Vision 결과를 재사용하는 선택 조회기
    */
-  constructor(private readonly registry: GitServiceRegistry) {}
+  constructor(private readonly registry: GitServiceRegistry,
+    private readonly preparedFile?: (document: vscode.TextDocument, signal?: AbortSignal) => Promise<PreparedFileBlame | undefined>) {}
 
   /**
    * 오래된 라인별 blame 거터를 정리할 VS Code 이벤트를 등록한다.
@@ -200,7 +203,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
         return;
       }
       const blameStartedAt = Date.now();
-      const blame = await new GitBlameService(
+      const resolveMs = blameStartedAt - startedAt;
+      const blame = target.preparedBlame ?? await new GitBlameService(
         target.service.repoRoot
       ).getFileBlame(target.document.uri.fsPath, undefined, { signal: controller.signal });
       if (!this.canApplyResult(target, request, requestId)) {
@@ -253,7 +257,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
           fileLines: target.document.lineCount,
           lines: gutterResult.lineCount,
           authors: gutterResult.authorCount,
-          blameMs, snapshotMs: Date.now() - snapshotStartedAt,
+          source: target.preparedBlame ? "prepared-code-vision" : "git",
+          resolveMs, blameMs, snapshotMs: Date.now() - snapshotStartedAt,
           durationMs: Date.now() - startedAt,
         }
       );
@@ -380,7 +385,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
       }
       return undefined;
     }
-    const service = await this.registry.resolve(dirname(uri.fsPath));
+    const prepared = await this.preparedFile?.(document, signal);
+    signal?.throwIfAborted();
+    const service = prepared ? this.registry.get(prepared.repoRoot) : await this.registry.resolve(dirname(uri.fsPath));
     signal?.throwIfAborted();
     if (!service) {
       logInfo("block blame gutter skipped", {
@@ -400,6 +407,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
     return {
       document,
       service,
+      preparedBlame: prepared?.blame,
     };
   }
 

@@ -22,11 +22,6 @@ export async function readBlameCacheIdentity(root: string, file: string): Promis
     }
     const commonMarker = await optionalText(path.join(gitDir, "commondir"));
     const common = commonMarker ? path.resolve(gitDir, commonMarker.trim()) : gitDir;
-    // 파일 refs의 HEAD/packed-refs로 식별할 수 없는 저장 형식은 완료 값을 재사용하지 않는다.
-    if (await fileVersion(path.join(common, "reftable")) !== "missing"
-      || (gitDir !== common && await fileVersion(path.join(gitDir, "reftable")) !== "missing")) return undefined;
-    const head = await readHeadIdentity(gitDir, common);
-    if (head === undefined) return undefined;
     const environment = Object.keys(process.env).filter(name => /^(?:GIT_CONFIG_|GIT_NO_REPLACE_OBJECTS|GIT_SHALLOW_FILE|GIT_GRAFT_FILE|GIT_REPLACE_REF_BASE)/.test(name))
       .sort().map(name => [name, process.env[name]]);
     const files = [file, path.join(gitDir, "HEAD"), process.env.GIT_INDEX_FILE ? path.resolve(root, process.env.GIT_INDEX_FILE) : path.join(gitDir, "index"),
@@ -35,10 +30,33 @@ export async function readBlameCacheIdentity(root: string, file: string): Promis
       process.env.GIT_CONFIG_GLOBAL ?? path.join(os.homedir(), ".gitconfig"),
       path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config"), "git", "config"),
       process.env.GIT_CONFIG_SYSTEM ?? "/etc/gitconfig"];
-    const versions = await Promise.all(files.map(fileVersion));
-    if (versions[0] === "missing") return undefined;
+    // 공통 디렉터리 확정 뒤 독립적인 refs/HEAD/파일 metadata를 한 번에 읽어 I/O 대기를 겹친다.
+    const [tables, head, versions] = await Promise.all([
+      Promise.all([...new Set([common, gitDir])].map(dir => fileVersion(path.join(dir, "reftable")))),
+      readHeadIdentity(gitDir, common), Promise.all(files.map(fileVersion)),
+    ]);
+    if (tables.some(value => value !== "missing") || head === undefined || versions[0] === "missing") return undefined;
     return createHash("sha256").update(JSON.stringify([root, file, gitDir, common, head, resolveGitExecutable(root), environment, versions])).digest("hex");
   } catch { return undefined; }
+}
+
+/**
+ * 기존 루트 아래 새 중첩 저장소가 생겼는지 확인해 준비된 blame의 저장소 경계를 보호한다.
+ * @param root 기존 Git 탐색으로 확정한 루트, file 같은 루트에서 읽었던 파일
+ * @returns 자식 경로의 Git marker가 없으면 true, 경계 변경·확인 실패는 false
+ */
+export async function isBlameRepositoryScopeCurrent(root: string, file: string): Promise<boolean> {
+  const relative = path.relative(root, file);
+  if (!relative || path.isAbsolute(relative) || relative === ".." || relative.startsWith(`..${path.sep}`)) return false;
+  const directories: string[] = [];
+  for (let dir = path.dirname(file); dir !== root; dir = path.dirname(dir)) {
+    if (path.dirname(dir) === dir) return false;
+    directories.push(dir);
+  }
+  try {
+    const markers = await Promise.all(directories.flatMap(dir => [".git", "HEAD"].map(name => fileVersion(path.join(dir, name)))));
+    return markers.every(value => value === "missing");
+  } catch { return false; }
 }
 
 /** HEAD의 symbolic chain을 작은 파일만 읽어 따라가며 packed/unborn ref는 공통 파일 버전으로 구분한다. */

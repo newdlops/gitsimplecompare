@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.72108] - 2026-10-19
+
+### Performance
+
+- Prepare Block Author for the focused active saved file before the editor's
+  CodeLens request. Share that work with provider requests and cancel it on
+  tab changes, edits, focus loss or disabling CodeLens.
+- Start blame while a slow language-symbol request is pending. Keep quick
+  symbol-free files free of blame processes and cancel unnecessary speculative reads.
+- Reuse document symbols across repository refreshes and focus recovery.
+  Validate completed ownership snapshots instead of discarding unchanged results.
+- Reuse the full Code Vision blame result when opening the gutter, removing
+  repeated repository discovery and blame reads. Verify HEAD, index, file,
+  configuration and nested repository boundaries before reuse; fall back to
+  normal Git discovery when validation fails.
+- Read independent cache metadata in parallel and remove the duplicate
+  identity read before Code Vision blame. Bound retained file snapshots and
+  report repository, symbol and prepared-gutter timing separately in Output.
+
 ## [0.1.72107] - 2026-10-19
 
 ### Performance

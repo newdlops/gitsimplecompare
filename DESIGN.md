@@ -367,6 +367,12 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
   commit/range index; cursor changes must not trigger Git reads or CDP discovery.
 - Date/name/hash presentation changes reuse the current blame result. Never fetch
   or rerun blame only to reformat text.
+- Prepare only the focused active saved file before CodeLens requests and share
+  that read with provider consumers. Keep symbols separate from Git freshness.
+  Opening the gutter reuses the prepared file only after current metadata and
+  nested repository boundaries validate. Tab changes, edits, focus loss and
+  disabling CodeLens release preload work; unchanged focus/refresh events do
+  not force another language-symbol query. Preserve the single-column layout.
 - Line History opens a cancellable native picker for the selected saved line.
   The immutable blamed revision, original filename and original line anchor the
   history. Show bounded pages on demand, with author/date/hash and a readable

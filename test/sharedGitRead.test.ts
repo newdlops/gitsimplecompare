@@ -26,6 +26,20 @@ test("a pre-cancelled mutation notification cannot force an active consumer into
 });
 import { SharedGitRead } from "../src/git/sharedGitRead";
 
+test("peeking a shared read never loads, isolates mutations, and respects age, generations and disposal", async t => {
+  t.mock.timers.enable({ apis: ["Date"], now: 10000 });
+  let calls = 0;
+  const shared = new SharedGitRead(async () => ({ value: ++calls }), value => ({ ...value }));
+  assert.equal(shared.peek(Infinity), undefined); assert.equal(calls, 0);
+  await shared.read();
+  shared.peek()!.value = 99;
+  assert.equal(shared.peek()!.value, 1);
+  t.mock.timers.setTime(11000);
+  assert.equal(shared.peek(), undefined); assert.equal(shared.peek(Infinity)!.value, 1);
+  shared.invalidate(); assert.equal(shared.peek(Infinity), undefined); assert.equal(calls, 1);
+  await shared.read(); await shared.dispose(); assert.equal(shared.peek(Infinity), undefined); assert.equal(calls, 2);
+});
+
 /** 실제 loader의 완료만 제어하며 공유 서비스의 세대 판단은 제품 코드를 실행한다. */
 function deferred<T>(): { promise: Promise<T>; resolve(value: T): void } {
   let resolve!: (value: T) => void;

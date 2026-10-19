@@ -38,6 +38,13 @@ export class SharedGitRead<T> {
   /** 캐시 정리에서 아직 필요한 실행을 보호할 소비자 존재 여부다. */
   hasConsumers(): boolean { return !!this.pending?.users.size; }
 
+  /** 완료된 현재 세대만 복사해 반환하며, 값이 없거나 만료됐어도 loader를 실행하지 않는다. */
+  peek(maxCacheAgeMs = 1000): T | undefined {
+    const ready = this.ready;
+    return !this.lifetime.signal.aborted && ready?.generation === this.generation
+      && Date.now() - ready.at < maxCacheAgeMs ? this.clone(ready.value) : undefined;
+  }
+
   /** 모든 소비자와 실제 조회를 취소하고 종료가 확인된 뒤 소유 캐시를 해제할 수 있게 한다. */
   async dispose(): Promise<void> {
     this.lifetime.abort(); this.pending?.controller.abort(); this.ready = undefined;

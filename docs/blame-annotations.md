@@ -41,6 +41,21 @@ commit labels are reused while preparing a snapshot.
 
 ## Performance
 
+Only the focused active saved file is prepared ahead of the editor's CodeLens
+request. Slow document-symbol lookup overlaps with blame instead of delaying
+its start. Quick empty symbol results do not start blame. Changing tabs,
+editing, losing focus or disabling CodeLens releases the preload consumer.
+
+Document symbols are cached separately from Git results. Repository refreshes
+and focus recovery reuse unchanged symbols and validate completed ownership
+snapshots. Opening or reopening the gutter reuses the full Code Vision result
+after checking current HEAD, index, file, configuration and nested repository
+boundaries. An uncertain or changed identity falls back to normal Git discovery
+and blame. Inactive snapshots are bounded to eight documents and approximately
+16 MiB; an active file or pending consumer is protected from eviction.
+Prepared results retain the existing 60-second maximum age as well as metadata
+validation; unknown identity boundaries always use the normal Git path.
+
 Cold gutter discovery first checks objects already referenced by the editor's
 event listeners. Only a visible editor with the exact requested file URI can be
 bound. When those references are opaque, constructor/heap discovery remains
@@ -52,9 +67,20 @@ Block summaries reuse the file's range index to avoid sorting and filtering each
 selected block again. Git history traversal and language-server startup still
 contribute to the first Code Vision load.
 
-Output reports `lookupMs`, `blameMs`, `summaryMs`, `snapshotMs` and native
+Output reports `repositoryMs`, `symbolsMs`, `lookupMs`, `blameMs`, `summaryMs`,
+`resolveMs`, `snapshotMs`, gutter `source` (`prepared-code-vision` or `git`) and native
 `discoverySource`, `discoveryCalls`, `heapQueries`, `discoveryMs` to distinguish
 those costs. No Git settings or blame cache freshness rules are weakened.
+Repository/symbol/blame stages can overlap, so their durations need not add up
+to `durationMs`. A prepared gutter still performs metadata validation and editor
+rendering; it does not claim zero end-to-end latency.
+
+`test/blockBlameLatency.test.ts` controls repository (400 ms), symbol (1,200 ms)
+and blame (300 ms) completion to verify a 1,500 ms serial dependency becomes
+1,200 ms with overlap. Real temporary Git repositories verify that repeated
+gutter toggles add no discovery or blame calls and that file, HEAD, index,
+configuration, language, document and nested-repository changes reject stale
+results. These are regression checks, not timings from a user's VS Code window.
 
 For a reproducible CPU comparison with 0.1.72106, run:
 
