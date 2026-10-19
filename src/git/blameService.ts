@@ -127,45 +127,41 @@ export function parseBlamePorcelain(output: string): GitBlameLine[] {
   const result: GitBlameLine[] = [];
   const commits = new Map<string, Partial<GitBlameLine>>();
   let current: Partial<GitBlameLine> | undefined;
-
-  for (const rawLine of output.split("\n")) {
-    const line = rawLine.replace(/\r$/, "");
-    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) (\d+) (\d+)(?: \d+)?$/.exec(line);
+  let commit = "", originalLine = 1, destinationLine = 1, ordered = true, metadataChanged = false;
+  // 전체 split 배열과 라인별 metadata 복사본을 만들지 않아 큰 파일의 할당·GC 비용을 줄인다.
+  for (let offset = 0; offset < output.length;) {
+    const newline = output.indexOf("\n", offset);
+    const end = newline < 0 ? output.length : newline;
+    const line = output.slice(offset, output.charCodeAt(end - 1) === 13 ? end - 1 : end);
+    offset = end + 1;
+    if (line.startsWith("\t")) {
+      if (current) {
+        if (result.length && result[result.length - 1].line > destinationLine) ordered = false;
+        result.push(normalizeBlameLine(current, commit, originalLine, destinationLine, line.slice(1)));
+        if (metadataChanged) commits.set(commit, current);
+        current = undefined;
+      }
+      continue;
+    }
+    const header = (line[40] === " " || line[64] === " ")
+      ? /^([0-9a-f]{40}|[0-9a-f]{64}) (\d+) (\d+)(?: \d+)?$/.exec(line)
+      : null;
     if (header) {
-      current = {
-        authorName: "",
-        authorMail: "",
-        summary: "",
-        filename: "",
-        ...commits.get(header[1]),
-        commit: header[1],
-        originalLine: Number(header[2]),
-        line: Number(header[3]),
-      };
+      commit = header[1]; originalLine = Number(header[2]); destinationLine = Number(header[3]);
+      current = commits.get(commit);
+      metadataChanged = !current;
+      if (!current) current = {};
       continue;
     }
     if (!current) {
       continue;
     }
-    if (line.startsWith("\t")) {
-      current.content = line.slice(1);
-      result.push(normalizeBlameLine(current));
-      // line/content는 각 레코드의 값이므로 커밋 캐시에 포함하지 않는다.
-      commits.set(current.commit!, {
-        authorName: current.authorName,
-        authorMail: current.authorMail,
-        authorTime: current.authorTime,
-        authorTz: current.authorTz,
-        summary: current.summary,
-        filename: current.filename,
-      });
-      current = undefined;
-      continue;
-    }
+    // 메타데이터가 실제로 붙은 레코드만 복사한다. 중간에 끊긴 레코드는 이전 커밋 캐시를 바꾸지 않는다.
+    if (!metadataChanged) { current = { ...current }; metadataChanged = true; }
     readMetadataLine(current, line);
   }
 
-  return result.sort((a, b) => a.line - b.line);
+  return ordered ? result : result.sort((a, b) => a.line - b.line);
 }
 
 /**
@@ -202,21 +198,25 @@ function readMetadataLine(target: Partial<GitBlameLine>, line: string): void {
 
 /**
  * 부분적으로 채워진 레코드를 UI 가 안전하게 사용할 수 있는 완전한 객체로 보정한다.
- * @param line 파싱 중인 blame 라인
+ * @param metadata 같은 커밋에서 공유하는 메타데이터. 반환 객체에는 원시 값만 복사한다.
+ * @param commit 현재 커밋의 전체 해시
+ * @param originalLine 원래 커밋 안의 1-based 라인 번호
+ * @param destinationLine 현재 파일 안의 1-based 라인 번호
+ * @param content 현재 레코드만의 소스 텍스트
  * @returns 기본값이 채워진 blame 라인
  */
-function normalizeBlameLine(line: Partial<GitBlameLine>): GitBlameLine {
+function normalizeBlameLine(metadata: Partial<GitBlameLine>, commit: string, originalLine: number, destinationLine: number, content: string): GitBlameLine {
   return {
-    line: Math.max(1, line.line ?? 1),
-    originalLine: line.originalLine,
-    commit: line.commit ?? "",
-    authorName: line.authorName || "Unknown",
-    authorMail: line.authorMail || "",
-    authorTime: line.authorTime,
-    authorTz: line.authorTz,
-    summary: line.summary || "",
-    filename: line.filename || "",
-    content: line.content || "",
+    line: Math.max(1, destinationLine),
+    originalLine,
+    commit,
+    authorName: metadata.authorName || "Unknown",
+    authorMail: metadata.authorMail || "",
+    authorTime: metadata.authorTime,
+    authorTz: metadata.authorTz,
+    summary: metadata.summary || "",
+    filename: metadata.filename || "",
+    content,
   };
 }
 

@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72106",
+  "version": "0.1.72107",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -1709,6 +1709,7 @@
     "watch": "node esbuild.js --watch",
     "package": "node esbuild.js --production",
     "check-types": "tsc --noEmit",
+    "benchmark:blame": "node --expose-gc scripts/benchmark-blame.mjs",
     "test": "node scripts/run-node-tests.mjs",
     "test:webview": "playwright test test/webview --project=chromium",
     "test:a11y": "playwright test test/a11y --project=chromium",

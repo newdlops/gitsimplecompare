@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.72107] - 2026-10-19
+
+### Performance
+
+- Find the active blame editor through existing event-listener receivers or
+  closures before using a full heap query. Keep URI/visibility checks, reuse
+  the editor service on subsequent opens and retain constructor discovery
+  for opaque listeners.
+- Parse large blame output without a full split array or per-line commit
+  metadata copies. Preserve original lines, filenames and commit identities.
+- Reuse indexed block ranges when summarizing ownership, avoiding repeated
+  filtering, array copies and sorting inside each overlapping block.
+- Report editor discovery source/calls/heap queries and separate Code Vision
+  lookup, blame, summary and gutter preparation timings in Output.
+- Add `npm run benchmark:blame -- --baseline-ref <commit>` for repeatable,
+  paired 50,000-line CPU measurements with result-equivalence checks.
+
 ## [0.1.72106] - 2026-10-19
 
 ### Fixed

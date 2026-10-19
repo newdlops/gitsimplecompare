@@ -199,6 +199,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       if (!target || requestId !== this.requestSeq) {
         return;
       }
+      const blameStartedAt = Date.now();
       const blame = await new GitBlameService(
         target.service.repoRoot
       ).getFileBlame(target.document.uri.fsPath, undefined, { signal: controller.signal });
@@ -221,6 +222,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
         return;
       }
 
+      const blameMs = Date.now() - blameStartedAt, snapshotStartedAt = Date.now();
       const gutterResult = this.gutter.apply(target.document, blame, target.service.repoRoot);
       if (gutterResult.lineCount === 0) {
         logInfo("block blame gutter skipped", {
@@ -251,6 +253,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
           fileLines: target.document.lineCount,
           lines: gutterResult.lineCount,
           authors: gutterResult.authorCount,
+          blameMs, snapshotMs: Date.now() - snapshotStartedAt,
           durationMs: Date.now() - startedAt,
         }
       );

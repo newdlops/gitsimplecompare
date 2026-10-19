@@ -39,6 +39,37 @@ highlighting reuses an index and does not request Git or editor discovery. Only
 visible rows produce gutter DOM nodes. Relative-date formatters and repeated
 commit labels are reused while preparing a snapshot.
 
+## Performance
+
+Cold gutter discovery first checks objects already referenced by the editor's
+event listeners. Only a visible editor with the exact requested file URI can be
+bound. When those references are opaque, constructor/heap discovery remains
+available. Subsequent opens reuse the discovered editor service.
+
+Large porcelain output is read one record at a time, sharing commit metadata
+while keeping each result's content, original line and filename independent.
+Block summaries reuse the file's range index to avoid sorting and filtering each
+selected block again. Git history traversal and language-server startup still
+contribute to the first Code Vision load.
+
+Output reports `lookupMs`, `blameMs`, `summaryMs`, `snapshotMs` and native
+`discoverySource`, `discoveryCalls`, `heapQueries`, `discoveryMs` to distinguish
+those costs. No Git settings or blame cache freshness rules are weakened.
+
+For a reproducible CPU comparison with 0.1.72106, run:
+
+```sh
+npm run benchmark:blame -- --baseline-ref 42079aa
+```
+
+The benchmark uses 50,000 synthetic lines, 100 commits and 400 overlapping
+blocks, verifies identical parser/summary results, warms the functions and
+alternates the version order across 11 samples. It reports median milliseconds.
+The unchanged gutter stage is a control for timing noise. These are local CPU
+measurements and do not measure Git, editor discovery or end-to-end UI latency.
+Without `--baseline-ref`, it measures the current checkout only. Temporary
+bundles are removed on completion; the working tree is never checked out.
+
 ## Line History
 
 Choose **View Line History** from a line-number menu, the editor menu or a blame

@@ -326,10 +326,12 @@ export class BlockBlameCodeLensController
 
     const selectedBlocks = blocks.slice(0, MAX_BLOCKS_PER_DOCUMENT);
     this.clearSymbolRetry(document.uri.toString());
+    const lookupMs = Date.now() - startedAt, blameStartedAt = Date.now();
     const cacheIdentity = await readBlameCacheIdentity(service.repoRoot, document.uri.fsPath);
     const blame = await new GitBlameService(service.repoRoot).getFileBlame(
       document.uri.fsPath, undefined, { signal }
     );
+    const blameMs = Date.now() - blameStartedAt, summaryStartedAt = Date.now();
     const summaries = summarizeFileBlame(selectedBlocks, blame)
       .filter((summary) => summary.primaryContributor !== undefined);
     logInfo("block blame code vision loaded", {
@@ -338,6 +340,7 @@ export class BlockBlameCodeLensController
       displayed: summaries.length,
       truncated: blocks.length > selectedBlocks.length,
       blameLines: blame.length,
+      lookupMs, blameMs, summaryMs: Date.now() - summaryStartedAt,
       durationMs: Date.now() - startedAt,
     });
     return { documentVersion: version, summaries, repoRoot: service.repoRoot, cacheIdentity };

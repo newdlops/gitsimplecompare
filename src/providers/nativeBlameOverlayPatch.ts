@@ -53,7 +53,8 @@ const BIND_EDITOR_FUNCTION = `function (uri) {
     } catch (_) { return false; }
   }
   var matches = Array.prototype.filter.call(this || [], function (item) {
-    return item && typeof item.updateOptions === 'function' && typeof item.getLayoutInfo === 'function' && modelUri(item) === uri && visible(item);
+    try { return item && typeof item.updateOptions === 'function' && typeof item.getLayoutInfo === 'function' && modelUri(item) === uri && visible(item); }
+    catch (_) { return false; }
   });
   var item = matches.filter(function (candidate) {
     try { return candidate.getDomNode().classList.contains('focused'); } catch (_) { return false; }
@@ -71,6 +72,25 @@ const BIND_EDITOR_FUNCTION = `function (uri) {
     }
   } catch (_) {}
   return 'editor-bound:' + uri;
+}`;
+
+/**
+ * Monaco 이벤트의 receiver/closure에서 이미 살아 있는 editor 또는 editor service를 찾는다.
+ * @param uri snapshot의 정확한 모델 URI. 나머지 인자는 CDP가 읽은 실제 객체 참조다.
+ * @returns 보이고 URI가 맞는 editor만 바인딩하며, 찾지 못하면 기존 heap 탐색으로 넘길 상태
+ */
+const BIND_EDITOR_OWNERS_FUNCTION = `function (uri) {
+  var items = [];
+  for (var index = 1; index < arguments.length; index++) {
+    var owner = arguments[index];
+    if (!owner) continue;
+    try {
+      items.push(owner, owner._editor, owner._codeEditor);
+      var service = typeof owner.listCodeEditors === 'function' ? owner : owner._codeEditorService;
+      if (service && typeof service.listCodeEditors === 'function') items = items.concat(service.listCodeEditors());
+    } catch (_) {}
+  }
+  return (${BIND_EDITOR_FUNCTION}).call(items, uri);
 }`;
 
 /**
@@ -94,8 +114,10 @@ export function blameOverlayInjectionExpression(
       var rendererEval = ${JSON.stringify(rendererEval)};
       var snapshot = ${snapshotJson};
       var installExpr = '(window.__gscNativeBlameOverlay&&window.__gscNativeBlameOverlay.version===' + ${PATCH_VERSION} + ') ? "gsc-native-blame-installed:${PATCH_VERSION}:cached" : ' + rendererEval;
+      var discoveryStats;
 
       async function remoteProperties(debuggerApi, objectId) {
+        discoveryStats.calls++;
         return debuggerApi.sendCommand('Runtime.getProperties', {
           objectId: objectId,
           ownProperties: true,
@@ -104,6 +126,7 @@ export function blameOverlayInjectionExpression(
         });
       }
       async function remoteValue(debuggerApi, expression) {
+        discoveryStats.calls++;
         return debuggerApi.sendCommand('Runtime.evaluate', {
           expression: expression,
           includeCommandLineAPI: true,
@@ -113,6 +136,7 @@ export function blameOverlayInjectionExpression(
         });
       }
       async function remoteObject(debuggerApi, expression) {
+        discoveryStats.calls++;
         return debuggerApi.sendCommand('Runtime.evaluate', {
           expression: expression,
           includeCommandLineAPI: true,
@@ -124,6 +148,7 @@ export function blameOverlayInjectionExpression(
         return response && response.result && response.result.value;
       }
       async function bindEditorInstances(debuggerApi, instancesObjectId) {
+        discoveryStats.calls++;
         var response = await debuggerApi.sendCommand('Runtime.callFunctionOn', {
           objectId: instancesObjectId,
           functionDeclaration: ${JSON.stringify(BIND_EDITOR_FUNCTION)},
@@ -135,6 +160,7 @@ export function blameOverlayInjectionExpression(
       }
       async function bindFromPrototype(debuggerApi, prototypeObjectId) {
         if (!prototypeObjectId) return 'editor-prototype-missing';
+        discoveryStats.calls++; discoveryStats.heapQueries++; discoveryStats.source = 'heap';
         var queried = await debuggerApi.sendCommand('Runtime.queryObjects', {
           prototypeObjectId: prototypeObjectId,
           objectGroup: ${JSON.stringify(REMOTE_OBJECT_GROUP)}
@@ -158,64 +184,86 @@ export function blameOverlayInjectionExpression(
         var prototypeObjectId = response && response.result && response.result.objectId;
         return bindFromPrototype(debuggerApi, prototypeObjectId);
       }
-      async function moduleScopeFromListeners(debuggerApi) {
+      /** CDP 연결에서 대상 DOM의 listener 함수를 한 번에 수집해 함수 objectId 목록을 반환한다. */
+      async function listenerFunctions(debuggerApi) {
         var listeners = await remoteObject(
           debuggerApi,
-          'getEventListeners(document.querySelector(".monaco-editor.focused")||Array.prototype.slice.call(document.querySelectorAll(".monaco-editor")).filter(function(node){return node&&node.isConnected&&node.offsetParent!==null&&node.clientWidth>0&&node.clientHeight>0;})[0])'
+          '(function(){var node=document.querySelector(".monaco-editor.focused")||Array.prototype.slice.call(document.querySelectorAll(".monaco-editor")).filter(function(node){return node&&node.isConnected&&node.offsetParent!==null&&node.clientWidth>0&&node.clientHeight>0;})[0];if(!node)return [];var groups=getEventListeners(node),seen=new Set(),items=[],preferred=["keydown","mousedown","pointerdown","contextmenu","focusin","focus","keyup"];var keys=preferred.concat(Object.keys(groups).filter(function(key){return preferred.indexOf(key)<0;}));keys.forEach(function(key){(groups[key]||[]).forEach(function(item){if(typeof item.listener==="function"&&!seen.has(item.listener)){seen.add(item.listener);items.push(item.listener);}});});return items;})()'
         );
         var listenersId = listeners && listeners.result && listeners.result.objectId;
-        if (!listenersId) return '';
-        var groups = await remoteProperties(debuggerApi, listenersId);
-        var groupProperties = (groups && groups.result) || [];
-        for (var groupIndex = 0; groupIndex < groupProperties.length; groupIndex++) {
-          var groupId = groupProperties[groupIndex].value && groupProperties[groupIndex].value.objectId;
-          if (!groupId) continue;
-          var items = await remoteProperties(debuggerApi, groupId);
-          var itemProperties = (items && items.result) || [];
-          for (var itemIndex = 0; itemIndex < itemProperties.length; itemIndex++) {
-            if (!/^\\d+$/.test(itemProperties[itemIndex].name || '')) continue;
-            var itemId = itemProperties[itemIndex].value && itemProperties[itemIndex].value.objectId;
-            if (!itemId) continue;
-            var item = await remoteProperties(debuggerApi, itemId);
-            var listenerProperty = ((item && item.result) || []).filter(function (property) {
-              return property.name === 'listener';
-            })[0];
-            var listenerId = listenerProperty && listenerProperty.value && listenerProperty.value.objectId;
-            if (!listenerId) continue;
-            var listener = await remoteProperties(debuggerApi, listenerId);
-            var scopes = ((listener && listener.internalProperties) || []).filter(function (property) {
-              return property.name === '[[Scopes]]';
-            })[0];
-            var scopesId = scopes && scopes.value && scopes.value.objectId;
-            if (!scopesId) continue;
-            var scopeList = await remoteProperties(debuggerApi, scopesId);
-            var scopeProperties = (scopeList && scopeList.result) || [];
-            for (var scopeIndex = 0; scopeIndex < scopeProperties.length; scopeIndex++) {
-              var scope = scopeProperties[scopeIndex].value;
-              if (scope && scope.description === 'Module' && scope.objectId) return scope.objectId;
+        if (!listenersId) return [];
+        var properties = await remoteProperties(debuggerApi, listenersId);
+        return ((properties && properties.result) || []).filter(function(property){
+          return /^\\d+$/.test(property.name || '') && property.value && property.value.type === 'function' && property.value.objectId;
+        }).map(function(property){return property.value.objectId;});
+      }
+      /** listenerId를 호출 경계로 사용해 후보 객체를 한 번에 검사하며, 살아 있는 대상 editor를 찾았으면 true다. */
+      async function bindListenerOwners(debuggerApi, listenerId, candidates) {
+        if (!candidates.length) return false;
+        discoveryStats.calls++;
+        var response = await debuggerApi.sendCommand('Runtime.callFunctionOn', {
+          objectId: listenerId,
+          functionDeclaration: ${JSON.stringify(BIND_EDITOR_OWNERS_FUNCTION)},
+          arguments: [{value:snapshot.uri}].concat(candidates.map(function(id){return {objectId:id};})),
+          returnByValue: true,
+          objectGroup: ${JSON.stringify(REMOTE_OBJECT_GROUP)}
+        });
+        if (!/^editor-bound:/.test(String(resultValue(response) || ''))) return false;
+        discoveryStats.source = 'listener-owner';
+        return true;
+      }
+      /** bound receiver와 작은 closure를 먼저 읽고, 없으면 기존 heap 탐색에 필요한 module objectId를 반환한다. */
+      async function discoverFromListeners(debuggerApi) {
+        var listeners = await listenerFunctions(debuggerApi), modules = [];
+        for (var index = 0; index < listeners.length; index++) {
+          if (index >= 8 && modules.length) break;
+          var listenerId = listeners[index];
+          var info = await remoteProperties(debuggerApi, listenerId);
+          var internals = (info && info.internalProperties) || [];
+          var bound = internals.filter(function(value){return value.name === '[[BoundThis]]' && value.value && value.value.objectId;});
+          if (index < 8 && await bindListenerOwners(debuggerApi, listenerId, bound.map(function(value){return value.value.objectId;}))) return {bound:true,modules:modules};
+          var scopes = internals.filter(function(value){return value.name === '[[Scopes]]' && value.value && value.value.objectId;})[0];
+          if (!scopes) continue;
+          var scopeList = await remoteProperties(debuggerApi, scopes.value.objectId);
+          var properties = (scopeList && scopeList.result) || [], inspected = 0;
+          for (var scopeIndex = 0; scopeIndex < properties.length; scopeIndex++) {
+            var scope = properties[scopeIndex].value;
+            if (!scope || !scope.objectId) continue;
+            if (scope.description === 'Module') {
+              if (modules.indexOf(scope.objectId) < 0) modules.push(scope.objectId);
+              continue;
             }
+            if (index >= 8 || !/^(Closure|Local|Block)(?: |$)/.test(scope.description || '') || inspected++ >= 3) continue;
+            var values = await remoteProperties(debuggerApi, scope.objectId);
+            var candidates = ((values && values.result) || []).filter(function(value){return value.value && value.value.type === 'object' && value.value.objectId;})
+              .slice(0, 12).map(function(value){return value.value.objectId;});
+            if (await bindListenerOwners(debuggerApi, listenerId, candidates)) return {bound:true,modules:modules};
           }
         }
-        return '';
+        return {bound:false,modules:modules};
       }
       async function discoverEditor(debuggerApi) {
-        var moduleScopeId = await moduleScopeFromListeners(debuggerApi);
-        if (!moduleScopeId) return 'editor-module-scope-missing';
-        var moduleProperties = await remoteProperties(debuggerApi, moduleScopeId);
-        var properties = (moduleProperties && moduleProperties.result) || [];
-        var requiredMethods = ${JSON.stringify(CODE_EDITOR_METHODS)};
-        for (var index = 0; index < properties.length; index++) {
-          var value = properties[index].value;
-          var description = String(value && value.description || '');
-          if (!value || value.type !== 'function' || !value.objectId) continue;
-          if (!requiredMethods.every(function (method) { return description.indexOf(method) >= 0; })) continue;
-          var constructorProperties = await remoteProperties(debuggerApi, value.objectId);
-          var prototype = ((constructorProperties && constructorProperties.result) || []).filter(function (property) {
-            return property.name === 'prototype';
-          })[0];
-          var prototypeObjectId = prototype && prototype.value && prototype.value.objectId;
-          var bound = await bindFromPrototype(debuggerApi, prototypeObjectId);
-          if (/^editor-bound:/.test(bound)) return bound;
+        var found = await discoverFromListeners(debuggerApi);
+        if (found.bound) return 'editor-bound:' + snapshot.uri;
+        if (!found.modules.length) return 'editor-module-scope-missing';
+        for (var moduleIndex = 0; moduleIndex < found.modules.length; moduleIndex++) {
+          var moduleScopeId = found.modules[moduleIndex];
+          var moduleProperties = await remoteProperties(debuggerApi, moduleScopeId);
+          var properties = (moduleProperties && moduleProperties.result) || [];
+          var requiredMethods = ${JSON.stringify(CODE_EDITOR_METHODS)};
+          for (var index = 0; index < properties.length; index++) {
+            var value = properties[index].value;
+            var description = String(value && value.description || '');
+            if (!value || value.type !== 'function' || !value.objectId) continue;
+            if (!requiredMethods.every(function (method) { return description.indexOf(method) >= 0; })) continue;
+            var constructorProperties = await remoteProperties(debuggerApi, value.objectId);
+            var prototype = ((constructorProperties && constructorProperties.result) || []).filter(function (property) {
+              return property.name === 'prototype';
+            })[0];
+            var prototypeObjectId = prototype && prototype.value && prototype.value.objectId;
+            var bound = await bindFromPrototype(debuggerApi, prototypeObjectId);
+            if (/^editor-bound:/.test(bound)) return bound;
+          }
         }
         return 'editor-constructor-missing';
       }
@@ -238,17 +286,18 @@ export function blameOverlayInjectionExpression(
 
       var out = [];
       for (var i = 0; i < wins.length; i++) {
+        discoveryStats = {calls:0,heapQueries:0,source:'editor-cache'};
         var startedAt = Date.now();
         var installed = await evalWindow(wins[i], installExpr);
         var prepared = await prepareBlameEditor(wins[i]);
         var discoveryMs = Date.now() - startedAt;
         if (!/^editor-(?:cached|bound):/.test(prepared)) {
-          out.push(installed + ',err:' + wins[i].id + ':' + prepared);
+          out.push(installed + ',err:' + wins[i].id + ':' + prepared + ',discoveryCalls=' + discoveryStats.calls + ',heapQueries=' + discoveryStats.heapQueries + ',discoveryMs=' + discoveryMs);
           continue;
         }
         var renderExpr = 'window.__gscNativeBlameOverlay&&window.__gscNativeBlameOverlay.render(' + JSON.stringify(snapshot) + ')';
         var rendered = await evalWindow(wins[i], renderExpr);
-        out.push(installed + ',' + prepared + ',' + rendered + ',discoveryMs=' + discoveryMs + ',durationMs=' + (Date.now() - startedAt));
+        out.push(installed + ',' + prepared + ',' + rendered + ',discoverySource=' + discoveryStats.source + ',discoveryCalls=' + discoveryStats.calls + ',heapQueries=' + discoveryStats.heapQueries + ',discoveryMs=' + discoveryMs + ',durationMs=' + (Date.now() - startedAt));
       }
       return out.join('|');
     `

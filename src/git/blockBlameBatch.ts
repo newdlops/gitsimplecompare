@@ -21,7 +21,7 @@ export function summarizeFileBlame(
     const endLine = Math.max(startLine, Math.floor(block.endLine));
     const start = lowerBound(ordered, startLine);
     const end = lowerBound(ordered, endLine + 1);
-    return summarizeBlockBlame(block, ordered.slice(start, end));
+    return summarizeBlockBlame(block, ordered, { startIndex: start, endIndex: end });
   });
 }
 

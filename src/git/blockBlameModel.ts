@@ -223,14 +223,18 @@ const MAX_URI_LENGTH = 16_384;
  * - 블록 전체가 공백이면 상세를 잃지 않도록 그때만 모든 blame 라인을 집계한다.
  * @param block 언어 심볼에서 얻은 1-based 블록 범위
  * @param fileBlame 파일 전체 또는 블록 일부의 line-by-line blame
+ * @param selection 정렬된 입력에서 이미 검증한 블록 범위의 0-based 시작·끝(exclusive). batch 인덱스 전용이다.
  * @returns 작성자 순위와 블록 라인 상세를 포함한 요약
  */
 export function summarizeBlockBlame(
   block: SourceBlock,
-  fileBlame: readonly GitBlameLine[]
+  fileBlame: readonly GitBlameLine[],
+  selection?: { startIndex: number; endIndex: number }
 ): BlockBlameSummary {
   const normalizedBlock = normalizeSourceBlock(block);
-  const lines = selectBlockBlameLines(normalizedBlock, fileBlame);
+  const lines = selection
+    ? fileBlame.slice(selection.startIndex, selection.endIndex)
+    : selectBlockBlameLines(normalizedBlock, fileBlame);
   const meaningful = lines.filter((line) => line.content.trim().length > 0);
   const countedLines = meaningful.length > 0 ? meaningful : lines;
   const accumulators = new Map<string, ContributorAccumulator>();

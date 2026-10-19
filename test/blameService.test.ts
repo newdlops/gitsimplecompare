@@ -44,6 +44,24 @@ test("compact blame accepts SHA-256 commits and isolates metadata between invoca
   assert.equal(parseBlamePorcelain(porcelain().replace("author-time 1700000000", "author-time 0"))[0].authorTime, 0);
 });
 
+test("parser preserves per-record origins and content across CRLF, absent final newline and reordered input", () => {
+  const hashLikeContent = `${COMMIT} 3 9 1`;
+  const output = porcelain().replace(/\n/g, "\r\n") + `${COMMIT} 8 4 1\nfilename renamed.ts\n\t${hashLikeContent}\n${COMMIT} 7 3 1\nauthor Updated Name\n\t한국어\tvalue`;
+  const lines = parseBlamePorcelain(output);
+  assert.deepEqual(lines.map(line => [line.line, line.originalLine, line.content]), [[1, 1, "first"], [2, 2, "second"], [3, 7, "한국어\tvalue"], [4, 8, hashLikeContent]]);
+  assert.equal(lines[0].filename, "original.ts");
+  assert.equal(lines[0].authorName, "Alice");
+  assert.equal(lines[2].authorName, "Updated Name");
+  assert.equal(lines[3].authorName, "Alice");
+});
+
+test("an incomplete metadata record never changes a later record's cached identity", () => {
+  const lines = parseBlamePorcelain(porcelain() + `${COMMIT} 3 3\nauthor Incomplete\nfilename unfinished.ts\n${COMMIT} 4 4\n\tcomplete\n`);
+  assert.equal(lines.length, 3);
+  assert.equal(lines[2].authorName, "Alice");
+  assert.equal(lines[2].filename, "original.ts");
+});
+
 test("real compact blame matches line porcelain after edits, renames and working changes", async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), "gsc-compact-blame-"));
   t.after(async () => { await disposeSharedBlameReads(); await rm(root, { recursive: true, force: true }); });
