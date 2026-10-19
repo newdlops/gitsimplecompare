@@ -61,7 +61,7 @@ export class PullRequestOperationWorktree {
    * @param commits cherry-pick 순서의 commit hash
    * @param branch 현재 대상 브랜치
    * @param beforeHead 작업 시작 HEAD
-   * @param plan 선형 이력이면 최종 변경을 한 번에 적용할 수 있는 검증된 범위
+   * @param plan 선형·merge 이력에서 최종 변경을 한 번에 적용할 수 있는 검증된 범위
    * @param tree 충돌 없이 계산한 최종 tree. 있으면 전체 파일 checkout을 생략한다.
    */
   async squashCherryPick(
@@ -96,7 +96,8 @@ export class PullRequestOperationWorktree {
         }
         throw error;
       }
-      if (!await this.state.hasPendingChangesIn(worktreePath)) {
+      // 계산된 tree는 시작 tree와 다름을 위에서 검증했다. checkout 없는 worktree를 다시 스캔하지 않는다.
+      if (!tree && !await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
       await this.commitSquash(pr, worktreePath);
@@ -171,7 +172,8 @@ export class PullRequestOperationWorktree {
         }
         throw error;
       }
-      if (!await this.state.hasPendingChangesIn(worktreePath)) {
+      // 확정된 역방향 tree도 같은 검증을 통과했으므로 파일 부재를 unstaged 삭제로 읽지 않는다.
+      if (!tree && !await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
       await this.commitSquashRevert(pr, worktreePath);

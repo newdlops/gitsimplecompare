@@ -5,15 +5,8 @@ import { join } from "node:path";
 import { GitError, runGit, runGitWithInput, withGitConfigOverrides } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
 import type { PullRequestRevertCommit } from "./pullRequestRevertPlan";
-import { readCommitMetadata } from "./commitMetadata";
-
-/** 검증된 선형 PR은 첫 parent와 마지막 tree의 차이 하나로 표현한다. */
-export interface PullRequestSquashPlan {
-  commits: string[];
-  base?: string;
-  head?: string;
-  tree?: string;
-}
+import { preparePullRequestSquashRange, type PullRequestSquashPlan } from "./pullRequestSquashRange";
+export type { PullRequestSquashPlan } from "./pullRequestSquashRange";
 
 /** merge-tree가 반환한 상위 index stage와 충돌 원인을 손실 없이 보관한다. */
 interface MergeConflict {
@@ -26,26 +19,19 @@ const OID = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
 
 /**
  * PR squash를 커밋별 재생 대신 최종 변경 한 번으로 계산하는 Git 전용 서비스다.
- * merge-tree 미지원·비선형 PR·실제 충돌은 기존 Git cherry-pick으로 되돌려 호환성을 유지한다.
+ * merge-tree 미지원·검증할 수 없는 PR·실제 충돌은 Git cherry-pick으로 되돌려 호환성을 유지한다.
  */
 export class PullRequestSquashMerge {
   constructor(public readonly repoRoot: string) {}
 
   /**
-   * 모든 커밋의 parent를 한 번에 읽고 정확히 이어진 선형 범위만 squash한다.
-   * 목록 밖 커밋·merge parent를 포함하는 범위는 임의로 변경을 섞지 않고 원래 순서로 남긴다.
+   * 모든 커밋의 parent를 한 번에 읽고 정확한 PR 집합을 나타내는 최종 범위를 준비한다.
+   * merge 이력도 같은 검증을 통과해야 하며, 검증할 수 없는 목록은 원래 재생 순서로 남긴다.
    * @param commits object 존재 검증을 마친 적용 순서의 전체 OID
-   * @returns 선형이면 base/head/tree를 포함하는 계획, 그 외에는 원본 목록
+   * @returns 검증되면 base/head/tree를 포함하는 계획, 그 외에는 원본 목록
    */
   async prepare(commits: string[]): Promise<PullRequestSquashPlan> {
-    const nodes = await readCommitMetadata(this.repoRoot, commits);
-    for (let index = 0; index < commits.length; index++) {
-      const node = nodes.get(commits[index]);
-      if (!node || !OID.test(node.tree) || node.parents.length !== 1 ||
-        (index > 0 && node.parents[0] !== commits[index - 1])) return { commits };
-    }
-    const head = commits[commits.length - 1];
-    return { commits, base: nodes.get(commits[0])!.parents[0], head, tree: nodes.get(head)!.tree };
+    return preparePullRequestSquashRange(this.repoRoot, commits);
   }
 
   /**
@@ -76,6 +62,10 @@ export class PullRequestSquashMerge {
    */
   async computeTree(plan: PullRequestSquashPlan, beforeHead: string): Promise<string | undefined> {
     if (!plan.base || !plan.head) return undefined;
+    if (beforeHead === plan.base && plan.tree) {
+      this.log("PR squash reuses source tree", { commits: plan.commits.length });
+      return plan.tree;
+    }
     const started = Date.now();
     try {
       const tree = (await runGit([
@@ -119,12 +109,12 @@ export class PullRequestSquashMerge {
   }
 
   /**
-   * 선형 PR은 최종 tree와 최초 부모를 가진 하나의 source commit으로 바꾼다.
+   * 범위가 검증된 PR은 최종 tree와 base를 가진 하나의 source commit으로 바꾼다.
    * @param plan 원본 범위가 검증된 계획 @returns squash patch를 재생할 고정 commit 목록
    */
   async replayCommits(plan: PullRequestSquashPlan): Promise<string[]> {
     let commits = plan.commits;
-    if (plan.base && plan.tree && plan.commits.length > 1) {
+    if (plan.base && plan.tree && (plan.commits.length > 1 || plan.aggregate)) {
       const hash = (await runGitWithInput([
         "-c", "commit.gpgSign=false", "commit-tree", plan.tree, "-p", plan.base,
       ], this.repoRoot, "Git Simple Compare PR squash source\n")).trim();

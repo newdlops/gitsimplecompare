@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { ConflictService } from "../src/git/conflictService";
 import { PullRequestOperationService } from "../src/git/pullRequestOperationService";
+import { PullRequestCommitMaterializer } from "../src/git/pullRequestCommitMaterializer";
 import { PullRequestWorktreeRecoveryError, PullRequestWorktreeRecoveryService } from "../src/git/pullRequestWorktreeRecovery";
 import { listPullRequestWorktreeRecoveries, readPullRequestWorktreeRecovery } from "../src/git/pullRequestWorktreeRecoveryState";
 import { cleanupPrOperationWorktrees, listPrOperationWorktrees } from "../src/git/temporaryWorktree";
@@ -170,6 +171,17 @@ for (const command of ["squash", "squashRevert", "rebase", "rebaseRevert"] as co
       : command === "rebase" ? () => service.rebasePullRequest(pr, { strategy: "worktree" })
       : () => service.rebaseRevertPullRequest(pr, { strategy: "worktree" });
     const record = await paused(t, run);
+    const originalPrepare = PullRequestCommitMaterializer.prototype.prepare;
+    PullRequestCommitMaterializer.prototype.prepare = async () => {
+      throw new Error("A saved operation must be found before preparing PR objects again.");
+    };
+    try {
+      await assert.rejects(run, error => error instanceof PullRequestWorktreeRecoveryError && error.recovery.id === record.id);
+      if (command === "squashRevert" || command === "rebaseRevert") {
+        await assert.rejects(service.preparePullRequestRevert(pr, command),
+          error => error instanceof PullRequestWorktreeRecoveryError && error.recovery.id === record.id);
+      }
+    } finally { PullRequestCommitMaterializer.prototype.prepare = originalPrepare; }
     const conflict = new ConflictService(record.worktreePath);
     let files = await conflict.listConflicts();
     assert.equal(files.length, 1);
@@ -201,6 +213,11 @@ test("empty rebase resolution skips only the owned conflict and completes the re
 test("repeated PR actions reuse the preserved worktree instead of replaying the same conflict", async t => {
   const { root, pr } = await fixture(t);
   const record = await paused(t, () => new PullRequestOperationService(root).squashCherryPick(pr));
+  const prepare = PullRequestCommitMaterializer.prototype.prepare;
+  PullRequestCommitMaterializer.prototype.prepare = async () => {
+    throw new Error("Retry must reuse recovery before preparing or fetching PR objects.");
+  };
+  t.after(() => { PullRequestCommitMaterializer.prototype.prepare = prepare; });
   const again = await paused(t, () => new PullRequestOperationService(root).squashCherryPick(pr));
   assert.equal(again.id, record.id);
   assert.equal((await listPrOperationWorktrees(root)).length, 1);

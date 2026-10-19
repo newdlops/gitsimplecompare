@@ -24,6 +24,13 @@ branch. The original working files and index stay in the original worktree.
 temporary worktree. **Git Simple Compare: Resume a saved PR operation and
 resolve its conflicts** reopens a saved operation, including after Reload Window.
 Repeating the same PR action at the same starting HEAD reuses its saved operation.
+This check runs before fetching PR objects or computing another merge result.
+
+Squash prepares the final delta for a verified connected commit range, including
+PRs with internal merges or merges from an updated base. External parents and the
+exact commit set are checked before aggregation so base-only changes do not leak
+into another destination. Ambiguous or disconnected histories keep the native
+replay path. Real conflicts in the final delta still require file resolution.
 
 Recovery records belong to the original worktree's Git directory. Source
 commits remain pinned until completion, and recovery worktrees are locked so

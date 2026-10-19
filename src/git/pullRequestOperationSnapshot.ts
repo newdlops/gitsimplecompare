@@ -1,6 +1,6 @@
 // PR 작업의 브랜치 상태 검사, undo snapshot, 안전한 reset을 담당하는 Git snapshot 모듈.
 // - 실제 cherry-pick/revert 조립과 분리해 snapshot 생명주기를 다른 PR 작업에서도 재사용한다.
-import { detectOperation } from "./conflictService";
+import { detectOperation, detectOperationInGitDir } from "./conflictService";
 import { restorePendingDeferredCommitRebaseLocalChangesForBranch } from "./deferredCommitRebase";
 import { GitError, runGit } from "./gitExec";
 import {
@@ -17,6 +17,7 @@ import { OperationUndoStore, type OperationUndoPlan } from "./operationUndoStore
 import { logInfo } from "../ui/outputLog";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
 import { resetPullRequestResult } from "./pullRequestResultReset";
+import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -46,6 +47,19 @@ export class PullRequestOperationSnapshot {
       throw new Error(`Cannot start PR operation while ${operation} is in progress.`);
     }
     await this.assertNoUnmergedChanges();
+  }
+
+  /**
+   * PR 실행의 branch·HEAD·Git directory를 한 번에 읽고 같은 checkout의 작업 상태를 검증한다.
+   * @returns 고정한 대상 브랜치와 시작 HEAD. detached/unmerged/native 작업이면 실행 전에 중단한다.
+   */
+  async prepareForPrOperation(): Promise<{ branch: string; beforeHead: string }> {
+    const identity = await readGitCommitCheckoutIdentity(this.repoRoot);
+    const operation = detectOperationInGitDir(identity.gitDir);
+    if (operation !== "none") throw new Error(`Cannot start PR operation while ${operation} is in progress.`);
+    if (!identity.branch) throw new Error("PR operations require a checked-out local branch.");
+    await this.assertNoUnmergedChanges();
+    return { branch: identity.branch, beforeHead: identity.head };
   }
 
   /**

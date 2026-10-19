@@ -23,6 +23,8 @@ import { pushPreservedLocalChangesStash } from "./stashExec";
 import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import type { OperationUndoPlan } from "./operationUndoStore";
 import { PullRequestSquashMerge, type PullRequestSquashPlan } from "./pullRequestSquashMerge";
+import { assertNoDuplicatePullRequestRecovery } from "./pullRequestWorktreeRecovery";
+import type { PullRequestOperationCommand } from "./pullRequestOperationFormat";
 
 export type {
   PullRequestOperationResult,
@@ -69,9 +71,7 @@ export class PullRequestOperationService {
     if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to cherry-pick.`);
     }
-    await this.state.assertReadyForPrOperation();
-    const branch = await this.state.currentBranch();
-    const beforeHead = await this.state.currentHead();
+    const { branch, beforeHead } = await this.prepareOperation(pr, "squash");
     const prepared = await this.commitMaterializer.prepare(pr, requestedCommits);
     const commits = prepared.commits;
     const squash = new PullRequestSquashMerge(this.repoRoot);
@@ -114,9 +114,7 @@ export class PullRequestOperationService {
     if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to rebase.`);
     }
-    await this.state.assertReadyForPrOperation();
-    const destinationBranch = await this.state.currentBranch();
-    const beforeHead = await this.state.currentHead();
+    const { branch: destinationBranch, beforeHead } = await this.prepareOperation(pr, "rebase");
     const prepared = await this.commitMaterializer.prepare(pr, requestedCommits);
     const commits = prepared.commits;
     if (
@@ -202,9 +200,7 @@ export class PullRequestOperationService {
     let beforeHead: string;
     let plan: PullRequestRevertPlan;
     try {
-      await this.state.assertReadyForPrOperation();
-      destinationBranch = await this.state.currentBranch();
-      beforeHead = await this.state.currentHead();
+      ({ branch: destinationBranch, beforeHead } = await this.prepareOperation(pr, "rebaseRevert"));
       plan = await this.resolveRevertPlan(
         pr,
         "rebaseRevert",
@@ -306,9 +302,7 @@ export class PullRequestOperationService {
     let beforeHead: string;
     let plan: PullRequestRevertPlan;
     try {
-      await this.state.assertReadyForPrOperation();
-      branch = await this.state.currentBranch();
-      beforeHead = await this.state.currentHead();
+      ({ branch, beforeHead } = await this.prepareOperation(pr, "squashRevert"));
       plan = await this.resolveRevertPlan(
         pr,
         "squashRevert",
@@ -352,7 +346,19 @@ export class PullRequestOperationService {
     pr: PullRequestInfo,
     operation: PullRequestRevertOperation
   ): Promise<PullRequestRevertPlan> {
-    return this.revertPlans.prepare(pr, operation);
+    const { beforeHead } = await this.prepareOperation(pr, operation);
+    return this.revertPlans.prepare(pr, operation, beforeHead);
+  }
+
+  /**
+   * fetch·목록 분석·병합 계산보다 먼저 같은 checkout의 저장된 복구 작업을 확인한다.
+   * @param pr 다시 실행할 PR @param command squash/rebase/revert 종류
+   * @returns 검증한 시작 상태. 같은 작업이 있으면 기존 복구 오류를 바로 반환한다.
+   */
+  private async prepareOperation(pr: PullRequestInfo, command: PullRequestOperationCommand) {
+    const start = await this.state.prepareForPrOperation();
+    await assertNoDuplicatePullRequestRecovery({ originRoot: this.repoRoot, pr, command, ...start });
+    return start;
   }
 
   /**

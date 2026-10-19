@@ -68,6 +68,9 @@ export async function assertNoDuplicatePullRequestRecovery(
     record.command === input.command && record.pr.number === input.pr.number && record.pr.headHash === input.pr.headHash);
   if (!saved) return;
   await assertPullRequestRecoveryIdentity(saved);
+  logInfo("PR operation reuses saved recovery", {
+    repoRoot: input.originRoot, id: saved.id, number: saved.pr.number, command: saved.command, phase: saved.phase,
+  });
   throw new PullRequestWorktreeRecoveryError(saved, `PR #${saved.pr.number} already has a saved operation. Resume it instead of replaying it again.`);
 }
 

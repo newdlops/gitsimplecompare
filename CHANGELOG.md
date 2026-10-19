@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.72103] - 2026-10-19
+
+### Changed
+
+- Apply verified PR merge histories as one final squash delta, including base
+  updates and unordered commit lists, to avoid intermediate replay conflicts.
+- Validate the external parent boundary and exact commit range before combining
+  a merged history; exclude base-only changes from other destination branches.
+- Find saved PR operations before object preparation, fetching or merge-tree
+  calculation, including squash, rebase and revert preparation.
+- Read the destination branch and HEAD together, reuse the verified PR tree at
+  its exact base, and skip redundant temporary-worktree scans for computed trees.
+
+### Fixed
+
+- Replay a verified single merge source without guessing its mainline on older
+  Git versions. Preserve real final-delta conflicts and existing recovery/Undo
+  protections for staged and unstaged local changes.
+
 ## [0.1.72102] - 2026-10-19
 
 ### Changed

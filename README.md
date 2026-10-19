@@ -80,6 +80,11 @@ the files are resolved. **Return to Working Tree** keeps the recovery for later;
 **Resume a saved PR operation and resolve its conflicts** reopens it after a
 window reload. See [PR operation recovery](./docs/pr-worktree-recovery.md).
 
+Squash applies the verified final PR delta, including connected merge histories,
+so changes undone within the PR do not cause intermediate conflicts. Base updates
+are excluded from the imported changes after checking the complete commit range.
+Repeating a paused action reopens its saved work before fetching or recalculating.
+
 ### Split changes into commits
 
 Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for the first commit, type a message, and commit; the remaining changes stay in your working tree so you can commit them separately. Requires no pre-staged changes (so each commit contains exactly what you select). New (untracked) files are not shown — `git add` them first.
