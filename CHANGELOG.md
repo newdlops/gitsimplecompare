@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72098] - 2026-10-19
+
+### Changed
+
+- Read the first working-tree snapshot without waiting for filesystem monitor
+  startup or its response check. Check monitor health in parallel with a full
+  scan of the extension-owned status index.
+- Reuse a confirmed healthy monitor for later reads while preserving custom
+  monitor hooks, command-scoped fallback, cancellation and process cleanup.
+
 ## [0.1.72097] - 2026-10-19
 
 ### Changed

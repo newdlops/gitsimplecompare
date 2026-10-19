@@ -5,10 +5,11 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { runGit, setGitExecutableResolver } from "../src/git/gitExec";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
-import { setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
+import { ensureOwnedFsmonitor, setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
+import { registerStatusIndex } from "../src/git/statusIndexOwnership";
 
 /** 실제 foreground 자식과 status handshake를 사용하되 파일 감시/사용자 저장소는 만들지 않는다. */
-async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing" | "broken-status" | "unresponsive" | "owned-unresponsive" | "query-error" | "owned-query-error" = false, configDelay = 0) {
+async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing" | "broken-status" | "unresponsive" | "owned-unresponsive" | "query-error" | "owned-query-error" | "hook" = false, configDelay = 0) {
   const root = await mkdtemp(path.join(os.tmpdir(), "gsc-fsmonitor-session-"));
   const executable = path.join(root, "git-fixture"), ready = path.join(root, "monitor.pid"), count = path.join(root, "starts"), preparing = path.join(root, "preparing");
   const statusChecks = path.join(root, "status-checks");
@@ -19,7 +20,11 @@ const fs = require('node:fs');
 let at=0;
 while (args[at]?.startsWith('-')) at+=['-c','-C','--config-env'].includes(args[at]) ? 2 : 1;
 const command = args[at];
-if (command === 'config') { fs.appendFileSync(${JSON.stringify(preparing)}, 'ready\\n'); setTimeout(()=>process.stdout.write('true\\n'), ${configDelay}); }
+if (command === 'config') {
+  fs.appendFileSync(${JSON.stringify(preparing)}, 'ready\\n');
+  if (${fail === "hook"}) { process.stderr.write('bad boolean config value: /user/monitor-hook'); process.exit(128); }
+  setTimeout(()=>process.stdout.write('true\\n'), ${configDelay});
+}
 else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   fs.appendFileSync(${JSON.stringify(statusChecks)}, 'check\\n');
   if (${fail === "existing" || fail === "unresponsive" || fail === "query-error"}) process.exit(0);
@@ -48,7 +53,7 @@ else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   });
   t.after(setGitExecutableResolver(() => executable));
   const reset = setOwnedFsmonitorPolicy(() => undefined); t.after(reset);
-  return { root, ready, count, preparing, reset, statusChecks, queryChecks, queryPid };
+  return { root, executable, ready, count, preparing, reset, statusChecks, queryChecks, queryPid };
 }
 
 test("ordinary index reads start one owned foreground monitor independently of idle cleanup settings", { skip: process.platform !== "darwin" }, async t => {
@@ -227,5 +232,48 @@ test("reference and remote-reference queries do not prepare an index monitor", {
     assert.equal(await runGit(args, f.root), "inherited", `${args[0]} must not override monitor config for an index-free read`);
   }
   await assert.rejects(readFile(f.preparing), { code: "ENOENT" });
+  await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});
+
+test("private status reads finish without waiting for a stalled monitor query", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t, "unresponsive");
+  const index = path.join(f.root, "private-index");
+  t.after(registerStatusIndex(index));
+  t.after(() => gitProcesses.dispose());
+  const env = { GIT_INDEX_FILE: index };
+  const pending = runGit(["status", "--porcelain=v2"], f.root, { env, allowPrivateIndexWrites: true });
+  // 실제 probe가 시작된 뒤 결과를 검사해 임의 시간 안에 끝났다는 속도 추측을 피한다.
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try { await readFile(f.queryPid); break; } catch { await new Promise(resolve => setTimeout(resolve, 20)); }
+  }
+  const pid = Number(await readFile(f.queryPid, "utf8"));
+  assert.equal(await pending, "false");
+  assert.doesNotThrow(() => process.kill(pid, 0), "the first snapshot must finish while monitor health is still being checked");
+  assert.equal(await runGit(["--literal-pathspecs", "ls-files", "--others"], f.root, { env }), "false");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
+  f.reset(); await gitProcesses.dispose();
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+});
+
+test("private status reads use a confirmed healthy monitor after the first full scan", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {
+  const f = await fixture(t);
+  const index = path.join(f.root, "private-index");
+  t.after(registerStatusIndex(index));
+  t.after(() => gitProcesses.dispose());
+  const env = { GIT_INDEX_FILE: index };
+  assert.equal(await runGit(["status", "--porcelain=v2"], f.root, { env }), "false");
+  assert.equal(await ensureOwnedFsmonitor(f.root, { env, executable: f.executable }), true);
+  assert.equal(await runGit(["status", "--porcelain=v2"], f.root, { env }), "inherited");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
+  assert.equal(gitProcesses.ownsMonitor(Number(await readFile(f.ready, "utf8")), f.root), true);
+});
+
+test("private status background preparation preserves a configured custom hook", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "hook");
+  const index = path.join(f.root, "private-index");
+  t.after(registerStatusIndex(index));
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["status", "--porcelain=v2"], f.root, { env: { GIT_INDEX_FILE: index } }), "inherited");
+  await assert.rejects(readFile(f.queryChecks), { code: "ENOENT" });
   await assert.rejects(readFile(f.count), { code: "ENOENT" });
 });
