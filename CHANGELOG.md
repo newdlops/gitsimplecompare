@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.72105] - 2026-10-19
+
+### Added
+
+- Open file blame directly from the line-number menu, Command Palette or
+  Ctrl+Alt+B (macOS: Cmd+Alt+B), including files without language symbols.
+  Escape closes owned annotations without changing global settings.
+- Configure author/date formats, short commit hashes, compact consecutive
+  commit labels and cursor-commit line highlighting using the current theme.
+- Open Line History from the editor, line-number menu or blame popup. Trace
+  the saved line's original position through historical edits and renames,
+  load additional changes on demand and open the selected historical file diff.
+
+### Changed
+
+- Reformat cached annotations without rerunning blame. Reuse relative-date
+  formatters and index commit ranges once instead of scanning on cursor moves.
+- Batch visible-row measurements, preserve focusable per-line actions in
+  compact mode and repeat labels at the visible group boundary.
+- Decode C-quoted Git filenames correctly and render root-commit diffs with
+  an empty original side even when the empty-tree object is absent.
+
 ## [0.1.72104] - 2026-10-19
 
 ### Added

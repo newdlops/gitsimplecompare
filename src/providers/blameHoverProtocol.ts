@@ -2,7 +2,7 @@
 import type { BlameCommitInfo } from "../git/blameHoverService";
 
 /** renderer가 실행할 수 있는 읽기·복사·탐색 동작만 허용한다. */
-export type BlameHoverAction = "load" | "dismiss" | "retry" | "copyHash" | "openCommit" | "openRemote" | "settings";
+export type BlameHoverAction = "load" | "dismiss" | "retry" | "copyHash" | "openCommit" | "openRemote" | "lineHistory" | "settings";
 
 /** 한 snapshot의 특정 라인과 커밋에 고정된 renderer 요청이다. */
 export interface BlameHoverRequest {
@@ -39,6 +39,7 @@ export interface BlameHoverLabels {
   copyHash: string; openCommit: string; openRemote: string; settings: string; coAuthor: string;
   filesChanged: string; fileChanged: string; noChanges: string; insertions: string; deletions: string;
   binaryFiles: string; unknownDate: string;
+  lineHistory?: string;
 }
 
 /**
@@ -50,7 +51,7 @@ export function parseBlameHoverRequest(value: unknown): BlameHoverRequest | unde
   if (!value || typeof value !== "object") return undefined;
   const request = value as BlameHoverRequest;
   if (request.type !== "blameHover" || typeof request.uri !== "string"
-    || !["load", "dismiss", "retry", "copyHash", "openCommit", "openRemote", "settings"].includes(request.action)
+    || !["load", "dismiss", "retry", "copyHash", "openCommit", "openRemote", "lineHistory", "settings"].includes(request.action)
     || typeof request.commit !== "string" || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(request.commit)
     || !Number.isInteger(request.revision) || request.revision < 0 || !Number.isInteger(request.line) || request.line < 1
     || !Number.isInteger(request.requestId) || request.requestId < 1) return undefined;

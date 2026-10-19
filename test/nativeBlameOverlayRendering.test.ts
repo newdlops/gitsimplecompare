@@ -60,6 +60,7 @@ class Element {
   removeEventListener(name: string, callback: (event: any) => void): void { this.listeners.get(name)?.delete(callback); }
   /** 자동 테스트가 사용자 hover·focus·Escape와 같은 등록 listener를 실행한다. */
   dispatch(name: string, event: any = {}): void {
+    event.preventDefault ||= () => {}; event.stopPropagation ||= () => {};
     if (name === "pointerenter") this.hovered = true;
     if (name === "pointerleave") this.hovered = false;
     if (name === "focus" && this.ownerDocument) this.ownerDocument.activeElement = this;
@@ -113,7 +114,8 @@ function fixture(lineCount = 10) {
     number.setAttribute("data-line-number", String(index + 1));
     return row;
   });
-  let uri = "file:///repo/code.ts", scans = 0, created = 0;
+  let uri = "file:///repo/code.ts", scans = 0, created = 0, cursorLine = 1;
+  const highlights: any[] = [];
   const frames = new Map<number, () => void>(), timers = new Map<number, () => void>();
   const events = new Map<string, () => void>(), options: any[] = [];
   let id = 0;
@@ -123,8 +125,10 @@ function fixture(lineCount = 10) {
     getRawOptions: () => ({ lineDecorationsWidth: 10 }),
     getLayoutInfo: () => ({ contentLeft: 310 }),
     updateOptions: (value: unknown) => { options.push(value); },
+    getPosition: () => ({ lineNumber: cursorLine, column: 1 }),
+    createDecorationsCollection: () => ({ set: (ranges: any[]) => highlights.push(ranges), clear: () => highlights.push([]) }),
   };
-  for (const name of ["onDidScrollChange", "onDidLayoutChange", "onDidChangeModel", "onDidDispose"]) {
+  for (const name of ["onDidScrollChange", "onDidLayoutChange", "onDidChangeModel", "onDidDispose", "onDidChangeCursorPosition"]) {
     editor[name] = (callback: () => void) => { events.set(name, callback); return { dispose: () => events.delete(name) }; };
   }
   const requests: any[] = [], windowEvents = new Element();
@@ -158,7 +162,8 @@ function fixture(lineCount = 10) {
   const followUp = () => { for (const [key, callback] of [...timers]) { timers.delete(key); callback(); } flushFrames(); };
   return { window, document, dom, rows, events, options, snapshot, requests, overlay: window.__gscNativeBlameOverlay,
     labels: () => dom.querySelectorAll(".gsc-native-blame-row"), hover: () => body.querySelector(".gsc-native-blame-hover"),
-    scans: () => scans, created: () => created, flushFrames, emit, followUp, setUri: (value: string) => { uri = value; } };
+    scans: () => scans, created: () => created, flushFrames, emit, followUp, setUri: (value: string) => { uri = value; },
+    highlights, cursor: (line: number) => { cursorLine = line; emit("onDidChangeCursorPosition"); } };
 }
 
 test("pointer hover shows structured commit identity safely and Escape dismisses its pending consumer", () => {
@@ -250,4 +255,35 @@ test("refresh replaces hover contents and a changed editor model removes stale l
   assert.equal(f.labels().length, 0);
   assert.equal(f.hover(), null);
   f.overlay.render(null);
+});
+
+test("compact groups keep every line actionable and repeat their label at the visible boundary", () => {
+  const f = fixture(50_000); f.snapshot.compact = true;
+  f.snapshot.lines = f.snapshot.lines.map(line => ({ ...line, groupStart: 1 }));
+  f.overlay.render(f.snapshot); f.flushFrames();
+  assert.ok(f.labels()[0].textContent);
+  assert.equal(f.labels()[1].textContent, "");
+  f.labels()[1].dispatch("focus"); assert.ok(f.hover());
+  f.rows.forEach((row, index) => row.querySelector(".line-numbers")!.setAttribute("data-line-number", String(1000 + index)));
+  f.emit("onDidScrollChange");
+  const top = f.labels().find(label => label.getAttribute("data-gsc-line") === "1000")!;
+  assert.ok(top.textContent);
+  assert.equal(f.labels().filter(label => label.textContent).length, 1);
+  assert.ok(f.labels().every(label => label.getAttribute("aria-label")));
+  f.overlay.render(null);
+});
+
+test("cursor commit highlighting reuses its range index and skips same-commit cursor moves", () => {
+  const f = fixture(50_000); f.snapshot.highlightCommit = true;
+  f.snapshot.lines[2].commit = "b".repeat(40);
+  f.overlay.render(f.snapshot); f.flushFrames();
+  assert.equal(f.highlights.length, 1);
+  assert.equal(f.highlights[0].length, 2, "nonadjacent runs of the same commit stay separate");
+  const indexed = f.scans();
+  f.cursor(2); assert.equal(f.highlights.length, 1);
+  f.cursor(3); assert.equal(f.highlights.length, 2);
+  assert.equal(f.labels()[2].getAttribute("aria-current"), "true");
+  assert.equal(f.labels()[0].getAttribute("aria-current"), null);
+  assert.equal(f.scans(), indexed, "cursor movement must not rescan 50,000 lines");
+  f.overlay.render(null); assert.deepEqual(f.highlights.at(-1), []);
 });

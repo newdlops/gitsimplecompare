@@ -266,5 +266,14 @@
   "cmd.inspectPrPrerequisites": "선행 PR 확인",
   "cmd.inspectPrPrerequisites.tooltip": "선행 PR 후보와 이 PR 작업의 충돌 해소 효과 확인",
   "cmd.leavePrRecovery": "원래 작업트리로 돌아가기",
-  "cmd.leavePrRecovery.tooltip": "PR 복구 작업을 보존하고 원래 작업트리로 돌아가기"
+  "cmd.leavePrRecovery.tooltip": "PR 복구 작업을 보존하고 원래 작업트리로 돌아가기",
+  "cmd.toggleBlameAnnotations": "파일 Blame 주석 켜기/끄기",
+  "cmd.showBlameAnnotations": "파일 Blame 주석 표시",
+  "cmd.hideBlameAnnotations": "파일 Blame 주석 숨기기",
+  "cmd.showLineHistory": "줄 변경 이력 보기",
+  "config.blameAnnotations.dateFormat": "파일 Blame 거터의 날짜 형식입니다. 절대 날짜는 UTC, 상대 시각은 VS Code 표시 언어를 사용합니다.",
+  "config.blameAnnotations.authorName": "파일 Blame에 전체 이름, 첫 단어 또는 마지막 단어를 표시합니다. 호버에서는 전체 작성자 정보를 유지합니다.",
+  "config.blameAnnotations.compact": "연속된 같은 커밋 묶음에는 라벨을 한 번만 표시하고, 스크롤하거나 접은 뒤 처음 보이는 줄에는 다시 표시합니다.",
+  "config.blameAnnotations.highlightCommit": "파일 Blame이 열린 동안 커서와 같은 커밋의 줄을 강조합니다. 커서 이동으로 Git을 실행하지 않습니다.",
+  "config.blameAnnotations.showCommitHash": "파일 Blame 주석에 짧은 커밋 해시를 포함합니다."
 }

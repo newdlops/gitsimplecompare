@@ -49,10 +49,7 @@ import {
   clearGitHubWebCookie,
   setGitHubWebCookie,
 } from "./githubWebCookie";
-import {
-  toggleBlameDecorator,
-  toggleBlameLineVisible,
-} from "./blame";
+import { registerBlameCommands } from "./blame";
 import { showSplitCommits } from "./splitCommits";
 import {
   discardEditorHunks,
@@ -120,7 +117,6 @@ import {
 } from "./pullRequestStacks";
 import { addPullRequestStackLayer, deleteLocalPullRequestStack, editPullRequestStackParent } from "./pullRequestStacks";
 import { ChangeDiffArgs } from "../providers/changesTreeModel";
-import { SHOW_BLOCK_BLAME_COMMAND } from "../providers/blockBlameCodeLensPresentation";
 import {
   clearExplorerComparison,
   compareLocalWithRemote,
@@ -148,24 +144,6 @@ const SECTION_TOGGLE_COMMANDS: [string, VisibleSection][] = [
   ["gitSimpleCompare.toggleSection.stashes.hidden", "stashes"],
   ["gitSimpleCompare.toggleSection.worktrees.visible", "worktrees"],
   ["gitSimpleCompare.toggleSection.worktrees.hidden", "worktrees"],
-];
-
-const BLAME_DECORATOR_COMMANDS = [
-  "gitSimpleCompare.toggleBlameDecorator",
-  "gitSimpleCompare.toggleBlameDecorator.checked",
-  "gitSimpleCompare.toggleBlameDecorator.unchecked",
-];
-
-const BLAME_LINE_COMMANDS = [
-  "gitSimpleCompare.toggleBlameLineVisible",
-  "gitSimpleCompare.toggleBlameLineVisible.checked",
-  "gitSimpleCompare.toggleBlameLineVisible.unchecked",
-];
-
-const BLAME_BLOCK_COMMANDS = [
-  "gitSimpleCompare.toggleBlameBlockVisible",
-  "gitSimpleCompare.toggleBlameBlockVisible.checked",
-  "gitSimpleCompare.toggleBlameBlockVisible.unchecked",
 ];
 
 /**
@@ -364,22 +342,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
     vscode.commands.registerCommand("gitSimpleCompare.clearGitHubWebCookie", () =>
       clearGitHubWebCookie(deps)
     ),
-    ...BLAME_DECORATOR_COMMANDS.map((command) =>
-      vscode.commands.registerCommand(command, () => toggleBlameDecorator(deps))
-    ),
-    ...BLAME_LINE_COMMANDS.map((command) =>
-      vscode.commands.registerCommand(command, () =>
-        toggleBlameLineVisible(deps)
-      )
-    ),
-    ...BLAME_BLOCK_COMMANDS.map((command) =>
-      vscode.commands.registerCommand(command, () =>
-        deps.blockBlameCodeLens.toggleVisible()
-      )
-    ),
-    vscode.commands.registerCommand(SHOW_BLOCK_BLAME_COMMAND, (request) =>
-      deps.blockBlamePresenter.show(request)
-    ),
+    ...registerBlameCommands(deps),
     vscode.commands.registerCommand(
       "gitSimpleCompare.loginAiCli",
       (provider?: "claude" | "codex") => loginAiCli(provider)

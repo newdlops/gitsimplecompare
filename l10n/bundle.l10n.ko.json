@@ -1880,5 +1880,17 @@
   "Declared as a prerequisite in the PR description": "PR 본문에 선행 PR로 명시됨",
   "Changed the source history of a conflicting file": "충돌 파일의 원본 이력을 변경함",
   "$(search) Inspect PR prerequisites": "$(search) 선행 PR 확인",
-  "Find prerequisite PR candidates and simulate their effect without changing the working tree.": "현재 작업트리를 변경하지 않고 선행 PR 후보와 적용 효과를 확인합니다."
+  "Find prerequisite PR candidates and simulate their effect without changing the working tree.": "현재 작업트리를 변경하지 않고 선행 PR 후보와 적용 효과를 확인합니다.",
+  "View Line History": "줄 변경 이력 보기",
+  "File annotations": "파일 주석",
+  "Loading file blame annotations…": "파일 Blame 주석을 불러오는 중…",
+  "Save the file before viewing line history.": "줄 이력을 보기 전에 파일을 저장하세요.",
+  "The file changed. Reopen line history from the current line.": "파일이 변경되었습니다. 현재 줄에서 이력을 다시 여세요.",
+  "Loading history for line {0}…": "{0}번째 줄 이력을 불러오는 중…",
+  "No committed line history is available. The line may be new or untracked.": "커밋된 줄 이력이 없습니다. 새 줄이거나 Git에서 추적하지 않는 파일일 수 있습니다.",
+  "Load more line changes": "줄 변경 이력 더 불러오기",
+  "Showing the first {0} line changes": "처음 {0}개 줄 변경을 표시합니다",
+  "Line {0} history · {1}": "{0}번째 줄 이력 · {1}",
+  "Select a change to open its file diff. History follows the first parent.": "변경을 선택하면 해당 파일의 diff를 엽니다. 첫 번째 부모를 따라 이력을 조회합니다.",
+  "Could not load line history. See Git Simple Compare Output.": "줄 이력을 불러오지 못했습니다. Git Simple Compare 출력을 확인하세요."
 }

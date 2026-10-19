@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import AxeBuilder from "@axe-core/playwright";
 import { nativeBlameOverlayRendererScript } from "../../src/providers/nativeBlameOverlayRenderer";
 import { mountNativeBlameFixture, type NativeBlameFixtureOptions } from "../fixtures/webview/nativeBlameFixture";
 
@@ -9,7 +10,7 @@ const fontUrl = "data:font/ttf;base64," + readFileSync("media/codicons/codicon.t
 
 /** 실제 renderer·Codicon·CSS를 설치한다. 파일 blame/host 통신 경계만 공통 fixture로 재현한다. */
 async function mount(page: Page, options: NativeBlameFixtureOptions = {}) {
-  await page.setContent('<html lang="en"><head></head><body></body></html>');
+  await page.setContent('<html lang="en"><head><title>Git Simple Compare blame annotations fixture</title></head><body></body></html>');
   await page.evaluate(mountNativeBlameFixture, { ...options, codiconCss, fontUrl });
   await page.addScriptTag({ content: nativeBlameOverlayRendererScript() });
   await page.evaluate(() => (window as any).__gscNativeBlameOverlay.render((window as any).__testSnapshot));
@@ -51,6 +52,17 @@ for (const [width, height] of [[1440, 900], [768, 1024], [390, 844]]) {
     });
   }
 }
+
+test("annotation buttons and the line-history action pass WCAG checks in supported fixture themes", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const theme of ["dark", "light", "contrast"] as const) {
+    await mount(page, { compact: true, highlight: true, theme });
+    await page.locator('[data-gsc-line="8"]').focus();
+    await expect(page.getByRole("dialog")).toContainText("4 files changed");
+    const audit = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(audit.violations, theme).toEqual([]);
+  }
+});
 
 test("loading and retry preserve the original identity, copy action and keyboard focus", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 }); await mount(page, { mode: "error", delayMs: 120 });
@@ -121,3 +133,32 @@ test("resizing an editor updates the gutter width without another file snapshot"
   expect(await page.locator(".gsc-native-blame-layer").evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(390 * 0.42);
   await expect(page.locator(".gsc-native-blame-row")).toHaveCount(16);
 });
+
+for (const [width, height] of [[1440, 900], [768, 1024], [390, 844]]) {
+  test(`compact groups, cursor highlight and line history remain actionable at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height }); await mount(page, { compact: true, highlight: true });
+    await expect(page.locator('[data-gsc-line="1"]')).not.toHaveText("");
+    await expect(page.locator('[data-gsc-line="2"]')).toHaveText("");
+    await expect(page.locator('.gsc-native-blame-row[aria-current="true"]')).toHaveCount(12);
+    await page.locator('[data-code-line="8"]').click();
+    await expect(page.locator('.gsc-native-blame-row[aria-current="true"]')).toHaveCount(4);
+    await page.locator('[data-gsc-line="8"]').focus();
+    const popup = page.getByRole("dialog"); await expect(popup).toBeVisible();
+    await expect(popup).toContainText("alex@example.invalid");
+    await expect(popup).toContainText("4 files changed");
+    const history = popup.getByRole("button", { name: "View Line History" });
+    await expect(history).toHaveAttribute("title", "View Line History");
+    await expect(history).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`compact-highlight-${width}.png`) });
+    await history.click(); await expect(popup).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).__testRequests.find((request: any) => request.action === "lineHistory")?.line)).toBe(8);
+    await page.evaluate(() => {
+      document.querySelector('.line-numbers[data-line-number="1"]')!.setAttribute("data-line-number", "1000");
+      for (const line of ["2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]) document.querySelector('.line-numbers[data-line-number="'+line+'"]')!.parentElement!.remove();
+      (window as any).__testEditorEvents.get("onDidScrollChange")();
+    });
+    await expect(page.locator('[data-gsc-line="1000"]')).not.toHaveText("");
+    await page.evaluate(() => (window as any).__gscNativeBlameOverlay.render(null));
+    await expect(page.locator('.gsc-blame-commit-highlight')).toHaveCount(0);
+  });
+}

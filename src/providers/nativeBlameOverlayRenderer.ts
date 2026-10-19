@@ -1,7 +1,7 @@
 // 네이티브 blame 거터의 라인 배치, 재사용, hover와 편집기 폭 복원을 담당한다.
 // - CDP 편집기 탐색과 분리해 표시 수명과 스크롤 비용을 독립적으로 검증한다.
 import { nativeBlameHoverRendererScript, nativeBlameHoverStyles } from "./nativeBlameHoverRenderer";
-export const NATIVE_BLAME_PATCH_VERSION = 6;
+export const NATIVE_BLAME_PATCH_VERSION = 7;
 
 /**
  * workbench renderer에 상주하며 Monaco margin row와 blame label을 동기화하는 patch 본문을 만든다.
@@ -47,9 +47,11 @@ export function nativeBlameOverlayRendererScript(): string {
         }
         style.textContent = [
           '.gsc-native-blame-layer{position:absolute;top:0;height:100%;z-index:70;overflow:hidden;pointer-events:none;background:var(--vscode-editorGutter-background);}',
-          '.gsc-native-blame-row{position:absolute;left:0;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:auto;color:var(--vscode-editorCodeLens-foreground);background:var(--vscode-editorGutter-background);border-right:1px solid var(--vscode-editorIndentGuide-background1,transparent);font:inherit;cursor:default;}',
+          '.gsc-native-blame-row{position:absolute;left:0;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:auto;color:var(--vscode-editorCodeLens-foreground);background:var(--vscode-editorGutter-background);border:0;border-right:1px solid var(--vscode-editorIndentGuide-background1,transparent);font:inherit;cursor:default;}',
           '.gsc-native-blame-row:hover,.gsc-native-blame-row:focus-visible{color:var(--vscode-editor-foreground);}',
           '.gsc-native-blame-row:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px;}',
+          '.gsc-native-blame-text{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+          '.gsc-native-blame-row[aria-current="true"],.gsc-blame-commit-highlight{background:var(--vscode-editor-wordHighlightBackground,var(--vscode-list-hoverBackground));outline:1px solid var(--vscode-editor-wordHighlightBorder,transparent);outline-offset:-1px;}',
           ${JSON.stringify(nativeBlameHoverStyles())}
         ].join('\\n');
       }
@@ -105,6 +107,7 @@ export function nativeBlameOverlayRendererScript(): string {
       }
       function restoreEditorWidth() {
         var editor = state.editor;
+        clearCommitHighlight();
         disposeEditorListeners();
         if (editor) {
           try {
@@ -141,6 +144,11 @@ export function nativeBlameOverlayRendererScript(): string {
       }
       function bindEditorEvents(editor) {
         disposeEditorListeners();
+        if (typeof editor.onDidChangeCursorPosition === 'function') {
+          state.editorDisposables.push(editor.onDidChangeCursorPosition(function () {
+            if (highlightCurrentCommit()) schedulePaint();
+          }));
+        }
         ['onDidScrollChange', 'onDidLayoutChange', 'onDidChangeModel'].forEach(function (name) {
           try {
             if (typeof editor[name] === 'function') state.editorDisposables.push(editor[name](function () {
@@ -155,6 +163,7 @@ export function nativeBlameOverlayRendererScript(): string {
           if (typeof editor.onDidDispose === 'function') {
             state.editorDisposables.push(editor.onDidDispose(function () {
               cleanupDom();
+              clearCommitHighlight();
               state.editor = null;
               window.__gscNativeBlameEditor = null;
             }));
@@ -248,17 +257,43 @@ export function nativeBlameOverlayRendererScript(): string {
       }
       function makeLineMap(snapshot) {
         var map = new Map();
+        state.commitRanges = new Map();
         (snapshot.lines || []).forEach(function (line) {
           var number = Number(line.line) || 0;
-          if (number > 0 && !map.has(number)) map.set(number, line);
+          if (number <= 0 || map.has(number)) return;
+          map.set(number, line);
+          if (!snapshot.highlightCommit) return;
+          if (!line.commit || /^0+$/.test(line.commit)) return;
+          var ranges = state.commitRanges.get(line.commit) || [];
+          var last = ranges[ranges.length - 1];
+          if (last && last.range.endLineNumber + 1 === number) last.range.endLineNumber = number;
+          else ranges.push({range:{startLineNumber:number,startColumn:1,endLineNumber:number,endColumn:1},options:{isWholeLine:true,className:'gsc-blame-commit-highlight'}});
+          state.commitRanges.set(line.commit, ranges);
         });
         return map;
       }
+      /** 커서가 같은 SHA 안에서 움직이면 decoration을 다시 계산하거나 Git을 조회하지 않는다. */
+      function highlightCurrentCommit() {
+        var editor = state.editor, snapshot = state.snapshot;
+        var position = editor && typeof editor.getPosition === 'function' ? editor.getPosition() : null;
+        var line = position && state.lineMap.get(position.lineNumber);
+        var hash = snapshot && snapshot.highlightCommit && line && !/^0+$/.test(line.commit || '') ? line.commit : '';
+        if (state.highlightedCommit === hash) return false;
+        state.highlightedCommit = hash;
+        if (!state.highlightCollection && editor && typeof editor.createDecorationsCollection === 'function') state.highlightCollection = editor.createDecorationsCollection([]);
+        if (state.highlightCollection) state.highlightCollection.set(hash ? state.commitRanges.get(hash) || [] : []);
+        return true;
+      }
+      /** 탭 교체·기능 해제에서 Monaco decoration과 커서 상태를 함께 정리한다. */
+      function clearCommitHighlight() {
+        if (state.highlightCollection) { try { state.highlightCollection.clear(); } catch (_) {} }
+        state.highlightCollection = null; state.highlightedCommit = '';
+      }
       /** 같은 라인의 DOM을 유지해 재배치 중 hover·키보드 포커스가 끊기지 않게 한다. */
-      function appendLabel(layer, row, line, hostTop) {
+      function appendLabel(layer, row, line, hostTop, showLabel, rowRect) {
         var label = state.labels.get(line.line);
         if (!label) {
-          label = document.createElement('span');
+          label = document.createElement('button'); label.type = 'button';
           label.className = 'gsc-native-blame-row';
           label.tabIndex = 0;
           label.setAttribute('role','button'); label.setAttribute('aria-haspopup','dialog'); label.setAttribute('aria-expanded','false');
@@ -276,15 +311,19 @@ export function nativeBlameOverlayRendererScript(): string {
             if(event.key==='Enter' || event.key===' ') {event.preventDefault();showHover(label);}
           });
           label.setAttribute('data-gsc-line', String(line.line));
+          label.__gscText = document.createElement('span'); label.__gscText.className = 'gsc-native-blame-text';
+          label.appendChild(label.__gscText);
           state.labels.set(line.line, label);
           layer.appendChild(label);
         }
-        var rowRect = row.getBoundingClientRect();
         label.style.top = (rowRect.top - hostTop) + 'px';
         label.style.height = Math.max(12, rowRect.height || styleNumber(row, 'height', 18)) + 'px';
-        var text = String(line.label || '');
-        var tooltip = String(line.tooltip || text);
-        if (label.textContent !== text) label.textContent = text;
+        var text = showLabel ? String(line.label || '') : '';
+        var tooltip = String(line.tooltip || line.label || '');
+        if (state.highlightedCommit && line.commit === state.highlightedCommit) label.setAttribute('aria-current','true');
+        else label.removeAttribute('aria-current');
+        label.setAttribute('data-gsc-continuation', showLabel ? 'false' : 'true');
+        if (label.__gscText.textContent !== text) label.__gscText.textContent = text;
         if (label.getAttribute('data-tooltip') !== tooltip) {
           label.setAttribute('data-tooltip', tooltip);
           label.setAttribute('aria-label', tooltip);
@@ -322,13 +361,24 @@ export function nativeBlameOverlayRendererScript(): string {
         var lineMap = state.lineMap;
         var used = new Set();
         var placed = 0;
-        Array.prototype.slice.call(margin.children || []).forEach(function (row) {
+        var rows = Array.prototype.slice.call(margin.children || []).filter(function (row) {
+          return row !== layer && !isOwnNode(row) && lineMap.has(rowLineNumber(row));
+        });
+        var groupFirst = new Map();
+        var measured = rows.map(function (row) { return {row:row,rect:row.getBoundingClientRect()}; });
+        measured.forEach(function (item) {
+          var row = item.row;
+          var line = lineMap.get(rowLineNumber(row)), group = line.groupStart || line.line;
+          if (!groupFirst.has(group) || groupFirst.get(group) > line.line) groupFirst.set(group, line.line);
+        });
+        measured.forEach(function (item) {
+          var row = item.row;
           if (row === layer || isOwnNode(row)) return;
           var lineNumber = rowLineNumber(row);
           var line = lineMap.get(lineNumber);
           if (!line || used.has(lineNumber)) return;
           used.add(lineNumber);
-          appendLabel(layer, row, line, hostTop);
+          appendLabel(layer, row, line, hostTop, !snapshot.compact || groupFirst.get(line.groupStart || line.line) === line.line, item.rect);
           placed++;
         });
         state.labels.forEach(function (label, lineNumber) {
@@ -343,6 +393,7 @@ export function nativeBlameOverlayRendererScript(): string {
       function teardown() {
         state.snapshot = null;
         state.lineMap.clear();
+        if (state.commitRanges) state.commitRanges.clear();
         if (state.frame) {
           try { cancelAnimationFrame(state.frame); } catch (_) {}
           state.frame = 0;
@@ -365,6 +416,7 @@ export function nativeBlameOverlayRendererScript(): string {
           clearFollowUpPaints();
           hideHover();
           state.snapshot = snapshot;
+          clearCommitHighlight();
           // 전체 파일 스캔은 snapshot 교체 때 한 번만 하고 이후에는 보이는 margin row만 읽는다.
           state.lineMap = makeLineMap(snapshot);
           state.lastPaint = '';
@@ -374,6 +426,7 @@ export function nativeBlameOverlayRendererScript(): string {
             return configured;
           }
           ensureStyle();
+          highlightCurrentCommit();
           schedulePaint();
           scheduleFollowUpPaints();
           return 'render-scheduled:' + configured + ':' + paint();

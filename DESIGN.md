@@ -352,6 +352,28 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
 
 ## Native Blame Commit Hover
 
+### Annotation navigation and line history
+
+- Keep the existing native gutter and commit popup. Line-number menus and explicit
+  show/hide commands must also work for files without language symbols; Escape
+  closes annotations only while this editor owns them and no other widget needs it.
+- Preserve full-name/ISO-date defaults. Optional compact groups suppress repeated
+  labels but retain each line's tooltip and keyboard action. Repeat a group's
+  label at the first visible line after scrolling or folding.
+- Optional cursor-commit highlighting uses editor theme tokens and a precomputed
+  commit/range index; cursor changes must not trigger Git reads or CDP discovery.
+- Date/name/hash presentation changes reuse the current blame result. Never fetch
+  or rerun blame only to reformat text.
+- Line History opens a cancellable native picker for the selected saved line.
+  The immutable blamed revision, original filename and original line anchor the
+  history. Show bounded pages on demand, with author/date/hash and a readable
+  subject; selecting an entry opens that historical file diff, including rename
+  and root-commit cases. Reject stale/dirty documents and explain empty/error states.
+- Acceptance: menu/keyboard/hover entry points; adjacent and nonadjacent commit
+  groups; scroll/fold boundaries; same-commit cursor moves without extra work;
+  long Korean/English names, narrow panes and dark/light/high-contrast themes;
+  cancellation, untracked/working-tree lines and document changes during reads.
+
 - 거터 호버는 현재 라인의 실제 커밋을 이해하고 변경을 여는 작업면이다. 작성자·이메일·상대/정확한 시각,
   전체 커밋 메시지·공동 작성자, 변경 파일/추가·삭제 통계, 커밋/SHA 복사/원격/설정 액션 순으로 읽힌다.
 - 기본 Git 호버와 같은 editor hover 표면·글꼴·Codicon·링크 색을 사용한다. 추가/삭제 수는 SCM/Git의

@@ -1,5 +1,5 @@
 // git 도메인에서 공통으로 쓰는 타입 정의 모듈.
-// - 특정 라이브러리(vscode)에 의존하지 않는 순수 타입만 둔다. 그래야 git 레이어를
+// - 특정 라이브러리(vscode)에 의존하지 않는 타입과 불변 식별자만 둔다. 그래야 git 레이어를
 //   다른 UI/테스트 환경에서도 그대로 재사용할 수 있다.
 
 /** 브랜치 종류: 로컬 또는 원격 */
@@ -96,3 +96,5 @@ export interface BranchComparison {
   diffBase: DiffBase;
   changes: FileChange[];
 }
+/** root commit diff의 빈 쪽을 표현하는 공용 empty tree 식별자다. 객체가 없어도 내용은 항상 비어 있다. */
+export const EMPTY_TREE_REF = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";

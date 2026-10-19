@@ -132,3 +132,37 @@ test("dispose 뒤에는 새 거터 snapshot을 만들지 않는다", () => {
   assert.deepEqual(result, { lineCount: 0, authorCount: 0 });
   assert.equal(gutter.snapshot(), undefined);
 });
+
+test("annotation settings change labels while full identity, source positions and consecutive groups remain intact", t => {
+  const values: Record<string, unknown> = { dateFormat: "DD.MM.YYYY", authorName: "last", compact: true, highlightCommit: true, showCommitHash: true };
+  t.mock.method(vscodeMock.workspace, "getConfiguration", () => ({ get: (key: string, fallback: unknown) => values[key] ?? fallback }));
+  const gutter = new BlockBlameGutter();
+  gutter.apply(textDocument(4), [1, 2, 3, 4].map(line => blameLine(line, { authorName: "Alex 김민수", originalLine: line + 10,
+    filename: "이전\t파일.ts", commit: line === 3 ? "b".repeat(40) : COMMIT_A })));
+  const snapshot = gutter.snapshot()!;
+  assert.match(snapshot.lines[0].label, /^김민수 · 14\.11\.2023 · aaaaaaaa$/);
+  assert.match(snapshot.lines[0].tooltip, /Alex 김민수/);
+  assert.deepEqual(snapshot.lines.map(line => line.groupStart), [1, 1, 3, 4]);
+  assert.equal(snapshot.lines[1].originalLine, 12);
+  assert.equal(snapshot.lines[1].sourcePath, "이전\t파일.ts");
+  assert.equal(snapshot.compact, true); assert.equal(snapshot.highlightCommit, true);
+  gutter.dispose();
+});
+
+test("relative dates reuse one locale formatter across a large file", t => {
+  t.mock.method(vscodeMock.workspace, "getConfiguration", () => ({ get: (key: string, fallback: unknown) => key === "dateFormat" ? "relative" : fallback }));
+  const Original = Intl.RelativeTimeFormat, originalFormat = Original.prototype.format;
+  let formatters = 0, formats = 0;
+  t.mock.method(Original.prototype, "format", function (value: number, unit: Intl.RelativeTimeFormatUnit) {
+    formats++; return originalFormat.call(this, value, unit);
+  });
+  t.mock.method(Intl, "RelativeTimeFormat", function (locale: string, options: Intl.RelativeTimeFormatOptions) {
+    formatters++; return new Original(locale, options);
+  });
+  const gutter = new BlockBlameGutter();
+  gutter.apply(textDocument(50_000), Array.from({ length: 50_000 }, (_, index) => blameLine(index + 1)));
+  assert.equal(formatters, 1);
+  assert.equal(formats, 1, "repeated commit labels share their date formatting result");
+  assert.equal(gutter.snapshot()!.lines[0].label, gutter.snapshot()!.lines.at(-1)!.label);
+  gutter.dispose();
+});

@@ -1,12 +1,12 @@
 // 열린 파일 기준 커밋 히스토리를 조회하는 git 서비스.
 // - UI/명령 레이어와 분리해 저장소 루트 + 상대 경로만으로 재사용할 수 있게 한다.
 // - 커밋별 diff 프로세스를 만들지 않고 `git log` 한 번에서 메타데이터/raw/numstat 을 함께 읽는다.
-import type { FileChangeStatus } from "./gitTypes";
+import { EMPTY_TREE_REF, type FileChangeStatus } from "./gitTypes";
 import { runGit, runGitStream } from "./gitExec";
 import { FileHistoryStream } from "./fileHistoryStream";
 
 /** root commit 의 부모처럼 사용할 Git empty tree 객체 해시. */
-export const EMPTY_TREE_REF = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+export { EMPTY_TREE_REF } from "./gitTypes";
 
 /** 커밋 메시지와 경로에 우연히 나타날 가능성을 낮춘 git log 레코드 표식. */
 const HISTORY_RECORD_MARKER = "\x1eGSC_FILE_HISTORY_COMMIT_V1\x1e";

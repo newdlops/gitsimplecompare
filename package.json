@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72104",
+  "version": "0.1.72105",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -349,6 +349,10 @@
         "category": "Git Simple Compare",
         "icon": "$(git-commit)"
       },
+      { "command": "gitSimpleCompare.toggleBlameAnnotations", "title": "%cmd.toggleBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(git-commit)" },
+      { "command": "gitSimpleCompare.showBlameAnnotations", "title": "%cmd.showBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(git-commit)" },
+      { "command": "gitSimpleCompare.hideBlameAnnotations", "title": "%cmd.hideBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(close)" },
+      { "command": "gitSimpleCompare.showLineHistory", "title": "%cmd.showLineHistory%", "category": "Git Simple Compare", "icon": "$(history)" },
       {
         "command": "gitSimpleCompare.toggleBlameDecorator.checked",
         "title": "%cmd.blameDecorator.checked.tooltip%",
@@ -846,6 +850,11 @@
       }
     ],
     "menus": {
+      "editor/lineNumber/context": [
+        { "command": "gitSimpleCompare.showBlameAnnotations", "when": "resourceScheme == file && !gitSimpleCompare.blame.annotationsVisible", "group": "1_gitSimpleCompare@1" },
+        { "command": "gitSimpleCompare.hideBlameAnnotations", "when": "resourceScheme == file && gitSimpleCompare.blame.annotationsVisible", "group": "1_gitSimpleCompare@1" },
+        { "command": "gitSimpleCompare.showLineHistory", "when": "resourceScheme == file", "group": "1_gitSimpleCompare@2" }
+      ],
       "view/title": [
         {
           "command": "gitSimpleCompare.showExplorerComparison",
@@ -1238,6 +1247,7 @@
         }
       ],
       "editor/context": [
+        { "command": "gitSimpleCompare.showLineHistory", "when": "resourceScheme == file", "group": "1_gitSimpleCompare@6" },
         {
           "command": "gitSimpleCompare.toggleSelectedLineCheckbox",
           "when": "gitSimpleCompare.activeHeadWorkingDiff",
@@ -1464,6 +1474,10 @@
         }
       ]
     },
+    "keybindings": [
+      { "command": "gitSimpleCompare.toggleBlameAnnotations", "key": "ctrl+alt+b", "mac": "cmd+alt+b", "when": "editorTextFocus && resourceScheme == file" },
+      { "command": "gitSimpleCompare.hideBlameAnnotations", "key": "escape", "when": "editorTextFocus && gitSimpleCompare.blame.annotationsVisible && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !inSnippetMode && !editorHasMultipleSelections && !inlineSuggestionVisible && !parameterHintsVisible" }
+    ],
     "configurationDefaults": {
       "workbench.hover.delay": 0
     },
@@ -1518,6 +1532,11 @@
           "default": true,
           "description": "%config.blameBlock.show.desc%"
         },
+        "gitSimpleCompare.blameAnnotations.dateFormat": { "type": "string", "scope": "resource", "default": "YYYY-MM-DD", "enum": ["YYYY-MM-DD", "DD.MM.YYYY", "MM/DD/YYYY", "relative"], "description": "%config.blameAnnotations.dateFormat%" },
+        "gitSimpleCompare.blameAnnotations.authorName": { "type": "string", "scope": "resource", "default": "full", "enum": ["full", "first", "last"], "description": "%config.blameAnnotations.authorName%" },
+        "gitSimpleCompare.blameAnnotations.compact": { "type": "boolean", "scope": "resource", "default": false, "description": "%config.blameAnnotations.compact%" },
+        "gitSimpleCompare.blameAnnotations.highlightCommit": { "type": "boolean", "scope": "resource", "default": false, "description": "%config.blameAnnotations.highlightCommit%" },
+        "gitSimpleCompare.blameAnnotations.showCommitHash": { "type": "boolean", "scope": "resource", "default": false, "description": "%config.blameAnnotations.showCommitHash%" },
         "gitSimpleCompare.pullRequestComments.show": {
           "type": "boolean",
           "default": true,

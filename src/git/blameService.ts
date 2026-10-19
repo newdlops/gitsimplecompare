@@ -6,11 +6,14 @@ import { stat } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
 import { readSharedBlame } from "./sharedBlameReads";
 import { readBlameCacheIdentity } from "./blameCacheIdentity";
+import { decodeGitQuotedPath } from "../utils/gitQuotedPath";
 
 /** git blame 한 줄에 대응하는 커밋/작성자 메타데이터. */
 export interface GitBlameLine {
   /** 파일 안의 1-based 라인 번호 */
   line: number;
+  /** 이 라인이 마지막으로 바뀐 commit 안의 1-based 라인 번호. 줄 이력의 고정 기준이다. */
+  originalLine?: number;
   /** 해당 라인을 마지막으로 변경한 커밋 해시. 미커밋 라인은 0 해시일 수 있다. */
   commit: string;
   /** 작성자 이름 */
@@ -127,7 +130,7 @@ export function parseBlamePorcelain(output: string): GitBlameLine[] {
 
   for (const rawLine of output.split("\n")) {
     const line = rawLine.replace(/\r$/, "");
-    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)(?: \d+)?$/.exec(line);
+    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) (\d+) (\d+)(?: \d+)?$/.exec(line);
     if (header) {
       current = {
         authorName: "",
@@ -136,7 +139,8 @@ export function parseBlamePorcelain(output: string): GitBlameLine[] {
         filename: "",
         ...commits.get(header[1]),
         commit: header[1],
-        line: Number(header[2]),
+        originalLine: Number(header[2]),
+        line: Number(header[3]),
       };
       continue;
     }
@@ -182,7 +186,7 @@ function readMetadataLine(target: Partial<GitBlameLine>, line: string): void {
       target.authorMail = stripMailBrackets(value);
       break;
     case "author-time":
-      target.authorTime = Number(value) || undefined;
+      target.authorTime = value.trim() && Number.isFinite(Number(value)) ? Number(value) : undefined;
       break;
     case "author-tz":
       target.authorTz = value;
@@ -191,7 +195,7 @@ function readMetadataLine(target: Partial<GitBlameLine>, line: string): void {
       target.summary = value;
       break;
     case "filename":
-      target.filename = value;
+      target.filename = decodeGitQuotedPath(value);
       break;
   }
 }
@@ -204,6 +208,7 @@ function readMetadataLine(target: Partial<GitBlameLine>, line: string): void {
 function normalizeBlameLine(line: Partial<GitBlameLine>): GitBlameLine {
   return {
     line: Math.max(1, line.line ?? 1),
+    originalLine: line.originalLine,
     commit: line.commit ?? "",
     authorName: line.authorName || "Unknown",
     authorMail: line.authorMail || "",

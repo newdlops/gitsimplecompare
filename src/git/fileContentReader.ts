@@ -6,6 +6,7 @@ import { readFile, stat } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
 import { FileTooLargeError } from "./largeChangeSet";
 import { buildWorkingContentWithoutStaged } from "./unstagedView";
+import { EMPTY_TREE_REF } from "./gitTypes";
 
 /** 파일 내용 읽기 옵션(diff 미리보기용 크기 상한). */
 export interface ContentReadOptions {
@@ -33,6 +34,8 @@ export async function readFileAtRef(
   rel: string,
   options: ContentReadOptions = {}
 ): Promise<string> {
+  options.signal?.throwIfAborted();
+  if (ref === EMPTY_TREE_REF) return "";
   const run = (args: string[]) => runGit(args, repoRoot, { signal: options.signal });
   try {
     const spec = ref === ":0" ? `:0:${rel}` : `${ref}:${rel}`;

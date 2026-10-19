@@ -6,6 +6,7 @@ import { isUncommittedBlameCommit } from "../git/blockBlameModel";
 import type { GitBlameLine } from "../git/blameService";
 import type { BlameCommitSummary } from "../git/blameHoverService";
 import type { BlameHoverLabels } from "../providers/blameHoverProtocol";
+import { readBlameAnnotationOptions, formatBlameAuthor, formatBlameDate, blameHashSuffix, type BlameAnnotationOptions } from "./blameAnnotationPresentation";
 
 const MAX_VISIBLE_AUTHOR_WIDTH = 18;
 const MIN_AUTHOR_COLUMN_WIDTH_CH = 23;
@@ -22,6 +23,11 @@ export interface BlockBlameGutterLine {
   tooltip: string;
   /** 상세를 지연 조회하고 동일 커밋 메타데이터를 공유하기 위한 전체 SHA */
   commit?: string;
+  /** 연속된 같은 commit 블록의 첫 줄. renderer가 viewport 첫 보이는 줄에도 라벨을 반복한다. */
+  groupStart?: number;
+  /** 별도 blame 조회 없이 줄 이력을 열 때 사용하는 원래 commit 안의 위치다. */
+  originalLine?: number;
+  sourcePath?: string;
 }
 
 /** workbench renderer가 한 편집기의 blame 거터를 그리는 데 필요한 전체 snapshot. */
@@ -41,6 +47,8 @@ export interface BlockBlameGutterSnapshot {
   /** VS Code 표시 언어와 지역화된 팝업 안내 */
   locale?: string;
   hoverLabels?: BlameHoverLabels;
+  compact?: boolean;
+  highlightCommit?: boolean;
 }
 
 /** snapshot 적용 뒤 presenter 로그와 활성 상태가 사용할 집계 결과. */
@@ -97,7 +105,8 @@ export class BlockBlameGutter implements vscode.Disposable {
     if (this.disposed) {
       return { lineCount: 0, authorCount: 0 };
     }
-    const entries = blockBlameGutterEntries(document.lineCount, blame);
+    const options = readBlameAnnotationOptions(document.uri);
+    const entries = blockBlameGutterEntries(document.lineCount, blame, options);
     if (entries.length === 0) {
       return { lineCount: 0, authorCount: 0 };
     }
@@ -110,6 +119,8 @@ export class BlockBlameGutter implements vscode.Disposable {
       commits: initialCommitSummaries(blame),
       locale: vscode.env.language,
       hoverLabels: blameHoverLabels(),
+      compact: options.compact,
+      highlightCommit: options.highlightCommit,
     };
     this.currentSnapshot = snapshot;
     this.changeEmitter.fire(snapshot);
@@ -155,10 +166,12 @@ export class BlockBlameGutter implements vscode.Disposable {
  */
 function blockBlameGutterEntries(
   documentLineCount: number,
-  blame: readonly GitBlameLine[]
+  blame: readonly GitBlameLine[],
+  options: BlameAnnotationOptions
 ): BlockBlameGutterEntry[] {
   const seenLines = new Set<number>();
   const entries: BlockBlameGutterEntry[] = [];
+  const labels = new Map<string, string>(), now = Date.now();
   for (const blameLine of blame) {
     if (
       blameLine.line < 1 ||
@@ -168,17 +181,27 @@ function blockBlameGutterEntries(
       continue;
     }
     seenLines.add(blameLine.line);
+    const key = JSON.stringify([blameLine.commit, blameLine.authorName, blameLine.authorTime]);
+    let label = labels.get(key);
+    if (label === undefined) { label = blockBlameGutterLabel(blameLine, options, now); labels.set(key, label); }
     entries.push({
       authorKey: blameAuthorKey(blameLine),
       line: {
         line: blameLine.line,
-        label: blockBlameGutterLabel(blameLine),
+        label,
         tooltip: blockBlameTooltip(blameLine),
         commit: blameLine.commit,
+        originalLine: blameLine.originalLine,
+        sourcePath: blameLine.filename,
       },
     });
   }
-  return entries.sort((left, right) => left.line.line - right.line.line);
+  entries.sort((left, right) => left.line.line - right.line.line);
+  for (let index = 0; index < entries.length; index++) {
+    const line = entries[index].line, previous = entries[index - 1]?.line;
+    line.groupStart = previous && previous.line + 1 === line.line && previous.commit === line.commit ? previous.groupStart : line.line;
+  }
+  return entries;
 }
 
 /**
@@ -215,6 +238,7 @@ function blameHoverLabels(): BlameHoverLabels {
     noChanges: vscode.l10n.t("No file changes"), insertions: vscode.l10n.t("{0} insertions (+)"),
     deletions: vscode.l10n.t("{0} deletions (-)"), binaryFiles: vscode.l10n.t("{0} binary or large files"),
     unknownDate: vscode.l10n.t("Unknown date"),
+    lineHistory: vscode.l10n.t("View Line History"),
   };
 }
 
@@ -243,16 +267,17 @@ function blockBlameColumnWidth(
  * 한 라인의 거터에 표시할 `작업자 · 날짜` 문자열을 만든다.
  * - 미커밋 라인은 확정 작성자 대신 작업트리 상태를 명시한다.
  * @param line 표시할 Git blame 라인
+ * @param options 날짜·이름·해시 표시 방식 @param now 같은 snapshot의 모든 상대 시각이 공유할 기준 시각
  * @returns 고정폭 거터 열에 들어갈 축약 label
  */
-function blockBlameGutterLabel(line: GitBlameLine): string {
+function blockBlameGutterLabel(line: GitBlameLine, options: BlameAnnotationOptions, now: number): string {
   const author = isUncommittedBlameCommit(line.commit)
     ? vscode.l10n.t("Working tree")
-    : displayAuthor(line.authorName);
+    : formatBlameAuthor(displayAuthor(line.authorName), options.authorName);
   return `${truncateToDisplayWidth(
     author,
     MAX_VISIBLE_AUTHOR_WIDTH
-  )} · ${blameDate(line)}`;
+  )} · ${formatBlameDate(line.authorTime, options.dateFormat, now)}${blameHashSuffix(line, options)}`;
 }
 
 /**
@@ -312,7 +337,7 @@ function displayAuthor(value: string): string {
  * @returns YYYY-MM-DD 또는 지역화된 날짜 없음 문자열
  */
 function blameDate(line: GitBlameLine): string {
-  if (!line.authorTime) {
+  if (line.authorTime === undefined) {
     return vscode.l10n.t("Unknown date");
   }
   const date = new Date(line.authorTime * 1_000);

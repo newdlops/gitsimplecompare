@@ -22,7 +22,7 @@ function comparable(lines: GitBlameLine[]): GitBlameLine[] {
 test("compact blame restores metadata on following lines without sharing line contents", () => {
   const lines = parseBlamePorcelain(porcelain());
   assert.equal(lines.length, 2);
-  assert.deepEqual(lines[1], { ...lines[0], line: 2, content: "second" });
+  assert.deepEqual(lines[1], { ...lines[0], line: 2, originalLine: 2, content: "second" });
   assert.equal(lines[1].authorName, "Alice");
   assert.equal(lines[1].summary, "first change");
 });
@@ -41,6 +41,7 @@ test("compact blame accepts SHA-256 commits and isolates metadata between invoca
   const commit = "c".repeat(64);
   assert.equal(parseBlamePorcelain(porcelain(commit))[1].commit, commit);
   assert.equal(parseBlamePorcelain(`${COMMIT} 1 1\n\tunknown\n`)[0].authorName, "Unknown");
+  assert.equal(parseBlamePorcelain(porcelain().replace("author-time 1700000000", "author-time 0"))[0].authorTime, 0);
 });
 
 test("real compact blame matches line porcelain after edits, renames and working changes", async t => {

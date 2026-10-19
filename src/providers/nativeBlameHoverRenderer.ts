@@ -83,6 +83,7 @@ export function nativeBlameHoverRendererScript(): string {
             if (element.getAttribute('aria-disabled') === 'true') return;
             if (action === 'retry') setStatus(text('loading', 'Loading commit details…'), false);
             send(action === 'retry' ? 'retry' : action);
+            if (action === 'lineHistory') hide();
           });
           return element;
         }
@@ -206,6 +207,7 @@ export function nativeBlameHoverRendererScript(): string {
           var anchor = state.hoverAnchor, hover = state.hover;
           if (!hover || !anchor) return;
           if (event.key === 'Escape') {
+            event.preventDefault(); event.stopPropagation();
             var restore = hover.contains(document.activeElement);
             var point = pointerPoint;
             hide();
@@ -244,6 +246,7 @@ export function nativeBlameHoverRendererScript(): string {
           var footer=node(hover,'div','gsc-blame-footer');
           fields.open=button(footer,'openCommit','git-commit',text('openCommit','Open Commit Changes') + (summary ? ' · '+summary.hash : ''),summary ? summary.hash.slice(0,8) : '', '');
           fields.copy=button(footer,'copyHash','copy',text('copyHash','Copy Commit Hash'),'', '');
+          fields.history=button(footer,'lineHistory','history',text('lineHistory','View Line History'),text('lineHistory','View Line History'), '');
           fields.remote=button(footer,'openRemote','link-external',text('openRemote','Open Commit in Browser'),'', ''); fields.remote.hidden=true;
           fields.feedback=node(footer,'span','gsc-blame-feedback'); fields.feedback.setAttribute('role','status');
           button(footer,'settings','gear',text('settings','Open Blame Settings'),'', 'gsc-blame-settings');
@@ -251,7 +254,7 @@ export function nativeBlameHoverRendererScript(): string {
           fields.statusText=node(fields.status,'span',''); fields.retry=button(fields.status,'retry','refresh',text('retry','Retry'),text('retry','Retry'),''); fields.retry.hidden=true;
           hover.__gscFields=fields;
           state.hoverRequest=summary ? { uri:state.snapshot.uri,revision:state.snapshot.revision,line:line.line,commit:summary.hash,requestId:++state.hoverRequestSeq } : null;
-          fields.open.hidden=fields.copy.hidden=!!working || !summary;
+          fields.open.hidden=fields.copy.hidden=fields.history.hidden=!!working || !summary;
           fill(summary || {message:label.getAttribute('data-tooltip') || label.textContent});
           setStatus(summary && !working ? text('loading','Loading commit details…') : '', false);
           document.addEventListener('keydown',onKey,true); document.addEventListener('pointerdown',onOutside,true); window.addEventListener('blur',hide);

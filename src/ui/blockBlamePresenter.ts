@@ -7,6 +7,7 @@ import {
   type BlockBlameRequest,
 } from "../git/blockBlameModel";
 import { GitBlameService } from "../git/blameService";
+import type { GitBlameLine } from "../git/blameService";
 import type { GitServiceRegistry } from "../git/serviceRegistry";
 import {
   BlockBlameGutter,
@@ -14,6 +15,7 @@ import {
 } from "./blockBlameGutter";
 import { logError, logInfo } from "./outputLog";
 import { BlockBlameHoverPresenter } from "./blockBlameHoverPresenter";
+import { BLAME_ANNOTATION_CONFIG } from "./blameAnnotationPresentation";
 
 const BLOCK_BLAME_SHOW_CONFIG = "gitSimpleCompare.blameBlock.show";
 const REFRESH_DELAY_MS = 120;
@@ -58,6 +60,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
   private refreshTimer?: ReturnType<typeof setTimeout>;
   private registered = false;
   private disposed = false;
+  private rendered?: { document: vscode.TextDocument; blame: GitBlameLine[]; repoRoot: string };
+  private fileAnnotations = false;
 
   /**
    * 저장소 탐색에 사용할 공유 레지스트리를 주입한다.
@@ -98,8 +102,13 @@ export class BlockBlamePresenter implements vscode.Disposable {
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration(BLAME_ANNOTATION_CONFIG) && this.rendered && !this.rendered.document.isDirty) {
+          const current = this.rendered;
+          this.gutter.apply(current.document, current.blame, current.repoRoot);
+          logInfo("blame annotations reformatted without Git read", { uri: current.document.uri.toString() });
+        }
         if (
-          event.affectsConfiguration(BLOCK_BLAME_SHOW_CONFIG) &&
+          event.affectsConfiguration(BLOCK_BLAME_SHOW_CONFIG) && !this.fileAnnotations &&
           !vscode.workspace
             .getConfiguration("gitSimpleCompare")
             .get<boolean>("blameBlock.show", true)
@@ -116,8 +125,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
    * command 인자를 검증하고 현재 파일의 라인별 작업자·날짜 거터를 펼친다.
    * - 같은 파일의 어느 Code Vision이든 다시 클릭하면 Git을 재조회하지 않고 현재 라벨을 접는다.
    * @param rawRequest Code Vision command 또는 외부 executeCommand가 전달한 알 수 없는 값
+   * @param source 파일 메뉴에서 직접 연 거터는 Code Vision 표시 설정과 독립적으로 유지한다.
    */
-  async show(rawRequest: unknown): Promise<void> {
+  async show(rawRequest: unknown, source: "codeVision" | "annotations" = "codeVision"): Promise<void> {
     const request = normalizeBlockBlameRequest(rawRequest);
     if (!request) {
       logInfo("block blame gutter skipped", { reason: "invalid-request" });
@@ -130,12 +140,37 @@ export class BlockBlamePresenter implements vscode.Disposable {
       (this.active && sameDocumentRequest(this.active.request, request)) ||
       (this.pending && sameDocumentRequest(this.pending, request))
     ) {
-      this.clear("sameFileCodeVisionClicked");
+      this.clear(source === "annotations" ? "fileAnnotationsToggled" : "sameFileCodeVisionClicked");
       return;
     }
 
     this.clear("replacementRequested");
-    await this.loadAndApply(request, "codeVisionClicked", false);
+    this.fileAnnotations = source === "annotations";
+    await this.loadAndApply(request, source === "annotations" ? "fileAnnotationsCommand" : "codeVisionClicked", false);
+  }
+
+  /**
+   * 언어 심볼/CodeLens 유무와 관계없이 파일 단위 거터를 열거나 토글한다.
+   * @param uri 메뉴가 지정한 파일(없으면 현재 에디터) @param mode show면 이미 열린 열을 유지한다.
+   */
+  async showFile(uri = vscode.window.activeTextEditor?.document.uri, mode: "show" | "toggle" = "toggle"): Promise<void> {
+    if (!uri || uri.scheme !== "file") return;
+    if (mode === "show" && (this.active?.request ?? this.pending)?.uri === uri.toString()) return;
+    const active = vscode.window.activeTextEditor?.document;
+    const document = active?.uri.toString() === uri.toString() ? active : undefined;
+    const request = { uri: uri.toString(), symbolName: vscode.l10n.t("File annotations"), kind: "module", startLine: 1,
+      endLine: Math.max(1, document?.lineCount ?? 1), documentVersion: document?.version };
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification,
+      title: vscode.l10n.t("Loading file blame annotations…"), cancellable: true }, async (_progress, token) => {
+      if (token.isCancellationRequested) return;
+      const cancel = token.onCancellationRequested(() => this.hideFile(uri));
+      try { await this.show(request, "annotations"); } finally { cancel.dispose(); }
+    });
+  }
+
+  /** 메뉴/Escape가 지정한 현재 파일의 거터와 진행 조회만 닫고 전역 표시 설정을 바꾸지 않는다. */
+  hideFile(uri = vscode.window.activeTextEditor?.document.uri): void {
+    if (uri?.toString() === (this.active?.request ?? this.pending)?.uri) this.clear("hideAnnotationsCommand");
   }
 
   /**
@@ -180,8 +215,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
     this.readController = controller;
     const startedAt = Date.now();
     this.pending = request;
+    void vscode.commands.executeCommand("setContext", "gitSimpleCompare.blame.annotationsVisible", true);
     try {
-      const target = await this.resolveTarget(request, !preserveCurrent);
+      const target = await this.resolveTarget(request, !preserveCurrent, controller.signal);
       if (!target || requestId !== this.requestSeq) {
         return;
       }
@@ -221,6 +257,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
         request,
         lineCount: gutterResult.lineCount,
       };
+      this.rendered = { document: target.document, blame, repoRoot: target.service.repoRoot };
+      void vscode.commands.executeCommand("setContext", "gitSimpleCompare.blame.annotationsVisible", true);
       logInfo(
         preserveCurrent
           ? "block blame gutter refreshed"
@@ -257,6 +295,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       if (requestId === this.requestSeq) {
         this.pending = undefined;
         this.readController = undefined;
+        if (!this.active) void vscode.commands.executeCommand("setContext", "gitSimpleCompare.blame.annotationsVisible", false);
       }
     }
   }
@@ -293,11 +332,13 @@ export class BlockBlamePresenter implements vscode.Disposable {
    * 요청 URI/문서 버전/라인 범위/저장소를 검증하고 표시할 에디터를 확보한다.
    * @param request 검증된 직렬화 command payload
    * @param notifyUser true면 직접 클릭 요청의 검증 실패를 알림 메시지로 안내한다.
+   * @param signal 저장소 탐색 중 취소된 요청이 문서 탭을 다시 열지 않도록 보호한다.
    * @returns 조회와 거터 snapshot에 필요한 대상, 사용자에게 이유를 알렸으면 undefined
    */
   private async resolveTarget(
     request: BlockBlameRequest,
-    notifyUser = true
+    notifyUser = true,
+    signal?: AbortSignal
   ): Promise<BlockBlameTarget | undefined> {
     const uri = parseFileUri(request.uri);
     if (!uri) {
@@ -312,6 +353,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       return undefined;
     }
     const document = await vscode.workspace.openTextDocument(uri);
+    signal?.throwIfAborted();
     if (document.isDirty) {
       logInfo("block blame gutter skipped", {
         reason: "dirty-document",
@@ -358,6 +400,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
       return undefined;
     }
     const service = await this.registry.resolve(dirname(uri.fsPath));
+    signal?.throwIfAborted();
     if (!service) {
       logInfo("block blame gutter skipped", {
         reason: "no-repository",
@@ -412,6 +455,9 @@ export class BlockBlamePresenter implements vscode.Disposable {
     if (this.refreshTimer) clearTimeout(this.refreshTimer);
     this.refreshTimer = undefined;
     this.pending = undefined;
+    this.rendered = undefined;
+    this.fileAnnotations = false;
+    void vscode.commands.executeCommand("setContext", "gitSimpleCompare.blame.annotationsVisible", false);
     this.gutter.clear();
     if (this.active) {
       logInfo("block blame gutter cleared", {

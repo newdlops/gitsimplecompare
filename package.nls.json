@@ -266,5 +266,14 @@
   "cmd.inspectPrPrerequisites": "Inspect PR Prerequisites",
   "cmd.inspectPrPrerequisites.tooltip": "Find prerequisite PR candidates and check their effect on this PR operation",
   "cmd.leavePrRecovery": "Return to Working Tree",
-  "cmd.leavePrRecovery.tooltip": "Return to the original working tree and keep this PR recovery for later"
+  "cmd.leavePrRecovery.tooltip": "Return to the original working tree and keep this PR recovery for later",
+  "cmd.toggleBlameAnnotations": "Toggle File Blame Annotations",
+  "cmd.showBlameAnnotations": "Show File Blame Annotations",
+  "cmd.hideBlameAnnotations": "Hide File Blame Annotations",
+  "cmd.showLineHistory": "View Line History",
+  "config.blameAnnotations.dateFormat": "Date format in the file blame gutter. Absolute dates use UTC; relative dates use the VS Code display language.",
+  "config.blameAnnotations.authorName": "Show the full author name, first word, or last word in file blame annotations. Hover always keeps the full identity.",
+  "config.blameAnnotations.compact": "Show one label per consecutive commit block, repeating it at the first visible line after scrolling or folding.",
+  "config.blameAnnotations.highlightCommit": "Highlight lines from the cursor's commit while file blame annotations are open. Cursor movement does not run Git.",
+  "config.blameAnnotations.showCommitHash": "Include the short commit hash in file blame annotations."
 }

@@ -7,6 +7,8 @@ export interface NativeBlameFixtureOptions {
   delayMs?: number;
   codiconCss?: string;
   fontUrl?: string;
+  compact?: boolean;
+  highlight?: boolean;
 }
 
 /**
@@ -32,6 +34,8 @@ export function mountNativeBlameFixture(options: NativeBlameFixtureOptions = {})
     "errorForeground": theme === "light" ? "#b40016" : "#ff9191",
     "font-family": "system-ui, sans-serif", "font-size": "13px", "editor-font-family": "monospace", "widget-shadow": "#0006",
     "scrollbarSlider-background": colors.muted, "editor-selectionBackground": colors.link,
+    "editor-wordHighlightBackground": theme === "light" ? "#e4edf5" : theme === "contrast" ? "transparent" : "#263d50",
+    "editor-wordHighlightBorder": theme === "contrast" ? "#ffff00" : "transparent",
   };
   for (const [key, value] of Object.entries(tokens)) document.documentElement.style.setProperty("--vscode-" + key, value);
   const style = document.createElement("style");
@@ -56,18 +60,35 @@ export function mountNativeBlameFixture(options: NativeBlameFixtureOptions = {})
     const number = document.createElement("span"); number.className = "line-numbers"; number.setAttribute("data-line-number", String(index));
     number.textContent = String(index); row.appendChild(number); margin.appendChild(row);
     const source = document.createElement("div"); source.className = "view-line"; source.style.top = row.style.top;
+    source.setAttribute("data-code-line", String(index));
     source.textContent = `const line${index} = ${index};`; code.appendChild(source);
   }
   const listeners = new Map<string, () => void>();
-  let extraWidth = 0;
+  let extraWidth = 0, cursorLine = 3;
   const editor: any = { getModel: () => ({ uri: { toString: () => "file:///repo/example.ts" } }),
     getDomNode: () => root, getRawOptions: () => ({ lineDecorationsWidth: 10 }),
     getLayoutInfo: () => ({ contentLeft: 70 + extraWidth }),
-    updateOptions: (value: any) => { extraWidth = value.lineDecorationsWidth - 10; code.style.left = `${70 + extraWidth}px`; } };
-  for (const name of ["onDidScrollChange", "onDidLayoutChange", "onDidChangeModel", "onDidDispose"]) {
+    updateOptions: (value: any) => { extraWidth = value.lineDecorationsWidth - 10; code.style.left = `${70 + extraWidth}px`; },
+    getPosition: () => ({ lineNumber: cursorLine, column: 1 }),
+    createDecorationsCollection: () => {
+      const set = (ranges: any[]) => {
+        w.__testHighlights = ranges;
+        for (const source of code.children) {
+          const line = Number(source.getAttribute("data-code-line"));
+          source.classList.toggle("gsc-blame-commit-highlight", ranges.some(item => line >= item.range.startLineNumber && line <= item.range.endLineNumber));
+        }
+      };
+      return { set, clear: () => set([]) };
+    } };
+  for (const name of ["onDidScrollChange", "onDidLayoutChange", "onDidChangeModel", "onDidDispose", "onDidChangeCursorPosition"]) {
     editor[name] = (callback: () => void) => { listeners.set(name, callback); return { dispose: () => listeners.delete(name) }; };
   }
   root.addEventListener("mousedown", event => { event.preventDefault(); root.focus(); });
+  w.__testMoveCursor = (line: number) => { cursorLine = line; listeners.get("onDidChangeCursorPosition")?.(); };
+  root.addEventListener("click", event => {
+    const source = (event.target as HTMLElement).closest("[data-code-line]");
+    if (source) w.__testMoveCursor(Number(source.getAttribute("data-code-line")));
+  });
   window.addEventListener("resize", () => listeners.get("onDidLayoutChange")?.());
   const commit = mode === "working" ? "0".repeat(40) : "abcdef1234".repeat(4);
   const name = options.longText ? "김민수 Very Long Author Name ".repeat(4) : "김민수";
@@ -83,13 +104,26 @@ export function mountNativeBlameFixture(options: NativeBlameFixtureOptions = {})
     stats: mode === "empty" ? { files: 0, insertions: 0, deletions: 0, binaryFiles: 0 } : { files: 4, insertions: 42, deletions: 7, binaryFiles: 1 },
     remoteUrl: "https://github.com/newdlops/gitsimplecompare/commit/" + commit };
   const labels = options.locale === "ko" ? { title:"커밋 상세",loading:"커밋 상세 정보를 불러오는 중…",error:"커밋 상세 정보를 불러오지 못했습니다.",retry:"다시 시도",copied:"커밋 해시를 복사했습니다",
-    copyHash:"커밋 해시 복사",openCommit:"커밋 변경 내용 열기",openRemote:"브라우저에서 커밋 열기",settings:"Blame 설정 열기",coAuthor:"공동 작성자",
+    copyHash:"커밋 해시 복사",openCommit:"커밋 변경 내용 열기",openRemote:"브라우저에서 커밋 열기",lineHistory:"줄 변경 이력 보기",settings:"Blame 설정 열기",coAuthor:"공동 작성자",
     fileChanged:"파일 {0}개 변경",filesChanged:"파일 {0}개 변경",noChanges:"변경된 파일 없음",insertions:"{0}줄 추가 (+)",deletions:"{0}줄 삭제 (-)",binaryFiles:"바이너리 또는 대용량 파일 {0}개" } : undefined;
   w.__gscNativeBlameEditor = editor; w.__testEditorEvents = listeners; w.__testRequests = [];
   w.__testSnapshot = { uri:"file:///repo/example.ts",repoRoot:"/repo",revision:1,columnWidthCh:31,locale:options.locale || "en",hoverLabels:labels,
     commits:{[commit]:summary},lines:Array.from({length:50_000},(_,index)=>({line:index+1,commit,label:summary.authorName+" · 2026-10-07",tooltip:`Line ${index+1}\n${name} <${email}>\n${commit}\n${summary.message}`})) };
+  w.__testSnapshot.compact = options.compact; w.__testSnapshot.highlightCommit = options.highlight;
+  if (options.compact || options.highlight) {
+    const other = "b".repeat(40);
+    w.__testSnapshot.commits[other] = { ...summary, hash: other, authorName: "Alex Park", authorEmail: "alex@example.invalid",
+      authorDateIso: "2026-10-09T08:20:00+09:00", message: "Independent change" };
+    w.__testSnapshot.lines = w.__testSnapshot.lines.map((line: any) => {
+      const middle = line.line >= 7 && line.line <= 10;
+      return { ...line, commit: middle ? other : commit, groupStart: line.line < 7 ? 1 : middle ? 7 : 11,
+        label: middle ? "Alex Park · 2026-10-09" : line.label };
+    });
+  }
   /** popup의 원래 request 식별자로만 모의 host 응답을 전달한다. */
-  w.__testRespond = (request: any, status = "ready") => w.__gscNativeBlameOverlay.updateHover({ ...request, status, details,
+  w.__testRespond = (request: any, status = "ready") => w.__gscNativeBlameOverlay.updateHover({ ...request, status,
+    details: { ...details, ...(w.__testSnapshot.commits[request.commit] || {}),
+      message: (w.__testSnapshot.commits[request.commit]?.message || summary.message) + "\n\n" + body },
     message: status === "error" ? "Could not load commit details." : status === "copied" ? "Commit hash copied" : undefined });
   w.gscNativeDiffOverlayToggle = (payload: string) => {
     const request = JSON.parse(payload); w.__testRequests.push(request);

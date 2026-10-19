@@ -6,6 +6,7 @@ import { readBlameCommitInfo, readBlameCommitRemoteUrl, type BlameCommitInfo } f
 import { SharedGitRead } from "../git/sharedGitRead";
 import { makeRefUri } from "../utils/uri";
 import { logError, logInfo } from "./outputLog";
+import { showBlameLineHistory } from "./lineHistoryPresenter";
 import type { BlockBlameGutterSnapshot } from "./blockBlameGutter";
 import { parseBlameHoverRequest, type BlameHoverActionHandler, type BlameHoverRequest, type BlameHoverResponse } from "../providers/blameHoverProtocol";
 
@@ -30,7 +31,8 @@ export class BlockBlameHoverPresenter implements vscode.Disposable, BlameHoverAc
   constructor(
     private readonly snapshot: () => BlockBlameGutterSnapshot | undefined,
     private readonly readCommit = readBlameCommitInfo,
-    private readonly readRemote = readBlameCommitRemoteUrl
+    private readonly readRemote = readBlameCommitRemoteUrl,
+    private readonly showLineHistory = showBlameLineHistory
   ) {}
 
   /** 문서/snapshot 교체·blur에서 필요 없는 hover 소비자를 취소한다. 커밋 캐시는 같은 SHA에만 재사용한다. */
@@ -157,6 +159,12 @@ export class BlockBlameHoverPresenter implements vscode.Disposable, BlameHoverAc
       await vscode.commands.executeCommand("workbench.action.openSettings", "gitSimpleCompare.blame"); return;
     }
     if (/^0+$/.test(request.commit)) return;
+    if (request.action === "lineHistory") {
+      const line = snapshot.lines.find(line => line.line === request.line)!;
+      await this.showLineHistory({ repoRoot: snapshot.repoRoot!, uri: vscode.Uri.parse(snapshot.uri), line: request.line, revision: snapshot.revision,
+        anchor: line.originalLine && line.sourcePath ? { hash: request.commit, path: line.sourcePath, line: line.originalLine } : undefined });
+      return;
+    }
     if (request.action === "copyHash") {
       await vscode.env.clipboard.writeText(request.commit);
       if (this.matchesCurrent(request)) this.emit(request, "copied", undefined, vscode.l10n.t("Commit hash copied"));
