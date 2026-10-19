@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.72101] - 2026-10-19
+
+### Changed
+
+- Calculate squash cherry-picks and squash reverts from the complete, verified
+  PR delta, avoiding conflicts caused only by intermediate commits.
+- Prepare conflict-free squash results without checking out a second copy of
+  the repository or scanning the current working tree before applying them.
+- Batch revert parent checks and current-branch containment queries instead of
+  starting separate Git processes for every PR commit.
+- Keep commit-by-commit rebase behavior and fall back to native replay for
+  unsupported Git versions or PR histories that cannot be safely aggregated.
+
+### Fixed
+
+- Treat deletion-only edits to an already deleted regular file as satisfied
+  after checking the conflict type, modes, exact source blobs and line counts.
+  Preserve content, binary, mode and rename conflicts for manual resolution.
+- Keep prepared PR results and recovery snapshots when concurrent edits or
+  branch changes prevent applying them. Verify the committed tree before
+  changing the destination branch, and retain existing Undo protections.
+- Protect staged new files while applying temporary-worktree results,
+  including additions outside sparse-checkout patterns.
+
 ## [0.1.72100] - 2026-10-19
 
 ### Changed

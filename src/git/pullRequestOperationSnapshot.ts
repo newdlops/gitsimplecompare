@@ -16,6 +16,7 @@ import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { OperationUndoStore, type OperationUndoPlan } from "./operationUndoStore";
 import { logInfo } from "../ui/outputLog";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
+import { resetPullRequestResult } from "./pullRequestResultReset";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -289,10 +290,7 @@ export class PullRequestOperationSnapshot {
     failureMessage: string
   ): Promise<void> {
     try {
-      await runGit(
-        ["-c", "core.fsmonitor=false", "reset", "--keep", targetRef],
-        this.repoRoot
-      );
+      await resetPullRequestResult(this.repoRoot, targetRef);
     } catch (error) {
       throw new Error(`${failureMessage} ${gitErrorText(error)}`);
     }

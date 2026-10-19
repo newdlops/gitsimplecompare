@@ -12,6 +12,7 @@ import {
 import { PullRequestOperationSnapshot } from "./pullRequestOperationSnapshot";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestRevertCommit } from "./pullRequestRevertPlan";
+import { PullRequestSquashMerge, type PullRequestSquashPlan } from "./pullRequestSquashMerge";
 import {
   createPrOperationWorktree,
   removeTemporaryWorktree,
@@ -58,19 +59,27 @@ export class PullRequestOperationWorktree {
    * @param commits cherry-pick 순서의 commit hash
    * @param branch 현재 대상 브랜치
    * @param beforeHead 작업 시작 HEAD
+   * @param plan 선형 이력이면 최종 변경을 한 번에 적용할 수 있는 검증된 범위
+   * @param tree 충돌 없이 계산한 최종 tree. 있으면 전체 파일 checkout을 생략한다.
    */
   async squashCherryPick(
     pr: PullRequestInfo,
     commits: string[],
     branch: string,
-    beforeHead: string
+    beforeHead: string,
+    plan: PullRequestSquashPlan = { commits },
+    tree?: string
   ): Promise<PullRequestOperationResult> {
-    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    const squash = new PullRequestSquashMerge(this.repoRoot);
+    if (tree && tree === (await runGit(["rev-parse", `${beforeHead}^{tree}`], this.repoRoot)).trim()) {
+      throw new Error(`PR #${pr.number} did not produce changes to commit.`);
+    }
+    const worktreePath = await createPrOperationWorktree(this.repoRoot, beforeHead, !tree);
     let keepWorktree = false;
     let snapshotRef = "";
     try {
       try {
-        await runGit(["cherry-pick", "--no-commit", ...commits], worktreePath);
+        await squash.apply(plan, worktreePath, tree, false);
       } catch (error) {
         if (await this.state.hasUnmergedChangesIn(worktreePath)) {
           keepWorktree = true;
@@ -86,9 +95,10 @@ export class PullRequestOperationWorktree {
       if (!await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      await runGit(["add", "-A"], worktreePath);
       await this.commitSquash(pr, worktreePath);
+      keepWorktree = true;
       const afterHead = await this.state.currentHeadIn(worktreePath);
+      await this.assertComputedTree(worktreePath, afterHead, tree);
       snapshotRef = await this.state.createSnapshot(branch, beforeHead, "squash");
       await this.state.assertStillOnBranch(branch, beforeHead, afterHead);
       await this.state.resetCurrentBranchPreservingLocalChanges(
@@ -96,12 +106,13 @@ export class PullRequestOperationWorktree {
         `PR #${pr.number} squash cherry-pick would overwrite local changes, so it was stopped. ` +
           `The undo snapshot was kept at ${snapshotRef}.`
       );
+      keepWorktree = false;
       return { status: "completed", branch, beforeHead, afterHead, snapshotRef };
     } catch (error) {
-      if (snapshotRef) {
+      if (snapshotRef && !keepWorktree) {
         await this.state.deleteSnapshotRef(branch, snapshotRef);
       }
-      throw error instanceof Error ? error : new Error(String(error));
+      throw this.withPreservedWorktreeNotice(error, worktreePath, keepWorktree);
     } finally {
       if (!keepWorktree) {
         await this.removeTemporaryWorktree(worktreePath);
@@ -116,19 +127,25 @@ export class PullRequestOperationWorktree {
    * @param commits 적용 순서와 선택적인 mainline을 가진 revert 대상
    * @param branch 현재 대상 브랜치
    * @param beforeHead 작업 시작 HEAD
+   * @param tree 충돌 없이 계산한 역방향 tree. 있으면 전체 파일 checkout을 생략한다.
    */
   async squashRevert(
     pr: PullRequestInfo,
     commits: PullRequestRevertCommit[],
     branch: string,
-    beforeHead: string
+    beforeHead: string,
+    tree?: string
   ): Promise<PullRequestOperationResult> {
-    const worktreePath = await this.createTemporaryWorktree(beforeHead);
+    if (tree && tree === (await runGit(["rev-parse", `${beforeHead}^{tree}`], this.repoRoot)).trim()) {
+      throw new Error(`PR #${pr.number} did not produce changes to commit.`);
+    }
+    const worktreePath = await createPrOperationWorktree(this.repoRoot, beforeHead, !tree);
     let keepWorktree = false;
     let snapshotRef = "";
     try {
       try {
-        await this.applySquashRevert(commits, worktreePath);
+        if (tree) await runGit(["read-tree", tree], worktreePath);
+        else await this.applySquashRevert(commits, worktreePath);
       } catch (error) {
         if (await this.state.hasUnmergedChangesIn(worktreePath)) {
           keepWorktree = true;
@@ -144,9 +161,11 @@ export class PullRequestOperationWorktree {
       if (!await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      await runGit(["add", "-A"], worktreePath);
+      if (!tree) await runGit(["add", "-A"], worktreePath);
       await this.commitSquashRevert(pr, worktreePath);
+      keepWorktree = true;
       const afterHead = await this.state.currentHeadIn(worktreePath);
+      await this.assertComputedTree(worktreePath, afterHead, tree);
       snapshotRef = await this.state.createSnapshot(
         branch,
         beforeHead,
@@ -158,6 +177,7 @@ export class PullRequestOperationWorktree {
         `PR #${pr.number} squash revert would overwrite local changes, so it was stopped. ` +
           `The undo snapshot was kept at ${snapshotRef}.`
       );
+      keepWorktree = false;
       return {
         status: "completed",
         branch,
@@ -167,10 +187,10 @@ export class PullRequestOperationWorktree {
         sourceBranch: pr.headRefName || pr.headHash,
       };
     } catch (error) {
-      if (snapshotRef) {
+      if (snapshotRef && !keepWorktree) {
         await this.state.deleteSnapshotRef(branch, snapshotRef);
       }
-      throw error instanceof Error ? error : new Error(String(error));
+      throw this.withPreservedWorktreeNotice(error, worktreePath, keepWorktree);
     } finally {
       if (!keepWorktree) {
         await this.removeTemporaryWorktree(worktreePath);
@@ -385,6 +405,22 @@ export class PullRequestOperationWorktree {
    */
   private async createTemporaryWorktree(startPoint: string): Promise<string> {
     return createPrOperationWorktree(this.repoRoot, startPoint);
+  }
+
+  /** 계산한 tree가 hook 등의 부작용으로 바뀌었으면 사용자 브랜치에 반영하지 않는다. */
+  private async assertComputedTree(cwd: string, head: string, expected?: string): Promise<void> {
+    if (expected && (await runGit(["rev-parse", `${head}^{tree}`], cwd)).trim() !== expected) {
+      throw new Error("PR squash commit tree changed during commit; applying the result was stopped.");
+    }
+  }
+
+  /** 반영 실패 뒤에도 계산된 commit과 immutable snapshot을 남기고 정확한 복구 위치를 안내한다. */
+  private withPreservedWorktreeNotice(error: unknown, worktreePath: string, kept: boolean): Error {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    if (kept && !failure.message.includes(worktreePath)) {
+      failure.message += ` The PR result was preserved in a temporary worktree: ${worktreePath}.`;
+    }
+    return failure;
   }
 
   /**

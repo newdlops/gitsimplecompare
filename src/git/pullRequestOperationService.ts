@@ -22,6 +22,7 @@ import {
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import type { OperationUndoPlan } from "./operationUndoStore";
+import { PullRequestSquashMerge, type PullRequestSquashPlan } from "./pullRequestSquashMerge";
 
 export type {
   PullRequestOperationResult,
@@ -54,8 +55,8 @@ export class PullRequestOperationService {
   }
 
   /**
-   * PR commit 목록을 현재 브랜치에 하나의 squash commit으로 적용한다.
-   * 로컬 변경이 있거나 worktree 전략을 강제하면 격리된 worktree에서 결과를 계산한다.
+   * 검증한 PR 최종 변경을 현재 브랜치에 하나의 squash commit으로 적용한다.
+   * 충돌 없는 tree는 checkout 없는 worktree에서 commit하고, 나머지는 기존 Git 재생으로 처리한다.
    * @param pr graph에서 선택된 PR 정보
    * @param options 실행 전략
    * @returns undo 가능한 작업 결과
@@ -73,7 +74,15 @@ export class PullRequestOperationService {
     const beforeHead = await this.state.currentHead();
     const prepared = await this.commitMaterializer.prepare(pr, requestedCommits);
     const commits = prepared.commits;
+    const squash = new PullRequestSquashMerge(this.repoRoot);
+    let plan: PullRequestSquashPlan;
+    let tree: string | undefined;
+    try {
+      plan = await squash.prepare(commits);
+      tree = await squash.computeTree(plan, beforeHead);
+    } catch (error) { await this.releasePreparedCommitsQuietly(prepared); throw error; }
     if (
+      tree ||
       options?.strategy === "worktree" ||
       await this.state.hasLocalChanges()
     ) {
@@ -81,7 +90,9 @@ export class PullRequestOperationService {
         pr,
         commits,
         branch,
-        beforeHead
+        beforeHead,
+        plan,
+        tree
       );
       await this.state.recordCompleted(result.branch, result.snapshotRef);
       await this.releasePreparedCommitsQuietly(prepared);
@@ -93,11 +104,11 @@ export class PullRequestOperationService {
       "squash"
     );
     try {
-      await runGit(["cherry-pick", "--no-commit", ...commits], this.repoRoot);
+      await this.state.assertStillOnBranch(branch, beforeHead, beforeHead);
+      await squash.apply(plan, this.repoRoot, tree);
       if (!await this.state.hasPendingChanges()) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      await runGit(["add", "-A"], this.repoRoot);
       await this.worktree.commitSquash(pr, this.repoRoot);
     } catch (error) {
       await this.state.recordFailedSquash(branch, snapshotRef);
@@ -337,15 +348,22 @@ export class PullRequestOperationService {
       }
       throw error;
     }
+    const squash = new PullRequestSquashMerge(this.repoRoot);
+    let tree: string | undefined;
+    try {
+      const squashPlan = await squash.prepareRevert(plan.commits);
+      tree = squashPlan ? await squash.computeTree(squashPlan, beforeHead) : undefined;
+    } catch (error) { await this.releaseRevertPlanQuietly(plan); throw error; }
     if (
-      options?.strategy === "worktree" ||
+      tree || options?.strategy === "worktree" ||
       await this.state.hasLocalChanges()
     ) {
       const result = await this.worktree.squashRevert(
         pr,
         plan.commits,
         branch,
-        beforeHead
+        beforeHead,
+        tree
       );
       await this.state.recordCompleted(result.branch, result.snapshotRef);
       if (result.status === "completed") {

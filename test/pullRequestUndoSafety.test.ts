@@ -154,12 +154,11 @@ test("Undo can remove its own PR squash conflict while preserving another file's
   assert.equal(await readFile(join(root, "other.txt"), "utf8"), "unrelated edit after conflict\n");
 });
 
-test("failed PR squash commit keeps an Undo snapshot for its own staged result", async (t) => {
+test("failed isolated PR squash commit preserves the original worktree without claiming Undo", async (t) => {
   const { root, directory, base, pr, service } = await prSafetyFixture(t);
   await writeFile(join(directory, "hooks/prepare-commit-msg"), "#!/bin/sh\nprintf 'fixture commit rejected\\n' >&2\nexit 1\n", { mode: 0o755 });
   await assert.rejects(() => service.squashCherryPick(pr), /fixture commit rejected/);
-  assert.equal(await service.hasUndoSnapshot(), true);
-  await service.undoLastOperation();
+  assert.equal(await service.hasUndoSnapshot(), false);
   assert.equal(await git(root, "rev-parse", "HEAD"), base);
   assert.equal(await git(root, "status", "--porcelain"), "");
 });

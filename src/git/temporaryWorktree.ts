@@ -17,14 +17,21 @@ export interface TemporaryWorktreeCleanupResult {
   failed: { path: string; message: string }[];
 }
 
-/** PR operation 용 임시 worktree 를 만든다. */
+/**
+ * PR 작업 전용 detached worktree를 만든다.
+ * @param repoRoot 공통 object 저장소와 worktree 등록을 소유한 저장소
+ * @param startPoint 격리 작업을 시작할 고정 commit
+ * @param checkout false면 최종 tree를 index에 바로 기록할 수 있도록 파일 checkout을 생략한다.
+ * @returns 작업 후 제거하거나 충돌 복구용으로 보존할 임시 디렉터리
+ */
 export async function createPrOperationWorktree(
   repoRoot: string,
-  startPoint: string
+  startPoint: string,
+  checkout = true
 ): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), PR_OPERATION_WORKTREE_PREFIX));
   await fs.rm(dir, { recursive: true, force: true });
-  await runGit(["worktree", "add", "--detach", dir, startPoint], repoRoot);
+  await runGit(["worktree", "add", "--detach", ...(checkout ? [] : ["--no-checkout"]), dir, startPoint], repoRoot);
   return dir;
 }
 

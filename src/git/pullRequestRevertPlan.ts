@@ -1,7 +1,8 @@
 // PR revert 대상 commit을 선택하고 로컬 object database에 준비하는 Git 서비스.
 // - 병합 결과가 현재 브랜치에 있으면 실제로 반영된 merge commit을 우선 사용한다.
 // - 원본 PR commit이 필요하지만 로컬에 없으면 GitHub pull ref를 숨김 ref로 fetch한다.
-import { runGit, runGitBuffer, runGitWithInput } from "./gitExec";
+import { runGit, runGitBuffer, runGitStreamWithInput, runGitWithInput } from "./gitExec";
+import { readCommitMetadata } from "./commitMetadata";
 import { PullRequestCommitMaterializer } from "./pullRequestCommitMaterializer";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import { pullRequestRevertCommitHashes } from "./pullRequestOperationFormat";
@@ -202,12 +203,13 @@ export class PullRequestRevertPlanService {
       return false;
     }
     const commits = [...reversedCommits].reverse().map((commit) => commit.hash);
-    const firstParents = await this.commitParents(commits[0]);
+    const metadata = await readCommitMetadata(this.repoRoot, commits);
+    const firstParents = metadata.get(commits[0])!.parents;
     if (firstParents.length !== 1) {
       return false;
     }
     for (let index = 1; index < commits.length; index++) {
-      const parents = await this.commitParents(commits[index]);
+      const parents = metadata.get(commits[index])!.parents;
       if (parents.length !== 1 || parents[0] !== commits[index - 1]) {
         return false;
       }
@@ -291,8 +293,9 @@ export class PullRequestRevertPlanService {
     pr: PullRequestInfo,
     commits: string[]
   ): Promise<void> {
+    const metadata = await readCommitMetadata(this.repoRoot, commits);
     for (const commit of commits) {
-      const parents = await this.commitParents(commit);
+      const parents = metadata.get(commit)!.parents;
       if (parents.length > 1) {
         throw new Error(
           `PR #${pr.number} contains merge commit ${shortHash(commit)}. ` +
@@ -312,9 +315,17 @@ export class PullRequestRevertPlanService {
     commits: string[],
     currentHead: string
   ): Promise<number> {
+    const pending = new Set(commits);
     let count = 0;
-    for (const commit of commits) {
-      if (!await this.isAncestor(commit, currentHead)) {
+    let remainder = "";
+    await runGitStreamWithInput(["rev-list", "--stdin"], this.repoRoot,
+      `${commits.join("\n")}\n^${currentHead}\n`, chunk => {
+        const lines = (remainder + chunk.toString("utf8")).split("\n");
+        remainder = lines.pop() || "";
+        for (const line of lines) if (pending.delete(line.trim())) count++;
+      });
+    if (remainder.trim()) {
+      if (pending.delete(remainder.trim())) {
         count++;
       }
     }
@@ -352,8 +363,7 @@ export class PullRequestRevertPlanService {
    * @param hash 대상 commit
    */
   private async commitParents(hash: string): Promise<string[]> {
-    const output = await runGit(["show", "-s", "--pretty=%P", hash], this.repoRoot);
-    return output.trim().split(/\s+/).filter(Boolean);
+    return (await readCommitMetadata(this.repoRoot, [hash])).get(hash)!.parents;
   }
 
   /**
