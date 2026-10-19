@@ -2,7 +2,9 @@ node_modules/
 dist/
 out/
 out-test/
+out-test-extension/
 test-results/
+playwright-report/
 .gsc-node-test.lock
 *.vsix
 .vscode-test/
