@@ -1,5 +1,5 @@
 // 여러 commit의 parent/tree를 한 Git 프로세스로 읽어 PR 계획 단계의 반복 실행 비용을 줄인다.
-import { runGitWithInput } from "./gitExec";
+import { runGitWithInput, type RunGitOptions } from "./gitExec";
 
 /** commit을 재생하거나 범위로 집계할 때 필요한 원본 object 정보다. */
 export interface CommitMetadata {
@@ -14,15 +14,16 @@ const OID = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/;
  * 누락·잘린 출력은 빈 부모로 추정하지 않고 오류로 처리해 merge commit을 잘못 집계하지 않는다.
  * @param repoRoot object를 읽을 저장소
  * @param commits materialize/존재 검증을 마친 전체 OID 목록
+ * @param options 진단 전체의 취소 신호와 읽기 제한을 하위 Git 실행에 전달하는 선택 설정
  * @returns 모든 요청 commit을 포함하는 metadata Map. 빈 입력은 Git을 실행하지 않는다.
  */
-export async function readCommitMetadata(repoRoot: string, commits: readonly string[]): Promise<Map<string, CommitMetadata>> {
+export async function readCommitMetadata(repoRoot: string, commits: readonly string[], options?: RunGitOptions): Promise<Map<string, CommitMetadata>> {
   const requested = new Set(commits);
   if (!requested.size) return new Map();
   const output = await runGitWithInput([
     "-c", "log.showSignature=false", "log", "--no-walk=unsorted", "--no-color",
     "--format=%H%x00%P%x00%T", "--stdin",
-  ], repoRoot, `${[...requested].join("\n")}\n`);
+  ], repoRoot, `${[...requested].join("\n")}\n`, options);
   const result = new Map<string, CommitMetadata>();
   for (const line of output.trimEnd().split("\n")) {
     const [hash, parentText, tree, extra] = line.split("\0");

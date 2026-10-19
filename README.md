@@ -85,6 +85,11 @@ so changes undone within the PR do not cause intermediate conflicts. Base update
 are excluded from the imported changes after checking the complete commit range.
 Repeating a paused action reopens its saved work before fetching or recalculating.
 
+**Inspect PR prerequisites** in the PR action menu checks candidate PRs before
+applying. Apply-conflict notifications also identify candidates and link to their
+reasons and simulated effect. The Conflicts toolbar can repeat the inspection
+for a saved apply operation. See [PR prerequisites](./docs/pr-prerequisites.md).
+
 ### Split changes into commits
 
 Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for the first commit, type a message, and commit; the remaining changes stay in your working tree so you can commit them separately. Requires no pre-staged changes (so each commit contains exactly what you select). New (untracked) files are not shown — `git add` them first.

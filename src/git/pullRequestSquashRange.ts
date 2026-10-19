@@ -1,6 +1,6 @@
 // PR commit 집합의 parent 경계를 검증해 선형·merge 이력을 같은 최종 변경 범위로 표현한다.
 import { readCommitMetadata, type CommitMetadata } from "./commitMetadata";
-import { runGit } from "./gitExec";
+import { runGit, type RunGitOptions } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
 
 /** 전체 원본 목록과 검증된 최종 변경의 시작 commit·끝 commit·끝 tree다. */
@@ -21,20 +21,21 @@ interface CommitBoundary { head: string; parents: string[] }
  * 외부 parent가 하나면 메모리 내 DAG 검사만 사용하고, base 갱신 merge가 있으면
  * 독립된 외부 tip 하나와 실제 rev-list 집합까지 검증해 목록 밖 변경의 유입을 막는다.
  * @param repoRoot 원본 object가 준비된 저장소 @param commits 정규화한 전체 PR commit OID
+ * @param options 진단의 취소 신호·시간·출력 제한을 모든 범위 검증 읽기에 전달하는 선택 설정
  * @returns 범위를 입증할 수 없으면 원본 재생 목록만 반환한다. Git 읽기 오류는 전파한다.
  */
 export async function preparePullRequestSquashRange(
-  repoRoot: string, commits: string[]
+  repoRoot: string, commits: string[], options?: RunGitOptions
 ): Promise<PullRequestSquashPlan> {
   if (!commits.length) return { commits };
-  const nodes = await readCommitMetadata(repoRoot, commits);
+  const nodes = await readCommitMetadata(repoRoot, commits, options);
   const boundary = findBoundary(nodes);
   if (!boundary) return fallback(repoRoot, commits, "disconnected-or-root-history");
   let [base] = boundary.parents;
   if (boundary.parents.length > 1) {
     // 비정상적으로 큰 octopus의 명령 인자와 이력 탐색을 피하고 기존 재생으로 돌아간다.
     if (boundary.parents.length > 128) return fallback(repoRoot, commits, "too-many-boundary-parents");
-    const independent = (await runGit(["merge-base", "--independent", ...boundary.parents], repoRoot)).trim().split(/\s+/);
+    const independent = (await runGit(["merge-base", "--independent", ...boundary.parents], repoRoot, options)).trim().split(/\s+/);
     if (independent.length !== 1 || !boundary.parents.includes(independent[0])) {
       return fallback(repoRoot, commits, "ambiguous-base-history");
     }
@@ -42,7 +43,7 @@ export async function preparePullRequestSquashRange(
     // 상한은 목록 크기 + 1. 작은 PR 때문에 저장소 전체 이력을 출력하지 않는다.
     const actual = (await runGit([
       "rev-list", `--max-count=${nodes.size + 1}`, `${base}..${boundary.head}`, "--",
-    ], repoRoot)).trim().split(/\s+/).filter(Boolean);
+    ], repoRoot, options)).trim().split(/\s+/).filter(Boolean);
     if (actual.length !== nodes.size || new Set(actual).size !== nodes.size || actual.some(hash => !nodes.has(hash))) {
       return fallback(repoRoot, commits, "unlisted-or-excluded-commits");
     }

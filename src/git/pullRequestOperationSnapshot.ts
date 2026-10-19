@@ -73,7 +73,7 @@ export class PullRequestOperationSnapshot {
   /** 현재 index에 unmerged entry가 하나라도 있으면 true를 반환한다. */
   async hasUnmergedChanges(): Promise<boolean> {
     const output = await runGit(
-      ["diff", "--name-only", "--diff-filter=U", "-z"],
+      ["ls-files", "--unmerged", "-z"],
       this.repoRoot
     );
     return output.length > 0;
@@ -118,7 +118,7 @@ export class PullRequestOperationSnapshot {
    */
   async hasUnmergedChangesIn(cwd: string): Promise<boolean> {
     const output = await runGit(
-      ["diff", "--name-only", "--diff-filter=U", "-z"],
+      ["ls-files", "--unmerged", "-z"],
       cwd
     ).catch(() => "");
     return output.length > 0;

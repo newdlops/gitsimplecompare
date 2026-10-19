@@ -11,6 +11,7 @@ import { ConflictsTreeProvider } from "./conflictsTreeProvider";
 import type { PullRequestWorktreeRecovery } from "../git/pullRequestWorktreeRecoveryState";
 
 export const PR_RECOVERY_ACTIVE_CONTEXT = "gitSimpleCompare.prRecoveryActive";
+export const PR_PREREQUISITES_AVAILABLE_CONTEXT = "gitSimpleCompare.prPrerequisitesAvailable";
 
 /** 충돌 존재 여부를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
 export const HAS_CONFLICTS_CONTEXT = "gitSimpleCompare.hasConflicts";
@@ -75,6 +76,8 @@ export class ConflictsController implements vscode.Disposable {
     if (recovery) this.returnedRecovery = undefined;
     this.requestSeq++;
     await vscode.commands.executeCommand("setContext", PR_RECOVERY_ACTIVE_CONTEXT, Boolean(recovery));
+    await vscode.commands.executeCommand("setContext", PR_PREREQUISITES_AVAILABLE_CONTEXT,
+      recovery?.command === "squash" || recovery?.command === "rebase");
     await this.refresh();
   }
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.72104] - 2026-10-19
+
+### Added
+
+- Inspect PR prerequisites from the PR action menu and preserved apply-operation
+  toolbar. Conflict notifications identify candidate PR numbers and distinguish
+  verified application order from unverified relationships.
+- Find candidates through loaded stack relationships, conflicting source-file
+  history, commit-to-PR associations and explicit prerequisite references.
+- Simulate candidate-then-PR application without changing working files, index
+  or branch refs. Distinguish satisfied changes, resolved/reduced conflicts and
+  unrelated edits, including prior squash applications under different hashes.
+
+### Changed
+
+- Reuse loaded PR metadata, batch GitHub discovery/detail requests and bound the
+  diagnosis. Preserve partial results when the shared deadline is reached, and
+  keep cancellation and unavailable metadata distinct from no prerequisites.
+- Run automatic diagnosis only after apply conflicts; successful PR operations
+  keep their existing path without extra prerequisite or GitHub reads.
+- Check unmerged index entries directly instead of scanning working files.
+
 ## [0.1.72103] - 2026-10-19
 
 ### Changed

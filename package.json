@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72103",
+  "version": "0.1.72104",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -786,6 +786,14 @@
         "icon": "$(debug-continue)"
       },
       {
+        "command": "gitSimpleCompare.inspectPrPrerequisites",
+        "title": "%cmd.inspectPrPrerequisites.tooltip%",
+        "shortTitle": "%cmd.inspectPrPrerequisites%",
+        "category": "Git Simple Compare",
+        "enablement": "gitSimpleCompare.prPrerequisitesAvailable",
+        "icon": "$(search)"
+      },
+      {
         "command": "gitSimpleCompare.leavePrRecovery",
         "title": "%cmd.leavePrRecovery.tooltip%",
         "shortTitle": "%cmd.leavePrRecovery%",
@@ -1160,6 +1168,11 @@
           "group": "navigation@1"
         },
         {
+          "command": "gitSimpleCompare.inspectPrPrerequisites",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.prPrerequisitesAvailable",
+          "group": "navigation@2"
+        },
+        {
           "command": "gitSimpleCompare.leavePrRecovery",
           "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.prRecoveryActive",
           "group": "navigation@3"
@@ -1440,6 +1453,10 @@
         {
           "command": "gitSimpleCompare.continuePrOperation",
           "when": "gitSimpleCompare.prRecoveryActive"
+        },
+        {
+          "command": "gitSimpleCompare.inspectPrPrerequisites",
+          "when": "gitSimpleCompare.prPrerequisitesAvailable"
         },
         {
           "command": "gitSimpleCompare.leavePrRecovery",

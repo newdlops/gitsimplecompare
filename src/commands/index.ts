@@ -34,7 +34,7 @@ import {
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
 import {
   openPullRequestWorktreeRecovery, continuePullRequestWorktreeRecovery,
-  leavePullRequestWorktreeRecovery, type OpenPullRequestRecoveryArgs,
+  leavePullRequestWorktreeRecovery, inspectSavedPullRequestDependencies, type OpenPullRequestRecoveryArgs,
 } from "./prWorktreeRecovery";
 import { cleanupVscodeCache } from "./cleanupVscodeCache";
 import { cleanupStaleBranches } from "./cleanupStaleBranches";
@@ -582,6 +582,7 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       openPullRequestWorktreeRecovery(deps, args)),
     vscode.commands.registerCommand("gitSimpleCompare.continuePrOperation", () => continuePullRequestWorktreeRecovery(deps)),
     vscode.commands.registerCommand("gitSimpleCompare.leavePrRecovery", () => leavePullRequestWorktreeRecovery(deps)),
+    vscode.commands.registerCommand("gitSimpleCompare.inspectPrPrerequisites", () => inspectSavedPullRequestDependencies(deps)),
     vscode.commands.registerCommand("gitSimpleCompare.abortOperation", () =>
       abortOperation(deps.conflicts)
     ),

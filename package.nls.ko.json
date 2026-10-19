@@ -263,6 +263,8 @@
   "cmd.resumePrOperation.tooltip": "보존된 PR 작업을 다시 열어 충돌 해결",
   "cmd.continuePrOperation": "PR 작업 계속",
   "cmd.continuePrOperation.tooltip": "PR 작업을 계속하고 해결 결과를 원래 브랜치에 적용",
+  "cmd.inspectPrPrerequisites": "선행 PR 확인",
+  "cmd.inspectPrPrerequisites.tooltip": "선행 PR 후보와 이 PR 작업의 충돌 해소 효과 확인",
   "cmd.leavePrRecovery": "원래 작업트리로 돌아가기",
   "cmd.leavePrRecovery.tooltip": "PR 복구 작업을 보존하고 원래 작업트리로 돌아가기"
 }

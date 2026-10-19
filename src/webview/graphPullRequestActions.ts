@@ -13,17 +13,10 @@ import type { PullRequestInfo } from "../git/pullRequestService";
 import { logError, logInfo } from "../ui/outputLog";
 import { PullRequestWorktreeRecoveryError } from "../git/pullRequestWorktreeRecovery";
 import { offerPullRequestWorktreeRecovery } from "../commands/prWorktreeRecovery";
+import { checkPullRequestDependencies, offerPullRequestDependencies } from "../ui/pullRequestDependencies";
 
-export type PullRequestActionKind =
-  | "squash"
-  | "rebase"
-  | "squashRevert"
-  | "rebaseRevert"
-  | "squashWorktree"
-  | "rebaseWorktree"
-  | "squashRevertWorktree"
-  | "rebaseRevertWorktree"
-  | "undo";
+import { pickPullRequestAction, type PullRequestActionKind } from "./graphPullRequestActionPicker";
+export type { PullRequestActionKind } from "./graphPullRequestActionPicker";
 
 type PullRequestBaseAction = "squash" | "rebase" | "squashRevert" | "rebaseRevert";
 
@@ -31,10 +24,6 @@ export interface GraphPullRequestActionDeps {
   logService: GitLogService;
   pullRequests: () => PullRequestInfo[];
   refreshGraph: () => Promise<void>;
-}
-
-interface PullRequestActionPick extends vscode.QuickPickItem {
-  action: PullRequestActionKind;
 }
 
 /**
@@ -67,6 +56,10 @@ export async function handlePullRequestAction(
     vscode.window.showWarningMessage(vscode.l10n.t("Pull request commits are still loading. Refresh pull requests if loading failed."));
     return;
   }
+  if (selected === "dependencies") {
+    await checkPullRequestDependencies(deps.logService.repoRoot, { pr, knownPullRequests: deps.pullRequests() });
+    return;
+  }
   const baseAction = basePullRequestAction(selected);
   const options = operationOptionsForAction(selected);
   if (baseAction === "squash") {
@@ -80,78 +73,8 @@ export async function handlePullRequestAction(
   }
 }
 
-/**
- * PR 작업 QuickPick 항목을 구성하고 사용자가 고른 action 을 반환한다.
- * @param number 작업 대상 PR 번호
- * @param pr 이미 로드된 PR 정보. 없으면 번호만 표시한다.
- * @returns 사용자가 선택한 PR 작업 종류
- */
-async function pickPullRequestAction(
-  number: number,
-  pr?: PullRequestInfo
-): Promise<PullRequestActionKind | undefined> {
-  const title = pr?.title ? `#${number} ${pr.title}` : `#${number}`;
-  const picks: PullRequestActionPick[] = [
-    {
-      label: vscode.l10n.t("$(git-commit) Squash cherry-pick PR"),
-      description: vscode.l10n.t("one commit on current branch"),
-      detail: vscode.l10n.t("Apply all PR commits as a single squash commit."),
-      action: "squash",
-    },
-    {
-      label: vscode.l10n.t("$(git-commit) Squash cherry-pick PR using Temporary Worktree"),
-      description: vscode.l10n.t("one commit, isolate replay"),
-      detail: vscode.l10n.t("Replay the PR in a temporary worktree, then apply the result to the current branch."),
-      action: "squashWorktree",
-    },
-    {
-      label: vscode.l10n.t("$(git-pull-request) Rebase PR into current branch"),
-      description: vscode.l10n.t("preserve commits"),
-      detail: vscode.l10n.t("Replay PR commits onto the current branch, then fast-forward the current branch."),
-      action: "rebase",
-    },
-    {
-      label: vscode.l10n.t("$(git-pull-request) Rebase PR using Temporary Worktree"),
-      description: vscode.l10n.t("preserve commits, isolate replay"),
-      detail: vscode.l10n.t("Replay PR commits in a temporary worktree, then apply the resulting HEAD to the current branch."),
-      action: "rebaseWorktree",
-    },
-    {
-      label: vscode.l10n.t("$(discard) Squash revert PR"),
-      description: vscode.l10n.t("one revert commit"),
-      detail: vscode.l10n.t("Revert the PR commits on the current branch as one commit."),
-      action: "squashRevert",
-    },
-    {
-      label: vscode.l10n.t("$(discard) Squash revert PR using Temporary Worktree"),
-      description: vscode.l10n.t("one revert commit, isolate replay"),
-      detail: vscode.l10n.t("Build the squash revert in a temporary worktree, then apply the result to the current branch."),
-      action: "squashRevertWorktree",
-    },
-    {
-      label: vscode.l10n.t("$(debug-reverse-continue) Rebase revert PR"),
-      description: vscode.l10n.t("one revert per commit"),
-      detail: vscode.l10n.t("Revert the PR commits on the current branch, preserving commit granularity."),
-      action: "rebaseRevert",
-    },
-    {
-      label: vscode.l10n.t("$(debug-reverse-continue) Rebase revert PR using Temporary Worktree"),
-      description: vscode.l10n.t("one revert per commit, isolate replay"),
-      detail: vscode.l10n.t("Build per-commit reverts in a temporary worktree, then apply the result to the current branch."),
-      action: "rebaseRevertWorktree",
-    },
-    {
-      label: vscode.l10n.t("$(discard) Undo last PR operation"),
-      description: vscode.l10n.t("reset to saved snapshot"),
-      detail: vscode.l10n.t("Undo the last PR apply or revert operation on the current branch."),
-      action: "undo",
-    },
-  ];
-  return (await vscode.window.showQuickPick(picks, { placeHolder: title }))?.action;
-}
-
 /** worktree variant 를 실제 PR operation 종류로 정규화한다. */
-function basePullRequestAction(action: Exclude<PullRequestActionKind, "undo">): PullRequestBaseAction {
+function basePullRequestAction(action: Exclude<PullRequestActionKind, "undo" | "dependencies">): PullRequestBaseAction {
   switch (action) {
     case "squashWorktree":
       return "squash";
@@ -170,7 +93,7 @@ function basePullRequestAction(action: Exclude<PullRequestActionKind, "undo">): 
 }
 
 /** action 이름에서 PR operation 실행 전략을 만든다. */
-function operationOptionsForAction(action: Exclude<PullRequestActionKind, "undo">): PullRequestOperationOptions {
+function operationOptionsForAction(action: Exclude<PullRequestActionKind, "undo" | "dependencies">): PullRequestOperationOptions {
   return action.endsWith("Worktree") ? { strategy: "worktree" } : {};
 }
 
@@ -393,7 +316,10 @@ async function runPullRequestOperation(
       await deps.refreshGraph();
       await vscode.commands.executeCommand("gitSimpleCompare.refreshConflicts");
       await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
-      vscode.window.showWarningMessage(conflictMessage(operation, pr.number, result.preservedStashHash));
+      const message = conflictMessage(operation, pr.number, result.preservedStashHash);
+      if (operation === "squash" || operation === "rebase") await offerPullRequestDependencies(deps.logService.repoRoot,
+        { pr, beforeHead: result.beforeHead, branch: result.branch, knownPullRequests: deps.pullRequests() }, message);
+      else vscode.window.showWarningMessage(message);
       return;
     }
     logInfo("pr operation finished", {
@@ -414,7 +340,7 @@ async function runPullRequestOperation(
     );
   } catch (err) {
     if (err instanceof PullRequestWorktreeRecoveryError) {
-      await offerPullRequestWorktreeRecovery(err);
+      await offerPullRequestWorktreeRecovery(err, deps.pullRequests());
       return;
     }
     logError("pr operation failed", err, {

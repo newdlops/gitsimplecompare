@@ -263,6 +263,8 @@
   "cmd.resumePrOperation.tooltip": "Resume a saved PR operation and resolve its conflicts",
   "cmd.continuePrOperation": "Continue PR Operation",
   "cmd.continuePrOperation.tooltip": "Continue PR operation and apply resolved changes to the original branch",
+  "cmd.inspectPrPrerequisites": "Inspect PR Prerequisites",
+  "cmd.inspectPrPrerequisites.tooltip": "Find prerequisite PR candidates and check their effect on this PR operation",
   "cmd.leavePrRecovery": "Return to Working Tree",
   "cmd.leavePrRecovery.tooltip": "Return to the original working tree and keep this PR recovery for later"
 }
