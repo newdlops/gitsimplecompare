@@ -5,13 +5,12 @@ import * as vscode from "vscode";
 import { GitServiceRegistry } from "./git/serviceRegistry";
 import { clearUntrackedStatsCache } from "./git/untrackedStats";
 import {
-  BranchContentProvider, clearBranchContentCache, disposeBranchContentCache,
-  releaseBranchContentDocument,
+  BranchContentProvider, clearBranchContentCache, disposeBranchContentCache, releaseBranchContentDocument,
 } from "./providers/branchContentProvider";
 import { ChangesViewProvider } from "./webview/changesViewProvider";
 import { registerActiveDiffTracker } from "./providers/activeDiffTracker";
 import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
-import { ConflictsController } from "./providers/conflictsController";
+import { createConflictsTreeController } from "./providers/conflictsTreeController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
 import { BlameDecoratorController } from "./providers/blameDecoratorController";
@@ -159,7 +158,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   });
   context.subscriptions.push(conflictsTree);
   let conflictsVisible = conflictsTree.visible;
-  const conflicts = new ConflictsController(registry, conflictsProvider);
+  const conflicts = createConflictsTreeController(registry, conflictsProvider, conflictsTree);
   context.subscriptions.push(conflicts);
   const conflictOverlay = new ConflictEditorOverlayController(conflicts);
   context.subscriptions.push(conflictOverlay.register());

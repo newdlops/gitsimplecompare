@@ -1,7 +1,7 @@
 // PR 작업 결과를 임시 worktree에서 계산하고 현재 브랜치에 안전하게 반영하는 실행 모듈.
 // - dirty working tree를 직접 stash하지 않고 격리된 checkout에서 cherry-pick/revert/rebase를 수행한다.
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
-import { GitError, runGit } from "./gitExec";
+import { runGit } from "./gitExec";
 import {
   squashBody,
   squashRevertBody,
@@ -13,6 +13,8 @@ import { PullRequestOperationSnapshot } from "./pullRequestOperationSnapshot";
 import type { PullRequestInfo } from "./pullRequestInfo";
 import type { PullRequestRevertCommit } from "./pullRequestRevertPlan";
 import { PullRequestSquashMerge, type PullRequestSquashPlan } from "./pullRequestSquashMerge";
+import { replayPullRequestSquash, PullRequestSquashReplayConflict } from "./pullRequestSquashReplay";
+import { assertNoDuplicatePullRequestRecovery, preservePullRequestWorktreeRecovery, PullRequestWorktreeRecoveryError } from "./pullRequestWorktreeRecovery";
 import {
   createPrOperationWorktree,
   removeTemporaryWorktree,
@@ -70,6 +72,7 @@ export class PullRequestOperationWorktree {
     plan: PullRequestSquashPlan = { commits },
     tree?: string
   ): Promise<PullRequestOperationResult> {
+    await assertNoDuplicatePullRequestRecovery({ originRoot: this.repoRoot, pr, branch, beforeHead, command: "squash" });
     const squash = new PullRequestSquashMerge(this.repoRoot);
     if (tree && tree === (await runGit(["rev-parse", `${beforeHead}^{tree}`], this.repoRoot)).trim()) {
       throw new Error(`PR #${pr.number} did not produce changes to commit.`);
@@ -79,16 +82,17 @@ export class PullRequestOperationWorktree {
     let snapshotRef = "";
     try {
       try {
-        await squash.apply(plan, worktreePath, tree, false);
+        if (tree) await squash.apply(plan, worktreePath, tree, false);
+        else await replayPullRequestSquash(worktreePath,
+          (await squash.replayCommits(plan)).map(hash => ({ hash })), "cherry-pick");
       } catch (error) {
         if (await this.state.hasUnmergedChangesIn(worktreePath)) {
           keepWorktree = true;
-          throw new Error(
-            `PR #${pr.number} has cherry-pick conflicts. ` +
-              "The current working tree was not changed. " +
-              `Resolve the conflict in the preserved temporary worktree: ${worktreePath}. ` +
-              gitErrorText(error)
-          );
+          throw await preservePullRequestWorktreeRecovery({
+            originRoot: this.repoRoot, worktreePath, pr, branch, beforeHead, command: "squash",
+            phase: "conflicts", remaining: error instanceof PullRequestSquashReplayConflict ? error.remaining : [],
+            sourceCommits: commits, checkout: !tree,
+          }, error instanceof PullRequestSquashReplayConflict ? error.failure : error);
         }
         throw error;
       }
@@ -104,13 +108,22 @@ export class PullRequestOperationWorktree {
       await this.state.resetCurrentBranchPreservingLocalChanges(
         afterHead,
         `PR #${pr.number} squash cherry-pick would overwrite local changes, so it was stopped. ` +
-          `The undo snapshot was kept at ${snapshotRef}.`
+          `The undo snapshot was kept at ${snapshotRef}.`,
+        { branch, head: beforeHead }
       );
       keepWorktree = false;
       return { status: "completed", branch, beforeHead, afterHead, snapshotRef };
     } catch (error) {
       if (snapshotRef && !keepWorktree) {
         await this.state.deleteSnapshotRef(branch, snapshotRef);
+      }
+      if (keepWorktree && !(error instanceof PullRequestWorktreeRecoveryError)) {
+        throw await preservePullRequestWorktreeRecovery({
+          originRoot: this.repoRoot, worktreePath, pr, branch, beforeHead, command: "squash",
+          phase: "ready", remaining: [], afterHead: await this.state.currentHeadIn(worktreePath),
+          snapshotRef: snapshotRef || undefined, expectedTree: tree,
+          sourceCommits: commits, checkout: !tree,
+        }, error);
       }
       throw this.withPreservedWorktreeNotice(error, worktreePath, keepWorktree);
     } finally {
@@ -136,6 +149,7 @@ export class PullRequestOperationWorktree {
     beforeHead: string,
     tree?: string
   ): Promise<PullRequestOperationResult> {
+    await assertNoDuplicatePullRequestRecovery({ originRoot: this.repoRoot, pr, branch, beforeHead, command: "squashRevert" });
     if (tree && tree === (await runGit(["rev-parse", `${beforeHead}^{tree}`], this.repoRoot)).trim()) {
       throw new Error(`PR #${pr.number} did not produce changes to commit.`);
     }
@@ -145,23 +159,21 @@ export class PullRequestOperationWorktree {
     try {
       try {
         if (tree) await runGit(["read-tree", tree], worktreePath);
-        else await this.applySquashRevert(commits, worktreePath);
+        else await replayPullRequestSquash(worktreePath, commits, "revert");
       } catch (error) {
         if (await this.state.hasUnmergedChangesIn(worktreePath)) {
           keepWorktree = true;
-          throw new Error(
-            `PR #${pr.number} has squash revert conflicts. ` +
-              "The current working tree was not changed. " +
-              `Resolve the conflict in the preserved temporary worktree: ${worktreePath}. ` +
-              gitErrorText(error)
-          );
+          throw await preservePullRequestWorktreeRecovery({
+            originRoot: this.repoRoot, worktreePath, pr, branch, beforeHead, command: "squashRevert",
+            phase: "conflicts", remaining: error instanceof PullRequestSquashReplayConflict ? error.remaining : [],
+            sourceCommits: commits.map(commit => commit.hash), checkout: !tree,
+          }, error instanceof PullRequestSquashReplayConflict ? error.failure : error);
         }
         throw error;
       }
       if (!await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      if (!tree) await runGit(["add", "-A"], worktreePath);
       await this.commitSquashRevert(pr, worktreePath);
       keepWorktree = true;
       const afterHead = await this.state.currentHeadIn(worktreePath);
@@ -175,7 +187,8 @@ export class PullRequestOperationWorktree {
       await this.state.resetCurrentBranchPreservingLocalChanges(
         afterHead,
         `PR #${pr.number} squash revert would overwrite local changes, so it was stopped. ` +
-          `The undo snapshot was kept at ${snapshotRef}.`
+          `The undo snapshot was kept at ${snapshotRef}.`,
+        { branch, head: beforeHead }
       );
       keepWorktree = false;
       return {
@@ -189,6 +202,14 @@ export class PullRequestOperationWorktree {
     } catch (error) {
       if (snapshotRef && !keepWorktree) {
         await this.state.deleteSnapshotRef(branch, snapshotRef);
+      }
+      if (keepWorktree && !(error instanceof PullRequestWorktreeRecoveryError)) {
+        throw await preservePullRequestWorktreeRecovery({
+          originRoot: this.repoRoot, worktreePath, pr, branch, beforeHead, command: "squashRevert",
+          phase: "ready", remaining: [], afterHead: await this.state.currentHeadIn(worktreePath),
+          snapshotRef: snapshotRef || undefined, expectedTree: tree,
+          sourceCommits: commits.map(commit => commit.hash), checkout: !tree,
+        }, error);
       }
       throw this.withPreservedWorktreeNotice(error, worktreePath, keepWorktree);
     } finally {
@@ -251,43 +272,6 @@ export class PullRequestOperationWorktree {
   }
 
   /**
-   * commit 목록을 현재 index/working tree에 squash revert 형태로 적용한다.
-   * empty revert는 건너뛰고, 실제 충돌은 Git 상태를 보존한 채 호출자에게 전달한다.
-   * @param commits 순서와 mainline이 정규화된 revert 대상
-   * @param cwd 실제 저장소 또는 임시 worktree
-   */
-  async applySquashRevert(
-    commits: PullRequestRevertCommit[],
-    cwd: string
-  ): Promise<void> {
-    const env = {
-      GIT_EDITOR: "true",
-      GIT_SEQUENCE_EDITOR: "true",
-      HUSKY: "0",
-    };
-    for (const commit of commits) {
-      const args = ["revert", "--no-commit"];
-      if (commit.mainline) {
-        args.push("-m", String(commit.mainline));
-      }
-      args.push(commit.hash);
-      try {
-        await runGit(args, cwd, { env });
-      } catch (error) {
-        if (await this.state.hasUnmergedChangesIn(cwd)) {
-          throw error;
-        }
-        if (isEmptyRevertError(error)) {
-          await runGit(["revert", "--skip"], cwd, { env }).catch(() => undefined);
-          await runGit(["revert", "--abort"], cwd, { env }).catch(() => undefined);
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  /**
    * 현재 index를 GitHub 스타일의 PR squash cherry-pick commit으로 기록한다.
    * 자동 작업이므로 pre-commit hook과 편집기를 실행하지 않는다.
    * @param pr commit 제목·본문 원본
@@ -330,6 +314,9 @@ export class PullRequestOperationWorktree {
   private async replay(
     input: ReplayWithLocalChangesInput
   ): Promise<PullRequestOperationResult> {
+    await assertNoDuplicatePullRequestRecovery({
+      originRoot: this.repoRoot, pr: input.pr, branch: input.branch, beforeHead: input.beforeHead, command: input.command,
+    });
     const worktreePath = await this.createTemporaryWorktree(input.beforeHead);
     let keepWorktree = false;
     let snapshotRef = "";
@@ -349,14 +336,15 @@ export class PullRequestOperationWorktree {
       });
       if (result.status === "conflicts") {
         keepWorktree = true;
-        throw new Error(
-          `PR #${input.pr.number} ${input.actionLabel} has conflicts. ` +
-            "The current working tree was not changed because local changes are present. " +
-            `Resolve or inspect the preserved temporary worktree: ${worktreePath}.`
-        );
+        throw await preservePullRequestWorktreeRecovery({
+          originRoot: this.repoRoot, worktreePath, pr: input.pr, branch: input.branch,
+          beforeHead: input.beforeHead, command: input.command, phase: "conflicts", remaining: [],
+          sourceCommits: input.commits, checkout: true,
+        }, new Error(`PR #${input.pr.number} ${input.actionLabel} has conflicts.`));
       }
       const afterHead =
         result.afterHead || await this.state.currentHeadIn(worktreePath);
+      keepWorktree = true;
       snapshotRef = await this.state.createSnapshot(
         input.branch,
         input.beforeHead,
@@ -373,12 +361,14 @@ export class PullRequestOperationWorktree {
           `PR #${input.pr.number} ${input.failureLabel} result could not be applied ` +
             "to the current working tree. The replayed result was preserved in a " +
             `temporary worktree. Temporary worktree: ${worktreePath}. ` +
-            `The undo snapshot was kept at ${snapshotRef}.`
+            `The undo snapshot was kept at ${snapshotRef}.`,
+          { branch: input.branch, head: input.beforeHead }
         );
       } catch (error) {
         keepWorktree = true;
         throw error;
       }
+      keepWorktree = false;
       return {
         status: "completed",
         branch: input.branch,
@@ -390,6 +380,14 @@ export class PullRequestOperationWorktree {
     } catch (error) {
       if (snapshotRef && !keepWorktree) {
         await this.state.deleteSnapshotRef(input.branch, snapshotRef);
+      }
+      if (keepWorktree && !(error instanceof PullRequestWorktreeRecoveryError)) {
+        throw await preservePullRequestWorktreeRecovery({
+          originRoot: this.repoRoot, worktreePath, pr: input.pr, branch: input.branch,
+          beforeHead: input.beforeHead, command: input.command, phase: "ready", remaining: [],
+          afterHead: await this.state.currentHeadIn(worktreePath), snapshotRef: snapshotRef || undefined,
+          sourceCommits: input.commits, checkout: true,
+        }, error);
       }
       throw error instanceof Error ? error : new Error(String(error));
     } finally {
@@ -430,27 +428,4 @@ export class PullRequestOperationWorktree {
   private async removeTemporaryWorktree(worktreePath: string): Promise<void> {
     await removeTemporaryWorktree(this.repoRoot, worktreePath);
   }
-}
-
-/** GitError의 두 출력 스트림을 보존해 임시 worktree 복구 안내에 포함한다. */
-function gitErrorText(error: unknown): string {
-  if (error instanceof GitError) {
-    return [error.stderr.trim(), error.stdout.trim(), error.message]
-      .filter(Boolean)
-      .join("\n");
-  }
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** git revert가 적용할 변화가 없어 실패했는지 stderr/stdout 전체에서 판정한다. */
-function isEmptyRevertError(error: unknown): boolean {
-  const text =
-    error instanceof GitError
-      ? `${error.message}\n${error.stderr}\n${error.stdout}`
-      : error instanceof Error
-        ? error.message
-        : String(error);
-  return /nothing to commit|nothing added to commit|empty|patch contents already upstream/i.test(
-    text
-  );
 }

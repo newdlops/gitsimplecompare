@@ -23,6 +23,8 @@ export interface PendingDeferredCommitRebase {
   snapshotRef: string;
   sourceRef?: string;
   operationHead?: string;
+  /** false면 detached 임시 worktree에서 재생하므로 대상 브랜치가 checkout되었다고 가정하지 않는다. */
+  guardCurrentBranch?: boolean;
   currentCommit?: string;
   /** 충돌한 native 작업의 소유권. 이전 버전의 출처 없는 상태는 자동 복구하지 않는다. */
   nativeOperation?: GitOperationIdentity;
@@ -141,6 +143,7 @@ function normalizeState(value: unknown): PendingDeferredCommitRebase | undefined
     snapshotRef: item.snapshotRef,
     sourceRef,
     operationHead,
+    guardCurrentBranch: typeof item.guardCurrentBranch === "boolean" ? item.guardCurrentBranch : undefined,
     currentCommit,
     nativeOperation: item.nativeOperation && typeof item.nativeOperation === "object"
       ? item.nativeOperation as GitOperationIdentity : undefined,

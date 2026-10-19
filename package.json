@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72101",
+  "version": "0.1.72102",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -770,6 +770,27 @@
         "shortTitle": "%cmd.cleanupIdleGitProcesses%",
         "category": "Git Simple Compare",
         "enablement": "!gitSimpleCompare.gitProcessCleanup.busy"
+      },
+      {
+        "command": "gitSimpleCompare.resumePrOperation",
+        "title": "%cmd.resumePrOperation.tooltip%",
+        "shortTitle": "%cmd.resumePrOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "gitSimpleCompare.continuePrOperation",
+        "title": "%cmd.continuePrOperation.tooltip%",
+        "shortTitle": "%cmd.continuePrOperation%",
+        "category": "Git Simple Compare",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "gitSimpleCompare.leavePrRecovery",
+        "title": "%cmd.leavePrRecovery.tooltip%",
+        "shortTitle": "%cmd.leavePrRecovery%",
+        "category": "Git Simple Compare",
+        "icon": "$(arrow-left)"
       }
     ],
     "viewsContainers": {
@@ -795,14 +816,15 @@
           "name": "%view.conflicts.name%",
           "icon": "$(git-merge)",
           "contextualTitle": "%viewContainer.title%",
-          "when": "gitSimpleCompare.hasConflicts || gitSimpleCompare.operationInProgress"
+          "when": "gitSimpleCompare.hasConflicts || gitSimpleCompare.operationInProgress || gitSimpleCompare.prRecoveryActive"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "gitSimpleCompare.conflicts",
-        "contents": "%welcome.conflicts%"
+        "contents": "%welcome.conflicts%",
+        "when": "!gitSimpleCompare.prRecoveryActive"
       },
       {
         "view": "scm",
@@ -1054,22 +1076,22 @@
         },
         {
           "command": "gitSimpleCompare.continueOperation",
-          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress && !gitSimpleCompare.prRecoveryActive",
           "group": "navigation@1"
         },
         {
           "command": "gitSimpleCompare.skipOperation",
-          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationIsRebase",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationIsRebase && !gitSimpleCompare.prRecoveryActive",
           "group": "navigation@2"
         },
         {
           "command": "gitSimpleCompare.abortOperation",
-          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.operationInProgress && !gitSimpleCompare.prRecoveryActive",
           "group": "navigation@3"
         },
         {
           "command": "gitSimpleCompare.rollbackPull",
-          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.pullRollbackAvailable && !gitSimpleCompare.prRecoveryActive",
           "group": "navigation@4"
         },
         {
@@ -1131,6 +1153,16 @@
           "command": "gitSimpleCompare.initializeRepository",
           "when": "view == gitSimpleCompare.changes",
           "group": "0_setup@4"
+        },
+        {
+          "command": "gitSimpleCompare.continuePrOperation",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.prRecoveryActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "gitSimpleCompare.leavePrRecovery",
+          "when": "view == gitSimpleCompare.conflicts && gitSimpleCompare.prRecoveryActive",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -1375,15 +1407,15 @@
         },
         {
           "command": "gitSimpleCompare.continueOperation",
-          "when": "gitSimpleCompare.operationInProgress"
+          "when": "gitSimpleCompare.operationInProgress && !gitSimpleCompare.prRecoveryActive"
         },
         {
           "command": "gitSimpleCompare.skipOperation",
-          "when": "gitSimpleCompare.operationIsRebase"
+          "when": "gitSimpleCompare.operationIsRebase && !gitSimpleCompare.prRecoveryActive"
         },
         {
           "command": "gitSimpleCompare.abortOperation",
-          "when": "gitSimpleCompare.operationInProgress"
+          "when": "gitSimpleCompare.operationInProgress && !gitSimpleCompare.prRecoveryActive"
         },
         {
           "command": "gitSimpleCompare.openWorktree",
@@ -1404,6 +1436,14 @@
         {
           "command": "gitSimpleCompare.toggleGitProcessCleanupWorkspace.unchecked",
           "when": "false"
+        },
+        {
+          "command": "gitSimpleCompare.continuePrOperation",
+          "when": "gitSimpleCompare.prRecoveryActive"
+        },
+        {
+          "command": "gitSimpleCompare.leavePrRecovery",
+          "when": "gitSimpleCompare.prRecoveryActive"
         }
       ]
     },

@@ -32,6 +32,10 @@ import {
   undoBranchOperation,
 } from "./branchOperations";
 import { cleanupPullRequestOperationWorktrees } from "./prOperationWorktrees";
+import {
+  openPullRequestWorktreeRecovery, continuePullRequestWorktreeRecovery,
+  leavePullRequestWorktreeRecovery, type OpenPullRequestRecoveryArgs,
+} from "./prWorktreeRecovery";
 import { cleanupVscodeCache } from "./cleanupVscodeCache";
 import { cleanupStaleBranches } from "./cleanupStaleBranches";
 import { configureAiCli, loginAiCli } from "./aiSettings";
@@ -572,8 +576,12 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
             )
     ),
     vscode.commands.registerCommand("gitSimpleCompare.continueOperation", () =>
-      continueOperation(deps.conflicts)
+      deps.conflicts.currentRecovery ? continuePullRequestWorktreeRecovery(deps) : continueOperation(deps.conflicts)
     ),
+    vscode.commands.registerCommand("gitSimpleCompare.resumePrOperation", (args?: OpenPullRequestRecoveryArgs) =>
+      openPullRequestWorktreeRecovery(deps, args)),
+    vscode.commands.registerCommand("gitSimpleCompare.continuePrOperation", () => continuePullRequestWorktreeRecovery(deps)),
+    vscode.commands.registerCommand("gitSimpleCompare.leavePrRecovery", () => leavePullRequestWorktreeRecovery(deps)),
     vscode.commands.registerCommand("gitSimpleCompare.abortOperation", () =>
       abortOperation(deps.conflicts)
     ),

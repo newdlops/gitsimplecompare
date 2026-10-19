@@ -6,6 +6,7 @@ import type { PullRollbackSnapshot } from "../src/git/pullRollbackStore";
 import type { GitServiceRegistry } from "../src/git/serviceRegistry";
 import { ConflictsController, type ConflictsRefreshSnapshot } from "../src/providers/conflictsController";
 import type { ConflictsTreeProvider } from "../src/providers/conflictsTreeProvider";
+import type { PullRequestWorktreeRecovery } from "../src/git/pullRequestWorktreeRecoveryState";
 import * as vscode from "./helpers/vscodeMock";
 
 /**
@@ -95,6 +96,30 @@ function fixture(t: TestContext) {
   t.after(() => controller.dispose());
   return { state, controller, registry };
 }
+
+test("an explicit PR recovery pins conflict actions while other editor repositories change", async t => {
+  const { state, controller } = fixture(t);
+  const recovery = { worktreePath: "/pr-recovery", originRoot: "/repo/a" } as PullRequestWorktreeRecovery;
+  await controller.setPullRequestRecovery(recovery);
+  assert.equal(controller.current?.repoRoot, "/pr-recovery");
+  state.root = "/repo/b";
+  state.list = async () => [];
+  state.operation = "none";
+  await controller.refresh();
+  assert.equal(controller.current?.repoRoot, "/pr-recovery");
+  assert.equal(controller.currentRecovery, recovery);
+  assert.deepEqual(state.trees.at(-1), { root: "/pr-recovery", conflicts: [] });
+});
+
+test("Return to working tree uses the origin even when the active editor is a temporary result file", async t => {
+  const { controller } = fixture(t);
+  const recovery = { worktreePath: "/pr-recovery", originRoot: "/repo/a" } as PullRequestWorktreeRecovery;
+  await controller.setPullRequestRecovery(recovery);
+  install(t, vscode.window, "activeTextEditor", { document: { uri: vscode.Uri.file("/pr-recovery/resolved.txt") } });
+  await controller.setPullRequestRecovery();
+  assert.equal(controller.currentRecovery, undefined);
+  assert.equal(controller.current?.repoRoot, "/repo/a");
+});
 
 test("an obsolete conflict read does not start a rollback lookup before refreshing the new repository", async t => {
   const { state, controller } = fixture(t);

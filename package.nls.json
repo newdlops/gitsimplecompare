@@ -258,5 +258,11 @@
   "config.gitProcessCleanup.idleMinutes.desc": "Minutes of observed inactivity before an eligible Git monitor can be cleaned. CPU usage or process age alone does not count as idle.",
   "config.gitReadTimeoutSeconds.desc": "Time limit for read-only Git commands. Cancelled or timed-out reads are terminated with their verified children. Writes and hooks are protected. Use 0 to disable the deadline.",
   "config.workingTreeStatusCache.desc": "Share working-tree status between Changes, Graph and supported extensions using a private index cache. All untracked files are preserved; the real index is not modified.",
-  "config.cancelUnusedGitReads.desc": "Cancel shared status and blame processes when their last consumer leaves. Disposal and explicit read deadlines remain active."
+  "config.cancelUnusedGitReads.desc": "Cancel shared status and blame processes when their last consumer leaves. Disposal and explicit read deadlines remain active.",
+  "cmd.resumePrOperation": "Resume PR Operation",
+  "cmd.resumePrOperation.tooltip": "Resume a saved PR operation and resolve its conflicts",
+  "cmd.continuePrOperation": "Continue PR Operation",
+  "cmd.continuePrOperation.tooltip": "Continue PR operation and apply resolved changes to the original branch",
+  "cmd.leavePrRecovery": "Return to Working Tree",
+  "cmd.leavePrRecovery.tooltip": "Return to the original working tree and keep this PR recovery for later"
 }

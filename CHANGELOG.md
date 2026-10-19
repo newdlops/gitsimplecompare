@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.72102] - 2026-10-19
+
+### Changed
+
+- Resume conflicted temporary PR operations directly in the existing Conflicts
+  view, with Continue PR Operation and Return to Working Tree actions.
+- Save the remaining squash/rebase/revert queue and original destination so
+  conflict resolution can continue after reloading the window. Repeated actions
+  reuse a saved operation instead of recreating the same conflicting worktree.
+- Keep all squash apply/revert operations isolated, including clean working trees.
+
+### Fixed
+
+- Continue genuine modify/delete and content conflicts after explicit file
+  resolution, including multiple conflicts across a PR's remaining commits.
+- Keep the Conflicts view and PR continuation action visible after resolving the
+  last file. Preserve original local changes, staged additions and prepared results.
+- Recheck the destination branch and HEAD while the real index lock is held;
+  refuse unrelated or replaced Git operations and protect pending recovery
+  worktrees from cleanup. Keep source commits reachable until recovery finishes.
+
 ## [0.1.72101] - 2026-10-19
 
 ### Changed

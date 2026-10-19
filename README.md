@@ -75,6 +75,11 @@ From the Git Graph, select a commit and click **Rebase from here** (or run `Git 
 
 During a merge/rebase/cherry-pick/revert, the **Conflicts** view opens Result in the native VS Code text editor with a context overlay. It identifies the commits behind Current and Incoming, keeps Base available for reference, and writes editable text through a no-follow/CAS-backed virtual file system. Binary, symlink, deleted, submodule, and other special Results open as safe read-only native documents. During a rebase the overlay also shows the original branch tip, new base, active todo step, remaining commits that touch the same path, and whether later history can change the selected Result. Current/Ours is the accumulated rebase side; Incoming/Theirs is normally the replayed commit and is labeled from the active `MERGE_HEAD`/`CHERRY_PICK_HEAD` instead when a nested operation causes the conflict. Whole-file actions use exact Git stages, while CodeLens block actions edit only one complete conflict-marker block. The native 3-way merge editor remains available as an action. Use **Continue** / **Abort** in the Conflicts view after resolving the files.
 
+PR operations paused in temporary worktrees use **Continue PR Operation** after
+the files are resolved. **Return to Working Tree** keeps the recovery for later;
+**Resume a saved PR operation and resolve its conflicts** reopens it after a
+window reload. See [PR operation recovery](./docs/pr-worktree-recovery.md).
+
 ### Split changes into commits
 
 Run `Git Simple Compare: Split Changes into Commits`. Select the diff hunks for the first commit, type a message, and commit; the remaining changes stay in your working tree so you can commit them separately. Requires no pre-staged changes (so each commit contains exactly what you select). New (untracked) files are not shown — `git add` them first.

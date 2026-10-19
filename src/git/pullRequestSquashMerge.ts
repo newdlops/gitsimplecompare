@@ -114,6 +114,15 @@ export class PullRequestSquashMerge {
       await runGit(checkout ? ["read-tree", "-m", "-u", "HEAD", tree] : ["read-tree", tree], cwd);
       return;
     }
+    const commits = await this.replayCommits(plan);
+    await runGit(["cherry-pick", "--no-commit", ...commits], cwd);
+  }
+
+  /**
+   * 선형 PR은 최종 tree와 최초 부모를 가진 하나의 source commit으로 바꾼다.
+   * @param plan 원본 범위가 검증된 계획 @returns squash patch를 재생할 고정 commit 목록
+   */
+  async replayCommits(plan: PullRequestSquashPlan): Promise<string[]> {
     let commits = plan.commits;
     if (plan.base && plan.tree && plan.commits.length > 1) {
       const hash = (await runGitWithInput([
@@ -122,7 +131,7 @@ export class PullRequestSquashMerge {
       if (!OID.test(hash)) throw new Error("PR squash source returned an invalid commit object.");
       commits = [hash];
     }
-    await runGit(["cherry-pick", "--no-commit", ...commits], cwd);
+    return commits;
   }
 
   /**

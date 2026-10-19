@@ -246,10 +246,10 @@ implements vscode.Disposable, ConflictResultResourceHost {
     return !!session && !session.resolved && !session.suspended;
   }
 
-  /** decoration처럼 같은 host 내부 UI가 URI의 현재 unresolved session을 재사용한다. */
-  sessionForUri(uri: vscode.Uri): TrustedConflictEditorSession | undefined {
+  /** includeResolved=true면 PR 반영 전 dirty 문서 검사에서도 이미 해결한 session을 조회한다. */
+  sessionForUri(uri: vscode.Uri, includeResolved = false): TrustedConflictEditorSession | undefined {
     const session = this.sessions.get(uri.toString());
-    return session && !session.resolved ? session : undefined;
+    return session && (includeResolved || !session.resolved) ? session : undefined;
   }
 
   /** action/save busy 상태를 바꾸고 미뤄 둔 외부 refresh를 종료 뒤 한 번 실행한다. */

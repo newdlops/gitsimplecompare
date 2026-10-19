@@ -2,7 +2,7 @@
 // - 상태/snapshot은 PullRequestOperationSnapshot, dirty worktree 실행은 Worktree,
 //   원본 object 준비는 PullRequestCommitMaterializer, revert 대상 선택은 RevertPlan에 위임한다.
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
-import { GitError, runGit } from "./gitExec";
+import { GitError } from "./gitExec";
 import { PullRequestCommitMaterializer, type PullRequestCommitMaterialization } from "./pullRequestCommitMaterializer";
 import { pullRequestCommitHashes } from "./pullRequestOperationFormat";
 import {
@@ -63,7 +63,7 @@ export class PullRequestOperationService {
    */
   async squashCherryPick(
     pr: PullRequestInfo,
-    options?: PullRequestOperationOptions
+    _options?: PullRequestOperationOptions
   ): Promise<PullRequestOperationResult> {
     const requestedCommits = pullRequestCommitHashes(pr);
     if (!requestedCommits.length) {
@@ -81,11 +81,8 @@ export class PullRequestOperationService {
       plan = await squash.prepare(commits);
       tree = await squash.computeTree(plan, beforeHead);
     } catch (error) { await this.releasePreparedCommitsQuietly(prepared); throw error; }
-    if (
-      tree ||
-      options?.strategy === "worktree" ||
-      await this.state.hasLocalChanges()
-    ) {
+    // 충돌 여부와 로컬 변경 유무에 관계없이 squash는 같은 격리·복구 경로를 사용한다.
+    try {
       const result = await this.worktree.squashCherryPick(
         pr,
         commits,
@@ -95,35 +92,11 @@ export class PullRequestOperationService {
         tree
       );
       await this.state.recordCompleted(result.branch, result.snapshotRef);
-      await this.releasePreparedCommitsQuietly(prepared);
       return result;
+    } finally {
+      // 충돌 source commit은 복구 전용 ref에 고정되어 있으므로 fetch용 ref는 해제한다.
+      await this.releasePreparedCommitsQuietly(prepared);
     }
-    const snapshotRef = await this.state.createSnapshot(
-      branch,
-      beforeHead,
-      "squash"
-    );
-    try {
-      await this.state.assertStillOnBranch(branch, beforeHead, beforeHead);
-      await squash.apply(plan, this.repoRoot, tree);
-      if (!await this.state.hasPendingChanges()) {
-        throw new Error(`PR #${pr.number} did not produce changes to commit.`);
-      }
-      await this.worktree.commitSquash(pr, this.repoRoot);
-    } catch (error) {
-      await this.state.recordFailedSquash(branch, snapshotRef);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-    await this.state.recordCompleted(branch, snapshotRef);
-    const result: PullRequestOperationResult = {
-      status: "completed",
-      branch,
-      beforeHead,
-      afterHead: await this.state.currentHead(),
-      snapshotRef,
-    };
-    await this.releasePreparedCommitsQuietly(prepared);
-    return result;
   }
 
   /**
@@ -326,7 +299,7 @@ export class PullRequestOperationService {
    */
   async squashRevertPullRequest(
     pr: PullRequestInfo,
-    options?: PullRequestOperationOptions,
+    _options?: PullRequestOperationOptions,
     preparedPlan?: PullRequestRevertPlan
   ): Promise<PullRequestOperationResult> {
     let branch: string;
@@ -354,10 +327,7 @@ export class PullRequestOperationService {
       const squashPlan = await squash.prepareRevert(plan.commits);
       tree = squashPlan ? await squash.computeTree(squashPlan, beforeHead) : undefined;
     } catch (error) { await this.releaseRevertPlanQuietly(plan); throw error; }
-    if (
-      tree || options?.strategy === "worktree" ||
-      await this.state.hasLocalChanges()
-    ) {
+    try {
       const result = await this.worktree.squashRevert(
         pr,
         plan.commits,
@@ -366,48 +336,9 @@ export class PullRequestOperationService {
         tree
       );
       await this.state.recordCompleted(result.branch, result.snapshotRef);
-      if (result.status === "completed") {
-        await this.releaseRevertPlanQuietly(plan);
-      }
       return result;
-    }
-    const snapshotRef = await this.state.createSnapshot(
-      branch,
-      beforeHead,
-      "squashRevert"
-    );
-    try {
-      await this.worktree.applySquashRevert(plan.commits, this.repoRoot);
-      if (!await this.state.hasPendingChanges()) {
-        throw new Error(`PR #${pr.number} did not produce changes to commit.`);
-      }
-      await runGit(["add", "-A"], this.repoRoot);
-      await this.worktree.commitSquashRevert(pr, this.repoRoot);
-      await this.state.recordCompleted(branch, snapshotRef);
-      const result: PullRequestOperationResult = {
-        status: "completed",
-        branch,
-        beforeHead,
-        afterHead: await this.state.currentHead(),
-        snapshotRef,
-        sourceBranch: this.sourceLabel(pr, plan),
-      };
+    } finally {
       await this.releaseRevertPlanQuietly(plan);
-      return result;
-    } catch (error) {
-      await this.state.recordFailedSquash(branch, snapshotRef);
-      if (await this.state.hasUnmergedChanges()) {
-        return {
-          status: "conflicts",
-          branch,
-          beforeHead,
-          afterHead: beforeHead,
-          snapshotRef,
-          sourceBranch: this.sourceLabel(pr, plan),
-        };
-      }
-      await this.releaseRevertPlanQuietly(plan);
-      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -521,13 +452,6 @@ export class PullRequestOperationService {
     prepared: PullRequestCommitMaterialization
   ): Promise<void> {
     await this.commitMaterializer.release(prepared).catch(() => false);
-  }
-
-  /** 결과와 OUTPUT에 표시할 실제 revert 출처를 선택한다. */
-  private sourceLabel(pr: PullRequestInfo, plan: PullRequestRevertPlan): string {
-    return plan.targetKind === "mergedResult"
-      ? pr.mergeHash || plan.commits[0]?.hash
-      : pr.headRefName || pr.headHash || plan.commits[0]?.hash;
   }
 
   /** 로컬 변경이 있으면 deferred 작업 전 전용 stash로 보존한다. */

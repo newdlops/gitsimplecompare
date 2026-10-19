@@ -137,7 +137,7 @@ export async function continuePendingDeferredCommitRebase(
     ...pending,
     currentCommit: undefined,
     operationHead,
-  }, Boolean(pending.operationHead));
+  }, pending.guardCurrentBranch ?? Boolean(pending.operationHead));
 }
 
 /**
@@ -153,7 +153,7 @@ export async function restorePendingDeferredCommitRebaseAfterAbort(
     return { status: "none" };
   }
   await assertControlledTransition(repoRoot, pending.nativeOperation, "abort");
-  if (pending.operationHead) {
+  if (pending.operationHead && pending.guardCurrentBranch !== false) {
     await assertCurrentBranchHead(
       repoRoot,
       pending.destinationBranch,
@@ -232,6 +232,7 @@ function createPendingState(
     snapshotRef: input.snapshotRef,
     sourceRef: input.sourceRef,
     operationHead,
+    guardCurrentBranch: input.guardCurrentBranch === true,
     remainingCommits,
     preservedStashHash: input.preservedStashHash,
     createdAt: Date.now(),

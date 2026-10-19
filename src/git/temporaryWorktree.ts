@@ -10,6 +10,7 @@ const PR_OPERATION_WORKTREE_PREFIX = "gsc-pr-operation-";
 
 export interface TemporaryWorktreeInfo {
   path: string;
+  locked?: boolean;
 }
 
 export interface TemporaryWorktreeCleanupResult {
@@ -40,10 +41,8 @@ export async function removeTemporaryWorktree(
   repoRoot: string,
   worktreePath: string
 ): Promise<void> {
-  await runGit(["worktree", "remove", "--force", worktreePath], repoRoot)
-    .catch(async () => {
-      await fs.rm(worktreePath, { recursive: true, force: true }).catch(() => undefined);
-    });
+  // Git의 lock·사용 중·권한 오류를 파일시스템 강제 삭제로 우회하지 않는다.
+  await runGit(["worktree", "remove", "--force", worktreePath], repoRoot);
 }
 
 /** 현재 저장소에 등록된 PR operation 임시 worktree 목록을 반환한다. */
@@ -56,7 +55,7 @@ export async function listPrOperationWorktrees(
     const match = /^worktree (.+)$/m.exec(entry);
     const worktreePath = match?.[1]?.trim();
     if (worktreePath && path.basename(worktreePath).startsWith(PR_OPERATION_WORKTREE_PREFIX)) {
-      items.push({ path: worktreePath });
+      items.push({ path: worktreePath, ...(/^locked(?: |$)/m.test(entry) ? { locked: true } : {}) });
     }
   }
   return items;
@@ -69,6 +68,10 @@ export async function cleanupPrOperationWorktrees(
   const worktrees = await listPrOperationWorktrees(repoRoot);
   const result: TemporaryWorktreeCleanupResult = { removed: [], failed: [] };
   for (const item of worktrees) {
+    if (item.locked) {
+      result.failed.push({ path: item.path, message: "This worktree is locked for recovery. Resume its PR operation before cleaning it up." });
+      continue;
+    }
     try {
       await removeTemporaryWorktree(repoRoot, item.path);
       result.removed.push(item.path);

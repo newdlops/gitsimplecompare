@@ -59,7 +59,7 @@ export class ConflictsTreeProvider
     item.command = {
       command: "gitSimpleCompare.openConflictEditor",
       title: vscode.l10n.t("Resolve Conflict"),
-      arguments: [rel],
+      arguments: [{ root: this.repoRoot, path: rel }],
     };
     return item;
   }

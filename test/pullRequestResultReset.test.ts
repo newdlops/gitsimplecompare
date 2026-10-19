@@ -3,6 +3,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { listPrOperationWorktrees } from "../src/git/temporaryWorktree";
+import { resetPullRequestResult } from "../src/git/pullRequestResultReset";
 import { git } from "./helpers/gitSafetyFixture";
 import { prSafetyFixture } from "./helpers/prOperationSafetyFixture";
 
@@ -75,4 +76,17 @@ test("intent-to-add files remain present after applying a PR result", async (t) 
   await git(root, "add", "-N", "intent.txt");
   await service.squashCherryPick(pr);
   assert.equal(await readFile(join(root, "intent.txt"), "utf8"), "intent content\n");
+});
+
+test("applying a PR result verifies the expected HEAD again after acquiring the real index lock", async t => {
+  const { root, base, source } = await prSafetyFixture(t);
+  await git(root, "commit", "--allow-empty", "-qm", "concurrent user commit");
+  const changedHead = await git(root, "rev-parse", "HEAD");
+  await writeFile(join(root, "user.txt"), "preserve staged user addition\n");
+  await git(root, "add", "user.txt");
+  const index = await git(root, "ls-files", "--stage", "-z");
+  await assert.rejects(resetPullRequestResult(root, source, { branch: "main", head: base }), /Ref safety check/);
+  assert.equal(await git(root, "rev-parse", "HEAD"), changedHead);
+  assert.equal(await git(root, "ls-files", "--stage", "-z"), index);
+  assert.equal(await readFile(join(root, "user.txt"), "utf8"), "preserve staged user addition\n");
 });

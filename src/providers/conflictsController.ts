@@ -2,11 +2,15 @@
 // - 저장소 탐지 → 충돌/작업상태 조회 → 트리뷰·컨텍스트 키 갱신을 한곳에서 처리한다.
 //   git 접근은 ConflictService, 표시는 ConflictsTreeProvider 에 위임한다(경계 분리).
 import * as vscode from "vscode";
+import * as path from "node:path";
 import { ConflictService, MergeOperation } from "../git/conflictService";
 import { PullService } from "../git/pullService";
 import { GitServiceRegistry } from "../git/serviceRegistry";
 import { logError, logInfo } from "../ui/outputLog";
 import { ConflictsTreeProvider } from "./conflictsTreeProvider";
+import type { PullRequestWorktreeRecovery } from "../git/pullRequestWorktreeRecoveryState";
+
+export const PR_RECOVERY_ACTIVE_CONTEXT = "gitSimpleCompare.prRecoveryActive";
 
 /** 충돌 존재 여부를 when 절에서 쓰기 위한 컨텍스트 키(불리언) */
 export const HAS_CONFLICTS_CONTEXT = "gitSimpleCompare.hasConflicts";
@@ -44,6 +48,8 @@ export class ConflictsController implements vscode.Disposable {
   private disposed = false;
   private appliedState?: ConflictsReadState;
   private contextValues?: boolean[];
+  private recovery?: PullRequestWorktreeRecovery;
+  private returnedRecovery?: { worktreePath: string; originRoot: string };
   private readonly onDidRefreshEmitter =
     new vscode.EventEmitter<ConflictsRefreshSnapshot>();
 
@@ -52,8 +58,25 @@ export class ConflictsController implements vscode.Disposable {
 
   constructor(
     private readonly registry: GitServiceRegistry,
-    private readonly provider: ConflictsTreeProvider
+    private readonly provider: ConflictsTreeProvider,
+    private readonly showRecoveryContext?: (recovery: PullRequestWorktreeRecovery | undefined, count: number) => void
   ) {}
+
+  /** 원래 작업트리와 구분해 현재 Conflicts 뷰가 해결 중인 PR 작업을 반환한다. */
+  get currentRecovery(): PullRequestWorktreeRecovery | undefined { return this.recovery; }
+
+  /**
+   * 명시적으로 선택한 PR 복구 worktree에 충돌 명령을 고정하거나 원래 저장소로 돌아간다.
+   * @param recovery 검증된 복구 기록. undefined면 임시 파일을 보존한 채 보기만 종료한다.
+   */
+  async setPullRequestRecovery(recovery?: PullRequestWorktreeRecovery): Promise<void> {
+    if (this.recovery && !recovery) this.returnedRecovery = this.recovery;
+    this.recovery = recovery;
+    if (recovery) this.returnedRecovery = undefined;
+    this.requestSeq++;
+    await vscode.commands.executeCommand("setContext", PR_RECOVERY_ACTIVE_CONTEXT, Boolean(recovery));
+    await this.refresh();
+  }
 
   /** 현재 대상 저장소의 ConflictService(없으면 undefined). */
   get current(): ConflictService | undefined {
@@ -164,6 +187,7 @@ export class ConflictsController implements vscode.Disposable {
     this.service = state.service;
     this.operation = state.operation;
     this.appliedState = { ...state, conflicts: [...state.conflicts] };
+    this.showRecoveryContext?.(this.recovery, state.conflicts.length);
     this.onDidRefreshEmitter.fire({
       repoRoot: state.repoRoot, conflicts: [...state.conflicts], operation: state.operation,
     });
@@ -188,8 +212,15 @@ export class ConflictsController implements vscode.Disposable {
    * - 활성 에디터 파일 → 워크스페이스 폴더 순. 경고 메시지는 띄우지 않는다.
    */
   private async resolveRepoRoot(): Promise<string | undefined> {
+    if (this.recovery) return this.recovery.worktreePath;
     const active = vscode.window.activeTextEditor?.document.uri;
     if (active?.scheme === "file") {
+      if (this.returnedRecovery) {
+        const relative = path.relative(this.returnedRecovery.worktreePath, active.fsPath);
+        if (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative)) {
+          return this.returnedRecovery.originRoot;
+        }
+      }
       const fromActive = await this.registry.resolve(dirNameOf(active.fsPath));
       if (fromActive) {
         return fromActive.repoRoot;

@@ -2,6 +2,7 @@
 import { withConflictIndexTransaction } from "./conflictIndexTransaction";
 import { runGit, runGitWithInput, withGitConfigOverrides } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
+import { assertCurrentBranchHead } from "./refSafety";
 
 /** reset 직전 보존할 새 stage-0 파일의 정확한 mode/OID/경로다. */
 interface StagedAddition { mode: string; hash: string; file: string }
@@ -12,10 +13,14 @@ interface StagedAddition { mode: string; hash: string; file: string }
  * - 결과가 같은 경로나 상위/하위 경로를 변경하면 사용자 내용을 건드리기 전에 중단한다.
  * @param repoRoot 결과를 반영할 실제 작업트리
  * @param targetRef 시작 HEAD에서 파생된, 이미 검증한 결과 commit
+ * @param expected 있으면 실제 index lock을 얻은 뒤에도 원래 branch/HEAD가 유지되는지 검사한다.
  * @returns index 게시까지 끝나면 완료한다. 실패 시 원본 index와 복구 snapshot을 유지한다.
  */
-export async function resetPullRequestResult(repoRoot: string, targetRef: string): Promise<void> {
+export async function resetPullRequestResult(
+  repoRoot: string, targetRef: string, expected?: { branch: string; head: string }
+): Promise<void> {
   const preserved = await withConflictIndexTransaction(repoRoot, true, async ({ indexEnv }) => {
+    if (expected) await assertCurrentBranchHead(repoRoot, expected.branch, expected.head, "applying PR result with the index locked");
     const env = withGitConfigOverrides(indexEnv, { "core.fsmonitor": "false" });
     const raw = await runGit([
       "diff", "--cached", "--raw", "--no-renames", "--no-abbrev", "--no-ext-diff", "--diff-filter=A", "-z",
@@ -30,6 +35,7 @@ export async function resetPullRequestResult(repoRoot: string, targetRef: string
       await runGitWithInput(["update-index", "--force-remove", "-z", "--stdin"], repoRoot,
         `${additions.map(addition => addition.file).join("\0")}\0`, { env });
     }
+    if (expected) await assertCurrentBranchHead(repoRoot, expected.branch, expected.head, "applying PR result with the index locked");
     await runGit(["reset", "--keep", targetRef], repoRoot, { env, retryOnLock: false });
     if (additions.length) {
       await runGitWithInput(["update-index", "-z", "--index-info"], repoRoot,

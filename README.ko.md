@@ -83,6 +83,10 @@ Git Simple Compare는 기본적으로 자체 Git CLI를 사용하며 `git.enable
 
 같은 메뉴의 **Git 실행 경로 진단·선택…**에서 설치된 Git의 시작 시간을 비교할 수 있습니다. 각 후보에 `git --version`을 세 번 실행해 중앙값을 표시합니다. 실행 가능한 후보를 고르거나 경로를 직접 입력한 뒤 사용자 전역 또는 현재 워크스페이스에 저장하세요. **Git 실행 경로 설정 초기화…**는 선택한 범위의 별도 설정을 제거합니다. `gitSimpleCompare.gitPath`는 다음 Git 명령부터 적용되며 워크스페이스·폴더 값이 사용자 기본값보다 우선합니다. macOS에서는 Command Line Tools나 Homebrew의 Git을 직접 지정해 느린 시스템 실행 경로를 우회할 수 있습니다. 시작 시간 진단이므로 저장소 작업·원격 요청·OS 프로세스 지연은 별도로 조사해야 합니다. 측정 결과는 **Git Simple Compare** 출력에서 확인할 수 있습니다.
 
+### PR 작업 충돌 복구
+
+임시 worktree에서 PR 적용·되돌리기가 충돌하면 기존 **Conflicts** 뷰에서 파일별로 해결한 뒤 **PR 작업 계속**을 실행합니다. 수정/삭제 충돌은 현재 삭제 상태를 유지하거나 PR 파일을 복원하도록 직접 선택할 수 있습니다. **원래 작업트리로 돌아가기**는 해결 작업을 보존하고, **PR 작업 다시 열기**는 창 다시 로드 후에도 남은 작업을 이어 줍니다. 원래 브랜치와 HEAD가 바뀌거나 로컬 변경을 덮을 위험이 있으면 해결 결과를 보존한 채 반영을 멈춥니다. 자세한 절차는 [PR 작업 복구 가이드](./docs/pr-worktree-recovery.md)를 참고하세요.
+
 ### PR Stack
 
 Git Graph 툴바의 레이어 아이콘을 누르면 로컬 브랜치 관계와 GitHub PR base/head 관계를 합친 Stack을 볼 수 있습니다. **Add Layer**는 부모 tip에서 자식 브랜치와 선택적 linked worktree를 만들고, **Restack**은 부모가 바뀐 레이어와 모든 후손을 안전 ref 아래 연쇄 rebase합니다. **Submit / Sync**는 부모부터 push하여 PR을 생성하거나 base·본문의 Stack 목록을 갱신하며, 재작성된 원격에만 명시적 force-with-lease를 사용합니다. 아래 PR이 merge되면 **Advance**가 자식을 이전 base로 승격하고 restack·PR 동기화·안전한 로컬 정리 제안을 이어서 수행합니다.

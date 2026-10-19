@@ -9,6 +9,7 @@ import { readPendingDeferredCommitRebase, writePendingDeferredCommitRebase } fro
 import { runGit } from "../src/git/gitExec";
 import { PullRequestOperationService } from "../src/git/pullRequestOperationService";
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
+import { PullRequestWorktreeRecoveryError } from "../src/git/pullRequestWorktreeRecovery";
 import { readPendingPullRequestRebase, writePendingPullRequestRebase } from "../src/git/pullRequestOperationState";
 import { commitText, git } from "./helpers/gitSafetyFixture";
 import { prSafetyFixture, safetyPullRequest } from "./helpers/prOperationSafetyFixture";
@@ -142,13 +143,17 @@ test("a legacy PR snapshot without ownership cannot become automatic Undo", asyn
   assert.equal(await git(root, "rev-parse", result.snapshotRef), result.beforeHead);
 });
 
-test("Undo can remove its own PR squash conflict while preserving another file's edit", async (t) => {
+test("isolated squash conflict leaves the original branch editable without claiming Undo", async (t) => {
   const { root, pr, service } = await prSafetyFixture(t, true);
   const beforeHead = await git(root, "rev-parse", "HEAD");
-  await assert.rejects(() => service.squashCherryPick(pr));
-  assert.notEqual(await git(root, "diff", "--name-only", "--diff-filter=U"), "");
+  await assert.rejects(() => service.squashCherryPick(pr), error => {
+    assert.ok(error instanceof PullRequestWorktreeRecoveryError);
+    t.after(() => rm(error.recovery.worktreePath, { recursive: true, force: true }));
+    return true;
+  });
+  assert.equal(await git(root, "diff", "--name-only", "--diff-filter=U"), "");
   await writeFile(join(root, "other.txt"), "unrelated edit after conflict\n");
-  await service.undoLastOperation();
+  assert.equal(await service.hasUndoSnapshot(), false);
   assert.equal(await git(root, "rev-parse", "HEAD"), beforeHead);
   assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), "local content\n");
   assert.equal(await readFile(join(root, "other.txt"), "utf8"), "unrelated edit after conflict\n");
@@ -163,9 +168,13 @@ test("failed isolated PR squash commit preserves the original worktree without c
   assert.equal(await git(root, "status", "--porcelain"), "");
 });
 
-test("new staged work invalidates partial PR squash Undo", async (t) => {
+test("new staged work is preserved while an isolated squash conflict is pending", async (t) => {
   const { root, pr, service } = await prSafetyFixture(t, true);
-  await assert.rejects(() => service.squashCherryPick(pr));
+  await assert.rejects(() => service.squashCherryPick(pr), error => {
+    assert.ok(error instanceof PullRequestWorktreeRecoveryError);
+    t.after(() => rm(error.recovery.worktreePath, { recursive: true, force: true }));
+    return true;
+  });
   await writeFile(join(root, "other.txt"), "new staged work\n");
   await git(root, "add", "other.txt");
   const before = await state(root);
@@ -283,12 +292,16 @@ for (const mode of ["squashRevertPullRequest", "rebaseRevertPullRequest"] as con
   }
 }
 
-test("squash revert can undo its own conflict", async (t) => {
+test("squash revert conflict is isolated and does not require resetting the original worktree", async (t) => {
   const { root, pr, service } = await prSafetyFixture(t);
   await git(root, "merge", "--ff-only", "source");
   const beforeHead = await commitText(root, "later change\n", "later");
-  assert.equal((await service.squashRevertPullRequest(pr)).status, "conflicts");
-  await service.undoLastOperation();
+  await assert.rejects(() => service.squashRevertPullRequest(pr), error => {
+    assert.ok(error instanceof PullRequestWorktreeRecoveryError);
+    t.after(() => rm(error.recovery.worktreePath, { recursive: true, force: true }));
+    return true;
+  });
+  assert.equal(await service.hasUndoSnapshot(), false);
   assert.equal(await git(root, "rev-parse", "HEAD"), beforeHead);
   assert.equal(await readFile(join(root, "tracked.txt"), "utf8"), "later change\n");
   assert.equal(await detectOperation(root), "none");

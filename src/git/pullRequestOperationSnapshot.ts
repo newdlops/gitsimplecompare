@@ -284,13 +284,15 @@ export class PullRequestOperationSnapshot {
    * 현재 브랜치를 target ref로 이동하되 사용자 변경을 덮으면 중단한다.
    * @param targetRef reset 대상 commit/ref
    * @param failureMessage reset 실패에 앞에 붙일 복구 안내
+   * @param expected index lock 안에서 재검증할 작업 시작 branch/HEAD
    */
   async resetCurrentBranchPreservingLocalChanges(
     targetRef: string,
-    failureMessage: string
+    failureMessage: string,
+    expected?: { branch: string; head: string }
   ): Promise<void> {
     try {
-      await resetPullRequestResult(this.repoRoot, targetRef);
+      await resetPullRequestResult(this.repoRoot, targetRef, expected);
     } catch (error) {
       throw new Error(`${failureMessage} ${gitErrorText(error)}`);
     }

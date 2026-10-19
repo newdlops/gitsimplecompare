@@ -11,6 +11,8 @@ import type {
 } from "../git/pullRequestOperationService";
 import type { PullRequestInfo } from "../git/pullRequestService";
 import { logError, logInfo } from "../ui/outputLog";
+import { PullRequestWorktreeRecoveryError } from "../git/pullRequestWorktreeRecovery";
+import { offerPullRequestWorktreeRecovery } from "../commands/prWorktreeRecovery";
 
 export type PullRequestActionKind =
   | "squash"
@@ -411,6 +413,10 @@ async function runPullRequestOperation(
       result.branch
     );
   } catch (err) {
+    if (err instanceof PullRequestWorktreeRecoveryError) {
+      await offerPullRequestWorktreeRecovery(err);
+      return;
+    }
     logError("pr operation failed", err, {
       repoRoot: deps.logService.repoRoot,
       operation,

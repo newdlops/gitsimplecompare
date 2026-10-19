@@ -1838,5 +1838,18 @@
   "Reading working tree...": "작업트리를 읽는 중...",
   "Working tree status unavailable.": "작업트리 상태를 불러오지 못했습니다.",
   "Working tree status paused.": "작업트리 상태 조회가 일시 중지되었습니다.",
-  "Commit history is available. Check Git Simple Compare Output, then refresh. Reason: {0}": "커밋 이력은 사용할 수 있습니다. Git Simple Compare 출력을 확인한 뒤 새로고침하세요. 원인: {0}"
+  "Commit history is available. Check Git Simple Compare Output, then refresh. Reason: {0}": "커밋 이력은 사용할 수 있습니다. Git Simple Compare 출력을 확인한 뒤 새로고침하세요. 원인: {0}",
+  "PR #{0} → {1} · {2} conflict(s) in a temporary worktree. Resolve them, then Continue PR Operation.": "PR #{0} → {1} · 임시 작업트리에 충돌 {2}개가 있습니다. 해결한 뒤 PR 작업 계속을 실행하세요.",
+  "PR #{0} → {1} · Resolutions ready. Continue PR Operation to apply the result. Original local changes are preserved.": "PR #{0} → {1} · 해결 결과가 준비되었습니다. PR 작업 계속으로 반영하세요. 원래 로컬 변경은 보존됩니다.",
+  "PR #{0} paused with conflicts in a temporary worktree. Resolve them in the Conflicts view, then Continue PR Operation. Your original local changes are preserved.": "PR #{0} 작업이 임시 작업트리의 충돌로 일시 중지되었습니다. Conflicts 뷰에서 해결한 뒤 PR 작업 계속을 실행하세요. 원래 로컬 변경은 보존됩니다.",
+  "No saved PR operation is available for this working tree.": "이 작업트리에 보존된 PR 작업이 없습니다.",
+  "Resume PR Operation": "PR 작업 다시 열기",
+  "Save your conflict resolution files before continuing the PR operation.": "PR 작업을 계속하기 전에 충돌 해결 파일을 저장하세요.",
+  "Continuing PR #{0} operation": "PR #{0} 작업을 계속하는 중",
+  "PR #{0} reached another conflict. Resolve the remaining files, then Continue PR Operation.": "PR #{0} 작업에서 다음 충돌을 만났습니다. 남은 파일을 해결한 뒤 PR 작업 계속을 실행하세요.",
+  "PR #{0} operation completed on '{1}'.": "PR #{0} 작업을 '{1}' 브랜치에서 완료했습니다.",
+  "Could not continue PR operation: {0}": "PR 작업을 계속하지 못했습니다: {0}",
+  "PR #{0} replay was interrupted. Inspect its preserved worktree before continuing.": "PR #{0} 재생이 중단되었습니다. 계속하기 전에 보존된 작업트리를 확인하세요.",
+  "PR #{0} could not be applied. Its result is preserved in a temporary worktree. Check Output, then retry with Continue PR Operation.": "PR #{0} 결과를 반영하지 못했습니다. 결과는 임시 작업트리에 보존됩니다. Output을 확인한 뒤 PR 작업 계속으로 다시 시도하세요.",
+  "Undo PR Operation": "PR 작업 되돌리기"
 }
