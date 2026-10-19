@@ -7,7 +7,7 @@ import {
   type NativeOverlayWorkspaceHints,
 } from "./nativeDiffOverlayMain";
 import { nativeDiffOverlayLifecycleScript } from "./nativeDiffOverlayLifecycle";
-const PATCH_VERSION = 48;
+const PATCH_VERSION = 49;
 const RENDERER_BINDING = "gscNativeDiffOverlayToggle";
 export type { NativeOverlayWorkspaceHints } from "./nativeDiffOverlayMain";
 /** renderer patch 설치와 snapshot render 를 main process 에서 수행할 CDP expression 으로 만든다. */
@@ -81,7 +81,7 @@ export function rendererPatchScript(): string {
           var sideDom = diffs[snapshotIndex].dom.querySelector(selector);
           return sideDom ? [{ editor: null, dom: sideDom, source: 'dom-order' }] : [];
         }
-        var dom = snapshotCount === 1 ? findEditorDom(side) : null;
+        var dom = snapshotCount === 1 && diffs.length <= 1 ? findEditorDom(side) : null;
         return dom ? [{ editor: null, dom: dom, source: 'dom-best' }] : [];
       }
       function findTargets(snapshot, side, snapshotIndex, snapshotCount) {
@@ -368,6 +368,7 @@ export function rendererPatchScript(): string {
         var placed = 0;
         var details = [];
         snapshots.forEach(function (snapshot, snapshotIndex) {
+          if (snapshot.pending) return;
           ['original', 'modified'].forEach(function (side) {
             var sideLines = linesForSide(snapshot, side);
             var sourceTargets = findTargets(snapshot, side, snapshotIndex, snapshots.length);

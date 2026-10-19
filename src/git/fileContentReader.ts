@@ -19,6 +19,7 @@ export interface ContentReadOptions {
 /**
  * 특정 ref 시점의 파일 내용을 문자열로 반환한다.
  * - `git show <ref>:<상대경로>` 사용. ref 가 `:0` 이면 index 의 stage 0 버전을 읽는다.
+ * - index blob 읽기는 작업트리 감시 상태가 필요 없어 이 명령에서만 fsmonitor를 끈다.
  * - 해당 ref 에 파일이 없으면(추가/삭제된 경우) 빈 문자열을 반환해 diff 에서 "빈 쪽"으로 보이게 한다.
  *   Git 실행 실패는 빈 파일로 바꾸지 않고, tree/index 에서 부재가 확인될 때만 빈 문자열을 허용한다.
  * - maxBytes 를 주면 그보다 큰 내용은 읽다가 git 을 멈추고 FileTooLargeError 를 던진다.
@@ -36,11 +37,14 @@ export async function readFileAtRef(
 ): Promise<string> {
   options.signal?.throwIfAborted();
   if (ref === EMPTY_TREE_REF) return "";
-  const run = (args: string[]) => runGit(args, repoRoot, { signal: options.signal });
+  // show :0:path도 index를 열면서 builtin 감시자에 연결할 수 있다. blob 내용은 감시자와 무관하다.
+  // 저장소/전역 설정은 쓰지 않고 누락 확인용 ls-files에도 같은 명령 범위 정책을 적용한다.
+  const globals = ref === ":0" ? ["-c", "core.fsmonitor=false"] : [];
+  const run = (args: string[]) => runGit([...globals, ...args], repoRoot, { signal: options.signal });
   try {
     const spec = ref === ":0" ? `:0:${rel}` : `${ref}:${rel}`;
     return await runGit(
-      ["show", spec],
+      [...globals, "show", spec],
       repoRoot,
       { signal: options.signal, ...(options.maxBytes === undefined ? {} : { maxBuffer: options.maxBytes }) }
     );

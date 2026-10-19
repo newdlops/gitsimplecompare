@@ -45,3 +45,12 @@ export function beginDiffOpen(fileUri: vscode.Uri): () => void {
 export function isAnyDiffOpenInProgress(): boolean {
   return openFiles.size > 0;
 }
+
+/**
+ * 한 diff의 준비/부착 지연이 다른 editor group의 Hunk를 숨기지 않게 대상별 gate를 조회한다.
+ * @param uri diff 오른쪽 문서의 정확한 URI. 실제 파일과 :unstaged/:0 가상 문서를 구분한다.
+ * @returns 이 문서의 열기 작업이나 후속 부착 지연이 남아 있으면 true
+ */
+export function isDiffOpenInProgress(uri: vscode.Uri): boolean {
+  return openFiles.has(uri.toString());
+}

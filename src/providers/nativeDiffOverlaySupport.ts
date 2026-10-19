@@ -26,6 +26,7 @@ export function snapshotSignature(snapshots: HunkOverlaySnapshot[]): string {
       originalUri: snapshot.originalUri,
       action: snapshot.action,
       revision: snapshot.revision,
+      pending: snapshot.pending === true,
       lines: snapshot.lines.map((line) => [
         line.side,
         line.line,

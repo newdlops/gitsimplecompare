@@ -350,6 +350,21 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
 - 성공 toast는 짧게 알리되 결과를 확인할 위치와 undo가 가능한 경우 undo를 함께
   제공한다.
 
+## Changes file diff and Hunk readiness
+
+- Clicking a Staged file opens HEAD versus index; an Unstaged file opens HEAD
+  versus the working content with staged changes removed. Read failures remain
+  errors and must not turn into empty successful documents.
+- Stage-zero blob reads do not require working-tree filesystem monitoring.
+  Bypass it only for those commands, including missing-path checks; leave Git
+  configuration, index and working files unchanged.
+- A pending diff defers its own Hunk controls. Other ready groups retain theirs.
+  Keep a control-free pending snapshot in editor group order so checkbox actions
+  cannot migrate to another file. Ambiguous group counts must not guess a target.
+- Acceptance: Staged/Unstaged contents and correct line IDs after a Changes click;
+  blocked-monitor reads, same-file overlapping opens, ready and pending groups,
+  mouse/keyboard file selection and checkbox clicks at narrow and wide widths.
+
 ## Native Blame Commit Hover
 
 ### Annotation navigation and line history

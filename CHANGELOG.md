@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.72109] - 2026-10-19
+
+### Fixed
+
+- Restore Changes file diffs and Hunk controls when Git's filesystem monitor is
+  unresponsive. Read stage-zero blob contents and missing-path checks with a
+  command-scoped monitor bypass, preserving repository settings, index and files.
+- Scope diff-open waits to the affected document so another ready editor group's
+  Hunk controls can appear. Keep pending groups in snapshot order without drawing
+  controls, and avoid guessing a file target when visible diff groups are ambiguous.
+- Cover Staged/Unstaged clicks through actual Git content and Hunk generation,
+  blocked monitors, overlapping opens and multiple editor groups. Verify Changes
+  requests and native checkbox placement at 390, 768 and 1440 pixels.
+
 ## [0.1.72108] - 2026-10-19
 
 ### Performance

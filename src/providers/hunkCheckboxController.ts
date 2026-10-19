@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { ScopedGitReadCache } from "../git/scopedGitReadCache";
-import { registerHunkCacheEvents, skipInvalidatedHunkSnapshot } from "./hunkCacheEvents";
+import { registerHunkCacheEvents } from "./hunkCacheEvents";
 import { DiffFile, DiffHunkService, HunkSelection } from "../git/diffHunkService";
 import { buildWorkingContentWithoutStagedView } from "../git/unstagedView";
 import { GitServiceRegistry } from "../git/serviceRegistry";
@@ -13,7 +13,7 @@ import { activeHunkDiffTarget, activeHunkWorkingModifiedUri, refreshHunkDiffDocu
 import { CheckboxLine, CheckboxSide, checkboxLineSides, checkboxLines } from "./hunkCheckboxLines";
 import { activeTargetForModifiedUri, resolveFileTarget, targetToFileTarget, visibleHunkTargets } from "./hunkCheckboxTargets";
 import { checkboxLinesForDisplayedDiff, lineIdsForVisibleChange } from "./hunkVisibleLineMap";
-import { isAnyDiffOpenInProgress } from "./diffOpenGate";
+import { readHunkOverlaySnapshots } from "./hunkOverlaySnapshots";
 
 export type HunkControlMode = "nativeOverlay" | "command";
 type CheckedLineAction = "stage" | "unstage";
@@ -33,6 +33,8 @@ export interface HunkOverlaySnapshot {
   action: CheckedLineAction;
   revision: number;
   lines: HunkOverlayLine[];
+  /** 다른 group의 DOM 순서를 유지하는 자리표시자. 준비 중인 문서에는 제어를 그리지 않는다. */
+  pending?: boolean;
 }
 
 interface HunkFileContext {
@@ -155,14 +157,7 @@ export class HunkCheckboxController {
    * @returns editor group 별 active hunk diff 에 대응하는 snapshot 목록
    */
   async overlaySnapshots(): Promise<HunkOverlaySnapshot[]> {
-    if (isAnyDiffOpenInProgress()) {
-      return [];
-    }
-    const targets = visibleHunkTargets();
-    const snapshots = await Promise.all(
-      targets.map(target => skipInvalidatedHunkSnapshot(target.relPath, () => this.snapshotForTarget(target)))
-    );
-    return snapshots.filter((item): item is HunkOverlaySnapshot => !!item);
+    return readHunkOverlaySnapshots(visibleHunkTargets(), this.revision, target => this.snapshotForTarget(target));
   }
 
   /**
