@@ -388,6 +388,12 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
   nested repository boundaries validate. Tab changes, edits, focus loss and
   disabling CodeLens release preload work; unchanged focus/refresh events do
   not force another language-symbol query. Preserve the single-column layout.
+- Prepare native editor references when supported source blocks become ready.
+  Preparation must not add rows or change editor options. Opaque listeners can
+  use a bounded one-time observer during a normal cached Code Vision refresh;
+  preserve original method behavior and restore descriptors on capture/cancel/timeout.
+  Retain exact URI/visibility checks, weak references, owned bridge cleanup and
+  the existing discovery fallback. Do not weaken data freshness to make clicks faster.
 - Line History opens a cancellable native picker for the selected saved line.
   The immutable blamed revision, original filename and original line anchor the
   history. Show bounded pages on demand, with author/date/hash and a readable

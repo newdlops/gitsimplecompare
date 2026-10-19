@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72110] - 2026-10-20
+
+### Performance
+
+- Prepare the native editor connection and reference while Block Author is loading.
+  For opaque listeners, capture the editor during a normal Code Vision refresh
+  without a full heap query. Preserve method receivers, arguments, results and
+  errors; restore temporary observers on capture, cancellation or their short deadline.
+- Keep preparation invisible: no gutter rows or width changes until a Block Author
+  click. Reuse validated Code Vision data and the editor service across tabs;
+  retain metadata checks, the 60-second age limit and the compatible discovery fallback.
+- Remove the inspector's unconditional 500ms wait and validate the host's main PID
+  before scanning the full process table. Distinguish Helper processes and separate
+  profiles, including Development Hosts whose first argument is a workspace path.
+- Add an isolated real VS Code smoke for first paint, single-column toggling,
+  width restoration and one Git blame read per file, plus Chromium observer
+  lifecycle and method-preservation coverage.
+
 ## [0.1.72109] - 2026-10-19
 
 ### Fixed

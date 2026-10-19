@@ -16,10 +16,19 @@ interface ProcessRow {
 export async function findCurrentVSCodeMainPid(
   globalStorageFsPath: string
 ): Promise<number | undefined> {
+  const userDataDir = deriveVscodeUserDataDir(globalStorageFsPath);
+  const envPid = Number(process.env.VSCODE_PID || "");
+  // 확장 호스트가 알려 준 main을 먼저 검증하면 긴 전체 ps 목록을 읽거나 다른 창의 조상을 고를 필요가 없다.
+  if (Number.isSafeInteger(envPid) && envPid > 0) {
+    const hinted = (await listProcessRows(envPid)).find(row => row.pid === envPid);
+    if (hinted && isVSCodeMainProcess(hinted.command)
+      && (!userDataDir || !/--user-data-dir(?:=|\s)/.test(hinted.command) || commandHasUserDataDir(hinted.command, userDataDir))) {
+      return envPid;
+    }
+  }
   const rows = await listProcessRows();
   const byPid = new Map(rows.map((row) => [row.pid, row]));
   const mainRows = rows.filter((row) => isVSCodeMainProcess(row.command));
-  const userDataDir = deriveVscodeUserDataDir(globalStorageFsPath);
   if (userDataDir) {
     const hinted = mainRows.filter((row) =>
       commandHasUserDataDir(row.command, userDataDir)
@@ -32,14 +41,13 @@ export async function findCurrentVSCodeMainPid(
     seen.add(pid);
     const row = byPid.get(pid);
     if (!row) break;
-    if (isVSCodeMainProcess(row.command)) return row.pid;
+    if (isVSCodeMainProcess(row.command)
+      && (!userDataDir || !/--user-data-dir(?:=|\s)/.test(row.command) || commandHasUserDataDir(row.command, userDataDir))) return row.pid;
     pid = row.ppid;
   }
-  const envPid = Number(process.env.VSCODE_PID || "");
-  if (envPid && isVSCodeMainProcess(byPid.get(envPid)?.command ?? "")) {
-    return envPid;
-  }
-  return mainRows.length === 1 ? mainRows[0].pid : undefined;
+  // 소유 관계가 확인되지 않은 단일 프로세스도 다른 profile이면 사용하지 않는다.
+  return mainRows.length === 1 && (!userDataDir || commandHasUserDataDir(mainRows[0].command, userDataDir))
+    ? mainRows[0].pid : undefined;
 }
 
 /** SIGUSR1로 main process inspector를 켠다. */
@@ -57,12 +65,20 @@ export function armInspector(pid: number): void {
 /** main process pid와 일치하는 inspector WebSocket URL을 찾는다. */
 export async function findInspectorWebSocketUrlForPid(
   pid: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  ports: readonly number[] = Array.from({ length: 21 }, (_, index) => 9229 + index)
 ): Promise<string | undefined> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (!await sleep(attempt === 0 ? 500 : 350 * attempt, signal)) return undefined;
+  const delays = [0, 40, 120, 300, 700, 1400];
+  for (const delay of delays) {
+    if (signal?.aborted || (delay > 0 && !await sleep(delay, signal))) return undefined;
+    // 이미 열린 기본 포트는 다른 포트의 timeout이나 고정 500ms 대기를 기다리지 않고 사용한다.
+    const preferred = ports.length ? await inspectorUrlsForPort(ports[0], signal) : [];
+    for (const url of preferred) {
+      if (signal?.aborted) return undefined;
+      try { if (await probeProcessPid(url, signal) === pid) return url; } catch { /* 나머지 포트를 검사한다. */ }
+    }
     const targetGroups = await Promise.all(
-      Array.from({ length: 21 }, (_, index) => 9229 + index)
+      ports.slice(1)
         .map((port) => inspectorUrlsForPort(port, signal))
     );
     if (signal?.aborted) return undefined;
@@ -82,11 +98,11 @@ export async function findInspectorWebSocketUrlForPid(
   return undefined;
 }
 
-/** `ps`로 프로세스 테이블을 읽는다. */
-async function listProcessRows(): Promise<ProcessRow[]> {
+/** 특정 PID 또는 전체 테이블을 읽되 긴 profile 인자가 잘려 다른 창을 선택하지 않도록 폭 제한을 해제한다. */
+async function listProcessRows(pid?: number): Promise<ProcessRow[]> {
   try {
     const out = await new Promise<string>((resolve, reject) => {
-      execFile("ps", ["-Ao", "pid=,ppid=,command="], {
+      execFile("ps", pid ? ["-ww", "-p", String(pid), "-o", "pid=,ppid=,command="] : ["-Aww", "-o", "pid=,ppid=,command="], {
         encoding: "utf8",
       }, (error, stdout) => {
         if (error) reject(error);
@@ -109,18 +125,15 @@ async function listProcessRows(): Promise<ProcessRow[]> {
 
 /** VS Code/Electron main process 명령인지 판별한다. */
 function isVSCodeMainProcess(command: string): boolean {
-  return /\/Contents\/MacOS\/(?:Code|Code - Insiders|Code - OSS|Electron)(?:\s+--|$)/.test(command);
+  const match = /\/Contents\/MacOS\/(?:Code(?: - Insiders| - OSS)?|Electron)(.*)$/.exec(command);
+  // Development Host는 옵션보다 workspace 경로를 먼저 전달한다. Helper 실행 파일은 main으로 받지 않는다.
+  return Boolean(match && /^"?(?:\s|$)/.test(match[1]) && !/^ Helper(?:\s|\(|$)/.test(match[1]));
 }
 
 /** main process command line이 같은 user-data-dir을 가리키는지 확인한다. */
 function commandHasUserDataDir(command: string, userDataDir: string): boolean {
-  return (
-    command.includes(`--user-data-dir=${userDataDir}`) ||
-    command.includes(`--user-data-dir ${userDataDir}`) ||
-    command.includes(`--user-data-dir="${userDataDir}"`) ||
-    command.includes(`--user-data-dir "${userDataDir}"`) ||
-    command.includes(`--user-data-dir='${userDataDir}'`)
-  );
+  const escaped = userDataDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`--user-data-dir(?:=|\\s+)(?:"${escaped}"|'${escaped}'|${escaped}(?=\\s|$))`).test(command);
 }
 
 /** 한 포트의 inspector target 목록에서 WebSocket URL만 안전하게 추출한다. */

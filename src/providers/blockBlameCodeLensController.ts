@@ -52,6 +52,8 @@ export class BlockBlameCodeLensController
 {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeCodeLenses = this.changeEmitter.event;
+  private readonly preparationEmitter = new vscode.EventEmitter<vscode.TextDocument>();
+  readonly onDidPrepareSourceBlocks = this.preparationEmitter.event;
 
   private readonly disposables: vscode.Disposable[] = [];
   private readonly cache = new Map<string, CachedSnapshot>();
@@ -70,6 +72,15 @@ export class BlockBlameCodeLensController
    * @param registry 확장 전체가 공유하는 저장소/GitService 레지스트리
    */
   constructor(private readonly registry: GitServiceRegistry) {}
+
+  /**
+   * native 사전 준비가 설치한 일회성 관찰을 정상 CodeLens 갱신으로 완료한다. Git/심볼 캐시는 무효화하지 않는다.
+   * @param document 준비를 시작한 현재 활성 저장 문서. 전환/편집/비활성 창에서는 요청하지 않는다.
+   */
+  refreshPreparedEditor(document: vscode.TextDocument): void {
+    if (!this.disposed && this.visible && vscode.window.state.focused && !document.isDirty
+      && vscode.window.activeTextEditor?.document === document) this.changeEmitter.fire();
+  }
 
   /**
    * file 문서용 CodeLensProvider와 캐시 무효화 이벤트를 등록한다.
@@ -270,6 +281,7 @@ export class BlockBlameCodeLensController
       disposable.dispose();
     }
     this.changeEmitter.dispose();
+    this.preparationEmitter.dispose();
   }
 
   /**
@@ -334,7 +346,13 @@ export class BlockBlameCodeLensController
     document: vscode.TextDocument,
     signal: AbortSignal
   ): Promise<BlockBlameSnapshot> {
-    const snapshot = await loadBlockBlameSnapshot(document, this.registry, this.sources, signal);
+    const version = document.version;
+    const snapshot = await loadBlockBlameSnapshot(document, this.registry, this.sources, signal, () => {
+      if (!signal.aborted && !this.disposed && this.visible && vscode.window.state.focused && !document.isDirty
+        && document.version === version && vscode.window.activeTextEditor?.document.uri.toString() === document.uri.toString()) {
+        this.preparationEmitter.fire(document);
+      }
+    });
     signal.throwIfAborted();
     if (snapshot.skipReason) {
       this.logSkip(document, snapshot.skipReason);

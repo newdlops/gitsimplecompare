@@ -56,10 +56,19 @@ and blame. Inactive snapshots are bounded to eight documents and approximately
 Prepared results retain the existing 60-second maximum age as well as metadata
 validation; unknown identity boundaries always use the normal Git path.
 
-Cold gutter discovery first checks objects already referenced by the editor's
-event listeners. Only a visible editor with the exact requested file URI can be
-bound. When those references are opaque, constructor/heap discovery remains
-available. Subsequent opens reuse the discovered editor service.
+Once real source blocks are confirmed, native preparation shares the existing
+overlay connection and discovers the focused file's editor before the click.
+Preparation creates no gutter nodes and changes no editor options. The host's
+main PID is validated first; an already open inspector has no fixed 500ms wait.
+
+Opaque listeners use a one-time observer of normal Monaco model/DOM/layout
+reads during a Code Vision refresh. The refresh retains the existing data and
+symbol caches. Only a visible editor with the exact requested URI is retained,
+using weak editor/service references. Original method descriptors, receivers,
+arguments, results and exceptions are preserved. Capture, cancellation or an
+800ms timer restores the temporary methods. A compatible constructor/heap path
+remains available when observation cannot capture an editor. Subsequent tabs
+reuse the discovered editor service.
 
 Large porcelain output is read one record at a time, sharing commit metadata
 while keeping each result's content, original line and filename independent.
@@ -70,7 +79,9 @@ contribute to the first Code Vision load.
 Output reports `repositoryMs`, `symbolsMs`, `lookupMs`, `blameMs`, `summaryMs`,
 `resolveMs`, `snapshotMs`, gutter `source` (`prepared-code-vision` or `git`) and native
 `discoverySource`, `discoveryCalls`, `heapQueries`, `discoveryMs` to distinguish
-those costs. No Git settings or blame cache freshness rules are weakened.
+those costs. `native blame editor prepared before click` also reports `connectMs`
+and total preparation duration; `method-observer` identifies capture without
+a heap query. No Git settings or blame cache freshness rules are weakened.
 Repository/symbol/blame stages can overlap, so their durations need not add up
 to `durationMs`. A prepared gutter still performs metadata validation and editor
 rendering; it does not claim zero end-to-end latency.
@@ -81,6 +92,24 @@ and blame (300 ms) completion to verify a 1,500 ms serial dependency becomes
 gutter toggles add no discovery or blame calls and that file, HEAD, index,
 configuration, language, document and nested-repository changes reject stale
 results. These are regression checks, not timings from a user's VS Code window.
+
+`npm run test:extension -- --blame` opens a separate VS Code profile and temporary
+Git repository. It runs the real Block Author command immediately after the hint
+is returned and again after preparation in another file, then checks actual
+renderer rows, a single column, toggle/width cleanup, the owning main PID and
+one Git blame read per file. Timings and screenshots are saved under
+`test-results/native-blame`; focus interruptions are recorded separately.
+
+A local 0.1.72110 run with a committed 103-line TypeScript fixture recorded:
+
+| Command to first nonempty native paint | Time | Heap queries | Git blame reads |
+| --- | ---: | ---: | ---: |
+| First Block Author command in a fresh profile | 30 ms | 0 | 1 |
+| Next file after native preparation | 16 ms | 0 | 1 |
+
+Both clicks had no focus interruption, retained one gutter and restored the
+original editor methods and width. These timings cover command-to-paint;
+VS Code startup, symbol lookup and pre-click preparation are recorded separately.
 
 For a reproducible CPU comparison with 0.1.72106, run:
 

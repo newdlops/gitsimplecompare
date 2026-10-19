@@ -190,10 +190,12 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(prCommentDecorations.register());
   const nativeDiffOverlay = new NativeDiffOverlayController(
     context.globalStorageUri, context.workspaceState,
-    hunkCheckboxes, conflictOverlay, conflictActions, blockBlamePresenter
+    hunkCheckboxes, conflictOverlay, conflictActions, blockBlamePresenter,
+    document => blockBlameCodeLens.refreshPreparedEditor(document)
   );
   activeNativeDiffOverlay = nativeDiffOverlay;
   context.subscriptions.push(nativeDiffOverlay.register());
+  context.subscriptions.push(blockBlameCodeLens.onDidPrepareSourceBlocks(document => nativeDiffOverlay.prepareBlameEditor(document)));
   const repositorySkipLog = new RepositoryRefreshSkipFence();
   /** 뷰·비교·hunk editor가 읽는 저장소 root를 metadata event 필터에 전달한다. */
   const relevantRepositoryRoots = (): (string | undefined)[] => [

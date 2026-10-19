@@ -72,6 +72,8 @@ test("real compact blame matches line porcelain after edits, renames and working
   git(["-c", "init.templateDir=", "init", "--initial-branch=main"]);
   git(["config", "user.name", "Blame Fixture"]);
   git(["config", "user.email", "blame@example.invalid"]);
+  // 서비스 호출도 개인 fsmonitor daemon을 상속하지 않도록 임시 저장소에만 격리 설정을 둔다.
+  git(["config", "core.fsmonitor", "false"]);
   await writeFile(path.join(root, "original.ts"), Array.from({ length: 2000 }, (_, i) => `line ${i}`).join("\n") + "\n");
   git(["add", "original.ts"]); git(["commit", "-m", "first file"]);
   git(["mv", "original.ts", "renamed.ts"]);

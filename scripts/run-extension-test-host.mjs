@@ -1,7 +1,7 @@
 // 별도 process group 안에서 VS Code Extension Development Host smoke를 실행하는 내부 진입점.
 // - 상위 runner가 timeout/interrupt 때 이 process group 전체를 종료하므로 여기서는 test-electron 결과만 전달한다.
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +11,7 @@ import { runTests } from "@vscode/test-electron";
 const workspaceRoot = process.cwd();
 const pushSmoke = process.env.GSC_EXTENSION_TEST_KIND === "pushSmoke";
 const onboardingSmoke = process.env.GSC_EXTENSION_TEST_KIND === "repositoryOnboardingSmoke";
+const blameSmoke = process.env.GSC_EXTENSION_TEST_KIND === "blameGutterSmoke";
 const extensionTestsPath = path.join(workspaceRoot, "out-test-extension", `${process.env.GSC_EXTENSION_TEST_KIND || "extensionSmoke"}.js`);
 
 /** 현재 platform에 이미 설치된 VS Code executable을 우선 찾아 불필요한 download를 막는다. */
@@ -30,7 +31,9 @@ function installedVscodeExecutable() {
  * @returns 정리 대상 디렉터리·fixture root·빈 창 또는 단일/다중 workspace 진입 경로
  */
 async function createWorkspaceFixture() {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-extension-smoke-"));
+  // macOS의 긴 /var/folders 경로는 실제 경로 보정 후 Unix socket의 103자 제한을 넘을 수 있다.
+  const temporaryRoot = process.platform === "darwin" ? "/private/tmp" : os.tmpdir();
+  const directory = await realpath(await mkdtemp(path.join(temporaryRoot, "gsc-extension-smoke-")));
   const repoRoot = path.join(directory, "workspace");
   await mkdir(repoRoot);
   await mkdir(path.join(repoRoot, ".vscode"));
@@ -42,6 +45,7 @@ async function createWorkspaceFixture() {
   await writeFile(path.join(userSettings, "settings.json"), JSON.stringify({
     "git.enabled": onboardingSmoke && process.env.GSC_ONBOARDING_EMPTY_WINDOW ? nativeEnabled : !nativeEnabled,
     "git.autorefresh": true, "git.autofetch": false,
+    ...(blameSmoke ? { "chat.disableAIFeatures": true } : {}),
   }));
   if (process.env.GSC_ONBOARDING_EMPTY_WINDOW) return { directory, repoRoot };
   if (process.env.GSC_GIT_STARTUP_UI_CAPTURE) return { directory, repoRoot, launchPath: repoRoot };
@@ -76,12 +80,17 @@ async function main() {
   let passed = false;
   try {
     const options = {
-      extensionDevelopmentPath: workspaceRoot,
+      extensionDevelopmentPath: process.env.GSC_EXTENSION_UNDER_TEST || workspaceRoot,
       extensionTestsPath,
       ...(vscodeExecutablePath ? { vscodeExecutablePath } : { version: "1.85.0" }),
       extensionTestsEnv: {
         GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot,
         GSC_EXTENSION_TEST_PROFILE: path.join(fixture.directory, "profile"),
+        ...(blameSmoke ? {
+          GSC_BLAME_RESULT_DIR: process.env.GSC_BLAME_RESULT_DIR || path.join(workspaceRoot, "test-results", "native-blame"),
+          GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239",
+          GSC_BLAME_BASELINE: process.env.GSC_BLAME_BASELINE || "",
+        } : {}),
         ...(onboardingSmoke ? {
           GSC_ONBOARDING_EMPTY_WINDOW: process.env.GSC_ONBOARDING_EMPTY_WINDOW ?? "",
           GSC_ONBOARDING_PUBLIC_CLONE: process.env.GSC_ONBOARDING_PUBLIC_CLONE ?? "",
@@ -91,10 +100,12 @@ async function main() {
         ...(process.env.GSC_GIT_STARTUP_UI_CAPTURE ? { GSC_GIT_STARTUP_UI_CAPTURE: process.env.GSC_GIT_STARTUP_UI_CAPTURE } : {}),
       },
       launchArgs: [
-        ...(fixture.launchPath ? [fixture.launchPath] : []), "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
+        "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
         `--user-data-dir=${path.join(fixture.directory, "profile")}`,
         `--extensions-dir=${path.join(fixture.directory, "extensions")}`,
+        ...(blameSmoke ? [`--inspect=127.0.0.1:${process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239"}`, "--new-window"] : []),
         ...(process.env.GSC_TEST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.GSC_TEST_DEBUG_PORT}`] : []),
+        ...(fixture.launchPath ? [fixture.launchPath] : []),
       ],
     };
     const code = await runTests(options);

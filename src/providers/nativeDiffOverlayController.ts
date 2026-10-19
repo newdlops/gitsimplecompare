@@ -35,6 +35,7 @@ import {
   nativeBlameOverlayRendererScript,
 } from "./nativeBlameOverlayPatch";
 import type { BlameHoverResponse } from "./blameHoverProtocol";
+import { NativeBlamePreparation } from "./nativeBlamePreparation";
 
 /** workbench renderer overlay 의 주입/갱신/클릭 bridge 를 관리한다. */
 export class NativeDiffOverlayController {
@@ -50,6 +51,8 @@ export class NativeDiffOverlayController {
   private diffSurfaceMayExist = false;
   private conflictSurfaceMayExist = false;
   private blameSurfaceMayExist = false;
+  private rendererBridgeMayExist = false;
+  private readonly blamePreparation: NativeBlamePreparation;
   private readonly persistedSurfaces: NativeDiffOverlaySurfaceState;
   private surfaceRetryCount = 0;
   private lastRenderSignature = "";
@@ -62,7 +65,8 @@ export class NativeDiffOverlayController {
     private readonly hunkCheckboxes: HunkCheckboxController,
     private readonly conflictOverlay?: ConflictEditorOverlayController,
     conflictActions?: ConflictOverlayActionHandler,
-    private readonly blockBlame?: BlockBlamePresenter
+    private readonly blockBlame?: BlockBlamePresenter,
+    refreshBlameCodeVision?: (document: vscode.TextDocument) => void
   ) {
     this.rendererEvents = new NativeDiffOverlayEvents(hunkCheckboxes, conflictActions, blockBlame);
     this.connection = new NativeOverlayConnection(
@@ -70,12 +74,21 @@ export class NativeDiffOverlayController {
       (payload) => this.rendererEvents.handle(payload)
     );
     this.persistedSurfaces = new NativeDiffOverlaySurfaceState(surfaceState);
+    this.blamePreparation = new NativeBlamePreparation(this.connection, () => this.hints(), () => {
+      this.rendererBridgeMayExist = true;
+      void this.persistedSurfaces.persist(true);
+    }, result => this.captureTargetWindow(result), refreshBlameCodeVision);
     if (this.persistedSurfaces.needsRecovery()) {
       this.rendererSurfaceStateKnown = true;
       this.diffSurfaceMayExist = true;
       this.conflictSurfaceMayExist = true;
       this.blameSurfaceMayExist = true;
     }
+  }
+
+  /** Code Vision이 확인한 활성 문서의 네이티브 편집기 참조를 표시 없이 선행 준비한다. */
+  prepareBlameEditor(document: vscode.TextDocument): void {
+    if (!this.disposed && this.blamePreparation.request(document)) this.scheduleRender("prepareBlockBlame", 0);
   }
   /** overlay 갱신에 필요한 VS Code 이벤트를 등록한다. */
   register(): vscode.Disposable {
@@ -168,6 +181,9 @@ export class NativeDiffOverlayController {
     if (this.disposed || !vscode.window.state.focused) {
       return;
     }
+    if (this.blockBlame?.gutterSnapshot()) this.blamePreparation.clearPending();
+    else await this.blamePreparation.runPending();
+    if (this.disposed || !vscode.window.state.focused) return;
     const hunkEnabled = this.hunkCheckboxes.mode() === "nativeOverlay";
     if (!hunkEnabled) {
       this.hunkCheckboxes.setNativeOverlayAvailable(false);
@@ -302,6 +318,7 @@ export class NativeDiffOverlayController {
           this.captureTargetWindow(result);
           if (this.disposed) return;
           this.blameSurfaceMayExist = true;
+          this.blamePreparation.remember(blameSnapshot.uri);
           logInfo("native blame gutter rendered", {
             reason,
             uri: blameSnapshot.uri,
@@ -365,7 +382,7 @@ export class NativeDiffOverlayController {
     if (
       !this.diffSurfaceMayExist &&
       !this.conflictSurfaceMayExist &&
-      !this.blameSurfaceMayExist
+      !this.blameSurfaceMayExist && !this.rendererBridgeMayExist
     ) return true;
     if (!this.connection.isOpen() && !connectIfNeeded) {
       return false;
@@ -398,6 +415,7 @@ export class NativeDiffOverlayController {
         2500
       );
       released = !/release-err:/.test(String(result ?? ""));
+      if (released) this.rendererBridgeMayExist = false;
       logInfo("native overlay debugger bridge released", { reason, result: String(result ?? "") });
     } catch (error) {
       logWarn("native overlay debugger bridge release failed", {
@@ -449,6 +467,7 @@ export class NativeDiffOverlayController {
   async shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise;
     this.disposed = true;
+    this.blamePreparation.clearPending();
     this.connection.beginShutdown();
     if (this.renderTimer) {
       clearTimeout(this.renderTimer);

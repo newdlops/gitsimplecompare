@@ -22,10 +22,12 @@ export interface BlockBlameSnapshot {
  * 저장소가 확인되면 느린 언어 서버를 기다리는 동안 blame을 미리 읽는다.
  * @param document 저장된 문서, registry 공유 저장소 탐색기, sources 문서별 심볼 캐시
  * @param signal snapshot의 마지막 소비자가 떠났을 때 전체 대기를 중단하는 신호
+ * @param onSourceReady 표시 가능한 심볼이 확인되면 Git 완료 전에 native 편집기 준비를 시작할 선택 callback
  * @returns 실제 Git 정보만으로 만든 요약. 빠른 빈 심볼 응답에는 Git을 실행하지 않는다.
  */
 export async function loadBlockBlameSnapshot(
-  document: vscode.TextDocument, registry: GitServiceRegistry, sources: BlockBlameSourceCache, signal: AbortSignal
+  document: vscode.TextDocument, registry: GitServiceRegistry, sources: BlockBlameSourceCache, signal: AbortSignal,
+  onSourceReady?: () => void
 ): Promise<BlockBlameSnapshot> {
   signal.throwIfAborted();
   const startedAt = Date.now(), version = document.version;
@@ -59,6 +61,7 @@ export async function loadBlockBlameSnapshot(
     const blocks = quick ?? await blocksTask;
     controller.signal.throwIfAborted();
     if (!blocks.length) return { documentVersion: version, summaries: [], skipReason: "no-supported-symbols" };
+    onSourceReady?.();
     const blame = await blameTask;
     controller.signal.throwIfAborted();
     const summaryStartedAt = Date.now(), selected = blocks.slice(0, 400);

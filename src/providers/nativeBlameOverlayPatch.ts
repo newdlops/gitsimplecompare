@@ -3,6 +3,7 @@
 // - renderer는 Monaco의 lineDecorationsWidth를 늘린 뒤 margin row와 같은 top에 label을 배치한다.
 import type { BlockBlameGutterSnapshot } from "../ui/blockBlameGutter";
 import type { BlameHoverResponse } from "./blameHoverProtocol";
+import { nativeBlameEditorCaptureFunction } from "./nativeBlameEditorCapture";
 import {
   mainEvalExpression,
   rendererEvalExpression,
@@ -80,14 +81,29 @@ const BIND_EDITOR_FUNCTION = `function (uri) {
  * @returns 보이고 URI가 맞는 editor만 바인딩하며, 찾지 못하면 기존 heap 탐색으로 넘길 상태
  */
 const BIND_EDITOR_OWNERS_FUNCTION = `function (uri) {
-  var items = [];
+  var items = [], queue = [], seen = new Set();
   for (var index = 1; index < arguments.length; index++) {
-    var owner = arguments[index];
-    if (!owner) continue;
+    if (arguments[index]) queue.push({value:arguments[index],depth:0});
+  }
+  var links = ['_editor','_codeEditor','_codeEditorService','_context','_view','_viewController','_controller',
+    '_instantiationService','_parent','_services','_entries','_viewModel','viewModel'];
+  for (var next = 0; next < queue.length && next < 256; next++) {
+    var current = queue[next], owner = current.value;
+    if (!owner || (typeof owner !== 'object' && typeof owner !== 'function') || seen.has(owner)) continue;
+    seen.add(owner); items.push(owner);
     try {
-      items.push(owner, owner._editor, owner._codeEditor);
-      var service = typeof owner.listCodeEditors === 'function' ? owner : owner._codeEditorService;
-      if (service && typeof service.listCodeEditors === 'function') items = items.concat(service.listCodeEditors());
+      if (typeof owner.listCodeEditors === 'function') items = items.concat(owner.listCodeEditors());
+      if (current.depth >= 6) continue;
+      for (var link = 0; link < links.length && queue.length < 256; link++) {
+        var descriptor = Object.getOwnPropertyDescriptor(owner, links[link]);
+        if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') && descriptor.value) {
+          queue.push({value:descriptor.value,depth:current.depth+1});
+        }
+      }
+      if (owner instanceof Map) {
+        var values = Map.prototype.values.call(owner), value;
+        while (queue.length < 256 && !(value = values.next()).done) queue.push({value:value.value,depth:current.depth+1});
+      }
     } catch (_) {}
   }
   return (${BIND_EDITOR_FUNCTION}).call(items, uri);
@@ -105,7 +121,34 @@ export function blameOverlayInjectionExpression(
   snapshot: BlockBlameGutterSnapshot,
   hints: NativeOverlayWorkspaceHints
 ): string {
-  const rendererEval = rendererEvalExpression(rendererScript);
+  return blameOverlayExpression(rendererScript, snapshot, hints);
+}
+
+/**
+ * Code Vision이 준비되는 동안 편집기 참조만 미리 찾는다. 거터 DOM과 editor 옵션은 변경하지 않는다.
+ * @param uri 정확한 대상 파일 URI, hints 현재 확장 창의 workspace 식별 정보
+ * @returns 실제 클릭이 재사용할 편집기/service 약한 참조를 준비하는 main expression
+ */
+export function blameOverlayPreparationExpression(uri: string, hints: NativeOverlayWorkspaceHints): string {
+  return blameOverlayExpression(undefined, { uri }, hints);
+}
+
+/**
+ * Code Vision 갱신에서 관찰한 editor를 확인하고 임시 상태와 가능한 강한 editor 참조를 해제한다.
+ * @param uri 준비를 요청한 정확한 모델 URI, hints 준비 당시 선택한 workbench 창
+ * @returns capture 완료를 기다린 뒤 URI/가시성 검증 결과를 돌려주는 main expression
+ */
+export function blameOverlayPreparationCompletionExpression(uri: string, hints: NativeOverlayWorkspaceHints): string {
+  const expression = `(async function(uri){var state=window.__gscNativeBlameEditorCapture;if(state&&state.uri===uri){await state.ready;if(window.__gscNativeBlameEditorCapture===state)delete window.__gscNativeBlameEditorCapture;}var editor=window.__gscNativeBlameEditor||(window.__gscNativeBlameEditorRef&&window.__gscNativeBlameEditorRef.deref());var bound=(${BIND_EDITOR_FUNCTION}).call([editor],uri);if(!/^editor-bound:/.test(bound))return 'blame-editor-not-observed';if(window.__gscNativeBlameEditorRef)delete window.__gscNativeBlameEditor;return 'blame-editor-prepared,'+bound;})(${JSON.stringify(uri)})`;
+  return mainEvalExpression(RENDERER_BINDING, hints, `var out=[];for(var i=0;i<wins.length;i++)out.push(await evalWindow(wins[i],${JSON.stringify(expression)}));return out.join('|');`);
+}
+
+/** 표시 요청과 선행 준비가 같은 URI 검증·탐색·임시 객체 해제를 공유하도록 expression을 조립한다. */
+function blameOverlayExpression(
+  rendererScript: string | undefined, snapshot: Pick<BlockBlameGutterSnapshot, "uri">, hints: NativeOverlayWorkspaceHints
+): string {
+  const preparationOnly = rendererScript === undefined;
+  const rendererEval = preparationOnly ? "" : rendererEvalExpression(rendererScript);
   const snapshotJson = JSON.stringify(snapshot);
   return mainEvalExpression(
     RENDERER_BINDING,
@@ -113,6 +156,7 @@ export function blameOverlayInjectionExpression(
     `
       var rendererEval = ${JSON.stringify(rendererEval)};
       var snapshot = ${snapshotJson};
+      var preparationOnly = ${preparationOnly};
       var installExpr = '(window.__gscNativeBlameOverlay&&window.__gscNativeBlameOverlay.version===' + ${PATCH_VERSION} + ') ? "gsc-native-blame-installed:${PATCH_VERSION}:cached" : ' + rendererEval;
       var discoveryStats;
 
@@ -160,6 +204,17 @@ export function blameOverlayInjectionExpression(
       }
       async function bindFromPrototype(debuggerApi, prototypeObjectId) {
         if (!prototypeObjectId) return 'editor-prototype-missing';
+        if (preparationOnly) {
+          discoveryStats.calls++;
+          var observed = await debuggerApi.sendCommand('Runtime.callFunctionOn', {
+            objectId: prototypeObjectId,
+            functionDeclaration: ${JSON.stringify(nativeBlameEditorCaptureFunction(BIND_EDITOR_FUNCTION))},
+            arguments: [{value:snapshot.uri}], returnByValue:true,
+            objectGroup: ${JSON.stringify(REMOTE_OBJECT_GROUP)}
+          });
+          var observation = String(resultValue(observed) || 'editor-observer-empty');
+          if (/^editor-observing:/.test(observation)) { discoveryStats.source = 'method-observer'; return observation; }
+        }
         discoveryStats.calls++; discoveryStats.heapQueries++; discoveryStats.source = 'heap';
         var queried = await debuggerApi.sendCommand('Runtime.queryObjects', {
           prototypeObjectId: prototypeObjectId,
@@ -226,6 +281,14 @@ export function blameOverlayInjectionExpression(
           if (!scopes) continue;
           var scopeList = await remoteProperties(debuggerApi, scopes.value.objectId);
           var properties = (scopeList && scopeList.result) || [], inspected = 0;
+          // 선행 준비는 editor를 호출하지 않는 prototype 관찰을 바로 설치해 opaque listener의 반복 조회를 줄인다.
+          if (preparationOnly) {
+            var moduleScope = properties.filter(function(property){return property.value && property.value.description === 'Module';})[0];
+            if (moduleScope && moduleScope.value.objectId) {
+              var observation = await bindFromModule(debuggerApi, moduleScope.value.objectId);
+              if (/^editor-(?:bound|observing):/.test(observation)) return {bound:true,binding:observation,modules:modules};
+            }
+          }
           for (var scopeIndex = 0; scopeIndex < properties.length; scopeIndex++) {
             var scope = properties[scopeIndex].value;
             if (!scope || !scope.objectId) continue;
@@ -244,26 +307,30 @@ export function blameOverlayInjectionExpression(
       }
       async function discoverEditor(debuggerApi) {
         var found = await discoverFromListeners(debuggerApi);
-        if (found.bound) return 'editor-bound:' + snapshot.uri;
+        if (found.bound) return found.binding || 'editor-bound:' + snapshot.uri;
         if (!found.modules.length) return 'editor-module-scope-missing';
         for (var moduleIndex = 0; moduleIndex < found.modules.length; moduleIndex++) {
-          var moduleScopeId = found.modules[moduleIndex];
-          var moduleProperties = await remoteProperties(debuggerApi, moduleScopeId);
-          var properties = (moduleProperties && moduleProperties.result) || [];
-          var requiredMethods = ${JSON.stringify(CODE_EDITOR_METHODS)};
-          for (var index = 0; index < properties.length; index++) {
-            var value = properties[index].value;
-            var description = String(value && value.description || '');
-            if (!value || value.type !== 'function' || !value.objectId) continue;
-            if (!requiredMethods.every(function (method) { return description.indexOf(method) >= 0; })) continue;
-            var constructorProperties = await remoteProperties(debuggerApi, value.objectId);
-            var prototype = ((constructorProperties && constructorProperties.result) || []).filter(function (property) {
-              return property.name === 'prototype';
-            })[0];
-            var prototypeObjectId = prototype && prototype.value && prototype.value.objectId;
-            var bound = await bindFromPrototype(debuggerApi, prototypeObjectId);
-            if (/^editor-bound:/.test(bound)) return bound;
-          }
+          var binding = await bindFromModule(debuggerApi, found.modules[moduleIndex]);
+          if (/^editor-(?:bound|observing):/.test(binding)) return binding;
+        }
+        return 'editor-constructor-missing';
+      }
+      async function bindFromModule(debuggerApi, moduleScopeId) {
+        var moduleProperties = await remoteProperties(debuggerApi, moduleScopeId);
+        var properties = (moduleProperties && moduleProperties.result) || [];
+        var requiredMethods = ${JSON.stringify(CODE_EDITOR_METHODS)};
+        for (var index = 0; index < properties.length; index++) {
+          var value = properties[index].value;
+          var description = String(value && value.description || '');
+          if (!value || value.type !== 'function' || !value.objectId) continue;
+          if (!requiredMethods.every(function (method) { return description.indexOf(method) >= 0; })) continue;
+          var constructorProperties = await remoteProperties(debuggerApi, value.objectId);
+          var prototype = ((constructorProperties && constructorProperties.result) || []).filter(function (property) {
+            return property.name === 'prototype';
+          })[0];
+          var prototypeObjectId = prototype && prototype.value && prototype.value.objectId;
+          var bound = await bindFromPrototype(debuggerApi, prototypeObjectId);
+          if (/^editor-(?:bound|observing):/.test(bound)) return bound;
         }
         return 'editor-constructor-missing';
       }
@@ -273,7 +340,7 @@ export function blameOverlayInjectionExpression(
           var cached = await cachedEditor(debuggerApi);
           if (/^editor-bound:/.test(cached)) return cached.replace('editor-bound:', 'editor-cached:');
           var constructorBound = await cachedConstructor(debuggerApi);
-          if (/^editor-bound:/.test(constructorBound)) return constructorBound;
+          if (/^editor-(?:bound|observing):/.test(constructorBound)) return constructorBound;
           return await discoverEditor(debuggerApi);
         } finally {
           try {
@@ -288,11 +355,23 @@ export function blameOverlayInjectionExpression(
       for (var i = 0; i < wins.length; i++) {
         discoveryStats = {calls:0,heapQueries:0,source:'editor-cache'};
         var startedAt = Date.now();
-        var installed = await evalWindow(wins[i], installExpr);
+        var installed = preparationOnly ? 'blame-editor-preparing' : await evalWindow(wins[i], installExpr);
         var prepared = await prepareBlameEditor(wins[i]);
         var discoveryMs = Date.now() - startedAt;
-        if (!/^editor-(?:cached|bound):/.test(prepared)) {
+        if (!/^editor-(?:cached|bound|observing):/.test(prepared)) {
           out.push(installed + ',err:' + wins[i].id + ':' + prepared + ',discoveryCalls=' + discoveryStats.calls + ',heapQueries=' + discoveryStats.heapQueries + ',discoveryMs=' + discoveryMs);
+          continue;
+        }
+        if (preparationOnly) {
+          if (/^editor-observing:/.test(prepared)) {
+            out.push('ok:' + wins[i].id + ':blame-editor-observing,discoverySource=' + discoveryStats.source
+              + ',discoveryCalls=' + discoveryStats.calls + ',heapQueries=' + discoveryStats.heapQueries + ',discoveryMs=' + discoveryMs);
+            continue;
+          }
+          // 살아 있는 editor/service는 WeakRef로만 보관하고 표시 전에는 강한 editor 참조도 남기지 않는다.
+          await evalWindow(wins[i], '(function(){if(window.__gscNativeBlameEditorRef)delete window.__gscNativeBlameEditor;return "blame-editor-prepared";})()');
+          out.push('ok:' + wins[i].id + ':blame-editor-prepared,' + prepared + ',discoverySource=' + discoveryStats.source
+            + ',discoveryCalls=' + discoveryStats.calls + ',heapQueries=' + discoveryStats.heapQueries + ',discoveryMs=' + discoveryMs);
           continue;
         }
         var renderExpr = 'window.__gscNativeBlameOverlay&&window.__gscNativeBlameOverlay.render(' + JSON.stringify(snapshot) + ')';
