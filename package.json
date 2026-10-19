@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72105",
+  "version": "0.1.72106",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -343,50 +343,8 @@
         "category": "Git Simple Compare",
         "icon": "$(trash)"
       },
-      {
-        "command": "gitSimpleCompare.toggleBlameDecorator",
-        "title": "%cmd.toggleBlameDecorator%",
-        "category": "Git Simple Compare",
-        "icon": "$(git-commit)"
-      },
-      { "command": "gitSimpleCompare.toggleBlameAnnotations", "title": "%cmd.toggleBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(git-commit)" },
-      { "command": "gitSimpleCompare.showBlameAnnotations", "title": "%cmd.showBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(git-commit)" },
       { "command": "gitSimpleCompare.hideBlameAnnotations", "title": "%cmd.hideBlameAnnotations%", "category": "Git Simple Compare", "icon": "$(close)" },
       { "command": "gitSimpleCompare.showLineHistory", "title": "%cmd.showLineHistory%", "category": "Git Simple Compare", "icon": "$(history)" },
-      {
-        "command": "gitSimpleCompare.toggleBlameDecorator.checked",
-        "title": "%cmd.blameDecorator.checked.tooltip%",
-        "shortTitle": "%cmd.blameDecorator.checked%",
-        "category": "Git Simple Compare",
-        "icon": "$(git-commit)"
-      },
-      {
-        "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
-        "title": "%cmd.blameDecorator.tooltip%",
-        "shortTitle": "%cmd.blameDecorator%",
-        "category": "Git Simple Compare",
-        "icon": "$(git-commit)"
-      },
-      {
-        "command": "gitSimpleCompare.toggleBlameLineVisible",
-        "title": "%cmd.toggleBlameLineVisible%",
-        "category": "Git Simple Compare",
-        "icon": "$(list-ordered)"
-      },
-      {
-        "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
-        "title": "%cmd.blameLines.checked.tooltip%",
-        "shortTitle": "%cmd.blameLines.checked%",
-        "category": "Git Simple Compare",
-        "icon": "$(list-ordered)"
-      },
-      {
-        "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
-        "title": "%cmd.blameLines.tooltip%",
-        "shortTitle": "%cmd.blameLines%",
-        "category": "Git Simple Compare",
-        "icon": "$(list-ordered)"
-      },
       {
         "command": "gitSimpleCompare.toggleBlameBlockVisible",
         "title": "%cmd.toggleBlameBlockVisible%",
@@ -851,8 +809,6 @@
     ],
     "menus": {
       "editor/lineNumber/context": [
-        { "command": "gitSimpleCompare.showBlameAnnotations", "when": "resourceScheme == file && !gitSimpleCompare.blame.annotationsVisible", "group": "1_gitSimpleCompare@1" },
-        { "command": "gitSimpleCompare.hideBlameAnnotations", "when": "resourceScheme == file && gitSimpleCompare.blame.annotationsVisible", "group": "1_gitSimpleCompare@1" },
         { "command": "gitSimpleCompare.showLineHistory", "when": "resourceScheme == file", "group": "1_gitSimpleCompare@2" }
       ],
       "view/title": [
@@ -975,26 +931,6 @@
           "command": "gitSimpleCompare.refreshChanges",
           "when": "view == gitSimpleCompare.changes",
           "group": "navigation@4"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameDecorator.checked",
-          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.blame.decorator.enabled",
-          "group": "3_blame@1"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
-          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.blame.decorator.enabled",
-          "group": "3_blame@1"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
-          "when": "view == gitSimpleCompare.changes && gitSimpleCompare.blame.line.visible",
-          "group": "3_blame@2"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
-          "when": "view == gitSimpleCompare.changes && !gitSimpleCompare.blame.line.visible",
-          "group": "3_blame@2"
         },
         {
           "command": "gitSimpleCompare.toggleBlameBlockVisible.checked",
@@ -1389,22 +1325,6 @@
           "command": "gitSimpleCompare.chooseHunkControlMode"
         },
         {
-          "command": "gitSimpleCompare.toggleBlameDecorator.checked",
-          "when": "false"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameDecorator.unchecked",
-          "when": "false"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameLineVisible.checked",
-          "when": "false"
-        },
-        {
-          "command": "gitSimpleCompare.toggleBlameLineVisible.unchecked",
-          "when": "false"
-        },
-        {
           "command": "gitSimpleCompare.markResolved",
           "when": "false"
         },
@@ -1475,7 +1395,6 @@
       ]
     },
     "keybindings": [
-      { "command": "gitSimpleCompare.toggleBlameAnnotations", "key": "ctrl+alt+b", "mac": "cmd+alt+b", "when": "editorTextFocus && resourceScheme == file" },
       { "command": "gitSimpleCompare.hideBlameAnnotations", "key": "escape", "when": "editorTextFocus && gitSimpleCompare.blame.annotationsVisible && !suggestWidgetVisible && !findWidgetVisible && !renameInputVisible && !inSnippetMode && !editorHasMultipleSelections && !inlineSuggestionVisible && !parameterHintsVisible" }
     ],
     "configurationDefaults": {
@@ -1521,11 +1440,6 @@
           ],
           "default": "nativeOverlay",
           "description": "%config.hunkControl.desc%"
-        },
-        "gitSimpleCompare.blameLine.show": {
-          "type": "boolean",
-          "default": false,
-          "description": "%config.blameLine.show.desc%"
         },
         "gitSimpleCompare.blameBlock.show": {
           "type": "boolean",

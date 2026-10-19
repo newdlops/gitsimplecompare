@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
 import { registerBlameCommands } from "../src/commands/blame";
+import { SHOW_BLOCK_BLAME_COMMAND } from "../src/providers/blockBlameCodeLensPresentation";
 import { BlockBlamePresenter } from "../src/ui/blockBlamePresenter";
 import { BlockBlameHoverPresenter } from "../src/ui/blockBlameHoverPresenter";
 import { GitBlameService } from "../src/git/blameService";
@@ -12,7 +14,7 @@ import { formatBlameDate, formatBlameAuthor } from "../src/ui/blameAnnotationPre
 import { safetyFixture, git, commitText } from "./helpers/gitSafetyFixture";
 import * as mock from "./helpers/vscodeMock";
 
-/** 실제 Git 파일에 맞춘 VS Code 경계만 제공한다. 심볼 provider는 일부러 제공하지 않는다. */
+/** 실제 Git 파일과 Block Author command가 공유하는 저장 문서 경계를 제공한다. */
 function documentFixture(t: any, root: string) {
   const file = join(root, "tracked.txt"), uri = { scheme: "file", fsPath: file, toString: () => pathToFileURL(file).href };
   const doc = { uri, lineCount: 1, version: 1, isDirty: false };
@@ -21,14 +23,17 @@ function documentFixture(t: any, root: string) {
   t.after(() => { mock.window.activeTextEditor = original; });
   t.mock.method(mock.workspace, "openTextDocument", async () => doc);
   t.mock.method(mock.Uri, "parse", () => uri);
-  return { uri, doc };
+  const request = { uri: uri.toString(), symbolName: "example", kind: "function", startLine: 1, endLine: 1, documentVersion: doc.version };
+  return { uri, doc, request };
 }
 
-test("symbol-free file commands show, reformat without Git, and hide only the owned annotations", async t => {
-  const { root } = await safetyFixture(t, "annotation-commands"), { uri } = documentFixture(t, root);
-  const options: Record<string, unknown> = {};
+test("Block Author clicks toggle one gutter, ignore legacy labels, and reformat without Git", async t => {
+  const { root } = await safetyFixture(t, "annotation-commands"), { uri, request } = documentFixture(t, root);
+  const options: Record<string, unknown> = { "blameLine.show": true, "blameBlock.show": true };
   let configurationChanged: (event: any) => void = () => {};
-  t.mock.method(mock.workspace, "getConfiguration", () => ({ get: (key: string, fallback: unknown) => options[key] ?? fallback }));
+  t.mock.method(mock.workspace, "getConfiguration", () => ({ get: (key: string, fallback: unknown) => options[key] ?? fallback,
+    update: async () => assert.fail("Block Author must not change global blame settings") }));
+  t.mock.method(mock.window, "createTextEditorDecorationType", () => assert.fail("Legacy before-text labels must not be recreated"));
   t.mock.method(mock.workspace, "onDidChangeConfiguration", callback => { configurationChanged = callback; return { dispose() {} }; });
   const registry: any = { resolve: async () => ({ repoRoot: root, toRepoRelative: () => "tracked.txt" }) };
   const presenter = new BlockBlamePresenter(registry); presenter.register(); t.after(() => presenter.dispose());
@@ -36,20 +41,38 @@ test("symbol-free file commands show, reformat without Git, and hide only the ow
   const registrations = registerBlameCommands(deps); t.after(() => registrations.forEach(item => item.dispose()));
   let reads = 0; const original = GitBlameService.prototype.getFileBlame;
   t.mock.method(GitBlameService.prototype, "getFileBlame", async function (...args) { reads++; return original.apply(this, args); });
-  await mock.commands.executeCommand("gitSimpleCompare.showBlameAnnotations", { uri });
+  assert.equal(reads, 0, "legacy visibility cannot trigger an automatic blame read");
+  await mock.commands.executeCommand(SHOW_BLOCK_BLAME_COMMAND, request);
   assert.equal(presenter.gutterSnapshot()?.lines.length, 1);
-  await mock.commands.executeCommand("gitSimpleCompare.showBlameAnnotations", { uri }); assert.equal(reads, 1);
+  await mock.commands.executeCommand(SHOW_BLOCK_BLAME_COMMAND, { ...request, symbolName: "anotherBlock" });
+  assert.equal(presenter.gutterSnapshot(), undefined); assert.equal(reads, 1, "a different hint in the same file closes without Git");
+  await mock.commands.executeCommand(SHOW_BLOCK_BLAME_COMMAND, request);
+  assert.equal(presenter.gutterSnapshot()?.lines.length, 1); assert.equal(reads, 2);
   options.showCommitHash = true; options.compact = true;
   configurationChanged({ affectsConfiguration: (section: string) => section.endsWith("blameAnnotations") });
-  assert.equal(reads, 1); assert.equal(presenter.gutterSnapshot()?.compact, true);
-  options["blameBlock.show"] = false;
-  configurationChanged({ affectsConfiguration: (section: string) => section.endsWith("blameBlock.show") });
-  assert.ok(presenter.gutterSnapshot(), "explicit file annotations are independent of Code Vision visibility");
+  assert.equal(reads, 2); assert.equal(presenter.gutterSnapshot()?.compact, true);
   assert.match(presenter.gutterSnapshot()!.lines[0].label, new RegExp((await git(root, "rev-parse", "HEAD")).slice(0, 8)));
   presenter.hideFile({ toString: () => "file:///other.txt" } as any); assert.ok(presenter.gutterSnapshot());
   await mock.commands.executeCommand("gitSimpleCompare.hideBlameAnnotations", { uri }); assert.equal(presenter.gutterSnapshot(), undefined);
+  await mock.commands.executeCommand(SHOW_BLOCK_BLAME_COMMAND, request);
+  options["blameBlock.show"] = false;
+  configurationChanged({ affectsConfiguration: (section: string) => section.endsWith("blameBlock.show") });
+  assert.equal(presenter.gutterSnapshot(), undefined, "disabling Block Author also closes its gutter");
   assert.equal(mock.__executedCommands.some(item => item.id === "vscode.executeDocumentSymbolProvider"), false);
   assert.equal(mock.__executedCommands.at(-1)?.args[1], false);
+});
+
+test("retired blame controls cannot register or reopen a second annotation path", async t => {
+  const registrations = registerBlameCommands({} as any); t.after(() => registrations.forEach(item => item.dispose()));
+  const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+  const retired = /gitSimpleCompare\.(toggleBlameDecorator|toggleBlameLineVisible|toggleBlameAnnotations|showBlameAnnotations)(\.|$)/;
+  const contributed = [...manifest.contributes.commands, ...manifest.contributes.keybindings,
+    ...Object.values(manifest.contributes.menus).flat() as any[]];
+  assert.deepEqual((await mock.commands.getCommands()).filter(id => retired.test(id)), []);
+  assert.deepEqual(contributed.filter(item => retired.test(item.command ?? "")), []);
+  assert.equal(manifest.contributes.configuration.properties["gitSimpleCompare.blameLine.show"], undefined);
+  assert.ok(manifest.contributes.keybindings.some((item: any) => item.command === "gitSimpleCompare.hideBlameAnnotations" && item.key === "escape"));
+  assert.ok(manifest.contributes.menus["editor/lineNumber/context"].some((item: any) => item.command === "gitSimpleCompare.showLineHistory"));
 });
 
 test("line history picker opens the selected historical file diff and rejects dirty documents", async t => {
@@ -121,7 +144,7 @@ test("editing a document cancels a pending line history read without a stale pic
 });
 
 test("cancelling annotations during repository discovery never reopens the old editor", async t => {
-  const { uri, doc } = documentFixture(t, "/repo");
+  const { uri, doc, request } = documentFixture(t, "/repo");
   let finish: (value: any) => void = () => {};
   let lookups = 0, editorOpens = 0;
   const registry: any = { resolve: async () => { lookups++; return new Promise(resolve => { finish = resolve; }); } };
@@ -130,7 +153,7 @@ test("cancelling annotations during repository discovery never reopens the old e
   t.after(() => { windowApi.showTextDocument = previousShow; });
   const presenter = new BlockBlamePresenter(registry); t.after(() => presenter.dispose());
   t.mock.method(GitBlameService.prototype, "getFileBlame", async () => assert.fail("Cancelled discovery must not start blame"));
-  const pending = presenter.showFile(uri as any);
+  const pending = presenter.show(request);
   await new Promise(resolve => setImmediate(resolve)); assert.equal(lookups, 1);
   mock.window.activeTextEditor = { document: { uri: { toString: () => "file:///repo/other.ts" } } };
   presenter.hideFile(uri as any);

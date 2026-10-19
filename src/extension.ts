@@ -13,7 +13,6 @@ import { ConflictsTreeProvider } from "./providers/conflictsTreeProvider";
 import { createConflictsTreeController } from "./providers/conflictsTreeController";
 import { HunkCheckboxController } from "./providers/hunkCheckboxController";
 import { NativeDiffOverlayController } from "./providers/nativeDiffOverlayController";
-import { BlameDecoratorController } from "./providers/blameDecoratorController";
 import { BlockBlameCodeLensController } from "./providers/blockBlameCodeLensController";
 import { ConflictMarkerDecoratorController } from "./providers/conflictMarkerDecoratorController";
 import {
@@ -181,8 +180,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     conflicts
   );
   context.subscriptions.push(conflictMarkerDecorations.register());
-  const blameDecorations = new BlameDecoratorController(registry);
-  context.subscriptions.push(blameDecorations.register());
   const blockBlameCodeLens = new BlockBlameCodeLensController(registry);
   const blockBlamePresenter = new BlockBlamePresenter(registry);
   context.subscriptions.push(blockBlameCodeLens.register(), blockBlamePresenter.register());
@@ -252,7 +249,6 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     conflicts,
     conflictOverlay,
     hunkCheckboxes,
-    blameDecorations,
     blockBlameCodeLens,
     blockBlamePresenter,
     vscodeGitStatus,

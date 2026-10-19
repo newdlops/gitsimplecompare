@@ -43,7 +43,7 @@ interface ActiveBlockBlame {
 
 /**
  * Code Vision 클릭으로 열리는 파일 단위 라인별 작성자 거터를 관리한다.
- * - 새 블록을 클릭하면 기존 범위를 교체하고 같은 블록을 다시 클릭하면 접는다.
+ * - 같은 파일의 어느 Block Author든 클릭하면 파일 전체 거터 하나를 열거나 접는다.
  * - 탭 이동, 문서 편집, 문서 닫기 때 오래된 라벨을 즉시 제거한다.
  */
 export class BlockBlamePresenter implements vscode.Disposable {
@@ -61,7 +61,6 @@ export class BlockBlamePresenter implements vscode.Disposable {
   private registered = false;
   private disposed = false;
   private rendered?: { document: vscode.TextDocument; blame: GitBlameLine[]; repoRoot: string };
-  private fileAnnotations = false;
 
   /**
    * 저장소 탐색에 사용할 공유 레지스트리를 주입한다.
@@ -108,7 +107,7 @@ export class BlockBlamePresenter implements vscode.Disposable {
           logInfo("blame annotations reformatted without Git read", { uri: current.document.uri.toString() });
         }
         if (
-          event.affectsConfiguration(BLOCK_BLAME_SHOW_CONFIG) && !this.fileAnnotations &&
+          event.affectsConfiguration(BLOCK_BLAME_SHOW_CONFIG) &&
           !vscode.workspace
             .getConfiguration("gitSimpleCompare")
             .get<boolean>("blameBlock.show", true)
@@ -125,9 +124,8 @@ export class BlockBlamePresenter implements vscode.Disposable {
    * command 인자를 검증하고 현재 파일의 라인별 작업자·날짜 거터를 펼친다.
    * - 같은 파일의 어느 Code Vision이든 다시 클릭하면 Git을 재조회하지 않고 현재 라벨을 접는다.
    * @param rawRequest Code Vision command 또는 외부 executeCommand가 전달한 알 수 없는 값
-   * @param source 파일 메뉴에서 직접 연 거터는 Code Vision 표시 설정과 독립적으로 유지한다.
    */
-  async show(rawRequest: unknown, source: "codeVision" | "annotations" = "codeVision"): Promise<void> {
+  async show(rawRequest: unknown): Promise<void> {
     const request = normalizeBlockBlameRequest(rawRequest);
     if (!request) {
       logInfo("block blame gutter skipped", { reason: "invalid-request" });
@@ -140,35 +138,15 @@ export class BlockBlamePresenter implements vscode.Disposable {
       (this.active && sameDocumentRequest(this.active.request, request)) ||
       (this.pending && sameDocumentRequest(this.pending, request))
     ) {
-      this.clear(source === "annotations" ? "fileAnnotationsToggled" : "sameFileCodeVisionClicked");
+      this.clear("sameFileCodeVisionClicked");
       return;
     }
 
     this.clear("replacementRequested");
-    this.fileAnnotations = source === "annotations";
-    await this.loadAndApply(request, source === "annotations" ? "fileAnnotationsCommand" : "codeVisionClicked", false);
+    await this.loadAndApply(request, "codeVisionClicked", false);
   }
 
-  /**
-   * 언어 심볼/CodeLens 유무와 관계없이 파일 단위 거터를 열거나 토글한다.
-   * @param uri 메뉴가 지정한 파일(없으면 현재 에디터) @param mode show면 이미 열린 열을 유지한다.
-   */
-  async showFile(uri = vscode.window.activeTextEditor?.document.uri, mode: "show" | "toggle" = "toggle"): Promise<void> {
-    if (!uri || uri.scheme !== "file") return;
-    if (mode === "show" && (this.active?.request ?? this.pending)?.uri === uri.toString()) return;
-    const active = vscode.window.activeTextEditor?.document;
-    const document = active?.uri.toString() === uri.toString() ? active : undefined;
-    const request = { uri: uri.toString(), symbolName: vscode.l10n.t("File annotations"), kind: "module", startLine: 1,
-      endLine: Math.max(1, document?.lineCount ?? 1), documentVersion: document?.version };
-    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification,
-      title: vscode.l10n.t("Loading file blame annotations…"), cancellable: true }, async (_progress, token) => {
-      if (token.isCancellationRequested) return;
-      const cancel = token.onCancellationRequested(() => this.hideFile(uri));
-      try { await this.show(request, "annotations"); } finally { cancel.dispose(); }
-    });
-  }
-
-  /** 메뉴/Escape가 지정한 현재 파일의 거터와 진행 조회만 닫고 전역 표시 설정을 바꾸지 않는다. */
+  /** Escape 또는 닫기 명령이 지정한 파일의 거터와 진행 조회만 닫는다. 전역 표시 설정은 바꾸지 않는다. */
   hideFile(uri = vscode.window.activeTextEditor?.document.uri): void {
     if (uri?.toString() === (this.active?.request ?? this.pending)?.uri) this.clear("hideAnnotationsCommand");
   }
@@ -456,7 +434,6 @@ export class BlockBlamePresenter implements vscode.Disposable {
     this.refreshTimer = undefined;
     this.pending = undefined;
     this.rendered = undefined;
-    this.fileAnnotations = false;
     void vscode.commands.executeCommand("setContext", "gitSimpleCompare.blame.annotationsVisible", false);
     this.gutter.clear();
     if (this.active) {

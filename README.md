@@ -59,9 +59,11 @@ The cleanup never targets user settings, installed extension directories, projec
 
 For saved, tracked files, Git Simple Compare uses the active language extension's document symbols to place a dedicated CodeLens row above each supported source block. Top-level variables, constants, object declarations, and standalone `type` declarations are grouped until a blank line separates them, so each declaration group gets one CodeLens above its first line instead of one per line. Like IntelliJ Code Vision, the label shows the leading author, additional author count, last change date, and additional commit count. Tiny nested methods are folded into their parent block to reduce visual noise. Hover the Code Vision for the ownership distribution, or click any Code Vision to open a dedicated editor-gutter column showing the author name and date for every visible line in the file. The column stays aligned while scrolling, folding, and rendering CodeLens rows, and never inserts blame text into the source body. Hover, click or focus an entry for author identity, relative and exact dates, the complete commit message, co-authors and changed-file/line counts. The native-themed popup can open all commit changes, copy the full hash, open a supported remote commit page or show blame settings. Details load on demand and are shared between entries from the same commit. Click any Code Vision in the same file again to hide the column. Toggle the feature from the Changes toolbar or with `Git Simple Compare: Toggle Block Author Code Vision`; VS Code's `editor.codeLens` setting is also respected.
 
-Right-click a line number and choose **Show File Blame Annotations**, or use
-**Ctrl+Alt+B** (**Cmd+Alt+B** on macOS), to open annotations without Code Vision.
-Use **Escape** to close them. **View Line History** in that menu, the editor menu
+Block Author Code Vision is the single control for opening and toggling the
+blame gutter. The older before-line labels, their toolbar switches and the
+separate file-annotation show commands/shortcut have been removed to prevent
+duplicate columns. Use **Escape** to close the gutter. **View Line History** in
+the line-number menu, the editor menu
 or a blame popup opens changes to the selected saved line and their file diffs.
 Compact commit groups, cursor-commit highlighting and name/date/hash display
 are available under `gitSimpleCompare.blameAnnotations`. See

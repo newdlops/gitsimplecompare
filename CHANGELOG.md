@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72106] - 2026-10-19
+
+### Fixed
+
+- Remove the legacy before-line blame decorations that could appear alongside
+  the native Block Author gutter, including automatic background reads from an
+  old `blameLine.show` setting.
+
+### Changed
+
+- Open and toggle one blame gutter through Block Author Code Vision. Clicking
+  any hint in the same file closes the column or cancels its pending read.
+- Remove duplicate blame toolbar switches, the retired line-label setting and
+  separate file-annotation show/toggle commands, menus and Ctrl+Alt+B shortcut.
+  Keep Escape, line history, commit details and annotation display settings.
+
 ## [0.1.72105] - 2026-10-19
 
 ### Added

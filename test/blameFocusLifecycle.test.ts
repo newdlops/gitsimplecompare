@@ -3,7 +3,6 @@ import test, { type TestContext } from "node:test";
 import * as vscode from "vscode";
 import { window, workspace } from "./helpers/vscodeMock";
 import { BlockBlameCodeLensController } from "../src/providers/blockBlameCodeLensController";
-import { BlameDecoratorController } from "../src/providers/blameDecoratorController";
 import type { GitServiceRegistry } from "../src/git/serviceRegistry";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -50,16 +49,6 @@ test("losing focus cancels every pending CodeLens consumer and regaining focus r
   assert.equal(signal?.aborted, true);
   assert.deepEqual(await pending, []);
   const before = changes; f.focus(true); assert.ok(changes > before);
-});
-
-test("an unfocused line decorator defers its timer and resumes at window focus", async t => {
-  const f = fixture(t, false); let resolves = 0;
-  t.mock.method(workspace, "getConfiguration", () => ({ get: () => true }));
-  const registry = { resolve: async () => { resolves++; return undefined; } } as unknown as GitServiceRegistry;
-  const controller = new BlameDecoratorController(registry); t.after(() => controller.dispose()); controller.register();
-  await new Promise(resolve => setTimeout(resolve, 180)); assert.equal(resolves, 0);
-  assert.equal(f.registered(), true); f.focus(true);
-  await new Promise(resolve => setTimeout(resolve, 180)); assert.equal(resolves, 1);
 });
 
 test("a completed CodeLens snapshot is refreshed when HEAD changes before its TTL", async t => {

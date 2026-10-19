@@ -1,15 +1,20 @@
 # Blame annotations and line history
 
-Right-click a line number and choose **Show File Blame Annotations**, or run
-`Git Simple Compare: Toggle File Blame Annotations`. The default shortcut is
-**Ctrl+Alt+B**, or **Cmd+Alt+B** on macOS. This also works without language
-symbols or Code Vision. An explicit file annotation view is independent of the
-Code Vision visibility setting.
+Click **Block Author Code Vision** above a source block to open one author/date
+column for the file. Click any Block Author hint in that file again to close it;
+closing also cancels a pending read and never runs another Git command. The active
+language extension must provide document symbols, and CodeLens must be enabled.
 
-Choose **Hide File Blame Annotations**, toggle again, or press **Escape** in the
-editor to close the owned gutter. The popup consumes Escape first, and the
-binding leaves completion, rename, find, snippets and multi-selection widgets
-their normal Escape behavior. No global Git blame setting is changed.
+The legacy before-line labels, their toolbar switches and `blameLine.show` setting
+are removed. A saved legacy setting cannot enable another column. Separate file
+annotation show/toggle commands, line-number show/hide menus and Ctrl+Alt+B
+(macOS: Cmd+Alt+B) are also removed, leaving Block Author as the single opener.
+Disabling Block Author closes its gutter.
+
+Press **Escape** in the editor or run **Hide Block Author Blame** to close the
+owned gutter. The popup consumes Escape first, and the binding leaves completion,
+rename, find, snippets and multi-selection widgets their normal Escape behavior.
+No global Git blame setting is changed.
 
 Hover or focus any line to inspect the complete identity and commit information.
 Compact mode keeps blank continuation rows clickable and focusable. A group's
@@ -67,7 +72,7 @@ extension was added.
 | Reference capability | Git Simple Compare result |
 | --- | --- |
 | Per-line annotations and hover details | Existing gutter and complete commit popup retained. |
-| Gutter menu and show/hide shortcuts | Direct file commands, line-number menu and scoped Escape added. |
+| Gutter menu and show/hide shortcuts | Block Author clicks toggle the single gutter; scoped Escape closes it. Separate show controls were removed in 0.1.72106. |
 | Consecutive commit labels | Optional compact groups with visible-boundary repeat. |
 | Same-commit line highlighting | Optional cursor highlight using a cached range index. |
 | Date and author formats | Resource settings added; full identity preserved in details. |

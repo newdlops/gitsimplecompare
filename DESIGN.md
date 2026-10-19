@@ -354,9 +354,12 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
 
 ### Annotation navigation and line history
 
-- Keep the existing native gutter and commit popup. Line-number menus and explicit
-  show/hide commands must also work for files without language symbols; Escape
-  closes annotations only while this editor owns them and no other widget needs it.
+- Block Author Code Vision is the single entry point for opening the native blame
+  gutter. Clicking any hint in the same file again closes that one column, including
+  a pending read. Do not restore the legacy before-text decoration, its toolbar
+  switches, or separate file-annotation show menus/shortcuts. Escape closes the
+  owned column only when no other editor widget needs it. Disabling Block Author
+  also closes its gutter. Existing user Git settings are left untouched.
 - Preserve full-name/ISO-date defaults. Optional compact groups suppress repeated
   labels but retain each line's tooltip and keyboard action. Repeat a group's
   label at the first visible line after scrolling or folding.
@@ -369,7 +372,9 @@ token처럼 짧고 반복되는 정보에만 쓴다. 큰 둥근 카드, 유리 �
   history. Show bounded pages on demand, with author/date/hash and a readable
   subject; selecting an entry opens that historical file diff, including rename
   and root-commit cases. Reject stale/dirty documents and explain empty/error states.
-- Acceptance: menu/keyboard/hover entry points; adjacent and nonadjacent commit
+- Acceptance: a single column after a Block Author click, same-file hints toggle
+  it without Git reads on close, old blameLine.show values cannot enable labels;
+  keyboard close and line-history menu/hover entry points; adjacent and nonadjacent commit
   groups; scroll/fold boundaries; same-commit cursor moves without extra work;
   long Korean/English names, narrow panes and dark/light/high-contrast themes;
   cancellation, untracked/working-tree lines and document changes during reads.

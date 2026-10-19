@@ -9,7 +9,6 @@ import { GitServiceRegistry } from "../git/serviceRegistry";
 import { ChangesViewProvider } from "../webview/changesViewProvider";
 import { ConflictsController } from "../providers/conflictsController";
 import { HunkCheckboxController } from "../providers/hunkCheckboxController";
-import type { BlameDecoratorController } from "../providers/blameDecoratorController";
 import type { BlockBlameCodeLensController } from "../providers/blockBlameCodeLensController";
 import type { BlockBlamePresenter } from "../ui/blockBlamePresenter";
 import type { VscodeGitStatusProvider } from "../providers/vscodeGitStatusProvider";
@@ -36,11 +35,9 @@ export interface CommandDeps {
   conflictOverlay: ConflictEditorOverlayController;
   /** editable diff 라인별 stage 체크박스 컨트롤러 */
   hunkCheckboxes: HunkCheckboxController;
-  /** 활성 에디터 git blame decoration 컨트롤러 */
-  blameDecorations: BlameDecoratorController;
   /** 소스 블록 위 주요 작업자 Code Vision 컨트롤러 */
   blockBlameCodeLens: BlockBlameCodeLensController;
-  /** Code Vision 클릭 시 선택 블록의 라인별 작업자를 거터에 표시하는 presenter */
+  /** Code Vision 클릭으로 파일의 단일 라인별 작업자 거터를 열고 닫는 presenter */
   blockBlamePresenter: BlockBlamePresenter;
   /** VS Code 내장 Git 확장이 이미 계산한 상태를 재사용하는 어댑터 */
   vscodeGitStatus: VscodeGitStatusProvider;
