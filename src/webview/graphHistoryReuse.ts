@@ -10,7 +10,7 @@ const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
  * @returns 수동/첫 로드, metadata 불확실·변경, replace ref는 전체 Git log 경로를 사용한다.
  */
 export function canReuseGraphSnapshot(context: GraphRefreshContext, commits: readonly Commit[]): boolean {
-  return !["ready", "manual"].includes(context.cause) && !!context.historyIdentity &&
+  return !["ready", "manual"].includes(context.cause) && !context.historyUncertain && !!context.historyIdentity &&
     context.previous?.historyIdentity === context.historyIdentity && !context.fingerprint.includes("\nrefs/replace/") &&
     canReuseGraphHistory(context.previous.fingerprint, context.fingerprint, commits);
 }

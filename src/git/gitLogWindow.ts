@@ -118,13 +118,13 @@ async function loadCommitSlice(
   const out = await runGitWithRevisions([
     "log",
     "--topo-order",
-    "--decorate=short",
+    "--decorate=full",
     `--pretty=tformat:${gitLogPrettyFormat()}`,
     "-z",
     `-n${limit}`,
     ...(skip > 0 ? [`--skip=${skip}`] : []),
   ], explicitRefs(refs), repoRoot, { signal });
-  return parseGitLogOutput(out);
+  return parseGitLogOutput(out, true);
 }
 
 /**

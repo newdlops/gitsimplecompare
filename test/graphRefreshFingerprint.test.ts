@@ -33,6 +33,7 @@ test("fingerprint reads linked worktree HEAD and branch with only two Git proces
   const actual = await readGraphRefreshFingerprint(root, fixtureRunner(worktrees, calls));
   assert.equal(actual, createGraphRefreshFingerprint({
     head, symbolicHead: "refs/heads/main", refs: [`refs/heads/main ${head}`], worktrees: worktrees.split("\n\n"),
+    historyIdentity: "unavailable",
   }));
   assert.deepEqual(calls.map((args) => args[0]), ["for-each-ref", "worktree"]);
 });
@@ -67,7 +68,9 @@ test("remote snapshot preserves Git short names and symbolic HEAD fingerprint wi
   assert.deepEqual(snapshot.remoteTips, [{ hash: head, name: "remotes/origin/main", fullRef: "refs/remotes/origin/main", kind: "remote" }]);
   assert.equal(snapshot.fingerprint, createGraphRefreshFingerprint({
     head, symbolicHead: "refs/heads/main", refs: refs.map(([ref, hash]) => `${ref} ${hash}`), worktrees: worktrees.split("\n\n"),
+    historyIdentity: "unavailable",
   }));
+  assert.equal(snapshot.historyUncertain, true, "A fake filesystem root cannot certify graph topology");
   assert.equal(calls.length, 2);
 });
 
@@ -133,7 +136,7 @@ test("fallback preserves unborn HEAD failures and detached symbolic-ref failures
   assert.ok(actual.startsWith(head + "\nDETACHED\n"));
 });
 
-test("real repository fingerprints match the previous queries across branch, linked, detached and symlink roots", async (t) => {
+test("real fingerprints retain ref/HEAD/worktree identity and verify topology across branch, linked, detached and symlink roots", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-fingerprint-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const repo = path.join(directory, "main repo");
@@ -173,7 +176,10 @@ test("real repository fingerprints match the previous queries across branch, lin
       runGit(["for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/remotes", "refs/tags"], root, { env }),
       runGit(["worktree", "list", "--porcelain"], root, { env }),
     ]);
-    assert.equal(snapshot.fingerprint, createGraphRefreshFingerprint({ head: oldHead, symbolicHead, refs: refs.split("\n"), worktrees: worktrees.split("\n\n") }));
+    assert.match(snapshot.historyIdentity ?? "", /^[a-f0-9]{64}$/);
+    assert.equal(snapshot.historyUncertain, false);
+    assert.equal(snapshot.fingerprint, createGraphRefreshFingerprint({ head: oldHead, symbolicHead, refs: refs.split("\n"),
+      worktrees: worktrees.split("\n\n"), historyIdentity: snapshot.historyIdentity }));
     const remoteOutput = await runGit(["for-each-ref", "--format=%(objectname)\x1f%(refname:short)\x1f%(refname)", "refs/remotes"], root, { env });
     assert.deepEqual(snapshot.remoteTips, parseRemoteBranchTips(remoteOutput));
     assert.ok(snapshot.remoteTips?.some(tip => tip.fullRef === "refs/remotes/origin/main"));

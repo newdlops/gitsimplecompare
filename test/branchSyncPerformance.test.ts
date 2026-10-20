@@ -78,7 +78,7 @@ test("push preparation batches configuration reads while publishing only its app
   });
   assert.equal(result.execution?.strategy, "single");
   assert.ok(calls.length <= 17, `push used ${calls.length} Git processes`);
-  assert.equal(calls.filter(args => args[0] === "config").length, 4);
+  assert.ok(calls.filter(args => args[0] === "config").length <= 3, "push must not repeat the configuration read removed from validated preparation");
   assert.equal(await git(remote, "rev-parse", "refs/heads/main"), head);
 });
 

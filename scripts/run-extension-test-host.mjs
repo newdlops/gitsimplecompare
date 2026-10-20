@@ -66,7 +66,8 @@ async function createWorkspaceFixture() {
   git(["config", "commit.gpgSign", "false"]);
   git(["config", "core.fsmonitor", "false"]);
   await writeFile(path.join(repoRoot, "sample.txt"), "base\n");
-  git(["add", "sample.txt"]);
+  // Graph가 과거 branch로 이동해도 workspace의 native Git 설정이 유지되게 기본 commit에 포함한다.
+  git(["add", "sample.txt", ...(graphSmoke ? [".vscode/settings.json"] : [])]);
   git(["commit", "--quiet", "-m", "fixture"]);
   await writeFile(path.join(repoRoot, "sample.txt"), "base\nchanged\n");
   return { directory, repoRoot, launchPath: repoRoot };
@@ -74,6 +75,7 @@ async function createWorkspaceFixture() {
 
 /** bundled host smoke와 local/downloaded VS Code를 연결하고 실패 exit code를 전달한다. */
 async function main() {
+  if (process.env.GSC_ALLOW_VISIBLE_HOST !== "1") throw new Error("Start visible Extension Host tests through run-extension-tests.mjs --allow-visible-host.");
   if (!existsSync(extensionTestsPath)) {
     throw new Error("Extension test bundle is missing. Run scripts/run-extension-tests.mjs instead.");
   }

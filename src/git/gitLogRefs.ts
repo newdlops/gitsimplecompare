@@ -73,26 +73,33 @@ export function parseTrack(track: string): {
 /**
  * %D(decoration) 문자열을 참조 이름 배열로 파싱한다.
  * - "HEAD -> main, origin/main, tag: v1" → ["HEAD", "main", "origin/main", "tag:v1"]
- * @param decoration git 의 decoration 문자열
+ * @param decoration git 의 decoration 문자열 @param fullRefNames 전체 ref 출력이면 Git annotation과 동명 브랜치를 구별한다.
  */
-export function parseRefs(decoration: string): string[] {
+export function parseRefs(decoration: string, fullRefNames = false): string[] {
   if (!decoration.trim()) {
     return [];
   }
-  return decoration.split(",").flatMap((raw) => {
+  // ref 이름에는 공백을 쓸 수 없으므로 full 출력의 ', '만 구분자로 쓰면 이름 속 쉼표를 보존한다.
+  return decoration.split(fullRefNames ? ", " : ",").flatMap((raw) => {
     const part = raw.trim();
     if (part.startsWith("HEAD -> ")) {
-      return ["HEAD", part.slice("HEAD -> ".length)];
+      return ["HEAD", shortRefName(part.slice("HEAD -> ".length))];
     }
     if (part === "HEAD") {
       return ["HEAD"];
     }
     if (part.startsWith("tag: ")) {
-      return [`tag:${part.slice("tag: ".length)}`];
+      return [`tag:${part.slice("tag: ".length).replace(/^refs\/tags\//, "")}`];
     }
     if (part === "refs/stash" || part.startsWith("stash@{")) {
       return [];
     }
-    return part ? [part] : [];
+    if (fullRefNames && (part === "grafted" || part === "replaced")) return [];
+    return part ? [shortRefName(part)] : [];
   });
+}
+
+/** 전체 ref의 namespace만 UI 이름으로 줄이고 같은 철자를 실제 브랜치 이름에 쓴 경우는 보존한다. */
+function shortRefName(ref: string): string {
+  return ref.replace(/^refs\/(?:heads|remotes)\//, "");
 }

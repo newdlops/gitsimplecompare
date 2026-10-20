@@ -103,7 +103,7 @@ export class GitLogService {
       [
         "log",
         "--topo-order",
-        "--decorate=short",
+        "--decorate=full",
         `--pretty=tformat:${gitLogPrettyFormat()}`,
         "-z",
         `-n${safeLimit}`,
@@ -115,7 +115,7 @@ export class GitLogService {
     );
 
     signal?.throwIfAborted();
-    const commits = parseGitLogOutput(out);
+    const commits = parseGitLogOutput(out, true);
     const branchStats = this.branchRefCache.indexPage({ commits, skip: safeSkip, allRefs: refs.length === 0 });
     logInfo("graph branch containment index page", {
       repoRoot: this.repoRoot, skip: safeSkip, commits: commits.length,
@@ -359,7 +359,7 @@ export class GitLogService {
   // ---- 내부 구현 ----
 
   /** 브랜치 ref 와 로컬 전용 커밋 표시 캐시를 함께 비운다. */
-  invalidateCaches(): void {
+  invalidateCaches(reason = "gitMutation"): void {
     const branchStats = this.branchRefCache.getStats();
     logInfo("graph branch containment index invalidated", {
       repoRoot: this.repoRoot, generation: branchStats.generation,
@@ -368,7 +368,7 @@ export class GitLogService {
       incomplete: branchStats.incomplete,
     });
     this.branchRefCache.invalidate();
-    this.localOnlyBranchCache.invalidate("gitMutation");
+    this.localOnlyBranchCache.invalidate(reason);
   }
 
   /** UI filter/pagination reset에서는 ref 기반 local-only 결과를 보존하고 page containment index만 초기화한다. */

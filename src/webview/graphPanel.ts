@@ -276,6 +276,8 @@ export class GitGraphPanel {
   }
   /** 같은 도달 가능 이력은 보존하고 ref/HEAD부터 게시한다. 증명하지 못하면 전체 Git log를 읽는다. */
   private async refreshGraphReferences(context: GraphRefreshContext): Promise<void> {
+    if (context.historyUncertain || (context.previous && context.previous.historyIdentity !== context.historyIdentity))
+      this.logService.invalidateCaches("graphHistoryBoundaryChangedOrUnknown");
     if (this.rangeStartIndex !== 0 || this.branchFilter.mode !== "all" || this.invalidLocalRefs.length || !context.previous ||
       !context.remoteTips || !canReuseGraphSnapshot(context, this.commits)) {
       this.resetLoadedGraph(); await this.reloadGraph(context); return;

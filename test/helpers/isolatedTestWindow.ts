@@ -1,4 +1,4 @@
-// 전용 profile/PID를 먼저 검증한 Development Host 창만 focus/capture하는 테스트 경계.
+// 전용 profile/PID를 먼저 검증한 Development Host 창만 읽고 캡처하는 테스트 경계.
 import assert from "node:assert/strict";
 import WebSocket = require("ws");
 
@@ -30,9 +30,22 @@ export class IsolatedTestWindow {
     assert.equal(identity.profile, this.profile, "Inspector profile is not the isolated test profile");
   }
 
-  /** 검증한 프로필의 단일 workspace 창만 앞으로 가져온다. 다른 VS Code 창은 열거·조작하지 않는다. */
-  async focus(): Promise<void> {
-    this.windowId = await this.evaluate(`(function(){var e=require('electron');if(e.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('profile changed');var windows=e.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(windows.length!==1)throw Error('expected one isolated workspace window');var w=windows[0];if(process.platform==='darwin')w.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});w.setAlwaysOnTop(true);w.show();e.app.focus({steal:true});w.focus();return w.id;})()`);
+  /** 전용 창의 현재 포커스만 확인한다. 앱 활성화·창 이동 없이 실패해 사용자의 다른 작업을 방해하지 않는다. */
+  async assertFocused(): Promise<void> {
+    this.windowId = await this.evaluate(`(function(){var e=require('electron');if(e.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('profile changed');var windows=e.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(windows.length!==1)throw Error('expected one isolated workspace window');return windows[0].id;})()`);
+    const state = await this.focusState();
+    assert.ok(state.windowFocused && state.contentsFocused, "Native UI smoke requires an already focused isolated window; use headless Graph tests while working in another app.");
+  }
+
+  /** 전용 창의 실제 native/renderer focus만 진단해 VS Code API와 차이가 나는 경계를 남긴다. */
+  async focusState(): Promise<Record<string, boolean>> {
+    return this.evaluate(`(async function(){${this.ownedWindow()}return{windowFocused:w.isFocused(),contentsFocused:w.webContents.isFocused(),visible:w.isVisible(),minimized:w.isMinimized(),focusable:w.isFocusable(),appHidden:e.app.isHidden(),documentFocused:await w.webContents.executeJavaScript('document.hasFocus()')};})()`);
+  }
+
+  /** 전용 창의 Graph iframe 한 개에서 실제 행·HEAD 배지·브랜치 chip만 읽어 최신 UI를 확인한다. */
+  async graphRows(): Promise<Array<{ hash: string; refs: string[]; branches: string[]; head: boolean }>> {
+    const query = "(function(){var root=document.getElementById('graph-content');if(!root)return null;return Array.from(root.querySelectorAll('.row[data-hash]:not([data-reflog-virtual])'),r=>({hash:r.dataset.hash,refs:(r.dataset.refs||'').split('\\t').filter(Boolean),branches:Array.from(r.querySelectorAll('[data-branch-name]'),b=>b.dataset.branchName),head:!!r.querySelector('.ref.head')}));})()";
+    return this.evaluate(`(async function(){${this.ownedWindow()}var results=[];for(var f of w.webContents.mainFrame.framesInSubtree){try{var rows=await f.executeJavaScript(${JSON.stringify(query)});if(rows)results.push(rows);}catch{}}if(results.length!==1)throw Error('expected one isolated Graph renderer');return results[0];})()`);
   }
 
   /** 전용 창 전체를 PNG로 캡처한다. OS 화면이나 다른 앱/사용자 창은 캡처하지 않는다. */

@@ -32,14 +32,13 @@ export async function run(): Promise<void> {
   await ownedWindow.connect();
   const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, "sample.txt"));
   await vscode.window.showTextDocument(document, { preview: false, preserveFocus: true });
-  /** macOS의 앱 활성화 직후 다른 focus 이벤트가 도착해도 검증한 전용 창만 재요청한다. */
+  /** 실제 포커스가 없으면 native 측정을 중단한다. 포커스를 강제로 가져오거나 반복 요청하지 않는다. */
   const ensureFocused = async () => {
-    const deadline = Date.now() + 15000;
-    while (!vscode.window.state.focused && Date.now() < deadline) { await ownedWindow.focus(); await new Promise(resolve => setTimeout(resolve, 250)); }
-    assert.equal(vscode.window.state.focused, true, "Only the isolated test window must be focused before measuring.");
+    await ownedWindow.assertFocused();
+    assert.equal(vscode.window.state.focused, true, "Native measurement stopped without changing window focus.");
   };
   await ensureFocused();
-  /** renderer 대기 중 발생한 실제 focus 해제는 전용 창만 복구하고 원래 paint promise를 계속 기다린다. */
+  /** renderer 대기 중 실제 focus가 해제되면 측정을 끝내고 사용자 앱의 포커스를 보존한다. */
   const focusedPaint = async <T>(promise: Promise<T>): Promise<T> => {
     let settled = false;
     void promise.then(() => { settled = true; }, () => { settled = true; });
@@ -98,7 +97,7 @@ export async function run(): Promise<void> {
     assert.equal(graph.workingTree.state, undefined);
     console.log(JSON.stringify({ check: "workingTreeHydrated", totalMs: complete.paintedAt - openedAt,
       commitCount: graph.commits.length, virtualRows: graph.virtualCommits.length }));
-    await verifyGraphOperationPaints(graph, service, operationPaints, ensureFocused);
+    await verifyGraphOperationPaints(graph, service, operationPaints, ensureFocused, () => ownedWindow.graphRows());
     await writeFile("/private/tmp/gsc-operation-native-final.png", await ownedWindow.screenshot());
   } finally {
     releaseStatus(); initial.cancel(); hydrated.cancel(); ready.cancel(); operationPaints.dispose();

@@ -23,7 +23,7 @@ export async function run(): Promise<void> {
   assert.ok(root && root.startsWith("/private/tmp/gsc-extension-smoke-"));
   assert.equal(vscode.workspace.workspaceFolders?.[0].uri.fsPath, root);
   const owned = new IsolatedTestWindow(Number(process.env.GSC_TEST_MAIN_INSPECTOR_PORT), profile);
-  await owned.connect(); await owned.focus();
+  await owned.connect(); await owned.assertFocused();
   const extension = vscode.extensions.getExtension("newdlops.gitsimplecompare"); assert.ok(extension); await extension.activate();
   const git = async (args: string[]) => (await runGit(args, root)).trim();
   await git(["add", ".vscode/settings.json"]); await git(["commit", "-qm", "keep isolated fixture settings"]);
@@ -43,7 +43,7 @@ export async function run(): Promise<void> {
   try {
     /** 실제 파일 선택기에서 검색·선택한 뒤 열린 가상 문서가 저장된 Git 내용과 같은지 확인한다. */
     const inspect = async (command: string, title: string, file: string, ref: string, expected: string) => {
-      await owned.focus();
+      await owned.assertFocused();
       const opening = vscode.commands.executeCommand(command, target);
       await until("native stash file picker", async () => (await owned.quickPickState()).visible ? true : undefined);
       await owned.filterQuickPick(file, title);

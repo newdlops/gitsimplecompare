@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.72112] - 2026-10-20
+
+### Performance
+
+- Copy large Graph ref catalogs only for the selected watcher request. Twenty
+  overlapping notifications now copy one catalog while retaining independent
+  cancellation, one final reload and isolated consumer metadata.
+
+### Fixed
+
+- Reconcile Graph history when shallow/graft metadata cannot be verified, even
+  when refs are unchanged. Invalidate ancestry-derived branch markers before
+  reading changed or uncertain history.
+- Distinguish Git's synthetic shallow/replace annotations from real branch
+  names and preserve commas in branch and tag names.
+- Allow the Graph renderer's row-position and branch-color style attributes
+  under its production CSP while keeping scripts restricted by nonce.
+
+### Development
+
+- Verify real Git operations through production Graph HTML and frame responses
+  in headless Chromium. Add repeatable watcher CPU/allocation measurements.
+- Remove native smoke tests' forced app activation, always-on-top and window
+  movement. Stop native measurements on focus loss and require explicit
+  `--allow-visible-host` before opening an Extension Development Host.
+
 ## [0.1.72111] - 2026-10-20
 
 ### Added

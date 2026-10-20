@@ -72,9 +72,10 @@ class IsolatedWindowReader {
     assert.equal(identity.pid, Number(process.env.VSCODE_PID), "Inspector did not belong to the isolated test main process");
     assert.equal(identity.profile, this.profile, "Inspector did not use the isolated test profile");
   }
-  /** 사용자 창을 고르지 않고 전용 프로필의 단일 테스트 창만 앞으로 가져온다. */
-  async focus(): Promise<number> {
-    return this.evaluate(`(function(){var electron=require('electron');if(electron.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('unexpected profile');var wins=electron.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(wins.length!==1)throw Error('expected one isolated workspace');if(process.platform==='darwin')wins[0].setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});wins[0].setAlwaysOnTop(true);wins[0].show();electron.app.focus({steal:true});wins[0].focus();return wins[0].id;})()`);
+  /** 전용 창이 이미 포커스를 가진 경우만 측정한다. OS 포커스를 바꾸지 않고 명확하게 실패한다. */
+  async assertFocused(): Promise<void> {
+    const focused = await this.evaluate(`(function(){var electron=require('electron');if(electron.app.getPath('userData')!==${JSON.stringify(this.profile)})throw Error('unexpected profile');var wins=electron.BrowserWindow.getAllWindows().filter(w=>w.getTitle().includes('workspace'));if(wins.length!==1)throw Error('expected one isolated workspace');return wins[0].isFocused()&&wins[0].webContents.isFocused();})()`);
+    assert.ok(focused, "Native blame smoke stopped without changing window focus; use headless renderer tests while working in another app.");
   }
   /** 제품 binding을 덮어쓰지 않고 독립 request ID로 읽기 expression만 평가한다. */
   private async evaluate(expression: string): Promise<any> {
@@ -120,21 +121,18 @@ export async function run(): Promise<void> {
   const log = new ProductLog(path.join(profile, "logs"));
   const reader = new IsolatedWindowReader(Number(process.env.GSC_TEST_MAIN_INSPECTOR_PORT), profile);
   const timings: any[] = [];
-  /** 실제 포커스를 얻은 후에만 클릭을 시작해 OS 전환 시간을 click latency에 섞지 않는다. */
-  const focused = () => until("focused isolated editor", async () => {
-    if (vscode.window.state.focused) return true;
-    await reader.focus(); return undefined;
-  });
+  /** 이미 포커스를 가진 창만 측정하고 다른 작업 중이면 반복 활성화 없이 중단한다. */
+  const focused = async () => { await reader.assertFocused(); assert.ok(vscode.window.state.focused); };
   try {
-    await reader.connect(); await reader.focus();
+    await reader.connect(); await focused();
     for (const [index, file] of (process.env.GSC_BLAME_BASELINE ? files.slice(0, 1) : files).entries()) {
       const document = await vscode.workspace.openTextDocument(path.join(root, file));
       const openedAt = Date.now();
-      // OS 창 포커스는 검증된 전용 BrowserWindow가 관리하고, 문서 전환이 다른 Code 인스턴스를 활성화하지 않게 한다.
+      // 문서 전환도 OS 포커스를 요청하지 않는다.
       await vscode.window.showTextDocument(document, { preview: false, preserveFocus: true });
       await focused();
       const command = await until("real Block Author CodeLens", async () => {
-        if (!vscode.window.state.focused) { await reader.focus(); return undefined; }
+        await focused();
         const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>("vscode.executeCodeLensProvider", document.uri);
         return lenses?.find(lens => lens.command?.command === "gitSimpleCompare.showBlockBlame")?.command;
       });
@@ -149,7 +147,7 @@ export async function run(): Promise<void> {
       await focused(); const clickedAt = Date.now();
       await vscode.commands.executeCommand(command.command, ...(command.arguments || []));
       const rendered = await until("first nonempty native gutter paint", async () => {
-        if (!vscode.window.state.focused) await reader.focus();
+        await focused();
         return (await log.entries()).find(entry => entry.at >= clickedAt && entry.message === "native blame gutter rendered"
           && entry.detail.uri === document.uri.toString() && /paint:native:[1-9]\d*\//.test(entry.detail.result));
       });
@@ -174,7 +172,7 @@ export async function run(): Promise<void> {
       await focused();
       await vscode.commands.executeCommand(command.command, ...(command.arguments || []));
       const closed = await until("Block Author closes its single gutter", async () => {
-        if (!vscode.window.state.focused) await reader.focus();
+        await focused();
         const state = await reader.state(windowId); return state.rows === 0 && state.layers === 0 ? state : undefined;
       });
       assert.ok(closed.width === undefined || closed.width < state.width!, "Closing the gutter did not restore its width");

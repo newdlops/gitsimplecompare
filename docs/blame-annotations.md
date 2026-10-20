@@ -93,12 +93,14 @@ gutter toggles add no discovery or blame calls and that file, HEAD, index,
 configuration, language, document and nested-repository changes reject stale
 results. These are regression checks, not timings from a user's VS Code window.
 
-`npm run test:extension -- --blame` opens a separate VS Code profile and temporary
+`npm run test:extension -- --blame --allow-visible-host` opens a separate VS Code profile and temporary
 Git repository. It runs the real Block Author command immediately after the hint
 is returned and again after preparation in another file, then checks actual
 renderer rows, a single column, toggle/width cleanup, the owning main PID and
 one Git blame read per file. Timings and screenshots are saved under
-`test-results/native-blame`; focus interruptions are recorded separately.
+`test-results/native-blame`. Tests never activate, pin or move the window. If it
+loses focus, native measurement stops; use headless webview tests while working
+in another application.
 
 A local 0.1.72110 run with a committed 103-line TypeScript fixture recorded:
 

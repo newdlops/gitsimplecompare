@@ -17,8 +17,9 @@ import { disposeWorkingTreeSnapshots } from "../../src/git/workingTreeSnapshot";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import type { PullRequestInfo } from "../../src/git/pullRequestInfo";
 import type { Commit } from "../../src/graph/graphTypes";
+import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 
-type Operation = "push" | "pull" | "fetch" | "rebase" | "merge" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
+type Operation = "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 
 /** 행 순서와 무관하게 실제 HEAD·부모·ref가 같은 Graph 게시를 식별한다. */
@@ -105,14 +106,18 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     await git(["update-ref", "refs/heads/main", f.incoming], f.remote);
     if (operation === "pull-known-history") await git(["fetch", "-q", "origin"]);
   }
-  if (operation === "fetch") await git(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
+  if (operation === "fetch" || operation === "fetch-new-history") await git(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
+  if (operation === "fetch-new-history") await assert.rejects(git(["cat-file", "-e", f.incoming]), "Fresh fetch fixture must not already contain its incoming object");
   if (operation === "fetch-known-history") await git(["update-ref", "refs/heads/known-history", f.main], f.remote);
   const publications: { at: number; signature: string }[] = [];
   let measuring = false;
-  const service = new GitLogService(f.root), { panel, messages } = createOperationGraphPanel({ mock } as any, service, message => {
+  const renderer = process.env.GSC_BENCH_LIVE_RENDERER === "1" ? await GraphLiveRenderer.create() : undefined;
+  const service = new GitLogService(f.root), { panel, messages, surface } = createOperationGraphPanel({ mock } as any, service, message => {
+    renderer?.post(message);
     if (measuring && (message.type === "graph" || message.type === "graphDelta")) publications.push({ at: performance.now(), signature: graphSignature(panel.commits) });
   });
   try {
+    if (renderer) await renderer.mount(surface.webview.html);
     assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel);
     const initialSignature = graphSignature(panel.commits);
     const timings: GitExecutionTiming[] = [];
@@ -128,20 +133,22 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     const rssSample = setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage().rss); }, 10);
     measuring = true;
     const beforeMessages = messages.length;
-    let operationEnd: number, graphEnd: number;
+    let operationEnd: number, operationEndedAt: number, graphEnd: number;
     try {
       switch (operation) {
         case "push": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root)); break;
         case "pull": case "pull-known-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
-        case "fetch": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
+        case "fetch": case "fetch-new-history": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
         case "rebase": assert.equal((await new BranchOperationService(f.root).rebaseMerge("topic")).status, "completed"); break;
         case "merge": assert.equal((await new BranchOperationService(f.root).squashMerge("topic")).status, "completed"); break;
+        case "merge-no-ff": await git(["merge", "--no-ff", "--no-edit", "topic"]); break;
         case "pr-squash-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).squashCherryPick(pullRequest(f))).status, "completed"); break;
         case "pr-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).rebasePullRequest(pullRequest(f))).status, "completed"); break;
         case "cherry-pick": await service.cherryPick(f.prCommits[0]); break;
         case "checkout": assert.ok(await service.getLocalBranchCheckoutState("topic")); await service.checkoutLocalBranch("topic"); break;
       }
       operationEnd = performance.now();
+      operationEndedAt = Date.now();
       const operationProcesses = timings.length;
       if (operation === "checkout") await panel.refreshAfterCheckoutAction();
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
@@ -155,6 +162,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         commands[timing.command] = (commands[timing.command] ?? 0) + 1;
         if (index >= operationProcesses) graphCommands[timing.command] = (graphCommands[timing.command] ?? 0) + 1;
       }
+      if (operation === "fetch-new-history") assert.equal(graphCommands.log, 1, "Previously unknown history needs exactly one Graph page read");
       unobserve();
       const head = (await git(["rev-parse", "HEAD"])).trim();
       assert.equal(panel.commits.find((commit: Commit) => commit.refs.includes("HEAD"))?.hash, head);
@@ -164,14 +172,17 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const finalSignature = graphSignature(panel.commits), graphAlreadyCurrent = initialSignature === finalSignature;
       const latestPublishedAt = publications.find(publication => publication.at >= operationEnd && publication.signature === finalSignature)?.at;
       assert.ok(latestPublishedAt !== undefined || graphAlreadyCurrent, "Changed final Git graph must have been published; unchanged data needs no repaint.");
+      const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent);
+      if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
+        ...(liveRenderer ? { liveRenderer } : {}),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,
         webviewMessages: messages.length - beforeMessages, graphPublications: publications.length,
         commands, graphCommands, nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
     } finally { clearInterval(rssSample); measuring = false; unobserve(); }
-  } finally { panel.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
+  } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
 }
 
 /** 요청된 모든 작업을 동일한 fixture 규모로 실행하고 결과 외의 임시 파일/프로세스를 남기지 않는다. */

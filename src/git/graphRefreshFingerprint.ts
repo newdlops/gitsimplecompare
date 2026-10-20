@@ -32,6 +32,8 @@ export type GraphFingerprintRunner = (args: string[], repoRoot: string, options?
 export interface GraphRefreshSnapshot {
   fingerprint: GraphRefreshFingerprint;
   historyIdentity?: string;
+  /** refs가 같아도 topology를 확인하지 못하면 자동 갱신의 unchanged 생략을 허용하지 않는다. */
+  historyUncertain?: boolean;
   localBranches?: readonly LocalBranchStatus[];
   refCount?: number;
   worktrees: readonly WorktreeInfo[];
@@ -88,6 +90,7 @@ export async function readGraphRefreshSnapshot(
   return {
     fingerprint: createGraphRefreshFingerprint({ head, symbolicHead, refs: refSnapshot.refs, worktrees: worktrees.split("\n\n"), historyIdentity: historyIdentity ?? "unavailable" }),
     historyIdentity,
+    historyUncertain: historyIdentity === undefined,
     refCount: refSnapshot.refs.length,
     ...(localBranches ? { localBranches } : {}),
     worktrees: parsedWorktrees,

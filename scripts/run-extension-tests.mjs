@@ -51,7 +51,7 @@ function runExtensionHost() {
       cwd: workspaceRoot,
       stdio: "inherit",
       detached: process.platform !== "win32",
-      env: { ...process.env, GSC_EXTENSION_TEST_KIND: smokeName },
+      env: { ...process.env, GSC_EXTENSION_TEST_KIND: smokeName, GSC_ALLOW_VISIBLE_HOST: "1" },
     });
     let finished = false;
     let interrupted = false;
@@ -102,6 +102,9 @@ function runExtensionHost() {
 
 /** bundle 이후 한 개의 Extension Host test group만 실행한다. */
 async function main() {
+  if (!process.argv.includes("--allow-visible-host")) {
+    throw new Error("Extension Host tests open a visible VS Code window. Add --allow-visible-host only when ready; use node/headless webview tests during other work. Tests never activate or pin the window.");
+  }
   await bundleExtensionSmoke();
   const code = await runExtensionHost();
   if (code !== 0) process.exitCode = code;

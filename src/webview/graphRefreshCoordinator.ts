@@ -12,7 +12,7 @@ export interface GraphRefreshRequest { repoRoot: string; cause: string; mode: Gr
 /** Graph reload callback이 stale 여부를 판단할 수 있도록 전달하는 실행 문맥이다. */
 export interface GraphRefreshContext extends GraphRefreshRead { repoRoot: string; cause: string; generation: number; previous?: GraphRefreshRead; }
 /** Git reader가 이미 읽은 데이터도 현재 refresh 세대에만 전달하는 결과다. */
-export interface GraphRefreshRead { fingerprint: string; historyIdentity?: string; localBranches?: readonly LocalBranchStatus[]; refCount?: number; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
+export interface GraphRefreshRead { fingerprint: string; historyIdentity?: string; historyUncertain?: boolean; localBranches?: readonly LocalBranchStatus[]; refCount?: number; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
 /** UI adapter가 주입하는 Git read, reload, publication, invalidation, logging 경계다. */
 export interface GraphRefreshLifecycleDeps {
   readFingerprint(repoRoot: string, signal?: AbortSignal, options?: { includeLocalBranches: boolean; previousRefCount?: number }): Promise<string | GraphRefreshRead>;
@@ -119,7 +119,9 @@ export class GraphRefreshLifecycleCoordinator {
     this.epoch++;
     this.cancelFingerprintReads("repositoryChanged");
     void this.fingerprintRead?.dispose();
-    this.fingerprintRead = new SharedGitRead(signal => this.deps.readFingerprint(repoRoot, signal), cloneFingerprintRead);
+    // raw snapshot은 coordinator 내부에만 두고 최신 요청을 고른 뒤 한 번 복사한다.
+    // 폐기할 watcher 소비자까지 큰 remote catalog를 복사하면 burst 크기에 비례해 임시 메모리가 증가한다.
+    this.fingerprintRead = new SharedGitRead(signal => this.deps.readFingerprint(repoRoot, signal), value => value);
     this.deps.invalidateReload("repositoryChanged");
   }
 
@@ -157,7 +159,10 @@ export class GraphRefreshLifecycleCoordinator {
       }
       const intent = this.unreadIntent;
       this.unreadIntent = { mode: "none", force: false };
-      this.schedule({ ...request, ...snapshot, fingerprint, sequence, force: intent.force, mode: strongestMode(request.mode, intent.mode) });
+      const selected = cloneFingerprintRead({ ...snapshot, fingerprint }) as GraphRefreshRead;
+      if (selected.historyUncertain) this.deps.info("graph history proof unavailable", {
+        ...this.fields(request, this.generation, graphRefreshFingerprintDigest(fingerprint)), reason: "reconcileWithoutTopologyProof" });
+      this.schedule({ ...request, ...selected, sequence, force: !!(intent.force || selected.historyUncertain), mode: strongestMode(request.mode, intent.mode) });
     } catch (error) {
       // 최신 read 실패 뒤에도 누적 intent는 다음 성공 read가 소비한다. 명령 mutation의 force를 오류로 잃지 않는다.
       if (!this.disposed && this.repository === request.repoRoot && !this.canRun()) this.defer(request);
@@ -258,7 +263,7 @@ export class GraphRefreshLifecycleCoordinator {
   /** 한 자동 transaction을 실행하고 성공시에만 baseline을 전진시킨 뒤 newest pending을 소비한다. */
   private async run(request: ResolvedRequest, generation: number, epoch: number): Promise<void> {
     const context = { repoRoot: request.repoRoot, cause: request.cause, generation, fingerprint: request.fingerprint,
-      historyIdentity: request.historyIdentity, refCount: request.refCount, ...(this.baselineRead ? { previous: cloneFingerprintRead(this.baselineRead) as GraphRefreshRead } : {}),
+      historyIdentity: request.historyIdentity, historyUncertain: request.historyUncertain, refCount: request.refCount, ...(this.baselineRead ? { previous: cloneFingerprintRead(this.baselineRead) as GraphRefreshRead } : {}),
       ...(request.localBranches ? { localBranches: request.localBranches } : {}),
       ...(request.worktrees ? { worktrees: request.worktrees } : {}),
       ...(request.remoteTips ? { remoteTips: request.remoteTips } : {}) };
@@ -272,7 +277,7 @@ export class GraphRefreshLifecycleCoordinator {
       if (!superseded) await this.deps.publishAfterReload(context, request.mode);
       if (!this.isCurrent(request.repoRoot, epoch) || this.running !== request) return;
       this.baseline = request.fingerprint;
-      this.baselineRead = { fingerprint: request.fingerprint, historyIdentity: request.historyIdentity, localBranches: request.localBranches, refCount: request.refCount, worktrees: request.worktrees, remoteTips: request.remoteTips };
+      this.baselineRead = { fingerprint: request.fingerprint, historyIdentity: request.historyIdentity, historyUncertain: request.historyUncertain, localBranches: request.localBranches, refCount: request.refCount, worktrees: request.worktrees, remoteTips: request.remoteTips };
       this.deps.info("graph refresh complete", this.fields(request, generation, digest));
     } catch (error) {
       if (this.isCurrent(request.repoRoot, epoch)) this.deps.error("graph refresh error", error, this.fields(request, generation, digest));

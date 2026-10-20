@@ -87,6 +87,8 @@ export function buildGraphHtml(
     `default-src 'none'`,
     `img-src ${webview.cspSource} data:`,
     `style-src ${webview.cspSource}`,
+    // Graph의 행 위치·레인 색상은 renderer가 style 속성으로 갱신한다. style/script 태그 허용 범위는 유지한다.
+    `style-src-attr 'unsafe-inline'`,
     `script-src 'nonce-${nonce}'`,
     `font-src ${webview.cspSource}`,
   ].join("; ");
