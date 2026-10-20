@@ -293,13 +293,15 @@ test("explicit force pushes remain a single approved update", async t => {
   assert.deepEqual(await f.updates(), [commits.at(-1)]);
 });
 
-test("remote-branch publication and PR publication share the sequential push service", async t => {
+test("remote-branch and PR publication reuse server history through the shared push service", async t => {
   const f = await fixture(t, "push-publish-paths", false);
   const commits = [f.head, ...await outgoing(f.root)];
   await new RemoteBranchService(f.root).pushCurrentBranchToRemote("origin", "published", { sequentialThresholdBytes: 0 });
   assert.deepEqual(await f.updates(), commits);
   await new PullRequestPublishService(f.root).publishBranch("main", "origin", "pr-branch", { sequentialThresholdBytes: 0 });
-  assert.deepEqual(await f.updates(), [...commits, ...commits]);
+  assert.deepEqual(await f.updates(), [...commits, commits.at(-1)]);
+  assert.equal(await git(f.remote, "rev-parse", "published"), commits.at(-1));
+  assert.equal(await git(f.remote, "rev-parse", "pr-branch"), commits.at(-1));
   assert.equal(await git(f.root, "rev-parse", "--abbrev-ref", "@{u}"), "origin/pr-branch");
 });
 

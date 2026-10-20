@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.72122] - 2026-10-21
+
+### Fixed
+
+- Avoid splitting a new branch's already-published base history into repeated
+  pushes. When the whole-history estimate crosses the size threshold, inspect
+  other branches at the actual push URL and exclude locally verified published
+  commits from the outgoing object estimate and sequence.
+- Keep the destination lease separate from shared history. A newly created
+  destination still requires an empty initial lease for sequential publication;
+  concurrent remote changes remain protected.
+
+### Performance
+
+- Publish small new changes in one update even when an already-published base
+  contains large objects. Split genuinely new large changes using only their
+  new first-parent commits. Preserve full sequencing for an empty remote.
+- Stream published-object metadata and bound the selected exclusion tips to 64.
+  Preserve the existing paths for small histories and existing destinations.
+
+### Development
+
+- Add actual receiver-hook counts, a real 50MiB shared-base check, local-change
+  preservation, distinct push/fetch URL, unknown-object and concurrent-creation
+  tests. Record Native timings separately from Graph correctness checks.
+
 ## [0.1.72121] - 2026-10-21
 
 ### Performance

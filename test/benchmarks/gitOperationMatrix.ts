@@ -24,6 +24,8 @@ import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 
 type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
+const PUSH_THRESHOLD = process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES === undefined ? undefined : Number(process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES);
+assert.ok(PUSH_THRESHOLD === undefined || (Number.isFinite(PUSH_THRESHOLD) && PUSH_THRESHOLD >= 0), "Push threshold must be a non-negative byte count");
 
 /** 행 순서와 무관하게 실제 HEAD·부모·ref와 최종 local-only 표시까지 같은 게시를 식별한다. */
 function graphSignature(commits: readonly Commit[]): string {
@@ -187,7 +189,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     try {
       switch (operation) {
         case "initial": break;
-        case "push": case "push-tracked": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root)); break;
+        case "push": case "push-tracked": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root), { sequentialThresholdBytes: PUSH_THRESHOLD }); break;
         case "pull": case "pull-known-history": case "pull-new-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
         case "fetch": case "fetch-new-history": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
         case "rebase": assert.equal((await new BranchOperationService(f.root).rebaseMerge("topic")).status, "completed"); break;
@@ -275,7 +277,7 @@ async function main() {
     const result = { version: JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")).version,
       source: process.env.GSC_BENCH_SOURCE ? JSON.parse(process.env.GSC_BENCH_SOURCE) : undefined,
       fixture: { files: f.files, commits: f.depth, branches: f.branches, sharedUpstreamBranches: f.sharedUpstreamBranches,
-        network: "local-bare-only", monitorPolicy: !!stopMonitor }, results };
+        network: "local-bare-only", monitorPolicy: !!stopMonitor, pushThresholdBytes: PUSH_THRESHOLD }, results };
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));

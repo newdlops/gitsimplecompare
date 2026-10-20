@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readPublishedPushTips } from "../src/git/pushPublishedHistory";
+import type { PushGitRunner } from "../src/git/sequentialPush";
+
+/** 서로 다른 완전한 SHA-1/SHA-256 fixture OID를 만든다. */
+function oid(index: number, length = 40): string { return index.toString(16).padStart(length, "0"); }
+
+test("published tips validate chunked metadata, skip unknown/non-commits and bound selected exclusions", async () => {
+  const tips = Array.from({ length: 1000 }, (_, index) => oid(index + 1, 64));
+  let batches = 0;
+  const runner: PushGitRunner = {
+    run: async () => tips.map((tip, index) => `${tip}\trefs/heads/branch-${index}`).join("\n") + `\n${tips[0]}\trefs/heads/duplicate\n`,
+    input: async () => { throw new Error("metadata must use streaming when it is available"); },
+    inputStream: async (_args, _root, input, consume) => {
+      batches++; assert.deepEqual(input.trim().split("\n"), tips);
+      const output = tips.map((tip, index) => index === 0 ? `${tip} missing` : `${tip} ${index === 1 ? "tag" : index === 2 ? "blob" : "commit"}`).join("\n") + "\n";
+      for (let start = 0; start < output.length; start += 17) consume(Buffer.from(output.slice(start, start + 17)));
+    },
+  };
+  const selected = await readPublishedPushTips("/fixture", "unused", oid(1001, 64), runner, {});
+  assert.equal(batches, 1); assert.equal(selected.length, 64); assert.equal(new Set(selected).size, 64);
+  assert.deepEqual(selected, tips.slice(3, 67));
+});
+
+test("malformed advertisements or mismatched object replies cannot become published history proof", async () => {
+  for (const [advertised, metadata] of [
+    ["not-an-oid\trefs/heads/main\n", ""],
+    [`${oid(1)}\trefs/tags/main\n`, ""],
+    [`${oid(1)}\trefs/heads/main\n`, `${oid(2)} commit\n`],
+    [`${oid(1)}\trefs/heads/main\n`, ""],
+    [`${oid(1)}\trefs/heads/main\n`, `${oid(1)} unknown\n`],
+  ]) {
+    const runner: PushGitRunner = { run: async () => advertised, input: async () => metadata };
+    await assert.rejects(readPublishedPushTips("/fixture", "unused", oid(3), runner, {}), /Could not (read|verify)/);
+  }
+});
+
+test("discovery failure hides credential-bearing transport errors while preserving cancellation", async () => {
+  const secret = "https://name:secret-token@example.invalid/repository";
+  const error = new Error(`cannot connect to ${secret}`);
+  const runner: PushGitRunner = { run: async () => { throw error; }, input: async () => "" };
+  await assert.rejects(readPublishedPushTips("/fixture", secret, oid(1), runner, {}), value => {
+    assert.ok(value instanceof Error); assert.equal(value.message.includes("secret-token"), false);
+    return /Could not read the push destination/.test(value.message);
+  });
+  const controller = new AbortController(); controller.abort();
+  const cancelled = Object.assign(new Error("Git read cancelled"), { name: "AbortError" });
+  const cancelledRunner: PushGitRunner = { run: async () => { throw cancelled; }, input: async () => "" };
+  await assert.rejects(readPublishedPushTips("/fixture", secret, oid(1), cancelledRunner, { signal: controller.signal }), value => value === cancelled);
+});

@@ -3,6 +3,8 @@
 import { createHash } from "node:crypto";
 import { GitError, runGit, runGitWithInput, runGitStreamWithInput, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
+import { readPublishedPushTips } from "./pushPublishedHistory";
+import { logInfo } from "../ui/outputLog";
 
 /** 압축 전 신규 Git 객체 합계가 이 값 이상인 다중 커밋 push를 분할한다. */
 export const SEQUENTIAL_PUSH_THRESHOLD_BYTES = 50 * 1024 * 1024;
@@ -202,19 +204,35 @@ async function prepareTransfer(
   if (remoteHead && !(await isAncestor(root, remoteHead, target.head, runner, runOptions))) {
     return single("remoteNotAncestor");
   }
-  const recent = await readRecentFirstParentCommits(root, target, remoteHead, runner, runOptions);
+  let excludedHeads = remoteHead ? [remoteHead] : [];
+  let recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
   // 한 커밋은 분할하지 않으므로 이미 확인한 remoteHead → target.head 조상 관계를 다시 읽지 않는다.
   if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit");
-  const complete = remoteHead ? recent.oldestParents[0] === remoteHead : recent.oldestParents.length === 0;
+  let complete = remoteHead ? recent.oldestParents[0] === remoteHead : recent.oldestParents.length === 0;
   // 직전 first-parent조차 원격 tip의 후손이 아니면 더 오래된 조상도 후손일 수 없다.
   // 두 번째 부모에서 원격 이력이 합쳐진 merge 하나만 보낼 때 전체 목록과 이진 탐색을 생략한다.
   // HEAD의 부모가 하나면 기존 remote→HEAD 검증만으로 그 부모도 후손임을 안다.
   if (remoteHead && !complete && recent.headParents.length > 1 &&
       !(await isAncestor(root, remoteHead, recent.commits[0], runner, runOptions))) return single("singleCommit");
-  const estimatedBytes = await estimateObjectBytes(root, target.head, remoteHead, runner, runOptions);
+  let estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
   if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
+  if (!remoteHead) {
+    // 새 branch도 서버의 다른 branch가 기본 이력을 이미 가질 수 있다. lease는 빈 목적 ref를 계속 보호한다.
+    const published = await readPublishedPushTips(root, urls[0], target.head, runner, runOptions);
+    logInfo("push published history checked", { repoRoot: root, verifiedTips: published.length });
+    if (published.length) {
+      excludedHeads = published;
+      const wholeHistoryBytes = estimatedBytes;
+      estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
+      logInfo("push unpublished objects recalculated", { repoRoot: root, wholeHistoryBytes, unpublishedBytes: estimatedBytes });
+      if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
+      recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
+      if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit", estimatedBytes);
+      complete = !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
+    }
+  }
   // 실제 분할할 큰 push만 전체 전송 순서를 만든다. 작은 push는 확장 호스트에 긴 commit 배열을 남기지 않는다.
-  let commits = complete ? recent.commits : await readFirstParentCommits(root, target, remoteHead, runner, runOptions);
+  let commits = complete ? recent.commits : await readFirstParentCommits(root, target, excludedHeads, runner, runOptions);
   if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
   // 원격 tip이 merge의 두 번째 부모에 있을 때도 첫 전송이 반드시 그 tip의 후손이어야 한다.
   if (remoteHead && commits[0] !== recent.commits[0] && !(await isAncestor(root, remoteHead, commits[0], runner, runOptions))) {
@@ -232,30 +250,30 @@ async function prepareTransfer(
 }
 
 /**
- * @param root 저장소 루트 @param target 승인한 source @param remoteHead 제외할 실제 원격 tip
+ * @param root 저장소 루트 @param target 승인한 source @param excludedHeads 실제 서버 소유가 검증된 제외 tip
  * @param runner 공유 Git 실행기 @param runOptions 원본 DAG·취소 정책 @returns 큰 push의 오래된 순서 OID 목록
  */
 async function readFirstParentCommits(
-  root: string, target: BranchPushTarget, remoteHead: string, runner: PushGitRunner, runOptions: RunGitOptions
+  root: string, target: BranchPushTarget, excludedHeads: readonly string[], runner: PushGitRunner, runOptions: RunGitOptions
 ): Promise<string[]> {
   const commits = (await runner.run([
-    "rev-list", "--first-parent", "--reverse", target.head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
+    "rev-list", "--first-parent", "--reverse", target.head, ...excludedHeads.map(head => `^${head}`), "--",
   ], root, runOptions)).trim().split(/\r?\n/).filter(Boolean);
   if (commits.some(commit => !OID.test(commit))) throw new Error("Could not read the outgoing commit sequence.");
   return commits;
 }
 
 /**
- * @param root 저장소 루트 @param target 고정 source @param remoteHead 실제 원격 tip
+ * @param root 저장소 루트 @param target 고정 source @param excludedHeads 실제 서버가 소유한 제외 tip
  * @param runner Git 실행 경계 @param runOptions 원본 DAG·취소 정책 @returns 최신 두 후보와 실제 부모 OID
  * max-count는 reverse 전에 적용된다. 메시지는 출력하지 않고 NUL 필드로 해시와 부모만 구분한다.
  */
 async function readRecentFirstParentCommits(
-  root: string, target: BranchPushTarget, remoteHead: string, runner: PushGitRunner, runOptions: RunGitOptions
+  root: string, target: BranchPushTarget, excludedHeads: readonly string[], runner: PushGitRunner, runOptions: RunGitOptions
 ): Promise<RecentPushCommits> {
   const output = await runner.run([
     "rev-list", "--first-parent", "--reverse", "--max-count=2", "--format=%H%x00%P", "--no-commit-header",
-    target.head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
+    target.head, ...excludedHeads.map(head => `^${head}`), "--",
   ], root, runOptions);
   const entries = output.trimEnd().split(/\r?\n/).filter(Boolean).map(line => {
     const [hash, rawParents] = line.split("\0");
@@ -301,11 +319,11 @@ async function isAncestor(root: string, ancestor: string, head: string, runner: 
 
 /**
  * 신규 commit/tree/blob의 압축 전 바이트 합계를 구한다. 파일 내용은 읽지 않고 객체 메타데이터만 조회한다.
- * @param remoteHead 제외할 원격 이력 @returns 실제 pack/네트워크 크기와 다를 수 있는 크기 추정치
+ * @param excludedHeads 서버가 이미 소유한 이력의 tip @returns 실제 pack/네트워크 크기와 다를 수 있는 크기 추정치
  */
-async function estimateObjectBytes(root: string, head: string, remoteHead: string, runner: PushGitRunner, options: RunGitOptions): Promise<number> {
+async function estimateObjectBytes(root: string, head: string, excludedHeads: readonly string[], runner: PushGitRunner, options: RunGitOptions): Promise<number> {
   const objects = await runner.run([
-    "rev-list", "--objects", "--no-object-names", head, ...(remoteHead ? [`^${remoteHead}`] : []), "--",
+    "rev-list", "--objects", "--no-object-names", head, ...excludedHeads.map(tip => `^${tip}`), "--",
   ], root, options);
   let bytes = 0, pending = "";
   /** 숫자 한 행만 검증해 objectsize 합계의 정확성과 safe integer 경계를 유지한다. */

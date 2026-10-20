@@ -1,0 +1,3464 @@
+{
+  "version": "0.1.72122",
+  "baselineCommit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+  "sourcesSha256": {
+    "src/git/sequentialPush.ts": "1084de6fdd4759f296ed85b8e4d5e9ba8d83e8d255d9b2011585361a8f37b494",
+    "src/git/pushPublishedHistory.ts": "a3d3fac4a337c8b215dc646712c707fcb02527dd4537193fccd92fe76618d050",
+    "test/pushPublishedHistory.test.ts": "378fbb13348b6a67be161fd7ba6d4a410390d2062106cc9541999fbec1ae4498",
+    "test/pushPublishedHistoryMetadata.test.ts": "88980b92f244dc7e21a0785ab3688eb26496a9310264e30d0e4ae2298f89dc2d",
+    "test/sequentialPush.test.ts": "e32ab5e90a1c82b81f874e165e3afe9123c6b7f550da71dcec00160356145acf",
+    "test/benchmarks/publishedPush.ts": "a29c8c3e54b302bcc6f1aee8a2f98b363ae5c7da3ac0bea6a9fcaaf9fb3790fb",
+    "test/benchmarks/gitOperationMatrix.ts": "4dfb634df82cee36e2ebe2e37b8c8cf588dbc145b95581f1e53b29daae52d1f4"
+  },
+  "measurementOrder": [
+    "before1b",
+    "after1",
+    "after2",
+    "before2"
+  ],
+  "scope": "Real Native Git updates to isolated local bare remotes; 2KiB threshold scales the regression case. This is not production 50MiB throughput or GitHub network speed. Benchmark Node CPU excludes Git/helpers. External machine load uncontrolled.",
+  "samples": {
+    "before": [
+      {
+        "source": {
+          "kind": "commit",
+          "commit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+          "bundleSha256": "87baf665e23a4ef6be198b346fca0410ff8b35aad3b201276608c0e700eda1c5"
+        },
+        "scope": "Native Git with local bare remote; 2KiB test threshold scales the branch-history case, not production 50MiB network throughput; Node CPU excludes Git/helpers; no Graph",
+        "results": [
+          {
+            "mode": "shared-small-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 79622,
+            "planMs": 867,
+            "readyMs": 3080,
+            "nativePushElapsedMs": 60664,
+            "directGitCalls": 122,
+            "nativePushes": 35,
+            "remoteRefUpdates": 35,
+            "strategy": "sequential",
+            "plannedTransfers": 35,
+            "estimatedBytes": 8386,
+            "nodeCpuMs": 278,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 144,
+                "atMs": 145
+              },
+              {
+                "command": "config",
+                "elapsedMs": 268,
+                "atMs": 271
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 266,
+                "atMs": 413
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 454,
+                "atMs": 867
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 421,
+                "atMs": 1289
+              },
+              {
+                "command": "config",
+                "elapsedMs": 673,
+                "atMs": 1542
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 378,
+                "atMs": 1668
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 379,
+                "atMs": 2047
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 144,
+                "atMs": 2192
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 310,
+                "atMs": 2502
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 156,
+                "atMs": 2659
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 144,
+                "atMs": 2804
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 141,
+                "atMs": 2944
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 135,
+                "atMs": 3079
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 137,
+                "atMs": 3217
+              },
+              {
+                "command": "config",
+                "elapsedMs": 256,
+                "atMs": 3337
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1310,
+                "atMs": 4647
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 212,
+                "atMs": 4860
+              },
+              {
+                "command": "config",
+                "elapsedMs": 347,
+                "atMs": 4998
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2297,
+                "atMs": 7296
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 298,
+                "atMs": 7593
+              },
+              {
+                "command": "config",
+                "elapsedMs": 482,
+                "atMs": 7779
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1102,
+                "atMs": 8881
+              },
+              {
+                "command": "config",
+                "elapsedMs": 141,
+                "atMs": 9025
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 280,
+                "atMs": 9162
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1040,
+                "atMs": 10202
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 141,
+                "atMs": 10343
+              },
+              {
+                "command": "config",
+                "elapsedMs": 267,
+                "atMs": 10472
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1138,
+                "atMs": 11609
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 148,
+                "atMs": 11757
+              },
+              {
+                "command": "config",
+                "elapsedMs": 290,
+                "atMs": 11902
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1148,
+                "atMs": 13050
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 164,
+                "atMs": 13213
+              },
+              {
+                "command": "config",
+                "elapsedMs": 304,
+                "atMs": 13355
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1104,
+                "atMs": 14460
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 295,
+                "atMs": 14754
+              },
+              {
+                "command": "config",
+                "elapsedMs": 427,
+                "atMs": 14890
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2251,
+                "atMs": 17141
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 402,
+                "atMs": 17543
+              },
+              {
+                "command": "config",
+                "elapsedMs": 904,
+                "atMs": 18047
+              },
+              {
+                "command": "push",
+                "elapsedMs": 3722,
+                "atMs": 21770
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 685,
+                "atMs": 22455
+              },
+              {
+                "command": "config",
+                "elapsedMs": 913,
+                "atMs": 22686
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2268,
+                "atMs": 24955
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 213,
+                "atMs": 25168
+              },
+              {
+                "command": "config",
+                "elapsedMs": 366,
+                "atMs": 25323
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1175,
+                "atMs": 26498
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 151,
+                "atMs": 26650
+              },
+              {
+                "command": "config",
+                "elapsedMs": 304,
+                "atMs": 26804
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1062,
+                "atMs": 27866
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 147,
+                "atMs": 28014
+              },
+              {
+                "command": "config",
+                "elapsedMs": 282,
+                "atMs": 28150
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1738,
+                "atMs": 29889
+              },
+              {
+                "command": "config",
+                "elapsedMs": 143,
+                "atMs": 30034
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 276,
+                "atMs": 30166
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1105,
+                "atMs": 31271
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 108,
+                "atMs": 31379
+              },
+              {
+                "command": "config",
+                "elapsedMs": 232,
+                "atMs": 31504
+              },
+              {
+                "command": "push",
+                "elapsedMs": 972,
+                "atMs": 32476
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 171,
+                "atMs": 32647
+              },
+              {
+                "command": "config",
+                "elapsedMs": 302,
+                "atMs": 32781
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1080,
+                "atMs": 33860
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 252,
+                "atMs": 34113
+              },
+              {
+                "command": "config",
+                "elapsedMs": 387,
+                "atMs": 34250
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1169,
+                "atMs": 35420
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 143,
+                "atMs": 35563
+              },
+              {
+                "command": "config",
+                "elapsedMs": 267,
+                "atMs": 35689
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1000,
+                "atMs": 36690
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 139,
+                "atMs": 36829
+              },
+              {
+                "command": "config",
+                "elapsedMs": 264,
+                "atMs": 36956
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1571,
+                "atMs": 38528
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 164,
+                "atMs": 38692
+              },
+              {
+                "command": "config",
+                "elapsedMs": 302,
+                "atMs": 38832
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1819,
+                "atMs": 40652
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 242,
+                "atMs": 40894
+              },
+              {
+                "command": "config",
+                "elapsedMs": 403,
+                "atMs": 41057
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2363,
+                "atMs": 43421
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 160,
+                "atMs": 43580
+              },
+              {
+                "command": "config",
+                "elapsedMs": 300,
+                "atMs": 43723
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2190,
+                "atMs": 45914
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 277,
+                "atMs": 46191
+              },
+              {
+                "command": "config",
+                "elapsedMs": 416,
+                "atMs": 46331
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2300,
+                "atMs": 48632
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 342,
+                "atMs": 48973
+              },
+              {
+                "command": "config",
+                "elapsedMs": 493,
+                "atMs": 49127
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2454,
+                "atMs": 51582
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 400,
+                "atMs": 51983
+              },
+              {
+                "command": "config",
+                "elapsedMs": 794,
+                "atMs": 52379
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1975,
+                "atMs": 54353
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 268,
+                "atMs": 54621
+              },
+              {
+                "command": "config",
+                "elapsedMs": 524,
+                "atMs": 54879
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1869,
+                "atMs": 56749
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 405,
+                "atMs": 57154
+              },
+              {
+                "command": "config",
+                "elapsedMs": 539,
+                "atMs": 57289
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1838,
+                "atMs": 59128
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 282,
+                "atMs": 59410
+              },
+              {
+                "command": "config",
+                "elapsedMs": 547,
+                "atMs": 59677
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2519,
+                "atMs": 62196
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 304,
+                "atMs": 62500
+              },
+              {
+                "command": "config",
+                "elapsedMs": 695,
+                "atMs": 62893
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2299,
+                "atMs": 65193
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 280,
+                "atMs": 65473
+              },
+              {
+                "command": "config",
+                "elapsedMs": 424,
+                "atMs": 65619
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2057,
+                "atMs": 67676
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 167,
+                "atMs": 67843
+              },
+              {
+                "command": "config",
+                "elapsedMs": 307,
+                "atMs": 67985
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1559,
+                "atMs": 69544
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 109,
+                "atMs": 69654
+              },
+              {
+                "command": "config",
+                "elapsedMs": 284,
+                "atMs": 69838
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2055,
+                "atMs": 71893
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 403,
+                "atMs": 72296
+              },
+              {
+                "command": "config",
+                "elapsedMs": 561,
+                "atMs": 72460
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2452,
+                "atMs": 74913
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 527,
+                "atMs": 75440
+              },
+              {
+                "command": "config",
+                "elapsedMs": 1226,
+                "atMs": 76141
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1410,
+                "atMs": 77552
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 144,
+                "atMs": 77696
+              },
+              {
+                "command": "config",
+                "elapsedMs": 262,
+                "atMs": 77816
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1253,
+                "atMs": 79070
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 141,
+                "atMs": 79212
+              },
+              {
+                "command": "config",
+                "elapsedMs": 140,
+                "atMs": 79352
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 270,
+                "atMs": 79622
+              }
+            ]
+          },
+          {
+            "mode": "shared-large-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 90099,
+            "planMs": 729,
+            "readyMs": 3658,
+            "nativePushElapsedMs": 69453,
+            "directGitCalls": 122,
+            "nativePushes": 35,
+            "remoteRefUpdates": 35,
+            "strategy": "sequential",
+            "plannedTransfers": 35,
+            "estimatedBytes": 19650,
+            "nodeCpuMs": 304,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 163,
+                "atMs": 163
+              },
+              {
+                "command": "config",
+                "elapsedMs": 334,
+                "atMs": 336
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 399,
+                "atMs": 563
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 165,
+                "atMs": 729
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 189,
+                "atMs": 918
+              },
+              {
+                "command": "config",
+                "elapsedMs": 435,
+                "atMs": 1166
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 530,
+                "atMs": 1448
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 362,
+                "atMs": 1811
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 237,
+                "atMs": 2049
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 483,
+                "atMs": 2533
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 152,
+                "atMs": 2686
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 166,
+                "atMs": 2852
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 533,
+                "atMs": 3384
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 273,
+                "atMs": 3658
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 187,
+                "atMs": 3846
+              },
+              {
+                "command": "config",
+                "elapsedMs": 351,
+                "atMs": 4010
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2769,
+                "atMs": 6780
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 167,
+                "atMs": 6948
+              },
+              {
+                "command": "config",
+                "elapsedMs": 464,
+                "atMs": 7247
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2194,
+                "atMs": 9441
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 286,
+                "atMs": 9728
+              },
+              {
+                "command": "config",
+                "elapsedMs": 429,
+                "atMs": 9873
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2458,
+                "atMs": 12330
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 182,
+                "atMs": 12513
+              },
+              {
+                "command": "config",
+                "elapsedMs": 317,
+                "atMs": 12650
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1659,
+                "atMs": 14308
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 272,
+                "atMs": 14580
+              },
+              {
+                "command": "config",
+                "elapsedMs": 610,
+                "atMs": 14921
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2599,
+                "atMs": 17520
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 152,
+                "atMs": 17672
+              },
+              {
+                "command": "config",
+                "elapsedMs": 296,
+                "atMs": 17819
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1936,
+                "atMs": 19754
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 305,
+                "atMs": 20060
+              },
+              {
+                "command": "config",
+                "elapsedMs": 467,
+                "atMs": 20223
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2852,
+                "atMs": 23076
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 535,
+                "atMs": 23612
+              },
+              {
+                "command": "config",
+                "elapsedMs": 782,
+                "atMs": 23860
+              },
+              {
+                "command": "push",
+                "elapsedMs": 3318,
+                "atMs": 27179
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 323,
+                "atMs": 27502
+              },
+              {
+                "command": "config",
+                "elapsedMs": 457,
+                "atMs": 27638
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1452,
+                "atMs": 29090
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 581,
+                "atMs": 29672
+              },
+              {
+                "command": "config",
+                "elapsedMs": 862,
+                "atMs": 29955
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1657,
+                "atMs": 31612
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 300,
+                "atMs": 31911
+              },
+              {
+                "command": "config",
+                "elapsedMs": 446,
+                "atMs": 32059
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2012,
+                "atMs": 34069
+              },
+              {
+                "command": "config",
+                "elapsedMs": 200,
+                "atMs": 34272
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 371,
+                "atMs": 34440
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1811,
+                "atMs": 36249
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 268,
+                "atMs": 36516
+              },
+              {
+                "command": "config",
+                "elapsedMs": 466,
+                "atMs": 36717
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1756,
+                "atMs": 38472
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 467,
+                "atMs": 38939
+              },
+              {
+                "command": "config",
+                "elapsedMs": 725,
+                "atMs": 39198
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2657,
+                "atMs": 41854
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 381,
+                "atMs": 42235
+              },
+              {
+                "command": "config",
+                "elapsedMs": 566,
+                "atMs": 42423
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2082,
+                "atMs": 44504
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 155,
+                "atMs": 44659
+              },
+              {
+                "command": "config",
+                "elapsedMs": 313,
+                "atMs": 44819
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2599,
+                "atMs": 47416
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 222,
+                "atMs": 47638
+              },
+              {
+                "command": "config",
+                "elapsedMs": 352,
+                "atMs": 47770
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1528,
+                "atMs": 49299
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 159,
+                "atMs": 49459
+              },
+              {
+                "command": "config",
+                "elapsedMs": 299,
+                "atMs": 49600
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1187,
+                "atMs": 50787
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 160,
+                "atMs": 50948
+              },
+              {
+                "command": "config",
+                "elapsedMs": 293,
+                "atMs": 51083
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1180,
+                "atMs": 52262
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 165,
+                "atMs": 52428
+              },
+              {
+                "command": "config",
+                "elapsedMs": 480,
+                "atMs": 52745
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1711,
+                "atMs": 54456
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 148,
+                "atMs": 54604
+              },
+              {
+                "command": "config",
+                "elapsedMs": 288,
+                "atMs": 54745
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1459,
+                "atMs": 56204
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 269,
+                "atMs": 56474
+              },
+              {
+                "command": "config",
+                "elapsedMs": 419,
+                "atMs": 56627
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2156,
+                "atMs": 58783
+              },
+              {
+                "command": "config",
+                "elapsedMs": 108,
+                "atMs": 58926
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 610,
+                "atMs": 59393
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2401,
+                "atMs": 61794
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 186,
+                "atMs": 61989
+              },
+              {
+                "command": "config",
+                "elapsedMs": 437,
+                "atMs": 62244
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2305,
+                "atMs": 64549
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 370,
+                "atMs": 64919
+              },
+              {
+                "command": "config",
+                "elapsedMs": 524,
+                "atMs": 65075
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2066,
+                "atMs": 67140
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 269,
+                "atMs": 67410
+              },
+              {
+                "command": "config",
+                "elapsedMs": 432,
+                "atMs": 67577
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1655,
+                "atMs": 69232
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 194,
+                "atMs": 69426
+              },
+              {
+                "command": "config",
+                "elapsedMs": 386,
+                "atMs": 69620
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1505,
+                "atMs": 71125
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 176,
+                "atMs": 71302
+              },
+              {
+                "command": "config",
+                "elapsedMs": 316,
+                "atMs": 71443
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1766,
+                "atMs": 73210
+              },
+              {
+                "command": "config",
+                "elapsedMs": 372,
+                "atMs": 73585
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 493,
+                "atMs": 73703
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1778,
+                "atMs": 75481
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 518,
+                "atMs": 75999
+              },
+              {
+                "command": "config",
+                "elapsedMs": 702,
+                "atMs": 76186
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1928,
+                "atMs": 78114
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 157,
+                "atMs": 78272
+              },
+              {
+                "command": "config",
+                "elapsedMs": 322,
+                "atMs": 78439
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1815,
+                "atMs": 80254
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 524,
+                "atMs": 80778
+              },
+              {
+                "command": "config",
+                "elapsedMs": 691,
+                "atMs": 80954
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2650,
+                "atMs": 83605
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 182,
+                "atMs": 83788
+              },
+              {
+                "command": "config",
+                "elapsedMs": 326,
+                "atMs": 83938
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1781,
+                "atMs": 85720
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 159,
+                "atMs": 85879
+              },
+              {
+                "command": "config",
+                "elapsedMs": 745,
+                "atMs": 86467
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1265,
+                "atMs": 87732
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 152,
+                "atMs": 87884
+              },
+              {
+                "command": "config",
+                "elapsedMs": 292,
+                "atMs": 88026
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1506,
+                "atMs": 89532
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 182,
+                "atMs": 89714
+              },
+              {
+                "command": "config",
+                "elapsedMs": 217,
+                "atMs": 89932
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 167,
+                "atMs": 90099
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "source": {
+          "kind": "commit",
+          "commit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+          "bundleSha256": "ce830c6f51adc764fbaafcaead0273e89f39552ce279e5e0a57072a94be06007"
+        },
+        "scope": "Native Git with local bare remote; 2KiB test threshold scales the branch-history case, not production 50MiB network throughput; Node CPU excludes Git/helpers; no Graph",
+        "results": [
+          {
+            "mode": "shared-small-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 69225,
+            "planMs": 861,
+            "readyMs": 4246,
+            "nativePushElapsedMs": 51905,
+            "directGitCalls": 122,
+            "nativePushes": 35,
+            "remoteRefUpdates": 35,
+            "strategy": "sequential",
+            "plannedTransfers": 35,
+            "estimatedBytes": 8386,
+            "nodeCpuMs": 341,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 210,
+                "atMs": 211
+              },
+              {
+                "command": "config",
+                "elapsedMs": 346,
+                "atMs": 350
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 352,
+                "atMs": 564
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 296,
+                "atMs": 861
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 280,
+                "atMs": 1142
+              },
+              {
+                "command": "config",
+                "elapsedMs": 509,
+                "atMs": 1375
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 438,
+                "atMs": 1581
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 211,
+                "atMs": 1792
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 284,
+                "atMs": 2076
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 1097,
+                "atMs": 3173
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 214,
+                "atMs": 3387
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 263,
+                "atMs": 3650
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 243,
+                "atMs": 3893
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 353,
+                "atMs": 4246
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 298,
+                "atMs": 4544
+              },
+              {
+                "command": "config",
+                "elapsedMs": 491,
+                "atMs": 4740
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2090,
+                "atMs": 6830
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 439,
+                "atMs": 7269
+              },
+              {
+                "command": "config",
+                "elapsedMs": 593,
+                "atMs": 7426
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1070,
+                "atMs": 8497
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 165,
+                "atMs": 8662
+              },
+              {
+                "command": "config",
+                "elapsedMs": 281,
+                "atMs": 8780
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1046,
+                "atMs": 9827
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 131,
+                "atMs": 9959
+              },
+              {
+                "command": "config",
+                "elapsedMs": 260,
+                "atMs": 10089
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1410,
+                "atMs": 11499
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 258,
+                "atMs": 11757
+              },
+              {
+                "command": "config",
+                "elapsedMs": 389,
+                "atMs": 11891
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1237,
+                "atMs": 13128
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 203,
+                "atMs": 13331
+              },
+              {
+                "command": "config",
+                "elapsedMs": 331,
+                "atMs": 13462
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1035,
+                "atMs": 14497
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 148,
+                "atMs": 14645
+              },
+              {
+                "command": "config",
+                "elapsedMs": 284,
+                "atMs": 14783
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1080,
+                "atMs": 15863
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 146,
+                "atMs": 16010
+              },
+              {
+                "command": "config",
+                "elapsedMs": 282,
+                "atMs": 16149
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1017,
+                "atMs": 17167
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 144,
+                "atMs": 17311
+              },
+              {
+                "command": "config",
+                "elapsedMs": 277,
+                "atMs": 17446
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1618,
+                "atMs": 19064
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 268,
+                "atMs": 19332
+              },
+              {
+                "command": "config",
+                "elapsedMs": 532,
+                "atMs": 19600
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1908,
+                "atMs": 21508
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 210,
+                "atMs": 21717
+              },
+              {
+                "command": "config",
+                "elapsedMs": 331,
+                "atMs": 21841
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1063,
+                "atMs": 22904
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 133,
+                "atMs": 23037
+              },
+              {
+                "command": "config",
+                "elapsedMs": 250,
+                "atMs": 23157
+              },
+              {
+                "command": "push",
+                "elapsedMs": 992,
+                "atMs": 24149
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 125,
+                "atMs": 24273
+              },
+              {
+                "command": "config",
+                "elapsedMs": 237,
+                "atMs": 24388
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1118,
+                "atMs": 25507
+              },
+              {
+                "command": "config",
+                "elapsedMs": 133,
+                "atMs": 25642
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 262,
+                "atMs": 25768
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2131,
+                "atMs": 27899
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 264,
+                "atMs": 28163
+              },
+              {
+                "command": "config",
+                "elapsedMs": 400,
+                "atMs": 28302
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2247,
+                "atMs": 30548
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 149,
+                "atMs": 30698
+              },
+              {
+                "command": "config",
+                "elapsedMs": 294,
+                "atMs": 30845
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1950,
+                "atMs": 32795
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 156,
+                "atMs": 32951
+              },
+              {
+                "command": "config",
+                "elapsedMs": 290,
+                "atMs": 33088
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1657,
+                "atMs": 34745
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 136,
+                "atMs": 34881
+              },
+              {
+                "command": "config",
+                "elapsedMs": 256,
+                "atMs": 35003
+              },
+              {
+                "command": "push",
+                "elapsedMs": 965,
+                "atMs": 35969
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 146,
+                "atMs": 36115
+              },
+              {
+                "command": "config",
+                "elapsedMs": 267,
+                "atMs": 36237
+              },
+              {
+                "command": "push",
+                "elapsedMs": 987,
+                "atMs": 37225
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 188,
+                "atMs": 37413
+              },
+              {
+                "command": "config",
+                "elapsedMs": 314,
+                "atMs": 37542
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1043,
+                "atMs": 38585
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 137,
+                "atMs": 38723
+              },
+              {
+                "command": "config",
+                "elapsedMs": 325,
+                "atMs": 38912
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1247,
+                "atMs": 40159
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 143,
+                "atMs": 40302
+              },
+              {
+                "command": "config",
+                "elapsedMs": 268,
+                "atMs": 40429
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1452,
+                "atMs": 41881
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 202,
+                "atMs": 42084
+              },
+              {
+                "command": "config",
+                "elapsedMs": 424,
+                "atMs": 42329
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1764,
+                "atMs": 44093
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 157,
+                "atMs": 44250
+              },
+              {
+                "command": "config",
+                "elapsedMs": 298,
+                "atMs": 44394
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1927,
+                "atMs": 46322
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 226,
+                "atMs": 46549
+              },
+              {
+                "command": "config",
+                "elapsedMs": 375,
+                "atMs": 46699
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2087,
+                "atMs": 48787
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 308,
+                "atMs": 49096
+              },
+              {
+                "command": "config",
+                "elapsedMs": 439,
+                "atMs": 49229
+              },
+              {
+                "command": "push",
+                "elapsedMs": 3177,
+                "atMs": 52406
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 315,
+                "atMs": 52721
+              },
+              {
+                "command": "config",
+                "elapsedMs": 450,
+                "atMs": 52859
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1605,
+                "atMs": 54465
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 248,
+                "atMs": 54714
+              },
+              {
+                "command": "config",
+                "elapsedMs": 497,
+                "atMs": 54965
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1364,
+                "atMs": 56330
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 184,
+                "atMs": 56514
+              },
+              {
+                "command": "config",
+                "elapsedMs": 324,
+                "atMs": 56658
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1073,
+                "atMs": 57731
+              },
+              {
+                "command": "config",
+                "elapsedMs": 146,
+                "atMs": 57880
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 288,
+                "atMs": 58019
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1123,
+                "atMs": 59142
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 182,
+                "atMs": 59325
+              },
+              {
+                "command": "config",
+                "elapsedMs": 318,
+                "atMs": 59463
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1303,
+                "atMs": 60765
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 266,
+                "atMs": 61032
+              },
+              {
+                "command": "config",
+                "elapsedMs": 455,
+                "atMs": 61223
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1210,
+                "atMs": 62434
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 136,
+                "atMs": 62571
+              },
+              {
+                "command": "config",
+                "elapsedMs": 385,
+                "atMs": 62822
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1452,
+                "atMs": 64274
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 212,
+                "atMs": 64486
+              },
+              {
+                "command": "config",
+                "elapsedMs": 364,
+                "atMs": 64642
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1613,
+                "atMs": 66254
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 248,
+                "atMs": 66503
+              },
+              {
+                "command": "config",
+                "elapsedMs": 370,
+                "atMs": 66627
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1844,
+                "atMs": 68472
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 299,
+                "atMs": 68771
+              },
+              {
+                "command": "config",
+                "elapsedMs": 186,
+                "atMs": 68957
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 268,
+                "atMs": 69224
+              }
+            ]
+          },
+          {
+            "mode": "shared-large-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 75944,
+            "planMs": 791,
+            "readyMs": 2963,
+            "nativePushElapsedMs": 56868,
+            "directGitCalls": 122,
+            "nativePushes": 35,
+            "remoteRefUpdates": 35,
+            "strategy": "sequential",
+            "plannedTransfers": 35,
+            "estimatedBytes": 19650,
+            "nodeCpuMs": 358,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 289,
+                "atMs": 289
+              },
+              {
+                "command": "config",
+                "elapsedMs": 435,
+                "atMs": 438
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 349,
+                "atMs": 639
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 151,
+                "atMs": 791
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 212,
+                "atMs": 1003
+              },
+              {
+                "command": "config",
+                "elapsedMs": 355,
+                "atMs": 1148
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 291,
+                "atMs": 1295
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 209,
+                "atMs": 1505
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 172,
+                "atMs": 1677
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 294,
+                "atMs": 1971
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 148,
+                "atMs": 2119
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 299,
+                "atMs": 2418
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 276,
+                "atMs": 2694
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 268,
+                "atMs": 2963
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 161,
+                "atMs": 3123
+              },
+              {
+                "command": "config",
+                "elapsedMs": 324,
+                "atMs": 3288
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2191,
+                "atMs": 5479
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 220,
+                "atMs": 5700
+              },
+              {
+                "command": "config",
+                "elapsedMs": 390,
+                "atMs": 5873
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2464,
+                "atMs": 8337
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 373,
+                "atMs": 8710
+              },
+              {
+                "command": "config",
+                "elapsedMs": 515,
+                "atMs": 8857
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2643,
+                "atMs": 11501
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 433,
+                "atMs": 11934
+              },
+              {
+                "command": "config",
+                "elapsedMs": 822,
+                "atMs": 12325
+              },
+              {
+                "command": "push",
+                "elapsedMs": 3007,
+                "atMs": 15332
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 372,
+                "atMs": 15705
+              },
+              {
+                "command": "config",
+                "elapsedMs": 558,
+                "atMs": 15895
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2251,
+                "atMs": 18147
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 438,
+                "atMs": 18586
+              },
+              {
+                "command": "config",
+                "elapsedMs": 596,
+                "atMs": 18747
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1559,
+                "atMs": 20307
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 209,
+                "atMs": 20516
+              },
+              {
+                "command": "config",
+                "elapsedMs": 375,
+                "atMs": 20686
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1513,
+                "atMs": 22199
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 440,
+                "atMs": 22639
+              },
+              {
+                "command": "config",
+                "elapsedMs": 591,
+                "atMs": 22793
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1773,
+                "atMs": 24566
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 200,
+                "atMs": 24767
+              },
+              {
+                "command": "config",
+                "elapsedMs": 366,
+                "atMs": 24935
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1300,
+                "atMs": 26235
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 177,
+                "atMs": 26413
+              },
+              {
+                "command": "config",
+                "elapsedMs": 511,
+                "atMs": 26748
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1635,
+                "atMs": 28384
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 181,
+                "atMs": 28565
+              },
+              {
+                "command": "config",
+                "elapsedMs": 331,
+                "atMs": 28718
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1230,
+                "atMs": 29949
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 171,
+                "atMs": 30120
+              },
+              {
+                "command": "config",
+                "elapsedMs": 318,
+                "atMs": 30271
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1210,
+                "atMs": 31481
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 237,
+                "atMs": 31719
+              },
+              {
+                "command": "config",
+                "elapsedMs": 417,
+                "atMs": 31903
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1536,
+                "atMs": 33440
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 184,
+                "atMs": 33624
+              },
+              {
+                "command": "config",
+                "elapsedMs": 342,
+                "atMs": 33785
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1399,
+                "atMs": 35184
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 181,
+                "atMs": 35365
+              },
+              {
+                "command": "config",
+                "elapsedMs": 354,
+                "atMs": 35541
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1560,
+                "atMs": 37101
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 270,
+                "atMs": 37372
+              },
+              {
+                "command": "config",
+                "elapsedMs": 401,
+                "atMs": 37505
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1986,
+                "atMs": 39491
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 257,
+                "atMs": 39748
+              },
+              {
+                "command": "config",
+                "elapsedMs": 383,
+                "atMs": 39876
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1570,
+                "atMs": 41446
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 169,
+                "atMs": 41614
+              },
+              {
+                "command": "config",
+                "elapsedMs": 389,
+                "atMs": 41838
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1223,
+                "atMs": 43061
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 165,
+                "atMs": 43227
+              },
+              {
+                "command": "config",
+                "elapsedMs": 312,
+                "atMs": 43376
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1450,
+                "atMs": 44827
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 241,
+                "atMs": 45068
+              },
+              {
+                "command": "config",
+                "elapsedMs": 392,
+                "atMs": 45222
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1205,
+                "atMs": 46428
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 162,
+                "atMs": 46590
+              },
+              {
+                "command": "config",
+                "elapsedMs": 301,
+                "atMs": 46731
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1109,
+                "atMs": 47841
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 162,
+                "atMs": 48002
+              },
+              {
+                "command": "config",
+                "elapsedMs": 309,
+                "atMs": 48151
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1102,
+                "atMs": 49254
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 169,
+                "atMs": 49422
+              },
+              {
+                "command": "config",
+                "elapsedMs": 317,
+                "atMs": 49577
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1147,
+                "atMs": 50723
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 167,
+                "atMs": 50891
+              },
+              {
+                "command": "config",
+                "elapsedMs": 304,
+                "atMs": 51031
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1110,
+                "atMs": 52141
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 176,
+                "atMs": 52318
+              },
+              {
+                "command": "config",
+                "elapsedMs": 328,
+                "atMs": 52472
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1219,
+                "atMs": 53691
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 352,
+                "atMs": 54044
+              },
+              {
+                "command": "config",
+                "elapsedMs": 525,
+                "atMs": 54220
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1388,
+                "atMs": 55609
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 213,
+                "atMs": 55822
+              },
+              {
+                "command": "config",
+                "elapsedMs": 359,
+                "atMs": 55971
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1474,
+                "atMs": 57445
+              },
+              {
+                "command": "config",
+                "elapsedMs": 161,
+                "atMs": 57613
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 337,
+                "atMs": 57782
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1254,
+                "atMs": 59037
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 190,
+                "atMs": 59227
+              },
+              {
+                "command": "config",
+                "elapsedMs": 398,
+                "atMs": 59438
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1749,
+                "atMs": 61186
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 306,
+                "atMs": 61493
+              },
+              {
+                "command": "config",
+                "elapsedMs": 617,
+                "atMs": 61807
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1947,
+                "atMs": 63754
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 314,
+                "atMs": 64068
+              },
+              {
+                "command": "config",
+                "elapsedMs": 630,
+                "atMs": 64387
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2015,
+                "atMs": 66403
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 246,
+                "atMs": 66650
+              },
+              {
+                "command": "config",
+                "elapsedMs": 440,
+                "atMs": 66848
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1797,
+                "atMs": 68644
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 352,
+                "atMs": 68997
+              },
+              {
+                "command": "config",
+                "elapsedMs": 499,
+                "atMs": 69148
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2025,
+                "atMs": 71172
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 238,
+                "atMs": 71411
+              },
+              {
+                "command": "config",
+                "elapsedMs": 387,
+                "atMs": 71563
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1460,
+                "atMs": 73022
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 174,
+                "atMs": 73197
+              },
+              {
+                "command": "config",
+                "elapsedMs": 320,
+                "atMs": 73346
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1367,
+                "atMs": 74713
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 177,
+                "atMs": 74891
+              },
+              {
+                "command": "config",
+                "elapsedMs": 185,
+                "atMs": 75076
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 867,
+                "atMs": 75944
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "source": {
+          "kind": "working-tree",
+          "commit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+          "bundleSha256": "2f84890250ef0c90474e84f8cce2452e279c17b6e576922b1996d8165afea90b"
+        },
+        "scope": "Native Git with local bare remote; 2KiB test threshold scales the branch-history case, not production 50MiB network throughput; Node CPU excludes Git/helpers; no Graph",
+        "results": [
+          {
+            "mode": "shared-small-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 11297,
+            "planMs": 1097,
+            "readyMs": 5130,
+            "nativePushElapsedMs": 4558,
+            "directGitCalls": 23,
+            "nativePushes": 1,
+            "remoteRefUpdates": 1,
+            "strategy": "single",
+            "plannedTransfers": 1,
+            "estimatedBytes": 1044,
+            "nodeCpuMs": 92,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 153,
+                "atMs": 154
+              },
+              {
+                "command": "config",
+                "elapsedMs": 294,
+                "atMs": 297
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 295,
+                "atMs": 451
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 645,
+                "atMs": 1096
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 344,
+                "atMs": 1441
+              },
+              {
+                "command": "config",
+                "elapsedMs": 504,
+                "atMs": 1605
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 311,
+                "atMs": 1753
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 165,
+                "atMs": 1918
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 298,
+                "atMs": 2217
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 380,
+                "atMs": 2597
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 185,
+                "atMs": 2782
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 347,
+                "atMs": 3129
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 190,
+                "atMs": 3320
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 728,
+                "atMs": 4048
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 466,
+                "atMs": 4515
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 443,
+                "atMs": 4959
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 171,
+                "atMs": 5130
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 318,
+                "atMs": 5448
+              },
+              {
+                "command": "config",
+                "elapsedMs": 563,
+                "atMs": 5696
+              },
+              {
+                "command": "push",
+                "elapsedMs": 4558,
+                "atMs": 10255
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 377,
+                "atMs": 10632
+              },
+              {
+                "command": "config",
+                "elapsedMs": 292,
+                "atMs": 10924
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 372,
+                "atMs": 11297
+              }
+            ]
+          },
+          {
+            "mode": "shared-large-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 17395,
+            "planMs": 912,
+            "readyMs": 6840,
+            "nativePushElapsedMs": 8189,
+            "directGitCalls": 31,
+            "nativePushes": 3,
+            "remoteRefUpdates": 3,
+            "strategy": "sequential",
+            "plannedTransfers": 3,
+            "estimatedBytes": 12308,
+            "nodeCpuMs": 94,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 321,
+                "atMs": 322
+              },
+              {
+                "command": "config",
+                "elapsedMs": 495,
+                "atMs": 501
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 330,
+                "atMs": 652
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 259,
+                "atMs": 911
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 202,
+                "atMs": 1113
+              },
+              {
+                "command": "config",
+                "elapsedMs": 351,
+                "atMs": 1265
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 376,
+                "atMs": 1489
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 198,
+                "atMs": 1687
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 168,
+                "atMs": 1856
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 965,
+                "atMs": 2820
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 558,
+                "atMs": 3379
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 485,
+                "atMs": 3865
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 421,
+                "atMs": 4285
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 1140,
+                "atMs": 5426
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 335,
+                "atMs": 5762
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 380,
+                "atMs": 6142
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 224,
+                "atMs": 6366
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 226,
+                "atMs": 6592
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 247,
+                "atMs": 6839
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 291,
+                "atMs": 7131
+              },
+              {
+                "command": "config",
+                "elapsedMs": 609,
+                "atMs": 7451
+              },
+              {
+                "command": "push",
+                "elapsedMs": 4143,
+                "atMs": 11594
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 514,
+                "atMs": 12108
+              },
+              {
+                "command": "config",
+                "elapsedMs": 683,
+                "atMs": 12281
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1963,
+                "atMs": 14244
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 328,
+                "atMs": 14573
+              },
+              {
+                "command": "config",
+                "elapsedMs": 473,
+                "atMs": 14719
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2083,
+                "atMs": 16803
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 260,
+                "atMs": 17064
+              },
+              {
+                "command": "config",
+                "elapsedMs": 168,
+                "atMs": 17232
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 162,
+                "atMs": 17395
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "source": {
+          "kind": "working-tree",
+          "commit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+          "bundleSha256": "2f84890250ef0c90474e84f8cce2452e279c17b6e576922b1996d8165afea90b"
+        },
+        "scope": "Native Git with local bare remote; 2KiB test threshold scales the branch-history case, not production 50MiB network throughput; Node CPU excludes Git/helpers; no Graph",
+        "results": [
+          {
+            "mode": "shared-small-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 9241,
+            "planMs": 1058,
+            "readyMs": 5776,
+            "nativePushElapsedMs": 2252,
+            "directGitCalls": 23,
+            "nativePushes": 1,
+            "remoteRefUpdates": 1,
+            "strategy": "single",
+            "plannedTransfers": 1,
+            "estimatedBytes": 1044,
+            "nodeCpuMs": 105,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 196,
+                "atMs": 197
+              },
+              {
+                "command": "config",
+                "elapsedMs": 363,
+                "atMs": 369
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 395,
+                "atMs": 595
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 462,
+                "atMs": 1058
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 288,
+                "atMs": 1347
+              },
+              {
+                "command": "config",
+                "elapsedMs": 471,
+                "atMs": 1536
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 340,
+                "atMs": 1688
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 190,
+                "atMs": 1879
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 302,
+                "atMs": 2181
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 885,
+                "atMs": 3066
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 748,
+                "atMs": 3814
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 340,
+                "atMs": 4155
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 221,
+                "atMs": 4378
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 651,
+                "atMs": 5029
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 250,
+                "atMs": 5280
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 242,
+                "atMs": 5522
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 254,
+                "atMs": 5776
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 209,
+                "atMs": 5986
+              },
+              {
+                "command": "config",
+                "elapsedMs": 431,
+                "atMs": 6215
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2252,
+                "atMs": 8467
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 360,
+                "atMs": 8827
+              },
+              {
+                "command": "config",
+                "elapsedMs": 224,
+                "atMs": 9052
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 189,
+                "atMs": 9241
+              }
+            ]
+          },
+          {
+            "mode": "shared-large-feature",
+            "thresholdBytes": 2048,
+            "publishedCommits": 32,
+            "newCommits": 3,
+            "elapsedMs": 14495,
+            "planMs": 782,
+            "readyMs": 4953,
+            "nativePushElapsedMs": 5681,
+            "directGitCalls": 31,
+            "nativePushes": 3,
+            "remoteRefUpdates": 3,
+            "strategy": "sequential",
+            "plannedTransfers": 3,
+            "estimatedBytes": 12308,
+            "nodeCpuMs": 101,
+            "nativeStateExact": true,
+            "indexAndUntrackedPreserved": true,
+            "commands": [
+              {
+                "command": "rev-parse",
+                "elapsedMs": 249,
+                "atMs": 249
+              },
+              {
+                "command": "config",
+                "elapsedMs": 421,
+                "atMs": 428
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 357,
+                "atMs": 606
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 176,
+                "atMs": 781
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 238,
+                "atMs": 1019
+              },
+              {
+                "command": "config",
+                "elapsedMs": 389,
+                "atMs": 1174
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 311,
+                "atMs": 1331
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 229,
+                "atMs": 1560
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 217,
+                "atMs": 1778
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 345,
+                "atMs": 2123
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 217,
+                "atMs": 2340
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 252,
+                "atMs": 2593
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 214,
+                "atMs": 2808
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 518,
+                "atMs": 3327
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 213,
+                "atMs": 3541
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 202,
+                "atMs": 3743
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 486,
+                "atMs": 4229
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 295,
+                "atMs": 4525
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 427,
+                "atMs": 4953
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 296,
+                "atMs": 5249
+              },
+              {
+                "command": "config",
+                "elapsedMs": 446,
+                "atMs": 5402
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2178,
+                "atMs": 7581
+              },
+              {
+                "command": "config",
+                "elapsedMs": 1230,
+                "atMs": 8827
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 1491,
+                "atMs": 9073
+              },
+              {
+                "command": "push",
+                "elapsedMs": 1360,
+                "atMs": 10433
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 215,
+                "atMs": 10648
+              },
+              {
+                "command": "config",
+                "elapsedMs": 387,
+                "atMs": 10823
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2143,
+                "atMs": 12966
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 585,
+                "atMs": 13552
+              },
+              {
+                "command": "config",
+                "elapsedMs": 542,
+                "atMs": 14094
+              },
+              {
+                "command": "branch",
+                "elapsedMs": 401,
+                "atMs": 14495
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "comparisons": [
+    {
+      "mode": "shared-small-feature",
+      "before": {
+        "elapsedMs": 74423.5,
+        "readyMs": 3663.0,
+        "directGitCalls": 122.0,
+        "nativePushes": 35.0,
+        "remoteRefUpdates": 35.0,
+        "nodeCpuMs": 309.5,
+        "estimatedBytes": 8386.0
+      },
+      "after": {
+        "elapsedMs": 10269.0,
+        "readyMs": 5453.0,
+        "directGitCalls": 23.0,
+        "nativePushes": 1.0,
+        "remoteRefUpdates": 1.0,
+        "nodeCpuMs": 98.5,
+        "estimatedBytes": 1044.0
+      },
+      "elapsedReductionPercent": 86.2
+    },
+    {
+      "mode": "shared-large-feature",
+      "before": {
+        "elapsedMs": 83021.5,
+        "readyMs": 3310.5,
+        "directGitCalls": 122.0,
+        "nativePushes": 35.0,
+        "remoteRefUpdates": 35.0,
+        "nodeCpuMs": 331.0,
+        "estimatedBytes": 19650.0
+      },
+      "after": {
+        "elapsedMs": 15945.0,
+        "readyMs": 5896.5,
+        "directGitCalls": 31.0,
+        "nativePushes": 3.0,
+        "remoteRefUpdates": 3.0,
+        "nodeCpuMs": 97.5,
+        "estimatedBytes": 12308.0
+      },
+      "elapsedReductionPercent": 80.8
+    }
+  ],
+  "excludedHarnessAttempt": {
+    "log": "/private/tmp/gsc-published-push-before1.log",
+    "reason": "Fixture post-receive directory was absent with an empty init template; no completed measurement. Fixed identically for all reported runs."
+  },
+  "validation": {
+    "node": {
+      "exitCode": 0,
+      "seconds": 294.59,
+      "targets": [
+        "test/pushPublishedHistory.test.ts",
+        "test/pushPublishedHistoryMetadata.test.ts",
+        "test/sequentialPush.test.ts",
+        "test/sequentialPushMetadata.test.ts",
+        "test/pushHistoryPlanningPerformance.test.ts",
+        "test/pushPlanningPerformance.test.ts",
+        "test/pushPlanningSafety.test.ts",
+        "test/pushSafety.test.ts",
+        "test/pushValidatedSafety.test.ts",
+        "test/pushCheckoutIdentity.test.ts",
+        "test/pushTrackingReads.test.ts",
+        "test/pushProgress.test.ts"
+      ],
+      "log": "/private/tmp/gsc-published-push-regression.log",
+      "tests": 97,
+      "pass": 97,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "uniqueTests": 97
+    },
+    "finalMetadataFixtureRerun": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "log": "/private/tmp/gsc-published-push-metadata-final.log",
+      "uniqueAdditionalTests": 0
+    },
+    "types": "passed",
+    "graph": {
+      "version": "0.1.72122",
+      "source": {
+        "kind": "working-tree",
+        "commit": "829a698b3f0eebbd168b9096cc2eae54610ba5ef",
+        "bundleSha256": "3ba1830268e88303ce6f66f5bc8418e068804adf84939dd35ffeeb777651da6a"
+      },
+      "fixture": {
+        "files": 128,
+        "commits": 400,
+        "branches": 40,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true,
+        "pushThresholdBytes": 2048
+      },
+      "results": [
+        {
+          "operation": "push",
+          "operationMs": 16116,
+          "graphMs": 544,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 597,
+            "latestMutationToFrameMs": 1701,
+            "renderMs": 8,
+            "frameMs": 10
+          },
+          "latestGraphPublishedMs": 1691,
+          "graphAlreadyCurrent": false,
+          "settledMs": 18020,
+          "processes": 40,
+          "operationProcesses": 34,
+          "graphProcesses": 6,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 6093,
+          "commands": {
+            "rev-parse": 5,
+            "config": 10,
+            "for-each-ref": 6,
+            "remote": 1,
+            "ls-remote": 2,
+            "rev-list": 7,
+            "cat-file": 3,
+            "push": 3,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 2441,
+            "config": 6741,
+            "for-each-ref": 2244,
+            "remote": 172,
+            "ls-remote": 876,
+            "rev-list": 2691,
+            "cat-file": 1065,
+            "push": 5069,
+            "branch": 293,
+            "worktree": 468,
+            "status": 601
+          },
+          "nodeCpuMs": 399,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -47,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "push-tracked",
+          "operationMs": 23542,
+          "graphMs": 850,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 927,
+            "latestMutationToFrameMs": 1944,
+            "renderMs": 11,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 1930,
+          "graphAlreadyCurrent": false,
+          "settledMs": 26002,
+          "processes": 32,
+          "operationProcesses": 26,
+          "graphProcesses": 6,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 6253,
+          "commands": {
+            "rev-parse": 2,
+            "config": 9,
+            "for-each-ref": 6,
+            "remote": 1,
+            "ls-remote": 1,
+            "merge-base": 2,
+            "rev-list": 5,
+            "cat-file": 1,
+            "push": 3,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 1279,
+            "config": 7880,
+            "for-each-ref": 3739,
+            "remote": 742,
+            "ls-remote": 2022,
+            "merge-base": 1050,
+            "rev-list": 2515,
+            "cat-file": 340,
+            "push": 9378,
+            "worktree": 789,
+            "status": 774
+          },
+          "nodeCpuMs": 301,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -40,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    },
+    "graphScope": "Correctness only; overlapped Node checks, so graph timings and resources are not performance evidence.",
+    "defaultThresholdEvidence": "Native test: a real 50MiB object already published on main does not split three tiny new commits; passed in the 97-check group."
+  },
+  "remainingLimits": [
+    "Destination already exists: existing planning path is retained; this change does not prove a general ordinary-push latency improvement.",
+    "Unknown remote objects are not fetched or excluded. No verified shared tip keeps the conservative prior history sequence.",
+    "Only 64 verified advertised tips enter exclusions. Remote enumeration and input IDs are not a global memory bound.",
+    "The initial whole-history object-size read still happens before shared-history discovery; large object walks remain future optimization work.",
+    "Other named operations and general interactive-rebase latency/resource gaps remain governed by the 0.1.72121 audit."
+  ],
+  "wholeGoalComplete": false
+}
