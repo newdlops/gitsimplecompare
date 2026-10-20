@@ -110,7 +110,7 @@ export function resolveBranchFilter(
  */
 export function buildBranchFilterSnapshot(
   branchRefs: readonly GraphBranchRef[],
-  localBranches: readonly LocalBranchStatus[],
+  localBranches: readonly Pick<LocalBranchStatus, "name" | "current">[],
   state: GraphBranchFilterState,
   remoteStatus: "pending" | "ready" | "error" = "ready",
   remoteError?: string,

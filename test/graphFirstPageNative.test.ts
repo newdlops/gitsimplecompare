@@ -17,10 +17,12 @@ test("real first-page history overlaps branch preparation and adopted containmen
   const f = await safetyFixture(t, "graph-first-page-native");
   await git(f.root, "branch", "topic");
   const head = await commitText(f.root, "next\n", "next");
-  const service = new GitLogService(f.root), branchesEntered = gate(), releaseBranches = gate();
+  const service = new GitLogService(f.root), branchesEntered = gate(), releaseBranches = gate(), historyReady = gate();
   let historyStarted = false;
-  const readHistory = service.readUnindexedCommitPage.bind(service), readBranches = service.getLocalBranchSnapshot.bind(service);
-  t.mock.method(service, "readUnindexedCommitPage", (...args: Parameters<typeof readHistory>) => { historyStarted = true; return readHistory(...args); });
+  const readHistory = service.readUnindexedCommitPageSnapshot.bind(service), readBranches = service.getLocalBranchSnapshot.bind(service);
+  t.mock.method(service, "readUnindexedCommitPageSnapshot", async (...args: Parameters<typeof readHistory>) => {
+    historyStarted = true; const result = await readHistory(...args); historyReady.resolve(); return result;
+  });
   t.mock.method(service, "getLocalBranchSnapshot", async (...args: Parameters<typeof readBranches>) => {
     branchesEntered.resolve(); await releaseBranches.promise; return readBranches(...args);
   });
@@ -30,7 +32,9 @@ test("real first-page history overlaps branch preparation and adopted containmen
   const loading = panel.runDirectGraph("ready");
   await branchesEntered.promise;
   assert.equal(historyStarted, true, "Real git log waited for branch preparation");
-  assert.equal(panel.commits.length, 0, "An unvalidated early page reached the visible graph");
+  await historyReady.promise; await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(panel.commits.find((commit: { refs: string[] }) => commit.refs.includes("HEAD"))?.hash, head);
+  assert.equal(panel.branchDetails.state?.loading, true, "Real history still waits for gated branch details");
   releaseBranches.resolve(); assert.equal(await loading, true);
   stop(); assert.equal(commands.filter(command => command === "log").length, 1);
   const signature = (commits: typeof panel.commits) => commits.map(({ hash, parents, refs, authorName, authorEmail, dateIso, subject }: import("../src/graph/graphTypes").Commit) =>

@@ -65,6 +65,9 @@ export interface LocalBranchStatus {
   subject: string;
 }
 
+/** Native ref/HEAD 조회로 확인한 최소 브랜치 identity. 조회하지 않은 추적 수치나 upstream을 담지 않는다. */
+export type LocalBranchIdentity = Pick<LocalBranchStatus, "name" | "hash" | "current">;
+
 /** Graph 로딩에서 제외한 손상된 Git ref 한 건 */
 export interface GraphInvalidRef {
   /** 사용자에게 표시할 짧은 ref 이름 */

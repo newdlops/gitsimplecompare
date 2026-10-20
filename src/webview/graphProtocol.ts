@@ -6,6 +6,7 @@ import {
   GraphData,
   GraphDataDelta,
   LocalBranchStatus,
+  LocalBranchIdentity,
   WorktreeBranchStatus,
 } from "../graph/graphTypes";
 import type {
@@ -52,6 +53,8 @@ export interface GraphLoadState {
   colorScope?: string;
   /** 상태를 아직 모르거나 읽지 못했을 때 clean과 구분하는 별도 안내. */
   workingTree?: GraphWorkingTreeState | null;
+  /** 검증된 ref와 별도로 읽는 ahead/behind 등 상세 수치의 준비 상태다. */
+  branchDetails?: GraphWorkingTreeState | null;
 }
 
 /** extension graph post부터 webview frame까지 같은 성능 흐름을 식별하는 metadata다. */
@@ -120,6 +123,7 @@ export type ToWebviewMessage =
   | { type: "graphLoadState"; state: GraphLoadState }
   | { type: "graphHealth"; notice?: GraphHealthNotice }
   | { type: "branchStatus"; branches: LocalBranchStatus[]; worktrees?: WorktreeBranchStatus[] }
+  | { type: "branchIdentities"; branches: LocalBranchIdentity[]; message: string; worktrees?: WorktreeBranchStatus[] }
   | { type: "branchFilterOptions"; filter: GraphBranchFilterSnapshot }
   | { type: "tagStatus"; tags: GitTagStatus[] }
   | { type: "pullRequestOverview"; overview: PullRequestOverview }

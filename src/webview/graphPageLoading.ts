@@ -48,6 +48,9 @@ export class GraphReadLifecycleCoordinator {
   withFirstPagePrefetch<T>(service: GraphFirstPageService, context: GraphRefreshContext, enabled: boolean, limit: number,
     reload: () => Promise<T>): Promise<T> { return this.firstPage.during(service, context, enabled, limit, reload); }
 
+  /** 같은 Native 페이지의 완료만 기다린다. 새 Git 조회나 branch 조회 취소는 만들지 않는다. */
+  firstPageCandidate(service: GraphFirstPageService) { return this.firstPage.candidate(service); }
+
   /** 확정한 페이지 범위가 맞으면 선행 이력을 채택하고, 다른 범위이면 기존 한 번의 조회를 실행한다. */
   async readPageData(service: Pick<GitLogService, "getCommitPage" | "getVirtualCommits"> & GraphFirstPageService,
     options: Parameters<typeof readGraphPageData>[1], branches: readonly LocalBranchStatus[]): Promise<GraphPageData> {
@@ -136,6 +139,8 @@ export function integrateGraphPage(current: GraphPageProgress, page: Commit[], s
 
 /** 한 페이지 읽기 결과. */
 export interface GraphPageData {
+  /** 같은 Native log가 확인한 HEAD→full ref. 조기 게시의 checkout 검증에만 사용한다. */
+  headRef?: string;
   /** 첫 페이지에서 함께 읽은 staged/working 가상 커밋. 읽지 않았으면 undefined */
   virtualCommits?: Commit[];
   page: Commit[];

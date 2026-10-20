@@ -18,6 +18,21 @@ test("first empty snapshots initialize the display and subsequent identical snap
   assert.equal(state.setTagStatus([]), true); assert.equal(state.setTagStatus([]), false);
 });
 
+test("identity hydration drops stale metrics and restores details without changing stable branch colors", () => {
+  const { state } = fixture();
+  const branch = { name: "main", hash: "a", current: true, ahead: 5, behind: 2, upstream: "origin/main", gone: false };
+  state.setLocalBranches([branch]);
+  const color = state.colors.get("main");
+  assert.equal(state.setLocalBranchIdentities([branch], "Details pending"), true);
+  const pending = state.branches.get("main");
+  for (const key of ["ahead", "behind", "upstream", "gone"]) assert.equal(Object.hasOwn(pending, key), false);
+  assert.equal(pending.detailsPending, true); assert.equal(pending.current, true);
+  assert.equal(state.colors.get("main"), color);
+  assert.equal(state.setLocalBranches([branch]), true);
+  assert.equal(state.branches.get("main").detailsPending, undefined);
+  assert.equal(state.colors.get("main"), color);
+});
+
 test("record and field reordering do not redraw unchanged branch facts but every changed field does", () => {
   const { state } = fixture();
   const first = { name: "first", current: true, hash: "a", ahead: 0, behind: 1, extra: { label: "old" } };

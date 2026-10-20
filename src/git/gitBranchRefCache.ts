@@ -113,7 +113,7 @@ export class GitBranchRefCache {
    * LocalBranchStatus 전체 snapshot으로 기존 local tip/current 상태를 교체한다.
    * @param branches 조회를 마친 로컬 branch 전체 목록. 빈 배열은 로컬 branch가 없다는 뜻이다.
    */
-  seedLocalBranches(branches: readonly LocalBranchStatus[]): void {
+  seedLocalBranches(branches: readonly Pick<LocalBranchStatus, "name" | "hash" | "current">[]): void {
     this.replaceTips("local", branches.map((branch) => ({ name: branch.name, tipHash: branch.hash, kind: "local" as const, current: branch.current })));
   }
 

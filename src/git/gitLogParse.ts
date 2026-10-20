@@ -34,8 +34,23 @@ export function parseGitLogCommit(entry: string, fullRefNames = false): Commit {
  * @param out git log stdout @param fullRefNames 전체 ref 이름과 synthetic annotation을 구별할지 여부
  */
 export function parseGitLogOutput(out: string, fullRefNames = false): Commit[] {
-  return out
-    .split("\0")
-    .filter((entry) => entry.length > 0)
-    .map((entry) => parseGitLogCommit(entry, fullRefNames));
+  return parseGitLogSnapshot(out, fullRefNames).page;
+}
+
+/** 같은 Native log 조회의 커밋과 HEAD가 실제 가리킨 full branch ref다. 페이지 밖/detached HEAD는 ref가 없다. */
+export interface GitLogSnapshot { page: Commit[]; headRef?: string; }
+
+/**
+ * 기존 커밋 필드를 바꾸지 않고 Native decoration의 symbolic HEAD 증거만 별도로 보존한다.
+ * @param out NUL 구분 Git log 출력 @param fullRefNames --decorate=full을 사용했을 때만 HEAD 증거를 채택한다.
+ * @returns 커밋 배열과 HEAD→full ref. 같은 OID의 다른 checkout을 구분하며 추가 Git 조회를 하지 않는다.
+ */
+export function parseGitLogSnapshot(out: string, fullRefNames = false): GitLogSnapshot {
+  const entries = out.split("\0").filter(entry => entry.length > 0);
+  const page = entries.map(entry => parseGitLogCommit(entry, fullRefNames));
+  const index = fullRefNames ? page.findIndex(commit => commit.refs.includes("HEAD")) : -1;
+  if (index < 0) return { page };
+  const decoration = entries[index].split(LOG_FIELD_SEPARATOR)[5] ?? "";
+  const pointers = decoration.split(", ").filter(part => part.startsWith("HEAD -> refs/heads/"));
+  return { page, ...(pointers.length === 1 ? { headRef: pointers[0].slice("HEAD -> ".length) } : {}) };
 }

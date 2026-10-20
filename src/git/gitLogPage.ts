@@ -1,7 +1,7 @@
 // Graph 이력 조회와 containment 색인 반영을 분리해 선행 조회가 현재 화면의 캐시를 바꾸지 않게 한다.
 import type { Commit } from "../graph/graphTypes";
 import { runGitWithRevisions } from "./revisionInput";
-import { gitLogPrettyFormat, parseGitLogOutput } from "./gitLogParse";
+import { gitLogPrettyFormat, parseGitLogSnapshot, type GitLogSnapshot } from "./gitLogParse";
 
 /**
  * Git의 실제 topo-order 페이지를 읽되 서비스의 표시 상태·색인은 변경하지 않는다.
@@ -11,10 +11,19 @@ import { gitLogPrettyFormat, parseGitLogOutput } from "./gitLogParse";
  * @returns full decoration을 파싱한 새 커밋 배열. 실패·취소는 원래 오류를 전파한다.
  */
 export async function readGitLogPage(repoRoot: string, limit: number, skip: number, refs: string[], signal?: AbortSignal): Promise<Commit[]> {
+  return (await readGitLogPageSnapshot(repoRoot, limit, skip, refs, signal)).page;
+}
+
+/**
+ * 같은 한 번의 log에서 symbolic HEAD 증거까지 반환한다. 조기 게시 전 checkout 검증에만 사용한다.
+ * @param repoRoot 저장소 @param limit 행 수 @param skip offset @param refs 범위 @param signal 조회 수명
+ * @returns 별도 ref/HEAD 조회 없는 Native 페이지 snapshot. 취소와 실행 오류는 원인 그대로 전파한다.
+ */
+export async function readGitLogPageSnapshot(repoRoot: string, limit: number, skip: number, refs: string[], signal?: AbortSignal): Promise<GitLogSnapshot> {
   const count = Math.max(0, Math.floor(limit)), offset = Math.max(0, Math.floor(skip));
-  if (count === 0) return [];
+  if (count === 0) return { page: [] };
   const output = await runGitWithRevisions(["log", "--topo-order", "--decorate=full",
     `--pretty=tformat:${gitLogPrettyFormat()}`, "-z", `-n${count}`, ...(offset ? [`--skip=${offset}`] : [])], refs, repoRoot, { signal });
   signal?.throwIfAborted();
-  return parseGitLogOutput(output, true);
+  return parseGitLogSnapshot(output, true);
 }

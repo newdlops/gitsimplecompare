@@ -5,14 +5,21 @@ import type { GraphRefreshContext } from "./graphRefreshCoordinator";
 import type { GraphPageData } from "./graphPageLoading";
 import { logInfo } from "../ui/outputLog";
 import { logGraphPerformancePhase, type GraphPerformanceTrace } from "./graphPerformance";
+import { matchesGraphPageIdentity, type GraphReferenceIdentity } from "../git/graphReferenceIdentity";
 
 export type GraphFirstPageService = Pick<GitLogService, "repoRoot"> & Partial<Pick<GitLogService,
-  "readUnindexedCommitPage" | "indexGraphCommitPage" | "usesNativeBranchSnapshot">>;
+  "readUnindexedCommitPage" | "readUnindexedCommitPageSnapshot" | "indexGraphCommitPage" | "usesNativeBranchSnapshot">>;
 interface PreparedPage {
   service: GraphFirstPageService; head: string; branch: string; limit: number; controller: AbortController;
   result: Promise<{ data: GraphPageData } | { error: unknown }>;
 }
 interface PageRead { skip: number; readLimit: number; refs: string[]; readVirtualCommits: boolean; signal?: AbortSignal; trace?: GraphPerformanceTrace; }
+
+/** 완료된 Native 페이지 한 건만 검증·채택하는 권한이다. 다른 세대와 두 번 채택은 거부한다. */
+export interface GraphFirstPageCandidate {
+  matches(identity: GraphReferenceIdentity): boolean;
+  adopt(identity: GraphReferenceIdentity, trace?: GraphPerformanceTrace): GraphPageData | undefined;
+}
 
 /** 첫 페이지 한 건의 선행 조회·취소·검증·채택 수명만 소유한다. 다음 세대에 데이터를 캐시하지 않는다. */
 export class GraphFirstPageRead {
@@ -32,9 +39,11 @@ export class GraphFirstPageRead {
       !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(head) || !symbolic?.startsWith("refs/heads/")) return reload();
     this.cancel("superseded");
     const controller = new AbortController(), started = Date.now();
+    const read = service.readUnindexedCommitPageSnapshot
+      ? service.readUnindexedCommitPageSnapshot(limit, 0, [], controller.signal)
+      : service.readUnindexedCommitPage(limit, 0, [], controller.signal).then(page => ({ page, headRef: undefined }));
     const prepared: PreparedPage = { service, head, branch: symbolic.slice("refs/heads/".length), limit, controller,
-      result: service.readUnindexedCommitPage(limit, 0, [], controller.signal)
-        .then(page => ({ data: { page, gitLogMs: Date.now() - started } }), error => ({ error })) };
+      result: read.then(snapshot => ({ data: { ...snapshot, gitLogMs: Date.now() - started } }), error => ({ error })) };
     this.active = prepared;
     logInfo("graph first page prepared", { repoRoot: service.repoRoot, limit, generation: context.generation });
     try { return await reload(); }
@@ -42,6 +51,31 @@ export class GraphFirstPageRead {
       if (this.active === prepared) this.cancel("unused");
       await prepared.result;
     }
+  }
+
+  /**
+   * 상세보다 먼저 끝난 Native 페이지를 후보로 전달한다. 실패는 일반 consume의 원래 정책에 남긴다.
+   * @param service 선행 조회를 시작한 같은 서비스 @returns 완료 후보. 취소·불일치·Native 오류이면 undefined
+   */
+  candidate(service: GraphFirstPageService): Promise<GraphFirstPageCandidate | undefined> | undefined {
+    const prepared = this.active;
+    if (!prepared || prepared.service !== service) return undefined;
+    return prepared.result.then(result => {
+      if (this.active !== prepared || prepared.controller.signal.aborted || "error" in result) return undefined;
+      /** Native checkout과 표시할 ref가 같고 아직 소유한 페이지인지를 검증한다. */
+      const matches = (identity: GraphReferenceIdentity) => this.active === prepared && !prepared.controller.signal.aborted &&
+        identity.head === prepared.head && identity.branchRef === `refs/heads/${prepared.branch}` &&
+        matchesGraphPageIdentity(identity, result.data.page, result.data.headRef);
+      return { matches, adopt: (identity, trace) => {
+        if (!matches(identity)) return undefined;
+        this.active = undefined;
+        service.indexGraphCommitPage!(result.data.page, 0, []);
+        logGraphPerformancePhase(trace, "gitLog", result.data.gitLogMs, { skip: 0, limit: prepared.limit,
+          fetchedCount: result.data.page.length, refCount: 0, prepared: true, early: true });
+        logInfo("graph first page adopted before branch details", { repoRoot: service.repoRoot, commits: result.data.page.length });
+        return result.data;
+      } };
+    });
   }
 
   /**
@@ -62,7 +96,8 @@ export class GraphFirstPageRead {
     if (this.active !== prepared || prepared.controller.signal.aborted) return undefined;
     this.active = undefined;
     if ("error" in result) throw result.error;
-    if (!matchesLoadedRefs(result.data.page, prepared.head, branches)) {
+    if ((result.data.headRef && result.data.headRef !== `refs/heads/${prepared.branch}`) ||
+      !matchesLoadedRefs(result.data.page, prepared.head, branches)) {
       logInfo("graph first page discarded", { repoRoot: service.repoRoot, reason: "localReferencesChanged" });
       return undefined;
     }

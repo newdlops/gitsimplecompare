@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.72118] - 2026-10-20
+
+### Performance
+
+- Publish the first Graph history page while branch details are still loading,
+  when the existing Native log and fresh ref snapshot prove the same checkout.
+  Reuse the original page and keep unknown tracking values out of the UI.
+- Preserve the existing reference-refresh path and its marker cache. Apply early
+  publication to fresh first pages without adding marker work to loaded history.
+- Skip identical branch-filter snapshots so late details keep an open menu's focus.
+
+### Fixed
+
+- Reject late branch details from a different checkout or ref set and reconcile
+  from a fresh snapshot. Keep verified history readable on cancellation or error.
+- Preserve keyboard focus on branch chips during detail updates and provide
+  accurate disabled-button guidance while upstream details are unavailable.
+
+### Development
+
+- Record initial-history and final-frame measurements separately, with Native
+  branch-read timing and exact current-branch checks in headless production HTML.
+- Preserve the slower prototype measurements and CPU limitations in the report.
+
 ## [0.1.72117] - 2026-10-20
 
 ### Performance

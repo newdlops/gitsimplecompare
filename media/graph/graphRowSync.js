@@ -146,7 +146,15 @@
           return;
         }
         const replacement = deps.buildRow(row, index, graphWidth);
+        // 상세 hydration이 키보드로 사용 중인 브랜치 chip을 교체해도 같은 실제 ref에 포커스를 유지한다.
+        const focused = document.activeElement;
+        const branch = element.contains(focused) ? focused?.closest?.("[data-branch-name]") : null;
+        const focusName = branch?.dataset.branchName, focusKind = branch?.dataset.branchKind;
         element.replaceWith(replacement); elements.set(index, replacement);
+        if (row.hash === element.dataset.hash && focusName && focusKind) {
+          const target = replacement.querySelector(`[data-branch-name="${CSS.escape(focusName)}"][data-branch-kind="${CSS.escape(focusKind)}"]`);
+          target?.focus({ preventScroll: true });
+        }
         replaced++;
       });
       scheduleScrollableWidth();

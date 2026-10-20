@@ -31,7 +31,7 @@
 
   /** 로컬 브랜치가 remote 기준과 갈라져 별도 색으로 보여야 하는지 확인한다. */
   function isSplitLocalBranch(branch) {
-    return Boolean(branch && (branch.ahead > 0 || !branch.upstream || branch.gone));
+    return Boolean(branch && !branch.detailsPending && (branch.ahead > 0 || !branch.upstream || branch.gone));
   }
 
   /** 브랜치 이름에 대해 현재 그래프 세션에서 고정된 색상을 반환한다. */
@@ -129,6 +129,7 @@
       parts.push(`Click to checkout this branch: ${branch.name}`);
       parts.push("Right-click for branch actions including clone");
     }
+    if (branch.detailsPending) return [...parts, branch.pendingMessage].filter(Boolean).join(" | ");
     if (branch.gone) {
       parts.push("upstream gone");
     } else if (branch.upstream) {
@@ -528,6 +529,7 @@
     const branch = Array.from(references.branches.values()).find((item) => item.current);
     return Boolean(
       branch &&
+        !branch.detailsPending &&
         branch.hash === hash &&
         (branch.ahead > 0 || !branch.upstream || branch.gone)
     );
@@ -558,6 +560,7 @@
     refBadge,
     rowColor,
     setLocalBranches: references.setLocalBranches,
+    setLocalBranchIdentities: references.setLocalBranchIdentities,
     setTagStatus: references.setTagStatus,
     /** 마지막 브랜치/태그 메시지의 영향 범위를 반환한다. null이면 전체 행을 확인해야 한다. */
     referenceChanges: () => references.changes,

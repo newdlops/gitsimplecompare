@@ -13,6 +13,7 @@ import { logError, logInfo } from "../ui/outputLog";
 import { buildBranchFilterSnapshot, resolveBranchFilter } from "./graphBranchFilter";
 import type { GraphBranchFilterSnapshot, GraphBranchFilterState, GraphBranchRef, ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { createGraphWorktreeBranchStatus, readGraphWorktreeBranchStatus } from "./graphWorktrees";
+import { logGraphPerformancePhase, type GraphPerformanceTrace } from "./graphPerformance";
 
 /** local-first 브랜치 hydration이 패널에 제공하는 현재 상태다. */
 export type GraphRemoteCatalogStatus = "pending" | "ready" | "error";
@@ -21,6 +22,27 @@ export type GraphRemoteCatalogStatus = "pending" | "ready" | "error";
 export type GraphRemoteCatalogResult =
   | { status: "ready"; branches: GraphRemoteBranchTip[] }
   | { status: "error"; error: unknown };
+
+/**
+ * 완료된 원격 목록의 표시/색인 상태를 만든다. 실패 시 이전 원격 tip을 재사용하지 않는다.
+ * @param service 대상 서비스 @param branches 새 로컬 상세 @param refs 현재 로컬 ref 목록
+ * @param result 기존 원격 읽기의 결과와 소요 시간 @param trace 같은 Graph trace @param fromFingerprint snapshot 재사용 여부
+ * @returns 패널이 같은 세대에 한 번 적용할 원격 준비 상태
+ */
+export function completeGraphRemoteBranches(service: GitLogService, branches: readonly LocalBranchStatus[], refs: readonly GraphBranchRef[],
+  result: { remote: GraphRemoteCatalogResult; elapsedMs: number }, trace: GraphPerformanceTrace, fromFingerprint: boolean) {
+  const { remote, elapsedMs } = result;
+  logGraphPerformancePhase(trace, "remoteBranches", elapsedMs, { status: remote.status,
+    count: remote.status === "ready" ? remote.branches.length : 0, source: fromFingerprint ? "fingerprint" : "catalog" });
+  if (remote.status === "ready") {
+    service.seedGraphBranchTips(branches, remote.branches);
+    return { lastRemoteTips: remote.branches, lastBranchRefs: mergeGraphBranchRefs(refs, remote.branches),
+      remoteCatalogStatus: "ready" as const, remoteCatalogError: undefined };
+  }
+  service.markGraphRemoteBranchesUnavailable();
+  return { lastRemoteTips: [], lastBranchRefs: refs.filter(ref => ref.kind === "local"), remoteCatalogStatus: "error" as const,
+    remoteCatalogError: remote.error instanceof Error ? remote.error.message : String(remote.error) };
+}
 
 /** repository/generation 취소를 소유해 늦은 remote 결과가 UI를 덮어쓰지 않게 한다. */
 export class GraphBranchLoadingCoordinator {
@@ -157,7 +179,7 @@ export function readGraphLocalBranchData(
 
 /** 현재 상태를 웹뷰가 즉시 그릴 수 있는 branch-filter 메시지 payload로 만든다. */
 export function createGraphBranchFilterSnapshot(
-  refs: readonly GraphBranchRef[], branches: readonly LocalBranchStatus[], state: GraphBranchFilterState,
+  refs: readonly GraphBranchRef[], branches: readonly Pick<LocalBranchStatus, "name" | "current">[], state: GraphBranchFilterState,
   remoteStatus: GraphRemoteCatalogStatus, remoteError?: string, requireExplicitRefs = false
 ): GraphBranchFilterSnapshot {
   return buildBranchFilterSnapshot(refs, branches, state, remoteStatus, remoteError, requireExplicitRefs);

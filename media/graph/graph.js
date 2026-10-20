@@ -403,25 +403,7 @@
 
   /** 로드 상태 텍스트를 갱신한다. */
   function updateLoadStatus() {
-    const loaded = loadState.loadedCount || currentRows.length;
-    if (graphHealthNotice?.level === "error") {
-      statusEl.textContent = graphHealthNotice.title || "Git graph unavailable";
-    } else if (loadState.loading) {
-      statusEl.textContent = loadState.loadDirection === "newer"
-        ? `Loading newer commits before ${loaded} loaded`
-        : `Loading older commits after ${loaded} loaded`;
-    } else if (loadState.hasMore || loadState.hasMoreBefore) {
-      statusEl.textContent = `${loaded} commits loaded`;
-    } else {
-      statusEl.textContent = `${loaded} commits, complete`;
-    }
-    const workingTree = loadState.workingTree;
-    if (workingTree?.message) statusEl.textContent += ` · ${workingTree.message}`;
-    statusEl.title = workingTree?.detail || statusEl.textContent;
-    statusEl.classList.toggle(
-      "loading",
-      Boolean(loadState.loading || workingTree?.loading) && graphHealthNotice?.level !== "error"
-    );
+    window.GscGraphLoadStatus.update(statusEl, loadState, currentRows, graphHealthNotice);
   }
 
   /**
@@ -442,6 +424,7 @@
       tail.innerHTML =
         `<span class="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"></span>` +
         `<span>Loading...</span>`;
+      if (loadState.branchDetails?.message) tail.lastElementChild.textContent = loadState.branchDetails.message;
     } else {
       tail.innerHTML =
         `<button id="load-more" type="button" title="Load more commits" ` +
@@ -545,10 +528,13 @@
       window.GscGraphPerformance?.report?.(vscode, msg.performance, receivedAt, Date.now());
     } else if (msg.type === "graphHealth") {
       renderGraphHealth(msg.notice);
-    } else if (msg.type === "branchStatus") {
+    } else if (msg.type === "branchStatus" || msg.type === "branchIdentities") {
       const worktreeChanges = window.GscGraphWorktrees?.setWorktrees?.(msg.worktrees);
-      const changed = window.GscGraphFeatures?.setLocalBranches?.(msg.branches);
-      window.GscGraphRemote?.updateButton(openRemoteBtn, msg.branches);
+      const pending = msg.type === "branchIdentities";
+      const changed = pending ? window.GscGraphFeatures?.setLocalBranchIdentities?.(msg.branches, msg.message)
+        : window.GscGraphFeatures?.setLocalBranches?.(msg.branches);
+      window.GscGraphRemote?.updateButton(openRemoteBtn, pending ? [] : msg.branches);
+      if (pending && openRemoteBtn) { openRemoteBtn.disabled = true; openRemoteBtn.title = msg.message; openRemoteBtn.dataset.tooltip = msg.message; openRemoteBtn.setAttribute("aria-label", msg.message); }
       if (changed !== false || worktreeChanges?.keys.size) {
         const indices = rowSync.affectedRows(window.GscGraphFeatures?.referenceChanges?.(), worktreeChanges);
         if (indices?.size === 0) return;

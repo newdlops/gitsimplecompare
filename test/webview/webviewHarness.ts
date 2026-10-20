@@ -41,7 +41,7 @@ export async function mountChanges(page:Page,fixture:WebviewFixture){await page.
 export async function mountPullRequestPreview(page:Page,fixture:WebviewFixture,textOverrides:Partial<PullRequestPreviewI18n>={}){const text={...previewI18n,...textOverrides};const icon=(id:string,name:string,label:string)=>`<button id="${id}" class="gsc-icon-button" type="button" title="${label}" aria-label="${label}" data-tooltip="${label}"><span class="codicon codicon-${name}" aria-hidden="true"></span></button>`;await page.setContent(`<body class="gsc-surface"><header class="topbar"><div class="topbar-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span><h1>Pull request preview</h1></div><div class="actions">${icon("refresh","refresh","Refresh staged PR preview")}${icon("generate-pr-message","comment-discussion-sparkle","Generate AI pull request message")}${icon("configure-ai-cli","settings-gear","Configure AI CLI")}${icon("copy-pr-message","copy","Copy pull request message")}<button id="publish-pr" class="gsc-button gsc-button--primary publish-button" type="button" title="Create Pull Request on GitHub" aria-label="Create Pull Request on GitHub" data-tooltip="Create Pull Request on GitHub" disabled><span class="codicon codicon-cloud-upload" aria-hidden="true"></span><span class="publish-label">Create Pull Request on GitHub</span></button><button id="open-pr" class="gsc-button gsc-button--primary" type="button" title="Open pull request on GitHub" aria-label="Open pull request on GitHub" data-tooltip="Open pull request on GitHub" hidden>Open pull request on GitHub</button></div></header><main id="content" aria-live="polite"><p class="placeholder">Loading…</p></main></body>`);await bridge(page,"__gscI18n");await assets(page,["codicons/codicon.css","shared/reset.css","shared/tokens.css","shared/controls.css","shared/data-display.css","shared/feedback.css","shared/layout.css","shared/instantTooltip.css"],["shared/a11y.js","shared/dom.js","shared/keyboard.js","shared/overlay.js","shared/persistedState.js","shared/requestState.js","shared/splitter.js","shared/virtualList.js","shared/instantTooltip.js"]);await page.addStyleTag({content:pullRequestPreviewStyles()});await page.addScriptTag({content:pullRequestPreviewScript(text)});await dispatchWebviewMessage(page,{type:"preview",preview:fixture.payload});}
 
 /** 실제 Graph renderer를 최소 production DOM에 mount해 GraphData 재렌더 동작을 검증한다. */
-export async function mountGraphRenderer(page: Page, syncActions = false): Promise<void> {
+export async function mountGraphRenderer(page: Page, syncActions = false, options: { remote?: boolean } = {}): Promise<void> {
   await page.setContent(
     `<body class="gsc-surface detail-open"><div id="app">` +
       `<main id="graph-pane"><div id="graph-toolbar">` +
@@ -49,6 +49,7 @@ export async function mountGraphRenderer(page: Page, syncActions = false): Promi
         (syncActions ? [["fetch-graph", "cloud-download", "Fetch"], ["fetch-tags-graph", "tag", "Fetch tags"],
           ["pull-graph", "repo-pull", "Pull"], ["push-graph", "repo-push", "Push"], ["force-push-graph", "repo-push", "Force push"]]
           .map(([id, icon, label]) => `<button id="${id}" class="icon-button" type="button" title="${label}" aria-label="${label}" data-tooltip="${label}"><span class="codicon codicon-${icon}" aria-hidden="true"></span></button>`).join("") : "") +
+        (options.remote ? `<button id="open-remote-branch" type="button" title="Open remote branch" aria-label="Open remote branch" data-tooltip="Open remote branch"><span class="codicon codicon-link-external" aria-hidden="true"></span></button>` : "") +
         `<span id="load-status" aria-live="polite"></span>` +
         `<button id="toggle-detail" class="icon-button" type="button" title="Toggle details" aria-label="Toggle details" data-tooltip="Toggle details"><span class="codicon codicon-layout-sidebar-right" aria-hidden="true"></span></button>` +
       `</div>` +
@@ -68,7 +69,7 @@ export async function mountGraphRenderer(page: Page, syncActions = false): Promi
   await assets(
     page,
     ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphHealth.css", "graph/graphDetail.css"],
-    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphDetailVisibility.js", "graph/graphDataUpdates.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graphActionFeedback.js", "graph/graph.js"]
+    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphDetailVisibility.js", "graph/graphDataUpdates.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graphActionFeedback.js", "graph/graphLoadStatus.js", "graph/graph.js"]
   );
   await applyVSCodeTheme(page);
 }

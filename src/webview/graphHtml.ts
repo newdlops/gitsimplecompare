@@ -22,6 +22,7 @@ export function buildGraphHtml(
   const scriptUri = script(webview, mediaRoot, "graph.js");
   const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
   const referenceStateScriptUri = script(webview, mediaRoot, "graphReferenceState.js");
+  const loadStatusScriptUri = script(webview, mediaRoot, "graphLoadStatus.js");
   const worktreeScriptUri = script(webview, mediaRoot, "graphWorktrees.js");
   const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
   const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
@@ -331,6 +332,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${dataUpdatesScriptUri}"></script>
   <script nonce="${nonce}" src="${performanceScriptUri}"></script>
   <script nonce="${nonce}" src="${actionFeedbackScriptUri}"></script>
+  <script nonce="${nonce}" src="${loadStatusScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
   <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
   <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>

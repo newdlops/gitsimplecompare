@@ -1,0 +1,2757 @@
+{
+  "targetVersion": "0.1.72118",
+  "baseline": "c58405e002809fe3768289e6430326f6c8e99c9e",
+  "fixture": {
+    "files": 1000,
+    "commits": 1000,
+    "branches": 300,
+    "sharedUpstreamBranches": 8,
+    "network": "local-bare-only",
+    "monitorPolicy": true
+  },
+  "method": {
+    "order": [
+      "before1",
+      "after1",
+      "after2",
+      "before2",
+      "before3",
+      "after3"
+    ],
+    "artificialDelay": false,
+    "automaticOsFocus": false,
+    "samplesPerSource": 3,
+    "note": "Separate fresh local Git fixtures and headless production HTML per sample; small noisy sample, not a general speedup claim. Optional detached tag reads may finish at different points in the idle window; total process count is observed, not a promised reduction."
+  },
+  "initial": {
+    "before": [
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "837e25acb444cc5c37b338e9d2b432e3403e303b5c30c555bdd427f850715116"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 2043,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 955,
+                "durationMs": 961,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 2339,
+              "latestMutationToFrameMs": 5142,
+              "renderMs": 112,
+              "frameMs": 29
+            },
+            "latestGraphPublishedMs": 5090,
+            "graphAlreadyCurrent": false,
+            "settledMs": 6528,
+            "processes": 16,
+            "operationProcesses": 0,
+            "graphProcesses": 16,
+            "peakProcesses": 6,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "config": 3,
+              "rev-parse": 2,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "config": 3,
+              "rev-parse": 2,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 772,
+              "for-each-ref": 2802,
+              "log": 513,
+              "config": 4487,
+              "rev-parse": 2693,
+              "rev-list": 3078,
+              "remote": 2390,
+              "status": 1486,
+              "ls-remote": 2075
+            },
+            "nodeCpuMs": 375,
+            "rssDeltaMiB": 1,
+            "peakRssDeltaMiB": 9,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "cf718b85384a6fdc29b858a7afb8d4383e5ccd25ea0c74e979cac7bdc86bb88d"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 1199,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 704,
+                "durationMs": 460,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1428,
+              "latestMutationToFrameMs": 2197,
+              "renderMs": 96,
+              "frameMs": 22
+            },
+            "latestGraphPublishedMs": 2157,
+            "graphAlreadyCurrent": false,
+            "settledMs": 3663,
+            "processes": 13,
+            "operationProcesses": 0,
+            "graphProcesses": 13,
+            "peakProcesses": 4,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 511,
+              "for-each-ref": 1526,
+              "log": 286,
+              "rev-list": 961,
+              "remote": 569,
+              "rev-parse": 741,
+              "config": 840,
+              "status": 817,
+              "ls-remote": 1571
+            },
+            "nodeCpuMs": 336,
+            "rssDeltaMiB": 9,
+            "peakRssDeltaMiB": 11,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "b5c3233085eada48bd5fa1a9ddd959e51aa611dcc545b1263c65a891e5c617fa"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 2044,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 611,
+                "durationMs": 1343,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 2501,
+              "latestMutationToFrameMs": 4495,
+              "renderMs": 165,
+              "frameMs": 36
+            },
+            "latestGraphPublishedMs": 4460,
+            "graphAlreadyCurrent": false,
+            "settledMs": 6023,
+            "processes": 16,
+            "operationProcesses": 0,
+            "graphProcesses": 16,
+            "peakProcesses": 6,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "config": 3,
+              "rev-parse": 2,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "config": 3,
+              "rev-parse": 2,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 2557,
+              "worktree": 592,
+              "log": 978,
+              "config": 1955,
+              "rev-parse": 2157,
+              "rev-list": 2446,
+              "remote": 1921,
+              "status": 1783,
+              "ls-remote": 1773
+            },
+            "nodeCpuMs": 478,
+            "rssDeltaMiB": 15,
+            "peakRssDeltaMiB": 21,
+            "historyExact": true
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "974211856c5be511a955c3c99cee15ac7ceed1f0a4c9ae36f79b2f95b4d695ff"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 915,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 311,
+                "durationMs": 524,
+                "firstFrameBeforeDetails": true
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 813,
+              "latestMutationToFrameMs": 2102,
+              "renderMs": 120,
+              "frameMs": 33
+            },
+            "latestGraphPublishedMs": 2042,
+            "graphAlreadyCurrent": false,
+            "settledMs": 3365,
+            "processes": 13,
+            "operationProcesses": 0,
+            "graphProcesses": 13,
+            "peakProcesses": 4,
+            "webviewMessages": 12,
+            "graphPublications": 3,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "ls-remote": 1,
+              "status": 2
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 3,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "ls-remote": 1,
+              "status": 2
+            },
+            "commandTimeMs": {
+              "worktree": 218,
+              "for-each-ref": 1150,
+              "log": 193,
+              "rev-list": 1178,
+              "remote": 586,
+              "rev-parse": 811,
+              "config": 697,
+              "ls-remote": 1366,
+              "status": 812
+            },
+            "nodeCpuMs": 402,
+            "rssDeltaMiB": 25,
+            "peakRssDeltaMiB": 28,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "974211856c5be511a955c3c99cee15ac7ceed1f0a4c9ae36f79b2f95b4d695ff"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 1915,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 550,
+                "durationMs": 1324,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 2046,
+              "latestMutationToFrameMs": 3211,
+              "renderMs": 144,
+              "frameMs": 67
+            },
+            "latestGraphPublishedMs": 3168,
+            "graphAlreadyCurrent": false,
+            "settledMs": 4793,
+            "processes": 13,
+            "operationProcesses": 0,
+            "graphProcesses": 13,
+            "peakProcesses": 4,
+            "webviewMessages": 12,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "rev-list": 2,
+              "rev-parse": 1,
+              "remote": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "rev-list": 2,
+              "rev-parse": 1,
+              "remote": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 2482,
+              "worktree": 520,
+              "log": 1096,
+              "rev-list": 1278,
+              "rev-parse": 933,
+              "remote": 1091,
+              "config": 557,
+              "status": 1317,
+              "ls-remote": 1158
+            },
+            "nodeCpuMs": 438,
+            "rssDeltaMiB": 15,
+            "peakRssDeltaMiB": 18,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "974211856c5be511a955c3c99cee15ac7ceed1f0a4c9ae36f79b2f95b4d695ff"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "operationMs": 0,
+            "graphMs": 2684,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 1239,
+                "durationMs": 1421,
+                "firstFrameBeforeDetails": true
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 2650,
+              "latestMutationToFrameMs": 4597,
+              "renderMs": 127,
+              "frameMs": 32
+            },
+            "latestGraphPublishedMs": 4532,
+            "graphAlreadyCurrent": false,
+            "settledMs": 6734,
+            "processes": 13,
+            "operationProcesses": 0,
+            "graphProcesses": 13,
+            "peakProcesses": 4,
+            "webviewMessages": 12,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 3,
+              "worktree": 1,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "rev-parse": 1,
+              "config": 1,
+              "status": 2,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 3729,
+              "worktree": 1226,
+              "log": 1106,
+              "rev-list": 1850,
+              "remote": 1091,
+              "rev-parse": 1574,
+              "config": 787,
+              "status": 1640,
+              "ls-remote": 2920
+            },
+            "nodeCpuMs": 428,
+            "rssDeltaMiB": -17,
+            "peakRssDeltaMiB": 14,
+            "historyExact": true
+          }
+        ]
+      }
+    ],
+    "median": {
+      "before": {
+        "firstFrameMs": 2339,
+        "finalFrameMs": 4495,
+        "nodeCpuMs": 375,
+        "processes": 16,
+        "peakProcesses": 6
+      },
+      "after": {
+        "firstFrameMs": 2046,
+        "finalFrameMs": 3211,
+        "nodeCpuMs": 428,
+        "processes": 13,
+        "peakProcesses": 4
+      }
+    }
+  },
+  "guardedCheckout": {
+    "version": "0.1.72117",
+    "source": {
+      "kind": "working-tree",
+      "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+      "bundleSha256": "974211856c5be511a955c3c99cee15ac7ceed1f0a4c9ae36f79b2f95b4d695ff"
+    },
+    "fixture": {
+      "files": 1000,
+      "commits": 1000,
+      "branches": 300,
+      "sharedUpstreamBranches": 8,
+      "network": "local-bare-only",
+      "monitorPolicy": true
+    },
+    "results": [
+      {
+        "operation": "checkout",
+        "operationMs": 2477,
+        "graphMs": 2001,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 1300,
+            "durationMs": 685,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "checkoutTargetScope": "loaded-page",
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 2214,
+          "latestMutationToFrameMs": 2214,
+          "renderMs": 37,
+          "frameMs": 68
+        },
+        "latestGraphPublishedMs": 1993,
+        "graphAlreadyCurrent": false,
+        "settledMs": 7421,
+        "processes": 10,
+        "operationProcesses": 3,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "for-each-ref": 3,
+          "rev-parse": 1,
+          "switch": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "for-each-ref": 2194,
+          "rev-parse": 738,
+          "switch": 818,
+          "worktree": 1291,
+          "rev-list": 2299,
+          "config": 991,
+          "status": 1904
+        },
+        "nodeCpuMs": 239,
+        "rssDeltaMiB": -62,
+        "peakRssDeltaMiB": 3,
+        "historyExact": true
+      }
+    ]
+  },
+  "matrix": {
+    "version": "0.1.72117",
+    "source": {
+      "kind": "working-tree",
+      "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+      "bundleSha256": "974211856c5be511a955c3c99cee15ac7ceed1f0a4c9ae36f79b2f95b4d695ff"
+    },
+    "fixture": {
+      "files": 1000,
+      "commits": 1000,
+      "branches": 300,
+      "sharedUpstreamBranches": 8,
+      "network": "local-bare-only",
+      "monitorPolicy": true
+    },
+    "results": [
+      {
+        "operation": "push",
+        "operationMs": 26237,
+        "graphMs": 5097,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 4070,
+            "durationMs": 986,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 5484,
+          "latestMutationToFrameMs": 8301,
+          "renderMs": 62,
+          "frameMs": 70
+        },
+        "latestGraphPublishedMs": 8276,
+        "graphAlreadyCurrent": false,
+        "settledMs": 34536,
+        "processes": 27,
+        "operationProcesses": 20,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 5,
+          "config": 6,
+          "for-each-ref": 5,
+          "remote": 1,
+          "ls-remote": 1,
+          "rev-list": 4,
+          "cat-file": 1,
+          "push": 1,
+          "branch": 1,
+          "worktree": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 2,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 7505,
+          "config": 8537,
+          "for-each-ref": 10634,
+          "remote": 535,
+          "ls-remote": 2074,
+          "rev-list": 4267,
+          "cat-file": 1333,
+          "push": 4195,
+          "branch": 1509,
+          "worktree": 2747,
+          "status": 1011
+        },
+        "nodeCpuMs": 908,
+        "rssDeltaMiB": 34,
+        "peakRssDeltaMiB": 42,
+        "historyExact": true
+      },
+      {
+        "operation": "fetch-new-history",
+        "operationMs": 6154,
+        "graphMs": 1865,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 796,
+            "durationMs": 1051,
+            "firstFrameBeforeDetails": true
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1833,
+          "latestMutationToFrameMs": 5076,
+          "renderMs": 112,
+          "frameMs": 29
+        },
+        "latestGraphPublishedMs": 5048,
+        "graphAlreadyCurrent": false,
+        "settledMs": 15283,
+        "processes": 13,
+        "operationProcesses": 1,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "fetch": 1,
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "fetch": 6152,
+          "for-each-ref": 3194,
+          "worktree": 777,
+          "log": 685,
+          "rev-list": 3188,
+          "config": 3543,
+          "remote": 2928,
+          "status": 3673
+        },
+        "nodeCpuMs": 537,
+        "rssDeltaMiB": 55,
+        "peakRssDeltaMiB": 55,
+        "historyExact": true
+      },
+      {
+        "operation": "pull",
+        "operationMs": 4069,
+        "graphMs": 998,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 663,
+            "durationMs": 312,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1314,
+          "latestMutationToFrameMs": 1314,
+          "renderMs": 60,
+          "frameMs": 97
+        },
+        "latestGraphPublishedMs": 986,
+        "graphAlreadyCurrent": false,
+        "settledMs": 6401,
+        "processes": 11,
+        "operationProcesses": 4,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "rev-parse": 1,
+          "config": 2,
+          "status": 2,
+          "pull": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 241,
+          "config": 809,
+          "status": 1258,
+          "pull": 3058,
+          "for-each-ref": 671,
+          "worktree": 656,
+          "rev-list": 960
+        },
+        "nodeCpuMs": 306,
+        "rssDeltaMiB": 1,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "fetch",
+        "operationMs": 829,
+        "graphMs": 734,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 408,
+            "durationMs": 313,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 898,
+          "latestMutationToFrameMs": 1040,
+          "renderMs": 25,
+          "frameMs": 50
+        },
+        "latestGraphPublishedMs": 1019,
+        "graphAlreadyCurrent": false,
+        "settledMs": 2094,
+        "processes": 8,
+        "operationProcesses": 1,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "fetch": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "fetch": 828,
+          "for-each-ref": 641,
+          "worktree": 403,
+          "rev-list": 287,
+          "config": 154,
+          "status": 343
+        },
+        "nodeCpuMs": 121,
+        "rssDeltaMiB": 8,
+        "peakRssDeltaMiB": 8,
+        "historyExact": true
+      },
+      {
+        "operation": "rebase",
+        "operationMs": 8203,
+        "graphMs": 734,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 286,
+            "durationMs": 439,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 769,
+          "latestMutationToFrameMs": 1241,
+          "renderMs": 58,
+          "frameMs": 33
+        },
+        "latestGraphPublishedMs": 1219,
+        "graphAlreadyCurrent": false,
+        "settledMs": 9977,
+        "processes": 28,
+        "operationProcesses": 16,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 9,
+          "ls-files": 2,
+          "update-ref": 1,
+          "config": 3,
+          "status": 3,
+          "rebase": 1,
+          "merge-base": 1,
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 3961,
+          "ls-files": 608,
+          "update-ref": 252,
+          "config": 896,
+          "status": 1458,
+          "rebase": 1131,
+          "merge-base": 1105,
+          "for-each-ref": 978,
+          "worktree": 281,
+          "log": 299,
+          "rev-list": 488,
+          "remote": 373
+        },
+        "nodeCpuMs": 372,
+        "rssDeltaMiB": -8,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "merge",
+        "operationMs": 6382,
+        "graphMs": 1175,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 617,
+            "durationMs": 416,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1288,
+          "latestMutationToFrameMs": 3348,
+          "renderMs": 65,
+          "frameMs": 19
+        },
+        "latestGraphPublishedMs": 3324,
+        "graphAlreadyCurrent": false,
+        "settledMs": 10399,
+        "processes": 30,
+        "operationProcesses": 15,
+        "graphProcesses": 15,
+        "peakProcesses": 6,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 7,
+          "ls-files": 2,
+          "status": 3,
+          "update-ref": 1,
+          "config": 6,
+          "merge": 1,
+          "diff": 1,
+          "commit": 1,
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "config": 4,
+          "rev-list": 2,
+          "remote": 1,
+          "rev-parse": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 3969,
+          "ls-files": 770,
+          "status": 2725,
+          "update-ref": 529,
+          "config": 2280,
+          "merge": 1139,
+          "diff": 149,
+          "commit": 478,
+          "for-each-ref": 2512,
+          "worktree": 612,
+          "log": 528,
+          "rev-list": 2154,
+          "remote": 1490
+        },
+        "nodeCpuMs": 272,
+        "rssDeltaMiB": 1,
+        "peakRssDeltaMiB": 3,
+        "historyExact": true
+      },
+      {
+        "operation": "merge-no-ff",
+        "operationMs": 993,
+        "graphMs": 1879,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 1007,
+            "durationMs": 858,
+            "firstFrameBeforeDetails": true
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1553,
+          "latestMutationToFrameMs": 3502,
+          "renderMs": 59,
+          "frameMs": 17
+        },
+        "latestGraphPublishedMs": 3481,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4501,
+        "processes": 11,
+        "operationProcesses": 1,
+        "graphProcesses": 10,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "merge": 1,
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "config": 1,
+          "rev-list": 2,
+          "status": 1,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "config": 1,
+          "rev-list": 2,
+          "status": 1,
+          "remote": 1
+        },
+        "commandTimeMs": {
+          "merge": 993,
+          "for-each-ref": 2523,
+          "worktree": 1003,
+          "log": 367,
+          "config": 631,
+          "rev-list": 1606,
+          "status": 613,
+          "remote": 1365
+        },
+        "nodeCpuMs": 197,
+        "rssDeltaMiB": 7,
+        "peakRssDeltaMiB": 7,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "operationMs": 12503,
+        "graphMs": 1316,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 286,
+            "durationMs": 1016,
+            "firstFrameBeforeDetails": true
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1173,
+          "latestMutationToFrameMs": 2319,
+          "renderMs": 68,
+          "frameMs": 20
+        },
+        "latestGraphPublishedMs": 2288,
+        "graphAlreadyCurrent": false,
+        "settledMs": 15905,
+        "processes": 35,
+        "operationProcesses": 24,
+        "graphProcesses": 11,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 10,
+          "ls-files": 2,
+          "cat-file": 1,
+          "log": 2,
+          "worktree": 3,
+          "config": 3,
+          "read-tree": 1,
+          "commit": 1,
+          "update-ref": 1,
+          "merge-base": 1,
+          "diff": 1,
+          "reset": 1,
+          "for-each-ref": 3,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 6089,
+          "ls-files": 1665,
+          "cat-file": 1267,
+          "log": 2153,
+          "worktree": 770,
+          "config": 1543,
+          "read-tree": 292,
+          "commit": 402,
+          "update-ref": 136,
+          "merge-base": 128,
+          "diff": 796,
+          "reset": 161,
+          "for-each-ref": 1735,
+          "rev-list": 975,
+          "remote": 671,
+          "status": 931
+        },
+        "nodeCpuMs": 502,
+        "rssDeltaMiB": 1,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "operationMs": 16144,
+        "graphMs": 1422,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 397,
+            "durationMs": 1008,
+            "firstFrameBeforeDetails": true
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1116,
+          "latestMutationToFrameMs": 3268,
+          "renderMs": 62,
+          "frameMs": 20
+        },
+        "latestGraphPublishedMs": 3236,
+        "graphAlreadyCurrent": false,
+        "settledMs": 20665,
+        "processes": 37,
+        "operationProcesses": 26,
+        "graphProcesses": 11,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 14,
+          "ls-files": 2,
+          "cat-file": 1,
+          "status": 4,
+          "update-ref": 1,
+          "config": 4,
+          "cherry-pick": 3,
+          "worktree": 1,
+          "for-each-ref": 3,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 3,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 8145,
+          "ls-files": 1613,
+          "cat-file": 528,
+          "status": 1654,
+          "update-ref": 712,
+          "config": 5585,
+          "cherry-pick": 1466,
+          "worktree": 372,
+          "for-each-ref": 2691,
+          "log": 497,
+          "rev-list": 1821,
+          "remote": 1521
+        },
+        "nodeCpuMs": 556,
+        "rssDeltaMiB": -11,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "cherry-pick",
+        "operationMs": 113,
+        "graphMs": 993,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 440,
+            "durationMs": 542,
+            "firstFrameBeforeDetails": true
+          }
+        ],
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 880,
+          "latestMutationToFrameMs": 2144,
+          "renderMs": 44,
+          "frameMs": 14
+        },
+        "latestGraphPublishedMs": 2122,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4906,
+        "processes": 13,
+        "operationProcesses": 1,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 12,
+        "graphPublications": 3,
+        "commands": {
+          "cherry-pick": 1,
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 3,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "cherry-pick": 112,
+          "for-each-ref": 1663,
+          "worktree": 437,
+          "log": 311,
+          "rev-list": 1132,
+          "config": 1080,
+          "remote": 701,
+          "status": 2678
+        },
+        "nodeCpuMs": 183,
+        "rssDeltaMiB": 10,
+        "peakRssDeltaMiB": 10,
+        "historyExact": true
+      },
+      {
+        "operation": "checkout",
+        "operationMs": 933,
+        "graphMs": 832,
+        "branchDetailsReads": [
+          {
+            "startedAfterOperationMs": 372,
+            "durationMs": 444,
+            "firstFrameBeforeDetails": false
+          }
+        ],
+        "checkoutTargetScope": "topic",
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 1025,
+          "latestMutationToFrameMs": 1025,
+          "renderMs": 30,
+          "frameMs": 55
+        },
+        "latestGraphPublishedMs": 824,
+        "graphAlreadyCurrent": false,
+        "settledMs": 2504,
+        "processes": 10,
+        "operationProcesses": 3,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "for-each-ref": 3,
+          "rev-parse": 1,
+          "switch": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "for-each-ref": 1083,
+          "rev-parse": 260,
+          "switch": 341,
+          "worktree": 367,
+          "rev-list": 393,
+          "config": 217,
+          "status": 482
+        },
+        "nodeCpuMs": 146,
+        "rssDeltaMiB": 8,
+        "peakRssDeltaMiB": 8,
+        "historyExact": true
+      }
+    ]
+  },
+  "rejectedPrototype": {
+    "note": "Broad early reference refresh cleared existing local-only markers, increasing final-frame latency and CPU. Final code preserves the existing reference refresh path entirely, including completed empty marker caches. Initial-page timing uses an independent unchanged code path; guarded and matrix results exercised existing decorated-history paths.",
+    "before": [
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "105acd699241a28edfad6de7555083da3a7df59b1cc4b235b5dad190caae4f36"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 507,
+            "graphMs": 794,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1078,
+              "latestMutationToFrameMs": 1078,
+              "renderMs": 50,
+              "frameMs": 93
+            },
+            "latestGraphPublishedMs": 790,
+            "graphAlreadyCurrent": false,
+            "settledMs": 2389,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 6,
+            "graphPublications": 2,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 766,
+              "rev-parse": 131,
+              "switch": 233,
+              "worktree": 400,
+              "rev-list": 828,
+              "config": 560,
+              "status": 490
+            },
+            "nodeCpuMs": 215,
+            "rssDeltaMiB": 14,
+            "peakRssDeltaMiB": 14,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "3fc8c870dc62f6ab52591a6fe9386415fb98a3ae1b6aaa12c285b4b68d527fe4"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 2116,
+            "graphMs": 1444,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1700,
+              "latestMutationToFrameMs": 1700,
+              "renderMs": 33,
+              "frameMs": 77
+            },
+            "latestGraphPublishedMs": 1439,
+            "graphAlreadyCurrent": false,
+            "settledMs": 4336,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 6,
+            "graphPublications": 2,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 2220,
+              "rev-parse": 562,
+              "switch": 557,
+              "worktree": 775,
+              "rev-list": 477,
+              "config": 247,
+              "status": 479
+            },
+            "nodeCpuMs": 236,
+            "rssDeltaMiB": -31,
+            "peakRssDeltaMiB": 0,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "7dfddecd63258f0ffaa10e40ffc8e2ba15c6c2abd8650b39a7bd7c57864a4d5f"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 2431,
+            "graphMs": 1367,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1554,
+              "latestMutationToFrameMs": 1554,
+              "renderMs": 35,
+              "frameMs": 56
+            },
+            "latestGraphPublishedMs": 1365,
+            "graphAlreadyCurrent": false,
+            "settledMs": 4334,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 6,
+            "graphPublications": 2,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 1932,
+              "rev-parse": 856,
+              "switch": 544,
+              "worktree": 988,
+              "rev-list": 383,
+              "config": 249,
+              "status": 245
+            },
+            "nodeCpuMs": 168,
+            "rssDeltaMiB": 13,
+            "peakRssDeltaMiB": 13,
+            "historyExact": true
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "aeb247e815b1057a52d5f88abdf7411985086c4073cb2df5bc02d35a1828cbc4"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 1541,
+            "graphMs": 2011,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1726,
+              "latestMutationToFrameMs": 3270,
+              "renderMs": 47,
+              "frameMs": 86
+            },
+            "latestGraphPublishedMs": 3217,
+            "graphAlreadyCurrent": false,
+            "settledMs": 5077,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 2596,
+              "rev-parse": 623,
+              "switch": 284,
+              "worktree": 1185,
+              "rev-list": 1218,
+              "config": 678,
+              "status": 795
+            },
+            "nodeCpuMs": 282,
+            "rssDeltaMiB": -16,
+            "peakRssDeltaMiB": 2,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "aeb247e815b1057a52d5f88abdf7411985086c4073cb2df5bc02d35a1828cbc4"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 748,
+            "graphMs": 1496,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1103,
+              "latestMutationToFrameMs": 3178,
+              "renderMs": 53,
+              "frameMs": 88
+            },
+            "latestGraphPublishedMs": 3118,
+            "graphAlreadyCurrent": false,
+            "settledMs": 4133,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 1549,
+              "rev-parse": 348,
+              "switch": 214,
+              "worktree": 714,
+              "rev-list": 1624,
+              "config": 732,
+              "status": 1098
+            },
+            "nodeCpuMs": 354,
+            "rssDeltaMiB": -6,
+            "peakRssDeltaMiB": 13,
+            "historyExact": true
+          }
+        ]
+      },
+      {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "aeb247e815b1057a52d5f88abdf7411985086c4073cb2df5bc02d35a1828cbc4"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 1032,
+            "graphMs": 940,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 671,
+              "latestMutationToFrameMs": 2031,
+              "renderMs": 37,
+              "frameMs": 55
+            },
+            "latestGraphPublishedMs": 1996,
+            "graphAlreadyCurrent": false,
+            "settledMs": 3264,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 1170,
+              "rev-parse": 381,
+              "switch": 285,
+              "worktree": 406,
+              "rev-list": 1056,
+              "config": 435,
+              "status": 815
+            },
+            "nodeCpuMs": 273,
+            "rssDeltaMiB": 2,
+            "peakRssDeltaMiB": 11,
+            "historyExact": true
+          }
+        ]
+      }
+    ],
+    "matrix": {
+      "version": "0.1.72117",
+      "source": {
+        "kind": "working-tree",
+        "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+        "bundleSha256": "aeb247e815b1057a52d5f88abdf7411985086c4073cb2df5bc02d35a1828cbc4"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {
+          "operation": "push",
+          "operationMs": 5431,
+          "graphMs": 1066,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 553,
+            "latestMutationToFrameMs": 1592,
+            "renderMs": 31,
+            "frameMs": 52
+          },
+          "latestGraphPublishedMs": 1563,
+          "graphAlreadyCurrent": false,
+          "settledMs": 7255,
+          "processes": 26,
+          "operationProcesses": 19,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 5,
+            "config": 5,
+            "for-each-ref": 5,
+            "remote": 1,
+            "ls-remote": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 1103,
+            "config": 1487,
+            "for-each-ref": 1948,
+            "remote": 114,
+            "ls-remote": 532,
+            "rev-list": 864,
+            "cat-file": 222,
+            "push": 1732,
+            "branch": 161,
+            "worktree": 139,
+            "status": 375
+          },
+          "nodeCpuMs": 289,
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 1952,
+          "graphMs": 1421,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1429,
+            "latestMutationToFrameMs": 3125,
+            "renderMs": 63,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 3102,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5391,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "config": 2,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "config": 2,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "fetch": 1952,
+            "for-each-ref": 1785,
+            "worktree": 882,
+            "log": 347,
+            "config": 1099,
+            "remote": 1298,
+            "rev-list": 1687,
+            "status": 878
+          },
+          "nodeCpuMs": 360,
+          "rssDeltaMiB": 0,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 2912,
+          "graphMs": 583,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 498,
+            "latestMutationToFrameMs": 1245,
+            "renderMs": 33,
+            "frameMs": 54
+          },
+          "latestGraphPublishedMs": 1220,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4155,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 1,
+            "config": 2,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "config": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 223,
+            "config": 351,
+            "status": 726,
+            "pull": 2046,
+            "for-each-ref": 469,
+            "worktree": 278,
+            "rev-list": 638
+          },
+          "nodeCpuMs": 301,
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 2434,
+          "graphMs": 1665,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1099,
+            "latestMutationToFrameMs": 2605,
+            "renderMs": 28,
+            "frameMs": 50
+          },
+          "latestGraphPublishedMs": 2570,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5213,
+          "processes": 8,
+          "operationProcesses": 1,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 2433,
+            "for-each-ref": 1300,
+            "worktree": 905,
+            "rev-list": 907,
+            "config": 672,
+            "status": 401
+          },
+          "nodeCpuMs": 290,
+          "rssDeltaMiB": -11,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 3616,
+          "graphMs": 951,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 938,
+            "latestMutationToFrameMs": 1936,
+            "renderMs": 78,
+            "frameMs": 29
+          },
+          "latestGraphPublishedMs": 1883,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6193,
+          "processes": 27,
+          "operationProcesses": 16,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "config": 2,
+            "status": 3,
+            "rebase": 1,
+            "merge-base": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 1738,
+            "ls-files": 366,
+            "update-ref": 163,
+            "config": 829,
+            "status": 1114,
+            "rebase": 757,
+            "merge-base": 165,
+            "for-each-ref": 1055,
+            "worktree": 365,
+            "log": 284,
+            "rev-list": 970,
+            "remote": 448
+          },
+          "nodeCpuMs": 598,
+          "rssDeltaMiB": 6,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 10104,
+          "graphMs": 1877,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1865,
+            "latestMutationToFrameMs": 2648,
+            "renderMs": 69,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 2614,
+          "graphAlreadyCurrent": false,
+          "settledMs": 13473,
+          "processes": 27,
+          "operationProcesses": 15,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 6,
+            "ls-files": 2,
+            "status": 3,
+            "update-ref": 1,
+            "config": 4,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 3650,
+            "ls-files": 3281,
+            "status": 1410,
+            "update-ref": 326,
+            "config": 1351,
+            "merge": 405,
+            "diff": 606,
+            "commit": 1244,
+            "for-each-ref": 2024,
+            "worktree": 1005,
+            "log": 622,
+            "rev-list": 741,
+            "remote": 563
+          },
+          "nodeCpuMs": 412,
+          "rssDeltaMiB": 6,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 1087,
+          "graphMs": 1749,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1638,
+            "latestMutationToFrameMs": 3203,
+            "renderMs": 75,
+            "frameMs": 21
+          },
+          "latestGraphPublishedMs": 3159,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5392,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "merge": 1086,
+            "for-each-ref": 2736,
+            "worktree": 817,
+            "log": 595,
+            "rev-list": 1417,
+            "config": 1097,
+            "remote": 928,
+            "status": 1407
+          },
+          "nodeCpuMs": 380,
+          "rssDeltaMiB": 26,
+          "peakRssDeltaMiB": 34,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 13710,
+          "graphMs": 2949,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 3124,
+            "latestMutationToFrameMs": 5009,
+            "renderMs": 108,
+            "frameMs": 22
+          },
+          "latestGraphPublishedMs": 4952,
+          "graphAlreadyCurrent": false,
+          "settledMs": 19727,
+          "processes": 39,
+          "operationProcesses": 24,
+          "graphProcesses": 15,
+          "peakProcesses": 6,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 11,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "config": 6,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 3,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "config": 4,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2,
+            "rev-parse": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 5500,
+            "ls-files": 2236,
+            "cat-file": 392,
+            "log": 2262,
+            "worktree": 2011,
+            "config": 4699,
+            "read-tree": 772,
+            "commit": 856,
+            "update-ref": 353,
+            "merge-base": 480,
+            "diff": 611,
+            "reset": 593,
+            "for-each-ref": 3671,
+            "remote": 843,
+            "rev-list": 2008,
+            "status": 1983
+          },
+          "nodeCpuMs": 820,
+          "rssDeltaMiB": -7,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 9914,
+          "graphMs": 1000,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1017,
+            "latestMutationToFrameMs": 2118,
+            "renderMs": 88,
+            "frameMs": 23
+          },
+          "latestGraphPublishedMs": 2077,
+          "graphAlreadyCurrent": false,
+          "settledMs": 12819,
+          "processes": 38,
+          "operationProcesses": 26,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 4,
+            "update-ref": 1,
+            "config": 5,
+            "cherry-pick": 3,
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5637,
+            "ls-files": 843,
+            "cat-file": 363,
+            "status": 1385,
+            "update-ref": 263,
+            "config": 2099,
+            "cherry-pick": 1409,
+            "worktree": 361,
+            "for-each-ref": 1340,
+            "log": 384,
+            "rev-list": 1085,
+            "remote": 854
+          },
+          "nodeCpuMs": 591,
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 82,
+          "graphMs": 788,
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 770,
+            "latestMutationToFrameMs": 1797,
+            "renderMs": 63,
+            "frameMs": 18
+          },
+          "latestGraphPublishedMs": 1758,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2737,
+          "processes": 12,
+          "operationProcesses": 1,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "commands": {
+            "cherry-pick": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "cherry-pick": 76,
+            "for-each-ref": 890,
+            "worktree": 318,
+            "log": 245,
+            "rev-list": 975,
+            "remote": 365,
+            "config": 709,
+            "status": 1099
+          },
+          "nodeCpuMs": 230,
+          "rssDeltaMiB": 8,
+          "peakRssDeltaMiB": 11,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 1519,
+          "graphMs": 1078,
+          "checkoutTargetScope": "topic",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 792,
+            "latestMutationToFrameMs": 1801,
+            "renderMs": 31,
+            "frameMs": 50
+          },
+          "latestGraphPublishedMs": 1757,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3528,
+          "processes": 10,
+          "operationProcesses": 3,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1562,
+            "rev-parse": 244,
+            "switch": 507,
+            "worktree": 555,
+            "rev-list": 681,
+            "config": 450,
+            "status": 433
+          },
+          "nodeCpuMs": 249,
+          "rssDeltaMiB": -10,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    },
+    "sameOidExploratory": {
+      "before": {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "commit",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "87fb32a8c675232c9a0cf827fe437807f31fee108448607a707989936c51be16"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 1544,
+            "graphMs": 1322,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1603,
+              "latestMutationToFrameMs": 1603,
+              "renderMs": 60,
+              "frameMs": 86
+            },
+            "latestGraphPublishedMs": 1317,
+            "graphAlreadyCurrent": true,
+            "settledMs": 3998,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 6,
+            "graphPublications": 2,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 1744,
+              "rev-parse": 512,
+              "switch": 381,
+              "worktree": 661,
+              "rev-list": 799,
+              "config": 519,
+              "status": 568
+            },
+            "nodeCpuMs": 239,
+            "rssDeltaMiB": 0,
+            "peakRssDeltaMiB": 0,
+            "historyExact": true
+          }
+        ]
+      },
+      "after": {
+        "version": "0.1.72117",
+        "source": {
+          "kind": "working-tree",
+          "commit": "c58405e002809fe3768289e6430326f6c8e99c9e",
+          "bundleSha256": "4b23c7676546d0ef2b5eff653fa2161781706029901d48742207a1248c6a9c41"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 300,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": true
+        },
+        "results": [
+          {
+            "operation": "checkout",
+            "operationMs": 621,
+            "graphMs": 1839,
+            "checkoutTargetScope": "loaded-page",
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "mutationToFrameMs": 1203,
+              "latestMutationToFrameMs": 3417,
+              "renderMs": 51,
+              "frameMs": 83
+            },
+            "latestGraphPublishedMs": 3373,
+            "graphAlreadyCurrent": true,
+            "settledMs": 4271,
+            "processes": 10,
+            "operationProcesses": 3,
+            "graphProcesses": 7,
+            "peakProcesses": 2,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "commands": {
+              "for-each-ref": 3,
+              "rev-parse": 1,
+              "switch": 1,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "for-each-ref": 2,
+              "worktree": 1,
+              "rev-list": 2,
+              "config": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "for-each-ref": 1845,
+              "rev-parse": 174,
+              "switch": 209,
+              "worktree": 863,
+              "rev-list": 1539,
+              "config": 1196,
+              "status": 570
+            },
+            "nodeCpuMs": 277,
+            "rssDeltaMiB": 2,
+            "peakRssDeltaMiB": 2,
+            "historyExact": true
+          }
+        ]
+      }
+    }
+  },
+  "validation": {
+    "nodePure": 71,
+    "nativeFirstPage": 2,
+    "headlessUnique": 9,
+    "headlessAffectedRerun": 4,
+    "viewports": [
+      390,
+      768,
+      1440
+    ],
+    "typecheck": true,
+    "releaseVerification": "Artifact and installed runtime files are verified separately from these performance measurements",
+    "limitations": [
+      "No visible Extension Development Host or user window interaction",
+      "No physical touch or screen-reader session",
+      "No Marketplace status lookup",
+      "Full operation latency and CPU/resource goal remains unproven"
+    ]
+  },
+  "goalComplete": false
+}

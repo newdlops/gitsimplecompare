@@ -133,7 +133,7 @@
 
   /** 확장에서 받은 최신 스냅샷으로 버튼/메뉴를 다시 그린다. */
   function applySnapshot(next) {
-    snapshot = {
+    const updated = {
       mode: next?.mode || "all",
       selected: Array.isArray(next?.selected) ? next.selected : [],
       compact: next?.compact !== false,
@@ -141,6 +141,9 @@
       remoteStatus: next?.remoteStatus || "ready",
       remoteError: next?.remoteError || "",
     };
+    // 최소 identity와 상세가 같은 옵션이면 열린 메뉴의 검색·키보드 포커스를 그대로 유지한다.
+    if (JSON.stringify(snapshot) === JSON.stringify(updated)) return;
+    snapshot = updated;
     render();
   }
 

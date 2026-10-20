@@ -19,7 +19,7 @@ import { GitGraphActionService } from "./gitGraphActionService";
 import type { RevertCommitResult } from "./gitGraphActionService";
 import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
 import { GraphLocalBranchTrackingReader } from "./graphLocalBranchTracking";
-import { readGitLogPage } from "./gitLogPage";
+import { readGitLogPage, readGitLogPageSnapshot } from "./gitLogPage";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
 import { LOG_FIELD_SEPARATOR } from "./gitLogParse";
 import {
@@ -111,6 +111,11 @@ export class GitLogService {
     return readGitLogPage(this.repoRoot, limit, skip, refs, signal);
   }
 
+  /** 같은 Native log의 HEAD→full ref 증거를 보존하고 채택 전에는 containment를 변경하지 않는다. */
+  readUnindexedCommitPageSnapshot(limit: number, skip: number, refs: string[], signal?: AbortSignal) {
+    return readGitLogPageSnapshot(this.repoRoot, limit, skip, refs, signal);
+  }
+
   /** 현재 Graph 세대가 채택한 원본 topo 페이지를 같은 offset/ref 범위로 색인하고 관찰 로그를 남긴다. */
   indexGraphCommitPage(commits: readonly Commit[], skip: number, refs: readonly string[]): void {
     const stats = this.branchRefCache.indexPage({ commits, skip, allRefs: refs.length === 0 });
@@ -176,9 +181,7 @@ export class GitLogService {
    * @param signal Graph가 더 이상 사용하지 않을 로컬 ref 조회를 종료할 신호
    * @returns 정상 LocalBranchStatus와 UI에 경고할 누락-object ref 목록
    */
-  async getLocalBranchSnapshot(signal?: AbortSignal): Promise<GraphLocalBranchSnapshot> {
-    return this.branchTracking.read(signal);
-  }
+  getLocalBranchSnapshot(signal?: AbortSignal): Promise<GraphLocalBranchSnapshot> { return this.branchTracking.read(signal); }
 
   /** 일괄 tracking 조회와 무거운 선행 이력이 세 프로세스로 겹치지 않게 현재 전략을 알려 준다. */
   usesNativeBranchSnapshot(): boolean { return this.branchTracking.usesNativeSnapshot(); }
@@ -197,6 +200,17 @@ export class GitLogService {
       this.branchRefCache.seedRemoteBranches(remoteTips);
       this.localOnlyBranchCache.setRemoteTips(remoteTips);
     }
+  }
+
+  /**
+   * 검증한 ref identity만 containment에 제공하고 상세가 없는 local-only 계산은 보류한다.
+   * @param branches Native name/OID/current @param remoteTips 같은 fingerprint의 원격 tip
+   * @returns 없음. 추적 수치를 만들지 않으며 다음 full snapshot이 계산을 다시 활성화한다.
+   */
+  seedGraphReferenceIdentities(branches: readonly Pick<LocalBranchStatus, "name" | "hash" | "current">[], remoteTips: readonly { name: string; hash: string }[]): void {
+    this.branchRefCache.seedLocalBranches(branches);
+    this.branchRefCache.seedRemoteBranches(remoteTips);
+    this.localOnlyBranchCache.setRemoteUnavailable();
   }
 
   /** remote catalog 실패를 containment/local-only cache에 반영해 과거 remote tip 표시를 제거한다. */

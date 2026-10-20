@@ -74,7 +74,7 @@ export class GraphLiveRenderer {
 
   /** 실제 ACK 이후 HEAD·ref·local-only를 host snapshot과 대조하고 최종 metadata 게시의 frame도 따로 기다린다. */
   async verify(commits: readonly Commit[], head: string, operationEndedAt: number, graphAlreadyCurrent: boolean,
-    latest?: GraphRenderPerformance) {
+    latest?: GraphRenderPerformance, currentBranch?: string) {
     await this.queue;
     /** 같은 refresh라도 첫 이력과 늦은 색상 게시를 혼동하지 않게 최종 게시의 정확한 metadata를 확인한다. */
     const finalPaint = () => latest && this.paints.find(paint => paint.performance.traceId === latest.traceId &&
@@ -102,6 +102,9 @@ export class GraphLiveRenderer {
     }
     const headCommit = commits.find(commit => commit.hash === head);
     assert.deepEqual(rows.filter(row => row.head).map(row => row.hash), headCommit ? [head] : [], "Rendered HEAD badge differs from the native loaded page");
+    if (currentBranch) assert.deepEqual(await this.page.locator("#graph-content > .row .current-local[data-branch-name]")
+      .evaluateAll(chips => chips.map(chip => (chip as HTMLElement).dataset.branchName)), headCommit ? [currentBranch] : [],
+      "Rendered current-branch chip differs from the Native checkout");
     const positionedRows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .map(element => getComputedStyle(element).top));
     assert.ok(positionedRows.every(top => top !== "auto"), "Production CSP blocked Graph row positions");

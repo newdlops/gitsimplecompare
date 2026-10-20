@@ -35,7 +35,13 @@
    */
   function createReferenceState() {
     let branchesReady = false, tagsReady = false;
-    const state = { branches: new Map(), colors: new Map(), tags: new Map(), remoteTags: new Map(), changes: null, setLocalBranches, setTagStatus };
+    const state = { branches: new Map(), colors: new Map(), tags: new Map(), remoteTags: new Map(), changes: null, setLocalBranches, setLocalBranchIdentities, setTagStatus };
+
+    /** 확인된 이름/OID/current만 받고 미확인 수치는 생략한다. 기존 상세는 이 최소 snapshot으로 교체한다. */
+    function setLocalBranchIdentities(branches, message) {
+      return setLocalBranches((branches || []).map(branch => ({ name: branch.name, hash: branch.hash,
+        current: branch.current, detailsPending: true, pendingMessage: message })));
+    }
 
     /** @param branches 확장이 보낸 전체 로컬 브랜치 상태 @returns 데이터 또는 실제 표시 색상이 바뀌면 true */
     function setLocalBranches(branches) {

@@ -21,7 +21,7 @@ import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 
-type Operation = "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
+type Operation = "initial" | "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 
 /** 행 순서와 무관하게 실제 HEAD·부모·ref와 최종 local-only 표시까지 같은 게시를 식별한다. */
@@ -128,6 +128,13 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     if (measuring && (message.type === "graph" || message.type === "graphDelta")) publications.push({
       at: performance.now(), signature: graphSignature(panel.commits), performance: message.performance });
   });
+  const branchReads: { startedAt: number; finishedAt?: number }[] = [];
+  const readBranches = service.getLocalBranchSnapshot.bind(service);
+  mock.method(service, "getLocalBranchSnapshot", async (...args: Parameters<typeof readBranches>) => {
+    const timing = measuring ? { startedAt: Date.now(), finishedAt: undefined as number | undefined } : undefined;
+    if (timing) branchReads.push(timing);
+    try { return await readBranches(...args); } finally { if (timing) timing.finishedAt = Date.now(); }
+  });
   const localOnlyFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
   const getLocalOnlyMap = cache.getMap.bind(cache);
   mock.method(cache, "getMap", async () => {
@@ -137,12 +144,13 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   });
   try {
     if (renderer) await renderer.mount(surface.webview.html);
-    assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel);
+    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel); }
     // Graph 행에서 checkout하는 일반 경로와 페이지 밖의 오래된 topic 이동을 별도 측정한다.
     const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
+    const previousHead = panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.hash;
     const checkoutTarget: string | undefined = loadedTarget
-      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && visibleHashes.has(branch.hash))?.name : "topic";
+      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))?.name : "topic";
     assert.ok(checkoutTarget, "Loaded checkout fixture needs an actual visible local branch tip");
     const initialSignature = graphSignature(panel.commits);
     const timings: GitExecutionTiming[] = [];
@@ -161,6 +169,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     let operationEnd: number, operationEndedAt: number, graphEnd: number;
     try {
       switch (operation) {
+        case "initial": break;
         case "push": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root)); break;
         case "pull": case "pull-known-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
         case "fetch": case "fetch-new-history": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
@@ -175,7 +184,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       operationEnd = performance.now();
       operationEndedAt = Date.now();
       const operationProcesses = timings.length;
-      if (operation === "checkout") await panel.refreshAfterCheckoutAction();
+      if (operation === "initial") assert.equal(await panel.runDirectGraph("ready"), true);
+      else if (operation === "checkout") await panel.refreshAfterCheckoutAction();
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
       else await panel.refreshAfterGraphAction(operation === "push" ? "references" : "graph");
       graphEnd = performance.now();
@@ -208,9 +218,14 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const latestPublication = publications.find(publication => publication.at >= operationEnd && publication.signature === finalSignature);
       const latestPublishedAt = latestPublication?.at;
       assert.ok(latestPublishedAt !== undefined || graphAlreadyCurrent, "Changed final Git graph must have been published; unchanged data needs no repaint.");
-      const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance);
+      const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance,
+        panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.name);
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
+        branchDetailsReads: branchReads.map(read => ({ startedAfterOperationMs: read.startedAt - operationEndedAt,
+          durationMs: read.finishedAt === undefined ? null : read.finishedAt - read.startedAt,
+          firstFrameBeforeDetails: !!liveRenderer?.mutationToFrameMs && read.finishedAt !== undefined &&
+            operationEndedAt + liveRenderer.mutationToFrameMs < read.finishedAt })),
         ...(operation === "checkout" ? { checkoutTargetScope: loadedTarget ? "loaded-page" : "topic" } : {}),
         ...(liveRenderer ? { liveRenderer } : {}),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
