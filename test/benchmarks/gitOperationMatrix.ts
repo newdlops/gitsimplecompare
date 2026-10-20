@@ -17,15 +17,17 @@ import { disposeWorkingTreeSnapshots } from "../../src/git/workingTreeSnapshot";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import type { PullRequestInfo } from "../../src/git/pullRequestInfo";
 import type { Commit } from "../../src/graph/graphTypes";
+import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 
 type Operation = "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 
-/** 행 순서와 무관하게 실제 HEAD·부모·ref가 같은 Graph 게시를 식별한다. */
+/** 행 순서와 무관하게 실제 HEAD·부모·ref와 최종 local-only 표시까지 같은 게시를 식별한다. */
 function graphSignature(commits: readonly Commit[]): string {
-  return JSON.stringify(commits.map(commit => [commit.hash, commit.parents, [...new Set(commit.refs)].sort()]).sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
+  return JSON.stringify(commits.map(commit => [commit.hash, commit.parents, [...new Set(commit.refs)].sort(), [...commit.localOnlyBranches ?? []].sort()])
+    .sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
 }
 
 /** benchmark 밖의 저장소를 입력받지 않고 고정된 트리/히스토리/branch 수의 fixture만 생성한다. */
@@ -68,12 +70,20 @@ async function fixture(directory: string) {
   await runGit(["-c", "init.templateDir=", "init", "-q", "--bare", "--initial-branch=main", remote], directory);
   await runGit(["remote", "add", "origin", remote], root);
   await runGit(["push", "-qu", "origin", "main", "refs/heads/side-*:refs/heads/side-*"], root);
+  const sharedUpstreamBranches = Number(process.env.GSC_BENCH_SHARED_UPSTREAM_BRANCHES || 0);
+  assert.ok(Number.isSafeInteger(sharedUpstreamBranches) && sharedUpstreamBranches >= 0 && sharedUpstreamBranches <= branches);
+  if (sharedUpstreamBranches) {
+    // 각 feature는 자기 원격에도 게시돼 있지만 upstream은 main인 실제 PR 개발 형태를 재현한다.
+    // branch.merge는 다중 값이므로 추가 대신 교체해 Native Git이 이전 첫 값을 선택하지 않게 한다.
+    for (let index = 0; index < sharedUpstreamBranches; index++)
+      await runGit(["config", "--local", "--replace-all", `branch.side-${index}.merge`, "refs/heads/main"], root);
+  }
   const mainOid = objectIds.get(main)!;
   const tree = (await runGit(["rev-parse", "main^{tree}"], root)).trim();
   const incoming = (await runGit(["-c", "user.name=Operation Fixture", "-c", "user.email=operations@example.invalid",
     "commit-tree", tree, "-p", mainOid, "-m", "incoming remote change"], remote)).trim();
   return { root, remote, main: mainOid, incoming, topic: objectIds.get(topic)!, pr: objectIds.get(pr)!,
-    prCommits: prMarks.map(mark => objectIds.get(mark)!), files, depth, branches };
+    prCommits: prMarks.map(mark => objectIds.get(mark)!), files, depth, branches, sharedUpstreamBranches };
 }
 
 /** 늦게 끝난 Graph 보조 조회까지 비용에 포함하고 다음 시나리오로 넘어가기 전에 모두 정리한다. */
@@ -110,12 +120,20 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   if (operation === "fetch" || operation === "fetch-new-history") await git(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
   if (operation === "fetch-new-history") await assert.rejects(git(["cat-file", "-e", f.incoming]), "Fresh fetch fixture must not already contain its incoming object");
   if (operation === "fetch-known-history") await git(["update-ref", "refs/heads/known-history", f.main], f.remote);
-  const publications: { at: number; signature: string }[] = [];
+  const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
   let measuring = false;
   const renderer = process.env.GSC_BENCH_LIVE_RENDERER === "1" ? await GraphLiveRenderer.create() : undefined;
   const service = new GitLogService(f.root), { panel, messages, surface } = createOperationGraphPanel({ mock } as any, service, message => {
     renderer?.post(message);
-    if (measuring && (message.type === "graph" || message.type === "graphDelta")) publications.push({ at: performance.now(), signature: graphSignature(panel.commits) });
+    if (measuring && (message.type === "graph" || message.type === "graphDelta")) publications.push({
+      at: performance.now(), signature: graphSignature(panel.commits), performance: message.performance });
+  });
+  const localOnlyFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
+  const getLocalOnlyMap = cache.getMap.bind(cache);
+  mock.method(cache, "getMap", async () => {
+    try { return await getLocalOnlyMap(); } catch (error) {
+      localOnlyFailures.push(error instanceof Error ? error.message : String(error)); throw error;
+    }
   });
   try {
     if (renderer) await renderer.mount(surface.webview.html);
@@ -180,10 +198,17 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       assert.equal(panel.commits.find((commit: Commit) => commit.refs.includes("HEAD"))?.hash, visibleHead);
       const values = (commits: Commit[]) => new Map(commits.map(commit => [commit.hash, { parents: commit.parents, refs: [...new Set(commit.refs)].sort() }]));
       assert.deepEqual(values(panel.commits), values(actual));
+      for (const commit of panel.commits as Commit[]) for (const ref of commit.refs) {
+        const index = /^side-(\d+)$/.exec(ref)?.[1];
+        if (index !== undefined && Number(index) < f.sharedUpstreamBranches) assert.ok(commit.localOnlyBranches?.includes(ref),
+          `Missing upstream-relative marker: ${JSON.stringify({ ref, branch: panel.lastLocalBranches.find((value: { name: string }) => value.name === ref),
+            remoteReady: cache.remoteReady, completed: !!cache.peek(), failures: localOnlyFailures })}`);
+      }
       const finalSignature = graphSignature(panel.commits), graphAlreadyCurrent = initialSignature === finalSignature;
-      const latestPublishedAt = publications.find(publication => publication.at >= operationEnd && publication.signature === finalSignature)?.at;
+      const latestPublication = publications.find(publication => publication.at >= operationEnd && publication.signature === finalSignature);
+      const latestPublishedAt = latestPublication?.at;
       assert.ok(latestPublishedAt !== undefined || graphAlreadyCurrent, "Changed final Git graph must have been published; unchanged data needs no repaint.");
-      const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent);
+      const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance);
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
         ...(operation === "checkout" ? { checkoutTargetScope: loadedTarget ? "loaded-page" : "topic" } : {}),
@@ -211,7 +236,8 @@ async function main() {
     }
     const result = { version: JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")).version,
       source: process.env.GSC_BENCH_SOURCE ? JSON.parse(process.env.GSC_BENCH_SOURCE) : undefined,
-      fixture: { files: f.files, commits: f.depth, branches: f.branches, network: "local-bare-only", monitorPolicy: !!stopMonitor }, results };
+      fixture: { files: f.files, commits: f.depth, branches: f.branches, sharedUpstreamBranches: f.sharedUpstreamBranches,
+        network: "local-bare-only", monitorPolicy: !!stopMonitor }, results };
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));

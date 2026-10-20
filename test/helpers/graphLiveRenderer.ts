@@ -5,7 +5,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import type { Commit } from "../../src/graph/graphTypes";
-import type { FromWebviewMessage, ToWebviewMessage } from "../../src/webview/graphProtocol";
+import type { FromWebviewMessage, GraphRenderPerformance, ToWebviewMessage } from "../../src/webview/graphProtocol";
 
 type Paint = Extract<FromWebviewMessage, { type: "graphRendered" }>;
 
@@ -72,22 +72,34 @@ export class GraphLiveRenderer {
     void this.queue.catch(() => undefined);
   }
 
-  /** 실제 ACK 이후 HEAD 배지·모든 commit의 ref·현재 branch chip을 Git과 일치한 host snapshot과 대조한다. */
-  async verify(commits: readonly Commit[], head: string, operationEndedAt: number, graphAlreadyCurrent: boolean) {
+  /** 실제 ACK 이후 HEAD·ref·local-only를 host snapshot과 대조하고 최종 metadata 게시의 frame도 따로 기다린다. */
+  async verify(commits: readonly Commit[], head: string, operationEndedAt: number, graphAlreadyCurrent: boolean,
+    latest?: GraphRenderPerformance) {
     await this.queue;
+    /** 같은 refresh라도 첫 이력과 늦은 색상 게시를 혼동하지 않게 최종 게시의 정확한 metadata를 확인한다. */
+    const finalPaint = () => latest && this.paints.find(paint => paint.performance.traceId === latest.traceId &&
+      paint.performance.kind === latest.kind && paint.performance.sentAt === latest.sentAt);
     const deadline = Date.now() + 5000;
-    while (!graphAlreadyCurrent && !this.paints.some(paint => paint.performance.sentAt >= operationEndedAt) && Date.now() < deadline) {
+    while (((!graphAlreadyCurrent && !this.paints.some(paint => paint.performance.sentAt >= operationEndedAt)) ||
+      (latest && !finalPaint())) && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 10));
     }
     const paint = this.paints.find(item => item.performance.sentAt >= operationEndedAt);
     assert.ok(paint || graphAlreadyCurrent, "Latest Git mutation never crossed the real renderer frame boundary");
+    const latestPaint = finalPaint();
+    assert.ok(!latest || latestPaint, "Final local-only/metadata publication never crossed the renderer frame boundary");
     const rows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .filter(element => /^[a-f0-9]{40,64}$/.test((element as HTMLElement).dataset.hash || ""))
       .map(element => ({ hash: (element as HTMLElement).dataset.hash!, refs: ((element as HTMLElement).dataset.refs || "").split("\t").filter(Boolean),
+        localOnly: ((element as HTMLElement).dataset.localOnlyBranches || "").split("\t").filter(Boolean),
         head: !!element.querySelector(".ref.head"), branches: Array.from(element.querySelectorAll<HTMLElement>("[data-branch-name]"), chip => chip.dataset.branchName) })));
     assert.equal(rows.length, commits.length, "Every loaded real Git commit must reach the DOM");
     const expected = new Map(commits.map(commit => [commit.hash, [...new Set(commit.refs)].sort()]));
-    for (const row of rows) assert.deepEqual([...new Set(row.refs)].sort(), expected.get(row.hash), `Stale refs on ${row.hash}`);
+    const expectedLocalOnly = new Map(commits.map(commit => [commit.hash, [...commit.localOnlyBranches ?? []].sort()]));
+    for (const row of rows) {
+      assert.deepEqual([...new Set(row.refs)].sort(), expected.get(row.hash), `Stale refs on ${row.hash}`);
+      assert.deepEqual([...row.localOnly].sort(), expectedLocalOnly.get(row.hash), `Stale local-only markers on ${row.hash}`);
+    }
     const headCommit = commits.find(commit => commit.hash === head);
     assert.deepEqual(rows.filter(row => row.head).map(row => row.hash), headCommit ? [head] : [], "Rendered HEAD badge differs from the native loaded page");
     const positionedRows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
@@ -96,8 +108,9 @@ export class GraphLiveRenderer {
     const current = headCommit?.refs.find(ref => ref !== "HEAD" && !ref.startsWith("tag:") && !ref.includes("/"));
     if (current) assert.ok(rows.find(row => row.hash === head)?.branches.includes(current), "Current branch chip is missing");
     assert.deepEqual(this.errors, [], "Live renderer reported errors");
-    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactHeadBadge: true, headInLoadedPage: !!headCommit,
+    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactHeadBadge: true, exactLocalOnly: true, headInLoadedPage: !!headCommit,
       mutationToFrameMs: paint ? Math.max(0, paint.paintedAt - operationEndedAt) : null,
+      latestMutationToFrameMs: latestPaint ? Math.max(0, latestPaint.paintedAt - operationEndedAt) : null,
       renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null };
   }
 

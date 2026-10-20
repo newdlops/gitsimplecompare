@@ -4,7 +4,7 @@
 //   맞지 않을 때만 전체 이력을 읽는 정확한 경로로 되돌아간다.
 // - snapshot cache와 취소 신호를 함께 소유해 Graph 세대가 바뀐 뒤 stale Git 작업이 남지 않게 한다.
 import type { LocalBranchStatus } from "../graph/graphTypes";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import { runGit, runGitWithInput } from "./gitExec";
 
 /** local-only 기준점으로 사용할 원격 추적 브랜치 tip이다. */
@@ -63,6 +63,7 @@ export async function loadLocalOnlyBranchMap(
   signal?: AbortSignal,
   runner: LocalOnlyBranchRunner = defaultRunner
 ): Promise<Map<string, string[]>> {
+  signal?.throwIfAborted();
   const plans = buildPlans(branches, remoteTips);
   if (plans.length === 0) return new Map();
   const remoteHashes = [...new Set(remoteTips.map((tip) => tip.hash).filter(Boolean))];
@@ -74,18 +75,22 @@ export async function loadLocalOnlyBranchMap(
   logInfo("graph local-only fast path mismatch", {
     repoRoot, plans: plans.length, mismatched: fast.mismatched.length,
   });
-  // 어긋난 upstream 브랜치만 다시 계산한다. 적으면 브랜치별 upstream..local 로 좁혀 읽는다.
+  // 어긋난 upstream 브랜치만 다시 계산한다. 적으면 같은 기준점끼리 좁은 범위를 공유한다.
   const mismatchedNames = new Set(fast.mismatched.map((plan) => plan.name));
-  const exact = fast.mismatched.length <= TARGETED_PLAN_LIMIT
-    ? await loadTargetedPlans(repoRoot, fast.mismatched, signal, runner)
+  const groups = groupPlansByBaseline(fast.mismatched);
+  // 큰 목록의 기존 한 번짜리 전체 조회를 여러 프로세스로 늘리지 않는다. 단일 기준점이면 같은 한 번으로 범위만 좁힌다.
+  const exact = fast.mismatched.length <= TARGETED_PLAN_LIMIT || groups.length === 1
+    ? await loadTargetedPlans(repoRoot, groups, signal, runner)
     : await loadWithBaselines(repoRoot, fast.mismatched, signal, runner);
   return mergePlanResults(plans, withoutPlans(fast.result, mismatchedNames), exact);
 }
 
-/** 빠른 경로가 어긋난 upstream 브랜치를 브랜치별 좁은 rev-list 로 다시 계산할 최대 개수. */
+/** 작은 목록에서 기존 최대 16회보다 Git 실행 수가 늘지 않도록 좁은 범위로 계산할 plan 한도다. */
 const TARGETED_PLAN_LIMIT = 16;
-/** 브랜치별 좁은 rev-list 를 동시에 실행할 최대 프로세스 수. */
-const TARGETED_PLAN_CONCURRENCY = 4;
+/** 부모 관계 출력과 membership 임시 메모리가 커지지 않도록 한 묶음의 예상 commit 합을 제한한다. */
+const TARGETED_GROUP_COMMIT_LIMIT = 50_000;
+/** 서로 다른 기준점 그룹의 rev-list를 동시에 실행할 최대 프로세스 수다. */
+const TARGETED_GROUP_CONCURRENCY = 4;
 
 /**
  * 원격 tip 전체를 제외한 범위만 읽어 local-only 커밋을 계산한다(빠른 경로).
@@ -100,15 +105,7 @@ async function loadExcludingRemotes(
   signal: AbortSignal | undefined,
   runner: LocalOnlyBranchRunner
 ): Promise<{ result: Map<string, string[]>; mismatched: LocalOnlyPlan[] }> {
-  const states = new Map<string, ReachabilityBits>();
-  plans.forEach((plan, index) => seedBits(states, plan.hash, "include", 1n << BigInt(index)));
-  const tips = [...new Set(plans.map((plan) => plan.hash))];
-  const output = await runner(
-    ["rev-list", "--topo-order", "--parents", "--stdin"],
-    repoRoot,
-    { signal, input: revisionInput(tips, remoteHashes) }
-  );
-  const result = mapLocalOnlyCommits(output, plans, states);
+  const result = await loadExcludedRange(repoRoot, plans, remoteHashes, signal, runner);
   const counts = new Map<string, number>();
   for (const names of result.values()) {
     for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -126,32 +123,95 @@ async function loadExcludingRemotes(
 }
 
 /**
- * upstream 브랜치마다 `upstream..local` 만 읽어 local-only 커밋을 계산한다.
- * - 전체 이력을 훑지 않고 merge-base 부근까지만 걷기 때문에, 어긋난 브랜치가 적을 때 전체 계산보다 훨씬 싸다.
- * @returns 커밋 hash별 local-only 브랜치 이름 배열
+ * 같은 제외 기준을 공유하는 tip들의 합집합만 읽고 각 tip의 membership을 부모로 전파한다.
+ * @param repoRoot 저장소 @param plans 결과에 이름을 붙일 브랜치 @param excludedHashes 모든 plan에 공통인 제외 기준점
+ * @param signal 취소 수명 @param runner 공통 Git 실행기 @returns 각 브랜치가 자기 tip에서 도달하는 정확한 범위
+ */
+async function loadExcludedRange(repoRoot: string, plans: readonly LocalOnlyPlan[], excludedHashes: readonly string[],
+  signal: AbortSignal | undefined, runner: LocalOnlyBranchRunner): Promise<Map<string, string[]>> {
+  const states = new Map<string, ReachabilityBits>();
+  plans.forEach((plan, index) => seedBits(states, plan.hash, "include", 1n << BigInt(index)));
+  const tips = [...new Set(plans.map((plan) => plan.hash))];
+  const output = await runner(
+    ["rev-list", "--topo-order", "--parents", "--stdin"],
+    repoRoot,
+    { signal, input: revisionInput(tips, excludedHashes) }
+  );
+  signal?.throwIfAborted();
+  return mapLocalOnlyCommits(output, plans, states);
+}
+
+/**
+ * 제외 집합이 정확히 같은 plan만 묶어 다른 upstream의 커밋을 잘못 빼지 않는다.
+ * @param plans 정확한 범위를 읽을 브랜치 @returns 최초 plan 순서를 유지하는 기준점별 그룹. 큰 예상 출력은 나눠 기존 메모리 한도를 보호한다.
+ */
+function groupPlansByBaseline(plans: readonly LocalOnlyPlan[]): LocalOnlyPlan[][] {
+  const grouped = new Map<string, { plans: LocalOnlyPlan[]; commits: number }>(), groups: LocalOnlyPlan[][] = [];
+  for (const plan of plans) {
+    const key = JSON.stringify([...new Set(plan.baselineHashes)].sort());
+    const cost = Number.isSafeInteger(plan.expectedCount) && plan.expectedCount! > 0 ? plan.expectedCount! : Infinity;
+    let group = grouped.get(key);
+    if (!group || group.commits + cost > TARGETED_GROUP_COMMIT_LIMIT) {
+      group = { plans: [], commits: 0 }; grouped.set(key, group); groups.push(group.plans);
+    }
+    group.plans.push(plan); group.commits += cost;
+  }
+  return groups;
+}
+
+/**
+ * 한 브랜치는 기존 hash-only 범위 조회를, 같은 기준점의 여러 브랜치는 부모 관계가 있는 합집합 조회를 사용한다.
+ * @param repoRoot 저장소 @param group 공통 제외 집합을 확인한 plan @param signal 현재 그룹의 수명 @param runner Git 실행기
+ * @returns 커밋별 정확한 브랜치 membership. 큰 원본 출력은 취소 뒤 파싱하지 않는다.
+ */
+async function readTargetedGroup(repoRoot: string, group: readonly LocalOnlyPlan[], signal: AbortSignal,
+  runner: LocalOnlyBranchRunner): Promise<Map<string, string[]>> {
+  if (group.length > 1) return loadExcludedRange(repoRoot, group, group[0].baselineHashes, signal, runner);
+  const plan = group[0], output = await runner(["rev-list", "--stdin"], repoRoot,
+    { signal, input: revisionInput([plan.hash], plan.baselineHashes) });
+  signal.throwIfAborted();
+  return new Map(output.split("\n").map(line => line.trim()).filter(Boolean).map(hash => [hash, [plan.name]]));
+}
+
+/**
+ * 기준점이 같은 브랜치는 한 번의 union 범위 조회로 계산하고 서로 다른 기준점은 섞지 않는다.
+ * @param repoRoot 저장소 @param groups 공통 제외 집합별 plan @param signal 요청 수명 @param runner Git 실행기
+ * @returns 커밋별 브랜치 이름. 한 그룹 실패 시 다른 자식도 종료한 뒤 원래 오류를 전파한다.
  */
 async function loadTargetedPlans(
   repoRoot: string,
-  plans: readonly LocalOnlyPlan[],
+  groups: readonly (readonly LocalOnlyPlan[])[],
   signal: AbortSignal | undefined,
   runner: LocalOnlyBranchRunner
 ): Promise<Map<string, string[]>> {
-  const result = new Map<string, string[]>();
-  let cursor = 0;
+  signal?.throwIfAborted();
+  const result = new Map<string, string[]>(), controller = new AbortController();
+  /** 외부 취소는 모든 활성 범위에 전달하고 다음 그룹은 시작하지 않는다. */
+  const abort = () => controller.abort(signal?.reason);
+  signal?.addEventListener("abort", abort, { once: true });
+  if (signal?.aborted) abort();
+  let cursor = 0, failed = false, failure: unknown;
+  logInfo("graph local-only targeted groups", { repoRoot, plans: groups.reduce((sum, group) => sum + group.length, 0), groups: groups.length,
+    concurrency: Math.min(TARGETED_GROUP_CONCURRENCY, groups.length) });
+  /** 각 worker는 서로 다른 기준점 그룹만 소유하고 첫 실패 뒤에는 새 Git 조회를 추가하지 않는다. */
   const worker = async (): Promise<void> => {
-    while (cursor < plans.length) {
-      const plan = plans[cursor++];
-      const output = await runner(["rev-list", "--stdin"], repoRoot, {
-        signal,
-        input: revisionInput([plan.hash], plan.baselineHashes),
-      });
-      for (const hash of output.split("\n").map((line) => line.trim()).filter(Boolean)) {
-        result.set(hash, [...(result.get(hash) ?? []), plan.name]);
+    while (!controller.signal.aborted && cursor < groups.length) {
+      const group = groups[cursor++];
+      try {
+        const exact = await readTargetedGroup(repoRoot, group, controller.signal, runner);
+        for (const [hash, names] of exact) result.set(hash, [...(result.get(hash) ?? []), ...names]);
+      } catch (error) {
+        if (!failed) { failed = true; failure = error; controller.abort(error); }
+        throw error;
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(TARGETED_PLAN_CONCURRENCY, plans.length) }, worker));
-  return result;
+  try {
+    await Promise.allSettled(Array.from({ length: Math.min(TARGETED_GROUP_CONCURRENCY, groups.length) }, worker));
+    if (failed) throw failure;
+    signal?.throwIfAborted();
+    return result;
+  } finally { controller.abort(); signal?.removeEventListener("abort", abort); }
 }
 
 /** 결과 map 에서 지정한 브랜치 이름을 빼고, 빈 항목은 지운다. */
@@ -302,6 +362,10 @@ export class GitLocalOnlyBranchCache {
         elapsedMs: Date.now() - started,
       });
       return result;
+    }).catch(error => {
+      if (controller.signal.aborted) logInfo("graph local-only read cancelled", { repoRoot: this.repoRoot, generation, elapsedMs: Date.now() - started });
+      else logError("graph local-only cache failed", error, { repoRoot: this.repoRoot, generation, elapsedMs: Date.now() - started });
+      throw error;
     });
     this.pending = { controller, promise };
     try {
@@ -380,22 +444,37 @@ function seedBits(
   states.set(hash, state);
 }
 
-/** topo-order rev-list를 자식→부모로 전파해 include에는 있고 baseline에는 없는 비트를 결과로 만든다. */
+/**
+ * topo-order를 자식→부모로 전파하고 포함된 비트만 읽어 행마다 plan 수만큼 빈 배열을 만들지 않는다.
+ * @param output 부모 관계가 있는 Native topo 출력 @param plans 비트 위치와 이름의 순서 @param states tip별 초기 membership
+ * @returns 정확한 커밋별 이름. 처리한 행의 상태는 부모에 전파한 뒤 해제해 과거 이력을 계속 보관하지 않는다.
+ */
 function mapLocalOnlyCommits(
   output: string,
   plans: readonly LocalOnlyPlan[],
   states: Map<string, ReachabilityBits>
 ): Map<string, string[]> {
   const result = new Map<string, string[]>();
+  let namesByBit: Map<bigint, string> | undefined;
+  let lastMask = 0n, lastNames: string[] = [];
   for (const line of output.split("\n")) {
     const [hash, ...parents] = line.trim().split(/\s+/);
     if (!hash) continue;
     const state = states.get(hash) ?? { include: 0n, exclude: 0n };
     const localOnly = state.include & ~state.exclude;
     if (localOnly !== 0n) {
-      result.set(hash, plans.flatMap((plan, index) => (
-        localOnly & (1n << BigInt(index)) ? [plan.name] : []
-      )));
+      const names: string[] = localOnly === lastMask ? [...lastNames] : [];
+      if (localOnly !== lastMask) {
+        namesByBit ??= new Map(plans.map((plan, index) => [1n << BigInt(index), plan.name]));
+        // 낮은 비트부터 꺼내 기존 plan 순서를 유지하며, 실제 membership 수만큼만 순회한다.
+        for (let remaining = localOnly; remaining !== 0n; remaining &= remaining - 1n) {
+          const name = namesByBit.get(remaining & -remaining);
+          if (name !== undefined) names.push(name);
+        }
+        lastMask = localOnly; lastNames = names;
+      }
+      // 공유 이력의 같은 membership은 다시 해독하지 않고, 각 결과 배열은 별도로 유지한다.
+      result.set(hash, names);
     }
     for (const parent of parents) {
       const inherited = states.get(parent) ?? { include: 0n, exclude: 0n };
@@ -403,6 +482,8 @@ function mapLocalOnlyCommits(
       inherited.exclude |= state.exclude;
       states.set(parent, inherited);
     }
+    // topo-order에서 이 행의 모든 자식은 이미 처리됐으므로 다음 부모 전파에 필요한 상태만 남긴다.
+    states.delete(hash);
   }
   return result;
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { LocalBranchStatus } from "../src/graph/graphTypes";
+import { __outputLines, __resetOutputLines } from "./helpers/vscodeMock";
 import {
   GitLocalOnlyBranchCache,
   loadLocalOnlyBranchMap,
@@ -166,6 +167,134 @@ test("many mismatched upstream branches share one full-DAG pass limited to those
   assert.equal(calls[1].input?.includes("^"), false);
   for (let index = 0; index < 20; index++) assert.deepEqual(result.get(`tip${index}`), [`b${index}`]);
   assert.equal(result.size, 20);
+});
+
+test("sixteen mismatches with one upstream share one bounded native range", async () => {
+  const calls: Array<{ args: string[]; input?: string }> = [];
+  const dag: Record<string, string[]> = { base: [], shared: ["base"], published: [] };
+  const branches = Array.from({ length: 16 }, (_, index) => {
+    dag[`tip-${index}`] = ["shared"]; dag.published.push(`tip-${index}`);
+    return branch(`feature-${index}`, `tip-${index}`, "origin/main", 2);
+  });
+  const result = await loadLocalOnlyBranchMap("/repo", branches, [
+    { name: "origin/main", hash: "base" }, { name: "origin/published", hash: "published" },
+  ], undefined, revListRunner(dag, calls));
+  assert.equal(calls.length, 2); assert.ok(calls[1].args.includes("--parents"));
+  assert.equal(calls[1].input?.split("\n").filter(line => line.startsWith("^")).join(""), "^base");
+  assert.deepEqual(result.get("shared"), branches.map(value => value.name));
+  for (const value of branches) assert.deepEqual(result.get(value.hash), [value.name]);
+  assert.equal(result.has("base"), false); assert.equal(result.has("published"), false);
+});
+
+test("160 mismatches with one upstream avoid a full-history walk without losing shared memberships", async () => {
+  const calls: Array<{ args: string[]; input?: string }> = [];
+  const dag: Record<string, string[]> = { base: ["old-history"], "old-history": [], shared: ["base"], published: [] };
+  const branches = Array.from({ length: 160 }, (_, index) => {
+    dag[`tip-${index}`] = ["shared"]; dag.published.push(`tip-${index}`);
+    return branch(`feature-${index}`, `tip-${index}`, "origin/main", 2);
+  });
+  const result = await loadLocalOnlyBranchMap("/repo", branches, [
+    { name: "origin/main", hash: "base" }, { name: "origin/published", hash: "published" },
+  ], undefined, revListRunner(dag, calls));
+  assert.equal(calls.length, 2); assert.ok(calls[1].input?.includes("^base\n"));
+  assert.equal(result.size, 161); assert.deepEqual(result.get("shared"), branches.map(value => value.name));
+  for (const value of branches) assert.deepEqual(result.get(value.hash), [value.name]);
+});
+
+test("different upstream groups keep their exclusions independent and preserve input branch order", async () => {
+  const calls: Array<{ args: string[]; input?: string }> = [];
+  const dag = { l1: ["shared"], l2: ["shared"], r1: ["shared"], r2: ["shared"], shared: ["base-a", "base-b"],
+    "base-a": ["root"], "base-b": ["root"], root: [], published: ["l1", "l2", "r1", "r2"] };
+  const branches = [branch("left2", "l2", "origin/a", 3), branch("right2", "r2", "origin/b", 3),
+    branch("left1", "l1", "origin/a", 3), branch("right1", "r1", "origin/b", 3)];
+  const result = await loadLocalOnlyBranchMap("/repo", branches, [
+    { name: "origin/a", hash: "base-a" }, { name: "origin/b", hash: "base-b" }, { name: "origin/published", hash: "published" },
+  ], undefined, revListRunner(dag, calls));
+  assert.equal(calls.length, 3);
+  assert.deepEqual(result.get("base-a"), ["right2", "right1"]);
+  assert.deepEqual(result.get("base-b"), ["left2", "left1"]);
+  assert.deepEqual(result.get("shared"), branches.map(value => value.name));
+  assert.equal(result.has("root"), false);
+});
+
+test("duplicate branch tips share one revision while retaining both branch names", async () => {
+  const calls: Array<{ args: string[]; input?: string }> = [];
+  const result = await loadLocalOnlyBranchMap("/repo", [branch("one", "tip", "origin/base", 1), branch("two", "tip", "origin/base", 1)],
+    [{ name: "origin/base", hash: "base" }, { name: "origin/published", hash: "tip" }], undefined,
+    revListRunner({ tip: ["base"], base: [] }, calls));
+  assert.equal(calls.length, 2); assert.equal(calls[1].input, "tip\n^base\n");
+  assert.deepEqual(result.get("tip"), ["one", "two"]);
+});
+
+test("very large targeted ranges retain hash-only individual reads instead of an oversized parent union", async () => {
+  const calls: Array<{ args: string[]; input?: string }> = [];
+  const result = await loadLocalOnlyBranchMap("/repo", [branch("one", "a", "origin/base", 1_000_000), branch("two", "b", "origin/base", 1_000_000)],
+    [{ name: "origin/base", hash: "base" }, { name: "origin/published", hash: "published" }], undefined,
+    revListRunner({ a: ["base"], b: ["base"], base: [], published: ["a", "b"] }, calls));
+  assert.equal(calls.length, 3); assert.ok(calls.slice(1).every(call => !call.args.includes("--parents")));
+  assert.deepEqual(result.get("a"), ["one"]); assert.deepEqual(result.get("b"), ["two"]);
+});
+
+test("equal memberships on consecutive commits retain independent mutable result arrays", async () => {
+  const result = await loadLocalOnlyBranchMap("/repo", [branch("one", "a"), branch("two", "b")],
+    [{ name: "origin/main", hash: "base" }], undefined,
+    revListRunner({ a: ["shared1"], b: ["shared1"], shared1: ["shared2"], shared2: ["base"], base: [] }, []));
+  assert.deepEqual(result.get("shared1"), ["one", "two"]); assert.deepEqual(result.get("shared2"), ["one", "two"]);
+  result.get("shared1")!.push("caller changed one entry");
+  assert.deepEqual(result.get("shared2"), ["one", "two"]); assert.deepEqual(result.get("a"), ["one"]);
+});
+
+test("the first group failure cancels and joins active siblings without starting queued groups", async () => {
+  let enter!: () => void, allAborted!: () => void;
+  const entered = new Promise<void>(resolve => { enter = resolve; }), aborted = new Promise<void>(resolve => { allAborted = resolve; });
+  const closes: Array<() => void> = [], error = Object.assign(new Error("original timeout"), { code: "ETIMEDOUT" });
+  let calls = 0, started = 0, active = 0, abortedCount = 0, ended = false;
+  const branches = Array.from({ length: 10 }, (_, index) => branch(`b${index}`, `tip${index}`, `origin/b${index}`, 1));
+  const pending = loadLocalOnlyBranchMap("/repo", branches, branches.map((value, index) => ({ name: value.upstream!, hash: `base${index}` })),
+    undefined, async (_args, _root, options) => {
+      if (++calls === 1) return "";
+      const index = started++; active++; if (started === 4) enter();
+      try {
+        if (index === 0) { await entered; throw error; }
+        return await new Promise<string>((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () => {
+            closes.push(() => reject(new Error("sibling aborted")));
+            if (++abortedCount === 3) allAborted();
+          }, { once: true });
+        });
+      } finally { active--; }
+    });
+  const outcome = assert.rejects(pending, value => value === error).then(() => { ended = true; });
+  await aborted; assert.equal(ended, false); assert.equal(active, 3); assert.equal(started, 4);
+  for (const close of closes) close(); await outcome;
+  assert.equal(active, 0); assert.equal(calls, 5);
+});
+
+test("an already-cancelled local-only request never starts native work", async () => {
+  const controller = new AbortController(); controller.abort(); let calls = 0;
+  await assert.rejects(loadLocalOnlyBranchMap("/repo", [branch("feature", "tip", "origin/base", 1)],
+    [{ name: "origin/base", hash: "base" }], controller.signal, async () => { calls++; return ""; }), /abort/i);
+  assert.equal(calls, 0);
+});
+
+test("a failed group never publishes or caches a partial map and the next read can recover", async () => {
+  __resetOutputLines();
+  const error = new Error("one upstream failed"), dag = { left: ["shared"], right: ["shared"], shared: ["a", "b"],
+    a: [], b: [], published: ["left", "right"] };
+  let fail = true, calls = 0;
+  const delegate = revListRunner(dag, []);
+  const cache = new GitLocalOnlyBranchCache("/repo", async (args, root, options) => {
+    calls++;
+    if (fail && options?.input === "right\n^b\n") { fail = false; throw error; }
+    return delegate(args, root, options);
+  });
+  cache.setLocalBranches([branch("left", "left", "origin/a", 3), branch("right", "right", "origin/b", 3)]);
+  cache.setRemoteTips([{ name: "origin/a", hash: "a" }, { name: "origin/b", hash: "b" }, { name: "origin/published", hash: "published" }]);
+  await assert.rejects(cache.getMap(), value => value === error); assert.equal(cache.peek(), undefined);
+  assert.equal(__outputLines.filter(line => line.includes("graph local-only cache failed")).length, 1);
+  const recovered = await cache.getMap();
+  assert.deepEqual(recovered.get("shared"), ["left", "right"]); assert.equal(calls, 6);
+  recovered.clear(); assert.ok(cache.peek()?.size);
 });
 
 test("branch memberships share commits while each upstream exclusion remains independent", async () => {

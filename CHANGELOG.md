@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.72116] - 2026-10-20
+
+### Performance
+
+- Share exact local-only commit ranges between branches with the same upstream.
+  Keep single-branch reads small, bound grouped output estimates, and preserve
+  the existing full-history strategy when grouping would add Git processes.
+- Narrow large single-upstream ranges without reading excluded old history.
+  Keep branch membership and ordering identical to native ancestry results.
+- Decode only active branch memberships, reuse consecutive membership masks,
+  and release processed ancestry states while keeping result arrays independent.
+
+### Fixed
+
+- Stop queued local-only range reads after the first failure, cancel active
+  siblings and await their termination before returning the original error.
+  Keep partial results out of the completed cache and log failed reads.
+
+### Development
+
+- Add independent native ancestry checks, real child-process cleanup tests and
+  repeatable range benchmarks. Verify final Graph marker frames separately
+  from the first history frame in headless operation measurements.
+
 ## [0.1.72115] - 2026-10-20
 
 ### Performance
