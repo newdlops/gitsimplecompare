@@ -1,0 +1,281 @@
+{
+  "version": "0.1.72117",
+  "date": "2026-10-20",
+  "baselineCommit": "11049b391e6a846ab697dd7301a44bd05a2d881c",
+  "productionSourceSha256": {
+    "src/git/workingTreeChanges.ts": "df8ba080289cee63a6688b6bb67bac4c8fc3c08bc84a1ed5e97fb16c725227ff",
+    "src/git/pullRequestOperationSnapshot.ts": "66144886457ac33e4c0dde90378fca75c080e9cb510c1dd33e779ca5ec09c289",
+    "src/git/branchOperationService.ts": "d98ba3c791b5dfaedb62d812821359eb26b1dae4a74be6399d15224f984d0819"
+  },
+  "method": {
+    "runtime": "Node v22.22.2 on macOS",
+    "paired": "Same process and fixture, alternating source order, one warmup and five samples each, GC outside timing. Each source uses its own instance of unchanged Git execution modules. Branch service starts with fresh monitor policy each iteration.",
+    "sequentialComponent": "One warmup and five samples per mode and source; separate processes and fixtures with equal contents; retained as initial evidence, not the primary causal comparison.",
+    "pipeline": "One sample per source and operation, local bare remote, 1000 files / 1000 commits / 300 branches / 8 shared upstream branches, monitor policy, headless production HTML/CSP/JS."
+  },
+  "paired": {
+    "warmup": 1,
+    "samples": 5,
+    "sameProcess": true,
+    "sameFixture": true,
+    "alternatingOrder": true,
+    "gcOutsideTiming": true,
+    "files": 1000,
+    "versions": [
+      {"name":"before","sourceSha256":{"src/git/workingTreeChanges.ts":"f545d708db70d2dbd719e39ef3ad396528aabb807eb10fe726a9e82e76c8ed7e","src/git/pullRequestOperationSnapshot.ts":"56b024b0e845b7eefdcdafb0182d962ed5ca4d335f202ea07639acaa6d706333","src/git/branchOperationService.ts":"06385b82cf8570553ce391ff9b8370d674434b005cfb523b485fc59a899510d5"},"bundleSha256":"e54204ba9f056ff0afeca88934e2a6e1e29435960185e9f2d9548f21e4224e4c"},
+      {"name":"after","sourceSha256":{"src/git/workingTreeChanges.ts":"df8ba080289cee63a6688b6bb67bac4c8fc3c08bc84a1ed5e97fb16c725227ff","src/git/pullRequestOperationSnapshot.ts":"66144886457ac33e4c0dde90378fca75c080e9cb510c1dd33e779ca5ec09c289","src/git/branchOperationService.ts":"d98ba3c791b5dfaedb62d812821359eb26b1dae4a74be6399d15224f984d0819"},"bundleSha256":"8a081fde4008a784e32f4b2a1bb064b1543521b554dbc8e41aa20b9c23668f9e"}
+    ],
+    "results": [
+      {"mode":"staged","exact":true,"indexPreserved":true,"versions":[{"name":"before","samples":[{"elapsedMs":567.3229170000004,"nodeCpuMs":5.177,"processes":2,"commands":{"diff":2}},{"elapsedMs":149.2582080000002,"nodeCpuMs":5.401,"processes":2,"commands":{"diff":2}},{"elapsedMs":259.90287499999977,"nodeCpuMs":5.608,"processes":2,"commands":{"diff":2}},{"elapsedMs":159.4822499999991,"nodeCpuMs":6.27,"processes":2,"commands":{"diff":2}},{"elapsedMs":248.33266699999876,"nodeCpuMs":5.507,"processes":2,"commands":{"diff":2}}],"median":{"elapsedMs":248.33266699999876,"nodeCpuMs":5.507,"processes":2}},{"name":"after","samples":[{"elapsedMs":136.24091700000008,"nodeCpuMs":2.891,"processes":1,"commands":{"diff":1}},{"elapsedMs":123.3150829999995,"nodeCpuMs":3.235,"processes":1,"commands":{"diff":1}},{"elapsedMs":116.0180419999997,"nodeCpuMs":3.147,"processes":1,"commands":{"diff":1}},{"elapsedMs":116.05091700000048,"nodeCpuMs":2.994,"processes":1,"commands":{"diff":1}},{"elapsedMs":122.92799999999988,"nodeCpuMs":3.023,"processes":1,"commands":{"diff":1}}],"median":{"elapsedMs":122.92799999999988,"nodeCpuMs":3.023,"processes":1}}]},
+      {"mode":"unstaged","exact":true,"indexPreserved":true,"versions":[{"name":"before","samples":[{"elapsedMs":416.6817919999994,"nodeCpuMs":6.184,"processes":2,"commands":{"diff":2}},{"elapsedMs":212.87162499999977,"nodeCpuMs":4.547,"processes":2,"commands":{"diff":2}},{"elapsedMs":472.6375419999986,"nodeCpuMs":4.494,"processes":2,"commands":{"diff":2}},{"elapsedMs":384.92575000000033,"nodeCpuMs":4.535,"processes":2,"commands":{"diff":2}},{"elapsedMs":374.4915829999991,"nodeCpuMs":5.065,"processes":2,"commands":{"diff":2}}],"median":{"elapsedMs":384.92575000000033,"nodeCpuMs":4.547,"processes":2}},{"name":"after","samples":[{"elapsedMs":299.55474999999933,"nodeCpuMs":4.973,"processes":2,"commands":{"diff":2}},{"elapsedMs":376.16162500000064,"nodeCpuMs":5.171,"processes":2,"commands":{"diff":2}},{"elapsedMs":325.46991700000035,"nodeCpuMs":5.067,"processes":2,"commands":{"diff":2}},{"elapsedMs":347.506374999999,"nodeCpuMs":4.809,"processes":2,"commands":{"diff":2}},{"elapsedMs":515.4587919999994,"nodeCpuMs":6.882,"processes":3,"commands":{"diff":2,"config":1}}],"median":{"elapsedMs":347.506374999999,"nodeCpuMs":5.067,"processes":2}}]},
+      {"mode":"clean","exact":true,"indexPreserved":true,"versions":[{"name":"before","samples":[{"elapsedMs":597.9870420000007,"nodeCpuMs":5.852,"processes":2,"commands":{"diff":2}},{"elapsedMs":441.5625,"nodeCpuMs":5.994,"processes":2,"commands":{"diff":2}},{"elapsedMs":381.3831250000003,"nodeCpuMs":5.644,"processes":2,"commands":{"diff":2}},{"elapsedMs":1091.234457999999,"nodeCpuMs":5.089,"processes":2,"commands":{"diff":2}},{"elapsedMs":1386.9818750000013,"nodeCpuMs":7.927,"processes":3,"commands":{"config":1,"diff":2}}],"median":{"elapsedMs":597.9870420000007,"nodeCpuMs":5.852,"processes":2}},{"name":"after","samples":[{"elapsedMs":493.4439999999995,"nodeCpuMs":6.444,"processes":2,"commands":{"diff":2}},{"elapsedMs":303.0993329999983,"nodeCpuMs":5.347,"processes":2,"commands":{"diff":2}},{"elapsedMs":515.2637500000019,"nodeCpuMs":6.344,"processes":2,"commands":{"diff":2}},{"elapsedMs":649.447833000002,"nodeCpuMs":6.717,"processes":2,"commands":{"diff":2}},{"elapsedMs":445.06858400000056,"nodeCpuMs":7.754,"processes":3,"commands":{"diff":2,"config":1}}],"median":{"elapsedMs":493.4439999999995,"nodeCpuMs":6.444,"processes":2}}]},
+      {"mode":"cancelling","exact":true,"indexPreserved":true,"versions":[{"name":"before","samples":[{"elapsedMs":243.90420799999993,"nodeCpuMs":4.966,"processes":2,"commands":{"diff":2}},{"elapsedMs":155.47641600000134,"nodeCpuMs":5.826,"processes":2,"commands":{"diff":2}},{"elapsedMs":245.49012500000026,"nodeCpuMs":6.187,"processes":2,"commands":{"diff":2}},{"elapsedMs":134.51624999999694,"nodeCpuMs":5.033,"processes":2,"commands":{"diff":2}},{"elapsedMs":228.26716599999781,"nodeCpuMs":4.649,"processes":2,"commands":{"diff":2}}],"median":{"elapsedMs":228.26716599999781,"nodeCpuMs":5.033,"processes":2}},{"name":"after","samples":[{"elapsedMs":119.03316699999777,"nodeCpuMs":2.898,"processes":1,"commands":{"diff":1}},{"elapsedMs":137.93566700000156,"nodeCpuMs":2.79,"processes":1,"commands":{"diff":1}},{"elapsedMs":108.53608299999905,"nodeCpuMs":3.023,"processes":1,"commands":{"diff":1}},{"elapsedMs":110.71920799999862,"nodeCpuMs":2.691,"processes":1,"commands":{"diff":1}},{"elapsedMs":110.7220419999976,"nodeCpuMs":2.994,"processes":1,"commands":{"diff":1}}],"median":{"elapsedMs":110.7220419999976,"nodeCpuMs":2.898,"processes":1}}]},
+      {"mode":"branch-squash","exact":true,"indexPreserved":false,"versions":[{"name":"before","samples":[{"elapsedMs":5477.537083000003,"nodeCpuMs":72.34,"processes":18,"commands":{"ls-files":2,"rev-parse":6,"config":4,"status":2,"update-ref":1,"merge":1,"add":1,"commit":1}},{"elapsedMs":4412.425125000002,"nodeCpuMs":53.106,"processes":18,"commands":{"rev-parse":6,"ls-files":2,"config":4,"status":2,"update-ref":1,"merge":1,"add":1,"commit":1}},{"elapsedMs":5196.369208999997,"nodeCpuMs":64.344,"processes":18,"commands":{"rev-parse":6,"ls-files":2,"config":4,"status":2,"update-ref":1,"merge":1,"add":1,"commit":1}},{"elapsedMs":2526.7207909999997,"nodeCpuMs":60.509,"processes":18,"commands":{"rev-parse":6,"ls-files":2,"config":4,"status":2,"update-ref":1,"merge":1,"add":1,"commit":1}},{"elapsedMs":3121.4735419999924,"nodeCpuMs":51.314,"processes":18,"commands":{"rev-parse":6,"ls-files":2,"config":4,"status":2,"update-ref":1,"merge":1,"add":1,"commit":1}}],"median":{"elapsedMs":4412.425125000002,"nodeCpuMs":60.509,"processes":18}},{"name":"after","samples":[{"elapsedMs":5922.625667,"nodeCpuMs":66.526,"processes":16,"commands":{"rev-parse":6,"ls-files":2,"config":3,"status":1,"update-ref":1,"merge":1,"diff":1,"commit":1}},{"elapsedMs":3955.4503750000003,"nodeCpuMs":56.209,"processes":16,"commands":{"rev-parse":6,"ls-files":2,"config":3,"status":1,"update-ref":1,"merge":1,"diff":1,"commit":1}},{"elapsedMs":3845.9455830000006,"nodeCpuMs":54.904,"processes":16,"commands":{"rev-parse":6,"ls-files":2,"config":3,"status":1,"update-ref":1,"merge":1,"diff":1,"commit":1}},{"elapsedMs":5334.217291000008,"nodeCpuMs":49.214,"processes":16,"commands":{"rev-parse":6,"ls-files":2,"config":3,"status":1,"update-ref":1,"merge":1,"diff":1,"commit":1}},{"elapsedMs":3108.705958999999,"nodeCpuMs":52.282,"processes":16,"commands":{"rev-parse":6,"ls-files":2,"config":3,"status":1,"update-ref":1,"merge":1,"diff":1,"commit":1}}],"median":{"elapsedMs":3955.4503750000003,"nodeCpuMs":54.904,"processes":16}}]}
+    ]
+  },
+  "sequentialComponent": {
+    "before": {
+      "source": {
+        "kind": "commit",
+        "commit": "11049b391e6a846ab697dd7301a44bd05a2d881c",
+        "bundleSha256": "fab02f2ef222c3b7fe5c058615abe414b823777933a788dd3c4e7626e5b67aea"
+      },
+      "fixture": {
+        "files": 1000,
+        "monitorPolicy": true
+      },
+      "warmup": 1,
+      "samples": 5,
+      "results": [
+        {"mode":"staged","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":407.25929199999973,"nodeCpuMs":5.853,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":398.768333,"nodeCpuMs":4.533,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":372.2152500000002,"nodeCpuMs":4.132,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":356.26758299999983,"nodeCpuMs":3.618,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":319.8736660000004,"nodeCpuMs":3.504,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":372.2152500000002,"nodeCpuMs":4.132,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}},
+        {"mode":"unstaged","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":293.7595419999998,"nodeCpuMs":4.033,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":810.9309170000006,"nodeCpuMs":4.416,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":452.45595800000046,"nodeCpuMs":4.249,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":236.5878330000005,"nodeCpuMs":10.839,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":257.49254199999996,"nodeCpuMs":4.11,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":293.7595419999998,"nodeCpuMs":4.249,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}},
+        {"mode":"clean","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":464.7447090000005,"nodeCpuMs":4.542,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":299.8640410000007,"nodeCpuMs":4.618,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":288.62579200000073,"nodeCpuMs":4.404,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":302.39799999999923,"nodeCpuMs":4.844,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":460.3265420000007,"nodeCpuMs":4.485,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":302.39799999999923,"nodeCpuMs":4.542,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}},
+        {"mode":"cancelling","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":351.3018339999999,"nodeCpuMs":3.922,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":692.2657089999993,"nodeCpuMs":4.208,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":869.8309160000008,"nodeCpuMs":4.444,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":1244.3983750000025,"nodeCpuMs":4.411,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":608.3695000000007,"nodeCpuMs":4.684,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":692.2657089999993,"nodeCpuMs":4.411,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}}
+      ]
+    },
+    "after": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "11049b391e6a846ab697dd7301a44bd05a2d881c",
+        "bundleSha256": "63ab6f4e70fa882f3b5f1ac60522ed9f0f98a927cc162440fe5bd72931e339e1"
+      },
+      "fixture": {
+        "files": 1000,
+        "monitorPolicy": true
+      },
+      "warmup": 1,
+      "samples": 5,
+      "results": [
+        {"mode":"staged","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":225.21291700000006,"nodeCpuMs":3.195,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":166.58562499999994,"nodeCpuMs":3.391,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":211.748834,"nodeCpuMs":1.646,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":230.81733299999996,"nodeCpuMs":1.918,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":212.72754200000008,"nodeCpuMs":1.791,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0}],"median":{"elapsedMs":212.72754200000008,"nodeCpuMs":1.918,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0}},
+        {"mode":"unstaged","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":216.9034590000001,"nodeCpuMs":3.45,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":216.02145800000017,"nodeCpuMs":3.296,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":243.47645899999998,"nodeCpuMs":3.544,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":349.07716600000003,"nodeCpuMs":4.047,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":346.6957080000002,"nodeCpuMs":3.212,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":243.47645899999998,"nodeCpuMs":3.45,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}},
+        {"mode":"clean","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":486.06933300000037,"nodeCpuMs":3.789,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":722.548667,"nodeCpuMs":3.974,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":902.9460410000002,"nodeCpuMs":4.183,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":750.7547499999991,"nodeCpuMs":10.268,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0},{"elapsedMs":971.4965420000008,"nodeCpuMs":10.548,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}],"median":{"elapsedMs":750.7547499999991,"nodeCpuMs":4.183,"processes":2,"diffProcesses":2,"monitorPreparationProcesses":0}},
+        {"mode":"cancelling","exact":true,"indexPreserved":true,"samples":[{"elapsedMs":140.98337500000162,"nodeCpuMs":2.319,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":63.22229200000038,"nodeCpuMs":1.916,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":119.44437499999913,"nodeCpuMs":1.941,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":65.43562500000007,"nodeCpuMs":1.792,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0},{"elapsedMs":27.201708999999028,"nodeCpuMs":1.923,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0}],"median":{"elapsedMs":65.43562500000007,"nodeCpuMs":1.923,"processes":1,"diffProcesses":1,"monitorPreparationProcesses":0}}
+      ]
+    }
+  },
+  "pipeline": {
+    "before": {
+      "version": "0.1.72116",
+      "source": {
+        "kind": "commit",
+        "commit": "11049b391e6a846ab697dd7301a44bd05a2d881c",
+        "bundleSha256": "5888e7f4ef2112553d90a5aa475373d0a72f849ff7bdce54cd9b3cb806c26abc"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"push","operationMs":5986,"graphMs":513,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":693,"latestMutationToFrameMs":1039,"renderMs":30,"frameMs":52},"latestGraphPublishedMs":1021,"graphAlreadyCurrent":false,"settledMs":7141,"processes":26,"operationProcesses":19,"graphProcesses":7,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"rev-parse":5,"config":5,"for-each-ref":5,"remote":1,"ls-remote":1,"rev-list":4,"cat-file":1,"push":1,"branch":1,"worktree":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"rev-parse":1150,"config":1645,"for-each-ref":1137,"remote":169,"ls-remote":544,"rev-list":789,"cat-file":210,"push":2004,"branch":406,"worktree":230,"status":329},"nodeCpuMs":229,"rssDeltaMiB":-16,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"fetch-new-history","operationMs":992,"graphMs":965,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1117,"latestMutationToFrameMs":1980,"renderMs":59,"frameMs":14},"latestGraphPublishedMs":1953,"graphAlreadyCurrent":false,"settledMs":3430,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"fetch":992,"for-each-ref":1209,"worktree":451,"log":312,"rev-list":990,"remote":491,"config":620,"status":814},"nodeCpuMs":166,"rssDeltaMiB":-12,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"pull","operationMs":1582,"graphMs":540,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":687,"latestMutationToFrameMs":687,"renderMs":21,"frameMs":45},"latestGraphPublishedMs":536,"graphAlreadyCurrent":false,"settledMs":2661,"processes":11,"operationProcesses":4,"graphProcesses":7,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"rev-parse":1,"config":2,"status":2,"pull":1,"for-each-ref":2,"worktree":1,"rev-list":2},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"rev-parse":109,"config":362,"status":493,"pull":1112,"for-each-ref":453,"worktree":238,"rev-list":293},"nodeCpuMs":124,"rssDeltaMiB":10,"peakRssDeltaMiB":10,"historyExact":true},
+        {"operation":"fetch","operationMs":473,"graphMs":437,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":577,"latestMutationToFrameMs":703,"renderMs":20,"frameMs":43},"latestGraphPublishedMs":687,"graphAlreadyCurrent":false,"settledMs":1290,"processes":8,"operationProcesses":1,"graphProcesses":7,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"fetch":472,"for-each-ref":367,"worktree":219,"rev-list":251,"config":135,"status":208},"nodeCpuMs":108,"rssDeltaMiB":10,"peakRssDeltaMiB":10,"historyExact":true},
+        {"operation":"rebase","operationMs":4789,"graphMs":637,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":814,"latestMutationToFrameMs":1212,"renderMs":75,"frameMs":17},"latestGraphPublishedMs":1192,"graphAlreadyCurrent":false,"settledMs":6255,"processes":27,"operationProcesses":16,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":9,"ls-files":2,"update-ref":1,"config":2,"status":3,"rebase":1,"merge-base":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":2144,"ls-files":555,"update-ref":181,"config":1580,"status":833,"rebase":397,"merge-base":111,"for-each-ref":744,"worktree":258,"log":217,"rev-list":564,"remote":315},"nodeCpuMs":221,"rssDeltaMiB":-17,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"merge","operationMs":2785,"graphMs":757,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":909,"latestMutationToFrameMs":1323,"renderMs":61,"frameMs":13},"latestGraphPublishedMs":1303,"graphAlreadyCurrent":false,"settledMs":4769,"processes":29,"operationProcesses":17,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":6,"ls-files":2,"status":4,"update-ref":1,"config":5,"merge":1,"add":1,"commit":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":801,"ls-files":278,"status":1172,"update-ref":133,"config":807,"merge":370,"add":182,"commit":240,"for-each-ref":1148,"worktree":359,"log":241,"rev-list":550,"remote":655},"nodeCpuMs":179,"rssDeltaMiB":-1,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"merge-no-ff","operationMs":583,"graphMs":956,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1111,"latestMutationToFrameMs":1503,"renderMs":59,"frameMs":15},"latestGraphPublishedMs":1480,"graphAlreadyCurrent":false,"settledMs":3260,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"merge":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"merge":582,"for-each-ref":949,"worktree":495,"log":266,"rev-list":529,"remote":286,"config":402,"status":1270},"nodeCpuMs":217,"rssDeltaMiB":46,"peakRssDeltaMiB":46,"historyExact":true},
+        {"operation":"pr-squash-cherry-pick","operationMs":5791,"graphMs":827,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":963,"latestMutationToFrameMs":1696,"renderMs":51,"frameMs":13},"latestGraphPublishedMs":1675,"graphAlreadyCurrent":false,"settledMs":7719,"processes":35,"operationProcesses":24,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":10,"ls-files":2,"cat-file":1,"log":2,"worktree":3,"config":3,"read-tree":1,"commit":1,"update-ref":1,"merge-base":1,"diff":1,"reset":1,"for-each-ref":3,"rev-list":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":2010,"ls-files":438,"cat-file":177,"log":580,"worktree":1522,"config":1167,"read-tree":138,"commit":374,"update-ref":149,"merge-base":208,"diff":222,"reset":210,"for-each-ref":1213,"rev-list":853,"remote":297,"status":330},"nodeCpuMs":292,"rssDeltaMiB":8,"peakRssDeltaMiB":8,"historyExact":true},
+        {"operation":"pr-cherry-pick","operationMs":18414,"graphMs":2160,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":2260,"latestMutationToFrameMs":5438,"renderMs":65,"frameMs":13},"latestGraphPublishedMs":5417,"graphAlreadyCurrent":false,"settledMs":23855,"processes":36,"operationProcesses":26,"graphProcesses":10,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":14,"ls-files":2,"cat-file":1,"status":3,"update-ref":1,"config":4,"cherry-pick":3,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":1,"status":1,"rev-list":2,"remote":1},"commandTimeMs":{"rev-parse":7776,"ls-files":864,"cat-file":400,"status":3189,"update-ref":4359,"config":1528,"cherry-pick":1469,"for-each-ref":2342,"worktree":1009,"log":1121,"rev-list":3263,"remote":1224},"nodeCpuMs":666,"rssDeltaMiB":-54,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"cherry-pick","operationMs":661,"graphMs":1116,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1324,"latestMutationToFrameMs":2769,"renderMs":87,"frameMs":14},"latestGraphPublishedMs":2747,"graphAlreadyCurrent":false,"settledMs":3845,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"cherry-pick":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"cherry-pick":660,"for-each-ref":2385,"worktree":494,"log":410,"rev-list":1636,"remote":1249,"config":1500,"status":527},"nodeCpuMs":272,"rssDeltaMiB":1,"peakRssDeltaMiB":6,"historyExact":true},
+        {"operation":"checkout","operationMs":1541,"graphMs":727,"checkoutTargetScope":"topic","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":890,"latestMutationToFrameMs":890,"renderMs":23,"frameMs":45},"latestGraphPublishedMs":724,"graphAlreadyCurrent":false,"settledMs":2716,"processes":10,"operationProcesses":3,"graphProcesses":7,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"for-each-ref":1051,"rev-parse":445,"switch":699,"worktree":469,"rev-list":305,"config":176,"status":236},"nodeCpuMs":140,"rssDeltaMiB":16,"peakRssDeltaMiB":16,"historyExact":true}
+      ]
+    },
+    "after": {
+      "version": "0.1.72117",
+      "source": {
+        "kind": "working-tree",
+        "commit": "11049b391e6a846ab697dd7301a44bd05a2d881c",
+        "bundleSha256": "abdcca0cd2be0f5f48db78aa56a2a8d8b05f4810e71d1a8ff192b6e97d736142"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"push","operationMs":5723,"graphMs":967,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1197,"latestMutationToFrameMs":1494,"renderMs":22,"frameMs":45},"latestGraphPublishedMs":1476,"graphAlreadyCurrent":false,"settledMs":7354,"processes":26,"operationProcesses":19,"graphProcesses":7,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"rev-parse":5,"config":5,"for-each-ref":5,"remote":1,"ls-remote":1,"rev-list":4,"cat-file":1,"push":1,"branch":1,"worktree":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"rev-parse":1519,"config":1715,"for-each-ref":2246,"remote":125,"ls-remote":524,"rev-list":905,"cat-file":152,"push":1017,"branch":152,"worktree":495,"status":257},"nodeCpuMs":240,"rssDeltaMiB":-26,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"fetch-new-history","operationMs":1675,"graphMs":1147,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1279,"latestMutationToFrameMs":1626,"renderMs":51,"frameMs":14},"latestGraphPublishedMs":1607,"graphAlreadyCurrent":false,"settledMs":3542,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"fetch":1675,"for-each-ref":1081,"worktree":471,"log":406,"rev-list":462,"remote":241,"config":342,"status":346},"nodeCpuMs":193,"rssDeltaMiB":27,"peakRssDeltaMiB":27,"historyExact":true},
+        {"operation":"pull","operationMs":2635,"graphMs":1398,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1593,"latestMutationToFrameMs":1593,"renderMs":29,"frameMs":57},"latestGraphPublishedMs":1391,"graphAlreadyCurrent":false,"settledMs":5037,"processes":11,"operationProcesses":4,"graphProcesses":7,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"rev-parse":1,"config":2,"status":2,"pull":1,"for-each-ref":2,"worktree":1,"rev-list":2},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"rev-parse":115,"config":451,"status":907,"pull":2100,"for-each-ref":1301,"worktree":1101,"rev-list":708},"nodeCpuMs":217,"rssDeltaMiB":-2,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"fetch","operationMs":685,"graphMs":1098,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1249,"latestMutationToFrameMs":2216,"renderMs":25,"frameMs":42},"latestGraphPublishedMs":2198,"graphAlreadyCurrent":false,"settledMs":3076,"processes":8,"operationProcesses":1,"graphProcesses":7,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"fetch":684,"for-each-ref":823,"worktree":792,"rev-list":1101,"config":744,"status":509},"nodeCpuMs":189,"rssDeltaMiB":-7,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"rebase","operationMs":7327,"graphMs":1411,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1575,"latestMutationToFrameMs":2764,"renderMs":66,"frameMs":13},"latestGraphPublishedMs":2744,"graphAlreadyCurrent":false,"settledMs":10819,"processes":27,"operationProcesses":16,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":9,"ls-files":2,"update-ref":1,"config":2,"status":3,"rebase":1,"merge-base":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":4207,"ls-files":1053,"update-ref":515,"config":2147,"status":1077,"rebase":402,"merge-base":304,"for-each-ref":1782,"worktree":758,"log":333,"rev-list":1336,"remote":770},"nodeCpuMs":383,"rssDeltaMiB":-17,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"merge","operationMs":8715,"graphMs":1826,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":2007,"latestMutationToFrameMs":2490,"renderMs":69,"frameMs":14},"latestGraphPublishedMs":2467,"graphAlreadyCurrent":false,"settledMs":12680,"processes":27,"operationProcesses":15,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":6,"ls-files":2,"status":3,"update-ref":1,"config":4,"merge":1,"diff":1,"commit":1,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":3851,"ls-files":798,"status":1580,"update-ref":974,"config":1815,"merge":624,"diff":353,"commit":1033,"worktree":426,"for-each-ref":2067,"log":590,"rev-list":645,"remote":755},"nodeCpuMs":407,"rssDeltaMiB":-16,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"merge-no-ff","operationMs":516,"graphMs":2166,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":2348,"latestMutationToFrameMs":3235,"renderMs":71,"frameMs":15},"latestGraphPublishedMs":3215,"graphAlreadyCurrent":false,"settledMs":4242,"processes":13,"operationProcesses":1,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"merge":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"merge":516,"for-each-ref":2308,"worktree":995,"log":636,"rev-list":1052,"config":843,"remote":775,"status":679},"nodeCpuMs":231,"rssDeltaMiB":1,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"pr-squash-cherry-pick","operationMs":5398,"graphMs":1273,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":1409,"latestMutationToFrameMs":1769,"renderMs":52,"frameMs":14},"latestGraphPublishedMs":1752,"graphAlreadyCurrent":false,"settledMs":7472,"processes":35,"operationProcesses":24,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":10,"ls-files":2,"cat-file":1,"log":2,"worktree":3,"config":3,"read-tree":1,"commit":1,"update-ref":1,"merge-base":1,"diff":1,"reset":1,"for-each-ref":3,"rev-list":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":1993,"ls-files":419,"cat-file":245,"log":278,"worktree":1337,"config":746,"read-tree":321,"commit":338,"update-ref":135,"merge-base":280,"diff":713,"reset":155,"for-each-ref":1050,"rev-list":482,"remote":276,"status":401},"nodeCpuMs":284,"rssDeltaMiB":3,"peakRssDeltaMiB":3,"historyExact":true},
+        {"operation":"pr-cherry-pick","operationMs":4425,"graphMs":703,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":890,"latestMutationToFrameMs":1432,"renderMs":76,"frameMs":15},"latestGraphPublishedMs":1408,"graphAlreadyCurrent":false,"settledMs":6255,"processes":37,"operationProcesses":26,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":14,"ls-files":2,"cat-file":1,"status":4,"update-ref":1,"config":4,"cherry-pick":3,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":2106,"ls-files":314,"cat-file":199,"status":965,"update-ref":117,"config":1042,"cherry-pick":831,"for-each-ref":968,"worktree":184,"log":209,"rev-list":710,"remote":447},"nodeCpuMs":336,"rssDeltaMiB":0,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"cherry-pick","operationMs":616,"graphMs":777,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":956,"latestMutationToFrameMs":1503,"renderMs":72,"frameMs":15},"latestGraphPublishedMs":1478,"graphAlreadyCurrent":false,"settledMs":2428,"processes":13,"operationProcesses":1,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"cherry-pick":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"cherry-pick":610,"for-each-ref":1124,"worktree":242,"log":355,"rev-list":705,"config":445,"remote":324,"status":555},"nodeCpuMs":240,"rssDeltaMiB":-2,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":384,"graphMs":483,"checkoutTargetScope":"topic","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"exactLocalOnly":true,"headInLoadedPage":true,"mutationToFrameMs":614,"latestMutationToFrameMs":614,"renderMs":20,"frameMs":35},"latestGraphPublishedMs":480,"graphAlreadyCurrent":false,"settledMs":1326,"processes":10,"operationProcesses":3,"graphProcesses":7,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"for-each-ref":466,"rev-parse":90,"switch":237,"worktree":211,"rev-list":330,"config":210,"status":217},"nodeCpuMs":176,"rssDeltaMiB":0,"peakRssDeltaMiB":0,"historyExact":true}
+      ]
+    }
+  },
+  "validation": {
+    "initialGroup": {
+      "passed": 16,
+      "failed": 1,
+      "reason": "Test incorrectly classified worktree add as git add; corrected command-position parsing."
+    },
+    "intermediateGroup": {
+      "completedPassed": 66,
+      "reportedTestFailures": 0,
+      "terminalExitCode": 1,
+      "timedOutAtMs": 900000,
+      "source": "Intermediate candidate before final staged-only/submodule guard; not a full pass.",
+      "completedCases": [
+        "completed branch Undo preserves a later stash conflict even when HEAD did not move",
+        "completed squash Undo preserves unrelated local changes",
+        "the current squash conflict can be undone without deleting another file's edits",
+        "a newly staged change invalidates partial squash Undo",
+        "an externally restarted squash with identical conflicted blobs cannot reuse the old Undo",
+        "a failed squash commit keeps staged changes and a working recovery snapshot",
+        "an Undo plan cannot target a new operation created while confirmation was open",
+        "a failed temporary squash never classifies the user's original staged work as squash output",
+        "a later commit invalidates completed Undo and preserves its snapshot",
+        "Undo aborts its own rebase and restores the preserved local stash",
+        "an identical rebase restarted externally cannot be aborted by an old Undo",
+        "a continued branch rebase records its completed HEAD for later Undo",
+        "completed rebase preserves local edits and untracked files through Undo",
+        "a fresh completed rebase never silently accepts a missing Undo binding",
+        "continuing an older rebase without an Undo binding still completes without inventing ownership",
+        "Undo never applies a pending stash owned by an earlier externally aborted rebase",
+        "another worktree cannot infer ownership from a shared branch snapshot",
+        "PR Undo refuses to move a branch checked out in another worktree",
+        "PR Undo can still restore an off-branch snapshot when no worktree uses it",
+        "branch squash uses native merged index without restaging files (current worktree)",
+        "branch squash uses native merged index without restaging files (isolated worktree)",
+        "PR readiness starts unmerged verification before waiting for the checkout and awaits both",
+        "squash readiness preserves an unmerged ETIMEDOUT error and closes other reads before rejecting",
+        "squash readiness preserves an unmerged EACCES error and closes other reads before rejecting",
+        "rebase readiness preserves an unmerged ETIMEDOUT error and closes other reads before rejecting",
+        "rebase readiness preserves an unmerged EACCES error and closes other reads before rejecting",
+        "PR readiness preserves an unmerged ETIMEDOUT error and closes other reads before rejecting",
+        "PR readiness preserves an unmerged EACCES error and closes other reads before rejecting",
+        "an active native operation retains error priority when the parallel unmerged read also fails",
+        "squash preserves a target ETIMEDOUT failure instead of reporting a missing branch",
+        "squash preserves a target EACCES failure instead of reporting a missing branch",
+        "rebase preserves a target ETIMEDOUT failure instead of reporting a missing branch",
+        "rebase preserves a target EACCES failure instead of reporting a missing branch",
+        "squash auto keeps an absent file absent when the PR only removes obsolete lines",
+        "squash worktree keeps an absent file absent when the PR only removes obsolete lines",
+        "squash preserves a real modify/delete conflict and all original user changes",
+        "squash ignores intermediate conflicts using merge-tree",
+        "squash ignores intermediate conflicts with legacy Git fallback",
+        "squash leaves a mode change on a deleted file unresolved",
+        "noncontiguous PR commits keep the original replay instead of including unlisted changes",
+        "a net-empty PR does not commit the missing checkout files or the user's staged work",
+        "squash revert uses the final inverse delta and preserves unrelated destination edits",
+        "a concurrent overlapping edit keeps both user work and the prepared PR result",
+        "a concurrent branch commit keeps both user work and the prepared PR result",
+        "commit hooks cannot replace the computed PR tree with a different result",
+        "binary edits to a deleted file require manual conflict resolution",
+        "a destination rename receives the PR deletion edit at its new path",
+        "squashCherryPick records completed Undo and preserves unrelated edits",
+        "squashCherryPick through a temporary worktree records Undo without claiming the user's staged work",
+        "rebasePullRequest records completed Undo and preserves unrelated edits",
+        "rebasePullRequest through a temporary worktree records Undo without claiming the user's staged work",
+        "PR Undo cannot abort an unrelated rebase or erase its manual resolution",
+        "completed PR Undo preserves a later unrelated cherry-pick conflict",
+        "completed PR Undo preserves a later unrelated revert conflict",
+        "completed PR Undo preserves a same-HEAD stash conflict and manual edits",
+        "later commits invalidate completed PR Undo without removing its snapshot",
+        "PR Undo cannot substitute an operation created after confirmation started",
+        "PR Undo rejects metadata from another worktree and keeps shared refs",
+        "a legacy PR snapshot without ownership cannot become automatic Undo",
+        "isolated squash conflict leaves the original branch editable without claiming Undo",
+        "failed isolated PR squash commit preserves the original worktree without claiming Undo",
+        "new staged work is preserved while an isolated squash conflict is pending",
+        "Undo aborts its own deferred PR cherry-pick conflict",
+        "Undo aborts its own deferred PR revert conflict",
+        "an identical cherry-pick restarted externally cannot reuse the old PR Undo",
+        "new staged work invalidates Undo of an owned PR cherry-pick conflict"
+      ]
+    },
+    "currentSourceGroup": {
+      "passed": 23,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "concurrency": 1,
+      "source": "Final production source; previously unfinished four PR recovery cases plus 19 tracked/index/branch cases.",
+      "completedCases": [
+        "branch squash uses native merged index without restaging files (current worktree)",
+        "branch squash uses native merged index without restaging files (isolated worktree)",
+        "continuing a PR conflict records its completed HEAD for later Undo",
+        "PR Undo restores its matching pending stash after returning to the snapshot",
+        "a prepared PR snapshot alone is never considered a completed operation",
+        "squash revert conflict is isolated and does not require resetting the original worktree",
+        "tracked clean agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked untracked agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked staged agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked unstaged agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked delete agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked rename agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked binary agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked cancelling agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked intent-to-add agrees with native status, preserves index and avoids unnecessary worktree reads",
+        "tracked changes ignore configured external diff and textconv helpers",
+        "staged detection never prepares or starts a configured builtin filesystem monitor",
+        "staged detection ignores unrelated working files and preserves a hidden gitlink in the index",
+        "tracked index ETIMEDOUT is propagated without starting another read",
+        "tracked index EACCES is propagated without starting another read",
+        "tracked worktree ETIMEDOUT is propagated without starting another read",
+        "tracked worktree EACCES is propagated without starting another read",
+        "a corrupt native index is an error instead of a positive pending-changes result"
+      ]
+    },
+    "uniqueCompletedCasesAcrossPhases": 87,
+    "typecheck": true,
+    "productionBundle": "verified during packaging",
+    "exactNativeOperations": 11,
+    "visualWidthsViewed": [
+      390,
+      768,
+      1440
+    ],
+    "normalClickEscapeEachWidth": true,
+    "frontendAssetsChanged": false,
+    "wholeRepositorySuite": false,
+    "eslint": false,
+    "newAxeAudit": false,
+    "visibleExtensionHost": false,
+    "osFocusChanged": false,
+    "forcedReload": false,
+    "marketplaceStatusCheck": false
+  },
+  "limitations": [
+    "The staged PR predicate is mostly used by replay fallback; the existing merge-tree fast path already bypasses it.",
+    "Unstaged and clean paths still use two diff processes; paired Node CPU medians increased about 0.5-0.6ms in those two modes.",
+    "Sequential clean latency and several single pipeline latencies increased; all raw samples retained.",
+    "The single pipeline samples do not prove broad end-to-end or Graph latency improvement.",
+    "Node CPU excludes native Git and browser CPU; no whole-machine CPU or memory reduction claim.",
+    "The initial larger test batch timed out; completed cases plus final selected rerun are distinguished.",
+    "First Graph display/native preparation latency remains part of the active broad goal."
+  ],
+  "pairedBenchmarkCliSmoke": {"passed":true,"baselineCommit":"11049b391e6a846ab697dd7301a44bd05a2d881c","samples":1,"modes":["staged"],"sourceHashesMatchedPrimary":true,"results":[{"mode":"staged","exact":true,"indexPreserved":true,"versions":[{"name":"before","samples":[{"elapsedMs":447.33037499999955,"nodeCpuMs":8.112,"processes":2,"commands":{"diff":2}}],"median":{"elapsedMs":447.33037499999955,"nodeCpuMs":8.112,"processes":2}},{"name":"after","samples":[{"elapsedMs":169.73299999999836,"nodeCpuMs":5.054,"processes":1,"commands":{"diff":1}}],"median":{"elapsedMs":169.73299999999836,"nodeCpuMs":5.054,"processes":1}}]}]},
+  "artifact": {"version":"0.1.72117","bytes":980772,"sha256":"0ffa5d6a432dcb6c2af13779a26b17b5efdc6fdf92e4e27c9caf48b86f9b9b65","extensionSha256":"13284b55779304ae3772b6fb078bb26ec4d031810cd5e29beeea44408e942f8a","verifiedRuntimeFiles":124,"developmentFilesExcluded":true},
+  "fullLatencyGoalAchieved": false
+}

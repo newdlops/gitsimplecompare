@@ -15,7 +15,7 @@ import { restorePendingPullRequestLocalChangesForBranch } from "./pullRequestReb
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { OperationUndoStore, type OperationUndoPlan } from "./operationUndoStore";
 import { logInfo } from "../ui/outputLog";
-import { hasWorkingTreeChanges } from "./workingTreeChanges";
+import { hasTrackedWorkingTreeChanges, hasWorkingTreeChanges } from "./workingTreeChanges";
 import { resetPullRequestResult } from "./pullRequestResultReset";
 import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
 import { createSnapshotRefSet } from "./snapshotRefTransaction";
@@ -85,18 +85,10 @@ export class PullRequestOperationSnapshot {
 
   /**
    * 현재 index 또는 working tree에 commit할 변경이 있는지 확인한다.
-   * `git diff --quiet`의 exit code 1은 오류가 아니라 차이가 있다는 의미로 변환한다.
+   * staged 변경이 있으면 작업 파일 재스캔을 생략한다. 실제 Git 조회 실패는 변경으로 숨기지 않는다.
    */
   async hasPendingChanges(): Promise<boolean> {
-    const staged = await runGit(
-      ["diff", "--cached", "--quiet"],
-      this.repoRoot
-    ).then(() => false, () => true);
-    const unstaged = await runGit(
-      ["diff", "--quiet"],
-      this.repoRoot
-    ).then(() => false, () => true);
-    return staged || unstaged;
+    return hasTrackedWorkingTreeChanges(this.repoRoot);
   }
 
   /**
@@ -104,15 +96,7 @@ export class PullRequestOperationSnapshot {
    * @param cwd 임시 worktree 경로
    */
   async hasPendingChangesIn(cwd: string): Promise<boolean> {
-    const staged = await runGit(
-      ["diff", "--cached", "--quiet"],
-      cwd
-    ).then(() => false, () => true);
-    const unstaged = await runGit(
-      ["diff", "--quiet"],
-      cwd
-    ).then(() => false, () => true);
-    return staged || unstaged;
+    return hasTrackedWorkingTreeChanges(cwd);
   }
 
   /**

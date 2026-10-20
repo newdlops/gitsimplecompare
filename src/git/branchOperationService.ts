@@ -19,7 +19,7 @@ import { GitError, runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { listUnmergedFiles } from "./unmergedFiles";
-import { hasWorkingTreeChanges } from "./workingTreeChanges";
+import { hasStagedWorkingTreeChanges, hasWorkingTreeChanges } from "./workingTreeChanges";
 import { BranchRebaseCompletionError } from "./branchRebaseCompletionError";
 
 /** 브랜치 단위 작업 실행 결과와 undo 에 필요한 snapshot 정보 */
@@ -81,7 +81,7 @@ export class BranchOperationService {
       if (!await this.hasPendingChanges()) {
         throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
       }
-      await runGit(["add", "-A"], this.repoRoot);
+      // merge --squash가 확정한 index만 commit해 이후 생긴 사용자 편집을 다시 stage하지 않는다.
       await this.commitSquash(sourceBranch, branch, this.repoRoot);
       await this.undoStore.capture(branch, snapshotRef, "completed");
       return {
@@ -346,7 +346,7 @@ export class BranchOperationService {
       if (!await this.hasPendingChangesIn(worktreePath)) {
         throw new Error(`Branch '${sourceBranch}' did not produce changes to commit.`);
       }
-      await runGit(["add", "-A"], worktreePath);
+      // Native squash가 이미 만든 index를 그대로 사용해 전체 파일의 중복 stage를 피한다.
       await this.commitSquash(sourceBranch, branch, worktreePath);
       const afterHead = await this.currentHeadIn(worktreePath);
       snapshotRef = await this.createSnapshot(branch, beforeHead);
@@ -415,9 +415,9 @@ export class BranchOperationService {
     return (await runGit(["rev-parse", "--verify", "HEAD"], cwd)).trim();
   }
 
-  /** 지정한 worktree 에 commit 할 변경이 있는지 확인한다. */
+  /** Native squash가 index에 확정한 변경만 확인한다. 나중에 생긴 unstaged 편집은 commit 대상으로 삼지 않는다. */
   private async hasPendingChangesIn(cwd: string): Promise<boolean> {
-    return (await runGit(["status", "--porcelain=v1", "-z", "--untracked-files=no"], cwd)).length > 0;
+    return hasStagedWorkingTreeChanges(cwd);
   }
 
   /** 지정한 worktree 에 충돌로 남은 unmerged index entry 가 있는지 확인한다. */

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.72117] - 2026-10-20
+
+### Performance
+
+- Stop PR pending-change checks after detecting staged changes. Read the index
+  without filesystem-monitor preparation and skip the redundant working-file scan.
+- Commit the index already prepared by branch squash merges, avoiding a second
+  full staging pass in both current and isolated worktrees.
+
+### Fixed
+
+- Keep edits made after a squash merge out of automatic staging. Preserve native
+  merged content while leaving unrelated tracked and untracked edits in place.
+- Propagate pending-change read failures instead of treating every error as a
+  positive result. Detect staged submodule pointers even with diff ignore settings.
+
+### Development
+
+- Add Native index-preservation, concurrent-edit and failed-read checks, plus a
+  repeatable benchmark for staged, unstaged, clean and cancelling changes.
+
 ## [0.1.72116] - 2026-10-20
 
 ### Performance
