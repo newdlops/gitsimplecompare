@@ -3,7 +3,7 @@
 //   같은 rebaseEditor.js msg 헬퍼가 남은 메시지를 적용할 수 있게 한다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { resolveGitStatePath } from "./gitStatePathScope";
 import { readRebaseTodoProgress } from "./rebaseTodoProgress";
 import type { RebaseItem } from "./rebaseService";
 import { logInfo } from "../ui/outputLog";
@@ -268,8 +268,7 @@ async function hasOnlyDefaultMessages(file: string): Promise<boolean> {
   }
 }
 
-/** git metadata 상대 경로를 linked worktree 에서도 유효한 절대 경로로 변환한다. */
+/** private 경로만 Start 실행 범위에서 공유한다. 범위 밖 Continue/정리는 Git으로 매번 새로 해석한다. */
 async function gitPath(repoRoot: string, rel: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", rel], repoRoot)).trim();
-  return path.resolve(repoRoot, raw);
+  return resolveGitStatePath(repoRoot, rel);
 }

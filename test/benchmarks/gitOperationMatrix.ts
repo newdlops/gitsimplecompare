@@ -22,7 +22,7 @@ import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 
-type Operation = "initial" | "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
+type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 
 /** 행 순서와 무관하게 실제 HEAD·부모·ref와 최종 local-only 표시까지 같은 게시를 식별한다. */
@@ -62,6 +62,8 @@ async function fixture(directory: string) {
   let pr = main;
   const prMarks: number[] = [];
   for (let index = 0; index < 3; index++) { pr = addCommit("pr-source", pr, `PR ${index}`, [`M 100644 :1 pr-${index}.txt`]); prMarks.push(pr); }
+  const oldHistory = history[Math.max(0, depth - 601)];
+  data.push("reset refs/heads/old-history", `from :${oldHistory}`, "");
   const marksFile = path.join(directory, "marks");
   await runGitWithInput(["fast-import", "--quiet", `--export-marks=${marksFile}`], root, data.join("\n") + "\n");
   const objectIds = new Map((await readFile(marksFile, "utf8")).trim().split("\n").map(line => {
@@ -83,7 +85,10 @@ async function fixture(directory: string) {
   const tree = (await runGit(["rev-parse", "main^{tree}"], root)).trim();
   const incoming = (await runGit(["-c", "user.name=Operation Fixture", "-c", "user.email=operations@example.invalid",
     "commit-tree", tree, "-p", mainOid, "-m", "incoming remote change"], remote)).trim();
-  return { root, remote, main: mainOid, incoming, topic: objectIds.get(topic)!, pr: objectIds.get(pr)!,
+  // fresh pull과 fresh fetch가 같은 객체를 먼저 받아 버리지 않도록 서로 다른 미공개 commit을 만든다.
+  const incomingPull = (await runGit(["-c", "user.name=Operation Fixture", "-c", "user.email=operations@example.invalid",
+    "commit-tree", tree, "-p", mainOid, "-m", "incoming pull change"], remote)).trim();
+  return { root, remote, main: mainOid, incoming, incomingPull, oldHistory: objectIds.get(oldHistory)!, topic: objectIds.get(topic)!, pr: objectIds.get(pr)!,
     prCommits: prMarks.map(mark => objectIds.get(mark)!), files, depth, branches, sharedUpstreamBranches };
 }
 
@@ -110,16 +115,24 @@ function pullRequest(f: Awaited<ReturnType<typeof fixture>>): PullRequestInfo {
 /** 실제 서비스 성공과 Graph의 HEAD/부모/ref가 같은 Git 상태인지 확인하는 하나의 측정이다. */
 async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operation) {
   const git = (args: string[], cwd = f.root) => runGit(args, cwd);
-  await git(["switch", "-qC", `bench-${operation}`, operation === "push" ? f.pr : f.main]);
+  await git(["switch", "-qC", `bench-${operation}`, operation === "push" || operation === "push-tracked" ? f.pr : f.main]);
   await git(["update-ref", "refs/heads/main", f.main], f.remote);
-  if (operation === "pull" || operation === "pull-known-history") {
+  if (operation === "push-tracked") {
+    // 이름이 같은 기존 upstream을 고정해 새 브랜치 publish와 일반 push 준비 경로를 분리한다.
+    await git(["update-ref", `refs/heads/bench-${operation}`, f.main], f.remote);
+    await git(["update-ref", `refs/remotes/origin/bench-${operation}`, f.main]);
+    await git(["config", `branch.bench-${operation}.remote`, "origin"]);
+    await git(["config", `branch.bench-${operation}.merge`, `refs/heads/bench-${operation}`]);
+  }
+  if (operation === "pull" || operation === "pull-known-history" || operation === "pull-new-history") {
     await git(["config", `branch.bench-${operation}.remote`, "origin"]);
     await git(["config", `branch.bench-${operation}.merge`, "refs/heads/main"]);
-    await git(["update-ref", "refs/heads/main", f.incoming], f.remote);
+    await git(["update-ref", "refs/heads/main", operation === "pull-new-history" ? f.incomingPull : f.incoming], f.remote);
     if (operation === "pull-known-history") await git(["fetch", "-q", "origin"]);
   }
   if (operation === "fetch" || operation === "fetch-new-history") await git(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
   if (operation === "fetch-new-history") await assert.rejects(git(["cat-file", "-e", f.incoming]), "Fresh fetch fixture must not already contain its incoming object");
+  if (operation === "pull-new-history") await assert.rejects(git(["cat-file", "-e", f.incomingPull]), "Fresh pull fixture must not already contain its incoming object");
   if (operation === "fetch-known-history") await git(["update-ref", "refs/heads/known-history", f.main], f.remote);
   const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
   let measuring = false;
@@ -151,8 +164,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
     const previousHead = panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.hash;
     const checkoutTarget: string | undefined = loadedTarget
-      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))?.name : "topic";
+      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))?.name
+      : operation === "checkout-unloaded" ? "old-history" : "topic";
     assert.ok(checkoutTarget, "Loaded checkout fixture needs an actual visible local branch tip");
+    if (operation === "checkout-unloaded") assert.equal(visibleHashes.has(f.oldHistory), false, "Unloaded checkout requires a deeper fixture than the loaded Graph page");
     const initialSignature = graphSignature(panel.commits);
     const timings: GitExecutionTiming[] = [];
     const unobserve = setGitExecutionObserver(timing => timings.push(timing));
@@ -172,8 +187,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     try {
       switch (operation) {
         case "initial": break;
-        case "push": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root)); break;
-        case "pull": case "pull-known-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
+        case "push": case "push-tracked": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root)); break;
+        case "pull": case "pull-known-history": case "pull-new-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
         case "fetch": case "fetch-new-history": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
         case "rebase": assert.equal((await new BranchOperationService(f.root).rebaseMerge("topic")).status, "completed"); break;
         case "merge": assert.equal((await new BranchOperationService(f.root).squashMerge("topic")).status, "completed"); break;
@@ -181,15 +196,15 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         case "pr-squash-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).squashCherryPick(pullRequest(f))).status, "completed"); break;
         case "pr-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).rebasePullRequest(pullRequest(f))).status, "completed"); break;
         case "cherry-pick": await service.cherryPick(f.prCommits[0]); break;
-        case "checkout": assert.ok(await service.getLocalBranchCheckoutState(checkoutTarget)); await service.checkoutLocalBranch(checkoutTarget); break;
+        case "checkout": case "checkout-unloaded": assert.ok(await service.getLocalBranchCheckoutState(checkoutTarget)); await service.checkoutLocalBranch(checkoutTarget); break;
       }
       operationEnd = performance.now();
       operationEndedAt = Date.now();
       const operationProcesses = timings.length;
       if (operation === "initial") assert.equal(await panel.runDirectGraph("ready"), true);
-      else if (operation === "checkout") await panel.refreshAfterCheckoutAction();
+      else if (operation === "checkout" || operation === "checkout-unloaded") await panel.refreshAfterCheckoutAction();
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
-      else await panel.refreshAfterGraphAction(operation === "push" ? "references" : "graph");
+      else await panel.refreshAfterGraphAction(operation === "push" || operation === "push-tracked" ? "references" : "graph");
       graphEnd = performance.now();
       await idle(f.root, panel);
       const settledAt = performance.now(), settledRss = process.memoryUsage.rss();
@@ -201,8 +216,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         commandTimeMs[timing.command] = (commandTimeMs[timing.command] ?? 0) + timing.elapsedMs;
         if (index >= operationProcesses) graphCommands[timing.command] = (graphCommands[timing.command] ?? 0) + 1;
       }
-      if (operation === "fetch-new-history") assert.equal(graphCommands.log, 1, "Previously unknown history needs exactly one Graph page read");
+      if (operation === "fetch-new-history" || operation === "pull-new-history") assert.equal(graphCommands.log, 1, "Previously unknown history needs exactly one Graph page read");
       if (loadedTarget) assert.equal(graphCommands.log ?? 0, 0, "A visible checkout must reuse the existing Graph page");
+      if (operation === "checkout-unloaded") assert.equal(graphCommands.log, 1, "A checkout outside the loaded page requires one history read");
       unobserve();
       const head = (await git(["rev-parse", "HEAD"])).trim();
       const actual = await new GitLogService(f.root).getCommitPage(panel.commits.length, 0, [], false);

@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.72121] - 2026-10-21
+
+### Performance
+
+- Reuse the verified Git directory and private message-queue path within one
+  interactive rebase Start. Keep both fresh checkout guards and read native
+  operation files and queued messages again at every required boundary.
+- Route operation detection through the shared directory reader so scoped branch
+  and PR operations can also avoid repeated path-only Git processes.
+
+### Fixed
+
+- Release temporary todo and rewrite files when message-queue initialization or
+  cleanup fails. Stop cached-path access if repository metadata changes, before
+  writing recovery state in a different repository.
+
+### Development
+
+- Add Native rebase checks for successive Starts, linked worktrees, external
+  commits during preparation and metadata replacement before queue creation.
+- Extend the operation benchmark to ordinary tracked push, fresh-history pull
+  and checkout outside the loaded Graph page. Keep service time, first frame,
+  final frame and resource measurements separate.
+- Count Native Graph history reads at the Git boundary and verify that injected
+  index errors reach both read boundaries even when Git has global options.
+
 ## [0.1.72120] - 2026-10-21
 
 ### Performance

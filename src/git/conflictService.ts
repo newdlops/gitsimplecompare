@@ -1,7 +1,6 @@
 // 머지/리베이스 충돌 해결에 필요한 git 작업을 모은 서비스 모듈.
 // - 충돌 파일 조회, ours/theirs 수용, 해결 표시, 진행 중 작업(merge/rebase 등)의
-//   상태 확인과 continue/abort 를 제공한다. git 접근은 runGit 만 사용한다(경계 분리).
-import * as path from "node:path";
+//   상태 확인과 continue/abort 를 제공한다. Git 실행은 공통 실행기를 쓰는 하위 모듈에 위임한다.
 import { detectOperationInGitDir, readConflictOperationSnapshot } from "./conflictOperationEpoch";
 export { detectOperationInGitDir } from "./conflictOperationEpoch";
 import {
@@ -16,7 +15,7 @@ import {
   type ConflictResultState,
   type ConflictWorkingResult,
 } from "./conflictContentService";
-import { runGit } from "./gitExec";
+import { readGitDirectory } from "./repositoryIdentity";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { ConflictCommitReader } from "./conflictCommitReader";
 import { allReads } from "../utils/readGroup";
@@ -109,9 +108,10 @@ export interface ConflictDocumentBatchReadOptions {
 export async function detectOperation(
   repoRoot: string, signal?: AbortSignal
 ): Promise<MergeOperation> {
-  const gitDirRaw = (await runGit(["rev-parse", "--git-dir"], repoRoot, { signal })).trim();
+  // 작업 scope에서는 검증된 디렉터리만 공유한다. 마커 파일 내용은 아래에서 매번 새로 읽는다.
+  const gitDir = await readGitDirectory(repoRoot, signal);
   signal?.throwIfAborted();
-  return detectOperationInGitDir(path.resolve(repoRoot, gitDirRaw));
+  return detectOperationInGitDir(gitDir);
 }
 
 /**

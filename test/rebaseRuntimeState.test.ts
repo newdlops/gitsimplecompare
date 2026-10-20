@@ -5,6 +5,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import test, { type TestContext } from "node:test";
 import { runGitWithInput } from "../src/git/gitExec";
+import { gitCommandIndex } from "../src/git/gitCommandPolicy";
 import { captureGitOperation } from "../src/git/operationControl";
 import { RebaseService, type RebaseItem } from "../src/git/rebaseService";
 import { commitText, git, safetyFixture } from "./helpers/gitSafetyFixture";
@@ -93,15 +94,18 @@ test("paused file detail errors preserve the restorable operation and todo witho
 test("an unreadable index cannot be interpreted as a paused edit with no conflicts", async t => {
   const { first, service } = await fixture(t);
   const spawn = childProcess.spawn;
-  let details = 0;
+  let details = 0, unreadableLists = 0;
   t.mock.method(childProcess, "spawn", (...args: any[]) => {
-    if (args[0] === "git" && args[1][0] === "ls-files") {
+    const command = args[0] === "git" ? args[1][gitCommandIndex(args[1])] : undefined;
+    if (command === "ls-files") {
+      unreadableLists++;
       return spawn(process.execPath, ["-e", 'process.stderr.write("index temporarily unreadable\\n"); process.exit(1);'], args[2]);
     }
-    if (args[0] === "git" && args[1][0] === "log") details++;
+    if (command === "log") details++;
     return (spawn as Function)(...args);
   });
   const state = await service.getRuntimeState();
+  assert.equal(unreadableLists, 2, "both real index read boundaries must receive the injected error");
   assert.equal(state.paused, undefined); assert.equal(details, 0);
   assert.equal(state.operation.operation, "rebase");
   assert.equal(state.stopped?.originalHash, first);
@@ -119,12 +123,13 @@ for (const hasConflicts of [false, true]) {
     const spawn = childProcess.spawn;
     let lists = 0;
     t.mock.method(childProcess, "spawn", (...args: any[]) => {
-      if (args[0] === "git" && args[1][0] === "ls-files" && ++lists === 2) {
+      if (args[0] === "git" && args[1][gitCommandIndex(args[1])] === "ls-files" && ++lists === 2) {
         return spawn(process.execPath, ["-e", 'process.stderr.write("index temporarily unreadable\\n"); process.exit(1);'], args[2]);
       }
       return (spawn as Function)(...args);
     });
     const state = await service.getRuntimeState();
+    assert.equal(lists, 2, "the final index error must actually be injected despite global Git options");
     assert.deepEqual(state.conflicts, hasConflicts ? ["kept.txt"] : []);
     assert.equal(state.paused, undefined);
     assert.equal(state.stopped?.originalHash, first);

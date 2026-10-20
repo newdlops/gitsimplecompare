@@ -5,6 +5,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { GitError, runGit } from "./gitExec";
+import { withGitStatePathScope } from "./gitStatePathScope";
 import { detectOperation } from "./conflictService";
 import { readRebaseCommits, readRebaseCommitDetails } from "./rebaseCommitReader";
 import { listUnmergedFiles } from "./unmergedFiles";
@@ -214,6 +215,7 @@ export class RebaseService {
    * @param items        계획(최종 표시 순서, 오래된 것부터)
    * @param editorScript 헬퍼 스크립트(rebaseEditor.js) 절대 경로
    * @param onto         선택 사항. 있으면 `git rebase -i --onto onto base` 로 실행한다.
+   * @param expectedCheckout 계획 UI가 검증한 checkout. 실행 전 두 안전 경계에서 최신 상태와 대조한다.
    */
   async start(
     base: string,
@@ -222,6 +224,20 @@ export class RebaseService {
     editorScript: string,
     onto?: string,
     expectedCheckout?: RebaseCheckoutIdentity
+  ): Promise<RebaseResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.startScoped(base, root, items, editorScript, onto, expectedCheckout));
+  }
+
+  /**
+   * 한 Start 호출 안에서 검증된 Git 디렉터리와 private 큐 경로만 공유한다.
+   * - 매 접근마다 metadata/실행 환경이 같은지 확인하며 HEAD·todo·충돌 파일 내용은 재사용하지 않는다.
+   * - 완료·충돌·오류 반환 뒤 scope를 해제하므로 다음 Start/Continue는 현재 경로를 새로 읽는다.
+   * @param base/root/items/editorScript/onto/expectedCheckout 공개 Start가 받은 실행 계획과 안전 식별자
+   * @returns 실제 native rebase의 완료·정지·충돌 상태
+   */
+  private async startScoped(
+    base: string, root: boolean, items: RebaseItem[], editorScript: string,
+    onto?: string, expectedCheckout?: RebaseCheckoutIdentity
   ): Promise<RebaseResult> {
     const active = await detectOperation(this.repoRoot);
     if (active === "rebase") {
@@ -281,14 +297,13 @@ export class RebaseService {
 
     // VS Code 확장 호스트의 실행 파일을 node 로 동작시켜 헬퍼를 실행한다.
     const editorCmd = `"${process.execPath}" "${editorScript}"`;
-    const messageEditorEnv = await initializeRebaseMessageQueue(this.repoRoot, todoItems, editorScript);
-    const env: Record<string, string> = {
-      ...messageEditorEnv,
-      GIT_SEQUENCE_EDITOR: `${editorCmd} seq`,
-      GSC_TODO: todoFile,
-    };
-
     try {
+      const messageEditorEnv = await initializeRebaseMessageQueue(this.repoRoot, todoItems, editorScript);
+      const env: Record<string, string> = {
+        ...messageEditorEnv,
+        GIT_SEQUENCE_EDITOR: `${editorCmd} seq`,
+        GSC_TODO: todoFile,
+      };
       await assertRebaseCheckout(this.repoRoot, checkout);
       await runGit(
         [
@@ -336,10 +351,9 @@ export class RebaseService {
     } finally {
       if (!keepTempFiles) {
         safeUnlink(todoFile);
-        await cleanupRebaseMessageQueue(this.repoRoot);
-        for (const opFile of opFiles) {
-          safeUnlink(opFile);
-        }
+        // metadata 교체로 큐 접근이 중단돼도 이 호출이 만든 외부 임시 파일은 반드시 회수한다.
+        try { await cleanupRebaseMessageQueue(this.repoRoot); }
+        finally { for (const opFile of opFiles) safeUnlink(opFile); }
       }
     }
   }

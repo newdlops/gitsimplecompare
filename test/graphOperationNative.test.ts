@@ -7,6 +7,7 @@ import { performance } from "node:perf_hooks";
 import { GitLogService } from "../src/git/gitLogService";
 import { runGit, runGitWithInput } from "../src/git/gitExec";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
+import { setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
 import { disposeWorkingTreeSnapshots } from "../src/git/workingTreeSnapshot";
 import { createOperationGraphPanel } from "./helpers/graphOperationPanel";
 import type { Commit } from "../src/graph/graphTypes";
@@ -51,19 +52,19 @@ test("native checkout, rebase, merge, push, fetch and patch publish accurate his
   await git(["switch", "-qc", "topic"]); await commit("topic.txt", "topic\n");
   await git(["switch", "-q", "main"]); await commit("main.txt", "main\n");
   const service = new GitLogService(root), f = createOperationGraphPanel(t, service); panel = f.panel;
-  let pageReads = 0;
-  const readPage = service.getCommitPage.bind(service);
-  t.mock.method(service, "getCommitPage", async (...args) => { pageReads++; return readPage(...args); });
   assert.equal(await panel.runDirectGraph("ready"), true);
   const actualStatus = service.getVirtualCommits.bind(service);
   t.mock.method(service, "getVirtualCommits", async signal => { await gate.wait(signal); return actualStatus(signal); });
   const results: unknown[] = [];
   /** 첫 변경 payload와 모든 행의 값이 실제 최신 Git과 일치하는지 보조 status 완료 전에 대조한다. */
   const refresh = async (operation: string, action: () => Promise<void>, expectedReads: number) => {
-    const before = pageReads, count = f.messages.length, start = performance.now();
-    await action();
+    // 조기 페이지는 getCommitPage를 거치지 않으므로 실제 공통 실행기의 log 완료를 센다.
+    let pageReads = 0;
+    const unobserve = setGitExecutionObserver(event => { if (event.repoRoot === root && event.command === "log") pageReads++; });
+    const count = f.messages.length, start = performance.now();
+    try { await action(); } finally { unobserve(); }
     const elapsedMs = Math.round(performance.now() - start);
-    assert.equal(pageReads - before, expectedReads, operation);
+    assert.equal(pageReads, expectedReads, operation);
     assert.ok(f.messages.slice(count).some(message => message.type === "graph" || message.type === "graphDelta"), operation);
     assert.equal(panel.workingTree.state?.loading, true, `${operation} must publish while status is still pending`);
     const head = (await git(["rev-parse", "HEAD"])).trim();
@@ -71,7 +72,7 @@ test("native checkout, rebase, merge, push, fetch and patch publish accurate his
     const native = await new GitLogService(root).getCommitPage(300, 0, [], false);
     const values = (commits: Commit[]) => new Map(commits.map(commit => [commit.hash, { parents: commit.parents, refs: [...new Set(commit.refs)].sort() }]));
     assert.deepEqual(values(panel.commits), values(native), operation);
-    results.push({ operation, elapsedMs, historyReads: pageReads - before, historyExact: true, statusStillPending: true });
+    results.push({ operation, elapsedMs, historyReads: pageReads, historyExact: true, statusStillPending: true });
   };
   await service.checkoutLocalBranch("topic");
   await refresh("checkout", () => panel.refreshAfterCheckoutAction(), 0);
