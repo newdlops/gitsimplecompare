@@ -3,6 +3,7 @@
 import type { WorktreeInfo } from "../git/worktreeService";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
 import { SharedGitRead } from "../git/sharedGitRead";
+import type { LocalBranchStatus } from "../graph/graphTypes";
 
 /** Graph reload 뒤에 필요한 PR 게시 강도를 나타낸다. */
 export type GraphRefreshMode = "none" | "stacks" | "pullRequests";
@@ -11,10 +12,10 @@ export interface GraphRefreshRequest { repoRoot: string; cause: string; mode: Gr
 /** Graph reload callback이 stale 여부를 판단할 수 있도록 전달하는 실행 문맥이다. */
 export interface GraphRefreshContext extends GraphRefreshRead { repoRoot: string; cause: string; generation: number; previous?: GraphRefreshRead; }
 /** Git reader가 이미 읽은 데이터도 현재 refresh 세대에만 전달하는 결과다. */
-export interface GraphRefreshRead { fingerprint: string; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
+export interface GraphRefreshRead { fingerprint: string; historyIdentity?: string; localBranches?: readonly LocalBranchStatus[]; refCount?: number; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
 /** UI adapter가 주입하는 Git read, reload, publication, invalidation, logging 경계다. */
 export interface GraphRefreshLifecycleDeps {
-  readFingerprint(repoRoot: string, signal?: AbortSignal): Promise<string | GraphRefreshRead>;
+  readFingerprint(repoRoot: string, signal?: AbortSignal, options?: { includeLocalBranches: boolean; previousRefCount?: number }): Promise<string | GraphRefreshRead>;
   reloadGraph(context: GraphRefreshContext): Promise<void>;
   publishAfterReload(context: GraphRefreshContext, mode: GraphRefreshMode): Promise<void>;
   invalidateReload(reason: string): void;
@@ -27,6 +28,7 @@ interface ResolvedRequest extends GraphRefreshRequest, GraphRefreshRead { sequen
 /** 공유 snapshot의 배열과 worktree/ref 객체를 복사해 서로 다른 소비자의 수정이 섞이지 않게 한다. */
 function cloneFingerprintRead(value: string | GraphRefreshRead): string | GraphRefreshRead {
   return typeof value === "string" ? value : { ...value,
+    localBranches: value.localBranches?.map(item => ({ ...item })),
     worktrees: value.worktrees?.map(item => ({ ...item })),
     remoteTips: value.remoteTips?.map(item => ({ ...item })) };
 }
@@ -92,6 +94,7 @@ export class GraphRefreshLifecycleCoordinator {
   private baselineRead?: GraphRefreshRead;
   private running: ResolvedRequest | undefined;
   private directRunning = false;
+  private directRequest?: Pick<GraphRefreshRequest, "repoRoot" | "cause">;
   private pending: ResolvedRequest | undefined;
   private deferred: GraphRefreshRequest | undefined;
   private unreadIntent: Pick<GraphRefreshRequest, "mode" | "force"> = { mode: "none", force: false };
@@ -109,6 +112,7 @@ export class GraphRefreshLifecycleCoordinator {
     this.baselineRead = undefined;
     this.running = undefined;
     this.directRunning = false;
+    this.directRequest = undefined;
     this.pending = undefined;
     this.deferred = undefined;
     this.unreadIntent = { mode: "none", force: false };
@@ -187,6 +191,7 @@ export class GraphRefreshLifecycleCoordinator {
     const directSequence = ++this.directSequence;
     const generation = ++this.generation;
     this.directRunning = true;
+    this.directRequest = { ...request };
     this.deps.info("graph refresh start", this.fields(request, generation, "direct"));
     try {
       const { fingerprint, ...snapshot } = await this.readFingerprint(request, generation);
@@ -212,6 +217,7 @@ export class GraphRefreshLifecycleCoordinator {
     } finally {
       if (this.isCurrentDirect(request.repoRoot, epoch, directSequence)) {
         this.directRunning = false;
+        this.directRequest = undefined;
         this.consumePending();
       }
     }
@@ -252,6 +258,8 @@ export class GraphRefreshLifecycleCoordinator {
   /** 한 자동 transaction을 실행하고 성공시에만 baseline을 전진시킨 뒤 newest pending을 소비한다. */
   private async run(request: ResolvedRequest, generation: number, epoch: number): Promise<void> {
     const context = { repoRoot: request.repoRoot, cause: request.cause, generation, fingerprint: request.fingerprint,
+      historyIdentity: request.historyIdentity, refCount: request.refCount, ...(this.baselineRead ? { previous: cloneFingerprintRead(this.baselineRead) as GraphRefreshRead } : {}),
+      ...(request.localBranches ? { localBranches: request.localBranches } : {}),
       ...(request.worktrees ? { worktrees: request.worktrees } : {}),
       ...(request.remoteTips ? { remoteTips: request.remoteTips } : {}) };
     const digest = graphRefreshFingerprintDigest(request.fingerprint);
@@ -264,7 +272,7 @@ export class GraphRefreshLifecycleCoordinator {
       if (!superseded) await this.deps.publishAfterReload(context, request.mode);
       if (!this.isCurrent(request.repoRoot, epoch) || this.running !== request) return;
       this.baseline = request.fingerprint;
-      this.baselineRead = { fingerprint: request.fingerprint, worktrees: request.worktrees, remoteTips: request.remoteTips };
+      this.baselineRead = { fingerprint: request.fingerprint, historyIdentity: request.historyIdentity, localBranches: request.localBranches, refCount: request.refCount, worktrees: request.worktrees, remoteTips: request.remoteTips };
       this.deps.info("graph refresh complete", this.fields(request, generation, digest));
     } catch (error) {
       if (this.isCurrent(request.repoRoot, epoch)) this.deps.error("graph refresh error", error, this.fields(request, generation, digest));
@@ -325,7 +333,7 @@ export class GraphRefreshLifecycleCoordinator {
       // 진행 조회를 abort/spawn으로 교체하지 않는다. 실행 중 변경 알림은 최신 pass 하나로 합친다.
       const value = automatic
         ? await this.fingerprintRead!.read({ signal: controller.signal, changed: true, maxCacheAgeMs: 0 })
-        : await this.deps.readFingerprint(request.repoRoot, controller.signal);
+        : await this.deps.readFingerprint(request.repoRoot, controller.signal, { includeLocalBranches: true, previousRefCount: this.baselineRead?.refCount });
       controller.signal.throwIfAborted();
       const snapshot = typeof value === "string" ? { fingerprint: value } : value;
       this.deps.info("graph performance fingerprint", {
@@ -356,6 +364,8 @@ export class GraphRefreshLifecycleCoordinator {
   /** lifecycle 경계에서 자동 실행 중인 최신 reconcile을 deferred로 보존하고 늦은 결과를 stale 처리한다. */
   private invalidate(reason: string): void {
     if (reason === "hidden" || reason === "windowUnfocused") {
+      // 직접 명령의 fingerprint 단계에서 숨겨져도 완료된 Git mutation의 갱신 의도를 잃지 않는다.
+      if (this.directRequest) this.defer({ ...this.directRequest, mode: "none", force: true });
       const current = this.pending
         ? this.mergePending(this.running, this.pending)
         : this.running;
@@ -363,6 +373,7 @@ export class GraphRefreshLifecycleCoordinator {
     }
     this.running = undefined;
     this.directRunning = false;
+    this.directRequest = undefined;
     this.directSequence++;
     this.pending = undefined;
     this.epoch++;

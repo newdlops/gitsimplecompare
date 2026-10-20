@@ -1,0 +1,89 @@
+{
+  "measuredAt": "2026-10-20T03:54:17.306Z",
+  "baselineCommit": "0ae1783f46fe24900439e70d9b8873685d32162a",
+  "baselineVersion": "0.1.72110",
+  "candidateVersion": "0.1.72111",
+  "candidateBenchmarkBundleSha256": "e3daa481c4b21056d21aba940cee9a39e8f78d74369e42d7bafcf4ac906fb933",
+  "conditions": {
+    "files": 1000,
+    "commits": 1000,
+    "branches": 100,
+    "network": "local-bare-only",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "node": "v22.22.2",
+    "repeats": 3,
+    "order": "before/after alternated, fresh fixture per matrix",
+    "operationOrder": [
+      "push",
+      "pull",
+      "fetch",
+      "rebase",
+      "merge",
+      "pr-squash-cherry-pick",
+      "pr-cherry-pick",
+      "cherry-pick",
+      "checkout",
+      "pull-known-history",
+      "fetch-known-history",
+      "fetch-no-change"
+    ]
+  },
+  "methodology": [
+    "Each matrix uses real Git services and local bare remotes; no user repository or GitHub writes.",
+    "Graph publication is measured at the extension message boundary, not browser paint. Final HEAD, parents and refs are compared with a fresh native Git history read.",
+    "Operations share one fixture in the listed order. The ordinary fetch can reuse history introduced by the preceding pull; explicit known-history and no-change cases are also recorded.",
+    "merge means the application branch squash-merge action. A real no-ff merge is covered by graphOperationNative.test.ts.",
+    "Node CPU and sampled Node RSS do not include whole-system Git CPU/memory. Registry job peaks can include closing process groups.",
+    "Host load and process startup were variable. Timings are observations from this machine, not a guaranteed improvement."
+  ],
+  "resources": {
+    "totalGitExecutions": {
+      "before": [
+        254,
+        255,
+        253
+      ],
+      "after": [
+        212,
+        209,
+        207
+      ]
+    },
+    "totalNodeCpuMs": {
+      "before": [
+        1796,
+        2012,
+        1187
+      ],
+      "after": [
+        1955,
+        1486,
+        936
+      ]
+    },
+    "maximumRegisteredGitJobs": {
+      "before": 6,
+      "after": 6
+    },
+    "maximumSampledNodeRssIncreaseMiB": {
+      "before": 9,
+      "after": 14
+    }
+  },
+  "all72NativeHistoryComparisonsPassed": true,
+  "measurements": [
+    {"operation":"push","operationMs":{"before":[4560,6336,7628],"after":[4721,3734,3184]},"graphMs":{"before":[563,664,505],"after":[425,295,249]},"settledMs":{"before":[6168,7349,8538],"after":[6059,4424,3826]},"processes":{"before":[27,27,27],"after":[24,24,24]},"operationProcesses":{"before":[21,21,21],"after":[19,19,19]},"graphProcesses":{"before":[6,6,6],"after":[5,5,5]},"nodeCpuMs":{"before":[181,166,170],"after":[178,148,113]},"peakRssDeltaMiB":{"before":[3,1,0],"after":[0,6,0]},"peakProcesses":{"before":[3,3,3],"after":[3,3,3]},"graphHistoryReads":{"before":[0,0,0],"after":[0,0,0]}},
+    {"operation":"pull","operationMs":{"before":[1759,2000,1432],"after":[2250,2544,926]},"graphMs":{"before":[972,1041,573],"after":[542,618,376]},"settledMs":{"before":[4408,4125,2397],"after":[3623,4064,1763]},"processes":{"before":[15,15,13],"after":[14,14,12]},"operationProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphProcesses":{"before":[11,11,9],"after":[10,10,8]},"nodeCpuMs":{"before":[180,131,69],"after":[111,117,52]},"peakRssDeltaMiB":{"before":[5,7,6],"after":[7,7,8]},"peakProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"fetch","operationMs":{"before":[2497,379,434],"after":[1231,1205,415]},"graphMs":{"before":[998,699,475],"after":[461,519,271]},"settledMs":{"before":[5268,1789,1510],"after":[2347,2509,1146]},"processes":{"before":[13,11,11],"after":[7,7,7]},"operationProcesses":{"before":[1,1,1],"after":[1,1,1]},"graphProcesses":{"before":[12,10,10],"after":[6,6,6]},"nodeCpuMs":{"before":[106,97,49],"after":[61,65,27]},"peakRssDeltaMiB":{"before":[6,0,1],"after":[1,3,2]},"peakProcesses":{"before":[4,4,4],"after":[2,2,2]},"graphHistoryReads":{"before":[1,1,1],"after":[0,0,0]}},
+    {"operation":"rebase","operationMs":{"before":[6987,2802,1965],"after":[2985,4342,2632]},"graphMs":{"before":[1341,2222,567],"after":[962,444,381]},"settledMs":{"before":[9255,6498,3608],"after":[6541,6015,4074]},"processes":{"before":[30,33,32],"after":[27,26,26]},"operationProcesses":{"before":[20,20,20],"after":[15,15,15]},"graphProcesses":{"before":[10,13,12],"after":[12,11,11]},"nodeCpuMs":{"before":[228,189,102],"after":[248,185,133]},"peakRssDeltaMiB":{"before":[2,5,4],"after":[9,4,0]},"peakProcesses":{"before":[4,6,4],"after":[6,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"merge","operationMs":{"before":[4072,3495,3971],"after":[7154,3473,3019]},"graphMs":{"before":[738,1282,533],"after":[1244,456,554]},"settledMs":{"before":[5669,5599,5565],"after":[11252,4448,4264]},"processes":{"before":[26,26,28],"after":[25,23,23]},"operationProcesses":{"before":[16,16,16],"after":[14,14,14]},"graphProcesses":{"before":[10,10,12],"after":[11,9,9]},"nodeCpuMs":{"before":[163,146,169],"after":[262,140,101]},"peakRssDeltaMiB":{"before":[5,3,0],"after":[0,0,1]},"peakProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"pr-squash-cherry-pick","operationMs":{"before":[9646,10546,3762],"after":[10761,6911,4346]},"graphMs":{"before":[1518,2112,1330],"after":[1944,839,358]},"settledMs":{"before":[12132,14171,6272],"after":[16334,9397,5152]},"processes":{"before":[40,38,41],"after":[35,35,33]},"operationProcesses":{"before":[28,28,28],"after":[24,24,24]},"graphProcesses":{"before":[12,10,13],"after":[11,11,9]},"nodeCpuMs":{"before":[268,287,190],"after":[428,252,124]},"peakRssDeltaMiB":{"before":[0,0,3],"after":[0,6,0]},"peakProcesses":{"before":[4,4,6],"after":[4,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"pr-cherry-pick","operationMs":{"before":[6916,19835,6240],"after":[7834,5054,2399]},"graphMs":{"before":[492,2150,947],"after":[423,1012,460]},"settledMs":{"before":[8377,25359,8088],"after":[8907,7503,5839]},"processes":{"before":[43,43,41],"after":[34,34,36]},"operationProcesses":{"before":[31,31,31],"after":[25,25,25]},"graphProcesses":{"before":[12,12,10],"after":[9,9,11]},"nodeCpuMs":{"before":[193,378,195],"after":[258,198,157]},"peakRssDeltaMiB":{"before":[0,1,0],"after":[14,0,2]},"peakProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"cherry-pick","operationMs":{"before":[151,544,148],"after":[261,246,276]},"graphMs":{"before":[667,2000,614],"after":[571,399,571]},"settledMs":{"before":[2472,4955,1364],"after":[2772,1689,1989]},"processes":{"before":[13,13,11],"after":[12,12,12]},"operationProcesses":{"before":[1,1,1],"after":[1,1,1]},"graphProcesses":{"before":[12,12,10],"after":[11,11,11]},"nodeCpuMs":{"before":[91,115,58],"after":[119,55,113]},"peakRssDeltaMiB":{"before":[1,3,6],"after":[2,3,0]},"peakProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphHistoryReads":{"before":[1,1,1],"after":[1,1,1]}},
+    {"operation":"checkout","operationMs":{"before":[474,1606,379],"after":[773,421,299]},"graphMs":{"before":[514,1573,416],"after":[559,428,186]},"settledMs":{"before":[1634,5201,1211],"after":[2259,1465,869]},"processes":{"before":[10,10,10],"after":[9,9,9]},"operationProcesses":{"before":[3,3,3],"after":[3,3,3]},"graphProcesses":{"before":[7,7,7],"after":[6,6,6]},"nodeCpuMs":{"before":[58,100,35],"after":[67,50,28]},"peakRssDeltaMiB":{"before":[2,2,3],"after":[3,0,4]},"peakProcesses":{"before":[2,2,2],"after":[2,2,2]},"graphHistoryReads":{"before":[0,0,0],"after":[0,0,0]}},
+    {"operation":"pull-known-history","operationMs":{"before":[2009,6790,1031],"after":[1890,2077,1352]},"graphMs":{"before":[1452,2656,472],"after":[319,1623,163]},"settledMs":{"before":[4370,10950,2061],"after":[2730,5148,1804]},"processes":{"before":[13,13,13],"after":[9,9,9]},"operationProcesses":{"before":[4,4,4],"after":[4,4,4]},"graphProcesses":{"before":[9,9,9],"after":[5,5,5]},"nodeCpuMs":{"before":[133,226,48],"after":[105,132,25]},"peakRssDeltaMiB":{"before":[5,9,1],"after":[2,3,0]},"peakProcesses":{"before":[4,4,4],"after":[2,2,2]},"graphHistoryReads":{"before":[1,1,1],"after":[0,0,0]}},
+    {"operation":"fetch-known-history","operationMs":{"before":[1102,1211,630],"after":[587,1300,401]},"graphMs":{"before":[1049,992,395],"after":[335,379,225]},"settledMs":{"before":[3332,3385,1935],"after":[1560,2133,1216]},"processes":{"before":[12,14,12],"after":[8,8,8]},"operationProcesses":{"before":[1,1,1],"after":[1,1,1]},"graphProcesses":{"before":[11,13,11],"after":[7,7,7]},"nodeCpuMs":{"before":[129,108,38],"after":[59,88,31]},"peakRssDeltaMiB":{"before":[2,4,0],"after":[4,6,2]},"peakProcesses":{"before":[5,5,5],"after":[3,3,3]},"graphHistoryReads":{"before":[1,1,1],"after":[0,0,0]}},
+    {"operation":"fetch-no-change","operationMs":{"before":[1267,735,555],"after":[629,1295,285]},"graphMs":{"before":[671,900,856],"after":[275,333,266]},"settledMs":{"before":[3334,2620,2703],"after":[1664,2551,1303]},"processes":{"before":[12,12,14],"after":[8,8,8]},"operationProcesses":{"before":[1,1,1],"after":[1,1,1]},"graphProcesses":{"before":[11,11,13],"after":[7,7,7]},"nodeCpuMs":{"before":[66,69,64],"after":[59,56,32]},"peakRssDeltaMiB":{"before":[2,5,0],"after":[1,3,2]},"peakProcesses":{"before":[5,5,5],"after":[3,3,3]},"graphHistoryReads":{"before":[1,1,1],"after":[0,0,0]}}
+  ]
+}

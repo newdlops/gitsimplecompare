@@ -12,6 +12,8 @@ const workspaceRoot = process.cwd();
 const pushSmoke = process.env.GSC_EXTENSION_TEST_KIND === "pushSmoke";
 const onboardingSmoke = process.env.GSC_EXTENSION_TEST_KIND === "repositoryOnboardingSmoke";
 const blameSmoke = process.env.GSC_EXTENSION_TEST_KIND === "blameGutterSmoke";
+const graphSmoke = process.env.GSC_EXTENSION_TEST_KIND === "graphInitialSmoke";
+const stashSmoke = process.env.GSC_EXTENSION_TEST_KIND === "stashContentsSmoke";
 const extensionTestsPath = path.join(workspaceRoot, "out-test-extension", `${process.env.GSC_EXTENSION_TEST_KIND || "extensionSmoke"}.js`);
 
 /** 현재 platform에 이미 설치된 VS Code executable을 우선 찾아 불필요한 download를 막는다. */
@@ -45,7 +47,7 @@ async function createWorkspaceFixture() {
   await writeFile(path.join(userSettings, "settings.json"), JSON.stringify({
     "git.enabled": onboardingSmoke && process.env.GSC_ONBOARDING_EMPTY_WINDOW ? nativeEnabled : !nativeEnabled,
     "git.autorefresh": true, "git.autofetch": false,
-    ...(blameSmoke ? { "chat.disableAIFeatures": true } : {}),
+    ...(blameSmoke || graphSmoke || stashSmoke ? { "chat.disableAIFeatures": true } : {}),
   }));
   if (process.env.GSC_ONBOARDING_EMPTY_WINDOW) return { directory, repoRoot };
   if (process.env.GSC_GIT_STARTUP_UI_CAPTURE) return { directory, repoRoot, launchPath: repoRoot };
@@ -86,6 +88,7 @@ async function main() {
       extensionTestsEnv: {
         GSC_EXTENSION_TEST_FIXTURE: fixture.repoRoot,
         GSC_EXTENSION_TEST_PROFILE: path.join(fixture.directory, "profile"),
+        ...(graphSmoke || stashSmoke ? { GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239" } : {}),
         ...(blameSmoke ? {
           GSC_BLAME_RESULT_DIR: process.env.GSC_BLAME_RESULT_DIR || path.join(workspaceRoot, "test-results", "native-blame"),
           GSC_TEST_MAIN_INSPECTOR_PORT: process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239",
@@ -103,7 +106,8 @@ async function main() {
         "--disable-extensions", "--skip-welcome", "--disable-workspace-trust",
         `--user-data-dir=${path.join(fixture.directory, "profile")}`,
         `--extensions-dir=${path.join(fixture.directory, "extensions")}`,
-        ...(blameSmoke ? [`--inspect=127.0.0.1:${process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239"}`, "--new-window"] : []),
+        ...(blameSmoke || graphSmoke || stashSmoke ? [`--inspect=127.0.0.1:${process.env.GSC_TEST_MAIN_INSPECTOR_PORT || "9239"}`, "--new-window"] : []),
+        ...(stashSmoke ? ["--locale=en"] : []),
         ...(process.env.GSC_TEST_DEBUG_PORT ? [`--remote-debugging-port=${process.env.GSC_TEST_DEBUG_PORT}`] : []),
         ...(fixture.launchPath ? [fixture.launchPath] : []),
       ],

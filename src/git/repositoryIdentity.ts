@@ -2,6 +2,7 @@
 // - 전역 캐시는 두지 않아 rebase 안전 검사의 각 시점마다 실제 checkout을 새로 확인한다.
 import { realpath } from "node:fs/promises";
 import { GitError, runGit } from "./gitExec";
+import { rememberGitOperationDirectory, reuseGitOperationDirectory } from "./gitStatePathScope";
 
 /** detached HEAD에서는 branch와 branchRef가 비어 있는 현재 checkout snapshot이다. */
 export interface GitCheckoutIdentity {
@@ -17,6 +18,12 @@ export interface GitCheckoutIdentity {
  * @returns CLI가 덧붙인 마지막 개행만 제거한 경로. 이름 안의 개행과 끝 공백은 보존한다.
  */
 export async function readGitDirectory(repoRoot: string, signal?: AbortSignal): Promise<string> {
+  // 취소 가능한 UI 소비자는 scope의 공유 promise를 쓰지 않아 다른 소비자의 수명을 빼앗지 않는다.
+  return signal ? readDirectory(repoRoot, signal) : reuseGitOperationDirectory(repoRoot, () => readDirectory(repoRoot));
+}
+
+/** Git이 반환한 실제 디렉터리를 매번 새로 해석하는 원본 조회다. HEAD/branch 검증은 별도 경로로 유지한다. */
+async function readDirectory(repoRoot: string, signal?: AbortSignal): Promise<string> {
   const output = await runGit(["rev-parse", "--absolute-git-dir"], repoRoot, { signal });
   const ending = process.platform === "win32" && output.endsWith("\r\n") ? 2 : output.endsWith("\n") ? 1 : 0;
   const directory = output.slice(0, output.length - ending);
@@ -72,6 +79,7 @@ async function readCheckoutIdentity(repoRoot: string, headReference: "HEAD" | "H
   }
   const gitDir = await realpath(directory);
   signal?.throwIfAborted();
+  if (!signal) await rememberGitOperationDirectory(repoRoot, gitDir);
   return {
     gitDir,
     head: record[1],

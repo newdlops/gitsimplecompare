@@ -1,7 +1,19 @@
 import type { Commit } from "../graph/graphTypes";
+import type { GraphRefreshContext } from "./graphRefreshCoordinator";
 
 interface RefState { head: string; roots: Set<string>; branches: Map<string, string>; other: Map<string, string> }
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
+
+/**
+ * 자동/명령 갱신에서 metadata와 DAG의 동등성이 확인된 경우에만 이력을 재사용한다.
+ * @param context 이전 성공 게시와 이번 Git snapshot @param commits 현재 읽은 실제 DAG
+ * @returns 수동/첫 로드, metadata 불확실·변경, replace ref는 전체 Git log 경로를 사용한다.
+ */
+export function canReuseGraphSnapshot(context: GraphRefreshContext, commits: readonly Commit[]): boolean {
+  return !["ready", "manual"].includes(context.cause) && !!context.historyIdentity &&
+    context.previous?.historyIdentity === context.historyIdentity && !context.fingerprint.includes("\nrefs/replace/") &&
+    canReuseGraphHistory(context.previous.fingerprint, context.fingerprint, commits);
+}
 
 /**
  * ref 이름·HEAD만 바뀌고 도달 가능한 커밋 집합은 같은지 이미 읽은 DAG로 증명한다.

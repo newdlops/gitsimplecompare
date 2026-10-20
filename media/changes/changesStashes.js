@@ -7,6 +7,12 @@
     {
       noStashes: "No stashes.",
       moreActions: "More Actions...",
+      viewStashContents: "View Stash Contents",
+      viewStagedStashContents: "View Staged Stash Changes",
+      loadingStashContents: "Loading stash contents...",
+      noSavedWorkingTreeChanges: "No saved working tree changes. View staged changes from the menu.",
+      stashContentsLoadFailed: "Could not load stash contents. Collapse and expand to retry.",
+      openStashFile: "View saved changes for {0}",
       applyStash: "Apply Stash",
       popStash: "Pop Stash",
       dropStash: "Drop Stash",
@@ -20,8 +26,20 @@
   // 렌더가 갱신되어 DOM 이 교체되어도 hash 기반 동일 stash의 조회 결과와 진행 상태를 재사용한다.
   const loadingKeys = new Set();
   const filesByKey = new Map();
+  const MAX_CACHED_STASHES = 16;
+  const MAX_CACHED_FILES = 40000;
   let renderFileIcon = () => "";
   let webviewApi;
+
+  /** 최근 목록만 보관해 많은 대형 stash를 차례로 펼쳐도 닫힌 목록이 계속 메모리에 쌓이지 않게 한다. */
+  function rememberFiles(key, files) {
+    filesByKey.delete(key); filesByKey.set(key, files);
+    let count = Array.from(filesByKey.values()).reduce((sum, value) => sum + value.length, 0);
+    while (filesByKey.size > MAX_CACHED_STASHES || (filesByKey.size > 1 && count > MAX_CACHED_FILES)) {
+      const oldest = filesByKey.keys().next().value;
+      count -= filesByKey.get(oldest).length; filesByKey.delete(oldest);
+    }
+  }
 
   /**
    * HTML 본문과 data-* 속성에 넣을 문자열의 특수문자를 이스케이프한다.
@@ -104,9 +122,10 @@
     const slash = path.lastIndexOf("/");
     const fileName = slash >= 0 ? path.slice(slash + 1) : path;
     const directory = slash >= 0 ? path.slice(0, slash) : "";
+    const tooltip = T.openStashFile.replace("{0}", path);
     return (
-      `<div class="row file stash-file" data-status="${esc(change.status)}" ` +
-      `data-ref="${esc(ref)}" data-path="${esc(path)}" title="${esc(path)}">` +
+      `<div class="row file stash-file" role="button" tabindex="0" data-status="${esc(change.status)}" ` +
+      `data-ref="${esc(ref)}" data-path="${esc(path)}" title="${esc(tooltip)}" aria-label="${esc(tooltip)}">` +
       `<span class="twistie"></span>` +
       `<span class="icon codicon ${statusCodicon(change.status)}"></span>` +
       renderFileIcon(path) +
@@ -114,6 +133,11 @@
       (directory ? `<span class="dir">${esc(directory)}</span>` : "") +
       `</div>`
     );
+  }
+
+  /** 파일을 아직 못 읽었거나 전체 변경이 비어 있을 때도 현재 상태와 staged 조회 경로를 설명한다. */
+  function filesStateHtml(text, error) {
+    return `<p class="empty stash-files-state" role="${error ? "alert" : "status"}">${esc(text)}</p>`;
   }
 
   /**
@@ -131,8 +155,8 @@
     const chevron = expanded ? "codicon-chevron-down" : "codicon-chevron-right";
     const meta = [stash.branch, stash.date].filter(Boolean).join(" · ");
     const files = expanded && filesLoaded
-      ? cachedFiles.map((file) => fileHtml(stash.ref, file, renderFileIcon)).join("")
-      : "";
+      ? cachedFiles.length ? cachedFiles.map((file) => fileHtml(stash.ref, file, renderFileIcon)).join("") : filesStateHtml(T.noSavedWorkingTreeChanges)
+      : expanded && loadingKeys.has(key) ? filesStateHtml(T.loadingStashContents) : "";
     const tooltip = disclosureTooltip(stash.message || stash.ref, expanded);
     return (
       `<div class="stash${expanded ? "" : " collapsed"}" data-ref="${esc(stash.ref)}" ` +
@@ -195,6 +219,9 @@
    */
   function menuNodes(vscode, target) {
     return [
+      { label: T.viewStashContents, onClick: () => post(vscode, "viewStashContents", target) },
+      { label: T.viewStagedStashContents, onClick: () => post(vscode, "viewStagedStashContents", target) },
+      { separator: true },
       { label: T.applyStash, onClick: () => post(vscode, "applyStash", target) },
       { label: T.popStash, onClick: () => post(vscode, "popStash", target) },
       { separator: true },
@@ -235,6 +262,8 @@
     loadingKeys.add(key);
     stash.dataset.filesLoading = "true";
     stash.setAttribute("aria-busy", "true");
+    const container = stash.querySelector(".stash-files");
+    if (container) container.innerHTML = filesStateHtml(T.loadingStashContents);
     post(vscode, "loadStashFiles", {
       ...selection(stash),
       stashKey: key,
@@ -264,9 +293,10 @@
     if (!files || !container) {
       return false;
     }
-    container.innerHTML = files
+    rememberFiles(stash.dataset.key, files);
+    container.innerHTML = files.length ? files
       .map((file) => fileHtml(stash.dataset.ref, file, renderFileIcon))
-      .join("");
+      .join("") : filesStateHtml(T.noSavedWorkingTreeChanges);
     stash.dataset.filesLoaded = "true";
     if (webviewApi) {
       bindFiles(container, webviewApi);
@@ -305,6 +335,7 @@
         // 접힌 9k-file stash의 DOM을 즉시 버려 이후 layout/render 비용을 남기지 않는다.
         container.replaceChildren();
       }
+      if ((filesByKey.get(key)?.length || 0) > MAX_CACHED_FILES) filesByKey.delete(key);
     }
   }
 
@@ -378,6 +409,9 @@
    */
   function bindFiles(rootEl, vscode) {
     rootEl.querySelectorAll(".stash-file").forEach((file) => {
+      file.addEventListener("keydown", event => {
+        if ((event.key === "Enter" || event.key === " ") && event.target === file) { event.preventDefault(); event.stopPropagation(); file.click(); }
+      });
       file.addEventListener("click", () =>
         post(vscode, "openStashFile", {
           ...selection(file.closest(".stash")),
@@ -420,7 +454,7 @@
       loadingKeys.delete(requestedKey);
     }
     if (result?.key && Array.isArray(result.files)) {
-      filesByKey.set(result.key, result.files);
+      rememberFiles(result.key, result.files);
     }
     document.querySelectorAll(".stash").forEach((stash) => {
       if (
@@ -428,6 +462,10 @@
       ) {
         delete stash.dataset.filesLoading;
         stash.removeAttribute("aria-busy");
+        if ((!result || result.key !== requestedKey || !Array.isArray(result.files)) && !stash.classList.contains("collapsed")) {
+          const container = stash.querySelector(".stash-files");
+          if (container) container.innerHTML = filesStateHtml(T.stashContentsLoadFailed, true);
+        }
       }
       if (result?.key === stash.dataset.key) {
         stash.dataset.filesLoaded = "true";

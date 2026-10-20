@@ -21,8 +21,8 @@ function fixture(stage?: string) {
     reindexGraphBranchContainment: () => step("containment") };
   const references = branches.map(branch => ({ name: branch.name, hash: branch.hash, fullRef: `refs/heads/${branch.name}` }));
   const fingerprint = (head: string) => [head, "branch", ...references.map(tip => `${tip.fullRef} ${tip.hash}`), "--worktrees--"].join("\n");
-  const context = { repoRoot: service.repoRoot, cause: "checkout", generation: 1, remoteTips: [], references,
-    fingerprint: fingerprint(commits[1].hash), previous: { fingerprint: fingerprint(commits[0].hash), references } };
+  const context = { repoRoot: service.repoRoot, cause: "checkout", generation: 1, remoteTips: [], references, historyIdentity: "same-topology",
+    fingerprint: fingerprint(commits[1].hash), previous: { fingerprint: fingerprint(commits[0].hash), references, historyIdentity: "same-topology" } };
   const panel: any = Object.assign(Object.create(GitGraphPanel.prototype), {
     logService: service, loadGeneration: 7, disposed: false, commits, virtualCommits: [], rangeStartIndex: 0,
     branchLoading: { cancel: () => undefined }, graphReads: { cancel: () => undefined },

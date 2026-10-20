@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72110",
+  "version": "0.1.72111",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
@@ -124,6 +124,18 @@
         "title": "%cmd.showChanges%",
         "category": "Git Simple Compare",
         "icon": "$(git-compare)"
+      },
+      {
+        "command": "gitSimpleCompare.viewStashContents",
+        "title": "%cmd.viewStashContents%",
+        "category": "Git Simple Compare",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "gitSimpleCompare.viewStagedStashContents",
+        "title": "%cmd.viewStagedStashContents%",
+        "category": "Git Simple Compare",
+        "icon": "$(check)"
       },
       {
         "command": "gitSimpleCompare.showExplorerComparison",

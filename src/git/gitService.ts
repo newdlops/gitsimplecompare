@@ -15,7 +15,7 @@ import {
 } from "./fileContentReader";
 import { bulkCheckinConfigArgs } from "./largeChangeSet";
 import { runGitWithPaths } from "./pathspecExec";
-import { StashService, type StashSelection } from "./stashService";
+import { StashService, type StashSelection, type StashFileComparison } from "./stashService";
 import { attachStatusStats } from "./statusStats";
 import {
   appendIgnoreEntries,
@@ -431,6 +431,16 @@ export class GitService {
    */
   async stashShowFiles(ref: string): Promise<FileChange[]> {
     return new StashService(this.repoRoot).files(ref);
+  }
+
+  /** 선택 stash의 tracked/미추적 tree와 rename 원본을 고정해 읽기 전용 diff 계획을 반환한다. */
+  async stashFileComparison(ref: string, change: FileChange, staged = false): Promise<StashFileComparison> {
+    return new StashService(this.repoRoot).fileComparison(ref, change, staged);
+  }
+
+  /** stash가 저장한 index snapshot의 파일 변경을 읽기 전용으로 조회한다. */
+  async stashStagedFiles(ref: string): Promise<FileChange[]> {
+    return new StashService(this.repoRoot).stagedFiles(ref);
   }
 
   /** stash 를 작업트리에 적용한다(`git stash apply`). */

@@ -18,6 +18,7 @@ import {
 } from "./stashExec";
 import { assertCurrentBranchHead } from "./refSafety";
 import { OperationUndoStore } from "./operationUndoStore";
+import { GitStatePathIdentityError, withGitStatePathScope } from "./gitStatePathScope";
 
 /** deferred rebase 실행에 필요한 입력값 */
 export interface DeferredCommitRebaseInput {
@@ -77,11 +78,16 @@ type CommitApplyResult = "applied" | "skipped" | "conflicts";
 export async function runDeferredCommitRebase(
   input: DeferredCommitRebaseInput
 ): Promise<DeferredCommitRebaseResult> {
+  return withGitStatePathScope(input.repoRoot, () => runDeferredCommitRebaseScoped(input));
+}
+
+/** PR/브랜치 재적용 한 번의 private 상태 경로를 공유하되 각 커밋의 현재 브랜치 검증은 유지한다. */
+async function runDeferredCommitRebaseScoped(input: DeferredCommitRebaseInput): Promise<DeferredCommitRebaseResult> {
   const commits = uniqueHashes(input.commits);
   if (!commits.length) {
     throw new Error(`${input.label} has no commits to replay.`);
   }
-  await clearPendingDeferredCommitRebase(input.repoRoot).catch(() => undefined);
+  await clearPendingDeferredCommitRebase(input.repoRoot).catch(error => { if (error instanceof GitStatePathIdentityError) throw error; });
   const deferred: string[] = [];
   const operation = input.operation ?? "cherry-pick";
   let operationHead = input.beforeHead;

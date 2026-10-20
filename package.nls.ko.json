@@ -1,4 +1,6 @@
 {
+  "cmd.viewStashContents": "Stash 내용 보기",
+  "cmd.viewStagedStashContents": "Stash의 스테이징 변경 보기",
   "cmd.getStarted": "Git Simple Compare 시작하기",
   "welcome.repositorySetupEntry": "[Git Simple Compare 시작하기](command:gitSimpleCompare.getStarted)",
   "cmd.cloneRepository": "저장소 복제...",

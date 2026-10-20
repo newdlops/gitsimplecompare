@@ -9,6 +9,7 @@ import { GitError } from "../git/gitExec";
 import { FileChange, StashEntry } from "../git/gitTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
 import { logError, logInfo } from "../ui/outputLog";
+import { LruCache } from "../utils/lruCache";
 
 /** 웹뷰의 일반 render payload로 보낼 stash 메타데이터. 파일 목록은 직접 메시지로 분리한다. */
 export type StashView = StashEntry;
@@ -29,7 +30,8 @@ export interface StashFilesLoadResult {
 }
 
 /** `${root}@${ref}@${hash}` → 파일 목록 캐시(같은 stash 항목이면 재사용). */
-const fileCache = new Map<string, FileChange[]>();
+const fileCache = new LruCache<string, FileChange[]>(16, 8 * 1024 * 1024,
+  (key, files) => key.length * 2 + files.reduce((bytes, file) => bytes + 128 + (file.path.length + (file.oldPath?.length ?? 0)) * 2, 0));
 
 /** 동일 stash 가 렌더 사이에 다시 요청돼도 하나의 git 프로세스만 기다리게 하는 진행 중 조회 맵. */
 const fileLoads = new Map<string, Promise<FileChange[]>>();
@@ -322,8 +324,49 @@ export async function openStashFile(
   arg: Exclude<StashCommandSelection, string> & { path: string }
 ): Promise<void> {
   if (!arg?.path) return;
-  const { root, entry } = await captureSelection(deps, arg);
-  const fileName = arg.path.slice(arg.path.lastIndexOf("/") + 1);
-  // stash 커밋의 첫 부모(^1)는 stash 가 만들어진 시점의 상태다.
-  await openRefVsRefDiff(root, `${entry.hash}^1`, entry.hash, arg.path, fileName);
+  const captured = await captureSelection(deps, arg);
+  await openCapturedStashFile(captured, arg.path);
+}
+
+/**
+ * stash 메뉴/명령 팔레트에서 파일을 골라 저장된 실제 내용을 읽기 전용 diff로 연다.
+ * @param deps 저장소와 조회 캐시 의존성 @param selection 렌더 당시 stash. 생략하면 활성 저장소에서 고른다.
+ */
+export async function viewStashContents(deps: CommandDeps, selection?: StashCommandSelection, staged = false): Promise<void> {
+  try {
+    const title = staged ? vscode.l10n.t("View Staged Stash Changes") : vscode.l10n.t("View Stash Contents");
+    if (!selection) {
+      const svc = activeService(deps);
+      if (!svc) { void vscode.window.showInformationMessage(vscode.l10n.t("Select a repository first.")); return; }
+      const entries = await svc.listStashes();
+      if (!entries.length) { void vscode.window.showInformationMessage(vscode.l10n.t("No stashes.")); return; }
+      const chosen = await vscode.window.showQuickPick(entries.map(entry => ({ label: entry.ref, description: entry.message, detail: entry.branch, entry })),
+        { title, placeHolder: vscode.l10n.t("Select a stash to view"), matchOnDescription: true });
+      if (!chosen) return;
+      selection = { ref: chosen.entry.ref, hash: chosen.entry.hash, repoRoot: svc.repoRoot };
+    }
+    const captured = await captureSelection(deps, selection);
+    const files = staged ? await captured.svc.stashStagedFiles(captured.entry.hash)
+      : await loadStashFiles(captured.svc, captured.root, captured.entry, stashFileCacheKey(captured.root, captured.entry));
+    if (!files.length) { void vscode.window.showInformationMessage(staged ? vscode.l10n.t("This stash has no staged file changes.")
+      : vscode.l10n.t("No saved working tree changes. View staged changes from the menu.")); return; }
+    const chosen = await vscode.window.showQuickPick(files.map(file => ({ label: file.path, description: file.status,
+      detail: file.oldPath, file })), { title,
+      placeHolder: vscode.l10n.t("Select a file to view its saved changes"), matchOnDescription: true });
+    if (chosen) await openCapturedStashFile(captured, chosen.file.path, staged, chosen.file);
+  } catch (error) {
+    logError("stash contents open failed", error);
+    void vscode.window.showErrorMessage(vscode.l10n.t("Could not open stash contents: {0}", errText(error)));
+  }
+}
+
+/** 이미 고정한 저장소/hash와 캐시의 실제 파일만 사용해 picker 대기 중 저장소/번호 이동을 격리한다. */
+async function openCapturedStashFile(captured: Awaited<ReturnType<typeof captureSelection>>, relativePath: string, staged = false, selected?: FileChange): Promise<void> {
+  const { root, svc, entry } = captured;
+  const change = selected ?? (await loadStashFiles(svc, root, entry, stashFileCacheKey(root, entry))).find(file => file.path === relativePath);
+  if (!change) throw new Error("The selected file is not part of this stash. Refresh the stash contents.");
+  const comparison = await svc.stashFileComparison(entry.hash, change, staged);
+  const fileName = relativePath.slice(relativePath.lastIndexOf("/") + 1);
+  await openRefVsRefDiff(root, comparison.base, comparison.target, comparison.path, fileName, comparison.originalPath,
+    { leftLabel: vscode.l10n.t("Base"), rightLabel: `${entry.ref} · ${staged ? `${vscode.l10n.t("Staged")} · ` : ""}${entry.hash.slice(0, 8)}` });
 }

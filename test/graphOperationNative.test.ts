@@ -89,7 +89,8 @@ test("native checkout, rebase, merge, push, fetch and patch publish accurate his
   await git(["fetch", "-q", "--no-tags", "origin"]);
   await refresh("fetch", () => panel.refreshAfterGraphAction(), 1);
   await runGitWithInput(["apply"], root, "diff --git a/base.txt b/base.txt\n--- a/base.txt\n+++ b/base.txt\n@@ -1 +1 @@\n-base\n+patched\n");
-  await refresh("patch", () => panel.refreshAfterGraphAction(), 1);
+  await refresh("patch", () => panel.refreshAfterGraphAction(), 0);
+  await refresh("no-op fetch", async () => { await service.fetchAll(); await panel.refreshAfterFetchAction(); }, 0);
   gate.release();
   const deadline = Date.now() + 10000;
   while (panel.workingTree.state?.loading && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 20));

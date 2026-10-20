@@ -64,10 +64,10 @@ export function logGraphPerformancePhase(
  */
 export function logGraphBranchSnapshot(
   trace: GraphPerformanceTrace | undefined, data: Awaited<ReturnType<typeof loadGraphLocalBranchData>>,
-  reusedWorktrees: boolean, repoRoot: string, filterMode: string
+  reusedWorktrees: boolean, repoRoot: string, filterMode: string, reusedLocalBranches = false
 ): void {
   const { branches, worktrees, timings } = data;
-  logGraphPerformancePhase(trace, "localBranches", timings.localBranchesMs, { count: branches.length });
+  logGraphPerformancePhase(trace, "localBranches", timings.localBranchesMs, { count: branches.length, source: reusedLocalBranches ? "fingerprint" : "git" });
   logGraphPerformancePhase(trace, "worktrees", timings.worktreesMs, { count: worktrees.length, reused: reusedWorktrees });
   logGraphPerformancePhase(trace, "branchSnapshot", timings.totalMs);
   logInfo("graph branch status sent", {

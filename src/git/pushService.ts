@@ -2,7 +2,7 @@
 // - 일반 push 가 upstream 이름 불일치나 미설정 상태에서 실패하지 않도록, remote 가 있으면
 //   현재 로컬 브랜치명과 같은 remote branch 로 publish/upstream 설정할 계획을 계산한다.
 import { GitError, runGit } from "./gitExec";
-import { pushBranchCommits, pushConfigurationFingerprint, readPushConfiguration, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
+import { pushValidatedBranchCommits, pushConfigurationFingerprint, readPushConfiguration, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
 import type { GitConfigSnapshot } from "./gitConfigSnapshot";
 import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
 
@@ -208,7 +208,7 @@ async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: Forc
   await validatePushPlan(repoRoot, plan);
   let execution: PushExecutionResult | undefined;
   if (!force) {
-    execution = await pushBranchCommits(repoRoot, {
+    execution = await pushValidatedBranchCommits(repoRoot, {
       branch: plan.branch!, remote: plan.remote!, head: plan.snapshot.head, targetRef: plan.snapshot.targetRef,
     }, { ...options, setUpstream: false, requireCurrentBranch: true,
       approvedConfigurationFingerprint: plan.snapshot.configFingerprint });

@@ -26,6 +26,9 @@ export class GraphLocalBranchTrackingReader {
   /** @param repoRoot 저장소/linked worktree 경계 @param runner 취소를 전달하는 실제 Git 실행기 또는 테스트 경계 */
   constructor(private readonly repoRoot: string, private readonly runner: GraphLocalBranchRunner = runGit) {}
 
+  /** 같은 fingerprint에서 새로 읽은 metadata도 큰 upstream의 다음 조회 전략에 반영한다. 데이터는 보관하지 않는다. */
+  seedStrategy(branches: readonly LocalBranchStatus[]): void { this.preferBatch = shouldBatch(branches); }
+
   /**
    * 작은 목록과 첫 로드는 기존 단일 조회를 사용하고, 큰 공통 upstream 목록은 현재 ref로 일괄 계산한다.
    * @param signal 숨김·세대 교체 때 조회를 취소할 신호
@@ -46,7 +49,7 @@ export class GraphLocalBranchTrackingReader {
       }
     }
     result ??= await readGraphLocalBranchSnapshot(this.repoRoot, this.runner, undefined, signal);
-    this.preferBatch = shouldBatch(result.branches);
+    this.seedStrategy(result.branches);
     return result;
   }
 

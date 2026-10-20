@@ -5,6 +5,9 @@ import * as path from "node:path";
 import { runGit, type RunGitOptions } from "./gitExec";
 import { parseWorktreePorcelain, type WorktreeInfo } from "./worktreeService";
 import { parseRemoteBranchTips, type GraphRemoteBranchTip } from "./graphBranchCatalog";
+import { readGraphHistoryIdentity } from "./graphHistoryIdentity";
+import { readGraphRefSnapshot } from "./graphRefSnapshot";
+import type { LocalBranchStatus } from "../graph/graphTypes";
 
 const REF_SEPARATOR = "\x1f";
 
@@ -17,8 +20,9 @@ function normalized(values: string[]): string[] {
 }
 
 /** HEAD, ref, tag, worktree 출력에서 순서 독립적인 Graph fingerprint를 만든다. */
-export function createGraphRefreshFingerprint(parts: { head: string; symbolicHead: string; refs: string[]; worktrees: string[] }): GraphRefreshFingerprint {
-  return [parts.head.trim(), parts.symbolicHead.trim(), ...normalized(parts.refs), "--worktrees--", ...normalized(parts.worktrees)].join("\n");
+export function createGraphRefreshFingerprint(parts: { head: string; symbolicHead: string; refs: string[]; worktrees: string[]; historyIdentity?: string }): GraphRefreshFingerprint {
+  return [parts.head.trim(), parts.symbolicHead.trim(), ...normalized(parts.refs), "--worktrees--", ...normalized(parts.worktrees),
+    ...(parts.historyIdentity ? [`--history ${parts.historyIdentity}`] : [])].join("\n");
 }
 
 /** 테스트에서 실제 프로세스 실행 수와 fallback을 관찰할 수 있는 Git 조회 경계다. */
@@ -27,6 +31,9 @@ export type GraphFingerprintRunner = (args: string[], repoRoot: string, options?
 /** 새로고침 판정과 첫 로드가 같은 Git 조회의 worktree·원격 ref를 공유하는 snapshot이다. */
 export interface GraphRefreshSnapshot {
   fingerprint: GraphRefreshFingerprint;
+  historyIdentity?: string;
+  localBranches?: readonly LocalBranchStatus[];
+  refCount?: number;
   worktrees: readonly WorktreeInfo[];
   remoteTips?: readonly GraphRemoteBranchTip[];
 }
@@ -52,13 +59,14 @@ export async function readGraphRefreshFingerprint(
  * @returns 의미 fingerprint와 같은 시점에 Git에서 읽은 worktree 목록·원격 tip
  */
 export async function readGraphRefreshSnapshot(
-  repoRoot: string, runner: GraphFingerprintRunner = runGit, signal?: AbortSignal
+  repoRoot: string, runner: GraphFingerprintRunner = runGit, signal?: AbortSignal, includeLocalBranches = false
 ): Promise<GraphRefreshSnapshot> {
   signal?.throwIfAborted();
   const options = signal ? { signal } : undefined;
-  const [refs, worktrees] = await Promise.all([
-    runner(["for-each-ref", `--format=%(refname)${REF_SEPARATOR}%(objectname)${REF_SEPARATOR}%(refname:short)`], repoRoot, options),
+  const [refs, worktrees, historyIdentity] = await Promise.all([
+    readGraphRefSnapshot(repoRoot, runner, signal, includeLocalBranches),
     runner(["worktree", "list", "--porcelain"], repoRoot, options),
+    readGraphHistoryIdentity(repoRoot),
   ]);
   signal?.throwIfAborted();
   const parsedWorktrees = parseWorktreePorcelain(worktrees);
@@ -74,9 +82,14 @@ export async function readGraphRefreshSnapshot(
     ]);
   }
   signal?.throwIfAborted();
-  const refSnapshot = parseRefSnapshot(refs);
+  const refSnapshot = parseRefSnapshot(refs.refs);
+  const localBranches = refs.localBranches && (symbolicHead.trim() === "DETACHED" ? !refs.currentRef
+    : refs.currentRef === symbolicHead.trim() && refs.localBranches.find(branch => branch.current)?.hash === head.trim()) ? refs.localBranches : undefined;
   return {
-    fingerprint: createGraphRefreshFingerprint({ head, symbolicHead, refs: refSnapshot.refs, worktrees: worktrees.split("\n\n") }),
+    fingerprint: createGraphRefreshFingerprint({ head, symbolicHead, refs: refSnapshot.refs, worktrees: worktrees.split("\n\n"), historyIdentity: historyIdentity ?? "unavailable" }),
+    historyIdentity,
+    refCount: refSnapshot.refs.length,
+    ...(localBranches ? { localBranches } : {}),
     worktrees: parsedWorktrees,
     ...(refSnapshot.remoteTips !== undefined ? { remoteTips: refSnapshot.remoteTips } : {}),
   };

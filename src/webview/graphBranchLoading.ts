@@ -149,9 +149,9 @@ export async function loadGraphLocalBranchData(
  */
 export function readGraphLocalBranchData(
   service: Pick<GitLogService, "repoRoot" | "getLocalBranchSnapshot">,
-  worktrees: readonly WorktreeInfo[] | undefined, signal: AbortSignal
+  worktrees: readonly WorktreeInfo[] | undefined, signal: AbortSignal, localSnapshot?: readonly LocalBranchStatus[]
 ): ReturnType<typeof loadGraphLocalBranchData> {
-  return loadGraphLocalBranchData(service.repoRoot, () => service.getLocalBranchSnapshot(signal),
+  return loadGraphLocalBranchData(service.repoRoot, () => localSnapshot ? Promise.resolve({ branches: localSnapshot.map(branch => ({ ...branch })), invalidRefs: [] }) : service.getLocalBranchSnapshot(signal),
     () => worktrees ? Promise.resolve(createGraphWorktreeBranchStatus(worktrees)) : readGraphWorktreeBranchStatus(service.repoRoot, signal));
 }
 

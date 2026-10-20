@@ -360,8 +360,8 @@ async function cherryPick(deps: GraphActionDeps, hash: string): Promise<void> {
   if (!(await confirm(vscode.l10n.t("Cherry-pick commit '{0}'?", shortHash(hash)), vscode.l10n.t("Cherry-pick")))) {
     return;
   }
-  await deps.logService.cherryPick(hash);
-  await deps.refreshGraph();
+  try { await deps.logService.cherryPick(hash); }
+  finally { await deps.refreshGraph(); }
   vscode.window.showInformationMessage(
     vscode.l10n.t("Commit '{0}' cherry-picked.", shortHash(hash))
   );

@@ -96,6 +96,22 @@ const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 export async function pushBranchCommits(
   repoRoot: string, target: BranchPushTarget, options: PushExecutionOptions = {}, runner = defaultRunner
 ): Promise<PushExecutionResult> {
+  return executeBranchPush(repoRoot, target, options, runner, false);
+}
+
+/**
+ * 상위 push 서비스가 전체 계획을 방금 검증한 경우 준비 단계의 같은 두 조회만 생략한다.
+ * - 설정 hash가 없거나 beforePush 추가 조건이 있으면 기존 초기 검사도 실행한다.
+ * - 비동기 계획 뒤 실제 매 전송 직전의 HEAD/설정·취소 검사는 항상 실행하므로 쓰기 안전 경계는 같다.
+ * @param repoRoot 승인한 저장소 @param target 방금 확인한 source/목적지 @param options 원본 승인 설정 hash와 실행 옵션
+ */
+export async function pushValidatedBranchCommits(repoRoot: string, target: BranchPushTarget, options: PushExecutionOptions): Promise<PushExecutionResult> {
+  return executeBranchPush(repoRoot, target, options, defaultRunner, !!options.approvedConfigurationFingerprint && !options.beforePush);
+}
+
+/** 일반/검증 직후 진입점이 동일한 계획·전송·부분 실패 처리를 공유하는 실행 본문이다. */
+async function executeBranchPush(repoRoot: string, target: BranchPushTarget, options: PushExecutionOptions,
+  runner: PushGitRunner, initialValidated: boolean): Promise<PushExecutionResult> {
   if (!OID.test(target.head) || !target.targetRef.startsWith("refs/")) {
     throw new Error("A fixed commit and a remote branch are required for pushing.");
   }
@@ -118,7 +134,8 @@ export async function pushBranchCommits(
     }
   };
   options.onProgress?.({ phase: "planning", strategy: "single", completed: 0, total: 0 });
-  await validate();
+  if (initialValidated) assertNotCancelled(options.signal);
+  else await validate();
   const plan = await prepareTransfer(repoRoot, target, options, runner, runOptions);
   const result: PushExecutionResult = {
     strategy: plan.strategy, completed: 0, total: plan.commits.length, estimatedBytes: plan.estimatedBytes,

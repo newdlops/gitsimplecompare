@@ -6,6 +6,7 @@ import { parseNameStatusZ } from "./diffParse";
 import type { FileChange, StashEntry } from "./gitTypes";
 import { runStash, stashPushPaths } from "./stashExec";
 import { logInfo } from "../ui/outputLog";
+import { assertConflictRelativePath } from "./conflictPathSafety";
 
 /** 화면에서 선택한 stash 번호와 변경되지 않는 전체 commit hash다. */
 export interface StashTarget {
@@ -15,6 +16,8 @@ export interface StashTarget {
 
 /** 기존 명령 호출자는 번호를 넘길 수 있지만 확인창 전에 resolve로 고정해야 한다. */
 export type StashSelection = string | StashTarget;
+/** stash의 실제 저장 tree와 rename 전 경로를 지정한 읽기 전용 비교 계획이다. */
+export interface StashFileComparison { base: string; target: string; path: string; originalPath: string; }
 
 const mutations = new Map<string, Promise<void>>();
 
@@ -78,6 +81,26 @@ export class StashService {
     return parseNameStatusZ(await runStash([
       "show", "--include-untracked", "--name-status", "-z", hash,
     ], this.repoRoot));
+  }
+
+  /** 저장된 index(^2)와 생성 당시 HEAD(^1)를 비교해 working tree에 가려진 staged 변경도 조회한다. */
+  async stagedFiles(ref: string): Promise<FileChange[]> {
+    const hash = isHash(ref) ? ref : (await this.resolve(ref)).hash;
+    return parseNameStatusZ(await runGit(["diff", "--name-status", "--find-renames", "-z", `${hash}^1`, `${hash}^2`, "--"], this.repoRoot));
+  }
+
+  /**
+   * stash 본체에 없는 미추적 파일은 세 번째 부모 tree에서 읽고, 이름 변경은 원래 경로와 비교한다.
+   * @param ref 선택한 전체 stash hash 또는 표시 번호 @param change 이미 조회한 해당 stash의 파일 변경
+   * @returns 작업트리를 적용/변경하지 않는 base·target·양쪽 경로 계획
+   */
+  async fileComparison(ref: string, change: FileChange, staged = false): Promise<StashFileComparison> {
+    const hash = isHash(ref) ? ref : (await this.resolve(ref)).hash;
+    assertConflictRelativePath(this.repoRoot, change.path);
+    assertConflictRelativePath(this.repoRoot, change.oldPath ?? change.path);
+    const untracked = staged ? new Set<string>() : new Set((await runStash(["show", "--only-untracked", "--name-only", "-z", hash], this.repoRoot)).split("\0").filter(Boolean));
+    return { base: `${hash}^1`, target: staged ? `${hash}^2` : untracked.has(change.path) ? `${hash}^3` : hash,
+      path: change.path, originalPath: change.oldPath ?? change.path };
   }
 
   /** 선택 경로 또는 전체 변경을 보존하며 같은 저장소의 다른 stash 액션과 겹치지 않게 한다. */

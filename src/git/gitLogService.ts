@@ -197,6 +197,7 @@ export class GitLogService {
    * @param remoteTips remote catalog가 제공한 name/object ID 목록
    */
   seedGraphBranchTips(localStatus: readonly LocalBranchStatus[], remoteTips?: readonly { name: string; hash: string }[]): void {
+    this.branchTracking.seedStrategy(localStatus);
     this.branchRefCache.seedLocalBranches(localStatus);
     this.localOnlyBranchCache.setLocalBranches(localStatus);
     if (remoteTips) {

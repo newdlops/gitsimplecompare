@@ -36,6 +36,9 @@ export class LruCache<K, V> {
   /** 수명 종료 때 모든 값과 보관 비용을 비운다. */
   clear(): void { this.values.clear(); this.bytes = 0; }
 
+  /** 저장소별 stale 항목 정리에서 값의 최근 사용 순서를 바꾸지 않고 현재 키를 순회한다. */
+  keys(): IterableIterator<K> { return this.values.keys(); }
+
   /** 검사·관찰성에서 항목 수·가중치·상한 제거 횟수를 읽을 수 있는 사본을 반환한다. */
   stats(): { entries: number; bytes: number; evictions: number } {
     return { entries: this.values.size, bytes: this.bytes, evictions: this.evictions };

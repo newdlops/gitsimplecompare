@@ -24,6 +24,14 @@ export function routeChangesStashMessage(
     loadStashFiles(target, msg.stashKey, webview);
     return true;
   }
+  if (msg.type === "viewStashContents" && msg.ref) {
+    void vscode.commands.executeCommand("gitSimpleCompare.viewStashContents", target);
+    return true;
+  }
+  if (msg.type === "viewStagedStashContents" && msg.ref) {
+    void vscode.commands.executeCommand("gitSimpleCompare.viewStagedStashContents", target);
+    return true;
+  }
   if (msg.type === "applyStash" && msg.ref) {
     void vscode.commands.executeCommand("gitSimpleCompare.applyStash", target);
     return true;

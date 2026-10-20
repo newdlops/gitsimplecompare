@@ -9,7 +9,7 @@ import type { ToWebviewMessage } from "../../src/webview/graphProtocol";
  * @param t 리소스 URI 대역의 수명을 정리할 테스트 문맥 @param service 실제 임시 저장소 서비스
  * @returns 실제 명령 후속 경로에 접근할 panel과 수정되지 않는 게시 메시지 사본
  */
-export function createOperationGraphPanel(t: Pick<TestContext, "mock">, service: GitLogService) {
+export function createOperationGraphPanel(t: Pick<TestContext, "mock">, service: GitLogService, onPost?: (message: ToWebviewMessage) => void) {
   t.mock.method(Uri, "joinPath", (...parts: unknown[]) => {
     const uri = { query: "", with: () => uri, toString: () => parts.join("/") }; return uri;
   });
@@ -20,7 +20,7 @@ export function createOperationGraphPanel(t: Pick<TestContext, "mock">, service:
         const uri = { query: "", with: () => uri, toString: () => String(value) }; return uri;
       },
       onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (message: ToWebviewMessage) => {
-        messages.push(structuredClone(message)); return Promise.resolve(true);
+        messages.push(structuredClone(message)); onPost?.(message); return Promise.resolve(true);
       },
     } };
   const panel: any = new (GitGraphPanel as any)(surface, Uri.file(process.cwd()), service);

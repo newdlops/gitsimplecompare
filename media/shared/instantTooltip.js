@@ -110,7 +110,7 @@
     const targetRect = target.getBoundingClientRect();
     const tooltipRect = tooltip.getBoundingClientRect();
     const maxLeft = Math.max(VIEWPORT_EDGE, window.innerWidth - tooltipRect.width - VIEWPORT_EDGE);
-    const left = clamp(
+    let left = clamp(
       targetRect.left + targetRect.width / 2 - tooltipRect.width / 2,
       VIEWPORT_EDGE,
       maxLeft
@@ -118,6 +118,20 @@
     let top = targetRect.bottom + TOOLTIP_GAP;
     if (top + tooltipRect.height + VIEWPORT_EDGE > window.innerHeight) {
       top = targetRect.top - tooltipRect.height - TOOLTIP_GAP;
+    }
+    // 메뉴 항목의 설명이 다음 선택지를 덮지 않도록 메뉴 바깥쪽 공간을 우선 사용한다.
+    const menu = target.getAttribute("role") === "menuitem" ? target.closest('[role="menu"]')?.getBoundingClientRect() : undefined;
+    if (menu) {
+      if (menu.left - tooltipRect.width - TOOLTIP_GAP >= VIEWPORT_EDGE) {
+        left = menu.left - tooltipRect.width - TOOLTIP_GAP;
+        top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
+      } else if (menu.right + TOOLTIP_GAP + tooltipRect.width + VIEWPORT_EDGE <= window.innerWidth) {
+        left = menu.right + TOOLTIP_GAP;
+        top = targetRect.top + (targetRect.height - tooltipRect.height) / 2;
+      } else {
+        top = menu.top - tooltipRect.height - TOOLTIP_GAP;
+        if (top < VIEWPORT_EDGE) top = menu.bottom + TOOLTIP_GAP;
+      }
     }
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${clamp(

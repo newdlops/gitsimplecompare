@@ -208,8 +208,8 @@ export class GitGraphActionService {
 
   /** 현재 브랜치를 fast-forward 방식으로 pull하고 ref 조회 캐시를 비운다. */
   async pullCurrent(): Promise<void> {
-    await runGit(["pull", "--ff-only"], this.repoRoot);
-    this.invalidateRefs();
+    try { await runGit(["pull", "--ff-only"], this.repoRoot); }
+    finally { this.invalidateRefs(); }
   }
 
   /** upstream 자동 설정 계획에 따라 현재 브랜치를 push하고 ref 캐시를 비운다. */
@@ -220,15 +220,14 @@ export class GitGraphActionService {
 
   /** 사용자가 선택한 force 정책으로 현재 브랜치를 push하고 ref 캐시를 비운다. */
   async forcePushCurrent(mode: ForcePushMode, plan?: PushCurrentPlan): Promise<PushCurrentResult> {
-    const result = await forcePushCurrent(this.repoRoot, mode, plan);
-    this.invalidateRefs();
-    return result;
+    try { return await forcePushCurrent(this.repoRoot, mode, plan); }
+    finally { this.invalidateRefs(); }
   }
 
   /** 지정 커밋을 현재 브랜치에 cherry-pick하고 ref 캐시를 비운다. */
   async cherryPick(hash: string): Promise<void> {
-    await runGit(["cherry-pick", hash], this.repoRoot);
-    this.invalidateRefs();
+    try { await runGit(["cherry-pick", hash], this.repoRoot); }
+    finally { this.invalidateRefs(); }
   }
 
   /**

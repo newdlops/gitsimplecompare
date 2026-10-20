@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.72111] - 2026-10-20
+
+### Added
+
+- View saved stash contents and staged stash changes from the Stashes menu or
+  Command Palette without applying them. Read untracked files from the stash's
+  third parent and preserve original paths for renamed files.
+- Show loading, empty and retry states for stash files; support keyboard opening
+  and keep the selected repository and commit fixed while a file picker is open.
+
+### Performance
+
+- Share private metadata paths within one branch or PR operation, with fresh
+  checkout checks and repository identity validation at each access.
+- Reuse verified graph history after fetch, pull and other actions when its
+  reachable commits are unchanged. Share bounded branch metadata with direct
+  fingerprints while retaining large-repository and damaged-ref fallbacks.
+- Remove duplicate push preparation reads after full plan validation; retain
+  fresh source/configuration checks before every transfer and upstream update.
+- Bound host and webview stash metadata caches and keep menu tooltips outside
+  the choices they describe.
+
+### Fixed
+
+- Preserve direct graph refresh requests across focus or visibility loss,
+  including cancellation during fingerprint reads. Avoid partial background loads.
+- Detect shallow/graft boundary changes before reusing a graph and refresh
+  caches and views after partially failed Git operations.
+
 ## [0.1.72110] - 2026-10-20
 
 ### Performance

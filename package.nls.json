@@ -1,4 +1,6 @@
 {
+  "cmd.viewStashContents": "View Stash Contents",
+  "cmd.viewStagedStashContents": "View Staged Stash Changes",
   "cmd.getStarted": "Get Started with Git Simple Compare",
   "welcome.repositorySetupEntry": "[Get Started with Git Simple Compare](command:gitSimpleCompare.getStarted)",
   "cmd.cloneRepository": "Clone Repository...",

@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { detectOperation } from "./conflictService";
 import { assertControlledTransition, captureGitOperation } from "./operationControl";
 import { runGit } from "./gitExec";
+import { GitStatePathIdentityError, resolveGitStatePath, withGitStatePathScope } from "./gitStatePathScope";
 import { listUnmergedFiles } from "./unmergedFiles";
 import { OperationUndoStore as BranchOperationUndoStore } from "./operationUndoStore";
 import { logError, logInfo } from "../ui/outputLog";
@@ -80,7 +81,12 @@ interface PendingBranchRebaseMerge {
 export async function runBranchRebaseMerge(
   input: BranchRebaseMergeInput
 ): Promise<BranchRebaseMergeResult> {
-  await clearPendingBranchRebaseMerge(input.repoRoot).catch(() => undefined);
+  return withGitStatePathScope(input.repoRoot, () => runBranchRebaseMergeScoped(input));
+}
+
+/** 같은 rebase 시작/완료 흐름의 private 파일 경로만 공유하고 실제 HEAD/CAS 검증은 매번 실행한다. */
+async function runBranchRebaseMergeScoped(input: BranchRebaseMergeInput): Promise<BranchRebaseMergeResult> {
+  await clearPendingBranchRebaseMerge(input.repoRoot).catch(error => { if (error instanceof GitStatePathIdentityError) throw error; });
   await assertCurrentBranchHead(
     input.repoRoot,
     input.branch,
@@ -369,8 +375,7 @@ async function clearPendingBranchRebaseMerge(repoRoot: string): Promise<void> {
 
 /** linked worktree 에서도 올바른 git-dir 내부 상태 파일 경로를 계산한다. */
 async function stateFilePath(repoRoot: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", STATE_GIT_PATH], repoRoot)).trim();
-  return path.resolve(repoRoot, raw);
+  return resolveGitStatePath(repoRoot, STATE_GIT_PATH);
 }
 
 /** JSON 값을 현재 코드가 이해하는 pending 상태로 검증한다. */

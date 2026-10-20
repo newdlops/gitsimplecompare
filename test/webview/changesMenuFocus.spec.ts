@@ -13,9 +13,12 @@ async function expectTooltipAtFocusedItem(page: Page): Promise<void> {
   await expect(tooltip).toBeVisible();
   await expect(tooltip).toHaveText(await item.getAttribute("aria-label") || "");
   await expect.poll(async () => {
-    const target = await item.boundingBox(), tip = await tooltip.boundingBox();
+    const target = await page.getByRole("menu").boundingBox(), tip = await tooltip.boundingBox();
     if (!target || !tip) return Number.POSITIVE_INFINITY;
-    return Math.min(Math.abs(tip.y - target.y - target.height), Math.abs(target.y - tip.y - tip.height));
+    const overlaps = tip.x < target.x + target.width && tip.x + tip.width > target.x && tip.y < target.y + target.height && tip.y + tip.height > target.y;
+    if (overlaps) return Number.POSITIVE_INFINITY;
+    return Math.min(Math.abs(tip.y - target.y - target.height), Math.abs(target.y - tip.y - tip.height),
+      Math.abs(tip.x - target.x - target.width), Math.abs(target.x - tip.x - tip.width));
   }).toBeLessThanOrEqual(8);
 }
 

@@ -85,6 +85,7 @@ import {
   popStash,
   refreshStashes,
   stashSelected,
+  viewStashContents,
   type StashCommandSelection,
 } from "./stash";
 import {
@@ -384,6 +385,8 @@ export function registerCommands(deps: CommandDeps): vscode.Disposable[] {
       "gitSimpleCompare.openStashFile",
       (arg: Exclude<StashCommandSelection, string> & { path: string }) => openStashFile(deps, arg)
     ),
+    vscode.commands.registerCommand("gitSimpleCompare.viewStashContents", (selection?: StashCommandSelection) => viewStashContents(deps, selection)),
+    vscode.commands.registerCommand("gitSimpleCompare.viewStagedStashContents", (selection?: StashCommandSelection) => viewStashContents(deps, selection, true)),
     // 보기 상태: 트리/리스트 토글 및 정렬 변경
     vscode.commands.registerCommand("gitSimpleCompare.viewAsTree", () =>
       setViewMode(deps, "tree")

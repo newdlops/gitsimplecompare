@@ -25,6 +25,7 @@ import type { OperationUndoPlan } from "./operationUndoStore";
 import { PullRequestSquashMerge, type PullRequestSquashPlan } from "./pullRequestSquashMerge";
 import { assertNoDuplicatePullRequestRecovery } from "./pullRequestWorktreeRecovery";
 import type { PullRequestOperationCommand } from "./pullRequestOperationFormat";
+import { withGitStatePathScope } from "./gitStatePathScope";
 
 export type {
   PullRequestOperationResult,
@@ -67,6 +68,11 @@ export class PullRequestOperationService {
     pr: PullRequestInfo,
     _options?: PullRequestOperationOptions
   ): Promise<PullRequestOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.squashCherryPickScoped(pr));
+  }
+
+  /** PR 계산·적용 한 번의 metadata 위치만 공유하고 현재 브랜치/CAS 검사는 그대로 실행한다. */
+  private async squashCherryPickScoped(pr: PullRequestInfo): Promise<PullRequestOperationResult> {
     const requestedCommits = pullRequestCommitHashes(pr);
     if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to cherry-pick.`);
@@ -110,6 +116,11 @@ export class PullRequestOperationService {
     pr: PullRequestInfo,
     options?: PullRequestOperationOptions
   ): Promise<PullRequestOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.rebasePullRequestScoped(pr, options));
+  }
+
+  /** PR commit 재생과 snapshot 기록의 private 위치만 한 실행 범위에서 재사용한다. */
+  private async rebasePullRequestScoped(pr: PullRequestInfo, options?: PullRequestOperationOptions): Promise<PullRequestOperationResult> {
     const requestedCommits = pullRequestCommitHashes(pr);
     if (!requestedCommits.length) {
       throw new Error(`PR #${pr.number} has no commit hashes to rebase.`);
@@ -196,6 +207,11 @@ export class PullRequestOperationService {
     options?: PullRequestOperationOptions,
     preparedPlan?: PullRequestRevertPlan
   ): Promise<PullRequestOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.rebaseRevertPullRequestScoped(pr, options, preparedPlan));
+  }
+
+  /** 역방향 재생도 승인된 plan을 재검증하면서 같은 실행의 metadata 위치만 공유한다. */
+  private async rebaseRevertPullRequestScoped(pr: PullRequestInfo, options?: PullRequestOperationOptions, preparedPlan?: PullRequestRevertPlan): Promise<PullRequestOperationResult> {
     let destinationBranch: string;
     let beforeHead: string;
     let plan: PullRequestRevertPlan;
@@ -298,6 +314,11 @@ export class PullRequestOperationService {
     _options?: PullRequestOperationOptions,
     preparedPlan?: PullRequestRevertPlan
   ): Promise<PullRequestOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.squashRevertPullRequestScoped(pr, preparedPlan));
+  }
+
+  /** squash revert의 격리 계산과 완료 기록은 경로만 공유하며 복구 상태/HEAD는 새로 읽는다. */
+  private async squashRevertPullRequestScoped(pr: PullRequestInfo, preparedPlan?: PullRequestRevertPlan): Promise<PullRequestOperationResult> {
     let branch: string;
     let beforeHead: string;
     let plan: PullRequestRevertPlan;

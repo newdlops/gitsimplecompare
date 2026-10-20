@@ -3,7 +3,7 @@
 //   남은 커밋 목록과 보존 stash 를 다시 찾을 수 있게 git-dir 아래에 기록한다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { runGit } from "./gitExec";
+import { resolveGitStatePath } from "./gitStatePathScope";
 import type { GitOperationIdentity } from "./operationControl";
 
 const STATE_GIT_PATH = "gitsimplecompare/deferred-commit-rebase-state.json";
@@ -89,8 +89,7 @@ export async function clearPendingDeferredCommitRebase(
  * @returns 상태 파일 절대 경로
  */
 async function stateFilePath(repoRoot: string): Promise<string> {
-  const raw = (await runGit(["rev-parse", "--git-path", STATE_GIT_PATH], repoRoot)).trim();
-  return path.resolve(repoRoot, raw);
+  return resolveGitStatePath(repoRoot, STATE_GIT_PATH);
 }
 
 /**

@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { detectOperation, detectOperationInGitDir } from "./conflictService";
 import { readGitCheckoutIdentity } from "./repositoryIdentity";
+import { withGitStatePathScope } from "./gitStatePathScope";
 import { recoverFailedRebaseStart } from "./rebaseFailureRecovery";
 import { OperationUndoStore as BranchOperationUndoStore, type OperationUndoPlan as BranchOperationUndoPlan } from "./operationUndoStore";
 import { logError } from "../ui/outputLog";
@@ -59,6 +60,11 @@ export class BranchOperationService {
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
   async squashMerge(sourceBranch: string): Promise<BranchOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.squashMergeScoped(sourceBranch));
+  }
+
+  /** 실행 한 번의 metadata 경로만 공유하며 snapshot/현재 브랜치 검증은 기존 쓰기 경계마다 수행한다. */
+  private async squashMergeScoped(sourceBranch: string): Promise<BranchOperationResult> {
     const { branch, head: beforeHead } = await this.assertReadyForBranchOperation();
     await this.assertSourceBranch(sourceBranch);
     this.assertDifferentBranches(branch, sourceBranch);
@@ -111,6 +117,11 @@ export class BranchOperationService {
    * @returns undo 가능한 작업 결과 또는 충돌 대기 상태
    */
   async rebaseMerge(targetRef: string): Promise<BranchOperationResult> {
+    return withGitStatePathScope(this.repoRoot, () => this.rebaseMergeScoped(targetRef));
+  }
+
+  /** 준비부터 native rebase 완료까지 같은 worktree의 private 경로만 재사용한다. */
+  private async rebaseMergeScoped(targetRef: string): Promise<BranchOperationResult> {
     const { branch, head: beforeHead } = await this.assertReadyForBranchOperation();
     this.assertDifferentBranches(branch, targetRef);
     const targetHead = await this.resolveCommit(targetRef);

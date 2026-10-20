@@ -13,8 +13,8 @@ const stashMessage = "작업 중인 변경 — preserve selected stash across re
 async function hostTheme(page: Page): Promise<void> {
   const font = (await readFile(join(process.cwd(), "media/codicons/codicon.ttf"))).toString("base64");
   await page.addStyleTag({ content: `
-    @font-face { font-family: gsc-test-codicon; src: url(data:font/ttf;base64,${font}) format("truetype"); }
-    .codicon[class*="codicon-"] { font-family: gsc-test-codicon !important; }
+    @font-face { font-family: codicon; src: url(data:font/ttf;base64,${font}) format("truetype"); }
+    .codicon[class*="codicon-"] { font-family: codicon !important; }
     :root {
     --vscode-font-family: -apple-system, BlinkMacSystemFont, sans-serif; --vscode-font-size: 13px;
     --vscode-foreground: #cccccc; --vscode-descriptionForeground: #9d9d9d;
@@ -59,10 +59,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     await page.keyboard.press("Enter");
     await expect(header).toHaveAttribute("aria-expanded", "true");
     await expect(stash).toHaveAttribute("aria-busy", "true");
+    await expect(stash.getByRole("status")).toHaveText("Loading stash contents...");
     expect((await readPostedMessages(page)).find((message: any) => message.type === "loadStashFiles"))
       .toMatchObject({ ref: "stash@{0}", hash, repoRoot: firstRoot, stashKey: `${firstRoot}@${hash}` });
 
-    for (const [label, type] of [["Apply Stash", "applyStash"], ["Pop Stash", "popStash"],
+    for (const [label, type] of [["View Stash Contents", "viewStashContents"], ["View Staged Stash Changes", "viewStagedStashContents"], ["Apply Stash", "applyStash"], ["Pop Stash", "popStash"],
       ["Create Branch from Stash", "branchStash"], ["Drop Stash", "dropStash"]]) {
       await header.hover();
       const button = stash.locator('[data-act="stashMenu"]');
@@ -70,6 +71,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
       await button.click();
       const item = page.getByRole("menuitem", { name: label, exact: true });
       await expect(item).toHaveAttribute("title", label);
+      await item.hover();
+      const tooltip = page.getByRole("tooltip"); await expect(tooltip).toBeVisible();
+      const tip = (await tooltip.boundingBox())!, menu = (await page.getByRole("menu").boundingBox())!;
+      expect(tip.x < menu.x + menu.width && tip.x + tip.width > menu.x && tip.y < menu.y + menu.height && tip.y + tip.height > menu.y).toBe(false);
       if (type === "applyStash") { await item.focus(); await page.keyboard.press("Enter"); }
       else await item.click();
       expect((await readPostedMessages(page)).find((message: any) => message.type === type))
@@ -90,6 +95,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     // 조회 실패 후 disclosure를 다시 열면 요청을 재시도하며 성공한 파일만 현재 저장소에 연결한다.
     await dispatchWebviewMessage(page, { type: "stashFilesLoadComplete", ref: "stash@{0}", stashKey: `${secondRoot}@${hash}` });
     await expect(stash).not.toHaveAttribute("aria-busy", "true");
+    await expect(stash.getByRole("alert")).toHaveText("Could not load stash contents. Collapse and expand to retry.");
     await header.click();
     await header.click();
     await expect(stash).toHaveAttribute("aria-busy", "true");
@@ -97,9 +103,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
       result: { ref: "stash@{1}", key: `${secondRoot}@${hash}`, files: [{ path: "src/very-long-directory-name/선택한 파일.ts", status: "M" }] } });
     const file = page.locator(".stash-file");
     await expect(file).toBeVisible();
-    await file.click();
+    await expect(file).toHaveAttribute("role", "button");
+    await expect(file).toHaveAttribute("title", "View saved changes for src/very-long-directory-name/선택한 파일.ts");
+    await file.focus(); await page.keyboard.press("Enter");
     expect((await readPostedMessages(page)).find((message: any) => message.type === "openStashFile"))
       .toMatchObject({ hash, repoRoot: secondRoot, path: "src/very-long-directory-name/선택한 파일.ts" });
+    expect((await readPostedMessages(page)).filter((message: any) => message.type === "openStashFile")).toHaveLength(1);
     await header.hover();
     await stash.locator('[data-act="stashMenu"]').click();
     await expect(page.getByRole("menuitem", { name: "Drop Stash", exact: true })).toBeVisible();
@@ -109,9 +118,32 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 
     await page.screenshot({ path: `/tmp/gsc-stash-selection-${viewport.width}.png` });
     await page.keyboard.press("Escape");
     await expect(stash.locator('[data-act="stashMenu"]')).toBeFocused();
+    const emptyHash = "b".repeat(40);
+    fixture.payload.stashes[0].hash = emptyHash;
+    await dispatchWebviewMessage(page, { type: "render", payload: fixture.payload });
+    await header.click();
+    await dispatchWebviewMessage(page, { type: "stashFilesLoadComplete", ref: "stash@{0}", stashKey: `${secondRoot}@${emptyHash}`,
+      result: { ref: "stash@{0}", key: `${secondRoot}@${emptyHash}`, files: [] } });
+    await expect(stash.getByRole("status")).toHaveText("No saved working tree changes. View staged changes from the menu.");
+    await page.mouse.move(5, 5); await page.keyboard.press("Escape");
+    await page.screenshot({ path: `/tmp/gsc-stash-empty-${viewport.width}.png` });
     fixture.payload.stashes = [];
     await dispatchWebviewMessage(page, { type: "render", payload: fixture.payload });
     await expect(page.getByText("No stashes.", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
 }
+
+test("collapsed large stash metadata is evicted and reloaded when its contents are requested again", async ({ page }) => {
+  const fixture = await loadWebviewFixture<any>("changes.small.en.json");
+  fixture.payload.commit.repoRoot = firstRoot;
+  const entries = Array.from({ length: 20 }, (_, index) => ({ ref: `stash@{${index}}`, index, hash: (index + 1).toString(16).padStart(40, "0"), message: `Saved ${index}` }));
+  fixture.payload.stashes = entries;
+  await mountChanges(page, fixture); await revealStashes(page);
+  const files = Array.from({ length: 9000 }, (_, index) => ({ path: `directory/file-${index}.ts`, status: "M" }));
+  for (const entry of entries) await dispatchWebviewMessage(page, { type: "stashFilesLoadComplete", stashKey: `${firstRoot}@${entry.hash}`,
+    result: { ref: entry.ref, key: `${firstRoot}@${entry.hash}`, files } });
+  await page.locator(".stash-header").first().click();
+  expect((await readPostedMessages(page)).filter((message: any) => message.type === "loadStashFiles").at(-1)).toMatchObject({ hash: entries[0].hash });
+  await expect(page.locator(".stash-file")).toHaveCount(0, { timeout: 1000 });
+});

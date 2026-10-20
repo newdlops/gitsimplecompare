@@ -73,6 +73,14 @@ are available under `gitSimpleCompare.blameAnnotations`. See
 
 Opens a webview showing the commit history graph across branches. Click a commit node to view its details on the right; click any changed file to open that commit's diff. The graph loads commits lazily as you scroll until it reaches the first commit. Pull request stack layers appear as chips on their head commits with dashed arrows pointing to their parent commits.
 
+### View stash contents
+
+Expand a saved stash in **Changes → Stashes** and select a file to open its
+read-only diff. The stash's **…** menu offers **View Stash Contents** and
+**View Staged Stash Changes**, including saved untracked files and staged changes
+that differ from the saved working tree. Both commands are also available in the
+Command Palette. Viewing leaves the working tree and stash unchanged.
+
 ### Large pushes
 
 Normal branch pushes automatically send commits oldest first when there are multiple outgoing commits on the first-parent chain and their new Git objects total at least **50 MiB before compression**. Smaller pushes use one request. Changes, Git Graph, branch publication, PR publication and normal stack submission share this behavior. Push notifications show the current commit number; **Git Simple Compare** Output records each confirmed step. A failure or cancellation stops subsequent steps, keeps commits already received by the remote, and a retry reads the actual remote tip to continue. Each step checks the local source and destination and protects concurrent remote updates with an explicit lease. Merge commits carry their side history together; force pushes keep their existing single-update behavior. A single oversized commit or file is not split, and the estimate does not include Git LFS payloads.

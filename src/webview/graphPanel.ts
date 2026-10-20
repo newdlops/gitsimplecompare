@@ -15,7 +15,8 @@ import { buildGraphHtml } from "./graphHtml";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { GraphPanelMessageRouter } from "./graphPanelMessageRouter";
 import { sendGraphTagStatus } from "./graphTagStatus";
-import { canReuseGraphHistory, syncGraphReferenceTips } from "./graphHistoryReuse";
+import { canReuseGraphSnapshot, syncGraphReferenceTips } from "./graphHistoryReuse";
+import { canIncludeGraphBranchMetadata } from "../git/graphRefSnapshot";
 import type { GraphActionRefreshKind } from "./graphActionRefresh";
 import { createGraphBranchFilterSnapshot, GraphBranchLoadingCoordinator, GraphRemoteCatalogStatus, isCurrentGraphLoad, readGraphLocalBranchData, mergeGraphBranchRefs, resolveGraphBranchFilter } from "./graphBranchLoading";
 import { beginGraphPerformanceTrace, GraphPerformanceTrace, logGraphPerformancePhase, logGraphBranchSnapshot } from "./graphPerformance";
@@ -143,11 +144,8 @@ export class GitGraphPanel {
       refreshAfterCheckoutAction: () => this.refreshAfterCheckoutAction(),
     });
     this.refreshCoordinator = new GraphRefreshLifecycleCoordinator({
-      readFingerprint: (repoRoot, signal) => readGraphRefreshSnapshot(repoRoot, undefined, signal),
-      reloadGraph: async (context) => {
-        this.resetLoadedGraph();
-        await this.reloadGraph(context);
-      },
+      readFingerprint: (repoRoot, signal, options) => readGraphRefreshSnapshot(repoRoot, undefined, signal, !!options?.includeLocalBranches && !this.invalidLocalRefs.length && canIncludeGraphBranchMetadata(this.lastLocalBranches, options.previousRefCount ?? this.lastBranchRefs.length)),
+      reloadGraph: (context) => this.refreshGraphReferences(context),
       publishAfterReload: async (context, mode) => {
         if (mode === "pullRequests") await this.messages.refreshPullRequests(context.cause);
         else if (mode === "stacks") await this.messages.sendPullRequestStacks();
@@ -164,6 +162,7 @@ export class GitGraphPanel {
       },
     });
     this.refreshCoordinator.setRepository(this.logService.repoRoot);
+    this.refreshCoordinator.setFocused(vscode.window.state.focused);
     this.panel.webview.html = buildGraphHtml(panel, extensionUri);
     // 웹뷰에서 오는 메시지 처리
     this.panel.webview.onDidReceiveMessage(
@@ -223,8 +222,7 @@ export class GitGraphPanel {
   }
   /** ready/manual 요청은 한 번의 직접 Graph reload와 fingerprint baseline을 완료할 때까지 기다린다. */
   private async runDirectGraph(cause: string): Promise<boolean> {
-    return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause },
-      cause === "checkout" || cause === "references" ? context => this.refreshGraphReferences(context) : undefined);
+    return this.refreshCoordinator.runDirect({ repoRoot: this.logService.repoRoot, cause });
   }
   /** 저장소 교체도 직접 baseline 확정 뒤 공통 수명에서 local stack과 원격 PR을 병렬 복원한다. */
   private async reloadRepository(): Promise<void> {
@@ -279,7 +277,7 @@ export class GitGraphPanel {
   /** 같은 도달 가능 이력은 보존하고 ref/HEAD부터 게시한다. 증명하지 못하면 전체 Git log를 읽는다. */
   private async refreshGraphReferences(context: GraphRefreshContext): Promise<void> {
     if (this.rangeStartIndex !== 0 || this.branchFilter.mode !== "all" || this.invalidLocalRefs.length || !context.previous ||
-      !context.remoteTips || !canReuseGraphHistory(context.previous.fingerprint, context.fingerprint, this.commits)) {
+      !context.remoteTips || !canReuseGraphSnapshot(context, this.commits)) {
       this.resetLoadedGraph(); await this.reloadGraph(context); return;
     }
     this.workingTree.cancel("checkout");
@@ -291,7 +289,7 @@ export class GitGraphPanel {
     const current = () => { const active = this.isGraphGenerationActive(generation, service); if (!active) logInfo("graph checkout refresh skipped", { repoRoot, generation, reason: "staleGeneration" }); return active; };
     const trace = beginGraphPerformanceTrace(repoRoot, context.cause, generation);
     this.activePerformance = trace;
-    const branches = await this.sendBranches(generation, trace, context.worktrees);
+    const branches = await this.sendBranches(generation, trace, context.worktrees, context.localBranches);
     if (!current()) return;
     const commits = this.commits, filter = this.currentBranchFilter();
     if (this.invalidLocalRefs.length) { this.resetLoadedGraph(); await this.reloadGraph(context); return; }
@@ -335,7 +333,7 @@ export class GitGraphPanel {
       () => this.panel.visible && vscode.window.state.focused,
       context.remoteTips
     ).then(remote => ({ remote, elapsedMs: Date.now() - remoteStarted }));
-    await this.sendBranches(graphGeneration, trace, context.worktrees);
+    await this.sendBranches(graphGeneration, trace, context.worktrees, context.localBranches);
     if (!this.isGraphGenerationActive(graphGeneration)) return;
     const { remote, elapsedMs } = await remoteRead;
     logGraphPerformancePhase(trace, "remoteBranches", elapsedMs, {
@@ -366,10 +364,10 @@ export class GitGraphPanel {
   private async sendBranches(
     expectedGeneration = this.loadGeneration,
     trace: GraphPerformanceTrace | undefined = this.activePerformance,
-    worktreeSnapshot?: readonly WorktreeInfo[]
+    worktreeSnapshot?: readonly WorktreeInfo[], localSnapshot?: readonly LocalBranchStatus[]
   ): Promise<LocalBranchStatus[]> {
     const data = await this.graphReads.run(this.logService.repoRoot, "branches", signal =>
-      readGraphLocalBranchData(this.logService, worktreeSnapshot, signal));
+      readGraphLocalBranchData(this.logService, worktreeSnapshot, signal, localSnapshot));
     if (!data) return [];
     const { branches, refs: branchRefs, worktrees, invalidRefs } = data;
     if (!this.isGraphGenerationActive(expectedGeneration)) return [];
@@ -380,7 +378,7 @@ export class GitGraphPanel {
     this.post({ type: "branchStatus", branches, worktrees });
     this.postBranchFilterOptions();
     publishInvalidGraphRefs(this.logService.repoRoot, invalidRefs, (message) => this.post(message));
-    logGraphBranchSnapshot(trace, data, worktreeSnapshot !== undefined, this.logService.repoRoot, this.branchFilter.mode);
+    logGraphBranchSnapshot(trace, data, worktreeSnapshot !== undefined, this.logService.repoRoot, this.branchFilter.mode, localSnapshot !== undefined);
     return branches;
   }
   /**
