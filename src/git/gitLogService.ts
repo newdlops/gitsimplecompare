@@ -3,7 +3,6 @@
 // - git 접근은 공유 실행기(runGit)만 사용한다(경계 분리).
 import { runGit } from "./gitExec";
 import type { PushExecutionOptions } from "./sequentialPush";
-import { runGitWithRevisions } from "./revisionInput";
 import { logInfo } from "../ui/outputLog";
 import { parseRawNumstatZ } from "./diffParse";
 import {
@@ -20,8 +19,9 @@ import { GitGraphActionService } from "./gitGraphActionService";
 import type { RevertCommitResult } from "./gitGraphActionService";
 import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
 import { GraphLocalBranchTrackingReader } from "./graphLocalBranchTracking";
+import { readGitLogPage } from "./gitLogPage";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
-import { gitLogPrettyFormat, LOG_FIELD_SEPARATOR, parseGitLogOutput } from "./gitLogParse";
+import { LOG_FIELD_SEPARATOR } from "./gitLogParse";
 import {
   ForcePushMode,
   PushCurrentPlan,
@@ -98,35 +98,25 @@ export class GitLogService {
     }
     const safeSkip = Math.max(0, Math.floor(skip));
     if (safeSkip === 0 && this.branchRefCache.getStats().indexedPages > 0) this.branchRefCache.invalidate();
-    // 명시 ref(브랜치 필터 등)는 수천 개일 수 있어 stdin 으로 넘긴다.
-    const out = await runGitWithRevisions(
-      [
-        "log",
-        "--topo-order",
-        "--decorate=full",
-        `--pretty=tformat:${gitLogPrettyFormat()}`,
-        "-z",
-        `-n${safeLimit}`,
-        ...(safeSkip > 0 ? [`--skip=${safeSkip}`] : []),
-      ],
-      refs,
-      this.repoRoot,
-      { signal }
-    );
-
-    signal?.throwIfAborted();
-    const commits = parseGitLogOutput(out, true);
-    const branchStats = this.branchRefCache.indexPage({ commits, skip: safeSkip, allRefs: refs.length === 0 });
-    logInfo("graph branch containment index page", {
-      repoRoot: this.repoRoot, skip: safeSkip, commits: commits.length,
-      snapshots: branchStats.snapshots, indexedPages: branchStats.indexedPages,
-      indexedCommits: branchStats.indexedCommits, fallbacks: branchStats.fallbacks,
-      incomplete: branchStats.incomplete,
-    });
+    const commits = await this.readUnindexedCommitPage(safeLimit, safeSkip, refs, signal);
+    this.indexGraphCommitPage(commits, safeSkip, refs);
     if (includeLocalOnlyBranches) {
       await this.attachLocalOnlyBranches(commits);
     }
     return commits;
+  }
+
+  /** 표시 전 선행 이력을 읽는다. 채택되기 전에는 containment cache와 현재 브랜치 상태를 변경하지 않는다. */
+  readUnindexedCommitPage(limit: number, skip: number, refs: string[], signal?: AbortSignal): Promise<Commit[]> {
+    return readGitLogPage(this.repoRoot, limit, skip, refs, signal);
+  }
+
+  /** 현재 Graph 세대가 채택한 원본 topo 페이지를 같은 offset/ref 범위로 색인하고 관찰 로그를 남긴다. */
+  indexGraphCommitPage(commits: readonly Commit[], skip: number, refs: readonly string[]): void {
+    const stats = this.branchRefCache.indexPage({ commits, skip, allRefs: refs.length === 0 });
+    logInfo("graph branch containment index page", { repoRoot: this.repoRoot, skip, commits: commits.length,
+      snapshots: stats.snapshots, indexedPages: stats.indexedPages, indexedCommits: stats.indexedCommits,
+      fallbacks: stats.fallbacks, incomplete: stats.incomplete });
   }
 
   /**
@@ -189,6 +179,9 @@ export class GitLogService {
   async getLocalBranchSnapshot(signal?: AbortSignal): Promise<GraphLocalBranchSnapshot> {
     return this.branchTracking.read(signal);
   }
+
+  /** 일괄 tracking 조회와 무거운 선행 이력이 세 프로세스로 겹치지 않게 현재 전략을 알려 준다. */
+  usesNativeBranchSnapshot(): boolean { return this.branchTracking.usesNativeSnapshot(); }
 
   /**
    * Graph가 이미 읽은 local/remote tip을 containment cache에 주입한다.

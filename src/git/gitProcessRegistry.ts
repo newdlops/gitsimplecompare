@@ -15,6 +15,7 @@ interface ProcessRecord extends OwnedGitProcess {
   killTimer?: ReturnType<typeof setTimeout>; stopping?: Promise<void>;
   directClosed?: boolean; completion: Promise<void>; complete: () => void;
 }
+const RECENT_ACTIVITY_ROOTS = 512;
 
 /**
  * 우리 실행기의 자식만 기록하고 close 확인 뒤에만 회수하는 실행 수명 레지스트리.
@@ -24,6 +25,7 @@ interface ProcessRecord extends OwnedGitProcess {
 export class GitProcessRegistry {
   private readonly records = new Map<number, ProcessRecord>();
   private readonly activity = new Map<string, number>();
+  private activityWasPruned = false;
   private nextId = 0;
   private logger?: GitProcessLogger;
   private readonly mutationListeners = new Set<(root: string) => void>();
@@ -44,10 +46,10 @@ export class GitProcessRegistry {
     const root = path.resolve(repoRoot), id = ++this.nextId;
     let complete!: () => void;
     const completion = new Promise<void>(resolve => { complete = resolve; });
-    this.activity.set(root, Date.now());
     let canonicalRoot: string | undefined;
     if (monitor) try { canonicalRoot = realpathSync.native(root); } catch { /* 경로 증거가 없으면 별칭 소유권을 추측하지 않는다. */ }
     this.records.set(id, { id, child, repoRoot: root, canonicalRoot, command, readOnly, group, monitor, pid: child.pid, startedAt: Date.now(), state: "running", completion, complete });
+    this.rememberActivity(root);
     return id;
   }
 
@@ -64,8 +66,7 @@ export class GitProcessRegistry {
   /** 모든 검증 가능한 소유 자식의 종료가 확인된 경우에만 실행 슬롯을 반환한다. */
   private finish(record: ProcessRecord): void {
     clearTimeout(record.killTimer);
-    this.activity.set(record.repoRoot, Date.now());
-    this.records.delete(record.id); record.complete();
+    this.records.delete(record.id); this.rememberActivity(record.repoRoot); record.complete();
     if (!record.readOnly && !record.monitor) for (const listener of this.mutationListeners) {
       try { listener(record.repoRoot); } catch { /* 상태 구독 오류는 Git 결과를 바꾸지 않는다. */ }
     }
@@ -74,8 +75,10 @@ export class GitProcessRegistry {
 
   /** 종료 대기가 길어진 조회가 같은 위치에서 무한히 겹치지 않도록 후속 실행을 막는다. */
   hasBlockedRead(repoRoot: string): boolean {
-    return [...this.records.values()].some(record => record.readOnly && record.repoRoot === path.resolve(repoRoot)
-      && record.state === "stopping" && Date.now() - (record.stoppingAt ?? Date.now()) > 2000);
+    const root = path.resolve(repoRoot), now = Date.now();
+    for (const record of this.records.values()) if (record.readOnly && record.repoRoot === root
+      && record.state === "stopping" && now - (record.stoppingAt ?? now) > 2000) return true;
+    return false;
   }
 
   /** 필요 없어진 조회만 TERM→KILL로 종료한다. 진행 중 쓰기는 별도의 명시적 취소만 처리한다. */
@@ -97,13 +100,17 @@ export class GitProcessRegistry {
 
   /** 진행 중 조회·쓰기가 해당 저장소 또는 하위 경로를 사용하는지 확인한다. */
   isBusy(repoRoot: string): boolean {
-    return [...this.records.values()].some(record => !record.monitor && containsPath(this.knownCanonicalRoot(repoRoot), this.knownCanonicalRoot(record.repoRoot)));
+    const root = this.knownCanonicalRoot(repoRoot);
+    for (const record of this.records.values()) if (!record.monitor && containsPath(root, this.knownCanonicalRoot(record.repoRoot))) return true;
+    return false;
   }
 
   /** 포그라운드로 직접 생성해 child 객체를 보유한 감시자만 자동 정리 소유권을 인정한다. */
   ownsMonitor(pid: number, repoRoot: string): boolean {
-    return [...this.records.values()].some(record => record.monitor && record.pid === pid
-      && (record.repoRoot === path.resolve(repoRoot) || record.canonicalRoot === path.resolve(repoRoot)) && this.leaderAlive(record));
+    const root = path.resolve(repoRoot);
+    for (const record of this.records.values()) if (record.monitor && record.pid === pid
+      && (record.repoRoot === root || record.canonicalRoot === root) && this.leaderAlive(record)) return true;
+    return false;
   }
 
   /** 이미 소비자가 해제된 읽기에만 종료를 재시도하고 실제 close가 확인된 경우 true를 반환한다. */
@@ -120,14 +127,46 @@ export class GitProcessRegistry {
   /** 마지막 실제 Git 사용 시각을 반환한다. 한 번도 사용하지 않은 저장소는 알 수 없음이다. */
   lastUsed(repoRoot: string): number | undefined {
     const root = this.knownCanonicalRoot(repoRoot);
-    const times = [...this.activity].filter(([item]) => this.knownCanonicalRoot(item) === root).map(([, time]) => time);
-    return times.length ? Math.max(...times) : undefined;
+    let latest = this.activity.get(root);
+    for (const record of this.records.values()) {
+      if (!record.monitor || this.knownCanonicalRoot(record.repoRoot) !== root) continue;
+      const time = this.activity.get(record.repoRoot);
+      if (time !== undefined && (latest === undefined || time > latest)) latest = time;
+    }
+    return latest;
   }
 
   /** 직접 소유한 감시자의 최초 realpath 증거만 써 /var·symlink 별칭의 활동 기록을 합친다. */
   private knownCanonicalRoot(repoRoot: string): string {
     const root = path.resolve(repoRoot);
-    return [...this.records.values()].find(record => record.monitor && record.repoRoot === root)?.canonicalRoot ?? root;
+    for (const record of this.records.values()) if (record.monitor && record.repoRoot === root) return record.canonicalRoot ?? root;
+    return root;
+  }
+
+  /**
+   * 최근 완료 경로 512개와 아직 실제 close가 끝나지 않은 모든 작업·감시자 경로를 유지한다.
+   * @param root 방금 사용하거나 종료한 원래 cwd. 소유 monitor의 canonical 별칭도 eviction에서 보호한다.
+   * @returns 없음. 활동 기록만 제한하며 프로세스 소유권·정리·쓰기 실행에는 영향을 주지 않는다.
+   */
+  private rememberActivity(root: string): void {
+    this.activity.delete(root); this.activity.set(root, Date.now());
+    if (this.activity.size <= RECENT_ACTIVITY_ROOTS) return;
+    const protectedRoots = new Set<string>();
+    for (const record of this.records.values()) {
+      protectedRoots.add(record.repoRoot);
+      if (record.canonicalRoot) protectedRoots.add(record.canonicalRoot);
+    }
+    let protectedCount = 0;
+    for (const protectedRoot of protectedRoots) if (this.activity.has(protectedRoot)) protectedCount++;
+    const maximum = RECENT_ACTIVITY_ROOTS + protectedCount, before = this.activity.size;
+    for (const key of this.activity.keys()) {
+      if (this.activity.size <= maximum) break;
+      if (!protectedRoots.has(key)) this.activity.delete(key);
+    }
+    if (!this.activityWasPruned && this.activity.size < before) {
+      this.activityWasPruned = true;
+      this.log("git activity history bounded", { retained: this.activity.size, recentLimit: RECENT_ACTIVITY_ROOTS, protectedRoots: protectedRoots.size });
+    }
   }
 
   /** 최근 사용한 저장소 목록으로 자동 정리의 범위를 제한한다. */

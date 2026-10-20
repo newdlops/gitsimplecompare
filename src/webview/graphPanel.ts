@@ -24,7 +24,7 @@ import { loadFilteredGraphCommitWindow, loadReflogGraphWindow } from "./graphCom
 import { postGraphWebviewMessage, publishGraphRender, withGraphBusy } from "./graphPanelRendering";
 import { GraphRenderCache } from "./graphRenderCache";
 import { GraphRefreshContext, GraphRefreshLifecycleCoordinator, GraphRefreshMode, graphInvalidationPlan } from "./graphRefreshCoordinator";
-import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, integrateGraphPage, readGraphPageData } from "./graphPageLoading";
+import { GraphReadLifecycleCoordinator, graphPageRange, graphPageSkipReason, integrateGraphPage } from "./graphPageLoading";
 import { offerCommitGraphIfSlow } from "../ui/commitGraphOffer";
 import { GraphWorkingTreeLoading } from "./graphWorkingTreeLoading";
 import { attachGraphLocalOnlyMarkers } from "./graphLocalOnlyLoading";
@@ -316,7 +316,7 @@ export class GitGraphPanel {
     const graphGeneration = this.loadGeneration;
     this.resumeReloadOnFocus = false;
     this.activeReloadGeneration = graphGeneration;
-    try { await this.reloadGraphOnce(context, graphGeneration); }
+    try { await this.graphReads.withFirstPagePrefetch(this.logService, context, this.branchFilter.mode === "all" && !this.invalidLocalRefs.length, GRAPH_PAGE_SIZE + 1, () => this.reloadGraphOnce(context, graphGeneration)); }
     finally { if (this.activeReloadGeneration === graphGeneration) this.activeReloadGeneration = undefined; }
   }
   /** reloadGraph 의 실제 단계(local → remote → 첫 페이지 → tag)를 한 세대 안에서 실행한다. */
@@ -439,11 +439,11 @@ export class GitGraphPanel {
     });
     let postedGraph = false;
     try {
-      const data = await this.graphReads.run(pageService.repoRoot, "page", signal => readGraphPageData(pageService, {
+      const data = await this.graphReads.run(pageService.repoRoot, "page", signal => this.graphReads.readPageData(pageService, {
         skip, readLimit, refs: branchFilter.refs, trace: performanceTrace,
         readVirtualCommits: false,
         signal,
-      }));
+      }, this.lastLocalBranches));
       if (!data) return;
       const { page, gitLogMs } = data;
       if (!this.isGraphGenerationActive(generation, pageService)) {

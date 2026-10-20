@@ -5,10 +5,14 @@ import type { Commit } from "../graph/graphTypes";
 import { type GraphPerformanceTrace, logGraphPerformancePhase } from "./graphPerformance";
 import type { GraphLoadDirection } from "./graphProtocol";
 import { logInfo } from "../ui/outputLog";
+import { GraphFirstPageRead, type GraphFirstPageService } from "./graphFirstPageRead";
+import type { GraphRefreshContext } from "./graphRefreshCoordinator";
+import type { LocalBranchStatus } from "../graph/graphTypes";
 
 /** 로컬 상태·페이지·점프 조회 중 현재 Graph가 사용하는 한 작업만 소유한다. */
 export class GraphReadLifecycleCoordinator {
   private active: { controller: AbortController; repoRoot: string; cause: string } | undefined;
+  private readonly firstPage = new GraphFirstPageRead();
 
   /**
    * 새 읽기로 이전 읽기를 교체하고 Git까지 취소 신호를 전달한다.
@@ -16,7 +20,8 @@ export class GraphReadLifecycleCoordinator {
    * @returns 현재 작업의 결과. 취소된 작업은 오류 알림 대신 undefined를 반환한다.
    */
   async run<T>(repoRoot: string, cause: string, read: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> {
-    this.cancel("superseded");
+    this.cancelActive("superseded");
+    if (cause !== "branches" && cause !== "page") this.firstPage.cancel("differentRead");
     const active = { controller: new AbortController(), repoRoot, cause };
     this.active = active;
     try {
@@ -36,6 +41,21 @@ export class GraphReadLifecycleCoordinator {
 
   /** 숨김·교체·폐기의 불필요한 읽기를 종료하되 새 작업의 controller는 침범하지 않는다. */
   cancel(reason: string): void {
+    this.cancelActive(reason); this.firstPage.cancel(reason);
+  }
+
+  /** 브랜치 준비와 겹친 첫 페이지의 수명을 같은 coordinator에 묶어 별도 취소되지 않는 읽기를 남기지 않는다. */
+  withFirstPagePrefetch<T>(service: GraphFirstPageService, context: GraphRefreshContext, enabled: boolean, limit: number,
+    reload: () => Promise<T>): Promise<T> { return this.firstPage.during(service, context, enabled, limit, reload); }
+
+  /** 확정한 페이지 범위가 맞으면 선행 이력을 채택하고, 다른 범위이면 기존 한 번의 조회를 실행한다. */
+  async readPageData(service: Pick<GitLogService, "getCommitPage" | "getVirtualCommits"> & GraphFirstPageService,
+    options: Parameters<typeof readGraphPageData>[1], branches: readonly LocalBranchStatus[]): Promise<GraphPageData> {
+    return await this.firstPage.consume(service, options, branches) ?? readGraphPageData(service, options);
+  }
+
+  /** 일반 조회만 교체해 브랜치 준비가 같은 세대의 첫 페이지를 취소하지 않게 한다. */
+  private cancelActive(reason: string): void {
     const active = this.active;
     if (!active) return;
     this.active = undefined;

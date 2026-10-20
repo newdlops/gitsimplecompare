@@ -29,6 +29,9 @@ export class GraphLocalBranchTrackingReader {
   /** 같은 fingerprint에서 새로 읽은 metadata도 큰 upstream의 다음 조회 전략에 반영한다. 데이터는 보관하지 않는다. */
   seedStrategy(branches: readonly LocalBranchStatus[]): void { this.preferBatch = shouldBatch(branches); }
 
+  /** 현재 read가 한 native 조회로 시작하는지 알려 병렬 Graph 준비의 최대 Git 실행 수를 제한한다. */
+  usesNativeSnapshot(): boolean { return !this.preferBatch || this.unsupported; }
+
   /**
    * 작은 목록과 첫 로드는 기존 단일 조회를 사용하고, 큰 공통 upstream 목록은 현재 ref로 일괄 계산한다.
    * @param signal 숨김·세대 교체 때 조회를 취소할 신호

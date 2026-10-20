@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.72114] - 2026-10-20
+
+### Performance
+
+- Prepare the first Graph history page alongside a native branch snapshot.
+  Adopt it only after validating the current checkout and loaded local refs;
+  retain the serial path for batched tracking and uncertain history.
+- Bound completed Git activity records to 512 recent roots plus active roots.
+  Avoid scanning old worktree history for monitor activity checks while keeping
+  unfinished writes, reads and owned monitor aliases protected.
+
+### Fixed
+
+- Cancel unused first-page reads on hide, repository or filter changes and
+  metadata failures. Keep their results outside the containment index until
+  adopted, and propagate history timeouts without repeating the same read.
+
+### Development
+
+- Add repeatable activity-record resource measurements and real Git coverage
+  for first-page adoption, cancellation and damaged-ref fallback. Record both
+  improvements and slower samples from headless Graph operation measurements.
+
 ## [0.1.72113] - 2026-10-20
 
 ### Performance
