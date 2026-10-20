@@ -19,7 +19,7 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
   if (command === "branch") readOnly = (rest.length === 0 || rest.some(value => ["--list", "--show-current", "-a", "--all", "-r", "--remotes"].includes(value)))
     && !rest.some(value => /^-(?!-)[^-]*[dDfmMcCu]/.test(value) || /^--(?:delete|move|copy|force|edit-description|set-upstream-to|unset-upstream)(?:=|$)/.test(value));
   if (command === "worktree") readOnly = rest[0] === "list";
-  if (command === "remote") readOnly = rest[0] === "get-url";
+  if (command === "remote") readOnly = rest.length === 0 || rest.every(value => ["-v", "--verbose"].includes(value)) || rest[0] === "get-url";
   if (command === "stash") readOnly = ["list", "show"].includes(rest[0]);
   // reflog 기본 동작은 show지만 delete/expire/write/drop 등 변경 명령은 자동 종료에서 계속 보호한다.
   if (command === "reflog") readOnly = rest.length === 0 || ["show", "list", "exists"].includes(rest[0])

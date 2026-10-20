@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { GitGraphPanel } from "../src/webview/graphPanel";
-import { GraphWorkingTreeLoading } from "../src/webview/graphWorkingTreeLoading";
+import test, { type TestContext } from "node:test";
+import type { GitLogService } from "../src/git/gitLogService";
+import { createOperationGraphPanel } from "./helpers/graphOperationPanel";
 import type { Commit, LocalBranchStatus } from "../src/graph/graphTypes";
 
 /** 실제 HEAD 이동과 느린 보조 조회를 production status 수명 관리자에 연결해 재현한다. */
-function fixture(stage?: string) {
+function fixture(t: TestContext, stage?: string) {
   let release!: () => void, entered!: () => void;
   const paused = new Promise<void>(resolve => { release = resolve; });
   const reached = new Promise<void>(resolve => { entered = resolve; });
@@ -17,25 +17,27 @@ function fixture(stage?: string) {
   const branches: LocalBranchStatus[] = commits.map((commit, index) => ({ name: index ? "topic" : "main", hash: commit.hash,
     current: !!index, ahead: 0, behind: 0, gone: false, subject: commit.subject, dateIso: "" }));
   const service = { repoRoot: "/first", getVirtualCommits: async () => { await step("virtual"); return []; },
+    resetGraphBranchIndex: () => undefined,
     cancelGraphBranchContainment: () => undefined, seedGraphBranchTips: () => undefined,
     reindexGraphBranchContainment: () => step("containment") };
   const references = branches.map(branch => ({ name: branch.name, hash: branch.hash, fullRef: `refs/heads/${branch.name}` }));
   const fingerprint = (head: string) => [head, "branch", ...references.map(tip => `${tip.fullRef} ${tip.hash}`), "--worktrees--"].join("\n");
   const context = { repoRoot: service.repoRoot, cause: "checkout", generation: 1, remoteTips: [], references, historyIdentity: "same-topology",
     fingerprint: fingerprint(commits[1].hash), previous: { fingerprint: fingerprint(commits[0].hash), references, historyIdentity: "same-topology" } };
-  const panel: any = Object.assign(Object.create(GitGraphPanel.prototype), {
+  // 실제 constructor가 tag/detail/read 수명을 구성하게 해 prototype만 복사한 오래된 fixture를 피한다.
+  const { panel } = createOperationGraphPanel(t, service as unknown as GitLogService);
+  Object.assign(panel, {
     logService: service, loadGeneration: 7, disposed: false, commits, virtualCommits: [], rangeStartIndex: 0,
-    branchLoading: { cancel: () => undefined }, graphReads: { cancel: () => undefined },
     branchFilter: { mode: "all" }, invalidLocalRefs: [], lastBranchRefs: references.map(tip => ({ name: tip.name, kind: "local" })),
-    sendBranches: async () => { await step("branches"); return branches; },
+    readBranches: async () => { await step("branches"); return { branches, invalidRefs: [], worktrees: [] }; },
+    publishBranches: () => branches,
     currentBranchFilter: () => ({ mode: "all", visibleRefs: new Set(["main", "topic"]), refs: [] }),
     postGraph: () => { events.push("post"); }, postLoadState: () => { events.push("state"); },
     runDirectGraph: async () => { events.push("fallback"); return true; },
     postBranchFilterOptions: () => undefined, attachLocalOnlyMarkers: () => undefined,
     resetLoadedGraph: () => { events.push("reset"); }, reloadGraph: async () => { events.push("fallback"); },
   });
-  panel.workingTree = new GraphWorkingTreeLoading({ service: () => panel.logService, generation: () => panel.loadGeneration,
-    isAlive: () => !panel.disposed, changed: () => panel.postLoadState(), update: (value) => { panel.virtualCommits = value; panel.postGraph(); } });
+  t.after(() => { release(); panel.workingTree.cancel("cleanup"); panel.dispose(); });
   return { panel, service, commits, context, events, release, reached };
 }
 
@@ -44,7 +46,7 @@ async function settle() { for (let index = 0; index < 12; index++) await Promise
 
 for (const stage of ["virtual", "containment"]) {
   test(`checkout publishes the new HEAD before a suspended ${stage} read finishes`, { timeout: 5000 }, async t => {
-    const f = fixture(stage);
+    const f = fixture(t, stage);
     t.after(() => { f.release(); f.panel.workingTree.cancel("cleanup"); });
     let finished = false;
     const reading = f.panel.refreshGraphReferences(f.context).then(() => { finished = true; });
@@ -58,9 +60,9 @@ for (const stage of ["virtual", "containment"]) {
 
 for (const change of ["repository", "generation", "dispose"]) {
   test(`checkout cannot publish after ${change} during branch loading`, { timeout: 5000 }, async t => {
-    const f = fixture("branches"); t.after(f.release);
+    const f = fixture(t, "branches"); t.after(f.release);
     const reading = f.panel.refreshGraphReferences(f.context); await f.reached;
-    if (change === "repository") f.panel.logService = { repoRoot: "/second" };
+    if (change === "repository") f.panel.logService = { ...f.service, repoRoot: "/second" };
     else if (change === "generation") f.panel.loadGeneration++;
     else f.panel.disposed = true;
     f.release(); await reading;
@@ -68,10 +70,10 @@ for (const change of ["repository", "generation", "dispose"]) {
     assert.equal(f.commits[0].refs[0], "HEAD");
   });
   test(`a late checkout status cannot overwrite the graph after ${change}`, { timeout: 5000 }, async t => {
-    const f = fixture("virtual"); t.after(f.release);
+    const f = fixture(t, "virtual"); t.after(f.release);
     await f.panel.refreshGraphReferences(f.context); await f.reached;
     const count = f.events.length, latest = [{ hash: "new display" }];
-    if (change === "repository") f.panel.logService = { repoRoot: "/second" };
+    if (change === "repository") f.panel.logService = { ...f.service, repoRoot: "/second" };
     else if (change === "generation") f.panel.loadGeneration++;
     else f.panel.disposed = true;
     f.panel.virtualCommits = latest;
@@ -80,8 +82,8 @@ for (const change of ["repository", "generation", "dispose"]) {
   });
 }
 
-test("an unloaded new HEAD uses a complete graph reload without starting obsolete status", async () => {
-  const f = fixture(); f.panel.commits = [f.commits[0]];
+test("an unloaded new HEAD uses a complete graph reload without starting obsolete status", async t => {
+  const f = fixture(t); f.panel.commits = [f.commits[0]];
   await f.panel.refreshGraphReferences(f.context);
   assert.deepEqual(f.events, ["reset", "fallback"]);
 });

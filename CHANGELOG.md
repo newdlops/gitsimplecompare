@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.1.72120] - 2026-10-21
+
+### Performance
+
+- Cancel obsolete Graph tag reads on hide, loss of focus, repository changes,
+  branch filters, history jumps and disposal. Wait for owned reads to close before
+  starting the latest replacement, and skip superseded queued requests.
+- Read at most four remote tag catalogs per query. Keep up to 128 recent idle
+  remote-cache entries while protecting active consumers and closing processes.
+
+### Fixed
+
+- Classify remote enumeration as a read so it does not emit false write events
+  and invalidate shared status results. Keep remote mutations protected.
+- Skip explicit write-process termination when spawn failed without a child PID.
+- Keep shared remote tag reads alive for other consumers when one view cancels.
+  Terminate the read when its last consumer leaves and await actual process close.
+- Resume interrupted tag metadata once when a loaded Graph returns or replaces
+  its history window, without reloading completed history or repeating ready tags.
+- Propagate cancellation through local tags, remote discovery and remote reads.
+  Keep cancelled results out of completed cache and out of the current Graph.
+
+### Development
+
+- Add actual child-process cancellation checks, Native annotated/lightweight tag
+  verification, cache pressure and shared-consumer tests. Record the previous
+  version's orphaned reads without treating the fixture as a network benchmark.
+
 ## [0.1.72119] - 2026-10-21
 
 ### Performance

@@ -80,7 +80,8 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     const stop = (error: unknown, reason: string) => {
       failure ??= error;
       if (policy.readOnly || policy.monitor) void gitProcesses.requestStop(id, reason);
-      else if (!closed) child.kill("SIGTERM");
+      // spawn 실패로 PID가 없으면 kill하지 않는다. 생성되지 않은 자식의 빈 PID를 OS에 전달하지 않는다.
+      else if (!closed && child.pid !== undefined && child.pid > 0 && child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
     };
     /** 소비자 취소를 실제 실행 수명에 연결하고 추가 재시도를 차단한다. */
     const abort = () => stop(executionError("ABORT_ERR", "Git command cancelled."), "consumer-released");

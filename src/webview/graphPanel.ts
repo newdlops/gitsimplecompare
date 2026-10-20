@@ -14,7 +14,7 @@ import { createGraphRefreshErrorNotice, publishInvalidGraphRefs } from "./graphH
 import { buildGraphHtml } from "./graphHtml";
 import { FromWebviewMessage, GraphLoadDirection, GraphLoadState, ToWebviewMessage } from "./graphProtocol";
 import { GraphPanelMessageRouter } from "./graphPanelMessageRouter";
-import { sendGraphTagStatus } from "./graphTagStatus";
+import { GraphTagStatusLoading } from "./graphTagStatus";
 import { canReuseGraphSnapshot, syncGraphReferenceTips } from "./graphHistoryReuse";
 import { canIncludeGraphBranchMetadata } from "../git/graphRefSnapshot";
 import type { GraphActionRefreshKind } from "./graphActionRefresh";
@@ -55,6 +55,7 @@ export class GitGraphPanel {
   private remoteCatalogError: string | undefined;
   private readonly branchLoading = new GraphBranchLoadingCoordinator();
   private readonly graphReads = new GraphReadLifecycleCoordinator();
+  private readonly tagLoading = new GraphTagStatusLoading();
   private readonly branchDetails = new GraphBranchDetailsLoading();
   private readonly workingTree = new GraphWorkingTreeLoading({
     service: () => this.logService, generation: () => this.loadGeneration, isAlive: () => !this.disposed,
@@ -202,6 +203,7 @@ export class GitGraphPanel {
     if (vscode.window.state.focused) void this.messages.synchronizeRebaseSession("panelVisible");
     if (!resumedRefresh && this.needsResumedReload() && vscode.window.state.focused) this.resumeBranchLoading();
     else if (vscode.window.state.focused) this.workingTree.resume(this.activePerformance);
+    if (!resumedRefresh && !this.needsResumedReload() && vscode.window.state.focused) this.tagLoading.resume(this.logService.repoRoot, message => this.post(message));
   }
   /** 창 포커스가 빠지면 원격 read를 중단하고 복귀 시 local-first 세대를 다시 연다. */
   private handleWindowFocusChange(focused: boolean): void {
@@ -211,6 +213,7 @@ export class GitGraphPanel {
     if (this.panel.visible) void this.messages.synchronizeRebaseSession("windowFocusedReconcile");
     if (!resumedRefresh && this.panel.visible && this.needsResumedReload()) this.resumeBranchLoading();
     else if (this.panel.visible) this.workingTree.resume(this.activePerformance);
+    if (!resumedRefresh && this.panel.visible && !this.needsResumedReload()) this.tagLoading.resume(this.logService.repoRoot, message => this.post(message));
   }
   /** remote catalog 대기 중이거나 reload 가 첫 게시 전에 끊겼으면 복귀 때 직접 reload 가 필요하다. */
   private needsResumedReload(): boolean { return this.remoteCatalogStatus === "pending" || this.resumeReloadOnFocus; }
@@ -235,6 +238,7 @@ export class GitGraphPanel {
   }
   /** lifecycle 경계에서 늦은 결과를 무효화한다. 숨김/포커스 해제는 화면의 그래프와 PR 조회를 보존한다. */
   private invalidateRefreshWork(reason: string): void {
+    this.tagLoading.cancel(reason);
     const plan = graphInvalidationPlan(reason);
     if (plan.keepLoadedGraph) this.pauseLoadedGraph(); else this.resetLoadedGraph();
     if (plan.cancelPullRequests) this.messages.cancelPullRequestLoading(reason);
@@ -289,7 +293,7 @@ export class GitGraphPanel {
       this.resetLoadedGraph(); await this.reloadGraph(context); return;
     }
     this.workingTree.cancel("checkout");
-    this.graphReads.cancel("checkout"); this.branchLoading.cancel("checkout");
+    this.graphReads.cancel("checkout"); this.tagLoading.cancel("checkout"); this.branchLoading.cancel("checkout");
     const service = this.logService, repoRoot = service.repoRoot, generation = ++this.loadGeneration;
     service.cancelGraphBranchContainment("checkout");
     this.loading = false;
@@ -319,6 +323,7 @@ export class GitGraphPanel {
     void service.reindexGraphBranchContainment(commits, this.rangeStartIndex, filter.refs)
       .catch(error => { if (current()) logError("graph checkout containment failed", error, { repoRoot, generation }); });
     this.attachLocalOnlyMarkers(generation, service, "older", trace);
+    this.tagLoading.resume(repoRoot, message => this.post(message));
     logInfo("graph history reused", { repoRoot, cause: context.cause, loadedCount: commits.length, generation });
   }
   /** 로컬 상태를 먼저 보내고 remote catalog까지 확정한 뒤 최종 첫 페이지를 정확히 한 번 읽는다. */
@@ -377,7 +382,7 @@ export class GitGraphPanel {
       this.attachLocalOnlyMarkers(graphGeneration, service, "older", trace);
     } else await this.loadNextPage(true, "older", trace);
     if (!this.isGraphGenerationActive(graphGeneration)) return;
-    void sendGraphTagStatus(repoRoot, (message) => {
+    void this.tagLoading.start(repoRoot, (message) => {
       if (this.isGraphGenerationActive(graphGeneration)) this.post(message);
     }, { forceRemote: context.cause === "refresh" });
   }
@@ -503,7 +508,7 @@ export class GitGraphPanel {
     cause: "commitWindow" | "reflogWindow",
     load: (signal: AbortSignal) => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>
   ): Promise<string | undefined> {
-    this.workingTree.pause(cause);
+    this.workingTree.pause(cause); this.tagLoading.cancel(cause);
     if (this.branchDetails.identity) this.resumeReloadOnFocus = true;
     this.branchDetails.pause();
     const generation = ++this.loadGeneration;
@@ -518,6 +523,7 @@ export class GitGraphPanel {
         this.rangeStartIndex = window.startIndex; this.rangeTotalCount = window.totalCount; this.loading = false;
         this.exhausted = this.rangeStartIndex + this.commits.length >= window.totalCount;
         this.postGraph(true, "older", trace, "window");
+        this.tagLoading.resume(this.logService.repoRoot, message => this.post(message));
       },
       finish: () => { if (this.loading) { this.loading = false; this.workingTree.resume(trace); this.postLoadState(false); } },
     });
@@ -526,7 +532,7 @@ export class GitGraphPanel {
   private resetLoadedGraph(): void {
     this.workingTree.cancel("reset");
     this.branchDetails.clear();
-    this.graphReads.cancel("reset");
+    this.graphReads.cancel("reset"); this.tagLoading.cancel("reset");
     this.logService.resetGraphBranchIndex();
     this.commits = []; this.virtualCommits = [];
     this.reconcilePageOrder = false;
@@ -542,7 +548,7 @@ export class GitGraphPanel {
   private pauseLoadedGraph(): void {
     this.workingTree.pause("paused");
     this.branchDetails.pause();
-    this.graphReads.cancel("paused");
+    this.graphReads.cancel("paused"); this.tagLoading.cancel("paused");
     if (this.activeReloadGeneration !== undefined || this.commits.length === 0 || this.branchDetails.identity) this.resumeReloadOnFocus = true;
     this.loadGeneration++;
     if (this.loading || this.workingTree.state || this.branchDetails.state) { this.loading = false; this.postLoadState(false); }

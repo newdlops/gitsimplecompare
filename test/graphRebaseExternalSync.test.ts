@@ -6,6 +6,7 @@ import { tryAcquireConflictMutation } from "../src/git/conflictMutationCoordinat
 import { GitLogService } from "../src/git/gitLogService";
 import { RebaseService, type RebasePlanInfo } from "../src/git/rebaseService";
 import { GitGraphPanel } from "../src/webview/graphPanel";
+import { GraphTagStatusLoading } from "../src/webview/graphTagStatus";
 import { GraphPanelMessageRouter, type GraphPanelMessageRouterDeps } from "../src/webview/graphPanelMessageRouter";
 import { GraphRefreshLifecycleCoordinator } from "../src/webview/graphRefreshCoordinator";
 import { GraphRebaseSessionSync } from "../src/webview/graphRebaseSession";
@@ -219,7 +220,9 @@ for (const trigger of ["manual", "focus", "reveal"] as const) {
     t.after(() => { window.state = previousState; });
     const panel = Object.assign(Object.create(GitGraphPanel.prototype), {
       messages: router, panel: { visible: true }, remoteCatalogStatus: "ready",
+      logService: new GitLogService("/repo/a"),
       workingTree: { resume: () => undefined },
+      tagLoading: new GraphTagStatusLoading(),
       refreshCoordinator: { setFocused: () => false, setVisible: () => false },
     });
     if (trigger === "manual") await router.handle({ type: "refresh" });
