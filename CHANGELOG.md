@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72113] - 2026-10-20
+
+### Performance
+
+- Record a PR recovery snapshot and both latest pointers in one Git ref
+  transaction on supporting Git versions, reducing three write processes to one.
+  Cache only explicit unsupported-command responses for the legacy fallback.
+- Skip filesystem-monitor preparation for index-free ref and object writes.
+  Keep ordinary index reads and writes under the existing monitor policy.
+
+### Fixed
+
+- Keep existing recovery snapshots and Undo records when a snapshot transaction
+  is rejected by a ref lock or hook. Update symbolic pointers directly and
+  require new immutable snapshot refs instead of overwriting existing refs.
+
 ## [0.1.72112] - 2026-10-20
 
 ### Performance

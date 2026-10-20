@@ -1,0 +1,2446 @@
+{
+  "version": "0.1.72113",
+  "baseline": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+  "sources": {
+    "src/git/snapshotRefTransaction.ts": "8235c0b3055bfab83d16895e1ea6ae012628c5b7e9aad70cc819142a797229e3",
+    "src/git/pullRequestOperationSnapshot.ts": "e49c80561c93a07c118a638d0f86df08a67e870a4ce87f201c2432a246afef75",
+    "src/git/ownedFsmonitor.ts": "1bebdef66aef8ae4c548a8bd59e8925f99e5d783ad60bd1a1e9323a1a74d97f6"
+  },
+  "comparisons": [
+    {
+      "operation": "push",
+      "processes": [
+        25,
+        25
+      ],
+      "operationProcesses": [
+        19,
+        19
+      ],
+      "operationMs": [
+        2935,
+        4434
+      ],
+      "graphMs": [
+        187,
+        178
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "pull",
+      "processes": [
+        16,
+        16
+      ],
+      "operationProcesses": [
+        4,
+        4
+      ],
+      "operationMs": [
+        1053,
+        1103
+      ],
+      "graphMs": [
+        287,
+        390
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "fetch",
+      "processes": [
+        8,
+        8
+      ],
+      "operationProcesses": [
+        1,
+        1
+      ],
+      "operationMs": [
+        382,
+        380
+      ],
+      "graphMs": [
+        213,
+        203
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "rebase",
+      "processes": [
+        28,
+        28
+      ],
+      "operationProcesses": [
+        16,
+        16
+      ],
+      "operationMs": [
+        2235,
+        1935
+      ],
+      "graphMs": [
+        311,
+        300
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "merge",
+      "processes": [
+        29,
+        29
+      ],
+      "operationProcesses": [
+        17,
+        17
+      ],
+      "operationMs": [
+        2419,
+        1933
+      ],
+      "graphMs": [
+        499,
+        281
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "processes": [
+        39,
+        37
+      ],
+      "operationProcesses": [
+        27,
+        24
+      ],
+      "operationMs": [
+        3113,
+        2517
+      ],
+      "graphMs": [
+        401,
+        612
+      ],
+      "symbolicRefWrites": [
+        2,
+        0
+      ]
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "processes": [
+        40,
+        39
+      ],
+      "operationProcesses": [
+        28,
+        26
+      ],
+      "operationMs": [
+        2793,
+        2262
+      ],
+      "graphMs": [
+        319,
+        306
+      ],
+      "symbolicRefWrites": [
+        2,
+        0
+      ]
+    },
+    {
+      "operation": "cherry-pick",
+      "processes": [
+        13,
+        14
+      ],
+      "operationProcesses": [
+        1,
+        1
+      ],
+      "operationMs": [
+        86,
+        71
+      ],
+      "graphMs": [
+        313,
+        296
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    },
+    {
+      "operation": "checkout",
+      "processes": [
+        10,
+        10
+      ],
+      "operationProcesses": [
+        3,
+        3
+      ],
+      "operationMs": [
+        345,
+        251
+      ],
+      "graphMs": [
+        246,
+        173
+      ],
+      "symbolicRefWrites": [
+        0,
+        0
+      ]
+    }
+  ],
+  "before": {
+    "version": "0.1.72112",
+    "source": {
+      "kind": "commit",
+      "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+      "bundleSha256": "0050813a22021d5d3ec3d01e7e21d6772fab631999b3e9a47bd5b7cb1c129e29"
+    },
+    "fixture": {
+      "files": 1000,
+      "commits": 1000,
+      "branches": 100,
+      "network": "local-bare-only",
+      "monitorPolicy": true
+    },
+    "results": [
+      {
+        "operation": "push",
+        "operationMs": 2935,
+        "graphMs": 187,
+        "latestGraphPublishedMs": 185,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3581,
+        "processes": 25,
+        "operationProcesses": 19,
+        "graphProcesses": 6,
+        "peakProcesses": 3,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 6,
+          "config": 5,
+          "for-each-ref": 4,
+          "remote": 1,
+          "ls-remote": 1,
+          "rev-list": 3,
+          "cat-file": 1,
+          "push": 1,
+          "branch": 1,
+          "worktree": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 1,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 1101,
+          "config": 854,
+          "for-each-ref": 476,
+          "remote": 100,
+          "ls-remote": 316,
+          "rev-list": 334,
+          "cat-file": 96,
+          "push": 741,
+          "branch": 103,
+          "worktree": 178,
+          "status": 106
+        },
+        "nodeCpuMs": 103,
+        "rssDeltaMiB": 7,
+        "peakRssDeltaMiB": 7,
+        "historyExact": true
+      },
+      {
+        "operation": "pull",
+        "operationMs": 1053,
+        "graphMs": 287,
+        "latestGraphPublishedMs": 283,
+        "graphAlreadyCurrent": false,
+        "settledMs": 2187,
+        "processes": 16,
+        "operationProcesses": 4,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 3,
+          "config": 3,
+          "status": 3,
+          "pull": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 1,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 324,
+          "config": 460,
+          "status": 384,
+          "pull": 797,
+          "for-each-ref": 362,
+          "worktree": 178,
+          "log": 99,
+          "rev-list": 171,
+          "remote": 423
+        },
+        "nodeCpuMs": 69,
+        "rssDeltaMiB": 3,
+        "peakRssDeltaMiB": 3,
+        "historyExact": true
+      },
+      {
+        "operation": "fetch",
+        "operationMs": 382,
+        "graphMs": 213,
+        "latestGraphPublishedMs": 211,
+        "graphAlreadyCurrent": false,
+        "settledMs": 1064,
+        "processes": 8,
+        "operationProcesses": 1,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "fetch": 1,
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "fetch": 382,
+          "for-each-ref": 136,
+          "worktree": 207,
+          "rev-list": 274,
+          "rev-parse": 191,
+          "config": 160,
+          "status": 91
+        },
+        "nodeCpuMs": 29,
+        "rssDeltaMiB": 0,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "rebase",
+        "operationMs": 2235,
+        "graphMs": 311,
+        "latestGraphPublishedMs": 306,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3417,
+        "processes": 28,
+        "operationProcesses": 16,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 11,
+          "ls-files": 2,
+          "update-ref": 1,
+          "config": 2,
+          "status": 3,
+          "rebase": 1,
+          "merge-base": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1353,
+          "ls-files": 205,
+          "update-ref": 237,
+          "config": 581,
+          "status": 479,
+          "rebase": 226,
+          "merge-base": 91,
+          "for-each-ref": 485,
+          "worktree": 189,
+          "log": 111,
+          "rev-list": 520,
+          "remote": 245
+        },
+        "nodeCpuMs": 109,
+        "rssDeltaMiB": 6,
+        "peakRssDeltaMiB": 6,
+        "historyExact": true
+      },
+      {
+        "operation": "merge",
+        "operationMs": 2419,
+        "graphMs": 499,
+        "latestGraphPublishedMs": 492,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3955,
+        "processes": 29,
+        "operationProcesses": 17,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 8,
+          "ls-files": 2,
+          "status": 4,
+          "update-ref": 1,
+          "config": 4,
+          "merge": 1,
+          "add": 1,
+          "commit": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1014,
+          "ls-files": 241,
+          "status": 633,
+          "update-ref": 115,
+          "config": 771,
+          "merge": 332,
+          "add": 205,
+          "commit": 236,
+          "for-each-ref": 565,
+          "worktree": 350,
+          "log": 133,
+          "rev-list": 636,
+          "remote": 420
+        },
+        "nodeCpuMs": 134,
+        "rssDeltaMiB": 5,
+        "peakRssDeltaMiB": 5,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "operationMs": 3113,
+        "graphMs": 401,
+        "latestGraphPublishedMs": 394,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4692,
+        "processes": 39,
+        "operationProcesses": 27,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 12,
+          "ls-files": 2,
+          "cat-file": 1,
+          "log": 2,
+          "worktree": 3,
+          "config": 4,
+          "read-tree": 1,
+          "commit": 1,
+          "update-ref": 1,
+          "symbolic-ref": 2,
+          "merge-base": 1,
+          "diff": 1,
+          "reset": 1,
+          "for-each-ref": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1477,
+          "ls-files": 291,
+          "cat-file": 168,
+          "log": 219,
+          "worktree": 462,
+          "config": 786,
+          "read-tree": 98,
+          "commit": 199,
+          "update-ref": 97,
+          "symbolic-ref": 205,
+          "merge-base": 98,
+          "diff": 103,
+          "reset": 187,
+          "for-each-ref": 540,
+          "rev-list": 727,
+          "remote": 488,
+          "status": 349
+        },
+        "nodeCpuMs": 164,
+        "rssDeltaMiB": 0,
+        "peakRssDeltaMiB": 5,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "operationMs": 2793,
+        "graphMs": 319,
+        "latestGraphPublishedMs": 311,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4256,
+        "processes": 40,
+        "operationProcesses": 28,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 16,
+          "ls-files": 2,
+          "cat-file": 1,
+          "status": 4,
+          "update-ref": 1,
+          "symbolic-ref": 2,
+          "config": 4,
+          "cherry-pick": 3,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1581,
+          "ls-files": 224,
+          "cat-file": 122,
+          "status": 606,
+          "update-ref": 96,
+          "symbolic-ref": 193,
+          "config": 852,
+          "cherry-pick": 329,
+          "for-each-ref": 601,
+          "worktree": 189,
+          "log": 115,
+          "rev-list": 742,
+          "remote": 557
+        },
+        "nodeCpuMs": 136,
+        "rssDeltaMiB": 2,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "cherry-pick",
+        "operationMs": 86,
+        "graphMs": 313,
+        "latestGraphPublishedMs": 306,
+        "graphAlreadyCurrent": false,
+        "settledMs": 1393,
+        "processes": 13,
+        "operationProcesses": 1,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "cherry-pick": 1,
+          "worktree": 1,
+          "for-each-ref": 2,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 2,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "cherry-pick": 85,
+          "worktree": 88,
+          "for-each-ref": 595,
+          "log": 90,
+          "rev-parse": 263,
+          "rev-list": 513,
+          "remote": 286,
+          "config": 535,
+          "status": 262
+        },
+        "nodeCpuMs": 55,
+        "rssDeltaMiB": 6,
+        "peakRssDeltaMiB": 6,
+        "historyExact": true
+      },
+      {
+        "operation": "checkout",
+        "operationMs": 345,
+        "graphMs": 246,
+        "latestGraphPublishedMs": 245,
+        "graphAlreadyCurrent": false,
+        "settledMs": 1049,
+        "processes": 10,
+        "operationProcesses": 3,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "switch": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-parse": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "for-each-ref": 332,
+          "rev-parse": 175,
+          "switch": 106,
+          "worktree": 241,
+          "rev-list": 344,
+          "config": 171,
+          "status": 172
+        },
+        "nodeCpuMs": 26,
+        "rssDeltaMiB": 0,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      }
+    ]
+  },
+  "after": {
+    "version": "0.1.72113",
+    "source": {
+      "kind": "working-tree",
+      "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+      "bundleSha256": "d0ce5f3ca038f8133901446a30601c1cf318da4414a3f3f9f946e23effbcf9aa"
+    },
+    "fixture": {
+      "files": 1000,
+      "commits": 1000,
+      "branches": 100,
+      "network": "local-bare-only",
+      "monitorPolicy": true
+    },
+    "results": [
+      {
+        "operation": "push",
+        "operationMs": 4434,
+        "graphMs": 178,
+        "latestGraphPublishedMs": 176,
+        "graphAlreadyCurrent": false,
+        "settledMs": 5174,
+        "processes": 25,
+        "operationProcesses": 19,
+        "graphProcesses": 6,
+        "peakProcesses": 3,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 6,
+          "config": 5,
+          "for-each-ref": 4,
+          "remote": 1,
+          "ls-remote": 1,
+          "rev-list": 3,
+          "cat-file": 1,
+          "push": 1,
+          "branch": 1,
+          "worktree": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-parse": 1,
+          "rev-list": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 1067,
+          "config": 1547,
+          "for-each-ref": 805,
+          "remote": 87,
+          "ls-remote": 206,
+          "rev-list": 906,
+          "cat-file": 624,
+          "push": 956,
+          "branch": 45,
+          "worktree": 170,
+          "status": 142
+        },
+        "nodeCpuMs": 97,
+        "rssDeltaMiB": 4,
+        "peakRssDeltaMiB": 4,
+        "historyExact": true
+      },
+      {
+        "operation": "pull",
+        "operationMs": 1103,
+        "graphMs": 390,
+        "latestGraphPublishedMs": 386,
+        "graphAlreadyCurrent": false,
+        "settledMs": 2204,
+        "processes": 16,
+        "operationProcesses": 4,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 3,
+          "config": 3,
+          "status": 3,
+          "pull": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 2,
+          "log": 1,
+          "config": 2,
+          "rev-list": 1,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 254,
+          "config": 361,
+          "status": 535,
+          "pull": 830,
+          "for-each-ref": 348,
+          "worktree": 182,
+          "log": 196,
+          "rev-list": 156,
+          "remote": 313
+        },
+        "nodeCpuMs": 69,
+        "rssDeltaMiB": 9,
+        "peakRssDeltaMiB": 9,
+        "historyExact": true
+      },
+      {
+        "operation": "fetch",
+        "operationMs": 380,
+        "graphMs": 203,
+        "latestGraphPublishedMs": 202,
+        "graphAlreadyCurrent": false,
+        "settledMs": 1135,
+        "processes": 8,
+        "operationProcesses": 1,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "fetch": 1,
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "fetch": 380,
+          "for-each-ref": 130,
+          "worktree": 197,
+          "rev-list": 283,
+          "rev-parse": 179,
+          "config": 188,
+          "status": 159
+        },
+        "nodeCpuMs": 33,
+        "rssDeltaMiB": 1,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "rebase",
+        "operationMs": 1935,
+        "graphMs": 300,
+        "latestGraphPublishedMs": 295,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3059,
+        "processes": 28,
+        "operationProcesses": 16,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 11,
+          "ls-files": 2,
+          "update-ref": 1,
+          "config": 2,
+          "status": 3,
+          "rebase": 1,
+          "merge-base": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1166,
+          "ls-files": 299,
+          "update-ref": 183,
+          "config": 468,
+          "status": 401,
+          "rebase": 213,
+          "merge-base": 96,
+          "for-each-ref": 455,
+          "worktree": 179,
+          "log": 111,
+          "rev-list": 507,
+          "remote": 250
+        },
+        "nodeCpuMs": 104,
+        "rssDeltaMiB": 4,
+        "peakRssDeltaMiB": 4,
+        "historyExact": true
+      },
+      {
+        "operation": "merge",
+        "operationMs": 1933,
+        "graphMs": 281,
+        "latestGraphPublishedMs": 277,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3133,
+        "processes": 29,
+        "operationProcesses": 17,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 8,
+          "ls-files": 2,
+          "status": 4,
+          "update-ref": 1,
+          "config": 4,
+          "merge": 1,
+          "add": 1,
+          "commit": 1,
+          "worktree": 1,
+          "for-each-ref": 2,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 2,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 773,
+          "ls-files": 187,
+          "status": 589,
+          "update-ref": 93,
+          "config": 761,
+          "merge": 219,
+          "add": 95,
+          "commit": 180,
+          "worktree": 89,
+          "for-each-ref": 434,
+          "log": 81,
+          "rev-list": 583,
+          "remote": 326
+        },
+        "nodeCpuMs": 86,
+        "rssDeltaMiB": 2,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "operationMs": 2517,
+        "graphMs": 612,
+        "latestGraphPublishedMs": 608,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4013,
+        "processes": 37,
+        "operationProcesses": 24,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 12,
+          "ls-files": 2,
+          "cat-file": 1,
+          "log": 2,
+          "worktree": 3,
+          "config": 4,
+          "read-tree": 1,
+          "commit": 1,
+          "update-ref": 1,
+          "merge-base": 1,
+          "diff": 1,
+          "reset": 1,
+          "for-each-ref": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1278,
+          "ls-files": 190,
+          "cat-file": 107,
+          "log": 368,
+          "worktree": 540,
+          "config": 530,
+          "read-tree": 104,
+          "commit": 372,
+          "update-ref": 94,
+          "merge-base": 87,
+          "diff": 91,
+          "reset": 96,
+          "for-each-ref": 512,
+          "rev-list": 505,
+          "remote": 416,
+          "status": 361
+        },
+        "nodeCpuMs": 119,
+        "rssDeltaMiB": 2,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "operationMs": 2262,
+        "graphMs": 306,
+        "latestGraphPublishedMs": 301,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3391,
+        "processes": 39,
+        "operationProcesses": 26,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 16,
+          "ls-files": 2,
+          "cat-file": 1,
+          "status": 4,
+          "update-ref": 1,
+          "config": 5,
+          "cherry-pick": 3,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 2,
+          "log": 1,
+          "config": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 1329,
+          "ls-files": 200,
+          "cat-file": 91,
+          "status": 635,
+          "update-ref": 90,
+          "config": 565,
+          "cherry-pick": 330,
+          "for-each-ref": 291,
+          "worktree": 101,
+          "log": 195,
+          "rev-list": 505,
+          "remote": 328
+        },
+        "nodeCpuMs": 134,
+        "rssDeltaMiB": 2,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "cherry-pick",
+        "operationMs": 71,
+        "graphMs": 296,
+        "latestGraphPublishedMs": 292,
+        "graphAlreadyCurrent": false,
+        "settledMs": 1250,
+        "processes": 14,
+        "operationProcesses": 1,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "cherry-pick": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-parse": 2,
+          "rev-list": 2,
+          "config": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "cherry-pick": 70,
+          "for-each-ref": 375,
+          "worktree": 182,
+          "log": 105,
+          "rev-parse": 254,
+          "rev-list": 506,
+          "config": 356,
+          "remote": 417,
+          "status": 352
+        },
+        "nodeCpuMs": 48,
+        "rssDeltaMiB": 1,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "checkout",
+        "operationMs": 251,
+        "graphMs": 173,
+        "latestGraphPublishedMs": 171,
+        "graphAlreadyCurrent": false,
+        "settledMs": 881,
+        "processes": 10,
+        "operationProcesses": 3,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "switch": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "for-each-ref": 162,
+          "rev-parse": 258,
+          "switch": 100,
+          "worktree": 167,
+          "rev-list": 253,
+          "config": 166,
+          "status": 95
+        },
+        "nodeCpuMs": 28,
+        "rssDeltaMiB": 0,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      }
+    ]
+  },
+  "snapshotPhase": {
+    "firstPair": {
+      "before": {
+        "version": "0.1.72112",
+        "source": {
+          "kind": "commit",
+          "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+          "bundleSha256": "f4e4f85ec55f48d8c5ff4a3e3453fb880828ea0290e6caa5b8a199b65889c321"
+        },
+        "fixture": {
+          "monitorPolicy": true,
+          "fsmonitor": false,
+          "warmup": 1,
+          "samples": 5,
+          "network": "none"
+        },
+        "samples": [
+          {
+            "elapsedMs": 2621.0522500000006,
+            "nodeCpuMs": 22.093,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 2597.135292000001,
+            "nodeCpuMs": 10.466,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 2595.8348750000005,
+            "nodeCpuMs": 8.677,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 2616.3012080000008,
+            "nodeCpuMs": 11.38,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 2605.6902090000003,
+            "nodeCpuMs": 11.289,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ]
+          }
+        ],
+        "median": {
+          "elapsedMs": 2605.6902090000003,
+          "nodeCpuMs": 11.289,
+          "processes": 5
+        },
+        "recoveryRefsPreserved": true,
+        "headAndIndexUnchanged": true
+      },
+      "after": {
+        "version": "0.1.72113",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+          "bundleSha256": "cb60b3539c6c269dba21cc7d4d6573c3e880e00a9db486c7bd65cfe615d35708"
+        },
+        "fixture": {
+          "monitorPolicy": true,
+          "fsmonitor": false,
+          "warmup": 1,
+          "samples": 5,
+          "network": "none"
+        },
+        "samples": [
+          {
+            "elapsedMs": 225.519458,
+            "nodeCpuMs": 5.574,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 342.7053330000001,
+            "nodeCpuMs": 5.213,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 295.5330829999998,
+            "nodeCpuMs": 6.126,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 483.6623749999999,
+            "nodeCpuMs": 6.159,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ]
+          },
+          {
+            "elapsedMs": 300.00141699999995,
+            "nodeCpuMs": 4.171,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ]
+          }
+        ],
+        "median": {
+          "elapsedMs": 300.00141699999995,
+          "nodeCpuMs": 5.574,
+          "processes": 2
+        },
+        "recoveryRefsPreserved": true,
+        "headAndIndexUnchanged": true
+      }
+    },
+    "finalPair": {
+      "before": {
+        "version": "0.1.72112",
+        "source": {
+          "kind": "commit",
+          "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+          "bundleSha256": "70d4d7c7001fd5debf85946ef8e87934f531eef11759873c94558925815892d5"
+        },
+        "fixture": {
+          "monitorPolicy": true,
+          "fsmonitor": false,
+          "warmup": 1,
+          "samples": 5,
+          "network": "none"
+        },
+        "samples": [
+          {
+            "elapsedMs": 470.5968750000002,
+            "nodeCpuMs": 10.215,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "config",
+                "elapsedMs": 94,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "update-ref",
+                "elapsedMs": 96,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 92,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 92,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 94,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 519.7233329999999,
+            "nodeCpuMs": 11.63,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "config",
+                "elapsedMs": 92,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "update-ref",
+                "elapsedMs": 97,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 106,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 127,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 94,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 470.77941699999974,
+            "nodeCpuMs": 9.932,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "config",
+                "elapsedMs": 98,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "update-ref",
+                "elapsedMs": 97,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 92,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 93,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 89,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 455.87725,
+            "nodeCpuMs": 9.396,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "config",
+                "elapsedMs": 91,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "update-ref",
+                "elapsedMs": 91,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 89,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 91,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 93,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 568.7676249999995,
+            "nodeCpuMs": 10.283,
+            "commands": [
+              "config",
+              "update-ref",
+              "symbolic-ref",
+              "symbolic-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "config",
+                "elapsedMs": 93,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "update-ref",
+                "elapsedMs": 129,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 109,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "symbolic-ref",
+                "elapsedMs": 139,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 95,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          }
+        ],
+        "monitorEvents": [],
+        "median": {
+          "elapsedMs": 470.77941699999974,
+          "nodeCpuMs": 10.215,
+          "processes": 5
+        },
+        "recoveryRefsPreserved": true,
+        "headAndIndexUnchanged": true
+      },
+      "after": {
+        "version": "0.1.72113",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+          "bundleSha256": "2925f6f6217b446d8b19d8a2a39fa0f1e97d13a03ae15631742cd5bba7bce7c5"
+        },
+        "fixture": {
+          "monitorPolicy": true,
+          "fsmonitor": false,
+          "warmup": 1,
+          "samples": 5,
+          "network": "none"
+        },
+        "samples": [
+          {
+            "elapsedMs": 541.1264999999999,
+            "nodeCpuMs": 6.31,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "update-ref",
+                "elapsedMs": 131,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 407,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 1371.0980829999999,
+            "nodeCpuMs": 11.809,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "update-ref",
+                "elapsedMs": 728,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 603,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 1226.6270409999997,
+            "nodeCpuMs": 8.959,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "update-ref",
+                "elapsedMs": 971,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 253,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 1195.4407499999998,
+            "nodeCpuMs": 6.209,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "update-ref",
+                "elapsedMs": 374,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 819,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          },
+          {
+            "elapsedMs": 889.1087920000009,
+            "nodeCpuMs": 5.79,
+            "commands": [
+              "update-ref",
+              "rev-parse"
+            ],
+            "timings": [
+              {
+                "command": "update-ref",
+                "elapsedMs": 558,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-parse",
+                "elapsedMs": 328,
+                "outcome": "success",
+                "code": 0
+              }
+            ]
+          }
+        ],
+        "monitorEvents": [],
+        "median": {
+          "elapsedMs": 1195.4407499999998,
+          "nodeCpuMs": 6.31,
+          "processes": 2
+        },
+        "recoveryRefsPreserved": true,
+        "headAndIndexUnchanged": true
+      }
+    }
+  },
+  "headlessIntegration": {
+    "version": "0.1.72113",
+    "source": {
+      "kind": "working-tree",
+      "commit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+      "bundleSha256": "0c7843a17feea049b41010b0debe735d6f4160ec593cbae6b9b4a09b3b7309dc"
+    },
+    "fixture": {
+      "files": 1000,
+      "commits": 1000,
+      "branches": 100,
+      "network": "local-bare-only",
+      "monitorPolicy": true
+    },
+    "results": [
+      {
+        "operation": "push",
+        "operationMs": 12919,
+        "graphMs": 762,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 825,
+          "renderMs": 10,
+          "frameMs": 22
+        },
+        "latestGraphPublishedMs": 759,
+        "graphAlreadyCurrent": false,
+        "settledMs": 16014,
+        "processes": 26,
+        "operationProcesses": 20,
+        "graphProcesses": 6,
+        "peakProcesses": 3,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 6,
+          "config": 6,
+          "for-each-ref": 4,
+          "remote": 1,
+          "ls-remote": 1,
+          "rev-list": 3,
+          "cat-file": 1,
+          "push": 1,
+          "branch": 1,
+          "worktree": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 1,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 4879,
+          "config": 4458,
+          "for-each-ref": 2287,
+          "remote": 523,
+          "ls-remote": 1589,
+          "rev-list": 1628,
+          "cat-file": 543,
+          "push": 3003,
+          "branch": 593,
+          "worktree": 748,
+          "status": 630
+        },
+        "nodeCpuMs": 278,
+        "rssDeltaMiB": -22,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "pull",
+        "operationMs": 6134,
+        "graphMs": 2731,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 2812,
+          "renderMs": 40,
+          "frameMs": 11
+        },
+        "latestGraphPublishedMs": 2716,
+        "graphAlreadyCurrent": false,
+        "settledMs": 10355,
+        "processes": 14,
+        "operationProcesses": 5,
+        "graphProcesses": 9,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 2,
+          "config": 3,
+          "status": 2,
+          "pull": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 1,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 1,
+          "log": 1,
+          "config": 1,
+          "rev-list": 1,
+          "status": 1,
+          "remote": 1
+        },
+        "commandTimeMs": {
+          "rev-parse": 2132,
+          "config": 1528,
+          "status": 1629,
+          "pull": 3805,
+          "for-each-ref": 2057,
+          "worktree": 1056,
+          "log": 1639,
+          "rev-list": 522,
+          "remote": 1460
+        },
+        "nodeCpuMs": 201,
+        "rssDeltaMiB": 0,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      },
+      {
+        "operation": "fetch",
+        "operationMs": 1311,
+        "graphMs": 891,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 954,
+          "renderMs": 11,
+          "frameMs": 20
+        },
+        "latestGraphPublishedMs": 888,
+        "graphAlreadyCurrent": false,
+        "settledMs": 4386,
+        "processes": 8,
+        "operationProcesses": 1,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 7,
+        "graphPublications": 3,
+        "commands": {
+          "fetch": 1,
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "fetch": 1311,
+          "for-each-ref": 562,
+          "worktree": 878,
+          "rev-list": 1482,
+          "rev-parse": 985,
+          "config": 378,
+          "status": 788
+        },
+        "nodeCpuMs": 198,
+        "rssDeltaMiB": -41,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "rebase",
+        "operationMs": 10855,
+        "graphMs": 1852,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 1952,
+          "renderMs": 40,
+          "frameMs": 11
+        },
+        "latestGraphPublishedMs": 1817,
+        "graphAlreadyCurrent": false,
+        "settledMs": 16104,
+        "processes": 29,
+        "operationProcesses": 16,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 11,
+          "ls-files": 2,
+          "update-ref": 1,
+          "config": 3,
+          "status": 3,
+          "rebase": 1,
+          "merge-base": 1,
+          "worktree": 1,
+          "for-each-ref": 2,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "log": 1,
+          "config": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 6539,
+          "ls-files": 1159,
+          "update-ref": 673,
+          "config": 1573,
+          "status": 3495,
+          "rebase": 1174,
+          "merge-base": 454,
+          "worktree": 799,
+          "for-each-ref": 2022,
+          "log": 846,
+          "rev-list": 889,
+          "remote": 627
+        },
+        "nodeCpuMs": 353,
+        "rssDeltaMiB": 33,
+        "peakRssDeltaMiB": 38,
+        "historyExact": true
+      },
+      {
+        "operation": "merge",
+        "operationMs": 10528,
+        "graphMs": 1863,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 1929,
+          "renderMs": 31,
+          "frameMs": 10
+        },
+        "latestGraphPublishedMs": 1848,
+        "graphAlreadyCurrent": false,
+        "settledMs": 15749,
+        "processes": 29,
+        "operationProcesses": 17,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 8,
+          "ls-files": 2,
+          "status": 4,
+          "update-ref": 1,
+          "config": 4,
+          "merge": 1,
+          "add": 1,
+          "commit": 1,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 2,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 5339,
+          "ls-files": 1941,
+          "status": 1682,
+          "update-ref": 504,
+          "config": 3369,
+          "merge": 774,
+          "add": 638,
+          "commit": 704,
+          "for-each-ref": 2013,
+          "worktree": 741,
+          "log": 1099,
+          "remote": 773,
+          "rev-list": 2282
+        },
+        "nodeCpuMs": 425,
+        "rssDeltaMiB": -6,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "operationMs": 20058,
+        "graphMs": 1734,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 1820,
+          "renderMs": 44,
+          "frameMs": 13
+        },
+        "latestGraphPublishedMs": 1603,
+        "graphAlreadyCurrent": false,
+        "settledMs": 28289,
+        "processes": 37,
+        "operationProcesses": 24,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 12,
+          "ls-files": 2,
+          "cat-file": 1,
+          "log": 2,
+          "worktree": 3,
+          "config": 4,
+          "read-tree": 1,
+          "commit": 1,
+          "update-ref": 1,
+          "merge-base": 1,
+          "diff": 1,
+          "reset": 1,
+          "for-each-ref": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 2,
+          "log": 1,
+          "config": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 11492,
+          "ls-files": 1207,
+          "cat-file": 445,
+          "log": 1299,
+          "worktree": 1609,
+          "config": 3661,
+          "read-tree": 709,
+          "commit": 1482,
+          "update-ref": 1310,
+          "merge-base": 760,
+          "diff": 1026,
+          "reset": 1831,
+          "for-each-ref": 1401,
+          "rev-list": 1594,
+          "remote": 1079,
+          "status": 2211
+        },
+        "nodeCpuMs": 479,
+        "rssDeltaMiB": -33,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "operationMs": 27674,
+        "graphMs": 2090,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 2143,
+          "renderMs": 25,
+          "frameMs": 8
+        },
+        "latestGraphPublishedMs": 2078,
+        "graphAlreadyCurrent": false,
+        "settledMs": 34222,
+        "processes": 40,
+        "operationProcesses": 27,
+        "graphProcesses": 13,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "rev-parse": 16,
+          "config": 6,
+          "ls-files": 2,
+          "cat-file": 1,
+          "status": 4,
+          "update-ref": 1,
+          "cherry-pick": 3,
+          "for-each-ref": 2,
+          "worktree": 1,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 2,
+          "worktree": 1,
+          "rev-parse": 2,
+          "log": 1,
+          "config": 2,
+          "rev-list": 2,
+          "remote": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "rev-parse": 13848,
+          "config": 6244,
+          "ls-files": 2976,
+          "cat-file": 902,
+          "status": 4804,
+          "update-ref": 1044,
+          "cherry-pick": 3297,
+          "for-each-ref": 1381,
+          "worktree": 1015,
+          "log": 1054,
+          "rev-list": 1561,
+          "remote": 2018
+        },
+        "nodeCpuMs": 482,
+        "rssDeltaMiB": -5,
+        "peakRssDeltaMiB": 1,
+        "historyExact": true
+      },
+      {
+        "operation": "cherry-pick",
+        "operationMs": 385,
+        "graphMs": 2670,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 2738,
+          "renderMs": 30,
+          "frameMs": 13
+        },
+        "latestGraphPublishedMs": 2652,
+        "graphAlreadyCurrent": false,
+        "settledMs": 6700,
+        "processes": 13,
+        "operationProcesses": 1,
+        "graphProcesses": 12,
+        "peakProcesses": 4,
+        "webviewMessages": 10,
+        "graphPublications": 3,
+        "commands": {
+          "cherry-pick": 1,
+          "worktree": 1,
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "graphCommands": {
+          "worktree": 1,
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 1,
+          "status": 2
+        },
+        "commandTimeMs": {
+          "cherry-pick": 384,
+          "worktree": 412,
+          "for-each-ref": 3594,
+          "rev-parse": 1602,
+          "log": 735,
+          "rev-list": 1940,
+          "remote": 913,
+          "config": 1196,
+          "status": 1563
+        },
+        "nodeCpuMs": 334,
+        "rssDeltaMiB": -29,
+        "peakRssDeltaMiB": 0,
+        "historyExact": true
+      },
+      {
+        "operation": "checkout",
+        "operationMs": 1220,
+        "graphMs": 923,
+        "liveRenderer": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "mutationToFrameMs": 988,
+          "renderMs": 8,
+          "frameMs": 15
+        },
+        "latestGraphPublishedMs": 921,
+        "graphAlreadyCurrent": false,
+        "settledMs": 3976,
+        "processes": 10,
+        "operationProcesses": 3,
+        "graphProcesses": 7,
+        "peakProcesses": 2,
+        "webviewMessages": 6,
+        "graphPublications": 2,
+        "commands": {
+          "for-each-ref": 2,
+          "rev-parse": 2,
+          "switch": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "config": 1,
+          "status": 1
+        },
+        "graphCommands": {
+          "for-each-ref": 1,
+          "worktree": 1,
+          "rev-list": 2,
+          "rev-parse": 1,
+          "config": 1,
+          "status": 1
+        },
+        "commandTimeMs": {
+          "for-each-ref": 1243,
+          "rev-parse": 880,
+          "switch": 429,
+          "worktree": 913,
+          "rev-list": 1046,
+          "config": 435,
+          "status": 867
+        },
+        "nodeCpuMs": 155,
+        "rssDeltaMiB": 2,
+        "peakRssDeltaMiB": 2,
+        "historyExact": true
+      }
+    ]
+  },
+  "tests": {
+    "safety": {
+      "completedUniqueCases": 100,
+      "firstPassed": 92,
+      "deadlineMs": 900000,
+      "initialRunCompleted": false,
+      "remaining": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    "atomicCompatibility": {
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    }
+  },
+  "artifact": {
+    "version": "0.1.72113",
+    "artifact": "/Users/lky/project/gitsimplecompare/gitsimplecompare-0.1.72113.vsix",
+    "bytes": 977153,
+    "sha256": "b0cd6d31e4e445ecf28ad47d90cb4dd69db9edf5614425d2e71908dfa2eb0e77",
+    "extensionSha256": "cddeab83104115b63d8317f27e5cde381d9db55d84f690a4e07fd99fd3baf977",
+    "verifiedRuntimeFiles": 124,
+    "developmentFilesExcluded": true
+  },
+  "testEvidence": {
+    "completedCases": [
+      "completed branch Undo preserves a later stash conflict even when HEAD did not move",
+      "completed squash Undo preserves unrelated local changes",
+      "the current squash conflict can be undone without deleting another file's edits",
+      "a newly staged change invalidates partial squash Undo",
+      "an externally restarted squash with identical conflicted blobs cannot reuse the old Undo",
+      "a failed squash commit keeps staged changes and a working recovery snapshot",
+      "an Undo plan cannot target a new operation created while confirmation was open",
+      "a failed temporary squash never classifies the user's original staged work as squash output",
+      "a later commit invalidates completed Undo and preserves its snapshot",
+      "Undo aborts its own rebase and restores the preserved local stash",
+      "an identical rebase restarted externally cannot be aborted by an old Undo",
+      "a continued branch rebase records its completed HEAD for later Undo",
+      "completed rebase preserves local edits and untracked files through Undo",
+      "a fresh completed rebase never silently accepts a missing Undo binding",
+      "continuing an older rebase without an Undo binding still completes without inventing ownership",
+      "Undo never applies a pending stash owned by an earlier externally aborted rebase",
+      "another worktree cannot infer ownership from a shared branch snapshot",
+      "PR Undo refuses to move a branch checked out in another worktree",
+      "PR Undo can still restore an off-branch snapshot when no worktree uses it",
+      "ordinary index reads start one owned foreground monitor independently of idle cleanup settings",
+      "failed monitor preparation forces a command-scope fallback without changing repository settings",
+      "explicit command-scope fsmonitor=false bypasses monitor startup",
+      "session disposal while Git preparation is pending prevents a late index read or daemon spawn",
+      "a failed startup overrides earlier CLI fsmonitor=true as well as inherited environment",
+      "a live monitor that never becomes ready is closed before falling back to a full scan",
+      "CLI true overrides an earlier false or environment false before ownership preparation",
+      "an explicit caller hook is preserved even after a cached failed builtin preparation",
+      "config-env true takes precedence over inherited false before preparing the monitor",
+      "creating another worktree cannot autostart an unmanaged monitor in the new directory",
+      "a confirmed existing monitor is reused during a burst without repeated Git preparation probes",
+      "an existing listening daemon with a stalled query is bypassed once for concurrent and later reads",
+      "status and literal untracked expansion share the same stalled monitor probe",
+      "pathspec-only flags share a healthy monitor while changed Git configuration keeps a separate preparation",
+      "a newly owned daemon that listens but never answers is closed before the fallback read",
+      "a query failure with exit one cannot be mistaken for a missing daemon and restart the user's daemon",
+      "an owned daemon query failure is not retried as a missing socket",
+      "session disposal cancels a pending daemon query without starting the waiting index read",
+      "a broken handshake stops retrying instead of adding ten more Git startup delays",
+      "reference queries and index-free ref/object writes do not prepare an index monitor",
+      "native ref/object writes preserve the real index and do not start a builtin monitor",
+      "private status reads finish without waiting for a stalled monitor query",
+      "private status reads use a confirmed healthy monitor after the first full scan",
+      "private status background preparation preserves a configured custom hook",
+      "off-branch Undo rejects a ref update between validation and the final write",
+      "off-branch Undo still protects a branch checked out in another worktree",
+      "stack rollback resumes after ref restoration checkpoint fails (unoccupied branch)",
+      "stack rollback resumes after ref restoration checkpoint fails (owned worktree)",
+      "search completes 105 original commits before real squash application",
+      "search refuses head changes before publishing partial commit data",
+      "search refuses missing pages before publishing partial commit data",
+      "an explicitly incomplete commit set cannot enter a Git write operation",
+      "a force-pushed PR replaces old commits instead of applying removed files",
+      "a late search success cannot cross repository reset",
+      "a late search error cannot cross repository reset",
+      "PR commit materialize 후 기존 확장 ref를 조건부로 복원한다",
+      "Squash Cherry-Pick은 로컬에 없는 PR commit을 pull ref에서 가져온다",
+      "PR Rebase도 로컬에 없는 원본 commit을 같은 pull ref에서 가져온다",
+      "PR head가 조회 뒤 바뀌면 오래된 Squash Cherry-Pick을 중단한다",
+      "원격 pull ref도 없으면 누락 object를 정상 계획으로 숨기지 않는다",
+      "현재 이력의 squash merge 결과를 누락 원본 commit보다 우선한다",
+      "실제 merge commit은 첫 부모 mainline으로 Squash Revert한다",
+      "다중 commit squash merge는 전체 patch가 같은 mergeHash 하나를 되돌린다",
+      "다중 commit rebase merge의 마지막 mergeHash만 되돌리지 않는다",
+      "raw reverse patch가 context drift로 실패해도 commit별 revert는 성공한다",
+      "staged 사용자 변경을 revert commit에 섞지 않고 작업트리에 보존한다",
+      "PR snapshot and both latest pointers use one owned Git transaction and remain undoable",
+      "a locked latest pointer leaves every recovery ref and the previous Undo unchanged",
+      "a rejecting reference transaction hook does not trigger a legacy retry or remove the previous snapshot",
+      "older Git uses the existing symbolic ref contract and does not repeat unsupported probes",
+      "a colliding immutable snapshot is never overwritten or claimed by the failing caller",
+      "a later snapshot moves symbolic pointers without changing the earlier immutable recovery commit",
+      "squashCherryPick records completed Undo and preserves unrelated edits",
+      "squashCherryPick through a temporary worktree records Undo without claiming the user's staged work",
+      "rebasePullRequest records completed Undo and preserves unrelated edits",
+      "rebasePullRequest through a temporary worktree records Undo without claiming the user's staged work",
+      "PR Undo cannot abort an unrelated rebase or erase its manual resolution",
+      "completed PR Undo preserves a later unrelated cherry-pick conflict",
+      "completed PR Undo preserves a later unrelated revert conflict",
+      "completed PR Undo preserves a same-HEAD stash conflict and manual edits",
+      "later commits invalidate completed PR Undo without removing its snapshot",
+      "PR Undo cannot substitute an operation created after confirmation started",
+      "PR Undo rejects metadata from another worktree and keeps shared refs",
+      "a legacy PR snapshot without ownership cannot become automatic Undo",
+      "isolated squash conflict leaves the original branch editable without claiming Undo",
+      "failed isolated PR squash commit preserves the original worktree without claiming Undo",
+      "new staged work is preserved while an isolated squash conflict is pending",
+      "Undo aborts its own deferred PR cherry-pick conflict",
+      "Undo aborts its own deferred PR revert conflict",
+      "an identical cherry-pick restarted externally cannot reuse the old PR Undo",
+      "new staged work invalidates Undo of an owned PR cherry-pick conflict",
+      "continuing a PR conflict records its completed HEAD for later Undo",
+      "PR Undo never restores a deferred stash from a different snapshot",
+      "PR Undo never restores a legacy stash from a different snapshot",
+      "PR Undo restores its matching pending stash after returning to the snapshot",
+      "a prepared PR snapshot alone is never considered a completed operation",
+      "squashRevertPullRequest on a clean worktree records completed Undo",
+      "squashRevertPullRequest using a temporary worktree records completed Undo",
+      "rebaseRevertPullRequest on a clean worktree records completed Undo",
+      "rebaseRevertPullRequest using a temporary worktree records completed Undo",
+      "squash revert conflict is isolated and does not require resetting the original worktree"
+    ],
+    "initialLog": "Node test group: pid=576 concurrency=3 timeoutMs=900000.\n\n  out-test/prSnapshotReadSafety.test.js        355.5kb\n  out-test/prRecoveryCheckpointSafety.test.js  338.3kb\n  out-test/pullRequestUndoSafety.test.js       311.4kb\n  out-test/branchOperationSafety.test.js       250.7kb\n  out-test/pullRequestRevertOperation.test.js  236.3kb\n  out-test/pullRequestSnapshotAtomic.test.js   138.2kb\n  out-test/ownedFsmonitor.test.js               61.1kb\n\n⚡ Done in 36ms\nTAP version 13\n# Subtest: completed branch Undo preserves a later stash conflict even when HEAD did not move\nok 1 - completed branch Undo preserves a later stash conflict even when HEAD did not move\n  ---\n  duration_ms: 14166.342208\n  type: 'test'\n  ...\n# Subtest: completed squash Undo preserves unrelated local changes\nok 2 - completed squash Undo preserves unrelated local changes\n  ---\n  duration_ms: 18303.130625\n  type: 'test'\n  ...\n# Subtest: the current squash conflict can be undone without deleting another file's edits\nok 3 - the current squash conflict can be undone without deleting another file's edits\n  ---\n  duration_ms: 22382.014375\n  type: 'test'\n  ...\n# Subtest: a newly staged change invalidates partial squash Undo\nok 4 - a newly staged change invalidates partial squash Undo\n  ---\n  duration_ms: 21406.938041\n  type: 'test'\n  ...\n# Subtest: an externally restarted squash with identical conflicted blobs cannot reuse the old Undo\nok 5 - an externally restarted squash with identical conflicted blobs cannot reuse the old Undo\n  ---\n  duration_ms: 20997.906208\n  type: 'test'\n  ...\n# Subtest: a failed squash commit keeps staged changes and a working recovery snapshot\nok 6 - a failed squash commit keeps staged changes and a working recovery snapshot\n  ---\n  duration_ms: 33243.05975\n  type: 'test'\n  ...\n# Subtest: an Undo plan cannot target a new operation created while confirmation was open\nok 7 - an Undo plan cannot target a new operation created while confirmation was open\n  ---\n  duration_ms: 41278.448375\n  type: 'test'\n  ...\n# Subtest: a failed temporary squash never classifies the user's original staged work as squash output\nok 8 - a failed temporary squash never classifies the user's original staged work as squash output\n  ---\n  duration_ms: 22025.054833\n  type: 'test'\n  ...\n# Subtest: a later commit invalidates completed Undo and preserves its snapshot\nok 9 - a later commit invalidates completed Undo and preserves its snapshot\n  ---\n  duration_ms: 27909.39775\n  type: 'test'\n  ...\n# Subtest: Undo aborts its own rebase and restores the preserved local stash\nok 10 - Undo aborts its own rebase and restores the preserved local stash\n  ---\n  duration_ms: 76061.95175\n  type: 'test'\n  ...\n# Subtest: an identical rebase restarted externally cannot be aborted by an old Undo\nok 11 - an identical rebase restarted externally cannot be aborted by an old Undo\n  ---\n  duration_ms: 35528.401584\n  type: 'test'\n  ...\n# Subtest: a continued branch rebase records its completed HEAD for later Undo\nok 12 - a continued branch rebase records its completed HEAD for later Undo\n  ---\n  duration_ms: 83206.219\n  type: 'test'\n  ...\n# Subtest: completed rebase preserves local edits and untracked files through Undo\nok 13 - completed rebase preserves local edits and untracked files through Undo\n  ---\n  duration_ms: 61947.969042\n  type: 'test'\n  ...\n# Subtest: a fresh completed rebase never silently accepts a missing Undo binding\nok 14 - a fresh completed rebase never silently accepts a missing Undo binding\n  ---\n  duration_ms: 29053.630833\n  type: 'test'\n  ...\n# Subtest: continuing an older rebase without an Undo binding still completes without inventing ownership\nok 15 - continuing an older rebase without an Undo binding still completes without inventing ownership\n  ---\n  duration_ms: 35625.134\n  type: 'test'\n  ...\n# Subtest: Undo never applies a pending stash owned by an earlier externally aborted rebase\nok 16 - Undo never applies a pending stash owned by an earlier externally aborted rebase\n  ---\n  duration_ms: 45286.970208\n  type: 'test'\n  ...\n# Subtest: another worktree cannot infer ownership from a shared branch snapshot\nok 17 - another worktree cannot infer ownership from a shared branch snapshot\n  ---\n  duration_ms: 15625.961167\n  type: 'test'\n  ...\n# Subtest: PR Undo refuses to move a branch checked out in another worktree\nok 18 - PR Undo refuses to move a branch checked out in another worktree\n  ---\n  duration_ms: 13320.587833\n  type: 'test'\n  ...\n# Subtest: PR Undo can still restore an off-branch snapshot when no worktree uses it\nok 19 - PR Undo can still restore an off-branch snapshot when no worktree uses it\n  ---\n  duration_ms: 16257.289541\n  type: 'test'\n  ...\n# Subtest: ordinary index reads start one owned foreground monitor independently of idle cleanup settings\nok 20 - ordinary index reads start one owned foreground monitor independently of idle cleanup settings\n  ---\n  duration_ms: 1612.20175\n  type: 'test'\n  ...\n# Subtest: failed monitor preparation forces a command-scope fallback without changing repository settings\nok 21 - failed monitor preparation forces a command-scope fallback without changing repository settings\n  ---\n  duration_ms: 1279.797291\n  type: 'test'\n  ...\n# Subtest: explicit command-scope fsmonitor=false bypasses monitor startup\nok 22 - explicit command-scope fsmonitor=false bypasses monitor startup\n  ---\n  duration_ms: 500.985875\n  type: 'test'\n  ...\n# Subtest: session disposal while Git preparation is pending prevents a late index read or daemon spawn\nok 23 - session disposal while Git preparation is pending prevents a late index read or daemon spawn\n  ---\n  duration_ms: 513.607833\n  type: 'test'\n  ...\n# Subtest: a failed startup overrides earlier CLI fsmonitor=true as well as inherited environment\nok 24 - a failed startup overrides earlier CLI fsmonitor=true as well as inherited environment\n  ---\n  duration_ms: 978.499833\n  type: 'test'\n  ...\n# Subtest: a live monitor that never becomes ready is closed before falling back to a full scan\nok 25 - a live monitor that never becomes ready is closed before falling back to a full scan\n  ---\n  duration_ms: 1831.165375\n  type: 'test'\n  ...\n# Subtest: CLI true overrides an earlier false or environment false before ownership preparation\nok 26 - CLI true overrides an earlier false or environment false before ownership preparation\n  ---\n  duration_ms: 1205.717708\n  type: 'test'\n  ...\n# Subtest: an explicit caller hook is preserved even after a cached failed builtin preparation\nok 27 - an explicit caller hook is preserved even after a cached failed builtin preparation\n  ---\n  duration_ms: 1205.505584\n  type: 'test'\n  ...\n# Subtest: config-env true takes precedence over inherited false before preparing the monitor\nok 28 - config-env true takes precedence over inherited false before preparing the monitor\n  ---\n  duration_ms: 1583.089666\n  type: 'test'\n  ...\n# Subtest: creating another worktree cannot autostart an unmanaged monitor in the new directory\nok 29 - creating another worktree cannot autostart an unmanaged monitor in the new directory\n  ---\n  duration_ms: 461.666833\n  type: 'test'\n  ...\n# Subtest: a confirmed existing monitor is reused during a burst without repeated Git preparation probes\nok 30 - a confirmed existing monitor is reused during a burst without repeated Git preparation probes\n  ---\n  duration_ms: 1180.735\n  type: 'test'\n  ...\n# Subtest: an existing listening daemon with a stalled query is bypassed once for concurrent and later reads\nok 31 - an existing listening daemon with a stalled query is bypassed once for concurrent and later reads\n  ---\n  duration_ms: 2114.589416\n  type: 'test'\n  ...\n# Subtest: status and literal untracked expansion share the same stalled monitor probe\nok 32 - status and literal untracked expansion share the same stalled monitor probe\n  ---\n  duration_ms: 1932.545208\n  type: 'test'\n  ...\n# Subtest: pathspec-only flags share a healthy monitor while changed Git configuration keeps a separate preparation\nok 33 - pathspec-only flags share a healthy monitor while changed Git configuration keeps a separate preparation\n  ---\n  duration_ms: 2182.003833\n  type: 'test'\n  ...\n# Subtest: a newly owned daemon that listens but never answers is closed before the fallback read\nok 34 - a newly owned daemon that listens but never answers is closed before the fallback read\n  ---\n  duration_ms: 2206.424958\n  type: 'test'\n  ...\n# Subtest: a query failure with exit one cannot be mistaken for a missing daemon and restart the user's daemon\nok 35 - a query failure with exit one cannot be mistaken for a missing daemon and restart the user's daemon\n  ---\n  duration_ms: 1118.502375\n  type: 'test'\n  ...\n# Subtest: an owned daemon query failure is not retried as a missing socket\nok 36 - an owned daemon query failure is not retried as a missing socket\n  ---\n  duration_ms: 1518.867625\n  type: 'test'\n  ...\n# Subtest: session disposal cancels a pending daemon query without starting the waiting index read\nok 37 - session disposal cancels a pending daemon query without starting the waiting index read\n  ---\n  duration_ms: 830.116541\n  type: 'test'\n  ...\n# Subtest: a broken handshake stops retrying instead of adding ten more Git startup delays\nok 38 - a broken handshake stops retrying instead of adding ten more Git startup delays\n  ---\n  duration_ms: 1106.924458\n  type: 'test'\n  ...\n# Subtest: reference queries and index-free ref/object writes do not prepare an index monitor\nok 39 - reference queries and index-free ref/object writes do not prepare an index monitor\n  ---\n  duration_ms: 1651.707041\n  type: 'test'\n  ...\n# Subtest: native ref/object writes preserve the real index and do not start a builtin monitor\nok 40 - native ref/object writes preserve the real index and do not start a builtin monitor\n  ---\n  duration_ms: 6861.40325\n  type: 'test'\n  ...\n# Subtest: private status reads finish without waiting for a stalled monitor query\nok 41 - private status reads finish without waiting for a stalled monitor query\n  ---\n  duration_ms: 1058.417625\n  type: 'test'\n  ...\n# Subtest: private status reads use a confirmed healthy monitor after the first full scan\nok 42 - private status reads use a confirmed healthy monitor after the first full scan\n  ---\n  duration_ms: 979.968625\n  type: 'test'\n  ...\n# Subtest: private status background preparation preserves a configured custom hook\nok 43 - private status background preparation preserves a configured custom hook\n  ---\n  duration_ms: 683.648625\n  type: 'test'\n  ...\n# Subtest: off-branch Undo rejects a ref update between validation and the final write\nok 44 - off-branch Undo rejects a ref update between validation and the final write\n  ---\n  duration_ms: 16255.378875\n  type: 'test'\n  ...\n# Subtest: off-branch Undo still protects a branch checked out in another worktree\nok 45 - off-branch Undo still protects a branch checked out in another worktree\n  ---\n  duration_ms: 16673.4525\n  type: 'test'\n  ...\n# Subtest: stack rollback resumes after ref restoration checkpoint fails (unoccupied branch)\nok 46 - stack rollback resumes after ref restoration checkpoint fails (unoccupied branch)\n  ---\n  duration_ms: 56836.047\n  type: 'test'\n  ...\n# Subtest: stack rollback resumes after ref restoration checkpoint fails (owned worktree)\nok 47 - stack rollback resumes after ref restoration checkpoint fails (owned worktree)\n  ---\n  duration_ms: 67327.481875\n  type: 'test'\n  ...\n# Subtest: search completes 105 original commits before real squash application\nok 48 - search completes 105 original commits before real squash application\n  ---\n  duration_ms: 171650.851\n  type: 'test'\n  ...\n# Subtest: search refuses head changes before publishing partial commit data\nok 49 - search refuses head changes before publishing partial commit data\n  ---\n  duration_ms: 5.12775\n  type: 'test'\n  ...\n# Subtest: search refuses missing pages before publishing partial commit data\nok 50 - search refuses missing pages before publishing partial commit data\n  ---\n  duration_ms: 3.709375\n  type: 'test'\n  ...\n# Subtest: an explicitly incomplete commit set cannot enter a Git write operation\nok 51 - an explicitly incomplete commit set cannot enter a Git write operation\n  ---\n  duration_ms: 21914.393875\n  type: 'test'\n  ...\n# Subtest: a force-pushed PR replaces old commits instead of applying removed files\nok 52 - a force-pushed PR replaces old commits instead of applying removed files\n  ---\n  duration_ms: 40141.417875\n  type: 'test'\n  ...\n# Subtest: a late search success cannot cross repository reset\nok 53 - a late search success cannot cross repository reset\n  ---\n  duration_ms: 1.289541\n  type: 'test'\n  ...\n# Subtest: a late search error cannot cross repository reset\nok 54 - a late search error cannot cross repository reset\n  ---\n  duration_ms: 0.4255\n  type: 'test'\n  ...\n# Subtest: PR commit materialize 후 기존 확장 ref를 조건부로 복원한다\nok 55 - PR commit materialize 후 기존 확장 ref를 조건부로 복원한다\n  ---\n  duration_ms: 21110.615458\n  type: 'test'\n  ...\n# Subtest: Squash Cherry-Pick은 로컬에 없는 PR commit을 pull ref에서 가져온다\nok 56 - Squash Cherry-Pick은 로컬에 없는 PR commit을 pull ref에서 가져온다\n  ---\n  duration_ms: 33391.119292\n  type: 'test'\n  ...\n# Subtest: PR Rebase도 로컬에 없는 원본 commit을 같은 pull ref에서 가져온다\nok 57 - PR Rebase도 로컬에 없는 원본 commit을 같은 pull ref에서 가져온다\n  ---\n  duration_ms: 49442.459584\n  type: 'test'\n  ...\n# Subtest: PR head가 조회 뒤 바뀌면 오래된 Squash Cherry-Pick을 중단한다\nok 58 - PR head가 조회 뒤 바뀌면 오래된 Squash Cherry-Pick을 중단한다\n  ---\n  duration_ms: 37614.909333\n  type: 'test'\n  ...\n# Subtest: 원격 pull ref도 없으면 누락 object를 정상 계획으로 숨기지 않는다\nok 59 - 원격 pull ref도 없으면 누락 object를 정상 계획으로 숨기지 않는다\n  ---\n  duration_ms: 8114.058208\n  type: 'test'\n  ...\n# Subtest: 현재 이력의 squash merge 결과를 누락 원본 commit보다 우선한다\nok 60 - 현재 이력의 squash merge 결과를 누락 원본 commit보다 우선한다\n  ---\n  duration_ms: 8287.284375\n  type: 'test'\n  ...\n# Subtest: 실제 merge commit은 첫 부모 mainline으로 Squash Revert한다\nok 61 - 실제 merge commit은 첫 부모 mainline으로 Squash Revert한다\n  ---\n  duration_ms: 33964.314\n  type: 'test'\n  ...\n# Subtest: 다중 commit squash merge는 전체 patch가 같은 mergeHash 하나를 되돌린다\nok 62 - 다중 commit squash merge는 전체 patch가 같은 mergeHash 하나를 되돌린다\n  ---\n  duration_ms: 53989.055083\n  type: 'test'\n  ...\n# Subtest: 다중 commit rebase merge의 마지막 mergeHash만 되돌리지 않는다\nok 63 - 다중 commit rebase merge의 마지막 mergeHash만 되돌리지 않는다\n  ---\n  duration_ms: 44083.596709\n  type: 'test'\n  ...\n# Subtest: raw reverse patch가 context drift로 실패해도 commit별 revert는 성공한다\nok 64 - raw reverse patch가 context drift로 실패해도 commit별 revert는 성공한다\n  ---\n  duration_ms: 37302.827125\n  type: 'test'\n  ...\n# Subtest: staged 사용자 변경을 revert commit에 섞지 않고 작업트리에 보존한다\nok 65 - staged 사용자 변경을 revert commit에 섞지 않고 작업트리에 보존한다\n  ---\n  duration_ms: 34116.331333\n  type: 'test'\n  ...\n# Subtest: PR snapshot and both latest pointers use one owned Git transaction and remain undoable\nok 66 - PR snapshot and both latest pointers use one owned Git transaction and remain undoable\n  ---\n  duration_ms: 27705.634625\n  type: 'test'\n  ...\n# Subtest: a locked latest pointer leaves every recovery ref and the previous Undo unchanged\nok 67 - a locked latest pointer leaves every recovery ref and the previous Undo unchanged\n  ---\n  duration_ms: 29899.996917\n  type: 'test'\n  ...\n# Subtest: a rejecting reference transaction hook does not trigger a legacy retry or remove the previous snapshot\nok 68 - a rejecting reference transaction hook does not trigger a legacy retry or remove the previous snapshot\n  ---\n  duration_ms: 17812.759583\n  type: 'test'\n  ...\n# Subtest: older Git uses the existing symbolic ref contract and does not repeat unsupported probes\nok 69 - older Git uses the existing symbolic ref contract and does not repeat unsupported probes\n  ---\n  duration_ms: 39771.416209\n  type: 'test'\n  ...\n# Subtest: a colliding immutable snapshot is never overwritten or claimed by the failing caller\nok 70 - a colliding immutable snapshot is never overwritten or claimed by the failing caller\n  ---\n  duration_ms: 17816.579375\n  type: 'test'\n  ...\n# Subtest: a later snapshot moves symbolic pointers without changing the earlier immutable recovery commit\nok 71 - a later snapshot moves symbolic pointers without changing the earlier immutable recovery commit\n  ---\n  duration_ms: 29442.4695\n  type: 'test'\n  ...\n# Subtest: squashCherryPick records completed Undo and preserves unrelated edits\nok 72 - squashCherryPick records completed Undo and preserves unrelated edits\n  ---\n  duration_ms: 57621.798209\n  type: 'test'\n  ...\n# Subtest: squashCherryPick through a temporary worktree records Undo without claiming the user's staged work\nok 73 - squashCherryPick through a temporary worktree records Undo without claiming the user's staged work\n  ---\n  duration_ms: 46337.961458\n  type: 'test'\n  ...\n# Subtest: rebasePullRequest records completed Undo and preserves unrelated edits\nok 74 - rebasePullRequest records completed Undo and preserves unrelated edits\n  ---\n  duration_ms: 44708.350042\n  type: 'test'\n  ...\n# Subtest: rebasePullRequest through a temporary worktree records Undo without claiming the user's staged work\nok 75 - rebasePullRequest through a temporary worktree records Undo without claiming the user's staged work\n  ---\n  duration_ms: 27091.605916\n  type: 'test'\n  ...\n# Subtest: PR Undo cannot abort an unrelated rebase or erase its manual resolution\nok 76 - PR Undo cannot abort an unrelated rebase or erase its manual resolution\n  ---\n  duration_ms: 19666.29325\n  type: 'test'\n  ...\n# Subtest: completed PR Undo preserves a later unrelated cherry-pick conflict\nok 77 - completed PR Undo preserves a later unrelated cherry-pick conflict\n  ---\n  duration_ms: 14295.328584\n  type: 'test'\n  ...\n# Subtest: completed PR Undo preserves a later unrelated revert conflict\nok 78 - completed PR Undo preserves a later unrelated revert conflict\n  ---\n  duration_ms: 11680.508\n  type: 'test'\n  ...\n# Subtest: completed PR Undo preserves a same-HEAD stash conflict and manual edits\nok 79 - completed PR Undo preserves a same-HEAD stash conflict and manual edits\n  ---\n  duration_ms: 14309.934833\n  type: 'test'\n  ...\n# Subtest: later commits invalidate completed PR Undo without removing its snapshot\nok 80 - later commits invalidate completed PR Undo without removing its snapshot\n  ---\n  duration_ms: 11514.041125\n  type: 'test'\n  ...\n# Subtest: PR Undo cannot substitute an operation created after confirmation started\nok 81 - PR Undo cannot substitute an operation created after confirmation started\n  ---\n  duration_ms: 21214.270042\n  type: 'test'\n  ...\n# Subtest: PR Undo rejects metadata from another worktree and keeps shared refs\nok 82 - PR Undo rejects metadata from another worktree and keeps shared refs\n  ---\n  duration_ms: 10897.505625\n  type: 'test'\n  ...\n# Subtest: a legacy PR snapshot without ownership cannot become automatic Undo\nok 83 - a legacy PR snapshot without ownership cannot become automatic Undo\n  ---\n  duration_ms: 14566.891667\n  type: 'test'\n  ...\n# Subtest: isolated squash conflict leaves the original branch editable without claiming Undo\nok 84 - isolated squash conflict leaves the original branch editable without claiming Undo\n  ---\n  duration_ms: 7926.801\n  type: 'test'\n  ...\n# Subtest: failed isolated PR squash commit preserves the original worktree without claiming Undo\nok 85 - failed isolated PR squash commit preserves the original worktree without claiming Undo\n  ---\n  duration_ms: 5200.242875\n  type: 'test'\n  ...\n# Subtest: new staged work is preserved while an isolated squash conflict is pending\nok 86 - new staged work is preserved while an isolated squash conflict is pending\n  ---\n  duration_ms: 7190.642792\n  type: 'test'\n  ...\n# Subtest: Undo aborts its own deferred PR cherry-pick conflict\nok 87 - Undo aborts its own deferred PR cherry-pick conflict\n  ---\n  duration_ms: 16686.015083\n  type: 'test'\n  ...\n# Subtest: Undo aborts its own deferred PR revert conflict\nok 88 - Undo aborts its own deferred PR revert conflict\n  ---\n  duration_ms: 18034.537292\n  type: 'test'\n  ...\n# Subtest: an identical cherry-pick restarted externally cannot reuse the old PR Undo\nok 89 - an identical cherry-pick restarted externally cannot reuse the old PR Undo\n  ---\n  duration_ms: 17677.002792\n  type: 'test'\n  ...\n# Subtest: new staged work invalidates Undo of an owned PR cherry-pick conflict\nok 90 - new staged work invalidates Undo of an owned PR cherry-pick conflict\n  ---\n  duration_ms: 21718.375959\n  type: 'test'\n  ...\n# Subtest: continuing a PR conflict records its completed HEAD for later Undo\nok 91 - continuing a PR conflict records its completed HEAD for later Undo\n  ---\n  duration_ms: 49057.316875\n  type: 'test'\n  ...\n# Subtest: PR Undo never restores a deferred stash from a different snapshot\nok 92 - PR Undo never restores a deferred stash from a different snapshot\n  ---\n  duration_ms: 24217.734917\n  type: 'test'\n  ...\nNode tests exceeded 900000ms; sending SIGTERM.\n",
+    "resumedLog": "TAP version 13\n# Subtest: PR Undo never restores a legacy stash from a different snapshot\nok 1 - PR Undo never restores a legacy stash from a different snapshot\n  ---\n  duration_ms: 15962.276458\n  type: 'test'\n  ...\n# Subtest: PR Undo restores its matching pending stash after returning to the snapshot\nok 2 - PR Undo restores its matching pending stash after returning to the snapshot\n  ---\n  duration_ms: 10162.752542\n  type: 'test'\n  ...\n# Subtest: a prepared PR snapshot alone is never considered a completed operation\nok 3 - a prepared PR snapshot alone is never considered a completed operation\n  ---\n  duration_ms: 2962.729167\n  type: 'test'\n  ...\n# Subtest: squashRevertPullRequest on a clean worktree records completed Undo\nok 4 - squashRevertPullRequest on a clean worktree records completed Undo\n  ---\n  duration_ms: 8781.007667\n  type: 'test'\n  ...\n# Subtest: squashRevertPullRequest using a temporary worktree records completed Undo\nok 5 - squashRevertPullRequest using a temporary worktree records completed Undo\n  ---\n  duration_ms: 8694.306916\n  type: 'test'\n  ...\n# Subtest: rebaseRevertPullRequest on a clean worktree records completed Undo\nok 6 - rebaseRevertPullRequest on a clean worktree records completed Undo\n  ---\n  duration_ms: 8975.81325\n  type: 'test'\n  ...\n# Subtest: rebaseRevertPullRequest using a temporary worktree records completed Undo\nok 7 - rebaseRevertPullRequest using a temporary worktree records completed Undo\n  ---\n  duration_ms: 10408.060666\n  type: 'test'\n  ...\n# Subtest: squash revert conflict is isolated and does not require resetting the original worktree\nok 8 - squash revert conflict is isolated and does not require resetting the original worktree\n  ---\n  duration_ms: 6200.42175\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 72497.642833\n",
+    "atomicLog": "Node test group: pid=96787 concurrency=3 timeoutMs=900000.\n\n  out-test/pullRequestSnapshotAtomic.test.js  138.5kb\n\n⚡ Done in 37ms\nTAP version 13\n# Subtest: PR snapshot and both latest pointers use one owned Git transaction and remain undoable\nok 1 - PR snapshot and both latest pointers use one owned Git transaction and remain undoable\n  ---\n  duration_ms: 3294.521541\n  type: 'test'\n  ...\n# Subtest: a locked latest pointer leaves every recovery ref and the previous Undo unchanged\nok 2 - a locked latest pointer leaves every recovery ref and the previous Undo unchanged\n  ---\n  duration_ms: 9562.306667\n  type: 'test'\n  ...\n# Subtest: a rejecting reference transaction hook does not trigger a legacy retry or remove the previous snapshot\nok 3 - a rejecting reference transaction hook does not trigger a legacy retry or remove the previous snapshot\n  ---\n  duration_ms: 3656.565292\n  type: 'test'\n  ...\n# Subtest: older Git without start uses the symbolic ref contract and does not repeat unsupported probes\nok 4 - older Git without start uses the symbolic ref contract and does not repeat unsupported probes\n  ---\n  duration_ms: 6564.842916\n  type: 'test'\n  ...\n# Subtest: older Git without symref-update uses the symbolic ref contract and does not repeat unsupported probes\nok 5 - older Git without symref-update uses the symbolic ref contract and does not repeat unsupported probes\n  ---\n  duration_ms: 6358.702584\n  type: 'test'\n  ...\n# Subtest: a colliding immutable snapshot is never overwritten or claimed by the failing caller\nok 6 - a colliding immutable snapshot is never overwritten or claimed by the failing caller\n  ---\n  duration_ms: 2061.851625\n  type: 'test'\n  ...\n# Subtest: a later snapshot moves symbolic pointers without changing the earlier immutable recovery commit\nok 7 - a later snapshot moves symbolic pointers without changing the earlier immutable recovery commit\n  ---\n  duration_ms: 5989.945166\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 37694.452416\n"
+  },
+  "limitations": [
+    "Local bare remote; no GitHub network timings.",
+    "One CLI sample per operation; no universal latency claim.",
+    "Snapshot wall time changed in opposite directions across two measured pairs; CPU and process counts do not establish universal latency improvement.",
+    "Headless integration ran concurrently with recovery tests and is correctness evidence only.",
+    "Old Git parser errors were simulated by an executable wrapper backed by real Git; no old Git binary was installed.",
+    "A full repository-wide npm test and visible VS Code Host were not run."
+  ]
+}

@@ -18,6 +18,7 @@ import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import type { PullRequestInfo } from "../../src/git/pullRequestInfo";
 import type { Commit } from "../../src/graph/graphTypes";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
+import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 
 type Operation = "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
@@ -157,9 +158,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       await idle(f.root, panel);
       const settledAt = performance.now(), settledRss = process.memoryUsage().rss;
       clearInterval(rssSample); measuring = false;
-      const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {};
+      const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
       for (const [index, timing] of timings.entries()) {
         commands[timing.command] = (commands[timing.command] ?? 0) + 1;
+        commandTimeMs[timing.command] = (commandTimeMs[timing.command] ?? 0) + timing.elapsedMs;
         if (index >= operationProcesses) graphCommands[timing.command] = (graphCommands[timing.command] ?? 0) + 1;
       }
       if (operation === "fetch-new-history") assert.equal(graphCommands.log, 1, "Previously unknown history needs exactly one Graph page read");
@@ -179,7 +181,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,
         webviewMessages: messages.length - beforeMessages, graphPublications: publications.length,
-        commands, graphCommands, nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
+        commands, graphCommands, commandTimeMs, nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
     } finally { clearInterval(rssSample); measuring = false; unobserve(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
@@ -188,8 +190,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
 /** 요청된 모든 작업을 동일한 fixture 규모로 실행하고 결과 외의 임시 파일/프로세스를 남기지 않는다. */
 async function main() {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-operation-matrix-"));
+  let stopMonitor: (() => void) | undefined;
   try {
     const f = await fixture(directory), results = [];
+    if (process.env.GSC_BENCH_MONITOR_POLICY === "1") stopMonitor = setOwnedFsmonitorPolicy(() => undefined);
     const selected = process.env.GSC_BENCH_OPERATIONS?.split(",") as Operation[] | undefined;
     for (const operation of selected ?? OPERATIONS) {
       console.error(`Measuring ${operation}...`);
@@ -197,10 +201,10 @@ async function main() {
     }
     const result = { version: JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")).version,
       source: process.env.GSC_BENCH_SOURCE ? JSON.parse(process.env.GSC_BENCH_SOURCE) : undefined,
-      fixture: { files: f.files, commits: f.depth, branches: f.branches, network: "local-bare-only" }, results };
+      fixture: { files: f.files, commits: f.depth, branches: f.branches, network: "local-bare-only", monitorPolicy: !!stopMonitor }, results };
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));
-  } finally { await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
+  } finally { stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
 }
 void main().catch(error => { console.error(error); process.exitCode = 1; });

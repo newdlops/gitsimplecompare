@@ -3,10 +3,12 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
-import { runGit, setGitExecutableResolver } from "../src/git/gitExec";
+import { runGit, runGitWithInput, setGitExecutableResolver } from "../src/git/gitExec";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
 import { ensureOwnedFsmonitor, setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
 import { registerStatusIndex } from "../src/git/statusIndexOwnership";
+import { setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
+import { git, safetyFixture } from "./helpers/gitSafetyFixture";
 
 /** 실제 foreground 자식과 status handshake를 사용하되 파일 감시/사용자 저장소는 만들지 않는다. */
 async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing" | "broken-status" | "unresponsive" | "owned-unresponsive" | "query-error" | "owned-query-error" | "hook" = false, configDelay = 0) {
@@ -224,15 +226,40 @@ test("a broken handshake stops retrying instead of adding ten more Git startup d
   assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });
 
-test("reference and remote-reference queries do not prepare an index monitor", { skip: process.platform !== "darwin" }, async t => {
+test("reference queries and index-free ref/object writes do not prepare an index monitor", { skip: process.platform !== "darwin" }, async t => {
   const f = await fixture(t, "never-ready");
   t.after(() => gitProcesses.dispose());
   for (const args of [["show-ref", "--verify", "--quiet", "refs/stash"], ["reflog", "show", "refs/stash"],
-    ["reflog", "list"], ["ls-remote", "--tags", "origin"], ["check-ref-format", "refs/tags/release"]]) {
+    ["reflog", "list"], ["ls-remote", "--tags", "origin"], ["check-ref-format", "refs/tags/release"],
+    ["update-ref", "refs/gitsimplecompare/snapshot", "a".repeat(40)], ["commit-tree", "a".repeat(40), "-m", "snapshot"], ["mktree"]]) {
     assert.equal(await runGit(args, f.root), "inherited", `${args[0]} must not override monitor config for an index-free read`);
   }
   await assert.rejects(readFile(f.preparing), { code: "ENOENT" });
   await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});
+
+test("native ref/object writes preserve the real index and do not start a builtin monitor", { skip: process.platform !== "darwin" }, async t => {
+  const f = await safetyFixture(t, "index-free-native");
+  const index = await readFile(path.join(f.root, ".git/index"));
+  await git(f.root, "config", "core.fsmonitor", "true");
+  const reset = setOwnedFsmonitorPolicy(() => undefined); t.after(reset);
+  t.after(async () => {
+    reset(); await gitProcesses.dispose();
+    await runGit(["fsmonitor--daemon", "stop"], f.root, { retryOnLock: false }).catch(() => undefined);
+  });
+  const commands: string[] = [];
+  const stop = setGitExecutionObserver(timing => commands.push(timing.command));
+  let commit: string;
+  try {
+    const tree = (await runGitWithInput(["mktree"], f.root, "")).trim();
+    commit = await git(f.root, "commit-tree", tree, "-p", f.head, "-m", "private object");
+    await git(f.root, "update-ref", "refs/gitsimplecompare/index-free", commit);
+  } finally { stop(); }
+  assert.deepEqual(commands, ["mktree", "commit-tree", "update-ref"], "Index-free writes must not add a monitor probe or process");
+  assert.deepEqual(await readFile(path.join(f.root, ".git/index")), index);
+  assert.equal(await git(f.root, "rev-parse", "HEAD"), f.head);
+  assert.equal(await git(f.root, "rev-parse", "refs/gitsimplecompare/index-free"), commit);
+  await assert.rejects(runGit(["fsmonitor--daemon", "status"], f.root, { retryOnLock: false }));
 });
 
 test("private status reads finish without waiting for a stalled monitor query", { skip: process.platform !== "darwin", timeout: 8000 }, async t => {

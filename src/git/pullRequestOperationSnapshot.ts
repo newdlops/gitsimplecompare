@@ -18,6 +18,7 @@ import { logInfo } from "../ui/outputLog";
 import { hasWorkingTreeChanges } from "./workingTreeChanges";
 import { resetPullRequestResult } from "./pullRequestResultReset";
 import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
+import { createSnapshotRefSet } from "./snapshotRefTransaction";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -169,17 +170,14 @@ export class PullRequestOperationSnapshot {
   ): Promise<string> {
     const snowflake = createSnapshotSnowflake();
     const snapshotRef = snapshotRefForCommandSnowflake(branch, command, snowflake);
+    let created = false;
     try {
-      await runGit(["update-ref", snapshotRef, head], this.repoRoot);
-      await this.updateLatestSnapshotRef(
-        snapshotRefForCommand(branch, command),
-        snapshotRef
-      );
-      await this.updateLatestSnapshotRef(snapshotRefForBranch(branch), snapshotRef);
+      await createSnapshotRefSet(this.repoRoot, snapshotRef, head,
+        [snapshotRefForCommand(branch, command), snapshotRefForBranch(branch)], () => { created = true; });
       await this.undoStore.start(branch, head, snapshotRef);
       return snapshotRef;
     } catch (error) {
-      await this.deleteSnapshotRef(branch, snapshotRef);
+      if (created) await this.deleteSnapshotRef(branch, snapshotRef);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -329,14 +327,6 @@ export class PullRequestOperationSnapshot {
     if (await this.hasUnmergedChanges()) {
       throw new Error("Resolve unmerged files before running a PR operation.");
     }
-  }
-
-  /** latest symbolic ref가 특정 immutable snapshot을 가리키도록 갱신한다. */
-  private async updateLatestSnapshotRef(
-    latestRef: string,
-    snapshotRef: string
-  ): Promise<void> {
-    await runGit(["symbolic-ref", latestRef, snapshotRef], this.repoRoot);
   }
 
   /** symbolic ref의 target을 반환하며 일반 ref거나 없으면 undefined를 반환한다. */
