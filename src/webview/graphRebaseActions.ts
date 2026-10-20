@@ -7,7 +7,8 @@ import { assertRebaseEditIdentity } from "../git/rebaseEditIdentity";
 import { finishGraphRebaseControl } from "./graphRebaseFollowup";
 import { ConflictService } from "../git/conflictService";
 import { assertGitOperation, captureGitOperation } from "../git/operationControl";
-import { assertRebaseCheckout, type RebaseCheckoutIdentity } from "../git/rebasePlanSafety";
+import type { RebaseCheckoutIdentity } from "../git/rebasePlanSafety";
+import { readRebaseStartContext } from "../git/rebaseStartContext";
 import { runConflictMutation } from "../git/conflictMutationCoordinator";
 import { readRebaseContinueDiagnostics } from "../git/rebaseContinueDiagnostics";
 import { updateInProgressRebaseTodo } from "../git/rebaseTodoEditor";
@@ -96,9 +97,7 @@ export async function runGraphRebase(
 ): Promise<RebaseResult | GraphRebaseControlResult> {
   const repoRoot = deps.logService.repoRoot;
   if (!checkout) throw new Error("Prepare a new rebase plan before starting.");
-  await assertRebaseCheckout(repoRoot, checkout);
-  const conflicts = new ConflictService(repoRoot);
-  const operation = await conflicts.getOperation();
+  const { operation } = await readRebaseStartContext(repoRoot, checkout);
   if (operation === "rebase") {
     logInfo("graph rebase start adopted existing rebase", {
       repoRoot,
@@ -127,7 +126,7 @@ export async function runGraphRebase(
     return { status: "failed", message: "cancelled" };
   }
   return runConflictMutation(repoRoot, async () => {
-    const latestOperation = await conflicts.getOperation();
+    const latestOperation = await new ConflictService(repoRoot).getOperation();
     if (latestOperation !== "none") {
       return { status: "failed", message: `Cannot start rebase while ${latestOperation} is in progress.` };
     }

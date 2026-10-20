@@ -91,7 +91,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
   const messages = ["rewritten start", undefined, "combined", undefined, "rewritten final", undefined];
   const items: RebaseItem[] = order.map(index => ({ hash: f.topics[index],
     action: mode === "reorder" ? "pick" : actions[index], message: mode === "reorder" ? undefined : messages[index] }));
-  const calls: string[][] = [], callTimings: { args: string[]; pid?: number; elapsedMs?: number }[] = [];
+  const calls: string[][] = [], callTimings: { args: string[]; pid?: number; elapsedMs?: number; syncSpawnMs: number }[] = [];
   const profileDirectory = path.join(path.dirname(f.root), `native-${mode}-${sample}`);
   const traceFile = path.join(path.dirname(f.root), `trace-${mode}-${sample}.jsonl`);
   let resetExecutable: (() => void) | undefined;
@@ -110,9 +110,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
   }
   const spawn = childProcess.spawn;
   mock.method(childProcess, "spawn", (...args: any[]) => {
+    const spawnStarted = performance.now();
     const child = (spawn as Function)(...args);
     if (path.basename(args[0]) === "git") {
-      const call = { args: [...args[1]], pid: child.pid, elapsedMs: undefined as number | undefined }, started = performance.now();
+      const call = { args: [...args[1]], pid: child.pid, elapsedMs: undefined as number | undefined, syncSpawnMs: performance.now() - spawnStarted }, started = performance.now();
       calls.push(call.args); callTimings.push(call); child.once("close", () => { call.elapsedMs = Math.round(performance.now() - started); });
     }
     return child;
@@ -141,6 +142,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
     assert.equal(trace.editors.filter(editor => editor.kind === "message").length, mode === "reorder" ? 0 : 3);
   }
   return { mode, sample, elapsedMs, directGitCalls: calls.length,
+    commands: callTimings.map(call => ({ command: gitCommandPolicy(call.args).command, elapsedMs: call.elapsedMs, syncSpawnMs: call.syncSpawnMs })),
     directoryReads: calls.filter(args => (args.includes("--absolute-git-dir") || args.includes("--git-dir")) && !args.includes("--symbolic-full-name")).length,
     statePathReads: calls.filter(args => args.includes("--git-path")).length,
     checkoutGuards: calls.filter(args => args.includes("--symbolic-full-name")).length,

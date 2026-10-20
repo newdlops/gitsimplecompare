@@ -16,6 +16,7 @@ export class GraphLiveRenderer {
   private readonly buffered: ToWebviewMessage[] = [];
   private readonly errors: string[] = [];
   private mounted = false;
+  private inbound?: (message: FromWebviewMessage) => Promise<void> | void;
 
   /** @param browser headless 전용 Chromium @param page 현재 fixture의 production Graph 문서 */
   private constructor(private readonly browser: Browser, private readonly page: Page) {}
@@ -44,6 +45,7 @@ export class GraphLiveRenderer {
     await this.page.exposeFunction("__gscLivePost", (message: FromWebviewMessage) => {
       if (message.type === "graphRendered") this.paints.push(message);
       if (message.type === "resyncGraph") this.errors.push("Renderer requested transport resync");
+      return this.inbound?.(message);
     });
     await this.page.route("**/*", async route => {
       const url = new URL(route.request().url());
@@ -58,6 +60,21 @@ export class GraphLiveRenderer {
     await this.page.goto("https://gsc.fixture/");
     this.mounted = true;
     for (const message of this.buffered.splice(0)) this.post(message);
+  }
+
+  /** 기존 renderer가 실제로 보낸 메시지만 VS Code transport 대역에 연결한다. */
+  onMessage(listener: (message: FromWebviewMessage) => Promise<void> | void): void { this.inbound = listener; }
+
+  /** backend에 직접 메시지를 주입하지 않고 렌더된 컨트롤의 일반 click을 실행한다. */
+  async clickControl(selector: string): Promise<void> {
+    await this.queue;
+    await this.page.locator(selector).click();
+  }
+
+  /** 접근성 이름으로 실제 버튼을 눌러 rebase 계획처럼 동적으로 만들어지는 컨트롤도 검사한다. */
+  async clickNamedControl(name: string): Promise<void> {
+    await this.queue;
+    await this.page.getByRole("button", { name, exact: true }).click();
   }
 
   /** GraphPanel이 게시한 원본 메시지를 순서대로 실제 renderer에 전달하며 실패를 마지막 검증까지 보존한다. */

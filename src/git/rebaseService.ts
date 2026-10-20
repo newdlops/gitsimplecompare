@@ -12,6 +12,7 @@ import { listUnmergedFiles } from "./unmergedFiles";
 import { amendRebaseEdit } from "./rebaseEditApply";
 import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
 import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
+import { readRebaseStartContext } from "./rebaseStartContext";
 import {
   collectHistoryExcludePaths,
 } from "./rebaseFileExcludes";
@@ -243,8 +244,8 @@ export class RebaseService {
     base: string, root: boolean, items: RebaseItem[], editorScript: string,
     onto?: string, expectedCheckout?: RebaseCheckoutIdentity
   ): Promise<RebaseResult> {
-    const active = await detectOperation(this.repoRoot);
-    if (active === "rebase") {
+    const context = await readRebaseStartContext(this.repoRoot, expectedCheckout ?? this.preparedCheckout);
+    if (context.operation === "rebase") {
       const paused = await this.getPausedEditState();
       const stopped = await this.getStoppedState();
       if (paused) return { status: "paused", paused };
@@ -252,11 +253,10 @@ export class RebaseService {
         ? { status: "conflicts", stopped }
         : { status: "stopped", stopped };
     }
-    if (active !== "none") {
-      return { status: "failed", message: `Cannot start rebase while ${active} is in progress.` };
+    if (context.operation !== "none") {
+      return { status: "failed", message: `Cannot start rebase while ${context.operation} is in progress.` };
     }
-    const checkout = expectedCheckout ?? this.preparedCheckout ?? await captureRebaseCheckout(this.repoRoot);
-    await assertRebaseCheckout(this.repoRoot, checkout);
+    const checkout = context.checkout;
     const todoItems = items.slice();
     if (todoItems.length === 0) {
       return { status: "noop" };
@@ -297,6 +297,7 @@ export class RebaseService {
 
     const todoFile = tempPath("todo");
     let keepTempFiles = false;
+    let discardInputOnPause = false;
     fs.writeFileSync(todoFile, todoLines.join("\n") + "\n", "utf8");
 
     try {
@@ -320,6 +321,7 @@ export class RebaseService {
         this.repoRoot,
         env
       );
+      discardInputOnPause = sequenceEditor.kind === "copy";
       const paused = await this.getPausedEditState();
       if (paused) {
         keepTempFiles = true;
@@ -353,8 +355,9 @@ export class RebaseService {
         message: err instanceof Error ? err.message : String(err),
       };
     } finally {
+      // 성공한 번들 복사 뒤의 pause에는 exec 파일만 남긴다. custom helper나 초기 실패의 입력 수명은 보존한다.
+      if (!keepTempFiles || discardInputOnPause) safeUnlink(todoFile);
       if (!keepTempFiles) {
-        safeUnlink(todoFile);
         // metadata 교체로 큐 접근이 중단돼도 이 호출이 만든 외부 임시 파일은 반드시 회수한다.
         try { await cleanupRebaseMessageQueue(this.repoRoot); }
         finally { for (const opFile of opFiles) safeUnlink(opFile); }

@@ -110,6 +110,8 @@ export const workspace = { isTrusted: true, textDocuments: [], getConfiguration:
   onDidChangeConfiguration: (_callback: (event: any) => void) => ({ dispose() {} }),
 };
 export const ViewColumn = { Active: 1 };
+/** 실제 원격 선택기의 구분선을 선택 가능한 항목과 같은 방식으로 구별한다. */
+export const QuickPickItemKind = { Default: 0, Separator: -1 };
 /** native FileSystemProvider의 타입·변경 이벤트 값을 실제 VS Code API와 동일하게 제공한다. */
 export const FileType = { Unknown: 0, File: 1, Directory: 2, SymbolicLink: 64 };
 export const FileChangeType = { Changed: 1, Created: 2, Deleted: 3 };

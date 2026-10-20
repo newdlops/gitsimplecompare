@@ -15,6 +15,15 @@ export async function captureRebaseCheckout(repoRoot: string): Promise<RebaseChe
 /** 실행 직전에 계획을 준비한 checkout과 같은지 검증하고 변경 시 Git을 시작하지 않는다. */
 export async function assertRebaseCheckout(repoRoot: string, expected: RebaseCheckoutIdentity): Promise<void> {
   const current = await captureRebaseCheckout(repoRoot);
+  assertRebaseCheckoutMatches(current, expected);
+}
+
+/**
+ * 같은 실행 경계에서 방금 읽은 checkout을 계획과 비교한다. 이 함수 자체는 Git 조회나 캐시를 만들지 않는다.
+ * @param current 호출자가 이번 경계에서 새로 읽은 실제 worktree/branch/HEAD
+ * @param expected UI 또는 첫 조회가 고정한 계획 기준 @returns 같으면 반환하며 다르면 쓰기 전에 오류를 던진다.
+ */
+export function assertRebaseCheckoutMatches(current: RebaseCheckoutIdentity, expected: RebaseCheckoutIdentity): void {
   if (current.gitDir !== expected.gitDir || current.branch !== expected.branch || current.head !== expected.head) {
     throw new Error("The checked-out branch or HEAD changed after the rebase plan was prepared. Prepare a new plan before starting.");
   }

@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.72125] - 2026-10-21
+
+### Performance
+
+- Reuse the Git directory returned by a fresh checkout read when checking for
+  an existing operation. Remove one Git process from interactive rebase Start
+  and a duplicate pre-confirmation path lookup, retaining fresh checkout checks.
+
+### Fixed
+
+- Remove consumed input todo files when the bundled sequence editor reaches a
+  successful edit pause. Preserve pending rewrite commands, message queues and
+  custom helpers' input lifetime.
+- Preserve existing native rebase state during service inspection and propagate
+  checkout read failures before creating a new operation.
+
+### Development
+
+- Exercise rendered push, pull, fetch and interactive rebase buttons through the
+  registered extension message callback with Native Git and headless Chromium.
+  Compare final HEAD, refs, parents and local-only markers with fresh reads.
+- Add a read-only existing-repository diagnosis that records aggregate timings
+  without branch names or commit contents. Retain contradictory timing samples;
+  this release claims fewer queries, not a general latency or CPU improvement.
+
 ## [0.1.72124] - 2026-10-21
 
 ### Performance
