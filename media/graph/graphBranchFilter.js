@@ -8,7 +8,7 @@
   let bound = false;
   let snapshot = { mode: "all", selected: [], compact: true, branches: [], remoteStatus: "ready" };
   let branchQuery = "";
-  let focusBranchSearch = false;
+  let menuDirty = true;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -31,11 +31,14 @@
     }
     bound = true;
     buttonEl.addEventListener("click", toggleMenu);
+    buttonEl.addEventListener("keydown", handleMenuKeydown);
+    menuEl.addEventListener("keydown", handleMenuKeydown);
     menuEl.addEventListener("click", handleMenuClick);
     menuEl.addEventListener("input", handleMenuInput);
     menuEl.addEventListener("change", handleMenuChange);
     document.addEventListener("click", (event) => {
-      if (!event.target.closest?.("#graph-branch-filter-button,#graph-branch-filter-menu")) {
+      // 같은 click에서 항목 DOM을 교체해도 원래 메뉴 안에서 시작한 이벤트는 outside click이 아니다.
+      if (!event.composedPath().some(target => target === buttonEl || target === menuEl)) {
         closeMenu();
       }
     });
@@ -52,6 +55,7 @@
         searchResults.hidden = true;
       }
       menuEl.hidden = false;
+      render();
       buttonEl.setAttribute("aria-expanded", "true");
       return;
     }
@@ -65,6 +69,12 @@
     }
     menuEl.hidden = true;
     buttonEl.setAttribute("aria-expanded", "false");
+  }
+
+  /** 메뉴 안/열기 버튼의 Escape는 해당 메뉴만 닫고 같은 웹뷰의 버튼으로 키보드 탐색을 돌려준다. */
+  function handleMenuKeydown(event) {
+    if (event.key !== "Escape" || menuEl.hidden) return;
+    event.preventDefault(); event.stopPropagation(); closeMenu(); buttonEl.focus({ preventScroll: true });
   }
 
   /** 메뉴 내부 shortcut 버튼 클릭을 처리한다. */
@@ -91,7 +101,7 @@
       return;
     }
     branchQuery = input.value || "";
-    focusBranchSearch = true;
+    menuDirty = true;
     render();
   }
 
@@ -112,7 +122,9 @@
     menuEl.querySelectorAll("[data-branch-filter-checkbox]").forEach((input) => {
       checked.set(input.value, input.checked);
     });
-    return snapshot.branches.filter((branch) => checked.get(branch.name)).map((branch) => branch.name);
+    const visible = snapshot.branches.filter((branch) => checked.get(branch.name)).map((branch) => branch.name);
+    // 원격 hydration 전의 선택은 아직 checkbox가 없어도 보존한다. Clear All만 그 사용자 의도를 명시적으로 비운다.
+    return snapshot.mode === "custom" ? [...visible, ...snapshot.selected.filter(name => !checked.has(name))] : visible;
   }
 
   /** compact graph 체크박스의 현재 값을 읽는다. */
@@ -123,6 +135,11 @@
 
   /** 브랜치 필터 변경 메시지를 확장으로 보낸다. */
   function postFilter(mode, branches, compact) {
+    // 선택은 사용자 의도이므로 host의 Git 읽기를 기다리지 않고 반영한다. 연속 compact 변경도 같은 선택을 사용한다.
+    const selected = mode === "all" ? [] : [...branches], checked = new Set(selected);
+    snapshot = { ...snapshot, mode, selected, compact, branches: snapshot.branches.map(branch => ({ ...branch,
+      checked: mode === "all" || checked.has(branch.name) })) };
+    menuDirty = true; render();
     window.GscGraphPostMessage?.({
       type: "setBranchFilter",
       mode,
@@ -144,6 +161,9 @@
     // 최소 identity와 상세가 같은 옵션이면 열린 메뉴의 검색·키보드 포커스를 그대로 유지한다.
     if (JSON.stringify(snapshot) === JSON.stringify(updated)) return;
     snapshot = updated;
+    menuDirty = true;
+    // 숨겨진 이전 목록은 새 snapshot이 도착한 뒤 버린다. 서버 응답 전 다시 열 때는 사용자의 체크 상태를 보존한다.
+    if (menuEl?.hidden) menuEl.replaceChildren();
     render();
   }
 
@@ -158,10 +178,13 @@
     buttonEl.title = buttonTitle(checkedCount);
     buttonEl.dataset.tooltip = buttonEl.title;
     buttonEl.setAttribute("aria-label", buttonEl.title);
+    if (menuEl.hidden || !menuDirty) return;
+    const focus = captureMenuFocus(), scrollTop = menuEl.querySelector(".branch-filter-list")?.scrollTop || 0;
     menuEl.innerHTML = menuHtml(checkedCount);
-    if (focusBranchSearch) {
-      requestAnimationFrame(focusSearchInput);
-    }
+    menuDirty = false;
+    const list = menuEl.querySelector(".branch-filter-list");
+    if (list && scrollTop) list.scrollTop = scrollTop;
+    restoreMenuFocus(focus);
   }
 
   /** 현재 필터 상태를 설명하는 버튼 tooltip 문구를 만든다. */
@@ -277,15 +300,26 @@
     });
   }
 
-  /** 렌더링 뒤 브랜치 검색 입력의 포커스와 커서를 복원한다. */
-  function focusSearchInput() {
-    focusBranchSearch = false;
-    const input = menuEl?.querySelector("[data-branch-filter-search]");
-    if (!input) {
-      return;
-    }
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
+  /** @returns 현재 메뉴에서 사용 중인 컨트롤과 검색 커서. 메뉴 밖의 포커스는 건드리지 않는다. */
+  function captureMenuFocus() {
+    const active = document.activeElement;
+    if (!menuEl.contains(active)) return undefined;
+    if (active.matches("[data-branch-filter-search]")) return { selector: "[data-branch-filter-search]",
+      start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection };
+    if (active.matches("[data-branch-filter-checkbox]")) return {
+      selector: `[data-branch-filter-checkbox][value="${CSS.escape(active.value)}"]` };
+    if (active.matches("[data-branch-filter-compact]")) return { selector: "[data-branch-filter-compact]" };
+    if (active.matches("[data-branch-filter-shortcut]")) return {
+      selector: `[data-branch-filter-shortcut="${CSS.escape(active.dataset.branchFilterShortcut)}"]` };
+    return undefined;
+  }
+
+  /** @param focus 교체 전 컨트롤 identity와 선택 범위. DOM 교체 직후 복원해 늦은 RAF가 사용자 포커스를 빼앗지 않는다. */
+  function restoreMenuFocus(focus) {
+    const target = focus && menuEl.querySelector(focus.selector);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    if (focus.start !== undefined) target.setSelectionRange(focus.start, focus.end, focus.direction);
   }
 
   /** 검색 비교용 문자열로 정규화한다. */

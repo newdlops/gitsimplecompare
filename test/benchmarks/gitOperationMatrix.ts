@@ -20,6 +20,7 @@ import type { Commit } from "../../src/graph/graphTypes";
 import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
+import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 
 type Operation = "initial" | "push" | "pull" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
@@ -161,9 +162,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const id = register(...args); active.add(id); peakProcesses = Math.max(peakProcesses, active.size); return id;
     });
     mock.method(gitProcesses, "closed", async (id: number) => { try { await closed(id); } finally { active.delete(id); } });
-    const started = performance.now(), cpu = process.cpuUsage(), rss = process.memoryUsage().rss;
+    const profile = await startNodeCpuProfile(operation);
+    const started = performance.now(), cpu = process.cpuUsage(), rss = process.memoryUsage.rss();
     let peakRss = rss;
-    const rssSample = setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage().rss); }, 10);
+    const rssSample = setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage.rss()); }, 10);
     measuring = true;
     const beforeMessages = messages.length;
     let operationEnd: number, operationEndedAt: number, graphEnd: number;
@@ -190,9 +192,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       else await panel.refreshAfterGraphAction(operation === "push" ? "references" : "graph");
       graphEnd = performance.now();
       await idle(f.root, panel);
-      const settledAt = performance.now(), settledRss = process.memoryUsage().rss;
+      const settledAt = performance.now(), settledRss = process.memoryUsage.rss();
       clearInterval(rssSample); measuring = false;
       const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
+      await profile?.stop();
       for (const [index, timing] of timings.entries()) {
         commands[timing.command] = (commands[timing.command] ?? 0) + 1;
         commandTimeMs[timing.command] = (commandTimeMs[timing.command] ?? 0) + timing.elapsedMs;
@@ -231,9 +234,13 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,
         webviewMessages: messages.length - beforeMessages, graphPublications: publications.length,
+        branchFilterPublications: messages.slice(beforeMessages).filter(message => message.type === "branchFilterOptions").length,
+        branchFilterJsonBytes: messages.slice(beforeMessages).filter(message => message.type === "branchFilterOptions")
+          .reduce((total, message) => total + Buffer.byteLength(JSON.stringify(message)), 0),
         commands, graphCommands, commandTimeMs, nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
+        nodeCpuScope: "benchmark Node process including Playwright transport and RSS/idle sampling",
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
-    } finally { clearInterval(rssSample); measuring = false; unobserve(); }
+    } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
 }
 

@@ -1,0 +1,4871 @@
+{
+  "release": "0.1.72119",
+  "baselineCommit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+  "productionSource": [
+    {
+      "path": "media/graph/graphBranchFilter.js",
+      "sha256": "22455738267fe5aaf1f4c98a9213395268405450920468899a837800bef7d11a",
+      "lines": 342
+    },
+    {
+      "path": "media/graph/graphControls.css",
+      "sha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "lines": 410
+    },
+    {
+      "path": "src/webview/graphPanel.ts",
+      "sha256": "44ddf35eb2721c20faa62b459bc3c7255a479830f882954c596f7a22d5ebd9b6",
+      "lines": 593
+    },
+    {
+      "path": "src/webview/graphBranchFilter.ts",
+      "sha256": "5133024bc5bce3fda16b597b07371fac9f6831488c9c6c061f7780d0a0882d21",
+      "lines": 224
+    }
+  ],
+  "scope": {
+    "browser": "Existing production component JS/CSS in headless fixture; 6x CPU throttle; 10 changed snapshots per sample; one warmup and five measured pages per size. Browser task/script metrics are not whole-extension CPU.",
+    "browserOrder": "Final candidate first, then isolated Native baseline matrix, then final browser baseline, then isolated Native candidate matrix. System-wide external load is not controlled.",
+    "sourceHash": "Benchmark bundle hashes exclude runtime-loaded media. Baseline media is fixed by its commit; candidate media is identified by productionSource hashes and remained unchanged across final measurements.",
+    "native": "Actual local Native Git operations and production HTML/CSP/JS, one sample per operation. Benchmark Node CPU includes Playwright transport and RSS/idle polling. No wall-time speed claim from this small matrix.",
+    "intermediateNative": "Overlapped other checks; retained for correctness/counter evidence and variability, not latency or CPU attribution.",
+    "accessibility": "Headless Chromium keyboard and AX tree with simulated official VS Code screen-reader mode class; no physical screen-reader session.",
+    "focus": "No visible Extension Development Host, OS window activation or forced reload."
+  },
+  "browserSummary": {
+    "baselineIsolated": [
+      {
+        "branches": 300,
+        "closedMs": 87.29999995231628,
+        "browserTaskMs": 93.46000000000001,
+        "browserScriptMs": 84.963,
+        "addedElements": 15150,
+        "retainedElements": 1515,
+        "retainedHeapDeltaMiB": 0.15484237670898438,
+        "openingHandlerMs": 1.3000000715255737,
+        "openingTwoFramesMs": 119.70000004768372,
+        "exactLatestCatalog": true
+      },
+      {
+        "branches": 1000,
+        "closedMs": 252.5,
+        "browserTaskMs": 270.26,
+        "browserScriptMs": 246.944,
+        "addedElements": 50150,
+        "retainedElements": 5015,
+        "retainedHeapDeltaMiB": 0.21956634521484375,
+        "openingHandlerMs": 1.0999999046325684,
+        "openingTwoFramesMs": 280.60000002384186,
+        "exactLatestCatalog": true
+      }
+    ],
+    "candidateIsolated": [
+      {
+        "branches": 300,
+        "closedMs": 8.400000095367432,
+        "browserTaskMs": 12.520000000000003,
+        "browserScriptMs": 7.885,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.1220245361328125,
+        "openingHandlerMs": 8.5,
+        "openingTwoFramesMs": 69.10000002384186,
+        "exactLatestCatalog": true
+      },
+      {
+        "branches": 1000,
+        "closedMs": 15.899999976158142,
+        "browserTaskMs": 19.917,
+        "browserScriptMs": 13.83,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.18890762329101562,
+        "openingHandlerMs": 20.700000047683716,
+        "openingTwoFramesMs": 110.30000007152557,
+        "exactLatestCatalog": true
+      }
+    ],
+    "baselineEarlier": [
+      {
+        "branches": 300,
+        "closedMs": 153.60000002384186,
+        "browserTaskMs": 168.50300000000001,
+        "browserScriptMs": 148.583,
+        "addedElements": 15150,
+        "retainedElements": 1515,
+        "retainedHeapDeltaMiB": 0.15484237670898438,
+        "openingHandlerMs": 2.1999999284744263,
+        "openingTwoFramesMs": 287.60000002384186,
+        "exactLatestCatalog": true
+      },
+      {
+        "branches": 1000,
+        "closedMs": 358.10000002384186,
+        "browserTaskMs": 377.07099999999997,
+        "browserScriptMs": 353.067,
+        "addedElements": 50150,
+        "retainedElements": 5015,
+        "retainedHeapDeltaMiB": 0.21956634521484375,
+        "openingHandlerMs": 1.5,
+        "openingTwoFramesMs": 557.2999999523163,
+        "exactLatestCatalog": true
+      }
+    ],
+    "lazyOnlyRejected": [
+      {
+        "branches": 300,
+        "closedMs": 22.100000023841858,
+        "browserTaskMs": 28.8,
+        "browserScriptMs": 15.618,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.12199020385742188,
+        "openingHandlerMs": 253.19999992847443,
+        "openingTwoFramesMs": 301.10000002384186,
+        "exactLatestCatalog": true
+      },
+      {
+        "branches": 1000,
+        "closedMs": 44.199999928474426,
+        "browserTaskMs": 55.166,
+        "browserScriptMs": 35.026,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.188873291015625,
+        "openingHandlerMs": 601.3999999761581,
+        "openingTwoFramesMs": 694.8999999761581,
+        "exactLatestCatalog": true
+      }
+    ],
+    "rowLayoutPrototype": [
+      {
+        "branches": 300,
+        "closedMs": 27.100000023841858,
+        "browserTaskMs": 38.696999999999996,
+        "browserScriptMs": 21.845,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.1220245361328125,
+        "openingHandlerMs": 23.90000009536743,
+        "openingTwoFramesMs": 255.59999990463257,
+        "exactLatestCatalog": true
+      },
+      {
+        "branches": 1000,
+        "closedMs": 53.10000002384186,
+        "browserTaskMs": 65.623,
+        "browserScriptMs": 43.09,
+        "addedElements": 0,
+        "retainedElements": 0,
+        "retainedHeapDeltaMiB": 0.18890762329101562,
+        "openingHandlerMs": 65,
+        "openingTwoFramesMs": 397.90000009536743,
+        "exactLatestCatalog": true
+      }
+    ]
+  },
+  "browser": {
+    "baselineIsolated": {
+      "source": {
+        "kind": "commit",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "67e8ec0e0581b7f42b7b58fc6fd4ea9c674d23728a486a7d465f283b10a0e954"
+      },
+      "mode": "headless-existing-renderer",
+      "cpuThrottle": 6,
+      "updates": 10,
+      "warmup": 1,
+      "sampleCount": 5,
+      "results": [
+        {
+          "branches": 300,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 88.5,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 96.737,
+              "browserScriptMs": 84.963,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 1.100000023841858,
+                "twoFramesMs": 92.40000009536743
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 87.29999995231628,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 93.46000000000001,
+              "browserScriptMs": 86.056,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 1.6999999284744263,
+                "twoFramesMs": 136.39999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 74.5,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 81.43499999999999,
+              "browserScriptMs": 69.146,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 0.8000000715255737,
+                "twoFramesMs": 106.70000004768372
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 81.39999997615814,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 92.833,
+              "browserScriptMs": 78.666,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 1.3000000715255737,
+                "twoFramesMs": 119.70000004768372
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 141.29999995231628,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 149.741,
+              "browserScriptMs": 137.201,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 2.3000000715255737,
+                "twoFramesMs": 166.89999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        },
+        {
+          "branches": 1000,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 262.3000000715256,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 273.69,
+              "browserScriptMs": 254.07600000000002,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 2.200000047683716,
+                "twoFramesMs": 280.60000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 252.5,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 270.695,
+              "browserScriptMs": 246.944,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 1.0999999046325684,
+                "twoFramesMs": 262.89999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 236,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 249.403,
+              "browserScriptMs": 230.386,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 0.19999992847442627,
+                "twoFramesMs": 415.5
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 241.5,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 251.884,
+              "browserScriptMs": 236.381,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 0.20000004768371582,
+                "twoFramesMs": 258.60000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 258.3000000715256,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 270.26,
+              "browserScriptMs": 252.64999999999998,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 2.100000023841858,
+                "twoFramesMs": 312.10000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "visible",
+                "intrinsic": "none"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        }
+      ]
+    },
+    "candidateIsolated": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "5f25e63a1636d2a9465c9698edcf6b721c84eef4e526ceceb9be7133a9becb96"
+      },
+      "mode": "headless-existing-renderer",
+      "cpuThrottle": 6,
+      "updates": 10,
+      "warmup": 1,
+      "sampleCount": 5,
+      "results": [
+        {
+          "branches": 300,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 9,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 13.369,
+              "browserScriptMs": 8.366,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 10,
+                "twoFramesMs": 75.60000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 10.5,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 13.214999999999998,
+              "browserScriptMs": 8.87,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 8.5,
+                "twoFramesMs": 70.79999995231628
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 8.400000095367432,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 12.520000000000003,
+              "browserScriptMs": 6.6129999999999995,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 7.600000023841858,
+                "twoFramesMs": 69.10000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 7.800000071525574,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 11.272,
+              "browserScriptMs": 4.805000000000001,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 8.800000071525574,
+                "twoFramesMs": 66
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 8.100000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 12.319999999999997,
+              "browserScriptMs": 7.885,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 8.100000023841858,
+                "twoFramesMs": 64.30000007152557
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        },
+        {
+          "branches": 1000,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 15.700000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 19.917,
+              "browserScriptMs": 13.625,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 21,
+                "twoFramesMs": 116.79999995231628
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 17.600000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 23.217000000000002,
+              "browserScriptMs": 13.83,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 19.800000071525574,
+                "twoFramesMs": 110.30000007152557
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 15.5,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 18.438999999999997,
+              "browserScriptMs": 13.026,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 20.300000071525574,
+                "twoFramesMs": 108.70000004768372
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 16.200000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 20.019000000000002,
+              "browserScriptMs": 14.301,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 20.700000047683716,
+                "twoFramesMs": 107.60000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 15.899999976158142,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 19.138999999999996,
+              "browserScriptMs": 14.205,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 22,
+                "twoFramesMs": 120
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        }
+      ]
+    },
+    "baselineEarlier": {
+      "source": {
+        "kind": "commit",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "18b2467d40895f03afe3f562dd8dc9ef998a33af0e62e3b0c91e98d460d5d435"
+      },
+      "mode": "headless-existing-renderer",
+      "cpuThrottle": 6,
+      "updates": 10,
+      "warmup": 1,
+      "sampleCount": 5,
+      "results": [
+        {
+          "branches": 300,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 165.39999997615814,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 180.477,
+              "browserScriptMs": 159.928,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 3.399999976158142,
+                "twoFramesMs": 309
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 114.89999997615814,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 122.89399999999999,
+              "browserScriptMs": 109.543,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 0.5,
+                "twoFramesMs": 202.5
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 122.19999992847443,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 130.42700000000002,
+              "browserScriptMs": 115.40100000000001,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 1.5,
+                "twoFramesMs": 169.69999992847443
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 153.60000002384186,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 168.50300000000001,
+              "browserScriptMs": 148.583,
+              "retainedHeapDeltaMiB": 0.15493392944335938,
+              "opened": {
+                "handlerMs": 2.1999999284744263,
+                "twoFramesMs": 287.60000002384186
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 206.5,
+                "addedElements": 15150,
+                "retainedElements": 1515,
+                "hidden": true
+              },
+              "browserTaskMs": 222.987,
+              "browserScriptMs": 196.71800000000002,
+              "retainedHeapDeltaMiB": 0.15484237670898438,
+              "opened": {
+                "handlerMs": 2.700000047683716,
+                "twoFramesMs": 398.7999999523163
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        },
+        {
+          "branches": 1000,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 358.10000002384186,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 377.07099999999997,
+              "browserScriptMs": 353.067,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 1.5,
+                "twoFramesMs": 557.2999999523163
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 454.5,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 483.11300000000006,
+              "browserScriptMs": 446.23400000000004,
+              "retainedHeapDeltaMiB": 0.22169876098632812,
+              "opened": {
+                "handlerMs": 3.899999976158142,
+                "twoFramesMs": 1065.1999999284744
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 302.39999997615814,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 319.134,
+              "browserScriptMs": 297.41200000000003,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 1.399999976158142,
+                "twoFramesMs": 480.7000000476837
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 342.60000002384186,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 370.7780000000001,
+              "browserScriptMs": 329.755,
+              "retainedHeapDeltaMiB": 0.22169876098632812,
+              "opened": {
+                "handlerMs": 2.200000047683716,
+                "twoFramesMs": 756.8000000715256
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 527.6000000238419,
+                "addedElements": 50150,
+                "retainedElements": 5015,
+                "hidden": true
+              },
+              "browserTaskMs": 550.7449999999999,
+              "browserScriptMs": 517.489,
+              "retainedHeapDeltaMiB": 0.21956634521484375,
+              "opened": {
+                "handlerMs": 1.4000000953674316,
+                "twoFramesMs": 344.5
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        }
+      ]
+    },
+    "lazyOnlyRejected": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "7decc56ae30d278d0fab919ad42514745e69e1b7a195ef80bbf70d0f787c4031"
+      },
+      "mode": "headless-existing-renderer",
+      "cpuThrottle": 6,
+      "updates": 10,
+      "warmup": 1,
+      "sampleCount": 5,
+      "results": [
+        {
+          "branches": 300,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 15.600000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 20.385999999999996,
+              "browserScriptMs": 11.622,
+              "retainedHeapDeltaMiB": 0.12199020385742188,
+              "opened": {
+                "handlerMs": 118.30000007152557,
+                "twoFramesMs": 153.5
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 22.600000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 28.8,
+              "browserScriptMs": 15.046999999999999,
+              "retainedHeapDeltaMiB": 0.12199020385742188,
+              "opened": {
+                "handlerMs": 201.5,
+                "twoFramesMs": 247.10000002384186
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 18.699999928474426,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 27.506999999999998,
+              "browserScriptMs": 16.516,
+              "retainedHeapDeltaMiB": 0.12199020385742188,
+              "opened": {
+                "handlerMs": 294.39999997615814,
+                "twoFramesMs": 354.10000002384186
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 31.100000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 42.303999999999995,
+              "browserScriptMs": 25.276,
+              "retainedHeapDeltaMiB": 0.12199020385742188,
+              "opened": {
+                "handlerMs": 303.59999990463257,
+                "twoFramesMs": 364.2999999523163
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 22.100000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 30.984999999999992,
+              "browserScriptMs": 15.618,
+              "retainedHeapDeltaMiB": 0.12199020385742188,
+              "opened": {
+                "handlerMs": 253.19999992847443,
+                "twoFramesMs": 301.10000002384186
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        },
+        {
+          "branches": 1000,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 36.699999928474426,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 46.72,
+              "browserScriptMs": 31.426999999999996,
+              "retainedHeapDeltaMiB": 0.188873291015625,
+              "opened": {
+                "handlerMs": 601.3999999761581,
+                "twoFramesMs": 694.8999999761581
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 49.39999997615814,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 63.182000000000016,
+              "browserScriptMs": 42.082,
+              "retainedHeapDeltaMiB": 0.188873291015625,
+              "opened": {
+                "handlerMs": 920.8999999761581,
+                "twoFramesMs": 1009.1000000238419
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 30.300000071525574,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 39.491,
+              "browserScriptMs": 27.095000000000002,
+              "retainedHeapDeltaMiB": 0.188873291015625,
+              "opened": {
+                "handlerMs": 360.7000000476837,
+                "twoFramesMs": 436.7000000476837
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 44.199999928474426,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 55.166,
+              "browserScriptMs": 35.026,
+              "retainedHeapDeltaMiB": 0.188873291015625,
+              "opened": {
+                "handlerMs": 446.39999997615814,
+                "twoFramesMs": 529.2999999523163
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 52.200000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 65.298,
+              "browserScriptMs": 40.411,
+              "retainedHeapDeltaMiB": 0.188873291015625,
+              "opened": {
+                "handlerMs": 840.7000000476837,
+                "twoFramesMs": 937.3999999761581
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        }
+      ]
+    },
+    "rowLayoutPrototype": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "5f25e63a1636d2a9465c9698edcf6b721c84eef4e526ceceb9be7133a9becb96"
+      },
+      "mode": "headless-existing-renderer",
+      "cpuThrottle": 6,
+      "updates": 10,
+      "warmup": 1,
+      "sampleCount": 5,
+      "results": [
+        {
+          "branches": 300,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 26.300000071525574,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 34.804,
+              "browserScriptMs": 21.391000000000002,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 23.90000009536743,
+                "twoFramesMs": 281.2000000476837
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 24.200000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 34.197,
+              "browserScriptMs": 21.845,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 13.699999928474426,
+                "twoFramesMs": 249.09999990463257
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 29.200000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 39.803,
+              "browserScriptMs": 22.412000000000003,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 23.199999928474426,
+                "twoFramesMs": 190.89999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 27.299999952316284,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 38.696999999999996,
+              "browserScriptMs": 21.428,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 26.59999990463257,
+                "twoFramesMs": 255.59999990463257
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 27.100000023841858,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 40.589,
+              "browserScriptMs": 23.012999999999998,
+              "retainedHeapDeltaMiB": 0.1220245361328125,
+              "opened": {
+                "handlerMs": 27,
+                "twoFramesMs": 265.39999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        },
+        {
+          "branches": 1000,
+          "samples": [
+            {
+              "closed": {
+                "elapsedMs": 57.60000002384186,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 70.22200000000001,
+              "browserScriptMs": 45.86,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 67.89999997615814,
+                "twoFramesMs": 411.7999999523163
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 44,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 52.98700000000001,
+              "browserScriptMs": 35.411,
+              "retainedHeapDeltaMiB": 0.18889617919921875,
+              "opened": {
+                "handlerMs": 47.200000047683716,
+                "twoFramesMs": 348.10000002384186
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 5.399999976158142,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 7.59,
+              "browserScriptMs": 4.63,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 52.89999997615814,
+                "twoFramesMs": 389.39999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 53.10000002384186,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 65.623,
+              "browserScriptMs": 43.09,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 65,
+                "twoFramesMs": 456.39999997615814
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            },
+            {
+              "closed": {
+                "elapsedMs": 57.200000047683716,
+                "addedElements": 0,
+                "retainedElements": 0,
+                "hidden": true
+              },
+              "browserTaskMs": 70.597,
+              "browserScriptMs": 51.843,
+              "retainedHeapDeltaMiB": 0.18890762329101562,
+              "opened": {
+                "handlerMs": 67.40000009536743,
+                "twoFramesMs": 397.90000009536743
+              },
+              "rowLayout": {
+                "height": 26,
+                "contentVisibility": "auto",
+                "intrinsic": "auto 22px"
+              },
+              "exactLatestCatalog": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "native": {
+    "baselineIsolated": {
+      "version": "0.1.72118",
+      "source": {
+        "kind": "commit",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "b05a4740a246ba2f07791083c33356c30f65babeefcbccf86ceabe2274036ed3"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 915,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 318,
+              "durationMs": 583,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 893,
+            "latestMutationToFrameMs": 1803,
+            "renderMs": 60,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 1784,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3186,
+          "processes": 13,
+          "operationProcesses": 0,
+          "graphProcesses": 13,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 234132,
+          "commands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "rev-parse": 1,
+            "config": 1,
+            "ls-remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "rev-parse": 1,
+            "config": 1,
+            "ls-remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1541,
+            "worktree": 313,
+            "log": 417,
+            "rev-list": 871,
+            "remote": 562,
+            "rev-parse": 759,
+            "config": 502,
+            "ls-remote": 929,
+            "status": 979
+          },
+          "nodeCpuMs": 222,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 20,
+          "peakRssDeltaMiB": 23,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 30603,
+          "graphMs": 3319,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1895,
+              "durationMs": 1353,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 3784,
+            "latestMutationToFrameMs": 4956,
+            "renderMs": 63,
+            "frameMs": 69
+          },
+          "latestGraphPublishedMs": 4928,
+          "graphAlreadyCurrent": false,
+          "settledMs": 36129,
+          "processes": 27,
+          "operationProcesses": 20,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 7,
+          "graphPublications": 3,
+          "branchFilterPublications": 2,
+          "branchFilterJsonBytes": 156439,
+          "commands": {
+            "rev-parse": 5,
+            "config": 6,
+            "for-each-ref": 5,
+            "remote": 1,
+            "ls-remote": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 2324,
+            "config": 5363,
+            "for-each-ref": 5826,
+            "remote": 924,
+            "ls-remote": 3507,
+            "rev-list": 3279,
+            "cat-file": 1055,
+            "push": 15452,
+            "branch": 1067,
+            "worktree": 1079,
+            "status": 1135
+          },
+          "nodeCpuMs": 678,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -41,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 3357,
+          "graphMs": 5634,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1574,
+              "durationMs": 4033,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 5800,
+            "latestMutationToFrameMs": 8333,
+            "renderMs": 59,
+            "frameMs": 35
+          },
+          "latestGraphPublishedMs": 8306,
+          "graphAlreadyCurrent": false,
+          "settledMs": 12442,
+          "processes": 11,
+          "operationProcesses": 1,
+          "graphProcesses": 10,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 236295,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "fetch": 3356,
+            "worktree": 1070,
+            "for-each-ref": 7719,
+            "log": 3990,
+            "rev-list": 2692,
+            "config": 1890,
+            "status": 1041,
+            "remote": 3431
+          },
+          "nodeCpuMs": 339,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -1,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 6498,
+          "graphMs": 1969,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1128,
+              "durationMs": 822,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2192,
+            "latestMutationToFrameMs": 2192,
+            "renderMs": 32,
+            "frameMs": 58
+          },
+          "latestGraphPublishedMs": 1959,
+          "graphAlreadyCurrent": false,
+          "settledMs": 10035,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 2,
+          "branchFilterPublications": 2,
+          "branchFilterJsonBytes": 157692,
+          "commands": {
+            "rev-parse": 1,
+            "config": 2,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 546,
+            "config": 1391,
+            "status": 1532,
+            "pull": 4558,
+            "for-each-ref": 1581,
+            "worktree": 1114,
+            "rev-list": 1282
+          },
+          "nodeCpuMs": 446,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -17,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 2531,
+          "graphMs": 1697,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 951,
+              "durationMs": 716,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1900,
+            "latestMutationToFrameMs": 3212,
+            "renderMs": 31,
+            "frameMs": 51
+          },
+          "latestGraphPublishedMs": 3182,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5991,
+          "processes": 8,
+          "operationProcesses": 1,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 7,
+          "graphPublications": 3,
+          "branchFilterPublications": 2,
+          "branchFilterJsonBytes": 157858,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 2529,
+            "for-each-ref": 1469,
+            "worktree": 943,
+            "rev-list": 1486,
+            "config": 953,
+            "status": 764
+          },
+          "nodeCpuMs": 264,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 13,
+          "peakRssDeltaMiB": 13,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 13735,
+          "graphMs": 2276,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1044,
+              "durationMs": 1206,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1859,
+            "latestMutationToFrameMs": 4704,
+            "renderMs": 51,
+            "frameMs": 15
+          },
+          "latestGraphPublishedMs": 4672,
+          "graphAlreadyCurrent": false,
+          "settledMs": 19967,
+          "processes": 28,
+          "operationProcesses": 16,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 237042,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "config": 3,
+            "status": 3,
+            "rebase": 1,
+            "merge-base": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 6780,
+            "ls-files": 2390,
+            "update-ref": 529,
+            "config": 2660,
+            "status": 2347,
+            "rebase": 902,
+            "merge-base": 2557,
+            "for-each-ref": 3088,
+            "worktree": 1025,
+            "log": 629,
+            "rev-list": 2409,
+            "remote": 2285
+          },
+          "nodeCpuMs": 649,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 13,
+          "peakRssDeltaMiB": 65,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 5961,
+          "graphMs": 3108,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1061,
+              "durationMs": 2030,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2157,
+            "latestMutationToFrameMs": 4291,
+            "renderMs": 59,
+            "frameMs": 18
+          },
+          "latestGraphPublishedMs": 4268,
+          "graphAlreadyCurrent": false,
+          "settledMs": 10931,
+          "processes": 26,
+          "operationProcesses": 15,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 237291,
+          "commands": {
+            "rev-parse": 6,
+            "ls-files": 2,
+            "status": 3,
+            "update-ref": 1,
+            "config": 3,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 2337,
+            "ls-files": 1362,
+            "status": 922,
+            "update-ref": 393,
+            "config": 1931,
+            "merge": 581,
+            "diff": 340,
+            "commit": 610,
+            "for-each-ref": 3762,
+            "worktree": 1053,
+            "log": 878,
+            "rev-list": 1165,
+            "remote": 1029
+          },
+          "nodeCpuMs": 407,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 48,
+          "peakRssDeltaMiB": 51,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 1115,
+          "graphMs": 1224,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 673,
+              "durationMs": 539,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1195,
+            "latestMutationToFrameMs": 2599,
+            "renderMs": 50,
+            "frameMs": 13
+          },
+          "latestGraphPublishedMs": 2579,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3715,
+          "processes": 11,
+          "operationProcesses": 1,
+          "graphProcesses": 10,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 237576,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "merge": 1114,
+            "for-each-ref": 1741,
+            "worktree": 668,
+            "log": 363,
+            "rev-list": 1359,
+            "config": 716,
+            "status": 382,
+            "remote": 1210
+          },
+          "nodeCpuMs": 197,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 8,
+          "peakRssDeltaMiB": 11,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 12923,
+          "graphMs": 1059,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 553,
+              "durationMs": 495,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1062,
+            "latestMutationToFrameMs": 1989,
+            "renderMs": 42,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 1970,
+          "graphAlreadyCurrent": false,
+          "settledMs": 15782,
+          "processes": 36,
+          "operationProcesses": 24,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 237921,
+          "commands": {
+            "rev-parse": 10,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "config": 4,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 3,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5260,
+            "ls-files": 746,
+            "cat-file": 293,
+            "log": 586,
+            "worktree": 1470,
+            "config": 1726,
+            "read-tree": 377,
+            "commit": 601,
+            "update-ref": 550,
+            "merge-base": 349,
+            "diff": 611,
+            "reset": 2218,
+            "for-each-ref": 1262,
+            "rev-list": 915,
+            "remote": 779,
+            "status": 814
+          },
+          "nodeCpuMs": 334,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 7,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 9739,
+          "graphMs": 1353,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 514,
+              "durationMs": 822,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1138,
+            "latestMutationToFrameMs": 3017,
+            "renderMs": 51,
+            "frameMs": 14
+          },
+          "latestGraphPublishedMs": 2986,
+          "graphAlreadyCurrent": false,
+          "settledMs": 13319,
+          "processes": 36,
+          "operationProcesses": 26,
+          "graphProcesses": 10,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 238224,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 3,
+            "update-ref": 1,
+            "config": 4,
+            "cherry-pick": 3,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 5209,
+            "ls-files": 2130,
+            "cat-file": 348,
+            "status": 1677,
+            "update-ref": 312,
+            "config": 1942,
+            "cherry-pick": 1243,
+            "for-each-ref": 1974,
+            "worktree": 500,
+            "log": 450,
+            "rev-list": 1639,
+            "remote": 2198
+          },
+          "nodeCpuMs": 610,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -6,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 262,
+          "graphMs": 1206,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 504,
+              "durationMs": 689,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1057,
+            "latestMutationToFrameMs": 2267,
+            "renderMs": 52,
+            "frameMs": 13
+          },
+          "latestGraphPublishedMs": 2243,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2958,
+          "processes": 11,
+          "operationProcesses": 1,
+          "graphProcesses": 10,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "branchFilterJsonBytes": 238509,
+          "commands": {
+            "cherry-pick": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "cherry-pick": 261,
+            "for-each-ref": 1573,
+            "worktree": 501,
+            "log": 392,
+            "rev-list": 1042,
+            "config": 547,
+            "status": 724,
+            "remote": 1463
+          },
+          "nodeCpuMs": 166,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -1,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 1456,
+          "graphMs": 2455,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1434,
+              "durationMs": 951,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2722,
+            "latestMutationToFrameMs": 2722,
+            "renderMs": 29,
+            "frameMs": 64
+          },
+          "latestGraphPublishedMs": 2399,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6464,
+          "processes": 10,
+          "operationProcesses": 3,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 2,
+          "branchFilterPublications": 2,
+          "branchFilterJsonBytes": 159184,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 2049,
+            "rev-parse": 411,
+            "switch": 532,
+            "worktree": 1429,
+            "rev-list": 1641,
+            "config": 1372,
+            "status": 1081
+          },
+          "nodeCpuMs": 204,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -54,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    },
+    "candidateIsolated": {
+      "version": "0.1.72119",
+      "source": {
+        "kind": "working-tree",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "80ed55df1fc134ba3adb980ab9999986e75b6b212bac66c337badf490dc04471"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 1247,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 576,
+              "durationMs": 657,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1209,
+            "latestMutationToFrameMs": 2569,
+            "renderMs": 75,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 2540,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4388,
+          "processes": 13,
+          "operationProcesses": 0,
+          "graphProcesses": 13,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42231,
+          "commands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1,
+            "config": 1,
+            "ls-remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1,
+            "config": 1,
+            "ls-remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1455,
+            "worktree": 569,
+            "log": 452,
+            "rev-list": 1297,
+            "rev-parse": 822,
+            "remote": 947,
+            "config": 1263,
+            "ls-remote": 1567,
+            "status": 1010
+          },
+          "nodeCpuMs": 277,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -8,
+          "peakRssDeltaMiB": 13,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 15355,
+          "graphMs": 2768,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1499,
+              "durationMs": 1251,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2937,
+            "latestMutationToFrameMs": 4274,
+            "renderMs": 36,
+            "frameMs": 44
+          },
+          "latestGraphPublishedMs": 4250,
+          "graphAlreadyCurrent": false,
+          "settledMs": 21142,
+          "processes": 27,
+          "operationProcesses": 20,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42375,
+          "commands": {
+            "rev-parse": 5,
+            "config": 6,
+            "for-each-ref": 5,
+            "remote": 1,
+            "ls-remote": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 2926,
+            "config": 5663,
+            "for-each-ref": 4955,
+            "remote": 456,
+            "ls-remote": 1356,
+            "rev-list": 3021,
+            "cat-file": 996,
+            "push": 2765,
+            "branch": 888,
+            "worktree": 1491,
+            "status": 1897
+          },
+          "nodeCpuMs": 509,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -15,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 3874,
+          "graphMs": 3103,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1879,
+              "durationMs": 1212,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2903,
+            "latestMutationToFrameMs": 9994,
+            "renderMs": 59,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 9973,
+          "graphAlreadyCurrent": false,
+          "settledMs": 13877,
+          "processes": 12,
+          "operationProcesses": 1,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42595,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "remote": 1,
+            "config": 1,
+            "status": 2,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "remote": 1,
+            "config": 1,
+            "status": 2,
+            "rev-list": 2
+          },
+          "commandTimeMs": {
+            "fetch": 3873,
+            "for-each-ref": 3109,
+            "worktree": 1873,
+            "log": 821,
+            "remote": 2163,
+            "config": 2261,
+            "status": 2051,
+            "rev-list": 6874
+          },
+          "nodeCpuMs": 299,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 17,
+          "peakRssDeltaMiB": 17,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 4969,
+          "graphMs": 1658,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1006,
+              "durationMs": 617,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1832,
+            "latestMutationToFrameMs": 1832,
+            "renderMs": 39,
+            "frameMs": 51
+          },
+          "latestGraphPublishedMs": 1629,
+          "graphAlreadyCurrent": false,
+          "settledMs": 7876,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42663,
+          "commands": {
+            "rev-parse": 1,
+            "config": 2,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 431,
+            "config": 1257,
+            "status": 892,
+            "pull": 3582,
+            "for-each-ref": 1417,
+            "worktree": 1000,
+            "rev-list": 1021
+          },
+          "nodeCpuMs": 187,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -20,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 1381,
+          "graphMs": 1534,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 881,
+              "durationMs": 636,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1701,
+            "latestMutationToFrameMs": 3859,
+            "renderMs": 38,
+            "frameMs": 50
+          },
+          "latestGraphPublishedMs": 3844,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5255,
+          "processes": 8,
+          "operationProcesses": 1,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42732,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 1381,
+            "for-each-ref": 1222,
+            "worktree": 874,
+            "rev-list": 2310,
+            "config": 1295,
+            "status": 705
+          },
+          "nodeCpuMs": 152,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -15,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 13172,
+          "graphMs": 3933,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 2297,
+              "durationMs": 1623,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 3588,
+            "latestMutationToFrameMs": 5988,
+            "renderMs": 56,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 5960,
+          "graphAlreadyCurrent": false,
+          "settledMs": 20258,
+          "processes": 27,
+          "operationProcesses": 16,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42802,
+          "commands": {
+            "ls-files": 2,
+            "rev-parse": 9,
+            "update-ref": 1,
+            "config": 2,
+            "status": 3,
+            "rebase": 1,
+            "merge-base": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "ls-files": 2061,
+            "rev-parse": 8813,
+            "update-ref": 416,
+            "config": 2450,
+            "status": 1869,
+            "rebase": 1132,
+            "merge-base": 1004,
+            "for-each-ref": 5153,
+            "worktree": 2282,
+            "log": 1075,
+            "rev-list": 2031,
+            "remote": 1116
+          },
+          "nodeCpuMs": 604,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 28,
+          "peakRssDeltaMiB": 32,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 17378,
+          "graphMs": 5667,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1106,
+              "durationMs": 2012,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 5781,
+            "latestMutationToFrameMs": 9369,
+            "renderMs": 66,
+            "frameMs": 18
+          },
+          "latestGraphPublishedMs": 9340,
+          "graphAlreadyCurrent": false,
+          "settledMs": 33082,
+          "processes": 31,
+          "operationProcesses": 16,
+          "graphProcesses": 15,
+          "peakProcesses": 6,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42871,
+          "commands": {
+            "rev-parse": 7,
+            "ls-files": 2,
+            "config": 7,
+            "status": 3,
+            "update-ref": 1,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "config": 4,
+            "log": 1,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5689,
+            "ls-files": 2081,
+            "config": 10286,
+            "status": 10303,
+            "update-ref": 784,
+            "merge": 1871,
+            "diff": 1425,
+            "commit": 2565,
+            "worktree": 1008,
+            "for-each-ref": 7031,
+            "log": 4524,
+            "rev-list": 3679,
+            "remote": 4683
+          },
+          "nodeCpuMs": 786,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -1,
+          "peakRssDeltaMiB": 50,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 1765,
+          "graphMs": 2623,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1479,
+              "durationMs": 1128,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2547,
+            "latestMutationToFrameMs": 4513,
+            "renderMs": 59,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 4447,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6997,
+          "processes": 11,
+          "operationProcesses": 1,
+          "graphProcesses": 10,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 42946,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "merge": 1764,
+            "for-each-ref": 3239,
+            "worktree": 1475,
+            "log": 886,
+            "rev-list": 1829,
+            "config": 1306,
+            "status": 1045,
+            "remote": 2590
+          },
+          "nodeCpuMs": 184,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -40,
+          "peakRssDeltaMiB": 7,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 16616,
+          "graphMs": 2078,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 536,
+              "durationMs": 1530,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1683,
+            "latestMutationToFrameMs": 3969,
+            "renderMs": 50,
+            "frameMs": 14
+          },
+          "latestGraphPublishedMs": 3949,
+          "graphAlreadyCurrent": false,
+          "settledMs": 21794,
+          "processes": 36,
+          "operationProcesses": 24,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 43031,
+          "commands": {
+            "ls-files": 2,
+            "rev-parse": 10,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "config": 4,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 3,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "ls-files": 1917,
+            "rev-parse": 6634,
+            "cat-file": 1227,
+            "log": 1616,
+            "worktree": 1660,
+            "config": 2965,
+            "read-tree": 599,
+            "commit": 1742,
+            "update-ref": 276,
+            "merge-base": 334,
+            "diff": 1600,
+            "reset": 449,
+            "for-each-ref": 2549,
+            "rev-list": 1874,
+            "remote": 1134,
+            "status": 1732
+          },
+          "nodeCpuMs": 528,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -14,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 11326,
+          "graphMs": 863,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 383,
+              "durationMs": 470,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 835,
+            "latestMutationToFrameMs": 4302,
+            "renderMs": 42,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 4280,
+          "graphAlreadyCurrent": false,
+          "settledMs": 16392,
+          "processes": 37,
+          "operationProcesses": 26,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 43109,
+          "commands": {
+            "ls-files": 2,
+            "rev-parse": 14,
+            "cat-file": 1,
+            "status": 4,
+            "update-ref": 1,
+            "config": 4,
+            "cherry-pick": 3,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "ls-files": 1076,
+            "rev-parse": 6701,
+            "cat-file": 495,
+            "status": 3522,
+            "update-ref": 275,
+            "config": 2594,
+            "cherry-pick": 1317,
+            "for-each-ref": 3465,
+            "worktree": 379,
+            "log": 313,
+            "rev-list": 3421,
+            "remote": 1137
+          },
+          "nodeCpuMs": 329,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -7,
+          "peakRssDeltaMiB": 5,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 1035,
+          "graphMs": 1384,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 570,
+              "durationMs": 806,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1160,
+            "latestMutationToFrameMs": 2744,
+            "renderMs": 41,
+            "frameMs": 11
+          },
+          "latestGraphPublishedMs": 2725,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4575,
+          "processes": 14,
+          "operationProcesses": 2,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 43184,
+          "commands": {
+            "config": 3,
+            "cherry-pick": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "config": 1370,
+            "cherry-pick": 540,
+            "for-each-ref": 1934,
+            "worktree": 566,
+            "log": 475,
+            "rev-list": 1343,
+            "remote": 1086,
+            "status": 1243
+          },
+          "nodeCpuMs": 201,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 4966,
+          "graphMs": 1460,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 617,
+              "durationMs": 823,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1606,
+            "latestMutationToFrameMs": 1606,
+            "renderMs": 21,
+            "frameMs": 43
+          },
+          "latestGraphPublishedMs": 1451,
+          "graphAlreadyCurrent": false,
+          "settledMs": 8128,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 43256,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "config": 2,
+            "switch": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "config": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 3009,
+            "rev-parse": 1137,
+            "config": 1781,
+            "switch": 1169,
+            "worktree": 611,
+            "rev-list": 1458,
+            "status": 814
+          },
+          "nodeCpuMs": 392,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -24,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    },
+    "baselineOverlapped": {
+      "version": "0.1.72118",
+      "source": {
+        "kind": "commit",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "78e5a5fdfe3611f1fc384ccf8850cb4cd9c0b9d484c3bd3c4a65838a1b53a656"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 728,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 200,
+              "durationMs": 511,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 707,
+            "latestMutationToFrameMs": 1526,
+            "renderMs": 83,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 1502,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2973,
+          "processes": 13,
+          "operationProcesses": 0,
+          "graphProcesses": 13,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "rev-parse": 1,
+            "ls-remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "rev-parse": 1,
+            "ls-remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1157,
+            "worktree": 191,
+            "log": 309,
+            "rev-list": 778,
+            "remote": 290,
+            "rev-parse": 1003,
+            "ls-remote": 959,
+            "config": 626,
+            "status": 568
+          },
+          "nodeCpuMs": 257,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 19,
+          "peakRssDeltaMiB": 19,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 7791,
+          "graphMs": 1383,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 791,
+              "durationMs": 578,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1553,
+            "latestMutationToFrameMs": 2493,
+            "renderMs": 35,
+            "frameMs": 48
+          },
+          "latestGraphPublishedMs": 2442,
+          "graphAlreadyCurrent": false,
+          "settledMs": 10464,
+          "processes": 26,
+          "operationProcesses": 19,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 7,
+          "graphPublications": 3,
+          "branchFilterPublications": 2,
+          "commands": {
+            "rev-parse": 5,
+            "config": 5,
+            "for-each-ref": 5,
+            "remote": 1,
+            "ls-remote": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 1391,
+            "config": 1951,
+            "for-each-ref": 2437,
+            "remote": 431,
+            "ls-remote": 619,
+            "rev-list": 1422,
+            "cat-file": 255,
+            "push": 2952,
+            "branch": 196,
+            "worktree": 785,
+            "status": 724
+          },
+          "nodeCpuMs": 231,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -2,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 2547,
+          "graphMs": 2360,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1094,
+              "durationMs": 1246,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2408,
+            "latestMutationToFrameMs": 3741,
+            "renderMs": 87,
+            "frameMs": 40
+          },
+          "latestGraphPublishedMs": 3703,
+          "graphAlreadyCurrent": false,
+          "settledMs": 7900,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "fetch": 2546,
+            "for-each-ref": 2902,
+            "worktree": 1086,
+            "log": 990,
+            "rev-list": 1355,
+            "config": 1732,
+            "remote": 1594,
+            "status": 1224
+          },
+          "nodeCpuMs": 445,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -11,
+          "peakRssDeltaMiB": 5,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 4341,
+          "graphMs": 1412,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 873,
+              "durationMs": 517,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1672,
+            "latestMutationToFrameMs": 1672,
+            "renderMs": 42,
+            "frameMs": 74
+          },
+          "latestGraphPublishedMs": 1400,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6706,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 2,
+          "branchFilterPublications": 2,
+          "commands": {
+            "rev-parse": 1,
+            "config": 2,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 184,
+            "config": 833,
+            "status": 1224,
+            "pull": 3009,
+            "for-each-ref": 1126,
+            "worktree": 865,
+            "rev-list": 592
+          },
+          "nodeCpuMs": 323,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -1,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 1902,
+          "graphMs": 1104,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 595,
+              "durationMs": 488,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1397,
+            "latestMutationToFrameMs": 1873,
+            "renderMs": 47,
+            "frameMs": 82
+          },
+          "latestGraphPublishedMs": 1836,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4025,
+          "processes": 8,
+          "operationProcesses": 1,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 7,
+          "graphPublications": 3,
+          "branchFilterPublications": 2,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 1900,
+            "for-each-ref": 809,
+            "worktree": 586,
+            "rev-list": 733,
+            "config": 528,
+            "status": 442
+          },
+          "nodeCpuMs": 324,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 11,
+          "peakRssDeltaMiB": 11,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 10083,
+          "graphMs": 3045,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1009,
+              "durationMs": 1803,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2180,
+            "latestMutationToFrameMs": 5282,
+            "renderMs": 102,
+            "frameMs": 31
+          },
+          "latestGraphPublishedMs": 5227,
+          "graphAlreadyCurrent": false,
+          "settledMs": 16903,
+          "processes": 27,
+          "operationProcesses": 16,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "config": 2,
+            "status": 3,
+            "rebase": 1,
+            "merge-base": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 4746,
+            "ls-files": 1402,
+            "update-ref": 807,
+            "config": 2444,
+            "status": 2357,
+            "rebase": 1312,
+            "merge-base": 684,
+            "for-each-ref": 3623,
+            "worktree": 992,
+            "log": 710,
+            "rev-list": 2378,
+            "remote": 1614
+          },
+          "nodeCpuMs": 498,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -36,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 13632,
+          "graphMs": 5017,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 2633,
+              "durationMs": 2276,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 4187,
+            "latestMutationToFrameMs": 9205,
+            "renderMs": 97,
+            "frameMs": 30
+          },
+          "latestGraphPublishedMs": 9165,
+          "graphAlreadyCurrent": false,
+          "settledMs": 23142,
+          "processes": 26,
+          "operationProcesses": 15,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "rev-parse": 6,
+            "ls-files": 2,
+            "status": 3,
+            "update-ref": 1,
+            "config": 3,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5139,
+            "ls-files": 1802,
+            "status": 3618,
+            "update-ref": 794,
+            "config": 3390,
+            "merge": 1338,
+            "diff": 710,
+            "commit": 1766,
+            "worktree": 1790,
+            "for-each-ref": 7470,
+            "log": 954,
+            "rev-list": 4222,
+            "remote": 1582
+          },
+          "nodeCpuMs": 628,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -21,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 1343,
+          "graphMs": 2254,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1092,
+              "durationMs": 1134,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2196,
+            "latestMutationToFrameMs": 4095,
+            "renderMs": 117,
+            "frameMs": 28
+          },
+          "latestGraphPublishedMs": 4048,
+          "graphAlreadyCurrent": false,
+          "settledMs": 7487,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "merge": 1343,
+            "for-each-ref": 3161,
+            "worktree": 1080,
+            "log": 723,
+            "rev-list": 1806,
+            "config": 2083,
+            "remote": 1568,
+            "status": 1760
+          },
+          "nodeCpuMs": 331,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -8,
+          "peakRssDeltaMiB": 10,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 14787,
+          "graphMs": 2731,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1358,
+              "durationMs": 1350,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2491,
+            "latestMutationToFrameMs": 4811,
+            "renderMs": 84,
+            "frameMs": 25
+          },
+          "latestGraphPublishedMs": 4765,
+          "graphAlreadyCurrent": false,
+          "settledMs": 21163,
+          "processes": 36,
+          "operationProcesses": 24,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "rev-parse": 10,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "config": 4,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 3,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5582,
+            "ls-files": 1402,
+            "cat-file": 548,
+            "log": 1302,
+            "worktree": 2678,
+            "config": 3830,
+            "read-tree": 552,
+            "commit": 895,
+            "update-ref": 542,
+            "merge-base": 834,
+            "diff": 532,
+            "reset": 246,
+            "for-each-ref": 3465,
+            "rev-list": 2040,
+            "remote": 1766,
+            "status": 1570
+          },
+          "nodeCpuMs": 1033,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 16,
+          "peakRssDeltaMiB": 26,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 9605,
+          "graphMs": 3520,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1631,
+              "durationMs": 1268,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2762,
+            "latestMutationToFrameMs": 4918,
+            "renderMs": 85,
+            "frameMs": 23
+          },
+          "latestGraphPublishedMs": 4878,
+          "graphAlreadyCurrent": false,
+          "settledMs": 16005,
+          "processes": 37,
+          "operationProcesses": 26,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 4,
+            "update-ref": 1,
+            "config": 4,
+            "cherry-pick": 3,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 4819,
+            "ls-files": 1041,
+            "cat-file": 492,
+            "status": 2150,
+            "update-ref": 638,
+            "config": 2393,
+            "cherry-pick": 1146,
+            "for-each-ref": 3932,
+            "worktree": 1610,
+            "log": 736,
+            "rev-list": 1902,
+            "remote": 891
+          },
+          "nodeCpuMs": 543,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -51,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 552,
+          "graphMs": 1639,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 703,
+              "durationMs": 919,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1606,
+            "latestMutationToFrameMs": 2701,
+            "renderMs": 81,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 2666,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4423,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 12,
+          "graphPublications": 3,
+          "branchFilterPublications": 3,
+          "commands": {
+            "cherry-pick": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "cherry-pick": 550,
+            "for-each-ref": 2173,
+            "worktree": 696,
+            "log": 652,
+            "rev-list": 1032,
+            "config": 1167,
+            "remote": 1366,
+            "status": 1023
+          },
+          "nodeCpuMs": 289,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -19,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 1129,
+          "graphMs": 1121,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 640,
+              "durationMs": 457,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1382,
+            "latestMutationToFrameMs": 1382,
+            "renderMs": 66,
+            "frameMs": 55
+          },
+          "latestGraphPublishedMs": 1106,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3821,
+          "processes": 10,
+          "operationProcesses": 3,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 2,
+          "branchFilterPublications": 2,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1325,
+            "rev-parse": 193,
+            "switch": 608,
+            "worktree": 632,
+            "rev-list": 1299,
+            "config": 768,
+            "status": 765
+          },
+          "nodeCpuMs": 193,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 2,
+          "historyExact": true
+        }
+      ]
+    },
+    "candidateOverlapped": {
+      "version": "0.1.72118",
+      "source": {
+        "kind": "working-tree",
+        "commit": "a6ce708df3abb248e11ca498f161431d0d30c8bf",
+        "bundleSha256": "56679df7f7558e2688af8ea9fb5da763d2b35c469053049faf1ddfd7d3c121f3"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 2622,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 986,
+              "durationMs": 1385,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2939,
+            "latestMutationToFrameMs": 5886,
+            "renderMs": 148,
+            "frameMs": 33
+          },
+          "latestGraphPublishedMs": 5832,
+          "graphAlreadyCurrent": false,
+          "settledMs": 8714,
+          "processes": 16,
+          "operationProcesses": 0,
+          "graphProcesses": 16,
+          "peakProcesses": 6,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-parse": 2,
+            "config": 3,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2,
+            "ls-remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-parse": 2,
+            "config": 3,
+            "remote": 1,
+            "rev-list": 2,
+            "status": 2,
+            "ls-remote": 1
+          },
+          "commandTimeMs": {
+            "worktree": 641,
+            "for-each-ref": 5070,
+            "log": 1489,
+            "rev-parse": 2039,
+            "config": 5780,
+            "remote": 1684,
+            "rev-list": 3244,
+            "status": 3322,
+            "ls-remote": 4386
+          },
+          "nodeCpuMs": 497,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -65,
+          "peakRssDeltaMiB": 2,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 21503,
+          "graphMs": 5251,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 2106,
+              "durationMs": 3078,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 5752,
+            "latestMutationToFrameMs": 6916,
+            "renderMs": 66,
+            "frameMs": 108
+          },
+          "latestGraphPublishedMs": 6870,
+          "graphAlreadyCurrent": false,
+          "settledMs": 28744,
+          "processes": 27,
+          "operationProcesses": 20,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "rev-parse": 5,
+            "config": 6,
+            "for-each-ref": 5,
+            "remote": 1,
+            "ls-remote": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 4576,
+            "config": 7009,
+            "for-each-ref": 7656,
+            "remote": 555,
+            "ls-remote": 2692,
+            "rev-list": 4020,
+            "cat-file": 744,
+            "push": 3710,
+            "branch": 1358,
+            "worktree": 1260,
+            "status": 1090
+          },
+          "nodeCpuMs": 717,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -15,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 8468,
+          "graphMs": 2875,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1072,
+              "durationMs": 1754,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2772,
+            "latestMutationToFrameMs": 4730,
+            "renderMs": 103,
+            "frameMs": 28
+          },
+          "latestGraphPublishedMs": 4680,
+          "graphAlreadyCurrent": false,
+          "settledMs": 14960,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "fetch": 8465,
+            "for-each-ref": 3200,
+            "worktree": 1050,
+            "log": 1379,
+            "rev-list": 1841,
+            "config": 2009,
+            "remote": 1536,
+            "status": 1520
+          },
+          "nodeCpuMs": 416,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 6153,
+          "graphMs": 3663,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1473,
+              "durationMs": 2152,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 3996,
+            "latestMutationToFrameMs": 3996,
+            "renderMs": 70,
+            "frameMs": 102
+          },
+          "latestGraphPublishedMs": 3639,
+          "graphAlreadyCurrent": false,
+          "settledMs": 12054,
+          "processes": 11,
+          "operationProcesses": 4,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "commands": {
+            "rev-parse": 1,
+            "config": 2,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 566,
+            "config": 2089,
+            "status": 1565,
+            "pull": 4096,
+            "for-each-ref": 3550,
+            "worktree": 1458,
+            "rev-list": 1860
+          },
+          "nodeCpuMs": 269,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -5,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 7239,
+          "graphMs": 1499,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 803,
+              "durationMs": 669,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1799,
+            "latestMutationToFrameMs": 3131,
+            "renderMs": 65,
+            "frameMs": 107
+          },
+          "latestGraphPublishedMs": 3093,
+          "graphAlreadyCurrent": false,
+          "settledMs": 10669,
+          "processes": 8,
+          "operationProcesses": 1,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 7236,
+            "for-each-ref": 1324,
+            "worktree": 780,
+            "rev-list": 1595,
+            "config": 1015,
+            "status": 853
+          },
+          "nodeCpuMs": 371,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 14031,
+          "graphMs": 5893,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 2478,
+              "durationMs": 3371,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 4139,
+            "latestMutationToFrameMs": 9165,
+            "renderMs": 102,
+            "frameMs": 26
+          },
+          "latestGraphPublishedMs": 9109,
+          "graphAlreadyCurrent": false,
+          "settledMs": 23513,
+          "processes": 27,
+          "operationProcesses": 16,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "config": 2,
+            "status": 3,
+            "rebase": 1,
+            "merge-base": 1,
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 6127,
+            "ls-files": 1546,
+            "update-ref": 589,
+            "config": 2596,
+            "status": 3448,
+            "rebase": 2808,
+            "merge-base": 782,
+            "worktree": 1829,
+            "for-each-ref": 6457,
+            "log": 1249,
+            "rev-list": 3242,
+            "remote": 992
+          },
+          "nodeCpuMs": 522,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 0,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 4279,
+          "graphMs": 955,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 380,
+              "durationMs": 565,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 932,
+            "latestMutationToFrameMs": 1997,
+            "renderMs": 43,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 1977,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6527,
+          "processes": 26,
+          "operationProcesses": 15,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "ls-files": 2,
+            "rev-parse": 6,
+            "status": 3,
+            "update-ref": 1,
+            "config": 3,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "ls-files": 887,
+            "rev-parse": 1901,
+            "status": 854,
+            "update-ref": 124,
+            "config": 977,
+            "merge": 464,
+            "diff": 606,
+            "commit": 353,
+            "for-each-ref": 1671,
+            "worktree": 376,
+            "log": 421,
+            "rev-list": 1026,
+            "remote": 512
+          },
+          "nodeCpuMs": 183,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 1,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 394,
+          "graphMs": 890,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 374,
+              "durationMs": 507,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 780,
+            "latestMutationToFrameMs": 2965,
+            "renderMs": 43,
+            "frameMs": 11
+          },
+          "latestGraphPublishedMs": 2946,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3919,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "merge": 394,
+            "for-each-ref": 2176,
+            "worktree": 370,
+            "log": 266,
+            "rev-list": 2059,
+            "config": 1345,
+            "remote": 943,
+            "status": 1258
+          },
+          "nodeCpuMs": 209,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 1,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 11612,
+          "graphMs": 2526,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1967,
+              "durationMs": 548,
+              "firstFrameBeforeDetails": true
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 2410,
+            "latestMutationToFrameMs": 3188,
+            "renderMs": 44,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 3165,
+          "graphAlreadyCurrent": false,
+          "settledMs": 15410,
+          "processes": 35,
+          "operationProcesses": 24,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "rev-parse": 10,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "config": 3,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 3,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "config": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 5118,
+            "ls-files": 1851,
+            "cat-file": 361,
+            "log": 442,
+            "worktree": 2869,
+            "config": 1812,
+            "read-tree": 497,
+            "commit": 601,
+            "update-ref": 314,
+            "merge-base": 387,
+            "diff": 435,
+            "reset": 247,
+            "for-each-ref": 2854,
+            "rev-list": 643,
+            "remote": 516,
+            "status": 466
+          },
+          "nodeCpuMs": 538,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -21,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 11593,
+          "graphMs": 1308,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 593,
+              "durationMs": 707,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1347,
+            "latestMutationToFrameMs": 2827,
+            "renderMs": 71,
+            "frameMs": 36
+          },
+          "latestGraphPublishedMs": 2794,
+          "graphAlreadyCurrent": false,
+          "settledMs": 14910,
+          "processes": 38,
+          "operationProcesses": 26,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 4,
+            "update-ref": 1,
+            "config": 5,
+            "cherry-pick": 3,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 7388,
+            "ls-files": 788,
+            "cat-file": 347,
+            "status": 1607,
+            "update-ref": 331,
+            "config": 2220,
+            "cherry-pick": 1076,
+            "for-each-ref": 1752,
+            "worktree": 587,
+            "log": 497,
+            "rev-list": 1490,
+            "remote": 1008
+          },
+          "nodeCpuMs": 477,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 5,
+          "peakRssDeltaMiB": 5,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 157,
+          "graphMs": 1459,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 707,
+              "durationMs": 743,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1495,
+            "latestMutationToFrameMs": 2756,
+            "renderMs": 71,
+            "frameMs": 42
+          },
+          "latestGraphPublishedMs": 2726,
+          "graphAlreadyCurrent": false,
+          "settledMs": 4309,
+          "processes": 13,
+          "operationProcesses": 1,
+          "graphProcesses": 12,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "commands": {
+            "cherry-pick": 1,
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "config": 2,
+            "remote": 1,
+            "status": 2
+          },
+          "commandTimeMs": {
+            "cherry-pick": 156,
+            "for-each-ref": 1880,
+            "worktree": 701,
+            "log": 562,
+            "rev-list": 1273,
+            "config": 1430,
+            "remote": 1433,
+            "status": 1221
+          },
+          "nodeCpuMs": 284,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 2,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 2576,
+          "graphMs": 9505,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 1506,
+              "durationMs": 7556,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 10626,
+            "latestMutationToFrameMs": 10626,
+            "renderMs": 80,
+            "frameMs": 110
+          },
+          "latestGraphPublishedMs": 9351,
+          "graphAlreadyCurrent": false,
+          "settledMs": 15568,
+          "processes": 10,
+          "operationProcesses": 3,
+          "graphProcesses": 7,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "config": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "config": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 9323,
+            "rev-parse": 965,
+            "switch": 779,
+            "worktree": 1499,
+            "config": 1393,
+            "rev-list": 3527,
+            "status": 988
+          },
+          "nodeCpuMs": 386,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -21,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    }
+  },
+  "cpuProfileDiagnostic": {
+    "wallMs": 5060.75,
+    "top": [
+      [
+        "(program) :0",
+        95.171
+      ],
+      [
+        " file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:15276",
+        73.209
+      ],
+      [
+        "(garbage collector) :0",
+        71.917
+      ],
+      [
+        "post node:inspector:118",
+        57.5
+      ],
+      [
+        "spawn :0",
+        45.919000000000004
+      ],
+      [
+        "memoryUsage :0",
+        29.375000000000004
+      ],
+      [
+        "listOnTimeout node:internal/timers:526",
+        22.707
+      ],
+      [
+        "processTimers node:internal/timers:506",
+        17.791
+      ],
+      [
+        "idle file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:34585",
+        15.082
+      ],
+      [
+        "knownCanonicalRoot file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:358",
+        12.751
+      ],
+      [
+        " file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:15309",
+        12.041
+      ],
+      [
+        " file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:34692",
+        10.501
+      ],
+      [
+        "relative node:path:1371",
+        8.957
+      ],
+      [
+        " file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:13068",
+        8.208
+      ],
+      [
+        "innerParseSerializedValue file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:11809",
+        8.167
+      ],
+      [
+        "innerSerializeValue file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:11880",
+        7.917
+      ],
+      [
+        "structuredClone node:internal/worker/js_transferable:112",
+        7.872999999999999
+      ],
+      [
+        "layoutGraph file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:32031",
+        7.708
+      ],
+      [
+        "normalizeString node:path:93",
+        7.622999999999999
+      ],
+      [
+        "setTimeout node:timers:133",
+        7.4990000000000006
+      ],
+      [
+        "send file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:39166",
+        7.209
+      ],
+      [
+        "chooseLaneColor file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:32151",
+        6.5
+      ],
+      [
+        " file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:15272",
+        6.25
+      ],
+      [
+        "isBusy file:///private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-iu7x9M/benchmark.cjs:320",
+        5.8740000000000006
+      ],
+      [
+        " file:///Users/lky/project/gitsimplecompare/node_modules/playwright-core/lib/coreBundle.js:15262",
+        5.459
+      ]
+    ],
+    "scope": "Optional one-off initial baseline Node sampling. Inspector startup/transport, timers and old full-memory RSS sampler contribute; not an extension CPU comparison. Raw profile retained only in temporary storage."
+  },
+  "validation": {
+    "relatedNodeTests": 73,
+    "nativeFirstPageTests": 2,
+    "menuBrowserTests": 8,
+    "isolatedNativeOperationSamples": 24,
+    "typecheck": true,
+    "checkedViewports": [
+      "390x844",
+      "768x1024",
+      "1440x900"
+    ],
+    "screenReaderModeCheckboxes": 1001,
+    "physicalScreenReader": false,
+    "wholeOptimizationGoalComplete": false
+  }
+}

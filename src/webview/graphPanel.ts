@@ -369,7 +369,7 @@ export class GitGraphPanel {
     if (!remote || !this.isGraphGenerationActive(graphGeneration)) return;
     Object.assign(this, completeGraphRemoteBranches(service, this.lastLocalBranches, this.lastBranchRefs,
       { remote, elapsedMs }, trace, context.remoteTips !== undefined));
-    this.postBranchFilterOptions();
+    if (!early) this.postBranchFilterOptions();
     if (early) {
       this.loading = false;
       if (shouldShowVirtualCommits(this.currentBranchFilter(), this.lastLocalBranches)) this.workingTree.start(trace);
@@ -400,7 +400,8 @@ export class GitGraphPanel {
     this.logService.seedGraphBranchTips(branches);
     this.lastBranchRefs = this.remoteCatalogStatus === "ready" ? mergeGraphBranchRefs(branchRefs, this.lastBranchRefs.filter((branch) => branch.kind === "remote")) : branchRefs;
     this.post({ type: "branchStatus", branches, worktrees });
-    this.postBranchFilterOptions();
+    // 같은 fingerprint의 remote가 이미 있으면 caller가 최종 scope로 한 번만 게시한다.
+    if (context.remoteTips === undefined) this.postBranchFilterOptions();
     publishInvalidGraphRefs(this.logService.repoRoot, invalidRefs, (message) => this.post(message));
     logGraphBranchSnapshot(trace, data, context.worktrees !== undefined, this.logService.repoRoot, this.branchFilter.mode, context.localBranches !== undefined);
     return branches;

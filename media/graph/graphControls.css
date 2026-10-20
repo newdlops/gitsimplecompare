@@ -165,7 +165,7 @@
   z-index: 16;
   display: flex;
   flex-direction: column;
-  width: min(360px, calc(100vw - 24px));
+  width: min(360px, 100%, calc(100vw - 24px));
   max-height: min(460px, 64vh);
   border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
   color: var(--vscode-quickInput-foreground, var(--vscode-foreground));
@@ -282,6 +282,14 @@
 
 .branch-filter-row.current {
   color: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
+}
+
+/* 기본 행의 content 높이는 최소 22px이다. 큰 글꼴에서는 실제 한 줄 높이를 써서 offscreen 행도 같은 범위를 유지한다. */
+@supports (contain-intrinsic-block-size: auto max(22px, 1lh)) {
+  body:not(.vscode-using-screen-reader) .branch-filter-row {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto max(22px, 1lh);
+  }
 }
 
 .branch-filter-row input {

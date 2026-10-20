@@ -7,6 +7,17 @@ import {
   resolveBranchFilter,
 } from "../src/webview/graphBranchFilter";
 
+test("moving remote object identities does not change the branch selection UI snapshot", () => {
+  const state = { mode: "all" as const, selected: [], compact: true };
+  const first = [{ name: "origin/main", kind: "remote" as const, hash: "a".repeat(40), fullRef: "refs/remotes/origin/main" }];
+  const second = first.map(branch => ({ ...branch, hash: "b".repeat(40) }));
+  const before = buildBranchFilterSnapshot(first, [], state), after = buildBranchFilterSnapshot(second, [], state);
+  assert.deepEqual(before, after);
+  assert.equal(before.branches[0].checked, true);
+  assert.equal(JSON.stringify(before).includes(first[0].hash), false);
+  assert.deepEqual(before.selected, []);
+});
+
 test("pending all filter reads only known local refs and ready restores all semantics", () => {
   const refs = [{ name: "main", kind: "local" as const }, { name: "origin/main", kind: "remote" as const }];
   const state = normalizeBranchFilterState("all");

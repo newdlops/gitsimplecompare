@@ -123,14 +123,16 @@ export function buildBranchFilterSnapshot(
   const branches = [...branchRefs]
     .sort(compareBranchRefs(current))
     .map((branch) => ({
-      ...branch,
+      // 원격 tip의 hash/fullRef처럼 목록에서 쓰지 않는 Git 필드는 transport에 복사하지 않는다.
+      name: branch.name,
+      kind: branch.kind,
       current: current.has(branch.name),
       checked: !resolved.filtersRefs || resolved.visibleRefs.has(branch.name),
     }));
   return {
     mode: state.mode,
-    // 아직 목록에 없는 remote custom selection도 hydration 전후에 잃지 않는다.
-    selected: state.mode === "custom" ? state.selected : branches.map((branch) => branch.name),
+    // all 모드는 checked만으로 표현한다. custom의 아직 없는 remote 선택은 hydration 전후에도 보존한다.
+    selected: state.mode === "custom" ? state.selected : [],
     compact: state.compact,
     branches,
     remoteStatus,

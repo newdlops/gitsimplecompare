@@ -68,6 +68,9 @@ test("verified initial history reaches the Graph before slow branch details with
   assert.equal(f.counts.indexed, 1); assert.equal(f.counts.fallback, 0);
   assert.equal(messages.filter(message => message.type === "graph").length, 1);
   assert.equal(panel.branchDetails.state, undefined);
+  const filters = messages.filter(message => message.type === "branchFilterOptions");
+  assert.equal(filters.length, 1, "The same proven catalog was rebuilt and sent again with branch details");
+  assert.deepEqual(filters[0].filter.branches.map(branch => branch.name).sort(), ["main", "origin/main", "topic"]);
 });
 
 test("without same-log symbolic HEAD proof the existing single-page adoption still waits for details", async t => {
@@ -152,4 +155,24 @@ test("reused history keeps the existing reference path and updates HEAD after fr
   const graph = messages.find(message => message.type === "graph");
   assert.ok(graph);
   assert.deepEqual(graph.data.rows.filter(row => row.refs.includes("HEAD")).map(row => row.hash), [B]);
+  const filters = messages.filter(message => message.type === "branchFilterOptions");
+  assert.equal(filters.length, 1, "Reference refresh published an intermediate stale remote catalog");
+  assert.equal(filters[0].filter.branches.find(branch => branch.name === "topic")?.current, true);
+});
+
+test("unknown remote catalog still publishes local options before a slow remote read", async t => {
+  const f = fixture(), remote = gate(), { panel, messages } = createOperationGraphPanel(t, f.service);
+  const refresh = context(); delete refresh.remoteTips;
+  t.mock.method(panel.branchLoading, "loadRemote", async () => { await remote.promise; return { status: "ready", branches: context().remoteTips }; });
+  const pending = panel.reloadGraph(refresh);
+  try {
+    f.details.resolve(); await settle();
+    const local = messages.filter(message => message.type === "branchFilterOptions");
+    assert.equal(local.length, 1); assert.equal(local[0].filter.remoteStatus, "pending");
+    assert.deepEqual(local[0].filter.branches.map(branch => branch.name).sort(), ["main", "topic"]);
+    remote.resolve(); await pending;
+    const filters = messages.filter(message => message.type === "branchFilterOptions");
+    assert.equal(filters.length, 2); assert.equal(filters[1].filter.remoteStatus, "ready");
+    assert.equal(filters[1].filter.branches.some(branch => branch.name === "origin/main"), true);
+  } finally { f.details.resolve(); remote.resolve(); await pending; panel.dispose(); }
 });

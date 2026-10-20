@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.72119] - 2026-10-21
+
+### Performance
+
+- Publish a proven Graph branch-filter catalog once per refresh. Keep separate
+  pending and ready updates when remote branches still need to be read.
+- Build branch-menu rows when the menu opens and defer offscreen row layout in
+  ordinary mode. Release an obsolete hidden catalog when new options arrive.
+- Send only fields used by the branch menu and avoid duplicating every selected
+  branch name in all-branches mode.
+
+### Fixed
+
+- Preserve checkbox choices, compact mode, search selection, keyboard focus and
+  list scroll while branch options update. Retain selected remote branches that
+  have not loaded yet and reflect clear-all/select-all actions immediately.
+- Keep the branch menu inside narrow windows. Disable row-layout skipping in
+  VS Code screen-reader mode so the complete checkbox catalog is exposed.
+
+### Development
+
+- Add repeatable closed-menu and first-open browser measurements, with Native
+  operation catalog counts and serialized payload sizes. Keep browser task time
+  separate from benchmark Node CPU, and preserve slower prototype measurements.
+
 ## [0.1.72118] - 2026-10-20
 
 ### Performance
