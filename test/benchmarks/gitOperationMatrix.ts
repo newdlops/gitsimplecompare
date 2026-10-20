@@ -120,6 +120,12 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   try {
     if (renderer) await renderer.mount(surface.webview.html);
     assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel);
+    // Graph 행에서 checkout하는 일반 경로와 페이지 밖의 오래된 topic 이동을 별도 측정한다.
+    const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
+    const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
+    const checkoutTarget: string | undefined = loadedTarget
+      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && visibleHashes.has(branch.hash))?.name : "topic";
+    assert.ok(checkoutTarget, "Loaded checkout fixture needs an actual visible local branch tip");
     const initialSignature = graphSignature(panel.commits);
     const timings: GitExecutionTiming[] = [];
     const unobserve = setGitExecutionObserver(timing => timings.push(timing));
@@ -146,7 +152,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         case "pr-squash-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).squashCherryPick(pullRequest(f))).status, "completed"); break;
         case "pr-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).rebasePullRequest(pullRequest(f))).status, "completed"); break;
         case "cherry-pick": await service.cherryPick(f.prCommits[0]); break;
-        case "checkout": assert.ok(await service.getLocalBranchCheckoutState("topic")); await service.checkoutLocalBranch("topic"); break;
+        case "checkout": assert.ok(await service.getLocalBranchCheckoutState(checkoutTarget)); await service.checkoutLocalBranch(checkoutTarget); break;
       }
       operationEnd = performance.now();
       operationEndedAt = Date.now();
@@ -165,10 +171,13 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         if (index >= operationProcesses) graphCommands[timing.command] = (graphCommands[timing.command] ?? 0) + 1;
       }
       if (operation === "fetch-new-history") assert.equal(graphCommands.log, 1, "Previously unknown history needs exactly one Graph page read");
+      if (loadedTarget) assert.equal(graphCommands.log ?? 0, 0, "A visible checkout must reuse the existing Graph page");
       unobserve();
       const head = (await git(["rev-parse", "HEAD"])).trim();
-      assert.equal(panel.commits.find((commit: Commit) => commit.refs.includes("HEAD"))?.hash, head);
       const actual = await new GitLogService(f.root).getCommitPage(panel.commits.length, 0, [], false);
+      const visibleHead = actual.find(commit => commit.refs.includes("HEAD"))?.hash;
+      if (visibleHead !== undefined) assert.equal(visibleHead, head);
+      assert.equal(panel.commits.find((commit: Commit) => commit.refs.includes("HEAD"))?.hash, visibleHead);
       const values = (commits: Commit[]) => new Map(commits.map(commit => [commit.hash, { parents: commit.parents, refs: [...new Set(commit.refs)].sort() }]));
       assert.deepEqual(values(panel.commits), values(actual));
       const finalSignature = graphSignature(panel.commits), graphAlreadyCurrent = initialSignature === finalSignature;
@@ -177,6 +186,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent);
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
+        ...(operation === "checkout" ? { checkoutTargetScope: loadedTarget ? "loaded-page" : "topic" } : {}),
         ...(liveRenderer ? { liveRenderer } : {}),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,

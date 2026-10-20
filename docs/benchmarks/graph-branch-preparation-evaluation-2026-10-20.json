@@ -1,0 +1,232 @@
+{
+  "baseline": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+  "fullLatencyGoalAchieved": false,
+  "notes": [
+    "The initial matrix overlapped some UI/regression work; its single samples are observational and do not establish causal speedup ratios.",
+    "Both five-sample comparisons ran serially, with no other test or benchmark process from this task running alongside them.",
+    "The initial matrix used the candidate implementation before a filtered-small-catalog eligibility guard; both final repeat pairs include that guard.",
+    "The first repeat attempt failed because the harness assumed HEAD must be in the first 300 commits. The corrected harness compares exactly the native loaded page for both versions.",
+    "Repeat means an old topic outside the loaded page; loaded means selecting an actual local tip from the current Graph page, with zero history log reads required.",
+    "Node CPU and RSS cover the orchestration process, not native Git, Chromium, the extension host or whole-system resource use.",
+    "Auxiliary status/tag/config reads can change process counts with cache timing. Count medians are observed totals, not a claim that this change removed a Git command.",
+    "Reusing history can raise the foreground concurrency from two to three; the maximum observed across the matrix and repeat runs remains four, which is not a global scheduler limit.",
+    "No user repository was mutated, no visible host/window activation was used, and no Marketplace status check was run."
+  ],
+  "summary": {
+    "repeat": {
+      "before": {
+        "graphMs": 1213,
+        "settledMs": 3296,
+        "nodeCpuMs": 322,
+        "graphProcesses": 10,
+        "peakProcesses": 4,
+        "peakRssDeltaMiB": 0,
+        "mutationToFrameMs": 1578
+      },
+      "after": {
+        "graphMs": 1299,
+        "settledMs": 3952,
+        "nodeCpuMs": 278,
+        "graphProcesses": 9,
+        "peakProcesses": 4,
+        "peakRssDeltaMiB": 1,
+        "mutationToFrameMs": 1529
+      }
+    },
+    "loaded": {
+      "before": {
+        "graphMs": 1514,
+        "settledMs": 4831,
+        "nodeCpuMs": 341,
+        "graphProcesses": 6,
+        "peakProcesses": 2,
+        "peakRssDeltaMiB": 15,
+        "mutationToFrameMs": 1852
+      },
+      "after": {
+        "graphMs": 2077,
+        "settledMs": 7550,
+        "nodeCpuMs": 357,
+        "graphProcesses": 6,
+        "peakProcesses": 3,
+        "peakRssDeltaMiB": 4,
+        "mutationToFrameMs": 2660
+      }
+    }
+  },
+  "validation": {
+    "headlessUiTests": 23,
+    "matrixOperations": 11,
+    "finalRepeatOperations": 20,
+    "typecheck": true,
+    "productionBuild": true,
+    "whitespace": true,
+    "sourceModuleLineLimit": 600,
+    "mechanicalUiFindings": 0,
+    "candidateRelatedNodeTests": 105
+  },
+  "runs": {
+    "before": {
+      "version": "0.1.72115",
+      "source": {
+        "kind": "commit",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "b57daa4eaed7351ee58b0e46ff3e5e1f8dd7f528ef415edbf8b3ec484f651db6"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"push","operationMs":11906,"graphMs":1644,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2075,"renderMs":13,"frameMs":31},"latestGraphPublishedMs":1636,"graphAlreadyCurrent":false,"settledMs":14440,"processes":26,"operationProcesses":20,"graphProcesses":6,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"rev-parse":5,"config":6,"for-each-ref":5,"remote":1,"ls-remote":1,"rev-list":3,"cat-file":1,"push":1,"branch":1,"worktree":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"rev-parse":2551,"config":3755,"for-each-ref":3707,"remote":303,"ls-remote":1002,"rev-list":913,"cat-file":548,"push":2912,"branch":475,"worktree":750,"status":343},"nodeCpuMs":470,"rssDeltaMiB":-20,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"fetch-new-history","operationMs":4602,"graphMs":1704,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2188,"renderMs":139,"frameMs":33},"latestGraphPublishedMs":1691,"graphAlreadyCurrent":false,"settledMs":10308,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":9,"graphPublications":2,"commands":{"fetch":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"config":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"config":2,"remote":1,"status":2},"commandTimeMs":{"fetch":4601,"for-each-ref":2396,"worktree":497,"log":694,"rev-list":636,"config":1778,"remote":1405,"status":1861},"nodeCpuMs":477,"rssDeltaMiB":-2,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"pull","operationMs":6082,"graphMs":2219,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2695,"renderMs":71,"frameMs":122},"latestGraphPublishedMs":2214,"graphAlreadyCurrent":false,"settledMs":9636,"processes":10,"operationProcesses":4,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"rev-parse":1,"config":2,"status":2,"pull":1,"for-each-ref":2,"worktree":1,"rev-list":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"rev-parse":280,"config":745,"status":1076,"pull":5176,"for-each-ref":2020,"worktree":859,"rev-list":195},"nodeCpuMs":482,"rssDeltaMiB":-1,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"fetch","operationMs":2124,"graphMs":863,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1205,"renderMs":93,"frameMs":92},"latestGraphPublishedMs":859,"graphAlreadyCurrent":false,"settledMs":4781,"processes":8,"operationProcesses":1,"graphProcesses":7,"peakProcesses":2,"webviewMessages":7,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"fetch":2120,"for-each-ref":703,"worktree":500,"rev-list":1062,"config":368,"status":1280},"nodeCpuMs":341,"rssDeltaMiB":2,"peakRssDeltaMiB":3,"historyExact":true},
+        {"operation":"rebase","operationMs":11105,"graphMs":2055,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2427,"renderMs":156,"frameMs":33},"latestGraphPublishedMs":2044,"graphAlreadyCurrent":false,"settledMs":18386,"processes":28,"operationProcesses":16,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":9,"ls-files":2,"update-ref":1,"config":3,"status":3,"rebase":1,"merge-base":1,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":4961,"ls-files":1010,"update-ref":237,"config":2773,"status":3351,"rebase":3096,"merge-base":792,"worktree":1052,"for-each-ref":3181,"log":657,"rev-list":1971,"remote":2402},"nodeCpuMs":705,"rssDeltaMiB":-12,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"merge","operationMs":8124,"graphMs":2636,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2880,"renderMs":94,"frameMs":18},"latestGraphPublishedMs":2629,"graphAlreadyCurrent":false,"settledMs":12525,"processes":29,"operationProcesses":17,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":6,"ls-files":2,"status":4,"update-ref":1,"config":5,"merge":1,"add":1,"commit":1,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":2581,"ls-files":1293,"status":1920,"update-ref":538,"config":2072,"merge":830,"add":440,"commit":665,"worktree":1238,"for-each-ref":3088,"log":179,"rev-list":1105,"remote":905},"nodeCpuMs":496,"rssDeltaMiB":24,"peakRssDeltaMiB":24,"historyExact":true},
+        {"operation":"merge-no-ff","operationMs":1279,"graphMs":1582,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1881,"renderMs":113,"frameMs":23},"latestGraphPublishedMs":1567,"graphAlreadyCurrent":false,"settledMs":4845,"processes":13,"operationProcesses":1,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"merge":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"config":2,"remote":1,"status":2},"commandTimeMs":{"merge":1277,"for-each-ref":1898,"worktree":646,"log":438,"rev-list":636,"config":937,"remote":879,"status":999},"nodeCpuMs":381,"rssDeltaMiB":4,"peakRssDeltaMiB":5,"historyExact":true},
+        {"operation":"pr-squash-cherry-pick","operationMs":10118,"graphMs":2114,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2892,"renderMs":141,"frameMs":31},"latestGraphPublishedMs":2080,"graphAlreadyCurrent":false,"settledMs":14667,"processes":35,"operationProcesses":24,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":10,"ls-files":2,"cat-file":1,"log":2,"worktree":3,"config":3,"read-tree":1,"commit":1,"update-ref":1,"merge-base":1,"diff":1,"reset":1,"for-each-ref":3,"rev-list":2,"remote":1,"status":2},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":4288,"ls-files":981,"cat-file":635,"log":1126,"worktree":1286,"config":1575,"read-tree":554,"commit":815,"update-ref":441,"merge-base":377,"diff":271,"reset":262,"for-each-ref":2644,"rev-list":1192,"remote":949,"status":1061},"nodeCpuMs":648,"rssDeltaMiB":-4,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"pr-cherry-pick","operationMs":11393,"graphMs":3637,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":4422,"renderMs":146,"frameMs":33},"latestGraphPublishedMs":3437,"graphAlreadyCurrent":false,"settledMs":18999,"processes":37,"operationProcesses":26,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":14,"ls-files":2,"cat-file":1,"status":4,"update-ref":1,"config":4,"cherry-pick":3,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":4702,"ls-files":910,"cat-file":293,"status":2253,"update-ref":548,"config":3371,"cherry-pick":2337,"worktree":627,"for-each-ref":4102,"log":1419,"rev-list":1170,"remote":2263},"nodeCpuMs":714,"rssDeltaMiB":-22,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"cherry-pick","operationMs":592,"graphMs":4748,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":5194,"renderMs":142,"frameMs":29},"latestGraphPublishedMs":4701,"graphAlreadyCurrent":false,"settledMs":7777,"processes":12,"operationProcesses":1,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"cherry-pick":1,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"cherry-pick":590,"worktree":805,"for-each-ref":5211,"log":2402,"rev-list":1254,"remote":362,"config":843,"status":1319},"nodeCpuMs":309,"rssDeltaMiB":3,"peakRssDeltaMiB":6,"historyExact":true},
+        {"operation":"checkout","operationMs":3044,"graphMs":2893,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":4115,"renderMs":54,"frameMs":114},"latestGraphPublishedMs":2797,"graphAlreadyCurrent":false,"settledMs":8170,"processes":10,"operationProcesses":3,"graphProcesses":7,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"worktree":1,"for-each-ref":2,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"for-each-ref":5018,"rev-parse":191,"switch":463,"worktree":383,"rev-list":1783,"config":1040,"status":704},"nodeCpuMs":333,"rssDeltaMiB":-29,"peakRssDeltaMiB":0,"historyExact":true}
+      ]
+    },
+    "after": {
+      "version": "0.1.72115",
+      "source": {
+        "kind": "working-tree",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "a47967378e41c2c36c8b6393c11496a5316e44c90d672a6de2d8f062189552f1"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"push","operationMs":11806,"graphMs":776,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1063,"renderMs":9,"frameMs":18},"latestGraphPublishedMs":771,"graphAlreadyCurrent":false,"settledMs":13268,"processes":26,"operationProcesses":20,"graphProcesses":6,"peakProcesses":3,"webviewMessages":7,"graphPublications":3,"commands":{"rev-parse":5,"config":6,"for-each-ref":5,"remote":1,"ls-remote":1,"rev-list":3,"cat-file":1,"push":1,"branch":1,"worktree":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"rev-parse":1726,"config":2883,"for-each-ref":3180,"remote":602,"ls-remote":2103,"rev-list":1075,"cat-file":503,"push":2753,"branch":178,"worktree":377,"status":220},"nodeCpuMs":420,"rssDeltaMiB":3,"peakRssDeltaMiB":3,"historyExact":true},
+        {"operation":"fetch-new-history","operationMs":1387,"graphMs":952,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1159,"renderMs":131,"frameMs":30},"latestGraphPublishedMs":924,"graphAlreadyCurrent":false,"settledMs":3701,"processes":10,"operationProcesses":1,"graphProcesses":9,"peakProcesses":4,"webviewMessages":9,"graphPublications":2,"commands":{"fetch":1,"for-each-ref":3,"worktree":1,"log":1,"config":1,"rev-list":1,"status":1,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":1,"rev-list":1,"status":1,"remote":1},"commandTimeMs":{"fetch":1385,"for-each-ref":1799,"worktree":383,"log":515,"config":336,"rev-list":440,"status":1018,"remote":1342},"nodeCpuMs":253,"rssDeltaMiB":11,"peakRssDeltaMiB":13,"historyExact":true},
+        {"operation":"pull","operationMs":13924,"graphMs":2009,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2329,"renderMs":45,"frameMs":71},"latestGraphPublishedMs":2001,"graphAlreadyCurrent":false,"settledMs":17534,"processes":11,"operationProcesses":4,"graphProcesses":7,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"rev-parse":1,"config":2,"status":2,"pull":1,"for-each-ref":3,"worktree":1,"rev-list":1},"graphCommands":{"for-each-ref":3,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"rev-parse":961,"config":1575,"status":1766,"pull":11154,"for-each-ref":2558,"worktree":787,"rev-list":541},"nodeCpuMs":514,"rssDeltaMiB":25,"peakRssDeltaMiB":26,"historyExact":true},
+        {"operation":"fetch","operationMs":768,"graphMs":1071,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1468,"renderMs":62,"frameMs":94},"latestGraphPublishedMs":1067,"graphAlreadyCurrent":false,"settledMs":2965,"processes":8,"operationProcesses":1,"graphProcesses":7,"peakProcesses":3,"webviewMessages":7,"graphPublications":3,"commands":{"fetch":1,"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"fetch":766,"for-each-ref":1465,"worktree":508,"rev-list":656,"config":381,"status":687},"nodeCpuMs":250,"rssDeltaMiB":2,"peakRssDeltaMiB":3,"historyExact":true},
+        {"operation":"rebase","operationMs":4795,"graphMs":1413,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1732,"renderMs":105,"frameMs":19},"latestGraphPublishedMs":1404,"graphAlreadyCurrent":false,"settledMs":8113,"processes":27,"operationProcesses":16,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":9,"ls-files":2,"update-ref":1,"config":2,"status":3,"rebase":1,"merge-base":1,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":2514,"ls-files":700,"update-ref":188,"config":711,"status":1539,"rebase":740,"merge-base":344,"worktree":538,"for-each-ref":2297,"log":643,"rev-list":868,"remote":405},"nodeCpuMs":404,"rssDeltaMiB":2,"peakRssDeltaMiB":9,"historyExact":true},
+        {"operation":"merge","operationMs":6124,"graphMs":1099,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1323,"renderMs":101,"frameMs":21},"latestGraphPublishedMs":1089,"graphAlreadyCurrent":false,"settledMs":8939,"processes":29,"operationProcesses":17,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":6,"ls-files":2,"status":4,"update-ref":1,"config":5,"merge":1,"add":1,"commit":1,"for-each-ref":3,"worktree":1,"log":1,"rev-list":2,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":2,"rev-list":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":2166,"ls-files":1065,"status":1304,"update-ref":132,"config":1644,"merge":448,"add":405,"commit":637,"for-each-ref":1900,"worktree":717,"log":351,"rev-list":1233,"remote":756},"nodeCpuMs":347,"rssDeltaMiB":-8,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"merge-no-ff","operationMs":391,"graphMs":812,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":983,"renderMs":104,"frameMs":23},"latestGraphPublishedMs":786,"graphAlreadyCurrent":false,"settledMs":3072,"processes":13,"operationProcesses":1,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"merge":1,"for-each-ref":3,"worktree":1,"log":1,"config":2,"remote":1,"rev-list":2,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":2,"remote":1,"rev-list":2,"status":2},"commandTimeMs":{"merge":390,"for-each-ref":1537,"worktree":360,"log":406,"config":686,"remote":346,"rev-list":1326,"status":1245},"nodeCpuMs":250,"rssDeltaMiB":10,"peakRssDeltaMiB":11,"historyExact":true},
+        {"operation":"pr-squash-cherry-pick","operationMs":6664,"graphMs":946,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1198,"renderMs":175,"frameMs":27},"latestGraphPublishedMs":924,"graphAlreadyCurrent":false,"settledMs":9820,"processes":36,"operationProcesses":24,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":10,"ls-files":2,"cat-file":1,"log":2,"worktree":3,"config":4,"read-tree":1,"commit":1,"update-ref":1,"merge-base":1,"diff":1,"reset":1,"for-each-ref":3,"rev-list":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":2,"rev-list":2,"remote":1,"status":2},"commandTimeMs":{"rev-parse":2572,"ls-files":768,"cat-file":336,"log":830,"worktree":1084,"config":1238,"read-tree":217,"commit":370,"update-ref":218,"merge-base":430,"diff":265,"reset":273,"for-each-ref":1893,"rev-list":1070,"remote":568,"status":1491},"nodeCpuMs":432,"rssDeltaMiB":10,"peakRssDeltaMiB":13,"historyExact":true},
+        {"operation":"pr-cherry-pick","operationMs":9236,"graphMs":1847,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":2120,"renderMs":111,"frameMs":22},"latestGraphPublishedMs":1835,"graphAlreadyCurrent":false,"settledMs":12685,"processes":37,"operationProcesses":26,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"rev-parse":14,"ls-files":2,"cat-file":1,"status":4,"update-ref":1,"config":4,"cherry-pick":3,"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":2,"remote":1,"config":1,"status":2},"commandTimeMs":{"rev-parse":4815,"ls-files":907,"cat-file":243,"status":1782,"update-ref":356,"config":1581,"cherry-pick":1428,"worktree":152,"for-each-ref":3648,"log":211,"rev-list":817,"remote":263},"nodeCpuMs":452,"rssDeltaMiB":19,"peakRssDeltaMiB":22,"historyExact":true},
+        {"operation":"cherry-pick","operationMs":244,"graphMs":965,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1339,"renderMs":109,"frameMs":28},"latestGraphPublishedMs":946,"graphAlreadyCurrent":false,"settledMs":3635,"processes":13,"operationProcesses":1,"graphProcesses":12,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"cherry-pick":1,"for-each-ref":3,"worktree":1,"log":1,"config":2,"remote":1,"rev-list":2,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":2,"remote":1,"rev-list":2,"status":2},"commandTimeMs":{"cherry-pick":242,"for-each-ref":1637,"worktree":275,"log":652,"config":696,"remote":432,"rev-list":1503,"status":1760},"nodeCpuMs":277,"rssDeltaMiB":16,"peakRssDeltaMiB":16,"historyExact":true},
+        {"operation":"checkout","operationMs":795,"graphMs":1304,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"mutationToFrameMs":1761,"renderMs":50,"frameMs":104},"latestGraphPublishedMs":1275,"graphAlreadyCurrent":false,"settledMs":3058,"processes":10,"operationProcesses":3,"graphProcesses":7,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":2,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":2,"config":1,"status":1},"commandTimeMs":{"for-each-ref":1773,"rev-parse":157,"switch":413,"worktree":469,"rev-list":696,"config":408,"status":314},"nodeCpuMs":229,"rssDeltaMiB":10,"peakRssDeltaMiB":11,"historyExact":true}
+      ]
+    },
+    "repeat-before": {
+      "version": "0.1.72115",
+      "source": {
+        "kind": "commit",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "105e8e1557000871df8dc75a1fb4abb3b6a4bf3b2941d0fa74579c1435ede9fa"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"checkout","operationMs":991,"graphMs":1019,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1312,"renderMs":9,"frameMs":23},"latestGraphPublishedMs":1011,"graphAlreadyCurrent":false,"settledMs":3092,"processes":13,"operationProcesses":3,"graphProcesses":10,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"commandTimeMs":{"for-each-ref":1368,"rev-parse":197,"switch":536,"worktree":536,"log":269,"rev-list":118,"remote":479,"config":636,"status":391},"nodeCpuMs":322,"rssDeltaMiB":9,"peakRssDeltaMiB":9,"historyExact":true},
+        {"operation":"checkout","operationMs":666,"graphMs":1213,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1596,"renderMs":8,"frameMs":29},"latestGraphPublishedMs":1193,"graphAlreadyCurrent":false,"settledMs":3296,"processes":13,"operationProcesses":3,"graphProcesses":10,"peakProcesses":3,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"commandTimeMs":{"for-each-ref":1581,"rev-parse":197,"switch":253,"worktree":397,"log":315,"rev-list":125,"remote":612,"config":713,"status":555},"nodeCpuMs":334,"rssDeltaMiB":-4,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":770,"graphMs":1298,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1578,"renderMs":9,"frameMs":20},"latestGraphPublishedMs":1264,"graphAlreadyCurrent":false,"settledMs":3297,"processes":13,"operationProcesses":3,"graphProcesses":10,"peakProcesses":3,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"commandTimeMs":{"for-each-ref":1519,"rev-parse":212,"switch":428,"worktree":415,"log":283,"rev-list":63,"remote":502,"config":655,"status":499},"nodeCpuMs":278,"rssDeltaMiB":0,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":473,"graphMs":1055,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1469,"renderMs":10,"frameMs":32},"latestGraphPublishedMs":1037,"graphAlreadyCurrent":false,"settledMs":2825,"processes":13,"operationProcesses":3,"graphProcesses":10,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"commandTimeMs":{"for-each-ref":995,"rev-parse":195,"switch":208,"worktree":381,"log":331,"rev-list":299,"remote":536,"config":518,"status":717},"nodeCpuMs":361,"rssDeltaMiB":-1,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":701,"graphMs":1374,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1698,"renderMs":7,"frameMs":24},"latestGraphPublishedMs":1367,"graphAlreadyCurrent":false,"settledMs":3468,"processes":14,"operationProcesses":3,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"config":2,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"rev-list":1,"config":2,"remote":1,"status":2},"commandTimeMs":{"for-each-ref":1799,"rev-parse":229,"switch":331,"worktree":502,"log":614,"rev-list":100,"config":547,"remote":661,"status":805},"nodeCpuMs":227,"rssDeltaMiB":1,"peakRssDeltaMiB":1,"historyExact":true}
+      ]
+    },
+    "repeat-after": {
+      "version": "0.1.72116",
+      "source": {
+        "kind": "working-tree",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "7fd6eccb4742615bf34b2bdfbb1f7fc5542731ec4de0edc33d483223ee30f91a"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"checkout","operationMs":980,"graphMs":1170,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1353,"renderMs":115,"frameMs":27},"latestGraphPublishedMs":1144,"graphAlreadyCurrent":false,"settledMs":3952,"processes":14,"operationProcesses":3,"graphProcesses":11,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"config":2,"rev-list":1,"remote":1,"status":2},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":2,"rev-list":1,"remote":1,"status":2},"commandTimeMs":{"for-each-ref":2689,"rev-parse":182,"switch":344,"worktree":668,"log":449,"config":710,"rev-list":340,"remote":514,"status":1215},"nodeCpuMs":278,"rssDeltaMiB":8,"peakRssDeltaMiB":8,"historyExact":true},
+        {"operation":"checkout","operationMs":893,"graphMs":1282,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1491,"renderMs":122,"frameMs":31},"latestGraphPublishedMs":1229,"graphAlreadyCurrent":false,"settledMs":3305,"processes":12,"operationProcesses":3,"graphProcesses":9,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"config":1,"log":1,"status":1,"rev-list":1,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"config":1,"log":1,"status":1,"rev-list":1,"remote":1},"commandTimeMs":{"for-each-ref":2398,"rev-parse":272,"switch":359,"worktree":386,"config":381,"log":814,"status":464,"rev-list":623,"remote":920},"nodeCpuMs":262,"rssDeltaMiB":1,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"checkout","operationMs":1104,"graphMs":2339,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":2626,"renderMs":158,"frameMs":36},"latestGraphPublishedMs":2271,"graphAlreadyCurrent":false,"settledMs":4687,"processes":12,"operationProcesses":3,"graphProcesses":9,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"config":1,"log":1,"status":1,"rev-list":1,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"config":1,"log":1,"status":1,"rev-list":1,"remote":1},"commandTimeMs":{"for-each-ref":2824,"rev-parse":492,"switch":335,"worktree":675,"config":730,"log":1581,"status":773,"rev-list":592,"remote":1220},"nodeCpuMs":354,"rssDeltaMiB":-19,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":673,"graphMs":1299,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":1529,"renderMs":133,"frameMs":29},"latestGraphPublishedMs":1220,"graphAlreadyCurrent":false,"settledMs":3101,"processes":12,"operationProcesses":3,"graphProcesses":9,"peakProcesses":4,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"config":1,"rev-list":1,"status":1,"remote":1},"graphCommands":{"for-each-ref":3,"worktree":1,"log":1,"config":1,"rev-list":1,"status":1,"remote":1},"commandTimeMs":{"for-each-ref":1719,"rev-parse":230,"switch":339,"worktree":692,"log":506,"config":545,"rev-list":379,"status":822,"remote":1121},"nodeCpuMs":268,"rssDeltaMiB":1,"peakRssDeltaMiB":1,"historyExact":true},
+        {"operation":"checkout","operationMs":1466,"graphMs":2436,"liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":false,"mutationToFrameMs":3338,"renderMs":9,"frameMs":29},"latestGraphPublishedMs":1896,"graphAlreadyCurrent":false,"settledMs":5670,"processes":13,"operationProcesses":3,"graphProcesses":10,"peakProcesses":3,"webviewMessages":10,"graphPublications":3,"commands":{"for-each-ref":4,"rev-parse":1,"switch":1,"worktree":1,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"graphCommands":{"worktree":1,"for-each-ref":3,"log":1,"rev-list":1,"remote":1,"config":1,"status":2},"commandTimeMs":{"for-each-ref":3412,"rev-parse":509,"switch":718,"worktree":616,"log":1079,"rev-list":1077,"remote":1122,"config":733,"status":731},"nodeCpuMs":299,"rssDeltaMiB":-10,"peakRssDeltaMiB":0,"historyExact":true}
+      ]
+    },
+    "loaded-before": {
+      "version": "0.1.72115",
+      "source": {
+        "kind": "commit",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "9213ee467bd30679c6b49f91a2151c5ede1b1132aad6edbc3d06d5a786f5c2cd"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"checkout","operationMs":2407,"graphMs":1130,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":1488,"renderMs":46,"frameMs":109},"latestGraphPublishedMs":1122,"graphAlreadyCurrent":true,"settledMs":4831,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":2078,"rev-parse":1035,"switch":219,"worktree":488,"rev-list":189,"config":414,"status":758},"nodeCpuMs":369,"rssDeltaMiB":2,"peakRssDeltaMiB":2,"historyExact":true},
+        {"operation":"checkout","operationMs":1313,"graphMs":1052,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":1325,"renderMs":42,"frameMs":83},"latestGraphPublishedMs":1048,"graphAlreadyCurrent":true,"settledMs":3682,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":1027,"rev-parse":720,"switch":413,"worktree":507,"rev-list":337,"config":528,"status":705},"nodeCpuMs":213,"rssDeltaMiB":-18,"peakRssDeltaMiB":0,"historyExact":true},
+        {"operation":"checkout","operationMs":1445,"graphMs":1877,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":2779,"renderMs":72,"frameMs":153},"latestGraphPublishedMs":1842,"graphAlreadyCurrent":true,"settledMs":5571,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":2251,"rev-parse":528,"switch":417,"worktree":811,"rev-list":656,"config":1012,"status":1096},"nodeCpuMs":369,"rssDeltaMiB":3,"peakRssDeltaMiB":15,"historyExact":true},
+        {"operation":"checkout","operationMs":2224,"graphMs":1514,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":1852,"renderMs":52,"frameMs":105},"latestGraphPublishedMs":1507,"graphAlreadyCurrent":true,"settledMs":4787,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":2367,"rev-parse":708,"switch":514,"worktree":625,"rev-list":409,"config":436,"status":544},"nodeCpuMs":341,"rssDeltaMiB":22,"peakRssDeltaMiB":25,"historyExact":true},
+        {"operation":"checkout","operationMs":1721,"graphMs":2477,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":3091,"renderMs":82,"frameMs":126},"latestGraphPublishedMs":2468,"graphAlreadyCurrent":true,"settledMs":5979,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":2,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"worktree":1,"for-each-ref":2,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":2835,"rev-parse":544,"switch":751,"worktree":770,"rev-list":628,"config":990,"status":669},"nodeCpuMs":265,"rssDeltaMiB":2,"peakRssDeltaMiB":20,"historyExact":true}
+      ]
+    },
+    "loaded-after": {
+      "version": "0.1.72116",
+      "source": {
+        "kind": "working-tree",
+        "commit": "f865d9d8cf6ea5c1ea1c8403f73fff4afd7389ef",
+        "bundleSha256": "3bc8b2418d3314aab16eebb53860a1a468e86b76c4307cc8f7f342cb8c65daf0"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 300,
+        "network": "local-bare-only",
+        "monitorPolicy": true
+      },
+      "results": [
+        {"operation":"checkout","operationMs":1563,"graphMs":3985,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":4605,"renderMs":42,"frameMs":66},"latestGraphPublishedMs":3944,"graphAlreadyCurrent":true,"settledMs":7725,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":5062,"rev-parse":565,"switch":343,"worktree":778,"rev-list":1140,"config":1292,"status":794},"nodeCpuMs":357,"rssDeltaMiB":-6,"peakRssDeltaMiB":4,"historyExact":true},
+        {"operation":"checkout","operationMs":1342,"graphMs":1880,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":2280,"renderMs":54,"frameMs":101},"latestGraphPublishedMs":1865,"graphAlreadyCurrent":true,"settledMs":6599,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":2830,"rev-parse":312,"switch":784,"worktree":1085,"rev-list":609,"config":1363,"status":1811},"nodeCpuMs":363,"rssDeltaMiB":-4,"peakRssDeltaMiB":4,"historyExact":true},
+        {"operation":"checkout","operationMs":2777,"graphMs":2930,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":3521,"renderMs":67,"frameMs":120},"latestGraphPublishedMs":2894,"graphAlreadyCurrent":true,"settledMs":8072,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":4208,"rev-parse":800,"switch":603,"worktree":1044,"rev-list":843,"config":940,"status":1215},"nodeCpuMs":385,"rssDeltaMiB":42,"peakRssDeltaMiB":46,"historyExact":true},
+        {"operation":"checkout","operationMs":3947,"graphMs":2077,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":2660,"renderMs":60,"frameMs":87},"latestGraphPublishedMs":2055,"graphAlreadyCurrent":true,"settledMs":7550,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"for-each-ref":2,"worktree":1,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":4542,"rev-parse":849,"switch":1143,"worktree":897,"rev-list":624,"config":779,"status":648},"nodeCpuMs":296,"rssDeltaMiB":40,"peakRssDeltaMiB":40,"historyExact":true},
+        {"operation":"checkout","operationMs":1893,"graphMs":1886,"checkoutTargetScope":"loaded-page","liveRenderer":{"mode":"headless-production-html","renderedRows":300,"exactRefs":true,"exactHeadBadge":true,"headInLoadedPage":true,"mutationToFrameMs":2459,"renderMs":50,"frameMs":106},"latestGraphPublishedMs":1863,"graphAlreadyCurrent":true,"settledMs":5924,"processes":9,"operationProcesses":3,"graphProcesses":6,"peakProcesses":3,"webviewMessages":6,"graphPublications":2,"commands":{"for-each-ref":3,"rev-parse":1,"switch":1,"worktree":1,"rev-list":1,"config":1,"status":1},"graphCommands":{"worktree":1,"for-each-ref":2,"rev-list":1,"config":1,"status":1},"commandTimeMs":{"for-each-ref":3700,"rev-parse":544,"switch":717,"worktree":1049,"rev-list":605,"config":825,"status":1035},"nodeCpuMs":276,"rssDeltaMiB":-46,"peakRssDeltaMiB":3,"historyExact":true}
+      ]
+    }
+  },
+  "candidateVersion": "0.1.72116",
+  "currentRelease": "0.1.72115",
+  "decision": "rejected-not-shipped",
+  "reason": "Loaded-page checkout did not demonstrate a repeatable benefit: frame median 1852 to 2660 ms; foreground concurrency 2 to 3.",
+  "candidateArchive": {
+    "localPath": "/private/tmp/gsc-graph-branch-preparation-rejected",
+    "trackedPatchSha256": "42455ac037587eceb45ff3773f03969f3db0476e662130e9decc120206578bca"
+  },
+  "restoredRuntimeValidation": {
+    "version": "0.1.72115",
+    "relatedNodeTests": 72,
+    "typecheck": true,
+    "productionBuild": true,
+    "whitespace": true,
+    "matchingSourceVsixInstalledRuntimeFiles": 124,
+    "extensionSha256": "6dac264f51e037cca7b28d2796fd196a1cbde1cd4bd461f71eea8c707906e601",
+    "vsixSha256": "6c166e56769c0c6c80a1b73166f3bb3446997d235e35168793e6f7e395a22c4e"
+  }
+}

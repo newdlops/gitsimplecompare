@@ -88,15 +88,15 @@ export class GraphLiveRenderer {
     assert.equal(rows.length, commits.length, "Every loaded real Git commit must reach the DOM");
     const expected = new Map(commits.map(commit => [commit.hash, [...new Set(commit.refs)].sort()]));
     for (const row of rows) assert.deepEqual([...new Set(row.refs)].sort(), expected.get(row.hash), `Stale refs on ${row.hash}`);
-    assert.deepEqual(rows.filter(row => row.head).map(row => row.hash), [head], "Rendered HEAD badge is stale");
+    const headCommit = commits.find(commit => commit.hash === head);
+    assert.deepEqual(rows.filter(row => row.head).map(row => row.hash), headCommit ? [head] : [], "Rendered HEAD badge differs from the native loaded page");
     const positionedRows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .map(element => getComputedStyle(element).top));
     assert.ok(positionedRows.every(top => top !== "auto"), "Production CSP blocked Graph row positions");
-    const headCommit = commits.find(commit => commit.hash === head)!;
-    const current = headCommit.refs.find(ref => ref !== "HEAD" && !ref.startsWith("tag:") && !ref.includes("/"));
+    const current = headCommit?.refs.find(ref => ref !== "HEAD" && !ref.startsWith("tag:") && !ref.includes("/"));
     if (current) assert.ok(rows.find(row => row.hash === head)?.branches.includes(current), "Current branch chip is missing");
     assert.deepEqual(this.errors, [], "Live renderer reported errors");
-    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactHeadBadge: true,
+    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactHeadBadge: true, headInLoadedPage: !!headCommit,
       mutationToFrameMs: paint ? Math.max(0, paint.paintedAt - operationEndedAt) : null,
       renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null };
   }
