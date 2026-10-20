@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.72115] - 2026-10-20
+
+### Performance
+
+- Read the current checkout and upstream commit together during ordinary push
+  planning. Retain native fallback for missing upstreams and ambiguous HEAD names,
+  plus fresh source, configuration and lease checks before every transfer.
+- Reuse Git's verified index location while repository metadata and the execution
+  environment stay unchanged. Read index contents and working-tree changes afresh.
+- Overlap checkout and unmerged-index verification before branch and PR operations.
+  Read PR conflict stages without preparing a filesystem monitor.
+
+### Fixed
+
+- Stop branch operations when unmerged verification fails. Preserve target
+  timeout and process-access errors instead of reporting a missing branch,
+  and await all preparation reads before proceeding or failing.
+- Discard status results when repository metadata is repointed during a read,
+  then resolve the new index without modifying either repository's actual index.
+
+### Development
+
+- Add repeatable five-sample push and status preparation benchmarks, repository
+  replacement checks, and coverage for SHA-256 and linked-worktree push planning.
+
 ## [0.1.72114] - 2026-10-20
 
 ### Performance

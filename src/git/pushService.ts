@@ -4,7 +4,7 @@
 import { GitError, runGit } from "./gitExec";
 import { pushValidatedBranchCommits, pushConfigurationFingerprint, readPushConfiguration, SequentialPushError, type PushExecutionOptions, type PushExecutionResult } from "./sequentialPush";
 import type { GitConfigSnapshot } from "./gitConfigSnapshot";
-import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
+import { readPushCheckoutIdentity } from "./pushCheckoutIdentity";
 
 /** 확인 당시의 커밋·목적 ref·설정 세대다. URL 원문은 로그에 노출하지 않도록 해시만 보존한다. */
 interface PushSnapshot {
@@ -74,10 +74,9 @@ interface PushTarget {
 export async function getCurrentPushPlan(
   repoRoot: string
 ): Promise<PushCurrentPlan> {
-  const [checkout, { config, fingerprint: configFingerprint }, upstreamCommit] = await Promise.all([
-    readGitCommitCheckoutIdentity(repoRoot),
+  const [{ checkout, upstreamCommit }, { config, fingerprint: configFingerprint }] = await Promise.all([
+    readPushCheckoutIdentity(repoRoot),
     readPushConfiguration(repoRoot),
-    readPushCommitTarget(repoRoot, "@{upstream}"),
   ]);
   const { branch, branchRef: sourceRef } = checkout;
   if (!branch) throw new Error("Cannot push while HEAD is detached.");
@@ -132,16 +131,16 @@ export async function getCurrentPushPlan(
 
 /**
  * 이력 순회 없이 ref/OID가 실제 commit으로 해석되는지 확인하고 태그는 Git에 맡겨 peel한다.
- * - 현재 upstream 조회는 병렬 힌트다. 미설정/변경 시 실제 metadata OID를 반드시 다시 검증한다.
+ * - HEAD와 함께 읽은 힌트와 다른 upstream은 실제 metadata OID로 반드시 다시 검증한다.
  * - 정확한 OID의 손상·실행 중단 오류는 gone으로 숨기지 않고 호출부에 전달한다.
- * @param repoRoot 저장소 루트 @param ref 초기 @{upstream} 또는 metadata에서 고정한 원본 OID
+ * @param repoRoot 저장소 루트 @param ref metadata에서 고정한 원본 OID
  * @returns commit으로 해석되는 OID. 정상적인 결측/비commit이면 undefined
  */
 async function readPushCommitTarget(repoRoot: string, ref: string): Promise<string | undefined> {
   return runGit(["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`], repoRoot)
     .then(output => output.trim() || undefined)
     .catch(error => {
-      if (error instanceof GitError && (error.code === 1 || (ref === "@{upstream}" && error.code === 128))) return undefined;
+      if (error instanceof GitError && error.code === 1) return undefined;
       throw error;
     });
 }

@@ -22,7 +22,7 @@ test("push planning reads the selected branch and its exact tracking tip togethe
   t.diagnostic(JSON.stringify({ phase: "plan", calls: calls.length, commands: calls.map(args => args[0]) }));
   assert.equal(plan.snapshot.head, next); assert.equal(plan.snapshot.remoteHead, head);
   assert.equal(plan.branch, "main"); assert.equal(plan.remote, "origin");
-  assert.ok(calls.length <= 4, `push planning used ${calls.length} Git processes`);
+  assert.ok(calls.length <= 3, `push planning used ${calls.length} Git processes`);
 });
 
 test("a single outgoing commit does not repeat the same ancestry query before native push", async t => {
@@ -33,7 +33,7 @@ test("a single outgoing commit does not repeat the same ancestry query before na
   t.diagnostic(JSON.stringify({ phase: "push", calls: calls.length,
     ancestry: calls.filter(args => args[0] === "merge-base"), commands: calls.map(args => args[0]) }));
   assert.equal(result.execution?.strategy, "single");
-  assert.ok(calls.length <= 17, `single-commit push used ${calls.length} Git processes`);
+  assert.ok(calls.length <= 13, `single-commit push used ${calls.length} Git processes`);
   assert.equal(calls.filter(args => args[0] === "merge-base").length, 1);
   assert.equal(await git(remote, "rev-parse", "refs/heads/main"), next);
 });

@@ -19,6 +19,7 @@ import { hasWorkingTreeChanges } from "./workingTreeChanges";
 import { resetPullRequestResult } from "./pullRequestResultReset";
 import { readGitCommitCheckoutIdentity } from "./repositoryIdentity";
 import { createSnapshotRefSet } from "./snapshotRefTransaction";
+import { listUnmergedFiles } from "./unmergedFiles";
 
 /** PR 작업 undo가 복원한 브랜치와 commit */
 export interface PullRequestOperationUndoResult {
@@ -51,15 +52,21 @@ export class PullRequestOperationSnapshot {
   }
 
   /**
-   * PR 실행의 branch·HEAD·Git directory를 한 번에 읽고 같은 checkout의 작업 상태를 검증한다.
+   * PR 실행의 checkout과 unmerged index를 최대 두 조회로 겹친 뒤 같은 시작 조건을 검증한다.
+   * 둘 다 종료될 때까지 기다리며 조회 실패·진행 중 Git 작업·detached 상태는 쓰기 전에 중단한다.
    * @returns 고정한 대상 브랜치와 시작 HEAD. detached/unmerged/native 작업이면 실행 전에 중단한다.
    */
   async prepareForPrOperation(): Promise<{ branch: string; beforeHead: string }> {
-    const identity = await readGitCommitCheckoutIdentity(this.repoRoot);
+    const [checkout, unmerged] = await Promise.allSettled([
+      readGitCommitCheckoutIdentity(this.repoRoot), this.hasUnmergedChanges(),
+    ]);
+    if (checkout.status === "rejected") throw checkout.reason;
+    const identity = checkout.value;
     const operation = detectOperationInGitDir(identity.gitDir);
     if (operation !== "none") throw new Error(`Cannot start PR operation while ${operation} is in progress.`);
     if (!identity.branch) throw new Error("PR operations require a checked-out local branch.");
-    await this.assertNoUnmergedChanges();
+    if (unmerged.status === "rejected") throw unmerged.reason;
+    if (unmerged.value) throw new Error("Resolve unmerged files before running a PR operation.");
     return { branch: identity.branch, beforeHead: identity.head };
   }
 
@@ -71,13 +78,9 @@ export class PullRequestOperationSnapshot {
     return hasWorkingTreeChanges(this.repoRoot, true);
   }
 
-  /** 현재 index에 unmerged entry가 하나라도 있으면 true를 반환한다. */
+  /** 파일 스캔·fsmonitor 준비 없이 현재 index의 unmerged stage 존재만 확인한다. 오류는 시작 검사에 전파한다. */
   async hasUnmergedChanges(): Promise<boolean> {
-    const output = await runGit(
-      ["ls-files", "--unmerged", "-z"],
-      this.repoRoot
-    );
-    return output.length > 0;
+    return (await listUnmergedFiles(this.repoRoot)).length > 0;
   }
 
   /**
@@ -118,11 +121,7 @@ export class PullRequestOperationSnapshot {
    * @param cwd 임시 worktree 경로
    */
   async hasUnmergedChangesIn(cwd: string): Promise<boolean> {
-    const output = await runGit(
-      ["ls-files", "--unmerged", "-z"],
-      cwd
-    ).catch(() => "");
-    return output.length > 0;
+    return (await listUnmergedFiles(cwd).catch(() => [])).length > 0;
   }
 
   /**

@@ -11,6 +11,7 @@ import { restoreStatusIndexMetadata, statusIndexStagingIdentity, statusIndexStag
 import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "./workingTreeStatusFormat";
 import { COLD_STATUS_MIN_ENTRIES, readColdStatus } from "./coldStatusScan";
 import { StatusIndexWarmup } from "./statusIndexWarmup";
+import { RepositoryIndexPathReader } from "./repositoryIndexPath";
 
 /** 실제 index를 복사하되 모든 상태 캐시 쓰기를 확장 소유 디렉터리로만 보내는 저장소별 캐시다. */
 export class PrivateStatusIndex {
@@ -22,10 +23,13 @@ export class PrivateStatusIndex {
   private publishedAt = 0;
   private cold = false;
   private readonly warmup: StatusIndexWarmup;
+  private readonly sourcePath: RepositoryIndexPathReader;
 
   /** 저장 공간이 주입되면 세션을 넘겨 Git의 검증 가능한 전용 index만 재사용한다. */
   constructor(private readonly root: string, private readonly log: (event: string, fields: Record<string, unknown>) => void,
-    private readonly warmCache?: StatusIndexWarmCache) { this.warmup = new StatusIndexWarmup(root, log, warmCache); }
+    private readonly warmCache?: StatusIndexWarmCache) {
+    this.warmup = new StatusIndexWarmup(root, log, warmCache); this.sourcePath = new RepositoryIndexPathReader(root, runGit, log);
+  }
 
   /**
    * normal 상태의 미추적 디렉터리만 추가 열거해 전체 파일 결과를 보존한다.
@@ -41,7 +45,13 @@ export class PrivateStatusIndex {
     }
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
-        const source = path.resolve(this.root, (await runGit(["rev-parse", "--git-path", "index"], this.root, { signal })).trim());
+        const sourcePath = await this.sourcePath.read(signal);
+        // private index와 실제 저장소의 연결을 증명하지 못하면 원본 Git status에 맡긴다.
+        if (!sourcePath.identity) {
+          this.log("private status index path unavailable", { repoRoot: this.root, reason: "unprovenRepositoryMetadata" });
+          throw new Error("Repository metadata is unavailable for the private status index.");
+        }
+        const source = sourcePath.file;
         const before = await indexIdentity(source, signal);
         await this.prepare(before);
         const env = withGitConfigOverrides({ GIT_INDEX_FILE: this.index! }, { "core.untrackedCache": "true", "core.splitIndex": "false" });
@@ -57,7 +67,7 @@ export class PrivateStatusIndex {
           for (const file of output.split("\0")) if (file) files.add(file);
         }
         for (const file of files) parsed.entries.push({ xy: "??", path: file });
-        if (before.key === (await indexIdentity(source, signal)).key) {
+        if (before.key === (await indexIdentity(source, signal)).key && await this.sourcePath.unchanged(sourcePath, signal)) {
           if (initial && !signal.aborted && this.warmFingerprint && before.bytes && before.mtime !== undefined) {
             const key = this.warmFingerprint;
             this.warmup.schedule({ key, bytes: before.bytes, mtimeMs: before.mtime,
@@ -73,7 +83,7 @@ export class PrivateStatusIndex {
           return workingTreeSnapshot(this.root, parsed);
         }
         this.fingerprint = undefined;
-        this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-changed-during-read" });
+        this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-or-metadata-changed-during-read" });
       }
     } catch (error) {
       if (signal.aborted || isGitLifecycleError(error)) { await this.dispose(); throw error; }
@@ -86,6 +96,7 @@ export class PrivateStatusIndex {
   /** 실행 close 뒤에 호출하며 생성한 디렉터리만 삭제한다. */
   async dispose(): Promise<void> {
     await this.warmup.dispose(); this.cold = false;
+    this.sourcePath.clear();
     const directory = this.directory;
     this.unregister?.(); this.unregister = undefined; this.directory = undefined; this.index = undefined; this.fingerprint = undefined; this.warmFingerprint = undefined;
     if (directory) await rm(directory, { recursive: true, force: true });

@@ -4,6 +4,8 @@ import { join } from "node:path";
 import test from "node:test";
 import { runGitWithInput } from "../src/git/gitExec";
 import { PullRequestOperationSnapshot } from "../src/git/pullRequestOperationSnapshot";
+import { setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
+import { setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
 import { git, safetyFixture } from "./helpers/gitSafetyFixture";
 
 test("unmerged index entries without native operation markers still block PR application", async t => {
@@ -32,4 +34,13 @@ test("unstaged deletions and staged additions are not mistaken for conflicts", a
   assert.deepEqual(await state.prepareForPrOperation(), { branch: "main", beforeHead: head });
   assert.equal(await git(root, "show", ":staged.txt"), "user addition");
   await assert.rejects(git(root, "show", "HEAD:staged.txt"));
+});
+
+test("PR conflict checks skip monitor preparation while preserving the real index", async t => {
+  const { root } = await safetyFixture(t, "pr-unmerged-without-monitor"), before = await git(root, "ls-files", "--stage", "-z");
+  const stopPolicy = setOwnedFsmonitorPolicy(() => undefined); t.after(stopPolicy);
+  const commands: string[] = [], stop = setGitExecutionObserver(value => commands.push(value.command)); t.after(stop);
+  assert.equal(await new PullRequestOperationSnapshot(root).hasUnmergedChanges(), false); stop(); stopPolicy();
+  assert.deepEqual(commands, ["ls-files"]);
+  assert.equal(await git(root, "ls-files", "--stage", "-z"), before);
 });

@@ -15,7 +15,7 @@ import {
   restorePendingBranchRebaseMergeLocalChangesForBranch,
   runBranchRebaseMerge,
 } from "./branchRebaseMerge";
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { listUnmergedFiles } from "./unmergedFiles";
@@ -215,16 +215,22 @@ export class BranchOperationService {
   }
 
   /**
-   * 한 번 읽은 worktree·HEAD·브랜치로 시작 조건을 확인한다. 호출 간 상태는 재사용하지 않는다.
+   * HEAD와 unmerged index를 최대 두 조회로 함께 읽고, 둘 다 완료된 뒤 시작 조건을 확인한다.
+   * 조회 실패는 충돌 없음으로 바꾸지 않는다. 실패한 자식도 모두 종료된 뒤 쓰기 없이 중단한다.
    * @returns 진행 중 작업/충돌이 없고 로컬 브랜치를 가리키는 새 checkout identity
    */
   private async assertReadyForBranchOperation() {
-    const checkout = await readGitCheckoutIdentity(this.repoRoot);
+    const [identity, unmerged] = await Promise.allSettled([
+      readGitCheckoutIdentity(this.repoRoot), listUnmergedFiles(this.repoRoot),
+    ]);
+    if (identity.status === "rejected") throw identity.reason;
+    const checkout = identity.value;
     const operation = detectOperationInGitDir(checkout.gitDir);
     if (operation !== "none") {
       throw new Error(`Cannot start branch operation while ${operation} is in progress.`);
     }
-    if (await this.hasUnmergedChanges()) {
+    if (unmerged.status === "rejected") throw unmerged.reason;
+    if (unmerged.value.length) {
       throw new Error("Resolve unmerged files before running a branch operation.");
     }
     if (!checkout.branch) throw new Error("Branch operations require a checked-out local branch.");
@@ -239,7 +245,10 @@ export class BranchOperationService {
     const out = await runGit(
       ["rev-parse", "--verify", `refs/heads/${sourceBranch}^{commit}`],
       this.repoRoot
-    ).catch(() => "");
+    ).catch(error => {
+      if (error instanceof GitError && (error.code === 1 || error.code === 128)) return "";
+      throw error;
+    });
     if (!out.trim()) {
       throw new Error(`Local branch not found: ${sourceBranch}`);
     }
@@ -299,7 +308,10 @@ export class BranchOperationService {
    * @returns 전체 commit hash
    */
   private async resolveCommit(ref: string): Promise<string> {
-    const hash = (await runGit(["rev-parse", "--verify", `${ref}^{commit}`], this.repoRoot).catch(() => "")).trim();
+    const hash = (await runGit(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`], this.repoRoot).catch(error => {
+      if (error instanceof GitError && (error.code === 1 || error.code === 128)) return "";
+      throw error;
+    })).trim();
     if (!hash) {
       throw new Error(`Rebase target not found: ${ref}`);
     }
