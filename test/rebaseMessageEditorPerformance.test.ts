@@ -77,7 +77,7 @@ for (const linked of [false, true]) {
       const fixture = await messageFixture(t, "message-free-editor", linked);
       const items: RebaseItem[] = fixture.hashes.map((hash, index) => ({ hash, action: mixed && index % 2 ? "squash" : "reword" }));
       const { result, events } = await traceOperation(join(fixture.directory, "trace.json"), () =>
-        new RebaseService(fixture.root).start(fixture.head, false, items, editor));
+        new RebaseService(fixture.root, { nativeEditors: true }).start(fixture.head, false, items, editor));
       assert.equal(result.status, "completed", JSON.stringify(result));
       assert.deepEqual(await messages(fixture.root, fixture.head), mixed
         ? ["original 0\n\noriginal 1", "original 2\n\noriginal 3", "original 4\n\noriginal 5"]
@@ -94,7 +94,7 @@ for (const linked of [false, true]) {
     const fixture = await messageFixture(t, "message-custom-editor", linked);
     const items: RebaseItem[] = fixture.hashes.map((hash, index) => ({ hash, action: "reword", message: `rewritten ${index}\n\nbody ${index}` }));
     const { result, events } = await traceOperation(join(fixture.directory, "trace.json"), () =>
-      new RebaseService(fixture.root).start(fixture.head, false, items, editor));
+      new RebaseService(fixture.root, { nativeEditors: true }).start(fixture.head, false, items, editor));
     assert.equal(result.status, "completed", JSON.stringify(result));
     assert.deepEqual(await messages(fixture.root, fixture.head), [
       "rewritten 0\n\nbody 0", "rewritten 1\n\nbody 1", "rewritten 2\n\nbody 2",
@@ -111,6 +111,7 @@ test("version 1 sessions select the editor from the current queue and current wo
   const file = await statePath(root), gitDir = dirname(dirname(file));
   const state = JSON.parse(await readFile(file, "utf8"));
   assert.equal(state.version, 1);
+  assert.equal(state.nativeEditors, undefined, "Existing callers and old v1 sessions retain the Node helper");
   const legacyQueue = join(directory, "older-location", "queue.json");
   await mkdir(dirname(legacyQueue));
   await writeFile(legacyQueue, JSON.stringify(["late custom message"]));
@@ -226,7 +227,7 @@ for (const linked of [false, true]) {
         { hash: hashes[0], action: "reword" }, { hash: hashes[1], action: "edit" },
         { hash: hashes[2], action: "squash" }, { hash: hashes[3], action: "reword" },
       ];
-      assert.equal((await new RebaseService(fixture.root).start(base, false, items, editor)).status, "paused");
+      assert.equal((await new RebaseService(fixture.root, { nativeEditors: true }).start(base, false, items, editor)).status, "paused");
       const file = await statePath(fixture.root), state = JSON.parse(await readFile(file, "utf8"));
       assert.deepEqual(JSON.parse(await readFile(state.queuePath, "utf8")), [null, null, null]);
       if (native) {
@@ -258,7 +259,7 @@ test("a message-free conflict can add a current custom message before Continue",
   await git(fixture.root, "commit", "-qm", "original second message");
   const second = await git(fixture.root, "rev-parse", "HEAD");
   const items: RebaseItem[] = [{ hash: first, action: "reword" }, { hash: second, action: "reword" }];
-  assert.equal((await new RebaseService(fixture.root).start(fixture.head, false, items, editor, onto)).status, "conflicts");
+  assert.equal((await new RebaseService(fixture.root, { nativeEditors: true }).start(fixture.head, false, items, editor, onto)).status, "conflicts");
   items[0].message = "custom after conflict";
   const refreshed = (await refreshRebaseMessageQueueForContinue(fixture.root, items))!;
   assert.equal(refreshed.queueLength, 2);
@@ -290,7 +291,7 @@ test("SHA-256 reword messages survive full done hashes and a refreshed continuat
     { hash: first, action: "reword", message: "first custom\n\nfirst body" },
     { hash: second, action: "edit" }, { hash: third, action: "reword", message: "outdated last" },
   ];
-  assert.equal((await new RebaseService(root).start(base, false, items, editor)).status, "paused");
+  assert.equal((await new RebaseService(root, { nativeEditors: true }).start(base, false, items, editor)).status, "paused");
   assert.deepEqual(await messages(root, base), ["first custom\n\nfirst body", "original edit"]);
   items[2].message = "latest custom\n\nlatest body";
   const refreshed = (await refreshRebaseMessageQueueForContinue(root, items))!;

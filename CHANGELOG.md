@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.72124] - 2026-10-21
+
+### Performance
+
+- Copy the bundled interactive rebase todo with the system copy tool on macOS
+  and Linux, avoiding one Node/Electron editor startup per rebase. Keep custom
+  commit-message editing and continuation queues on the existing helper.
+
+### Fixed
+
+- Validate the bundled helper content before replacing its sequence editor.
+  Keep custom scripts, unsupported environments and independent callers on
+  their existing path. Delegate copy failures and non-file targets to the
+  original helper, preserving its failure behavior.
+- Preserve both fresh checkout checks, native conflict and autostash handling,
+  and temporary-state cleanup around rebase Start.
+
+### Development
+
+- Profile actual rebase Start with a common baseline/candidate harness, keeping
+  extension Node CPU, Git and waited-child CPU, per-command RSS and editor wall
+  time separate. Add literal-path, custom-helper and copy-failure checks.
+
 ## [0.1.72123] - 2026-10-21
 
 ### Performance

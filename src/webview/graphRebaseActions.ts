@@ -112,7 +112,7 @@ export async function runGraphRebase(
       message: `Cannot start rebase while ${operation} is in progress.`,
     };
   }
-  const service = new RebaseService(repoRoot);
+  const service = new RebaseService(repoRoot, { nativeEditors: true });
   const count = items.length;
   const yes = vscode.l10n.t("Start Rebase");
   const choice = await vscode.window.showWarningMessage(

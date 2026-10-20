@@ -21,6 +21,7 @@ import {
   initializeRebaseMessageQueue,
 } from "./rebaseMessageQueue";
 import { usableRebaseOntoTarget } from "./rebaseOntoTarget";
+import { rebaseSequenceEditor } from "./rebaseNativeEditors";
 import { readRebaseTodoProgress, type RebaseTodoProgress } from "./rebaseTodoProgress";
 import { validateRebaseTodoCoverage } from "./rebaseTodoValidation";
 import { logError, logInfo } from "../ui/outputLog";
@@ -106,12 +107,15 @@ export interface RebasePlanInfo {
   /** 진행 중인 rebase 복원 시 UI action/message/order 를 되살리기 위한 저장된 todo 항목 */
   items?: RebaseItem[];
 }
+/** 번들 seq 규약의 todo 복사만 대체한다. 별도 editorScript를 쓰는 독립 호출은 기본 Node 규약을 유지한다. */
+export interface RebaseServiceOptions { nativeEditors?: boolean }
 /**
  * 한 저장소의 인터랙티브 rebase 를 다루는 서비스.
  */
 export class RebaseService {
   private preparedCheckout?: RebaseCheckoutIdentity;
-  constructor(public readonly repoRoot: string) {}
+  /** @param repoRoot 작업 저장소 @param options 번들 helper임을 아는 조립 계층만 nativeEditors를 허용한다. */
+  constructor(public readonly repoRoot: string, private readonly options: RebaseServiceOptions = {}) {}
   /**
    * 작업트리가 깨끗한지(추적 파일에 미커밋 변경이 없는지) 확인한다.
    * - 현재 그래프 기반 rebase 는 --autostash 로 미커밋 변경을 보존하므로 필수 검사는 아니다.
@@ -295,13 +299,13 @@ export class RebaseService {
     let keepTempFiles = false;
     fs.writeFileSync(todoFile, todoLines.join("\n") + "\n", "utf8");
 
-    // VS Code 확장 호스트의 실행 파일을 node 로 동작시켜 헬퍼를 실행한다.
-    const editorCmd = `"${process.execPath}" "${editorScript}"`;
     try {
       const messageEditorEnv = await initializeRebaseMessageQueue(this.repoRoot, todoItems, editorScript);
+      const sequenceEditor = await rebaseSequenceEditor(todoFile, editorScript, process.execPath, this.options.nativeEditors === true);
+      logInfo("rebase sequence editor selected", { repoRoot: this.repoRoot, editor: sequenceEditor.kind });
       const env: Record<string, string> = {
         ...messageEditorEnv,
-        GIT_SEQUENCE_EDITOR: `${editorCmd} seq`,
+        GIT_SEQUENCE_EDITOR: sequenceEditor.command,
         GSC_TODO: todoFile,
       };
       await assertRebaseCheckout(this.repoRoot, checkout);

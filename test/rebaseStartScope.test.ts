@@ -34,7 +34,7 @@ for (const linked of [false, true]) {
     const root = linked ? join(f.directory, "linked 한글") : f.root;
     if (linked) await git(f.root, "worktree", "add", "-qb", "linked", root, f.head);
     const tip = await commitText(root, "topic\n", "topic");
-    const service = new RebaseService(root), calls = observeSpawns(t);
+    const service = new RebaseService(root, { nativeEditors: true }), calls = observeSpawns(t);
     for (const message of ["first rewritten", "second rewritten"]) {
       const checkout = await captureRebaseCheckout(root);
       calls.length = 0;
@@ -65,7 +65,7 @@ test("a commit arriving after queue preparation is preserved and prevents native
     if (args.includes("--symbolic-full-name") && ++guards === 2)
       childProcess.execFileSync("git", ["update-ref", checkout.branch, external, tip], { cwd: root });
   });
-  const result = await new RebaseService(root).start(base, false, [{ hash: tip, action: "reword", message: "rewritten" }], editor, undefined, checkout);
+  const result = await new RebaseService(root, { nativeEditors: true }).start(base, false, [{ hash: tip, action: "reword", message: "rewritten" }], editor, undefined, checkout);
   assert.equal(result.status, "failed"); assert.match(result.message!, /branch or HEAD changed/);
   assert.equal(guards, 2); assert.equal(calls.some(args => args[0] === "rebase"), false);
   assert.equal(await git(root, "rev-parse", "HEAD"), external);
@@ -109,7 +109,7 @@ test("replacing linked metadata during plan validation stops Start before queue 
     });
   });
   try {
-    await assert.rejects(new RebaseService(root).start(first.head, false, [{ hash: tip, action: "reword", message: "rewritten" }], editor, undefined, checkout), /metadata changed/);
+    await assert.rejects(new RebaseService(root, { nativeEditors: true }).start(first.head, false, [{ hash: tip, action: "reword", message: "rewritten" }], editor, undefined, checkout), /metadata changed/);
     assert.equal(replaced, true);
     assert.equal(temporaryFiles.length, 1);
     for (const file of temporaryFiles) await assert.rejects(readFile(file), { code: "ENOENT" });

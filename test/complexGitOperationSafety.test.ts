@@ -90,7 +90,7 @@ test("stale deferred pending cannot claim an unrelated native Continue result", 
 test("paused edit rejects unrelated staged data before modifying the worktree or index", async t => {
   const { root, base } = await prSafetyFixture(t);
   const head = await commitText(root, "edit target\n", "edit target");
-  const service = new RebaseService(root);
+  const service = new RebaseService(root, { nativeEditors: true });
   const result = await service.start(base, false, [{ hash: head, action: "edit" }], editor);
   assert.equal(result.status, "paused");
   await writeFile(join(root, "tracked.txt"), "intended edit\n");
@@ -109,7 +109,7 @@ for (const changed of ["worktree", "index"] as const) {
   test(`temporary rebase edit preserves a newer ${changed} version`, async t => {
     const { root, base } = await prSafetyFixture(t);
     const head = await commitText(root, "edit target\n", "edit target");
-    const service = new RebaseService(root);
+    const service = new RebaseService(root, { nativeEditors: true });
     const result = await service.start(base, false, [{ hash: head, action: "edit" }], editor);
     assert.ok(result.paused);
     const temporary = await createRebaseEditTempFile(root, result.paused, result.paused.files[0]);
@@ -131,7 +131,7 @@ for (const changed of ["worktree", "index"] as const) {
 test("unchanged edit session still applies the temporary edit and amends successfully", async t => {
   const { root, base } = await prSafetyFixture(t);
   const head = await commitText(root, "edit target\n", "edit target");
-  const service = new RebaseService(root);
+  const service = new RebaseService(root, { nativeEditors: true });
   const result = await service.start(base, false, [{ hash: head, action: "edit" }], editor);
   assert.ok(result.paused);
   const temporary = await createRebaseEditTempFile(root, result.paused, result.paused.files[0]);
@@ -146,7 +146,7 @@ test("autostash restore conflicts remain visible and are not reported as complet
   const { root, base } = await prSafetyFixture(t);
   const head = await commitText(root, "drop target\n", "drop target");
   await writeFile(join(root, "tracked.txt"), "user changes to dropped content\n");
-  const result = await new RebaseService(root).start(base, false, [{ hash: head, action: "drop" }], editor);
+  const result = await new RebaseService(root, { nativeEditors: true }).start(base, false, [{ hash: head, action: "drop" }], editor);
   assert.equal(result.status, "conflicts");
   assert.equal(result.restoringLocalChanges, true);
   assert.equal(await detectOperation(root), "none");
@@ -164,7 +164,7 @@ test("autostash restore conflicts remain visible and are not reported as complet
 test("prepared interactive plan cannot rewrite a different branch at the same HEAD", async t => {
   const { root } = await prSafetyFixture(t);
   const head = await commitText(root, "target\n", "original message");
-  const service = new RebaseService(root);
+  const service = new RebaseService(root, { nativeEditors: true });
   const plan = await service.prepareCurrentBranchPlan(head);
   await git(root, "switch", "-qc", "other-branch");
   await assert.rejects(service.start(plan.base, false, [{ hash: head, action: "reword", message: "wrong branch" }], editor), /branch or HEAD changed/);
@@ -181,7 +181,7 @@ test("merge-containing interactive plan fails before starting rebase or autostas
   await git(root, "merge", "--no-ff", "-qm", "merge", "source");
   const head = await git(root, "rev-parse", "HEAD");
   await writeFile(join(root, "other.txt"), "keep local edit\n");
-  const service = new RebaseService(root);
+  const service = new RebaseService(root, { nativeEditors: true });
   const commits = await service.getCommits(base);
   await assert.rejects(service.start(base, false, commits.map(commit => ({ hash: commit.hash, action: "pick" })), editor), /contains merge commits/);
   assert.equal(await detectOperation(root), "none");

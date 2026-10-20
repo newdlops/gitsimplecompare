@@ -110,7 +110,7 @@ for (const linked of [false, true]) {
       }
       return child;
     });
-    const result = await new RebaseService(root).start(base, false, items, editor);
+    const result = await new RebaseService(root, { nativeEditors: true }).start(base, false, items, editor);
     assert.equal(result.status, "completed", JSON.stringify(result));
     const commits = (await git(root, "rev-list", "--reverse", `${base}..HEAD`)).split("\n");
     assert.equal(commits.length, 2);
@@ -135,7 +135,7 @@ test("root SHA-256 rebase moves a file without a hard-coded SHA-1 empty tree", a
   await git(root, "add", "moving.bin");
   const source = await commitText(root, "root\n", "root");
   const target = await commitText(root, "target\n", "target");
-  const result = await new RebaseService(root).start("", true, [
+  const result = await new RebaseService(root, { nativeEditors: true }).start("", true, [
     { hash: source, action: "pick", fileMoves: [{ sourceHash: source, sourcePath: "moving.bin", targetHash: target }] },
     { hash: target, action: "pick" },
   ], editor);

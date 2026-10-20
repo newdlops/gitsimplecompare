@@ -130,7 +130,7 @@ test("checkout identity supports SHA-256 and rejects an unborn HEAD", async t =>
 test("Start and Continue finish a real edit rebase with bounded Git preparation", async t => {
   const { root, head } = await safetyFixture(t, "rebase-execution-count");
   const hash = await commitText(root, "edit content\n", "edit");
-  const service = new RebaseService(root);
+  const service = new RebaseService(root, { nativeEditors: true });
   const calls = recordGitCalls(t);
   const started = performance.now();
   const result = await service.start(head, false, [{ hash, action: "edit" }], resolve("media/rebase/rebaseEditor.js"));
@@ -153,7 +153,7 @@ test("a known worktree directory avoids path processes but observes every native
   const { root, head } = await safetyFixture(t, "rebase-progress-fresh");
   const first = await commitText(root, "first\n", "first");
   const second = await commitText(root, "second\n", "second");
-  const result = await new RebaseService(root).start(head, false, [
+  const result = await new RebaseService(root, { nativeEditors: true }).start(head, false, [
     { hash: first, action: "edit" }, { hash: second, action: "edit" },
   ], resolve("media/rebase/rebaseEditor.js"));
   assert.equal(result.status, "paused");
@@ -187,7 +187,7 @@ for (const linked of [false, true]) {
       { hash: hashes[2], action: "squash", message: "combined edit and squash" },
       { hash: hashes[3], action: "reword", message: "old final message" },
     ];
-    const result = await new RebaseService(root).start(fixture.head, false, items, resolve("media/rebase/rebaseEditor.js"));
+    const result = await new RebaseService(root, { nativeEditors: true }).start(fixture.head, false, items, resolve("media/rebase/rebaseEditor.js"));
     assert.equal(result.status, "paused");
     items[3].message = "latest final message";
     const gitDir = (await captureGitOperation(root)).gitDir;
