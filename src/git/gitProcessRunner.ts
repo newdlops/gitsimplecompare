@@ -1,4 +1,5 @@
 import { spawn, type ExecFileException } from "node:child_process";
+import { Readable, type Writable } from "node:stream";
 import { GitError } from "./gitError";
 import { beginGitExecution } from "./gitExecutionDiagnostics";
 import { gitCommandPolicy } from "./gitCommandPolicy";
@@ -45,21 +46,27 @@ export interface GitProcessOutput { stdout: Buffer; stderr: Buffer }
  * @param options 환경·취소·버퍼·조회 제한 정책
  * @param input stdin으로 끝까지 보낼 선택 입력
  * @param onData 존재하면 stdout을 모으지 않고 스트림으로 소비한다.
+ * @param outputSink 존재하면 stdout을 pipe해 downstream backpressure를 그대로 적용한다.
+ * @param requireReadOnly preparation 이후에도 조회인지 확인해 pipe에서 쓰기를 시작하지 않는다.
  * @returns close 확인 뒤 성공 출력 또는 GitError
  */
 export async function executeGitProcess(executable: string, args: string[], cwd: string, options: RunGitOptions,
-  input?: GitInput, onData?: (chunk: Buffer) => void): Promise<GitProcessOutput> {
+  input?: GitInput | Readable, onData?: (chunk: Buffer) => void, outputSink?: Writable, requireReadOnly = false): Promise<GitProcessOutput> {
   if (!options.signal?.aborted && preparation) {
     const prepared = await preparation(args, cwd, { ...options, executable });
     options = prepared.options; args = prepared.args ?? args;
   }
   return new Promise((resolve, reject) => {
     const policy = gitCommandPolicy(args);
+    if (requireReadOnly && !policy.readOnly) { reject(executionError("GIT_PIPE_WRITE", "Git read pipeline preparation produced a write command.")); return; }
     if (options.signal?.aborted) { reject(executionError("ABORT_ERR", "Git command cancelled.")); return; }
     if (policy.readOnly && gitProcesses.hasBlockedRead(cwd)) {
       reject(executionError("GIT_READ_STOPPING", "A previous Git read is still stopping. See Git Simple Compare Output.")); return;
     }
     const timeout = resolveGitReadTimeout(cwd, options.readTimeoutMs);
+    if (outputSink?.destroyed || outputSink?.writableEnded) { reject(executionError("GIT_PIPE_CLOSED", "Git output pipe closed before execution.")); return; }
+    const streamInput = input instanceof Readable ? input : undefined;
+    if (streamInput?.destroyed && !streamInput.readableEnded) { reject(executionError("GIT_INPUT_CLOSED", "Git input closed before execution.")); return; }
     const group = (policy.readOnly || policy.monitor === true) && process.platform !== "win32";
     const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
     if (env) for (const name of options.clearEnv ?? []) delete env[name];
@@ -79,13 +86,21 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     /** 실패·취소를 한 번만 기록한다. 쓰기는 호출자가 명시한 취소 때만 기존처럼 TERM한다. */
     const stop = (error: unknown, reason: string) => {
       failure ??= error;
+      // 실패 후 downstream backpressure를 해제해 이미 exit한 producer도 stdout close를 끝낸다.
+      if (outputSink) { child.stdout?.unpipe(outputSink); child.stdout?.resume(); }
       if (policy.readOnly || policy.monitor) void gitProcesses.requestStop(id, reason);
       // spawn 실패로 PID가 없으면 kill하지 않는다. 생성되지 않은 자식의 빈 PID를 OS에 전달하지 않는다.
       else if (!closed && child.pid !== undefined && child.pid > 0 && child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
     };
     /** 소비자 취소를 실제 실행 수명에 연결하고 추가 재시도를 차단한다. */
     const abort = () => stop(executionError("ABORT_ERR", "Git command cancelled."), "consumer-released");
-    child.stdout!.on("data", (chunk: Buffer) => {
+    /** downstream 종료는 stdout을 더 쌓지 않고 이 조회도 종료해 막힌 upstream을 남기지 않는다. */
+    const sinkClosed = () => { if (!closed) stop(executionError("GIT_PIPE_CLOSED", "Git output pipe closed before completion."), "output-pipe-closed"); };
+    const sinkError = (error: Error) => stop(error, "output-pipe-error");
+    if (outputSink) {
+      outputSink.once("close", sinkClosed); outputSink.on("error", sinkError);
+      child.stdout!.pipe(outputSink, { end: false });
+    } else child.stdout!.on("data", (chunk: Buffer) => {
       if (failure) return;
       if (onData) { try { onData(chunk); } catch (error) { stop(error, "stream-consumer-failed"); } return; }
       outSize += chunk.length;
@@ -94,15 +109,22 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     });
     child.stderr!.on("data", (chunk: Buffer) => {
       errSize += chunk.length;
-      const errorLimit = onData ? 64 * 1024 : limit;
+      const errorLimit = onData || outputSink ? 64 * 1024 : limit;
       if (errSize <= errorLimit) stderr.push(chunk);
-      else if (!onData) stop(executionError("ERR_CHILD_PROCESS_STDIO_MAXBUFFER", "Git stderr exceeded maxBuffer."), "max-buffer");
+      else if (!onData && !outputSink) stop(executionError("ERR_CHILD_PROCESS_STDIO_MAXBUFFER", "Git stderr exceeded maxBuffer."), "max-buffer");
     });
     child.stdout!.on("error", error => stop(error, "stdout-error"));
     child.stderr!.on("error", error => stop(error, "stderr-error"));
     child.once("error", error => { failure ??= new GitError(`git ${policy.command} failed: ${error.message}`, "", "", error as ExecFileException); });
     child.once("close", async (code, signal) => {
       closed = true;
+      if (outputSink) { child.stdout!.unpipe(outputSink); outputSink.removeListener("close", sinkClosed); outputSink.removeListener("error", sinkError); }
+      if (streamInput) {
+        if (code === 0 && (!streamInput.readableEnded || !child.stdin?.writableFinished))
+          failure ??= executionError("GIT_INPUT_CLOSED", "Git input was not fully delivered before completion.");
+        streamInput.unpipe(child.stdin!); streamInput.removeListener("error", inputError); streamInput.removeListener("close", inputClosed);
+        if (!streamInput.destroyed) streamInput.destroy();
+      }
       clearTimeout(deadline); options.signal?.removeEventListener("abort", abort);
       await gitProcesses.closed(id);
       timing?.finish(failure || code !== 0 ? "error" : "success", failure instanceof GitError ? failure.code : code ?? undefined);
@@ -119,7 +141,14 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
       deadline = setTimeout(() => stop(executionError("ETIMEDOUT", "Git read exceeded its time limit. See Git Simple Compare Output."), "read-timeout"), timeout);
       deadline.unref();
     }
-    if (input !== undefined && child.stdin) { child.stdin.on("error", () => undefined); child.stdin.end(input); }
+    /** 입력 stream의 실패/조기 종료는 아직 stdin을 기다리는 조회도 함께 회수한다. */
+    function inputError(error: Error): void { stop(error, "input-stream-error"); }
+    function inputClosed(): void { if (!closed && streamInput && !streamInput.readableEnded) stop(executionError("GIT_INPUT_CLOSED", "Git input stream closed early."), "input-stream-closed"); }
+    if (input !== undefined && child.stdin) {
+      child.stdin.on("error", () => undefined);
+      if (streamInput) { streamInput.on("error", inputError); streamInput.once("close", inputClosed); streamInput.pipe(child.stdin); }
+      else child.stdin.end(input);
+    }
   });
 }
 

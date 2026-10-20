@@ -1,7 +1,7 @@
 // 큰 일반 push를 원격 tip의 조상 순서대로 나누는 서비스. VS Code나 UI에 의존하지 않는다.
 // 병합으로 들어온 곁가지 커밋은 merge commit과 함께 전송해 목적 브랜치를 항상 fast-forward한다.
 import { createHash } from "node:crypto";
-import { GitError, runGit, runGitWithInput, runGitStreamWithInput, type RunGitOptions } from "./gitExec";
+import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { readPublishedPushTips } from "./pushPublishedHistory";
 import { logInfo } from "../ui/outputLog";
@@ -71,6 +71,8 @@ export interface PushGitRunner {
   input(args: string[], root: string, input: string, options?: RunGitOptions): Promise<string>;
   /** 큰 객체 목록의 숫자 출력을 누적하지 않는 선택적 streaming 경계. 기존 대역은 input으로 폴백한다. */
   inputStream?(args: string[], root: string, input: string, onData: (chunk: Buffer) => void, options?: RunGitOptions): Promise<void>;
+  /** 객체 목록 전체를 보관하지 않고 두 readonly Git 사이를 연결하는 선택적 transport다. */
+  pipe?(sourceArgs: string[], targetArgs: string[], root: string, onData: (chunk: Buffer) => void, options?: RunGitOptions): Promise<void>;
 }
 
 interface TransferPlan {
@@ -84,7 +86,7 @@ interface TransferPlan {
 /** 최근 후보의 원본 부모를 함께 읽어 추가 Git 조회 없이 선형 이력과 전체 두 커밋 경계를 판정한다. */
 interface RecentPushCommits { commits: string[]; oldestParents: string[]; headParents: string[]; }
 
-const defaultRunner: PushGitRunner = { run: runGit, input: runGitWithInput, inputStream: runGitStreamWithInput };
+const defaultRunner: PushGitRunner = { run: runGit, input: runGitWithInput, inputStream: runGitStreamWithInput, pipe: runGitReadPipeline };
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 
 /**
@@ -322,9 +324,9 @@ async function isAncestor(root: string, ancestor: string, head: string, runner: 
  * @param excludedHeads 서버가 이미 소유한 이력의 tip @returns 실제 pack/네트워크 크기와 다를 수 있는 크기 추정치
  */
 async function estimateObjectBytes(root: string, head: string, excludedHeads: readonly string[], runner: PushGitRunner, options: RunGitOptions): Promise<number> {
-  const objects = await runner.run([
+  const objectArgs = [
     "rev-list", "--objects", "--no-object-names", head, ...excludedHeads.map(tip => `^${tip}`), "--",
-  ], root, options);
+  ];
   let bytes = 0, pending = "";
   /** 숫자 한 행만 검증해 objectsize 합계의 정확성과 safe integer 경계를 유지한다. */
   const addSize = (line: string) => {
@@ -344,9 +346,14 @@ async function estimateObjectBytes(root: string, head: string, excludedHeads: re
     pending = text.slice(start);
     if (pending.length > 32) throw new Error("Could not estimate the outgoing Git objects.");
   };
-  const args = ["cat-file", "--batch-check=%(objectsize)"];
-  if (runner.inputStream) await runner.inputStream(args, root, objects, consume, options);
-  else consume(Buffer.from(await runner.input(args, root, objects, options)));
+  // 전체 합계를 구하는 조회는 EOF까지 기다릴 수 있어 객체마다 flush하는 IPC 비용을 줄인다.
+  const args = ["cat-file", "--batch-check=%(objectsize)", "--buffer"];
+  if (runner.pipe) await runner.pipe(objectArgs, args, root, consume, options);
+  else {
+    const objects = await runner.run(objectArgs, root, options);
+    if (runner.inputStream) await runner.inputStream(args, root, objects, consume, options);
+    else consume(Buffer.from(await runner.input(args, root, objects, options)));
+  }
   addSize(pending);
   return bytes;
 }

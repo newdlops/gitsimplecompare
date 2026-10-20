@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.72123] - 2026-10-21
+
+### Performance
+
+- Pipe outgoing object IDs directly from `rev-list` into `cat-file` with
+  backpressure, so push size estimation no longer retains the complete object
+  list as a Buffer and string in the extension process. Preserve exact size
+  validation and existing transfer plans and leases.
+- Buffer Git's batch size output to avoid flushing after each object while
+  keeping the extension-side input and output streaming.
+
+### Fixed
+
+- Drain abandoned producer output when a read pipeline stops, including when
+  the producer has already exited while its consumer is blocked. Await both
+  owned reads and their verified descendants before reporting cancellation.
+- Reject early successful consumer exits and preserve the original Git,
+  metadata-parser or timeout failure when the sibling read is cancelled.
+- Preserve the former two-query deadline budget under backpressure so slow
+  producers and consumers do not introduce earlier planning timeouts.
+
+### Development
+
+- Add Native Git size-sum and push checks, bounded-transport, blocked-output,
+  cancellation, timeout and resistant parent/child process tests. Compare actual
+  packed-object queries separately from synthetic large-list transport.
+
 ## [0.1.72122] - 2026-10-21
 
 ### Fixed

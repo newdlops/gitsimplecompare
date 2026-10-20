@@ -1,0 +1,897 @@
+{
+  "version": "0.1.72123",
+  "baseline": {
+    "version": "0.1.72122",
+    "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2"
+  },
+  "environment": {
+    "platform": "Darwin",
+    "machine": "arm64",
+    "node": "v22.22.2",
+    "git": "git version 2.53.0"
+  },
+  "method": {
+    "order": [
+      "before6",
+      "after5",
+      "after6",
+      "before7"
+    ],
+    "samplesPerModePerVersion": 2,
+    "artificialDelayInBenchmarks": false,
+    "functionalTestsOverlapped": false,
+    "scope": "Synthetic object-ID transport, isolated Native packed-object queries, and a two-new-commit single push to an existing local bare branch. No artificial delay, GitHub or UI. CPU/RSS are benchmark Node only; child CPU/RSS excluded. Fixture creation and GC precede each measurement; the Native pack is warm from setup.",
+    "nativeFixture": {
+      "blobs": 100000,
+      "subtrees": 100,
+      "newCommits": 2,
+      "checkout": false,
+      "objectCount": 100103,
+      "objectBytes": 17104041
+    },
+    "rssSamplingMs": 5,
+    "rssMeaning": "Peak increase above this query start, benchmark Node only. Not total RSS; not child Git/Chromium/OS memory. Native RSS follows fixture allocation/GC and may reuse heap pages.",
+    "candidateBatchOutputBuffered": true,
+    "externalMachineLoadControlled": false
+  },
+  "sourceFilesSha256": {
+    "src/git/gitExec.ts": "b6f7011260b93ecfece103d07caddc2f913a471345fd10aca57a7acf282efd3c",
+    "src/git/gitProcessRunner.ts": "0c8bd40c781805b36f6e48f96d5e9003353ce77af7c1c27192fd567fe6e73333",
+    "src/git/gitReadPipeline.ts": "2adb2219c3661077c7f3034c5897c3193253b2c50104bca86cae8c59450272cb",
+    "src/git/sequentialPush.ts": "32eb89ad0c8edeb63880dd0d7928addc5522a8e12c43eae6d5583b6fa50cf89c",
+    "test/benchmarks/gitReadPipeline.ts": "0dca1431c80ae25e65732847e66c8a6af6b98d349b900229a678d23ea770cfa9",
+    "test/benchmarks/gitOperationMatrix.ts": "23478ae9bc4e0f5e9d5047b8da96e4b5e108f7610841d6fdd67b128c6a92305f",
+    "test/helpers/graphLiveRenderer.ts": "141aabbd6c4ac98ceca6cfcae66b90cc801bf7e00502c2c2d060be4d4c09d121"
+  },
+  "medians": [
+    {
+      "fixture": "synthetic-child-transport",
+      "records": 100000,
+      "baseline": {
+        "elapsedMs": 946.0,
+        "nodeCpuMs": 53.5,
+        "peakNodeRssDeltaMiB": 24.5,
+        "peakNodeHeapDeltaMiB": 6.0,
+        "peakNodeExternalDeltaMiB": 8.0
+      },
+      "candidate": {
+        "elapsedMs": 461.0,
+        "nodeCpuMs": 44.5,
+        "peakNodeRssDeltaMiB": 10.0,
+        "peakNodeHeapDeltaMiB": 1.0,
+        "peakNodeExternalDeltaMiB": 2.0
+      },
+      "changePercent": {
+        "elapsedMs": -51.3,
+        "nodeCpuMs": -16.8,
+        "peakNodeRssDeltaMiB": -59.2,
+        "peakNodeHeapDeltaMiB": -83.3,
+        "peakNodeExternalDeltaMiB": -75.0
+      }
+    },
+    {
+      "fixture": "synthetic-child-transport",
+      "records": 2000000,
+      "baseline": {
+        "elapsedMs": 1531.0,
+        "nodeCpuMs": 465.5,
+        "peakNodeRssDeltaMiB": 303.0,
+        "peakNodeHeapDeltaMiB": 78.0,
+        "peakNodeExternalDeltaMiB": 156.0
+      },
+      "candidate": {
+        "elapsedMs": 989.5,
+        "nodeCpuMs": 406.0,
+        "peakNodeRssDeltaMiB": 9.0,
+        "peakNodeHeapDeltaMiB": 2.0,
+        "peakNodeExternalDeltaMiB": 5.5
+      },
+      "changePercent": {
+        "elapsedMs": -35.4,
+        "nodeCpuMs": -12.8,
+        "peakNodeRssDeltaMiB": -97.0,
+        "peakNodeHeapDeltaMiB": -97.4,
+        "peakNodeExternalDeltaMiB": -96.5
+      }
+    },
+    {
+      "fixture": "native-git-packed-objects",
+      "records": 100103,
+      "baseline": {
+        "elapsedMs": 645.0,
+        "nodeCpuMs": 155.5,
+        "peakNodeRssDeltaMiB": 17.0,
+        "peakNodeHeapDeltaMiB": 17.0,
+        "peakNodeExternalDeltaMiB": 8.0
+      },
+      "candidate": {
+        "elapsedMs": 231.5,
+        "nodeCpuMs": 39.0,
+        "peakNodeRssDeltaMiB": 8.0,
+        "peakNodeHeapDeltaMiB": 15.0,
+        "peakNodeExternalDeltaMiB": 4.0
+      },
+      "changePercent": {
+        "elapsedMs": -64.1,
+        "nodeCpuMs": -74.9,
+        "peakNodeRssDeltaMiB": -52.9,
+        "peakNodeHeapDeltaMiB": -11.8,
+        "peakNodeExternalDeltaMiB": -50.0
+      }
+    },
+    {
+      "fixture": "native-existing-branch-push",
+      "records": 100103,
+      "baseline": {
+        "elapsedMs": 4251.5,
+        "nodeCpuMs": 197.5,
+        "directGitCalls": 12.0,
+        "nativePushes": 1.0,
+        "nativePushElapsedMs": 2020.0
+      },
+      "candidate": {
+        "elapsedMs": 3232.5,
+        "nodeCpuMs": 56.0,
+        "directGitCalls": 12.0,
+        "nativePushes": 1.0,
+        "nativePushElapsedMs": 1992.5
+      },
+      "changePercent": {
+        "elapsedMs": -24.0,
+        "nodeCpuMs": -71.6,
+        "directGitCalls": 0.0,
+        "nativePushes": 0.0,
+        "nativePushElapsedMs": -1.4
+      }
+    }
+  ],
+  "samples": [
+    {
+      "label": "before6",
+      "side": "baseline",
+      "source": {
+        "kind": "commit",
+        "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2",
+        "bundleSha256": "1df20f82f8cc2bed5381d7c5e48f27700d6325e74383d200f18ca8833c9a6ea3"
+      },
+      "scope": "Synthetic object-ID transport, isolated Native packed-object queries, and a two-new-commit single push to an existing local bare branch. No artificial delay, GitHub or UI. CPU/RSS are benchmark Node only; child CPU/RSS excluded. Fixture creation and GC precede each measurement; the Native pack is warm from setup.",
+      "results": [
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 100000,
+          "inputBytes": 4100000,
+          "metadataSumBytes": 12800000,
+          "mode": "buffered-list",
+          "elapsedMs": 1298,
+          "nodeCpuMs": 63,
+          "peakNodeRssDeltaMiB": 24,
+          "peakNodeHeapDeltaMiB": 6,
+          "peakNodeExternalDeltaMiB": 8,
+          "largestOutputChunk": 12788,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 2000000,
+          "inputBytes": 82000000,
+          "metadataSumBytes": 256000000,
+          "mode": "buffered-list",
+          "elapsedMs": 1952,
+          "nodeCpuMs": 555,
+          "peakNodeRssDeltaMiB": 300,
+          "peakNodeHeapDeltaMiB": 78,
+          "peakNodeExternalDeltaMiB": 156,
+          "largestOutputChunk": 12788,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-git-packed-objects",
+          "records": 100103,
+          "inputBytes": 4104223,
+          "metadataSumBytes": 17104041,
+          "mode": "buffered-list",
+          "elapsedMs": 591,
+          "nodeCpuMs": 166,
+          "peakNodeRssDeltaMiB": 27,
+          "peakNodeHeapDeltaMiB": 17,
+          "peakNodeExternalDeltaMiB": 8,
+          "largestOutputChunk": 11142,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-existing-branch-push",
+          "records": 100103,
+          "estimatedBytes": 17104041,
+          "elapsedMs": 3940,
+          "nodeCpuMs": 186,
+          "directGitCalls": 12,
+          "nativePushes": 1,
+          "nativePushElapsedMs": 1662,
+          "exactRemoteAndLocalHead": true,
+          "untrackedPreserved": true,
+          "ownedProcessesIdle": true
+        }
+      ]
+    },
+    {
+      "label": "after5",
+      "side": "candidate",
+      "source": {
+        "kind": "working-tree",
+        "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2",
+        "bundleSha256": "dc086071434497f512b6fc5c4d3e2f07078ab53b25c9acbcc0346e4d39b28380"
+      },
+      "scope": "Synthetic object-ID transport, isolated Native packed-object queries, and a two-new-commit single push to an existing local bare branch. No artificial delay, GitHub or UI. CPU/RSS are benchmark Node only; child CPU/RSS excluded. Fixture creation and GC precede each measurement; the Native pack is warm from setup.",
+      "results": [
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 100000,
+          "inputBytes": 4100000,
+          "metadataSumBytes": 12800000,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 520,
+          "nodeCpuMs": 46,
+          "peakNodeRssDeltaMiB": 10,
+          "peakNodeHeapDeltaMiB": 1,
+          "peakNodeExternalDeltaMiB": 2,
+          "largestOutputChunk": 19176,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 2000000,
+          "inputBytes": 82000000,
+          "metadataSumBytes": 256000000,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 1417,
+          "nodeCpuMs": 458,
+          "peakNodeRssDeltaMiB": 6,
+          "peakNodeHeapDeltaMiB": 2,
+          "peakNodeExternalDeltaMiB": 4,
+          "largestOutputChunk": 31960,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-git-packed-objects",
+          "records": 100103,
+          "inputBytes": 4104223,
+          "metadataSumBytes": 17104041,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 129,
+          "nodeCpuMs": 32,
+          "peakNodeRssDeltaMiB": 2,
+          "peakNodeHeapDeltaMiB": 15,
+          "peakNodeExternalDeltaMiB": 4,
+          "largestOutputChunk": 65536,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-existing-branch-push",
+          "records": 100103,
+          "estimatedBytes": 17104041,
+          "elapsedMs": 3565,
+          "nodeCpuMs": 66,
+          "directGitCalls": 12,
+          "nativePushes": 1,
+          "nativePushElapsedMs": 2410,
+          "exactRemoteAndLocalHead": true,
+          "untrackedPreserved": true,
+          "ownedProcessesIdle": true
+        }
+      ]
+    },
+    {
+      "label": "after6",
+      "side": "candidate",
+      "source": {
+        "kind": "working-tree",
+        "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2",
+        "bundleSha256": "dc086071434497f512b6fc5c4d3e2f07078ab53b25c9acbcc0346e4d39b28380"
+      },
+      "scope": "Synthetic object-ID transport, isolated Native packed-object queries, and a two-new-commit single push to an existing local bare branch. No artificial delay, GitHub or UI. CPU/RSS are benchmark Node only; child CPU/RSS excluded. Fixture creation and GC precede each measurement; the Native pack is warm from setup.",
+      "results": [
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 100000,
+          "inputBytes": 4100000,
+          "metadataSumBytes": 12800000,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 402,
+          "nodeCpuMs": 43,
+          "peakNodeRssDeltaMiB": 10,
+          "peakNodeHeapDeltaMiB": 1,
+          "peakNodeExternalDeltaMiB": 2,
+          "largestOutputChunk": 12784,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 2000000,
+          "inputBytes": 82000000,
+          "metadataSumBytes": 256000000,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 562,
+          "nodeCpuMs": 354,
+          "peakNodeRssDeltaMiB": 12,
+          "peakNodeHeapDeltaMiB": 2,
+          "peakNodeExternalDeltaMiB": 7,
+          "largestOutputChunk": 12784,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-git-packed-objects",
+          "records": 100103,
+          "inputBytes": 4104223,
+          "metadataSumBytes": 17104041,
+          "mode": "bounded-pipeline",
+          "elapsedMs": 334,
+          "nodeCpuMs": 46,
+          "peakNodeRssDeltaMiB": 14,
+          "peakNodeHeapDeltaMiB": 15,
+          "peakNodeExternalDeltaMiB": 4,
+          "largestOutputChunk": 65536,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-existing-branch-push",
+          "records": 100103,
+          "estimatedBytes": 17104041,
+          "elapsedMs": 2900,
+          "nodeCpuMs": 46,
+          "directGitCalls": 12,
+          "nativePushes": 1,
+          "nativePushElapsedMs": 1575,
+          "exactRemoteAndLocalHead": true,
+          "untrackedPreserved": true,
+          "ownedProcessesIdle": true
+        }
+      ]
+    },
+    {
+      "label": "before7",
+      "side": "baseline",
+      "source": {
+        "kind": "commit",
+        "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2",
+        "bundleSha256": "7015fa13d2a1fad7d5a3d4e4fdaf0b974e385038616df68606482ec624f26311"
+      },
+      "scope": "Synthetic object-ID transport, isolated Native packed-object queries, and a two-new-commit single push to an existing local bare branch. No artificial delay, GitHub or UI. CPU/RSS are benchmark Node only; child CPU/RSS excluded. Fixture creation and GC precede each measurement; the Native pack is warm from setup.",
+      "results": [
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 100000,
+          "inputBytes": 4100000,
+          "metadataSumBytes": 12800000,
+          "mode": "buffered-list",
+          "elapsedMs": 594,
+          "nodeCpuMs": 44,
+          "peakNodeRssDeltaMiB": 25,
+          "peakNodeHeapDeltaMiB": 6,
+          "peakNodeExternalDeltaMiB": 8,
+          "largestOutputChunk": 6396,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "synthetic-child-transport",
+          "records": 2000000,
+          "inputBytes": 82000000,
+          "metadataSumBytes": 256000000,
+          "mode": "buffered-list",
+          "elapsedMs": 1110,
+          "nodeCpuMs": 376,
+          "peakNodeRssDeltaMiB": 306,
+          "peakNodeHeapDeltaMiB": 78,
+          "peakNodeExternalDeltaMiB": 156,
+          "largestOutputChunk": 12788,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-git-packed-objects",
+          "records": 100103,
+          "inputBytes": 4104223,
+          "metadataSumBytes": 17104041,
+          "mode": "buffered-list",
+          "elapsedMs": 699,
+          "nodeCpuMs": 145,
+          "peakNodeRssDeltaMiB": 7,
+          "peakNodeHeapDeltaMiB": 17,
+          "peakNodeExternalDeltaMiB": 8,
+          "largestOutputChunk": 8676,
+          "exactRowsAndSum": true,
+          "ownedProcessesIdle": true
+        },
+        {
+          "fixture": "native-existing-branch-push",
+          "records": 100103,
+          "estimatedBytes": 17104041,
+          "elapsedMs": 4563,
+          "nodeCpuMs": 209,
+          "directGitCalls": 12,
+          "nativePushes": 1,
+          "nativePushElapsedMs": 2378,
+          "exactRemoteAndLocalHead": true,
+          "untrackedPreserved": true,
+          "ownedProcessesIdle": true
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "uniqueNodeChecks": 145,
+    "initialGroup": {
+      "exitCode": 1,
+      "seconds": 905.19,
+      "targets": [
+        "test/pushPublishedHistory.test.ts",
+        "test/pushPublishedHistoryMetadata.test.ts",
+        "test/sequentialPush.test.ts",
+        "test/sequentialPushMetadata.test.ts",
+        "test/pushHistoryPlanningPerformance.test.ts",
+        "test/pushPlanningPerformance.test.ts",
+        "test/pushPlanningSafety.test.ts",
+        "test/pushSafety.test.ts",
+        "test/pushValidatedSafety.test.ts",
+        "test/pushCheckoutIdentity.test.ts",
+        "test/pushTrackingReads.test.ts",
+        "test/pushProgress.test.ts",
+        "test/gitReadPipeline.test.ts",
+        "test/gitProcessLifecycle.test.ts",
+        "test/gitReadIndexSafety.test.ts",
+        "test/gitReadPolicy.test.ts",
+        "test/gitExecutable.test.ts",
+        "test/gitExecutionDiagnostics.test.ts"
+      ],
+      "log": "/private/tmp/gsc-read-pipeline-regression-23.log"
+    },
+    "initialGroupStatus": "Stopped at 900000ms; 121 individually completed checks retained, not counted as a completed passing group.",
+    "resumedGroup": {
+      "exitCode": 0,
+      "seconds": 311.3,
+      "partialGroup": {
+        "log": "/private/tmp/gsc-read-pipeline-regression-23.log",
+        "reason": "900000ms group limit; not a completed passing group",
+        "completedChecks": 121
+      },
+      "jobs": [
+        {
+          "label": "1",
+          "exitCode": 0,
+          "expectedCount": 5,
+          "passed": [
+            "a destination change at planning cannot replace the approved configuration fingerprint",
+            "push URL is used for planning when the fetch destination is different",
+            "explicit force pushes remain a single approved update",
+            "publication keeps git push -u semantics when the target is excluded from the fetch refspec",
+            "replace ancestry cannot turn an ordinary sequential push into a remote history rewrite"
+          ],
+          "exactSelection": true,
+          "log": "/private/tmp/gsc-read-pipeline-resume23-1.log"
+        },
+        {
+          "label": "2",
+          "exitCode": 0,
+          "expectedCount": 5,
+          "passed": [
+            "merge histories advance along the first-parent chain without force-rewriting side branches",
+            "restoring a gone upstream does not invalidate the remaining approved sequence",
+            "remote-branch and PR publication reuse server history through the shared push service",
+            "a partial PR push preserves the new local commit and reports remote progress without creating a PR",
+            "graft ancestry cannot turn an ordinary sequential push into a remote history rewrite"
+          ],
+          "exactSelection": true,
+          "log": "/private/tmp/gsc-read-pipeline-resume23-2.log"
+        },
+        {
+          "label": "3",
+          "exitCode": 0,
+          "expectedCount": 4,
+          "passed": [
+            "a detached checkout change between steps stops the remaining current-branch push",
+            "a remote tip on the merge second parent skips first-parent commits that would rewind the destination",
+            "a single outgoing commit and an already published tip use ordinary push",
+            "remote inspection errors never expose push URL credentials"
+          ],
+          "exactSelection": true,
+          "log": "/private/tmp/gsc-read-pipeline-resume23-3.log"
+        },
+        {
+          "label": "metadata",
+          "exitCode": 0,
+          "expectedCount": 9,
+          "passed": [
+            "streamed object sizes preserve the exact sum across byte and CRLF boundaries without stdout buffering",
+            "native object pipeline keeps the exact estimate and push result without buffering IDs",
+            "native object pipeline rejects invalid metadata before any push",
+            "invalid or overflowing metadata stops before any push (-1)",
+            "invalid or overflowing metadata stops before any push (1.5)",
+            "invalid or overflowing metadata stops before any push (missing)",
+            "invalid or overflowing metadata stops before any push (9007199254740992)",
+            "invalid or overflowing metadata stops before any push (9007199254740991)",
+            "invalid or overflowing metadata stops before any push (9999999999999999)"
+          ],
+          "exactSelection": true,
+          "log": "/private/tmp/gsc-read-pipeline-resume23-metadata.log"
+        }
+      ],
+      "uniqueChecks": 144,
+      "noDuplicateCount": true,
+      "fullCoverage": true
+    },
+    "finalChangedPathReruns": [
+      {
+        "log": "/private/tmp/gsc-read-pipeline-final13-23.log",
+        "passed": 13,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      {
+        "log": "/private/tmp/gsc-read-pipeline-buffered-regression23.log",
+        "passed": 15,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    ],
+    "passedNames": [
+      "50MiB of new object data automatically pushes the outgoing commits oldest first",
+      "Git startup diagnosis validates Git and reports the sample median",
+      "SHA-256 checkout and upstream commits remain complete native object IDs",
+      "a branch checkout change between steps stops the remaining current-branch push",
+      "a concurrent creation of the destination is rejected without leasing against the shared main tip",
+      "a configured push refspec keeps its destination when the plan is current",
+      "a corrupt upstream object remains an error rather than being treated as gone",
+      "a corrupted source branch pointing to a blob is rejected before push",
+      "a corrupted source branch pointing to a tag is rejected before push",
+      "a custom push destination retains its exact tracking OID and publishes only that branch",
+      "a destination change after one completed step cannot redirect later commits",
+      "a destination change at planning cannot replace the approved configuration fingerprint",
+      "a detached checkout change between steps stops the remaining current-branch push",
+      "a detached checkout is never reported as a current local branch",
+      "a linked worktree retains its private metadata directory and tracking commit",
+      "a local upstream resembling another remote keeps that selected destination's lease",
+      "a merge whose second parent is the remote tip checks only its two newest first-parent commits",
+      "a metadata parser error is preserved after both native queries close",
+      "a missing upstream is not supplied by a child ref or a tag with the same short name",
+      "a missing upstream keeps the current checkout and uses only the original two reads",
+      "a moved upstream is validated by its exact metadata OID",
+      "a native source failure keeps the real Git error and closes its sibling",
+      "a native target failure keeps the real Git error and closes its sibling",
+      "a new branch counts only unpublished objects and preserves staged, unstaged and untracked work",
+      "a new commit on the same branch invalidates a previously approved push",
+      "a new local commit during planning is caught by the fresh pre-transfer check",
+      "a partial PR push preserves the new local commit and reports remote progress without creating a PR",
+      "a pre-push hook changing local commits invalidates the remaining sequence",
+      "a real 50MiB object already published on main does not split three tiny new commits",
+      "a rejected middle step stops immediately and retry starts at the actual remote tip",
+      "a remote tip on the merge second parent skips first-parent commits that would rewind the destination",
+      "a single outgoing commit and an already published tip use ordinary push",
+      "a single outgoing commit does not repeat the same ancestry query before native push",
+      "a small push with thousands of outgoing commits does not materialize its entire commit sequence",
+      "a tracking ref prefix cannot supply a missing exact force-with-lease expectation",
+      "a transport failure after a server update does not replay the acknowledged remote ancestry",
+      "already-cancelled and failed-spawn pipelines settle without owned processes",
+      "ambiguous HEAD tags retain the real current branch and original upstream",
+      "an additional beforePush condition is checked before any remote planning read",
+      "an alternate upstream keeps its gone reason and current-branch lease",
+      "an alternate upstream keeps its name mismatch reason and current-branch lease",
+      "an approved force push can still replace a diverged remote branch",
+      "an early successful consumer cannot silently accept an unfinished producer",
+      "an empty object range finishes both reads without inventing metadata",
+      "an explicit lease protects another writer advancing the remote between steps",
+      "an upstream pointing to a blob retains Git's gone classification and approved destination",
+      "an upstream pointing to a missing retains Git's gone classification and approved destination",
+      "an upstream pointing to a tag retains Git's gone classification and approved destination",
+      "an upstream probe EACCES failure cannot be hidden as a missing ref",
+      "an upstream probe ETIMEDOUT failure cannot be hidden as a missing ref",
+      "an upstream probe GIT_READ_STOPPING failure cannot be hidden as a missing ref",
+      "backpressure preserves the former two-read deadline budget for slow producers and consumers",
+      "backpressure prevents the producer completing while the consumer is gated",
+      "buffer cancellation closes a SIGTERM-resistant Git process and its child",
+      "buffer status reads preserve actual index bytes and metadata even when optional locks are enabled by the caller",
+      "cancellation after one completed step never starts the next push or changes upstream",
+      "cancellation and timeout close both blocked read processes before rejecting",
+      "cancellation drains an already-exited producer whose stdout is blocked by its consumer",
+      "changing the push URL after full approval still prevents every actual remote update",
+      "clearEnv cannot accidentally remove the read-only index protection",
+      "combined checkout preserves newline and trailing spaces in the Git directory",
+      "configured executable applies to text, detailed, stdin, binary and stream calls",
+      "custom fetch mappings distinguish a present unknown upstream from a gone one",
+      "default remote selection keeps native byte ordering for Z.Mixed,Alpha,alpha",
+      "default remote selection keeps native byte ordering for 𐀀,",
+      "diagnosis rejects non-Git and missing executables",
+      "discovery failure hides credential-bearing transport errors while preserving cancellation",
+      "discovery keeps configured and PATH candidates without duplicates",
+      "disposing an observer suppresses its in-flight results and preserves a newer registration",
+      "executable paths with spaces and shell characters remain literal",
+      "execution timing separates synchronous spawn from completion without logging argument values",
+      "explicit executable overrides a broken configured path in every execution mode",
+      "explicit force pushes remain a single approved update",
+      "fast spawn failures keep their error code so retry delays can be diagnosed",
+      "first publication pushes its ancestry in order and sets upstream only after every step succeeds",
+      "first push publishes the approved commit and sets upstream on its local branch",
+      "force push rejects a branch switch after its plan was created",
+      "force-with-lease keeps the approved remote OID even after a background fetch",
+      "forceWithLease push rejects a branch switch after its plan was created",
+      "genuinely new large objects split only the three new commits and keep the destination's empty lease",
+      "graft ancestry cannot turn an ordinary sequential push into a remote history rewrite",
+      "invalid or overflowing metadata stops before any push (-1)",
+      "invalid or overflowing metadata stops before any push (1.5)",
+      "invalid or overflowing metadata stops before any push (9007199254740991)",
+      "invalid or overflowing metadata stops before any push (9007199254740992)",
+      "invalid or overflowing metadata stops before any push (9999999999999999)",
+      "invalid or overflowing metadata stops before any push (missing)",
+      "leader close preserves cleanup of a resistant child with independent stdio",
+      "local upstream refs are distinguished from missing remote tracking refs",
+      "lossy UTF-8 remote names retain native selection under the C locale",
+      "malformed advertisements or mismatched object replies cannot become published history proof",
+      "merge histories advance along the first-parent chain without force-rewriting side branches",
+      "missing configured Git fails without silently falling back",
+      "native cancellation aborts the Git task, preserves partial counts and disposes its listener",
+      "native object metadata preserves every row and sum with streamed stdout beyond maxBuffer",
+      "native object pipeline keeps the exact estimate and push result without buffering IDs",
+      "native object pipeline rejects invalid metadata before any push",
+      "normal push rejects a branch switch after its plan was created",
+      "observer failures cannot turn a successful Git command into an error or publish twice",
+      "only a registered private index may receive optional index writes",
+      "ordinary reads supply optional-lock protection even without explicit environment options",
+      "ordinary small multi-commit pushes keep a single remote update",
+      "partial failure explains retained remote commits without claiming the entire push failed",
+      "pipeline cancellation also reaps both SIGTERM-resistant process groups and their children",
+      "pipeline rejects writes before spawning and revalidates commands after preparation",
+      "plain push publishes the current commit to its configured destination",
+      "publication keeps git push -u semantics when the target is excluded from the fetch refspec",
+      "published tips validate chunked metadata, skip unknown/non-commits and bound selected exclusions",
+      "push URL is used for planning when the fetch destination is different",
+      "push checkout reads current and upstream commits in one process without changing the index",
+      "push planning checks tracking existence without walking thousands of upstream commits",
+      "push planning reads the selected branch and its exact tracking tip together",
+      "read deadline closes stubborn children and reports ETIMEDOUT",
+      "read deadline does not interrupt a write or hook-capable command",
+      "reading a tracking OID does not open its possibly missing object",
+      "reference queries are cancellable reads while reflog mutations remain protected",
+      "remote URL and refspec changes invalidate a previously approved push",
+      "remote enumeration preserves native Git membership for .url",
+      "remote enumeration preserves native Git membership for Case.Mixed/Remote",
+      "remote enumeration preserves native Git membership for unknownOnly",
+      "remote enumeration preserves native Git membership for 한글",
+      "remote inspection errors never expose push URL credentials",
+      "remote-branch and PR publication reuse server history through the shared push service",
+      "repeated extension sessions leave no owned foreground Git monitors after awaited dispose",
+      "replace ancestry cannot turn an ordinary sequential push into a remote history rewrite",
+      "resolver observes live repository choices and resets safely",
+      "restoring a gone upstream does not invalidate the remaining approved sequence",
+      "sequential notification counts confirmed commits and refreshes views after completion",
+      "startup probes terminate timed out and cancelled processes",
+      "status diagnostics classify private ownership and mode without leaking index paths or environment values",
+      "status diagnostics distinguish configured, complete and skipped untracked scans with bounded fields",
+      "stdin cancellation closes a SIGTERM-resistant Git process and its child",
+      "stdin status reads preserve actual index bytes and metadata even when optional locks are enabled by the caller",
+      "stdinStream cancellation closes a SIGTERM-resistant Git process and its child",
+      "stream cancellation closes a SIGTERM-resistant Git process and its child",
+      "stream status reads preserve actual index bytes and metadata even when optional locks are enabled by the caller",
+      "streamed object sizes preserve the exact sum across byte and CRLF boundaries without stdout buffering",
+      "switching branches inside pre-push cannot change the source commit or another branch upstream",
+      "tags named HEAD and like the current branch cannot change the selected push source",
+      "text cancellation closes a SIGTERM-resistant Git process and its child",
+      "text status reads preserve actual index bytes and metadata even when optional locks are enabled by the caller",
+      "the push URL's published history is not replaced by the fetch remote's newer tracking state",
+      "unknown and non-commit advertised objects are not fetched or used as published commit proof",
+      "upstream deletion and restoration are observed afresh on each plan",
+      "writes and unknown hook-capable commands retain the caller's environment"
+    ],
+    "types": "passed",
+    "lint": "Unavailable: no local/global ESLint executable, dependency or configuration; optional script exists. No dependency installed.",
+    "graph": {
+      "scope": "Functional only. Overlapped other functional Chromium checks, so no Graph timing/CPU/RSS comparison claims.",
+      "initialFailedAttempt": "/private/tmp/gsc-pipeline-graph-72123-first-failed.log",
+      "selectionCorrection": "Select the last final-signature publication; a newer payload intentionally supersedes an earlier frame ACK. Keep final frame and Native DOM equality assertions.",
+      "coalescingContractTests": {
+        "passed": 2,
+        "log": "/private/tmp/gsc-pipeline-render-coalescing23.log"
+      },
+      "version": "0.1.72123",
+      "source": {
+        "kind": "working-tree",
+        "commit": "3afb68fd5cce9212b9a30a1dc761e0d3f868a5a2",
+        "bundleSha256": "8b2eb0faa2a760714fed6d1e8bd7976574bd7a7ce3a9869693b81fea070887bd"
+      },
+      "fixture": {
+        "files": 128,
+        "commits": 400,
+        "branches": 40,
+        "sharedUpstreamBranches": 8,
+        "network": "local-bare-only",
+        "monitorPolicy": true,
+        "pushThresholdBytes": 2048
+      },
+      "results": [
+        {
+          "operation": "push",
+          "operationMs": 2456,
+          "graphMs": 69,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 113,
+            "latestMutationToFrameMs": 738,
+            "renderMs": 8,
+            "frameMs": 14
+          },
+          "latestGraphPublishedMs": 723,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3207,
+          "processes": 39,
+          "operationProcesses": 33,
+          "graphProcesses": 6,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 6093,
+          "commands": {
+            "config": 9,
+            "rev-parse": 5,
+            "for-each-ref": 6,
+            "remote": 1,
+            "ls-remote": 2,
+            "rev-list": 7,
+            "cat-file": 3,
+            "push": 3,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "config": 559,
+            "rev-parse": 257,
+            "for-each-ref": 128,
+            "remote": 9,
+            "ls-remote": 248,
+            "rev-list": 499,
+            "cat-file": 36,
+            "push": 1454,
+            "branch": 30,
+            "worktree": 38,
+            "status": 436
+          },
+          "nodeCpuMs": 156,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -34,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "push-tracked",
+          "operationMs": 858,
+          "graphMs": 26,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 55,
+            "latestMutationToFrameMs": 95,
+            "renderMs": 6,
+            "frameMs": 7
+          },
+          "latestGraphPublishedMs": 77,
+          "graphAlreadyCurrent": false,
+          "settledMs": 965,
+          "processes": 31,
+          "operationProcesses": 25,
+          "graphProcesses": 6,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 6253,
+          "commands": {
+            "config": 8,
+            "rev-parse": 2,
+            "for-each-ref": 6,
+            "remote": 1,
+            "ls-remote": 1,
+            "merge-base": 2,
+            "rev-list": 5,
+            "cat-file": 1,
+            "push": 3,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "config": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "config": 84,
+            "rev-parse": 38,
+            "for-each-ref": 176,
+            "remote": 74,
+            "ls-remote": 45,
+            "merge-base": 31,
+            "rev-list": 91,
+            "cat-file": 19,
+            "push": 442,
+            "worktree": 8,
+            "status": 31
+          },
+          "nodeCpuMs": 85,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 1,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        }
+      ]
+    }
+  },
+  "failureRegressions": [
+    {
+      "before": "/private/tmp/gsc-read-pipeline-exited-before.log",
+      "after": "/private/tmp/gsc-read-pipeline-exited-after.log",
+      "condition": "Producer already exited with unread stdout blocked by downstream; stop must unpipe and drain before close can settle."
+    },
+    {
+      "before": "/private/tmp/gsc-read-pipeline-budget-before23.log",
+      "after": "/private/tmp/gsc-read-pipeline-final13-23.log",
+      "condition": "The former two sequential 6000ms queries succeed but a parallel pipeline using separate 6000ms clocks fails. Preserve the sum of both query budgets, including explicit 0."
+    }
+  ],
+  "excludedExperiments": [
+    {
+      "labels": [
+        "before1"
+      ],
+      "reason": "Pilot: different metadata assertion and no Native cases; not pooled."
+    },
+    {
+      "labels": [
+        "before2",
+        "after1",
+        "after2",
+        "before3"
+      ],
+      "reason": "Prototype before deadline-budget correction; flat 100k-file fixture. Preserved outside final comparison."
+    },
+    {
+      "labels": [
+        "before4",
+        "after3",
+        "after4",
+        "before5"
+      ],
+      "reason": "Prototype without batch buffering. Native query Node CPU median increased 210.5 to 278.5ms; this prompted the final --buffer change. These samples are not pooled with final source."
+    }
+  ],
+  "wholeGoalComplete": false,
+  "remaining": "Initial full-history object walk remains. Unknown published tips, common button-to-Graph push latency and interactive message/squash latency still need work. Current Native push measurement covers pushBranchCommits only, not full VS Code button/Graph time."
+}

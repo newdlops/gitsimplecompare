@@ -236,7 +236,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
             remoteReady: cache.remoteReady, completed: !!cache.peek(), failures: localOnlyFailures })}`);
       }
       const finalSignature = graphSignature(panel.commits), graphAlreadyCurrent = initialSignature === finalSignature;
-      const latestPublication = publications.find(publication => publication.at >= operationEnd && publication.signature === finalSignature);
+      // 같은 최종 상태가 한 frame 전에 연속 게시되면 renderer는 이전 ACK를 정상 생략하므로 마지막 게시를 검증한다.
+      const latestPublication = publications.slice().reverse().find(publication => publication.at >= operationEnd && publication.signature === finalSignature);
       const latestPublishedAt = latestPublication?.at;
       assert.ok(latestPublishedAt !== undefined || graphAlreadyCurrent, "Changed final Git graph must have been published; unchanged data needs no repaint.");
       const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance,

@@ -1,6 +1,7 @@
 // Git CLI를 실제 실행하는 단일 진입점. 소유 실행·바이트 수집은 공통 runner에 위임한다.
 import { GitError } from "./gitError";
 import { executeGitProcess } from "./gitProcessRunner";
+import { executeGitReadPipeline } from "./gitReadPipeline";
 export { GitError } from "./gitError";
 
 /** 조회·쓰기 호출이 함께 사용하는 실행 옵션. 시간 제한은 검증된 조회에만 적용한다. */
@@ -60,6 +61,18 @@ export async function runGitStream(args: string[], cwd: string, onData: (chunk: 
 export async function runGitStreamWithInput(args: string[], cwd: string, input: GitInput,
   onData: (chunk: Buffer) => void, options: RunGitOptions = {}): Promise<void> {
   await executeGitProcess(resolveGitExecutable(cwd, options.executable), args, cwd, options, input, onData);
+}
+
+/**
+ * 두 조회 사이의 stdout/stdin을 bounded pipe로 연결해 전체 객체 ID 목록을 문자열로 만들지 않는다.
+ * @param sourceArgs 객체 목록 등을 내보낼 조회 @param targetArgs 각 입력의 metadata를 반환할 조회
+ * @param cwd 두 조회가 고정할 저장소 @param onData 마지막 출력의 동기 소비자
+ * @param options 공통 환경·취소·조회 deadline. 두 조회의 시간 예산을 합산하고 0은 제한을 해제한다.
+ * @returns 모든 조회의 성공과 정리가 확인되면 완료하며 자동 재시도하지 않는다.
+ */
+export function runGitReadPipeline(sourceArgs: string[], targetArgs: string[], cwd: string,
+  onData: (chunk: Buffer) => void, options: RunGitOptions = {}): Promise<void> {
+  return executeGitReadPipeline(resolveGitExecutable(cwd, options.executable), sourceArgs, targetArgs, cwd, onData, options);
 }
 
 /**

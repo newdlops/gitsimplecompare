@@ -87,7 +87,8 @@ export class GraphLiveRenderer {
     const paint = this.paints.find(item => item.performance.sentAt >= operationEndedAt);
     assert.ok(paint || graphAlreadyCurrent, "Latest Git mutation never crossed the real renderer frame boundary");
     const latestPaint = finalPaint();
-    assert.ok(!latest || latestPaint, "Final local-only/metadata publication never crossed the renderer frame boundary");
+    assert.ok(!latest || latestPaint, "Final local-only/metadata publication never crossed the renderer frame boundary: " +
+      JSON.stringify({ expected: latest, received: this.paints.map(paint => paint.performance) }));
     const rows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .filter(element => /^[a-f0-9]{40,64}$/.test((element as HTMLElement).dataset.hash || ""))
       .map(element => ({ hash: (element as HTMLElement).dataset.hash!, refs: ((element as HTMLElement).dataset.refs || "").split("\t").filter(Boolean),
