@@ -1,0 +1,159 @@
+{
+  "version": "0.1.72128",
+  "baselineCommit": "f3d34bd6f60371da008751caeca8abac42a65433",
+  "candidateDuringMeasurement": "Working tree based on the baseline; exact runtime source SHA-256 below. Only the release version was advanced after timing.",
+  "order": [
+    "beforea",
+    "aftera",
+    "afterb",
+    "beforeb"
+  ],
+  "sourceAndHarnessSha256": {
+    "src/git/sequentialPush.ts": "50e8f20fb75778e7cf664297e35328558b6482f9244857f603767451ccd7bd19",
+    "src/git/pushPublishedHistory.ts": "a6f8e52e4d0839b07c536548e4136959d994e077bc1069ec9eb5b2ae9f01ce20",
+    "test/benchmarks/publishedPush.ts": "2b01917baa6ccae514684f25f10a199fa7a9b158462be2442ae3bb0cbaddd5b5",
+    "test/helpers/publishedPushFixture.ts": "caf44f5b1dc4e20eee9aa90ba2ce4100d014917e9bf12841ce7715a550e8ab2c",
+    "scripts/benchmark-published-push.mjs": "7197b002649c2999d7602d33bbe5de8112e1672e3f4f4c9f1eee5807ae5510ae"
+  },
+  "sourceSha256": {
+    "src/git/sequentialPush.ts": "50e8f20fb75778e7cf664297e35328558b6482f9244857f603767451ccd7bd19",
+    "src/git/pushPublishedHistory.ts": "a6f8e52e4d0839b07c536548e4136959d994e077bc1069ec9eb5b2ae9f01ce20"
+  },
+  "fixture": {
+    "advertisedBranches": 65,
+    "staleAdvertisedBranches": 64,
+    "publishedCommits": 96,
+    "unpublishedCommits": 3,
+    "thresholdBytes": 2048,
+    "remote": "Owned local bare only",
+    "samplesPerVersionPerMode": 2
+  },
+  "scope": "Actual Native pushes and receiver-hook ref updates. Equal fixtures and common harness, serial ABBA. No Graph rendering, real external server/network timing or OS-wide CPU/memory measurement in this comparison.",
+  "change": {
+    "recentWindow": "At most 65 first-parent rows only when the same actual-server advertisement has more than64 distinct tips; otherwise the original2 rows.",
+    "proof": "Add only the nearest advertised commit from the Native source first-parent range; retain all existing typed exclusions.",
+    "bound": "At most64 metadata-verified tips plus one Native-source-verified frontier; reuse the existing recent-commit Git process.",
+    "safety": "Fresh source/configuration checks and the actual destination lease are unchanged; the published frontier is never the destination lease."
+  },
+  "modes": [
+    {
+      "mode": "shared-small-feature",
+      "before": {"elapsedMs":{"values":[101537,40405],"median":70971,"min":40405,"max":101537},"readyMs":{"values":[2998,332],"median":1665,"min":332,"max":2998},"planMs":{"values":[592,83],"median":337.5,"min":83,"max":592},"directGitCalls":{"values":[123,123],"median":123,"min":123,"max":123},"nativePushes":{"values":[35,35],"median":35,"min":35,"max":35},"remoteRefUpdates":{"values":[35,35],"median":35,"min":35,"max":35},"plannedTransfers":{"values":[35,35],"median":35,"min":35,"max":35},"estimatedBytes":{"values":[8404,8404],"median":8404,"min":8404,"max":8404},"nodeCpuMs":{"values":[244,231],"median":237.5,"min":231,"max":244}},
+      "after": {"elapsedMs":{"values":[2695,1207],"median":1951,"min":1207,"max":2695},"readyMs":{"values":[441,175],"median":308,"min":175,"max":441},"planMs":{"values":[137,42],"median":89.5,"min":42,"max":137},"directGitCalls":{"values":[20,20],"median":20,"min":20,"max":20},"nativePushes":{"values":[1,1],"median":1,"min":1,"max":1},"remoteRefUpdates":{"values":[1,1],"median":1,"min":1,"max":1},"plannedTransfers":{"values":[1,1],"median":1,"min":1,"max":1},"estimatedBytes":{"values":[1044,1044],"median":1044,"min":1044,"max":1044},"nodeCpuMs":{"values":[49,42],"median":45.5,"min":42,"max":49}},
+      "medianChangePercent": {"elapsedMs":-97.3,"readyMs":-81.5,"planMs":-73.5,"directGitCalls":-83.7,"nativePushes":-97.1,"remoteRefUpdates":-97.1,"plannedTransfers":-97.1,"estimatedBytes":-87.6,"nodeCpuMs":-80.8}
+    },
+    {
+      "mode": "shared-large-feature",
+      "before": {"elapsedMs":{"values":[88818,14934],"median":51876,"min":14934,"max":88818},"readyMs":{"values":[3467,196],"median":1831.5,"min":196,"max":3467},"planMs":{"values":[696,41],"median":368.5,"min":41,"max":696},"directGitCalls":{"values":[123,123],"median":123,"min":123,"max":123},"nativePushes":{"values":[35,35],"median":35,"min":35,"max":35},"remoteRefUpdates":{"values":[35,35],"median":35,"min":35,"max":35},"plannedTransfers":{"values":[35,35],"median":35,"min":35,"max":35},"estimatedBytes":{"values":[19668,19668],"median":19668,"min":19668,"max":19668},"nodeCpuMs":{"values":[229,206],"median":217.5,"min":206,"max":229}},
+      "after": {"elapsedMs":{"values":[10345,2706],"median":6525.5,"min":2706,"max":10345},"readyMs":{"values":[3580,1217],"median":2398.5,"min":1217,"max":3580},"planMs":{"values":[774,583],"median":678.5,"min":583,"max":774},"directGitCalls":{"values":[27,27],"median":27,"min":27,"max":27},"nativePushes":{"values":[3,3],"median":3,"min":3,"max":3},"remoteRefUpdates":{"values":[3,3],"median":3,"min":3,"max":3},"plannedTransfers":{"values":[3,3],"median":3,"min":3,"max":3},"estimatedBytes":{"values":[12308,12308],"median":12308,"min":12308,"max":12308},"nodeCpuMs":{"values":[63,44],"median":53.5,"min":44,"max":63}},
+      "medianChangePercent": {"elapsedMs":-87.4,"readyMs":31,"planMs":84.1,"directGitCalls":-78,"nativePushes":-91.4,"remoteRefUpdates":-91.4,"plannedTransfers":-91.4,"estimatedBytes":-37.4,"nodeCpuMs":-75.4}
+    }
+  ],
+  "regression": {
+    "before": {
+      "tested": 2,
+      "failed": 2,
+      "evidence": "/private/tmp/gsc-frontier28-before-node.log"
+    },
+    "broad": {
+      "passed": 34,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "finalFocused": {
+      "passed": 5,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "sequencer": {
+      "passed": 33,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "distinctPassedNames": 68,
+    "typecheck": "passed",
+    "cases": [
+      "Real published50MiB object remains a single default-threshold transfer",
+      "Staged/unstaged/untracked edits, index, source HEAD and old receiver heads preserved",
+      "Genuinely new large changes keep exactly three empty-lease-first transfers",
+      "Concurrent new destination is rejected before the first update",
+      "Unadvertised local base and unknown remote commit never become exclusion proof",
+      "2049 advertised branches retain one65-row window and at most65 exclusions"
+    ],
+    "finalNativeAndRenderedCases": 18,
+    "finalActualButtonCases": 4,
+    "sharedUpstreamBranchesInFinalUiChecks": 80
+  },
+  "finalUiScope": "Functional checks only, not another before/after timing series; production HTML/CSP/JS and registered control callbacks with replacement VS Code API/pickers, no OS focus.",
+  "rawRuns": [
+    {
+      "label": "beforea",
+      "output": "/private/tmp/gsc-frontier28-paired-beforea.json",
+      "source": {"kind":"commit","commit":"f3d34bd6f60371da008751caeca8abac42a65433","bundleSha256":"cc5ae5b3c30708cf68eb6a9cc098852eed74ff1f3d938325f940d7538f40066e"},
+      "sha256": "2cc1d61f4f8f6013d3dd21ac5764e383f727933c6b7fa79efae8326563056a18"
+    },
+    {
+      "label": "aftera",
+      "output": "/private/tmp/gsc-frontier28-paired-aftera.json",
+      "source": {"kind":"working-tree","commit":"f3d34bd6f60371da008751caeca8abac42a65433","bundleSha256":"7cdd5ddd812b3da66eaaebeabb7fa854218a621349881fd8677f354873151ce9"},
+      "sha256": "09ea5d739d97064ae98f36aa413b5f826989589bdc3f6079fb8a233e0802d837"
+    },
+    {
+      "label": "afterb",
+      "output": "/private/tmp/gsc-frontier28-paired-afterb.json",
+      "source": {"kind":"working-tree","commit":"f3d34bd6f60371da008751caeca8abac42a65433","bundleSha256":"7cdd5ddd812b3da66eaaebeabb7fa854218a621349881fd8677f354873151ce9"},
+      "sha256": "e082e20f32e726da21933cef3c7c357d2b337f9739af2fbba4963ee498ecca04"
+    },
+    {
+      "label": "beforeb",
+      "output": "/private/tmp/gsc-frontier28-paired-beforeb.json",
+      "source": {"kind":"commit","commit":"f3d34bd6f60371da008751caeca8abac42a65433","bundleSha256":"36b39a8ea5fb23e57d8f7188f3fba9151d02a231dfcd355b67696600538ceaab"},
+      "sha256": "99bd497209fd5217f01d30077df96984fce3e24b68846836d175bd34f6427dfd"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-frontier28-node.log",
+      "sha256": "b058ecaac506c1f66600f5428bffdfbbd8dc1d9f961f53a8be42927251d694cf"
+    },
+    {
+      "path": "/private/tmp/gsc-frontier28-final-node.log",
+      "sha256": "5359990e127d42a8660b570afa96edd36deed5311488e60e580406118020d952"
+    },
+    {
+      "path": "/private/tmp/gsc-frontier28-sequencer-node.log",
+      "sha256": "ed16a8076dffb90c3e86ad587db389e221344f71d57d33b8a73fa012cbaa314e"
+    },
+    {
+      "path": "/private/tmp/gsc-frontier28-final-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/gsc-frontier28-final-matrix.json",
+      "sha256": "84f521cb5f5620d5261bed5a745ce8eaf301cf3b2801c321be3ed72bc4adc8e8"
+    },
+    {
+      "path": "/private/tmp/gsc-frontier28-final-buttons.json",
+      "sha256": "39af99f8e48d021b7e38cf56b6f61f10b240c2a8725c0e907ed7ee25eb6848db"
+    }
+  ],
+  "artifact": {
+    "bytes": 992029,
+    "sha256": "7d0617d8c73bd000ba8323c43838fdcde70a7a068ab908b0261c9ddb5a6776d1",
+    "extensionSha256": "de644cf0966c0003e89eb3ff5d4595f5f126129b2421ae928c8ee9975d82e915",
+    "verifiedRuntimeFiles": 125
+  },
+  "limitations": [
+    "Two samples per version/mode with uncontrolled external load; retain every slow sample.",
+    "Small2KiB threshold scales the branch-history error. The real50MiB test proves planning and state preservation, not external network throughput.",
+    "Ready/planning time is mixed, including a slower large-feature median; do not claim all phases improved.",
+    "Node CPU excludes Git, hooks/helpers, Chromium and total OS CPU. RSS is not measured here.",
+    "The bounded window cannot discover every older or non-first-parent published base. Fallback remains conservative.",
+    "An advanced advertised tip whose shared source base is not itself advertised is not proven by membership in this window; unknown server objects stay conservative.",
+    "This push improvement does not establish a general latency gain across pull/fetch/rebase/merge/PR/cherry-pick/checkout and final Graph."
+  ],
+  "wholeGoalComplete": false
+}

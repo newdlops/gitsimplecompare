@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.72128] - 2026-10-21
+
+### Performance
+
+- Find a nearby published first-parent base when many advertised branches put
+  it outside the first 64 verified tips. Reuse the existing recent-commit query
+  with at most 65 rows and retain all existing exclusions plus one source-proven
+  base, avoiding unnecessary history estimation and repeated push updates.
+
+### Fixed
+
+- Keep original DAG checks, the actual push server advertisement, fresh
+  source/configuration checks and empty initial destination leases. Never
+  exclude an unadvertised local base or use it as the destination lease.
+
+### Development
+
+- Cover a real already-published 50MiB object, staged/unstaged/untracked edits,
+  concurrent destination creation and a server advertising 2,049 branches.
+- Compare actual Native pushes with identical baseline/candidate fixtures and
+  retain local receiver updates, scoped Node CPU and full timing samples.
+
 ## [0.1.72127] - 2026-10-21
 
 ### Fixed

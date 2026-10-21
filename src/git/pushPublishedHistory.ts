@@ -3,7 +3,7 @@ import type { RunGitOptions } from "./gitExec";
 import type { PushGitRunner } from "./sequentialPush";
 
 /** rev-list 인자와 후속 이력 계산에 넣는 검증된 제외 tip의 수를 제한한다. */
-const MAX_PUBLISHED_TIPS = 64;
+export const MAX_PUBLISHED_TIPS = 64;
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 
 /**

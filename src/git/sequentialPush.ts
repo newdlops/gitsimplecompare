@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
-import { readPublishedPushTips, readPushBranchAdvertisement } from "./pushPublishedHistory";
+import { MAX_PUBLISHED_TIPS, readPublishedPushTips, readPushBranchAdvertisement } from "./pushPublishedHistory";
 import { logInfo } from "../ui/outputLog";
 
 /** 압축 전 신규 Git 객체 합계가 이 값 이상인 다중 커밋 push를 분할한다. */
@@ -86,7 +86,7 @@ interface TransferPlan {
 }
 
 /** 최근 후보의 원본 부모를 함께 읽어 추가 Git 조회 없이 선형 이력과 전체 두 커밋 경계를 판정한다. */
-interface RecentPushCommits { commits: string[]; oldestParents: string[]; headParents: string[]; }
+interface RecentPushCommits { commits: string[]; oldestParents: string[]; headParents: string[]; publishedBase?: string; }
 
 const defaultRunner: PushGitRunner = { run: runGit, input: runGitWithInput, inputStream: runGitStreamWithInput, pipe: runGitReadPipeline };
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
@@ -214,9 +214,15 @@ async function prepareTransfer(
   }
   // 같은 서버 광고의 게시 이력을 먼저 제외해 새 branch의 기존 기본 이력 전체를 크기 조회하지 않는다.
   // 제외 tip은 빈 목적 branch의 lease와 분리하고, 로컬에서 commit으로 검증한 값만 사용한다.
-  const excludedHeads = remoteHead ? [remoteHead] : await readPublishedPushTips(root, urls[0], target.head, runner, runOptions, completeAdvertisement ? advertisement : undefined);
-  if (!remoteHead) logInfo("push published history checked", { repoRoot: root, verifiedTips: excludedHeads.length });
-  const recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
+  const published = remoteHead ? undefined : completeAdvertisement ? advertisement : await readPushBranchAdvertisement(root, urls[0], runner, runOptions);
+  const excludedHeads = remoteHead ? [remoteHead] : await readPublishedPushTips(root, urls[0], target.head, runner, runOptions, published);
+  const recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions,
+    published ? new Set(published.values()) : undefined);
+  // 광고 순서 때문에 64개 표본에서 빠진 실제 first-parent base만 보충한다.
+  // 기존 제외 tip은 모두 유지한다. 별도 Git 없이 읽은 commit이므로 최대 64+1개로 한정된다.
+  if (recent.publishedBase && !excludedHeads.includes(recent.publishedBase)) excludedHeads.push(recent.publishedBase);
+  if (!remoteHead) logInfo("push published history checked", { repoRoot: root, verifiedTips: excludedHeads.length,
+    firstParentBaseUsed: !!recent.publishedBase });
   // 한 커밋은 분할하지 않으므로 이미 확인한 remoteHead → target.head 조상 관계를 다시 읽지 않는다.
   if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit");
   const complete = remoteHead ? recent.oldestParents[0] === remoteHead : !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
@@ -261,14 +267,18 @@ async function readFirstParentCommits(
 
 /**
  * @param root 저장소 루트 @param target 고정 source @param excludedHeads 실제 서버가 소유한 제외 tip
- * @param runner Git 실행 경계 @param runOptions 원본 DAG·취소 정책 @returns 최신 두 후보와 실제 부모 OID
+ * @param runner Git 실행 경계 @param runOptions 원본 DAG·취소 정책
+ * @param publishedTips 같은 실제 서버가 광고한 OID. 64개를 넘을 때만 기존 조회를 최대 65개로 넓힌다.
+ * @returns 최신 두 후보와 실제 부모 OID, Native first-parent 조회가 검증한 가장 가까운 게시 base
  * max-count는 reverse 전에 적용된다. 메시지는 출력하지 않고 NUL 필드로 해시와 부모만 구분한다.
  */
 async function readRecentFirstParentCommits(
-  root: string, target: BranchPushTarget, excludedHeads: readonly string[], runner: PushGitRunner, runOptions: RunGitOptions
+  root: string, target: BranchPushTarget, excludedHeads: readonly string[], runner: PushGitRunner, runOptions: RunGitOptions,
+  publishedTips?: ReadonlySet<string>
 ): Promise<RecentPushCommits> {
+  const maxCount = publishedTips && publishedTips.size > MAX_PUBLISHED_TIPS ? MAX_PUBLISHED_TIPS + 1 : 2;
   const output = await runner.run([
-    "rev-list", "--first-parent", "--reverse", "--max-count=2", "--format=%H%x00%P", "--no-commit-header",
+    "rev-list", "--first-parent", "--reverse", `--max-count=${maxCount}`, "--format=%H%x00%P", "--no-commit-header",
     target.head, ...excludedHeads.map(head => `^${head}`), "--",
   ], root, runOptions);
   const entries = output.trimEnd().split(/\r?\n/).filter(Boolean).map(line => {
@@ -277,8 +287,16 @@ async function readRecentFirstParentCommits(
     if (!OID.test(hash) || rawParents === undefined || parents.some(parent => !OID.test(parent))) throw new Error("Could not read the outgoing commit sequence.");
     return { hash, parents };
   });
-  if (entries.length > 2 || (entries.length === 2 && entries[1].parents[0] !== entries[0].hash)) throw new Error("Could not read the outgoing commit sequence.");
-  return { commits: entries.map(entry => entry.hash), oldestParents: entries[0]?.parents || [], headParents: entries.at(-1)?.parents || [] };
+  if (entries.length > maxCount || entries.some((entry, index) => index > 0 && entry.parents[0] !== entries[index - 1].hash) ||
+      (entries.length > 0 && entries.at(-1)!.hash !== target.head)) throw new Error("Could not read the outgoing commit sequence.");
+  // 기존 제외 tip을 적용한 연속 first-parent 열이므로 추가 base의 조상 쪽 항목만 제거된다.
+  let publishedIndex = -1;
+  if (maxCount > 2) for (let index = entries.length - 1; index >= 0; index--) {
+    if (publishedTips!.has(entries[index].hash)) { publishedIndex = index; break; }
+  }
+  const recent = entries.slice(publishedIndex + 1).slice(-2);
+  return { commits: recent.map(entry => entry.hash), oldestParents: recent[0]?.parents || [], headParents: recent.at(-1)?.parents || [],
+    publishedBase: publishedIndex < 0 ? undefined : entries[publishedIndex].hash };
 }
 
 /**
