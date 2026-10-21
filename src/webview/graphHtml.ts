@@ -48,6 +48,7 @@ export function buildGraphHtml(
   const prStacksScriptUri = script(webview, mediaRoot, "graphPrStacks.js");
   const prScriptUri = script(webview, mediaRoot, "graphPr.js");
   const prViewStateScriptUri = script(webview, mediaRoot, "graphPrViewState.js");
+  const prPeopleScriptUri = script(webview, mediaRoot, "graphPrPeople.js");
   const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
   const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
   const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
@@ -114,6 +115,13 @@ export function buildGraphHtml(
   const showOutputTitle = vscode.l10n.t("Show Git Simple Compare Output");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
+    prAuthor: vscode.l10n.t("Author"), prReviewers: vscode.l10n.t("Reviewers"),
+    unknownAuthor: vscode.l10n.t("Unknown author"), reviewLoading: vscode.l10n.t("Loading reviewers…"),
+    reviewUnavailable: vscode.l10n.t("Reviewers unavailable"), reviewNone: vscode.l10n.t("No reviewers"),
+    reviewAwaiting: vscode.l10n.t("Awaiting review"), reviewApproved: vscode.l10n.t("Approved"),
+    reviewChanges: vscode.l10n.t("Changes requested"), reviewCommented: vscode.l10n.t("Commented"),
+    reviewDismissed: vscode.l10n.t("Dismissed"), reviewPending: vscode.l10n.t("Pending"),
+    reviewTeam: vscode.l10n.t("Team"), reviewMore: vscode.l10n.t("More reviewers are not shown"),
     loadingPullRequests: vscode.l10n.t("Loading pull requests…"),
     loadingPrDetails: vscode.l10n.t("Loading remaining commits and comments…"),
     loadingPrCommits: vscode.l10n.t("Loading pull request commits…"),
@@ -321,6 +329,7 @@ export function buildGraphHtml(
   <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
   <script nonce="${nonce}" src="${prStacksScriptUri}"></script>
   <script nonce="${nonce}" src="${prViewStateScriptUri}"></script>
+  <script nonce="${nonce}" src="${prPeopleScriptUri}"></script>
   <script nonce="${nonce}" src="${prScriptUri}"></script>
   <script nonce="${nonce}" src="${contextScriptUri}"></script>
   <script nonce="${nonce}" src="${detailScriptUri}"></script>

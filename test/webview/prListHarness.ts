@@ -13,6 +13,10 @@ export async function mountList(page: Page, korean: boolean) {
     document.querySelector("#graph-toolbar")!.append(button);
     w.GscGraphPostMessage = (message: unknown) => w.__gscFixtureMessages.push(structuredClone(message));
     w.GscPrStackI18n = {
+      prAuthor: ko ? "작성자" : "Author", prReviewers: ko ? "리뷰어" : "Reviewers",
+      reviewLoading: ko ? "리뷰어를 불러오는 중…" : "Loading reviewers…",
+      reviewNone: ko ? "리뷰어 없음" : "No reviewers", reviewUnavailable: ko ? "리뷰어 정보 없음" : "Reviewers unavailable",
+      reviewApproved: ko ? "승인됨" : "Approved", reviewChanges: ko ? "변경 요청" : "Changes requested", reviewAwaiting: ko ? "리뷰 대기" : "Awaiting review",
       loadingPullRequests: ko ? "PR을 불러오는 중…" : "Loading pull requests…",
       loadingPrDetails: ko ? "나머지 커밋과 댓글을 불러오는 중…" : "Loading remaining commits and comments…",
       loadingPrCommits: ko ? "PR 커밋을 불러오는 중…" : "Loading pull request commits…",
@@ -21,9 +25,9 @@ export async function mountList(page: Page, korean: boolean) {
       openPullRequest: "Open pull request #{0} in browser",
     };
   }, korean);
-  await page.addStyleTag({ content: `html,body{--vscode-disabledForeground:#777;--vscode-button-secondaryForeground:#ddd;--vscode-button-secondaryBackground:#3a3d41;--vscode-input-background:#3c3c3c;--vscode-input-foreground:#ccc;--vscode-editor-font-family:Menlo,monospace;--vscode-gitDecoration-addedResourceForeground:#81b88b;--vscode-gitDecoration-deletedResourceForeground:#f14c4c;--vscode-gitDecoration-modifiedResourceForeground:#e2c08d;--vscode-gitDecoration-renamedResourceForeground:#73c991}` });
+  await page.addStyleTag({ content: `html,body{--vscode-disabledForeground:#777;--vscode-button-secondaryForeground:#ddd;--vscode-button-secondaryBackground:#3a3d41;--vscode-input-background:#3c3c3c;--vscode-input-foreground:#ccc;--vscode-editor-font-family:var(--vscode-font-family);--vscode-gitDecoration-addedResourceForeground:#81b88b;--vscode-gitDecoration-deletedResourceForeground:#f14c4c;--vscode-gitDecoration-modifiedResourceForeground:#e2c08d;--vscode-gitDecoration-renamedResourceForeground:#73c991}` });
   for (const file of ["graphPr.css", "graphPrFiles.css", "graphControls.css"]) await page.addStyleTag({ path: join(process.cwd(), "media/graph", file) });
-  for (const file of ["graphPrActions.js", "graphPrSearch.js", "graphPrMatching.js", "graphPrFiles.js", "graphPrViewState.js", "graphPr.js"]) {
+  for (const file of ["graphPrActions.js", "graphPrSearch.js", "graphPrMatching.js", "graphPrFiles.js", "graphPrViewState.js", "graphPrPeople.js", "graphPr.js"]) {
     await page.addScriptTag({ path: join(process.cwd(), "media/graph", file) });
   }
 }

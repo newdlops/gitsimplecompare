@@ -14,6 +14,7 @@ import type {
   GhPullRequestLabels,
   PullRequestLabelInfo,
 } from "./pullRequestLabels";
+import { normalizePullRequestReviewers, PULL_REQUEST_REVIEWERS_QUERY, type GhPullRequestReviewers, type PullRequestReviewer } from "./pullRequestReviewers";
 
 /** graph 에 표시하고 PR 작업에 전달할 Pull Request 한 건 */
 export interface PullRequestInfo {
@@ -30,6 +31,9 @@ export interface PullRequestInfo {
   /** merge/squash/rebase 뒤 base branch에 반영된 결과 commit OID */
   mergeHash?: string;
   author: string;
+  reviewers?: PullRequestReviewer[];
+  /** false면 제한된 reviewer 연결 뒤에 더 많은 사용자가 있다. 미조회는 reviewers 자체가 undefined다. */
+  reviewersComplete?: boolean;
   isDraft: boolean;
   reviewDecision?: string;
   updatedAt?: string;
@@ -53,7 +57,7 @@ export interface GhPageInfo {
 }
 
 /** 목록/검색 GraphQL 쿼리가 공통으로 받는 PullRequest node 형태 */
-export interface GhPullRequestNode extends GhPullRequestCommentCounts {
+export interface GhPullRequestNode extends GhPullRequestCommentCounts, GhPullRequestReviewers {
   /** 얕은 목록 응답과 직접 node 조회를 같은 PR에 연결하는 GitHub global ID */
   id?: string;
   number?: number;
@@ -115,6 +119,7 @@ export function buildPullRequestInfoQuery(commitPageSize = 100, reviewThreadPage
         reviewDecision
         updatedAt
 ${PULL_REQUEST_LABELS_QUERY}
+${PULL_REQUEST_REVIEWERS_QUERY}
 ${buildPullRequestCommentCountsQuery(reviewThreadPageSize)}
 ${includeStableConnections ? `        files(first: 1) { totalCount }
         commits(first: ${commitPageSize}) {
@@ -146,6 +151,7 @@ export function pullRequestInfoFromGraphQl(
     baseHash: pr.baseRefOid,
     mergeHash: pr.mergeCommit?.oid,
     author: pr.author?.login || "",
+    ...normalizePullRequestReviewers(pr),
     isDraft: Boolean(pr.isDraft),
     reviewDecision: pr.reviewDecision,
     updatedAt: pr.updatedAt,

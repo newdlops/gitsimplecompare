@@ -86,6 +86,7 @@
         pr.number,
         pr.title,
         pr.author,
+        ...(pr.reviewers || []).map(person => `${person.login} ${person.name || ''}`),
         pr.headRefName,
         pr.baseRefName,
         pr.state,

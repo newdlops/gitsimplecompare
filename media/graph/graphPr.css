@@ -36,6 +36,23 @@
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
+/* 제목 다음에 사람과 리뷰 상태를 배치한다. 좁은 drawer에서는 그룹 단위로 자연스럽게 줄바꿈한다. */
+.pr-people { display: flex; flex-wrap: wrap; gap: 3px 16px; min-width: 0; color: var(--vscode-foreground); font-size: 12px; line-height: 20px; }
+.pr-people-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; min-width: 0; max-width: 100%; }
+.pr-people-label, .pr-people-empty, .pr-review-state { color: var(--vscode-descriptionForeground); font-size: 11px; }
+.pr-people-label { flex: 0 0 auto; }
+.pr-person { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
+.pr-person-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-author { flex-wrap: nowrap; }
+.pr-author .pr-person { flex: 0 1 auto; }
+.pr-reviewers { flex: 1 1 220px; flex-wrap: nowrap; align-items: baseline; }
+.pr-reviewer-items { display: inline-flex; flex: 1 1 auto; flex-wrap: wrap; gap: 3px 7px; min-width: 0; }
+.pr-reviewer { flex: 0 1 auto; flex-wrap: nowrap; }
+.pr-person > .codicon, .pr-review-state { flex: 0 0 auto; }
+.pr-reviewer.is-approved > .codicon { color: var(--vscode-gitDecoration-addedResourceForeground); }
+.pr-reviewer.is-changes > .codicon { color: var(--vscode-editorWarning-foreground); }
+.pr-review-more { color: var(--vscode-descriptionForeground); font-variant-numeric: tabular-nums; }
+
 .pr-card[data-show-pr] {
   cursor: pointer;
 }

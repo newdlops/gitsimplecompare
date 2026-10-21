@@ -1,0 +1,1236 @@
+{
+  "version": "0.1.72131",
+  "baseline": "cb34abe238182b789dc437ab219810991db2a870",
+  "sourceKind": "working-tree before release commit",
+  "fixture": {
+    "nativeGit": "2.53.0",
+    "files": 1000,
+    "historyDepth": 1000,
+    "sideBranches": 100,
+    "unrelatedUntracked": 20000,
+    "bulkSelection": 500
+  },
+  "comparisonProtocol": {
+    "order": [
+      "before",
+      "after",
+      "after",
+      "before"
+    ],
+    "samplesPerSource": 2,
+    "serial": true,
+    "scope": "Native GitService.discard only; fixture setup and independent preservation checks excluded; not confirmation-to-final-UI timing",
+    "nodeCpuScope": "Parent Node process only, excludes Git, VS Code, Chromium and OS; no total CPU/RSS claim"
+  },
+  "comparison": [
+    {
+      "mode": "one-tracked-among-untracked",
+      "before": {
+        "elapsedMs": {
+          "samples": [
+            861,
+            386
+          ],
+          "median": 623.5
+        },
+        "nodeCpuMs": {
+          "samples": [
+            19,
+            16
+          ],
+          "median": 17.5
+        },
+        "gitCalls": {
+          "samples": [
+            2,
+            2
+          ],
+          "median": 2
+        },
+        "classificationBytes": {
+          "samples": [
+            488890,
+            488890
+          ],
+          "median": 488890
+        },
+        "maximumDeletes": {
+          "samples": [
+            0,
+            0
+          ],
+          "median": 0
+        }
+      },
+      "after": {
+        "elapsedMs": {
+          "samples": [
+            405,
+            256
+          ],
+          "median": 330.5
+        },
+        "nodeCpuMs": {
+          "samples": [
+            7,
+            7
+          ],
+          "median": 7
+        },
+        "gitCalls": {
+          "samples": [
+            2,
+            2
+          ],
+          "median": 2
+        },
+        "classificationBytes": {
+          "samples": [
+            0,
+            0
+          ],
+          "median": 0
+        },
+        "maximumDeletes": {
+          "samples": [
+            0,
+            0
+          ],
+          "median": 0
+        }
+      }
+    },
+    {
+      "mode": "five-hundred-untracked",
+      "before": {
+        "elapsedMs": {
+          "samples": [
+            167,
+            303
+          ],
+          "median": 235
+        },
+        "nodeCpuMs": {
+          "samples": [
+            84,
+            75
+          ],
+          "median": 79.5
+        },
+        "gitCalls": {
+          "samples": [
+            1,
+            1
+          ],
+          "median": 1
+        },
+        "classificationBytes": {
+          "samples": [
+            502280,
+            502280
+          ],
+          "median": 502280
+        },
+        "maximumDeletes": {
+          "samples": [
+            1,
+            1
+          ],
+          "median": 1
+        }
+      },
+      "after": {
+        "elapsedMs": {
+          "samples": [
+            172,
+            104
+          ],
+          "median": 138
+        },
+        "nodeCpuMs": {
+          "samples": [
+            140,
+            139
+          ],
+          "median": 139.5
+        },
+        "gitCalls": {
+          "samples": [
+            1,
+            1
+          ],
+          "median": 1
+        },
+        "classificationBytes": {
+          "samples": [
+            543280,
+            543280
+          ],
+          "median": 543280
+        },
+        "maximumDeletes": {
+          "samples": [
+            8,
+            8
+          ],
+          "median": 8
+        }
+      }
+    }
+  ],
+  "rawRuns": [
+    {
+      "kind": "before",
+      "pid": 45237,
+      "output": "/private/tmp/gsc-discard31-1-before.json",
+      "log": "/private/tmp/gsc-discard31-1-before.log",
+      "started": "2026-10-21T04:59:29.883Z",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "sha256": "9045080094e97873a66549f2821ead0a4b58d7dba56b8ba4375969dad1159f23",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "cb34abe238182b789dc437ab219810991db2a870",
+          "bundleSha256": "8eddb9ebdace6c5cf55152c690b4597a0720cc84938ed0a41185e009ad48d19a"
+        },
+        "fixture": {
+          "files": 1000,
+          "unrelatedUntracked": 20000,
+          "bulkSelection": 500
+        },
+        "results": [
+          {
+            "mode": "one-tracked-among-untracked",
+            "elapsedMs": 861,
+            "nodeCpuMs": 19,
+            "gitCalls": 2,
+            "classificationBytes": 488890,
+            "maximumDeletes": 0,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 488890
+              },
+              {
+                "command": "checkout",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          },
+          {
+            "mode": "five-hundred-untracked",
+            "elapsedMs": 167,
+            "nodeCpuMs": 84,
+            "gitCalls": 1,
+            "classificationBytes": 502280,
+            "maximumDeletes": 1,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 502280
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          }
+        ],
+        "scope": "Native GitService discard; fixture setup and exact verification excluded from timing; Node CPU excludes Git/OS"
+      }
+    },
+    {
+      "kind": "after",
+      "pid": 45467,
+      "output": "/private/tmp/gsc-discard31-2-after.json",
+      "log": "/private/tmp/gsc-discard31-2-after.log",
+      "started": "2026-10-21T04:59:41.756Z",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "sha256": "bd0cd4fa98aab1bf865d95007655a8982266a22378081d6205ffe3f510d2bab4",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "cb34abe238182b789dc437ab219810991db2a870",
+          "bundleSha256": "641bc05d854e1242c77f7f654118a0315a65b56cf37d51631b40b39670fbc8d9"
+        },
+        "fixture": {
+          "files": 1000,
+          "unrelatedUntracked": 20000,
+          "bulkSelection": 500
+        },
+        "results": [
+          {
+            "mode": "one-tracked-among-untracked",
+            "elapsedMs": 405,
+            "nodeCpuMs": 7,
+            "gitCalls": 2,
+            "classificationBytes": 0,
+            "maximumDeletes": 0,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              },
+              {
+                "command": "checkout",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          },
+          {
+            "mode": "five-hundred-untracked",
+            "elapsedMs": 172,
+            "nodeCpuMs": 140,
+            "gitCalls": 1,
+            "classificationBytes": 543280,
+            "maximumDeletes": 8,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 543280
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          }
+        ],
+        "scope": "Native GitService discard; fixture setup and exact verification excluded from timing; Node CPU excludes Git/OS"
+      }
+    },
+    {
+      "kind": "after",
+      "pid": 45733,
+      "output": "/private/tmp/gsc-discard31-3-after.json",
+      "log": "/private/tmp/gsc-discard31-3-after.log",
+      "started": "2026-10-21T04:59:50.756Z",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "sha256": "6d1e0feb3cd803b60fdef8c5eb90bd30e3f6d19be3a84c7851cc61c12646b463",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "cb34abe238182b789dc437ab219810991db2a870",
+          "bundleSha256": "641bc05d854e1242c77f7f654118a0315a65b56cf37d51631b40b39670fbc8d9"
+        },
+        "fixture": {
+          "files": 1000,
+          "unrelatedUntracked": 20000,
+          "bulkSelection": 500
+        },
+        "results": [
+          {
+            "mode": "one-tracked-among-untracked",
+            "elapsedMs": 256,
+            "nodeCpuMs": 7,
+            "gitCalls": 2,
+            "classificationBytes": 0,
+            "maximumDeletes": 0,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              },
+              {
+                "command": "checkout",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          },
+          {
+            "mode": "five-hundred-untracked",
+            "elapsedMs": 104,
+            "nodeCpuMs": 139,
+            "gitCalls": 1,
+            "classificationBytes": 543280,
+            "maximumDeletes": 8,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 543280
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          }
+        ],
+        "scope": "Native GitService discard; fixture setup and exact verification excluded from timing; Node CPU excludes Git/OS"
+      }
+    },
+    {
+      "kind": "before",
+      "pid": 45933,
+      "output": "/private/tmp/gsc-discard31-4-before.json",
+      "log": "/private/tmp/gsc-discard31-4-before.log",
+      "started": "2026-10-21T04:59:56.348Z",
+      "code": 0,
+      "signal": null,
+      "timedOut": false,
+      "sha256": "4b89a32dab0329dbe9ee8a43a73515fd56bf4298cba9c68d96a57b3a15aa3c4f",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "cb34abe238182b789dc437ab219810991db2a870",
+          "bundleSha256": "27163a17fc050f119b3e98c25cbee6353b547276e6412bc0371279ee2967f23f"
+        },
+        "fixture": {
+          "files": 1000,
+          "unrelatedUntracked": 20000,
+          "bulkSelection": 500
+        },
+        "results": [
+          {
+            "mode": "one-tracked-among-untracked",
+            "elapsedMs": 386,
+            "nodeCpuMs": 16,
+            "gitCalls": 2,
+            "classificationBytes": 488890,
+            "maximumDeletes": 0,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 488890
+              },
+              {
+                "command": "checkout",
+                "pathLimited": true,
+                "stdoutBytes": 0
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          },
+          {
+            "mode": "five-hundred-untracked",
+            "elapsedMs": 303,
+            "nodeCpuMs": 75,
+            "gitCalls": 1,
+            "classificationBytes": 502280,
+            "maximumDeletes": 1,
+            "calls": [
+              {
+                "command": "ls-files",
+                "pathLimited": false,
+                "stdoutBytes": 502280
+              }
+            ],
+            "exactIndexAndHead": true,
+            "unselectedFilesPreserved": 20000
+          }
+        ],
+        "scope": "Native GitService discard; fixture setup and exact verification excluded from timing; Node CPU excludes Git/OS"
+      }
+    }
+  ],
+  "sourceSha256": {
+    "src/commands/workingChanges.ts": "8978f0ba0f3e1c171bb8a53d09fa7eb3ca36a941511f7af277bd2a18c0638f62",
+    "src/git/gitService.ts": "64a55de1c04d7176e2f194d2d79f7d1eddc7a6ded0b278279f85d61e3ff7f039",
+    "src/git/discardService.ts": "6364b30ef7376b074757eb93b457c9ba443d6b5d51fccfc1da72963260bec163",
+    "src/git/pullRequestInfo.ts": "ef5903a6c569e52f659cdd3d2d665fcffeb9c33c1c8fee80139b114d609047b8",
+    "src/git/pullRequestReviewers.ts": "99f42f6b38bf48d88d760b9749561e5b30da734593e4a52f47cbf4beefd49c80",
+    "src/webview/graphHtml.ts": "34402591b4583356b1b1e7a6a44525839d8d50612de3845020794e2033089373",
+    "media/graph/graphPr.css": "9547543c883cdc04562efb9da13113caa0a8ded768bec44508c565d112f0f674",
+    "media/graph/graphPr.js": "f643f4b83a7e629a240c6c830ab2827ce6e51952a165842272babf02166cf5cb",
+    "media/graph/graphPrPeople.js": "4fdaaa545a20606bcdf17fd02c22c65c71c87c6ad8fb7be988cd0f32dcfae7b6",
+    "media/graph/graphPrSearch.js": "0109db8579c773fb939f7b64cc3460caf5e150e94cd6f305285d0b86f2c86cc5",
+    "l10n/bundle.l10n.ko.json": "2c3a412cdd5160ec09b101a5e9b9e4b4116c935e771e30a71302c65100d33848"
+  },
+  "checks": {
+    "distinctPassedNodeNames": 52,
+    "distinctNodeNames": [
+      "Git exit codes survive string, stdin and Buffer execution failures",
+      "GitHub PR normalization carries author, current reviewer state and completeness into the overview",
+      "HEAD remains an empty diff base before the first commit",
+      "VS Code Git statusLimit 잘림 판정은 합계가 한도 이상일 때만 CLI 폴백을 요구한다",
+      "a failed discard preview reports its error without confirming or writing",
+      "a failed virtual document read is retried after Git becomes available",
+      "a genuine temporary index lock still retries a safe stage operation",
+      "a late first page after cancellation cannot trigger supplemental reads",
+      "a light root query and bounded node reads preserve 80 PR records without repo view",
+      "a ref lock failure after a successful commit hook never replays that hook",
+      "a rejected commit containing index.lock runs its hook only once",
+      "a stalled GitHub request times out, aborts the child, and permits a fresh retry",
+      "a supplemental timeout fails the whole page without returning incomplete commits",
+      "an aborted and restarted merge cannot reuse confirmation from the previous native operation",
+      "an actual re-review request overrides the previous approval and preserves team identity",
+      "bulk-checkin stageAll 은 일반 git add -A 와 같은 tree 를 만들고 pack 하나로 기록한다",
+      "cancellation before a read starts performs no network request",
+      "cancellation stops running pages and does not start queued pagination",
+      "cancelling conflict discard leaves every index stage and working file unchanged",
+      "commit --quiet 은 성공 요약만 생략하고 커밋할 것이 없을 때의 진단 출력은 보존한다",
+      "commit and comment pagination share the same four-request limit",
+      "discard confirmation explicitly describes HEAD conflict resolution before running the write",
+      "discard preserves unselected working changes matching a selected path pattern",
+      "discard preview rejects an untracked file that became staged before confirmation",
+      "discard rechecks conflict stages after reading HEAD paths before any restore",
+      "discard refuses paths outside the selected repository before deleting files",
+      "discard resolves selected cherry-pick conflicts to HEAD while preserving staged and unselected changes",
+      "discard resolves selected merge conflicts to HEAD while preserving staged and unselected changes",
+      "discard resolves selected rebase conflicts to HEAD while preserving staged and unselected changes",
+      "discarding one linked-worktree conflict leaves all other conflict stages and the main worktree intact",
+      "first failed supplemental page cancels peers and never returns a partial successful list",
+      "incomplete repository responses fail instead of erasing the retained PR list",
+      "independent large PRs overlap with at most four outstanding network requests",
+      "invalid timeout values are rejected before starting a network request",
+      "large PR pagination keeps every commit in API order and adds all review comments",
+      "literal untracked names containing index-like text, pathspec syntax, tabs and newlines are only deleted when selected",
+      "missing paths are empty while invalid refs and corrupt blobs remain failures",
+      "next PR page forwards the cursor and accepts an empty successful page",
+      "pathspec magic in a filename cannot expand a stage selection",
+      "pre-aborted stdin and Buffer commands never spawn or write Git objects",
+      "repeated commit cursors fail promptly instead of fetching forever",
+      "repeated review cursors fail instead of silently returning a partial count",
+      "reviewer metadata keeps the first eighty-PR summary free of reviewer connections",
+      "small discard selections never enumerate unrelated untracked files",
+      "small first review page still counts every thread beyond twenty supplemental pages",
+      "stage treats the selected bracket filename literally",
+      "unknown, completed empty, capped and deleted-reviewer data remain distinguishable",
+      "unstage preserves other files whose names match a selected path pattern",
+      "구버전 git fallback 은 argv 조각을 개수·길이 상한 안으로 나누고 unknown option 만 인식한다",
+      "대량 경로 stage/unstage/discard 는 stdin pathspec 으로 literal 이름을 정확히 처리한다",
+      "대량 변경 정책은 bulk-checkin·stdin pathspec·라인 통계 기준을 경계값에서 정확히 나눈다",
+      "라인 통계는 상한을 넘는 bucket 의 numstat 을 실행하지 않고 +/- 를 비운다"
+    ],
+    "browserDistinctTests": 12,
+    "postPolishReruns": 3,
+    "viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1440,
+        900
+      ]
+    ],
+    "actualDiagnosticButtons": [
+      "push",
+      "pull",
+      "fetch",
+      "interactive rebase"
+    ],
+    "typecheck": "passed",
+    "liveGraphQlSchema": "read-only GitHub public repository PR connection query succeeded",
+    "redHistory": [
+      {
+        "log": "/private/tmp/gsc-discard31-before-node.log",
+        "passed": 2,
+        "failed": 7,
+        "meaning": "0.1.72130 conflict/scoped-read/changed-selection regressions"
+      },
+      {
+        "log": "/private/tmp/gsc-discard31-node.log",
+        "passed": 17,
+        "failed": 4,
+        "meaning": "First implementation: three real absent-HEAD restore failures and one error-text assertion mismatch; fixed, final discard group passes"
+      },
+      {
+        "log": "/private/tmp/gsc-discard31-write-boundary-before-node.log",
+        "passed": 0,
+        "failed": 1,
+        "meaning": "Reproduced new staged resolution being overwritten between HEAD-path read and restore; fresh pre-write guards added; final group passes"
+      }
+    ],
+    "finalGroups": [
+      {
+        "log": "/private/tmp/gsc-discard31-final-node.log",
+        "passed": 12,
+        "failed": 0
+      },
+      {
+        "log": "/private/tmp/gsc-pr-discard31-node.log",
+        "passed": 22,
+        "failed": 0
+      },
+      {
+        "log": "/private/tmp/gsc-discard31-bulk-node.log",
+        "passed": 7,
+        "failed": 0
+      },
+      {
+        "log": "/private/tmp/gsc-discard31-preview-node.log",
+        "passed": 3,
+        "failed": 0
+      }
+    ],
+    "nativeWarningVisualInspection": false,
+    "nativeWarningReason": "No foreground VS Code host, focus changes or forced reload; actual command with mocked VS Code confirmation and real Native Git tested",
+    "marketplaceStatusChecks": false
+  },
+  "prMetadata": {
+    "firstSummaryUnchanged": true,
+    "authorInFirstSummary": true,
+    "metadataBatchSize": 20,
+    "requestsFor80": 5,
+    "extraPerPrRequests": 0,
+    "requestedReviewerLimit": 8,
+    "latestReviewLimit": 8,
+    "visibleReviewerLimit": 2,
+    "requestedReviewOverridesOldApproval": true,
+    "unknownEmptyAndCappedDistinct": true,
+    "searchIncludesLoadedReviewerNames": true
+  },
+  "buttonDiagnostic": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "cb34abe238182b789dc437ab219810991db2a870",
+      "bundleSha256": "8126a193d9854cc841c49af3751ff5b2835c455e2ae4f56f6b901582849249c1"
+    },
+    "results": [
+      {
+        "operation": "push",
+        "handlerMs": 788,
+        "finalFrameMs": 989,
+        "diagnosticMs": 1116,
+        "nativeUnionMs": 887.6,
+        "fsUnionMs": 8.4,
+        "otherMs": 227,
+        "processCount": 25,
+        "topGit": [
+          {
+            "shape": "push",
+            "elapsedMs": 239.4,
+            "exitMs": 239,
+            "closeMs": 239
+          },
+          {
+            "shape": "ls-remote",
+            "elapsedMs": 93.5,
+            "exitMs": 93,
+            "closeMs": 93
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 91.4,
+            "exitMs": 91,
+            "closeMs": 91
+          },
+          {
+            "shape": "config",
+            "elapsedMs": 86.6,
+            "exitMs": 87,
+            "closeMs": 87
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 59.1,
+            "exitMs": 59,
+            "closeMs": 59
+          },
+          {
+            "shape": "config",
+            "elapsedMs": 47.7,
+            "exitMs": 48,
+            "closeMs": 48
+          },
+          {
+            "shape": "checkout-identity",
+            "elapsedMs": 47.3,
+            "exitMs": 47,
+            "closeMs": 47
+          },
+          {
+            "shape": "remote",
+            "elapsedMs": 43.9,
+            "exitMs": 44,
+            "closeMs": 44
+          }
+        ],
+        "topFilesystem": [
+          {
+            "kind": "stat:other",
+            "calls": 7,
+            "sumElapsedMs": 4.5,
+            "errors": 3
+          },
+          {
+            "kind": "realpath:metadata-locator",
+            "calls": 5,
+            "sumElapsedMs": 1.9,
+            "errors": 0
+          },
+          {
+            "kind": "stat:metadata-locator",
+            "calls": 9,
+            "sumElapsedMs": 1.2,
+            "errors": 0
+          },
+          {
+            "kind": "readFile:other",
+            "calls": 2,
+            "sumElapsedMs": 0.7,
+            "errors": 0
+          },
+          {
+            "kind": "readFile:common-directory-marker",
+            "calls": 3,
+            "sumElapsedMs": 0.4,
+            "errors": 3
+          },
+          {
+            "kind": "realpath:other",
+            "calls": 1,
+            "sumElapsedMs": 0.1,
+            "errors": 0
+          }
+        ]
+      },
+      {
+        "operation": "pull",
+        "handlerMs": 700,
+        "finalFrameMs": 1239,
+        "diagnosticMs": 1362,
+        "nativeUnionMs": 1155,
+        "fsUnionMs": 8.8,
+        "otherMs": 207,
+        "processCount": 17,
+        "topGit": [
+          {
+            "shape": "pull",
+            "elapsedMs": 502.7,
+            "exitMs": 502,
+            "closeMs": 503
+          },
+          {
+            "shape": "status",
+            "elapsedMs": 375.4,
+            "exitMs": 375,
+            "closeMs": 375
+          },
+          {
+            "shape": "log",
+            "elapsedMs": 251.9,
+            "exitMs": 252,
+            "closeMs": 252
+          },
+          {
+            "shape": "status",
+            "elapsedMs": 137.6,
+            "exitMs": 138,
+            "closeMs": 138
+          },
+          {
+            "shape": "rev-list",
+            "elapsedMs": 132.3,
+            "exitMs": 132,
+            "closeMs": 132
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 127.6,
+            "exitMs": 128,
+            "closeMs": 128
+          },
+          {
+            "shape": "remote",
+            "elapsedMs": 122.1,
+            "exitMs": 122,
+            "closeMs": 122
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 50.5,
+            "exitMs": 50,
+            "closeMs": 50
+          }
+        ],
+        "topFilesystem": [
+          {
+            "kind": "readFile:other",
+            "calls": 2,
+            "sumElapsedMs": 4.9,
+            "errors": 0
+          },
+          {
+            "kind": "realpath:metadata-locator",
+            "calls": 4,
+            "sumElapsedMs": 1.1,
+            "errors": 0
+          },
+          {
+            "kind": "stat:metadata-locator",
+            "calls": 9,
+            "sumElapsedMs": 1,
+            "errors": 0
+          },
+          {
+            "kind": "stat:other",
+            "calls": 7,
+            "sumElapsedMs": 1,
+            "errors": 3
+          },
+          {
+            "kind": "readFile:common-directory-marker",
+            "calls": 3,
+            "sumElapsedMs": 0.5,
+            "errors": 3
+          },
+          {
+            "kind": "writeFile:other",
+            "calls": 1,
+            "sumElapsedMs": 0.5,
+            "errors": 0
+          }
+        ]
+      },
+      {
+        "operation": "fetch",
+        "handlerMs": 328,
+        "finalFrameMs": 820,
+        "diagnosticMs": 935,
+        "nativeUnionMs": 708.5,
+        "fsUnionMs": 9.5,
+        "otherMs": 226,
+        "processCount": 9,
+        "topGit": [
+          {
+            "shape": "fetch",
+            "elapsedMs": 324.8,
+            "exitMs": 325,
+            "closeMs": 325
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 280.5,
+            "exitMs": 280,
+            "closeMs": 280
+          },
+          {
+            "shape": "worktree",
+            "elapsedMs": 248.4,
+            "exitMs": 248,
+            "closeMs": 248
+          },
+          {
+            "shape": "rev-list",
+            "elapsedMs": 47,
+            "exitMs": 47,
+            "closeMs": 47
+          },
+          {
+            "shape": "status",
+            "elapsedMs": 45.9,
+            "exitMs": 46,
+            "closeMs": 46
+          },
+          {
+            "shape": "rev-list",
+            "elapsedMs": 28.7,
+            "exitMs": 28,
+            "closeMs": 29
+          },
+          {
+            "shape": "log",
+            "elapsedMs": 23.5,
+            "exitMs": 23,
+            "closeMs": 24
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 16.7,
+            "exitMs": 17,
+            "closeMs": 17
+          }
+        ],
+        "topFilesystem": [
+          {
+            "kind": "readFile:other",
+            "calls": 2,
+            "sumElapsedMs": 5.3,
+            "errors": 0
+          },
+          {
+            "kind": "stat:other",
+            "calls": 7,
+            "sumElapsedMs": 2.5,
+            "errors": 3
+          },
+          {
+            "kind": "stat:metadata-locator",
+            "calls": 9,
+            "sumElapsedMs": 0.6,
+            "errors": 0
+          },
+          {
+            "kind": "readFile:common-directory-marker",
+            "calls": 3,
+            "sumElapsedMs": 0.6,
+            "errors": 3
+          },
+          {
+            "kind": "realpath:metadata-locator",
+            "calls": 3,
+            "sumElapsedMs": 0.5,
+            "errors": 0
+          },
+          {
+            "kind": "realpath:other",
+            "calls": 1,
+            "sumElapsedMs": 0.1,
+            "errors": 0
+          }
+        ]
+      },
+      {
+        "operation": "interactive-rebase",
+        "handlerMs": 1815,
+        "finalFrameMs": 2317,
+        "diagnosticMs": 2437,
+        "nativeUnionMs": 2068.3,
+        "fsUnionMs": 78.1,
+        "otherMs": 326,
+        "processCount": 31,
+        "topGit": [
+          {
+            "shape": "rebase",
+            "elapsedMs": 1144.8,
+            "exitMs": 1145,
+            "closeMs": 1145
+          },
+          {
+            "shape": "rev-list",
+            "elapsedMs": 226.7,
+            "exitMs": 227,
+            "closeMs": 227
+          },
+          {
+            "shape": "log",
+            "elapsedMs": 128.9,
+            "exitMs": 129,
+            "closeMs": 129
+          },
+          {
+            "shape": "checkout-identity",
+            "elapsedMs": 121.8,
+            "exitMs": 122,
+            "closeMs": 122
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 121,
+            "exitMs": 121,
+            "closeMs": 121
+          },
+          {
+            "shape": "for-each-ref",
+            "elapsedMs": 115.2,
+            "exitMs": 114,
+            "closeMs": 115
+          },
+          {
+            "shape": "config",
+            "elapsedMs": 101.8,
+            "exitMs": 101,
+            "closeMs": 102
+          },
+          {
+            "shape": "checkout-identity",
+            "elapsedMs": 87.7,
+            "exitMs": 87,
+            "closeMs": 88
+          }
+        ],
+        "topFilesystem": [
+          {
+            "kind": "stat:metadata-locator",
+            "calls": 108,
+            "sumElapsedMs": 23.1,
+            "errors": 0
+          },
+          {
+            "kind": "realpath:metadata-locator",
+            "calls": 45,
+            "sumElapsedMs": 20.2,
+            "errors": 0
+          },
+          {
+            "kind": "readFile:common-directory-marker",
+            "calls": 36,
+            "sumElapsedMs": 16,
+            "errors": 36
+          },
+          {
+            "kind": "readFile:other",
+            "calls": 17,
+            "sumElapsedMs": 7.7,
+            "errors": 12
+          },
+          {
+            "kind": "lstat:other",
+            "calls": 17,
+            "sumElapsedMs": 6.4,
+            "errors": 16
+          },
+          {
+            "kind": "stat:other",
+            "calls": 7,
+            "sumElapsedMs": 6,
+            "errors": 3
+          }
+        ]
+      }
+    ]
+  },
+  "refFormatExperiment": {
+    "fixture": {
+      "totalRefs": 1406,
+      "remoteRefs": 101,
+      "extraMetadataAndTags": 1200
+    },
+    "results": [
+      {
+        "mode": "current",
+        "elapsedMs": 131,
+        "nodeCpuMs": 3,
+        "bytes": 136562
+      },
+      {
+        "mode": "bare",
+        "elapsedMs": 234,
+        "nodeCpuMs": 2,
+        "bytes": 101831
+      },
+      {
+        "mode": "conditional",
+        "elapsedMs": 159,
+        "nodeCpuMs": 2,
+        "bytes": 105951
+      },
+      {
+        "mode": "split",
+        "elapsedMs": 198,
+        "nodeCpuMs": 3,
+        "bytes": 110297
+      },
+      {
+        "mode": "split",
+        "elapsedMs": 339,
+        "nodeCpuMs": 3,
+        "bytes": 110297
+      },
+      {
+        "mode": "conditional",
+        "elapsedMs": 235,
+        "nodeCpuMs": 2,
+        "bytes": 105951
+      },
+      {
+        "mode": "bare",
+        "elapsedMs": 195,
+        "nodeCpuMs": 2,
+        "bytes": 101831
+      },
+      {
+        "mode": "current",
+        "elapsedMs": 133,
+        "nodeCpuMs": 2,
+        "bytes": 136562
+      },
+      {
+        "mode": "current",
+        "elapsedMs": 222,
+        "nodeCpuMs": 2,
+        "bytes": 136562
+      },
+      {
+        "mode": "bare",
+        "elapsedMs": 90,
+        "nodeCpuMs": 3,
+        "bytes": 101831
+      },
+      {
+        "mode": "conditional",
+        "elapsedMs": 163,
+        "nodeCpuMs": 2,
+        "bytes": 105951
+      },
+      {
+        "mode": "split",
+        "elapsedMs": 362,
+        "nodeCpuMs": 4,
+        "bytes": 110297
+      }
+    ],
+    "traces": [
+      {
+        "mode": "current",
+        "rawRefLookups": 7038,
+        "traceBytes": 854868
+      },
+      {
+        "mode": "bare",
+        "rawRefLookups": 0,
+        "traceBytes": 131603
+      },
+      {
+        "mode": "conditional",
+        "rawRefLookups": 7038,
+        "traceBytes": 854868
+      },
+      {
+        "mode": "split",
+        "rawRefLookups": 509,
+        "traceBytes": 187770
+      }
+    ],
+    "shipped": false,
+    "conclusion": "Fewer raw ref lookups do not establish a faster or coherent two-query Graph snapshot; production ref reads unchanged"
+  },
+  "limitations": [
+    "Small local sample; keep all slower values and do not extrapolate to actual Captain latency.",
+    "Bulk deletion Node CPU and classification bytes increased despite lower local latency; no overall resource improvement claim.",
+    "PR metadata has bounded extra payload in existing batches; no new request-count increase, but no new real 80-PR GitHub latency claim.",
+    "Button diagnostics wrap async FS and add observation overhead; use only for wait attribution, not source-to-source latency evidence.",
+    "Actual user Captain repository, stashes, recovery snapshots and preserved PR worktrees were not mutated.",
+    "Full push/pull/fetch/rebase/merge/PR squash/cherry-pick/checkout and fresh Graph minimum-resource objective remains active."
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-discard31-node.log",
+      "sha256": "1a49c3a647742bb8f9303839b803d3a0fb54957cc346d14f0d46eebc00f060da"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-final-node.log",
+      "sha256": "036f3914cddce171b015384153780cdfa0d3b36fb7eab0e94ed2d8db325e5047"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-discard31-node.log",
+      "sha256": "faebaed92460a06c66ce73a193475510b425e2d04e691988827519bef79dd18c"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-bulk-node.log",
+      "sha256": "d49b534e0e7e1c230c6ae595bf8a830a04ff4129bb370827bdb85141bbaf09aa"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-preview-node.log",
+      "sha256": "30cdbf3c74806ca991759a8cce1fe73ad118a52db60436ce9d227cf72efb5759"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-before-node.log",
+      "sha256": "20ce1c3940ee16d1fe312b0cca851260de40757b9e5200bef0e91cd01181d6dd"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-fixed-node.log",
+      "sha256": "23b7f522c9a545427612b534c4bbb3d85b02dff507324d6d38c75efd97153f9c"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-write-boundary-before-node.log",
+      "sha256": "26ec5f0cb456549fd7552e4484cc4c1bd8c7bac2c5d36a7fde35462c88b9e371"
+    },
+    {
+      "path": "/private/tmp/gsc-discard-pr31-final-types.log",
+      "sha256": "258ddd223b4eb850018ff32ce0ea69f24cf0e10d5317edd4e5a7c94885280b8f"
+    },
+    {
+      "path": "/private/tmp/gsc-discard-pr31-preview-types.log",
+      "sha256": "2428ac48a02ca5a11e5991810bd87a26c2e8c1cadf1e5e93a5fc5c93150aff6d"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-playwright.log",
+      "sha256": "96d4a8f4b36c84a4117d88af3bb9ff8d9853640937a9a81f15a1563c658ca6ba"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-polished-playwright.log",
+      "sha256": "85d8d5ec296f276650bb2b1ef90cd1f8f202d92e504db17281413c007a0e3368"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-live-schema.json",
+      "sha256": "20cc08d8e2723316dcd8266b8de28842702468188f59dde5b165b36e8c8eeae1"
+    },
+    {
+      "path": "/private/tmp/gsc-cost31-buttons-diagnostic.json",
+      "sha256": "8322767fe22318f0c9f56d5119349ed9eae232306e7424fd988fa83be02d3f5c"
+    },
+    {
+      "path": "/private/tmp/gsc-cost31-buttons-diagnostic.log",
+      "sha256": "d59cae3627579da4b033e9db420190d6b424b87ecdd20a5f6c8171c3f271a8d0"
+    },
+    {
+      "path": "/private/tmp/gsc-cost31-analysis.json",
+      "sha256": "f1e57c696e7a96c7cc7fc55e915f37af4757a2692248e928ba62c2b9168cbe97"
+    },
+    {
+      "path": "/private/tmp/gsc-ref-format31-results.json",
+      "sha256": "84776308a9e4620dd06e4eedad307c9fd0f76c9dc4ff36fd2bfcec46095d8a14"
+    },
+    {
+      "path": "/private/tmp/gsc-ref-format31.log",
+      "sha256": "84776308a9e4620dd06e4eedad307c9fd0f76c9dc4ff36fd2bfcec46095d8a14"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-paired.cjs",
+      "sha256": "32bc0bd473def258b89d7757fafed1de694ee5be475d92ee04c1f9dcfd4d624b"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-paired-state.json",
+      "sha256": "dcc404c47084269db82e2f5904fb0a5abf7ee0ee566c5e4f1eefb7757a1e5306"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-1-before.json",
+      "sha256": "9045080094e97873a66549f2821ead0a4b58d7dba56b8ba4375969dad1159f23"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-1-before.log",
+      "sha256": "9045080094e97873a66549f2821ead0a4b58d7dba56b8ba4375969dad1159f23"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-2-after.json",
+      "sha256": "bd0cd4fa98aab1bf865d95007655a8982266a22378081d6205ffe3f510d2bab4"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-2-after.log",
+      "sha256": "bd0cd4fa98aab1bf865d95007655a8982266a22378081d6205ffe3f510d2bab4"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-3-after.json",
+      "sha256": "6d1e0feb3cd803b60fdef8c5eb90bd30e3f6d19be3a84c7851cc61c12646b463"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-3-after.log",
+      "sha256": "6d1e0feb3cd803b60fdef8c5eb90bd30e3f6d19be3a84c7851cc61c12646b463"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-4-before.json",
+      "sha256": "4b89a32dab0329dbe9ee8a43a73515fd56bf4298cba9c68d96a57b3a15aa3c4f"
+    },
+    {
+      "path": "/private/tmp/gsc-discard31-4-before.log",
+      "sha256": "4b89a32dab0329dbe9ee8a43a73515fd56bf4298cba9c68d96a57b3a15aa3c4f"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-390.png",
+      "sha256": "fd21ebad1593219d78fb17b91c0692ebfc867422d3cc0651a2c2eac86ae45dc6"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-768.png",
+      "sha256": "fb498020aa80143478671baae7df3bf0c3956992a079bdf9923539f187a188c0"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-people31-1440.png",
+      "sha256": "56973370f92fccec8bbd488a9a9ab308767593b8d237b0ccd09e3ad62baf8d74"
+    }
+  ],
+  "wholeGoalComplete": false
+}

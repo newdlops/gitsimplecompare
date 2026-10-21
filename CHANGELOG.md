@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.72131] - 2026-10-21
+
+### Added
+
+- Show PR authors, requested reviewers and latest review states in the list,
+  detail header and hover. Include team names and loaded reviewers in search,
+  preserve keyboard navigation, and distinguish loading, unavailable, empty
+  and capped results. Reuse the existing bounded metadata batches.
+
+### Fixed
+
+- Discard selected merge, rebase and cherry-pick conflicts against HEAD,
+  including files deleted in HEAD. Explain conflict resolution in the existing
+  confirmation and preserve other staged changes, operation state and refs.
+- Reject changed conflict stages or restarted operations before restoring.
+  Invalidate status after partial failures and restrict untracked deletion to
+  selected files inside the repository.
+
+### Performance
+
+- Scope small discard reads to selected paths and cap concurrent untracked
+  deletions at eight. Local comparisons show lower service latency; the bulk
+  case uses more Node CPU, so total resource improvement is not established.
+- Add optional actual-button wait diagnostics without instrumenting normal
+  operation or comparative benchmarks.
+
 ## [0.1.72130] - 2026-10-21
 
 ### Fixed

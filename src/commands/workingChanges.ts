@@ -14,6 +14,7 @@ import {
   tryAcquireRepoMutation,
 } from "./shared";
 import { GitService, IgnoreTarget } from "../git/gitService";
+import { DiscardSelectionChangedError, type DiscardPlan } from "../git/discardService";
 import { openConflictEditor } from "./conflicts";
 import { logError, logInfo, logWarn, showErrorWithOutput } from "../ui/outputLog";
 import {
@@ -282,6 +283,9 @@ export async function discardChanges(
   if (!targets.length) {
     return;
   }
+  let discardPlan: DiscardPlan;
+  try { discardPlan = await svc.prepareDiscard(targets); }
+  catch (error) { showDiscardFailure(error); return; }
   const confirm =
     targets.length === 1
       ? vscode.l10n.t(
@@ -294,7 +298,9 @@ export async function discardChanges(
         );
   const choice = await vscode.window.showWarningMessage(
     confirm,
-    { modal: true },
+    { modal: true, ...(discardPlan.conflicted.length ? { detail: vscode.l10n.t(
+      "{0} conflicted file(s) will be restored to HEAD and marked resolved. Staged changes in other files will be kept.", discardPlan.conflicted.length
+    ) } : {}) },
     vscode.l10n.t("Discard Changes")
   );
   if (!choice) {
@@ -315,17 +321,20 @@ export async function discardChanges(
     return;
   }
   try {
-    await svc.discard(targets);
+    await svc.discard(targets, discardPlan);
   } catch (e) {
-    showErrorWithOutput(
-      "discard failed",
-      e,
-      vscode.l10n.t("Action failed: {0}", gitOpErrorSummary(e))
-    );
+    showDiscardFailure(e);
   } finally {
     lease.release();
   }
   void refreshWorkingChanges(deps);
+}
+
+/** 준비 조회와 실제 discard의 실패를 같은 번역 알림·OUTPUT 경로로 전달한다. 파일 상태는 바꾸지 않는다. */
+function showDiscardFailure(error: unknown): void {
+  showErrorWithOutput("discard failed", error, error instanceof DiscardSelectionChangedError
+    ? vscode.l10n.t("The selected files changed before discard. Review the changes and discard again.")
+    : vscode.l10n.t("Action failed: {0}", gitOpErrorSummary(error)));
 }
 
 /**

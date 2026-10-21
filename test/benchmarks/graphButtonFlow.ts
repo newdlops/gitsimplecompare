@@ -17,6 +17,7 @@ import { createGitOperationFixture } from "../helpers/gitOperationFixture";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
+import { createGraphButtonDiagnostics } from "../helpers/graphButtonDiagnostics";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase";
@@ -72,6 +73,7 @@ async function measure(directory: string, operation: Operation) {
       at: performance.now(), signature: signature(transport.panel.commits), performance: message.performance });
   });
   const { panel, messages, surface, receiveMessage } = transport;
+  const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" ? createGraphButtonDiagnostics({ mock } as any) : undefined;
   const markerFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
   const getMarkers = cache.getMap.bind(cache);
   let pendingMarkers = 0;
@@ -112,12 +114,14 @@ async function measure(directory: string, operation: Operation) {
     const stop = setGitExecutionObserver(timing => timings.push(timing));
     const started = performance.now(), clickedAt = Date.now(), cpu = process.cpuUsage();
     measuring = true;
+    diagnostics?.start();
     try {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
       await settle(f.root, panel, messages, metadataReady);
       measuring = false; stop();
+      const diagnostic = diagnostics?.finish();
       const settled = performance.now(), used = process.cpuUsage(cpu), final = signature(panel.commits);
       assert.ok(receivedAt !== undefined && completedAt !== undefined);
       assert.deepEqual(__errorMessages, [], "The actual message handler must not hide a Git failure in an error toast");
@@ -152,7 +156,8 @@ async function measure(directory: string, operation: Operation) {
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: true,
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
-        graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame };
+        graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
+        ...(diagnostic ? { diagnostic } : {}) };
     } finally { measuring = false; stop(); }
   } finally { panel.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }

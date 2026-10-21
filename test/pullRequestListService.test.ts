@@ -52,6 +52,9 @@ function pagedPullRequest(number: number): GhPullRequestNode {
 test("a light root query and bounded node reads preserve 80 PR records without repo view", async () => {
   const requested: string[][] = [];
   const nodes = Array.from({ length: 80 }, (_, index) => ({
+    author: { login: `author-${index}` },
+    reviewRequests: { nodes: [{ requestedReviewer: { __typename: "User", login: `reviewer-${index}` } }], pageInfo: { hasNextPage: false } },
+    latestReviews: { nodes: [], pageInfo: { hasNextPage: false } },
     number: index + 1, headRefOid: `commit-${index}`, baseRefName: "main", headRefName: `feature-${index}`,
     commits: { nodes: [{ commit: { oid: `commit-${index}` } }], pageInfo: { hasNextPage: false } },
     comments: { totalCount: 2 }, reviewThreads: { nodes: [{ comments: { totalCount: 3 } }] },
@@ -83,6 +86,8 @@ test("a light root query and bounded node reads preserve 80 PR records without r
   assert.equal(result.pullRequests.length, 80);
   assert.deepEqual(result.pullRequests.map((pr) => pr.number), nodes.map((pr) => pr.number));
   assert.equal(result.pullRequests[0].commentCount, 5);
+  assert.equal(result.pullRequests[0].author, "author-0");
+  assert.deepEqual(result.pullRequests[79].reviewers, [{ login: "reviewer-79", kind: "user", state: "REQUESTED" }]);
   assert.deepEqual(result.pullRequests[79].commitHashes, ["commit-79"]);
   assert.deepEqual(result.pageInfo, { hasNextPage: true, endCursor: "next-pr-page" });
 });

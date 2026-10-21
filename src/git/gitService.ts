@@ -3,7 +3,6 @@
 //   반드시 GitService 를 통해서만 git을 다룬다(경계 분리·재사용성).
 // - vscode API에 의존하지 않으므로 단위 테스트나 다른 환경에서도 그대로 쓸 수 있다.
 import * as path from "node:path";
-import { rm } from "node:fs/promises";
 import { BranchInfo, DiffBase, FileChange, StashEntry } from "./gitTypes";
 import { GitBranchListCache } from "./gitBranchListCache";
 import { runGit } from "./gitExec";
@@ -15,6 +14,7 @@ import {
 } from "./fileContentReader";
 import { bulkCheckinConfigArgs } from "./largeChangeSet";
 import { runGitWithPaths } from "./pathspecExec";
+import { discardSelectedChanges, prepareDiscard, type DiscardPlan } from "./discardService";
 import { StashService, type StashSelection, type StashFileComparison } from "./stashService";
 import { attachStatusStats } from "./statusStats";
 import {
@@ -346,27 +346,18 @@ export class GitService {
 
   /**
    * 미스테이징 변경을 버린다.
-   * - 추적 파일은 작업트리를 인덱스 내용으로 되돌리고(`git checkout --`),
-   *   미추적 파일은 디스크에서 삭제한다.
+   * - 일반 파일은 index로, 충돌 파일은 HEAD로 되돌려 선택 경로만 충돌 해소한다.
+   * - 작은 선택은 전체 미추적 목록을 조회하지 않으며 미추적 삭제의 동시 실행을 제한한다.
    * @param paths 버릴 미스테이징 경로 목록
+   * @param confirmed 확인창이 승인한 분류. 달라진 파일/작업에는 재사용하지 않는다.
    */
-  async discard(paths: string[]): Promise<void> {
-    if (!paths.length) {
-      return;
-    }
-    const untracked = await this.listUntracked();
-    const tracked = paths.filter((p) => !untracked.has(p));
-    const toDelete = paths.filter((p) => untracked.has(p));
-    await runGitWithPaths(
-      ["--literal-pathspecs", "checkout"],
-      tracked,
-      this.repoRoot
-    );
-    for (const rel of toDelete) {
-      await rm(path.resolve(this.repoRoot, rel), { force: true });
-    }
-    this.invalidateStatusCache();
+  async discard(paths: string[], confirmed?: DiscardPlan): Promise<void> {
+    try { await discardSelectedChanges(this.repoRoot, paths, confirmed); }
+    finally { if (paths.length) this.invalidateStatusCache(); }
   }
+
+  /** 확인창에 표시할 충돌 수와 HEAD 기준을 새로 읽는다. 파일·index·Git 작업은 변경하지 않는다. */
+  prepareDiscard(paths: string[]): Promise<DiscardPlan> { return prepareDiscard(this.repoRoot, paths); }
 
   /**
    * 커밋한다(`git commit --quiet -m`).

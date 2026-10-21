@@ -328,7 +328,7 @@
   function prListCard(pr) {
     const title = `Show pull request #${pr.number} details`;
     return `<article class="pr-card ${prColorClass(pr.number)}" data-show-pr="${pr.number}" ` +
-      `tabindex="0" role="button" title="${esc(title)}" aria-label="${esc(title)}">` +
+      `tabindex="0" role="button" title="${esc(title)}" aria-label="${esc(title + '. ' + (window.GscGraphPrPeople?.summary(pr, prListLoading) || ''))}">` +
       `<div class="pr-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
       `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></div>` +
 	      prMetaHtml(pr) +
@@ -465,7 +465,7 @@
 
   /** PR 메타 한 줄 HTML 을 만든다. */
   function prMetaHtml(pr) {
-    return `<div class="pr-meta pr-meta-chips">` +
+    return (window.GscGraphPrPeople?.render(pr, prListLoading) || "") + `<div class="pr-meta pr-meta-chips">` +
       metaChip("git-pull-request", pr.state || "OPEN", `PR state: ${pr.state || "OPEN"}`) +
       (pr.isDraft ? metaChip("edit", "Draft", "Draft pull request") : "") +
       (pr.reviewDecision ? metaChip("eye", pr.reviewDecision, `Review decision: ${pr.reviewDecision}`) : "") +
