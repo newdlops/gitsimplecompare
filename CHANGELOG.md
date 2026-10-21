@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.72138] - 2026-10-21
+
+### Performance
+
+- Stream operation Undo index fingerprints instead of buffering the full
+  stage listing and allocating a second array of every path. Preserve the
+  existing UTF-8 digest, including invalid filename bytes, and unmerged stages.
+
+### Safety
+
+- Complete streamed results only after a successful Git close. Create fresh
+  parser/hash state on each existing safe read retry, reject write commands,
+  and retain cancellation, time limits and Native ref/operation checks.
+- Reject incomplete stage output without storing a partial recovery identity.
+
+### Development
+
+- Add Native large-index and ownership/retry checks plus optional resource
+  observation of benchmark Node, Git and headless renderer descendants.
+  Keep observer costs separate from uninstrumented timing and retain mixed
+  whole-workload CPU and latency results; this is a scoped memory/Node CPU
+  improvement, not a general operation-speed claim.
+
 ## [0.1.72137] - 2026-10-21
 
 ### Performance

@@ -6,9 +6,12 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
 
-/** source만 archive로 분리하고 같은 harness·Node 인자·설정 격리로 실행한 뒤 임시 번들을 정리한다. */
-export async function runSourceBenchmark(entryPoint, sharedFiles = [], nodeArgs = []) {
+/** source만 격리하고 같은 harness로 실행한다. 명시한 observer는 build 뒤 자식 Node만 감싸며 기본 실행에는 없다. */
+export async function runSourceBenchmark(entryPoint, sharedFiles = [], nodeArgs = [], observerPrefix) {
   const workspaceRoot = process.cwd();
+  const resourceObserver = process.env.GSC_BENCH_RESOURCE_OBSERVER;
+  if (resourceObserver && !process.argv[2]) throw new Error("Resource observation requires an explicit output file.");
+  const prefix = observerPrefix ?? (resourceObserver ? ["/usr/bin/python3", resourceObserver, process.argv[2] + ".resources.json"] : []);
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-source-benchmark-"));
   try {
     let sourceRoot = workspaceRoot;
@@ -28,7 +31,10 @@ export async function runSourceBenchmark(entryPoint, sharedFiles = [], nodeArgs 
       target: "node18", logLevel: "silent", nodePaths: [path.join(workspaceRoot, "node_modules")], alias: { vscode: path.join(sourceRoot, "test/helpers/vscodeMock.ts") } });
     const source = { kind: ref ? "commit" : "working-tree", commit, bundleSha256: createHash("sha256").update(await readFile(outfile)).digest("hex") };
     const code = await new Promise((resolve, reject) => {
-      const child = spawn(process.execPath, [...nodeArgs, outfile, ...process.argv.slice(2)], { cwd: sourceRoot, stdio: "inherit",
+      // 선택 observer는 archive/build가 끝난 실제 benchmark Node만 감싸 source 준비 비용을 자원 비교에서 뺀다.
+      const command = prefix.length ? prefix[0] : process.execPath;
+      const args = [...prefix.slice(1), ...(prefix.length ? [process.execPath] : []), ...nodeArgs, outfile, ...process.argv.slice(2)];
+      const child = spawn(command, args, { cwd: sourceRoot, stdio: "inherit",
         env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GSC_BENCH_WORKSPACE_ROOT: workspaceRoot, GSC_BENCH_SOURCE: JSON.stringify(source) } });
       child.once("error", reject); child.once("close", code => resolve(code ?? 1));
     });

@@ -1,0 +1,438 @@
+{
+  "version": "0.1.72138",
+  "baselineCommit": "b34ed1bc5511e6ebf0c87c567486d681b9d90c1d",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "objective": "Preserve the full push/pull/fetch/rebase/merge/PR squash/cherry-pick/checkout speed, fresh Graph, stability and minimum-resource goal.",
+  "change": "Stream the exact legacy UTF-8 operation-index digest and unmerged stages. Retain safe read retries with fresh per-attempt state and read-only execution gates.",
+  "method": {
+    "indexOrder": [
+      "before",
+      "after",
+      "after",
+      "before"
+    ],
+    "uninstrumentedCaptureSamplesPerSource": 6,
+    "resourceRunsPerSource": 2,
+    "capturesPerResourceRun": 3,
+    "fixture": {
+      "entries": 100000,
+      "indexBytes": 25600070,
+      "stageOutputBytes": 24200000,
+      "indexSha256": "aeca35e43fc059c6280b4a5d08122e46a677736a451ddedc773eb366dbdb1700",
+      "expectedFingerprint": "37c1a8faeb7a79c9d097602aa6c88ed981da79991202d8db01c0caa626e7b077"
+    },
+    "nodeSampleIntervalMs": 1,
+    "treeSampleIntervalAfterPsMs": 50,
+    "indexScope": "Actual Native index capture and Undo-plan validation, without100000-file checkout. Forced GC before each capture is benchmark-only.",
+    "processScope": "Optional observer wraps the actual benchmark Node after source archive/build. wait4 CPU includes that completed Node and children plus fixture setup and validation. RSS is a sampled sum for visible owned descendants; shared pages may count repeatedly and short children/peaks may be missed. Observer/ps excluded.",
+    "matrixScope": "Nine real service operations with production HTML/CSP/headless renderer; VS Code transport is replaced. These are service-to-renderer flows, not actual button/picker latency. Two runs/source are exploratory.",
+    "externalNetwork": "Owned local bare receiver only; no GitHub latency measurement.",
+    "nativeSafety": "Existing Native ref/HEAD/operation/index checks, fsmonitor=false and read time limits remain. No new runtime timer or Git query.",
+    "resourceReference": "https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/wait.2.html"
+  },
+  "captureComparisons": {
+    "elapsedMs": {
+      "before": {
+        "values": [1247.6298749999996,1123.610458,915.7548339999994,383.38149999999996,101.97737499999994,102.06045899999981],
+        "median": 649.5681669999997,
+        "min": 101.97737499999994,
+        "max": 1247.6298749999996
+      },
+      "after": {
+        "values": [757.192125,892.6475419999997,607.1597080000001,127.7751249999992,91.92012499999964,97.31175000000076],
+        "median": 367.4674164999997,
+        "min": 91.92012499999964,
+        "max": 892.6475419999997
+      }
+    },
+    "nodeCpuMs": {
+      "before": {
+        "values": [139.963,101.949,115.077,84.801,67.785,62.427],
+        "median": 93.375,
+        "min": 62.427,
+        "max": 139.963
+      },
+      "after": {
+        "values": [93.721,90.593,53.19,65.982,51.808,46.655],
+        "median": 59.586,
+        "min": 46.655,
+        "max": 93.721
+      }
+    },
+    "sampledNodeHeapGrowthBytes": {
+      "before": {
+        "values": [33469616,28276976,28277168,33535296,33007528,28246288],
+        "median": 30642348,
+        "min": 28246288,
+        "max": 33535296
+      },
+      "after": {
+        "values": [16125688,16538832,16379440,16510928,15905056,16087416],
+        "median": 16252564,
+        "min": 15905056,
+        "max": 16538832
+      }
+    },
+    "sampledArrayBufferGrowthBytes": {
+      "before": {
+        "values": [48400816,24206415,24206415,48400816,24206415,24206415],
+        "median": 24206415,
+        "min": 24206415,
+        "max": 48400816
+      },
+      "after": {
+        "values": [11927883,12469371,12338299,12272779,12010619,12076155],
+        "median": 12174467,
+        "min": 11927883,
+        "max": 12469371
+      }
+    },
+    "sampledNodeRssGrowthBytes": {
+      "before": {
+        "values": [88195072,36569088,31604736,79151104,56147968,29523968],
+        "median": 46358528,
+        "min": 29523968,
+        "max": 88195072
+      },
+      "after": {
+        "values": [7979008,3260416,16384,4243456,557056,49152],
+        "median": 1908736,
+        "min": 16384,
+        "max": 7979008
+      }
+    }
+  },
+  "indexResourceComparison": {
+    "totalCpuMs": {
+      "before": {
+        "values": [2127.163,2142.915],
+        "median": 2135.0389999999998,
+        "min": 2127.163,
+        "max": 2142.915
+      },
+      "after": {
+        "values": [2267.092,2508.981],
+        "median": 2388.0365,
+        "min": 2267.092,
+        "max": 2508.981
+      }
+    },
+    "sampledTreePeakRssBytes": {
+      "before": {
+        "values": [359743488,381173760],
+        "median": 370458624,
+        "min": 359743488,
+        "max": 381173760
+      },
+      "after": {
+        "values": [265093120,246235136],
+        "median": 255664128,
+        "min": 246235136,
+        "max": 265093120
+      }
+    }
+  },
+  "matrixResourceComparison": {
+    "totalCpuMs": {
+      "before": {
+        "values": [18177.702,23450.139000000003],
+        "median": 20813.9205,
+        "min": 18177.702,
+        "max": 23450.139000000003
+      },
+      "after": {
+        "values": [22810.779000000002,19777.273999999998],
+        "median": 21294.0265,
+        "min": 19777.273999999998,
+        "max": 22810.779000000002
+      }
+    },
+    "sampledTreePeakRssBytes": {
+      "before": {
+        "values": [641269760,622247936],
+        "median": 631758848,
+        "min": 622247936,
+        "max": 641269760
+      },
+      "after": {
+        "values": [614940672,644939776],
+        "median": 629940224,
+        "min": 614940672,
+        "max": 644939776
+      }
+    }
+  },
+  "matrixComparisons": {
+    "push": {"operationMs":{"before":{"values":[769,3869],"median":2319,"min":769,"max":3869},"after":{"values":[2794,339],"median":1566.5,"min":339,"max":2794}},"serviceToFinalFrameMs":{"before":{"values":[938,4279],"median":2608.5,"min":938,"max":4279},"after":{"values":[3005,453],"median":1729,"min":453,"max":3005}},"processes":{"before":{"values":[25,25],"median":25,"min":25,"max":25},"after":{"values":[25,25],"median":25,"min":25,"max":25}}},
+    "pull": {"operationMs":{"before":{"values":[837,286],"median":561.5,"min":286,"max":837},"after":{"values":[4640,166],"median":2403,"min":166,"max":4640}},"serviceToFinalFrameMs":{"before":{"values":[1112,662],"median":887,"min":662,"max":1112},"after":{"values":[6768,316],"median":3542,"min":316,"max":6768}},"processes":{"before":{"values":[12,12],"median":12,"min":12,"max":12},"after":{"values":[12,12],"median":12,"min":12,"max":12}}},
+    "fetch": {"operationMs":{"before":{"values":[221,382],"median":301.5,"min":221,"max":382},"after":{"values":[1351,106],"median":728.5,"min":106,"max":1351}},"serviceToFinalFrameMs":{"before":{"values":[426,603],"median":514.5,"min":426,"max":603},"after":{"values":[1596,213],"median":904.5,"min":213,"max":1596}},"processes":{"before":{"values":[6,6],"median":6,"min":6,"max":6},"after":{"values":[6,6],"median":6,"min":6,"max":6}}},
+    "rebase": {"operationMs":{"before":{"values":[474,446],"median":460,"min":446,"max":474},"after":{"values":[890,609],"median":749.5,"min":609,"max":890}},"serviceToFinalFrameMs":{"before":{"values":[1078,718],"median":898,"min":718,"max":1078},"after":{"values":[1085,843],"median":964,"min":843,"max":1085}},"processes":{"before":{"values":[23,23],"median":23,"min":23,"max":23},"after":{"values":[23,23],"median":23,"min":23,"max":23}}},
+    "merge": {"operationMs":{"before":{"values":[1556,227],"median":891.5,"min":227,"max":1556},"after":{"values":[3398,621],"median":2009.5,"min":621,"max":3398}},"serviceToFinalFrameMs":{"before":{"values":[1707,431],"median":1069,"min":431,"max":1707},"after":{"values":[3924,1058],"median":2491,"min":1058,"max":3924}},"processes":{"before":{"values":[21,21],"median":21,"min":21,"max":21},"after":{"values":[21,21],"median":21,"min":21,"max":21}}},
+    "pr-squash-cherry-pick": {"operationMs":{"before":{"values":[315,1264],"median":789.5,"min":315,"max":1264},"after":{"values":[450,2538],"median":1494,"min":450,"max":2538}},"serviceToFinalFrameMs":{"before":{"values":[498,1616],"median":1057,"min":498,"max":1616},"after":{"values":[692,3453],"median":2072.5,"min":692,"max":3453}},"processes":{"before":{"values":[30,30],"median":30,"min":30,"max":30},"after":{"values":[30,30],"median":30,"min":30,"max":30}}},
+    "pr-cherry-pick": {"operationMs":{"before":{"values":[1552,672],"median":1112,"min":672,"max":1552},"after":{"values":[542,2347],"median":1444.5,"min":542,"max":2347}},"serviceToFinalFrameMs":{"before":{"values":[2220,955],"median":1587.5,"min":955,"max":2220},"after":{"values":[902,2566],"median":1734,"min":902,"max":2566}},"processes":{"before":{"values":[31,31],"median":31,"min":31,"max":31},"after":{"values":[31,31],"median":31,"min":31,"max":31}}},
+    "cherry-pick": {"operationMs":{"before":{"values":[30,78],"median":54,"min":30,"max":78},"after":{"values":[47,49],"median":48,"min":47,"max":49}},"serviceToFinalFrameMs":{"before":{"values":[357,343],"median":350,"min":343,"max":357},"after":{"values":[460,491],"median":475.5,"min":460,"max":491}},"processes":{"before":{"values":[9,9],"median":9,"min":9,"max":9},"after":{"values":[9,9],"median":9,"min":9,"max":9}}},
+    "checkout": {"operationMs":{"before":{"values":[228,143],"median":185.5,"min":143,"max":228},"after":{"values":[139,154],"median":146.5,"min":139,"max":154}},"serviceToFinalFrameMs":{"before":{"values":[341,319],"median":330,"min":319,"max":341},"after":{"values":[295,351],"median":323,"min":295,"max":351}},"processes":{"before":{"values":[6,6],"median":6,"min":6,"max":6},"after":{"values":[6,6],"median":6,"min":6,"max":6}}}
+  },
+  "captureSamples": [
+    {"run":1,"source":"before","mode":"timing","startedAt":1792580279387,"endedAt":1792580280635,"elapsedMs":1247.6298749999996,"nodeCpuMs":139.963,"sampledNodeRssGrowthBytes":88195072,"sampledNodeHeapGrowthBytes":33469616,"sampledExternalGrowthBytes":22708497,"sampledArrayBufferGrowthBytes":48400816,"nodeRssBeforeBytes":149897216,"sampledNodeRssPeakBytes":238092288,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":1,"source":"before","mode":"timing","startedAt":1792580282399,"endedAt":1792580283523,"elapsedMs":1123.610458,"nodeCpuMs":101.949,"sampledNodeRssGrowthBytes":36569088,"sampledNodeHeapGrowthBytes":28276976,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":261898240,"sampledNodeRssPeakBytes":298467328,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":1,"source":"before","mode":"timing","startedAt":1792580285275,"endedAt":1792580286190,"elapsedMs":915.7548339999994,"nodeCpuMs":115.077,"sampledNodeRssGrowthBytes":31604736,"sampledNodeHeapGrowthBytes":28277168,"sampledExternalGrowthBytes":48400508,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":273776640,"sampledNodeRssPeakBytes":305381376,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":2,"source":"after","mode":"timing","startedAt":1792580291121,"endedAt":1792580291878,"elapsedMs":757.192125,"nodeCpuMs":93.721,"sampledNodeRssGrowthBytes":7979008,"sampledNodeHeapGrowthBytes":16125688,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":11927883,"nodeRssBeforeBytes":189874176,"sampledNodeRssPeakBytes":197853184,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":2,"source":"after","mode":"timing","startedAt":1792580293020,"endedAt":1792580293913,"elapsedMs":892.6475419999997,"nodeCpuMs":90.593,"sampledNodeRssGrowthBytes":3260416,"sampledNodeHeapGrowthBytes":16538832,"sampledExternalGrowthBytes":8257082,"sampledArrayBufferGrowthBytes":12469371,"nodeRssBeforeBytes":215728128,"sampledNodeRssPeakBytes":218988544,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":2,"source":"after","mode":"timing","startedAt":1792580295342,"endedAt":1792580295949,"elapsedMs":607.1597080000001,"nodeCpuMs":53.19,"sampledNodeRssGrowthBytes":16384,"sampledNodeHeapGrowthBytes":16379440,"sampledExternalGrowthBytes":7929395,"sampledArrayBufferGrowthBytes":12338299,"nodeRssBeforeBytes":208502784,"sampledNodeRssPeakBytes":208519168,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":3,"source":"after","mode":"timing","startedAt":1792580302563,"endedAt":1792580302691,"elapsedMs":127.7751249999992,"nodeCpuMs":65.982,"sampledNodeRssGrowthBytes":4243456,"sampledNodeHeapGrowthBytes":16510928,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":12272779,"nodeRssBeforeBytes":186662912,"sampledNodeRssPeakBytes":190906368,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":3,"source":"after","mode":"timing","startedAt":1792580302970,"endedAt":1792580303062,"elapsedMs":91.92012499999964,"nodeCpuMs":51.808,"sampledNodeRssGrowthBytes":557056,"sampledNodeHeapGrowthBytes":15905056,"sampledExternalGrowthBytes":8191546,"sampledArrayBufferGrowthBytes":12010619,"nodeRssBeforeBytes":205504512,"sampledNodeRssPeakBytes":206061568,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":3,"source":"after","mode":"timing","startedAt":1792580303288,"endedAt":1792580303386,"elapsedMs":97.31175000000076,"nodeCpuMs":46.655,"sampledNodeRssGrowthBytes":49152,"sampledNodeHeapGrowthBytes":16087416,"sampledExternalGrowthBytes":8191539,"sampledArrayBufferGrowthBytes":12076155,"nodeRssBeforeBytes":206831616,"sampledNodeRssPeakBytes":206880768,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":4,"source":"before","mode":"timing","startedAt":1792580306349,"endedAt":1792580306733,"elapsedMs":383.38149999999996,"nodeCpuMs":84.801,"sampledNodeRssGrowthBytes":79151104,"sampledNodeHeapGrowthBytes":33535296,"sampledExternalGrowthBytes":22708497,"sampledArrayBufferGrowthBytes":48400816,"nodeRssBeforeBytes":175603712,"sampledNodeRssPeakBytes":254754816,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":4,"source":"before","mode":"timing","startedAt":1792580307806,"endedAt":1792580307908,"elapsedMs":101.97737499999994,"nodeCpuMs":67.785,"sampledNodeRssGrowthBytes":56147968,"sampledNodeHeapGrowthBytes":33007528,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":256622592,"sampledNodeRssPeakBytes":312770560,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":4,"source":"before","mode":"timing","startedAt":1792580308115,"endedAt":1792580308217,"elapsedMs":102.06045899999981,"nodeCpuMs":62.427,"sampledNodeRssGrowthBytes":29523968,"sampledNodeHeapGrowthBytes":28246288,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":292503552,"sampledNodeRssPeakBytes":322027520,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":5,"source":"before","mode":"resources","startedAt":1792580310388,"endedAt":1792580310506,"elapsedMs":117.82554200000004,"nodeCpuMs":74.234,"sampledNodeRssGrowthBytes":85819392,"sampledNodeHeapGrowthBytes":28492336,"sampledExternalGrowthBytes":48439962,"sampledArrayBufferGrowthBytes":48400816,"nodeRssBeforeBytes":188530688,"sampledNodeRssPeakBytes":274350080,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":5,"source":"before","mode":"resources","startedAt":1792580310728,"endedAt":1792580310950,"elapsedMs":221.58774999999991,"nodeCpuMs":73.379,"sampledNodeRssGrowthBytes":25821184,"sampledNodeHeapGrowthBytes":28272280,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":298532864,"sampledNodeRssPeakBytes":324354048,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":5,"source":"before","mode":"resources","startedAt":1792580311270,"endedAt":1792580311366,"elapsedMs":96.1121250000001,"nodeCpuMs":63.364,"sampledNodeRssGrowthBytes":28753920,"sampledNodeHeapGrowthBytes":28255952,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":309673984,"sampledNodeRssPeakBytes":338427904,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":6,"source":"after","mode":"resources","startedAt":1792580313243,"endedAt":1792580313363,"elapsedMs":119.94445799999994,"nodeCpuMs":58.985,"sampledNodeRssGrowthBytes":6373376,"sampledNodeHeapGrowthBytes":16233040,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":12058955,"nodeRssBeforeBytes":190087168,"sampledNodeRssPeakBytes":196460544,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":6,"source":"after","mode":"resources","startedAt":1792580313869,"endedAt":1792580314183,"elapsedMs":314.0768330000001,"nodeCpuMs":61.771,"sampledNodeRssGrowthBytes":229376,"sampledNodeHeapGrowthBytes":15647384,"sampledExternalGrowthBytes":6935253,"sampledArrayBufferGrowthBytes":11344150,"nodeRssBeforeBytes":206684160,"sampledNodeRssPeakBytes":206913536,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":6,"source":"after","mode":"resources","startedAt":1792580314409,"endedAt":1792580314531,"elapsedMs":122.60416699999996,"nodeCpuMs":57.134,"sampledNodeRssGrowthBytes":16384,"sampledNodeHeapGrowthBytes":15315360,"sampledExternalGrowthBytes":6869710,"sampledArrayBufferGrowthBytes":11213078,"nodeRssBeforeBytes":212074496,"sampledNodeRssPeakBytes":212090880,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":7,"source":"after","mode":"resources","startedAt":1792580318348,"endedAt":1792580319063,"elapsedMs":714.874084,"nodeCpuMs":71.65,"sampledNodeRssGrowthBytes":17661952,"sampledNodeHeapGrowthBytes":15020192,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":10879307,"nodeRssBeforeBytes":145784832,"sampledNodeRssPeakBytes":163446784,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":7,"source":"after","mode":"resources","startedAt":1792580320294,"endedAt":1792580321291,"elapsedMs":997.3365829999993,"nodeCpuMs":75.891,"sampledNodeRssGrowthBytes":0,"sampledNodeHeapGrowthBytes":15928824,"sampledExternalGrowthBytes":7912186,"sampledArrayBufferGrowthBytes":11993403,"nodeRssBeforeBytes":147832832,"sampledNodeRssPeakBytes":147832832,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":7,"source":"after","mode":"resources","startedAt":1792580322574,"endedAt":1792580323274,"elapsedMs":700.0538329999999,"nodeCpuMs":50.557,"sampledNodeRssGrowthBytes":147456,"sampledNodeHeapGrowthBytes":16254096,"sampledExternalGrowthBytes":7781107,"sampledArrayBufferGrowthBytes":12190011,"nodeRssBeforeBytes":155222016,"sampledNodeRssPeakBytes":155369472,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":8,"source":"before","mode":"resources","startedAt":1792580327283,"endedAt":1792580327698,"elapsedMs":414.51979200000005,"nodeCpuMs":83.66,"sampledNodeRssGrowthBytes":85262336,"sampledNodeHeapGrowthBytes":28468816,"sampledExternalGrowthBytes":48441067,"sampledArrayBufferGrowthBytes":48400816,"nodeRssBeforeBytes":190005248,"sampledNodeRssPeakBytes":275267584,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":8,"source":"before","mode":"resources","startedAt":1792580328263,"endedAt":1792580328397,"elapsedMs":133.58779099999992,"nodeCpuMs":86.349,"sampledNodeRssGrowthBytes":33013760,"sampledNodeHeapGrowthBytes":28280080,"sampledExternalGrowthBytes":24206415,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":307707904,"sampledNodeRssPeakBytes":340721664,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true},
+    {"run":8,"source":"before","mode":"resources","startedAt":1792580328674,"endedAt":1792580328806,"elapsedMs":132.80949999999984,"nodeCpuMs":87.563,"sampledNodeRssGrowthBytes":25149440,"sampledNodeHeapGrowthBytes":27453768,"sampledExternalGrowthBytes":0,"sampledArrayBufferGrowthBytes":24206415,"nodeRssBeforeBytes":322584576,"sampledNodeRssPeakBytes":347734016,"legacyDigestExact":true,"nativeTreeAndIndexBytesExact":true,"undoPlanAccepted":true}
+  ],
+  "indexResources": [
+    {"run":5,"source":"before","userCpuMs":1191.303,"systemCpuMs":935.8599999999999,"totalCpuMs":2127.163,"sampledTreePeakRssBytes":359743488,"samples":21},
+    {"run":6,"source":"after","userCpuMs":1355.747,"systemCpuMs":911.3449999999999,"totalCpuMs":2267.092,"sampledTreePeakRssBytes":265093120,"samples":18},
+    {"run":7,"source":"after","userCpuMs":1414.1870000000001,"systemCpuMs":1094.794,"totalCpuMs":2508.981,"sampledTreePeakRssBytes":246235136,"samples":42},
+    {"run":8,"source":"before","userCpuMs":1279.115,"systemCpuMs":863.8000000000001,"totalCpuMs":2142.915,"sampledTreePeakRssBytes":381173760,"samples":26}
+  ],
+  "matrixSamples": [
+    {"run":1,"source":"before","operation":"push","operationMs":769,"finalFrameAfterOperationMs":169,"serviceToFinalFrameMs":938,"settledMs":916,"processes":25,"nodeCpuMs":117,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"pull","operationMs":837,"finalFrameAfterOperationMs":275,"serviceToFinalFrameMs":1112,"settledMs":1055,"processes":12,"nodeCpuMs":133,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"fetch","operationMs":221,"finalFrameAfterOperationMs":205,"serviceToFinalFrameMs":426,"settledMs":438,"processes":6,"nodeCpuMs":43,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"rebase","operationMs":474,"finalFrameAfterOperationMs":604,"serviceToFinalFrameMs":1078,"settledMs":1081,"processes":23,"nodeCpuMs":135,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"merge","operationMs":1556,"finalFrameAfterOperationMs":151,"serviceToFinalFrameMs":1707,"settledMs":1680,"processes":21,"nodeCpuMs":84,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"pr-squash-cherry-pick","operationMs":315,"finalFrameAfterOperationMs":183,"serviceToFinalFrameMs":498,"settledMs":472,"processes":30,"nodeCpuMs":111,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"pr-cherry-pick","operationMs":1552,"finalFrameAfterOperationMs":668,"serviceToFinalFrameMs":2220,"settledMs":2175,"processes":31,"nodeCpuMs":155,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"cherry-pick","operationMs":30,"finalFrameAfterOperationMs":327,"serviceToFinalFrameMs":357,"settledMs":215,"processes":9,"nodeCpuMs":96,"nativeAndRenderedExact":true},
+    {"run":1,"source":"before","operation":"checkout","operationMs":228,"finalFrameAfterOperationMs":113,"serviceToFinalFrameMs":341,"settledMs":343,"processes":6,"nodeCpuMs":43,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"push","operationMs":2794,"finalFrameAfterOperationMs":211,"serviceToFinalFrameMs":3005,"settledMs":3007,"processes":25,"nodeCpuMs":134,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"pull","operationMs":4640,"finalFrameAfterOperationMs":2128,"serviceToFinalFrameMs":6768,"settledMs":6767,"processes":12,"nodeCpuMs":225,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"fetch","operationMs":1351,"finalFrameAfterOperationMs":245,"serviceToFinalFrameMs":1596,"settledMs":1546,"processes":6,"nodeCpuMs":62,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"rebase","operationMs":890,"finalFrameAfterOperationMs":195,"serviceToFinalFrameMs":1085,"settledMs":1040,"processes":23,"nodeCpuMs":118,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"merge","operationMs":3398,"finalFrameAfterOperationMs":526,"serviceToFinalFrameMs":3924,"settledMs":3924,"processes":21,"nodeCpuMs":134,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"pr-squash-cherry-pick","operationMs":450,"finalFrameAfterOperationMs":242,"serviceToFinalFrameMs":692,"settledMs":630,"processes":30,"nodeCpuMs":183,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"pr-cherry-pick","operationMs":542,"finalFrameAfterOperationMs":360,"serviceToFinalFrameMs":902,"settledMs":778,"processes":31,"nodeCpuMs":201,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"cherry-pick","operationMs":47,"finalFrameAfterOperationMs":413,"serviceToFinalFrameMs":460,"settledMs":458,"processes":9,"nodeCpuMs":104,"nativeAndRenderedExact":true},
+    {"run":2,"source":"after","operation":"checkout","operationMs":139,"finalFrameAfterOperationMs":156,"serviceToFinalFrameMs":295,"settledMs":306,"processes":6,"nodeCpuMs":37,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"push","operationMs":339,"finalFrameAfterOperationMs":114,"serviceToFinalFrameMs":453,"settledMs":438,"processes":25,"nodeCpuMs":110,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"pull","operationMs":166,"finalFrameAfterOperationMs":150,"serviceToFinalFrameMs":316,"settledMs":288,"processes":12,"nodeCpuMs":92,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"fetch","operationMs":106,"finalFrameAfterOperationMs":107,"serviceToFinalFrameMs":213,"settledMs":202,"processes":6,"nodeCpuMs":39,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"rebase","operationMs":609,"finalFrameAfterOperationMs":234,"serviceToFinalFrameMs":843,"settledMs":787,"processes":23,"nodeCpuMs":141,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"merge","operationMs":621,"finalFrameAfterOperationMs":437,"serviceToFinalFrameMs":1058,"settledMs":980,"processes":21,"nodeCpuMs":217,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"pr-squash-cherry-pick","operationMs":2538,"finalFrameAfterOperationMs":915,"serviceToFinalFrameMs":3453,"settledMs":3452,"processes":30,"nodeCpuMs":138,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"pr-cherry-pick","operationMs":2347,"finalFrameAfterOperationMs":219,"serviceToFinalFrameMs":2566,"settledMs":2516,"processes":31,"nodeCpuMs":145,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"cherry-pick","operationMs":49,"finalFrameAfterOperationMs":442,"serviceToFinalFrameMs":491,"settledMs":378,"processes":9,"nodeCpuMs":134,"nativeAndRenderedExact":true},
+    {"run":3,"source":"after","operation":"checkout","operationMs":154,"finalFrameAfterOperationMs":197,"serviceToFinalFrameMs":351,"settledMs":372,"processes":6,"nodeCpuMs":41,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"push","operationMs":3869,"finalFrameAfterOperationMs":410,"serviceToFinalFrameMs":4279,"settledMs":4283,"processes":25,"nodeCpuMs":167,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"pull","operationMs":286,"finalFrameAfterOperationMs":376,"serviceToFinalFrameMs":662,"settledMs":572,"processes":12,"nodeCpuMs":105,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"fetch","operationMs":382,"finalFrameAfterOperationMs":221,"serviceToFinalFrameMs":603,"settledMs":593,"processes":6,"nodeCpuMs":61,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"rebase","operationMs":446,"finalFrameAfterOperationMs":272,"serviceToFinalFrameMs":718,"settledMs":666,"processes":23,"nodeCpuMs":178,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"merge","operationMs":227,"finalFrameAfterOperationMs":204,"serviceToFinalFrameMs":431,"settledMs":388,"processes":21,"nodeCpuMs":121,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"pr-squash-cherry-pick","operationMs":1264,"finalFrameAfterOperationMs":352,"serviceToFinalFrameMs":1616,"settledMs":1519,"processes":30,"nodeCpuMs":224,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"pr-cherry-pick","operationMs":672,"finalFrameAfterOperationMs":283,"serviceToFinalFrameMs":955,"settledMs":883,"processes":31,"nodeCpuMs":203,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"cherry-pick","operationMs":78,"finalFrameAfterOperationMs":265,"serviceToFinalFrameMs":343,"settledMs":345,"processes":9,"nodeCpuMs":111,"nativeAndRenderedExact":true},
+    {"run":4,"source":"before","operation":"checkout","operationMs":143,"finalFrameAfterOperationMs":176,"serviceToFinalFrameMs":319,"settledMs":303,"processes":6,"nodeCpuMs":66,"nativeAndRenderedExact":true}
+  ],
+  "matrixResources": [
+    {"run":1,"source":"before","totalCpuMs":18177.702,"sampledTreePeakRssBytes":641269760,"samples":147,"serviceSumMs":5982,"serviceToFinalFrameSumMs":8677},
+    {"run":2,"source":"after","totalCpuMs":22810.779000000002,"sampledTreePeakRssBytes":614940672,"samples":206,"serviceSumMs":14251,"serviceToFinalFrameSumMs":18727},
+    {"run":3,"source":"after","totalCpuMs":19777.273999999998,"sampledTreePeakRssBytes":644939776,"samples":144,"serviceSumMs":6929,"serviceToFinalFrameSumMs":9744},
+    {"run":4,"source":"before","totalCpuMs":23450.139000000003,"sampledTreePeakRssBytes":622247936,"samples":155,"serviceSumMs":7367,"serviceToFinalFrameSumMs":9926}
+  ],
+  "prototype": [
+    {
+      "state": "/private/tmp/gsc-goal38-index-state.json",
+      "sourceSha256": {
+        "src/git/operationUndoStore.ts": "0c4bc746da3ea69e89b71ce7746661dc983f4ede03876d55c2005f00ea24e0ef",
+        "src/git/indexStateFingerprint.ts": "ee29a6f8c2c2bb17787adf3e0ae5b24779833d4bbaf483e6a8c19f738b0b31ab",
+        "test/benchmarks/undoIndexState.ts": "24b66ee5dd77aa308369bd3d3febc0f74ae3dc99f043574869bbc9eef9dd5e85",
+        "test/helpers/largeIndexFixture.ts": "16b3bcc6e66571ba63bd8d78dacbeece73a8ca1d06570923362b99462c1f5c9d",
+        "scripts/benchmark-undo-index.mjs": "8252bd2036323ed8e57208e51301f52b0e277b45e322343cb2a101f687284365",
+        "scripts/run-source-benchmark.mjs": "a1fdeff0e06a654906d12e9c2dc5a4a311d0be45eb3b44afb3cf888c1c80d6e1"
+      },
+      "classification": "superseded implementation; all raw values retained, excluded from final-source headline comparisons"
+    },
+    {
+      "state": "/private/tmp/gsc-goal38-final-index-state.json",
+      "sourceSha256": {
+        "src/git/operationUndoStore.ts": "0c4bc746da3ea69e89b71ce7746661dc983f4ede03876d55c2005f00ea24e0ef",
+        "src/git/indexStateFingerprint.ts": "8e70acf88ec135a41582c26a4a0704508dcfd544941ead1c2f4b9fef659c4ed4",
+        "test/benchmarks/undoIndexState.ts": "24b66ee5dd77aa308369bd3d3febc0f74ae3dc99f043574869bbc9eef9dd5e85",
+        "test/helpers/largeIndexFixture.ts": "16b3bcc6e66571ba63bd8d78dacbeece73a8ca1d06570923362b99462c1f5c9d",
+        "scripts/benchmark-undo-index.mjs": "e4261746787f996e55e9cd8952230035dc8d8aa061ddda6d65891802d0a241d9",
+        "scripts/run-source-benchmark.mjs": "e0cb68733e7bd84af119742368ec458b041c0d3b3a2b0371efc31991dc0431ac",
+        "scripts/profile-benchmark-resources.py": "70d432fde1835f531d0b02ccf06e06f5f5ff5645a5078682977d4aebcbbcb6bf"
+      },
+      "classification": "superseded implementation; all raw values retained, excluded from final-source headline comparisons"
+    },
+    {
+      "state": "/private/tmp/gsc-goal38-matrix-state.json",
+      "sourceSha256": {
+        "src/git/operationUndoStore.ts": "0c4bc746da3ea69e89b71ce7746661dc983f4ede03876d55c2005f00ea24e0ef",
+        "src/git/indexStateFingerprint.ts": "8e70acf88ec135a41582c26a4a0704508dcfd544941ead1c2f4b9fef659c4ed4",
+        "test/benchmarks/gitOperationMatrix.ts": "ac5d70d025348258bedc5b667e3f60c9445365093f6c1deeec1a27fed5efe3a7",
+        "test/helpers/gitOperationFixture.ts": "3020d92ee8d85a333db4724058f3daefe9b0649b954e5df52a80ccabefcb3147",
+        "test/helpers/graphOperationPanel.ts": "b3a5ba1aabebb3fa555fc5735bba0ebc7b60a2b3511a2998af5215052e8321f3",
+        "test/helpers/graphLiveRenderer.ts": "7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4",
+        "test/helpers/graphNativeExpectation.ts": "950923cc0646ad0a59ec7ed4ef19e5306d946c46f92ddb5826d31ce41cd3b5dc",
+        "scripts/benchmark-git-operations.mjs": "a1b6a5126e71c76280af319c57903aaeb5be24de5201e583c5e2d44721e6120b",
+        "scripts/run-source-benchmark.mjs": "e0cb68733e7bd84af119742368ec458b041c0d3b3a2b0371efc31991dc0431ac",
+        "scripts/profile-benchmark-resources.py": "70d432fde1835f531d0b02ccf06e06f5f5ff5645a5078682977d4aebcbbcb6bf"
+      },
+      "classification": "superseded implementation; all raw values retained, excluded from final-source headline comparisons"
+    }
+  ],
+  "checks": {
+    "finalNodePass": 70,
+    "finalNodeFail": 0,
+    "skipped": 0,
+    "indexCapturesWithExactLegacyDigest": 24,
+    "finalNativeAndRenderedMatrixCases": 36,
+    "legacyUtf8AndAllStageChunkBoundaries": true,
+    "invalidUtf8AndLinkedWorktreesNative": true,
+    "partialFailureAndReadRetryStateReset": true,
+    "noPartialFingerprintPublished": true,
+    "readOnlyGateAndNativeUndoSafety": true
+  },
+  "actualCaptainIndex": {
+    "scope": "Read-only index header and stat; no Git command, files or refs changed",
+    "observedAt": "2026-10-21T10:44:29.579Z",
+    "version": 2,
+    "entries": 30311,
+    "bytes": 4745895,
+    "sameIdentity": true
+  },
+  "limitations": [
+    "Final index timing median improved in this series; prior implementation series included slower candidate timing and remain in the evidence.",
+    "Index capture Node CPU/heap decreased, but whole-workload Node+Git CPU did not decrease consistently. General resource minimization remains unproven.",
+    "Nine-operation end-to-end latency and Node/Git/Chromium aggregate CPU/RSS are mixed. No general speed or whole-app resource claim.",
+    "100000-entry stress index is larger than the readonly actual Captain index. No actual Captain mutation benchmark or GitHub throughput measurement.",
+    "No UI source was changed; no new foreground extension host, OS focus change, forced reload, native-banner visual audit or Marketplace status check."
+  ],
+  "sourceSha256": {
+    "src/git/gitExec.ts": "9f52cc50c07864bab651e02fb58a642d4e562466698929b4958d4bec7bdb8aa1",
+    "src/git/operationUndoStore.ts": "0c4bc746da3ea69e89b71ce7746661dc983f4ede03876d55c2005f00ea24e0ef",
+    "src/git/indexStateFingerprint.ts": "3d6c9fb6f2c5e65d348f049d3bbdb6025d1ce79a6072259b4964699459e7b752",
+    "test/benchmarks/undoIndexState.ts": "24b66ee5dd77aa308369bd3d3febc0f74ae3dc99f043574869bbc9eef9dd5e85",
+    "test/helpers/largeIndexFixture.ts": "16b3bcc6e66571ba63bd8d78dacbeece73a8ca1d06570923362b99462c1f5c9d",
+    "scripts/benchmark-undo-index.mjs": "e4261746787f996e55e9cd8952230035dc8d8aa061ddda6d65891802d0a241d9",
+    "scripts/run-source-benchmark.mjs": "e0cb68733e7bd84af119742368ec458b041c0d3b3a2b0371efc31991dc0431ac",
+    "scripts/profile-benchmark-resources.py": "dddfb6f3e785de7769888f3b7f30cf82e4ef2d37b6e8c3f32f78c37811673814",
+    "test/benchmarks/gitOperationMatrix.ts": "ac5d70d025348258bedc5b667e3f60c9445365093f6c1deeec1a27fed5efe3a7",
+    "test/helpers/gitOperationFixture.ts": "3020d92ee8d85a333db4724058f3daefe9b0649b954e5df52a80ccabefcb3147",
+    "test/helpers/graphOperationPanel.ts": "b3a5ba1aabebb3fa555fc5735bba0ebc7b60a2b3511a2998af5215052e8321f3",
+    "test/helpers/graphLiveRenderer.ts": "7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4",
+    "test/helpers/graphNativeExpectation.ts": "950923cc0646ad0a59ec7ed4ef19e5306d946c46f92ddb5826d31ce41cd3b5dc",
+    "scripts/benchmark-git-operations.mjs": "a1b6a5126e71c76280af319c57903aaeb5be24de5201e583c5e2d44721e6120b",
+    "test/gitStreamResult.test.ts": "e8a30f912716c73515a98fbae51620335c29e226cca7396b7fd6fa86b32490f4",
+    "test/indexStateFingerprint.test.ts": "f426290c95ad9a2520ccd86987a526f0730a6f7822e04fd60693eafcb3523427",
+    "test/indexStateFingerprintNative.test.ts": "47d67cf1c1f83f60dfefb6e8493ecc7ef0a4e1c14826267a7d43099c393611b4"
+  },
+  "evidence": [
+    {"path":"/private/tmp/gsc-goal38-fold-index-state.json","sha256":"d32d8cc2d4a3230ba6375fe5fe143fdf872b9cad0dafd1e8690d840ffb21237f"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-driver.log","sha256":"b18169ad7e3b2b9641cc02d34447868589f43fc04e8e80dac9ab9a8b24f7994d"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-state.json","sha256":"3e2ee91ea4c5e98c5e9212f471aca2c5f4c96b4902e66eb9766d47a4c0ea4e1b"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-driver.log","sha256":"1967e54c8f84fb1867e97f79779141668e4cfab822324f44bcf3906a53d6bec9"},
+    {"path":"/private/tmp/gsc-goal38-final-native-node.log","sha256":"afb3bd1d8311dd537f0910c0b77449c1adf9d7c62e60427093429e2bc36d6dd2"},
+    {"path":"/private/tmp/gsc-goal38-release-types.log","sha256":"85f2f514d7a51de789a10fabc7c2a1f8e42ffee0dc9bc463db8f06ef9d9ee170"},
+    {"path":"/private/tmp/gsc-goal38-captain-index.json","sha256":"d181521c28308d908ff558c357265ef7b154b731481e455904e66fdcafa8cc5c"},
+    {"path":"/private/tmp/gsc-goal38-index-state.json","sha256":"672d6b59a1845f0766d129f81a81c6767ffacca38de24359ac419a8f4e2a6567"},
+    {"path":"/private/tmp/gsc-goal38-final-index-state.json","sha256":"6a900bdfd728687b64f3fde922562bf1253011ea4d69a84674c12620b0c7a6c5"},
+    {"path":"/private/tmp/gsc-goal38-matrix-state.json","sha256":"dc258b29dafabbbf0d46c4531a030b66a0fc9e3f4b1f85a6c809f6db2828d87e"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-1-before.json","sha256":"21d1503259789303e2a631219b7b40ae0fbb5514366139fbe711b2ddcefa62bd"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-1-before.log","sha256":"21d1503259789303e2a631219b7b40ae0fbb5514366139fbe711b2ddcefa62bd"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-2-after.json","sha256":"c1462d510c6d22eed1fe7092a40df37c840eb878f32a3f831fb1dc92e0454058"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-2-after.log","sha256":"c1462d510c6d22eed1fe7092a40df37c840eb878f32a3f831fb1dc92e0454058"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-3-after.json","sha256":"b3b441a265ebbcc0bdd9b4fe49e4311076d16d4a1959052f9ad50702e4af62d5"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-3-after.log","sha256":"b3b441a265ebbcc0bdd9b4fe49e4311076d16d4a1959052f9ad50702e4af62d5"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-4-before.json","sha256":"f1f71e96a4a2ff52ffc398acafa51d9acda99fc1d54d3304f2f17f26adfececf"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-timing-4-before.log","sha256":"f1f71e96a4a2ff52ffc398acafa51d9acda99fc1d54d3304f2f17f26adfececf"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-1-before.json","sha256":"d08274a63815f4b090a4d02fefae51fceeeb4fad8141e0560270942112b2192c"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-1-before.log","sha256":"aef69506176fe156fb38bdaf3632cde99963a9607ca9b801197513ae0aa2facb"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-1-before.json.resources.json","sha256":"70fa243375b8f92fa6501bce5c564e6364b3a5ed588fce030116c3a8f4e197b2"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-2-after.json","sha256":"a6ecdbb1c118938171074c448094f687d030feb9c656c917fac92d01071fdec1"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-2-after.log","sha256":"f15f41a74385ff8dce5942a25027955611c0f563ba651e486ab43ad69259f2b9"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-2-after.json.resources.json","sha256":"efcae66fea53f29b93b86ab4cab88ba1e4de8cf6b2a7fdca05528281cbc6dcd9"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-3-after.json","sha256":"7479cade04d0d1026529253f75bc7dfdf177e6e8c45f443df84c448d9db88101"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-3-after.log","sha256":"4492f9469cde90641cf8f9f2eb18cf62fb67c883ee7343c6cd4d99ec834471fc"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-3-after.json.resources.json","sha256":"f3b89d2de8db6411173a7450e9e54296a693dba3be8ccd7ef8ccf7ca3245826d"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-4-before.json","sha256":"525d7374c3077efaf65d3d0dbd967484b821638a8abec2fa17073a72fc880060"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-4-before.log","sha256":"decb21b22b46d5cba4be89dfcceb4d077f6b56d3043a72eee7ef7765c6a0aa55"},
+    {"path":"/private/tmp/gsc-goal38-fold-index-resources-4-before.json.resources.json","sha256":"ab667729581bef8d08c1265e30ef87f2d21c49ab577990c6dbdac795d9f66423"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-1-before.json","sha256":"b64c9235649f6a2e8dc432f8eea038365efd6b61e5dd073432899801db2b14b7"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-1-before.log","sha256":"485c0a1844f3b33bb8e41d91c3e5a711e8e6153830506af5e180abb8d788988f"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-1-before.json.resources.json","sha256":"8613acaf12ab4e8015acd9448abaa3c33ca104d556595f5156b3c1061f6e75d1"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-2-after.json","sha256":"aa27e95b7dfec6a438d61c68c6e045be88f23e35b4c019d0b636873a71c20b39"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-2-after.log","sha256":"28d9f77ce269a0b91c12e34a345ea25b16f55ddaddf795f38ffbcda1f2f2abfd"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-2-after.json.resources.json","sha256":"064ef981b101d4b2823e9517d5e4082b177e8e42699ca1d6d141f2bc1d625e61"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-3-after.json","sha256":"d10dfa7e139fed9ab006f89faa9a2795f2113233afc329bc17a63a5726bd3856"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-3-after.log","sha256":"28e9b1012e957f3abd2dae875cb9ec9f47ac7510e4fad7b9b857cc5f70a3bf59"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-3-after.json.resources.json","sha256":"5d54fe29df8da21334ed9bb46841a298d4f63865d6167188c4dfc518e5bcd6ae"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-4-before.json","sha256":"d3d67af56e7b77f748e66fa6398a79c1d51e582fd528670f30bf6ac194bdb313"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-4-before.log","sha256":"183e2caf48281d26ddb54067ac416833a83bf57c31f67fd415a88c68acad3126"},
+    {"path":"/private/tmp/gsc-goal38-fold-matrix-4-before.json.resources.json","sha256":"83f28c76569afc2232e9f2321cd01c281713dedaec14ff3dc1c0dc6b13a5bbc3"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-1-before.json","sha256":"d09d5f967da2a30432ae87a973aeb52f5557707cf109fe26de40f0903f070f24"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-1-before.log","sha256":"d09d5f967da2a30432ae87a973aeb52f5557707cf109fe26de40f0903f070f24"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-2-after.json","sha256":"6ae7cae6d2a26d9011b0f76175e6ff626902af66eba9cdd8f9339c7ae0191438"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-2-after.log","sha256":"6ae7cae6d2a26d9011b0f76175e6ff626902af66eba9cdd8f9339c7ae0191438"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-3-after.json","sha256":"9d7889517c5507175b0d546934d0de1787edbdf2b59a87446f723b231a1497d6"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-3-after.log","sha256":"9d7889517c5507175b0d546934d0de1787edbdf2b59a87446f723b231a1497d6"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-4-before.json","sha256":"ba247638ec95ff0a719ffa9ea62b6954b5397efafc5859a3a0aec8d7c0431d4b"},
+    {"path":"/private/tmp/gsc-goal38-index-timing-4-before.log","sha256":"ba247638ec95ff0a719ffa9ea62b6954b5397efafc5859a3a0aec8d7c0431d4b"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-1-before.json","sha256":"d9064d54e1f2979550022c6ac5ca03c4613348ef9320364106e659a303f79781"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-1-before.log","sha256":"d86d663ac237633297598cd266e892939bcc8b7d9b205b2e556afd433be1efe2"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-1-before.json.resources.json","sha256":"e28a98a86407de23083fb79de41f1552bc36e4f1b9476e1b988d4e4f78096dc6"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-2-after.json","sha256":"716784afa1575d0f690669b325d6e7c34e5bf9514af9c118d477ff40e525bceb"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-2-after.log","sha256":"6dac33ee95cfaf35cca7e48bb0da4c3e77dde624f94c56543ac5947b1fcb46b4"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-2-after.json.resources.json","sha256":"ca5d6e8ace4cfb637d1dbc0efc563279d8b7cfda6fc96a95c56920a843cd69e9"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-3-after.json","sha256":"90084b60bc0a172f67d4f4bbd46d4fd07e185d62e006f2c526eaf44e9499ee6f"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-3-after.log","sha256":"20a99b7f8149880f22ca37130335f0f6cdb5a7f789bbbc6a0d84a3012ab08a88"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-3-after.json.resources.json","sha256":"4e32608b3f2a44fc25302bda40db6bd01cc64e7b0893db60d2e29efa1c0a0614"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-4-before.json","sha256":"eb6c8b892b240e35c61c1fe96989c86587ef1095025690dbce43d75a090c23b1"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-4-before.log","sha256":"a37661dc772908f6c6a086a6e004382c3f7dd42b890f462584d30d95e9348fec"},
+    {"path":"/private/tmp/gsc-goal38-index-resources-4-before.json.resources.json","sha256":"90b10f8833d4d480e33986155a8e70df3450d17d244ae35aaa79f6691a37d232"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-1-before.json","sha256":"e9dab221da25e033bbd211c11e4ca44a10fd2d8ed8350da227e93796a6b04a57"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-1-before.log","sha256":"e9dab221da25e033bbd211c11e4ca44a10fd2d8ed8350da227e93796a6b04a57"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-2-after.json","sha256":"f1707d98d3fb64611c68e1fc5ebec76716ff2c36a8afd916d465dea16582add4"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-2-after.log","sha256":"f1707d98d3fb64611c68e1fc5ebec76716ff2c36a8afd916d465dea16582add4"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-3-after.json","sha256":"be9bfd52d7b87e213d592ef94ae71b2c98e67c25a541468035d41301c77c8671"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-3-after.log","sha256":"be9bfd52d7b87e213d592ef94ae71b2c98e67c25a541468035d41301c77c8671"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-4-before.json","sha256":"e4c91dffc1a6fbda69f90308e53de11c9f2cf2640a31077bd8b0e07400c5a820"},
+    {"path":"/private/tmp/gsc-goal38-final-index-timing-4-before.log","sha256":"e4c91dffc1a6fbda69f90308e53de11c9f2cf2640a31077bd8b0e07400c5a820"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-1-before.json","sha256":"6dbfdcb5f025df795cfa8e52f43e8a59ef129cb2a43bf4058df1b1a9b1f77af2"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-1-before.log","sha256":"d5cbb2ce48a54765d2eeee7ff4e587ddf575d22f10643d42890c053e4726b72a"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-1-before.json.resources.json","sha256":"de50ba081746611507556081d67a52ae5b4cd01866491400c33c64a2f54d6335"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-2-after.json","sha256":"a457133a3cd71d66a38e85f3796ded7b3e53b88d5e24f8b66b60d79a1e58773e"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-2-after.log","sha256":"014caff32683cc26ebde89c15d84a6c098d3256a496b6cd31dd8ce3c623a8c5f"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-2-after.json.resources.json","sha256":"d3ae3c1dc42a81dfe81f1f8b80ab540eb23652141fc97ec0331ac52ced9fec50"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-3-after.json","sha256":"8e8f566ebcbdb7b5a37968eef32eda1939f0240190ebaf4bcf0ee10fe5c150c0"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-3-after.log","sha256":"e29be46dcd97d39dca80d12b649bb969e1ab9298ce95033812e9755df3fc4889"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-3-after.json.resources.json","sha256":"2881c37b79ed2d5adfc51e89cfccbc152b8c704ad71d8e29f569f11912d179dc"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-4-before.json","sha256":"878fa6a5999673174d425bb67a9528689ee985e841b9846206168ff6db6d9b6b"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-4-before.log","sha256":"d8292501f595fd8344f302daa7324c4b29cae6985e8de77cadf273dc7a1621ff"},
+    {"path":"/private/tmp/gsc-goal38-final-index-resources-4-before.json.resources.json","sha256":"1d2c3edf7c8362f67e92ccd80a81ed441acb57a9ee46929cb4ca07e2a32d0b38"},
+    {"path":"/private/tmp/gsc-goal38-matrix-1-before.json","sha256":"4baf7c3c56600bc1c1e883a4018273a75a5fb3c4b0816a89acad17b079284715"},
+    {"path":"/private/tmp/gsc-goal38-matrix-1-before.log","sha256":"d452e6df112e532c2607d92362acd9ba1fdf5b5ffb95fe85555bd085841e4f4d"},
+    {"path":"/private/tmp/gsc-goal38-matrix-1-before.json.resources.json","sha256":"bcf05a0ad71457e99e93c0f984859d1a236620f9a1ded7e59249ab0acb81e66e"},
+    {"path":"/private/tmp/gsc-goal38-matrix-2-after.json","sha256":"fcbe73b7ce3e7ca59a83972b475a9a2a06da31762bbd65725424d5cd82a7725c"},
+    {"path":"/private/tmp/gsc-goal38-matrix-2-after.log","sha256":"57411e417cbd1b21431e8d8adee6f94a1f77e7d2596c54de39ff1aac0250960d"},
+    {"path":"/private/tmp/gsc-goal38-matrix-2-after.json.resources.json","sha256":"83f74705477f4c0f5202fa889d2f447cd8286e6857eab0406078554fa9e13d51"},
+    {"path":"/private/tmp/gsc-goal38-matrix-3-after.json","sha256":"81c66902eebaa261a74732507cb662ccc62bac0d5ca71729ae1c0b56b8e78522"},
+    {"path":"/private/tmp/gsc-goal38-matrix-3-after.log","sha256":"d4d9759524289342e780c15ba24574ac95496683aca8a7d9016a9066db7410dd"},
+    {"path":"/private/tmp/gsc-goal38-matrix-3-after.json.resources.json","sha256":"4031dd03d93e805962b6c0c93dac0489136cfd9f72dff7be58522bea28a68938"},
+    {"path":"/private/tmp/gsc-goal38-matrix-4-before.json","sha256":"bbe7c445e389fc3753e3a930a463938f865969e0035cb14fe38ea91946c58ff3"},
+    {"path":"/private/tmp/gsc-goal38-matrix-4-before.log","sha256":"45e257e8db614b874de8a490e6a15623c56ac73daa13f180c20a83230b6fbdb4"},
+    {"path":"/private/tmp/gsc-goal38-matrix-4-before.json.resources.json","sha256":"cdec018b53e22fe75208642dfaacad63441f67d019ef2cc1d1f9aae389885cd9"}
+  ]
+}

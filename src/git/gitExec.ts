@@ -24,6 +24,8 @@ export interface RunGitOptions {
 /** 성공한 명령의 두 출력 스트림을 손실 없이 제공한다. */
 export interface GitCommandOutput { stdout: string; stderr: string }
 export type GitInput = string | Uint8Array;
+/** 각 읽기 시도마다 새로 생성해 부분 결과를 외부로 게시하지 않는 스트림 소비자다. */
+export interface GitStreamReader<T> { onData(chunk: Buffer): void; finish(): T }
 export type GitExecutableResolver = (cwd: string) => string | undefined;
 const LOCK_RETRY_DELAYS_MS = [250, 500, 900, 1400, 2000];
 let executableResolver: GitExecutableResolver | undefined;
@@ -47,6 +49,23 @@ export function resolveGitExecutable(cwd: string, override?: string): string {
  */
 export async function runGitStream(args: string[], cwd: string, onData: (chunk: Buffer) => void, options: RunGitOptions = {}): Promise<void> {
   await executeGitProcess(resolveGitExecutable(cwd, options.executable), args, cwd, options, undefined, onData);
+}
+
+/**
+ * 스트림 전체가 성공한 뒤에만 결과를 반환하고, 기존 읽기의 안전한 lock/spawn 재시도 정책을 유지한다.
+ * @param args 읽기 전용 Git 인자. preparation 이후 쓰기로 바뀌어도 실행 전에 거부한다.
+ * @param cwd 실제 저장소 @param createReader 매 시도마다 새 decoder/hash 등 독립 상태를 만드는 함수
+ * @param options 기존 환경·취소·시간 제한·재시도 정책. 실패한 시도의 부분 출력은 재사용하지 않는다.
+ * @returns 성공/close 뒤 완성한 값. timeout·취소·파서 오류는 재시도하지 않는다.
+ */
+export function runGitStreamResult<T>(args: string[], cwd: string, createReader: () => GitStreamReader<T>,
+  options: RunGitOptions = {}): Promise<T> {
+  const executable = resolveGitExecutable(cwd, options.executable);
+  return withGitRetry(args, options, async () => {
+    const reader = createReader();
+    await executeGitProcess(executable, args, cwd, options, undefined, chunk => reader.onData(chunk), undefined, true);
+    return reader.finish();
+  });
 }
 
 /**

@@ -1,5 +1,5 @@
 // 브랜치/PR Undo snapshot을 작업 ID, worktree, Git 작업 세대와 연결해 다른 변경의 폐기를 막는다.
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { detectOperationInGitDir, type MergeOperation } from "./conflictService";
@@ -9,6 +9,7 @@ import { controlGitOperation } from "./operationControl";
 import { GitError, runGit } from "./gitExec";
 import { logInfo } from "../ui/outputLog";
 import { restoreUnoccupiedBranch } from "./branchRefCas";
+import { readIndexStateFingerprint } from "./indexStateFingerprint";
 
 type Phase = "prepared" | "completed" | "squash" | "rebase" | "replay" | "restoring";
 
@@ -216,9 +217,9 @@ export class OperationUndoStore {
     const { gitDir, branch, head } = await readGitCheckoutIdentity(this.repoRoot);
     if (expectedGitDir && gitDir !== expectedGitDir) throw staleUndo();
     const operation = detectOperationInGitDir(gitDir);
-    const [indexText, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
+    const [indexState, epoch, headLog, squash, rebase, sequencer] = await Promise.all([
       // 확정 index의 mode/OID/stage만 필요하므로 fsmonitor IPC와 작업트리 검색을 생략한다.
-      runGit(["-c", "core.fsmonitor=false", "ls-files", "--stage", "-z"], this.repoRoot),
+      readIndexStateFingerprint(this.repoRoot),
       readConflictOperationEpochAt(gitDir, head),
       fileIdentity(path.join(gitDir, "logs/HEAD")),
       fileIdentity(path.join(gitDir, "SQUASH_MSG")),
@@ -227,8 +228,7 @@ export class OperationUndoStore {
     ]);
     return {
       branch, head: head.trim(), operation, epoch, headLog, squash, rebase, sequencer,
-      index: createHash("sha256").update(indexText).digest("hex"),
-      unmerged: indexText.split("\0").some(entry => /^\d+ [a-f0-9]+ [123]\t/.test(entry)),
+      index: indexState.index, unmerged: indexState.unmerged,
     };
   }
 
