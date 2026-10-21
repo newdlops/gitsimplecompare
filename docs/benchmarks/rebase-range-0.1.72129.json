@@ -1,0 +1,331 @@
+{
+  "version": "0.1.72129",
+  "baselineCommit": "d8c1351eaf7843a8e2deabb2a848a533ec7c5488",
+  "sourceSha256": {
+    "src/git/rebaseService.ts": "fd7d5c1e1e1ab2801fa0a0b96d16633ae4acc54ea6050e1a73d1bcf49e4b4a80",
+    "src/git/rebasePlanSafety.ts": "6c0f9c08f521e3d299f88201a02788b00b5bb216ec44ccd7c07179ee70cafef2",
+    "src/git/rebaseTodoValidation.ts": "31b116ad787e71803794afd3a58cc18064fddcba559d3a94a83575cf0bd04f19",
+    "src/git/rebaseCommitReader.ts": "32cda5a92ebd0eba85af2a0d759881b4639116f7c71ec8e295197b30291b91c6",
+    "src/git/rebaseStartRange.ts": "b32eaa08aa26f464d280554ec61e35b14836d7d4d7853e54a84ec0908ff82d56"
+  },
+  "measuredCandidate": "Working tree with the exact runtime hashes above; release manifest advanced after timing.",
+  "change": "One fresh ASCII hash/parent range validates topology and complete coverage. No commit bodies on valid Start. Missing-todo diagnostics retain canonical labels and cannot turn a failed range into success.",
+  "fixture": {
+    "files": 1000,
+    "backgroundCommits": 1000,
+    "rebaseItems": 6,
+    "bodyBytesPerCommit": 1048576,
+    "samplesPerSourcePerModePerSeries": 3
+  },
+  "series": [
+    {
+      "name": "paired",
+      "order": ["beforea","aftera","afterb","beforeb","beforec","afterc"],
+      "baseline": "d8c1351eaf7843a8e2deabb2a848a533ec7c5488",
+      "sourceAndHarnessSha256": {"src/git/rebaseService.ts":"fd7d5c1e1e1ab2801fa0a0b96d16633ae4acc54ea6050e1a73d1bcf49e4b4a80","src/git/rebasePlanSafety.ts":"6c0f9c08f521e3d299f88201a02788b00b5bb216ec44ccd7c07179ee70cafef2","src/git/rebaseTodoValidation.ts":"31b116ad787e71803794afd3a58cc18064fddcba559d3a94a83575cf0bd04f19","src/git/rebaseCommitReader.ts":"32cda5a92ebd0eba85af2a0d759881b4639116f7c71ec8e295197b30291b91c6","src/git/rebaseStartRange.ts":"b32eaa08aa26f464d280554ec61e35b14836d7d4d7853e54a84ec0908ff82d56","test/benchmarks/rebaseStart.ts":"5160085f4c37b43484c849b585596c3f49318bb6d770e334689c4dcc2c376489","test/benchmarks/graphButtonFlow.ts":"cc09dfbaf43f3366fe28103d4eb52ab583931dbdc99df472899c9a6057849004","test/helpers/graphNativeExpectation.ts":"950923cc0646ad0a59ec7ed4ef19e5306d946c46f92ddb5826d31ce41cd3b5dc","test/helpers/graphLiveRenderer.ts":"7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4","scripts/benchmark-rebase-start.mjs":"7671b5f238b807f0b6841dc1f2f565c200526e22c7c6e447ee362d78c1ad3e0e","scripts/benchmark-graph-buttons.mjs":"2a43c1d57380a90e965c48270cc041c16646fdc4b1089c8a71e9fe76031be646"},
+      "editorPath": "Each source default editor path",
+      "native": [{"mode":"messages-and-squash","before":{"elapsedMs":{"values":[837,1817,1182],"median":1182,"min":837,"max":1817},"directGitCalls":{"values":[7,7,7],"median":7,"min":7,"max":7},"rangeReads":{"values":[2,2,2],"median":2,"min":2,"max":2},"rangeStdoutBytes":{"values":[6292002,6292002,6292002],"median":6292002,"min":6292002,"max":6292002},"preparedMs":{"values":[79,463,100],"median":100,"min":79,"max":463},"preparedNodeCpuMs":{"values":[31,33,27],"median":31,"min":27,"max":33},"nodeCpuMs":{"values":[38,41,34],"median":38,"min":34,"max":41},"rssDeltaMiB":{"values":[28,22,28],"median":28,"min":22,"max":28}},"after":{"elapsedMs":{"values":[1292,1252,971],"median":1252,"min":971,"max":1292},"directGitCalls":{"values":[6,6,6],"median":6,"min":6,"max":6},"rangeReads":{"values":[1,1,1],"median":1,"min":1,"max":1},"rangeStdoutBytes":{"values":[492,492,492],"median":492,"min":492,"max":492},"preparedMs":{"values":[140,208,49],"median":140,"min":49,"max":208},"preparedNodeCpuMs":{"values":[29,21,20],"median":21,"min":20,"max":29},"nodeCpuMs":{"values":[37,29,29],"median":29,"min":29,"max":37},"rssDeltaMiB":{"values":[-6,10,10],"median":10,"min":-6,"max":10}},"medianChangePercent":{"elapsedMs":5.9,"directGitCalls":-14.3,"rangeReads":-50,"rangeStdoutBytes":-100,"preparedMs":40,"preparedNodeCpuMs":-32.3,"nodeCpuMs":-23.7,"rssDeltaMiB":-64.3}},{"mode":"reorder","before":{"elapsedMs":{"values":[306,506,1138],"median":506,"min":306,"max":1138},"directGitCalls":{"values":[7,7,7],"median":7,"min":7,"max":7},"rangeReads":{"values":[2,2,2],"median":2,"min":2,"max":2},"rangeStdoutBytes":{"values":[6292002,6292002,6292002],"median":6292002,"min":6292002,"max":6292002},"preparedMs":{"values":[82,161,686],"median":161,"min":82,"max":686},"preparedNodeCpuMs":{"values":[30,22,23],"median":23,"min":22,"max":30},"nodeCpuMs":{"values":[37,28,28],"median":28,"min":28,"max":37},"rssDeltaMiB":{"values":[-1,16,17],"median":16,"min":-1,"max":17}},"after":{"elapsedMs":{"values":[292,320,474],"median":320,"min":292,"max":474},"directGitCalls":{"values":[6,6,6],"median":6,"min":6,"max":6},"rangeReads":{"values":[1,1,1],"median":1,"min":1,"max":1},"rangeStdoutBytes":{"values":[492,492,492],"median":492,"min":492,"max":492},"preparedMs":{"values":[45,89,78],"median":78,"min":45,"max":89},"preparedNodeCpuMs":{"values":[11,11,13],"median":11,"min":11,"max":13},"nodeCpuMs":{"values":[18,17,21],"median":18,"min":17,"max":21},"rssDeltaMiB":{"values":[2,2,2],"median":2,"min":2,"max":2}},"medianChangePercent":{"elapsedMs":-36.8,"directGitCalls":-14.3,"rangeReads":-50,"rangeStdoutBytes":-100,"preparedMs":-51.6,"preparedNodeCpuMs":-52.2,"nodeCpuMs":-35.7,"rssDeltaMiB":-87.5}}],
+      "actualButton": {"mode":"interactive-rebase","before":{"finalGraphFrameMs":{"values":[727,695,1409],"median":727,"min":695,"max":1409},"handlerMs":{"values":[506,499,1223],"median":506,"min":499,"max":1223},"gitCalls":{"values":[36,36,36],"median":36,"min":36,"max":36},"nodeCpuMs":{"values":[194,169,170],"median":170,"min":169,"max":194}},"after":{"finalGraphFrameMs":{"values":[1486,1680,1230],"median":1486,"min":1230,"max":1680},"handlerMs":{"values":[1383,1531,1043],"median":1383,"min":1043,"max":1531},"gitCalls":{"values":[30,30,35],"median":30,"min":30,"max":35},"nodeCpuMs":{"values":[172,157,172],"median":172,"min":157,"max":172}},"medianChangePercent":{"finalGraphFrameMs":104.4,"handlerMs":173.3,"gitCalls":-16.7,"nodeCpuMs":1.2}}
+    },
+    {
+      "name": "common",
+      "order": ["beforea","aftera","afterb","beforeb","beforec","afterc"],
+      "baseline": "d8c1351eaf7843a8e2deabb2a848a533ec7c5488",
+      "sourceAndHarnessSha256": {"src/git/rebaseService.ts":"fd7d5c1e1e1ab2801fa0a0b96d16633ae4acc54ea6050e1a73d1bcf49e4b4a80","src/git/rebasePlanSafety.ts":"6c0f9c08f521e3d299f88201a02788b00b5bb216ec44ccd7c07179ee70cafef2","src/git/rebaseTodoValidation.ts":"31b116ad787e71803794afd3a58cc18064fddcba559d3a94a83575cf0bd04f19","src/git/rebaseCommitReader.ts":"32cda5a92ebd0eba85af2a0d759881b4639116f7c71ec8e295197b30291b91c6","src/git/rebaseStartRange.ts":"b32eaa08aa26f464d280554ec61e35b14836d7d4d7853e54a84ec0908ff82d56","test/benchmarks/rebaseStart.ts":"8158d7c0c1df252adb4b1af4d731685ef8d2eb837b91ee9519c28c8831c4f62a","test/benchmarks/graphButtonFlow.ts":"cc09dfbaf43f3366fe28103d4eb52ab583931dbdc99df472899c9a6057849004","test/helpers/graphOperationPanel.ts":"b3a5ba1aabebb3fa555fc5735bba0ebc7b60a2b3511a2998af5215052e8321f3","test/helpers/graphNativeExpectation.ts":"950923cc0646ad0a59ec7ed4ef19e5306d946c46f92ddb5826d31ce41cd3b5dc","test/helpers/graphLiveRenderer.ts":"7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4","scripts/benchmark-rebase-start.mjs":"7671b5f238b807f0b6841dc1f2f565c200526e22c7c6e447ee362d78c1ad3e0e","scripts/benchmark-graph-buttons.mjs":"2a43c1d57380a90e965c48270cc041c16646fdc4b1089c8a71e9fe76031be646"},
+      "editorPath": "Same owned immutable editor path; production UI media remains source-specific",
+      "native": [{"mode":"messages-and-squash","before":{"elapsedMs":{"values":[4661,3418,11830],"median":4661,"min":3418,"max":11830},"directGitCalls":{"values":[7,7,7],"median":7,"min":7,"max":7},"rangeReads":{"values":[2,2,2],"median":2,"min":2,"max":2},"rangeStdoutBytes":{"values":[6292002,6292002,6292002],"median":6292002,"min":6292002,"max":6292002},"preparedMs":{"values":[878,284,1493],"median":878,"min":284,"max":1493},"preparedNodeCpuMs":{"values":[30,29,41],"median":30,"min":29,"max":41},"nodeCpuMs":{"values":[39,37,78],"median":39,"min":37,"max":78},"rssDeltaMiB":{"values":[-2,22,0],"median":0,"min":-2,"max":22}},"after":{"elapsedMs":{"values":[5055,4827,11785],"median":5055,"min":4827,"max":11785},"directGitCalls":{"values":[6,6,6],"median":6,"min":6,"max":6},"rangeReads":{"values":[1,1,1],"median":1,"min":1,"max":1},"rangeStdoutBytes":{"values":[492,492,492],"median":492,"min":492,"max":492},"preparedMs":{"values":[775,516,1771],"median":775,"min":516,"max":1771},"preparedNodeCpuMs":{"values":[26,28,49],"median":28,"min":26,"max":49},"nodeCpuMs":{"values":[36,39,86],"median":39,"min":36,"max":86},"rssDeltaMiB":{"values":[-7,-14,-9],"median":-9,"min":-14,"max":-7}},"medianChangePercent":{"elapsedMs":8.5,"directGitCalls":-14.3,"rangeReads":-50,"rangeStdoutBytes":-100,"preparedMs":-11.7,"preparedNodeCpuMs":-6.7,"nodeCpuMs":0,"rssDeltaMiB":null}},{"mode":"reorder","before":{"elapsedMs":{"values":[1569,1498,3442],"median":1569,"min":1498,"max":3442},"directGitCalls":{"values":[7,7,7],"median":7,"min":7,"max":7},"rangeReads":{"values":[2,2,2],"median":2,"min":2,"max":2},"rangeStdoutBytes":{"values":[6292002,6292002,6292002],"median":6292002,"min":6292002,"max":6292002},"preparedMs":{"values":[754,672,1467],"median":754,"min":672,"max":1467},"preparedNodeCpuMs":{"values":[21,22,40],"median":22,"min":21,"max":40},"nodeCpuMs":{"values":[28,28,52],"median":28,"min":28,"max":52},"rssDeltaMiB":{"values":[17,16,13],"median":16,"min":13,"max":17}},"after":{"elapsedMs":{"values":[2050,1732,4186],"median":2050,"min":1732,"max":4186},"directGitCalls":{"values":[6,6,6],"median":6,"min":6,"max":6},"rangeReads":{"values":[1,1,1],"median":1,"min":1,"max":1},"rangeStdoutBytes":{"values":[492,492,492],"median":492,"min":492,"max":492},"preparedMs":{"values":[585,587,1461],"median":587,"min":585,"max":1461},"preparedNodeCpuMs":{"values":[15,16,36],"median":16,"min":15,"max":36},"nodeCpuMs":{"values":[41,45,53],"median":45,"min":41,"max":53},"rssDeltaMiB":{"values":[-11,-4,-3],"median":-4,"min":-11,"max":-3}},"medianChangePercent":{"elapsedMs":30.7,"directGitCalls":-14.3,"rangeReads":-50,"rangeStdoutBytes":-100,"preparedMs":-22.1,"preparedNodeCpuMs":-27.3,"nodeCpuMs":60.7,"rssDeltaMiB":-125}}],
+      "actualButton": {"mode":"interactive-rebase","before":{"finalGraphFrameMs":{"values":[5875,6797,22729],"median":6797,"min":5875,"max":22729},"handlerMs":{"values":[6019,6137,23344],"median":6137,"min":6019,"max":23344},"gitCalls":{"values":[31,31,34],"median":31,"min":31,"max":34},"nodeCpuMs":{"values":[199,229,435],"median":229,"min":199,"max":435}},"after":{"finalGraphFrameMs":{"values":[7243,5259,14074],"median":7243,"min":5259,"max":14074},"handlerMs":{"values":[7082,5124,13133],"median":7082,"min":5124,"max":13133},"gitCalls":{"values":[33,30,33],"median":33,"min":30,"max":33},"nodeCpuMs":{"values":[249,248,433],"median":249,"min":248,"max":433}},"medianChangePercent":{"finalGraphFrameMs":6.6,"handlerMs":15.4,"gitCalls":6.5,"nodeCpuMs":8.7}}
+    }
+  ],
+  "metadataProof": {
+    "oldRangeReads": 2,
+    "newRangeReads": 1,
+    "oldGitCalls": 7,
+    "newGitCalls": 6,
+    "oldBytes": 6292002,
+    "newBytes": 492,
+    "nativeRegression": {
+      "oldBytes": 1310899,
+      "newBytes": 164,
+      "originalLargeBodyPreserved": true
+    }
+  },
+  "checks": {
+    "initialGroup": {
+      "passed": 58,
+      "failed": 1,
+      "reason": "Metadata race injector matched only the replaced log command; retained and corrected to run after either actual range command."
+    },
+    "finalGroup": {
+      "passed": 59,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "additionalRootGroup": {
+      "passed": 22,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "distinctPassedNames": 61,
+    "nativeComparedCases": 24,
+    "actualButtonComparedCases": 12,
+    "finalNativeAndRenderedCases": 18,
+    "finalActualButtonCases": 4,
+    "typecheck": "passed",
+    "safety": [
+      "Both fresh checkout guards",
+      "Native SHA-1/SHA-256 root Start",
+      "Merge, malformed, truncated and duplicate records rejected",
+      "Missing-todo subject labels retained",
+      "Diagnostic HEAD change cannot promote failed coverage",
+      "Linked metadata swap blocks queue writes in another repository",
+      "Original message bodies, exact trees and queue cleanup"
+    ]
+  },
+  "commonHelper": {
+    "path": "/private/tmp/gsc-common-rebase29/rebaseEditor.js",
+    "sha256": "13d079f40c54a4b92643cce842ca22b263e096b5f5079b9cd945b8b806288ac2",
+    "conclusion": "Path control did not establish a consistent wall-time or UI gain. Do not attribute the first-series regression to the path."
+  },
+  "rawRuns": [
+    {
+      "series": "paired",
+      "label": "beforea",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-beforea-native.json",
+      "sha256": "fe26f1a22c8e1963b3b8e1b1b5fb7b436565c34f0da3ec83ce8a9bc439074d5c",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"4ef9938d4aac5fab8f4049a19e24c5129e2555dddc2dcdbd4f58889a3285eeaa"}
+    },
+    {
+      "series": "paired",
+      "label": "beforea",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-beforea-button.json",
+      "sha256": "6217954904119f48de9970cb0ff83daed5ec5f40c12de68099101cde02f45b2f",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"9dbd4b72b298e64cc7c826b02f42d730ceb6c3c71e5a603f339f2776aa350c4c"}
+    },
+    {
+      "series": "paired",
+      "label": "aftera",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-aftera-native.json",
+      "sha256": "d7276b032ef76cf52d747eb03d1eab9c111248ece18241949bac8dffea985c62",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"0d6913dd6005802186ab909fcfcbc2fb8ec77aaf25849587ad84f0aba84dd0ca"}
+    },
+    {
+      "series": "paired",
+      "label": "aftera",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-aftera-button.json",
+      "sha256": "e9d43541451458b8c4a6eaadcc3080b06bda82d557be23b7f1e1771a7e68c886",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"5b66c54a290ca5fb74e3387952e62cca2aa9aa7b17131c89c702de732c41bbb6"}
+    },
+    {
+      "series": "paired",
+      "label": "afterb",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-afterb-native.json",
+      "sha256": "48b175ea393cd501c0fa7a4528ffcfa0cc7204cd5f3f85b945477c70b12aa562",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"0d6913dd6005802186ab909fcfcbc2fb8ec77aaf25849587ad84f0aba84dd0ca"}
+    },
+    {
+      "series": "paired",
+      "label": "afterb",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-afterb-button.json",
+      "sha256": "b3005bf9f516d4b529c9a0f5e9254002319c6afcd7d86f8e4d3f6cfb7f4faf3f",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"5b66c54a290ca5fb74e3387952e62cca2aa9aa7b17131c89c702de732c41bbb6"}
+    },
+    {
+      "series": "paired",
+      "label": "beforeb",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-beforeb-native.json",
+      "sha256": "d50c3a632670cdfc3c453871881dd401e599394b3573cf0b39cda8c647fe3655",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"d725e4171a04cc47f4c2f2045d70bb2e78005af528d2f50b96df5ce8ffcbadda"}
+    },
+    {
+      "series": "paired",
+      "label": "beforeb",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-beforeb-button.json",
+      "sha256": "fe31cd4ebef180821bb88d88287e9049b8046cb78822aabda24f81b5a54b187e",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"da10f915aac97c801c879a024e192b1e7751c06a0136289f9a09d4ba1cb489ff"}
+    },
+    {
+      "series": "paired",
+      "label": "beforec",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-beforec-native.json",
+      "sha256": "f2271eabd726f20eb11af4a20117f62eadbc9bd01524ef8f3de887e7168dbd01",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"2610f21be1dcd1701e445d5ffe709d9136226fc45f4fc7b0e011796a6f214a9a"}
+    },
+    {
+      "series": "paired",
+      "label": "beforec",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-beforec-button.json",
+      "sha256": "420e425d768a43c295581331f4ab928d5075ba0032011bcd0ec463ae9a4a054c",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"d15f74cff5af57407464fea5ee77c16b3b242c000b46238a7bafafd736d33cf8"}
+    },
+    {
+      "series": "paired",
+      "label": "afterc",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-paired-afterc-native.json",
+      "sha256": "a77f94bd20a2ecb23db05120585caeb7b97f1d4784c63a8341244ba2a7dd9a33",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"0d6913dd6005802186ab909fcfcbc2fb8ec77aaf25849587ad84f0aba84dd0ca"}
+    },
+    {
+      "series": "paired",
+      "label": "afterc",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-paired-afterc-button.json",
+      "sha256": "6b6f19636ae45ba2ddd6535d23146343fd195e9a367a788c3d5af36095c5b082",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"5b66c54a290ca5fb74e3387952e62cca2aa9aa7b17131c89c702de732c41bbb6"}
+    },
+    {
+      "series": "common",
+      "label": "beforea",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-beforea-native.json",
+      "sha256": "414d069b7bc85f32881ee43eb91be18aa93bd78547a43dfe79e6349894cdfe69",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"b328cd6cbea2d37e993dec0e9c98ac769de21ce3ccd5f8fd01841a6b4c0e6039"}
+    },
+    {
+      "series": "common",
+      "label": "beforea",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-beforea-button.json",
+      "sha256": "74c78387471ddd8fcd5108e474188441294de28ce49b3ad38fd96936afab99cd",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"e31d3f1eb60c4cfc0f1388bcda04b1d4afa360c47db111dc54a04a6efd5c58c9"}
+    },
+    {
+      "series": "common",
+      "label": "aftera",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-aftera-native.json",
+      "sha256": "3ee4a3070c19375ee01cee156649c8d352bc37ea0929dcd7428b002fece318c6",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"254d1539056668a9828f68ae590d40e1f1320715ce505d9c72aed42b20abbecc"}
+    },
+    {
+      "series": "common",
+      "label": "aftera",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-aftera-button.json",
+      "sha256": "c4063ba4bfe051a8f885c049f70a8c4109ce6be41f402b870c3ab1ee0cd4b3f5",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"a3112285c5837a9df606b1c6c08fb8b72cfd2a3af7beed9036edfca037835ea0"}
+    },
+    {
+      "series": "common",
+      "label": "afterb",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-afterb-native.json",
+      "sha256": "b4a1ff802bab9905eefeeb62c18985d855b562fef6cfd33c41c9ea6c1b584d55",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"254d1539056668a9828f68ae590d40e1f1320715ce505d9c72aed42b20abbecc"}
+    },
+    {
+      "series": "common",
+      "label": "afterb",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-afterb-button.json",
+      "sha256": "0db9b632fd411d7820b48056ad931f9227e531e4285b808e2060a6f2ca2c3f58",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"a3112285c5837a9df606b1c6c08fb8b72cfd2a3af7beed9036edfca037835ea0"}
+    },
+    {
+      "series": "common",
+      "label": "beforeb",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-beforeb-native.json",
+      "sha256": "ccf25bea813c8fa0b2d77089ad97c5558ac08717554d6369f5c07d602202e240",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"665361c14fc5e48c2747eb13d326d83866c536f408d8841b4926e7f741d9dca2"}
+    },
+    {
+      "series": "common",
+      "label": "beforeb",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-beforeb-button.json",
+      "sha256": "3b74aa689c405ee100cc0e4ff93d830d8cbd48d2dc61886a13e8ead7de59ae1d",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"9b4974ccee7e8cd30910f62d4bb13bee6807c5e1ea70925a3a094386833e0773"}
+    },
+    {
+      "series": "common",
+      "label": "beforec",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-beforec-native.json",
+      "sha256": "f41d2f01d1e86836cd001cd57d175bc8a6f43a8778ef3bb0fc7ae341299b2416",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"65693aa66e59541671f255a94275ea923158de65a0badc9bfc31e8cb2b773a4b"}
+    },
+    {
+      "series": "common",
+      "label": "beforec",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-beforec-button.json",
+      "sha256": "07f6e7bc126d0d9ad5e76e28f0090521af4e625685df5fcd6bf7932e5e633623",
+      "source": {"kind":"commit","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"fcba971b34ab9bbb6c4f67e3020c40213555a9378f92b2204399e26a6964e2cb"}
+    },
+    {
+      "series": "common",
+      "label": "afterc",
+      "kind": "native",
+      "output": "/private/tmp/gsc-range29-common-afterc-native.json",
+      "sha256": "2be3ae1fe47e0c043cca1b7158fb4f9ea9bebcce7f8bca5d71833de974e22a01",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"254d1539056668a9828f68ae590d40e1f1320715ce505d9c72aed42b20abbecc"}
+    },
+    {
+      "series": "common",
+      "label": "afterc",
+      "kind": "button",
+      "output": "/private/tmp/gsc-range29-common-afterc-button.json",
+      "sha256": "50bf9b5e0365daac7f7940361e6ee717e22cff9045f1f96a80a5ebf1350444f3",
+      "source": {"kind":"working-tree","commit":"d8c1351eaf7843a8e2deabb2a848a533ec7c5488","bundleSha256":"a3112285c5837a9df606b1c6c08fb8b72cfd2a3af7beed9036edfca037835ea0"}
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-range29-before-node.log",
+      "sha256": "a990dfd65b9e813d6cb366fbae46b21fd96498c7278c4b2a1fca5f0989854531"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-node.log",
+      "sha256": "69134c4c398868cee37d1a681fe807f5f6381710fa83327f281f07c201395f34"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-final-node.log",
+      "sha256": "77c77cc99513c8c219a719c4960623a13fb01c3174d37e1f1d6a17ba3c3d7422"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-root-node.log",
+      "sha256": "4d0ed0294ebbb6625d82838fab9afe0cd73f03eb49b1313bdbbc53a171625585"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-release-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-final-matrix.json",
+      "sha256": "c011c0c6c02db375562853a5838b84063e3b154966dc8f6cbc48aef8474dc75e"
+    },
+    {
+      "path": "/private/tmp/gsc-range29-final-buttons.json",
+      "sha256": "a760828007f43f9cf08893cb32afe270a16642d376c7b8d54ef992dbd465cdde"
+    }
+  ],
+  "artifact": {
+    "bytes": 992485,
+    "sha256": "7ae64abd00d097f05d735e5a06ace49648ba8bd73801451e955d100f6c02cc0e",
+    "extensionSha256": "02e33cd1b301a4d9bf6d65c7e707ad463a8a19e6ee21d600624aeabb33e18a9e",
+    "verifiedRuntimeFiles": 125
+  },
+  "limitations": [
+    "Keep all slower samples. Neither series establishes a general Start/button-to-Graph latency reduction.",
+    "Node CPU includes benchmark observation/waiting overhead; Git, editor helpers, Chromium and total OS CPU excluded.",
+    "RSS deltas include GC and fixture leftovers; they are not absolute or concurrent peak savings.",
+    "Native and browser startup, fixture creation and result verification are outside the timed Start/click interval.",
+    "VS Code API, window and pickers are substituted. Production HTML/CSP/JS and registered callbacks are exercised without OS focus.",
+    "Canonical full metadata still loads for UI/recovery and missing-todo diagnostics."
+  ],
+  "wholeGoalComplete": false
+}

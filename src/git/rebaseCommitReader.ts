@@ -19,7 +19,7 @@ export interface RebaseCommitDetails {
 /**
  * rebase 범위의 커밋을 오래된 순서로 읽고 필요할 때만 파일 정보를 보강한다.
  * - 첫 log에서 확정한 OID를 diff-tree stdin으로 전달하므로 두 조회 사이 HEAD 이동에도 서로 섞이지 않는다.
- * - 시작 직전 coverage 검증은 includeFiles=false로 호출하되 실제 범위를 매번 새로 읽는다.
+ * - Start의 정상 coverage는 rebaseStartRange가 hash/parent만 읽고, 이 경로는 UI·복원·실패 설명에 사용한다.
  * @param repoRoot 저장소 루트
  * @param base 대상 범위 직전 커밋. root=true이면 사용하지 않는다.
  * @param root HEAD의 전체 조상 범위를 읽을지 여부

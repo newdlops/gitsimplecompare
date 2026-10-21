@@ -1,5 +1,4 @@
 // UI가 준비한 interactive rebase를 원래 worktree/브랜치/HEAD에 고정한다.
-import { runGit } from "./gitExec";
 import { readGitCheckoutIdentity } from "./repositoryIdentity";
 
 /** 동일 HEAD의 다른 브랜치도 구분하는 rebase 계획의 checkout 기준이다. */
@@ -27,12 +26,6 @@ export function assertRebaseCheckoutMatches(current: RebaseCheckoutIdentity, exp
   if (current.gitDir !== expected.gitDir || current.branch !== expected.branch || current.head !== expected.head) {
     throw new Error("The checked-out branch or HEAD changed after the rebase plan was prepared. Prepare a new plan before starting.");
   }
-}
-
-/** merge DAG를 표현하지 못하는 plain pick todo는 Git 작업을 만들기 전에 거부한다. */
-export async function assertLinearRebasePlan(repoRoot: string, base: string, root: boolean): Promise<void> {
-  const merge = (await runGit(["rev-list", "--min-parents=2", "--max-count=1", root ? "HEAD" : `${base}..HEAD`], repoRoot)).trim();
-  if (merge) throw new Error("This interactive rebase plan contains merge commits. Choose a linear commit range; merge history is not supported by this editor.");
 }
 
 /** rebase 종료 후 autostash 복원 충돌을 완료와 구분하는 사용자 안내다. */

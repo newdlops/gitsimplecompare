@@ -11,7 +11,8 @@ import { readRebaseCommits, readRebaseCommitDetails } from "./rebaseCommitReader
 import { listUnmergedFiles } from "./unmergedFiles";
 import { amendRebaseEdit } from "./rebaseEditApply";
 import { assertGitOperation, captureGitOperation, type GitOperationIdentity } from "./operationControl";
-import { assertLinearRebasePlan, assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
+import { assertRebaseCheckout, captureRebaseCheckout, REBASE_RESTORE_CONFLICT_MESSAGE, type RebaseCheckoutIdentity } from "./rebasePlanSafety";
+import { readLinearRebaseRange } from "./rebaseStartRange";
 import { readRebaseStartContext } from "./rebaseStartContext";
 import {
   collectHistoryExcludePaths,
@@ -261,15 +262,22 @@ export class RebaseService {
     if (todoItems.length === 0) {
       return { status: "noop" };
     }
-    await assertLinearRebasePlan(this.repoRoot, base, root);
-    const validation = validateRebaseTodoCoverage(
-      await readRebaseCommits(this.repoRoot, base, root, false),
-      todoItems
-    );
+    const rangeStarted = Date.now(), range = await readLinearRebaseRange(this.repoRoot, base, root);
+    logInfo("rebase range metadata read", { repoRoot: this.repoRoot, commits: range.length, elapsedMs: Date.now() - rangeStarted });
+    const validation = validateRebaseTodoCoverage(range, todoItems);
     if (!validation.ok) {
+      let message = validation.message;
+      if (validation.missing.length) {
+        // 설명 조회가 다른 HEAD를 보더라도 이미 실패한 coverage를 성공으로 바꾸지 않는다.
+        const details = await readRebaseCommits(this.repoRoot, base, root, false);
+        if (details.length === range.length && details.every((commit, index) => commit.hash === range[index].hash)) {
+          const labeled = validateRebaseTodoCoverage(details, todoItems);
+          if (!labeled.ok) message = labeled.message;
+        }
+      }
       return {
         status: "failed",
-        message: validation.message,
+        message,
       };
     }
     // 첫 replay 항목은 squash/fixup 대상이 없으므로 pick 으로 보정한다.

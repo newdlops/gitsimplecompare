@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.72129] - 2026-10-21
+
+### Performance
+
+- Validate interactive rebase topology and complete todo coverage in one fresh
+  hash/parent query. Avoid loading unused commit bodies on a valid Start and
+  remove the separate merge-range scan. Preserve full metadata for UI/recovery
+  and missing-todo diagnostics.
+
+### Fixed
+
+- Reject malformed, truncated, duplicate and merge range records before queue
+  creation. Keep both fresh checkout checks and metadata replacement guards.
+- Keep failed coverage failed when diagnostic labels observe a later HEAD.
+
+### Development
+
+- Cover actual SHA-1/SHA-256 root rebases, original large-message preservation
+  and linked metadata replacement. Record direct Start and rendered-button
+  comparisons, including slower samples and a common-editor-path diagnostic;
+  this release claims less metadata and fewer queries, not a general UI speedup.
+
 ## [0.1.72128] - 2026-10-21
 
 ### Performance

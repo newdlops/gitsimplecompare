@@ -1,6 +1,6 @@
 // interactive rebase todo 가 실제 재작성 범위를 빠짐없이 덮는지 검증하는 순수 유틸.
 // - Git 은 시퀀스 에디터가 남긴 줄만 replay 하므로, UI payload 누락은 커밋 유실로 이어질 수 있다.
-import type { RebaseCommit, RebaseItem } from "./rebaseService";
+import type { RebaseItem } from "./rebaseService";
 
 const ACTION_ALIASES = new Map([
   ["p", "pick"], ["r", "reword"], ["e", "edit"], ["s", "squash"],
@@ -31,12 +31,12 @@ export interface RebaseTodoCoverageValidation {
  * UI 가 보낸 todo 항목이 실제 rebase 대상 범위 전체를 빠짐없이 덮는지 검증한다.
  * - 커밋을 의도적으로 제거하려면 item 을 삭제하지 말고 action=drop 으로 남겨야 한다.
  * - missing 이 있으면 Git 에 넘기기 전에 막아 조용한 커밋 유실을 방지한다.
- * @param commits   실제 base..HEAD 또는 --root 범위의 커밋 목록
+ * @param commits   실제 base..HEAD 또는 --root 범위. subject는 실패 설명을 보강할 때만 필요하다.
  * @param todoItems UI 가 확정해 보낸 todo 항목
  * @returns 누락/중복/범위 밖 항목이 있으면 ok=false 와 사용자 메시지
  */
-export function validateRebaseTodoCoverage(
-  commits: RebaseCommit[],
+export function validateRebaseTodoCoverage<T extends { hash: string; subject?: string }>(
+  commits: readonly T[],
   todoItems: RebaseItem[]
 ): RebaseTodoCoverageValidation {
   const expectedByHash = new Map(commits.map((commit) => [commit.hash, commit]));
@@ -57,7 +57,7 @@ export function validateRebaseTodoCoverage(
   }
   const missing = commits
     .filter((commit) => !seen.has(commit.hash))
-    .map((commit) => `${commit.hash.slice(0, 12)} ${commit.subject}`);
+    .map((commit) => commit.subject === undefined ? commit.hash.slice(0, 12) : `${commit.hash.slice(0, 12)} ${commit.subject}`);
   if (missing.length === 0 && duplicate.length === 0 && unknown.length === 0) {
     return {
       ok: true,

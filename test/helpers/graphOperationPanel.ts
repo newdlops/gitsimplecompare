@@ -17,7 +17,11 @@ function resourceUri(fsPath: string, query = ""): any {
  * @returns 실제 명령 후속 경로에 접근할 panel과 수정되지 않는 게시 메시지 사본
  */
 export function createOperationGraphPanel(t: Pick<TestContext, "mock">, service: GitLogService, onPost?: (message: ToWebviewMessage) => void) {
-  t.mock.method(Uri, "joinPath", (base: { fsPath: string }, ...parts: string[]) => resourceUri(path.join(base.fsPath, ...parts)));
+  t.mock.method(Uri, "joinPath", (base: { fsPath: string }, ...parts: string[]) => {
+    // helper 바이트가 같은 backend 비교에서만 editor의 OS 경로를 통제한다. 웹뷰 media는 각 source 그대로다.
+    const editor = process.env.GSC_BENCH_REBASE_EDITOR_SCRIPT;
+    return resourceUri(editor && parts.join("/") === "media/rebase/rebaseEditor.js" ? editor : path.join(base.fsPath, ...parts));
+  });
   const messages: ToWebviewMessage[] = [];
   let receive: ((message: FromWebviewMessage) => Promise<void> | void) | undefined;
   const surface = { visible: true, dispose() {}, onDidDispose: () => ({ dispose() {} }),

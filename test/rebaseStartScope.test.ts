@@ -5,6 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test, { type TestContext } from "node:test";
 import { captureRebaseCheckout } from "../src/git/rebasePlanSafety";
+import { gitCommandIndex } from "../src/git/gitCommandPolicy";
 import { detectOperation } from "../src/git/conflictService";
 import { GitError, runGit } from "../src/git/gitExec";
 import { cleanupRebaseMessageQueue } from "../src/git/rebaseMessageQueue";
@@ -214,7 +215,8 @@ test("replacing linked metadata during plan validation stops Start before queue 
   });
   let replaced = false;
   const calls = observeSpawns(t, () => {}, (args, child) => {
-    if (args[0] === "log") child.prependOnceListener("close", () => {
+    const command = args[gitCommandIndex(args)];
+    if (command === "log" || (command === "rev-list" && args.includes("--format=%H%x00%P"))) child.prependOnceListener("close", () => {
       replaced = true; writeFileSync(locator, `gitdir: ${join(second.root, ".git")}\n`);
     });
   });
@@ -223,7 +225,7 @@ test("replacing linked metadata during plan validation stops Start before queue 
     assert.equal(replaced, true);
     assert.equal(temporaryFiles.length, 1);
     for (const file of temporaryFiles) await assert.rejects(readFile(file), { code: "ENOENT" });
-    assert.equal(calls.some(args => args[0] === "rebase"), false);
+    assert.equal(calls.some(args => args[gitCommandIndex(args)] === "rebase"), false);
     await assert.rejects(readFile(join(second.root, ".git/gitsimplecompare/rebase-message-queue-state.json")), { code: "ENOENT" });
     assert.equal(await git(second.root, "rev-parse", "HEAD"), second.head);
   } finally { await writeFile(locator, original); }

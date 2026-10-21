@@ -12,6 +12,8 @@ import { captureRebaseCheckout } from "../../src/git/rebasePlanSafety";
 import { RebaseService, type RebaseItem } from "../../src/git/rebaseService";
 
 const PROFILE = process.env.GSC_BENCH_REBASE_PROFILE === "1";
+const BODY_BYTES = Number(process.env.GSC_BENCH_REBASE_BODY_BYTES ?? 0);
+assert.ok(Number.isSafeInteger(BODY_BYTES) && BODY_BYTES >= 0 && BODY_BYTES <= 8 * 1024 * 1024, "Fixture body must be between zero and 8MiB per commit");
 
 /** Trace2의 editor child_start/exit를 같은 Git session과 child ID로 묶어 실제 헬퍼 대기를 읽는다. */
 async function editorProfile(file: string) {
@@ -71,7 +73,8 @@ async function fixture(directory: string) {
   let tip = base;
   const topics: number[] = [];
   for (let index = 0; index < 6; index++) {
-    tip = commit("topic", tip, `topic ${index}`, [`M 100644 :1 topic-${index}.txt`]); topics.push(tip);
+    const message = BODY_BYTES ? `topic ${index}\n\n${"x".repeat(BODY_BYTES)}` : `topic ${index}`;
+    tip = commit("topic", tip, message, [`M 100644 :1 topic-${index}.txt`]); topics.push(tip);
   }
   await runGitWithInput(["fast-import", "--quiet", `--export-marks=${marksFile}`], root, data.join("\n") + "\n");
   const ids = new Map((await readFile(marksFile, "utf8")).trim().split("\n").map(line => {
@@ -91,7 +94,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
   const messages = ["rewritten start", undefined, "combined", undefined, "rewritten final", undefined];
   const items: RebaseItem[] = order.map(index => ({ hash: f.topics[index],
     action: mode === "reorder" ? "pick" : actions[index], message: mode === "reorder" ? undefined : messages[index] }));
-  const calls: string[][] = [], callTimings: { args: string[]; pid?: number; elapsedMs?: number; syncSpawnMs: number }[] = [];
+  const calls: string[][] = [], callTimings: { args: string[]; pid?: number; elapsedMs?: number; syncSpawnMs: number; stdoutBytes: number }[] = [];
+  let prepared: { elapsedMs: number; nodeCpuMs: number } | undefined;
   const profileDirectory = path.join(path.dirname(f.root), `native-${mode}-${sample}`);
   const traceFile = path.join(path.dirname(f.root), `trace-${mode}-${sample}.jsonl`);
   let resetExecutable: (() => void) | undefined;
@@ -110,17 +114,23 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
   }
   const spawn = childProcess.spawn;
   mock.method(childProcess, "spawn", (...args: any[]) => {
+    if (!prepared && path.basename(args[0]) === "git" && gitCommandPolicy(args[1]).command === "rebase") {
+      const used = process.cpuUsage(cpu);
+      prepared = { elapsedMs: Math.round(performance.now() - started), nodeCpuMs: Math.round((used.user + used.system) / 1000) };
+    }
     const spawnStarted = performance.now();
     const child = (spawn as Function)(...args);
     if (path.basename(args[0]) === "git") {
-      const call = { args: [...args[1]], pid: child.pid, elapsedMs: undefined as number | undefined, syncSpawnMs: performance.now() - spawnStarted }, started = performance.now();
+      const call = { args: [...args[1]], pid: child.pid, elapsedMs: undefined as number | undefined, syncSpawnMs: performance.now() - spawnStarted, stdoutBytes: 0 }, started = performance.now();
       calls.push(call.args); callTimings.push(call); child.once("close", () => { call.elapsedMs = Math.round(performance.now() - started); });
+      child.stdout?.on("data", (chunk: Buffer) => { call.stdoutBytes += chunk.length; });
     }
     return child;
   });
   const rss = process.memoryUsage.rss(), cpu = process.cpuUsage(), started = performance.now();
   let result;
-  try { result = await new RebaseService(f.root, { nativeEditors: true }).start(f.base, false, items, path.resolve("media/rebase/rebaseEditor.js"), undefined, expectedCheckout); }
+  try { result = await new RebaseService(f.root, { nativeEditors: true }).start(f.base, false, items,
+    path.resolve(process.env.GSC_BENCH_REBASE_EDITOR_SCRIPT || "media/rebase/rebaseEditor.js"), undefined, expectedCheckout); }
   finally {
     mock.restoreAll(); resetExecutable?.();
     if (oldTrace === undefined) delete process.env.GIT_TRACE2_EVENT; else process.env.GIT_TRACE2_EVENT = oldTrace;
@@ -134,6 +144,11 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
   assert.equal((await runGit(["status", "--porcelain=v1"], f.root)).trim(), "");
   const subjects = (await runGit(["log", "--reverse", "--format=%s", `${f.base}..HEAD`], f.root)).trim().split("\n");
   assert.deepEqual(subjects, mode === "reorder" ? order.map(index => `topic ${index}`) : ["combined", "topic 3", "rewritten final"]);
+  if (BODY_BYTES) {
+    const bodies = (await runGit(["log", "--reverse", "--format=%B%x00", `${f.base}..HEAD`], f.root)).split("\0").map(value => value.trim()).filter(Boolean);
+    const original = (index: number) => `topic ${index}\n\n${"x".repeat(BODY_BYTES)}`;
+    assert.deepEqual(bodies, mode === "reorder" ? order.map(original) : ["combined", original(3), "rewritten final"]);
+  }
   const gitDir = expectedCheckout.gitDir;
   await assert.rejects(readFile(path.join(gitDir, "gitsimplecompare/rebase-message-queue-state.json")), { code: "ENOENT" });
   const trace = PROFILE ? await editorProfile(traceFile) : undefined;
@@ -141,8 +156,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, mode: "messages-a
     assert.equal(trace.editors.filter(editor => editor.kind === "sequence").length, 1);
     assert.equal(trace.editors.filter(editor => editor.kind === "message").length, mode === "reorder" ? 0 : 3);
   }
-  return { mode, sample, elapsedMs, directGitCalls: calls.length,
-    commands: callTimings.map(call => ({ command: gitCommandPolicy(call.args).command, elapsedMs: call.elapsedMs, syncSpawnMs: call.syncSpawnMs })),
+  const rangeReads = callTimings.filter(call => ["log", "rev-list"].includes(gitCommandPolicy(call.args).command));
+  return { mode, sample, elapsedMs, directGitCalls: calls.length, prepared,
+    rangeReads: rangeReads.length, rangeStdoutBytes: rangeReads.reduce((sum, call) => sum + call.stdoutBytes, 0),
+    commands: callTimings.map(call => ({ command: gitCommandPolicy(call.args).command, elapsedMs: call.elapsedMs, syncSpawnMs: call.syncSpawnMs, stdoutBytes: call.stdoutBytes })),
     directoryReads: calls.filter(args => (args.includes("--absolute-git-dir") || args.includes("--git-dir")) && !args.includes("--symbolic-full-name")).length,
     statePathReads: calls.filter(args => args.includes("--git-path")).length,
     checkoutGuards: calls.filter(args => args.includes("--symbolic-full-name")).length,
@@ -162,7 +179,7 @@ async function main() {
     for (let sample = 1; sample <= samples; sample++) for (const mode of ["messages-and-squash", "reorder"] as const) {
       console.error(`Measuring ${mode} ${sample}...`); results.push(await measure(f, mode, sample));
     }
-    const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), fixture: { files: f.files, commits: f.commits, todo: 6 },
+    const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), fixture: { files: f.files, commits: f.commits, todo: 6, bodyBytesPerCommit: BODY_BYTES },
       cpuScope: PROFILE ? "Node CPU is benchmark parent only. Native time profiles separately sum all host Git commands and their waited descendants; not whole-OS CPU. Max RSS is time-reported per-command maximum, not concurrent total. Trace2 editors are wall time." : "benchmark Node process only; Git and editor helper CPU excluded",
       profiling: PROFILE, graphIncluded: false, results };
     await writeFile(output, JSON.stringify(report, null, 2) + "\n");
