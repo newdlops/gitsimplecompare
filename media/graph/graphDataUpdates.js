@@ -1,7 +1,7 @@
 // 작은 host delta를 기존 renderer들이 사용하는 전체 모델로 복원하며 실제 DOM은 변경 부분만 갱신한다.
 (function () {
   "use strict";
-  let model = { rows: [], edges: [], laneCount: 1 }, revision = 0, waiting = false;
+  let model = { rows: [], edges: [], laneCount: 1 }, revision = 0, waiting = false, colorScope;
 
   /** 누락된 revision은 패널의 현재 모델을 재게시하도록 한 번만 요청하고 불완전한 패치는 표시하지 않는다. */
   function resync() {
@@ -15,7 +15,7 @@
   function handleMessage(event) {
     const message = event.data;
     if (message?.type === "graph") {
-      model = message.data; revision = message.revision ?? 0; waiting = false; return;
+      model = message.data; revision = message.revision ?? 0; waiting = false; colorScope = message.state?.colorScope; return;
     }
     if (message?.type !== "graphDelta") return;
     event.stopImmediatePropagation();
@@ -29,12 +29,29 @@
       delta.edgeUpdates.some(item => !Number.isInteger(item.index) || item.index < 0 || item.index >= delta.edgeStart)) {
       resync(); return;
     }
+    if (!waiting && canUpdateOnlyState(delta, message.state)) {
+      // 모델은 유지하되 revision과 마지막 상태의 paint ACK는 반드시 전진시킨다.
+      revision = delta.revision;
+      window.dispatchEvent(new MessageEvent("message", { data: { type: "graphLoadState", state: message.state,
+        performance: message.performance, fromGraphDelta: true } }));
+      return;
+    }
     const rows = [...model.rows, ...delta.rows], edges = [...model.edges, ...delta.edges];
     for (const item of delta.rowUpdates) rows[item.index] = item.row;
     for (const item of delta.edgeUpdates) edges[item.index] = item.edge;
-    model = { rows, edges, laneCount: delta.laneCount }; revision = delta.revision;
+    model = { rows, edges, laneCount: delta.laneCount }; revision = delta.revision; colorScope = message.state?.colorScope;
     // 원래 메시지를 다시 전달하지 않아 observer는 정확히 한 번만 같은 완성 모델을 받는다.
     window.dispatchEvent(new MessageEvent("message", { data: { ...message, type: "graph", data: model, revision } }));
+  }
+
+  /**
+   * 검증된 빈 delta만 상태 갱신으로 전달한다. 저장소 색상·reset·빈 화면·레인 변화는 원래 렌더로 보낸다.
+   * @param delta revision/배열 경계를 검증한 host 데이터 @param state 현재 loading·오류·표시 범위 상태
+   * @returns 현재 행/간선/저장소 의미가 그대로여서 데이터 소비자를 다시 실행할 필요가 없으면 true
+   */
+  function canUpdateOnlyState(delta, state) {
+    return model.rows.length > 0 && state && !state.reset && state.colorScope === colorScope && delta.laneCount === model.laneCount &&
+      !delta.rows.length && !delta.edges.length && !delta.rowUpdates.length && !delta.edgeUpdates.length;
   }
 
   /** 추가 페이지는 기존 SVG/행을 유지하고 전체 snapshot만 기존 DOM을 지운다. */

@@ -74,6 +74,12 @@ export class GraphLiveRenderer {
     await this.page.locator(selector).click();
   }
 
+  /** Native 비교 전에 실제 목록이 요청한 크기로 표시됐는지 읽는다. DOM 생성이나 측정용 예열은 하지 않는다. */
+  async countElements(selector: string): Promise<number> {
+    await this.queue;
+    return this.page.locator(selector).count();
+  }
+
   /** 접근성 이름으로 실제 버튼을 눌러 rebase 계획처럼 동적으로 만들어지는 컨트롤도 검사한다. */
   async clickNamedControl(name: string): Promise<void> {
     await this.queue;
@@ -155,7 +161,9 @@ export class GraphLiveRenderer {
     return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactRemoteTags: true, exactHeadBadge: true, exactLocalOnly: true, headInLoadedPage: !!headCommit,
       mutationToFrameMs: paint ? Math.max(0, paint.paintedAt - operationEndedAt) : null,
       latestMutationToFrameMs: latestPaint ? Math.max(0, latestPaint.paintedAt - operationEndedAt) : null,
-      renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null };
+      renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null,
+      latestRenderMs: latestPaint ? latestPaint.renderedAt - latestPaint.receivedAt : null,
+      latestFrameMs: latestPaint ? latestPaint.paintedAt - latestPaint.renderedAt : null };
   }
 
   /** 마지막 실제 Graph를 세 viewport에서 촬영하고 commit 선택도 renderer의 정상 click 경로로 확인한다. */

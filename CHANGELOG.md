@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.72148] - 2026-10-22
+
+### Performance
+
+- Apply loading, completion and error changes without rebuilding an unchanged
+  Graph model or PR list. Preserve revision validation, final paint reporting,
+  selection, focus, scroll position and automatic page loading.
+- Keep the full render path for changed rows, edges, lanes, repository colors,
+  resets and empty graphs. Reverify PR row navigation from the lightweight first
+  list and missing local objects alongside the Graph update path.
+
 ## [0.1.72147] - 2026-10-22
 
 ### Performance

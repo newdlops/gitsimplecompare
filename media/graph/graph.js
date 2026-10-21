@@ -553,7 +553,15 @@
         invalidateRowBadges(indices); refreshRowDecorations(indices);
       }
     } else if (msg.type === "graphLoadState") {
+      const receivedAt = Date.now();
+      // 행 기하가 같은 빈 delta는 모든 행을 스캔하지 않고 같은 scroll 좌표를 복원한다.
+      const viewport = msg.fromGraphDelta && msg.state?.loadDirection === "newer"
+        ? { top: graphEl.scrollTop, left: graphEl.scrollLeft } : null;
       applyLoadState(msg.state, true);
+      if (viewport) { graphEl.scrollTop = viewport.top; graphEl.scrollLeft = viewport.left; }
+      // 빈 delta도 마지막 상태를 실제로 표시한 뒤 계측하고 기존 자동 추가 로드 조건을 유지한다.
+      if (msg.fromGraphDelta) requestAnimationFrame(maybeLoadMore);
+      if (msg.fromGraphDelta || msg.performance) window.GscGraphPerformance?.report?.(vscode, msg.performance, receivedAt, Date.now());
     } else if (msg.type === "graphBusy") {
       window.GscGraphActionFeedback.setBusy(msg.key, msg.busy);
     } else if (msg.type === "commitDetail") {

@@ -120,7 +120,7 @@ export interface GraphHealthNotice {
 export type ToWebviewMessage =
   | { type: "graph"; data: GraphData; revision?: number; state: GraphLoadState; performance?: GraphRenderPerformance }
   | { type: "graphDelta"; delta: GraphDataDelta; state: GraphLoadState; performance?: GraphRenderPerformance }
-  | { type: "graphLoadState"; state: GraphLoadState }
+  | { type: "graphLoadState"; state: GraphLoadState; performance?: GraphRenderPerformance; fromGraphDelta?: true }
   | { type: "graphHealth"; notice?: GraphHealthNotice }
   | { type: "branchStatus"; branches: LocalBranchStatus[]; worktrees?: WorktreeBranchStatus[] }
   | { type: "branchIdentities"; branches: LocalBranchIdentity[]; message: string; worktrees?: WorktreeBranchStatus[] }

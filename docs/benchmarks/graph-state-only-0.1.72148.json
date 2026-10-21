@@ -1,0 +1,552 @@
+{
+  "version": "0.1.72148",
+  "baseCommit": "f7ee62c2740ab64e6541b39517cfd189fa3f9b58",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "sourceFiles": {
+    "media/graph/graph.js": "1ebfd98febb56c6cb4b0aa545829b33b9592e370966cb0e2ba66e12202988f25",
+    "media/graph/graphDataUpdates.js": "6607b47d12606fbf631215e7e0e9566447246dcae45b4b31605228303a53c937",
+    "src/webview/graphProtocol.ts": "8c75b99cb705cc809a9be809318f3596381ce833e6df309149e08393dadb3828",
+    "test/benchmarks/graphButtonFlow.ts": "a9eb83e6c2c6a60d0243ed60913e7a98a65816a0f2db16797550d762e42207ab",
+    "test/helpers/graphLiveRenderer.ts": "51c5573653ade56cd8284d39b5609d1a2cd627165ee344c699508b2b42f562f9",
+    "test/helpers/prButtonFixture.ts": "9bf070dae01519adf7b68848a2115fa6600d71af22f3960f2bfdc53736b60723",
+    "test/webview/graphStateOnly.spec.ts": "1339065b2afda2e0480f9f3f0af3b30a444a74a5063c5efd5b04c7b49a7e1f4a"
+  },
+  "nodeTestsPassed": 59,
+  "distinctBrowserTestsPassed": 64,
+  "nativeProductionDomChecks": 54,
+  "currentCandidateChecks": 27,
+  "actualDensePrButtonCases": 18,
+  "change": "Validated model-identical Graph deltas advance revision and publish visible state/paint ACK without cloning or redrawing row/edge/PR models. Preserve fixed-coordinate viewport and automatic load-more.",
+  "guards": [
+    "nonempty model",
+    "same colorScope",
+    "no reset",
+    "same laneCount",
+    "no added/updated rows or edges",
+    "validated revision and boundaries",
+    "no pending resync"
+  ],
+  "structuralProof": {
+    "oldBrowserRegressionsFailed": 4,
+    "graphDataEventsPerStateOnlyUpdate": {
+      "before": 1,
+      "after": 0
+    },
+    "currentPrListDomMutations": 0,
+    "lowEndCpuThrottling": 6,
+    "nativeAndFixtureViewports": [
+      390,
+      768,
+      1440
+    ],
+    "paintAckRetained": true,
+    "ordinaryMetadataAndSemanticChangesStillRender": true
+  },
+  "diagnosticSmoke": {
+    "before": {
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 896,
+        "latestMutationToFrameMs": 982,
+        "renderMs": 23,
+        "frameMs": 28,
+        "latestRenderMs": 2,
+        "latestFrameMs": 16
+      },
+      "publications": [
+        {
+          "afterClickMs": 770,
+          "kind": "initial",
+          "type": "graph",
+          "rows": 300,
+          "edges": 300,
+          "workingTreePending": true,
+          "branchDetailsPending": false
+        },
+        {
+          "afterClickMs": 893,
+          "kind": "localOnly",
+          "type": "graphDelta",
+          "rows": 0,
+          "rowUpdates": 9,
+          "edges": 0,
+          "edgeUpdates": 0,
+          "workingTreePending": true,
+          "branchDetailsPending": false
+        },
+        {
+          "afterClickMs": 963,
+          "kind": "workingTree",
+          "type": "graphDelta",
+          "rows": 0,
+          "rowUpdates": 0,
+          "edges": 0,
+          "edgeUpdates": 0,
+          "workingTreePending": false,
+          "branchDetailsPending": false
+        }
+      ]
+    },
+    "after": {
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 795,
+        "latestMutationToFrameMs": 890,
+        "renderMs": 23,
+        "frameMs": 30,
+        "latestRenderMs": 2,
+        "latestFrameMs": 15
+      },
+      "publications": [
+        {
+          "afterClickMs": 671,
+          "kind": "initial",
+          "type": "graph",
+          "rows": 300,
+          "edges": 300,
+          "workingTreePending": true,
+          "branchDetailsPending": false
+        },
+        {
+          "afterClickMs": 781,
+          "kind": "localOnly",
+          "type": "graphDelta",
+          "rows": 0,
+          "rowUpdates": 9,
+          "edges": 0,
+          "edgeUpdates": 0,
+          "workingTreePending": true,
+          "branchDetailsPending": false
+        },
+        {
+          "afterClickMs": 873,
+          "kind": "workingTree",
+          "type": "graphDelta",
+          "rows": 0,
+          "rowUpdates": 0,
+          "edges": 0,
+          "edgeUpdates": 0,
+          "workingTreePending": false,
+          "branchDetailsPending": false
+        }
+      ]
+    }
+  },
+  "comparison": {
+    "pr-squash-cherry-pick": {
+      "large-latency": {
+        "before": {
+          "finalFrameMs": 776.5,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 17.0,
+          "gitCalls": 32.0
+        },
+        "after": {
+          "finalFrameMs": 765.0,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 11.5,
+          "gitCalls": 32.0
+        }
+      },
+      "large-resources": {
+        "before": {
+          "finalFrameMs": 800.5,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 13.5,
+          "gitCalls": 32.0,
+          "cpu": {
+            "nodeCpuMs": 359.326,
+            "childCpuMs": 888.379,
+            "browserCpuMs": 328.173,
+            "ownedCpuMs": 1575.877
+          }
+        },
+        "after": {
+          "finalFrameMs": 763.0,
+          "latestRenderMs": 2.5,
+          "latestFrameMs": 12.5,
+          "gitCalls": 32.0,
+          "cpu": {
+            "nodeCpuMs": 341.866,
+            "childCpuMs": 874.202,
+            "browserCpuMs": 305.151,
+            "ownedCpuMs": 1521.22
+          }
+        }
+      }
+    },
+    "pr-cherry-pick": {
+      "large-latency": {
+        "before": {
+          "finalFrameMs": 1573.0,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 23.0,
+          "gitCalls": 30.0
+        },
+        "after": {
+          "finalFrameMs": 1536.5,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 10.5,
+          "gitCalls": 30.0
+        }
+      },
+      "large-resources": {
+        "before": {
+          "finalFrameMs": 1565.0,
+          "latestRenderMs": 2.0,
+          "latestFrameMs": 19.5,
+          "gitCalls": 30.0,
+          "cpu": {
+            "nodeCpuMs": 309.5,
+            "childCpuMs": 3028.543,
+            "browserCpuMs": 420.412,
+            "ownedCpuMs": 3758.453
+          }
+        },
+        "after": {
+          "finalFrameMs": 1408.5,
+          "latestRenderMs": 1.0,
+          "latestFrameMs": 10.5,
+          "gitCalls": 30.0,
+          "cpu": {
+            "nodeCpuMs": 235.195,
+            "childCpuMs": 2900.141,
+            "browserCpuMs": 318.398,
+            "ownedCpuMs": 3453.733
+          }
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "source": "before",
+      "mode": "large-latency",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 815,
+      "latestRenderMs": 2,
+      "latestFrameMs": 20,
+      "gitCalls": 32
+    },
+    {
+      "source": "before",
+      "mode": "large-latency",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1497,
+      "latestRenderMs": 2,
+      "latestFrameMs": 21,
+      "gitCalls": 30
+    },
+    {
+      "source": "after",
+      "mode": "large-latency",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 768,
+      "latestRenderMs": 2,
+      "latestFrameMs": 12,
+      "gitCalls": 32
+    },
+    {
+      "source": "after",
+      "mode": "large-latency",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1557,
+      "latestRenderMs": 2,
+      "latestFrameMs": 10,
+      "gitCalls": 30
+    },
+    {
+      "source": "after",
+      "mode": "large-latency",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 762,
+      "latestRenderMs": 2,
+      "latestFrameMs": 11,
+      "gitCalls": 32
+    },
+    {
+      "source": "after",
+      "mode": "large-latency",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1516,
+      "latestRenderMs": 2,
+      "latestFrameMs": 11,
+      "gitCalls": 30
+    },
+    {
+      "source": "before",
+      "mode": "large-latency",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 738,
+      "latestRenderMs": 2,
+      "latestFrameMs": 14,
+      "gitCalls": 32
+    },
+    {
+      "source": "before",
+      "mode": "large-latency",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1649,
+      "latestRenderMs": 2,
+      "latestFrameMs": 25,
+      "gitCalls": 30
+    },
+    {
+      "source": "before",
+      "mode": "large-resources",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 842,
+      "latestRenderMs": 2,
+      "latestFrameMs": 13,
+      "gitCalls": 32,
+      "cpu": {
+        "nodeCpuMs": 411.026,
+        "childCpuMs": 944.1479999999988,
+        "browserCpuMs": 375.449,
+        "ownedCpuMs": 1730.622999999999
+      }
+    },
+    {
+      "source": "before",
+      "mode": "large-resources",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1341,
+      "latestRenderMs": 2,
+      "latestFrameMs": 13,
+      "gitCalls": 30,
+      "cpu": {
+        "nodeCpuMs": 277.957,
+        "childCpuMs": 2765.209999999999,
+        "browserCpuMs": 313.348,
+        "ownedCpuMs": 3356.514999999999
+      }
+    },
+    {
+      "source": "after",
+      "mode": "large-resources",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 730,
+      "latestRenderMs": 2,
+      "latestFrameMs": 11,
+      "gitCalls": 32,
+      "cpu": {
+        "nodeCpuMs": 296.501,
+        "childCpuMs": 841.2870000000007,
+        "browserCpuMs": 269.75,
+        "ownedCpuMs": 1407.5380000000007
+      }
+    },
+    {
+      "source": "after",
+      "mode": "large-resources",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1452,
+      "latestRenderMs": 1,
+      "latestFrameMs": 10,
+      "gitCalls": 30,
+      "cpu": {
+        "nodeCpuMs": 225.406,
+        "childCpuMs": 2964.0829999999996,
+        "browserCpuMs": 314.30800000000005,
+        "ownedCpuMs": 3503.7969999999996
+      }
+    },
+    {
+      "source": "after",
+      "mode": "large-resources",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 796,
+      "latestRenderMs": 3,
+      "latestFrameMs": 14,
+      "gitCalls": 32,
+      "cpu": {
+        "nodeCpuMs": 387.232,
+        "childCpuMs": 907.117,
+        "browserCpuMs": 340.553,
+        "ownedCpuMs": 1634.902
+      }
+    },
+    {
+      "source": "after",
+      "mode": "large-resources",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1365,
+      "latestRenderMs": 1,
+      "latestFrameMs": 11,
+      "gitCalls": 30,
+      "cpu": {
+        "nodeCpuMs": 244.983,
+        "childCpuMs": 2836.199999999998,
+        "browserCpuMs": 322.48699999999997,
+        "ownedCpuMs": 3403.6699999999983
+      }
+    },
+    {
+      "source": "before",
+      "mode": "large-resources",
+      "operation": "pr-squash-cherry-pick",
+      "finalFrameMs": 759,
+      "latestRenderMs": 2,
+      "latestFrameMs": 14,
+      "gitCalls": 32,
+      "cpu": {
+        "nodeCpuMs": 307.625,
+        "childCpuMs": 832.6109999999985,
+        "browserCpuMs": 280.896,
+        "ownedCpuMs": 1421.1319999999985
+      }
+    },
+    {
+      "source": "before",
+      "mode": "large-resources",
+      "operation": "pr-cherry-pick",
+      "finalFrameMs": 1789,
+      "latestRenderMs": 2,
+      "latestFrameMs": 26,
+      "gitCalls": 30,
+      "cpu": {
+        "nodeCpuMs": 341.042,
+        "childCpuMs": 3291.875000000001,
+        "browserCpuMs": 527.475,
+        "ownedCpuMs": 4160.392000000001
+      }
+    }
+  ],
+  "matrix": {
+    "before": {
+      "cases": 18,
+      "allNativeAndDomExact": true,
+      "gitCalls": 252,
+      "scopedCpuMs": 6234.165,
+      "cpuMs": {
+        "nodeCpuMs": 1183.198,
+        "childCpuMs": 2836.837,
+        "browserCpuMs": 2214.13
+      },
+      "operations": [
+        "initial",
+        "push",
+        "push-tracked",
+        "pull",
+        "pull-new-history",
+        "pull-known-history",
+        "fetch",
+        "fetch-new-history",
+        "fetch-known-history",
+        "fetch-no-change",
+        "rebase",
+        "merge",
+        "merge-no-ff",
+        "pr-squash-cherry-pick",
+        "pr-cherry-pick",
+        "cherry-pick",
+        "checkout",
+        "checkout-unloaded"
+      ]
+    },
+    "after": {
+      "cases": 18,
+      "allNativeAndDomExact": true,
+      "gitCalls": 252,
+      "scopedCpuMs": 6752.105,
+      "cpuMs": {
+        "nodeCpuMs": 1334.415,
+        "childCpuMs": 3100.466,
+        "browserCpuMs": 2317.224
+      },
+      "operations": [
+        "initial",
+        "push",
+        "push-tracked",
+        "pull",
+        "pull-new-history",
+        "pull-known-history",
+        "fetch",
+        "fetch-new-history",
+        "fetch-known-history",
+        "fetch-no-change",
+        "rebase",
+        "merge",
+        "merge-no-ff",
+        "pr-squash-cherry-pick",
+        "pr-cherry-pick",
+        "cherry-pick",
+        "checkout",
+        "checkout-unloaded"
+      ]
+    }
+  },
+  "limits": [
+    "Two samples/source/operation/mode. Small final-frame differences do not prove a universal latency improvement; last render medians remain2ms in this series.",
+    "Separate CPU counters include benchmark Node/Playwright, terminated/waited native children and complete stable-PID Chromium deltas; setup/build/Native oracle/screenshots excluded.",
+    "Node after-await heap/RSS does not prove retained, aggregate or peak memory minimization. Avoiding model-array copies is a structural result, not a measured whole-memory claim.",
+    "Native Git access, preflight/recovery checks and backend publication counts are unchanged. Dense list metadata comes from owned fixture Native branch/OIDs, replacing GitHub responses only.",
+    "No foreground Host, OS focus switch, forced reload or separate Marketplace query. Captain and user stashes/snapshots/preserved worktrees remain unchanged."
+  ],
+  "evidenceFiles": {
+    "/private/tmp/gsc-goal48-1-dense-smoke-before.json": "a4fc19d3fbe063c9324658e2ca77169403ad4278f0ce3add8f4bd7d7de98b899",
+    "/private/tmp/gsc-goal48-1-dense-smoke-before.log": "d350102d2d4ad92146679e4d9371bc145962e7ddf99417e5aaf3d485c292d23a",
+    "/private/tmp/gsc-goal48-10-large-resources-before.json": "205df8069e7c6600015aabad76ef8e50ef34cf66a756aa5d125aeea71132dd60",
+    "/private/tmp/gsc-goal48-10-large-resources-before.log": "0d4a4fb9cca1a7f58687d6d125362ec5711acbb5713e4d72d8ce4b05f83ce11f",
+    "/private/tmp/gsc-goal48-11-matrix-resources-before.json": "562491db77c8dee8759139cfacf68fb626dff87a1a3ac2ec16987da2d8ac87aa",
+    "/private/tmp/gsc-goal48-11-matrix-resources-before.log": "4f7523703a32d0535a66a4d441183386bd91838940484510ee97fbe961278420",
+    "/private/tmp/gsc-goal48-12-matrix-resources-after.json": "343faca926627a375ff9bdd07b35523a5a958ff0cae34015cf33ad0cf77f1213",
+    "/private/tmp/gsc-goal48-12-matrix-resources-after.log": "66ac31c1f31d0c401f6762dbcfec1f38b84fa9976142091a5fef3f4091043bae",
+    "/private/tmp/gsc-goal48-2-dense-smoke-after.json": "05bfac823c155c0b48c1247c7bdf94728806f0355c1c1fdf2a5798aaac1d0332",
+    "/private/tmp/gsc-goal48-2-dense-smoke-after.log": "75aa8a2a40d72b39a2d202257f28089fe1b94ad2214972fbafb0b64a26ae77d6",
+    "/private/tmp/gsc-goal48-3-large-latency-before.json": "0b4ea45ccd7f31a29cb2d4f63c1fed03aa27dc7a8ad4016028800d67058f25e2",
+    "/private/tmp/gsc-goal48-3-large-latency-before.log": "89c16797163b1eedac622abfac5291764b55275d6c11c0d6761a50f00c55ee9b",
+    "/private/tmp/gsc-goal48-4-large-latency-after.json": "8415f0f85fe5afcab0acd2e511e6e2c6f3a0944861b7571dfc866098cba13db0",
+    "/private/tmp/gsc-goal48-4-large-latency-after.log": "fca39d509bc14c0dea64fea169784c50daf62a26bfd7d92b74f94d5286a3dda4",
+    "/private/tmp/gsc-goal48-5-large-latency-after.json": "2763ed1628581e5393d2aae2f618374a3f64079ba5ac72cb2863599a7ef93e37",
+    "/private/tmp/gsc-goal48-5-large-latency-after.log": "4569970800ff3e78bd1c888ca5be72639c57a4d5ae530617497372bed490a162",
+    "/private/tmp/gsc-goal48-6-large-latency-before.json": "57b6b00f01db61c41372f7ccc36f1f29a0d2c17c576a22ac251a7692a2cb30f0",
+    "/private/tmp/gsc-goal48-6-large-latency-before.log": "2ef4936c1c9cf3cabe996ef2dc8bea25b9c6a9ab8bd523b42f48e2cec246058e",
+    "/private/tmp/gsc-goal48-7-large-resources-before.json": "7b5485dc24601d13ecaeaff62f73e58416b9ebe21f813e93c3e23e25f939e7a6",
+    "/private/tmp/gsc-goal48-7-large-resources-before.log": "d9f63db0d10d4fb6bf74b312d8a33719f0716e60fd1793ec5604ebdd90aefb1a",
+    "/private/tmp/gsc-goal48-8-large-resources-after.json": "9607dd4d5656b2dd90574c7a7b2ee9b66c02463ae3c1ed4b9b64bcc245d8c39e",
+    "/private/tmp/gsc-goal48-8-large-resources-after.log": "c4e3e95000e46e4b8579b5e22d23c286d0b6f6a3ffed48f9935ec9b9e2842519",
+    "/private/tmp/gsc-goal48-9-large-resources-after.json": "be3300acefde61b2d8504bd54239b5a144d5792c637c725980695507c7ca471d",
+    "/private/tmp/gsc-goal48-9-large-resources-after.log": "be9c7cfa52c460074a80c06b10f69271f6efb7b9f7c0fac675972a4afa642321",
+    "/private/tmp/gsc-goal48-browser-final.log": "65c48bc3c5521ab64ebf4fc389cbc9333feb9fb7ce48be54280f0b6b10be6079",
+    "/private/tmp/gsc-goal48-driver-state.json": "ed5c78b88ef94f0c515c8e67ffc09d8b7f5f6410c9af4a1b11446101cd7609cf",
+    "/private/tmp/gsc-goal48-native-visual/pr-squash-cherry-pick/live-graph-1440.png": "97134dc54cb29400c62486b4dba0420164f3710ad44b14615ddbacefe8d73469",
+    "/private/tmp/gsc-goal48-native-visual/pr-squash-cherry-pick/live-graph-390.png": "da60ac42d002ae81c05afea0e97891bd5190ab5ef66d299870ffdf5034036632",
+    "/private/tmp/gsc-goal48-native-visual/pr-squash-cherry-pick/live-graph-768.png": "eb3e518c8cbdf4395d8e4ff05fe55aca938704d97860cf96558167b10f39f798",
+    "/private/tmp/gsc-goal48-node-final.log": "e95f2a91e59db1d833650c63c9e625f7ebdfea2ead12db400a714e0880d888f0",
+    "/private/tmp/gsc-goal48-pr-jump-native-final.log": "974d3aead98ad5b6f809425325bb542d157419ac1f89fff775e977fabc0e2f2f",
+    "/private/tmp/gsc-goal48-pr-jump-tests.log": "051f024368d26ddc9b05c991de83a6abfadc6a9db3267f682a6cf84628a14812",
+    "/private/tmp/gsc-goal48-publications-before.json": "e243c24471c368d5f28ce2b11b2aa7bec4f525ae323bb28f697a53d41cb9bb9d",
+    "/private/tmp/gsc-goal48-publications-before.log": "826378c58811b6e06f0158e6e2eea9ab577e99063700899ce052364d39feb7dd",
+    "/private/tmp/gsc-goal48-reference-tests.log": "0838b0168eb94c43f5fe9b36868d7a92b599f91966380f89069e68c6c01f28d1",
+    "/private/tmp/gsc-goal48-state-after.log": "7d43da798150ec19e22bdb4cf7739dbd1c4ff6b00277a221188e4999cc329179",
+    "/private/tmp/gsc-goal48-state-before.log": "6f096cba0eb8f3bf174c751174b8f214225e8fb8fd69e8bfd768afe0ec26d833",
+    "/private/tmp/gsc-goal48-state-error-1440.png": "ea29327c7102b03942981622249551726bafdb0bedb7ea5c5adefea591fd0ebb",
+    "/private/tmp/gsc-goal48-state-error-390.png": "41b777a060c48b27080d6ca9aa3f59e0a2ee323129e67e1489b67b8e4693a61d",
+    "/private/tmp/gsc-goal48-state-error-768.png": "bf99cb4b430cd0f31b1fc63525b79048e1ebbd389f223c951fb46dae00aa6ade",
+    "/private/tmp/gsc-goal48-state-final.log": "8d03fdf920d44df0ce56b9a0089539f859067714ba806a6e5b2348490ce33e9a",
+    "/private/tmp/gsc-goal48-state-ready-1440.png": "ba8b2b26f21c5486fbfcd41a585d0a8b17ba9efb986f716b7b189d91e0cf4b28",
+    "/private/tmp/gsc-goal48-state-ready-390.png": "083cad33e7b183edf5934160897a50a41d140fc0a3e7afaa2d957c1d3d12198c",
+    "/private/tmp/gsc-goal48-state-ready-768.png": "b5243084291de2f7be38f4178ecad6c8fbe59c7f7b45d321c8d886184d284e49",
+    "/private/tmp/gsc-goal48-types-final.log": "db3d0339d29e50efbecd07be27eb3368a93676f6e762aefdff1957ec9e734459",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-a11y-dark.json": "8376b5078ee168be0a456f686b883de229ef4293a415b4c91eaaf9de1f4ea982",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-a11y-high-contrast.json": "e827dd828dfb0fc81250f6df9c4d678152f2c6ed7b3634e8bb596611bb5073e7",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-a11y-light.json": "6418005929b2964e3e969d98c0058bba1a9213eccaeba0058ed24c12bd0a43f7",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-dark-1440.png": "31ef2a81d4d9859b8d242c9cfcf336ed97d1342eccc7473479ada7288af51daa",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-high-contrast-768.png": "0200716c336127a66200a9fd6ee59de7e7acd6b0e951161b6f54be8c16a58fb1",
+    "/private/tmp/gsc-goal48-ui-audit/gsc-pr-list33-light-390.png": "64e018072ac79fc8af6aef6350c960c8d2bb7427231f296ab392f90db8f42c3b"
+  }
+}

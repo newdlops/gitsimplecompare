@@ -95,16 +95,24 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
   __setQuickPickResult(items => items.find((item: any) => item?.kind !== -1));
   const prOperation = operation === "pr-squash-cherry-pick" || operation === "pr-cherry-pick";
-  if (prOperation) installPrButtonFixture(f);
+  const prListCount = prOperation ? await installPrButtonFixture(f, Number(process.env.GSC_BENCH_PR_LIST_SIZE || 1)) : undefined;
   const noticeHoldMs = Number(process.env.GSC_BENCH_PR_NOTICE_HOLD_MS || 0);
   const notice = prOperation ? probePrNotice(noticeHoldMs) : undefined;
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
   let measuring = false;
-  const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
+  const publicationDiagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1";
+  const publications: { at: number; signature: string; performance?: GraphRenderPerformance; changes?: Record<string, unknown> }[] = [];
   const transport = createOperationGraphPanel({ mock } as any, service, message => {
     renderer.post(message);
     if (measuring && (message.type === "graph" || message.type === "graphDelta")) publications.push({
-      at: performance.now(), signature: signature(transport.panel.commits), performance: message.performance });
+      at: performance.now(), signature: signature(transport.panel.commits), performance: message.performance,
+      ...(publicationDiagnostics ? { changes: { type: message.type,
+        rows: message.type === "graph" ? message.data.rows.length : message.delta.rows.length,
+        rowUpdates: message.type === "graphDelta" ? message.delta.rowUpdates.length : undefined,
+        edges: message.type === "graph" ? message.data.edges.length : message.delta.edges.length,
+        edgeUpdates: message.type === "graphDelta" ? message.delta.edgeUpdates.length : undefined,
+        workingTreePending: message.state?.workingTree?.loading === true,
+        branchDetailsPending: message.state?.branchDetails?.loading === true } } : {}) });
   });
   const { panel, messages, surface, receiveMessage } = transport;
   const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" ? createGraphButtonDiagnostics({ mock } as any) : undefined;
@@ -147,7 +155,11 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
     if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
-    if (prOperation) await renderer.clickControl("#graph-pr-list");
+    if (prOperation) {
+      await renderer.clickControl("#graph-pr-list");
+      assert.equal(messages.filter(message => message.type === "pullRequestOverview").at(-1)?.overview.pullRequests.length, prListCount);
+      assert.equal(await renderer.countElements("#detail .pr-card"), prListCount, "Actual dense PR list must be rendered before measuring");
+    }
     if (operation === "interactive-rebase") {
       const checkout = await captureRebaseCheckout(f.root), commits = await new RebaseService(f.root).getCommits(f.main, false, false);
       renderer.post({ type: "graphRebasePlan", plan: { branch, base: f.main, root: false, baseReason: "selected", checkout, commits,
@@ -207,8 +219,11 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       assert.ok(publication || initial === final, "Changed final state must have a publication caused after the click");
       const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance,
         operation === "checkout" ? f.topicBranch : branch, await readNativeRemoteTagExpectation(f.root));
+      // 실제 선택/세 viewport 촬영은 시간·CPU 창과 독립 Native oracle이 모두 끝난 뒤에만 실행한다.
+      if (process.env.GSC_BENCH_SCREENSHOT_DIR) await renderer.capture(path.join(process.env.GSC_BENCH_SCREENSHOT_DIR, operation));
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
-        ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}) },
+        ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}),
+        ...(prListCount ? { pullRequests: prListCount } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
         clickToFirstFrameMs: frame.mutationToFrameMs, clickToFinalFrameMs: frame.latestMutationToFrameMs,
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
@@ -219,7 +234,9 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         ...(noticeAtCompletion ? { notice: { modeledHoldMs: noticeHoldMs, pendingAtHandlerCompletion: noticeAtCompletion.pending,
           gitToHandlerMs: Math.round(completedAt - noticeAtCompletion.gitCompletedAt),
           gitToFinalFrameMs: frame.latestMutationToFrameMs === null ? null : Math.max(0, frame.latestMutationToFrameMs - (noticeAtCompletion.gitCompletedEpoch - clickedAt)) } } : {}),
-        ...(diagnostic ? { diagnostic } : {}), ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
+        ...(diagnostic ? { diagnostic: { ...diagnostic, publications: publications.map(value => ({
+          afterClickMs: Math.round(value.at - started), kind: value.performance?.kind, ...value.changes })) } } : {}),
+        ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
   } finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }
