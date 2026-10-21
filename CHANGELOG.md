@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.72145] - 2026-10-22
+
+### Performance
+
+- Reuse the final HEAD already returned by completed PR commit-replay and revert
+  queues, and skip restoration HEAD/state writes when no stash needs restoring.
+- Retain fresh PR preflight checks, per-commit branch guards, conflict results
+  and stash recovery records. Preserve the PR Graph row navigation fix from
+  0.1.72144.
+- Add opt-in benchmark counters for click-to-settled Node, waited native child
+  and Chromium CPU, separate from uninstrumented latency measurements. Keep
+  profiling code and its Native probe out of the installed extension.
+
 ## [0.1.72144] - 2026-10-22
 
 ### Fixes

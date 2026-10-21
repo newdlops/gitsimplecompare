@@ -9,6 +9,8 @@ import type { FromWebviewMessage, GraphRenderPerformance, ToWebviewMessage } fro
 import { expectedRenderedRefs, type NativeRemoteTag } from "./graphNativeExpectation";
 
 type Paint = Extract<FromWebviewMessage, { type: "graphRendered" }>;
+/** Chromium이 제공한 PID별 누적 CPU초다. 서로 다른 생애의 PID를 임의로 합치지 않는다. */
+export interface BrowserCpuProcess { id:number; type:string; cpuTime:number }
 
 /** OS 창을 만들지 않고 renderer의 실제 메시지 처리·두 frame ACK·DOM 최신 상태를 확인한다. */
 export class GraphLiveRenderer {
@@ -76,6 +78,23 @@ export class GraphLiveRenderer {
   async clickNamedControl(name: string): Promise<void> {
     await this.queue;
     await this.page.getByRole("button", { name, exact: true }).click();
+  }
+
+  /** opt-in 자원 계측에서만 browser process별 누적 counter를 읽고 CDP 연결을 즉시 해제한다. */
+  async readCpuProcesses():Promise<BrowserCpuProcess[]>{
+    const session=await this.browser.newBrowserCDPSession();
+    try{const result=await session.send("SystemInfo.getProcessInfo");return result.processInfo as BrowserCpuProcess[];}
+    finally{await session.detach();}
+  }
+
+  /** 계측 종료 전에 마지막 게시 ACK와 두 frame을 기다린다. 사후 Native oracle은 실행하지 않는다. */
+  async waitForPendingFrame(latest?:GraphRenderPerformance):Promise<void>{
+    await this.queue;
+    const matches=()=>!latest||this.paints.some(paint=>paint.performance.traceId===latest.traceId&&paint.performance.kind===latest.kind&&paint.performance.sentAt===latest.sentAt);
+    const deadline=Date.now()+5000;while(!matches()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
+    assert.ok(matches(),"Resource phase ended before its final Graph frame");
+    await this.page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    assert.deepEqual(this.errors,[]);
   }
 
   /** GraphPanel이 게시한 원본 메시지를 순서대로 실제 renderer에 전달하며 실패를 마지막 검증까지 보존한다. */

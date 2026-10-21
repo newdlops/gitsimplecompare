@@ -22,6 +22,7 @@ import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } fr
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButtonFixture";
 import { probePrNotice } from "../helpers/prNoticeProbe";
+import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
@@ -72,7 +73,7 @@ async function partialPushFixture(directory: string) {
 }
 
 /** 각 작업은 독립 fixture와 local bare remote만 사용하며 실제 사용자 작업트리나 외부 네트워크에 쓰지 않는다. */
-async function measure(directory: string, operation: Operation) {
+async function measure(directory: string, operation: Operation, resources?: GraphPhaseResources) {
   const partial = operation === "push" && process.env.GSC_BENCH_PROMISOR_PUSH === "1";
   const f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE)), branch = `button-${operation}`;
   if (partial) {
@@ -154,6 +155,7 @@ async function measure(directory: string, operation: Operation) {
           { hash: f.prCommits[1], action: "squash", message: "combined click\n\ncombined body" }, { hash: f.prCommits[2], action: "pick" }] } });
     }
     const initial = signature(panel.commits), beforeMessages = messages.length, timings: GitExecutionTiming[] = [];
+    await resources?.begin(renderer,operation);
     const stop = setGitExecutionObserver(timing => timings.push(timing));
     const started = performance.now(), clickedAt = Date.now(), cpu = process.cpuUsage();
     measuring = true;
@@ -166,9 +168,11 @@ async function measure(directory: string, operation: Operation) {
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
       await settle(f.root, panel, messages, metadataReady);
+      if(resources)await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       measuring = false; stop();
       const diagnostic = diagnostics?.finish();
       const settled = performance.now(), used = process.cpuUsage(cpu), final = signature(panel.commits);
+      const phaseResources=await resources?.finish(renderer,used,timings.length);
       assert.ok(receivedAt !== undefined && completedAt !== undefined);
       assert.deepEqual(__errorMessages, [], "The actual message handler must not hide a Git failure in an error toast");
       assert.deepEqual(markerFailures, [], "A swallowed marker error is not a correct completed button flow");
@@ -211,6 +215,7 @@ async function measure(directory: string, operation: Operation) {
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
         graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
+        ...(phaseResources?{phaseResources}:{}),
         ...(noticeAtCompletion ? { notice: { modeledHoldMs: noticeHoldMs, pendingAtHandlerCompletion: noticeAtCompletion.pending,
           gitToHandlerMs: Math.round(completedAt - noticeAtCompletion.gitCompletedAt),
           gitToFinalFrameMs: frame.latestMutationToFrameMs === null ? null : Math.max(0, frame.latestMutationToFrameMs - (noticeAtCompletion.gitCompletedEpoch - clickedAt)) } } : {}),
@@ -228,7 +233,9 @@ async function main() {
     const results = [];
     for (const operation of selected) {
       const scenario = path.join(directory, operation); await mkdir(scenario);
-      console.error(`Clicking ${operation}...`); results.push(await measure(scenario, operation));
+      const resources=process.env.GSC_BENCH_PHASE_RESOURCES==="1"?await GraphPhaseResources.create(scenario):undefined;
+      try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
+      finally{resources?.dispose();}
     }
     const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };

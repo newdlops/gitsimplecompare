@@ -110,7 +110,7 @@ async function runDeferredCommitRebaseScoped(input: DeferredCommitRebaseInput): 
   const pending = createPendingState(input, deferred, operationHead);
   if (!deferred.length) {
     const finish = await finishPendingDeferredCommitRebase(input.repoRoot, pending);
-    return resumeToRunResult(input, finish, await safeCurrentHead(input.repoRoot, input.beforeHead));
+    return resumeToRunResult(input, finish);
   }
   await writePendingDeferredCommitRebase(input.repoRoot, pending);
   const next = await applyPendingDeferredCommitQueue(
@@ -118,7 +118,7 @@ async function runDeferredCommitRebaseScoped(input: DeferredCommitRebaseInput): 
     pending,
     input.guardCurrentBranch === true
   );
-  return resumeToRunResult(input, next, await safeCurrentHead(input.repoRoot, input.beforeHead));
+  return resumeToRunResult(input, next);
 }
 
 /**
@@ -392,8 +392,9 @@ async function restorePendingLocalChanges(
   pending: PendingDeferredCommitRebase,
   failureMessage: string
 ): Promise<void> {
-  await writePendingDeferredCommitRebase(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
   if (pending.preservedStashHash) {
+    // 실제 stash 복원 직전에만 HEAD와 재개 상태를 기록한다. stash가 없으면 기존 pending만 정리한다.
+    await writePendingDeferredCommitRebase(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
     await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   }
   await clearPendingDeferredCommitRebase(repoRoot);
@@ -430,16 +431,17 @@ async function currentHead(repoRoot: string): Promise<string> {
 /**
  * 시작 결과 형태로 resume 결과를 변환한다.
  * @param input deferred rebase 실행 입력값
- * @param result 내부 resume 결과
+ * @param result 내부 resume 결과. 완료 결과의 검증된 afterHead는 추가 조회 없이 전달한다.
+ * @returns 완료 결과 또는 충돌 상태의 현재 HEAD를 새로 읽은 시작 결과
  */
-function resumeToRunResult(
+async function resumeToRunResult(
   input: DeferredCommitRebaseInput,
-  result: DeferredCommitRebaseResumeResult,
-  afterHead: string
-): DeferredCommitRebaseResult {
+  result: DeferredCommitRebaseResumeResult
+): Promise<DeferredCommitRebaseResult> {
   if (result.status === "completed") {
     return finishToRunResult(input, result);
   }
+  const afterHead = await safeCurrentHead(input.repoRoot, input.beforeHead);
   if (result.status === "restoreConflicts") {
     return {
       status: "conflicts",
