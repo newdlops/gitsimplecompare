@@ -58,7 +58,7 @@ if command:
             process.returncode = os.waitstatus_to_exitcode(status)
 
 result = {"source": source, "code": process.returncode, "timedOut": timed_out,
-          "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification. Build/archive excluded. No Chromium. Observer/ps excluded.",
+          "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
           "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed.",
           "wait4Scope": "OS wait4 user/system accounting for the completed benchmark Node and its children; setup/capture/verification included, not per-operation CPU attribution.",
           "elapsedMs": (time.monotonic() - started) * 1000,

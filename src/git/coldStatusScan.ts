@@ -6,8 +6,10 @@ import { parseWorkingTreeV2, type ParsedWorkingTree } from "./workingTreeStatusF
 import { PriorityReadQueue } from "../utils/priorityReadQueue";
 
 export const COLD_STATUS_MIN_ENTRIES = 5000;
-const queue = new PriorityReadQueue(4);
-const MAX_BATCH_BYTES = 16000, TARGET_BATCHES = 16;
+// 실행 슬롯과 같은 수로 나눠 index를 반복해서 여는 대기 작업을 줄인다.
+const TARGET_BATCHES = 4;
+const queue = new PriorityReadQueue(TARGET_BATCHES);
+const MAX_BATCH_BYTES = 16000;
 type Logger = (event: string, fields: Record<string, unknown>) => void;
 interface Scope { path: string; directory: boolean; weight: number }
 interface DirectoryFence { file: string; identity: string }
@@ -135,7 +137,7 @@ async function planScopes(root: string, tracked: string, signal: AbortSignal): P
   return { scopes, fences };
 }
 
-/** UTF-8 인자 길이 상한을 지키면서 추적 파일 수 기준으로 열여섯 묶음에 작업을 분산한다. */
+/** UTF-8 인자 길이 상한을 지키면서 추적 파일 수 기준으로 네 실행 슬롯에 작업을 분산한다. */
 function scopeBatches(scopes: Scope[]): string[][] {
   const buckets = Array.from({ length: TARGET_BATCHES }, () => ({ paths: [] as string[], weight: 0 }));
   for (const scope of scopes.sort((one, two) => two.weight - one.weight)) {

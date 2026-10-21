@@ -16,7 +16,7 @@ import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { createGitOperationFixture } from "../helpers/gitOperationFixture";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
-import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
+import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
 import { createGraphButtonDiagnostics, traceLocalOnlySnapshot } from "../helpers/graphButtonDiagnostics";
 import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
@@ -67,13 +67,14 @@ async function partialPushFixture(directory: string) {
   await runGit(["remote", "set-url", "--push", "origin", f.receiver], f.root);
   return { ...f, remote: f.receiver, main: f.base, pr: f.head, prCommits: f.commits,
     incoming: f.head, incomingPull: f.head, oldHistory: f.base, topic: f.head,
-    files: 9, depth: 3, branches: 3, sharedUpstreamBranches: 0, promisorBlobBytes };
+    files: 9, depth: 3, branches: 3, sharedUpstreamBranches: 0, promisorBlobBytes,
+    mainBranch: "main", topicBranch: "topic", prBranch: "pr-source", oldHistoryBranch: "old-history" };
 }
 
 /** 각 작업은 독립 fixture와 local bare remote만 사용하며 실제 사용자 작업트리나 외부 네트워크에 쓰지 않는다. */
 async function measure(directory: string, operation: Operation) {
   const partial = operation === "push" && process.env.GSC_BENCH_PROMISOR_PUSH === "1";
-  const f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory)), branch = `button-${operation}`;
+  const f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE)), branch = `button-${operation}`;
   if (partial) {
     // 같은 commit에 fixture HEAD만 연결한다. switch의 Native unpack-trees 사전 fetch를 측정 준비에 섞지 않는다.
     await runGit(["update-ref", `refs/heads/${branch}`, f.pr], f.root);
@@ -82,8 +83,8 @@ async function measure(directory: string, operation: Operation) {
   } else await runGit(["switch", "-qC", branch, operation === "push" || operation === "interactive-rebase" ? f.pr : f.main], f.root);
   if (operation === "pull") {
     await runGit(["config", `branch.${branch}.remote`, "origin"], f.root);
-    await runGit(["config", `branch.${branch}.merge`, "refs/heads/main"], f.root);
-    await runGit(["update-ref", "refs/heads/main", f.incomingPull], f.remote);
+    await runGit(["config", `branch.${branch}.merge`, `refs/heads/${f.mainBranch}`], f.root);
+    await runGit(["update-ref", `refs/heads/${f.mainBranch}`, f.incomingPull], f.remote);
   }
   if (operation === "fetch") await runGit(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
   // 최신 Git의 첫 fetch는 origin/HEAD를 만들 수 있다. 실제 무변경 비교는 이 초기 ref 설정 뒤에 시작한다.
@@ -159,7 +160,7 @@ async function measure(directory: string, operation: Operation) {
     try {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
       else if (prOperation) await renderer.clickControl(`#pr-op-42-${operation === "pr-squash-cherry-pick" ? "squash" : "rebase"}`);
-      else if (operation === "checkout") await renderer.clickControl('.ref[data-checkout-branch="topic"]');
+      else if (operation === "checkout") await renderer.clickControl(`.ref[data-checkout-branch="${f.topicBranch}"]`);
       else if (operation === "fetch-no-change") await renderer.clickControl("#fetch-graph");
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
@@ -199,7 +200,8 @@ async function measure(directory: string, operation: Operation) {
         missingBlobs: await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), localChangesPreserved: true } : undefined;
       const publication = publications.slice().reverse().find(value => value.at >= started && value.signature === final);
       assert.ok(publication || initial === final, "Changed final state must have a publication caused after the click");
-      const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance, operation === "checkout" ? "topic" : branch);
+      const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance,
+        operation === "checkout" ? f.topicBranch : branch, await readNativeRemoteTagExpectation(f.root));
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),

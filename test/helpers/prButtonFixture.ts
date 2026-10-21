@@ -5,16 +5,16 @@ import { PullRequestService } from "../../src/git/pullRequestService";
 import type { PullRequestInfo } from "../../src/git/pullRequestInfo";
 import { runGit } from "../../src/git/gitExec";
 
-interface PrFixture { root: string; main: string; pr: string; prCommits: string[] }
+interface PrFixture { root: string; main: string; pr: string; prCommits: string[]; mainBranch?: string; prBranch?: string }
 
 /** ready/refresh 모두 같은 완전한 PR 원본 목록을 반환해 실제 pager와 rendered action을 연결한다. */
 export function installPrButtonFixture(f: PrFixture): void {
   const pr: PullRequestInfo = { number: 42, title: "Local operation benchmark", state: "OPEN",
-    url: "https://example.invalid/pull/42", headRefName: "pr-source", headHash: f.pr,
-    baseRefName: "main", author: "fixture", isDraft: false, commentCount: 0, fileCount: 3,
+    url: "https://example.invalid/pull/42", headRefName: f.prBranch ?? "pr-source", headHash: f.pr,
+    baseRefName: f.mainBranch ?? "main", author: "fixture", isDraft: false, commentCount: 0, fileCount: 3,
     commitHashes: f.prCommits, commitHashesComplete: true };
   mock.method(PullRequestService.prototype, "getOverview", async () => ({
-    available: true, defaultBranch: "main", pullRequests: [pr], hasMore: false,
+    available: true, defaultBranch: f.mainBranch ?? "main", pullRequests: [pr], hasMore: false,
   }));
 }
 

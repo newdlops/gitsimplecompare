@@ -1,0 +1,298 @@
+{
+  "version": "0.1.72139",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "baselineCommit": "a42d72441fdda407d88766f4eedaee9f756419e0",
+  "healthyCumulativeBaseline": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+  "change": "Cold status target batches 16 to 4; concurrency remains 4 and the 16000-byte argument limit may split additional batches. All scopes, Native ignore rules, directory fences, index validation, deadlines and cancellation remain.",
+  "fixture": {
+    "committedFiles": 30311,
+    "reachableCommits": 72720,
+    "capturedRefs": 2665,
+    "localBranches": 164,
+    "remoteRefs": 2113,
+    "checkedOutBlobBytes": 275134039,
+    "sourceAccess": "read-only alternate object store; private checkout, refs, config, index, objects and receiver; synthetic three-commit PR",
+    "limit": "Represents history/ref/file scale, not the actual user dirty tree or conflicting PR. GitHub list metadata and VS Code transport/window/pickers are replaced. No internet latency measured."
+  },
+  "timing": {
+    "order": ["before-1","after-1","after-2","before-2","before-3","after-3"],
+    "repetitionsPerSource": 3,
+    "columns": ["source","repetition","operation","serviceMs","mutationToFinalFrameMs","serviceThroughFinalFrameMs","nodeCpuMs","gitCalls","graphGitCalls","lsFilesCalls"],
+    "rows": [
+      ["before",1,"pr-squash-cherry-pick",3836,1660,5496,495,49,26,19],
+      ["before",1,"pr-cherry-pick",3396,1614,5010,294,50,26,19],
+      ["before",2,"pr-squash-cherry-pick",3367,1167,4534,456,49,26,19],
+      ["before",2,"pr-cherry-pick",3082,629,3711,351,50,26,19],
+      ["before",3,"pr-squash-cherry-pick",996,646,1642,394,49,27,19],
+      ["before",3,"pr-cherry-pick",1267,595,1862,289,50,26,19],
+      ["after",1,"pr-squash-cherry-pick",5515,1871,7386,432,36,14,7],
+      ["after",1,"pr-cherry-pick",3481,758,4239,471,38,14,7],
+      ["after",2,"pr-squash-cherry-pick",1112,786,1898,481,37,15,7],
+      ["after",2,"pr-cherry-pick",3712,876,4588,482,38,14,7],
+      ["after",3,"pr-squash-cherry-pick",828,496,1324,296,37,15,7],
+      ["after",3,"pr-cherry-pick",1597,724,2321,353,38,14,7]
+    ],
+    "comparisons": [
+      {
+        "operation": "pr-squash-cherry-pick",
+        "before": {
+          "serviceMedianMs": 3367,
+          "finalFrameMedianMs": 1167,
+          "serviceThroughFinalFrameMedianMs": 4534,
+          "nodeCpuMedianMs": 456,
+          "gitCalls": [49,49,49],
+          "graphGitCalls": [26,26,27]
+        },
+        "after": {
+          "serviceMedianMs": 1112,
+          "finalFrameMedianMs": 786,
+          "serviceThroughFinalFrameMedianMs": 1898,
+          "nodeCpuMedianMs": 432,
+          "gitCalls": [36,37,37],
+          "graphGitCalls": [14,15,15]
+        }
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "before": {
+          "serviceMedianMs": 3082,
+          "finalFrameMedianMs": 629,
+          "serviceThroughFinalFrameMedianMs": 3711,
+          "nodeCpuMedianMs": 294,
+          "gitCalls": [50,50,50],
+          "graphGitCalls": [26,26,26]
+        },
+        "after": {
+          "serviceMedianMs": 3481,
+          "finalFrameMedianMs": 758,
+          "serviceThroughFinalFrameMedianMs": 4239,
+          "nodeCpuMedianMs": 471,
+          "gitCalls": [38,38,38],
+          "graphGitCalls": [14,14,14]
+        }
+      }
+    ],
+    "conclusion": "Git call reduction repeats. Timing and Node CPU are mixed, including slower PR replay; do not attribute the large squash timing difference solely to this change or claim general speed improvement."
+  },
+  "buttonValidation": {
+    "repetitionsPerSource": 1,
+    "instrumentation": "resource observer enabled; separate from uninstrumented timing",
+    "columns": ["source","operation","handlerMs","clickToFinalFrameMs","clickToSettledMs","nodeCpuMs","gitCalls"],
+    "rows": [
+      ["before","pr-squash-cherry-pick",3281,4524,5875,574,49],
+      ["before","pr-cherry-pick",2315,3500,5729,594,50],
+      ["after","pr-squash-cherry-pick",828,1553,2484,360,37],
+      ["after","pr-cherry-pick",1686,2475,3471,489,38]
+    ]
+  },
+  "cumulativeValidation": {
+    "repetitionsPerSource": 1,
+    "fixture": "Synthetic 1000-file/1000-commit/100-side-branch owned repository",
+    "columns": ["source","operation","serviceMs","mutationToFinalFrameMs","nodeCpuMs","gitCalls"],
+    "rows": [
+      ["before","push",1707,180,134,24],
+      ["before","pull",1077,210,101,12],
+      ["before","fetch",111,115,50,7],
+      ["before","rebase",1971,1005,174,26],
+      ["before","merge",431,321,154,23],
+      ["before","pr-squash-cherry-pick",612,304,212,33],
+      ["before","pr-cherry-pick",436,216,154,36],
+      ["before","cherry-pick",29,174,90,12],
+      ["before","checkout",54,126,64,9],
+      ["after","push",1294,145,114,24],
+      ["after","pull",344,338,155,11],
+      ["after","fetch",161,115,99,6],
+      ["after","rebase",1923,665,172,23],
+      ["after","merge",737,155,96,21],
+      ["after","pr-squash-cherry-pick",221,142,99,30],
+      ["after","pr-cherry-pick",312,274,138,31],
+      ["after","cherry-pick",25,173,75,9],
+      ["after","checkout",45,95,38,6]
+    ],
+    "conclusion": "All nine named Native services plus production renderer pass. One run per source is coverage and exploratory resource evidence, not a stable cumulative latency claim; earlier contrary 18-case series retained."
+  },
+  "resources": {
+    "columns": ["series","source","wholeOwnedCpuMs","sampledSummedVisibleRssBytes","wholeElapsedMs"],
+    "rows": [
+      ["buttons","before",71740.436,694616064,75815.30987499999],
+      ["buttons","after",66865.78,706641920,61411.03874999999],
+      ["cumulative","before",20180.144,640729088,24398.569459000002],
+      ["cumulative","after",17021.242,647921664,21082.117166]
+    ],
+    "scope": "Benchmark Node and its owned Git/Chromium descendants, including fixture setup and post-verification. Source archive/build and observer/ps excluded.",
+    "limitations": "wait4 CPU is whole workload, not per operation. RSS is a 50ms-plus-ps visible-descendant sum; shared pages can count repeatedly and short children/peaks may be missed. Single paired runs show lower whole CPU and higher sampled RSS; no general resource-minimization claim.",
+    "labelCorrection": "The previous generic observer label incorrectly excluded Chromium. The collection algorithm always included owned descendants; only the scope text was corrected."
+  },
+  "checks": {
+    "finalNodePass": 28,
+    "finalNodeFail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "typesPassed": true,
+    "finalUninstrumentedNativeRendererCases": 12,
+    "finalResourceInstrumentedButtonCases": 4,
+    "finalCumulativeNativeRendererCases": 18,
+    "instrumentedButtonDiagnosticCases": 2,
+    "originalSourceImmutabilityTestPassed": true,
+    "remoteTagOracleNativeTestPassed": true,
+    "finalChecks": "Native full status equivalence; ignore/nested repos/symlinks/literal names; real index byte preservation; path and directory replacement; source-stage changes; cancellation/close; warm cache; total timeout/unlimited; readonly borrowed source and private push routing; annotated/lightweight/moved/deleted remote tag targets"
+  },
+  "exclusions": ["Initial 18-case sequence reused the same incoming commit across fetches; scenario-order pollution fixed with unique remote-only commits.","First actual-scale renderer check omitted the remote-tag overlay; independent Native ls-remote tag expectation and a two-frame final-decoration check added. No legitimate refs filtered out.","First related Node group:22pass/1fail because the shortened timeout fired before the test wrapper wrote its PID. Replaced timing-sensitive delay with a blocked Native phase; final group fully passes.","CPU-profiler and FS-wrapper diagnostic runs are phase evidence only, not comparative latency."],
+  "sourceSha256": {
+    "src/git/coldStatusScan.ts": "deb5b66a3881c8f8f759ffa0d7b9380aefd220ce613ec137d68fcf28394fb641",
+    "test/privateStatusIndexColdScan.test.ts": "7d2dd69bbacbf09fa9f283ccee22293f2ff59159b4b53fedcdb75f7f27203025",
+    "test/borrowedOperationFixture.test.ts": "7f757472f67b05fc5238da415a72d7a99edd6bca94534823a6a8b1d09224cf9c",
+    "test/graphNativeTagExpectation.test.ts": "d59d45837e3fe6bd2d92c7e49f8c3cad81ad65cfdfe51fff5a036d413417130d",
+    "test/helpers/gitOperationFixture.ts": "f19c31d6a1aa1d3656384f310ff02bb2b37cd912f7d26ded877f9c171e7815aa",
+    "test/helpers/graphNativeExpectation.ts": "2606fb64f0cee296923619c41dfc8374f2023e40647e2f2734cc9f337e324fc7",
+    "test/helpers/graphLiveRenderer.ts": "720b6777d517d8c5a2365b8c9f8fb27e3b3aa5c5c27ef8501b13d8c2c9912499",
+    "test/helpers/prButtonFixture.ts": "43f3cf82fb7c3304c169244fa21444cdce2806373d12783e919defb6e8d3008d",
+    "test/benchmarks/gitOperationMatrix.ts": "44273010adb1b9dc489015f9fce2334c4ad542f7cd8b77bc1b2aeb20c3cafcde",
+    "test/benchmarks/graphButtonFlow.ts": "0d18f069b23607ab50eea22933fbe2ae99ec12f4bdbe720482663909ce84c245",
+    "scripts/benchmark-git-operations.mjs": "a1b6a5126e71c76280af319c57903aaeb5be24de5201e583c5e2d44721e6120b",
+    "scripts/benchmark-graph-buttons.mjs": "6baf0a34c67505368e0443edd9b8bda295d70289e22e3385033c2bbdb7acb60c",
+    "scripts/profile-benchmark-resources.py": "1d64120da7960088fe7f25b7d5e7b54897c9705d9ba8a5297e87a4a586f4a9cc",
+    "scripts/run-source-benchmark.mjs": "e0cb68733e7bd84af119742368ec458b041c0d3b3a2b0371efc31991dc0431ac"
+  },
+  "evidence": [
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-before-1.json",
+      "sha256": "560abd5bf8d997af6736c9eb1e1a4511dd10e7bfec1466d601912e3b632c6ba1"
+    },
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-before-2.json",
+      "sha256": "92d8b3035dde99b46646d0622b9e979998ce8dd7353591dc086c189caf162591"
+    },
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-before-3.json",
+      "sha256": "60f907d53d9818ed2a79f1718eab50d4ebe2038c8f3d312b267c1fa7ed76dcff"
+    },
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-after-1.json",
+      "sha256": "68460d47ec3be8a6354f39d00466ae7d1087c7f352f2f99c7fd240c005ebf890"
+    },
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-after-2.json",
+      "sha256": "c406358eb06b88e3c091e145f6523e80565a8979ff839caa03df323800eb9bd6"
+    },
+    {
+      "kind": "uninstrumented actual-scale service timing",
+      "path": "/private/tmp/gsc-goal39-pr-batch-after-3.json",
+      "sha256": "0e3b8fb9717a418fd0f169184a5d86bb762bf9d183df6a0065369dd29ac3a0bd"
+    },
+    {
+      "kind": "buttons resource-instrumented Native/renderer validation",
+      "path": "/private/tmp/gsc-goal39-buttons-resources-before.json",
+      "sha256": "507b57da0dfdf564ab1102aba7ee4efa563169d765110393d39376eea8a1720f"
+    },
+    {
+      "kind": "buttons whole-owned-tree resource observation",
+      "path": "/private/tmp/gsc-goal39-buttons-resources-before.json.resources.json",
+      "sha256": "f4eb736e2cfd7fdf95bb99ae6b9a012a15fe8729b59793ce5fcc71a12cc07cff"
+    },
+    {
+      "kind": "buttons resource-instrumented Native/renderer validation",
+      "path": "/private/tmp/gsc-goal39-buttons-resources-after.json",
+      "sha256": "31203ac8ea5818d124e1654d91d35a53c6b5ae4ed000a3b87ad6e9abe6039012"
+    },
+    {
+      "kind": "buttons whole-owned-tree resource observation",
+      "path": "/private/tmp/gsc-goal39-buttons-resources-after.json.resources.json",
+      "sha256": "e3732fec974cd20280b1761f4a96ebe54b88a0c960388e5979222f351ea8f904"
+    },
+    {
+      "kind": "cumulative resource-instrumented Native/renderer validation",
+      "path": "/private/tmp/gsc-goal39-cumulative-resources-before.json",
+      "sha256": "d86bc4541970952ccfeb654a4638a82aa0c779b839088fcd6d2bb9ea6d4aa211"
+    },
+    {
+      "kind": "cumulative whole-owned-tree resource observation",
+      "path": "/private/tmp/gsc-goal39-cumulative-resources-before.json.resources.json",
+      "sha256": "021401fed3a2cedf10f17ec6de1648170dc908e89577e32663bd16d303e51921"
+    },
+    {
+      "kind": "cumulative resource-instrumented Native/renderer validation",
+      "path": "/private/tmp/gsc-goal39-cumulative-resources-after.json",
+      "sha256": "e4f96b10b28ae6184376247fa00fc8fae229fe01d10c22ad4b94a881a74a6a35"
+    },
+    {
+      "kind": "cumulative whole-owned-tree resource observation",
+      "path": "/private/tmp/gsc-goal39-cumulative-resources-after.json.resources.json",
+      "sha256": "bdb3fbae8a66a4fb15eb6c8e5f84c3b6574cdc56e93fb0c78f748b94aea7f624"
+    },
+    {
+      "kind": "final verification",
+      "path": "/private/tmp/gsc-goal39-pr-buttons-after-diagnostic.json",
+      "sha256": "e3e6bc1c509818ad436bce0647667baad8cb5fb6d41eaa2162e2dde590cd3bf0"
+    },
+    {
+      "kind": "final verification",
+      "path": "/private/tmp/gsc-goal39-pr-driver-state.json",
+      "sha256": "9c062eb8d9464cde09fe6d8a0c983c1ad5b1536bc7a678891c79063b808bd2ec"
+    },
+    {
+      "kind": "final verification",
+      "path": "/private/tmp/gsc-goal39-validation-state.json",
+      "sha256": "598414e887b117a7a0846761a53b3982beb17b4274309010df431b4cfee094f4"
+    },
+    {
+      "kind": "final verification",
+      "path": "/private/tmp/gsc-goal39-final-node.log",
+      "sha256": "ebe1ba36364741be2a733a7de6d687bd3476687499b60f7b138bd9633110cc4a"
+    },
+    {
+      "kind": "final verification",
+      "path": "/private/tmp/gsc-goal39-final-types.log",
+      "sha256": "85f2f514d7a51de789a10fabc7c2a1f8e42ffee0dc9bc463db8f06ef9d9ee170"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-cumulative-diagnostic-before.log",
+      "sha256": "c43d3f824bb6961b013af17697462308a33e14010df57cc7d5571f72ee70e786"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-cumulative-fixed-before.json",
+      "sha256": "76d0ce92fdf04bf223b691277b1d0ef14cea65ea44e0e998a03816c26f09cd1a"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-cumulative-fixed-after.json",
+      "sha256": "5761c4f014777044e5820a4ba8d7464335a368bb17a55c22c4e3423449c8d16f"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-borrowed-diagnostic-after.log",
+      "sha256": "2ead4a2c264c962e20107cfcfbf695d0745fe7de2b7d5db7171dc1a4b33155ef"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-borrowed-fixed-after.json",
+      "sha256": "94a94ca16085c56c1b986a77f9b3b1e164c5dddba257de120f41f61b920b21ab"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-status-node.log",
+      "sha256": "f030fc15e1ff120ff73f5fced5972844fb24f7acc9d43ca98ac3c4d0d3cc37fe"
+    },
+    {
+      "kind": "retained exploratory or failed harness/check series; not final comparative timing",
+      "path": "/private/tmp/gsc-goal39-cold-node-fixed.log",
+      "sha256": "a0c13a4f94417013e4e5e319008a3f078f7aa4c62035ad806df146a0ca0afc1a"
+    }
+  ],
+  "boundaries": {
+    "marketplaceChecks": false,
+    "osFocusChanges": false,
+    "forcedReload": false,
+    "userStashOrRecoveryDeletion": false,
+    "actualCaptainWrites": false
+  },
+  "nextWork": "Keep the original entire operation/fresh-Graph/stability/resource objective active. Actual-button diagnostics place most time inside Native Git; replay performs two synchronous status checks before commit application, and a later optional status warmup remains. Investigate those fresh-check costs without reusing stale UI snapshots or weakening Native ref/HEAD/index/operation/CAS and recovery gates. Add conflict/dirty real-scale cases before claiming a general PR speed fix."
+}

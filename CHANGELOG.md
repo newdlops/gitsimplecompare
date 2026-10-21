@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.72139] - 2026-10-21
+
+### Performance
+
+- Reduce cold working-tree status scan target batches from sixteen to four,
+  matching the existing concurrency limit. Avoid repeated queued index reads
+  after PR actions while preserving all paths and argument-size splitting.
+
+### Development
+
+- Validate actual PR buttons and Native operations against an isolated borrowed
+  history with 30,311 files and 72,720 commits, without writing to the source.
+- Compare remote-tag decorations with independent Native advertisements, and
+  remove fresh-fetch benchmark dependence on scenario order.
+- Retain every timing sample and contrary result. Git calls decrease, but PR
+  replay timing/Node CPU and whole-workload RSS remain mixed; do not claim a
+  general PR execution-speed or resource improvement.
+- Keep Native status equivalence, index/directory fences, cancellation and
+  overall-deadline tests; correct the resource observer's Chromium scope text.
+
 ## [0.1.72138] - 2026-10-21
 
 ### Performance

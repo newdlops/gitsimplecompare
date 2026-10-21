@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import type { Commit } from "../../src/graph/graphTypes";
 import type { FromWebviewMessage, GraphRenderPerformance, ToWebviewMessage } from "../../src/webview/graphProtocol";
+import { expectedRenderedRefs, type NativeRemoteTag } from "./graphNativeExpectation";
 
 type Paint = Extract<FromWebviewMessage, { type: "graphRendered" }>;
 
@@ -91,7 +92,7 @@ export class GraphLiveRenderer {
 
   /** 실제 ACK 이후 HEAD·ref·local-only를 host snapshot과 대조하고 최종 metadata 게시의 frame도 따로 기다린다. */
   async verify(commits: readonly Commit[], head: string, operationEndedAt: number, graphAlreadyCurrent: boolean,
-    latest?: GraphRenderPerformance, currentBranch?: string) {
+    latest?: GraphRenderPerformance, currentBranch?: string, remoteTags: readonly NativeRemoteTag[] = []) {
     await this.queue;
     /** 같은 refresh라도 첫 이력과 늦은 색상 게시를 혼동하지 않게 최종 게시의 정확한 metadata를 확인한다. */
     const finalPaint = () => latest && this.paints.find(paint => paint.performance.traceId === latest.traceId &&
@@ -106,13 +107,16 @@ export class GraphLiveRenderer {
     const latestPaint = finalPaint();
     assert.ok(!latest || latestPaint, "Final local-only/metadata publication never crossed the renderer frame boundary: " +
       JSON.stringify({ expected: latest, received: this.paints.map(paint => paint.performance) }));
+    // tagStatus는 graphRendered와 별도 게시다. 전달 queue와 두 frame을 지난 최종 장식도 검사한다.
+    await this.queue;
+    await this.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     const rows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .filter(element => /^[a-f0-9]{40,64}$/.test((element as HTMLElement).dataset.hash || ""))
       .map(element => ({ hash: (element as HTMLElement).dataset.hash!, refs: ((element as HTMLElement).dataset.refs || "").split("\t").filter(Boolean),
         localOnly: ((element as HTMLElement).dataset.localOnlyBranches || "").split("\t").filter(Boolean),
         head: !!element.querySelector(".ref.head"), branches: Array.from(element.querySelectorAll<HTMLElement>("[data-branch-name]"), chip => chip.dataset.branchName) })));
     assert.equal(rows.length, commits.length, "Every loaded real Git commit must reach the DOM");
-    const expected = new Map(commits.map(commit => [commit.hash, [...new Set(commit.refs)].sort()]));
+    const expected = expectedRenderedRefs(commits, remoteTags);
     const expectedLocalOnly = new Map(commits.map(commit => [commit.hash, [...commit.localOnlyBranches ?? []].sort()]));
     for (const row of rows) {
       assert.deepEqual([...new Set(row.refs)].sort(), expected.get(row.hash), `Stale refs on ${row.hash}`);
@@ -129,7 +133,7 @@ export class GraphLiveRenderer {
     const current = headCommit?.refs.find(ref => ref !== "HEAD" && !ref.startsWith("tag:") && !ref.includes("/"));
     if (current) assert.ok(rows.find(row => row.hash === head)?.branches.includes(current), "Current branch chip is missing");
     assert.deepEqual(this.errors, [], "Live renderer reported errors");
-    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactHeadBadge: true, exactLocalOnly: true, headInLoadedPage: !!headCommit,
+    return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactRemoteTags: true, exactHeadBadge: true, exactLocalOnly: true, headInLoadedPage: !!headCommit,
       mutationToFrameMs: paint ? Math.max(0, paint.paintedAt - operationEndedAt) : null,
       latestMutationToFrameMs: latestPaint ? Math.max(0, latestPaint.paintedAt - operationEndedAt) : null,
       renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null };

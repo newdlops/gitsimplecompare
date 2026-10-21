@@ -68,7 +68,10 @@ if(args.includes('--untracked-files=normal')){
 }
 `, { mode: 0o755 });
   const reset = setGitExecutableResolver(() => executable);
-  const index = new PrivateStatusIndex(f.root, () => undefined), controller = new AbortController();
+  const scans: Record<string, unknown>[] = [];
+  const index = new PrivateStatusIndex(f.root, (event, fields) => {
+    if (event === "private status cold scan completed") scans.push(fields);
+  }), controller = new AbortController();
   let complete = false;
   const pending = index.read(controller.signal).then(value => { complete = true; return value; });
   void pending.catch(() => undefined);
@@ -78,6 +81,8 @@ if(args.includes('--untracked-files=normal')){
     const actual = await pending;
     const sorted = (groups: typeof actual.groups) => ({ staged: [...groups.staged].sort((a,b)=>a.path.localeCompare(b.path)), unstaged: [...groups.unstaged].sort((a,b)=>a.path.localeCompare(b.path)) });
     assert.deepEqual(sorted(actual.groups), sorted(f.expected.groups));
+    assert.equal(scans.length, 1);
+    assert.ok(Number(scans[0].batches) <= 4, "A balanced large fixture must not reopen its index for extra queued scan waves");
     assert.deepEqual(await readFile(path.join(f.root, ".git/index")), f.index);
     await waitForFile(warming);
     const pid = Number(await readFile(warming, "utf8"));
@@ -222,19 +227,21 @@ const fs=require('node:fs');fs.truncateSync(process.env.GIT_INDEX_FILE,33*1024*1
 test("a cold scan shares the configured overall deadline and honors an unlimited setting", { timeout: 60000, skip: process.platform === "win32" }, async t => {
   const f = await repository(t, 32), env = await privateEnvironment(t, f);
   await Promise.all(Array.from({length:32},(_,index)=>mkdir(path.join(f.root,`empty-${index}`))));
-  const executable = path.join(f.directory,"git-fixture"), pids = path.join(f.directory,"jobs.pid");
+  const executable = path.join(f.directory,"git-fixture"), pids = path.join(f.directory,"jobs.pid"), release = path.join(f.directory,"release");
   await writeFile(executable, `#!${process.execPath}
 const fs=require('node:fs'),cp=require('node:child_process'),args=process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(pids)},String(process.pid)+'\\n');
-setTimeout(()=>{const child=cp.spawn('git',args,{stdio:'inherit'});child.on('error',()=>process.exit(1));child.on('exit',code=>process.exit(code??1));},200);
+const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){clearInterval(timer);const child=cp.spawn('git',args,{stdio:'inherit'});child.on('error',()=>process.exit(1));child.on('exit',code=>process.exit(code??1));}},10);
 `,{mode:0o755});
-  let timeout=1000;
+  // Native 단계 시작을 별도 파일로 막아 실행 속도·배치 개수와 무관하게 전체 deadline을 검증한다.
+  let timeout=2000;
   const resetGit=setGitExecutableResolver(()=>executable),resetTimeout=setGitReadTimeoutResolver(()=>timeout),events:string[]=[];
   try {
     await assert.rejects(readColdStatus(f.root,env,new AbortController().signal,event=>events.push(event)),error=>(error as {code?:string}).code==='ETIMEDOUT');
     assert.ok(events.includes('private status cold scan timed out'));
     for(const pid of (await readFile(pids,'utf8')).trim().split('\n').map(Number)) assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
     timeout=0;
+    await writeFile(release,"go");
     const parsed=await readColdStatus(f.root,env,new AbortController().signal,event=>events.push(event));
     assert.ok(parsed);
     assert.deepEqual(sortedGroups(workingTreeSnapshot(f.root,parsed).groups),sortedGroups(f.expected.groups));

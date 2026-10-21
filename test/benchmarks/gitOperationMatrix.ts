@@ -22,7 +22,7 @@ import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
-import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
+import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
 
 type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
@@ -51,16 +51,17 @@ async function idle(root: string, panel: any, metadataReady: () => boolean = () 
 
 /** 같은 선택 PR의 원본 commit만 실제 작업에 사용하도록 완전한 Git 필드를 제공한다. */
 function pullRequest(f: Awaited<ReturnType<typeof fixture>>): PullRequestInfo {
-  return { number: 42, title: "Operation benchmark", state: "OPEN", url: "https://example.invalid/pull/42", headRefName: "pr-source",
-    headHash: f.pr, baseRefName: "main", baseHash: f.main, author: "fixture", isDraft: false,
+  return { number: 42, title: "Operation benchmark", state: "OPEN", url: "https://example.invalid/pull/42", headRefName: f.prBranch,
+    headHash: f.pr, baseRefName: f.mainBranch, baseHash: f.main, author: "fixture", isDraft: false,
     commentCount: 0, fileCount: 3, commitHashes: f.prCommits, commitHashesComplete: true };
 }
 
 /** 실제 서비스 성공과 Graph의 HEAD/부모/ref가 같은 Git 상태인지 확인하는 하나의 측정이다. */
 async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operation) {
+  f = await isolateIncomingCommit(f, operation);
   const git = (args: string[], cwd = f.root) => runGit(args, cwd);
   await git(["switch", "-qC", `bench-${operation}`, operation === "push" || operation === "push-tracked" ? f.pr : f.main]);
-  await git(["update-ref", "refs/heads/main", f.main], f.remote);
+  await git(["update-ref", `refs/heads/${f.mainBranch}`, f.main], f.remote);
   if (operation === "push-tracked") {
     // 이름이 같은 기존 upstream을 고정해 새 브랜치 publish와 일반 push 준비 경로를 분리한다.
     await git(["update-ref", `refs/heads/bench-${operation}`, f.main], f.remote);
@@ -70,8 +71,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   }
   if (operation === "pull" || operation === "pull-known-history" || operation === "pull-new-history") {
     await git(["config", `branch.bench-${operation}.remote`, "origin"]);
-    await git(["config", `branch.bench-${operation}.merge`, "refs/heads/main"]);
-    await git(["update-ref", "refs/heads/main", operation === "pull-new-history" ? f.incomingPull : f.incoming], f.remote);
+    await git(["config", `branch.bench-${operation}.merge`, `refs/heads/${f.mainBranch}`]);
+    await git(["update-ref", `refs/heads/${f.mainBranch}`, operation === "pull-new-history" ? f.incomingPull : f.incoming], f.remote);
     if (operation === "pull-known-history") await git(["fetch", "-q", "origin"]);
   }
   if (operation === "fetch" || operation === "fetch-new-history") await git(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
@@ -113,12 +114,12 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     const previousHead = panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.hash;
     const checkoutTarget: string | undefined = loadedTarget
       ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))?.name
-      : operation === "checkout-unloaded" ? "old-history" : "topic";
+      : operation === "checkout-unloaded" ? f.oldHistoryBranch : f.topicBranch;
     assert.ok(checkoutTarget, "Loaded checkout fixture needs an actual visible local branch tip");
     if (operation === "checkout-unloaded") assert.equal(visibleHashes.has(f.oldHistory), false, "Unloaded checkout requires a deeper fixture than the loaded Graph page");
     const initialSignature = graphSignature(panel.commits);
-    const timings: GitExecutionTiming[] = [];
-    const unobserve = setGitExecutionObserver(timing => timings.push(timing));
+    const timings: (GitExecutionTiming & { finishedAtMs: number })[] = [];
+    const unobserve = setGitExecutionObserver(timing => timings.push({ ...timing, finishedAtMs: performance.now() }));
     const active = new Set<number>(); let peakProcesses = 0;
     const register = gitProcesses.register.bind(gitProcesses), closed = gitProcesses.closed.bind(gitProcesses);
     mock.method(gitProcesses, "register", (...args: Parameters<typeof register>) => {
@@ -138,9 +139,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         case "push": case "push-tracked": await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root), { sequentialThresholdBytes: PUSH_THRESHOLD }); break;
         case "pull": case "pull-known-history": case "pull-new-history": assert.equal((await new PullService(f.root).pullCurrent()).status, "completed"); break;
         case "fetch": case "fetch-new-history": case "fetch-known-history": case "fetch-no-change": await service.fetchAll(); break;
-        case "rebase": assert.equal((await new BranchOperationService(f.root).rebaseMerge("topic")).status, "completed"); break;
-        case "merge": assert.equal((await new BranchOperationService(f.root).squashMerge("topic")).status, "completed"); break;
-        case "merge-no-ff": await git(["merge", "--no-ff", "--no-edit", "topic"]); break;
+        case "rebase": assert.equal((await new BranchOperationService(f.root).rebaseMerge(f.topicBranch)).status, "completed"); break;
+        case "merge": assert.equal((await new BranchOperationService(f.root).squashMerge(f.topicBranch)).status, "completed"); break;
+        case "merge-no-ff": await git(["merge", "--no-ff", "--no-edit", f.topicBranch]); break;
         case "pr-squash-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).squashCherryPick(pullRequest(f))).status, "completed"); break;
         case "pr-cherry-pick": assert.equal((await new PullRequestOperationService(f.root).rebasePullRequest(pullRequest(f))).status, "completed"); break;
         case "cherry-pick": await service.cherryPick(f.prCommits[0]); break;
@@ -189,7 +190,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const latestPublishedAt = latestPublication?.at;
       assert.ok(latestPublishedAt !== undefined || graphAlreadyCurrent, "Changed final Git graph must have been published; unchanged data needs no repaint.");
       const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance,
-        panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.name);
+        panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.name,
+        renderer ? await readNativeRemoteTagExpectation(f.root) : []);
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
         branchDetailsReads: branchReads.map(read => ({ startedAfterOperationMs: read.startedAt - operationEndedAt,
@@ -204,11 +206,29 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         branchFilterPublications: messages.slice(beforeMessages).filter(message => message.type === "branchFilterOptions").length,
         branchFilterJsonBytes: messages.slice(beforeMessages).filter(message => message.type === "branchFilterOptions")
           .reduce((total, message) => total + Buffer.byteLength(JSON.stringify(message)), 0),
-        commands, graphCommands, commandTimeMs, nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
+        commands, graphCommands, commandTimeMs,
+        ...(process.env.GSC_BENCH_TIMELINE === "1" ? { gitTimeline: timings.map(timing => ({ command: timing.command,
+          scope: timing.repoRoot === f.root ? "checkout" : "owned-worktree", elapsedMs: timing.elapsedMs,
+          spawnMs: timing.syncSpawnMs, finishedAfterStartMs: Math.round(timing.finishedAtMs - started), outcome: timing.outcome })) } : {}),
+        nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
         nodeCpuScope: "benchmark Node process including Playwright transport and RSS/idle sampling",
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
     } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
+}
+
+/**
+ * 앞선 fetch/pull이 같은 객체를 미리 받아도 fresh-history 사례가 known-history로 바뀌지 않게 한다.
+ * @param f 이 실행이 소유한 저장소와 bare 원격 @param operation 독립적인 새 객체가 필요한 시나리오
+ * @returns 새 객체를 원격에만 만든 fixture 사본. 측정 구간 전 실행하며 실제 사용자 저장소는 사용하지 않는다.
+ */
+async function isolateIncomingCommit(f: Awaited<ReturnType<typeof fixture>>, operation: Operation) {
+  if (operation !== "fetch-new-history" && operation !== "pull-new-history") return f;
+  const tree = (await runGit(["rev-parse", `${f.main}^{tree}`], f.remote)).trim();
+  const hash = (await runGit(["-c", "user.name=Operation Fixture", "-c", "user.email=operations@example.invalid",
+    "commit-tree", tree, "-p", f.main, "-m", `unseen ${operation} fixture`], f.remote,
+    { env: { GIT_AUTHOR_DATE: "1700000001 +0000", GIT_COMMITTER_DATE: "1700000001 +0000" } })).trim();
+  return operation === "fetch-new-history" ? { ...f, incoming: hash } : { ...f, incomingPull: hash };
 }
 
 /** 요청된 모든 작업을 동일한 fixture 규모로 실행하고 결과 외의 임시 파일/프로세스를 남기지 않는다. */
@@ -216,7 +236,7 @@ async function main() {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-operation-matrix-"));
   let stopMonitor: (() => void) | undefined;
   try {
-    const f = await fixture(directory), results = [];
+    const f = await fixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE), results = [];
     if (process.env.GSC_BENCH_MONITOR_POLICY === "1") stopMonitor = setOwnedFsmonitorPolicy(() => undefined);
     const selected = process.env.GSC_BENCH_OPERATIONS?.split(",") as Operation[] | undefined;
     for (const operation of selected ?? OPERATIONS) {
