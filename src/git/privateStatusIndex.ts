@@ -12,6 +12,7 @@ import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } fro
 import { COLD_STATUS_MIN_ENTRIES, readColdStatus } from "./coldStatusScan";
 import { StatusIndexWarmup } from "./statusIndexWarmup";
 import { RepositoryIndexPathReader } from "./repositoryIndexPath";
+import { transitionStatusIndex } from "./statusIndexTransition";
 
 /** 실제 index를 복사하되 모든 상태 캐시 쓰기를 확장 소유 디렉터리로만 보내는 저장소별 캐시다. */
 export class PrivateStatusIndex {
@@ -24,6 +25,7 @@ export class PrivateStatusIndex {
   private cold = false;
   private readonly warmup: StatusIndexWarmup;
   private readonly sourcePath: RepositoryIndexPathReader;
+  private sourceIdentity?: string;
 
   /** 저장 공간이 주입되면 세션을 넘겨 Git의 검증 가능한 전용 index만 재사용한다. */
   constructor(private readonly root: string, private readonly log: (event: string, fields: Record<string, unknown>) => void,
@@ -53,7 +55,7 @@ export class PrivateStatusIndex {
         }
         const source = sourcePath.file;
         const before = await indexIdentity(source, signal);
-        await this.prepare(before);
+        await this.prepare(before, signal, sourcePath.identity);
         const env = withGitConfigOverrides({ GIT_INDEX_FILE: this.index! }, { "core.untrackedCache": "true", "core.splitIndex": "false" });
         const initial = this.cold ? await readColdStatus(this.root, env, signal, this.log) : undefined;
         const parsed = initial ?? parseWorkingTreeV2(await runGitStatus(["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z", "--untracked-files=normal"], this.root,
@@ -96,7 +98,7 @@ export class PrivateStatusIndex {
   /** 실행 close 뒤에 호출하며 생성한 디렉터리만 삭제한다. */
   async dispose(): Promise<void> {
     await this.warmup.dispose(); this.cold = false;
-    this.sourcePath.clear();
+    this.sourcePath.clear(); this.sourceIdentity = undefined;
     const directory = this.directory;
     this.unregister?.(); this.unregister = undefined; this.directory = undefined; this.index = undefined; this.fingerprint = undefined; this.warmFingerprint = undefined;
     if (directory) await rm(directory, { recursive: true, force: true });
@@ -108,8 +110,8 @@ export class PrivateStatusIndex {
     return workingTreeSnapshot(this.root, parseWorkingTreeV2(raw));
   }
 
-  /** 원본 index의 내용·metadata가 바뀔 때만 private 사본을 새로 준비한다. */
-  private async prepare(source: IndexIdentity): Promise<void> {
+  /** 원본 사본·취소 수명·검증한 저장소 identity를 받아 현재 stage와 stat에 맞는 전용 index를 준비한다. */
+  private async prepare(source: IndexIdentity, signal: AbortSignal, sourceIdentity: string): Promise<void> {
     if (!this.directory) {
       this.directory = await mkdtemp(path.join(os.tmpdir(), "gsc-status-index-"));
       this.index = path.join(this.directory, "index"); this.unregister = registerStatusIndex(this.index);
@@ -119,6 +121,12 @@ export class PrivateStatusIndex {
     const info = !unchanged && large && source.bytes ? statusIndexStagingInfo(source.bytes) : undefined;
     const staging = info?.identity ?? (!unchanged && this.warmCache && source.bytes ? statusIndexStagingIdentity(source.bytes) : undefined);
     const warmFingerprint = unchanged ? this.warmFingerprint : staging ? `staging-v1:${source.file}:${staging}` : undefined;
+    const previous = this.warmFingerprint;
+    const canTransition = !unchanged && !!this.fingerprint && large && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache
+      && !!previous && !!warmFingerprint && previous !== warmFingerprint
+      && previous.slice(0, -64) === warmFingerprint.slice(0, -64) && this.sourceIdentity === sourceIdentity;
+    // 완료된 이전 warmup은 버리기 전에 가져온다. 실행 중 준비는 기다리지 않고 기존 정책대로 취소한다.
+    const previousWarmup = canTransition ? await this.warmup.take(previous) : undefined;
     this.warmup.setSource(warmFingerprint);
     const completedWarmup = await this.warmup.take(warmFingerprint);
     if (completedWarmup) {
@@ -133,13 +141,16 @@ export class PrivateStatusIndex {
     if (this.fingerprint === source.key) {
       // private status가 mtime을 늦췄어도 다음 조회의 racy-clean 경계는 실제 index보다 늦어지지 않는다.
       if (source.mtime !== undefined) await utimes(this.index!, source.mtime / 1000, Math.floor(source.mtime / 1000));
+      this.sourceIdentity = sourceIdentity;
       return;
     }
     // stat·UNTR·FSMN 갱신만으로 다시 전체 탐색하지 않되 stage/파일 의미 변경은 반드시 분리한다.
     this.warmFingerprint = warmFingerprint;
     const warmed = this.warmFingerprint ? await this.warmCache?.load(this.root, this.warmFingerprint) : undefined;
-    const bytes = warmed && source.bytes ? restoreStatusIndexMetadata(warmed.bytes, source.bytes) ?? source.bytes : source.bytes;
-    this.cold = !completedWarmup && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache && !warmed;
+    const transitioned = !warmed && canTransition && source.bytes
+      ? await transitionStatusIndex(this.root, this.index!, source.bytes, previous!.slice(-64), signal, this.log, previousWarmup?.bytes) : undefined;
+    const bytes = warmed && source.bytes ? restoreStatusIndexMetadata(warmed.bytes, source.bytes) ?? source.bytes : transitioned ?? source.bytes;
+    this.cold = !completedWarmup && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache && !warmed && !transitioned;
     if (bytes) {
       await writeFile(this.index!, bytes, { mode: 0o600 });
       // 새 사본의 mtime이 늦으면 racy-clean 파일의 수정을 놓치므로 원본보다 이른 시각을 보존한다.
@@ -148,6 +159,7 @@ export class PrivateStatusIndex {
     }
     else await rm(this.index!, { force: true });
     this.fingerprint = source.key;
+    this.sourceIdentity = sourceIdentity;
     this.publishedAt = 0;
   }
 }

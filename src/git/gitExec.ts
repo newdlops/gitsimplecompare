@@ -19,6 +19,8 @@ export interface RunGitOptions {
   readTimeoutMs?: number;
   /** 내부 소유 registry에 등록된 private 상태 index에만 optional-lock 쓰기를 허용한다. */
   allowPrivateIndexWrites?: boolean;
+  /** 등록한 private index의 고정 index-info 명령만 허용한다. 실제 저장소 mutation 알림을 만들지 않는다. */
+  privateIndexOnly?: boolean;
 }
 
 /** 성공한 명령의 두 출력 스트림을 손실 없이 제공한다. */
@@ -184,7 +186,7 @@ async function withGitRetry<T>(args: string[], options: RunGitOptions, run: () =
 /** 옵션 키가 없는 기존 env shortcut도 그대로 지원한다. */
 function normalizeOptions(options?: Record<string, string> | RunGitOptions): RunGitOptions {
   if (!options) return {};
-  return ["env", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites"].some(key => key in options)
+  return ["env", "clearEnv", "executable", "retryOnLock", "beforeRetry", "signal", "maxBuffer", "readTimeoutMs", "allowPrivateIndexWrites", "privateIndexOnly"].some(key => key in options)
     ? options as RunGitOptions : { env: options as Record<string, string> };
 }
 

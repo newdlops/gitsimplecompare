@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.72143",
+  "baselineCommit": "4fe900e3b62d4e6c70a3fe7ab2a31b63a81e876b",
+  "wholeGoalComplete": false,
+  "change": {
+    "scope": "Fresh status after small staging changes in large nested repositories",
+    "nativeOwnedIndexOnly": true,
+    "maximumChangedPaths": 128,
+    "maximumUpdateBytes": 262144,
+    "minimumEntries": 5000,
+    "minimumDirectories": 256,
+    "skipSourceWithNativeUntrackedCache": true,
+    "fixedHashScratchBytes": 65536,
+    "oldStagingKeysPreserved": true,
+    "freshSourceAndMetadataFencesUnchanged": true,
+    "noNewResultCache": true
+  },
+  "checks": {
+    "nodePass": 99,
+    "nodeFail": 0,
+    "nodeCancelled": 0,
+    "nodeSkipped": 0,
+    "typecheck": true,
+    "legacyIdentityNativeInputs": 30,
+    "nativeAndProductionRendererCases": 36,
+    "actualPrButtonCases": 12,
+    "uninstrumentedPrButtonCases": 8,
+    "sourceWrites": "Owned fixtures only; Captain, user stashes and recovery data untouched"
+  },
+  "component": {
+    "fixture": {
+      "capturedFiles": 30311,
+      "capturedCommits": 72720,
+      "capturedLocalBranches": 164
+    },
+    "order": "before/after/after/before",
+    "samplesPerSource": 10,
+    "before": {
+      "samples": 10,
+      "foreground": {
+        "elapsedMs": 1371.868124999999,
+        "nodeCpuMs": 113.994,
+        "gitCalls": 6,
+        "heapAfterAwaitDelta": 6370216,
+        "rssAfterAwaitDelta": 7127040
+      },
+      "settled": {
+        "elapsedMs": 2344.0982914999986,
+        "nodeCpuMs": 145.98700000000002,
+        "gitCalls": 7
+      }
+    },
+    "after": {
+      "samples": 10,
+      "foreground": {
+        "elapsedMs": 703.8435835,
+        "nodeCpuMs": 132.5575,
+        "gitCalls": 2,
+        "heapAfterAwaitDelta": 2888612,
+        "rssAfterAwaitDelta": 704512
+      },
+      "settled": {
+        "elapsedMs": 703.8748124999984,
+        "nodeCpuMs": 132.57600000000002,
+        "gitCalls": 2
+      }
+    }
+  },
+  "priorPrototypes": {
+    "initial": {
+      "before": {
+        "samples": 10,
+        "foreground": {
+          "elapsedMs": 810.6605414999995,
+          "nodeCpuMs": 100.2635,
+          "gitCalls": 6,
+          "heapAfterAwaitDelta": 6367548,
+          "rssAfterAwaitDelta": 9453568
+        },
+        "settled": {
+          "elapsedMs": 1788.7178544999988,
+          "nodeCpuMs": 136.3105,
+          "gitCalls": 7
+        }
+      },
+      "after": {
+        "samples": 10,
+        "foreground": {
+          "elapsedMs": 723.6312085000027,
+          "nodeCpuMs": 183.3295,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 10411756,
+          "rssAfterAwaitDelta": 8437760
+        },
+        "settled": {
+          "elapsedMs": 723.6368335000025,
+          "nodeCpuMs": 183.34699999999998,
+          "gitCalls": 2
+        }
+      }
+    },
+    "iterated": {
+      "before": {
+        "samples": 10,
+        "foreground": {
+          "elapsedMs": 1790.4621454999979,
+          "nodeCpuMs": 106.58,
+          "gitCalls": 6,
+          "heapAfterAwaitDelta": 6368792,
+          "rssAfterAwaitDelta": 9846784
+        },
+        "settled": {
+          "elapsedMs": 2967.4454795,
+          "nodeCpuMs": 142.25549999999998,
+          "gitCalls": 7
+        }
+      },
+      "after": {
+        "samples": 10,
+        "foreground": {
+          "elapsedMs": 804.3545005000014,
+          "nodeCpuMs": 159.1005,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 7553668,
+          "rssAfterAwaitDelta": 4784128
+        },
+        "settled": {
+          "elapsedMs": 804.5257500000025,
+          "nodeCpuMs": 159.118,
+          "gitCalls": 2
+        }
+      }
+    },
+    "scope": "Separate earlier comparisons, not cross-run causal comparisons. Both prototypes retained; initial Node CPU and temporary memory increases were not hidden."
+  },
+  "matrix": {
+    "before": {
+      "cases": 18,
+      "rows": [
+        {"operation":"initial","operationMs":0,"graphMs":121,"processes":11},
+        {"operation":"push","operationMs":1262,"graphMs":101,"processes":25},
+        {"operation":"push-tracked","operationMs":412,"graphMs":53,"processes":20},
+        {"operation":"pull","operationMs":275,"graphMs":97,"processes":12},
+        {"operation":"pull-new-history","operationMs":338,"graphMs":130,"processes":12},
+        {"operation":"pull-known-history","operationMs":564,"graphMs":140,"processes":9},
+        {"operation":"fetch","operationMs":924,"graphMs":254,"processes":7},
+        {"operation":"fetch-new-history","operationMs":1709,"graphMs":517,"processes":9},
+        {"operation":"fetch-known-history","operationMs":373,"graphMs":119,"processes":7},
+        {"operation":"fetch-no-change","operationMs":211,"graphMs":75,"processes":4},
+        {"operation":"rebase","operationMs":839,"graphMs":143,"processes":23},
+        {"operation":"merge","operationMs":744,"graphMs":120,"processes":21},
+        {"operation":"merge-no-ff","operationMs":95,"graphMs":375,"processes":9},
+        {"operation":"pr-squash-cherry-pick","operationMs":4427,"graphMs":582,"processes":32},
+        {"operation":"pr-cherry-pick","operationMs":872,"graphMs":107,"processes":31},
+        {"operation":"cherry-pick","operationMs":41,"graphMs":126,"processes":9},
+        {"operation":"checkout","operationMs":533,"graphMs":511,"processes":6},
+        {"operation":"checkout-unloaded","operationMs":647,"graphMs":215,"processes":9}
+      ],
+      "cpuMs": 37434.429,
+      "sampledPeakRssBytes": 699039744,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    },
+    "after": {
+      "cases": 18,
+      "rows": [
+        {"operation":"initial","operationMs":0,"graphMs":439,"processes":11},
+        {"operation":"push","operationMs":2411,"graphMs":203,"processes":26},
+        {"operation":"push-tracked","operationMs":1359,"graphMs":58,"processes":20},
+        {"operation":"pull","operationMs":560,"graphMs":148,"processes":13},
+        {"operation":"pull-new-history","operationMs":376,"graphMs":491,"processes":12},
+        {"operation":"pull-known-history","operationMs":419,"graphMs":161,"processes":9},
+        {"operation":"fetch","operationMs":609,"graphMs":210,"processes":7},
+        {"operation":"fetch-new-history","operationMs":208,"graphMs":107,"processes":9},
+        {"operation":"fetch-known-history","operationMs":299,"graphMs":58,"processes":6},
+        {"operation":"fetch-no-change","operationMs":486,"graphMs":47,"processes":4},
+        {"operation":"rebase","operationMs":1200,"graphMs":203,"processes":23},
+        {"operation":"merge","operationMs":947,"graphMs":293,"processes":21},
+        {"operation":"merge-no-ff","operationMs":87,"graphMs":100,"processes":9},
+        {"operation":"pr-squash-cherry-pick","operationMs":1005,"graphMs":179,"processes":31},
+        {"operation":"pr-cherry-pick","operationMs":579,"graphMs":114,"processes":31},
+        {"operation":"cherry-pick","operationMs":59,"graphMs":105,"processes":10},
+        {"operation":"checkout","operationMs":574,"graphMs":519,"processes":6},
+        {"operation":"checkout-unloaded","operationMs":622,"graphMs":160,"processes":9}
+      ],
+      "cpuMs": 36539.687000000005,
+      "sampledPeakRssBytes": 707936256,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    }
+  },
+  "buttonSamples": {
+    "before": [
+      {"operation":"pr-squash-cherry-pick","handlerMs":4659,"clickToFinalFrameMs":6964,"processes":37},
+      {"operation":"pr-cherry-pick","handlerMs":1814,"clickToFinalFrameMs":2480,"processes":38},
+      {"operation":"pr-squash-cherry-pick","handlerMs":4673,"clickToFinalFrameMs":6888,"processes":37},
+      {"operation":"pr-cherry-pick","handlerMs":5082,"clickToFinalFrameMs":7095,"processes":38}
+    ],
+    "after": [
+      {"operation":"pr-squash-cherry-pick","handlerMs":2326,"clickToFinalFrameMs":3504,"processes":32},
+      {"operation":"pr-cherry-pick","handlerMs":2222,"clickToFinalFrameMs":2681,"processes":33},
+      {"operation":"pr-squash-cherry-pick","handlerMs":1318,"clickToFinalFrameMs":1954,"processes":32},
+      {"operation":"pr-cherry-pick","handlerMs":4258,"clickToFinalFrameMs":5640,"processes":33}
+    ]
+  },
+  "buttonSummary": {
+    "before": {
+      "pr-squash-cherry-pick": {
+        "samples": 2,
+        "handlerMedianMs": 4666,
+        "finalFrameMedianMs": 6926,
+        "processMedian": 37
+      },
+      "pr-cherry-pick": {
+        "samples": 2,
+        "handlerMedianMs": 3448,
+        "finalFrameMedianMs": 4787.5,
+        "processMedian": 38
+      }
+    },
+    "after": {
+      "pr-squash-cherry-pick": {
+        "samples": 2,
+        "handlerMedianMs": 1822,
+        "finalFrameMedianMs": 2729,
+        "processMedian": 32
+      },
+      "pr-cherry-pick": {
+        "samples": 2,
+        "handlerMedianMs": 3240,
+        "finalFrameMedianMs": 4160.5,
+        "processMedian": 33
+      }
+    }
+  },
+  "buttonResources": {
+    "before": {
+      "cases": [
+        {"operation":"pr-squash-cherry-pick","handlerMs":2242,"clickToFinalFrameMs":3925,"processes":37},
+        {"operation":"pr-cherry-pick","handlerMs":5217,"clickToFinalFrameMs":8794,"processes":38}
+      ],
+      "cpuMs": 56752.913,
+      "sampledPeakRssBytes": 690077696,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    },
+    "after": {
+      "cases": [
+        {"operation":"pr-squash-cherry-pick","handlerMs":5436,"clickToFinalFrameMs":7576,"processes":32},
+        {"operation":"pr-cherry-pick","handlerMs":6379,"clickToFinalFrameMs":7911,"processes":33}
+      ],
+      "cpuMs": 61388.771,
+      "sampledPeakRssBytes": 677511168,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    }
+  },
+  "limitations": [
+    "Component samples each add one new tracked fixture path. Foreground is actual PrivateStatusIndex.read; settled includes only its already scheduled optional warmup. Setup, mutations, pre-sample GC and independent full Native oracle are outside phase time/Node CPU.",
+    "Foreground Node CPU may rise while complete preparation Node CPU falls. Node CPU excludes Git/browser/OS. Heap/RSS figures are after-await deltas, not peak or exact retained memory.",
+    "Full matrices are one pair on1000files/1000commits/100branches/8shared upstreams with monitor policy and production renderer. Individual slower results are retained; this is not proof of all-operation speed or resource completion.",
+    "Eight uninstrumented PR button cases use two samples per source/mode on the borrowed history. Separate four button resource cases are one pair and include fixture/capture/Native oracle costs; resource observer/build/archive costs excluded. RSS sampling may miss brief peaks and double-count shared pages.",
+    "GitHub PR list metadata and VS Code transport/window/pickers are fixture boundaries. No real GitHub or current user-session latency claim. UI code unchanged; no new visual design audit.",
+    "No Marketplace status queries, OS focus changes, foreground Extension Development Host or forced reload. Existing lint remains unavailable because eslint is absent.",
+    "Initial invalid-UTF8 filesystem fixtures failed under sandbox EPERM and native macOS EILSEQ; corrected to Native raw index input. Earlier fixture-reset and TypeScript buffer annotation errors were corrected; all records retained."
+  ],
+  "sourceSha256": {
+    "src/git/gitExec.ts": "3ca27e2bc8c7b948dd03019391c50268b05f1f108a7637f5aed96cb29780a469",
+    "src/git/gitProcessRunner.ts": "d0e3d2f6e5397b0d199042b10f0aa5b2be4f4dd9f03affc50820642b2413f8fa",
+    "src/git/privateStatusIndex.ts": "89287b9f0c6d473fc9678e449f3463510fec7efdd6cfd355ed99306e475b4ce8",
+    "src/git/statusIndexOwnership.ts": "bcde954fb3312141cf70dd956cf0fd980e41ddd28e88b24929e82fb6a92f998a",
+    "src/git/statusIndexStagingIdentity.ts": "2c11047150aa33d58c21161a032502b1e173061bbf017a578525a85c8b2a5695",
+    "src/git/statusIndexTransition.ts": "af7cb9cd1ed01f88b20172354c8e14e2f87c22b0c1ccd436ec522580f4163613",
+    "test/statusIndexTransition.test.ts": "64caa9d385d16d743d4f8056b09cd8a772a30d28fb092a8cc2c410f9e53490a1",
+    "test/benchmarks/statusIndexTransition.ts": "c507ad7232cde78021ded5b363efb0f925751b60de694d15b88c8f8e82aa1dc0",
+    "scripts/benchmark-status-index-transition.mjs": "3fffb9261c598659f1acdff5d8bc23de3cb3d4a17984ccdcc02cdbfd6544f4b6",
+    "src/utils/bufferedHash.ts": "4471ed17a93d7a83b61b49a2a5df8b9592b1e78891cb38409ad0723e1cf3b43b",
+    "test/bufferedHash.test.ts": "ec6d157889af487923964a2d283fb84a02301975dacdad7de8f38d6849687325",
+    "package.json": "ae41491a7f6f0766b6d593285d89dd8bacd6bfe2af8fe2bc277ee8cc2399400b",
+    "package-lock.json": "4e0eb5c36650a11c8509bcd7eac1ef7e5c6f2ad684e2c1e2de26ff1574ff91cf"
+  },
+  "evidence": {
+    "/private/tmp/gsc-goal43-status-driver-state.json": "bb2f7f05642a4feb672d553eb067482c24399d12ec518a30b988dbf5de6f7511",
+    "/private/tmp/gsc-goal43-status-driver.log": "8a43a5cc1e63bee6758625867a14e4a1a267598b70468c77b4bda6f679820c7b",
+    "/private/tmp/gsc-goal43-status-1-before.log": "c830e054a28dc31cbaeba8f76ce71a7253f35a55c89be4a983f65d702a3988c7",
+    "/private/tmp/gsc-goal43-status-1-before.json": "01334a5221c12e36a957846207c885e68bab35879810b3bd739f745c85dc2790",
+    "/private/tmp/gsc-goal43-status-4-before.log": "dc305e598ca080fe39294204f8e85eda9d23e7abdc4de4aea9188e3733037d03",
+    "/private/tmp/gsc-goal43-status-4-before.json": "17aa69be117664212457872ff2a49b5db4187d14359de589cd34a3ce67048047",
+    "/private/tmp/gsc-goal43-status-2-after.log": "0a1d49ff198158c20766a802ab8245d005a824fd3c92e1ec2dce7618dc17bd86",
+    "/private/tmp/gsc-goal43-status-2-after.json": "8c2ca4d8aabad2789a951a46b48ea88e09700f9bb639b379e44c8a275a0d570d",
+    "/private/tmp/gsc-goal43-status-3-after.log": "4b0180e0f4472b05c0b23481a6e92a7df86a63a8bda272751d8a46aebf468580",
+    "/private/tmp/gsc-goal43-status-3-after.json": "13c31c0c1f7f09b417f7ebaa3940a56bd6fb9c1c6618fba925b8d01e06349e95",
+    "/private/tmp/gsc-goal43-status-v2-driver-state.json": "cfafb17649647a092bdfda80cf18e2849781d3d7d67292f2fea032b3046b1dd9",
+    "/private/tmp/gsc-goal43-status-v2-driver.log": "ba06d38ed3973662a29cd5bfba69dda6bf62b2c2e89c0a239777a82ae1679cca",
+    "/private/tmp/gsc-goal43-status-v2-1-before.log": "ad407fd4beecb0055de1a0c1581e894692152d60d70b10e94ff2a1f3170e0cdf",
+    "/private/tmp/gsc-goal43-status-v2-1-before.json": "1ea357b63426c1f10d780c15ed691cc6dc155dce0ba2d95acba5a69402a49e5f",
+    "/private/tmp/gsc-goal43-status-v2-4-before.log": "e983652a4c1e63f68438cc0c4fdc51b8c3db2534632a40587c966504e494f206",
+    "/private/tmp/gsc-goal43-status-v2-4-before.json": "816e49a6a41e7e1c00938abed8a0108733f1a4c938afad6611ad7d2d67784085",
+    "/private/tmp/gsc-goal43-status-v2-2-after.log": "a01a1a22c1fee77abfb66fdbca26fe82d56454eb33f6fdd2472c9f712d782e21",
+    "/private/tmp/gsc-goal43-status-v2-2-after.json": "55e1c14faf13c5fd1b063d86b9bcfd03d83776159b0214b432ac5ff64077b363",
+    "/private/tmp/gsc-goal43-status-v2-3-after.log": "94d40815d60a6e82ce58655153e67f39ed4a8d98124dc6b94351e1798564ed03",
+    "/private/tmp/gsc-goal43-status-v2-3-after.json": "cdd67d915d87f305a26687a7ff7857b3d6d3283908cd394bff4884024fd0f859",
+    "/private/tmp/gsc-goal43-status-v3-driver-state.json": "186631f564f2a786578211b8101fd724e73d8de2a48a9c6bc70d73fdd78c42b8",
+    "/private/tmp/gsc-goal43-status-v3-driver.log": "a2ef73add9fea8b2d310f89497d3c8f58bb7e1164057d7c7bef03019da000edf",
+    "/private/tmp/gsc-goal43-status-v3-1-before.log": "57aa4a60ed79db6efccd17c51adaeceb32437bc85f33e7f25742eb0e992dfb18",
+    "/private/tmp/gsc-goal43-status-v3-1-before.json": "350ea4252979ae56e3f1d9751558120e7f1b8058900d00af466b883e03f7f658",
+    "/private/tmp/gsc-goal43-status-v3-4-before.log": "1f31682862f34b6242e4880bdfad776974aa141798d315fe578209193092bcb7",
+    "/private/tmp/gsc-goal43-status-v3-4-before.json": "e1b151ec8dbe1ea6a331a205d8ebff59bcba963062dcbae14993e0b0c2ad8350",
+    "/private/tmp/gsc-goal43-status-v3-2-after.log": "4cec3d4a35fb99f6e99c9940eba285c2626e69100ca34dab006b1ed2ce84a827",
+    "/private/tmp/gsc-goal43-status-v3-2-after.json": "28f41a1a164f60502fa6b6fba00cb5c752d17e037fe1fea0f797aa7365c890ba",
+    "/private/tmp/gsc-goal43-status-v3-3-after.log": "b1a189050a086b821a3ddeca136dd0bbfc54b470cb75d3e05cef63d30ea038a5",
+    "/private/tmp/gsc-goal43-status-v3-3-after.json": "9d177560a2703f83dbc90b38dbf1ae0c496a86e113213580d0af179c4ba88945",
+    "/private/tmp/gsc-goal43-verification-state.json": "e88d9d4d1fd4d20cb7c780f8454ed115d4ddeb29fb93567cb678b670b5c4152b",
+    "/private/tmp/gsc-goal43-verification-driver.log": "aef56818319a3bf0fb0b1d093e3fa1d2f0396de56a5dc284e70cfa82ab973a6d",
+    "/private/tmp/gsc-goal43-matrix-1-before.log": "065fa9c5f9df4fb6d1a10680d8be1d00a04894d36bb6a104118ef6867e55028a",
+    "/private/tmp/gsc-goal43-matrix-1-before.json": "fe4a045787c212660d5a0bc28586cbccfbc54438c168ae019e2c24187b397722",
+    "/private/tmp/gsc-goal43-matrix-1-before.json.resources.json": "b71abe1e0064b1916e669cdfd14e72249fa5ddb58c9b03590d2c49c86ca5003a",
+    "/private/tmp/gsc-goal43-matrix-2-after.log": "0cd31f3e46af9f53ee3488bf72f706126153de56fb07338e74f9d92e06abd864",
+    "/private/tmp/gsc-goal43-matrix-2-after.json": "9872831d0c5f826504177da0e19bd440a0044eb474fd3ad19d80079f8170717a",
+    "/private/tmp/gsc-goal43-matrix-2-after.json.resources.json": "499ba3047f741281eac32fdfc5b66fe09f811aa883f6546edd1920a3bff5b0e0",
+    "/private/tmp/gsc-goal43-buttons-3-before.log": "f0589d55814dd533d0a44f8b23ecf905ae5aa4086ecc16271900247681d5dd72",
+    "/private/tmp/gsc-goal43-buttons-3-before.json": "9666bf19969d27b125572ac6bd16acf752c208322f5d370af7c05aedff15e03f",
+    "/private/tmp/gsc-goal43-buttons-4-after.log": "9cdea7fcf9d651478f861c1258628fd53a50ac56fb8e478c0e7c8f1e63352c5d",
+    "/private/tmp/gsc-goal43-buttons-4-after.json": "013655e82d11cbf40071a60def97c845eb46302d9e633a3de4b97df016d8487e",
+    "/private/tmp/gsc-goal43-buttons-5-after.log": "7b0ff91aea3ccf43532b4669050b3cac040533f2b4e3196a5e24eecb62c85a35",
+    "/private/tmp/gsc-goal43-buttons-5-after.json": "ae65547e5086e240cf5a6e3156b6b89a704b19f6779596034a0eecfb9347bf9e",
+    "/private/tmp/gsc-goal43-buttons-6-before.log": "57d6b9eb6a5a6c684bcead8b0db9e4dfb9a005b76c88f1a5f27b87f7d81dd84a",
+    "/private/tmp/gsc-goal43-buttons-6-before.json": "590022568db703be05b06b9ca1a13c489b6a6766c9733323442bce1d3099f253",
+    "/private/tmp/gsc-goal43-button-resources-7-before.log": "94168617a06bcb63f349292544bf6d65c4105f5c54eeeedee9cf6c0fa4f747fa",
+    "/private/tmp/gsc-goal43-button-resources-7-before.json": "9b702bac8f5b3cfe667385b7a7db24b571d06caeacf051ac7843fb5165f2433f",
+    "/private/tmp/gsc-goal43-button-resources-7-before.json.resources.json": "4fa3429a879f4dfb87256e28fa9830ed40709c3dc9fc6e048242fa993251586e",
+    "/private/tmp/gsc-goal43-button-resources-8-after.log": "2e016754a968c4d9345c9f6a6c8167c26be5e9c6438258b9af60b628f2e4fd21",
+    "/private/tmp/gsc-goal43-button-resources-8-after.json": "1ca48b6900ba868c916359468e30305848c4e5e8c7a266f2d153bf46dd0c8f2e",
+    "/private/tmp/gsc-goal43-button-resources-8-after.json.resources.json": "e1ead1cbabc95ddfb7e4fca22474d0f15a99ab2159a7f97fb96f39b1954dabd6",
+    "/private/tmp/gsc-goal43-identity-contract-v3/report.json": "992c2d8cbe427ce0bc13e5c04e4b5f3fcea9f3fd0d7bfd0603dc6f8782c9139a",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-2-plain.index": "824eeca8b5fccf9b13688496a7e19d89649b6a889067a2de1b136bd90b0fe14e",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-2-mode.index": "f31fb6404b09720c1cada62dbd99c7064ad34493646bd27ae75e24eeb50c650f",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-2-assume.index": "8f49132c402ca57d000b1b3a0f49ae40c3ef9b642ce85a2acf062fb614d76ab6",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-2-intent.index": "399f2abb06c64e39adcc308a205df2dc71c12a385bf03242e60202e67aa76ab4",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-2-untracked-cache.index": "7dca1c1c135385419e86c074594df5d36a0393dfeb4366258fe0f8cf3f578299",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-3-plain.index": "824eeca8b5fccf9b13688496a7e19d89649b6a889067a2de1b136bd90b0fe14e",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-3-mode.index": "f31fb6404b09720c1cada62dbd99c7064ad34493646bd27ae75e24eeb50c650f",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-3-assume.index": "8f49132c402ca57d000b1b3a0f49ae40c3ef9b642ce85a2acf062fb614d76ab6",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-3-intent.index": "a4fdfda5c4445623c1dfa35bdfb081d088e31b447cf5c01e481b8eb6fa92460d",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-3-untracked-cache.index": "7dca1c1c135385419e86c074594df5d36a0393dfeb4366258fe0f8cf3f578299",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-4-plain.index": "0e052a9676dc4df36c1c267fe9fb4c8f355651fc84678f2e4e813057ff1f5633",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-4-mode.index": "1c9c97365f424d9ce77977cb5df6fc452c025e6847ef917c98f6acb4820c4bc1",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-4-assume.index": "e2f8070dc05dae928d08597fd784848fd7dc933971ecdb901064b8b32b2a6b0c",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-4-intent.index": "89488ba815060c8ee56351f2a4fc0ddd3a0be903875687770bc1c80068124369",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha1-4-untracked-cache.index": "4ec0a7d1333b5eff629a1ee7b07513b6d76b126ac0c69d3dde8512edf6bd9124",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-2-plain.index": "d87f1d941a01caed1c660900b72b543e742a2f8460ca18daf4daf4f6d084d85c",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-2-mode.index": "97c455ec68a4c430664acf704e633b07088416664263dddb43704002012d60f0",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-2-assume.index": "8ca947c2be64fc3771761889d6ef579c142e4f7c2b261913e6ff5a5ddc726b28",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-2-intent.index": "dcb91255da1b79bc0aeb0bcd05e21bab99a39f5868c1dae64500881ab594e593",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-2-untracked-cache.index": "cda2ce7ad220114aa71f764bf2e89bb7c7a4d55a3bdf9d388a316cb95f97183f",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-3-plain.index": "d87f1d941a01caed1c660900b72b543e742a2f8460ca18daf4daf4f6d084d85c",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-3-mode.index": "97c455ec68a4c430664acf704e633b07088416664263dddb43704002012d60f0",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-3-assume.index": "8ca947c2be64fc3771761889d6ef579c142e4f7c2b261913e6ff5a5ddc726b28",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-3-intent.index": "827c1380d1791e8778b7c1d9ad777b23b256816aab4a218b03ed0ea746a1f66e",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-3-untracked-cache.index": "cda2ce7ad220114aa71f764bf2e89bb7c7a4d55a3bdf9d388a316cb95f97183f",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-4-plain.index": "5184c7be812723c62e764ab0366eb6cbaa10368dbead4869a2b5611c23e93095",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-4-mode.index": "aa2a1f5718edcd4db8cbbad8fa7146232a85fc35863b3acc7177f2f7d8363809",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-4-assume.index": "8c32953267bd47a13e6dbfbde5f21b439d4ac70c0e3b2bde6f6f913c89d083ea",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-4-intent.index": "a116c0d6daaa37b707092e11b9087655d81e094815fc5c7a751be08e1776c9d7",
+    "/private/tmp/gsc-goal43-identity-contract-v3/sha256-4-untracked-cache.index": "5cb953040b2913fd1846712ac9b916ffe57b2347f9a10acf75893a20981a9d09",
+    "/private/tmp/gsc-goal43-identity-contract-v3/before.cjs": "8cc4cb9eb804ff7dcda8913c693cfd2d6cef9e7d6d460aaf42bd7fecfe7c12c6",
+    "/private/tmp/gsc-goal43-identity-contract-v3/after.cjs": "71e6f4936cdcc59799a6a8923f1168896064880ce67324742597e055ab1c91c7",
+    "/private/tmp/gsc-goal43-prototype-v3/manifest.json": "dcd793de6e78036fe89f2cad415271628885f25a03854ee9ed1d1cf9aa012769",
+    "/private/tmp/gsc-goal43-prototype-v1/manifest.json": "ea1882994c5d45a9593a552e00c69153edf8c8312315118d5118604c3467d93e",
+    "/private/tmp/gsc-goal43-prototype-v2/manifest.json": "9a7c8d56a92ee902011112018ae3bfd213676ce6b7b455bd3f33500e931b8c75",
+    "/private/tmp/gsc-goal43-status-regression-v3.log": "eaf26432d61b824813630896dc8e490423e469aaa0d0fe11c985cd170a68d6c0",
+    "/private/tmp/gsc-goal43-types-v3.log": "319fa0094b5d879cfd066b3e4c7026a1d74693d456782d8ef64c80375cdfe0e2",
+    "/private/tmp/gsc-goal43-identity-contract-v3.log": "4c26746c13727db485b1f79dc0acd56b897b4500ff86f7a05d6c9ac5212baafa",
+    "/private/tmp/gsc-goal43-transition-initial.log": "c29e956c442f8ed367f0b0cc9e358f0200c236588c1d2d6425db8500a9153441",
+    "/private/tmp/gsc-goal43-transition-native-allowed.log": "93de9439dd589e12e6fdaeb0aecf1b1a5deadf93b2db937d8d1c3f3317a19236",
+    "/private/tmp/gsc-goal43-transition-corrected.log": "11b1c7d492ded70339af662ee047a4ab34ddad92a18f477dd2cdd0616312ad7e",
+    "/private/tmp/gsc-goal43-status-regression.log": "04a00b54df4e466f911257ba9426916565dad90954f2f856e9bc978d5fb3b4cc",
+    "/private/tmp/gsc-goal43-status-regression-final.log": "44ba5d4c66a2312b3a3310208982b09c8e8c97308c559ea9104cfdedc3bf66f8",
+    "/private/tmp/gsc-goal43-types-v2.log": "71c764bb7b6c17c0dae35642288d06a92ae7a3cf05d3cbd4038420de2d4b4953",
+    "/private/tmp/gsc-goal43-types-v2-corrected.log": "319fa0094b5d879cfd066b3e4c7026a1d74693d456782d8ef64c80375cdfe0e2",
+    "/private/tmp/gsc-goal43-identity-contract.log": "612a766a7704bff37b7838c1bf5833b687cde58a492cbd670affb28c42593710",
+    "/private/tmp/gsc-goal43-identity-contract-v2.log": "e23f90ccca68ae73d797f6803ccaad917f61e2c22d2fbd7c82592c4d21221251",
+    "/private/tmp/gsc-goal43-transition-racy-final.log": "89c168b1b0d42dcc6ef72b926723f30f6e6854da98bfc0f6c35238512850bfc1",
+    "/private/tmp/gsc-goal43-buttons-diagnostic.log": "1d0923b34514ea0962c4fc69cf042ce18c41023d6838a45e6b1687a98fbd791b",
+    "/private/tmp/gsc-goal43-buttons-diagnostic.json": "6dc93dbbd68592897e7c4976e38c55e2ad3fa9af5e08f553374a8b4be8f32274",
+    "/private/tmp/gsc-goal43-status-driver.cjs": "39519c3df470f34e6ec52a096f9033fa0fce7bdd0d0e8bbae6b15dd4ca8a730b",
+    "/private/tmp/gsc-goal43-status-v2-driver.cjs": "898f5d4e0c40b63dd277c630ba18c087690163670e599aa911bcdfc71c336271",
+    "/private/tmp/gsc-goal43-status-v3-driver.cjs": "4a29e9c763ba014fee6279c42a22ce519d1498c171a63535eadc8527a0f536f2",
+    "/private/tmp/gsc-goal43-verification-driver.cjs": "a8d4414cf242bf98df354bdac8380b6036c416a152e69e2defd0748c6111fc73",
+    "/private/tmp/gsc-goal43-identity-contract.cjs": "1cd0aaf495dcd37f10f8867d808eb19c3b98bac32fcd64446cf3728c9a0caf97"
+  }
+}

@@ -4,7 +4,7 @@ import { GitError } from "./gitError";
 import { beginGitExecution } from "./gitExecutionDiagnostics";
 import { gitCommandPolicy } from "./gitCommandPolicy";
 import { gitProcesses } from "./gitProcessRegistry";
-import { isOwnedStatusIndex } from "./statusIndexOwnership";
+import { isOwnedStatusIndex, isOwnedStatusIndexUpdate } from "./statusIndexOwnership";
 import type { RunGitOptions, GitInput } from "./gitExec";
 
 /** 설정 계층이 Git 조회 제한 시간만 주입하는 순수 실행 정책 경계다. */
@@ -57,9 +57,19 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     options = prepared.options; args = prepared.args ?? args;
   }
   return new Promise((resolve, reject) => {
-    const policy = gitCommandPolicy(args);
+    let policy = gitCommandPolicy(args);
     if (requireReadOnly && !policy.readOnly) { reject(executionError("GIT_PIPE_WRITE", "Git read pipeline preparation produced a write command.")); return; }
     if (options.signal?.aborted) { reject(executionError("ABORT_ERR", "Git command cancelled.")); return; }
+    const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
+    if (env) for (const name of options.clearEnv ?? []) delete env[name];
+    if (options.privateIndexOnly) {
+      // 전용 cache 갱신이 자기 자신의 상태 조회를 무효화하거나 저장소 쓰기 알림을 발생시키면 안 된다.
+      // 최종 argv/소유 경로를 모두 검증하고 일반 조회와 같은 취소·제한 시간·close 정책을 적용한다.
+      if (!isOwnedStatusIndexUpdate(args, env?.GIT_INDEX_FILE) || input === undefined || outputSink || onData) {
+        reject(executionError("GIT_PRIVATE_INDEX_UNSAFE", "Private Git index update is not owned or has an unsupported command.")); return;
+      }
+      policy = { ...policy, readOnly: true, monitor: false };
+    }
     if (policy.readOnly && gitProcesses.hasBlockedRead(cwd)) {
       reject(executionError("GIT_READ_STOPPING", "A previous Git read is still stopping. See Git Simple Compare Output.")); return;
     }
@@ -68,8 +78,6 @@ export async function executeGitProcess(executable: string, args: string[], cwd:
     const streamInput = input instanceof Readable ? input : undefined;
     if (streamInput?.destroyed && !streamInput.readableEnded) { reject(executionError("GIT_INPUT_CLOSED", "Git input closed before execution.")); return; }
     const group = (policy.readOnly || policy.monitor === true) && process.platform !== "win32";
-    const env = policy.readOnly || options.env || options.clearEnv?.length ? { ...process.env, ...options.env } : undefined;
-    if (env) for (const name of options.clearEnv ?? []) delete env[name];
     // 조회가 실제 index를 갱신해 watcher·전용 상태 캐시의 재스캔을 유발하지 않게 한다.
     // 캐시 쓰기는 최종 환경이 등록된 소유 index를 가리키는 경우에만 허용한다.
     if (policy.readOnly && env) env.GIT_OPTIONAL_LOCKS = options.allowPrivateIndexWrites && isOwnedStatusIndex(env.GIT_INDEX_FILE) ? "1" : "0";

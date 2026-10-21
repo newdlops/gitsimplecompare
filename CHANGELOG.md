@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.72143] - 2026-10-22
+
+### Performance
+
+- Preserve warmed untracked-directory metadata after small staging changes in
+  large nested repositories by updating only the registered private index with
+  Native Git. Reuse completed preparation without repeating the cold scan.
+- Compare entries incrementally and batch staging-fingerprint bytes through
+  a fixed 64 KiB scratch buffer while retaining existing cache identities.
+- Keep the single-query path for flat repositories and sources that already
+  contain Native untracked-cache metadata.
+
+### Safety
+
+- Verify the final command and owned index after process preparation. Keep
+  private updates cancellable without emitting repository-mutation events.
+- Preserve fresh source and repository fences, racy-edit detection, defensive
+  fallbacks and ordinary write behavior. Bound Native updates to 128 paths and
+  256 KiB, and retain contrary performance evidence alongside passing checks.
+
 ## [0.1.72142] - 2026-10-22
 
 ### Performance

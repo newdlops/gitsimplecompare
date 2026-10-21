@@ -1,8 +1,46 @@
 import { createHash } from "node:crypto";
+import { BufferedHash } from "../utils/bufferedHash";
 
 const MAX_INDEX_BYTES = 32 * 1024 * 1024;
 const OPTIONAL_EXTENSIONS = new Set(["TREE", "REUC", "UNTR", "FSMN", "EOIE", "IEOT"]);
-interface ParsedIndex { identity: string; objectBytes: number; metadataOffsets?: number[]; directoryCount?: number; hasUntrackedCache?: boolean }
+interface IndexEntry { name: Buffer; object: Buffer; mode: number; flagged: boolean }
+interface ParsedIndex { identity: string; objectBytes: number; metadataOffsets?: number[]; directoryCount?: number; hasUntrackedCache?: boolean; entries?: Iterable<IndexEntry> }
+
+/** Native update-index로 반영할 작은 stage 차이다. 파일명은 UTF-8로 변환하지 않는다. */
+export interface StatusIndexTransition { input: Buffer; changedPaths: number }
+
+/**
+ * 검증된 이전 전용 index와 현재 실제 index의 작은 차이만 Native index-info 입력으로 만든다.
+ * @param cached Git의 UNTR 캐시가 있는 이전 사본 @param source 현재 source 사본
+ * @param previousIdentity 이전 사본이 따라야 하는 검증된 stage 식별자
+ * @returns 삭제를 먼저 수행하는 NUL 입력. 형식·flag·이전 의미·크기 조건이 맞지 않으면 undefined
+ * Native Git이 추적 경로 변경에 따른 UNTR 무효화를 담당한다. 이 함수는 index를 수정하지 않는다.
+ */
+export function planStatusIndexTransition(cached: Buffer, source: Buffer, previousIdentity: string): StatusIndexTransition | undefined {
+  const before = parseIndex(cached, false, false, true), after = parseIndex(source, false, false, true);
+  if (!before || !after || !before.hasUntrackedCache || before.identity !== previousIdentity || before.objectBytes !== after.objectBytes) return undefined;
+  const old = before.entries![Symbol.iterator](), next = after.entries![Symbol.iterator](), deletes: Buffer[] = [], updates: Buffer[] = [];
+  let previous = old.next().value, current = next.next().value, changedPaths = 0, bytes = 0;
+  /** raw 경로를 보존하고 한 번의 Native 쓰기에 넘기는 변경량과 입력 크기를 함께 제한한다. */
+  const add = (entry: IndexEntry, remove: boolean): boolean => {
+    const header = Buffer.from(remove ? `0 ${"0".repeat(before.objectBytes * 2)}\t` : `${entry.mode.toString(8)} ${entry.object.toString("hex")} 0\t`);
+    bytes += header.length + entry.name.length + 1;
+    if (++changedPaths > 128 || bytes > 256 * 1024) return false;
+    (remove ? deletes : updates).push(Buffer.concat([header, entry.name, Buffer.from([0])]));
+    return true;
+  };
+  while (previous || current) {
+    if ((previous && (previous.flagged || previous.mode === 0o160000)) || (current && (current.flagged || current.mode === 0o160000))) return undefined;
+    const order = !previous ? 1 : !current ? -1 : Buffer.compare(previous.name, current.name);
+    if (order < 0) { if (!add(previous, true)) return undefined; previous = old.next().value; }
+    else if (order > 0) { if (!add(current, false)) return undefined; current = next.next().value; }
+    else {
+      if ((previous.mode !== current.mode || !previous.object.equals(current.object)) && !add(current, false)) return undefined;
+      previous = old.next().value; current = next.next().value;
+    }
+  }
+  return changedPaths ? { input: Buffer.concat([...deletes, ...updates]), changedPaths } : undefined;
+}
 
 /**
  * Git index의 스테이징 의미만 해시해 stat·감시 토큰 갱신으로 전용 캐시를 잃지 않게 한다.
@@ -49,9 +87,10 @@ export function restoreStatusIndexMetadata(cached: Buffer, source: Buffer): Buff
  * @param bytes checksum을 포함한 index
  * @param collectMetadata stat 재바인딩에 필요한 entry 위치를 수집할지 여부
  * @param collectDirectories 큰 저장소의 첫 탐색 판정에 필요한 parent 디렉터리 수를 수집할지 여부
+ * @param collectEntries 작은 Native stage 이행을 위해 정렬된 raw entry를 수집할지 여부
  * @returns 지원/검증된 의미와 위치. 알 수 없는 구성은 undefined로 복구한다.
  */
-function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories = false): ParsedIndex | undefined {
+function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories = false, collectEntries = false): ParsedIndex | undefined {
   if (bytes.length < 32 || bytes.length > MAX_INDEX_BYTES || bytes.subarray(0, 4).toString() !== "DIRC") return undefined;
   const version = bytes.readUInt32BE(4);
   if (![2, 3, 4].includes(version)) return undefined;
@@ -60,11 +99,13 @@ function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories =
   const end = bytes.length - objectBytes, count = bytes.readUInt32BE(8);
   const fixed = 42 + objectBytes;
   if (count > Math.floor((end - 12) / (fixed + 1))) return undefined;
-  const digest = createHash("sha256").update(`gsc-index-staging-v1:${objectBytes}\0`).update(bytes.subarray(8, 12));
+  const digest = new BufferedHash(createHash("sha256").update(`gsc-index-staging-v1:${objectBytes}\0`).update(bytes.subarray(8, 12)));
   let cursor = 12;
   let previous: Buffer = Buffer.alloc(0);
   const metadataOffsets = collectMetadata ? [] as number[] : undefined;
   const directories = collectDirectories ? new Set<string>() : undefined;
+  // Hash.update는 동기로 소비한다. 매 entry마다 같은 8-byte 의미 buffer를 덮어써 임시 객체를 줄인다.
+  const meaning = Buffer.alloc(8);
   let hasUntrackedCache = false;
   try {
     for (let entry = 0; entry < count; entry++) {
@@ -91,12 +132,12 @@ function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories =
       if (nul < cursor || nul >= end) return undefined;
       const name = version === 4 ? Buffer.concat([previous.subarray(0, previous.length - removed), bytes.subarray(cursor, nul)]) : bytes.subarray(cursor, nul);
       if (!name.length || (flags & 0x0fff) !== Math.min(name.length, 0x0fff)) return undefined;
+      if (collectEntries && entry && Buffer.compare(previous, name) >= 0) return undefined;
       if (directories) { const slash = name.lastIndexOf(47); if (slash >= 0) directories.add(name.subarray(0, slash).toString("utf8")); }
-      const meaning = Buffer.alloc(8);
       meaning.writeUInt16BE(flags & 0xb000); meaning.writeUInt16BE(extended & 0x2000, 2); meaning.writeUInt32BE(name.length, 4);
-      digest.update(bytes.subarray(start + 24, start + 28));
-      digest.update(bytes.subarray(start + 40, start + 40 + objectBytes));
-      digest.update(meaning).update(name);
+      digest.append(bytes, start + 24, start + 28);
+      digest.append(bytes, start + 40, start + 40 + objectBytes);
+      digest.append(meaning); digest.append(name);
       previous = name;
       cursor = nul + 1;
       if (version !== 4) {
@@ -112,8 +153,33 @@ function parseIndex(bytes: Buffer, collectMetadata = false, collectDirectories =
       if (signature === "UNTR") hasUntrackedCache = true;
       cursor += 8 + size;
     }
-    return cursor === end ? { identity: digest.digest("hex"), objectBytes, metadataOffsets, directoryCount: directories?.size, hasUntrackedCache } : undefined;
+    return cursor === end ? { identity: digest.digestHex(), objectBytes, metadataOffsets, directoryCount: directories?.size, hasUntrackedCache,
+      ...(collectEntries ? { entries: verifiedEntries(bytes, version, objectBytes, count) } : {}) } : undefined;
   } catch { return undefined; }
+}
+
+/**
+ * 전체 checksum·형식·정렬 검증을 끝낸 Buffer에서 비교 중인 두 entry만 순서대로 만든다.
+ * @param bytes parseIndex가 같은 동기 호출에서 검증한 사본 @param version 지원하는 index 버전
+ * @param objectBytes 검증한 OID 길이 @param count 검증한 entry 수
+ * @returns raw 이름·OID view의 iterator. 전체 항목 객체 배열을 보유하지 않는다.
+ */
+function* verifiedEntries(bytes: Buffer, version: number, objectBytes: number, count: number): IterableIterator<IndexEntry> {
+  let cursor = 12;
+  let previous: Buffer = Buffer.alloc(0);
+  for (let entry = 0; entry < count; entry++) {
+    const start = cursor, flags = bytes.readUInt16BE(start + 40 + objectBytes);
+    cursor += 42 + objectBytes;
+    const extended = flags & 0x4000 ? bytes.readUInt16BE(cursor) : 0;
+    if (flags & 0x4000) cursor += 2;
+    let removed = 0;
+    if (version === 4) { const prefix = prefixRemoval(bytes, cursor, bytes.length - objectBytes)!; removed = prefix.removed; cursor = prefix.next; }
+    const nul = bytes.indexOf(0, cursor);
+    const name = version === 4 ? Buffer.concat([previous.subarray(0, previous.length - removed), bytes.subarray(cursor, nul)]) : bytes.subarray(cursor, nul);
+    yield { name, object: bytes.subarray(start + 40, start + 40 + objectBytes), mode: bytes.readUInt32BE(start + 24), flagged: !!((flags & 0xb000) || (extended & 0x2000)) };
+    previous = name; cursor = nul + 1;
+    if (version !== 4) cursor = start + Math.ceil((cursor - start) / 8) * 8;
+  }
 }
 
 /**
