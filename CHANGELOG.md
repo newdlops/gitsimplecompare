@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.72136] - 2026-10-21
+
+### Performance
+
+- Bound Node buffer usage during protected Git index publication to 256 KiB,
+  using the actual index size for smaller files. Continue writing through the
+  owned lock handle with fsync, inode checks and atomic rename.
+
+### Fixed
+
+- Complete short index writes, stop zero-progress writes, and close the source
+  handle after failed reads without publishing a partial index.
+
+### Development
+
+- Add a Native index publication resource benchmark and actual PR squash/replay
+  button measurements through the production renderer and registered callback.
+  Retain mixed or slower timing samples; the measured benefit is lower buffer
+  usage, without a general PR latency or whole-application resource claim.
+
 ## [0.1.72135] - 2026-10-21
 
 ### Fixed

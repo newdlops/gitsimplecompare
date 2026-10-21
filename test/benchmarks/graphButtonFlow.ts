@@ -20,10 +20,11 @@ import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
 import { createGraphButtonDiagnostics, traceLocalOnlySnapshot } from "../helpers/graphButtonDiagnostics";
 import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
+import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButtonFixture";
 
-type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout";
+type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
-const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout"];
+const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout", "pr-squash-cherry-pick", "pr-cherry-pick"];
 
 /** 예외나 무한 대기를 성공으로 세지 않고 기다리던 대상을 제한 시간 오류에 남긴다. */
 async function within<T>(promise: Promise<T>, label: string, milliseconds = 60000): Promise<T> {
@@ -90,6 +91,8 @@ async function measure(directory: string, operation: Operation) {
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
   __setQuickPickResult(items => items.find((item: any) => item?.kind !== -1));
+  const prOperation = operation === "pr-squash-cherry-pick" || operation === "pr-cherry-pick";
+  if (prOperation) installPrButtonFixture(f);
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
   let measuring = false;
   const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
@@ -116,7 +119,7 @@ async function measure(directory: string, operation: Operation) {
   const initialized = new Promise<void>(resolve => { ready = resolve; });
   const action = new Promise<void>((resolve, reject) => { actionDone = resolve; actionFailed = reject; });
   void action.catch(() => undefined);
-  const requestType = operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch" : operation === "checkout" ? "branchAction" : operation;
+  const requestType = prOperation ? "pullRequestAction" : operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch" : operation === "checkout" ? "branchAction" : operation;
   let receivedAt: number | undefined, completedAt: number | undefined;
   renderer.onMessage(async message => {
     try {
@@ -137,6 +140,7 @@ async function measure(directory: string, operation: Operation) {
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
     if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
+    if (prOperation) await renderer.clickControl("#graph-pr-list");
     if (operation === "interactive-rebase") {
       const checkout = await captureRebaseCheckout(f.root), commits = await new RebaseService(f.root).getCommits(f.main, false, false);
       renderer.post({ type: "graphRebasePlan", plan: { branch, base: f.main, root: false, baseReason: "selected", checkout, commits,
@@ -150,6 +154,7 @@ async function measure(directory: string, operation: Operation) {
     diagnostics?.start();
     try {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
+      else if (prOperation) await renderer.clickControl(`#pr-op-42-${operation === "pr-squash-cherry-pick" ? "squash" : "rebase"}`);
       else if (operation === "checkout") await renderer.clickControl('.ref[data-checkout-branch="topic"]');
       else if (operation === "fetch-no-change") await renderer.clickControl("#fetch-graph");
       else await renderer.clickControl(`#${operation}-graph`);
@@ -178,6 +183,7 @@ async function measure(directory: string, operation: Operation) {
       if (operation === "fetch") assert.equal((await runGit(["rev-parse", "refs/remotes/origin/incoming"], f.root)).trim(), f.incoming);
       if (operation === "fetch-no-change") assert.equal(await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root), initialRefs, "Unchanged fetch fixture must preserve every Native ref");
       if (operation === "checkout") assert.equal(head, f.topic);
+      if (prOperation) await verifyPrButtonResult(f, operation === "pr-squash-cherry-pick");
       if (operation === "interactive-rebase") {
         const bodies = (await runGit(["log", "--reverse", "--format=%B%x00", `${f.main}..HEAD`], f.root)).split("\0").map(value => value.trim()).filter(Boolean);
         assert.deepEqual(bodies, ["combined click\n\ncombined body", "PR 2"]);
@@ -215,7 +221,7 @@ async function main() {
       console.error(`Clicking ${operation}...`); results.push(await measure(scenario, operation));
     }
     const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), network: "owned-local-bare-only", results,
-      scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus." };
+      scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };
     await writeFile(process.argv[2], JSON.stringify(report, null, 2) + "\n"); console.log(JSON.stringify(report, null, 2));
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

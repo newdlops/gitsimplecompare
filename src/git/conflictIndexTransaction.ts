@@ -1,6 +1,7 @@
 // 충돌 stage 0 갱신을 실제 Git index.lock 임계 구역 안에서 원자적으로 게시한다.
 // - linked worktree/split-index의 실제 index를 sibling index에서 수정하고 소유 lock을 통해 게시한다.
 import * as fs from "node:fs";
+import type { FileHandle } from "node:fs/promises";
 import * as path from "node:path";
 import { randomBytes } from "node:crypto";
 import { runGit } from "./gitExec";
@@ -38,9 +39,8 @@ export async function withConflictIndexTransaction<T>(
     await fs.promises.copyFile(indexPath, tempPath, fs.constants.COPYFILE_EXCL);
     const result = await action({ indexEnv: { GIT_INDEX_FILE: tempPath } });
     if (publishIndex) {
-      const bytes = await fs.promises.readFile(tempPath);
       await lock.truncate(0);
-      await lock.writeFile(bytes);
+      await copyIntoOwnedIndexLock(tempPath, lock);
       await lock.sync();
       await assertOwnedLock(lockPath, identity);
       await lock.close();
@@ -64,6 +64,31 @@ export async function withConflictIndexTransaction<T>(
       await fs.promises.rm(`${tempPath}.lock`, { force: true }).catch(() => undefined);
     }
   }
+}
+
+/**
+ * sibling index를 256KiB 버퍼 하나로 소유한 lock inode에 복사한다.
+ * 경로로 lock을 다시 열지 않으므로 교체된 다른 writer의 파일에 쓰지 않으며, 짧은 write도 끝까지 처리한다.
+ * @param sourcePath caller 작업이 완료한 임시 index @param lock 처음 O_EXCL로 연 실제 index.lock handle
+ * @returns 모든 바이트 복사 후 완료한다. 읽기/쓰기 실패나 무진행 write는 게시 전에 오류로 전파한다.
+ */
+async function copyIntoOwnedIndexLock(sourcePath: string, lock: FileHandle): Promise<void> {
+  const source = await fs.promises.open(sourcePath, "r");
+  try {
+    const buffer = Buffer.allocUnsafe(Math.max(1, Math.min((await source.stat()).size, 256 * 1024)));
+    let position = 0;
+    for (;;) {
+      const { bytesRead } = await source.read(buffer, 0, buffer.length, position);
+      if (!bytesRead) break;
+      let offset = 0;
+      while (offset < bytesRead) {
+        const { bytesWritten } = await lock.write(buffer, offset, bytesRead - offset, position + offset);
+        if (!bytesWritten) throw new Error("Cannot publish the Git index: a write made no progress.");
+        offset += bytesWritten;
+      }
+      position += bytesRead;
+    }
+  } finally { await source.close(); }
 }
 
 /** `git rev-parse --git-path index`로 linked worktree를 포함한 실제 index 경로를 찾는다. */

@@ -1,0 +1,412 @@
+{
+  "version": "0.1.72136",
+  "wholeGoalComplete": false,
+  "baselineCommit": "d9fae43f2061fef4d3e0660e458bd45183fb96d7",
+  "sourceSha256": {
+    "src/git/conflictIndexTransaction.ts": "b1a7039c142024503876da81ae6585ae5af4d745a34808dcfb69d746c2f61ddf",
+    "test/conflictIndexPublication.test.ts": "05a71f1205e169eb3fa11fca0f4fe83d96e62f1855a6b600855bada0918565cc",
+    "test/benchmarks/indexTransaction.ts": "6c88b17042c050b92f6dc10f95245ef0456b958e16ea001ad7c535cb46504b97",
+    "test/benchmarks/graphButtonFlow.ts": "edbdea541041e2fe70432ddd945bc3e84dadb4104db235bcadb93fe1fb009afe",
+    "test/benchmarks/gitOperationMatrix.ts": "ac5d70d025348258bedc5b667e3f60c9445365093f6c1deeec1a27fed5efe3a7",
+    "test/helpers/prButtonFixture.ts": "ed2c581fa209b48f635738dc916896f6499a7975444d0cb0c434a736f5b52f81",
+    "test/helpers/graphLiveRenderer.ts": "7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4",
+    "test/helpers/gitOperationFixture.ts": "3020d92ee8d85a333db4724058f3daefe9b0649b954e5df52a80ccabefcb3147",
+    "scripts/benchmark-index-transaction.mjs": "07013219c6c061ce6239a65ae1a801ebe5af560ef1b06d9c0042991c9196aa84",
+    "scripts/benchmark-graph-buttons.mjs": "6298901ed4d76984c4198652ff4c7f1881099ec77442db5aeb52e884de890dcf"
+  },
+  "change": "Copy into the already-owned index.lock handle with one buffer capped at 256 KiB and at the source size for small files. Handle short writes; fail zero progress. Keep fsync/inode checks/atomic rename and original branch/ref/recovery gates.",
+  "methodology": {
+    "indexOrder": "B3/A3/A3/B3, six samples/source, separate owned Native-valid100000-entry index per process;1ms Node-only memory sampler and GC before each sample",
+    "prOrder": "B/A/A/B/B/A, three samples/source/operation; real production HTML/CSP/JS buttons and registered callback, Native Git, window/picker/transport/GitHub list metadata replaced",
+    "timingClaim": "No consistent PR final-frame or index-publication latency gain. Preserve all slower samples. Matrix/control wall times are functional observations only."
+  },
+  "indexFixture": {
+    "entries": 100000,
+    "indexBytes": 25600070,
+    "tree": "92961f150e056bfa9fe1def2f49c20241a14a7cd",
+    "sha256": "aeca35e43fc059c6280b4a5d08122e46a677736a451ddedc773eb366dbdb1700"
+  },
+  "resourceComparison": {
+    "elapsedMs": {
+      "before": {
+        "samples": [213.34416699999974,151.6909169999999,289.7771670000002,72.24454200000002,86.84579199999996,65.37425000000007],
+        "median": 119.26835449999993
+      },
+      "after": {
+        "samples": [141.61200000000008,143.794625,280.94887500000004,183.3342500000001,167.87120800000002,80.65341699999976],
+        "median": 155.8329165
+      }
+    },
+    "nodeCpuMs": {
+      "before": {
+        "samples": [122.002,97.05,153.328,35.873,44.858,42.378],
+        "median": 70.954
+      },
+      "after": {
+        "samples": [69.235,62.435,89.379,59.501,66.318,61.178],
+        "median": 64.3765
+      }
+    },
+    "sampledNodeRssGrowthBytes": {
+      "before": {
+        "samples": [26034176,114688,16384,25952256,131072,32768],
+        "median": 122880
+      },
+      "after": {
+        "samples": [393216,0,16384,671744,0,16384],
+        "median": 16384
+      }
+    },
+    "sampledExternalGrowthBytes": {
+      "before": {
+        "samples": [0,7754860,7754819,0,7754860,7754819],
+        "median": 7754819
+      },
+      "after": {
+        "samples": [0,0,0,0,0,0],
+        "median": 0
+      }
+    },
+    "sampledArrayBufferGrowthBytes": {
+      "before": {
+        "samples": [25621709,25621693,25621693,25621709,25621693,25621693],
+        "median": 25621693
+      },
+      "after": {
+        "samples": [303583,303567,303567,303583,303567,303567],
+        "median": 303567
+      }
+    }
+  },
+  "prComparison": {
+    "pr-squash-cherry-pick": {
+      "handlerMs": {
+        "before": {
+          "samples": [1704,6223,6783],
+          "median": 6223
+        },
+        "after": {
+          "samples": [1158,6513,6132],
+          "median": 6132
+        }
+      },
+      "clickToFirstFrameMs": {
+        "before": {
+          "samples": [2037,7532,7766],
+          "median": 7532
+        },
+        "after": {
+          "samples": [1501,7478,7041],
+          "median": 7041
+        }
+      },
+      "clickToFinalFrameMs": {
+        "before": {
+          "samples": [2100,8174,8911],
+          "median": 8174
+        },
+        "after": {
+          "samples": [1583,8641,8230],
+          "median": 8230
+        }
+      },
+      "nodeCpuMs": {
+        "before": {
+          "samples": [201,506,518],
+          "median": 506
+        },
+        "after": {
+          "samples": [279,329,341],
+          "median": 329
+        }
+      },
+      "processes": {
+        "before": {
+          "samples": [30,30,30],
+          "median": 30
+        },
+        "after": {
+          "samples": [30,30,30],
+          "median": 30
+        }
+      }
+    },
+    "pr-cherry-pick": {
+      "handlerMs": {
+        "before": {
+          "samples": [965,7297,6133],
+          "median": 6133
+        },
+        "after": {
+          "samples": [2831,6219,6181],
+          "median": 6181
+        }
+      },
+      "clickToFirstFrameMs": {
+        "before": {
+          "samples": [1532,8410,7000],
+          "median": 7000
+        },
+        "after": {
+          "samples": [3092,7156,7094],
+          "median": 7094
+        }
+      },
+      "clickToFinalFrameMs": {
+        "before": {
+          "samples": [1668,9517,8196],
+          "median": 8196
+        },
+        "after": {
+          "samples": [3487,8356,8285],
+          "median": 8285
+        }
+      },
+      "nodeCpuMs": {
+        "before": {
+          "samples": [287,624,174],
+          "median": 287
+        },
+        "after": {
+          "samples": [168,215,210],
+          "median": 210
+        }
+      },
+      "processes": {
+        "before": {
+          "samples": [31,31,31],
+          "median": 31
+        },
+        "after": {
+          "samples": [31,31,31],
+          "median": 31
+        }
+      }
+    }
+  },
+  "checks": {
+    "coreBeforeSmallBufferAdjustment": 79,
+    "finalAfterSmallBufferAdjustment": 19,
+    "distinctPassingNodeNames": 82,
+    "types": "passed",
+    "nativeMatrixCases": 18,
+    "pairedActualPrCases": 12,
+    "otherActualControlCases": 4
+  },
+  "matrix": [
+    {
+      "operation": "initial",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "fetch-new-history",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pull-new-history",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "push",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "push-tracked",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pull",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "fetch",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "fetch-known-history",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "fetch-no-change",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pull-known-history",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "rebase",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "merge",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "merge-no-ff",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "cherry-pick",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "checkout",
+      "historyExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "checkout-unloaded",
+      "historyExact": true,
+      "rendererExact": true
+    }
+  ],
+  "controls": [
+    {
+      "operation": "push",
+      "nativeStateExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "pull",
+      "nativeStateExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "fetch",
+      "nativeStateExact": true,
+      "rendererExact": true
+    },
+    {
+      "operation": "interactive-rebase",
+      "nativeStateExact": true,
+      "rendererExact": true
+    }
+  ],
+  "limits": [
+    "Index resource comparison measures the publication phase of a Native-valid staged index; no100000-file worktree scan or full PR resource claim.",
+    "1ms sampled Node memory can miss instantaneous peaks. Buffer size is bounded by source code; the sampler also includes small fs/measurement allocations.",
+    "CPU/RSS exclude Git children, Chromium and OS; RSS growth is not whole-application RSS. No general CPU/RSS improvement claim.",
+    "First prototypes and PR diagnostic use the earlier fixed256KiB buffer, are preserved separately and excluded from final comparisons.",
+    "Matrix/control counts prove final-state correctness; broad repeated latency and whole-process resource work remain incomplete.",
+    "Actual Captain was untouched. No Marketplace status query, foreground Extension Host, focus change or forced reload."
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-goal36-final-index-1-before.json",
+      "sha256": "57a45ae0f63c2bad8b194275763a6a7d8c94432044b79ce79f73cf5154c456b2"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-index-2-after.json",
+      "sha256": "d2bdf5697a9832ba59c0af0ce76b831defa7a2005eba2a6f4dc4283d478c743f"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-index-3-after.json",
+      "sha256": "f46b3e10fee291e2b6967ed3c0c62c90a25e2e7bf5cba2719cc959abb1fe0b2c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-index-4-before.json",
+      "sha256": "1190c0137639b7f9e53489de6b67485e01e4a01960da92c7f163d38c297b6d22"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-1-before.json",
+      "sha256": "1e979b9cef57ede1834b6e58592e1b70a36b6a25906ba60b030a36c850f6e6d5"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-2-after.json",
+      "sha256": "c0ca793b19268f67607e60cb98eed219a9649f539102f43ca5ba8d8c7367f7e7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-3-after.json",
+      "sha256": "e9d2965ea9f76489efa506b44003e14a6b397a8537b7cd56b285495c0a42c4dd"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-4-before.json",
+      "sha256": "c2a67be98b922ecd3ac7f65f45ccbee41dea477fb62b29812aa948a4525947f7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-5-before.json",
+      "sha256": "ead9777410c0aa3cd8c8c776c4e72c85ada4433e7e6ffa24a9eab9924889146e"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-6-after.json",
+      "sha256": "c7e632e3abc27fd1d6ffb2f801490be09914b40686bf0850b3e35068ba93950c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-matrix.json",
+      "sha256": "8f025ecb33494147ddc12430c2aad52b13fe3f076ce24d0d66af76940506d969"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-controls.json",
+      "sha256": "9042ebd5053561aa3cac1138e1e05b7e88c3c4b492dcbbf74765e32d506fc76c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-index-pairs-state.json",
+      "sha256": "5627fa42c974a5e238320183b448e47e1bf43359ce5503363741bab8083f34e6"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-paired-state.json",
+      "sha256": "f83eeb25e57430c2a84d4bdabbb5b8c4aeb98c6bebfc7acb6e3e06426ce39384"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-final-flows-state.json",
+      "sha256": "5d294344de618dc380019b01db62e8b575b83b6b679d40b2f211a38c7535fa92"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-index-node.log",
+      "sha256": "9c7bb43640e8e4d02d6d28295f89af46125ed0893043610ef521984f81d2b9e3"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-post-stat-node.log",
+      "sha256": "c0224d4f159979b9072f301bf067ae344ca955404d7ab65991f418bb35eaba4c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-release-types.log",
+      "sha256": "553bcd595b72e1f4c97c078ad18716662e4c6e3fc2c89958a5a60803d6725175"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-index-before.json",
+      "sha256": "df78eba7447f5197b159dfe2067e3236ee749af25345e319cf14118b5c7aa681"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-index-after.json",
+      "sha256": "482ca3880839ff3709886007c638beef563c55c21d51682a756d29ff088eb8ff"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-index-after2.json",
+      "sha256": "b728530714bdc34a0d2e60057584f5cf87c739e2adb0a87cd8fb45865558b9ee"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-index-before2.json",
+      "sha256": "d206933d221f745f0f6b50d19d1304a7e68650a4629385182c7999f90964d7c5"
+    },
+    {
+      "path": "/private/tmp/gsc-goal36-buttons-diagnostic-1-after.json",
+      "sha256": "43620d83a8f739e49a89c377bf11751f9b08883aa4b671df091c0d1dad3bbfbe"
+    }
+  ]
+}
