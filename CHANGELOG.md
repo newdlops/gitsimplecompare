@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72141] - 2026-10-21
+
+### Performance
+
+- Skip rename similarity detection when pull, branch and PR preflight checks
+  only need to know whether local changes exist.
+- Consume status output as a boolean instead of retaining and decoding every
+  path. Wait for successful Native Git close and create a fresh reader for each
+  existing safe retry, preserving errors and the original write safety checks.
+
 ## [0.1.72140] - 2026-10-21
 
 ### Fixes

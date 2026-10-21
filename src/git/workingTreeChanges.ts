@@ -1,10 +1,12 @@
 // 작업 전 변경 유무만 필요한 경로에서 전체 미추적 파일 목록을 만들지 않도록 공통 조회를 제공한다.
-import { GitError, runGit } from "./gitExec";
+import { GitError, runGit, runGitStreamResult } from "./gitExec";
 
 /**
  * index·작업트리·미추적 파일 중 변경이 하나라도 있으면 true를 반환한다.
  * - 경로 목록을 쓰지 않으므로 미추적 디렉터리는 normal 모드로 묶어 하위 파일의 전수 탐색을 피한다.
  * - status.showUntrackedFiles는 표시 설정이므로 작업 전 사용자 파일 보존 판단에는 적용하지 않는다.
+ * - 이동 여부와 경로 목록은 사용하지 않아 rename 유사도 비교를 생략하고 stdout은 boolean만 보존한다.
+ * - stdout에 변경이 있어도 Native Git이 성공/close하기 전에는 결과를 반환하지 않는다.
  * @param repoRoot 검사할 저장소 또는 linked worktree의 루트
  * @param disableFsmonitor daemon 오류를 피해야 하는 기존 PR 경로에서만 fsmonitor를 비활성화한다.
  * @returns ignored 파일을 제외한 실제 변경이 있으면 true. Git 조회 오류는 숨기지 않고 전파한다.
@@ -12,9 +14,13 @@ import { GitError, runGit } from "./gitExec";
 export async function hasWorkingTreeChanges(repoRoot: string, disableFsmonitor = false): Promise<boolean> {
   const args = [
     ...(disableFsmonitor ? ["-c", "core.fsmonitor=false"] : []),
-    "status", "--porcelain=v1", "-z", "--untracked-files=normal",
+    "status", "--porcelain=v1", "-z", "--untracked-files=normal", "--no-renames",
   ];
-  return (await runGit(args, repoRoot)).length > 0;
+  return runGitStreamResult(args, repoRoot, () => {
+    // lock/spawn 재시도는 새 reader를 만든다. 이전 시도의 부분 출력으로 clean 결과를 덮지 않는다.
+    let changed = false;
+    return { onData: (chunk: Buffer) => { changed ||= chunk.length > 0; }, finish: () => changed };
+  });
 }
 
 /**
