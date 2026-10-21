@@ -3,14 +3,16 @@
 import { getHeadHash } from "../git/gitHead";
 import { logError, logInfo } from "../ui/outputLog";
 import { ToWebviewMessage } from "./graphProtocol";
+import type { PullRequestInfo } from "../git/pullRequestInfo";
 
 /** commit visibility 보장에 필요한 graphPanel 콜백 묶음 */
 export interface EnsureGraphCommitVisibleOptions {
   repoRoot: string;
   requestId: string;
   hashes: string[];
+  pullRequest?: PullRequestInfo;
   loadedHash(hashes: string[]): string | undefined;
-  loadWindow(hashes: string[], requestId?: string): Promise<string | undefined>;
+  loadWindow(hashes: string[], requestId?: string, pullRequest?: PullRequestInfo): Promise<string | undefined>;
   post(message: ToWebviewMessage): void;
 }
 
@@ -22,12 +24,12 @@ export async function ensureGraphCommitVisible(
   options: EnsureGraphCommitVisibleOptions
 ): Promise<void> {
   const hashes = Array.from(new Set(options.hashes.filter(Boolean)));
-  if (!hashes.length) {
+  if (!hashes.length && !options.pullRequest) {
     options.post({ type: "commitVisibility", requestId: options.requestId, found: false });
     return;
   }
   let found: string | undefined;
-  try { found = options.loadedHash(hashes) || await options.loadWindow(hashes, options.requestId); }
+  try { found = options.loadedHash(hashes) || await options.loadWindow(hashes, options.requestId, options.pullRequest); }
   catch (error) {
     // 일반 error 메시지는 drawer 전체를 교체한다. PR 문맥과 재시도 버튼은 남기고 OUTPUT에 원인을 기록한다.
     logError("graph commit visibility failed", error, { repoRoot: options.repoRoot, requestId: options.requestId });

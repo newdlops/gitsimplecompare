@@ -6,6 +6,8 @@ import { filterCommitRefs } from "./graphBranchFilter";
 import type { ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
 import { logInfo } from "../ui/outputLog";
+import type { PullRequestInfo } from "../git/pullRequestInfo";
+import { fetchPullRequestGraphObjects, pullRequestGraphHashes, resolvePullRequestGraphTarget } from "../git/pullRequestGraphTarget";
 
 /** 일반 ref 범위에서 target 주변 commit과 전체 offset을 보존한 결과다. */
 export interface GraphCommitWindowResult {
@@ -35,14 +37,33 @@ export async function loadFilteredGraphCommitWindow(
   hashes: readonly string[],
   branchFilter: ResolvedGraphBranchFilter,
   pageSize: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  pullRequest?: PullRequestInfo
 ): Promise<GraphCommitWindowResult | undefined> {
   signal?.throwIfAborted();
-  if (branchFilter.empty || !hashes.length) return undefined;
+  if (branchFilter.empty) return undefined;
+  let pr = pullRequest && await resolvePullRequestGraphTarget(repoRoot, pullRequest, signal);
+  if (pr) hashes = pullRequestGraphHashes(pr);
+  if (!hashes.length) return undefined;
   let window = await loadCommitWindowForCandidates(repoRoot, hashes,
     { before: 80, after: pageSize, refs: branchFilter.refs, signal });
   if (!window.hash && branchFilter.mode === "all" && !branchFilter.filtersRefs) {
-    const local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
+    let local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
+    if (!local && pr) {
+      // 선택한 PR만 보완한다. 명시적 branch filter에서는 범위를 넓히거나 fetch하지 않는다.
+      if (pr === pullRequest) {
+        pr = await resolvePullRequestGraphTarget(repoRoot, pr, signal, true);
+        const latestHashes = pullRequestGraphHashes(pr);
+        // 같은 OID를 방금 확인했다면 Git을 반복하지 않는다. 갱신된 head만 새로 검증한다.
+        if (hashes.length !== latestHashes.length || hashes.some((hash, index) => hash !== latestHashes[index]))
+          local = await loadLocalCommitWindowForCandidates(repoRoot, latestHashes, pageSize, signal);
+        hashes = latestHashes;
+      }
+      if (!local) {
+        await fetchPullRequestGraphObjects(repoRoot, pr, signal);
+        local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
+      }
+    }
     if (local) {
       window = local;
       logInfo("graph commit window loaded from local object", { repoRoot, candidateCount: hashes.length, commitCount: local.commits.length });

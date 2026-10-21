@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72144] - 2026-10-22
+
+### Fixes
+
+- Make Jump to Pull Request Row work from the lightweight first list, before
+  background commit metadata finishes. Resolve only the clicked PR's refs.
+- Fetch missing PR objects from the matching repository when using All branches,
+  then display their native commit window. Preserve named refs, FETCH_HEAD,
+  the index, local edits and explicit branch filters.
+- Keep object preparation cancellable with owned transport cleanup and time
+  limits, without triggering a Graph reload that cancels its own navigation.
+
+### Performance
+
+- Reuse the last resolved row on repeated clicks while the PR identity is
+  unchanged. Invalidate it on repository or PR changes, and skip duplicate
+  object checks when a ref lookup returns the same commit IDs.
+
 ## [0.1.72143] - 2026-10-22
 
 ### Performance

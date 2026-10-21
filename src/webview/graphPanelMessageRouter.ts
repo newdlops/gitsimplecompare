@@ -14,6 +14,7 @@ import {
 } from "./graphActions";
 import { ensureGraphCommitVisible, ensureGraphHeadVisible } from "./graphCommitFocus";
 import { GraphCommitDetailSender } from "./graphCommitDetails";
+import type { PullRequestInfo } from "../git/pullRequestInfo";
 import { deferGraphActionRefresh, GraphActionRefreshQueue, type GraphActionRefreshKind } from "./graphActionRefresh";
 import { createGraphRefreshErrorNotice } from "./graphHealth";
 import { logGraphWebviewPaint } from "./graphPerformance";
@@ -82,7 +83,7 @@ export interface GraphPanelMessageRouterDeps {
   /** 후보 hash 중 이미 누적 그래프에 있는 첫 hash를 반환한다. */
   loadedCommitHash: (hashes: string[]) => string | undefined;
   /** 후보 commit 주변 window를 새 그래프로 불러온다. */
-  loadCommitWindow: (hashes: string[], requestId?: string) => Promise<string | undefined>;
+  loadCommitWindow: (hashes: string[], requestId?: string, pullRequest?: PullRequestInfo) => Promise<string | undefined>;
   /** 해당 PR 이동의 읽기만 취소한다. 이미 시작한 다른 Graph 작업에는 영향이 없다. */
   cancelCommitFocus?: (requestId: string) => void;
   /** reflog commit 주변 복구용 window를 불러온다. */
@@ -281,6 +282,7 @@ export class GraphPanelMessageRouter {
           repoRoot: this.repoRoot,
           requestId: message.requestId,
           hashes: message.hashes,
+          pullRequest: this.pullRequestPager.items.find(pr => pr.number === message.pullRequestNumber),
           loadedHash: this.deps.loadedCommitHash,
           loadWindow: this.deps.loadCommitWindow,
           post: this.deps.post,

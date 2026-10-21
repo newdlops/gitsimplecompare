@@ -5,6 +5,7 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { GitError, runGit, runGitBuffer, runGitStream, runGitStreamWithInput, runGitWithInput, type RunGitOptions } from "../src/git/gitExec";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
+import { PULL_REQUEST_GRAPH_FETCH_OPTIONS } from "../src/git/pullRequestGraphFetch";
 
 /** 실제로 SIGTERM을 무시하는 부모·자식을 만들며 실패한 테스트에서도 해당 PID만 회수한다. */
 async function stubbornGit(t: TestContext, leaderExits = false) {
@@ -72,6 +73,16 @@ test("leader close preserves cleanup of a resistant child with independent stdio
   const pending = runGit(["status"], fixture.root, { ...fixture, signal: controller.signal });
   const observed = observedFailure(pending);
   const pids = await waitForReady(fixture.ready);
+  controller.abort(); await expectGitFailure(observed, "ABORT_ERR");
+  for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+});
+
+test("PR navigation cancellation closes its object-only fetch and a resistant transport child", { skip: process.platform === "win32" }, async t => {
+  const fixture = await stubbornGit(t), controller = new AbortController();
+  t.after(() => controller.abort());
+  const pending = runGit(["fetch", ...PULL_REQUEST_GRAPH_FETCH_OPTIONS, "origin", "refs/pull/42/head"], fixture.root,
+    { ...fixture, signal: controller.signal });
+  const observed = observedFailure(pending), pids = await waitForReady(fixture.ready);
   controller.abort(); await expectGitFailure(observed, "ABORT_ERR");
   for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
 });

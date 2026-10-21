@@ -7,6 +7,7 @@
   let pendingFocusRequest;
   let focusStatus;
   let focusedHash = "";
+  let resolvedPullRequest;
 
   /**
    * 현재 graph row에 PR badge와 강조 class를 다시 반영한다.
@@ -124,7 +125,7 @@
     if (!row) {
       clearFocusedPullRequest();
       if (pr) {
-        requestCommitVisibility(rowHashes(pr), pr.number);
+        requestCommitVisibility(rowHashes(pr), pr.number, pr);
       }
       return;
     }
@@ -154,17 +155,19 @@
    * graph에 없는 commit 후보를 확장이 직접 읽어 오도록 메시지를 보낸다.
    * @param {string[]} hashes 우선순위대로 확인할 commit OID 후보
    * @param {number|undefined} number 진행/실패 안내를 붙일 PR 카드 번호
+   * @param {object|undefined} pr 최초 요약을 다시 눌러도 이미 찾은 행을 재사용할 PR 식별 정보
    * @returns {void}
    */
-  function requestCommitVisibility(hashes, number) {
+  function requestCommitVisibility(hashes, number, pr) {
     const candidates = uniqueHashes(hashes);
-    if (!candidates.length) {
+    if (!candidates.length && !number) {
       showFocusFailure(number); return;
     }
     const requestId = `pr-focus-${++focusRequestSequence}`;
-    pendingFocusRequest = { requestId, hashes: candidates, number };
+    pendingFocusRequest = { requestId, hashes: candidates, number, version: pr && pullRequestVersion(pr) };
     focusStatus = { number, loading: true, restoreFocus: document.activeElement?.dataset.focusPr === String(number) }; applyFocusStatus();
-    window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates });
+    window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates,
+      ...(number ? { pullRequestNumber: number } : {}) });
   }
 
   /**
@@ -177,7 +180,7 @@
       return;
     }
     const request = pendingFocusRequest;
-    if (!message.found || !request.hashes.includes(message.hash)) {
+    if (!message.found || !(request.hashes.includes(message.hash) || request.number && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(message.hash))) {
       pendingFocusRequest = undefined; showFocusFailure(request.number); return;
     }
     // host 응답은 DOM 게시 뒤 오지만 너비/장식 갱신도 같은 frame에 예약될 수 있다.
@@ -185,7 +188,10 @@
       if (pendingFocusRequest !== request) return;
       pendingFocusRequest = undefined;
       const row = findCommitRow(message.hash);
-      if (row) { focusStatus = undefined; applyFocusStatus(); highlightCommitRow(row); }
+      if (row) {
+        if (request.version) resolvedPullRequest = { version: request.version, hash: message.hash };
+        focusStatus = undefined; applyFocusStatus(); highlightCommitRow(row);
+      }
       else showFocusFailure(request.number);
     }));
   }
@@ -202,7 +208,12 @@
         return row;
       }
     }
-    return null;
+    return resolvedPullRequest?.version === pullRequestVersion(pr) ? findCommitRow(resolvedPullRequest.hash) : null;
+  }
+
+  /** 최신 한 건의 위치만 보관한다. head·상태·갱신 시각이 바뀌면 이전 요약에서 찾은 행을 재사용하지 않는다. */
+  function pullRequestVersion(pr) {
+    return JSON.stringify([pr.number, pr.state, pr.headHash, pr.mergeHash, pr.updatedAt, pr.headRefName, pr.baseRefName]);
   }
 
   /**
@@ -241,9 +252,10 @@
   }
 
   /** 최신 로컬 이동·저장소 교체가 이전 비동기 응답을 무효화하고 진행/오류 UI를 해제한다. */
-  function cancelFocus() {
+  function cancelFocus(resetContext) {
     if (pendingFocusRequest) window.GscGraphPostMessage?.({ type: "cancelCommitFocus", requestId: pendingFocusRequest.requestId });
     pendingFocusRequest = undefined; focusStatus = undefined; clearFocusedPullRequest(); applyFocusStatus();
+    if (resetContext) resolvedPullRequest = undefined;
   }
 
   /** drawer를 닫을 때 진행 중 조회만 취소하며, 이동 성공 직후의 row 강조는 유지한다. */

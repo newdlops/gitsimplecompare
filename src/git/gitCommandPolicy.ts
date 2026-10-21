@@ -1,4 +1,5 @@
 import { isReadOnlyFetchNegotiation } from "./gitFetchNegotiation";
+import { isPullRequestGraphObjectFetch } from "./pullRequestGraphFetch";
 
 /** 안전하게 식별한 Git 하위 명령과 조회 여부. 알 수 없는 명령은 쓰기처럼 보호한다. */
 export interface GitCommandPolicy { command: string; readOnly: boolean; monitor?: boolean }
@@ -16,7 +17,8 @@ export function gitCommandPolicy(args: readonly string[]): GitCommandPolicy {
   const reads = new Set(["status", "log", "show", "diff", "diff-files", "diff-index", "diff-tree", "rev-parse",
     "rev-list", "ls-files", "ls-tree", "cat-file", "check-ignore", "check-attr", "merge-base", "for-each-ref", "blame", "describe", "name-rev", "show-ref", "ls-remote", "check-ref-format"]);
   let readOnly = reads.has(command);
-  if (command === "fetch") readOnly = isReadOnlyFetchNegotiation(rest);
+  // 객체만 추가하고 ref/FETCH_HEAD를 건드리지 않는 PR 이동도 현재 Graph를 무효화하지 않는 조회 수명을 쓴다.
+  if (command === "fetch") readOnly = isReadOnlyFetchNegotiation(rest) || isPullRequestGraphObjectFetch(rest);
   if (command === "config") readOnly = rest.some(value => ["--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l"].includes(value))
     && !rest.some(value => ["--add", "--replace-all", "--unset", "--unset-all", "--rename-section", "--remove-section", "--edit", "-e"].includes(value));
   if (command === "branch") readOnly = (rest.length === 0 || rest.some(value => ["--list", "--show-current", "-a", "--all", "-r", "--remotes"].includes(value)))

@@ -32,7 +32,7 @@ for (const [width, height] of [[390,844],[768,1024],[1440,900]]) test(`PR row ju
   const target = page.locator(`#graph-content > .row[data-hash="${hash(180)}"]`);
   await expect(target).toHaveClass(/pr-focused-row/);
   await expect(target).toBeInViewport();
-  await page.screenshot({path:`/private/tmp/gsc-goal40-pr-jump-${width}.png`});
+  await page.screenshot({path:`/private/tmp/gsc-pr-row-jump-${width}.png`});
   expect(await target.evaluate(row => {
     const subject = row.querySelector(".subject") || row, box = subject.getBoundingClientRect();
     return row.contains(document.elementFromPoint(Math.min(innerWidth - 20, box.left + 20), box.top + box.height / 2));
@@ -63,7 +63,7 @@ for (const [width,height] of [[390,844],[768,1024],[1440,900]]) test(`unloaded P
   await expect(jump).toHaveAccessibleName("Locating pull request #42 in the graph…");
   await setPrs(page,[{...pr, commentCount:20}]); await expect(jump).toBeDisabled();
   if (width === 768) await expect(jump.locator(".codicon")).not.toHaveClass(/codicon-modifier-spin/);
-  await page.mouse.move(0,height-1); await page.screenshot({path:`/private/tmp/gsc-goal40-pr-jump-loading-${width}.png`});
+  await page.mouse.move(0,height-1); await page.screenshot({path:`/private/tmp/gsc-pr-row-jump-loading-${width}.png`});
   await dispatchWebviewMessage(page,{type:"graph",revision:2,data:{rows:[{hash:hash(400),parents:[],refs:[],authorName:"Fixture",authorEmail:"fixture@example.test",dateIso:"2026-10-21T00:00:00Z",subject:"Previously unloaded pull request",column:0,color:0}],edges:[],laneCount:1},state:{loadedCount:1,hasMore:false,loading:false,reset:true,colorScope:"/fixture"}});
   await dispatchWebviewMessage(page,{type:"commitVisibility",requestId:request.requestId,found:true,hash:hash(400)});
   await expect(page.locator('.row.pr-focused-row')).toHaveAttribute("data-hash",hash(400));
@@ -82,7 +82,7 @@ test("missing PR commit explains recovery in Korean and the same keyboard action
   await expect(jump).toBeFocused();
   const audit = await new AxeBuilder({page}).include("#detail").analyze(); expect(audit.violations.map(item=>item.id)).toEqual([]);
   expect(await notice.evaluate(node => node.scrollWidth <= node.clientWidth+1)).toBe(true);
-  await page.mouse.move(0,843); await page.screenshot({path:"/private/tmp/gsc-goal40-pr-jump-error-390.png"});
+  await page.mouse.move(0,843); await page.screenshot({path:"/private/tmp/gsc-pr-row-jump-error-390.png"});
   await page.keyboard.press("Enter"); await expect(jump).toBeDisabled();
   await expect.poll(async ()=>(await latestRequest(page)).requestId).not.toBe(first.requestId);
   const second = await latestRequest(page); expect(second.requestId).not.toBe(first.requestId);
@@ -118,4 +118,26 @@ test("merged PRs prefer the resulting merge commit and repository changes cancel
   await dispatchWebviewMessage(page,{type:"pullRequestContext",context:"replacement-repository"});
   await dispatchWebviewMessage(page,{type:"commitVisibility",requestId:old.requestId,found:false});
   await expect(page.locator(".pr-focused-row,.pr-jump-message")).toHaveCount(0); await expect(page.locator('[data-focus-pr="42"]')).toBeEnabled();
+});
+
+test("the first lightweight PR list can jump before commit metadata arrives", async ({page}) => {
+  await mount(page);
+  await setPrs(page, [{ ...overview(false).pullRequests[0], headHash: undefined, commitHashes: [], commitHashesComplete: false }]);
+  await page.locator('[data-focus-pr="42"]').click();
+  const request = await latestRequest(page);
+  expect(request).toMatchObject({ type: "ensureCommitVisible", hashes: [], pullRequestNumber: 42 });
+  await expect(page.locator('[data-focus-pr="42"]')).toBeDisabled();
+  await dispatchWebviewMessage(page, { type: "commitVisibility", requestId: request.requestId, found: true, hash: hash(180) });
+  await expect(page.locator(".pr-focused-row")).toHaveAttribute("data-hash", hash(180));
+  await expect(page.locator(".pr-focused-row")).toBeInViewport();
+  await expect(page.locator("#graph")).toBeFocused();
+  await page.locator('[data-focus-pr="42"]').click();
+  expect((await readPostedMessages(page)).filter((m: any) => m.type === "ensureCommitVisible")).toHaveLength(1);
+  await setPrs(page, [{ ...overview(false).pullRequests[0], headHash: undefined, commitHashes: [], updatedAt: "2026-10-22T03:00:00Z" }]);
+  await page.locator('[data-focus-pr="42"]').click();
+  await expect.poll(async () => (await readPostedMessages(page)).filter((m: any) => m.type === "ensureCommitVisible").length).toBe(2);
+  await expect(page.locator('[data-focus-pr="42"]')).toBeDisabled();
+  await dispatchWebviewMessage(page, { type: "pullRequestContext", context: "different-repository" });
+  await page.locator('[data-focus-pr="42"]').click();
+  await expect.poll(async () => (await readPostedMessages(page)).filter((m: any) => m.type === "ensureCommitVisible").length).toBe(3);
 });

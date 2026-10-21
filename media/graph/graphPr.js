@@ -42,7 +42,7 @@
   function handleMessage(event) {
     const msg = event.data;
     if (msg.type === "pullRequestContext") {
-      window.GscGraphPrMatching?.cancelFocus?.();
+      window.GscGraphPrMatching?.cancelFocus?.(true);
       hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
     } else if (msg.type === "graphDetailCancelled") {
       details.cancel(msg.number, msg.requestId);

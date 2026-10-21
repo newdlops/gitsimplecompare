@@ -3,6 +3,7 @@
 //   그래프 계산은 graphLayout, git 접근은 GitLogService 에 위임한다(경계 분리).
 import * as vscode from "vscode";
 import { GitLogService } from "../git/gitLogService";
+import type { PullRequestInfo } from "../git/pullRequestInfo";
 import { graphRemoteRefVersion, readGraphRefreshSnapshot } from "../git/graphRefreshFingerprint";
 import type { GraphRemoteBranchTip } from "../git/graphBranchCatalog";
 import { graphReferenceIdentity, matchesGraphReferenceIdentity, type GraphReferenceIdentity } from "../git/graphReferenceIdentity";
@@ -141,7 +142,7 @@ export class GitGraphPanel {
       loadedCommitHash: (hashes) => hashes
         .map((hash) => hash.trim())
         .find((hash) => this.commits.some((commit) => commit.hash === hash)),
-      loadCommitWindow: (hashes, requestId) => this.loadCommitWindow(hashes, requestId), cancelCommitFocus: id => this.graphReads.cancelCommitFocus(id),
+      loadCommitWindow: (hashes, requestId, pr) => this.loadCommitWindow(hashes, requestId, pr), cancelCommitFocus: id => this.graphReads.cancelCommitFocus(id),
       loadReflogCommitWindow: (hash) => this.loadReflogCommitWindow(hash),
       refreshAfterGraphAction: (kind) => this.refreshAfterGraphAction(kind),
       refreshAfterFetchAction: () => this.refreshAfterFetchAction(),
@@ -441,8 +442,7 @@ export class GitGraphPanel {
    * @param direction older/newer 중 어느 쪽으로 페이지를 확장할지 지정한다.
    */
   private async loadNextPage(reset: boolean, direction: GraphLoadDirection = "older", trace?: GraphPerformanceTrace): Promise<void> {
-    const pageService = this.logService;
-    const generation = this.loadGeneration;
+    const pageService = this.logService, generation = this.loadGeneration;
     const performanceTrace = trace ?? beginGraphPerformanceTrace(pageService.repoRoot, reset ? "reload" : `pagination:${direction}`, generation);
     if (reset) direction = "older";
     const filter = this.currentBranchFilter();
@@ -484,9 +484,9 @@ export class GitGraphPanel {
       () => this.postGraph(false, direction, trace, "localOnly"));
   }
   /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
-  private loadCommitWindow(hashes: string[], requestId?: string): Promise<string | undefined> {
+  private loadCommitWindow(hashes: string[], requestId?: string, pr?: PullRequestInfo): Promise<string | undefined> {
     return this.showCommitWindow("commitWindow", signal => loadFilteredGraphCommitWindow(
-      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal
+      this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal, pr
     ), requestId);
   }
   /**
