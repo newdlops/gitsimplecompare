@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { runGit, runGitWithInput } from "../src/git/gitExec";
-import { statusIndexStagingIdentity, statusIndexStagingInfo } from "../src/git/statusIndexStagingIdentity";
+import { restoreStatusIndexMetadata, statusIndexStagingIdentity, statusIndexStagingInfo, StatusIndexSource } from "../src/git/statusIndexStagingIdentity";
 
 /** Git 자체가 생성한 index로 SHA와 format별 경로·mode·flags 해석을 검증한다. */
 async function fixture(t: TestContext, algorithm = "sha1", version = 2) {
@@ -28,10 +28,15 @@ for (const algorithm of ["sha1", "sha256"]) for (const version of [2, 3, 4]) {
     const f = await fixture(t, algorithm, version), before = await readFile(f.index);
     const identity = statusIndexStagingIdentity(before); assert.ok(identity);
     assert.deepEqual(statusIndexStagingInfo(before), { identity, directoryCount: 1, hasUntrackedCache: false });
+    const inspection = StatusIndexSource.inspect(before); assert.ok(inspection);
+    assert.deepEqual(inspection.info, statusIndexStagingInfo(before));
+    assert.equal(inspection.matches(before), true);
+    assert.equal(inspection.matches(Buffer.from(before)), false, "A different source read needs its own inspection");
     const touched = new Date(Date.now() + 10000); await utimes(path.join(f.root, f.names[0]), touched, touched);
     await runGit(["update-index", "--refresh"], f.root);
     const refreshed = await readFile(f.index); assert.notDeepEqual(refreshed, before);
     assert.equal(statusIndexStagingIdentity(refreshed), identity);
+    assert.deepEqual(inspection.restoreMetadata(refreshed), restoreStatusIndexMetadata(refreshed, before));
     await runGit(["update-index", "--index-version=4"], f.root);
     assert.equal(statusIndexStagingIdentity(await readFile(f.index)), identity);
     await writeFile(path.join(f.root, f.names[0]), "different\n"); await runGit(["add", "--", f.names[0]], f.root);
@@ -94,4 +99,50 @@ test("bad checksum, unknown mandatory extension and truncated headers cannot aut
   const body = Buffer.concat([valid.subarray(0, -20), Buffer.from("abcd"), Buffer.alloc(4)]);
   const unknown = Buffer.concat([body, createHash("sha1").update(body).digest()]);
   assert.equal(statusIndexStagingIdentity(unknown), undefined);
+});
+
+for (const algorithm of ["sha1", "sha256"]) test(`${algorithm} raw and saturated-length Native paths keep their identity across v2/v3/v4`, async t => {
+  const f = await fixture(t, algorithm), oid = (await runGit(["rev-parse", "HEAD:-option"], f.root)).trim();
+  // 작업트리에 만들 수 없는 긴/raw 이름은 Native index-info로 넣어 byte 경계를 검증한다.
+  const longName = Array.from({ length: 22 }, (_, index) => `${index}-${"x".repeat(190)}`).join("/");
+  assert.ok(Buffer.byteLength(longName) > 0x0fff);
+  const names = [Buffer.from(longName), Buffer.concat([Buffer.from("dir/raw-"), Buffer.from([0xff, 0xfe]), Buffer.from("\tline\n.txt")])];
+  await runGitWithInput(["update-index", "-z", "--index-info"], f.root,
+    Buffer.concat(names.flatMap(name => [Buffer.from(`100644 ${oid} 0\t`), name, Buffer.from([0])])));
+  let expected: string | undefined;
+  for (const version of [2, 3, 4]) {
+    await runGit(["update-index", `--index-version=${version}`], f.root);
+    const bytes = await readFile(f.index), actual = statusIndexStagingIdentity(bytes);
+    assert.ok(actual);
+    expected ??= actual;
+    assert.equal(actual, expected);
+    assert.equal(statusIndexStagingInfo(bytes)?.identity, expected);
+  }
+});
+
+for (const version of [2, 3]) test(`v${version} nonzero padding is rejected even with a valid Native checksum`, async t => {
+  const f = await fixture(t, "sha1", version), bytes = await readFile(f.index);
+  const nulEnd = bytes.indexOf(0, 12 + 62) + 1, paddedEnd = 12 + Math.ceil((nulEnd - 12) / 8) * 8;
+  assert.ok(nulEnd > 12 + 62 && nulEnd < paddedEnd);
+  bytes[nulEnd] = 1;
+  createHash("sha1").update(bytes.subarray(0, -20)).digest().copy(bytes, bytes.length - 20);
+  assert.equal(statusIndexStagingIdentity(bytes), undefined);
+  assert.equal(statusIndexStagingInfo(bytes), undefined);
+});
+
+test("source inspection rejects changed bytes before and after a valid checksum is rewritten", async t => {
+  const f = await fixture(t), source = await readFile(f.index), cached = Buffer.from(source);
+  const inspection = StatusIndexSource.inspect(source); assert.ok(inspection);
+  const original = Buffer.from(source);
+  source[12] ^= 1;
+  assert.equal(inspection.matches(source), false);
+  assert.equal(inspection.restoreMetadata(cached), undefined);
+  createHash("sha1").update(source.subarray(0, -20)).digest().copy(source, source.length - 20);
+  assert.ok(statusIndexStagingIdentity(source), "Changed stat metadata is still a supported index");
+  assert.equal(inspection.matches(source), false);
+  assert.equal(inspection.restoreMetadata(cached), undefined);
+  assert.equal(inspection.planTransition(cached, inspection.info.identity), undefined);
+  original.copy(source);
+  assert.equal(inspection.matches(source), true);
+  assert.deepEqual(inspection.restoreMetadata(cached), cached);
 });

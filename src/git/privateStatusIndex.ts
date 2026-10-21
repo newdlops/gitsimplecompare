@@ -7,7 +7,7 @@ import { isGitLifecycleError } from "./gitError";
 import { runGitStatus } from "./gitStatusExec";
 import { registerStatusIndex } from "./statusIndexOwnership";
 import type { StatusIndexWarmCache } from "./statusIndexWarmCache";
-import { restoreStatusIndexMetadata, statusIndexStagingIdentity, statusIndexStagingInfo } from "./statusIndexStagingIdentity";
+import { restoreStatusIndexMetadata, statusIndexStagingIdentity, StatusIndexSource } from "./statusIndexStagingIdentity";
 import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "./workingTreeStatusFormat";
 import { COLD_STATUS_MIN_ENTRIES, readColdStatus } from "./coldStatusScan";
 import { StatusIndexWarmup } from "./statusIndexWarmup";
@@ -118,7 +118,8 @@ export class PrivateStatusIndex {
     }
     const unchanged = this.fingerprint === source.key;
     const large = !!source.bytes && source.bytes.length >= 12 && source.bytes.readUInt32BE(8) >= COLD_STATUS_MIN_ENTRIES;
-    const info = !unchanged && large && source.bytes ? statusIndexStagingInfo(source.bytes) : undefined;
+    const inspection = !unchanged && large && source.bytes ? StatusIndexSource.inspect(source.bytes) : undefined;
+    const info = inspection?.info;
     const staging = info?.identity ?? (!unchanged && this.warmCache && source.bytes ? statusIndexStagingIdentity(source.bytes) : undefined);
     const warmFingerprint = unchanged ? this.warmFingerprint : staging ? `staging-v1:${source.file}:${staging}` : undefined;
     const previous = this.warmFingerprint;
@@ -130,7 +131,8 @@ export class PrivateStatusIndex {
     this.warmup.setSource(warmFingerprint);
     const completedWarmup = await this.warmup.take(warmFingerprint);
     if (completedWarmup) {
-      const restored = completedWarmup.bytes && source.bytes ? restoreStatusIndexMetadata(completedWarmup.bytes, source.bytes) : undefined;
+      const restored = completedWarmup.bytes && source.bytes ? inspection
+        ? inspection.restoreMetadata(completedWarmup.bytes) : restoreStatusIndexMetadata(completedWarmup.bytes, source.bytes) : undefined;
       this.cold = false;
       if (restored) {
         await writeFile(this.index!, restored, { mode: 0o600 });
@@ -148,8 +150,9 @@ export class PrivateStatusIndex {
     this.warmFingerprint = warmFingerprint;
     const warmed = this.warmFingerprint ? await this.warmCache?.load(this.root, this.warmFingerprint) : undefined;
     const transitioned = !warmed && canTransition && source.bytes
-      ? await transitionStatusIndex(this.root, this.index!, source.bytes, previous!.slice(-64), signal, this.log, previousWarmup?.bytes) : undefined;
-    const bytes = warmed && source.bytes ? restoreStatusIndexMetadata(warmed.bytes, source.bytes) ?? source.bytes : transitioned ?? source.bytes;
+      ? await transitionStatusIndex(this.root, this.index!, source.bytes, previous!.slice(-64), signal, this.log, previousWarmup?.bytes, inspection) : undefined;
+    const bytes = warmed && source.bytes ? (inspection ? inspection.restoreMetadata(warmed.bytes)
+      : restoreStatusIndexMetadata(warmed.bytes, source.bytes)) ?? source.bytes : transitioned ?? source.bytes;
     this.cold = !completedWarmup && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache && !warmed && !transitioned;
     if (bytes) {
       await writeFile(this.index!, bytes, { mode: 0o600 });

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -7,7 +8,7 @@ import { GitError, runGit, runGitBuffer, runGitWithInput, withGitConfigOverrides
 import { setGitProcessPreparation } from "../src/git/gitProcessRunner";
 import { gitProcesses } from "../src/git/gitProcessRegistry";
 import { PRIVATE_STATUS_INDEX_UPDATE_ARGS, registerStatusIndex } from "../src/git/statusIndexOwnership";
-import { planStatusIndexTransition, statusIndexStagingIdentity, statusIndexStagingInfo } from "../src/git/statusIndexStagingIdentity";
+import { planStatusIndexTransition, statusIndexStagingIdentity, statusIndexStagingInfo, StatusIndexSource } from "../src/git/statusIndexStagingIdentity";
 import { transitionStatusIndex } from "../src/git/statusIndexTransition";
 import { PrivateStatusIndex } from "../src/git/privateStatusIndex";
 import { setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
@@ -63,9 +64,13 @@ for (const algorithm of ["sha1","sha256"]) for (const version of [2,3,4]) {
     const raw=Buffer.concat([Buffer.from(`100644 ${oid} 0\traw-`),Buffer.from([0xff]),Buffer.from("\tline\n.txt\0")]);
     await runGitWithInput(["update-index","-z","--index-info"],f.root,raw);
     const before=await identity(f.source),events:string[]=[],mutations:string[]=[];
+    const inspection=StatusIndexSource.inspect(before.bytes);assert.ok(inspection);
+    const plan=planStatusIndexTransition(cached.bytes,before.bytes,cached.previous);assert.ok(plan);
+    assert.deepEqual(inspection.planTransition(cached.bytes,cached.previous),plan);
+    assert.deepEqual(inspection.planTransition(cached.bytes,cached.previous),plan,"Repeated plans need fresh entry iterators");
     const stop=gitProcesses.onDidFinishWrite(root=>mutations.push(root));
     let restored:Buffer|undefined;
-    try { restored=await transitionStatusIndex(f.root,f.privateIndex,before.bytes,cached.previous,new AbortController().signal,event=>events.push(event)); }
+    try { restored=await transitionStatusIndex(f.root,f.privateIndex,before.bytes,cached.previous,new AbortController().signal,event=>events.push(event),undefined,inspection); }
     finally {stop();}
     assert.ok(restored); assert.equal(statusIndexStagingIdentity(restored),statusIndexStagingIdentity(before.bytes));
     assert.equal(statusIndexStagingInfo(restored)?.hasUntrackedCache,true); assert.deepEqual(mutations,[]);
@@ -164,6 +169,34 @@ test("a rejected private update remains a cache miss and a pre-cancelled update 
   assert.ok(events.includes("private status index transition bypassed"));assert.deepEqual(await identity(f.source),source);assert.deepEqual(await identity(f.privateIndex),privateBefore);
   const controller=new AbortController();controller.abort();
   await assert.rejects(transitionStatusIndex(f.root,f.privateIndex,source.bytes,cached.previous,controller.signal,()=>{throw new Error("logger closed");}));
+  assert.equal(gitProcesses.isBusy(f.root),false);
+});
+
+test("a foreign source inspection cannot write and mutation during Native update cannot authorize restoration",async t=>{
+  const f=await fixture(t),cached=await warm(t,f);
+  await writeFile(path.join(f.root,f.file),"changed\n");await runGit(["add","--",f.file],f.root);
+  const source=await identity(f.source),inspection=StatusIndexSource.inspect(source.bytes);assert.ok(inspection);
+  const protectedBytes=Buffer.from(source.bytes);
+  const foreign=StatusIndexSource.inspect(Buffer.from(source.bytes));assert.ok(foreign);
+  const before=await identity(f.privateIndex),events:string[]=[];
+  assert.equal(await transitionStatusIndex(f.root,f.privateIndex,source.bytes,cached.previous,new AbortController().signal,
+    event=>events.push(event),undefined,foreign),undefined);
+  assert.deepEqual(await identity(f.privateIndex),before);assert.deepEqual(events,[]);
+  let mutated=false;
+  const restore=setGitProcessPreparation(async(_args,_root,options)=>{
+    if(options.privateIndexOnly&&!mutated){
+      mutated=true;source.bytes[12]^=1;
+      createHash("sha1").update(source.bytes.subarray(0,-20)).digest().copy(source.bytes,source.bytes.length-20);
+    }
+    return{options};
+  });
+  try{
+    assert.equal(await transitionStatusIndex(f.root,f.privateIndex,source.bytes,cached.previous,new AbortController().signal,
+      event=>events.push(event),undefined,inspection),undefined);
+  }finally{restore();}
+  assert.equal(mutated,true);assert.ok(events.includes("private status index transition bypassed"));
+  const actual=await identity(f.source);assert.deepEqual(actual.bytes,protectedBytes);
+  assert.equal(actual.ino,source.ino);assert.equal(actual.mtime,source.mtime);assert.equal(actual.ctime,source.ctime);
   assert.equal(gitProcesses.isBusy(f.root),false);
 });
 

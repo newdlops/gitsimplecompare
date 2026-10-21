@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.72149] - 2026-10-22
+
+### Performance
+
+- Reuse one checked source index inspection during private working-tree status
+  preparation. Keep complete checksum validation and fresh filesystem fences;
+  independently validate the updated Native Git index before restoring stat data.
+- Use bounded typed metadata offsets and avoid unnecessary path and padding
+  objects. Preserve raw paths, long names, index formats, cancellation and Native
+  fallbacks; keep parsed source data within the current read.
+
 ## [0.1.72148] - 2026-10-22
 
 ### Performance
