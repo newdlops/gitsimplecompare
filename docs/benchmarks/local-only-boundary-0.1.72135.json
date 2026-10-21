@@ -1,0 +1,213 @@
+{
+  "version": "0.1.72135",
+  "wholeGoalComplete": false,
+  "parentCommit": "4024a6535c1817652cd107dbf481f6f937e35526",
+  "sourceSha256": {
+    "src/git/localOnlySnapshotReuse.ts": "c95e19d5a616ddd179f74b5d160404237d94ee8a461164176effbaf904b22e77",
+    "src/git/gitLocalOnlyBranches.ts": "294246a88bab5152a47f0b807f39a3936581839bcdcac268e394793a83914cec",
+    "src/git/gitLocalOnlyMarkers.ts": "78708e7b3740513d2c11d80bea417f62220a475bf81f2315fa8814bf942f7f09",
+    "src/git/gitLogService.ts": "6486cd8f11ce76ec3c6760149a1ede02f85f84e2cce1c9eb0ae539bf0fc3d237",
+    "src/webview/graphPanel.ts": "5b5c32ea3bc3725d0801d5c1e5c452eee21b5a462d1cdd1213695f4a1856f599",
+    "src/webview/graphBranchActions.ts": "2e90d9c3bc4b7929176ed1dac505aee54ecf2ed1d2e3985746171a09c0296a20"
+  },
+  "guardChange": "Reject an oversized key/history estimate before entry iteration, including empty maps; normal empty results remain reusable.",
+  "checks": {
+    "boundaryBefore": {
+      "pass": 7,
+      "fail": 1
+    },
+    "finalScoped": {
+      "pass": 12,
+      "fail": 0
+    },
+    "scope": [
+      "candidate bounds and freshness",
+      "Native unchanged fetch and loaded checkout",
+      "Native upstream/shallow changes",
+      "Native consecutive unknown topology without prefetch"
+    ]
+  },
+  "performanceEvidence": {
+    "version": "0.1.72134",
+    "commit": "4024a6535c1817652cd107dbf481f6f937e35526",
+    "report": "docs/benchmarks/local-only-revalidation-0.1.72134.json",
+    "reportSha256": "481662383466851c45b313dce79d5f029ef8f5b3e8b221d208e326a721857946",
+    "comparison": {
+      "fetch-no-change": {
+        "handlerMs": {
+          "before": [
+            1331,
+            102,
+            955
+          ],
+          "after": [
+            779,
+            1154,
+            626
+          ],
+          "beforeMedian": 955,
+          "afterMedian": 779
+        },
+        "clickToFinalFrameMs": {
+          "before": [
+            2189,
+            271,
+            1854
+          ],
+          "after": [
+            1290,
+            1601,
+            1055
+          ],
+          "beforeMedian": 1854,
+          "afterMedian": 1290
+        },
+        "nodeCpuMs": {
+          "before": [
+            112,
+            70,
+            97
+          ],
+          "after": [
+            78,
+            83,
+            58
+          ],
+          "beforeMedian": 97,
+          "afterMedian": 78
+        },
+        "processes": {
+          "before": [
+            6,
+            6,
+            6
+          ],
+          "after": [
+            4,
+            4,
+            4
+          ],
+          "beforeMedian": 6,
+          "afterMedian": 4
+        },
+        "dagReads": {
+          "before": [
+            2,
+            2,
+            2
+          ],
+          "after": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "checkout": {
+        "handlerMs": {
+          "before": [
+            792,
+            334,
+            146
+          ],
+          "after": [
+            117,
+            37,
+            678
+          ],
+          "beforeMedian": 334,
+          "afterMedian": 117
+        },
+        "clickToFinalFrameMs": {
+          "before": [
+            1172,
+            738,
+            690
+          ],
+          "after": [
+            307,
+            134,
+            1396
+          ],
+          "beforeMedian": 738,
+          "afterMedian": 307
+        },
+        "nodeCpuMs": {
+          "before": [
+            67,
+            132,
+            87
+          ],
+          "after": [
+            65,
+            28,
+            82
+          ],
+          "beforeMedian": 87,
+          "afterMedian": 65
+        },
+        "processes": {
+          "before": [
+            9,
+            9,
+            9
+          ],
+          "after": [
+            7,
+            7,
+            7
+          ],
+          "beforeMedian": 9,
+          "afterMedian": 7
+        },
+        "dagReads": {
+          "before": [
+            2,
+            2,
+            2
+          ],
+          "after": [
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    "repeatedAfterBoundaryGuard": false,
+    "note": "Timing and whole-operation/browser evidence belong to the parent source. The final one-line guard was checked separately; no new timing claim for the guard."
+  },
+  "evidence": [
+    {
+      "path": "/Users/lky/project/gitsimplecompare/docs/benchmarks/local-only-revalidation-0.1.72134.json",
+      "sha256": "481662383466851c45b313dce79d5f029ef8f5b3e8b221d208e326a721857946"
+    },
+    {
+      "path": "/private/tmp/gsc-goal35-boundary-before-node.log",
+      "sha256": "9d55b5071a22082878dd5d268303ad9dfea057e2e8b86b9cecf1702929c5cdb4"
+    },
+    {
+      "path": "/private/tmp/gsc-goal35-final-node.log",
+      "sha256": "69908c8ca8de851b2b675f28426aedcdbc8de5b94454f67d57c67ffb53238edc"
+    },
+    {
+      "path": "/private/tmp/gsc-goal35-types.log",
+      "sha256": "100c7835fd4e371e10d45d09253b8b64ed430489f20bb0836403f73456429460"
+    },
+    {
+      "path": "/private/tmp/gsc-publish-72134.log",
+      "sha256": "31936b447bedda97e47ce49af7bc3fd7b4d11eb40232fa080e4ebb7c174cb3ea"
+    }
+  ],
+  "limits": [
+    "Owned local bare remotes; no Captain mutation or real GitHub network speed measurement.",
+    "Parent Node CPU includes Playwright transport, excludes Git/Chromium/hooks/OS. Matrix RSS is sampled incremental Node RSS, not total application RSS.",
+    "One retained candidate is limited by 4096 entries,65536 memberships and4MiB conservative estimated text/object size; this is not an exact heap/RSS guarantee. No added timer or extra validation Git command.",
+    "Initial button comparison used a first fetch that creates origin/HEAD and therefore legitimately changes refs. Its failed expectation and samples are preserved as diagnostic, not headline timing.",
+    "Final unchanged-fetch fixture first prepares native remote HEAD, then asserts every full ref/OID is unchanged. Same corrected harness is used for both sources.",
+    "Consecutive unavailable history proofs explicitly invalidate, including the Native no-prefetch regression. All fresh branch/config/operation safety gates remain.",
+    "Broad named-operation matrices prove final-state correctness only; n3/source paired timing is limited to unchanged fetch and loaded checkout. Full goal remains active.",
+    "No Marketplace status query, foreground Extension Host, OS focus change or forced reload.",
+    "The parent release was published with CLI DONE and is superseded before local installation by0.1.72135. Final installation is verified against the exact0.1.72135 local VSIX."
+  ]
+}

@@ -73,6 +73,7 @@ export class LocalOnlySnapshotReuse {
 function retainable(result: VerifiedResult): boolean {
   if (result.value.size > MAX_ENTRIES) return false;
   let memberships = 0, bytes = 2 * (result.key.length + result.history.length);
+  if (bytes > MAX_ESTIMATED_BYTES) return false;
   for (const [hash, names] of result.value) {
     memberships += names.length;
     if (memberships > MAX_MEMBERSHIPS) return false;

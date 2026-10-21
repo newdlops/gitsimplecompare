@@ -43,6 +43,15 @@ test("candidate retention is bounded by entry count, memberships and estimated t
   }
 });
 
+/** 빈 결과도 key 크기를 제한하되 작은 빈 결과의 재사용은 유지하는지 두 경계를 확인한다. */
+test("an empty result with an oversized snapshot key is also dropped before retention",()=>{
+  const small=completed(new Map());small.cache.invalidate();small.cache.begin("history");small.cache.localRead();small.cache.remoteRead();
+  assert.equal(small.cache.restore("refs"),small.value,"A small empty result remains reusable");
+  const cache=new LocalOnlySnapshotReuse(),key="x".repeat(3*1024*1024);
+  cache.begin("history");cache.localRead();cache.remoteRead();cache.complete(key,new Map());cache.invalidate();
+  cache.begin("history");cache.localRead();cache.remoteRead();assert.equal(cache.restore(key),undefined);
+});
+
 test("history key includes replacements and executable environment while checkout identity is separate", () => {
   const fingerprint=(head:string,replace="")=>`${head}\nrefs/heads/main\nrefs/heads/main hash\n${replace}--worktrees--\nworktrees`;
   const first=localOnlyHistoryKey("history",fingerprint("old"),"git-path");

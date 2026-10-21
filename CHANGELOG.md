@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.72135] - 2026-10-21
+
+### Fixed
+
+- Enforce the reusable Graph snapshot's estimated size limit before scanning
+  result entries, including an empty result with a large metadata key. Preserve
+  reuse for small empty results and all fresh-snapshot validation checks.
+
+### Development
+
+- Reproduce the empty-result boundary failure and verify the fix alongside
+  Native fetch/checkout/upstream/shallow/unknown-history regressions. Performance
+  measurements remain explicitly tied to the 0.1.72134 source before this guard.
+
 ## [0.1.72134] - 2026-10-21
 
 ### Performance
