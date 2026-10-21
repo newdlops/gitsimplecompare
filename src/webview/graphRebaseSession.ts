@@ -3,9 +3,10 @@
 import { ConflictService, type MergeOperation } from "../git/conflictService";
 import { isConflictMutationActive } from "../git/conflictMutationCoordinator";
 import { runGit } from "../git/gitExec";
+import { withGitStatePathScope } from "../git/gitStatePathScope";
 import { assertGitOperation, captureGitOperation } from "../git/operationControl";
 import { bindStartedRebase } from "../git/rebaseSessionIdentity";
-import { captureRebaseCheckout } from "../git/rebasePlanSafety";
+import { assertRebaseCheckout, captureRebaseCheckout } from "../git/rebasePlanSafety";
 import type {
   RebaseItem,
   RebasePlanInfo,
@@ -165,23 +166,25 @@ export async function beginGraphRebaseSession(
   deps: Pick<GraphRebaseDeps, "logService">
 ): Promise<string> {
   const repoRoot = deps.logService.repoRoot;
-  const service = new RebaseService(repoRoot);
-  const started = Date.now();
-  const plan = await buildSessionPlan(repoRoot, service, input);
-  const readPlanMs = Date.now() - started;
-  const saved = await startRebaseSessionState(repoRoot, plan, input.items);
-  logInfo("graph rebase session recorded", {
-    repoRoot,
-    operationId: saved.state.operationId,
-    statePath: saved.path,
-    items: input.items.length,
-    base: input.base,
-    root: input.root,
-    onto: input.onto,
-    readPlanMs,
-    elapsedMs: Date.now() - started,
+  return withGitStatePathScope(repoRoot, async () => {
+    const service = new RebaseService(repoRoot);
+    const started = Date.now();
+    const plan = await buildSessionPlan(repoRoot, service, input);
+    const readPlanMs = Date.now() - started;
+    const saved = await startRebaseSessionState(repoRoot, plan, input.items);
+    logInfo("graph rebase session recorded", {
+      repoRoot,
+      operationId: saved.state.operationId,
+      statePath: saved.path,
+      items: input.items.length,
+      base: input.base,
+      root: input.root,
+      onto: input.onto,
+      readPlanMs,
+      elapsedMs: Date.now() - started,
+    });
+    return saved.path;
   });
-  return saved.path;
 }
 
 /**
@@ -225,17 +228,19 @@ export async function recordGraphRebaseSessionResult(
   result: RebaseResult | GraphRebaseControlResult,
   items: RebaseItem[]
 ): Promise<void> {
-  const nativeOperation = action === "run" ? await bindStartedRebase(repoRoot) : undefined;
-  const state = await recordRebaseSessionResult(repoRoot, action, result, items, nativeOperation);
-  if (state) {
-    logInfo("graph rebase session result recorded", {
-      repoRoot,
-      action,
-      operationId: state.operationId,
-      phase: state.phase,
-      status: result.status,
-    });
-  }
+  await withGitStatePathScope(repoRoot, async () => {
+    const nativeOperation = action === "run" ? await bindStartedRebase(repoRoot) : undefined;
+    const state = await recordRebaseSessionResult(repoRoot, action, result, items, nativeOperation);
+    if (state) {
+      logInfo("graph rebase session result recorded", {
+        repoRoot,
+        action,
+        operationId: state.operationId,
+        phase: state.phase,
+        status: result.status,
+      });
+    }
+  });
 }
 
 /**
@@ -325,6 +330,7 @@ export async function restoreGraphRebaseSession(
  * 저장할 세션 계획의 커밋 범위·메시지는 새로 읽고 불변 OID의 파일 목록은 기존 계획에서 재사용한다.
  * - 실행 버튼에서 같은 전체 범위의 rename/numstat을 다시 계산하지 않는다.
  * - 파일 목록이 없는 호출이나 현재 범위의 새 커밋은 기존 전체 조회로 보강한다.
+ * - branch 이름은 첫 checkout에서 얻고 마지막에 다시 검증해 범위 조회 중 브랜치 교체를 거부한다.
  * @param repoRoot 대상 저장소 @param service 현재 범위를 읽을 Git 서비스
  * @param input 실행 기준과 UI가 이미 가진 todo/파일 정보 @returns 복원 가능한 원래 커밋 메타데이터
  */
@@ -333,8 +339,7 @@ async function buildSessionPlan(
   service: RebaseService,
   input: GraphRebaseSessionStartInput
 ): Promise<RebasePlanInfo> {
-  const [branch, upstream, metadata, checkout] = await Promise.all([
-    runGit(["branch", "--show-current"], repoRoot).then((out) => out.trim()),
+  const [upstreamRead, metadataRead, checkoutRead] = await Promise.allSettled([
     runGit(
       ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
       repoRoot
@@ -342,12 +347,18 @@ async function buildSessionPlan(
     service.getCommits(input.base, input.root, false),
     captureRebaseCheckout(repoRoot),
   ]);
+  // 실패한 조회가 있어도 같은 scope에서 시작한 다른 Git 읽기가 끝난 뒤 오류를 전파한다.
+  if (upstreamRead.status === "rejected") throw upstreamRead.reason;
+  if (metadataRead.status === "rejected") throw metadataRead.reason;
+  if (checkoutRead.status === "rejected") throw checkoutRead.reason;
+  const upstream = upstreamRead.value, metadata = metadataRead.value, checkout = checkoutRead.value;
   const knownFiles = new Map(input.items.filter(item => Array.isArray(item.files)).map(item => [item.hash, item.files!]));
   const commits = metadata.every(commit => knownFiles.has(commit.hash))
     ? metadata.map(commit => ({ ...commit, files: knownFiles.get(commit.hash)! }))
     : await service.getCommits(input.base, input.root);
+  await assertRebaseCheckout(repoRoot, checkout);
   return {
-    branch,
+    branch: checkout.branch.slice("refs/heads/".length),
     checkout,
     upstream,
     base: input.base,

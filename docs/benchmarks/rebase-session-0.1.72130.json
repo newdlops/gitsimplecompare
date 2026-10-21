@@ -1,0 +1,189 @@
+{
+  "version": "0.1.72130",
+  "baselineCommit": "58dbb6f87549b8eee0597374db05114cd85991c3",
+  "sourceSha256": {
+    "src/git/rebaseSessionState.ts": "6d38232ca19899c1e539f8950d4f5c85dca8f6d28bd9b24ac3c7159838a62b2d",
+    "src/webview/graphRebaseSession.ts": "d3339c4e745e4870f0e2de1eb29afb0228e596df70093b08fa661e3e5e98dbfa"
+  },
+  "change": "Share only private recovery paths within one invocation. Re-read live checkout and native generations. Publish session JSON only after metadata revalidation; exclusively own and clean temporary files.",
+  "nativeQueryProof": {
+    "checkpoint": [
+      3,
+      2
+    ],
+    "preparedSessionStart": [
+      6,
+      5
+    ],
+    "completedResult": [
+      4,
+      2
+    ],
+    "pausedResult": [
+      6,
+      3
+    ],
+    "pausedRestore": [
+      13,
+      12
+    ],
+    "conflictedRestore": [
+      11,
+      10
+    ],
+    "preserved": [
+      "Full canonical commit subjects/bodies/files and V1 JSON recovery format",
+      "Two checkout checks during session capture",
+      "Fresh native generation capture and validation",
+      "Scope released before confirmation and between actions",
+      "No cross-action HEAD/ref/config/index cache"
+    ]
+  },
+  "fixture": {
+    "files": 1000,
+    "backgroundCommits": 1000,
+    "localBranches": 100,
+    "sharedUpstreams": 80,
+    "samplesPerSource": 3
+  },
+  "comparison": {
+    "order": [
+      "beforea",
+      "aftera",
+      "afterb",
+      "beforeb",
+      "beforec",
+      "afterc"
+    ],
+    "editorPath": "Unmodified default editor path of each production source",
+    "measured": {
+      "before": {"clickToFinalFrameMs":{"values":[1559,2348,2035],"median":2035,"min":1559,"max":2348},"handlerMs":{"values":[1422,2045,1832],"median":1832,"min":1422,"max":2045},"processes":{"values":[35,35,35],"median":35,"min":35,"max":35},"nodeCpuMs":{"values":[170,192,181],"median":181,"min":170,"max":192}},
+      "after": {"clickToFinalFrameMs":{"values":[825,2915,2178],"median":2178,"min":825,"max":2915},"handlerMs":{"values":[572,2647,1942],"median":1942,"min":572,"max":2647},"processes":{"values":[31,26,31],"median":31,"min":26,"max":31},"nodeCpuMs":{"values":[212,220,209],"median":212,"min":209,"max":220}}
+    },
+    "medianChangePercent": {
+      "clickToFinalFrameMs": 7,
+      "handlerMs": 6,
+      "processes": -11.4,
+      "nodeCpuMs": 17.1
+    }
+  },
+  "checks": {
+    "distinctPassedNames": 61,
+    "firstGroup": {
+      "passed": 51,
+      "failed": 0
+    },
+    "additionalGroup": {
+      "passed": 19,
+      "failed": 2,
+      "reason": "Restore count assertions still expected 13/11 while actual calls became 12/10; raw failures retained."
+    },
+    "correctedRestoreGroup": {
+      "passed": 2,
+      "failed": 0,
+      "note": "Updated exact counts and added isolated private-path assertions. Original user edit/conflict/recovery assertions retained."
+    },
+    "oldCodeReproduction": {
+      "failed": 11,
+      "note": "Expected red regressions reproduce redundant calls, foreign-state write, missing publication guard, orphan temporaries and branch-switch snapshot race."
+    },
+    "actualButtonComparedCases": 6,
+    "typecheck": "passed",
+    "safety": [
+      "Normal and linked worktrees",
+      "Sequential checkpoint scope release",
+      "Actual native edit pause ownership/progress",
+      "Metadata replacement after first path read",
+      "Metadata replacement after temporary write",
+      "Write/rename failures preserve old state",
+      "Exclusive temporary collision preserves another writer file",
+      "Same-HEAD branch switch rejects stale plan",
+      "Uncommitted and staged/untracked recovery preserved"
+    ]
+  },
+  "rawRuns": [
+    {
+      "label": "beforea",
+      "output": "/private/tmp/gsc-session30-buttons-beforea.json",
+      "sha256": "ea6ef8126fb8abf2dc51d875eaffd80db39196c744646a5a1abe0c6607c4d67c",
+      "source": {"kind":"commit","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"8b43eff516158f1f9f22ee1114c2e71fb55df64c2fad48d52d0d07ce35484889"},
+      "metrics": {"clickToFinalFrameMs":1559,"handlerMs":1422,"processes":35,"nodeCpuMs":170}
+    },
+    {
+      "label": "aftera",
+      "output": "/private/tmp/gsc-session30-buttons-aftera.json",
+      "sha256": "50f90bb08edcc96473f1e260d598ed0d629e2c2d3f5c249454df5f73943eb917",
+      "source": {"kind":"working-tree","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"8cd7f9a2ec3b62df565cf0f76dfd0c1391d730b1af4fd3b539585572988d75bb"},
+      "metrics": {"clickToFinalFrameMs":825,"handlerMs":572,"processes":31,"nodeCpuMs":212}
+    },
+    {
+      "label": "afterb",
+      "output": "/private/tmp/gsc-session30-buttons-afterb.json",
+      "sha256": "4e458280b0733259e1fc125876986ba0ac4b1855e4a629b073973b657cebe4f5",
+      "source": {"kind":"working-tree","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"8cd7f9a2ec3b62df565cf0f76dfd0c1391d730b1af4fd3b539585572988d75bb"},
+      "metrics": {"clickToFinalFrameMs":2915,"handlerMs":2647,"processes":26,"nodeCpuMs":220}
+    },
+    {
+      "label": "beforeb",
+      "output": "/private/tmp/gsc-session30-buttons-beforeb.json",
+      "sha256": "a645667b77a9952167531b47539ef0f58ed103f5a240713d7787048f529d7ed4",
+      "source": {"kind":"commit","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"9decc5e2a3da54e2a923d598241a3fcfe13de616e0b9648de90b2c9bc5079c1e"},
+      "metrics": {"clickToFinalFrameMs":2348,"handlerMs":2045,"processes":35,"nodeCpuMs":192}
+    },
+    {
+      "label": "beforec",
+      "output": "/private/tmp/gsc-session30-buttons-beforec.json",
+      "sha256": "202cd641bb6790cb6c06c1cadfe22ffa932028cde8a4433f6c086269f2f956bc",
+      "source": {"kind":"commit","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"61b62889cc8d0d67957d61c0df956e520a1ff35626b19074bda651e18a66d896"},
+      "metrics": {"clickToFinalFrameMs":2035,"handlerMs":1832,"processes":35,"nodeCpuMs":181}
+    },
+    {
+      "label": "afterc",
+      "output": "/private/tmp/gsc-session30-buttons-afterc.json",
+      "sha256": "3bc95a4f6cc98d3f49154740a08a734f10a1094e9cb1dc8c5b1518fbebfd8132",
+      "source": {"kind":"working-tree","commit":"58dbb6f87549b8eee0597374db05114cd85991c3","bundleSha256":"8cd7f9a2ec3b62df565cf0f76dfd0c1391d730b1af4fd3b539585572988d75bb"},
+      "metrics": {"clickToFinalFrameMs":2178,"handlerMs":1942,"processes":31,"nodeCpuMs":209}
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-session30-node.log",
+      "sha256": "a07a14da9ebf8443ed1502861f8b140ec2bfb6080a124b535d7228ccbf9c5029"
+    },
+    {
+      "path": "/private/tmp/gsc-session30-recovery-node.log",
+      "sha256": "611599661d7e99fe540a9596f7a60cad36c6d0b8d2362424b91e66622e89ada8"
+    },
+    {
+      "path": "/private/tmp/gsc-session30-restore-node.log",
+      "sha256": "5fd536ee9cbab5b9727c3e8a0c617ba09eb232586de75b699822c3704b35cb61"
+    },
+    {
+      "path": "/private/tmp/gsc-session30-before-node.log",
+      "sha256": "6c34a7d170c392fe093e14c83005e4a5b9617640c30f89e9e6f35ac4093c1680"
+    },
+    {
+      "path": "/private/tmp/gsc-session30-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/gsc-session30-buttons-state.json",
+      "sha256": "9aee705805097cdc9f0c0450c601931283c653430a39fb731ba832d0c9594a5e"
+    }
+  ],
+  "artifact": {
+    "bytes": 992965,
+    "sha256": "bd0f44a5cddb80389bc357654a36a4cb2a18e482a7b296538d9f3cf1a0fbf182",
+    "extensionSha256": "85f47a1e7c5434d2bdef6f9fe3c917fd320b9e4b0b8d09cb712e58274d103ed4",
+    "verifiedRuntimeFiles": 125
+  },
+  "limitations": [
+    "Three samples per source do not establish stable performance on every machine or operation. All slower samples retained.",
+    "Only the interactive-rebase button is compared here; no new cross-operation or GitHub transfer latency claim.",
+    "Production HTML/CSP/JS and registered message callback run with Native Git; VS Code window/transport/pickers are substituted and confirmation is immediate.",
+    "Node CPU includes Playwright transport but excludes Git, editor, Chromium and OS CPU; this is not total CPU or RSS savings.",
+    "Path identity guards do not provide same-repository concurrent-session compare-and-swap locking.",
+    "No foreground Extension Development Host, OS focus request, forced reload or Marketplace status query."
+  ],
+  "wholeGoalComplete": false
+}

@@ -33,7 +33,9 @@ test("restoring a paused rebase shares current state reads and preserves the unc
   assert.equal(await restoreGraphRebaseSession(deps), true);
   t.diagnostic(JSON.stringify({ calls: calls.length, elapsedMs: +(performance.now() - before).toFixed(1),
     commands: calls.map(args => args[0]), headParentReads: calls.filter(args => args[0] === "rev-parse" && args.some(value => value.endsWith("^"))).length }));
-  assert.equal(calls.length, 13);
+  assert.equal(calls.length, 12);
+  assert.equal(calls.filter(args => args.includes("--git-path") && args.includes("gitsimplecompare/rebase-session.json")).length, 2,
+    "initial restore and its isolated update each resolve the state once");
   assert.equal(calls.filter(args => args[0] === "rev-parse" && args.some(value => value.endsWith("^"))).length, 0);
   const paused = messages.find(message => message.type === "graphRebasePaused")?.paused;
   assert.equal(paused?.hash, started.paused?.hash); assert.equal(paused?.originalHash, hash); assert.equal(paused?.parent, head);
@@ -62,7 +64,8 @@ test("a conflicted rebase restores its current step without reading edit-only co
   t.mock.method(childProcess, "spawn", (...args: any[]) => { if (args[0] === "git") calls.push(args[1]); return (spawn as Function)(...args); });
   assert.equal(await restoreGraphRebaseSession(deps), true);
   t.diagnostic(`Conflicted session restore: ${calls.length} Git processes`);
-  assert.equal(calls.length, 11);
+  assert.equal(calls.length, 10);
+  assert.equal(calls.filter(args => args.includes("--git-path") && args.includes("gitsimplecompare/rebase-session.json")).length, 2);
   assert.equal(calls.some(args => args[0] === "log" || args[0] === "diff-tree"), false);
   assert.equal(messages.some(message => message.type === "graphRebasePaused"), false);
   assert.equal(messages.find(message => message.type === "graphRebaseProgress")?.progress.phase, "conflicts");

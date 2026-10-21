@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.72130] - 2026-10-21
+
+### Fixed
+
+- Recheck repository metadata before publishing rebase recovery state. Stop
+  linked-worktree metadata replacement from redirecting writes to another
+  repository or publishing a stale snapshot.
+- Exclusively own session temporary files and remove them on write or rename
+  failure. Preserve the previous state and other writers' temporary files.
+- Verify checkout again after loading canonical session metadata, including
+  switches to another branch at the same HEAD.
+
+### Performance
+
+- Share private recovery paths only within one action. Reduce checkpoint reads
+  from three Git processes to two, completed-result recording from four to two,
+  and paused-result recording from six to three. Preserve canonical messages,
+  files, fresh checkout checks and native generation validation.
+
+### Development
+
+- Cover recovery races, I/O failures and normal/linked worktrees with Native
+  Git. Retain all actual rebase-button comparison samples: fewer processes are
+  established, while consistent end-to-end latency and total CPU gains are not.
+
 ## [0.1.72129] - 2026-10-21
 
 ### Performance

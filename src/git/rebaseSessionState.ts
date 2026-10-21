@@ -3,7 +3,10 @@
 //   원자적으로 기록해 확장 reload 뒤에도 Git 이 관리 중인 todo 와 UI 계획을 다시 연결한다.
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 import { runGit } from "./gitExec";
+import { GitStatePathIdentityError, resolveGitStatePath, withGitStatePathScope } from "./gitStatePathScope";
+import { readGitDirectory } from "./repositoryIdentity";
 import type {
   RebaseItem,
   RebasePausedState,
@@ -81,13 +84,7 @@ const MAX_EVENTS = 80;
  * @returns `.git/gitsimplecompare/rebase-session.json` 절대 경로
  */
 export async function rebaseSessionStatePath(repoRoot: string): Promise<string> {
-  const raw = (
-    await runGit(
-      ["rev-parse", "--git-path", "gitsimplecompare/rebase-session.json"],
-      repoRoot
-    )
-  ).trim();
-  return path.resolve(repoRoot, raw);
+  return resolveGitStatePath(repoRoot, "gitsimplecompare/rebase-session.json");
 }
 
 /**
@@ -103,35 +100,37 @@ export async function startRebaseSessionState(
   plan: RebasePlanInfo,
   items: RebaseItem[]
 ): Promise<{ state: RebaseSessionState; path: string }> {
-  const now = new Date().toISOString();
-  const state: RebaseSessionState = {
-    version: REBASE_SESSION_VERSION,
-    kind: "graph-rebase",
-    operationId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    repoRoot,
-    createdAt: now,
-    updatedAt: now,
-    phase: "running",
-    lastAction: "run",
-    plan: cloneJson(plan),
-    items: cloneJson(items),
-    progress: await readRebaseTodoProgress(repoRoot).catch(() => undefined),
-    events: [
-      {
-        at: now,
-        action: "run",
-        phase: "running",
-        detail: {
-          base: plan.base,
-          root: Boolean(plan.root),
-          onto: plan.onto,
-          items: items.length,
+  return withGitStatePathScope(repoRoot, async () => {
+    const now = new Date().toISOString();
+    const state: RebaseSessionState = {
+      version: REBASE_SESSION_VERSION,
+      kind: "graph-rebase",
+      operationId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      repoRoot,
+      createdAt: now,
+      updatedAt: now,
+      phase: "running",
+      lastAction: "run",
+      plan: cloneJson(plan),
+      items: cloneJson(items),
+      progress: await readSessionProgress(repoRoot).catch(() => undefined),
+      events: [
+        {
+          at: now,
+          action: "run",
+          phase: "running",
+          detail: {
+            base: plan.base,
+            root: Boolean(plan.root),
+            onto: plan.onto,
+            items: items.length,
+          },
         },
-      },
-    ],
-  };
-  const statePath = await writeRebaseSessionState(repoRoot, state);
-  return { state, path: statePath };
+      ],
+    };
+    const statePath = await writeRebaseSessionState(repoRoot, state);
+    return { state, path: statePath };
+  });
 }
 
 /**
@@ -170,37 +169,37 @@ export async function updateRebaseSessionState(
   repoRoot: string,
   update: RebaseSessionUpdate
 ): Promise<RebaseSessionState | undefined> {
-  const current = await readRebaseSessionState(repoRoot);
-  if (!current) {
-    return undefined;
-  }
-  const now = new Date().toISOString();
-  const event: RebaseSessionEvent = {
-    at: now,
-    action: update.action,
-    phase: update.phase,
-    detail: update.detail,
-  };
-  const next: RebaseSessionState = {
-    ...current,
-    nativeOperation: update.nativeOperation ?? current.nativeOperation,
-    updatedAt: now,
-    phase: update.phase,
-    lastAction: update.action,
-    items: cloneJson(update.items ?? current.items),
-    plan: {
-      ...current.plan,
+  return withGitStatePathScope(repoRoot, async () => {
+    const current = await readRebaseSessionState(repoRoot);
+    if (!current) return undefined;
+    const now = new Date().toISOString();
+    const event: RebaseSessionEvent = {
+      at: now,
+      action: update.action,
+      phase: update.phase,
+      detail: update.detail,
+    };
+    const next: RebaseSessionState = {
+      ...current,
+      nativeOperation: update.nativeOperation ?? current.nativeOperation,
+      updatedAt: now,
+      phase: update.phase,
+      lastAction: update.action,
       items: cloneJson(update.items ?? current.items),
-    },
-    progress: await readRebaseTodoProgress(repoRoot).catch(() => undefined),
-    paused: cloneJson(update.paused),
-    stopped: cloneJson(update.stopped),
-    message: update.message,
-    restoringLocalChanges: update.restoringLocalChanges,
-    events: [...current.events, event].slice(-MAX_EVENTS),
-  };
-  await writeRebaseSessionState(repoRoot, next);
-  return next;
+      plan: {
+        ...current.plan,
+        items: cloneJson(update.items ?? current.items),
+      },
+      progress: await readSessionProgress(repoRoot).catch(() => undefined),
+      paused: cloneJson(update.paused),
+      stopped: cloneJson(update.stopped),
+      message: update.message,
+      restoringLocalChanges: update.restoringLocalChanges,
+      events: [...current.events, event].slice(-MAX_EVENTS),
+    };
+    await writeRebaseSessionState(repoRoot, next);
+    return next;
+  });
 }
 
 /**
@@ -244,14 +243,16 @@ export async function finishControlledRebaseSession(
   repoRoot: string, before: GitOperationIdentity, after: GitOperationIdentity, action: string
 ): Promise<void> {
   if (before.operation !== "rebase") return;
-  const state = await readRebaseSessionState(repoRoot);
-  if (!state?.nativeOperation || state.nativeOperation.gitDir !== before.gitDir ||
-      state.nativeOperation.generation !== before.generation) return;
-  if (after.operation === "rebase" && after.generation === before.generation) return;
-  const restoringLocalChanges = after.operation === "none" && Boolean(await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot));
-  await updateRebaseSessionState(repoRoot, {
-    action, phase: action === "abort" ? "aborted" : "completed", restoringLocalChanges,
-    detail: { event: "nativeOperationEnded", generation: before.generation },
+  await withGitStatePathScope(repoRoot, async () => {
+    const state = await readRebaseSessionState(repoRoot);
+    if (!state?.nativeOperation || state.nativeOperation.gitDir !== before.gitDir ||
+        state.nativeOperation.generation !== before.generation) return;
+    if (after.operation === "rebase" && after.generation === before.generation) return;
+    const restoringLocalChanges = after.operation === "none" && Boolean(await runGit(["diff", "--name-only", "--diff-filter=U", "-z"], repoRoot));
+    await updateRebaseSessionState(repoRoot, {
+      action, phase: action === "abort" ? "aborted" : "completed", restoringLocalChanges,
+      detail: { event: "nativeOperationEnded", generation: before.generation },
+    });
   });
 }
 
@@ -266,6 +267,8 @@ export function isActiveRebaseSession(state: RebaseSessionState): boolean {
 
 /**
  * 세션 상태를 원자적으로 쓴다.
+ * - 고유한 배타적 임시 파일만 소유하며, 게시 직전 metadata를 재확인해 연결 교체 시 원본을 보존한다.
+ * - 기록/rename 실패 때 이번 호출이 만든 파일만 정리한다. 저장 형식과 원래 커밋 본문은 유지한다.
  * @param repoRoot 저장소 루트
  * @param state    저장할 세션 상태
  * @returns 실제 파일 경로
@@ -276,10 +279,28 @@ async function writeRebaseSessionState(
 ): Promise<string> {
   const statePath = await rebaseSessionStatePath(repoRoot);
   await fs.mkdir(path.dirname(statePath), { recursive: true });
-  const tempPath = `${statePath}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-  await fs.rename(tempPath, statePath);
-  return statePath;
+  const tempPath = `${statePath}.${process.pid}.${randomUUID()}.tmp`;
+  let handle: fs.FileHandle | undefined;
+  let owned = false;
+  try {
+    handle = await fs.open(tempPath, "wx", 0o600);
+    owned = true;
+    await handle.writeFile(`${JSON.stringify(state, null, 2)}\n`, "utf8");
+    await handle.close();
+    handle = undefined;
+    if (await rebaseSessionStatePath(repoRoot) !== statePath) throw new GitStatePathIdentityError();
+    await fs.rename(tempPath, statePath);
+    owned = false;
+    return statePath;
+  } finally {
+    await handle?.close().catch(() => undefined);
+    if (owned) await fs.unlink(tempPath).catch(() => undefined);
+  }
+}
+
+/** 같은 호출이 검증한 Git directory 위치만 재사용하며 todo/REBASE_HEAD 내용은 매번 새로 읽는다. */
+async function readSessionProgress(repoRoot: string): Promise<RebaseTodoProgress | undefined> {
+  return readRebaseTodoProgress(repoRoot, await readGitDirectory(repoRoot));
 }
 
 /** rebase 결과 status 를 세션 phase 로 변환한다. */
