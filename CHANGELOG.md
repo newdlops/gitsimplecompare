@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.72140] - 2026-10-21
+
+### Fixes
+
+- Make Jump to Pull Request Row reveal the target, close an overlaid drawer
+  and move keyboard focus to the Graph. Show localized loading and retryable
+  failure states instead of silently ignoring an unavailable commit.
+- Preserve merge-result priority, cancel superseded PR window reads and ignore
+  late replies. Restore row highlighting after metadata updates without moving
+  the user's viewport or keyboard focus again.
+- Display locally available PR commits after their source branch is deleted.
+  Keep explicit branch filters and avoid fetching or changing refs for a jump.
+- Recheck owned macOS fsmonitor health after readiness expires. Close only an
+  unresponsive owned child, retain failure cooldowns across writes and prevent
+  immediate restart loops after unexpected exits.
+
+### Performance
+
+- Read the Graph history once for all PR commit candidates, then load one
+  bounded window. Batch-check local objects only when unrestricted navigation
+  cannot find a reachable candidate.
+- Bypass builtin fsmonitor IPC for index mutations and index-only comparisons
+  using command-scoped settings. Preserve custom hooks and repository settings.
+
 ## [0.1.72139] - 2026-10-21
 
 ### Performance

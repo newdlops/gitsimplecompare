@@ -190,6 +190,7 @@ export type FromWebviewMessage =
   | { type: "refreshPullRequestDetail"; number: number; requestId?: string }
   | { type: "cancelGraphDetail" }
   | { type: "ensureCommitVisible"; requestId: string; hashes: string[] }
+  | { type: "cancelCommitFocus"; requestId: string }
   | { type: "showReflogCommit"; requestId: string; hash: string }
   | { type: "ensureHeadVisible"; requestId: string }
   | { type: "graphRepositorySearch"; requestId: string; query: string; scope?: GraphRepositorySearchScope }

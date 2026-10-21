@@ -4,14 +4,18 @@ import { gitProcesses, type GitProcessLogger } from "./gitProcessRegistry";
 import { setGitProcessPreparation } from "./gitProcessRunner";
 import { createHash } from "node:crypto";
 import { isOwnedStatusIndex } from "./statusIndexOwnership";
+import { FsmonitorSettings } from "./fsmonitorSettings";
 
-interface MonitorPreparation { ready: boolean; foreground: boolean; expires: number }
+interface OwnedMonitor { controller: AbortController; completion: Promise<void> }
+interface MonitorPreparation { ready: boolean; foreground: boolean; expires: number; owned?: OwnedMonitor }
 interface MonitorPreparationTask { ready: Promise<boolean | undefined>; fallback: Promise<boolean | undefined> }
 let logger: GitProcessLogger | undefined;
 let generation = 0, active = false;
 const preparing = new Map<string, MonitorPreparationTask>();
 const prepared = new Map<string, MonitorPreparation>();
 const controllers = new Set<AbortController>();
+const settings = new FsmonitorSettings();
+const loggedWriteBypasses = new Set<string>();
 // 준비 과정의 IPC 확인도 공통 Git 실행기를 쓰되 같은 준비 Promise를 다시 기다리지 않는다.
 const preparationSignals = new WeakSet<AbortSignal>();
 const withoutIndex = new Set(["config", "fsmonitor--daemon", "version", "rev-parse", "rev-list", "log", "show", "cat-file", "ls-tree", "for-each-ref", "merge-base", "describe", "name-rev", "remote", "branch", "worktree", "symbolic-ref", "update-ref", "commit-tree", "mktree", "show-ref", "reflog", "ls-remote", "check-ref-format"]);
@@ -30,13 +34,15 @@ export function setOwnedFsmonitorPolicy(log: GitProcessLogger): () => void {
   active = true; logger = log; const current = ++generation;
   const reset = setGitProcessPreparation(prepareGitOptions);
   const unsubscribe = gitProcesses.onDidFinishWrite(root => {
-    for (const [key, item] of prepared) if (!item.foreground && key.startsWith(`${root}\0`)) prepared.delete(key);
+    // 파일 변경은 감시자 IPC 장애를 고치지 않는다. 실패 cooldown을 쓰기마다 지우면 같은 대기가 반복된다.
+    for (const [key, item] of prepared) if (!item.foreground && item.ready && key.startsWith(`${root}\0`)) prepared.delete(key);
   });
   return () => {
     reset(); unsubscribe();
     if (generation === current) {
       active = false; generation++;
       for (const controller of controllers) controller.abort();
+      settings.clear(); loggedWriteBypasses.clear();
       controllers.clear(); logger = undefined; prepared.clear(); preparing.clear();
     }
   };
@@ -52,19 +58,13 @@ export function setOwnedFsmonitorPolicy(log: GitProcessLogger): () => void {
  */
 export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions = {}, globals: readonly string[] = [], background = false): Promise<boolean | undefined> {
   if (!active || process.platform !== "darwin") return undefined;
-  const source = { ...process.env, ...options.env };
   const monitorGlobals = monitorPreparationGlobals(globals);
-  const scope: string[] = [...monitorGlobals];
-  for (const name of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_PARAMETERS"]) scope.push(source[name] ?? "");
-  for (let index = 0; index < Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0)); index++) {
-    const name = source[`GIT_CONFIG_KEY_${index}`] ?? "";
-    if (/^(?:core\.fsmonitor|include)/i.test(name)) scope.push(name, source[`GIT_CONFIG_VALUE_${index}`] ?? "");
-  }
-  const key = `${root}\0${options.executable ?? "git"}\0${createHash("sha256").update(JSON.stringify(scope)).digest("hex")}`;
+  const key = monitorKey(root, options, monitorGlobals);
   const existing = preparing.get(key);
   if (existing) return background ? existing.fallback : existing.ready;
   const cached = prepared.get(key);
-  if (cached && (cached.foreground || cached.expires > Date.now())) return cached.ready;
+  if (cached && cached.expires > Date.now()) return cached.ready;
+  if (cached?.owned) logger?.("git monitor health recheck", { repoRoot: root, owned: true });
   const current = generation;
   let useFallback!: (ready: boolean | undefined) => void;
   const fallback = new Promise<boolean | undefined>(resolve => { useFallback = resolve; });
@@ -76,6 +76,17 @@ export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions 
   const task = { ready, fallback }; preparing.set(key, task);
   if (background) logger?.("git monitor preparation running in background", { repoRoot: root, reason: "private-status-index" });
   return background ? fallback : ready;
+}
+
+/** 소켓 위치를 포함한 실제 설정 문맥을 나눠 다른 endpoint의 건강 상태를 재사용하지 않는다. */
+function monitorKey(root: string, options: RunGitOptions, globals: readonly string[]): string {
+  const source = { ...process.env, ...options.env }, scope: string[] = [...globals];
+  for (const name of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_PARAMETERS"]) scope.push(source[name] ?? "");
+  for (let index = 0; index < Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0)); index++) {
+    const name = source[`GIT_CONFIG_KEY_${index}`] ?? "";
+    if (/^(?:core\.fsmonitor|fsmonitor\.|include)/i.test(name)) scope.push(name, source[`GIT_CONFIG_VALUE_${index}`] ?? "");
+  }
+  return `${root}\0${options.executable ?? "git"}\0${createHash("sha256").update(JSON.stringify(scope)).digest("hex")}`;
 }
 
 /**
@@ -111,7 +122,24 @@ async function prepareGitOptions(args: readonly string[], root: string, options:
   const opaque = ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"].some(key => options.env?.[key] || process.env[key])
     || args.slice(0, gitCommandIndex(args)).some(value => value.startsWith("-C") || value === "--git-dir" || value.startsWith("--git-dir=") || value === "--work-tree" || value.startsWith("--work-tree="));
   const background = command.readOnly && isOwnedStatusIndex(options.env?.GIT_INDEX_FILE);
-  const ready = opaque || crossWorktree ? false : await ensureOwnedFsmonitor(root, options, args.slice(0, gitCommandIndex(args)), background);
+  const globals = monitorPreparationGlobals(args.slice(0, gitCommandIndex(args)));
+  const trailing = args.slice(gitCommandIndex(args) + 1), boundary = trailing.indexOf("--");
+  const flags = boundary < 0 ? trailing : trailing.slice(0, boundary);
+  const indexOnly = command.command === "diff" && flags.some(flag => flag === "--cached" || flag === "--staged");
+  let ready: boolean | undefined;
+  if (opaque || crossWorktree) ready = false;
+  else if (!command.readOnly || indexOnly) {
+    const key = monitorKey(root, options, globals);
+    const configured = explicit === undefined ? await settings.read(key, root, options, globals) : true;
+    // Native 쓰기는 시작 뒤 안전하게 재실행할 수 없다. index만 비교하는 Undo도 파일 감시가 필요 없다.
+    ready = configured === undefined ? undefined : false;
+    const logKey = `${key}\0${indexOnly ? "index-only" : "write"}`;
+    if (configured && !loggedWriteBypasses.has(logKey)) {
+      loggedWriteBypasses.add(logKey); if (loggedWriteBypasses.size > 512) loggedWriteBypasses.delete(loggedWriteBypasses.values().next().value!);
+      logger?.(indexOnly ? "git monitor bypassed for index-only read" : "git monitor bypassed for write", {
+        repoRoot: root, command: command.command, reason: indexOnly ? "index-only-comparison" : "builtin-ipc-can-block-mutations" });
+    }
+  } else ready = await ensureOwnedFsmonitor(root, options, globals, background);
   if (!active || generation !== current) throw new GitError("Git session closed before command startup.", "", "", Object.assign(new Error("Session closed."), { code: "ABORT_ERR", killed: true }));
   if (ready !== false) return { options };
   const position = gitCommandIndex(args);
@@ -126,7 +154,8 @@ async function prepare(root: string, key: string, options: RunGitOptions, curren
   const controller = new AbortController(); controllers.add(controller);
   preparationSignals.add(controller.signal);
   const readOptions: RunGitOptions = { executable: options.executable, env: options.env, readTimeoutMs: 2000, retryOnLock: false, signal: controller.signal };
-  let entry: MonitorPreparation | undefined;
+  const previous = prepared.get(key);
+  let entry: MonitorPreparation | undefined = previous?.owned ? previous : undefined;
   let monitor: Promise<void> | undefined;
   let queryFailed = false;
   /** 모든 경로를 제외한 조회로 실제 IPC 응답만 확인한다. 파일 스캔·index 쓰기는 수행하지 않는다. */
@@ -137,38 +166,50 @@ async function prepare(root: string, key: string, options: RunGitOptions, curren
     } catch (error) { queryFailed = true; throw error; }
   };
   try {
-    let configured: string;
-    try { configured = (await runGit([...globals, "config", "--bool", "--get", "core.fsmonitor"], root, readOptions)).trim(); }
-    catch (error) {
-      // 사용자 hook 경로는 Git boolean이 아니므로 수명을 추측해 변경하지 않는다.
-      if (error instanceof GitError && /bad boolean config value|bad config value/i.test(error.stderr)) { useFallback(undefined); return undefined; }
-      throw error;
-    }
+    const configured = await settings.read(key, root, options, globals);
     if (!check()) return false;
-    if (configured !== "true") { prepared.set(key, { ready: false, foreground: false, expires: Date.now() + 5000 }); return false; }
+    if (configured !== true) {
+      await stopOwnedMonitor(entry);
+      if (!check()) return false;
+      if (configured === undefined) { prepared.delete(key); useFallback(undefined); return undefined; }
+      prepared.set(key, { ready: false, foreground: false, expires: Date.now() + 5000 }); return false;
+    }
     // 첫 private index는 전체 스캔으로 정확히 읽는다. 느린 FSEvents/IPC 확인은 이 결과의 선행 조건이 아니다.
     useFallback(false);
     let listening = false;
-    try { await runGit(["fsmonitor--daemon", "status"], root, readOptions); listening = true; }
+    try { await runGit([...globals, "fsmonitor--daemon", "status"], root, readOptions); listening = true; }
     catch (error) { if (!(error instanceof GitError) || error.code !== 1 || !check()) throw error; }
     if (listening) {
       if (!check()) return false;
       // status는 socket 연결만 확인하므로 FSEvents 응답이 막힌 daemon도 성공할 수 있다.
       await confirmQuery();
       if (!check()) return false;
-      // 같은 새로고침의 status/diff/ls-files마다 추가 Git 두 개를 실행하지 않는다.
-      prepared.set(key, { ready: true, foreground: false, expires: Date.now() + 5000 }); return true;
+      // 소유 자식도 수명과 건강을 분리한다. 이전 child가 종료됐으면 성공한 probe로 복구 상태를 덮지 않는다.
+      if (entry?.owned) {
+        if (prepared.get(key) !== entry || entry.owned.controller.signal.aborted) return false;
+        entry.ready = true; entry.expires = Date.now() + 5000;
+      } else prepared.set(key, { ready: true, foreground: false, expires: Date.now() + 5000 });
+      return true;
     }
+    if (entry?.owned) { queryFailed = true; throw new Error("The owned fsmonitor no longer has a listening endpoint."); }
     entry = { ready: false, foreground: true, expires: 0 }; prepared.set(key, entry);
     const own = entry;
-    monitor = runGit(["fsmonitor--daemon", "run", "--no-detach"], root, { executable: options.executable, env: options.env, retryOnLock: false, signal: controller.signal })
+    monitor = runGit([...globals, "fsmonitor--daemon", "run", "--no-detach"], root, { executable: options.executable, env: options.env, retryOnLock: false, signal: controller.signal })
       .then(() => undefined)
-      .catch(() => { logger?.("owned git monitor exited", { repoRoot: root }); })
-      .finally(() => { controllers.delete(controller); if (prepared.get(key) === own) prepared.delete(key); });
+      .catch(() => undefined)
+      .finally(() => {
+        controllers.delete(controller);
+        if (prepared.get(key) === own) {
+          if (check()) prepared.set(key, { ready: false, foreground: false, expires: Date.now() + 60_000 });
+          else prepared.delete(key);
+        }
+        logger?.("owned git monitor exited", { repoRoot: root, reason: controller.signal.aborted ? "owned-stop" : "unexpected-exit" });
+      });
+    entry.owned = { controller, completion: monitor };
     for (let attempt = 0; attempt < 10 && check() && prepared.get(key) === entry; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 50));
       try {
-        await runGit(["fsmonitor--daemon", "status"], root, readOptions);
+        await runGit([...globals, "fsmonitor--daemon", "status"], root, readOptions);
       } catch (error) {
         // 아직 없는 소켓(exit=1)만 재확인한다. 시간 초과/IPC 오류를 반복하면 새 Git 실행 지연이 누적된다.
         if (!(error instanceof GitError) || error.code !== 1) break;
@@ -177,16 +218,30 @@ async function prepare(root: string, key: string, options: RunGitOptions, curren
       if (!check() || prepared.get(key) !== entry) return false;
       try { await confirmQuery(); } catch { break; }
       if (!check() || prepared.get(key) !== entry) return false;
-      entry.ready = true;
+      entry.ready = true; entry.expires = Date.now() + 5000;
       logger?.("owned git monitor ready", { repoRoot: root }); return true;
     }
     // 시작만 하고 ready가 되지 않는 child를 남기지 않고 실제 close 후 fallback을 반환한다.
     controller.abort(); await monitor;
-  } catch { /* 설정/미지원 Git/보안 계층 지연은 command-scope false로 복구한다. */ }
-  finally { preparationSignals.delete(controller.signal); if (!entry || prepared.get(key) !== entry) controllers.delete(controller); }
-  if (check() && (!entry || prepared.get(key) !== entry)) prepared.set(key, { ready: false, foreground: false, expires: Date.now() + (queryFailed ? 60_000 : 5000) });
+  } catch {
+    // 이전에 ready였던 자식이 나중에 멈춘 경우도 우리 controller만 중단하고 실제 close 뒤에 우회한다.
+    await stopOwnedMonitor(entry);
+  }
+  finally {
+    preparationSignals.delete(controller.signal);
+    if (controller.signal.aborted && entry?.owned?.controller === controller) await entry.owned.completion;
+    if (entry?.owned?.controller !== controller || controller.signal.aborted) controllers.delete(controller);
+  }
+  const latest = prepared.get(key);
+  if (check() && (!latest || latest === previous || latest === entry)) prepared.set(key, { ready: false, foreground: false, expires: Date.now() + (queryFailed ? 60_000 : 5000) });
   logger?.("git monitor startup bypassed", { repoRoot: root, reason: queryFailed ? "unresponsive-query" : "not-ready-or-unavailable" });
   return false;
+}
+
+/** 등록된 우리 foreground 자식만 취소하고 close까지 기다린다. 기존 사용자/다른 앱 daemon은 건드리지 않는다. */
+async function stopOwnedMonitor(entry: MonitorPreparation | undefined): Promise<void> {
+  if (!entry?.owned) return;
+  entry.owned.controller.abort(); await entry.owned.completion;
 }
 
 /** command-scope의 마지막 fsmonitor 값을 argv>env 순서로 읽고 파일 인자·커밋 본문은 검사하지 않는다. */

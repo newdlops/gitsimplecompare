@@ -1,10 +1,11 @@
 // 검색·PR·reflog 점프가 사용할 bounded Graph window 조회를 패널 상태에서 분리한 모듈.
 // - Git 조회와 branch ref 필터링만 담당하고, 선택/스크롤/게시 여부는 GraphPanel이 결정한다.
-import { loadCommitWindowAroundWithRange } from "../git/gitLogWindow";
+import { loadCommitWindowForCandidates, loadLocalCommitWindowForCandidates } from "../git/gitLogWindow";
 import type { Commit } from "../graph/graphTypes";
 import { filterCommitRefs } from "./graphBranchFilter";
 import type { ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
+import { logInfo } from "../ui/outputLog";
 
 /** 일반 ref 범위에서 target 주변 commit과 전체 offset을 보존한 결과다. */
 export interface GraphCommitWindowResult {
@@ -36,26 +37,20 @@ export async function loadFilteredGraphCommitWindow(
   pageSize: number,
   signal?: AbortSignal
 ): Promise<GraphCommitWindowResult | undefined> {
-  for (const hash of hashes) {
-    signal?.throwIfAborted();
-    const targetHash = hash.trim();
-    const window = await loadCommitWindowAroundWithRange(
-      repoRoot,
-      targetHash,
-      { before: 80, after: pageSize, refs: branchFilter.refs, signal }
-    ).catch(error => {
-      if (signal?.aborted) throw error;
-      return { commits: [], startIndex: 0, targetIndex: -1, totalCount: 0 };
-    });
-    if (!window.commits.some((commit) => commit.hash === targetHash)) continue;
-    return {
-      hash: targetHash,
-      commits: filterCommitRefs(window.commits, branchFilter),
-      startIndex: window.startIndex,
-      totalCount: window.totalCount,
-    };
+  signal?.throwIfAborted();
+  if (branchFilter.empty || !hashes.length) return undefined;
+  let window = await loadCommitWindowForCandidates(repoRoot, hashes,
+    { before: 80, after: pageSize, refs: branchFilter.refs, signal });
+  if (!window.hash && branchFilter.mode === "all" && !branchFilter.filtersRefs) {
+    const local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
+    if (local) {
+      window = local;
+      logInfo("graph commit window loaded from local object", { repoRoot, candidateCount: hashes.length, commitCount: local.commits.length });
+    }
   }
-  return undefined;
+  if (!window.hash || !window.commits.some(commit => commit.hash === window.hash)) return undefined;
+  return { hash: window.hash, commits: filterCommitRefs(window.commits, branchFilter),
+    startIndex: window.startIndex, totalCount: window.totalCount };
 }
 
 /**

@@ -17,6 +17,7 @@ async function fixture(t: TestContext, fail: boolean | "never-ready" | "existing
   const executable = path.join(root, "git-fixture"), ready = path.join(root, "monitor.pid"), count = path.join(root, "starts"), preparing = path.join(root, "preparing");
   const statusChecks = path.join(root, "status-checks");
   const queryChecks = path.join(root, "query-checks"), queryPid = path.join(root, "query.pid");
+  const stallQuery = path.join(root, "stall-query");
   await writeFile(executable, `#!${process.execPath}
 const fs = require('node:fs');
   const args = process.argv.slice(2);
@@ -42,7 +43,7 @@ else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   fs.appendFileSync(${JSON.stringify(queryChecks)}, 'query\\n');
   fs.writeFileSync(${JSON.stringify(queryPid)}, String(process.pid));
   if (${fail === "query-error" || fail === "owned-query-error"}) process.exit(1);
-  if (${fail === "unresponsive" || fail === "owned-unresponsive"}) setInterval(()=>{},1000);
+  if (${fail === "unresponsive" || fail === "owned-unresponsive"} || fs.existsSync(${JSON.stringify(stallQuery)})) setInterval(()=>{},1000);
 } else {
   let value='inherited';
   for(let i=0;i<Number(process.env.GIT_CONFIG_COUNT||0);i++) if(process.env['GIT_CONFIG_KEY_'+i]==='core.fsmonitor') value=process.env['GIT_CONFIG_VALUE_'+i];
@@ -56,7 +57,7 @@ else if (command === 'fsmonitor--daemon' && args.includes('status')) {
   });
   t.after(setGitExecutableResolver(() => executable));
   const reset = setOwnedFsmonitorPolicy(() => undefined); t.after(reset);
-  return { root, executable, ready, count, preparing, reset, statusChecks, queryChecks, queryPid };
+  return { root, executable, ready, count, preparing, reset, statusChecks, queryChecks, queryPid, stallQuery };
 }
 
 test("ordinary index reads start one owned foreground monitor independently of idle cleanup settings", { skip: process.platform !== "darwin" }, async t => {
@@ -312,4 +313,82 @@ test("private status background preparation preserves a configured custom hook",
   assert.equal(await runGit(["status", "--porcelain=v2"], f.root, { env: { GIT_INDEX_FILE: index } }), "inherited");
   await assert.rejects(readFile(f.queryChecks), { code: "ENOENT" });
   await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});
+
+test("writes preserve the stalled-monitor cooldown instead of probing and stalling again after every commit", { skip: process.platform !== "darwin", timeout: 10000 }, async t => {
+  const f = await fixture(t, "unresponsive");
+  t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "false");
+  assert.equal(await runGit(["commit", "-m", "fixture"], f.root), "false");
+  assert.equal(await runGit(["diff"], f.root), "false");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query", "a completed write must not erase a known IPC failure");
+});
+
+test("an owned monitor which stalls after readiness is rechecked and closed before fallback", { skip: process.platform !== "darwin", timeout: 10000 }, async t => {
+  const f = await fixture(t); t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "inherited");
+  const pid = Number(await readFile(f.ready, "utf8"));
+  await writeFile(f.stallQuery, "stall");
+  const now = Date.now.bind(Date); t.mock.method(Date, "now", () => now() + 6000);
+  assert.equal(await runGit(["diff"], f.root), "false", "ownership is not a permanent health certificate");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim().split("\n").length, 2);
+  assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
+  assert.equal(await runGit(["diff"], f.root), "false");
+  assert.equal((await readFile(f.count, "utf8")).trim(), "start", "do not immediately restart a stalled owned daemon");
+});
+
+test("index writes bypass a configured builtin daemon without starting or waiting for it", { skip: process.platform !== "darwin", timeout: 10000 }, async t => {
+  const f = await fixture(t, "unresponsive"); t.after(() => gitProcesses.dispose());
+  for (const args of [["add", "--", "file"], ["commit", "-m", "fixture"], ["reset", "--keep", "HEAD"], ["cherry-pick", "HEAD"]]) {
+    assert.equal(await runGit(args, f.root), "false");
+  }
+  await assert.rejects(readFile(f.queryChecks), { code: "ENOENT" }, "a mutation must not wait for a monitor IPC probe");
+  await assert.rejects(readFile(f.count), { code: "ENOENT" });
+});
+
+test("a healthy owned monitor is rechecked after the health window without spawning another daemon", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t); t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["diff"], f.root), "inherited");
+  const pid = Number(await readFile(f.ready, "utf8"));
+  const now = Date.now.bind(Date); t.mock.method(Date, "now", () => now() + 6000);
+  assert.equal(await runGit(["status"], f.root), "inherited");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim().split("\n").length, 2);
+  assert.equal((await readFile(f.count, "utf8")).trim(), "start");
+  assert.equal(gitProcesses.ownsMonitor(pid, f.root), true);
+});
+
+test("an unexpected owned daemon exit enters cooldown instead of restarting on every read", { skip: process.platform !== "darwin", timeout: 10000 }, async t => {
+  const f = await fixture(t); t.after(() => gitProcesses.dispose());
+  await runGit(["diff"], f.root);
+  const pid = Number(await readFile(f.ready, "utf8"));
+  assert.equal(gitProcesses.ownsMonitor(pid, f.root), true);
+  process.kill(pid, "SIGTERM");
+  for (let attempt = 0; attempt < 200 && gitProcesses.ownsMonitor(pid, f.root); attempt++) await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(await runGit(["diff"], f.root), "false");
+  assert.equal((await readFile(f.count, "utf8")).trim(), "start");
+});
+
+test("inherited custom monitor hooks are preserved by index writes and their setting is read once", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "hook"); t.after(() => gitProcesses.dispose());
+  assert.equal(await runGit(["add", "--", "file"], f.root), "inherited");
+  assert.equal(await runGit(["commit", "-m", "fixture"], f.root), "inherited");
+  assert.equal((await readFile(f.preparing, "utf8")).trim(), "ready");
+  await assert.rejects(readFile(f.count), { code: "ENOENT" });
+  await assert.rejects(readFile(f.queryChecks), { code: "ENOENT" });
+});
+
+test("different environment socket directories do not share a daemon health certificate", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "existing"); t.after(() => gitProcesses.dispose());
+  for (const value of ["/fixture/socket-one", "/fixture/socket-two"]) {
+    await runGit(["diff"], f.root, { env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "fsmonitor.socketDir", GIT_CONFIG_VALUE_0: value } });
+  }
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim().split("\n").length, 2);
+});
+
+test("cached and staged index comparisons bypass IPC while a file named --cached remains an ordinary working tree read", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t, "existing"); t.after(() => gitProcesses.dispose());
+  for (const flag of ["--cached", "--staged"]) assert.equal(await runGit(["diff", flag, "--name-only", "--", "file"], f.root), "false");
+  await assert.rejects(readFile(f.queryChecks), { code: "ENOENT" });
+  assert.equal(await runGit(["diff", "--", "--cached"], f.root), "inherited");
+  assert.equal((await readFile(f.queryChecks, "utf8")).trim(), "query");
 });

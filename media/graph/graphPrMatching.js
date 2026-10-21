@@ -5,6 +5,8 @@
 
   let focusRequestSequence = 0;
   let pendingFocusRequest;
+  let focusStatus;
+  let focusedHash = "";
 
   /**
    * 현재 graph row에 PR badge와 강조 class를 다시 반영한다.
@@ -33,6 +35,8 @@
       const node = root.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
       node?.classList.add("pr-node", prColorClass(prs[0]?.number));
     });
+    if (focusedHash) decorateFocusedRow(findCommitRow(focusedHash));
+    applyFocusStatus();
   }
 
   /**
@@ -115,11 +119,12 @@
    * @returns {void}
    */
   function focusPullRequestRow(pr) {
+    cancelFocus();
     const row = pr ? findPullRequestRow(pr) : null;
     if (!row) {
       clearFocusedPullRequest();
       if (pr) {
-        requestCommitVisibility(rowHashes(pr));
+        requestCommitVisibility(rowHashes(pr), pr.number);
       }
       return;
     }
@@ -133,6 +138,7 @@
    * @returns {void}
    */
   function focusCommitRow(hash, fromVisibility) {
+    if (!fromVisibility) cancelFocus();
     const row = findCommitRow(hash);
     if (!row) {
       clearFocusedPullRequest();
@@ -147,15 +153,17 @@
   /**
    * graph에 없는 commit 후보를 확장이 직접 읽어 오도록 메시지를 보낸다.
    * @param {string[]} hashes 우선순위대로 확인할 commit OID 후보
+   * @param {number|undefined} number 진행/실패 안내를 붙일 PR 카드 번호
    * @returns {void}
    */
-  function requestCommitVisibility(hashes) {
+  function requestCommitVisibility(hashes, number) {
     const candidates = uniqueHashes(hashes);
     if (!candidates.length) {
-      return;
+      showFocusFailure(number); return;
     }
     const requestId = `pr-focus-${++focusRequestSequence}`;
-    pendingFocusRequest = { requestId, hashes: candidates };
+    pendingFocusRequest = { requestId, hashes: candidates, number };
+    focusStatus = { number, loading: true, restoreFocus: document.activeElement?.dataset.focusPr === String(number) }; applyFocusStatus();
     window.GscGraphPostMessage?.({ type: "ensureCommitVisible", requestId, hashes: candidates });
   }
 
@@ -168,10 +176,18 @@
     if (!pendingFocusRequest || message.requestId !== pendingFocusRequest.requestId) {
       return;
     }
-    pendingFocusRequest = undefined;
-    if (message.found && message.hash) {
-      requestAnimationFrame(() => focusCommitRow(message.hash, true));
+    const request = pendingFocusRequest;
+    if (!message.found || !request.hashes.includes(message.hash)) {
+      pendingFocusRequest = undefined; showFocusFailure(request.number); return;
     }
+    // host 응답은 DOM 게시 뒤 오지만 너비/장식 갱신도 같은 frame에 예약될 수 있다.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (pendingFocusRequest !== request) return;
+      pendingFocusRequest = undefined;
+      const row = findCommitRow(message.hash);
+      if (row) { focusStatus = undefined; applyFocusStatus(); highlightCommitRow(row); }
+      else showFocusFailure(request.number);
+    }));
   }
 
   /**
@@ -207,10 +223,62 @@
    */
   function highlightCommitRow(row) {
     clearFocusedPullRequest();
+    focusedHash = row.dataset.hash || ""; decorateFocusedRow(row);
+    const graph = document.getElementById("graph"), detail = document.getElementById("detail");
+    // overlay drawer 아래로 스크롤만 하면 사용자는 결과를 볼 수 없다. side pane은 그대로 유지한다.
+    if (detail && getComputedStyle(detail).position === "fixed") window.GscGraphDetailHost?.hide?.();
+    if (graph) {
+      graph.scrollTop = Math.max(0, row.offsetTop - (graph.clientHeight - row.offsetHeight) / 2);
+      graph.focus({ preventScroll: true });
+    }
+  }
+
+  /** metadata 갱신으로 row가 교체돼도 강조만 복원한다. 스크롤/키보드 포커스는 다시 빼앗지 않는다. */
+  function decorateFocusedRow(row) {
+    if (!row) return;
     row.classList.add("pr-focused-row");
-    const hash = row.dataset.hash || "";
-    document.querySelector(`.node[data-hash="${cssEscape(hash)}"]`)?.classList.add("pr-focused-node");
-    row.scrollIntoView({ block: "center", inline: "nearest" });
+    document.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`)?.classList.add("pr-focused-node");
+  }
+
+  /** 최신 로컬 이동·저장소 교체가 이전 비동기 응답을 무효화하고 진행/오류 UI를 해제한다. */
+  function cancelFocus() {
+    if (pendingFocusRequest) window.GscGraphPostMessage?.({ type: "cancelCommitFocus", requestId: pendingFocusRequest.requestId });
+    pendingFocusRequest = undefined; focusStatus = undefined; clearFocusedPullRequest(); applyFocusStatus();
+  }
+
+  /** drawer를 닫을 때 진행 중 조회만 취소하며, 이동 성공 직후의 row 강조는 유지한다. */
+  function cancelPendingFocus() { if (pendingFocusRequest) cancelFocus(); }
+
+  /** 실패를 성공처럼 조용히 넘기지 않고 현재 PR 카드에서 다음 행동과 재시도를 안내한다. */
+  function showFocusFailure(number) {
+    focusStatus = { number, loading: false, restoreFocus: focusStatus?.restoreFocus, message: window.GscPrStackI18n?.commitNotAvailableInGraph ||
+      "Could not locate the commit in the current graph. Fetch the source branch or adjust branch filters, then try again." };
+    applyFocusStatus();
+  }
+
+  /** 새 PR 목록 DOM에도 같은 진행 상태를 적용하고 제목·tooltip·aria 라벨을 함께 복원한다. */
+  function applyFocusStatus() {
+    document.querySelectorAll("#detail [data-focus-pr]").forEach(button => {
+      const busy = !!focusStatus?.loading && Number(button.dataset.focusPr) === Number(focusStatus.number);
+      button.dataset.prJumpIdleTitle ||= button.title;
+      const title = busy ? String(window.GscPrStackI18n?.loadingPrJump || "Locating pull request #{0} in the graph…")
+        .replace("{0}", button.dataset.focusPr) : button.dataset.prJumpIdleTitle;
+      button.title = title; button.dataset.tooltip = title; button.setAttribute("aria-label", title); button.disabled = busy;
+      if (busy) button.setAttribute("aria-busy", "true"); else button.removeAttribute("aria-busy");
+      const icon = button.querySelector(".codicon");
+      if (icon) icon.className = busy ? "codicon codicon-loading" +
+        (window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "" : " codicon-modifier-spin") : "codicon codicon-target";
+      if (!busy && focusStatus?.restoreFocus && Number(button.dataset.focusPr) === Number(focusStatus.number)
+        && document.activeElement === document.body) { button.focus({ preventScroll: true }); focusStatus.restoreFocus = false; }
+    });
+    const host = focusStatus?.number ? document.querySelector(`#detail [data-show-pr="${cssEscape(focusStatus.number)}"]`)
+      : document.querySelector("#detail [data-focus-commit]")?.closest(".pr-detail-section");
+    document.querySelectorAll(".pr-jump-message").forEach(node => { if (!focusStatus?.message || node.parentElement !== host) node.remove(); });
+    if (host && focusStatus?.message) {
+      let notice = host.querySelector(".pr-jump-message");
+      if (!notice) { notice = document.createElement("p"); notice.className = "pr-empty pr-jump-message"; notice.setAttribute("role", "status"); host.appendChild(notice); }
+      if (notice.textContent !== focusStatus.message) notice.textContent = focusStatus.message;
+    }
   }
 
   /**
@@ -218,6 +286,7 @@
    * @returns {void}
    */
   function clearFocusedPullRequest() {
+    focusedHash = "";
     document.querySelectorAll(".pr-focused-row").forEach((el) => el.classList.remove("pr-focused-row"));
     document.querySelectorAll(".pr-focused-node").forEach((el) => el.classList.remove("pr-focused-node"));
   }
@@ -268,5 +337,7 @@
     handleCommitVisibility,
     matchingHashes,
     rowHashes,
+    cancelFocus,
+    cancelPendingFocus,
   };
 })();

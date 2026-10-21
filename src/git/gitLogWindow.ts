@@ -3,6 +3,7 @@
 import { Commit } from "../graph/graphTypes";
 import { ALL_GRAPH_REF_ARGS, runGitWithRevisions } from "./revisionInput";
 import { gitLogPrettyFormat, parseGitLogOutput } from "./gitLogParse";
+import { runGitWithInput } from "./gitExec";
 
 /** 특정 commit 주변 window 크기 옵션 */
 export interface CommitWindowOptions {
@@ -20,6 +21,9 @@ export interface CommitWindowResult {
   targetIndex: number;
   totalCount: number;
 }
+
+/** 여러 후보 중 실제 window의 중심으로 선택된 OID. 없으면 commits도 빈 배열이다. */
+export interface CandidateCommitWindowResult extends CommitWindowResult { hash?: string }
 
 /**
  * 전체 graph 순서에서 대상 commit 주변 slice 를 읽어 graph window 를 만든다.
@@ -46,18 +50,61 @@ export async function loadCommitWindowAroundWithRange(
   hash: string,
   options: CommitWindowOptions
 ): Promise<CommitWindowResult> {
-  const targetHash = hash.trim();
+  const { hash: _selected, ...window } = await loadCommitWindowForCandidates(repoRoot, [hash], options);
+  return window;
+}
+
+/**
+ * 후보가 많아도 전체 topo-order를 한 번만 읽고, 후보 우선순위에서 처음 존재하는 commit 주변을 읽는다.
+ * @param repoRoot 저장소 루트 @param candidates merge 결과·PR head 순서의 OID 후보
+ * @param options 앞/뒤 window 크기와 현재 ref 범위·취소 신호
+ * @returns 선택 OID와 실제 graph 위치. 후보가 없으면 Git을 실행하지 않는다.
+ */
+export async function loadCommitWindowForCandidates(
+  repoRoot: string, candidates: readonly string[], options: CommitWindowOptions
+): Promise<CandidateCommitWindowResult> {
+  options.signal?.throwIfAborted();
+  const priorities = new Map(Array.from(new Set(candidates.map(hash => hash.trim()).filter(Boolean))).map((hash, index) => [hash, index]));
+  if (!priorities.size) return { commits: [], startIndex: 0, targetIndex: -1, totalCount: 0 };
   const before = Math.max(0, Math.floor(options.before));
   const after = Math.max(1, Math.floor(options.after));
   const refs = refArgs(options.refs || []);
   const hashes = await loadOrderedHashes(repoRoot, refs, options.signal);
-  const index = hashes.indexOf(targetHash);
+  let index = -1, priority = Infinity;
+  for (let at = 0; at < hashes.length; at++) {
+    const candidatePriority = priorities.get(hashes[at]);
+    if (candidatePriority !== undefined && candidatePriority < priority) {
+      index = at; priority = candidatePriority;
+      if (priority === 0) break;
+    }
+  }
   if (index < 0) {
     return { commits: [], startIndex: 0, targetIndex: -1, totalCount: hashes.length };
   }
   const startIndex = Math.max(0, index - before);
   const commits = await loadCommitSlice(repoRoot, startIndex, before + after, refs, options.signal);
-  return { commits, startIndex, targetIndex: index, totalCount: hashes.length };
+  return { hash: hashes[index], commits, startIndex, targetIndex: index, totalCount: hashes.length };
+}
+
+/**
+ * 브랜치 삭제 뒤 로컬 object로만 남은 PR commit을 한 번의 batch-check와 제한된 log로 찾는다.
+ * @param repoRoot 저장소 루트 @param candidates 우선순위대로 확인할 전체 OID(40/64자리만 허용)
+ * @param limit 중심 commit과 조상을 표시할 최대 개수 @param signal 폐기된 Graph 읽기 취소
+ * @returns 로컬에 존재하는 첫 commit window. lazy fetch·ref/index/config 쓰기는 하지 않는다.
+ */
+export async function loadLocalCommitWindowForCandidates(
+  repoRoot: string, candidates: readonly string[], limit: number, signal?: AbortSignal
+): Promise<CandidateCommitWindowResult | undefined> {
+  signal?.throwIfAborted();
+  const hashes = Array.from(new Set(candidates.map(hash => hash.trim().toLowerCase()).filter(hash => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(hash))));
+  if (!hashes.length) return undefined;
+  const output = await runGitWithInput(["cat-file", "--batch-check=%(objectname) %(objecttype)"], repoRoot,
+    hashes.join("\n") + "\n", { signal, env: { GIT_NO_LAZY_FETCH: "1" } });
+  const lines = output.trim().split("\n");
+  const hash = hashes.find((candidate, index) => lines[index] === `${candidate} commit`);
+  if (!hash) return undefined;
+  const commits = await loadCommitSlice(repoRoot, 0, Math.max(1, Math.floor(limit)), [hash], signal, true);
+  return { hash, commits, startIndex: 0, targetIndex: commits.findIndex(commit => commit.hash === hash), totalCount: commits.length };
 }
 
 /**
@@ -113,7 +160,8 @@ async function loadCommitSlice(
   skip: number,
   limit: number,
   refs: string[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  localOnly = false
 ): Promise<Commit[]> {
   const out = await runGitWithRevisions([
     "log",
@@ -123,7 +171,7 @@ async function loadCommitSlice(
     "-z",
     `-n${limit}`,
     ...(skip > 0 ? [`--skip=${skip}`] : []),
-  ], explicitRefs(refs), repoRoot, { signal });
+  ], explicitRefs(refs), repoRoot, { signal, ...(localOnly ? { env: { GIT_NO_LAZY_FETCH: "1" } } : {}) });
   return parseGitLogOutput(out, true);
 }
 

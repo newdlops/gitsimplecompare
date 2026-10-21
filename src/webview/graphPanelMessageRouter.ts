@@ -82,7 +82,9 @@ export interface GraphPanelMessageRouterDeps {
   /** 후보 hash 중 이미 누적 그래프에 있는 첫 hash를 반환한다. */
   loadedCommitHash: (hashes: string[]) => string | undefined;
   /** 후보 commit 주변 window를 새 그래프로 불러온다. */
-  loadCommitWindow: (hashes: string[]) => Promise<string | undefined>;
+  loadCommitWindow: (hashes: string[], requestId?: string) => Promise<string | undefined>;
+  /** 해당 PR 이동의 읽기만 취소한다. 이미 시작한 다른 Graph 작업에는 영향이 없다. */
+  cancelCommitFocus?: (requestId: string) => void;
   /** reflog commit 주변 복구용 window를 불러온다. */
   loadReflogCommitWindow: (hash: string) => Promise<string | undefined>;
   /** 일반 Git action 뒤 Graph와 Changes를 갱신한다. */
@@ -272,6 +274,8 @@ export class GraphPanelMessageRouter {
           { repoRoot: this.repoRoot, post: this.deps.post },
           { includeUnreachable: message.includeUnreachable }
         );
+      } else if (message.type === "cancelCommitFocus") {
+        this.deps.cancelCommitFocus?.(message.requestId);
       } else if (message.type === "ensureCommitVisible") {
         await ensureGraphCommitVisible({
           repoRoot: this.repoRoot,

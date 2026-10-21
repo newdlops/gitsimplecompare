@@ -1,7 +1,7 @@
 // graph commit 점프 요청을 처리하는 보조 모듈.
 // - 웹뷰가 요청한 commit 이 아직 로드되지 않았으면 graph 페이지를 더 읽은 뒤 발견 결과를 돌려준다.
 import { getHeadHash } from "../git/gitHead";
-import { logInfo } from "../ui/outputLog";
+import { logError, logInfo } from "../ui/outputLog";
 import { ToWebviewMessage } from "./graphProtocol";
 
 /** commit visibility 보장에 필요한 graphPanel 콜백 묶음 */
@@ -10,7 +10,7 @@ export interface EnsureGraphCommitVisibleOptions {
   requestId: string;
   hashes: string[];
   loadedHash(hashes: string[]): string | undefined;
-  loadWindow(hashes: string[]): Promise<string | undefined>;
+  loadWindow(hashes: string[], requestId?: string): Promise<string | undefined>;
   post(message: ToWebviewMessage): void;
 }
 
@@ -26,7 +26,14 @@ export async function ensureGraphCommitVisible(
     options.post({ type: "commitVisibility", requestId: options.requestId, found: false });
     return;
   }
-  const found = options.loadedHash(hashes) || await options.loadWindow(hashes);
+  let found: string | undefined;
+  try { found = options.loadedHash(hashes) || await options.loadWindow(hashes, options.requestId); }
+  catch (error) {
+    // 일반 error 메시지는 drawer 전체를 교체한다. PR 문맥과 재시도 버튼은 남기고 OUTPUT에 원인을 기록한다.
+    logError("graph commit visibility failed", error, { repoRoot: options.repoRoot, requestId: options.requestId });
+    options.post({ type: "commitVisibility", requestId: options.requestId, found: false });
+    return;
+  }
   options.post({
     type: "commitVisibility",
     requestId: options.requestId,

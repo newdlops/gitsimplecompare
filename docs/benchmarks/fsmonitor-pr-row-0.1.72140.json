@@ -1,0 +1,417 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.72140",
+  "baselineCommit": "e0da1d03df04faf3cf1ad2a7f032e08a924d0d09",
+  "wholeGoalComplete": false,
+  "fixes": {
+    "fsmonitor": {
+      "platform": "macOS",
+      "healthTtlMs": 5000,
+      "failedQueryCooldownMs": 60000,
+      "writeCooldownInvalidationFixed": true,
+      "ownedLateStallRechecked": true,
+      "unexpectedExitCooldown": true,
+      "builtinIndexMutationsAndCachedDiffBypass": true,
+      "customHooksPreserved": true,
+      "repositoryConfigUnchanged": true,
+      "externalDaemonsNeverStopped": true
+    },
+    "prJump": {
+      "closeOverlayDrawer": true,
+      "focusGraph": true,
+      "mergeResultPriority": true,
+      "loadingAndRetry": true,
+      "localizedEnglishAndKorean": true,
+      "cancelOnlyMatchingWindowRequest": true,
+      "ignoreStaleReplies": true,
+      "preserveHighlightWithoutStealingViewport": true,
+      "historyTraversalsPerCandidateSet": 1,
+      "localObjectBatchCheck": true,
+      "unreferencedCommitFallback": true,
+      "explicitFiltersPreserved": true,
+      "automaticFetch": false
+    }
+  },
+  "checks": {
+    "relatedNodeUniquePass": 82,
+    "relatedNodeRemainingFail": 0,
+    "nodeCancelled": 0,
+    "nodeSkipped": 0,
+    "nodeRuns": [
+      {
+        "log": "gsc-goal40-final-node.log",
+        "pass": 79,
+        "fail": 2,
+        "reason": "Two process-inspection tests hit sandbox spawn EPERM; retained and rerun with permission."
+      },
+      {
+        "log": "gsc-goal40-graph-process-escalated-node.log",
+        "pass": 5,
+        "fail": 0
+      },
+      {
+        "log": "gsc-goal40-pr-jump-final-node.log",
+        "pass": 11,
+        "fail": 0,
+        "note": "Final candidate/error/cancellation implementation plus process lifecycle. The 64 fsmonitor cases and source stayed unchanged."
+      },
+      {
+        "log": "gsc-goal40-pr-matching-final-node.log",
+        "pass": 7,
+        "fail": 0,
+        "note": "Final PR merge/head candidate priority regression."
+      }
+    ],
+    "typecheck": true,
+    "browserPass": 28,
+    "browserFail": 0,
+    "browserRuns": [
+      {
+        "log": "gsc-goal40-pr-jump-expanded-browser.log",
+        "pass": 12
+      },
+      {
+        "log": "gsc-goal40-pr-regression-browser.log",
+        "pass": 16
+      }
+    ],
+    "liveProductionCallback": {
+      "mode": "headless-production-CSP-registered-callback-Native-Git",
+      "externalGitHub": "fixture metadata only",
+      "passed": true,
+      "results": [
+        {
+          "width": 390,
+          "height": 844,
+          "nativeParents": true,
+          "nativeRefs": true,
+          "visible": true,
+          "focused": true,
+          "newWindowRequests": 1,
+          "rendered": {
+            "mode": "headless-production-html",
+            "renderedRows": 2,
+            "exactRefs": true,
+            "exactRemoteTags": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true
+          }
+        },
+        {
+          "width": 768,
+          "height": 1024,
+          "nativeParents": true,
+          "nativeRefs": true,
+          "visible": true,
+          "focused": true,
+          "newWindowRequests": 0,
+          "rendered": {
+            "mode": "headless-production-html",
+            "renderedRows": 2,
+            "exactRefs": true,
+            "exactRemoteTags": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true
+          }
+        },
+        {
+          "width": 1440,
+          "height": 900,
+          "nativeParents": true,
+          "nativeRefs": true,
+          "visible": true,
+          "focused": true,
+          "newWindowRequests": 0,
+          "rendered": {
+            "mode": "headless-production-html",
+            "renderedRows": 2,
+            "exactRefs": true,
+            "exactRemoteTags": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true
+          }
+        }
+      ],
+      "noFocusOrReload": true,
+      "unchanged": {
+        "head": true,
+        "refs": true,
+        "index": true,
+        "config": true
+      },
+      "timingNotMeasured": true,
+      "note": "Functional validation only; original generic renderer timing fields are omitted because later jumps reuse the existing window."
+    },
+    "lint": {
+      "passed": false,
+      "available": false,
+      "reason": "npm run lint exits 127 because eslint is not installed or declared by the existing project."
+    }
+  },
+  "reproduction": {
+    "fsmonitor": {
+      "before": {
+        "pass": 25,
+        "fail": 3
+      },
+      "after": {
+        "pass": 28,
+        "fail": 0
+      },
+      "nativePrUndoInitialFailures": 2,
+      "nativePrUndoAfterCachedDiffBypassPass": 3
+    },
+    "prJump": {
+      "beforeViewportFailures": 3,
+      "afterViewportPass": 3
+    },
+    "liveHarnessInitialFailure": "The initially open narrow drawer intercepted the toolbar click. The final harness closes it with Escape before opening the PR list; no force-click, injected message or product workaround was used."
+  },
+  "visualQa": {
+    "viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1440,
+        900
+      ]
+    ],
+    "screenshotsInspected": true,
+    "loadingAndKoreanErrorInspected": true,
+    "productionCspScreenshotsInspected": true,
+    "keyboardAndOrdinaryClicks": true,
+    "reducedMotion": true,
+    "axeScopedViolations": 0,
+    "themes": [
+      "light",
+      "high-contrast",
+      "dark"
+    ],
+    "physicalTouchTested": false,
+    "skills": [
+      "ui-design-workflow",
+      "impeccable audit"
+    ],
+    "audit": {
+      "score": 18,
+      "outOf": 20,
+      "dimensions": {
+        "accessibility": 3,
+        "performance": 4,
+        "responsive": 3,
+        "theming": 4,
+        "integrity": 4
+      },
+      "newBlockingFindings": 0,
+      "existingAdvisory": "Unchanged PR detail h2 font-size 15px is outside the documented type ramp. Preserve existing presentation in this navigation fix.",
+      "contextDrift": "Impeccable reports a stale design.json sidecar; not changed as a side effect."
+    }
+  },
+  "limitations": [
+    "No real GitHub/network latency measurement; PR metadata is a fixture in the production callback check.",
+    "No general operation-speed, CPU or RSS improvement is claimed.",
+    "Read health is cached for five seconds; a daemon can stall during that interval. Existing read deadlines remain in effect.",
+    "The app bypasses or recovers from fsmonitor IPC failures; this does not fix Git or macOS itself.",
+    "No Marketplace status query, foreground Extension Development Host, forced reload or OS focus change.",
+    "Captain and all other real repositories, external monitors, user stashes, recovery refs and preserved PR worktrees were not mutated."
+  ],
+  "sourceSha256": {
+    "package.json": "e3f028f9b7b5edb34dd63908112473d0f89d8a8b408cc75d5172aa20ac5600c0",
+    "package-lock.json": "e027a001fd0a6578a1cb27ba2fac8dbeafe8e793230b48f90bcbcd62368788da",
+    "l10n/bundle.l10n.ko.json": "8fd437f804015e05e255753663c36f6c1c9a60ddc5309f48cefb97776bea2996",
+    "media/graph/graphPr.css": "e161fa7e43be3b4faea5d7160e1a28c18ec0928f05b8038e8681523db9bdf951",
+    "media/graph/graphPr.js": "7071ef2510879efca12b2d2bbf475c40774011f3f900e9f889c905fd4036d566",
+    "media/graph/graphPrMatching.js": "2c9d95a9c439e30940aebde568d30f71919d7696ac641eb63095e9e38aa2cf3e",
+    "src/git/fsmonitorSettings.ts": "5e93cf7040545056d28930169d4db0febf499af5d46fcc0cff809f20f96943db",
+    "src/git/gitLogWindow.ts": "2e5e8534b4c4f2e3519339de17c6e5dbd73ab829a72ea2987825a8dd4716db8e",
+    "src/git/ownedFsmonitor.ts": "a1d7e85e34b7e93ae82377accaa72689a9d5e6d7eb1408a5e450f926f166741b",
+    "src/webview/graphCommitFocus.ts": "9a7be27685803932e82aba4a75077a00478e711462aa852fa54f12ce3876011a",
+    "src/webview/graphCommitWindowLoading.ts": "d7dea3ced0d63c80bfa5c0d8398f61890874b65483bbb202a2aa6e8bf68749e2",
+    "src/webview/graphHtml.ts": "cf8860dc54110a21e1cb0430cb76e5282272f195c39b38ea35fcb75ee7a093f7",
+    "src/webview/graphPageLoading.ts": "3a7caf3f8d8bd8000f3d58f5c6f886cdc226a4dd9cb4de8a2b921f61b837055d",
+    "src/webview/graphPanel.ts": "9c55e08e117ce0b39a73b6d612980b86c791fb6af92391e97b6d90f02dc9b707",
+    "src/webview/graphPanelMessageRouter.ts": "551fba70279a8ca74e83eb04f0b1d2ba1a2dd5f9598d034d378d9b2d17c51dac",
+    "src/webview/graphProtocol.ts": "778cc3ff38e01be99e85ba6de2e99851fd75ad3567c68f9261a5b174670a7aca",
+    "test/ownedFsmonitor.test.ts": "cabfa35e7998f9d3e887a8bbc565c7cd5dd1b05fd1d614808da235698378d92d",
+    "test/fsmonitorMutationNative.test.ts": "4ed9b90a625e15f1a67ba9d216233cd6caf5a7651d9b1e7f5d433f95f545d85e",
+    "test/graphCommitWindowCandidates.test.ts": "2cd0394da083431eb45ece41dfe4735932906e94a18322e29c5624ebc430640c",
+    "test/webview/prListHarness.ts": "76ea8e0eb25d026c3c3c3b491a64f4a923e9ad531d0ba7861bcede8318b7ffd7",
+    "test/webview/prRowJump.spec.ts": "864bc3aaf654bd42b3cdb47972f05732e818931f5e49aab825f6d699c8830e9b"
+  },
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-goal40-fsmonitor-before-node.log",
+      "bytes": 8882,
+      "sha256": "a2a25c64a4d2825a18ed10024d127e071edfd008e7eb4e18ffa838f46a4fc055"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-fsmonitor-after-node.log",
+      "bytes": 7020,
+      "sha256": "ded519d7e9b5ae0353fd2b83c03bb4cdc26b4efc1c8e9585739c3077044a70e3"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-fsmonitor-expanded-node.log",
+      "bytes": 15022,
+      "sha256": "5f260d3b5f9d16b6af3e2a049185de4365c5c900c516ba28cb5142e9abdcc83c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-native-pr-monitor-node.log",
+      "bytes": 2206,
+      "sha256": "bd7598811864c22581ee2609bb46801df128f72904ec0392459b684da143813e"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-native-pr-monitor-fixed-node.log",
+      "bytes": 1029,
+      "sha256": "867dace4b14dc8da4f784c60d64ac9e66c99c4702045146bcabe30ddec8fbc3a"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-before-browser.log",
+      "bytes": 8598,
+      "sha256": "d2935e574c8eea48d978d64b07f1c914ec28b374bab1e29c5655035ecc02656b"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-after-browser.log",
+      "bytes": 587,
+      "sha256": "5a271e6f89d1fb87536186cc2731c9c9c8861c0c861031b38cc9b4901a446c11"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-final-node.log",
+      "bytes": 22062,
+      "sha256": "99a662b09cbb36f8c3eaa0ae0c394d8f54d1063d3b2e905ac22f6dbc492537c5"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-graph-process-escalated-node.log",
+      "bytes": 1626,
+      "sha256": "cf8d888a2ba4fd99a84201d0b5e3c817ac0a3d37aa12fc286cbeea6aa0cc4aee"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-final-node.log",
+      "bytes": 3215,
+      "sha256": "4dd7f705d05fe0e9026700a2c1c00c7467a7ffce1eb46ab5ea8dbe59a1b37970"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-matching-final-node.log",
+      "bytes": 2011,
+      "sha256": "205fe8fc2c9e8aeda362c8244c6050ff80c8a42ff0dead35cc7086243982f693"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-types.log",
+      "bytes": 58,
+      "sha256": "0d3b31a546d528c0d69740c74874f72f19354c2bd4253bde7a04793356f8fbbd"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-lint.log",
+      "bytes": 79,
+      "sha256": "4f59a368b49ef782567b4c31bcdf4fb385dcf79daa33db62e155febbca844f40"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-expanded-browser.log",
+      "bytes": 1994,
+      "sha256": "4ebc0233b6018d00b39bb8885061773bb054074d7b83ba985042d73ac0184100"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-regression-browser.log",
+      "bytes": 2758,
+      "sha256": "b06314dc713d6dd552f2b29c2be020251d5c1e4b433da66c037667c9e2deefda"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live.log",
+      "bytes": 6988,
+      "sha256": "7f7b54c338fd916413910321c53c04619949070bef8737ee947033cfd09edbb0"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live-after-close.log",
+      "bytes": 2002,
+      "sha256": "cfa567060a3b2495650584a84e06bf10c7ecfe125e89cfb5d2eb174b77815124"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live.json",
+      "bytes": 1770,
+      "sha256": "e9f86c51d6659a5ad689bf8e4ffc58b9da53b67385f17fe13366cbdd8f8de2e9"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live-raw.json",
+      "bytes": 2002,
+      "sha256": "cfa567060a3b2495650584a84e06bf10c7ecfe125e89cfb5d2eb174b77815124"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live.ts",
+      "bytes": 6279,
+      "sha256": "b37b28adcac22bdca52588f2b2578cc87033fff5785dd1c35a1ed387703b2678"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-ui-detector.json",
+      "bytes": 547,
+      "sha256": "6a70d8ae51a4de3d7b0dcaecae4e0ef664301dcc41c508a26f96e3a1d0cf7124"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-live-inspection.json",
+      "bytes": 12424,
+      "sha256": "f758c3937fdf4c5341f3147f6eea1f55d1da630ea1dedae1080639092b7e23fc"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-process-shapes.json",
+      "bytes": 1807,
+      "sha256": "8db3be0ace7d60fa0aa5038a10ddbd42c105b20cfd5f0ed16999b87baf271a23"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-390.png",
+      "bytes": 103377,
+      "sha256": "89e63be082e5cc06d23a86fdeba5cf7a4015d07a39e07fbefea4ff43cf5699f7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-loading-390.png",
+      "bytes": 34098,
+      "sha256": "3bb826624b9798e14024203735342c4565f200cf40390773f318a0d7ecaae133"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live-390.png",
+      "bytes": 23405,
+      "sha256": "2c27956a052ef281bc58078978fa39562dcd8f727fba102dc8617327d20a52f5"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-768.png",
+      "bytes": 159637,
+      "sha256": "9ced4b5752c63b0bbb7ee4c338c1b5a3a0fa5a5033d0175723900098c60bcb38"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-loading-768.png",
+      "bytes": 152221,
+      "sha256": "971d97430b7db440c5c26b9641117d44852fa92dc50e70d88b29de97bea52617"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live-768.png",
+      "bytes": 47235,
+      "sha256": "4506e7d685e1641e4a120d8d3fc45a8fd31598c188152bd4a3e80a38830a07e6"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-1440.png",
+      "bytes": 155611,
+      "sha256": "0891fb4760b9a39f3997c1e5d2fbc143ee01cf0f22d6e18729232eb8ec4c163d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-loading-1440.png",
+      "bytes": 148271,
+      "sha256": "f2a937c2decbc9854dc9797b3e9091198c3137c3603f84d336dc7497e11367fd"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-live-1440.png",
+      "bytes": 56185,
+      "sha256": "f9c0a4e1ca2fbad6fa61a357f1a8622c2cdb6fd1c0f130ff24c76c94c1661cbc"
+    },
+    {
+      "path": "/private/tmp/gsc-goal40-pr-jump-error-390.png",
+      "bytes": 46710,
+      "sha256": "7136f4cfc454eb010ecfb351bffdd2f553f81457a21a2d29503e27ee05fd720f"
+    }
+  ]
+}

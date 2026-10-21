@@ -26,9 +26,9 @@
     document.getElementById("detail")?.addEventListener("click", handleDetailClick);
     document.getElementById("detail")?.addEventListener("keydown", handleDetailKeydown);
     window.addEventListener("message", handleMessage);
-    window.addEventListener("gsc-detail-selection", () => { activeDetail = { kind: "none" }; details.cancel(); });
+    window.addEventListener("gsc-detail-selection", () => { activeDetail = { kind: "none" }; details.cancel(); window.GscGraphPrMatching?.cancelFocus?.(); });
     window.addEventListener("gsc-detail-visibility", event => {
-      if (!event.detail?.visible) details.cancel();
+      if (!event.detail?.visible) { details.cancel(); window.GscGraphPrMatching?.cancelPendingFocus?.(); }
       else if (activeDetail.kind === "pr") { detailPaused = false; renderPullRequestDetail(activeDetail.number); }
     });
   }
@@ -42,6 +42,7 @@
   function handleMessage(event) {
     const msg = event.data;
     if (msg.type === "pullRequestContext") {
+      window.GscGraphPrMatching?.cancelFocus?.();
       hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
     } else if (msg.type === "graphDetailCancelled") {
       details.cancel(msg.number, msg.requestId);
@@ -363,6 +364,7 @@
     }
     const pr = findPr(number);
     if (activeDetail.kind !== "pr" || Number(activeDetail.number) !== Number(number)) {
+      window.GscGraphPrMatching?.cancelFocus?.();
       window.GscGraphPrFiles?.reset?.();
       window.GscGraphPostMessage?.({ type: "cancelGraphDetail" }); details.cancel();
     }
@@ -485,7 +487,7 @@
 
   /** 그래프에서 이 PR 의 커밋 row 로 이동하는 버튼 HTML 을 만든다(카드 본문 클릭은 상세를 연다). */
   function rowJumpButton(number) {
-    const title = `Jump to pull request #${number} row in the graph`;
+    const title = String(window.GscPrStackI18n?.jumpToPrRow || "Jump to pull request #{0} row in the graph").replace("{0}", number);
     return `<button type="button" class="pr-icon-action" data-focus-pr="${number}" ${tooltipAttrs(title)}>` +
       `<span class="codicon codicon-target" aria-hidden="true"></span></button>`;
   }

@@ -125,6 +125,12 @@
   padding: 10px;
 }
 
+.pr-jump-message {
+  color: var(--vscode-errorForeground);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
 .pr-actions {
   display: flex;
   gap: 6px;

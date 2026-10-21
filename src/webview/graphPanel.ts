@@ -141,7 +141,7 @@ export class GitGraphPanel {
       loadedCommitHash: (hashes) => hashes
         .map((hash) => hash.trim())
         .find((hash) => this.commits.some((commit) => commit.hash === hash)),
-      loadCommitWindow: (hashes) => this.loadCommitWindow(hashes),
+      loadCommitWindow: (hashes, requestId) => this.loadCommitWindow(hashes, requestId), cancelCommitFocus: id => this.graphReads.cancelCommitFocus(id),
       loadReflogCommitWindow: (hash) => this.loadReflogCommitWindow(hash),
       refreshAfterGraphAction: (kind) => this.refreshAfterGraphAction(kind),
       refreshAfterFetchAction: () => this.refreshAfterFetchAction(),
@@ -484,10 +484,10 @@ export class GitGraphPanel {
       () => this.postGraph(false, direction, trace, "localOnly"));
   }
   /** 특정 commit 후보 주변 window 를 새 graph 로 그려 오래된 PR 점프 때 중간 페이지 누적을 피한다. */
-  private loadCommitWindow(hashes: string[]): Promise<string | undefined> {
+  private loadCommitWindow(hashes: string[], requestId?: string): Promise<string | undefined> {
     return this.showCommitWindow("commitWindow", signal => loadFilteredGraphCommitWindow(
       this.logService.repoRoot, hashes, this.currentBranchFilter(), GRAPH_PAGE_SIZE, signal
-    ));
+    ), requestId);
   }
   /**
    * reflog commit 을 현재 ref 필터와 무관한 복구용 graph window 로 표시한다.
@@ -508,7 +508,7 @@ export class GitGraphPanel {
    */
   private async showCommitWindow(
     cause: "commitWindow" | "reflogWindow",
-    load: (signal: AbortSignal) => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>
+    load: (signal: AbortSignal) => Promise<{ commits: Commit[]; startIndex: number; totalCount: number; hash: string } | undefined>, requestId?: string
   ): Promise<string | undefined> {
     this.workingTree.pause(cause); this.tagLoading.cancel(cause);
     if (this.branchDetails.identity) this.resumeReloadOnFocus = true;
@@ -518,7 +518,7 @@ export class GitGraphPanel {
     this.loading = true;
     return executeGraphWindowRequest({
       repoRoot: this.logService.repoRoot, cause,
-      read: () => this.graphReads.run(this.logService.repoRoot, cause, load),
+      read: () => this.graphReads.run(this.logService.repoRoot, cause, load, requestId),
       current: () => this.isGraphGenerationActive(generation),
       accept: window => {
         this.workingTree.cancel(cause); this.virtualCommits = []; this.commits = window.commits;

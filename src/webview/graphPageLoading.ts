@@ -11,7 +11,7 @@ import type { LocalBranchStatus } from "../graph/graphTypes";
 
 /** 로컬 상태·페이지·점프 조회 중 현재 Graph가 사용하는 한 작업만 소유한다. */
 export class GraphReadLifecycleCoordinator {
-  private active: { controller: AbortController; repoRoot: string; cause: string } | undefined;
+  private active: { controller: AbortController; repoRoot: string; cause: string; requestId?: string } | undefined;
   private readonly firstPage = new GraphFirstPageRead();
 
   /**
@@ -19,10 +19,10 @@ export class GraphReadLifecycleCoordinator {
    * @param repoRoot 조회 저장소, cause OUTPUT에 남길 작업 종류, read 신호를 받는 비동기 조회
    * @returns 현재 작업의 결과. 취소된 작업은 오류 알림 대신 undefined를 반환한다.
    */
-  async run<T>(repoRoot: string, cause: string, read: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> {
+  async run<T>(repoRoot: string, cause: string, read: (signal: AbortSignal) => Promise<T>, requestId?: string): Promise<T | undefined> {
     this.cancelActive("superseded");
     if (cause !== "branches" && cause !== "page") this.firstPage.cancel("differentRead");
-    const active = { controller: new AbortController(), repoRoot, cause };
+    const active = { controller: new AbortController(), repoRoot, cause, requestId };
     this.active = active;
     try {
       const value = await read(active.controller.signal);
@@ -42,6 +42,11 @@ export class GraphReadLifecycleCoordinator {
   /** 숨김·교체·폐기의 불필요한 읽기를 종료하되 새 작업의 controller는 침범하지 않는다. */
   cancel(reason: string): void {
     this.cancelActive(reason); this.firstPage.cancel(reason);
+  }
+
+  /** 취소 버튼/새 로컬 이동이 지정한 PR 점프만 종료한다. 다른 페이지·새 점프의 controller는 유지한다. */
+  cancelCommitFocus(requestId: string): void {
+    if (this.active?.cause === "commitWindow" && this.active.requestId === requestId) this.cancelActive("commitFocusCancelled");
   }
 
   /** 브랜치 준비와 겹친 첫 페이지의 수명을 같은 coordinator에 묶어 별도 취소되지 않는 읽기를 남기지 않는다. */
