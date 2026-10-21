@@ -103,7 +103,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     } finally { pendingMarkers--; }
   });
   /** 제품이 시작한 metadata 조회만 기다리며 benchmark가 별도 계산을 먼저 시작하지 않는다. */
-  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.peek() || localOnlyFailures.length > 0);
+  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.completed || localOnlyFailures.length > 0);
   try {
     if (renderer) await renderer.mount(surface.webview.html);
     if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady); }

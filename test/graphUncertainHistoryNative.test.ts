@@ -24,6 +24,8 @@ test("an unreadable-size topology proof still refreshes real parents and branch 
   // Git이 허용하는 중복 shallow 경계로 증거 읽기 상한을 넘기되 실제 Git 조회는 계속 가능하게 한다.
   await writeFile(shallow, `${second}\n`.repeat(30000));
   const service = new GitLogService(f.root), { panel } = createOperationGraphPanel(t, service);
+  // 조기 페이지의 remote-unknown 전환이 우연히 cache를 비워 주는 경로에도 의존하지 않는다.
+  t.mock.method(service, "usesNativeBranchSnapshot", () => false);
   t.after(async () => { panel.dispose(); await disposeWorkingTreeSnapshots(); });
   await panel.runDirectGraph("ready");
   assert.equal(panel.commits.length, 1);

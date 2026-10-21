@@ -5,7 +5,8 @@
 // - snapshot cache와 취소 신호를 함께 소유해 Graph 세대가 바뀐 뒤 stale Git 작업이 남지 않게 한다.
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { logError, logInfo } from "../ui/outputLog";
-import { runGit, runGitWithInput } from "./gitExec";
+import { resolveGitExecutable, runGit, runGitWithInput } from "./gitExec";
+import { LocalOnlySnapshotReuse, localOnlyHistoryKey } from "./localOnlySnapshotReuse";
 
 /** local-only 기준점으로 사용할 원격 추적 브랜치 tip이다. */
 export interface LocalOnlyRemoteTip {
@@ -288,6 +289,7 @@ function revisionInput(includes: readonly string[], excludes: readonly string[])
 
 /** 로컬·원격 snapshot별 singleflight와 취소 가능한 완료 캐시를 관리한다. */
 export class GitLocalOnlyBranchCache {
+  private readonly reuse = new LocalOnlySnapshotReuse();
   private branches: LocalBranchStatus[] = [];
   private remoteTips: LocalOnlyRemoteTip[] = [];
   private remoteReady = false;
@@ -305,14 +307,23 @@ export class GitLocalOnlyBranchCache {
     private readonly runner: LocalOnlyBranchRunner = defaultRunner
   ) {}
 
+  /** 새 Native refresh의 DAG 증거를 받고 이력이 바뀌면 현재 완료 결과도 즉시 무효화한다. */
+  beginSnapshot(historyIdentity: string | undefined, fingerprint: string): void {
+    const historyKey = localOnlyHistoryKey(historyIdentity, fingerprint, JSON.stringify([resolveGitExecutable(this.repoRoot), process.env.PATH]));
+    const changed = this.reuse.begin(historyKey);
+    if (changed || !historyKey) this.invalidate(historyKey ? "historyIdentityChanged" : "historyIdentityUnavailable");
+  }
+
   /** 로컬 branch status snapshot을 교체하고 의미가 달라졌을 때만 계산 캐시를 무효화한다. */
   setLocalBranches(branches: readonly LocalBranchStatus[]): void {
+    this.reuse.localRead();
     this.branches = branches.map((branch) => ({ ...branch }));
     this.reconcileSnapshot("localRefsChanged");
   }
 
   /** 성공한 remote catalog tip을 교체한다. 빈 배열도 remote가 없는 유효한 snapshot이다. */
   setRemoteTips(tips: readonly LocalOnlyRemoteTip[]): void {
+    this.reuse.remoteRead();
     this.remoteTips = tips.map((tip) => ({ ...tip }));
     this.remoteReady = true;
     this.reconcileSnapshot("remoteRefsChanged");
@@ -320,6 +331,7 @@ export class GitLocalOnlyBranchCache {
 
   /** remote catalog 실패 뒤 과거 기준점으로 잘못된 local-only 표시를 만들지 않도록 ready 상태를 해제한다. */
   setRemoteUnavailable(): void {
+    this.reuse.remoteUnavailable();
     this.remoteReady = false;
     this.remoteTips = [];
     this.reconcileSnapshot("remoteRefsUnavailable");
@@ -331,6 +343,7 @@ export class GitLocalOnlyBranchCache {
    */
   async getMap(): Promise<Map<string, string[]>> {
     if (!this.remoteReady) return new Map();
+    this.restoreValidatedSnapshot();
     if (this.completed) {
       logInfo("graph local-only cache hit", { repoRoot: this.repoRoot, entries: this.completed.size });
       return cloneMap(this.completed);
@@ -354,7 +367,10 @@ export class GitLocalOnlyBranchCache {
       controller.signal,
       this.runner
     ).then((result) => {
-      if (generation === this.generation) this.completed = cloneMap(result);
+      if (generation === this.generation) {
+        this.completed = cloneMap(result);
+        this.reuse.complete(this.snapshotKey, this.completed);
+      }
       logInfo("graph local-only cache complete", {
         repoRoot: this.repoRoot,
         generation,
@@ -381,11 +397,20 @@ export class GitLocalOnlyBranchCache {
    * - 반환 Map 은 읽기 전용으로 다뤄야 한다(호출부는 배열을 복사해 붙인다).
    */
   peek(): ReadonlyMap<string, readonly string[]> | undefined {
+    if (this.remoteReady) this.restoreValidatedSnapshot();
     return this.remoteReady ? this.completed : undefined;
+  }
+
+  /** 새 snapshot을 모두 받은 뒤 동기 게시 경로도 같은 검증 결과를 사용해 중간 marker 없는 frame을 피한다. */
+  private restoreValidatedSnapshot(): void {
+    if (this.completed) return;
+    this.completed = this.reuse.restore(this.snapshotKey);
+    if (this.completed) logInfo("graph local-only snapshot revalidated", { repoRoot: this.repoRoot, entries: this.completed.size });
   }
 
   /** 알려진 Git mutation에서 snapshot과 완료 결과를 모두 버리고 실행 중인 rev-list를 종료한다. */
   invalidate(reason: string): void {
+    this.reuse.invalidate();
     this.generation++;
     this.pending?.controller.abort();
     this.pending = undefined;
@@ -395,6 +420,7 @@ export class GitLocalOnlyBranchCache {
 
   /** 패널 hide/dispose에서는 완료 결과를 보존하되 진행 중인 background process만 종료한다. */
   cancel(reason: string): void {
+    if (reason !== "checkout") this.reuse.cancel();
     if (!this.pending) return;
     this.generation++;
     this.pending.controller.abort();

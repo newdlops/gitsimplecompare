@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.1.72134] - 2026-10-21
+
+### Performance
+
+- Revalidate the previous local-only marker result after unchanged fetch and
+  loaded checkout instead of walking the same Git DAG again. Require fresh
+  local and remote metadata, identical full refs and history/executable proof.
+  Apply validated markers before posting the next Graph frame.
+- Read only the selected branch identity for branch menus and clone source
+  lookup. Preserve a separate fresh check immediately before checkout.
+
+### Safety
+
+- Discard reusable candidates when upstreams, refs, replacements, shallow/graft
+  boundaries, Git environment or executable selection change or are uncertain.
+  Require both new metadata reads and never reuse a partial or failed result.
+- Retain at most one bounded candidate; drop large results and hidden/disposed
+  candidates. Preserve existing generation, cancellation and process ownership.
+
+### Development
+
+- Cover actual fetch/checkout, upstream and shallow changes, candidate bounds,
+  existing Native operation and process-lifecycle regressions. Measure all named
+  operations and final production-renderer metadata without OS focus changes.
+- Observe cache readiness without invoking an adoption method from the harness.
+
 ## [0.1.72133] - 2026-10-21
 
 ### Improved

@@ -3,7 +3,6 @@
 import * as vscode from "vscode";
 import { GitError } from "../git/gitExec";
 import { GitLogService } from "../git/gitLogService";
-import type { LocalBranchStatus } from "../graph/graphTypes";
 import { logInfo } from "../ui/outputLog";
 import {
   focusCheckoutConflicts,
@@ -444,18 +443,17 @@ export async function cloneBranch(
 }
 
 /**
- * 로컬 브랜치 목록에서 이름이 일치하는 항목을 찾는다.
+ * 메뉴/clone에 필요한 한 브랜치의 이름과 현재 선택 여부만 읽는다.
+ * 전체 브랜치의 ahead/behind·제목을 다시 계산하지 않으며 실제 checkout 직전 조회는 별도로 유지한다.
  * @param deps graph 패널이 제공하는 git service
  * @param branchName 찾을 로컬 브랜치 이름
- * @returns 브랜치 상태. 없으면 undefined
+ * @returns 정확한 로컬 브랜치의 최소 상태. 없으면 undefined
  */
 async function findLocalBranch(
   deps: GraphBranchActionDeps,
   branchName: string
-): Promise<LocalBranchStatus | undefined> {
-  return (await deps.logService.getLocalBranches()).find(
-    (item) => item.name === branchName
-  );
+): Promise<{ name: string; current: boolean } | undefined> {
+  return deps.logService.getLocalBranchCheckoutState(branchName);
 }
 
 /**

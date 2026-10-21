@@ -1,0 +1,4290 @@
+{
+  "version": "0.1.72134",
+  "baseline": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+  "wholeGoalComplete": false,
+  "sourceSha256": {
+    "src/git/localOnlySnapshotReuse.ts": "83bff062e34437c882b1a7a8bf2c65b6b6e29e219d39632712b0ac880a3304b1",
+    "src/git/gitLocalOnlyBranches.ts": "294246a88bab5152a47f0b807f39a3936581839bcdcac268e394793a83914cec",
+    "src/git/gitLocalOnlyMarkers.ts": "78708e7b3740513d2c11d80bea417f62220a475bf81f2315fa8814bf942f7f09",
+    "src/git/gitLogService.ts": "6486cd8f11ce76ec3c6760149a1ede02f85f84e2cce1c9eb0ae539bf0fc3d237",
+    "src/webview/graphPanel.ts": "5b5c32ea3bc3725d0801d5c1e5c452eee21b5a462d1cdd1213695f4a1856f599",
+    "src/webview/graphBranchActions.ts": "2e90d9c3bc4b7929176ed1dac505aee54ecf2ed1d2e3985746171a09c0296a20"
+  },
+  "benchmarkSourceSha256": "f7e64b1dbaf5a4d64b6c390f209e1701f00f669426930554da7f0e1ad574e0b8",
+  "matrixHarnessSha256": "ac5d70d025348258bedc5b667e3f60c9445365093f6c1deeec1a27fed5efe3a7",
+  "checks": {
+    "distinctPassingNodeNames": 113,
+    "corePasses": 112,
+    "finalFocusedPasses": 15,
+    "exactMatrixCases": 36,
+    "pairedActualButtonCases": 12,
+    "otherActualButtonCases": 4
+  },
+  "comparison": {
+    "fetch-no-change": {
+      "handlerMs": {
+        "before": [
+          1331,
+          102,
+          955
+        ],
+        "after": [
+          779,
+          1154,
+          626
+        ],
+        "beforeMedian": 955,
+        "afterMedian": 779
+      },
+      "clickToFinalFrameMs": {
+        "before": [
+          2189,
+          271,
+          1854
+        ],
+        "after": [
+          1290,
+          1601,
+          1055
+        ],
+        "beforeMedian": 1854,
+        "afterMedian": 1290
+      },
+      "nodeCpuMs": {
+        "before": [
+          112,
+          70,
+          97
+        ],
+        "after": [
+          78,
+          83,
+          58
+        ],
+        "beforeMedian": 97,
+        "afterMedian": 78
+      },
+      "processes": {
+        "before": [
+          6,
+          6,
+          6
+        ],
+        "after": [
+          4,
+          4,
+          4
+        ],
+        "beforeMedian": 6,
+        "afterMedian": 4
+      },
+      "dagReads": {
+        "before": [
+          2,
+          2,
+          2
+        ],
+        "after": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "checkout": {
+      "handlerMs": {
+        "before": [
+          792,
+          334,
+          146
+        ],
+        "after": [
+          117,
+          37,
+          678
+        ],
+        "beforeMedian": 334,
+        "afterMedian": 117
+      },
+      "clickToFinalFrameMs": {
+        "before": [
+          1172,
+          738,
+          690
+        ],
+        "after": [
+          307,
+          134,
+          1396
+        ],
+        "beforeMedian": 738,
+        "afterMedian": 307
+      },
+      "nodeCpuMs": {
+        "before": [
+          67,
+          132,
+          87
+        ],
+        "after": [
+          65,
+          28,
+          82
+        ],
+        "beforeMedian": 87,
+        "afterMedian": 65
+      },
+      "processes": {
+        "before": [
+          9,
+          9,
+          9
+        ],
+        "after": [
+          7,
+          7,
+          7
+        ],
+        "beforeMedian": 9,
+        "afterMedian": 7
+      },
+      "dagReads": {
+        "before": [
+          2,
+          2,
+          2
+        ],
+        "after": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "raw": [
+    {
+      "kind": "before",
+      "source": {
+        "kind": "commit",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "86a2a52fe275e90e450eb2f76f137f4e1f92031fb6b1c04145829424e4b21b02"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 87,
+          "handlerMs": 1331,
+          "clickToFirstFrameMs": 1887,
+          "clickToFinalFrameMs": 2189,
+          "clickToSettledMs": 2398,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 112,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 6,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 1322,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 154,
+              "syncSpawnMs": 4,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 370,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 128,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 365,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 313,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1887,
+            "latestMutationToFrameMs": 2189,
+            "renderMs": 18,
+            "frameMs": 28
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 55,
+          "handlerMs": 792,
+          "clickToFirstFrameMs": 1172,
+          "clickToFinalFrameMs": 1172,
+          "clickToSettledMs": 1291,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 67,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 9,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 235,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 272,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 13,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 266,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 204,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 236,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 17,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 18,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 18,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1172,
+            "latestMutationToFrameMs": 1172,
+            "renderMs": 5,
+            "frameMs": 8
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    {
+      "kind": "after",
+      "source": {
+        "kind": "working-tree",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "1810c631424e7da7e0103162ed391b6863d9903731e68a12f82659bd00fa725d"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 53,
+          "handlerMs": 779,
+          "clickToFirstFrameMs": 1168,
+          "clickToFinalFrameMs": 1290,
+          "clickToSettledMs": 1445,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 78,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 4,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 775,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 224,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 259,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 172,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1168,
+            "latestMutationToFrameMs": 1290,
+            "renderMs": 15,
+            "frameMs": 23
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 43,
+          "handlerMs": 117,
+          "clickToFirstFrameMs": 307,
+          "clickToFinalFrameMs": 307,
+          "clickToSettledMs": 416,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 65,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 7,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 62,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 15,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 11,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 22,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 12,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 54,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 28,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 307,
+            "latestMutationToFrameMs": 307,
+            "renderMs": 5,
+            "frameMs": 6
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    {
+      "kind": "after",
+      "source": {
+        "kind": "working-tree",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "1810c631424e7da7e0103162ed391b6863d9903731e68a12f82659bd00fa725d"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 50,
+          "handlerMs": 1154,
+          "clickToFirstFrameMs": 1601,
+          "clickToFinalFrameMs": 1601,
+          "clickToSettledMs": 1731,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 83,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 4,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 1148,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 82,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 296,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 48,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1601,
+            "latestMutationToFrameMs": 1601,
+            "renderMs": 7,
+            "frameMs": 8
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 25,
+          "handlerMs": 37,
+          "clickToFirstFrameMs": 134,
+          "clickToFinalFrameMs": 134,
+          "clickToSettledMs": 274,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 28,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 7,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 9,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 8,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 5,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 11,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 6,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 22,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 10,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 134,
+            "latestMutationToFrameMs": 134,
+            "renderMs": 3,
+            "frameMs": 6
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    {
+      "kind": "before",
+      "source": {
+        "kind": "commit",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "53b37f2d0ac74483941d4575b31f2ae63dcc5adc2991cf1236ae12e33a5bd5e6"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 43,
+          "handlerMs": 102,
+          "clickToFirstFrameMs": 271,
+          "clickToFinalFrameMs": 271,
+          "clickToSettledMs": 401,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 70,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 6,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 98,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 10,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 47,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 17,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 20,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 17,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 271,
+            "latestMutationToFrameMs": 271,
+            "renderMs": 4,
+            "frameMs": 5
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 83,
+          "handlerMs": 334,
+          "clickToFirstFrameMs": 738,
+          "clickToFinalFrameMs": 738,
+          "clickToSettledMs": 780,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 132,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 9,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 107,
+              "syncSpawnMs": 26,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 43,
+              "syncSpawnMs": 9,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 80,
+              "syncSpawnMs": 4,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 92,
+              "syncSpawnMs": 4,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 27,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 103,
+              "syncSpawnMs": 5,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 42,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 42,
+              "syncSpawnMs": 5,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 64,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 738,
+            "latestMutationToFrameMs": 738,
+            "renderMs": 13,
+            "frameMs": 15
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    {
+      "kind": "before",
+      "source": {
+        "kind": "commit",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "a86a8a0ff333e262390a971ad432ea75c7b2f03f0c3d8aa7e729da6e98eeaa1d"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 52,
+          "handlerMs": 955,
+          "clickToFirstFrameMs": 1616,
+          "clickToFinalFrameMs": 1854,
+          "clickToSettledMs": 2090,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 97,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 6,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 950,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 302,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 515,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 56,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 299,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 342,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1616,
+            "latestMutationToFrameMs": 1854,
+            "renderMs": 19,
+            "frameMs": 30
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 52,
+          "handlerMs": 146,
+          "clickToFirstFrameMs": 383,
+          "clickToFinalFrameMs": 690,
+          "clickToSettledMs": 830,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 87,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 9,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 67,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 25,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 15,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 34,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 15,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 69,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 278,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 115,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 384,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 383,
+            "latestMutationToFrameMs": 690,
+            "renderMs": 37,
+            "frameMs": 20
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    {
+      "kind": "after",
+      "source": {
+        "kind": "working-tree",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "1810c631424e7da7e0103162ed391b6863d9903731e68a12f82659bd00fa725d"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "fetch-no-change",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 43,
+          "handlerMs": 626,
+          "clickToFirstFrameMs": 908,
+          "clickToFinalFrameMs": 1055,
+          "clickToSettledMs": 1203,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 58,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 4,
+          "commands": [
+            {
+              "command": "fetch",
+              "elapsedMs": 623,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 160,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 187,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 179,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 7,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 908,
+            "latestMutationToFrameMs": 1055,
+            "renderMs": 10,
+            "frameMs": 17
+          }
+        },
+        {
+          "operation": "checkout",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 64,
+          "handlerMs": 678,
+          "clickToFirstFrameMs": 1201,
+          "clickToFinalFrameMs": 1396,
+          "clickToSettledMs": 1546,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 82,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 7,
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 223,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 34,
+              "syncSpawnMs": 4,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 271,
+              "syncSpawnMs": 3,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "switch",
+              "elapsedMs": 143,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 314,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 360,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 267,
+              "syncSpawnMs": 2,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 2,
+          "webviewMessages": 5,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 1201,
+            "latestMutationToFrameMs": 1396,
+            "renderMs": 32,
+            "frameMs": 16
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    }
+  ],
+  "matrices": [
+    {
+      "version": "0.1.72133",
+      "source": {
+        "kind": "working-tree",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "029be9d6068a1fe4e26d528fb7f8be78d73aa72dafa976c960136b7cb15f70f4"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 100,
+        "sharedUpstreamBranches": 48,
+        "network": "local-bare-only",
+        "monitorPolicy": false
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 834,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 356,
+              "durationMs": 459,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 836,
+            "latestMutationToFrameMs": 1461,
+            "renderMs": 83,
+            "frameMs": 31
+          },
+          "latestGraphPublishedMs": 1441,
+          "graphAlreadyCurrent": false,
+          "settledMs": 1572,
+          "processes": 11,
+          "operationProcesses": 0,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14300,
+          "commands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1,
+            "status": 1,
+            "ls-remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 3,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1,
+            "status": 1,
+            "ls-remote": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1062,
+            "worktree": 342,
+            "log": 145,
+            "rev-list": 477,
+            "rev-parse": 427,
+            "remote": 466,
+            "status": 77,
+            "ls-remote": 248
+          },
+          "nodeCpuMs": 376,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 12,
+          "peakRssDeltaMiB": 12,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 627,
+          "graphMs": 169,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 271,
+            "latestMutationToFrameMs": 369,
+            "renderMs": 17,
+            "frameMs": 7
+          },
+          "latestGraphPublishedMs": 278,
+          "graphAlreadyCurrent": false,
+          "settledMs": 936,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14520,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "fetch": 626,
+            "worktree": 30,
+            "for-each-ref": 105,
+            "log": 73,
+            "status": 120,
+            "rev-list": 141,
+            "remote": 67
+          },
+          "nodeCpuMs": 94,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "pull-new-history",
+          "operationMs": 2195,
+          "graphMs": 77,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 171,
+            "latestMutationToFrameMs": 196,
+            "renderMs": 5,
+            "frameMs": 4
+          },
+          "latestGraphPublishedMs": 120,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2344,
+          "processes": 12,
+          "operationProcesses": 4,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14600,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 30,
+            "config": 501,
+            "status": 243,
+            "pull": 1440,
+            "worktree": 12,
+            "for-each-ref": 74,
+            "log": 25,
+            "rev-list": 45,
+            "remote": 31
+          },
+          "nodeCpuMs": 104,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 7,
+          "peakRssDeltaMiB": 7,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 1772,
+          "graphMs": 83,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 189,
+            "latestMutationToFrameMs": 189,
+            "renderMs": 4,
+            "frameMs": 5
+          },
+          "latestGraphPublishedMs": 144,
+          "graphAlreadyCurrent": false,
+          "settledMs": 1945,
+          "processes": 25,
+          "operationProcesses": 20,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14744,
+          "commands": {
+            "rev-parse": 5,
+            "config": 4,
+            "for-each-ref": 4,
+            "remote": 1,
+            "ls-remote": 1,
+            "cat-file": 2,
+            "rev-list": 4,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 64,
+            "config": 54,
+            "for-each-ref": 308,
+            "remote": 263,
+            "ls-remote": 305,
+            "cat-file": 64,
+            "rev-list": 90,
+            "push": 781,
+            "branch": 18,
+            "worktree": 18,
+            "status": 19
+          },
+          "nodeCpuMs": 131,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -21,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "push-tracked",
+          "operationMs": 720,
+          "graphMs": 52,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 135,
+            "latestMutationToFrameMs": 135,
+            "renderMs": 4,
+            "frameMs": 8
+          },
+          "latestGraphPublishedMs": 84,
+          "graphAlreadyCurrent": false,
+          "settledMs": 827,
+          "processes": 20,
+          "operationProcesses": 15,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14904,
+          "commands": {
+            "config": 3,
+            "rev-parse": 2,
+            "for-each-ref": 4,
+            "remote": 1,
+            "ls-remote": 1,
+            "merge-base": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "config": 255,
+            "rev-parse": 253,
+            "for-each-ref": 121,
+            "remote": 60,
+            "ls-remote": 104,
+            "merge-base": 17,
+            "rev-list": 68,
+            "cat-file": 21,
+            "push": 172,
+            "worktree": 10,
+            "status": 18
+          },
+          "nodeCpuMs": 99,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 767,
+          "graphMs": 180,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 384,
+            "latestMutationToFrameMs": 705,
+            "renderMs": 34,
+            "frameMs": 55
+          },
+          "latestGraphPublishedMs": 667,
+          "graphAlreadyCurrent": false,
+          "settledMs": 1464,
+          "processes": 9,
+          "operationProcesses": 4,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14972,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 24,
+            "config": 26,
+            "status": 383,
+            "pull": 694,
+            "worktree": 29,
+            "for-each-ref": 125,
+            "rev-list": 486
+          },
+          "nodeCpuMs": 155,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 1369,
+          "graphMs": 523,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 602,
+            "latestMutationToFrameMs": 1090,
+            "renderMs": 15,
+            "frameMs": 20
+          },
+          "latestGraphPublishedMs": 1075,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2468,
+          "processes": 6,
+          "operationProcesses": 1,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15041,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 1369,
+            "for-each-ref": 289,
+            "worktree": 515,
+            "rev-list": 554,
+            "status": 514
+          },
+          "nodeCpuMs": 78,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -10,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-known-history",
+          "operationMs": 1847,
+          "graphMs": 523,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 571,
+            "latestMutationToFrameMs": 1054,
+            "renderMs": 11,
+            "frameMs": 17
+          },
+          "latestGraphPublishedMs": 1041,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3165,
+          "processes": 6,
+          "operationProcesses": 1,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15203,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 1848,
+            "for-each-ref": 292,
+            "worktree": 515,
+            "rev-list": 773,
+            "status": 513
+          },
+          "nodeCpuMs": 72,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-no-change",
+          "operationMs": 1675,
+          "graphMs": 529,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 628,
+            "latestMutationToFrameMs": 1107,
+            "renderMs": 24,
+            "frameMs": 32
+          },
+          "latestGraphPublishedMs": 1085,
+          "graphAlreadyCurrent": true,
+          "settledMs": 3009,
+          "processes": 6,
+          "operationProcesses": 1,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15282,
+          "commands": {
+            "fetch": 1,
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 1675,
+            "for-each-ref": 327,
+            "worktree": 517,
+            "rev-list": 784,
+            "status": 532
+          },
+          "nodeCpuMs": 118,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -5,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "pull-known-history",
+          "operationMs": 3807,
+          "graphMs": 534,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 620,
+            "latestMutationToFrameMs": 1097,
+            "renderMs": 19,
+            "frameMs": 26
+          },
+          "latestGraphPublishedMs": 1083,
+          "graphAlreadyCurrent": false,
+          "settledMs": 5139,
+          "processes": 9,
+          "operationProcesses": 4,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15364,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 273,
+            "config": 301,
+            "status": 900,
+            "pull": 2869,
+            "for-each-ref": 339,
+            "worktree": 517,
+            "rev-list": 782
+          },
+          "nodeCpuMs": 126,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -11,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 4418,
+          "graphMs": 833,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 958,
+            "latestMutationToFrameMs": 1833,
+            "renderMs": 57,
+            "frameMs": 31
+          },
+          "latestGraphPublishedMs": 1805,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6498,
+          "processes": 23,
+          "operationProcesses": 15,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15434,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "status": 2,
+            "rebase": 1,
+            "merge-base": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 2398,
+            "ls-files": 773,
+            "update-ref": 271,
+            "status": 784,
+            "rebase": 678,
+            "merge-base": 263,
+            "for-each-ref": 1029,
+            "worktree": 517,
+            "log": 282,
+            "rev-list": 996,
+            "remote": 1225
+          },
+          "nodeCpuMs": 215,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -13,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 4103,
+          "graphMs": 817,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 891,
+            "latestMutationToFrameMs": 2082,
+            "renderMs": 33,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 2055,
+          "graphAlreadyCurrent": false,
+          "settledMs": 6186,
+          "processes": 21,
+          "operationProcesses": 13,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15503,
+          "commands": {
+            "rev-parse": 6,
+            "ls-files": 2,
+            "status": 2,
+            "update-ref": 1,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 1647,
+            "ls-files": 782,
+            "status": 789,
+            "update-ref": 281,
+            "merge": 568,
+            "diff": 275,
+            "commit": 550,
+            "for-each-ref": 1283,
+            "worktree": 516,
+            "log": 279,
+            "rev-list": 1253,
+            "remote": 725
+          },
+          "nodeCpuMs": 197,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 6,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 835,
+          "graphMs": 880,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 963,
+            "latestMutationToFrameMs": 1839,
+            "renderMs": 33,
+            "frameMs": 13
+          },
+          "latestGraphPublishedMs": 1813,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2926,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15578,
+          "commands": {
+            "merge": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "merge": 834,
+            "for-each-ref": 996,
+            "worktree": 534,
+            "log": 313,
+            "status": 496,
+            "rev-list": 952,
+            "remote": 1184
+          },
+          "nodeCpuMs": 142,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 6376,
+          "graphMs": 860,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 993,
+            "latestMutationToFrameMs": 2114,
+            "renderMs": 59,
+            "frameMs": 24
+          },
+          "latestGraphPublishedMs": 2067,
+          "graphAlreadyCurrent": false,
+          "settledMs": 8471,
+          "processes": 30,
+          "operationProcesses": 22,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15663,
+          "commands": {
+            "rev-parse": 10,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 2724,
+            "ls-files": 789,
+            "cat-file": 270,
+            "log": 566,
+            "worktree": 1094,
+            "read-tree": 281,
+            "commit": 550,
+            "update-ref": 282,
+            "merge-base": 294,
+            "diff": 273,
+            "reset": 301,
+            "for-each-ref": 1282,
+            "status": 532,
+            "rev-list": 1237,
+            "remote": 694
+          },
+          "nodeCpuMs": 466,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 51,
+          "peakRssDeltaMiB": 51,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 6511,
+          "graphMs": 816,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 895,
+            "latestMutationToFrameMs": 1818,
+            "renderMs": 36,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 1788,
+          "graphAlreadyCurrent": false,
+          "settledMs": 8574,
+          "processes": 31,
+          "operationProcesses": 23,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15741,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 3,
+            "update-ref": 1,
+            "cherry-pick": 3,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 3723,
+            "ls-files": 785,
+            "cat-file": 265,
+            "status": 1175,
+            "update-ref": 407,
+            "cherry-pick": 877,
+            "for-each-ref": 1522,
+            "worktree": 514,
+            "log": 279,
+            "rev-list": 987,
+            "remote": 714
+          },
+          "nodeCpuMs": 313,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 0,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 286,
+          "graphMs": 872,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 982,
+            "latestMutationToFrameMs": 2107,
+            "renderMs": 50,
+            "frameMs": 17
+          },
+          "latestGraphPublishedMs": 2069,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2382,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15816,
+          "commands": {
+            "cherry-pick": 1,
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "cherry-pick": 286,
+            "for-each-ref": 1265,
+            "worktree": 523,
+            "log": 313,
+            "status": 516,
+            "rev-list": 1221,
+            "remote": 688
+          },
+          "nodeCpuMs": 178,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -12,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 824,
+          "graphMs": 525,
+          "branchDetailsReads": [],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 580,
+            "latestMutationToFrameMs": 1051,
+            "renderMs": 11,
+            "frameMs": 15
+          },
+          "latestGraphPublishedMs": 1038,
+          "graphAlreadyCurrent": false,
+          "settledMs": 2158,
+          "processes": 8,
+          "operationProcesses": 3,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15888,
+          "commands": {
+            "for-each-ref": 2,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 568,
+            "rev-parse": 282,
+            "switch": 271,
+            "worktree": 512,
+            "rev-list": 783,
+            "status": 506
+          },
+          "nodeCpuMs": 70,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -44,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout-unloaded",
+          "operationMs": 909,
+          "graphMs": 1137,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": false,
+            "mutationToFrameMs": 1343,
+            "latestMutationToFrameMs": 2409,
+            "renderMs": 9,
+            "frameMs": 10
+          },
+          "latestGraphPublishedMs": 2360,
+          "graphAlreadyCurrent": false,
+          "settledMs": 3780,
+          "processes": 14,
+          "operationProcesses": 3,
+          "graphProcesses": 11,
+          "peakProcesses": 6,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15969,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 2,
+            "switch": 1,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "config": 2,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "for-each-ref": 2,
+            "worktree": 1,
+            "log": 1,
+            "status": 1,
+            "config": 2,
+            "rev-list": 2,
+            "rev-parse": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 1687,
+            "rev-parse": 1048,
+            "switch": 291,
+            "worktree": 520,
+            "log": 459,
+            "status": 635,
+            "config": 1223,
+            "rev-list": 1311,
+            "remote": 1716
+          },
+          "nodeCpuMs": 251,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -5,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        }
+      ]
+    },
+    {
+      "version": "0.1.72134",
+      "source": {
+        "kind": "working-tree",
+        "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+        "bundleSha256": "d9785798e60b3606b41676e9d166918ef87952295ece4c6a4c77e54000a6f661"
+      },
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 100,
+        "sharedUpstreamBranches": 48,
+        "network": "local-bare-only",
+        "monitorPolicy": false
+      },
+      "results": [
+        {
+          "operation": "initial",
+          "operationMs": 0,
+          "graphMs": 186,
+          "branchDetailsReads": [
+            {
+              "startedAfterOperationMs": 126,
+              "durationMs": 51,
+              "firstFrameBeforeDetails": false
+            }
+          ],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 344,
+            "latestMutationToFrameMs": 413,
+            "renderMs": 54,
+            "frameMs": 31
+          },
+          "latestGraphPublishedMs": 274,
+          "graphAlreadyCurrent": false,
+          "settledMs": 325,
+          "processes": 11,
+          "operationProcesses": 0,
+          "graphProcesses": 11,
+          "peakProcesses": 4,
+          "webviewMessages": 10,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14300,
+          "commands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-parse": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 1,
+            "ls-remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 3,
+            "log": 1,
+            "rev-parse": 1,
+            "rev-list": 2,
+            "remote": 1,
+            "status": 1,
+            "ls-remote": 1
+          },
+          "commandTimeMs": {
+            "worktree": 93,
+            "for-each-ref": 223,
+            "log": 34,
+            "rev-parse": 43,
+            "rev-list": 79,
+            "remote": 61,
+            "status": 22,
+            "ls-remote": 49
+          },
+          "nodeCpuMs": 182,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 11,
+          "peakRssDeltaMiB": 11,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-new-history",
+          "operationMs": 312,
+          "graphMs": 169,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 300,
+            "latestMutationToFrameMs": 359,
+            "renderMs": 59,
+            "frameMs": 21
+          },
+          "latestGraphPublishedMs": 229,
+          "graphAlreadyCurrent": false,
+          "settledMs": 568,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14520,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "commandTimeMs": {
+            "fetch": 311,
+            "worktree": 29,
+            "for-each-ref": 113,
+            "log": 48,
+            "status": 88,
+            "remote": 28,
+            "rev-list": 82
+          },
+          "nodeCpuMs": 260,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 7,
+          "peakRssDeltaMiB": 7,
+          "historyExact": true
+        },
+        {
+          "operation": "pull-new-history",
+          "operationMs": 250,
+          "graphMs": 94,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 224,
+            "latestMutationToFrameMs": 255,
+            "renderMs": 6,
+            "frameMs": 6
+          },
+          "latestGraphPublishedMs": 163,
+          "graphAlreadyCurrent": false,
+          "settledMs": 438,
+          "processes": 12,
+          "operationProcesses": 4,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14600,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 18,
+            "config": 12,
+            "status": 49,
+            "pull": 201,
+            "worktree": 11,
+            "for-each-ref": 91,
+            "log": 32,
+            "rev-list": 72,
+            "remote": 42
+          },
+          "nodeCpuMs": 117,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 1,
+          "peakRssDeltaMiB": 1,
+          "historyExact": true
+        },
+        {
+          "operation": "push",
+          "operationMs": 468,
+          "graphMs": 51,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 123,
+            "latestMutationToFrameMs": 123,
+            "renderMs": 3,
+            "frameMs": 6
+          },
+          "latestGraphPublishedMs": 82,
+          "graphAlreadyCurrent": false,
+          "settledMs": 579,
+          "processes": 25,
+          "operationProcesses": 20,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14744,
+          "commands": {
+            "config": 4,
+            "rev-parse": 5,
+            "for-each-ref": 4,
+            "remote": 1,
+            "ls-remote": 1,
+            "cat-file": 2,
+            "rev-list": 4,
+            "push": 1,
+            "branch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "config": 46,
+            "rev-parse": 76,
+            "for-each-ref": 99,
+            "remote": 12,
+            "ls-remote": 75,
+            "cat-file": 32,
+            "rev-list": 64,
+            "push": 163,
+            "branch": 17,
+            "worktree": 10,
+            "status": 21
+          },
+          "nodeCpuMs": 96,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "push-tracked",
+          "operationMs": 446,
+          "graphMs": 64,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 157,
+            "latestMutationToFrameMs": 157,
+            "renderMs": 4,
+            "frameMs": 11
+          },
+          "latestGraphPublishedMs": 101,
+          "graphAlreadyCurrent": false,
+          "settledMs": 574,
+          "processes": 20,
+          "operationProcesses": 15,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14904,
+          "commands": {
+            "config": 3,
+            "rev-parse": 2,
+            "for-each-ref": 4,
+            "remote": 1,
+            "ls-remote": 1,
+            "merge-base": 1,
+            "rev-list": 4,
+            "cat-file": 1,
+            "push": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "config": 41,
+            "rev-parse": 32,
+            "for-each-ref": 120,
+            "remote": 17,
+            "ls-remote": 68,
+            "merge-base": 35,
+            "rev-list": 104,
+            "cat-file": 22,
+            "push": 155,
+            "worktree": 12,
+            "status": 23
+          },
+          "nodeCpuMs": 110,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "pull",
+          "operationMs": 411,
+          "graphMs": 122,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 309,
+            "latestMutationToFrameMs": 309,
+            "renderMs": 7,
+            "frameMs": 16
+          },
+          "latestGraphPublishedMs": 199,
+          "graphAlreadyCurrent": false,
+          "settledMs": 631,
+          "processes": 9,
+          "operationProcesses": 4,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 14972,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 28,
+            "config": 19,
+            "status": 72,
+            "pull": 333,
+            "worktree": 21,
+            "for-each-ref": 103,
+            "rev-list": 83
+          },
+          "nodeCpuMs": 115,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 2,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch",
+          "operationMs": 151,
+          "graphMs": 68,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 188,
+            "latestMutationToFrameMs": 188,
+            "renderMs": 6,
+            "frameMs": 6
+          },
+          "latestGraphPublishedMs": 115,
+          "graphAlreadyCurrent": false,
+          "settledMs": 295,
+          "processes": 6,
+          "operationProcesses": 1,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 6,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15041,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 151,
+            "worktree": 15,
+            "for-each-ref": 57,
+            "rev-list": 48,
+            "status": 24
+          },
+          "nodeCpuMs": 86,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-known-history",
+          "operationMs": 112,
+          "graphMs": 55,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 126,
+            "latestMutationToFrameMs": 126,
+            "renderMs": 5,
+            "frameMs": 4
+          },
+          "latestGraphPublishedMs": 80,
+          "graphAlreadyCurrent": false,
+          "settledMs": 228,
+          "processes": 6,
+          "operationProcesses": 1,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15203,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 111,
+            "worktree": 11,
+            "for-each-ref": 47,
+            "rev-list": 33,
+            "status": 18
+          },
+          "nodeCpuMs": 70,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "fetch-no-change",
+          "operationMs": 125,
+          "graphMs": 58,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 137,
+            "latestMutationToFrameMs": 137,
+            "renderMs": 6,
+            "frameMs": 5
+          },
+          "latestGraphPublishedMs": 84,
+          "graphAlreadyCurrent": true,
+          "settledMs": 239,
+          "processes": 4,
+          "operationProcesses": 1,
+          "graphProcesses": 3,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15282,
+          "commands": {
+            "fetch": 1,
+            "worktree": 1,
+            "for-each-ref": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "fetch": 125,
+            "worktree": 13,
+            "for-each-ref": 49,
+            "status": 20
+          },
+          "nodeCpuMs": 55,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "pull-known-history",
+          "operationMs": 1029,
+          "graphMs": 212,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 268,
+            "latestMutationToFrameMs": 407,
+            "renderMs": 12,
+            "frameMs": 18
+          },
+          "latestGraphPublishedMs": 398,
+          "graphAlreadyCurrent": false,
+          "settledMs": 1622,
+          "processes": 9,
+          "operationProcesses": 4,
+          "graphProcesses": 5,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15364,
+          "commands": {
+            "rev-parse": 1,
+            "config": 1,
+            "status": 2,
+            "pull": 1,
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "for-each-ref": 1,
+            "worktree": 1,
+            "rev-list": 2,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 32,
+            "config": 18,
+            "status": 205,
+            "pull": 952,
+            "for-each-ref": 42,
+            "worktree": 203,
+            "rev-list": 356
+          },
+          "nodeCpuMs": 83,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "rebase",
+          "operationMs": 234,
+          "graphMs": 79,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 149,
+            "latestMutationToFrameMs": 181,
+            "renderMs": 26,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 121,
+          "graphAlreadyCurrent": false,
+          "settledMs": 383,
+          "processes": 23,
+          "operationProcesses": 15,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15434,
+          "commands": {
+            "rev-parse": 9,
+            "ls-files": 2,
+            "update-ref": 1,
+            "status": 2,
+            "rebase": 1,
+            "merge-base": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 81,
+            "ls-files": 18,
+            "update-ref": 14,
+            "status": 69,
+            "rebase": 95,
+            "merge-base": 7,
+            "worktree": 8,
+            "for-each-ref": 54,
+            "log": 26,
+            "remote": 20,
+            "rev-list": 55
+          },
+          "nodeCpuMs": 116,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 6,
+          "peakRssDeltaMiB": 6,
+          "historyExact": true
+        },
+        {
+          "operation": "merge",
+          "operationMs": 242,
+          "graphMs": 103,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 174,
+            "latestMutationToFrameMs": 205,
+            "renderMs": 29,
+            "frameMs": 11
+          },
+          "latestGraphPublishedMs": 136,
+          "graphAlreadyCurrent": false,
+          "settledMs": 403,
+          "processes": 21,
+          "operationProcesses": 13,
+          "graphProcesses": 8,
+          "peakProcesses": 3,
+          "webviewMessages": 9,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15503,
+          "commands": {
+            "rev-parse": 6,
+            "ls-files": 2,
+            "status": 2,
+            "update-ref": 1,
+            "merge": 1,
+            "diff": 1,
+            "commit": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 84,
+            "ls-files": 26,
+            "status": 36,
+            "update-ref": 17,
+            "merge": 45,
+            "diff": 13,
+            "commit": 42,
+            "worktree": 15,
+            "for-each-ref": 72,
+            "log": 29,
+            "remote": 18,
+            "rev-list": 48
+          },
+          "nodeCpuMs": 118,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 0,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "merge-no-ff",
+          "operationMs": 64,
+          "graphMs": 114,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 209,
+            "latestMutationToFrameMs": 257,
+            "renderMs": 39,
+            "frameMs": 13
+          },
+          "latestGraphPublishedMs": 220,
+          "graphAlreadyCurrent": false,
+          "settledMs": 313,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 3,
+          "webviewMessages": 9,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15578,
+          "commands": {
+            "merge": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "merge": 64,
+            "worktree": 10,
+            "for-each-ref": 154,
+            "status": 19,
+            "log": 35,
+            "rev-list": 124,
+            "remote": 98
+          },
+          "nodeCpuMs": 112,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 0,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "operationMs": 884,
+          "graphMs": 371,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 448,
+            "latestMutationToFrameMs": 1073,
+            "renderMs": 34,
+            "frameMs": 12
+          },
+          "latestGraphPublishedMs": 1046,
+          "graphAlreadyCurrent": false,
+          "settledMs": 1958,
+          "processes": 30,
+          "operationProcesses": 22,
+          "graphProcesses": 8,
+          "peakProcesses": 4,
+          "webviewMessages": 9,
+          "graphPublications": 3,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15663,
+          "commands": {
+            "rev-parse": 10,
+            "ls-files": 2,
+            "cat-file": 1,
+            "log": 2,
+            "worktree": 3,
+            "read-tree": 1,
+            "commit": 1,
+            "update-ref": 1,
+            "merge-base": 1,
+            "diff": 1,
+            "reset": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "status": 1,
+            "remote": 1,
+            "rev-list": 2
+          },
+          "commandTimeMs": {
+            "rev-parse": 444,
+            "ls-files": 296,
+            "cat-file": 27,
+            "log": 312,
+            "worktree": 84,
+            "read-tree": 19,
+            "commit": 111,
+            "update-ref": 26,
+            "merge-base": 23,
+            "diff": 19,
+            "reset": 21,
+            "for-each-ref": 733,
+            "status": 512,
+            "remote": 440,
+            "rev-list": 690
+          },
+          "nodeCpuMs": 160,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": -9,
+          "peakRssDeltaMiB": 0,
+          "historyExact": true
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "operationMs": 478,
+          "graphMs": 118,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 233,
+            "latestMutationToFrameMs": 271,
+            "renderMs": 41,
+            "frameMs": 15
+          },
+          "latestGraphPublishedMs": 187,
+          "graphAlreadyCurrent": false,
+          "settledMs": 691,
+          "processes": 31,
+          "operationProcesses": 23,
+          "graphProcesses": 8,
+          "peakProcesses": 3,
+          "webviewMessages": 9,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15741,
+          "commands": {
+            "rev-parse": 14,
+            "ls-files": 2,
+            "cat-file": 1,
+            "status": 3,
+            "update-ref": 1,
+            "cherry-pick": 3,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "rev-parse": 235,
+            "ls-files": 35,
+            "cat-file": 22,
+            "status": 87,
+            "update-ref": 18,
+            "cherry-pick": 102,
+            "worktree": 25,
+            "for-each-ref": 110,
+            "log": 41,
+            "rev-list": 71,
+            "remote": 45
+          },
+          "nodeCpuMs": 163,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        },
+        {
+          "operation": "cherry-pick",
+          "operationMs": 73,
+          "graphMs": 180,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 300,
+            "latestMutationToFrameMs": 357,
+            "renderMs": 53,
+            "frameMs": 21
+          },
+          "latestGraphPublishedMs": 247,
+          "graphAlreadyCurrent": false,
+          "settledMs": 343,
+          "processes": 9,
+          "operationProcesses": 1,
+          "graphProcesses": 8,
+          "peakProcesses": 3,
+          "webviewMessages": 9,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15816,
+          "commands": {
+            "cherry-pick": 1,
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "rev-list": 2,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "cherry-pick": 73,
+            "worktree": 30,
+            "for-each-ref": 125,
+            "status": 41,
+            "log": 61,
+            "rev-list": 84,
+            "remote": 38
+          },
+          "nodeCpuMs": 139,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 3,
+          "peakRssDeltaMiB": 3,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout",
+          "operationMs": 71,
+          "graphMs": 63,
+          "branchDetailsReads": [],
+          "checkoutTargetScope": "loaded-page",
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 129,
+            "latestMutationToFrameMs": 129,
+            "renderMs": 4,
+            "frameMs": 4
+          },
+          "latestGraphPublishedMs": 91,
+          "graphAlreadyCurrent": false,
+          "settledMs": 187,
+          "processes": 6,
+          "operationProcesses": 3,
+          "graphProcesses": 3,
+          "peakProcesses": 2,
+          "webviewMessages": 5,
+          "graphPublications": 2,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15888,
+          "commands": {
+            "for-each-ref": 2,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "status": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 1,
+            "status": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 79,
+            "rev-parse": 20,
+            "switch": 27,
+            "worktree": 21,
+            "status": 23
+          },
+          "nodeCpuMs": 55,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 2,
+          "peakRssDeltaMiB": 2,
+          "historyExact": true
+        },
+        {
+          "operation": "checkout-unloaded",
+          "operationMs": 94,
+          "graphMs": 244,
+          "branchDetailsReads": [],
+          "liveRenderer": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": false,
+            "mutationToFrameMs": 361,
+            "latestMutationToFrameMs": 361,
+            "renderMs": 54,
+            "frameMs": 19
+          },
+          "latestGraphPublishedMs": 221,
+          "graphAlreadyCurrent": false,
+          "settledMs": 569,
+          "processes": 9,
+          "operationProcesses": 3,
+          "graphProcesses": 6,
+          "peakProcesses": 2,
+          "webviewMessages": 8,
+          "graphPublications": 1,
+          "branchFilterPublications": 1,
+          "branchFilterJsonBytes": 15969,
+          "commands": {
+            "for-each-ref": 3,
+            "rev-parse": 1,
+            "switch": 1,
+            "worktree": 1,
+            "status": 1,
+            "log": 1,
+            "remote": 1
+          },
+          "graphCommands": {
+            "worktree": 1,
+            "for-each-ref": 2,
+            "status": 1,
+            "log": 1,
+            "remote": 1
+          },
+          "commandTimeMs": {
+            "for-each-ref": 346,
+            "rev-parse": 20,
+            "switch": 41,
+            "worktree": 26,
+            "status": 71,
+            "log": 116,
+            "remote": 212
+          },
+          "nodeCpuMs": 133,
+          "nodeCpuScope": "benchmark Node process including Playwright transport and RSS/idle sampling",
+          "rssDeltaMiB": 4,
+          "peakRssDeltaMiB": 4,
+          "historyExact": true
+        }
+      ]
+    }
+  ],
+  "controls": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "965a7245b4b47d3f4effa7dae8bf26751263df83",
+      "bundleSha256": "1810c631424e7da7e0103162ed391b6863d9903731e68a12f82659bd00fa725d"
+    },
+    "network": "owned-local-bare-only",
+    "results": [
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 39,
+        "handlerMs": 293,
+        "clickToFirstFrameMs": 443,
+        "clickToFinalFrameMs": 443,
+        "clickToSettledMs": 568,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 101,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 25,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 15,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 15,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 16,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 13,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 13,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 9,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 12,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 29,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 8,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 13,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 102,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 8,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 34,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 17,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 20,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 13,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 443,
+          "latestMutationToFrameMs": 443,
+          "renderMs": 3,
+          "frameMs": 7
+        }
+      },
+      {
+        "operation": "pull",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 26,
+        "handlerMs": 200,
+        "clickToFirstFrameMs": 426,
+        "clickToFinalFrameMs": 443,
+        "clickToSettledMs": 567,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 88,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 13,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 15,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 14,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "pull",
+            "elapsedMs": 148,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 77,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 95,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 24,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 24,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 44,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 26,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 25,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 20,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 11,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 426,
+          "latestMutationToFrameMs": 443,
+          "renderMs": 4,
+          "frameMs": 6
+        }
+      },
+      {
+        "operation": "fetch",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 51,
+        "handlerMs": 184,
+        "clickToFirstFrameMs": 429,
+        "clickToFinalFrameMs": 457,
+        "clickToSettledMs": 559,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 112,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 9,
+        "commands": [
+          {
+            "command": "fetch",
+            "elapsedMs": 179,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 16,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 53,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 17,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 33,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 21,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 20,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 39,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 38,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 2,
+        "webviewMessages": 11,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 429,
+          "latestMutationToFrameMs": 457,
+          "renderMs": 37,
+          "frameMs": 11
+        }
+      },
+      {
+        "operation": "interactive-rebase",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 42,
+        "handlerMs": 310,
+        "clickToFirstFrameMs": 459,
+        "clickToFinalFrameMs": 890,
+        "clickToSettledMs": 1036,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 119,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 26,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 9,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 6,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 6,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 13,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 5,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 6,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rebase",
+            "elapsedMs": 190,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 6,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 35,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 23,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 39,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 154,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 281,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 459,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 318,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 12,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 459,
+          "latestMutationToFrameMs": 890,
+          "renderMs": 3,
+          "frameMs": 3
+        }
+      }
+    ],
+    "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+  },
+  "limits": [
+    "Owned local bare remotes; no Captain mutation or real GitHub network speed measurement.",
+    "Parent Node CPU includes Playwright transport, excludes Git/Chromium/hooks/OS. Matrix RSS is sampled incremental Node RSS, not total application RSS.",
+    "One retained candidate is limited by 4096 entries,65536 memberships and4MiB conservative estimated text/object size; this is not an exact heap/RSS guarantee. No added timer or extra validation Git command.",
+    "Initial button comparison used a first fetch that creates origin/HEAD and therefore legitimately changes refs. Its failed expectation and samples are preserved as diagnostic, not headline timing.",
+    "Final unchanged-fetch fixture first prepares native remote HEAD, then asserts every full ref/OID is unchanged. Same corrected harness is used for both sources.",
+    "Consecutive unavailable history proofs explicitly invalidate, including the Native no-prefetch regression. All fresh branch/config/operation safety gates remain.",
+    "Broad named-operation matrices prove final-state correctness only; n3/source paired timing is limited to unchanged fetch and loaded checkout. Full goal remains active.",
+    "No Marketplace status query, foreground Extension Host, OS focus change or forced reload."
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-goal34-core-node.log",
+      "sha256": "542e9631cca7487d8b8e5dab5625a1dcc780fdc1574d40260c4110e1508d95a7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-focused-node.log",
+      "sha256": "ffe4074aa0d897b7fd8045ea936464579bcb8e28e30d6eaf0ac7210f418f2aae"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-node.log",
+      "sha256": "0d5bdfcf09d2b4a61a33d5ceeb60ff50ff5f5c3d75e0ae46523f71e2ccf369fb"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-first-node.log",
+      "sha256": "2545174214acf930038cbd9238c66b1282cf883a64851d0a83cc370b20e1e40a"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-before-node.log",
+      "sha256": "cb16a918c29affec7879ea10022dc9d776c8b2841c5d7988f566f4a3c80fe847"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-nonmutating-observer-node.log",
+      "sha256": "24e2d45c53ffef2bc5bf6f3f6373f75d7725d25078f6780affa14172b86b6140"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-unknown-proof-node.log",
+      "sha256": "70604d31da6f0247fe03e49f55a24ecca36ff4afc44e718383f142706627ec5d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-types.log",
+      "sha256": "b783a31b3bd0028dc6e405d142b672858d30733b25216ee48b659933bbdde328"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-buttons-state.json",
+      "sha256": "8271602508508d1d824760af63a6bfc638055d7606880d914a25c2e1c3c17df1"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-buttons-1-before.json",
+      "sha256": "d0769c8f5b3ddd572d78b3dfa9a02a4eda68068da22557301965e83e8b3e5a78"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-buttons-2-after.json",
+      "sha256": "9eaa4e2428e9274290d2f290aa7a6cc9d8a7f11ddfd578cde36a3169093ddeca"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-fetch-diagnostic.json",
+      "sha256": "cc8370ae5ce7203f80d62f0fe972abc5848100eefb6a6a42eabc6d24694825c9"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-ref-probe.json",
+      "sha256": "9ba0e8d956b9bdd4a5369c02e73d7395c3fd0935080608871e201cc857aabea5"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-state.json",
+      "sha256": "d934a55d16fb08915dd65e92ebda0c60227f0e6cfa5f219c11beaa3295947751"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-initial-matrix.json",
+      "sha256": "c4b73992aa42c645f0b33cab6371f93e319f0c9be456211e70eeb411642f6ac2"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-matrix.json",
+      "sha256": "003bacc7115e83755a3168bf6e6d981d93268969a71db841ce416924bee9db82"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-controls.json",
+      "sha256": "b4049cd674d96283966a10a149ffcb83cbf057f8022adf3378bf5625a51a10ea"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-1-before.json",
+      "sha256": "57b664b5b23735b6a915b6701929aad4cb39a60c53c9efbb292c4d2c1b2589e9"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-1-before.log",
+      "sha256": "ce1b6cd4c4225727af27c12ce4f4fafe879ea7e16b328267e00e5ec0c1fa1bd4"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-2-after.json",
+      "sha256": "68b6f955d79f227e266297a2d7de056d3983081cc8c467dfda26782092e87cfa"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-2-after.log",
+      "sha256": "fd60661d457e489795de54130e7adacfe8f38a32a23edefc6705be67ef17ba80"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-3-after.json",
+      "sha256": "555df0ce7cbdb3ee59fc10e064f63a9cd71ef81c532fc98bd3f3c568fa39e703"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-3-after.log",
+      "sha256": "e1c14bd5ef9441f8fdf3cca227f62be2ed9bebc94c053b00d4fe59d88cd72795"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-4-before.json",
+      "sha256": "a2a0e5d3caea3a76a3f0e127a2c5a261b07b7dc1add9de67703163b0db0d48f7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-4-before.log",
+      "sha256": "84f182c5611e037c05c21381855a76a2022a41a15dfb997a7a060f12469c3aca"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-5-before.json",
+      "sha256": "45ac1fd76e9066f894a3570f40c055d6bfdfa06f924ae03be5ba6b2673d9ebcb"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-5-before.log",
+      "sha256": "8a6c3a60d9c55fef068727a2cd39167d939f5b40934e0674baff31db60f3204b"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-6-after.json",
+      "sha256": "1a7f94d4e8929bc97a2c2100d5146817c60c14cc6c852456566764c1b20caada"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-final-buttons-6-after.log",
+      "sha256": "254337cfcb8474f3697ee7738a56f986c94340db5f1604b873836d25d45d320b"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-visual/live-graph-390.png",
+      "sha256": "d58b8380fa6e1c413a21c653ec52ddc88b76515feb98fa70ce55837792c1aeab"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-visual/live-graph-768.png",
+      "sha256": "e1a66f7e745ffa2b1a3783795a00a3d358d81cedd5b9b86ebd86c8883edc0ed1"
+    },
+    {
+      "path": "/private/tmp/gsc-goal34-visual/live-graph-1440.png",
+      "sha256": "9699b3070beb2848cd6ffe22c805bfa9154cab017076a7c12e2e2632f9157d95"
+    }
+  ]
+}

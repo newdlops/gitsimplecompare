@@ -17,12 +17,13 @@ import { createGitOperationFixture } from "../helpers/gitOperationFixture";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
-import { createGraphButtonDiagnostics } from "../helpers/graphButtonDiagnostics";
+import { createGraphButtonDiagnostics, traceLocalOnlySnapshot } from "../helpers/graphButtonDiagnostics";
 import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 
-type Operation = "push" | "pull" | "fetch" | "interactive-rebase";
+type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
+const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout"];
 
 /** 예외나 무한 대기를 성공으로 세지 않고 기다리던 대상을 제한 시간 오류에 남긴다. */
 async function within<T>(promise: Promise<T>, label: string, milliseconds = 60000): Promise<T> {
@@ -83,6 +84,8 @@ async function measure(directory: string, operation: Operation) {
     await runGit(["update-ref", "refs/heads/main", f.incomingPull], f.remote);
   }
   if (operation === "fetch") await runGit(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
+  // 최신 Git의 첫 fetch는 origin/HEAD를 만들 수 있다. 실제 무변경 비교는 이 초기 ref 설정 뒤에 시작한다.
+  if (operation === "fetch-no-change") await runGit(["fetch", "--all", "--prune"], f.root);
   assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote, "Only the owned local bare receiver is permitted");
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
@@ -98,6 +101,7 @@ async function measure(directory: string, operation: Operation) {
   const { panel, messages, surface, receiveMessage } = transport;
   const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" ? createGraphButtonDiagnostics({ mock } as any) : undefined;
   const markerFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
+  const localOnlyDiagnostics = process.env.GSC_BENCH_LOCAL_ONLY_DIAGNOSTICS === "1" ? traceLocalOnlySnapshot({ mock } as any, cache) : undefined;
   const getMarkers = cache.getMap.bind(cache);
   let pendingMarkers = 0;
   mock.method(cache, "getMap", async () => {
@@ -107,12 +111,12 @@ async function measure(directory: string, operation: Operation) {
     } finally { pendingMarkers--; }
   });
   /** 실제 callback이 시작한 metadata만 기다리고 별도의 사전 계산으로 측정을 예열하지 않는다. */
-  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.peek() || markerFailures.length > 0);
+  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.completed || markerFailures.length > 0);
   let ready!: () => void, actionDone!: () => void, actionFailed!: (error: unknown) => void;
   const initialized = new Promise<void>(resolve => { ready = resolve; });
   const action = new Promise<void>((resolve, reject) => { actionDone = resolve; actionFailed = reject; });
   void action.catch(() => undefined);
-  const requestType = operation === "interactive-rebase" ? "runGraphRebase" : operation;
+  const requestType = operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch" : operation === "checkout" ? "branchAction" : operation;
   let receivedAt: number | undefined, completedAt: number | undefined;
   renderer.onMessage(async message => {
     try {
@@ -127,6 +131,8 @@ async function measure(directory: string, operation: Operation) {
     await within(initialized, "actual ready callback");
     await settle(f.root, panel, messages, metadataReady);
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
+    if (operation === "checkout") assert.ok(panel.commits.some((commit: Commit) => commit.hash === f.topic), "Checkout target must be in the actual loaded page");
+    const initialRefs = operation === "fetch-no-change" ? await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root) : undefined;
     const initialStatus = partial ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
@@ -144,6 +150,8 @@ async function measure(directory: string, operation: Operation) {
     diagnostics?.start();
     try {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
+      else if (operation === "checkout") await renderer.clickControl('.ref[data-checkout-branch="topic"]');
+      else if (operation === "fetch-no-change") await renderer.clickControl("#fetch-graph");
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
       await settle(f.root, panel, messages, metadataReady);
@@ -168,6 +176,8 @@ async function measure(directory: string, operation: Operation) {
       if (operation === "push") assert.equal((await runGit(["rev-parse", `refs/heads/${branch}`], f.remote)).trim(), f.pr);
       if (operation === "pull") assert.equal(head, f.incomingPull);
       if (operation === "fetch") assert.equal((await runGit(["rev-parse", "refs/remotes/origin/incoming"], f.root)).trim(), f.incoming);
+      if (operation === "fetch-no-change") assert.equal(await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root), initialRefs, "Unchanged fetch fixture must preserve every Native ref");
+      if (operation === "checkout") assert.equal(head, f.topic);
       if (operation === "interactive-rebase") {
         const bodies = (await runGit(["log", "--reverse", "--format=%B%x00", `${f.main}..HEAD`], f.root)).split("\0").map(value => value.trim()).filter(Boolean);
         assert.deepEqual(bodies, ["combined click\n\ncombined body", "PR 2"]);
@@ -179,7 +189,7 @@ async function measure(directory: string, operation: Operation) {
         missingBlobs: await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), localChangesPreserved: true } : undefined;
       const publication = publications.slice().reverse().find(value => value.at >= started && value.signature === final);
       assert.ok(publication || initial === final, "Changed final state must have a publication caused after the click");
-      const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance, branch);
+      const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance, operation === "checkout" ? "topic" : branch);
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
@@ -188,7 +198,7 @@ async function measure(directory: string, operation: Operation) {
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
         graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
-        ...(diagnostic ? { diagnostic } : {}), ...(promisor ? { promisor } : {}) };
+        ...(diagnostic ? { diagnostic } : {}), ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
   } finally { panel.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }
@@ -196,7 +206,7 @@ async function measure(directory: string, operation: Operation) {
 /** 모든 사례를 같은 규모로 실행하고 fixture와 browser 자원은 종료 시 회수한다. */
 async function main() {
   const selected = (process.env.GSC_BENCH_OPERATIONS?.split(",") ?? operations) as Operation[];
-  assert.ok(selected.length && selected.every(value => operations.includes(value)), "Unknown button operation");
+  assert.ok(selected.length && selected.every(value => supportedOperations.includes(value)), "Unknown button operation");
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-graph-button-flow-"));
   try {
     const results = [];

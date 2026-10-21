@@ -94,3 +94,29 @@ export function createGraphButtonDiagnostics(t: Pick<TestContext, "mock">) {
     },
   };
 }
+
+/**
+ * 재검증 후보의 수명만 기록한다. getter를 따로 호출하거나 Git/캐시 값을 예열하지 않는다.
+ * @param t 복원할 시험 문맥 @param cache 이 fixture가 소유한 cache
+ * @returns 인자·ref·환경 원문 없는 관찰 결과. wrapper 비용이 있어 비교용 시간에는 사용하지 않는다.
+ */
+export function traceLocalOnlySnapshot(t: Pick<TestContext, "mock">, cache: any) {
+  const rows: unknown[] = [];
+  /** 내부 자료를 읽기만 하고 후보 승인·완료 cache 채택은 제품의 호출에 맡긴다. */
+  const state = () => ({ ready: cache.remoteReady, completed: !!cache.completed, pending: !!cache.pending,
+    proof: !!cache.reuse?.history, localFresh: cache.reuse?.localReady, remoteFresh: cache.reuse?.remoteReady,
+    verified: !!cache.reuse?.completed, candidate: !!cache.reuse?.candidate,
+    sameHistory: cache.reuse?.candidate?.history === cache.reuse?.history,
+    sameKey: cache.reuse?.candidate?.key === cache.snapshotKey });
+  for (const name of ["beginSnapshot","setLocalBranches","setRemoteTips","setRemoteUnavailable","invalidate","cancel","getMap","peek"]) {
+    if (typeof cache[name] !== "function") continue;
+    const original = cache[name].bind(cache);
+    t.mock.method(cache,name,(...args:any[]) => {
+      const before=state(), result=original(...args);
+      rows.push({name,...(["invalidate","cancel"].includes(name)?{reason:args[0]}:{}),before,after:state()});
+      if(result instanceof Promise) return result.finally(()=>{rows.push({name:name+":settled",after:state()});});
+      return result;
+    });
+  }
+  return () => ({ scope:"instrumented diagnostic only; no comparative timing claim", rows });
+}

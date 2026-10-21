@@ -21,6 +21,7 @@ import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workin
 import { GraphLocalBranchTrackingReader } from "./graphLocalBranchTracking";
 import { readGitLogPage, readGitLogPageSnapshot } from "./gitLogPage";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
+import { applyLocalOnlyMarkers } from "./gitLocalOnlyMarkers";
 import { LOG_FIELD_SEPARATOR } from "./gitLogParse";
 import {
   ForcePushMode,
@@ -185,6 +186,9 @@ export class GitLogService {
 
   /** 일괄 tracking 조회와 무거운 선행 이력이 세 프로세스로 겹치지 않게 현재 전략을 알려 준다. */
   usesNativeBranchSnapshot(): boolean { return this.branchTracking.usesNativeSnapshot(); }
+
+  /** 같은 Native refresh의 이력·전체 ref 증거를 재검증 cache에 제공한다. 증거가 없으면 재사용하지 않는다. */
+  beginGraphLocalOnlySnapshot(historyIdentity: string | undefined, fingerprint: string): void { this.localOnlyBranchCache.beginSnapshot(historyIdentity, fingerprint); }
 
   /**
    * Graph가 이미 읽은 local/remote tip을 containment cache에 주입한다.
@@ -568,33 +572,4 @@ function virtualCommit(
     subject: kind === "ongoing" ? "Ongoing changes" : "Staged changes",
     kind,
   };
-}
-
-/**
- * 커밋 목록에 local-only 표시를 붙이고, 표시가 이전과 달라진 커밋 수를 센다.
- * - "표시가 있는 커밋 수"가 아니라 "바뀐 수"를 돌려줘야, 이미 표시된 커밋만 있는 페이지에서
- *   그래프 전체를 다시 게시하는 낭비를 막을 수 있다.
- * @param commits 표시를 붙일 커밋 목록(제자리 수정)
- * @param byHash 커밋 hash → local-only 브랜치 이름
- * @returns 표시가 추가·제거·변경된 커밋 수
- */
-function applyLocalOnlyMarkers(
-  commits: Commit[],
-  byHash: ReadonlyMap<string, readonly string[]>
-): number {
-  let changed = 0;
-  for (const commit of commits) {
-    const next = byHash.get(commit.hash);
-    const previous = commit.localOnlyBranches ?? [];
-    const nextNames = next ?? [];
-    if (previous.length !== nextNames.length || previous.some((name, index) => name !== nextNames[index])) {
-      changed++;
-    }
-    if (nextNames.length) {
-      commit.localOnlyBranches = [...nextNames];
-    } else {
-      delete commit.localOnlyBranches;
-    }
-  }
-  return changed;
 }

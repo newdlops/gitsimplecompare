@@ -286,6 +286,7 @@ export class GitGraphPanel {
   }
   /** 같은 도달 가능 이력은 보존하고 ref/HEAD부터 게시한다. 증명하지 못하면 전체 Git log를 읽는다. */
   private async refreshGraphReferences(context: GraphRefreshContext): Promise<void> {
+    this.logService.beginGraphLocalOnlySnapshot?.(context.historyUncertain ? undefined : context.historyIdentity, context.fingerprint);
     if (context.historyUncertain || (context.previous && context.previous.historyIdentity !== context.historyIdentity))
       this.logService.invalidateCaches("graphHistoryBoundaryChangedOrUnknown");
     if (this.rangeStartIndex !== 0 || this.branchFilter.mode !== "all" || this.invalidLocalRefs.length || !context.previous ||
@@ -328,6 +329,7 @@ export class GitGraphPanel {
   }
   /** 로컬 상태를 먼저 보내고 remote catalog까지 확정한 뒤 최종 첫 페이지를 정확히 한 번 읽는다. */
   private async reloadGraph(context: GraphRefreshContext): Promise<void> {
+    this.logService.beginGraphLocalOnlySnapshot?.(context.historyUncertain ? undefined : context.historyIdentity, context.fingerprint);
     const graphGeneration = this.loadGeneration;
     this.resumeReloadOnFocus = false;
     this.activeReloadGeneration = graphGeneration;
