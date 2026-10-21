@@ -14,6 +14,8 @@ import { logError, logInfo } from "../ui/outputLog";
 import { PullRequestWorktreeRecoveryError } from "../git/pullRequestWorktreeRecovery";
 import { offerPullRequestWorktreeRecovery } from "../commands/prWorktreeRecovery";
 import { checkPullRequestDependencies, offerPullRequestDependencies } from "../ui/pullRequestDependencies";
+import { presentActionNotice, type ActionNoticeScope } from "../ui/deferredActionNotices";
+import { offerFailedPullRequestUndo, offerPullRequestOperationUndo, undoPullRequestOperation } from "./graphPullRequestUndo";
 
 import { pickPullRequestAction, type PullRequestActionKind } from "./graphPullRequestActionPicker";
 export type { PullRequestActionKind } from "./graphPullRequestActionPicker";
@@ -24,6 +26,7 @@ export interface GraphPullRequestActionDeps {
   logService: GitLogService;
   pullRequests: () => PullRequestInfo[];
   refreshGraph: () => Promise<void>;
+  notices?: ActionNoticeScope;
 }
 
 /**
@@ -157,7 +160,8 @@ async function squashRevertPullRequest(
   const plan = await prepareAndConfirmPullRequestRevert(
     service,
     pr,
-    "squashRevert"
+    "squashRevert",
+    deps.notices
   );
   if (!plan) {
     return;
@@ -181,7 +185,8 @@ async function rebaseRevertPullRequest(
   const plan = await prepareAndConfirmPullRequestRevert(
     service,
     pr,
-    "rebaseRevert"
+    "rebaseRevert",
+    deps.notices
   );
   if (!plan) {
     return;
@@ -202,7 +207,8 @@ async function rebaseRevertPullRequest(
 async function prepareAndConfirmPullRequestRevert(
   service: PullRequestOperationService,
   pr: PullRequestInfo,
-  operation: "squashRevert" | "rebaseRevert"
+  operation: "squashRevert" | "rebaseRevert",
+  notices?: ActionNoticeScope
 ): Promise<PullRequestRevertPlan | undefined> {
   const label = operation === "squashRevert"
     ? vscode.l10n.t("Squash Revert")
@@ -228,9 +234,9 @@ async function prepareAndConfirmPullRequestRevert(
       operation,
       number: pr.number,
     });
-    await vscode.window.showErrorMessage(
+    await presentActionNotice(notices, () => vscode.window.showErrorMessage(
       vscode.l10n.t("PR operation failed: {0}", errText(err))
-    );
+    ));
     return undefined;
   }
   const accepted = plan.outsideCurrentBranch > 0
@@ -318,7 +324,7 @@ async function runPullRequestOperation(
       await vscode.commands.executeCommand("gitSimpleCompare.conflicts.focus");
       const message = conflictMessage(operation, pr.number, result.preservedStashHash);
       if (operation === "squash" || operation === "rebase") await offerPullRequestDependencies(deps.logService.repoRoot,
-        { pr, beforeHead: result.beforeHead, branch: result.branch, knownPullRequests: deps.pullRequests() }, message);
+        { pr, beforeHead: result.beforeHead, branch: result.branch, knownPullRequests: deps.pullRequests() }, message, deps.notices);
       else vscode.window.showWarningMessage(message);
       return;
     }
@@ -336,11 +342,12 @@ async function runPullRequestOperation(
     await offerPullRequestOperationUndo(
       deps,
       successMessage(operation, pr.number, result.branch),
-      result.branch
+      result
     );
   } catch (err) {
     if (err instanceof PullRequestWorktreeRecoveryError) {
-      await offerPullRequestWorktreeRecovery(err, deps.pullRequests());
+      await deps.refreshGraph();
+      await offerPullRequestWorktreeRecovery(err, deps.pullRequests(), deps.notices);
       return;
     }
     logError("pr operation failed", err, {
@@ -348,17 +355,9 @@ async function runPullRequestOperation(
       operation,
       number: pr.number,
     });
-    const undo = vscode.l10n.t("Undo PR Operation");
-    const service = new PullRequestOperationService(deps.logService.repoRoot);
-    const undoBranch = undoBranchFromError(err);
-    const canUndo = await service.hasUndoSnapshot(undoBranch) || await service.hasUndoSnapshot();
+    await deps.refreshGraph();
     const message = vscode.l10n.t("PR operation failed: {0}", errText(err));
-    const pick = canUndo
-      ? await vscode.window.showErrorMessage(message, undo)
-      : await vscode.window.showErrorMessage(message);
-    if (pick === undo) {
-      await undoPullRequestOperation(deps, undoBranch);
-    }
+    await offerFailedPullRequestUndo(deps, message, undoBranchFromError(err));
   }
 }
 
@@ -421,62 +420,6 @@ function successMessage(
     case "rebaseRevert":
       return vscode.l10n.t("PR #{0} rebase reverted on '{1}'.", number, branch);
   }
-}
-
-/**
- * 성공 안내에서 바로 undo 를 실행할 수 있게 action 버튼을 제공한다.
- * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param message 사용자에게 보여줄 완료 메시지
- */
-async function offerPullRequestOperationUndo(
-  deps: GraphPullRequestActionDeps,
-  message: string,
-  branchName?: string
-): Promise<void> {
-  const undo = vscode.l10n.t("Undo PR Operation");
-  const pick = await vscode.window.showInformationMessage(message, undo);
-  if (pick === undo) {
-    await undoPullRequestOperation(deps, branchName);
-  }
-}
-
-/**
- * 지정 브랜치 또는 현재 브랜치에 저장된 PR 작업 snapshot 으로 reset 한다.
- * @param deps graph action 실행에 필요한 서비스와 새로고침 함수
- * @param branchName undo 할 PR 작업 브랜치. 생략하면 현재 브랜치를 사용한다.
- */
-async function undoPullRequestOperation(
-  deps: GraphPullRequestActionDeps,
-  branchName?: string
-): Promise<void> {
-  const service = new PullRequestOperationService(deps.logService.repoRoot);
-  if (!await service.hasUndoSnapshot(branchName)) {
-    logInfo("PR operation undo unavailable for current worktree state", { repoRoot: deps.logService.repoRoot, branchName });
-    vscode.window.showWarningMessage(
-      branchName
-        ? vscode.l10n.t("No PR operation snapshot is available for '{0}'.", branchName)
-        : vscode.l10n.t("No PR operation snapshot is available for the current branch.")
-    );
-    return;
-  }
-  const plan = await service.prepareUndo(branchName);
-  if (!(await confirm(
-    vscode.l10n.t("Undo the last PR operation on '{0}'? The branch will reset to the saved snapshot.", plan.branch),
-    vscode.l10n.t("Undo PR Operation")
-  ))) {
-    return;
-  }
-  logInfo("pr operation undo started", { repoRoot: deps.logService.repoRoot });
-  const result = await service.undoLastOperation(plan.branch, plan);
-  logInfo("pr operation undo finished", {
-    repoRoot: deps.logService.repoRoot,
-    branch: result.branch,
-    restoredHead: shortHash(result.restoredHead),
-  });
-  await deps.refreshGraph();
-  vscode.window.showInformationMessage(
-    vscode.l10n.t("PR operation undone on '{0}'.", result.branch)
-  );
 }
 
 /**

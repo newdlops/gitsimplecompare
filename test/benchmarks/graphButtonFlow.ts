@@ -21,6 +21,7 @@ import { createGraphButtonDiagnostics, traceLocalOnlySnapshot } from "../helpers
 import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButtonFixture";
+import { probePrNotice } from "../helpers/prNoticeProbe";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
@@ -93,6 +94,8 @@ async function measure(directory: string, operation: Operation) {
   __setQuickPickResult(items => items.find((item: any) => item?.kind !== -1));
   const prOperation = operation === "pr-squash-cherry-pick" || operation === "pr-cherry-pick";
   if (prOperation) installPrButtonFixture(f);
+  const noticeHoldMs = Number(process.env.GSC_BENCH_PR_NOTICE_HOLD_MS || 0);
+  const notice = prOperation ? probePrNotice(noticeHoldMs) : undefined;
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
   let measuring = false;
   const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
@@ -121,12 +124,13 @@ async function measure(directory: string, operation: Operation) {
   void action.catch(() => undefined);
   const requestType = prOperation ? "pullRequestAction" : operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch" : operation === "checkout" ? "branchAction" : operation;
   let receivedAt: number | undefined, completedAt: number | undefined;
+  let noticeAtCompletion: ReturnType<ReturnType<typeof probePrNotice>["handlerState"]> | undefined;
   renderer.onMessage(async message => {
     try {
       if (message.type === requestType) { assert.equal(receivedAt, undefined, "One click must send one mutation request"); receivedAt = performance.now(); }
       await receiveMessage(message);
       if (message.type === "ready") ready();
-      if (message.type === requestType) { completedAt = performance.now(); actionDone(); }
+      if (message.type === requestType) { completedAt = performance.now(); noticeAtCompletion = notice?.handlerState(); actionDone(); }
     } catch (error) { actionFailed(error); throw error; }
   });
   try {
@@ -204,9 +208,12 @@ async function measure(directory: string, operation: Operation) {
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
         graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
+        ...(noticeAtCompletion ? { notice: { modeledHoldMs: noticeHoldMs, pendingAtHandlerCompletion: noticeAtCompletion.pending,
+          gitToHandlerMs: Math.round(completedAt - noticeAtCompletion.gitCompletedAt),
+          gitToFinalFrameMs: frame.latestMutationToFrameMs === null ? null : Math.max(0, frame.latestMutationToFrameMs - (noticeAtCompletion.gitCompletedEpoch - clickedAt)) } } : {}),
         ...(diagnostic ? { diagnostic } : {}), ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
-  } finally { panel.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
+  } finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }
 
 /** 모든 사례를 같은 규모로 실행하고 fixture와 browser 자원은 종료 시 회수한다. */

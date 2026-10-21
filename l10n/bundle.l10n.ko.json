@@ -1924,5 +1924,6 @@
   "Showing the first {0} line changes": "처음 {0}개 줄 변경을 표시합니다",
   "Line {0} history · {1}": "{0}번째 줄 이력 · {1}",
   "Select a change to open its file diff. History follows the first parent.": "변경을 선택하면 해당 파일의 diff를 엽니다. 첫 번째 부모를 따라 이력을 조회합니다.",
-  "Could not load line history. See Git Simple Compare Output.": "줄 이력을 불러오지 못했습니다. Git Simple Compare 출력을 확인하세요."
+  "Could not load line history. See Git Simple Compare Output.": "줄 이력을 불러오지 못했습니다. Git Simple Compare 출력을 확인하세요.",
+  "This PR operation is no longer the current saved operation. Undo was stopped; your changes were preserved.": "현재 저장된 작업이 이 PR 작업과 달라 Undo를 중단했습니다. 변경 내용은 보존되었습니다."
 }

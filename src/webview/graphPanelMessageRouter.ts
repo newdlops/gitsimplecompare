@@ -5,7 +5,8 @@ import { GitLogService, EMPTY_TREE } from "../git/gitLogService";
 import { gitHubReadContext, snapshotGitHubEnvironment } from "../git/githubReadContext";
 import type { LocalBranchStatus } from "../graph/graphTypes";
 import { openRefVsRefDiff } from "../ui/diffPresenter";
-import { logError, logInfo, showOutputLog } from "../ui/outputLog";
+import { logError, logInfo, showErrorWithOutput, showOutputLog } from "../ui/outputLog";
+import { DeferredActionNotices } from "../ui/deferredActionNotices";
 import {
   handleGraphAction,
   isGraphActionMessage,
@@ -104,6 +105,11 @@ export class GraphPanelMessageRouter {
   private readonly rebaseSessionSync: GraphRebaseSessionSync;
   private readonly actionRefresh: GraphActionRefreshQueue;
   private readonly activeActionKeys = new Set<string>();
+  private readonly activeRepositoryActions = new Map<string, number>();
+  private readonly activeNoticeUndoRoots = new Set<string>();
+  private readonly actionNotices = new DeferredActionNotices(error => {
+    showErrorWithOutput("graph notification action failed", error, vscode.l10n.t("PR operation failed: {0}", error instanceof Error ? error.message : String(error)));
+  });
 
   /** 상세 선택·닫기·수명 변경 때 현재 패널이 소유한 소비자를 해제하고 재조회 가능한 상태를 보낸다. */
   private cancelDetailLoading(reason: string): void {
@@ -172,7 +178,7 @@ export class GraphPanelMessageRouter {
 
   /** 패널 수명주기 경계에서 pager와 stack snapshot의 원격 조회를 함께 취소한다. */
   cancelPullRequestLoading(reason: string): void {
-    if (reason === "repositoryChanged" || reason === "dispose") this.repositoryEpoch++;
+    if (reason === "repositoryChanged" || reason === "dispose") { this.repositoryEpoch++; this.actionNotices.cancel(); }
     if (["repositoryChanged", "dispose", "hidden", "windowUnfocused"].includes(reason)) this.cancelDetailLoading(reason);
     if (reason === "dispose") { this.rebaseSessionSync.dispose(); this.actionRefresh.dispose(); }
     else if (["repositoryChanged", "hidden", "windowUnfocused"].includes(reason)) this.rebaseSessionSync.invalidate();
@@ -465,20 +471,52 @@ export class GraphPanelMessageRouter {
       logInfo("graph action skipped", { repoRoot: service.repoRoot, action: message.type, reason: "alreadyRunning", busyKey });
       return;
     }
+    if (this.activeNoticeUndoRoots.has(service.repoRoot)) {
+      logInfo("graph action skipped", { repoRoot: service.repoRoot, action: message.type, reason: "notificationUndoRunning" });
+      if (busyKey) this.deps.post({ type: "graphBusy", key: busyKey, busy: false });
+      vscode.window.showWarningMessage(vscode.l10n.t("Another Git write operation is already running for this repository."));
+      return;
+    }
     const referencesOnly = ["push", "forcePush", "renameBranch", "createBranch", "cloneBranch", "deleteBranch"].includes(message.type);
     const refresh = deferGraphActionRefresh(this.actionRefresh, service.repoRoot, referencesOnly ? "references" : "graph");
+    const epoch = this.repositoryEpoch;
+    let finished!: () => void;
+    const ready = new Promise<void>(resolve => { finished = resolve; });
+    const notices = this.actionNotices.scope(ready,
+      () => epoch === this.repositoryEpoch && service.repoRoot === this.repoRoot,
+      async action => {
+        if (this.activeRepositoryActions.has(service.repoRoot)) {
+          throw new Error(vscode.l10n.t("Another Git write operation is already running for this repository."));
+        }
+        const undoRefresh = deferGraphActionRefresh(this.actionRefresh, service.repoRoot);
+        this.activeRepositoryActions.set(service.repoRoot, 1);
+        this.activeNoticeUndoRoots.add(service.repoRoot);
+        if (busyKey) this.activeActionKeys.add(busyKey);
+        try { await (busyKey ? this.deps.withBusy(busyKey, () => action(undoRefresh.refreshGraph)) : action(undoRefresh.refreshGraph)); }
+        finally {
+          this.activeRepositoryActions.delete(service.repoRoot); this.activeNoticeUndoRoots.delete(service.repoRoot);
+          if (busyKey) this.activeActionKeys.delete(busyKey);
+          undoRefresh.complete();
+        }
+      });
     const action = () => handleGraphAction(message, {
       logService: service,
       pullRequests: () => this.pullRequestPager.items,
       refreshCheckout: refresh.refreshCheckout,
       refreshGraph: refresh.refreshGraph,
       post: this.deps.post,
+      notices,
     });
     if (busyKey) this.activeActionKeys.add(busyKey);
+    this.activeRepositoryActions.set(service.repoRoot, (this.activeRepositoryActions.get(service.repoRoot) ?? 0) + 1);
     try { await (busyKey ? this.deps.withBusy(busyKey, action) : action()); }
     finally {
       if (busyKey) this.activeActionKeys.delete(busyKey);
+      const remaining = (this.activeRepositoryActions.get(service.repoRoot) ?? 1) - 1;
+      if (remaining) this.activeRepositoryActions.set(service.repoRoot, remaining);
+      else this.activeRepositoryActions.delete(service.repoRoot);
       refresh.complete();
+      finished();
     }
   }
 

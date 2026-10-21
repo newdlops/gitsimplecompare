@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import type { PullRequestDependencyCandidate, PullRequestDependencyInput, PullRequestDependencyReport } from "../git/pullRequestDependencies";
 import { PullRequestDependencyService } from "../git/pullRequestDependencyService";
 import { logError, showOutputLog } from "./outputLog";
+import { presentActionNotice, type ActionNoticeScope } from "./deferredActionNotices";
 
 interface DependencyPick extends vscode.QuickPickItem { candidate?: PullRequestDependencyCandidate; output?: boolean }
 
@@ -16,9 +17,11 @@ export async function inspectPullRequestDependencies(root: string, input: PullRe
       title: vscode.l10n.t("Checking prerequisites for PR #{0}", input.pr.number), cancellable: true }, async (_progress, token) => {
       const controller = new AbortController();
       const listener = token.onCancellationRequested(() => controller.abort());
-      if (token.isCancellationRequested) controller.abort();
+      const abort = () => controller.abort();
+      input.signal?.addEventListener("abort", abort, { once: true });
+      if (token.isCancellationRequested || input.signal?.aborted) controller.abort();
       try { return await new PullRequestDependencyService(root).analyze({ ...input, signal: controller.signal }); }
-      finally { listener.dispose(); }
+      finally { listener.dispose(); input.signal?.removeEventListener("abort", abort); }
     });
   } catch (error) {
     logError("PR prerequisite inspection stopped", error, { repoRoot: root, number: input.pr.number });
@@ -30,8 +33,19 @@ export async function inspectPullRequestDependencies(root: string, input: PullRe
  * 실제 충돌이 멈췄을 때 선행 후보 번호를 짧은 경고에 포함하고 자세한 근거로 연결한다.
  * @param root 원래 저장소 @param input 원래 작업의 snapshot @param fallback 기존 충돌·복구 안내
  */
-export async function offerPullRequestDependencies(root: string, input: PullRequestDependencyInput, fallback: string): Promise<void> {
+export async function offerPullRequestDependencies(root: string, input: PullRequestDependencyInput, fallback: string,
+  notices?: ActionNoticeScope): Promise<void> {
+  if (notices) {
+    notices.background(signal => inspectAndOffer(root, { ...input, signal }, fallback, notices));
+    return;
+  }
+  await inspectAndOffer(root, input, fallback);
+}
+
+/** 기존 진단 제한/알고리즘을 유지하며 원래 Git 완료 후 시작하고 저장소 수명이 끝나면 중단한다. */
+async function inspectAndOffer(root: string, input: PullRequestDependencyInput, fallback: string, notices?: ActionNoticeScope): Promise<void> {
   const report = await inspectPullRequestDependencies(root, input);
+  if (input.signal?.aborted) return;
   const verified = report?.candidates.filter(candidate => candidate.status === "resolves" || candidate.status === "reduces") || [];
   const possible = report?.candidates.filter(candidate => candidate.status === "unverified") || [];
   const candidates = verified.length ? verified : possible;
@@ -40,11 +54,12 @@ export async function offerPullRequestDependencies(root: string, input: PullRequ
     : possible.length ? vscode.l10n.t("Possible prerequisite PRs: {0}. Their necessity has not been verified.", numbers(candidates)) : "";
   const inspect = vscode.l10n.t("Inspect Prerequisites");
   const output = vscode.l10n.t("Show Output");
-  const selected = await vscode.window.showWarningMessage([detail, fallback].filter(Boolean).join(" "), inspect, output);
-  if (selected === inspect) {
-    if (report) await showPullRequestDependencies(report);
-    else vscode.window.showWarningMessage(vscode.l10n.t("Prerequisite inspection was cancelled or could not finish. The inspection did not change your working tree."));
-  } else if (selected === output) showOutputLog(false);
+  await presentActionNotice(notices, () => vscode.window.showWarningMessage([detail, fallback].filter(Boolean).join(" "), inspect, output), async selected => {
+    if (selected === inspect) {
+      if (report) await showPullRequestDependencies(report);
+      else vscode.window.showWarningMessage(vscode.l10n.t("Prerequisite inspection was cancelled or could not finish. The inspection did not change your working tree."));
+    } else if (selected === output) showOutputLog(false);
+  });
 }
 
 /**

@@ -1,0 +1,453 @@
+{
+  "version": "0.1.72137",
+  "baselineCommit": "b38021fd0383c3be881f81249f67c9f2091ee770",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "change": "Separate Graph PR Git completion from nonmodal notification responses; bind late Undo and bound/cancel lifecycle-owned follow-ups.",
+  "method": {
+    "order": [
+      "before",
+      "after",
+      "after",
+      "before",
+      "before",
+      "after"
+    ],
+    "samplesPerSourcePerOperation": 3,
+    "modeledNoticeHoldMs": 2000,
+    "fixture": {
+      "files": 1000,
+      "mainHistoryCommits": 1000,
+      "localSideBranches": 100,
+      "sharedUpstreamBranches": 48,
+      "prCommits": 3
+    },
+    "transport": "Production HTML/CSP/JS and registered callback with real Native Git. VS Code window/pickers/transport and PR GitHub list metadata are replaced.",
+    "externalNetwork": "No benchmark network; owned local bare remote only.",
+    "focus": "Headless only; no foreground host, OS focus change or forced reload.",
+    "interpretation": "The 2-second notice response delay models the documented VS Code notification Thenable lifetime. Git service completion is separately observed; do not treat removal of this modeled wait as faster Native Git or GitHub."
+  },
+  "comparisons": {
+    "pr-squash-cherry-pick": {
+      "gitToHandlerMs": {
+        "before": {
+          "values": [2012,2005,2005],
+          "median": 2005,
+          "min": 2005,
+          "max": 2012
+        },
+        "after": {
+          "values": [4,4,3],
+          "median": 4,
+          "min": 3,
+          "max": 4
+        }
+      },
+      "gitToFinalFrameMs": {
+        "before": {
+          "values": [3360,2234,2189],
+          "median": 2234,
+          "min": 2189,
+          "max": 3360
+        },
+        "after": {
+          "values": [803,258,299],
+          "median": 299,
+          "min": 258,
+          "max": 803
+        }
+      },
+      "handlerMs": {
+        "before": {
+          "values": [2867,2321,2239],
+          "median": 2321,
+          "min": 2239,
+          "max": 2867
+        },
+        "after": {
+          "values": [4200,776,1266],
+          "median": 1266,
+          "min": 776,
+          "max": 4200
+        }
+      },
+      "clickToFinalFrameMs": {
+        "before": {
+          "values": [4226,2573,2437],
+          "median": 2573,
+          "min": 2437,
+          "max": 4226
+        },
+        "after": {
+          "values": [5021,1048,1586],
+          "median": 1586,
+          "min": 1048,
+          "max": 5021
+        }
+      },
+      "clickToSettledMs": {
+        "before": {
+          "values": [4365,2642,2569],
+          "median": 2642,
+          "min": 2569,
+          "max": 4365
+        },
+        "after": {
+          "values": [5131,1122,1656],
+          "median": 1656,
+          "min": 1122,
+          "max": 5131
+        }
+      },
+      "hostGitCalls": {
+        "before": {
+          "values": [30,30,30],
+          "median": 30,
+          "min": 30,
+          "max": 30
+        },
+        "after": {
+          "values": [30,30,30],
+          "median": 30,
+          "min": 30,
+          "max": 30
+        }
+      },
+      "nodeCpuMs": {
+        "before": {
+          "values": [186,169,147],
+          "median": 169,
+          "min": 147,
+          "max": 186
+        },
+        "after": {
+          "values": [214,224,247],
+          "median": 224,
+          "min": 214,
+          "max": 247
+        }
+      }
+    },
+    "pr-cherry-pick": {
+      "gitToHandlerMs": {
+        "before": {
+          "values": [2006,2004,2007],
+          "median": 2006,
+          "min": 2004,
+          "max": 2007
+        },
+        "after": {
+          "values": [2,1,2],
+          "median": 2,
+          "min": 1,
+          "max": 2
+        }
+      },
+      "gitToFinalFrameMs": {
+        "before": {
+          "values": [2195,2331,2198],
+          "median": 2198,
+          "min": 2195,
+          "max": 2331
+        },
+        "after": {
+          "values": [138,165,197],
+          "median": 165,
+          "min": 138,
+          "max": 197
+        }
+      },
+      "handlerMs": {
+        "before": {
+          "values": [2391,2391,2199],
+          "median": 2391,
+          "min": 2199,
+          "max": 2391
+        },
+        "after": {
+          "values": [174,217,1668],
+          "median": 217,
+          "min": 174,
+          "max": 1668
+        }
+      },
+      "clickToFinalFrameMs": {
+        "before": {
+          "values": [2585,2732,2399],
+          "median": 2585,
+          "min": 2399,
+          "max": 2732
+        },
+        "after": {
+          "values": [318,387,1870],
+          "median": 387,
+          "min": 318,
+          "max": 1870
+        }
+      },
+      "clickToSettledMs": {
+        "before": {
+          "values": [2657,2858,2500],
+          "median": 2657,
+          "min": 2500,
+          "max": 2858
+        },
+        "after": {
+          "values": [420,490,1971],
+          "median": 490,
+          "min": 420,
+          "max": 1971
+        }
+      },
+      "hostGitCalls": {
+        "before": {
+          "values": [31,31,31],
+          "median": 31,
+          "min": 31,
+          "max": 31
+        },
+        "after": {
+          "values": [31,31,31],
+          "median": 31,
+          "min": 31,
+          "max": 31
+        }
+      },
+      "nodeCpuMs": {
+        "before": {
+          "values": [139,118,118],
+          "median": 118,
+          "min": 118,
+          "max": 139
+        },
+        "after": {
+          "values": [100,114,123],
+          "median": 114,
+          "min": 100,
+          "max": 123
+        }
+      }
+    }
+  },
+  "samples": [
+    {"run":1,"source":"before","operation":"pr-squash-cherry-pick","handlerMs":2867,"clickToFinalFrameMs":4226,"clickToSettledMs":4365,"gitToHandlerMs":2012,"gitToFinalFrameMs":3360,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":30,"nodeCpuMs":186,"nativeStateExact":true},
+    {"run":1,"source":"before","operation":"pr-cherry-pick","handlerMs":2391,"clickToFinalFrameMs":2585,"clickToSettledMs":2657,"gitToHandlerMs":2006,"gitToFinalFrameMs":2195,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":31,"nodeCpuMs":139,"nativeStateExact":true},
+    {"run":2,"source":"after","operation":"pr-squash-cherry-pick","handlerMs":4200,"clickToFinalFrameMs":5021,"clickToSettledMs":5131,"gitToHandlerMs":4,"gitToFinalFrameMs":803,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":30,"nodeCpuMs":214,"nativeStateExact":true},
+    {"run":2,"source":"after","operation":"pr-cherry-pick","handlerMs":174,"clickToFinalFrameMs":318,"clickToSettledMs":420,"gitToHandlerMs":2,"gitToFinalFrameMs":138,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":31,"nodeCpuMs":100,"nativeStateExact":true},
+    {"run":3,"source":"after","operation":"pr-squash-cherry-pick","handlerMs":776,"clickToFinalFrameMs":1048,"clickToSettledMs":1122,"gitToHandlerMs":4,"gitToFinalFrameMs":258,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":30,"nodeCpuMs":224,"nativeStateExact":true},
+    {"run":3,"source":"after","operation":"pr-cherry-pick","handlerMs":217,"clickToFinalFrameMs":387,"clickToSettledMs":490,"gitToHandlerMs":1,"gitToFinalFrameMs":165,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":31,"nodeCpuMs":114,"nativeStateExact":true},
+    {"run":4,"source":"before","operation":"pr-squash-cherry-pick","handlerMs":2321,"clickToFinalFrameMs":2573,"clickToSettledMs":2642,"gitToHandlerMs":2005,"gitToFinalFrameMs":2234,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":30,"nodeCpuMs":169,"nativeStateExact":true},
+    {"run":4,"source":"before","operation":"pr-cherry-pick","handlerMs":2391,"clickToFinalFrameMs":2732,"clickToSettledMs":2858,"gitToHandlerMs":2004,"gitToFinalFrameMs":2331,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":31,"nodeCpuMs":118,"nativeStateExact":true},
+    {"run":5,"source":"before","operation":"pr-squash-cherry-pick","handlerMs":2239,"clickToFinalFrameMs":2437,"clickToSettledMs":2569,"gitToHandlerMs":2005,"gitToFinalFrameMs":2189,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":30,"nodeCpuMs":147,"nativeStateExact":true},
+    {"run":5,"source":"before","operation":"pr-cherry-pick","handlerMs":2199,"clickToFinalFrameMs":2399,"clickToSettledMs":2500,"gitToHandlerMs":2007,"gitToFinalFrameMs":2198,"pendingNoticeAtHandlerCompletion":false,"hostGitCalls":31,"nodeCpuMs":118,"nativeStateExact":true},
+    {"run":6,"source":"after","operation":"pr-squash-cherry-pick","handlerMs":1266,"clickToFinalFrameMs":1586,"clickToSettledMs":1656,"gitToHandlerMs":3,"gitToFinalFrameMs":299,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":30,"nodeCpuMs":247,"nativeStateExact":true},
+    {"run":6,"source":"after","operation":"pr-cherry-pick","handlerMs":1668,"clickToFinalFrameMs":1870,"clickToSettledMs":1971,"gitToHandlerMs":2,"gitToFinalFrameMs":197,"pendingNoticeAtHandlerCompletion":true,"hostGitCalls":31,"nodeCpuMs":123,"nativeStateExact":true}
+  ],
+  "checks": {
+    "distinctPassingNodeNames": 82,
+    "nativeNodeNames": 57,
+    "finalLifecycleNodeNames": 25,
+    "pairedActualPrCases": 12,
+    "otherActualControlCases": 4,
+    "visualViewports": [
+      390,
+      768,
+      1440
+    ],
+    "screenshotsInspected": 6,
+    "uiDetectorFindings": 0,
+    "initialFailure": "The first Native group had 56 pass/1 fail: a new test mocked showWarningMessage without recording its messages. Native HEAD preservation assertions passed. The recording assertion was corrected; all six Undo tests passed afterward. Original failing log is retained.",
+    "controls": [
+      {
+        "operation": "push",
+        "nativeStateExact": true,
+        "exactRefs": true,
+        "exactHead": true,
+        "exactLocalOnly": true,
+        "handlerMs": 1222,
+        "clickToFinalFrameMs": 1425
+      },
+      {
+        "operation": "pull",
+        "nativeStateExact": true,
+        "exactRefs": true,
+        "exactHead": true,
+        "exactLocalOnly": true,
+        "handlerMs": 227,
+        "clickToFinalFrameMs": 498
+      },
+      {
+        "operation": "fetch",
+        "nativeStateExact": true,
+        "exactRefs": true,
+        "exactHead": true,
+        "exactLocalOnly": true,
+        "handlerMs": 139,
+        "clickToFinalFrameMs": 305
+      },
+      {
+        "operation": "interactive-rebase",
+        "nativeStateExact": true,
+        "exactRefs": true,
+        "exactHead": true,
+        "exactLocalOnly": true,
+        "handlerMs": 2383,
+        "clickToFinalFrameMs": 2901
+      }
+    ]
+  },
+  "resources": {
+    "pendingActionCallbacksCap": 16,
+    "automaticInspectionPolicy": "Cancel previous owned inspection before starting the latest; propagate cancellation through dependency progress to Git/GitHub reads.",
+    "newBackgroundTimer": false,
+    "nodeCpuScope": "Benchmark Node including Playwright transport; Git/Chromium/OS excluded. Every CPU sample retained; no general CPU/RSS improvement claim.",
+    "wholeProcessCpuRssMeasured": false
+  },
+  "limitations": [
+    "Only notification-blocked latency is isolated. One candidate squash click-to-final-frame sample is slower than the baseline samples; all are retained.",
+    "No real GitHub or actual Captain writes/benchmark. No Native VS Code banner visual inspection; only its response API is modeled.",
+    "PR list visual checks use production renderer assets with a minimal Graph DOM fixture. Production HTML/CSP is exercised separately by Native button flows.",
+    "The full named-operation latency/resource goal remains active; prior mixed results are not replaced by this scoped improvement."
+  ],
+  "sourceSha256": {
+    "src/ui/deferredActionNotices.ts": "7af5b2ed5d0787b675d48a75da331ae84c7f1b0aaf21bb1420d53945d1d7ff4f",
+    "src/ui/pullRequestDependencies.ts": "af7dbc7daf5063a797228e68cb33e4c65595daa32385c225a3d6228cc1d9f470",
+    "src/commands/prWorktreeRecovery.ts": "4e90f9e78e22302612eac870f976a2d43417ff4611feb5278836e9db0a027a54",
+    "src/webview/graphPullRequestUndo.ts": "3d041902e74280130565fe17509c129954ce67e12d9db5e1ba4aea2284b28ac8",
+    "src/webview/graphPullRequestActions.ts": "9bf5768293adace13098c34d18ca81b886593597d2d6764f12596451b75dc4a4",
+    "src/webview/graphPanelMessageRouter.ts": "df01dc21ef34e1e6b95abea19d2efaa4ca8fc0feb127027df4538f06114ee8a3",
+    "l10n/bundle.l10n.ko.json": "f2be218af57206217c00728abbc4859917d0cb216f5e733cffc9e6873767e3fd",
+    "test/benchmarks/graphButtonFlow.ts": "301bc19011a37143f046870b0de3d122cf117356d5ac5802c9b24567e425e253",
+    "test/helpers/prNoticeProbe.ts": "d97e4ba9deb383f8a1624c44f4c4dc406fb7d9e4a0ad98add0635951663738d6",
+    "test/helpers/prButtonFixture.ts": "ed2c581fa209b48f635738dc916896f6499a7975444d0cb0c434a736f5b52f81",
+    "test/helpers/graphLiveRenderer.ts": "7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4",
+    "test/helpers/gitOperationFixture.ts": "3020d92ee8d85a333db4724058f3daefe9b0649b954e5df52a80ccabefcb3147",
+    "scripts/benchmark-graph-buttons.mjs": "6baf0a34c67505368e0443edd9b8bda295d70289e22e3385033c2bbdb7acb60c",
+    "test/deferredActionNotices.test.ts": "ab8769958740acbb111fdd692e39c84123106073d99737c8d8f68410dc2536b1",
+    "test/prActionNoticeLifecycle.test.ts": "532a0be05a19d289fd6145f840c9bf50d41c2fd2c19bf0adfdbbeff86c2bd46e",
+    "test/graphPullRequestUndo.test.ts": "be1daf3374ea07442fe570b9bdfa43a0a13b5260b46295b502665bc81f51af85",
+    "test/webview/prActionFeedback.spec.ts": "baccaa1366e7a2f1b63b8b5615af775c34e8bf9098383704751fc72a25f19a69"
+  },
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-state.json",
+      "sha256": "969be70dc5df2afe4c0c81d715baa35f9fcebdb6d9aa83f3b5e60338618bfee0"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-driver.log",
+      "sha256": "5476fa1921de2e9936edcaca74fcbcf0d4573e732b0ebc4a20705c1839ea0501"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-native-node.log",
+      "sha256": "7d813ead6bb0105feba5454aa344efb922217c60db74e06e0f1bf408ad19765e"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-native-undo-final.log",
+      "sha256": "aaecc951e64ab17c0e054fe328c897195b2c80ce4b86fb14499041c9ac9501d0"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-release-notice-node.log",
+      "sha256": "972e95d8ecdb3f66fd6ea6684afbf88f5d7414007d01b39d09e45954533aa253"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-pr-visual.log",
+      "sha256": "41edd15ef6d43e6f34e98a353f401d3e86921af2e76dd1f710f5de453fa9f5aa"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-ui-detector.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-ui-detector.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-other-buttons.json",
+      "sha256": "11953151cc2399476c9389925914325ecdd47f083d47a36086f2d4034e3a6f0a"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-other-buttons.log",
+      "sha256": "a025ef070a2687e859aab960e75f28e8e3bbabb5d8aef2ec2f4c12c3b7945bec"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-notice-before-node.log",
+      "sha256": "3712b94232ca902f692520f3f7abfaaca69538ee5677027c9eeb7dab07db6412"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-release-types.log",
+      "sha256": "e4f78d2dcd388fc78962b4c7d3d5424e931b64db904ae3c86fd9a15c91e0310d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-1-before.json",
+      "sha256": "1ab92a0b4c5938e236c21271bf38ce2e0c65baf7009069a92896e43cd08c2836"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-1-before.log",
+      "sha256": "60c419366411bdb1fcb4438abe25d2e099e0e3f8a34b216e4382adcd6f6931c8"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-2-after.json",
+      "sha256": "669ce555a5311cc2f292eb341afe13ca0854cd2f3397e5b34f5ae04b39b6843d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-2-after.log",
+      "sha256": "4461379c8efa1d74c569780cf04da841bad0b2412e800442e5d152bf87e8b65f"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-3-after.json",
+      "sha256": "846af987519872e6b4280070c0217616afb634999d4a9d07a6c82e14103832c1"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-3-after.log",
+      "sha256": "d590e37ee172a65b67796672a4e045e7ebfeeb3dddc38323bfe61460b7989803"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-4-before.json",
+      "sha256": "b639089bb70c13f8968c9e0dfb04b7d611b555adc8f5165985589f3872dcdb84"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-4-before.log",
+      "sha256": "97b1f54aa4b40c045ccd3c72df3a83bcf2ebc0defaae8f8483b2ec4be14c21d2"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-5-before.json",
+      "sha256": "173ed0a89784d5cae1205a23b47ddbf7aa9550ccf23f3528155efc0934677cea"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-5-before.log",
+      "sha256": "92b0c97b8b012d4a2c5a3028cdf02c48eae373810e8864ae8bd31a51c764e2df"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-6-after.json",
+      "sha256": "d784d853aface0a1dde37a2608d43a0a71fbdc91fbe5c51c97f7ffdc4b419e35"
+    },
+    {
+      "path": "/private/tmp/gsc-goal37-buttons-6-after.log",
+      "sha256": "a6d8629c3cd4e7e02e84b79c2a396455299d12a77c113e5e8f46a8319055800c"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-5e20e-and-reduced-motion-at-768px-chromium/pr-action-completed-768.png",
+      "sha256": "d64e37b313c5a7302abeee4bf2b4341505f17df6e78ee9b78a34e6d4fe502ab4"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-5e20e-and-reduced-motion-at-768px-chromium/pr-action-pending-768.png",
+      "sha256": "0609a3de597c6c0a2df3d2b762b02bbaf438f3d8d81b18545006a740b6f06c2f"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-73c56-and-reduced-motion-at-390px-chromium/pr-action-completed-390.png",
+      "sha256": "490556a9a998561e1242b728f3f63c512e82eb04b36356e2713eddec061d9b94"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-73c56-and-reduced-motion-at-390px-chromium/pr-action-pending-390.png",
+      "sha256": "0f081c31ffc02378497fe459a66ac0409a53cecc68200de4af17f7b5e36fa141"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-829c6-nd-reduced-motion-at-1440px-chromium/pr-action-completed-1440.png",
+      "sha256": "7a2f632b13d259b52470d6d093e704d189107ca244d3d17175346b1855491583"
+    },
+    {
+      "path": "/Users/lky/project/gitsimplecompare/test-results/playwright/webview-prActionFeedback-P-829c6-nd-reduced-motion-at-1440px-chromium/pr-action-pending-1440.png",
+      "sha256": "d6fc1815e9e2891f22333c40f653fb015cea15da70b32145c74109bbe444f821"
+    }
+  ]
+}

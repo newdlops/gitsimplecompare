@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.72137] - 2026-10-21
+
+### Performance
+
+- Release PR action busy state and start the deferred Graph refresh when Git
+  finishes, while nonmodal success/error notifications remain open.
+- Run automatic prerequisite inspection after conflict handling completes.
+  Cancel superseded inspections and inspections for a departed repository.
+
+### Safety
+
+- Bind notification Undo to the original branch, snapshot and before/after
+  commits. Reject an old notice after a newer operation, preserve Native
+  confirmation-time validation, and give late Undo its own busy/refresh cycle.
+- Release notification callbacks on repository switch or panel disposal, bound
+  pending callbacks, and avoid duplicate Undo preflight reads.
+
+### Development
+
+- Add lifecycle, Native late-Undo and three-viewport PR button checks. Compare
+  production PR buttons with a modeled notification delay; retain every timing
+  sample and distinguish notification latency from Native Git execution speed.
+
 ## [0.1.72136] - 2026-10-21
 
 ### Performance

@@ -11,6 +11,7 @@ import { logInfo, showErrorWithOutput, showOutputLog } from "../ui/outputLog";
 import { resolveCompareService, type CommandDeps } from "./shared";
 import { checkPullRequestDependencies, offerPullRequestDependencies } from "../ui/pullRequestDependencies";
 import type { PullRequestInfo } from "../git/pullRequestInfo";
+import { presentActionNotice, type ActionNoticeScope } from "../ui/deferredActionNotices";
 
 /** 알림의 고정 ID를 받는다. 경로만으로는 작업 출처나 실행 종류를 추측하지 않는다. */
 export interface OpenPullRequestRecoveryArgs { originRoot: string; id: string }
@@ -19,7 +20,8 @@ export interface OpenPullRequestRecoveryArgs { originRoot: string; id: string }
  * 오래 걸린 PR 작업의 stderr 대신 짧은 안내와 실제 복구 화면을 제공한다.
  * @param error 저장 ID와 원래 대상 브랜치를 가진 구조화된 중단 오류
  */
-export async function offerPullRequestWorktreeRecovery(error: PullRequestWorktreeRecoveryError, knownPullRequests?: PullRequestInfo[]): Promise<void> {
+export async function offerPullRequestWorktreeRecovery(error: PullRequestWorktreeRecoveryError, knownPullRequests?: PullRequestInfo[],
+  notices?: ActionNoticeScope): Promise<void> {
   const record = error.recovery;
   await vscode.commands.executeCommand("gitSimpleCompare.resumePrOperation", { originRoot: record.originRoot, id: record.id });
   const output = vscode.l10n.t("Show Output");
@@ -28,8 +30,10 @@ export async function offerPullRequestWorktreeRecovery(error: PullRequestWorktre
     : vscode.l10n.t("PR #{0} could not be applied. Its result is preserved in a temporary worktree. Check Output, then retry with Continue PR Operation.", record.pr.number);
   if (record.phase === "conflicts" && (record.command === "squash" || record.command === "rebase")) {
     await offerPullRequestDependencies(record.originRoot, { pr: record.pr, beforeHead: record.beforeHead,
-      branch: record.branch, knownPullRequests }, message);
-  } else if (await vscode.window.showWarningMessage(message, output) === output) showOutputLog(false);
+      branch: record.branch, knownPullRequests }, message, notices);
+  } else await presentActionNotice(notices, () => vscode.window.showWarningMessage(message, output), selected => {
+    if (selected === output) showOutputLog(false);
+  });
 }
 
 /** 보존된 작업의 원래 HEAD로 선행 후보를 다시 확인한다. 해결 중인 파일과 index는 건드리지 않는다. */
