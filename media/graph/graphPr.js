@@ -52,6 +52,7 @@
       prListLoading = Boolean(msg.overview?.detailsLoading);
       if (msg.overview?.available) lastOverviewAt = Date.now();
       overview = mergeOverviewUpdate(overview, msg.overview);
+      window.GscGraphPrPeople?.setContext(overview.repository || "");
       details.setContext(`${hostContext}|${overview.repository || ""}`);
       // 자동 조회의 toolbar spinner가 큰 PR의 후속 페이지 동안 목록 열기까지 막지 않게 한다.
       const listButton = document.getElementById("graph-pr-list");
@@ -125,6 +126,7 @@
    *   카드의 data-show-pr 로 새어 상세가 잘못 열린다.
    */
   function handleDetailClick(event) {
+    if (window.GscGraphPrPeople?.toggle(event)) { schedulePrRender(); return; }
     if (event.target.closest?.("[data-pr-detail-retry]")) {
       details.retry(findPr(activeDetail.number)); renderPullRequestDetail(activeDetail.number); return;
     }
@@ -327,10 +329,12 @@
   /** PR 목록 카드 HTML 을 만든다. */
   function prListCard(pr) {
     const title = `Show pull request #${pr.number} details`;
+    const [icon, state, kind] = window.GscGraphPrPeople.status(pr);
     return `<article class="pr-card ${prColorClass(pr.number)}" data-show-pr="${pr.number}" ` +
-      `tabindex="0" role="button" title="${esc(title)}" aria-label="${esc(title + '. ' + (window.GscGraphPrPeople?.summary(pr, prListLoading) || ''))}">` +
-      `<div class="pr-title"><span class="codicon codicon-git-pull-request" aria-hidden="true"></span>` +
-      `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></div>` +
+      `title="${esc(title)}">` +
+      `<div class="pr-title"><span class="pr-state-icon is-${kind} codicon codicon-${icon}" title="${esc(state)}" aria-hidden="true"></span>` +
+      `<button type="button" class="pr-card-heading" ${tooltipAttrs(title)} aria-description="${esc(window.GscGraphPrPeople.summary(pr, prListLoading))}">` +
+      `<strong>#${pr.number}</strong><span>${esc(pr.title)}</span></button></div>` +
 	      prMetaHtml(pr) +
 	      `<div class="pr-actions">` +
 	      (window.GscGraphPrActions?.directButtons?.(pr.number, pr.commitHashesComplete !== false) || "") +
@@ -465,10 +469,10 @@
 
   /** PR 메타 한 줄 HTML 을 만든다. */
   function prMetaHtml(pr) {
+    const [icon, state, kind] = window.GscGraphPrPeople.status(pr);
     return (window.GscGraphPrPeople?.render(pr, prListLoading) || "") + `<div class="pr-meta pr-meta-chips">` +
-      metaChip("git-pull-request", pr.state || "OPEN", `PR state: ${pr.state || "OPEN"}`) +
-      (pr.isDraft ? metaChip("edit", "Draft", "Draft pull request") : "") +
-      (pr.reviewDecision ? metaChip("eye", pr.reviewDecision, `Review decision: ${pr.reviewDecision}`) : "") +
+      `<span class="pr-meta-chip pr-status is-${kind}" title="${esc(state)}"><span class="codicon codicon-${icon}" aria-hidden="true"></span>${esc(state)}</span>` +
+      (pr.reviewDecision ? metaChip("eye", window.GscGraphPrPeople.decision(pr), window.GscGraphPrPeople.decision(pr)) : "") +
       (window.GscGraphPrLabels?.render?.(pr) || "") +
       `<span class="pr-branch-flow" ${tooltipAttrs(`${pr.headRefName} into ${pr.baseRefName}`)}>` +
       `<span class="codicon codicon-git-branch" aria-hidden="true"></span><span>${esc(pr.headRefName)}</span>` +

@@ -35,7 +35,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await page.setViewportSize({ width, height }); await mountList(page, width === 390);
     await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: overview(true) });
     await page.getByRole("button", { name: "Show pull requests", exact: true }).click();
-    await page.locator(".pr-card").focus(); await page.keyboard.press("Enter");
+    await page.locator(".pr-card-heading").focus(); await page.keyboard.press("Enter");
     const first = await latestRequest(page, 1);
     await dispatchWebviewMessage(page, { type: "pullRequestDetailError", number: 42, requestId: first.requestId, message: "Temporary API failure" });
     const retry = page.getByRole("button", { name: width === 390 ? "변경 파일 다시 불러오기" : "Retry loading changed files", exact: true });

@@ -1,9 +1,10 @@
 // 큰 일반 push를 원격 tip의 조상 순서대로 나누는 서비스. VS Code나 UI에 의존하지 않는다.
 // 병합으로 들어온 곁가지 커밋은 merge commit과 함께 전송해 목적 브랜치를 항상 fast-forward한다.
 import { createHash } from "node:crypto";
-import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, type RunGitOptions } from "./gitExec";
+import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, withGitConfigOverrides, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
 import { MAX_PUBLISHED_TIPS, readPublishedPushTips, readPushBranchAdvertisement } from "./pushPublishedHistory";
+import { estimateOutgoingObjectBytes } from "./pushObjectEstimate";
 import { logInfo } from "../ui/outputLog";
 
 /** 압축 전 신규 Git 객체 합계가 이 값 이상인 다중 커밋 push를 분할한다. */
@@ -83,6 +84,8 @@ interface TransferPlan {
   strategy: "single" | "sequential";
   estimatedBytes?: number;
   reason: string;
+  /** 검증한 공통 이력을 실제 push도 새로 협상해 promisor blob을 불필요하게 받지 않게 한다. */
+  negotiate?: boolean;
 }
 
 /** 최근 후보의 원본 부모를 함께 읽어 추가 Git 조회 없이 선형 이력과 전체 두 커밋 경계를 판정한다. */
@@ -163,7 +166,8 @@ async function executeBranchPush(repoRoot: string, target: BranchPushTarget, opt
         args.push(`--force-with-lease=${target.targetRef}:${expectedRemoteHead}`);
       }
       args.push("--", target.remote, `${commit}:${target.targetRef}`);
-      await runner.run(args, repoRoot, runOptions);
+      const pushOptions = plan.negotiate ? { ...runOptions, env: withGitConfigOverrides(runOptions.env!, { "push.negotiate": "true" }) } : runOptions;
+      await runner.run(args, repoRoot, pushOptions);
       result.completed++;
       result.lastPushedCommit = commit;
       expectedRemoteHead = commit;
@@ -225,14 +229,19 @@ async function prepareTransfer(
     firstParentBaseUsed: !!recent.publishedBase });
   // 한 커밋은 분할하지 않으므로 이미 확인한 remoteHead → target.head 조상 관계를 다시 읽지 않는다.
   if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit");
-  const complete = remoteHead ? recent.oldestParents[0] === remoteHead : !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
+  let complete = remoteHead ? recent.oldestParents[0] === remoteHead : !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
   // 직전 first-parent조차 원격 tip의 후손이 아니면 더 오래된 조상도 후손일 수 없다.
   // 두 번째 부모에서 원격 이력이 합쳐진 merge 하나만 보낼 때 전체 목록과 이진 탐색을 생략한다.
   // HEAD의 부모가 하나면 기존 remote→HEAD 검증만으로 그 부모도 후손임을 안다.
   if (remoteHead && !complete && recent.headParents.length > 1 &&
       !(await isAncestor(root, remoteHead, recent.commits[0], runner, runOptions))) return single("singleCommit");
-  const estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
-  if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
+  const estimate = await estimateOutgoingObjectBytes(root, target.head, excludedHeads, urls[0], runner, runOptions);
+  if (estimate.negotiatedBase) {
+    excludedHeads.push(estimate.negotiatedBase);
+    complete = remoteHead ? recent.oldestParents[0] === remoteHead : !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
+  }
+  const estimatedBytes = estimate.bytes, negotiate = !!estimate.negotiatedBase;
+  if (estimatedBytes < threshold) return { ...single("belowThreshold", estimatedBytes), negotiate };
   // 실제 분할할 큰 push만 전체 전송 순서를 만든다. 작은 push는 확장 호스트에 긴 commit 배열을 남기지 않는다.
   let commits = complete ? recent.commits : await readFirstParentCommits(root, target, excludedHeads, runner, runOptions);
   if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
@@ -248,7 +257,7 @@ async function prepareTransfer(
     commits = commits.slice(low);
   }
   if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
-  return { commits, remoteHead, strategy: "sequential", estimatedBytes, reason: "largePush" };
+  return { commits, remoteHead, strategy: "sequential", estimatedBytes, reason: "largePush", negotiate };
 }
 
 /**
@@ -311,45 +320,6 @@ async function isAncestor(root: string, ancestor: string, head: string, runner: 
     if (!options.signal?.aborted && error instanceof GitError && [1, 128].includes(Number(error.code))) return false;
     throw error;
   }
-}
-
-/**
- * 신규 commit/tree/blob의 압축 전 바이트 합계를 구한다. 파일 내용은 읽지 않고 객체 메타데이터만 조회한다.
- * @param excludedHeads 서버가 이미 소유한 이력의 tip @returns 실제 pack/네트워크 크기와 다를 수 있는 크기 추정치
- */
-async function estimateObjectBytes(root: string, head: string, excludedHeads: readonly string[], runner: PushGitRunner, options: RunGitOptions): Promise<number> {
-  const objectArgs = [
-    "rev-list", "--objects", "--no-object-names", head, ...excludedHeads.map(tip => `^${tip}`), "--",
-  ];
-  let bytes = 0, pending = "";
-  /** 숫자 한 행만 검증해 objectsize 합계의 정확성과 safe integer 경계를 유지한다. */
-  const addSize = (line: string) => {
-    line = line.trim();
-    if (!line) return;
-    const value = Number(line);
-    if (!/^\d+$/.test(line) || !Number.isSafeInteger(value) || !Number.isSafeInteger(bytes + value)) {
-      throw new Error("Could not estimate the outgoing Git objects.");
-    }
-    bytes += value;
-  };
-  /** UTF-8 숫자 출력의 chunk 경계를 합치되 완성된 행이나 전체 숫자 배열은 보관하지 않는다. */
-  const consume = (chunk: Buffer) => {
-    const text = pending + chunk.toString("utf8");
-    let start = 0, end: number;
-    while ((end = text.indexOf("\n", start)) >= 0) { addSize(text.slice(start, end)); start = end + 1; }
-    pending = text.slice(start);
-    if (pending.length > 32) throw new Error("Could not estimate the outgoing Git objects.");
-  };
-  // 전체 합계를 구하는 조회는 EOF까지 기다릴 수 있어 객체마다 flush하는 IPC 비용을 줄인다.
-  const args = ["cat-file", "--batch-check=%(objectsize)", "--buffer"];
-  if (runner.pipe) await runner.pipe(objectArgs, args, root, consume, options);
-  else {
-    const objects = await runner.run(objectArgs, root, options);
-    if (runner.inputStream) await runner.inputStream(args, root, objects, consume, options);
-    else consume(Buffer.from(await runner.input(args, root, objects, options)));
-  }
-  addSize(pending);
-  return bytes;
 }
 
 /**

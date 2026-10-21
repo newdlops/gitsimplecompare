@@ -49,7 +49,18 @@ export async function readPublishedPushTips(
   // 승인한 source 자체가 다른 원격 branch에 있으면 그 이력 전체를 이미 소유한다.
   if (tips.has(sourceHead)) return [sourceHead];
   if (!tips.size) return [];
-  const requested = [...tips], selected: string[] = [];
+  return verifyLocalPublishedCommits(root, [...tips], runner, options);
+}
+
+/**
+ * 서버가 광고하거나 ACK한 OID를 로컬 commit으로 검증하고 결측/비commit은 제외한다.
+ * @param root source 저장소 @param requested 서버가 소유를 증명한 OID 목록 @param runner Git 실행 경계
+ * @param options 원본 DAG·취소·deadline @returns 암묵적 fetch 없이 확인한 commit 최대 64개
+ */
+export async function verifyLocalPublishedCommits(root: string, requested: readonly string[], runner: PushGitRunner, options: RunGitOptions): Promise<string[]> {
+  if (requested.some(tip => !OID.test(tip))) throw new Error("Could not verify published Git objects.");
+  if (!requested.length) return [];
+  const selected: string[] = [];
   let position = 0, pending = "";
   /** batch-check의 입력과 같은 OID인지 확인하고 결측/비commit은 제외 증거로 채택하지 않는다. */
   const row = (line: string) => {

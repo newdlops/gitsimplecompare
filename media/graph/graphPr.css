@@ -1,4 +1,4 @@
-/* graph Pull Request POC 스타일. PR row/node 표시와 PR 목록 패널을 graph 기본 스타일과 분리한다. */
+/* Graph의 PR 목록·상세·배지를 기존 VS Code 테마 토큰으로 표현한다. */
 #graph-pr-panel[hidden] {
   display: none;
 }
@@ -30,38 +30,45 @@
 
 .pr-card {
   display: grid;
-  gap: 6px;
-  padding: 9px 10px;
-  border-left: 3px solid var(--pr-accent, var(--vscode-charts-purple, #b180d7));
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-/* 제목 다음에 사람과 리뷰 상태를 배치한다. 좁은 drawer에서는 그룹 단위로 자연스럽게 줄바꿈한다. */
-.pr-people { display: flex; flex-wrap: wrap; gap: 3px 16px; min-width: 0; color: var(--vscode-foreground); font-size: 12px; line-height: 20px; }
-.pr-people-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; min-width: 0; max-width: 100%; }
+/* 사람은 독립된 두 행으로 읽히며, 리뷰 상태는 색과 아이콘·문구를 함께 사용한다. */
+.pr-people { container: pr-people / inline-size; display: grid; gap: 6px; min-width: 0; color: var(--vscode-foreground); font-size: 12px; line-height: 20px; }
+.pr-author-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; min-width: 0; }
+.pr-people-group { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
 .pr-people-label, .pr-people-empty, .pr-review-state { color: var(--vscode-descriptionForeground); font-size: 11px; }
-.pr-people-label { flex: 0 0 auto; }
+.pr-people-label { flex: 0 0 58px; }
 .pr-person { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
 .pr-person-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pr-author { flex-wrap: nowrap; }
+.pr-author { flex: 1 1 220px; }
 .pr-author .pr-person { flex: 0 1 auto; }
-.pr-reviewers { flex: 1 1 220px; flex-wrap: nowrap; align-items: baseline; }
-.pr-reviewer-items { display: inline-flex; flex: 1 1 auto; flex-wrap: wrap; gap: 3px 7px; min-width: 0; }
-.pr-reviewer { flex: 0 1 auto; flex-wrap: nowrap; }
+.pr-author .pr-person-name { font-weight: 600; }
+.pr-updated { color: var(--vscode-descriptionForeground); font-size: 11px; white-space: nowrap; }
+.pr-reviewers { align-items: baseline; }
+.pr-reviewer-items { display: inline-flex; flex: 1 1 auto; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
+.pr-reviewer { flex: 0 1 auto; padding: 1px 6px; border-radius: 3px; background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background)); }
 .pr-person > .codicon, .pr-review-state { flex: 0 0 auto; }
 .pr-reviewer.is-approved > .codicon { color: var(--vscode-gitDecoration-addedResourceForeground); }
 .pr-reviewer.is-changes > .codicon { color: var(--vscode-editorWarning-foreground); }
-.pr-review-more { color: var(--vscode-descriptionForeground); font-variant-numeric: tabular-nums; }
+.pr-review-more { min-height: 24px; padding: 0 6px; border: 1px solid var(--vscode-panel-border); border-radius: 3px; color: var(--vscode-foreground); background: transparent; font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; touch-action: manipulation; }
+.pr-review-more:hover { background: var(--vscode-toolbar-hoverBackground); }
+.pr-people.is-expanded .pr-person-name { white-space: normal; overflow-wrap: anywhere; }
+.pr-state-icon.is-open, .pr-status.is-open { color: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-foreground)); }
+.pr-state-icon.is-merged, .pr-status.is-merged { color: var(--vscode-gitDecoration-renamedResourceForeground, var(--vscode-foreground)); }
+.pr-state-icon.is-closed, .pr-status.is-closed { color: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-foreground)); }
+.pr-state-icon.is-draft, .pr-status.is-draft { color: var(--vscode-descriptionForeground); }
 
 .pr-card[data-show-pr] {
   cursor: pointer;
 }
 
 .pr-card[data-show-pr]:hover,
-.pr-card[data-show-pr]:focus-visible {
-  outline: 1px solid var(--pr-accent, var(--vscode-focusBorder));
-  outline-offset: -1px;
-  background: color-mix(in srgb, var(--pr-accent, var(--vscode-charts-purple, #b180d7)) 10%, transparent);
+.pr-card[data-show-pr]:focus-within {
+  background: var(--vscode-list-hoverBackground);
 }
 
 .row.pr-focused-row {
@@ -77,20 +84,34 @@
 }
 
 .pr-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   min-width: 0;
 }
 
-.pr-title span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pr-title > .codicon { margin-top: 2px; }
+.pr-card-heading { display: block; width: 100%; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 2px; background: transparent; color: var(--vscode-foreground); font: inherit; font-weight: 600; line-height: 20px; text-align: start; cursor: pointer; touch-action: manipulation; }
+.pr-card-heading strong { margin-inline-end: 6px; font-weight: 400; }
+.pr-card-heading > span { overflow-wrap: anywhere; }
+.pr-card-heading:focus-visible, .pr-review-more:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
+.pr-card .pr-meta-chips { gap: 4px 10px; }
+.pr-card .pr-meta-chip, .pr-card .pr-branch-flow { padding: 0; border: 0; background: transparent; }
+.pr-card .pr-meta-chip:not(.pr-status), .pr-card .pr-branch-flow { color: var(--vscode-descriptionForeground); }
+.pr-card .pr-actions { gap: 4px; padding-top: 2px; }
+.pr-card .pr-actions button { border-color: transparent; background: transparent; }
+.pr-card .pr-actions button:hover:not(:disabled) { background: var(--vscode-toolbar-hoverBackground); }
+
+@container pr-people (max-width: 350px) {
+  .pr-people-label { flex-basis: 48px; }
+  .pr-author { flex-basis: 100%; }
+  .pr-updated { margin-inline-start: 54px; }
+  .pr-reviewer { flex-wrap: wrap; }
 }
 
 .pr-title strong {
-  color: var(--pr-accent, var(--vscode-charts-purple, #b180d7));
+  color: var(--vscode-descriptionForeground);
 }
 
 .pr-meta,
@@ -133,6 +154,7 @@
   min-width: 0;
   width: 100%;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .pr-detail-header {

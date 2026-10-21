@@ -115,7 +115,12 @@ export function buildGraphHtml(
   const showOutputTitle = vscode.l10n.t("Show Git Simple Compare Output");
   // 외부 webview script는 vscode.l10n에 직접 접근할 수 없으므로 필요한 문자열만 안전한 JSON으로 주입한다.
   const prStackI18n = JSON.stringify({
+    locale: vscode.env.language,
     prAuthor: vscode.l10n.t("Author"), prReviewers: vscode.l10n.t("Reviewers"),
+    prOpen: vscode.l10n.t("Open"), prMerged: vscode.l10n.t("Merged"), prClosed: vscode.l10n.t("Closed"), prDraft: vscode.l10n.t("Draft"),
+    prUpdated: vscode.l10n.t("Updated {0}"), reviewRequired: vscode.l10n.t("Review required"),
+    reviewShowAll: vscode.l10n.t("Show all {0} loaded reviewers"), reviewShowLess: vscode.l10n.t("Show fewer reviewers"),
+    reviewLess: vscode.l10n.t("Show less"), reviewPartial: vscode.l10n.t("Partial reviewer list"),
     unknownAuthor: vscode.l10n.t("Unknown author"), reviewLoading: vscode.l10n.t("Loading reviewers…"),
     reviewUnavailable: vscode.l10n.t("Reviewers unavailable"), reviewNone: vscode.l10n.t("No reviewers"),
     reviewAwaiting: vscode.l10n.t("Awaiting review"), reviewApproved: vscode.l10n.t("Approved"),

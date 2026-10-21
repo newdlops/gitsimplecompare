@@ -13,6 +13,12 @@ export async function mountList(page: Page, korean: boolean) {
     document.querySelector("#graph-toolbar")!.append(button);
     w.GscGraphPostMessage = (message: unknown) => w.__gscFixtureMessages.push(structuredClone(message));
     w.GscPrStackI18n = {
+      locale: ko ? "ko" : "en",
+      prOpen: ko ? "열림" : "Open", prDraft: ko ? "초안" : "Draft", prMerged: ko ? "병합됨" : "Merged", prClosed: ko ? "닫힘" : "Closed",
+      prUpdated: ko ? "{0} 갱신" : "Updated {0}", reviewRequired: ko ? "리뷰 필요" : "Review required",
+      reviewShowAll: ko ? "불러온 리뷰어 {0}명 모두 보기" : "Show all {0} loaded reviewers",
+      reviewShowLess: ko ? "리뷰어 접기" : "Show fewer reviewers", reviewLess: ko ? "접기" : "Show less",
+      reviewPartial: ko ? "일부 리뷰어만 표시됨" : "Partial reviewer list",
       prAuthor: ko ? "작성자" : "Author", prReviewers: ko ? "리뷰어" : "Reviewers",
       reviewLoading: ko ? "리뷰어를 불러오는 중…" : "Loading reviewers…",
       reviewNone: ko ? "리뷰어 없음" : "No reviewers", reviewUnavailable: ko ? "리뷰어 정보 없음" : "Reviewers unavailable",

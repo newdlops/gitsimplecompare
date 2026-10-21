@@ -89,7 +89,7 @@
     if (node.id) return `id:${node.id}`;
     if (node.matches(".pr-file-row")) return `file:${node.dataset.path}`;
     if (node.matches(".pr-file-folder")) return `folder:${node.querySelector(":scope > [data-pr-file-folder]")?.dataset.prFileFolder}`;
-    for (const name of ["data-show-pr", "data-pr-search-input", "data-pr-search-clear", "data-pr-search-more", "data-pr-file-folder"]) {
+    for (const name of ["data-show-pr", "data-pr-reviewers-toggle", "data-pr-search-input", "data-pr-search-clear", "data-pr-search-more", "data-pr-file-folder"]) {
       if (node.hasAttribute(name)) return `${name}:${node.getAttribute(name)}`;
     }
     return "";

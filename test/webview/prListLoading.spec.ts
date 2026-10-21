@@ -16,7 +16,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await expect(page.locator('.pr-meta-chip[title="Total PR comments"]')).toHaveText("…");
     const firstCalls = (await readPostedMessages(page)).filter((message: any) => message.type === "refreshPullRequests").length;
     // 실제 키보드로 상세에 진입하고 완성 전에도 GitHub 열기와 목록 복귀가 가능한지 확인한다.
-    await page.locator(".pr-card").focus(); await page.keyboard.press("Enter");
+    await page.locator(".pr-card-heading").focus(); await page.keyboard.press("Enter");
     await expect(page.locator("[data-open-pr]")).toBeEnabled();
     await page.getByRole("button", { name: "Show pull request list", exact: true }).click();
     expect((await readPostedMessages(page)).filter((message: any) => message.type === "refreshPullRequests").length).toBe(firstCalls);

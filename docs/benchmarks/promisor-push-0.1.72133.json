@@ -1,0 +1,1858 @@
+{
+  "version": "0.1.72133",
+  "baseline": "08b73cac7683e10649d12d587b87a8968fef759c",
+  "wholeGoalComplete": false,
+  "sourceSha256": {
+    "src/git/gitCommandPolicy.ts": "3b500bc1c61e804d086facef4f38355e50b3bfaf332bd8e36f4a0b6b1869099a",
+    "src/git/gitFetchNegotiation.ts": "b6b6cac91e6d71e9b8e55a7fc2bbf2d2a3ebf333423f7d3d59d261f8fbad81f1",
+    "src/git/ownedFsmonitor.ts": "e7d073df7fbd1d736a25c9b77763d83fa34300ca34b2409c34ab957fe52d8d81",
+    "src/git/pushPublishedHistory.ts": "c62347e9635330d44b3a098f470c5b6c8e74f731c2fe11172ae197879188370b",
+    "src/git/pushNegotiatedHistory.ts": "193e59f9df7e4231568eb5a1721be898fe1c470de8bf0f41c266c46b843411da",
+    "src/git/pushObjectEstimate.ts": "ced0b55847f376da56623b717ed139344507f6c6338fe889db2d02f80d97a384",
+    "src/git/sequentialPush.ts": "e1c6d87a3695f5b9ff9587bbbf2a0ac7d1ec3bf5d7d9815b0c4526f03a271e62",
+    "media/graph/graphPr.js": "52c7ae407f23acceb8f8b306cdc6ebded427cbe8e764c42b35db7e55847b0888",
+    "media/graph/graphPrPeople.js": "8c9cb9b931b7294d8df1c1fb700a7ef77ecdbe12f577a77e6e30e56bd228b8b8",
+    "media/graph/graphPr.css": "eea99b7845251281acf6a76865303293f81c2ed3037b80f97cb44935adf926f1",
+    "media/graph/graphPrSearch.js": "5f1260a734b27c36c4d28bbbba854648b74b7d508fcc9451e1fba797c264982f",
+    "media/graph/graphPrViewState.js": "e2b3b5fcadf3c90d4884071357ab9c9925607ae2e948d3fc1089a4e53b995485",
+    "src/webview/graphHtml.ts": "f70bb185a411cc505fe6293d61dd1b0a223781b605cafd835cdec406f33888fa",
+    "l10n/bundle.l10n.ko.json": "182dd423924cbd46a39a0c7600b57414457adc19f15c1a24229f59bb1ffb4471"
+  },
+  "benchmarkSourceSha256": "44f1cfa821a7ea9953d0b3703823f43b18ac092ec5d45434c0a4116b02a1196e",
+  "checks": {
+    "distinctPassedNodeNames": 131,
+    "browserCases": 20,
+    "headlinePromisorFlows": 6,
+    "otherActualControls": 4,
+    "themedAxeViolations": 0
+  },
+  "comparison": {
+    "handlerMs": {
+      "before": [
+        17683,
+        10172,
+        2417
+      ],
+      "after": [
+        8229,
+        7837,
+        6433
+      ],
+      "beforeMedian": 10172,
+      "afterMedian": 7837
+    },
+    "clickToFinalFrameMs": {
+      "before": [
+        18494,
+        10543,
+        2817
+      ],
+      "after": [
+        8542,
+        8432,
+        6626
+      ],
+      "beforeMedian": 10543,
+      "afterMedian": 8432
+    },
+    "nodeCpuMs": {
+      "before": [
+        170,
+        119,
+        136
+      ],
+      "after": [
+        112,
+        119,
+        201
+      ],
+      "beforeMedian": 136,
+      "afterMedian": 119
+    },
+    "processes": {
+      "before": [
+        24,
+        24,
+        24
+      ],
+      "after": [
+        29,
+        29,
+        29
+      ],
+      "beforeMedian": 24,
+      "afterMedian": 29
+    },
+    "packDiskDelta": {
+      "before": [
+        17856,
+        17856,
+        17856
+      ],
+      "after": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "raw": {
+    "before": [
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 50,
+        "handlerMs": 17683,
+        "clickToFirstFrameMs": 17986,
+        "clickToFinalFrameMs": 18494,
+        "clickToSettledMs": 18649,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 170,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 24,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 267,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 280,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 306,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 232,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 265,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 507,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 295,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 267,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 78,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 671,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 97,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 44,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 12802,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 12809,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 166,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 319,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 1515,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 262,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 211,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 14,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 223,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 229,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 279,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 511,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 17986,
+          "latestMutationToFrameMs": 18494,
+          "renderMs": 2,
+          "frameMs": 7
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.idx",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.pack",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.promisor",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.rev"
+            ],
+            "bytes": 1684
+          },
+          "finalPacks": {
+            "names": [
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.idx",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.pack",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.promisor",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.rev",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.idx",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.pack",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.promisor",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.rev",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.idx",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.pack",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.promisor",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.rev",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.idx",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.pack",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.promisor",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.rev",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.idx",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.pack",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.promisor",
+              "pack-3d0f0d0b68b370abadf991437a8b3a0f0851bb4e.rev",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.idx",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.pack",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.promisor",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.rev",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.idx",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.pack",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.promisor",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.rev",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.idx",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.pack",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.promisor",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.rev",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.idx",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.pack",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.promisor",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.rev"
+            ],
+            "bytes": 19540
+          },
+          "missingBlobs": 0,
+          "localChangesPreserved": true
+        }
+      },
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 77,
+        "handlerMs": 10172,
+        "clickToFirstFrameMs": 10527,
+        "clickToFinalFrameMs": 10543,
+        "clickToSettledMs": 10690,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 119,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 24,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 42,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 42,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 21,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 21,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 23,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 30,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 33,
+            "syncSpawnMs": 8,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 38,
+            "syncSpawnMs": 9,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 26,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 342,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 233,
+            "syncSpawnMs": 16,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 100,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 7418,
+            "syncSpawnMs": 9,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 7423,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 262,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 471,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 1329,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 24,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 17,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 231,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 251,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 20,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 10527,
+          "latestMutationToFrameMs": 10543,
+          "renderMs": 1,
+          "frameMs": 9
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.idx",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.pack",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.promisor",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.rev"
+            ],
+            "bytes": 1684
+          },
+          "finalPacks": {
+            "names": [
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.idx",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.pack",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.promisor",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.rev",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.idx",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.pack",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.promisor",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.rev",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.idx",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.pack",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.promisor",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.rev",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.idx",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.pack",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.promisor",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.rev",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.idx",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.pack",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.promisor",
+              "pack-5fe21c1d01216ac0c09adb3c9e055438522466a0.rev",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.idx",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.pack",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.promisor",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.rev",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.idx",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.pack",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.promisor",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.rev",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.idx",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.pack",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.promisor",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.rev",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.idx",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.pack",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.promisor",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.rev"
+            ],
+            "bytes": 19540
+          },
+          "missingBlobs": 0,
+          "localChangesPreserved": true
+        }
+      },
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 55,
+        "handlerMs": 2417,
+        "clickToFirstFrameMs": 2588,
+        "clickToFinalFrameMs": 2817,
+        "clickToSettledMs": 2963,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 136,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 24,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 107,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 116,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 28,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 30,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 55,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 60,
+            "syncSpawnMs": 4,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 26,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 160,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 14,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 17,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 1381,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 1385,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 18,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 19,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 412,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 23,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 21,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 46,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 59,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 72,
+            "syncSpawnMs": 19,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 121,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 191,
+            "syncSpawnMs": 33,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 2588,
+          "latestMutationToFrameMs": 2817,
+          "renderMs": 3,
+          "frameMs": 6
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.idx",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.pack",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.promisor",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.rev"
+            ],
+            "bytes": 1685
+          },
+          "finalPacks": {
+            "names": [
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.idx",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.pack",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.promisor",
+              "pack-0bd101f7548c76f53b355692af9ffaedb5b7b6cd.rev",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.idx",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.pack",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.promisor",
+              "pack-326e9b09b9d817534c9d127ce3abac13d820cf21.rev",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.idx",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.pack",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.promisor",
+              "pack-33791d4a86d2092ae179a975a716734571d2bc2a.rev",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.idx",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.pack",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.promisor",
+              "pack-392c107b23773f4a022a57f602fe25b8c0987dcd.rev",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.idx",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.pack",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.promisor",
+              "pack-72da83408bfa0d9cff6e96e62d76912244baf589.rev",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.idx",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.pack",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.promisor",
+              "pack-b14e0b95d6ddc81a7ba2df139b88036dc4e6a850.rev",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.idx",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.pack",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.promisor",
+              "pack-bda59354fdd9e9dcd8dd5ba767ebd8b8abfd59f2.rev",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.idx",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.pack",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.promisor",
+              "pack-c6ef8639efeedb856b30b957a3850dfb4bded35d.rev",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.idx",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.pack",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.promisor",
+              "pack-f5e8ddecc75c46938284a046a2ac40d9e98ef5e2.rev"
+            ],
+            "bytes": 19541
+          },
+          "missingBlobs": 0,
+          "localChangesPreserved": true
+        }
+      }
+    ],
+    "after": [
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 44,
+        "handlerMs": 8229,
+        "clickToFirstFrameMs": 8517,
+        "clickToFinalFrameMs": 8542,
+        "clickToSettledMs": 8693,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 112,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 29,
+        "commands": [
+          {
+            "command": "config",
+            "elapsedMs": 149,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 151,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 17,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 15,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 191,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 188,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 255,
+            "syncSpawnMs": 16,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 17,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 749,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 206,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 245,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 260,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 527,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": "ABORT_ERR"
+          },
+          {
+            "command": "config",
+            "elapsedMs": 272,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "fetch",
+            "elapsedMs": 992,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 219,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 525,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 548,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 314,
+            "syncSpawnMs": 10,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 560,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 2932,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 23,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 36,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 236,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 32,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 219,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 22,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 28,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 8517,
+          "latestMutationToFrameMs": 8542,
+          "renderMs": 1,
+          "frameMs": 14
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.idx",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.pack",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.promisor",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.rev"
+            ],
+            "bytes": 1685
+          },
+          "finalPacks": {
+            "names": [
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.idx",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.pack",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.promisor",
+              "pack-9a3734812471d0943b87bf91aa79fb5b91e2516d.rev"
+            ],
+            "bytes": 1685
+          },
+          "missingBlobs": 8,
+          "localChangesPreserved": true
+        }
+      },
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 48,
+        "handlerMs": 7837,
+        "clickToFirstFrameMs": 8132,
+        "clickToFinalFrameMs": 8432,
+        "clickToSettledMs": 8578,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 119,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 29,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 265,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 409,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 400,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 216,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 178,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 375,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 200,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 182,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 188,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 544,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 264,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 27,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 311,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 574,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": "ABORT_ERR"
+          },
+          {
+            "command": "config",
+            "elapsedMs": 224,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "fetch",
+            "elapsedMs": 598,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 272,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 469,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 480,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 329,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 583,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 2485,
+            "syncSpawnMs": 20,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 99,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 13,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 21,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 222,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 223,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 194,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 280,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 8132,
+          "latestMutationToFrameMs": 8432,
+          "renderMs": 1,
+          "frameMs": 9
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.idx",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.pack",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.promisor",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.rev"
+            ],
+            "bytes": 1684
+          },
+          "finalPacks": {
+            "names": [
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.idx",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.pack",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.promisor",
+              "pack-4d6b3eda5ca56457a5a2e7650d24056401280d15.rev"
+            ],
+            "bytes": 1684
+          },
+          "missingBlobs": 8,
+          "localChangesPreserved": true
+        }
+      },
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 9,
+          "commits": 3,
+          "branches": 3,
+          "promisorBlobBytes": 1048576
+        },
+        "clickToRequestMs": 77,
+        "handlerMs": 6433,
+        "clickToFirstFrameMs": 6592,
+        "clickToFinalFrameMs": 6626,
+        "clickToSettledMs": 6772,
+        "nativeStateExact": true,
+        "cleanWorkingTree": false,
+        "nodeCpuMs": 201,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 29,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 152,
+            "syncSpawnMs": 35,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 118,
+            "syncSpawnMs": 48,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 56,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 138,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 43,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 70,
+            "syncSpawnMs": 22,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 141,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 276,
+            "syncSpawnMs": 17,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 78,
+            "syncSpawnMs": 7,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 270,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 201,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 185,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 46,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 177,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": "ABORT_ERR"
+          },
+          {
+            "command": "config",
+            "elapsedMs": 69,
+            "syncSpawnMs": 27,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "fetch",
+            "elapsedMs": 85,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 275,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 248,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 253,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 111,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 328,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 3270,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 171,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 96,
+            "syncSpawnMs": 11,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 67,
+            "syncSpawnMs": 35,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 37,
+            "syncSpawnMs": 6,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 56,
+            "syncSpawnMs": 8,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 30,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 42,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 3,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 6592,
+          "latestMutationToFrameMs": 6626,
+          "renderMs": 1,
+          "frameMs": 7
+        },
+        "promisor": {
+          "initialPacks": {
+            "names": [
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.idx",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.pack",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.promisor",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.rev"
+            ],
+            "bytes": 1684
+          },
+          "finalPacks": {
+            "names": [
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.idx",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.pack",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.promisor",
+              "pack-5f640addfe7fbe8038c6e2caf56bc386ae5af9d2.rev"
+            ],
+            "bytes": 1684
+          },
+          "missingBlobs": 8,
+          "localChangesPreserved": true
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Owned file:// partial-clone fixtures; no actual Captain mutation or remote GitHub speed claim.",
+    "Host Git process count increases; it excludes Git-internal fetch children. Eight implicit blob fetches were separately confirmed in Native tracing.",
+    "Pack disk bytes differ from uncompressed object bytes and wire transfer bytes. Node CPU excludes Git, Chromium, hooks and OS; total CPU/RSS not measured.",
+    "64MiB baseline browser closed and exceeded the unchanged 240s budget; cause unproven, no paired timing conclusion. Candidate-only functional result retains eight missing blobs.",
+    "Core group: 92 pass, one 10s cancellation timeout in managed sandbox. Identical test passed with process inspection permission; /bin/ps EPERM diagnosed. No timeout or total 900s budget increase.",
+    "Initial missing-blob regex regressions were fixed; formal old-source red test and all negative/slow samples retained.",
+    "First themed UI tests used a changing accessible-name locator; next run exposed two ARIA issues, then forced-color fixture tokens were aligned with rendered system colors. Final complete 20-case run passes without disabled axe rules.",
+    "No real VS Code foreground window, live user session, Marketplace status query or forced reload verified/performed."
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-push-promisor33-core-node.log",
+      "sha256": "a669ce2cda8b6bd094b974f860626d09590998a5782d6cf13f28dee5ffa12963"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-monitor-node.log",
+      "sha256": "a3ef8203f7d5abb7f00377a670cef6167fbb420fc5b872f81e9bb50f2e6671e9"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-final-planning-node.log",
+      "sha256": "c4b879b9f8c29226afaadb19f0d38ffb5420aaa23a8579f710f63d6f0f94ecb1"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-pipeline-permitted-node.log",
+      "sha256": "abf60935616a6b5c3dc9f1fb1657aab707421a09380c5cb3d82931a152b2e961"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-node.log",
+      "sha256": "514402cc5632a27ca99005905cfb41178cf02729d2e4a38c52a397f6ec4653e8"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-browser-release.log",
+      "sha256": "1f9b22d4a176f128820e7681327018c056307203b3b5b5208eb608f5e1f7c2df"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-a11y-final.log",
+      "sha256": "6e816d22bef276d95ef625952661d313c815139779a542b34dbcc81e9c960ebf"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-types.log",
+      "sha256": "44e8b1e01ecdb6377ca4dd7194688430e255acccd228228747aa0d01c7c2fa07"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-before-node.log",
+      "sha256": "e89263d6172aac5cebde27df5fd1af857cd39a682cf19e53085abceb47d8d3cb"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-initial-node.log",
+      "sha256": "704b143e2d5482276eae7cd38306a3bdd2adc464914485273786aa78575fb287"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-fixed-node.log",
+      "sha256": "145a20c3745d30da3da62914acb286b40cf54eb785a74ae02648743b1530b0ce"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-pipeline-recheck-node.log",
+      "sha256": "e134a62b6d46ec61a0fbecee13c89105b96a4786c6143bb8c558d80395ef5cde"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-pipeline-diagnostic-node.log",
+      "sha256": "5925c506e2553ae02dd58af42736e669ee4f32df6398065af7b2c51f005d915a"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-probe.json",
+      "sha256": "81592e3acb4ecc58a4a25762fa61ac65eadfe5ce5405ffaa5579eede0e904155"
+    },
+    {
+      "path": "/private/tmp/gsc-push-promisor33-negotiate.json",
+      "sha256": "19e98ad3a8aa6f380183a39d8f74e68fa46e171a5c274f5ff69bd46d2c2b5d95"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-smoke2.json",
+      "sha256": "fac7f4b9b3e569a05b0328070858517e6823f83cfa97922d5dacf4f748cfb422"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-buttons-state.json",
+      "sha256": "a80b15be98e9832c83ae4161bcd03d785d16ebeeee22b5b83ec99d780b4a20b1"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-buttons-state.json",
+      "sha256": "5e022da79d9ce2a934e72f54c303b575e0ce7162f34bf70d3e91b548388be3f4"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-large-buttons-state.json",
+      "sha256": "4fb1d63f2e5298fdf7ec2b42095b9f2dece6f7364298fe97a286b80acf89f437"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-large-1-before.log",
+      "sha256": "6cdba3490343519559b8aa31552f41909a4a0a06286b65e1962ab8c3a0865300"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-large-candidate-1-after.json",
+      "sha256": "f7a94976c9dbd701f07705ffa9e1159eb4ef1b2cc0a8bcdc842c944224dbc8bc"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-default-buttons.json",
+      "sha256": "d772325543b7509944a03a035d24682679d36e1fd77a036f62555f381892763d"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-1-before.json",
+      "sha256": "adf63b5f4baf400ab7033dc47e9ac389a2d1628f43a6df2f23931b9c27edf86e"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-1-before.log",
+      "sha256": "981dd4d6d8da0a2448f5bf8bc0826f9fe0b996f6c097bddaff99b465cc768a16"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-2-after.json",
+      "sha256": "5204563505dab4f37d0f829ebce1fbd3e3b9048e6bb1b68e85a35662173d2141"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-2-after.log",
+      "sha256": "5df009d82d50a47bc0a3ec1229ea7ecf4b7384fc245d14a197dfee9895b6d239"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-3-after.json",
+      "sha256": "4ec4041858702d0389b3318f0e4f46a63b213e488fa77cfb188e5e887d726755"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-3-after.log",
+      "sha256": "2ed44469b0a1b73f512799c4865576a233d6169b5a2aa7b677c8421c3ec3fcea"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-4-before.json",
+      "sha256": "c9dab01dac0e33fa2635f6ddf07547534400fbab2b135b73ca36852ece5fdaf9"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-4-before.log",
+      "sha256": "9a3e2ef9e3d0cc5d422f4417039496e1de47c3764c15d026c3bbd583f2ba3e9e"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-5-before.json",
+      "sha256": "8ec217bc806b4c7600c32e4a24eb35d6a4e8ffd467f26b063cbfb490afcd4628"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-5-before.log",
+      "sha256": "b4fb902dce777ae948637154867773d0017cb4b37c4d67da4e5310036386ecc0"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-6-after.json",
+      "sha256": "89ebf19eff5578e6986292fb842a92aeefdc0dd53fe39ab4d2d0f40f77210894"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor33-final-6-after.log",
+      "sha256": "0f705c7cecb88e0506fb4d9c7ab9c16542ab4852ccbfc0e16a2f85dce884dc91"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-a11y-light.json",
+      "sha256": "56c02d09c2ed43e85edc59c8457b95e8a865a459ea77fc5c7e3d767abaab5bfe"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-a11y-dark.json",
+      "sha256": "38cb99b4fd7c6cd196a2e9ac6e78e278546a33a0d608004bf7697966f44db045"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-a11y-high-contrast.json",
+      "sha256": "334ea51ba593e452abb9780996e1e87644ddfbeab04a1a94f9a5de005178b50c"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-light-390.png",
+      "sha256": "64e018072ac79fc8af6aef6350c960c8d2bb7427231f296ab392f90db8f42c3b"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-high-contrast-768.png",
+      "sha256": "0200716c336127a66200a9fd6ee59de7e7acd6b0e951161b6f54be8c16a58fb1"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-dark-1440.png",
+      "sha256": "31ef2a81d4d9859b8d242c9cfcf336ed97d1342eccc7473479ada7288af51daa"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-ready-390.png",
+      "sha256": "7fec656feabc3418790d419e587ea369b44391193694944543ec9cd1f533727e"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-ready-768.png",
+      "sha256": "a3d1d53c10bad960f8b4be06078817698f1743285f8edc2d268f83953e67e377"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-ready-1440.png",
+      "sha256": "728c9e3fd130a776d3ede3983d9accc4f4107581568b29da27a4710e71e0eb34"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-expanded-390.png",
+      "sha256": "15ba9c9220535d04daf61081d0b7da4e74cc4a60c9ce5c00ffa025effe3cea17"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-expanded-768.png",
+      "sha256": "030908b046db14a2d1836e0d3d1d388c7243cbcb3d40c78ad1f9844b755851a6"
+    },
+    {
+      "path": "/private/tmp/gsc-pr-list33-expanded-1440.png",
+      "sha256": "fb4efb8833a916bfc711f724ff5ed7b57717ee24a6b6c976a4232d73a824cd4e"
+    }
+  ]
+}

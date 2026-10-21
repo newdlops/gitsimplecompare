@@ -20,9 +20,9 @@
     const active = hasQuery();
     const summary = active ? searchSummary(total, filtered) : `${total} loaded pull requests`;
     return `<div class="pr-list-search-row">` +
-      `<label class="pr-list-search" role="search">` +
+      `<label class="pr-list-search">` +
       `<span class="codicon codicon-search" aria-hidden="true"></span>` +
-      `<input type="search" value="${esc(query)}" data-pr-search-input placeholder="Search pull requests" ` +
+      `<input type="search" name="pull-request-query" autocomplete="off" spellcheck="false" value="${esc(query)}" data-pr-search-input placeholder="Search pull requests" ` +
       `title="Search all pull requests by number, commit hash, title, author, branch, label, or state" ` +
       `aria-label="Search all pull requests by number, commit hash, title, author, branch, label, or state" />` +
       `<button type="button" data-pr-search-clear ${active ? "" : "hidden"} ` +

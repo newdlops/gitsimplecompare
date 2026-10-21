@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.1.72133] - 2026-10-21
+
+### Improved
+
+- Give PR lists a clear title/state, author/update time, reviewer and action
+  hierarchy. Wrap long titles, use readable review labels and theme-based state
+  icons, and expand loaded reviewers in place with keyboard and focus preserved.
+- Reuse existing PR data without external avatar downloads or extra PR requests.
+
+### Performance
+
+- Avoid hydrating shared promisor objects while estimating a push. When local
+  metadata is missing, ask the actual push server for a common commit without
+  downloading objects, verify the result locally, and size only the remainder.
+- Let the actual push negotiate again when a shared base was established.
+  Keep this override scoped to that push and preserve the user's configuration.
+- Skip index-monitor preparation for the fixed object-free negotiation query.
+
+### Safety
+
+- Preserve fresh source/configuration validation and destination leases. A
+  negotiated base never becomes the lease for a new destination.
+- Keep complete sizing on unsupported or unrelated servers. Preserve original
+  errors, cancellation, read deadlines, and bounded metadata buffers.
+
+### Development
+
+- Cover real partial clones, staged/unstaged/untracked preservation, successful
+  and rejected sequential pushes, and actual push-button/Graph comparisons.
+  Retain slow samples, sandbox-related test failures and an incomplete 64MiB
+  baseline UI comparison without treating them as successful timing evidence.
+
 ## [0.1.72132] - 2026-10-21
 
 ### Performance

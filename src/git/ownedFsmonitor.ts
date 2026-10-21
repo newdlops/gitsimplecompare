@@ -102,7 +102,8 @@ async function prepareGitOptions(args: readonly string[], root: string, options:
   if (options.signal && preparationSignals.has(options.signal)) return { options };
   const command = gitCommandPolicy(args);
   const crossWorktree = ["clone", "submodule"].includes(command.command) || (command.command === "worktree" && !command.readOnly);
-  if (!active || process.platform !== "darwin" || (withoutIndex.has(command.command) && !crossWorktree)) return { options };
+  if (!active || process.platform !== "darwin" || (withoutIndex.has(command.command) && !crossWorktree)
+      || (command.command === "fetch" && command.readOnly)) return { options };
   const explicit = explicitSetting(args, options.env);
   // 명시적 false/사용자 hook은 그대로 유지한다. bare -c와 --config-env의 true도 마지막 값으로 판정한다.
   if (explicit !== undefined && !/^(?:true|1|yes|on)$/i.test(explicit)) return { options };

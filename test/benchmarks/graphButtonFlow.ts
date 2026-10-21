@@ -1,7 +1,7 @@
 // 실제 웹뷰 버튼 → 등록된 VS Code 메시지 callback → Native Git → 최종 Graph frame을 연결한다.
 import assert from "node:assert/strict";
 import { mock } from "node:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { runGit } from "../../src/git/gitExec";
@@ -18,6 +18,7 @@ import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
 import { createGraphButtonDiagnostics } from "../helpers/graphButtonDiagnostics";
+import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase";
@@ -55,10 +56,27 @@ function signature(commits: readonly Commit[]): string {
     .sort((left, right) => String(left[0]).localeCompare(String(right[0]))));
 }
 
+/** 실제 push URL과 fetch promisor를 분리한 blobless fixture를 기존 버튼 계약에 맞춘다. */
+async function partialPushFixture(directory: string) {
+  const promisorBlobBytes = Number(process.env.GSC_BENCH_PROMISOR_BLOB_BYTES || 1024 * 1024);
+  assert.ok(Number.isSafeInteger(promisorBlobBytes) && promisorBlobBytes > 0 && promisorBlobBytes <= 8 * 1024 * 1024);
+  const f = await createPromisorPushFixture(directory, { blobCount: 8, blobBytes: promisorBlobBytes });
+  await runGit(["remote", "set-url", "--push", "origin", f.receiver], f.root);
+  return { ...f, remote: f.receiver, main: f.base, pr: f.head, prCommits: f.commits,
+    incoming: f.head, incomingPull: f.head, oldHistory: f.base, topic: f.head,
+    files: 9, depth: 3, branches: 3, sharedUpstreamBranches: 0, promisorBlobBytes };
+}
+
 /** 각 작업은 독립 fixture와 local bare remote만 사용하며 실제 사용자 작업트리나 외부 네트워크에 쓰지 않는다. */
 async function measure(directory: string, operation: Operation) {
-  const f = await createGitOperationFixture(directory), branch = `button-${operation}`;
-  await runGit(["switch", "-qC", branch, operation === "push" || operation === "interactive-rebase" ? f.pr : f.main], f.root);
+  const partial = operation === "push" && process.env.GSC_BENCH_PROMISOR_PUSH === "1";
+  const f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory)), branch = `button-${operation}`;
+  if (partial) {
+    // 같은 commit에 fixture HEAD만 연결한다. switch의 Native unpack-trees 사전 fetch를 측정 준비에 섞지 않는다.
+    await runGit(["update-ref", `refs/heads/${branch}`, f.pr], f.root);
+    await runGit(["symbolic-ref", "HEAD", `refs/heads/${branch}`], f.root);
+    assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Fixture branch setup must keep blobs missing");
+  } else await runGit(["switch", "-qC", branch, operation === "push" || operation === "interactive-rebase" ? f.pr : f.main], f.root);
   if (operation === "pull") {
     await runGit(["config", `branch.${branch}.remote`, "origin"], f.root);
     await runGit(["config", `branch.${branch}.merge`, "refs/heads/main"], f.root);
@@ -109,6 +127,10 @@ async function measure(directory: string, operation: Operation) {
     await within(initialized, "actual ready callback");
     await settle(f.root, panel, messages, metadataReady);
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
+    const initialStatus = partial ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
+    const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
+    const initialPacks = partial ? await promisorPackState(f.root) : undefined;
+    if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
     if (operation === "interactive-rebase") {
       const checkout = await captureRebaseCheckout(f.root), commits = await new RebaseService(f.root).getCommits(f.main, false, false);
       renderer.post({ type: "graphRebasePlan", plan: { branch, base: f.main, root: false, baseReason: "selected", checkout, commits,
@@ -151,18 +173,22 @@ async function measure(directory: string, operation: Operation) {
         assert.deepEqual(bodies, ["combined click\n\ncombined body", "PR 2"]);
         assert.equal((await runGit(["rev-parse", "HEAD^{tree}"], f.root)).trim(), (await runGit(["rev-parse", `${f.pr}^{tree}`], f.root)).trim());
       }
-      assert.equal((await runGit(["status", "--porcelain=v1"], f.root)).trim(), "");
+      assert.equal((await runGit(["status", "--porcelain=v1"], f.root)).trim(), partial ? initialStatus : "");
+      if (partial) assert.deepEqual(await readFile(path.join(f.root, ".git/index")), originalIndex);
+      const promisor = partial ? { initialPacks, finalPacks: await promisorPackState(f.root),
+        missingBlobs: await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), localChangesPreserved: true } : undefined;
       const publication = publications.slice().reverse().find(value => value.at >= started && value.signature === final);
       assert.ok(publication || initial === final, "Changed final state must have a publication caused after the click");
       const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance, branch);
-      return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches },
+      return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
+        ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
         clickToFirstFrameMs: frame.mutationToFrameMs, clickToFinalFrameMs: frame.latestMutationToFrameMs,
-        clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: true,
+        clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
         graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
-        ...(diagnostic ? { diagnostic } : {}) };
+        ...(diagnostic ? { diagnostic } : {}), ...(promisor ? { promisor } : {}) };
     } finally { measuring = false; stop(); }
   } finally { panel.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }

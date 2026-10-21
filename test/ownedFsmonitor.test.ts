@@ -8,6 +8,7 @@ import { gitProcesses } from "../src/git/gitProcessRegistry";
 import { ensureOwnedFsmonitor, setOwnedFsmonitorPolicy } from "../src/git/ownedFsmonitor";
 import { registerStatusIndex } from "../src/git/statusIndexOwnership";
 import { setGitExecutionObserver } from "../src/git/gitExecutionDiagnostics";
+import { fetchNegotiationCommand } from "../src/git/gitFetchNegotiation";
 import { git, safetyFixture } from "./helpers/gitSafetyFixture";
 
 /** 실제 foreground 자식과 status handshake를 사용하되 파일 감시/사용자 저장소는 만들지 않는다. */
@@ -80,6 +81,14 @@ test("explicit command-scope fsmonitor=false bypasses monitor startup", { skip: 
   const f = await fixture(t);
   await runGit(["-c", "core.fsmonitor=false", "status", "--porcelain"], f.root);
   await assert.rejects(readFile(f.count, "utf8"), { code: "ENOENT" });
+});
+
+test("object-free fetch negotiation never prepares an index monitor", { skip: process.platform !== "darwin" }, async t => {
+  const f = await fixture(t), command = fetchNegotiationCommand("a".repeat(40), "owned-server");
+  assert.equal(await runGit(command, f.root), "inherited");
+  assert.equal(await runGit(["-c", "core.fsmonitor=true", ...command], f.root), "true");
+  for (const file of [f.preparing, f.count, f.ready, f.statusChecks, f.queryChecks]) await assert.rejects(readFile(file), { code: "ENOENT" });
+  await gitProcesses.dispose();
 });
 
 test("session disposal while Git preparation is pending prevents a late index read or daemon spawn", { skip: process.platform !== "darwin" }, async t => {

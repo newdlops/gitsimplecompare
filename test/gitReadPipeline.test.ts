@@ -178,6 +178,11 @@ test("cancellation drains an already-exited producer whose stdout is blocked by 
 test("pipeline cancellation also reaps both SIGTERM-resistant process groups and their children", { skip: process.platform === "win32", timeout: 10000 }, async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), "gsc-pipeline-resistant-")), executable = path.join(root, "git-fixture");
   const controller = new AbortController();
+  const started = Date.now(), diagnostic = process.env.GSC_PIPELINE_TERMINATION_DIAGNOSTICS === "1";
+  /** 종료 소유권 문제가 있을 때만 실제 단계와 소요 시간을 출력하고 기존 10초 예산은 유지한다. */
+  const phase = (name: string, fields: unknown = {}) => { if (diagnostic) console.log(JSON.stringify({ phase: name, elapsedMs: Date.now() - started, fields })); };
+  const stopLog = diagnostic ? gitProcesses.setLogger((event, fields) => phase(event, fields)) : () => {};
+  t.after(stopLog);
   t.after(async () => {
     controller.abort();
     for (const name of ["rev-list.ready", "cat-file.ready"]) {
@@ -195,12 +200,15 @@ else { const child=spawn(process.execPath,[__filename],{env:{...process.env,GSC_
  setTimeout(()=>fs.writeFileSync(path.join(process.env.GSC_PIPE_ROOT,process.argv[2]+'.ready'),JSON.stringify([process.pid,child.pid])),100);
  setInterval(()=>{},1000); }
 `, { mode: 0o755 });
+  phase("fixtureWritten");
   const observed = runGitReadPipeline(["rev-list"], ["cat-file"], root, () => {},
     { executable, signal: controller.signal, readTimeoutMs: 0, env: { GSC_PIPE_ROOT: root } }).then(() => undefined, error => error);
   t.after(async () => { controller.abort(); await observed; });
-  const groups = await Promise.all([waitFile(path.join(root, "rev-list.ready")), waitFile(path.join(root, "cat-file.ready"))]);
+  const groups = await Promise.all([waitFile(path.join(root, "rev-list.ready")).then(value => { phase("sourceReady", value); return value; }),
+    waitFile(path.join(root, "cat-file.ready")).then(value => { phase("targetReady", value); return value; })]);
+  phase("abortRequested");
   controller.abort();
-  const error = await observed; assert.ok(error instanceof GitError); assert.equal(error.code, "ABORT_ERR");
+  const error = await observed; phase("closeConfirmed"); assert.ok(error instanceof GitError); assert.equal(error.code, "ABORT_ERR");
   for (const pid of groups.flatMap(value => JSON.parse(value))) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
   assert.equal(gitProcesses.isBusy(root), false);
 });
