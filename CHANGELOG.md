@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.72146] - 2026-10-22
+
+### Fixes
+
+- Bind completed PR, squash and rebase recovery records to the verified result
+  commit. Preserve an external commit created while completion is recorded,
+  together with local changes, stashes and recovery snapshots.
+- Recheck the completed replay checkout before stash restoration and pending
+  cleanup. Keep the pending result available when that check fails.
+- Retain and reverify Jump to Pull Request Row from the lightweight first list,
+  including missing local PR objects, visible row selection and Graph focus.
+
+### Performance
+
+- Reuse the replay queue's known result HEAD during finalization, removing one
+  redundant Native Git query while preserving fresh completion checks.
+- Extend opt-in resource measurements to the Git operation matrix. Remove
+  retained test-mock call arguments from benchmark observation and keep all
+  measurement helpers out of the installed extension.
+
 ## [0.1.72145] - 2026-10-22
 
 ### Performance

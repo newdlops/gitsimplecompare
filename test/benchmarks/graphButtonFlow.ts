@@ -1,6 +1,6 @@
 // 실제 웹뷰 버튼 → 등록된 VS Code 메시지 callback → Native Git → 최종 Graph frame을 연결한다.
 import assert from "node:assert/strict";
-import { mock } from "node:test";
+import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";

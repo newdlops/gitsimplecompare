@@ -250,8 +250,8 @@ test("PR Undo refuses to move a branch checked out in another worktree", async (
   const { root, directory, head } = await safetyFixture(t, "pr-undo-worktree");
   const service = new PullRequestOperationSnapshot(root);
   const snapshot = await service.createSnapshot("main", head, "squash");
-  await commitText(root, "completed PR result\n", "PR result");
-  await service.recordCompleted("main", snapshot);
+  const after = await commitText(root, "completed PR result\n", "PR result");
+  await service.recordCompleted("main", snapshot, after);
   await git(root, "switch", "-qc", "other");
   const linked = join(directory, "linked worktree");
   await git(root, "worktree", "add", "-q", linked, "main");
@@ -265,7 +265,7 @@ test("PR Undo can still restore an off-branch snapshot when no worktree uses it"
   const service = new PullRequestOperationSnapshot(root);
   const snapshot = await service.createSnapshot("main", head, "squash");
   const after = await commitText(root, "completed PR result\n", "PR result");
-  await service.recordCompleted("main", snapshot);
+  await service.recordCompleted("main", snapshot, after);
   await git(root, "switch", "-qc", "other");
   await service.undoLastOperation("main");
   assert.equal(await git(root, "rev-parse", "main"), head);

@@ -233,7 +233,7 @@ export class PullRequestWorktreeRecoveryService {
       record = { ...record, phase: "applied" };
       await writePullRequestWorktreeRecovery(record);
     }
-    await state.recordCompleted(record.branch, record.snapshotRef!);
+    await state.recordCompleted(record.branch, record.snapshotRef!, afterHead);
     // 충돌 해결 파일은 모두 commit되어야 한다. 사용자가 새로 만든 미추적 파일은 삭제하지 않는다.
     try {
       const extra = await runGit(["ls-files", "--others", "-z"], record.worktreePath);

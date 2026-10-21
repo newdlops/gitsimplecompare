@@ -1,6 +1,7 @@
 // 실제 서비스의 준비/쓰기/Graph 최신 게시/후속 조회 비용을 사용자 저장소 없이 비교한다.
 import assert from "node:assert/strict";
-import { mock } from "node:test";
+import { createHash } from "node:crypto";
+import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -23,6 +24,8 @@ import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
+import { GraphPhaseResources } from "../helpers/graphPhaseResources";
+import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
 
 type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
@@ -37,11 +40,11 @@ function graphSignature(commits: readonly Commit[]): string {
 
 
 /** 늦게 끝난 Graph 보조 조회까지 비용에 포함하고 다음 시나리오로 넘어가기 전에 모두 정리한다. */
-async function idle(root: string, panel: any, metadataReady: () => boolean = () => true): Promise<void> {
+async function idle(root: string, panel: any, metadataReady: () => boolean = () => true, quietMs = 20): Promise<void> {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise(resolve => setTimeout(resolve, quietMs));
       if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) return;
     }
     await new Promise(resolve => setTimeout(resolve, 10));
@@ -57,7 +60,7 @@ function pullRequest(f: Awaited<ReturnType<typeof fixture>>): PullRequestInfo {
 }
 
 /** 실제 서비스 성공과 Graph의 HEAD/부모/ref가 같은 Git 상태인지 확인하는 하나의 측정이다. */
-async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operation) {
+async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operation, resources?: GraphPhaseResources) {
   f = await isolateIncomingCommit(f, operation);
   const git = (args: string[], cwd = f.root) => runGit(args, cwd);
   await git(["switch", "-qC", `bench-${operation}`, operation === "push" || operation === "push-tracked" ? f.pr : f.main]);
@@ -108,15 +111,20 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.completed || localOnlyFailures.length > 0);
   try {
     if (renderer) await renderer.mount(surface.webview.html);
-    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady); }
+    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady, resources ? 150 : 20); }
     // Graph 행에서 checkout하는 일반 경로와 페이지 밖의 오래된 topic 이동을 별도 측정한다.
     const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
     const previousHead = panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.hash;
     const checkoutTarget: string | undefined = loadedTarget
-      ? panel.lastLocalBranches.find((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))?.name
+      ? panel.lastLocalBranches.filter((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))
+        .sort((left: { name: string }, right: { name: string }) => Buffer.compare(Buffer.from(left.name), Buffer.from(right.name)))[0]?.name
       : operation === "checkout-unloaded" ? f.oldHistoryBranch : f.topicBranch;
     assert.ok(checkoutTarget, "Loaded checkout fixture needs an actual visible local branch tip");
+    // 앞선 Native commit의 committer 시각/OID는 두 source에서 달라질 수 있다. 실제 checkout 파일 입력은 branch+tree로 맞춘다.
+    const checkoutTree = operation.startsWith("checkout") ? (await git(["rev-parse", "--verify", `${checkoutTarget}^{tree}`])).trim() : undefined;
+    const checkoutTargetFingerprint = checkoutTree
+      ? createHash("sha256").update(checkoutTarget).update("\0").update(checkoutTree).digest("hex") : undefined;
     if (operation === "checkout-unloaded") assert.equal(visibleHashes.has(f.oldHistory), false, "Unloaded checkout requires a deeper fixture than the loaded Graph page");
     const initialSignature = graphSignature(panel.commits);
     const timings: (GitExecutionTiming & { finishedAtMs: number })[] = [];
@@ -128,6 +136,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     });
     mock.method(gitProcesses, "closed", async (id: number) => { try { await closed(id); } finally { active.delete(id); } });
     const profile = await startNodeCpuProfile(operation);
+    assert.ok(!resources || renderer, "Scoped resources require the live production renderer");
+    assert.ok(!resources || !profile, "CPU sampling and scoped resource counters require separate runs");
+    if (resources && renderer) await resources.begin(renderer, operation, "service");
     const started = performance.now(), cpu = process.cpuUsage(), rss = process.memoryUsage.rss();
     let peakRss = rss;
     const rssSample = setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage.rss()); }, 10);
@@ -156,10 +167,12 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
       else await panel.refreshAfterGraphAction(operation === "push" || operation === "push-tracked" ? "references" : "graph");
       graphEnd = performance.now();
-      await idle(f.root, panel, metadataReady);
+      await idle(f.root, panel, metadataReady, resources ? 150 : 20);
+      if (resources && renderer) await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       const settledAt = performance.now(), settledRss = process.memoryUsage.rss();
       clearInterval(rssSample); measuring = false;
       const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
+      const phaseResources = resources && renderer ? await resources.finish(renderer, cpuUsed, timings.length) : undefined;
       await profile?.stop();
       for (const [index, timing] of timings.entries()) {
         commands[timing.command] = (commands[timing.command] ?? 0) + 1;
@@ -200,6 +213,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
           firstFrameBeforeDetails: !!liveRenderer?.mutationToFrameMs && read.finishedAt !== undefined &&
             operationEndedAt + liveRenderer.mutationToFrameMs < read.finishedAt })),
         ...(operation === "checkout" ? { checkoutTargetScope: loadedTarget ? "loaded-page" : "topic" } : {}),
+        ...(checkoutTargetFingerprint ? { checkoutTargetFingerprint, checkoutTargetFingerprintKind: "branch-and-tree" } : {}),
         ...(liveRenderer ? { liveRenderer } : {}),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,
@@ -210,9 +224,11 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         commands, graphCommands, commandTimeMs,
         ...(process.env.GSC_BENCH_TIMELINE === "1" ? { gitTimeline: timings.map(timing => ({ command: timing.command,
           scope: timing.repoRoot === f.root ? "checkout" : "owned-worktree", elapsedMs: timing.elapsedMs,
-          spawnMs: timing.syncSpawnMs, finishedAfterStartMs: Math.round(timing.finishedAtMs - started), outcome: timing.outcome })) } : {}),
+          spawnMs: timing.syncSpawnMs, finishedAfterStartMs: Math.round(timing.finishedAtMs - started), outcome: timing.outcome,
+          ...(timing.statusIndex ? { statusIndex: timing.statusIndex, statusUntracked: timing.statusUntracked, optionalLocks: timing.optionalLocks } : {}) })) } : {}),
         nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
-        nodeCpuScope: "benchmark Node process including Playwright transport and RSS/idle sampling",
+        nodeCpuScope: "benchmark Node process including Playwright transport and RSS/idle sampling", settledQuietPeriodMs: resources ? 150 : 20,
+        ...(phaseResources ? { phaseResources } : {}),
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
     } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
@@ -236,21 +252,43 @@ async function isolateIncomingCommit(f: Awaited<ReturnType<typeof fixture>>, ope
 async function main() {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-operation-matrix-"));
   let stopMonitor: (() => void) | undefined;
+  let resources: GraphPhaseResources | undefined;
   try {
+    if (process.env.GSC_BENCH_PHASE_RESOURCES === "1") resources = await GraphPhaseResources.create(directory);
     const f = await fixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE), results = [];
     if (process.env.GSC_BENCH_MONITOR_POLICY === "1") stopMonitor = setOwnedFsmonitorPolicy(() => undefined);
     const selected = process.env.GSC_BENCH_OPERATIONS?.split(",") as Operation[] | undefined;
-    for (const operation of selected ?? OPERATIONS) {
+    const primePublishedPush = process.env.GSC_BENCH_PRIME_CENSORED_PUSH === "1";
+    assert.ok(!primePublishedPush || (selected?.[0] === "initial" && !selected.includes("push")),
+      "Censored baseline priming is only allowed after initial and must not stand in for a measured push");
+    const operations = selected ?? OPERATIONS, turnGate = BenchmarkTurnGate.fromEnvironment();
+    await turnGate?.ready(operations);
+    for (const [index, operation] of operations.entries()) {
+      await turnGate?.wait(index, operation);
       console.error(`Measuring ${operation}...`);
-      results.push(await measure(f, operation));
+      const result = await measure(f, operation, resources); results.push(result);
+      if (turnGate) { await gitProcesses.dispose(); await turnGate.complete(index, result); }
+      // 오래 걸리는 원시 Git 사례를 중지해도 이미 끝난 검증 결과는 완성 결과와 구분해 보존한다.
+      if (process.env.GSC_BENCH_CHECKPOINTS === "1" && process.argv[2]) {
+        await writeFile(process.argv[2] + ".partial.json", JSON.stringify({ partial: true,
+          source: JSON.parse(process.env.GSC_BENCH_SOURCE || "{}"), results }) + "\n");
+      }
+      if (primePublishedPush && operation === "initial") {
+        // 원래 push의 중단 표본은 따로 보존한다. 후속 비교만 완료 후와 같은 ref/upstream 조건으로 맞춘다.
+        assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote);
+        await runGit(["switch", "-qC", "bench-push", f.pr], f.root);
+        await runGit(["push", "--set-upstream", "origin", "bench-push:refs/heads/bench-push"], f.root);
+        console.error("Primed the censored push outside measured phases; it is not a completed application push sample.");
+      }
     }
     const result = { version: JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")).version,
       source: process.env.GSC_BENCH_SOURCE ? JSON.parse(process.env.GSC_BENCH_SOURCE) : undefined,
       fixture: { files: f.files, commits: f.depth, branches: f.branches, sharedUpstreamBranches: f.sharedUpstreamBranches,
-        network: "local-bare-only", monitorPolicy: !!stopMonitor, pushThresholdBytes: PUSH_THRESHOLD }, results };
+        network: "local-bare-only", monitorPolicy: !!stopMonitor, pushThresholdBytes: PUSH_THRESHOLD,
+        ...(primePublishedPush ? { primedCensoredPushOutsideMeasurement: true } : {}) }, results };
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));
-  } finally { stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
+  } finally { resources?.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
 }
 void main().catch(error => { console.error(error); process.exitCode = 1; });

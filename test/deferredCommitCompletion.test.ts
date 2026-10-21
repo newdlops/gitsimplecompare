@@ -76,3 +76,59 @@ test("stash apply conflicts retain their stash, snapshot, restore HEAD and confl
   assert.equal(await git(f.root, "diff", "--name-only", "--diff-filter=U"), "tracked.txt");
   assert.match(await readFile(join(f.root, "tracked.txt"), "utf8"), /preserved local edit/);
 });
+
+test("an external commit before completed Undo capture cannot be claimed by the replay", async t => {
+  const f = await fixture(t), original = fs.writeFile; let laterHead = "", operationHead = "";
+  t.mock.method(fs, "writeFile", async (...args) => {
+    if (String(args[0]).endsWith("deferred-commit-rebase-state.json") && !laterHead) {
+      const pending = JSON.parse(String(args[1])); operationHead = pending.operationHead;
+      await writeFile(join(f.root, "external.txt"), "new external commit\n"); await git(f.root, "add", "external.txt");
+      await git(f.root, "commit", "-qm", "external commit before capture"); laterHead = await git(f.root, "rev-parse", "HEAD");
+    }
+    return original(...args);
+  });
+  await assert.rejects(runDeferredCommitRebase(f.input), /Ref safety|safely undone|saved operation/i);
+  assert.ok(laterHead && operationHead && laterHead !== operationHead);
+  assert.equal(await git(f.root, "rev-parse", "HEAD"), laterHead);
+  assert.equal(await git(f.root, "rev-parse", "HEAD^"), operationHead);
+  assert.equal(await readFile(join(f.root, "external.txt"), "utf8"), "new external commit\n");
+  assert.equal((await readPendingDeferredCommitRebase(f.root))?.operationHead, operationHead);
+  assert.equal(await git(f.root, "rev-parse", f.snapshotRef), f.base);
+  await assert.rejects(new OperationUndoStore(f.root, "pull-request").prepare("main"));
+});
+
+test("an external commit after capture stops stash restoration onto the changed checkout", async t => {
+  const f = await fixture(t, "other"), original = OperationUndoStore.prototype.capture; let laterHead = "";
+  t.mock.method(OperationUndoStore.prototype, "capture", async function (this: OperationUndoStore, ...args: Parameters<typeof original>) {
+    await original.apply(this, args);
+    if (args[2] === "completed" && !laterHead) {
+      await writeFile(join(f.root, "external.txt"), "external work before restore\n"); await git(f.root, "add", "external.txt");
+      await git(f.root, "commit", "-qm", "external commit before restore"); laterHead = await git(f.root, "rev-parse", "HEAD");
+    }
+  });
+  await assert.rejects(runDeferredCommitRebase(f.input), /Ref safety/i);
+  assert.equal(await git(f.root, "rev-parse", "HEAD"), laterHead);
+  assert.equal(await readFile(join(f.root, "other.txt"), "utf8"), "other base\n");
+  assert.equal(await readFile(join(f.root, "external.txt"), "utf8"), "external work before restore\n");
+  assert.equal(await git(f.root, "rev-parse", "refs/stash"), f.preservedStashHash);
+  const pending = await readPendingDeferredCommitRebase(f.root);
+  assert.equal(pending?.preservedStashHash, f.preservedStashHash); assert.equal(pending?.restoreHead, undefined);
+  assert.equal(await git(f.root, "rev-parse", f.snapshotRef), f.base);
+});
+
+test("a changed clean checkout keeps its pending result instead of clearing recovery before final verification", async t => {
+  const f = await fixture(t), original = OperationUndoStore.prototype.capture; let operationHead = "", laterHead = "";
+  t.mock.method(OperationUndoStore.prototype, "capture", async function (this: OperationUndoStore, ...args: Parameters<typeof original>) {
+    await original.apply(this, args);
+    if (args[2] === "completed" && !laterHead) {
+      operationHead = await git(f.root, "rev-parse", "HEAD");
+      await writeFile(join(f.root, "external.txt"), "new external work\n"); await git(f.root, "add", "external.txt");
+      await git(f.root, "commit", "-qm", "external commit after capture"); laterHead = await git(f.root, "rev-parse", "HEAD");
+    }
+  });
+  await assert.rejects(runDeferredCommitRebase(f.input), /Ref safety/i);
+  assert.equal(await git(f.root, "rev-parse", "HEAD"), laterHead);
+  assert.equal((await readPendingDeferredCommitRebase(f.root))?.operationHead, operationHead);
+  assert.equal(await readFile(join(f.root, "external.txt"), "utf8"), "new external work\n");
+  assert.equal(await git(f.root, "rev-parse", f.snapshotRef), f.base);
+});

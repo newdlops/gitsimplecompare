@@ -1,0 +1,378 @@
+{
+  "version": "0.1.72146",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "baseCommit": "38ac9fc64394b83e69bea8fa3b1b97c7a74eac63",
+  "sourceFiles": {
+    "scripts/benchmark-git-operations.mjs": "a4008e6d7fb126b97c3e371f76a8c992786c46c8e38427aa297a93af1199aa65",
+    "scripts/benchmark-graph-buttons.mjs": "744dc09171f76f30540ca104d5f0ba41b62e177a1927dce4933e80d016f5d8ba",
+    "src/git/branchOperationService.ts": "e2d752434ba9479ff9eccdcd3cd08f6f6963702a8bc6dcc9a6169f786765f1a2",
+    "src/git/branchRebaseMerge.ts": "3e6f2f27dc99fc6cd639ebd134394385b103f4465cca8528d4c06152e787359d",
+    "src/git/deferredCommitRebase.ts": "72f48faa77e80bd47d33db8a71a13de5d0bdb04d56f6b8cf1d5481824274681f",
+    "src/git/operationUndoStore.ts": "0e8f17dc84e93fced621de451c04428fa45617278ad414c9e096b033a88d1570",
+    "src/git/pullRequestOperationService.ts": "fff4856176945920e93d21c4e28d09d957b42180c66db512f4876c53c85d82f0",
+    "src/git/pullRequestOperationSnapshot.ts": "892a3d6ff39f6c361deb4c34718261cf9d3c820ea1cb937f1b41db521af34600",
+    "src/git/pullRequestWorktreeRecovery.ts": "c6fbaf2fd1baf72832d62286c1798c585e0af97d246a18ffbb8fbbb5132f5fbc",
+    "test/benchmarkOverrides.test.ts": "fe028c3401097915db9eb8e099327f1bb3c41f817bdb4b45283783dae81abb0a",
+    "test/benchmarks/gitOperationMatrix.ts": "e804d59d1f9cfd51c4fee4c9e9adc2ee49fcf038138e2f96e6f649e961f5cd98",
+    "test/benchmarks/graphButtonFlow.ts": "8d6408b516a5a300726a2ec93d583dd5d4b14b4174599e1e269d06533d3b3ed0",
+    "test/branchOperationSafety.test.ts": "b2225868d61d913df6a45ce4380bc397a8f54b4152183839ebf70a93aec45f43",
+    "test/completedOperationOwnership.test.ts": "4a2ff367f5347d68e8f3f4d03deb604e9e3b78e280116ba19106242d25d9ba7f",
+    "test/deferredCommitCompletion.test.ts": "61f0bdb466fd0b3a5ba85d4016d06902937be2a3de46781a885890d869057077",
+    "test/helpers/benchmarkOverrides.ts": "c7ba2fef20ef91f143758c88ce30afb9224d942a74f0138dd0b088c685b60679",
+    "test/helpers/benchmarkTurnGate.ts": "c1c89e5027d455829c6cb4c0cb3bfe31bd8d29dc2eb81294873cc4fb0f85f8de",
+    "test/helpers/graphPhaseResources.ts": "9f5056ba582de858ac499657ef01097d2a8b1067a6d7d3b005581800fd8330fb",
+    "test/helpers/prButtonFixture.ts": "a6942c04a44abb299e2ebddc16071edeb47e8ea2c546d14937c1dd1eb94b24cb",
+    "test/helpers/prNoticeProbe.ts": "dfe37b10465f98afbf078f24be89a914fd03780e8a71af3de9f20345c303630b",
+    "test/pullRequestSnapshotAtomic.test.ts": "649c8a56c462922234e9fb3a88408a987b0590e8acd61da6a7c087fd24d432c6"
+  },
+  "nodeTestsPassed": 84,
+  "currentNativeProductionDomChecks": 26,
+  "prRowJumpViewports": [
+    390,
+    768,
+    1440
+  ],
+  "runtimeScope": "Bind known completed result heads before Undo capture and stash restore/cleanup; reduce one replay finalization query. No product UI source changed.",
+  "currentPrButtons": {
+    "before": [
+      {
+        "operation": "pr-squash-cherry-pick",
+        "handlerMs": 241,
+        "clickToFinalFrameMs": 422,
+        "clickToSettledMs": 529,
+        "processes": 30
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "handlerMs": 596,
+        "clickToFinalFrameMs": 769,
+        "clickToSettledMs": 875,
+        "processes": 29
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "handlerMs": 287,
+        "clickToFinalFrameMs": 445,
+        "clickToSettledMs": 561,
+        "processes": 30
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "handlerMs": 2028,
+        "clickToFinalFrameMs": 3355,
+        "clickToSettledMs": 3504,
+        "processes": 29
+      }
+    ],
+    "after": [
+      {
+        "operation": "pr-squash-cherry-pick",
+        "handlerMs": 588,
+        "clickToFinalFrameMs": 1172,
+        "clickToSettledMs": 1323,
+        "processes": 30
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "handlerMs": 195,
+        "clickToFinalFrameMs": 346,
+        "clickToSettledMs": 452,
+        "processes": 28
+      },
+      {
+        "operation": "pr-squash-cherry-pick",
+        "handlerMs": 2941,
+        "clickToFinalFrameMs": 3263,
+        "clickToSettledMs": 3416,
+        "processes": 30
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "handlerMs": 829,
+        "clickToFinalFrameMs": 1015,
+        "clickToSettledMs": 1120,
+        "processes": 28
+      }
+    ]
+  },
+  "currentMatrix": [
+    {
+      "operation": "initial",
+      "gitCalls": 11,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 437.464
+    },
+    {
+      "operation": "push",
+      "gitCalls": 25,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 534.095
+    },
+    {
+      "operation": "push-tracked",
+      "gitCalls": 20,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 421.562
+    },
+    {
+      "operation": "pull",
+      "gitCalls": 12,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 537.933
+    },
+    {
+      "operation": "pull-new-history",
+      "gitCalls": 12,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 473.862
+    },
+    {
+      "operation": "pull-known-history",
+      "gitCalls": 9,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 314.624
+    },
+    {
+      "operation": "fetch",
+      "gitCalls": 6,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 396.402
+    },
+    {
+      "operation": "fetch-new-history",
+      "gitCalls": 9,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 657.351
+    },
+    {
+      "operation": "fetch-known-history",
+      "gitCalls": 6,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 284.189
+    },
+    {
+      "operation": "fetch-no-change",
+      "gitCalls": 5,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 223.454
+    },
+    {
+      "operation": "rebase",
+      "gitCalls": 23,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 684.554
+    },
+    {
+      "operation": "merge",
+      "gitCalls": 22,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 746.955
+    },
+    {
+      "operation": "merge-no-ff",
+      "gitCalls": 10,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 421.262
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "gitCalls": 31,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 549.17
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "gitCalls": 29,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 758.147
+    },
+    {
+      "operation": "cherry-pick",
+      "gitCalls": 9,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 619.059
+    },
+    {
+      "operation": "checkout",
+      "gitCalls": 7,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 485.754
+    },
+    {
+      "operation": "checkout-unloaded",
+      "gitCalls": 10,
+      "nativeAndDomExact": true,
+      "scopedCpuMs": 564.298
+    }
+  ],
+  "cumulativeComparison": {
+    "baseline": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+    "candidate": "38ac9fc64394b83e69bea8fa3b1b97c7a74eac63",
+    "medium": {
+      "medium-resources": {
+        "before": {
+          "samples": [
+            {
+              "cases": 17,
+              "gitCalls": 444,
+              "serviceMs": 5029,
+              "serviceToFinalFrameMs": 12393,
+              "scopedCpuMs": 10152.373
+            },
+            {
+              "cases": 17,
+              "gitCalls": 450,
+              "serviceMs": 12293,
+              "serviceToFinalFrameMs": 19186,
+              "scopedCpuMs": 12643.254
+            }
+          ],
+          "median": {
+            "cases": 17.0,
+            "gitCalls": 447.0,
+            "serviceMs": 8661.0,
+            "serviceToFinalFrameMs": 15789.5,
+            "scopedCpuMs": 11397.814
+          }
+        },
+        "after": {
+          "samples": [
+            {
+              "cases": 17,
+              "gitCalls": 246,
+              "serviceMs": 4764,
+              "serviceToFinalFrameMs": 9683,
+              "scopedCpuMs": 8222.539
+            },
+            {
+              "cases": 17,
+              "gitCalls": 246,
+              "serviceMs": 4732,
+              "serviceToFinalFrameMs": 7730,
+              "scopedCpuMs": 8558.51
+            }
+          ],
+          "median": {
+            "cases": 17.0,
+            "gitCalls": 246.0,
+            "serviceMs": 4748.0,
+            "serviceToFinalFrameMs": 8706.5,
+            "scopedCpuMs": 8390.524
+          }
+        }
+      },
+      "medium-latency": {
+        "before": {
+          "samples": [
+            {
+              "cases": 17,
+              "gitCalls": 447,
+              "serviceMs": 7183,
+              "serviceToFinalFrameMs": 16486
+            },
+            {
+              "cases": 17,
+              "gitCalls": 448,
+              "serviceMs": 7798,
+              "serviceToFinalFrameMs": 17508
+            }
+          ],
+          "median": {
+            "cases": 17.0,
+            "gitCalls": 447.5,
+            "serviceMs": 7490.5,
+            "serviceToFinalFrameMs": 16997.0
+          }
+        },
+        "after": {
+          "samples": [
+            {
+              "cases": 17,
+              "gitCalls": 246,
+              "serviceMs": 6822,
+              "serviceToFinalFrameMs": 11822
+            },
+            {
+              "cases": 17,
+              "gitCalls": 247,
+              "serviceMs": 7870,
+              "serviceToFinalFrameMs": 13352
+            }
+          ],
+          "median": {
+            "cases": 17.0,
+            "gitCalls": 246.5,
+            "serviceMs": 7346.0,
+            "serviceToFinalFrameMs": 12587.0
+          }
+        }
+      }
+    },
+    "largeCommon16": {
+      "before": {
+        "cases": 16,
+        "gitCalls": 600,
+        "serviceMs": 26435,
+        "serviceToFinalFrameMs": 66715,
+        "scopedCpuMs": 63236.336
+      },
+      "after": {
+        "cases": 16,
+        "gitCalls": 272,
+        "serviceMs": 34395,
+        "serviceToFinalFrameMs": 55489,
+        "scopedCpuMs": 38020.425
+      }
+    },
+    "largeCandidatePushServiceMs": 5962,
+    "largeBaselinePush": "Censored; owned receiver already held 72720-commit main, yet only334 sequential prefix commits were published after minutes. Native priming for later baseline cases is outside measurement and is not an app push success.",
+    "checkoutExclusion": "Older comparative runs selected loaded targets using source-dependent branch order. Exclude checkout from comparative totals. Current harness sorts branch names and fingerprints branch+tree before measurement.",
+    "pairedFullExclusion": "First paired sequence passed; second stopped on a commit-OID fingerprint mismatch caused by fixture committer times. No complete paired speed claim. Current fingerprint uses branch+Native tree."
+  },
+  "limits": [
+    "Separate opt-in CPU counters include benchmark Node/Playwright transport, waited native children and complete same-PID Chromium deltas; they exclude fixture, probe build and Native oracle.",
+    "Node after-await heap/RSS is neither retained heap nor aggregate/peak memory. Native mock restoreAll retained call arguments in the older observer; those old memory results are not a production leak.",
+    "Per-operation latency is mixed with only2 samples/source; PR squash control slowed in this series. One fewer replay query is established; no universal wall-time speedup or whole-memory minimization is claimed.",
+    "Loaded Graph page may exclude HEAD after some actions; exact page metadata is verified, not automatic navigation to every HEAD.",
+    "No actual external GitHub timing, foreground Host, OS focus switch, forced reload or separate Marketplace query. Captain remains read-only."
+  ],
+  "evidenceFiles": {
+    "/private/tmp/gsc-goal46-deferred-race-before.log": "df42a487d77229e26133e9109c3615c99b52fb7cd98083931eb86a2ec31d5e73",
+    "/private/tmp/gsc-goal46-delivery-1-pr-buttons-latency-before.json": "37b280809dffd7321a340635041cda39fe6efd62480425281f58e507ddde3299",
+    "/private/tmp/gsc-goal46-delivery-1-pr-buttons-latency-before.log": "4e56b3897feee593eb921619316ff2fe9144ae26a01364b3a73185884d80926b",
+    "/private/tmp/gsc-goal46-delivery-2-pr-buttons-latency-after.json": "4649f1e4f8b9e433671c97cab1373b93f4fe5622a23e5e029f22310b0cff11aa",
+    "/private/tmp/gsc-goal46-delivery-2-pr-buttons-latency-after.log": "0bcc7891fcd7daff301d71b618f0753a11aae932e2736b899a01a7b10a9bf023",
+    "/private/tmp/gsc-goal46-delivery-3-pr-buttons-latency-after.json": "bf358035ae950d0103729bb8b9c96c615077f8852ceb9deb4b980fbf5b2b824d",
+    "/private/tmp/gsc-goal46-delivery-3-pr-buttons-latency-after.log": "f319f61127ac912882219264dbe081aaf3fccb9d1fc61599109bf2c1946c3026",
+    "/private/tmp/gsc-goal46-delivery-4-pr-buttons-latency-before.json": "ce86399d78d3ac0d2832945d9ab8ef33722d26702c497fd955b30aa261020ece",
+    "/private/tmp/gsc-goal46-delivery-4-pr-buttons-latency-before.log": "320864820029f56c474b8704f3a2267b3e3d7036060e4794b4c729b5633e2aae",
+    "/private/tmp/gsc-goal46-delivery-5-matrix-resources-after.json": "3ff8a00cf645b20c0e95bcde7cd7d608ec0de774a7a3189b343f52123375cf43",
+    "/private/tmp/gsc-goal46-delivery-5-matrix-resources-after.log": "ced82024da847f3ce0f09fbeff961ea97d3a6511ba955970c36abdb1b57e37fc",
+    "/private/tmp/gsc-goal46-delivery-state.json": "90ae6a8c3d15a830121143227259322c5d79487ae9bf7a7da3b8b945d91a7696",
+    "/private/tmp/gsc-goal46-large-baseline-push-progress.json": "4703e68840fff0dbf6cf67fe20a24e33f826b7250535cdf995b8533a1528ddb8",
+    "/private/tmp/gsc-goal46-large-baseline-stop.json": "c426d517bf414a7a735ffeef2f6fb65336bd9c7431818a250aa59a2877436cda",
+    "/private/tmp/gsc-goal46-large-v3-after.json": "ea074512e6f501125cf29e28533b949b9a1493adced99f8e253620ebb4bea520",
+    "/private/tmp/gsc-goal46-large-v3-before.json": "0993a7ca638bb115f50b5e93a9e2ccc8d6597552fa1c567275995eedafcdf729",
+    "/private/tmp/gsc-goal46-observer-v1/manifest.json": "4a3e7578bc8b948e6a46a94db7bb9f5798120ff5a61e28b91a2a3ae4e35aa10e",
+    "/private/tmp/gsc-goal46-observer-v2/manifest.json": "6e309fa9513e3b3fe7c23bc1e5e5cb578ca34ec88d8fff98148c372dd874fea3",
+    "/private/tmp/gsc-goal46-ownership-extended-test.log": "cdcfafc9cd260cad93f6f3c58cb7f9ebe4466b11798e6bbd815cfbaefc3b3704",
+    "/private/tmp/gsc-goal46-paired-full-state.json": "c700035395608266f25cfca2f91635831d6e6204389e7c118573d294bd7897ae",
+    "/private/tmp/gsc-goal46-paired-smoke-state.json": "d88d91fdba01128c52f00005d4faed01d0b21e205ac84e38bc387b5bafdc2c9c",
+    "/private/tmp/gsc-goal46-pr-jump-live-1440.png": "2eb7f4e1cc610b336d8d79ed178d8c478c03aad0665fa3af1d4b052e9fa962fb",
+    "/private/tmp/gsc-goal46-pr-jump-live-390.png": "747244e607be8cfccdd54beaea2227837cf529a50ebfcaad99382f9fa3b699ba",
+    "/private/tmp/gsc-goal46-pr-jump-live-768.png": "016fc296bca987d11524d891ca9bdc5eca8eb98fe65d56b4798628d6539bd7d2",
+    "/private/tmp/gsc-goal46-pr-jump-live.json": "5e9b5af927260ac83272416412109768b996ef70a380d616fa5511d21fe43ac5",
+    "/private/tmp/gsc-goal46-pr-jump-live.log": "5e9b5af927260ac83272416412109768b996ef70a380d616fa5511d21fe43ac5",
+    "/private/tmp/gsc-goal46-pr-jump-regression.log": "2b6bbd4f79a6d2d88b951b303ff466480bc10bf98df74fe0f67bfc90aae06400",
+    "/private/tmp/gsc-goal46-types-final.log": "965a2c9812d781d9c1a2795e7c6c0966ac3d62a9aed8ed950a8c4bcf286fd0f9",
+    "/private/tmp/gsc-goal46-v2-medium-latency-6-before.json": "a928d929b1e905ab463456ba024991a49ba05cdeeafdcd6bf1b6771907ba633f",
+    "/private/tmp/gsc-goal46-v2-medium-latency-7-after.json": "d767c9c36b7c2ac8f2efb85583de74ad1950ab827ef31501090055b606b70c9a",
+    "/private/tmp/gsc-goal46-v2-medium-latency-8-after.json": "f3ae049b7bebbb9d62567d8d45b8609e28e89a34072367f8a9030d762aaae08c",
+    "/private/tmp/gsc-goal46-v2-medium-latency-9-before.json": "6a9afba8bf79ab343f8cab16eb269b5836fa6b4c36373711382d960d55f2c5d2",
+    "/private/tmp/gsc-goal46-v2-medium-resources-2-before.json": "af28681606456ae42439dd0341cdeb1a35ab2f1e8e74ce4ea1150010829aafa9",
+    "/private/tmp/gsc-goal46-v2-medium-resources-3-after.json": "f28a218054ffb03f4da48f3e7f18673e2fa8e3b659660e7ed481faaff56e5c57",
+    "/private/tmp/gsc-goal46-v2-medium-resources-4-after.json": "8a1bebc9ad86ca4c3f66ef86eeae3fa12f5dd1df010cd5b32395f68032b2bd47",
+    "/private/tmp/gsc-goal46-v2-medium-resources-5-before.json": "f62d6eebe18edf7714fcd3e9bd9b42aab4d06a875ef0ff5b1880a7887d2a8169"
+  }
+}

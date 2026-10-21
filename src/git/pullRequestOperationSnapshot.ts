@@ -221,9 +221,14 @@ export class PullRequestOperationSnapshot {
     return this.undoStore.prepare(branchName);
   }
 
-  /** 완료된 PR 결과를 기록한다. 실제 결과 적용 후, 사용자 stash를 복원하기 전에 호출한다. */
-  async recordCompleted(branch: string, snapshotRef: string): Promise<void> {
-    await this.undoStore.capture(branch, snapshotRef, "completed");
+  /**
+   * 완료 결과를 해당 Native commit에 고정한다. cleanup 대기 중 생긴 외부 commit을 Undo로 소유하지 않는다.
+   * @param branch 결과 적용 브랜치 @param snapshotRef 시작 시 만든 불변 복구 ref
+   * @param expectedHead 적용이 검증된 결과 commit. 호출 시점의 HEAD를 임의로 채택하지 않는다.
+   */
+  async recordCompleted(branch: string, snapshotRef: string, expectedHead: string): Promise<void> {
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expectedHead)) throw new Error("Cannot record PR completion without a verified result commit.");
+    await this.undoStore.capture(branch, snapshotRef, "completed", false, expectedHead);
   }
 
   /**

@@ -1,6 +1,6 @@
 // PR 실행의 Git은 그대로 두고 외부 GitHub 목록 응답만 임시 저장소의 실제 OID로 대체한다.
 import assert from "node:assert/strict";
-import { mock } from "node:test";
+import { benchmarkOverrides as mock } from "./benchmarkOverrides";
 import { PullRequestService } from "../../src/git/pullRequestService";
 import type { PullRequestInfo } from "../../src/git/pullRequestInfo";
 import { runGit } from "../../src/git/gitExec";

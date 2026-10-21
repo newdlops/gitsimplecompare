@@ -97,7 +97,7 @@ export class PullRequestOperationService {
         plan,
         tree
       );
-      await this.state.recordCompleted(result.branch, result.snapshotRef);
+      await this.state.recordCompleted(result.branch, result.snapshotRef, result.afterHead);
       return result;
     } finally {
       // 충돌 source commit은 복구 전용 ref에 고정되어 있으므로 fetch용 ref는 해제한다.
@@ -138,7 +138,7 @@ export class PullRequestOperationService {
         destinationBranch,
         beforeHead
       );
-      await this.state.recordCompleted(result.branch, result.snapshotRef);
+      await this.state.recordCompleted(result.branch, result.snapshotRef, result.afterHead);
       await this.releasePreparedCommitsQuietly(prepared);
       return result;
     }
@@ -240,7 +240,7 @@ export class PullRequestOperationService {
         destinationBranch,
         beforeHead
       );
-      await this.state.recordCompleted(result.branch, result.snapshotRef);
+      await this.state.recordCompleted(result.branch, result.snapshotRef, result.afterHead);
       if (result.status === "completed") {
         await this.releaseRevertPlanQuietly(plan);
       }
@@ -350,7 +350,7 @@ export class PullRequestOperationService {
         beforeHead,
         tree
       );
-      await this.state.recordCompleted(result.branch, result.snapshotRef);
+      await this.state.recordCompleted(result.branch, result.snapshotRef, result.afterHead);
       return result;
     } finally {
       await this.releaseRevertPlanQuietly(plan);

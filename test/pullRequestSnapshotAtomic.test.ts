@@ -29,7 +29,7 @@ test("PR snapshot and both latest pointers use one owned Git transaction and rem
   assert.equal(await git(f.root, "rev-parse", snapshot), f.head);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForBranch("main")), snapshot);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForCommand("main", "squash")), snapshot);
-  await state.recordCompleted("main", snapshot);
+  await state.recordCompleted("main", snapshot, f.head);
   assert.equal((await state.prepareUndo("main")).snapshotRef, snapshot);
   assert.equal(await git(f.root, "rev-parse", "HEAD"), f.head);
 });
@@ -38,7 +38,7 @@ test("a locked latest pointer leaves every recovery ref and the previous Undo un
   const f = await safetyFixture(t, "pr-atomic-lock");
   if (!await supportsSymbolicTransaction(f.root)) { t.skip("This Git does not support symbolic ref transactions"); return; }
   const state = new PullRequestOperationSnapshot(f.root), previous = await state.createSnapshot("main", f.head, "squash");
-  await state.recordCompleted("main", previous);
+  await state.recordCompleted("main", previous, f.head);
   const refs = () => git(f.root, "for-each-ref", "--format=%(refname) %(objectname) %(symref)", "refs/gitsimplecompare");
   const before = await refs(), lock = join(f.root, ".git", snapshotRefForBranch("main") + ".lock");
   await writeFile(lock, "held by another process\n");
@@ -80,7 +80,7 @@ test(`older Git without ${unsupported} uses the symbolic ref contract and does n
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForCommand("main", "squash")), first);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForCommand("main", "rebase")), second);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForBranch("main")), second);
-  await state.recordCompleted("main", second);
+  await state.recordCompleted("main", second, f.head);
   assert.equal((await state.prepareUndo("main")).snapshotRef, second);
 });
 }
@@ -106,6 +106,6 @@ test("a later snapshot moves symbolic pointers without changing the earlier immu
   assert.equal(await git(f.root, "rev-parse", second), nextHead);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForCommand("main", "squash")), second);
   assert.equal(await git(f.root, "symbolic-ref", snapshotRefForBranch("main")), second);
-  await state.recordCompleted("main", second);
+  await state.recordCompleted("main", second, nextHead);
   assert.equal((await state.prepareUndo("main")).snapshotRef, second);
 });

@@ -83,13 +83,14 @@ export class BranchOperationService {
       }
       // merge --squash가 확정한 index만 commit해 이후 생긴 사용자 편집을 다시 stage하지 않는다.
       await this.commitSquash(sourceBranch, branch, this.repoRoot);
-      await this.undoStore.capture(branch, snapshotRef, "completed");
+      const afterHead = await this.currentHead();
+      await this.undoStore.capture(branch, snapshotRef, "completed", false, afterHead);
       return {
         status: "completed",
         branch,
         sourceBranch,
         beforeHead,
-        afterHead: await this.currentHead(),
+        afterHead,
         snapshotRef,
       };
     } catch (err) {
@@ -154,7 +155,8 @@ export class BranchOperationService {
     try {
       if (result.status !== "completed" || preserved?.hash) {
         await this.undoStore.capture(branch, snapshotRef,
-          await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed");
+          await detectOperation(this.repoRoot) === "rebase" ? "rebase" : "completed", false,
+          result.status === "completed" ? result.afterHead : undefined);
       }
     } catch (error) {
       if (result.status === "completed") {
@@ -352,7 +354,7 @@ export class BranchOperationService {
       snapshotRef = await this.createSnapshot(branch, beforeHead);
       await this.assertStillOnBranch(branch, beforeHead, afterHead);
       await runGit(["reset", "--keep", afterHead], this.repoRoot);
-      await this.undoStore.capture(branch, snapshotRef, "completed");
+      await this.undoStore.capture(branch, snapshotRef, "completed", false, afterHead);
       return { status: "completed", branch, sourceBranch, beforeHead, afterHead, snapshotRef };
     } finally {
       if (!keepWorktree) {

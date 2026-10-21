@@ -1,6 +1,6 @@
 // 실제 PR Native 실행 뒤에만 고정 길이의 알림 응답 대기를 넣어 UI 완료 수명을 비교한다.
 import assert from "node:assert/strict";
-import { mock } from "node:test";
+import { benchmarkOverrides as mock } from "./benchmarkOverrides";
 import { PullRequestOperationService } from "../../src/git/pullRequestOperationService";
 import { window } from "./vscodeMock";
 

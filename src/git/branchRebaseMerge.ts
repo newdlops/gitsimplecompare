@@ -282,7 +282,7 @@ async function completePendingBranchRebaseMerge(
     "completing branch rebase merge"
   );
   assertLocalChangesRestoreNotAttempted(pending);
-  await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", allowMissingUndo);
+  await new BranchOperationUndoStore(repoRoot).capture(pending.branch, pending.snapshotRef, "completed", allowMissingUndo, rebasedHead);
   // Undo 기록을 기다리는 동안 외부 commit/checkout이 생겼으면 그 상태에 stash를 적용하지 않는다.
   await assertCurrentBranchHead(repoRoot, pending.branch, rebasedHead, "restoring branch rebase local changes");
   try {

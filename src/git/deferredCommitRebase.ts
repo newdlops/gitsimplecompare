@@ -19,6 +19,7 @@ import {
 import { assertCurrentBranchHead } from "./refSafety";
 import { OperationUndoStore } from "./operationUndoStore";
 import { GitStatePathIdentityError, withGitStatePathScope } from "./gitStatePathScope";
+import { readGitCheckoutIdentity } from "./repositoryIdentity";
 
 /** deferred rebase 실행에 필요한 입력값 */
 export interface DeferredCommitRebaseInput {
@@ -304,14 +305,16 @@ async function finishPendingDeferredCommitRebase(
   repoRoot: string,
   pending: PendingDeferredCommitRebase
 ): Promise<DeferredCommitRebaseResumeResult> {
-  const state = { ...pending, operationHead: await currentHead(repoRoot) };
+  // 마지막 Native 적용 직후의 HEAD를 유지한다. 새 조회 결과로 덮으면 그 사이 외부 커밋까지 소유할 수 있다.
+  const state = { ...pending, operationHead: pending.operationHead ?? await currentHead(repoRoot) };
   await writePendingDeferredCommitRebase(repoRoot, state);
   await recordDeferredUndoState(repoRoot, state, "completed");
   try {
     await restorePendingLocalChanges(
       repoRoot,
       state,
-      "Deferred rebase merge completed, but preserved local changes could not be restored."
+      "Deferred rebase merge completed, but preserved local changes could not be restored.",
+      state.operationHead
     );
   } catch (err) {
     if (await hasUnmergedChanges(repoRoot)) {
@@ -327,7 +330,7 @@ async function finishPendingDeferredCommitRebase(
   return {
     status: "completed",
     branch: state.destinationBranch,
-    afterHead: await currentHead(repoRoot),
+    afterHead: state.operationHead,
     restoredLocalChanges: Boolean(state.preservedStashHash),
     operation: state.operation,
   };
@@ -345,7 +348,8 @@ async function recordDeferredUndoState(
   phase: "replay" | "completed"
 ): Promise<void> {
   if (pending.kind === "branch-rebase") return;
-  await new OperationUndoStore(repoRoot, "pull-request").capture(pending.destinationBranch, pending.snapshotRef, phase, true);
+  await new OperationUndoStore(repoRoot, "pull-request").capture(pending.destinationBranch, pending.snapshotRef, phase, true,
+    phase === "completed" ? pending.operationHead : undefined);
 }
 
 /**
@@ -386,17 +390,22 @@ async function tryApplyCommit(
  * @param repoRoot git 저장소 루트
  * @param pending 저장된 deferred rebase 상태
  * @param failureMessage stash 복원 실패 시 붙일 사용자 메시지
+ * @param completionHead 완료 경로에서 Native로 확인했던 HEAD. 복원 전에 다른 checkout으로 바뀌지 않았는지 다시 검증한다.
  */
 async function restorePendingLocalChanges(
   repoRoot: string,
   pending: PendingDeferredCommitRebase,
-  failureMessage: string
+  failureMessage: string,
+  completionHead?: string
 ): Promise<void> {
   if (pending.preservedStashHash) {
     // 실제 stash 복원 직전에만 HEAD와 재개 상태를 기록한다. stash가 없으면 기존 pending만 정리한다.
-    await writePendingDeferredCommitRebase(repoRoot, { ...pending, restoreHead: await currentHead(repoRoot) });
+    const restoreHead = completionHead ? await verifyDeferredCompletionHead(repoRoot, pending, completionHead) : await currentHead(repoRoot);
+    await writePendingDeferredCommitRebase(repoRoot, { ...pending, restoreHead });
     await restorePreservedLocalChangesStash(repoRoot, pending.preservedStashHash, failureMessage);
   }
+  // 마지막 검증이 실패하면 known operationHead와 pending을 보존한다. 정리 뒤 외부 HEAD를 결과로 새로 채택하지 않는다.
+  if (completionHead) await verifyDeferredCompletionHead(repoRoot, pending, completionHead);
   await clearPendingDeferredCommitRebase(repoRoot);
 }
 
@@ -426,6 +435,21 @@ async function hasUnmergedChanges(repoRoot: string): Promise<boolean> {
  */
 async function currentHead(repoRoot: string): Promise<string> {
   return (await runGit(["rev-parse", "--verify", "HEAD"], repoRoot)).trim();
+}
+
+/**
+ * 결과 반환·stash 복원 직전에 새 Native checkout을 읽어 이 큐가 만든 HEAD와 비교한다.
+ * @param repoRoot 실제 replay worktree @param pending 완료할 작업과 branch guard 정책
+ * @param expectedHead 마지막 적용 직후 확인한 HEAD @returns 검증한 현재 HEAD. 외부 변경은 복구 기록을 보존하고 거부한다.
+ */
+async function verifyDeferredCompletionHead(repoRoot: string, pending: PendingDeferredCommitRebase, expectedHead: string): Promise<string> {
+  const checkout = await readGitCheckoutIdentity(repoRoot);
+  if (checkout.head !== expectedHead || (pending.guardCurrentBranch === true && checkout.branch !== pending.destinationBranch)) {
+    throw new Error(`Ref safety check failed before completing ${pending.label}: ` +
+      `expected '${pending.destinationBranch}' at ${expectedHead.slice(0, 10)}, but found '${checkout.branch || "DETACHED"}' at ${checkout.head.slice(0, 10)}. ` +
+      "Local changes and the recovery snapshot were preserved.");
+  }
+  return checkout.head;
 }
 
 /**

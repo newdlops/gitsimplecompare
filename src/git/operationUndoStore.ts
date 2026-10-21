@@ -75,8 +75,10 @@ export class OperationUndoStore {
    * @param snapshotRef 이 호출이 시작한 snapshot ref
    * @param phase 완료, squash 부분 적용, rebase 또는 PR cherry-pick/revert 중단 상태
    * @param allowMissing 이전 버전에서 시작한 rebase의 완료를 허용하되 Undo 기록은 추정하지 않는다.
+   * @param expectedHead 호출자가 Native 적용 직후 확인한 결과 HEAD. 다른 커밋을 이 작업의 Undo로 소유하지 않는다.
    */
-  async capture(branch: string, snapshotRef: string, phase: "completed" | "squash" | "rebase" | "replay", allowMissing = false): Promise<void> {
+  async capture(branch: string, snapshotRef: string, phase: "completed" | "squash" | "rebase" | "replay", allowMissing = false,
+    expectedHead?: string): Promise<void> {
     const gitDir = await this.gitDir();
     const binding = await this.read(branch, gitDir);
     // 업데이트 전 시작한 rebase는 계속할 수 있지만 출처 없는 자동 Undo 기록은 새로 만들지 않는다.
@@ -84,6 +86,13 @@ export class OperationUndoStore {
     if (!binding || binding.snapshotRef !== snapshotRef) throw staleUndo();
     await this.assertSnapshot(binding);
     const state = await this.readState(gitDir);
+    if (expectedHead !== undefined && state.head !== expectedHead) {
+      logInfo("operation recovery capture skipped", { repoRoot: this.repoRoot, family: this.family, branch, phase,
+        reason: "resultHeadChanged", expectedHead, actualHead: state.head });
+      throw new Error("Ref safety check failed before recording operation recovery: " +
+        `expected '${branch}' at ${expectedHead.slice(0, 10)}, but found '${state.branch || "DETACHED"}' at ${state.head.slice(0, 10)}. ` +
+        "Local changes and the recovery snapshot were preserved.");
+    }
     if (phase === "rebase") {
       if (state.operation !== "rebase" || !state.rebase) throw staleUndo();
       const owner = await this.rebaseBranch(gitDir);
