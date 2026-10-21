@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readPublishedPushTips, readPushBranchAdvertisement } from "../src/git/pushPublishedHistory";
 import type { PushGitRunner } from "../src/git/sequentialPush";
+import type { RunGitOptions } from "../src/git/gitExec";
 
 /** 서로 다른 완전한 SHA-1/SHA-256 fixture OID를 만든다. */
 function oid(index: number, length = 40): string { return index.toString(16).padStart(length, "0"); }
@@ -78,4 +79,29 @@ test("an exact destination read retains the narrow existing-branch advertisement
   };
   const advertisement = await readPushBranchAdvertisement("/fixture", "owned", runner, {}, "refs/heads/existing");
   assert.equal(advertisement.size, 1); assert.equal(advertisement.get("refs/heads/existing"), oid(1));
+});
+
+for (const streaming of [true, false]) test(`published-tip ${streaming ? "stream" : "buffer"} probe preserves caller options and locally disables lazy fetch`, async () => {
+  const controller = new AbortController(), options: RunGitOptions = Object.freeze({
+    signal: controller.signal, readTimeoutMs: 1234, retryOnLock: false,
+    env: Object.freeze({ GIT_NO_REPLACE_OBJECTS: "1", GIT_GRAFT_FILE: "/owned/no-grafts", GIT_NO_LAZY_FETCH: "0" }),
+    clearEnv: Object.freeze(["GIT_INDEX_FILE"]),
+  });
+  let probes = 0;
+  /** 원본 DAG·취소·제한 시간을 보존하고 호출자 객체를 바꾸지 않는 로컬 조회 옵션을 확인한다. */
+  const verify = (actual: RunGitOptions | undefined) => {
+    probes++;
+    assert.notEqual(actual, options);
+    assert.deepEqual(actual, { ...options, env: { ...options.env, GIT_NO_LAZY_FETCH: "1" } });
+    assert.equal(options.env!.GIT_NO_LAZY_FETCH, "0");
+  };
+  const runner: PushGitRunner = {
+    run: async () => { throw new Error("A supplied advertisement must be reused"); },
+    input: async (_args, _root, input, actual) => { verify(actual); assert.equal(input, oid(1) + "\n"); return `${oid(1)} commit\n`; },
+    ...(streaming ? { inputStream: async (_args: string[], _root: string, input: string, consume: (chunk: Buffer) => void, actual?: RunGitOptions) => {
+      verify(actual); assert.equal(input, oid(1) + "\n"); consume(Buffer.from(`${oid(1)} commit\n`));
+    } } : {}),
+  };
+  assert.deepEqual(await readPublishedPushTips("/fixture", "owned", oid(2), runner, options, new Map([["refs/heads/main", oid(1)]])), [oid(1)]);
+  assert.equal(probes, 1);
 });

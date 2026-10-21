@@ -1,0 +1,361 @@
+{
+  "candidateVersion": "0.1.72126",
+  "baselineVersion": "0.1.72112",
+  "baselineCommit": "b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b",
+  "candidateCommit": "f9e314d9bdc7419cabbac5a56c8c3f940949d8df",
+  "order": [
+    "beforea",
+    "aftera",
+    "afterb",
+    "beforeb",
+    "beforec",
+    "afterc"
+  ],
+  "fixture": {
+    "files": 1000,
+    "commits": 1000,
+    "branches": 100,
+    "sharedUpstreamBranches": 48,
+    "network": "local-bare-only",
+    "monitorPolicy": false
+  },
+  "scope": "Archived exact production commits, identical current harness; serial Native Git services and production HTML/CSP/JS headless Chromium. Actual Captain is not mutated. No external GitHub transfer timing or OS window focus.",
+  "correctness": {
+    "nativeAndRenderedMatrixCases": 108,
+    "actualButtonCases": 24,
+    "candidateMatrixCases": 54,
+    "candidateButtonCases": 12,
+    "independentFreshMarkerOracle": true,
+    "markerReadErrorsRejected": true,
+    "lastMatchingPublicationSelected": true,
+    "freshFetchAndPullEachOneHistoryRead": true,
+    "visibleCheckoutNoHistoryRead": true,
+    "deepCheckoutOneHistoryRead": true
+  },
+  "metricScope": {
+    "serviceMs": "Includes service preparation and Native operation; excludes browser/native startup and post-timing oracle.",
+    "serviceToLatestFrameMs": "Per sample serviceMs plus actual acknowledged final-frame delay after Git; never replace a missing frame with zero.",
+    "aggregate": "Equal-weight sum of the 18 fixture cases in each run, then median of three runs; not a general product speedup.",
+    "nodeCpu": "Benchmark Node including Playwright transport, not Git/Chromium/whole OS CPU.",
+    "rss": "10ms sampled incremental benchmark-Node RSS above each case start, not absolute, concurrent Git/Chromium or whole OS memory."
+  },
+  "runAggregates": [
+    {
+      "label": "beforea",
+      "serviceMs": 18917,
+      "serviceToLatestFrameMs": 35063,
+      "directGitCalls": 294,
+      "benchmarkNodeCpuMs": 2611,
+      "peakOwnedSlots": 4,
+      "maxIncrementalPeakNodeRssMiB": 17
+    },
+    {
+      "label": "aftera",
+      "serviceMs": 14142,
+      "serviceToLatestFrameMs": 21277,
+      "directGitCalls": 255,
+      "benchmarkNodeCpuMs": 2072,
+      "peakOwnedSlots": 4,
+      "maxIncrementalPeakNodeRssMiB": 15
+    },
+    {
+      "label": "afterb",
+      "serviceMs": 12621,
+      "serviceToLatestFrameMs": 18921,
+      "directGitCalls": 255,
+      "benchmarkNodeCpuMs": 2249,
+      "peakOwnedSlots": 4,
+      "maxIncrementalPeakNodeRssMiB": 14
+    },
+    {
+      "label": "beforeb",
+      "serviceMs": 12253,
+      "serviceToLatestFrameMs": 20184,
+      "directGitCalls": 292,
+      "benchmarkNodeCpuMs": 2388,
+      "peakOwnedSlots": 4,
+      "maxIncrementalPeakNodeRssMiB": 8
+    },
+    {
+      "label": "beforec",
+      "serviceMs": 10889,
+      "serviceToLatestFrameMs": 19740,
+      "directGitCalls": 296,
+      "benchmarkNodeCpuMs": 2567,
+      "peakOwnedSlots": 4,
+      "maxIncrementalPeakNodeRssMiB": 14
+    },
+    {
+      "label": "afterc",
+      "serviceMs": 62470,
+      "serviceToLatestFrameMs": 89655,
+      "directGitCalls": 258,
+      "benchmarkNodeCpuMs": 4735,
+      "peakOwnedSlots": 6,
+      "maxIncrementalPeakNodeRssMiB": 13
+    }
+  ],
+  "aggregateComparison": {
+    "before": {
+      "serviceMs": {"values":[18917,12253,10889],"measured":3,"median":12253,"min":10889,"max":18917},
+      "serviceToLatestFrameMs": {"values":[35063,20184,19740],"measured":3,"median":20184,"min":19740,"max":35063},
+      "directGitCalls": {"values":[294,292,296],"measured":3,"median":294,"min":292,"max":296},
+      "benchmarkNodeCpuMs": {"values":[2611,2388,2567],"measured":3,"median":2567,"min":2388,"max":2611},
+      "peakOwnedSlots": {"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},
+      "maxIncrementalPeakNodeRssMiB": {"values":[17,8,14],"measured":3,"median":14,"min":8,"max":17}
+    },
+    "after": {
+      "serviceMs": {"values":[14142,12621,62470],"measured":3,"median":14142,"min":12621,"max":62470},
+      "serviceToLatestFrameMs": {"values":[21277,18921,89655],"measured":3,"median":21277,"min":18921,"max":89655},
+      "directGitCalls": {"values":[255,255,258],"measured":3,"median":255,"min":255,"max":258},
+      "benchmarkNodeCpuMs": {"values":[2072,2249,4735],"measured":3,"median":2249,"min":2072,"max":4735},
+      "peakOwnedSlots": {"values":[4,4,6],"measured":3,"median":4,"min":4,"max":6},
+      "maxIncrementalPeakNodeRssMiB": {"values":[15,14,13],"measured":3,"median":14,"min":13,"max":15}
+    },
+    "medianChangePercent": {
+      "serviceMs": 15.4,
+      "serviceToLatestFrameMs": 5.4,
+      "directGitCalls": -13.3,
+      "benchmarkNodeCpuMs": -12.4,
+      "peakOwnedSlots": 0,
+      "maxIncrementalPeakNodeRssMiB": 0
+    }
+  },
+  "operations": [
+    {
+      "operation": "initial",
+      "before": {"serviceMs":{"values":[0,0,0],"measured":3,"median":0,"min":0,"max":0},"afterGitToLatestFrameMs":{"values":[1028,866,358],"measured":3,"median":866,"min":358,"max":1028},"serviceToLatestFrameMs":{"values":[1028,866,358],"measured":3,"median":866,"min":358,"max":1028},"directGitCalls":{"values":[13,13,13],"measured":3,"median":13,"min":13,"max":13},"graphGitCalls":{"values":[13,13,13],"measured":3,"median":13,"min":13,"max":13},"benchmarkNodeCpuMs":{"values":[198,262,199],"measured":3,"median":199,"min":198,"max":262},"peakOwnedSlots":{"values":[4,3,3],"measured":3,"median":3,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[17,8,14],"measured":3,"median":14,"min":8,"max":17}},
+      "after": {"serviceMs":{"values":[0,0,0],"measured":3,"median":0,"min":0,"max":0},"afterGitToLatestFrameMs":{"values":[966,715,646],"measured":3,"median":715,"min":646,"max":966},"serviceToLatestFrameMs":{"values":[966,715,646],"measured":3,"median":715,"min":646,"max":966},"directGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[149,201,172],"measured":3,"median":172,"min":149,"max":201},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[15,14,13],"measured":3,"median":14,"min":13,"max":15}},
+      "medianChangePercent": {"serviceMs":null,"afterGitToLatestFrameMs":-17.4,"serviceToLatestFrameMs":-17.4,"directGitCalls":-15.4,"graphGitCalls":-15.4,"benchmarkNodeCpuMs":-13.6,"peakOwnedSlots":33.3,"incrementalPeakNodeRssMiB":0}
+    },
+    {
+      "operation": "fetch-new-history",
+      "before": {"serviceMs":{"values":[200,531,310],"measured":3,"median":310,"min":200,"max":531},"afterGitToLatestFrameMs":{"values":[277,360,406],"measured":3,"median":360,"min":277,"max":406},"serviceToLatestFrameMs":{"values":[477,891,716],"measured":3,"median":716,"min":477,"max":891},"directGitCalls":{"values":[12,10,12],"measured":3,"median":12,"min":10,"max":12},"graphGitCalls":{"values":[11,9,11],"measured":3,"median":11,"min":9,"max":11},"benchmarkNodeCpuMs":{"values":[141,110,162],"measured":3,"median":141,"min":110,"max":162},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[7,7,1],"measured":3,"median":7,"min":1,"max":7}},
+      "after": {"serviceMs":{"values":[332,827,1464],"measured":3,"median":827,"min":332,"max":1464},"afterGitToLatestFrameMs":{"values":[508,319,538],"measured":3,"median":508,"min":319,"max":538},"serviceToLatestFrameMs":{"values":[840,1146,2002],"measured":3,"median":1146,"min":840,"max":2002},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[115,194,164],"measured":3,"median":164,"min":115,"max":194},"peakOwnedSlots":{"values":[3,4,3],"measured":3,"median":3,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[0,7,11],"measured":3,"median":7,"min":0,"max":11}},
+      "medianChangePercent": {"serviceMs":166.8,"afterGitToLatestFrameMs":41.1,"serviceToLatestFrameMs":60.1,"directGitCalls":-25,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":16.3,"peakOwnedSlots":-25,"incrementalPeakNodeRssMiB":0}
+    },
+    {
+      "operation": "pull-new-history",
+      "before": {"serviceMs":{"values":[1424,304,696],"measured":3,"median":696,"min":304,"max":1424},"afterGitToLatestFrameMs":{"values":[305,414,364],"measured":3,"median":364,"min":305,"max":414},"serviceToLatestFrameMs":{"values":[1729,718,1060],"measured":3,"median":1060,"min":718,"max":1729},"directGitCalls":{"values":[15,15,15],"measured":3,"median":15,"min":15,"max":15},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[118,164,100],"measured":3,"median":118,"min":100,"max":164},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[0,8,5],"measured":3,"median":5,"min":0,"max":8}},
+      "after": {"serviceMs":{"values":[1054,1321,1336],"measured":3,"median":1321,"min":1054,"max":1336},"afterGitToLatestFrameMs":{"values":[260,271,918],"measured":3,"median":271,"min":260,"max":918},"serviceToLatestFrameMs":{"values":[1314,1592,2254],"measured":3,"median":1592,"min":1314,"max":2254},"directGitCalls":{"values":[12,12,12],"measured":3,"median":12,"min":12,"max":12},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[80,123,173],"measured":3,"median":123,"min":80,"max":173},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[6,6,0],"measured":3,"median":6,"min":0,"max":6}},
+      "medianChangePercent": {"serviceMs":89.8,"afterGitToLatestFrameMs":-25.5,"serviceToLatestFrameMs":50.2,"directGitCalls":-20,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":4.2,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":20}
+    },
+    {
+      "operation": "push",
+      "before": {"serviceMs":{"values":[997,985,1423],"measured":3,"median":997,"min":985,"max":1423},"afterGitToLatestFrameMs":{"values":[690,403,469],"measured":3,"median":469,"min":403,"max":690},"serviceToLatestFrameMs":{"values":[1687,1388,1892],"measured":3,"median":1687,"min":1388,"max":1892},"directGitCalls":{"values":[25,25,25],"measured":3,"median":25,"min":25,"max":25},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[191,161,149],"measured":3,"median":161,"min":149,"max":191},"peakOwnedSlots":{"values":[3,3,3],"measured":3,"median":3,"min":3,"max":3},"incrementalPeakNodeRssMiB":{"values":[0,1,5],"measured":3,"median":1,"min":0,"max":5}},
+      "after": {"serviceMs":{"values":[2561,2432,2305],"measured":3,"median":2432,"min":2305,"max":2561},"afterGitToLatestFrameMs":{"values":[536,279,963],"measured":3,"median":536,"min":279,"max":963},"serviceToLatestFrameMs":{"values":[3097,2711,3268],"measured":3,"median":3097,"min":2711,"max":3268},"directGitCalls":{"values":[25,25,25],"measured":3,"median":25,"min":25,"max":25},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[152,110,350],"measured":3,"median":152,"min":110,"max":350},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[3,4,0],"measured":3,"median":3,"min":0,"max":4}},
+      "medianChangePercent": {"serviceMs":143.9,"afterGitToLatestFrameMs":14.3,"serviceToLatestFrameMs":83.6,"directGitCalls":0,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-5.6,"peakOwnedSlots":-33.3,"incrementalPeakNodeRssMiB":200}
+    },
+    {
+      "operation": "push-tracked",
+      "before": {"serviceMs":{"values":[2604,621,1202],"measured":3,"median":1202,"min":621,"max":2604},"afterGitToLatestFrameMs":{"values":[795,197,275],"measured":3,"median":275,"min":197,"max":795},"serviceToLatestFrameMs":{"values":[3399,818,1477],"measured":3,"median":1477,"min":818,"max":3399},"directGitCalls":{"values":[23,23,23],"measured":3,"median":23,"min":23,"max":23},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[128,105,138],"measured":3,"median":128,"min":105,"max":138},"peakOwnedSlots":{"values":[3,3,3],"measured":3,"median":3,"min":3,"max":3},"incrementalPeakNodeRssMiB":{"values":[1,0,4],"measured":3,"median":1,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[3301,1218,638],"measured":3,"median":1218,"min":638,"max":3301},"afterGitToLatestFrameMs":{"values":[745,432,434],"measured":3,"median":434,"min":432,"max":745},"serviceToLatestFrameMs":{"values":[4046,1650,1072],"measured":3,"median":1650,"min":1072,"max":4046},"directGitCalls":{"values":[20,20,20],"measured":3,"median":20,"min":20,"max":20},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[117,170,94],"measured":3,"median":117,"min":94,"max":170},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,4,1],"measured":3,"median":1,"min":0,"max":4}},
+      "medianChangePercent": {"serviceMs":1.3,"afterGitToLatestFrameMs":57.8,"serviceToLatestFrameMs":11.7,"directGitCalls":-13,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-8.6,"peakOwnedSlots":-33.3,"incrementalPeakNodeRssMiB":0}
+    },
+    {
+      "operation": "pull",
+      "before": {"serviceMs":{"values":[2392,237,758],"measured":3,"median":758,"min":237,"max":2392},"afterGitToLatestFrameMs":{"values":[1307,189,799],"measured":3,"median":799,"min":189,"max":1307},"serviceToLatestFrameMs":{"values":[3699,426,1557],"measured":3,"median":1557,"min":426,"max":3699},"directGitCalls":{"values":[10,10,10],"measured":3,"median":10,"min":10,"max":10},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[93,67,93],"measured":3,"median":93,"min":67,"max":93},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,4,4],"measured":3,"median":4,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[293,857,1601],"measured":3,"median":857,"min":293,"max":1601},"afterGitToLatestFrameMs":{"values":[180,131,426],"measured":3,"median":180,"min":131,"max":426},"serviceToLatestFrameMs":{"values":[473,988,2027],"measured":3,"median":988,"min":473,"max":2027},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[46,48,108],"measured":3,"median":48,"min":46,"max":108},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[3,0,1],"measured":3,"median":1,"min":0,"max":3}},
+      "medianChangePercent": {"serviceMs":13.1,"afterGitToLatestFrameMs":-77.5,"serviceToLatestFrameMs":-36.5,"directGitCalls":-10,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-48.4,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":-75}
+    },
+    {
+      "operation": "pull-known-history",
+      "before": {"serviceMs":{"values":[846,732,1091],"measured":3,"median":846,"min":732,"max":1091},"afterGitToLatestFrameMs":{"values":[289,588,407],"measured":3,"median":407,"min":289,"max":588},"serviceToLatestFrameMs":{"values":[1135,1320,1498],"measured":3,"median":1320,"min":1135,"max":1498},"directGitCalls":{"values":[10,10,10],"measured":3,"median":10,"min":10,"max":10},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[165,102,64],"measured":3,"median":102,"min":64,"max":165},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[1,4,0],"measured":3,"median":1,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[897,208,1265],"measured":3,"median":897,"min":208,"max":1265},"afterGitToLatestFrameMs":{"values":[161,277,500],"measured":3,"median":277,"min":161,"max":500},"serviceToLatestFrameMs":{"values":[1058,485,1765],"measured":3,"median":1058,"min":485,"max":1765},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[67,57,93],"measured":3,"median":67,"min":57,"max":93},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[3,3,1],"measured":3,"median":3,"min":1,"max":3}},
+      "medianChangePercent": {"serviceMs":6,"afterGitToLatestFrameMs":-31.9,"serviceToLatestFrameMs":-19.8,"directGitCalls":-10,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-34.3,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":200}
+    },
+    {
+      "operation": "fetch",
+      "before": {"serviceMs":{"values":[1054,278,164],"measured":3,"median":278,"min":164,"max":1054},"afterGitToLatestFrameMs":{"values":[1180,415,501],"measured":3,"median":501,"min":415,"max":1180},"serviceToLatestFrameMs":{"values":[2234,693,665],"measured":3,"median":693,"min":665,"max":2234},"directGitCalls":{"values":[7,7,7],"measured":3,"median":7,"min":7,"max":7},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[72,52,66],"measured":3,"median":66,"min":52,"max":72},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,4,1],"measured":3,"median":1,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[345,819,1825],"measured":3,"median":819,"min":345,"max":1825},"afterGitToLatestFrameMs":{"values":[154,569,1100],"measured":3,"median":569,"min":154,"max":1100},"serviceToLatestFrameMs":{"values":[499,1388,2925],"measured":3,"median":1388,"min":499,"max":2925},"directGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[50,88,168],"measured":3,"median":88,"min":50,"max":168},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[2,2,0],"measured":3,"median":2,"min":0,"max":2}},
+      "medianChangePercent": {"serviceMs":194.6,"afterGitToLatestFrameMs":13.6,"serviceToLatestFrameMs":100.3,"directGitCalls":-14.3,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":33.3,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":100}
+    },
+    {
+      "operation": "fetch-known-history",
+      "before": {"serviceMs":{"values":[427,102,237],"measured":3,"median":237,"min":102,"max":427},"afterGitToLatestFrameMs":{"values":[337,199,407],"measured":3,"median":337,"min":199,"max":407},"serviceToLatestFrameMs":{"values":[764,301,644],"measured":3,"median":644,"min":301,"max":764},"directGitCalls":{"values":[7,7,7],"measured":3,"median":7,"min":7,"max":7},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[84,43,171],"measured":3,"median":84,"min":43,"max":171},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[2,4,0],"measured":3,"median":2,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[355,310,1462],"measured":3,"median":355,"min":310,"max":1462},"afterGitToLatestFrameMs":{"values":[120,213,1407],"measured":3,"median":213,"min":120,"max":1407},"serviceToLatestFrameMs":{"values":[475,523,2869],"measured":3,"median":523,"min":475,"max":2869},"directGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[38,59,238],"measured":3,"median":59,"min":38,"max":238},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[1,3,0],"measured":3,"median":1,"min":0,"max":3}},
+      "medianChangePercent": {"serviceMs":49.8,"afterGitToLatestFrameMs":-36.8,"serviceToLatestFrameMs":-18.8,"directGitCalls":-14.3,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-29.8,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":-50}
+    },
+    {
+      "operation": "fetch-no-change",
+      "before": {"serviceMs":{"values":[118,137,137],"measured":3,"median":137,"min":118,"max":137},"afterGitToLatestFrameMs":{"values":[164,357,888],"measured":3,"median":357,"min":164,"max":888},"serviceToLatestFrameMs":{"values":[282,494,1025],"measured":3,"median":494,"min":282,"max":1025},"directGitCalls":{"values":[7,7,7],"measured":3,"median":7,"min":7,"max":7},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[59,79,54],"measured":3,"median":59,"min":54,"max":79},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,4,1],"measured":3,"median":1,"min":0,"max":4}},
+      "after": {"serviceMs":{"values":[108,156,3895],"measured":3,"median":156,"min":108,"max":3895},"afterGitToLatestFrameMs":{"values":[125,124,2145],"measured":3,"median":125,"min":124,"max":2145},"serviceToLatestFrameMs":{"values":[233,280,6040],"measured":3,"median":280,"min":233,"max":6040},"directGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[52,69,184],"measured":3,"median":69,"min":52,"max":184},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,1,0],"measured":3,"median":0,"min":0,"max":1}},
+      "medianChangePercent": {"serviceMs":13.9,"afterGitToLatestFrameMs":-65,"serviceToLatestFrameMs":-43.3,"directGitCalls":-14.3,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":16.9,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":-100}
+    },
+    {
+      "operation": "rebase",
+      "before": {"serviceMs":{"values":[1937,1691,1104],"measured":3,"median":1691,"min":1104,"max":1937},"afterGitToLatestFrameMs":{"values":[2604,197,763],"measured":3,"median":763,"min":197,"max":2604},"serviceToLatestFrameMs":{"values":[4541,1888,1867],"measured":3,"median":1888,"min":1867,"max":4541},"directGitCalls":{"values":[26,24,24],"measured":3,"median":24,"min":24,"max":26},"graphGitCalls":{"values":[11,9,9],"measured":3,"median":9,"min":9,"max":11},"benchmarkNodeCpuMs":{"values":[251,142,316],"measured":3,"median":251,"min":142,"max":316},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,0,0],"measured":3,"median":0,"min":0,"max":1}},
+      "after": {"serviceMs":{"values":[1203,764,23824],"measured":3,"median":1203,"min":764,"max":23824},"afterGitToLatestFrameMs":{"values":[719,411,3560],"measured":3,"median":719,"min":411,"max":3560},"serviceToLatestFrameMs":{"values":[1922,1175,27384],"measured":3,"median":1922,"min":1175,"max":27384},"directGitCalls":{"values":[23,23,26],"measured":3,"median":23,"min":23,"max":26},"graphGitCalls":{"values":[8,8,11],"measured":3,"median":8,"min":8,"max":11},"benchmarkNodeCpuMs":{"values":[166,135,789],"measured":3,"median":166,"min":135,"max":789},"peakOwnedSlots":{"values":[4,3,6],"measured":3,"median":4,"min":3,"max":6},"incrementalPeakNodeRssMiB":{"values":[0,1,1],"measured":3,"median":1,"min":0,"max":1}},
+      "medianChangePercent": {"serviceMs":-28.9,"afterGitToLatestFrameMs":-5.8,"serviceToLatestFrameMs":1.8,"directGitCalls":-4.2,"graphGitCalls":-11.1,"benchmarkNodeCpuMs":-33.9,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":null}
+    },
+    {
+      "operation": "merge",
+      "before": {"serviceMs":{"values":[1224,1028,853],"measured":3,"median":1028,"min":853,"max":1224},"afterGitToLatestFrameMs":{"values":[1419,551,233],"measured":3,"median":551,"min":233,"max":1419},"serviceToLatestFrameMs":{"values":[2643,1579,1086],"measured":3,"median":1579,"min":1086,"max":2643},"directGitCalls":{"values":[25,25,25],"measured":3,"median":25,"min":25,"max":25},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[166,146,134],"measured":3,"median":146,"min":134,"max":166},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[2,0,2],"measured":3,"median":2,"min":0,"max":2}},
+      "after": {"serviceMs":{"values":[1258,283,3191],"measured":3,"median":1258,"min":283,"max":3191},"afterGitToLatestFrameMs":{"values":[488,269,3648],"measured":3,"median":488,"min":269,"max":3648},"serviceToLatestFrameMs":{"values":[1746,552,6839],"measured":3,"median":1746,"min":552,"max":6839},"directGitCalls":{"values":[21,21,21],"measured":3,"median":21,"min":21,"max":21},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[245,139,317],"measured":3,"median":245,"min":139,"max":317},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[0,0,5],"measured":3,"median":0,"min":0,"max":5}},
+      "medianChangePercent": {"serviceMs":22.4,"afterGitToLatestFrameMs":-11.4,"serviceToLatestFrameMs":10.6,"directGitCalls":-16,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":67.8,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":-100}
+    },
+    {
+      "operation": "merge-no-ff",
+      "before": {"serviceMs":{"values":[862,254,414],"measured":3,"median":414,"min":254,"max":862},"afterGitToLatestFrameMs":{"values":[2508,777,880],"measured":3,"median":880,"min":777,"max":2508},"serviceToLatestFrameMs":{"values":[3370,1031,1294],"measured":3,"median":1294,"min":1031,"max":3370},"directGitCalls":{"values":[12,12,12],"measured":3,"median":12,"min":12,"max":12},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[263,142,116],"measured":3,"median":142,"min":116,"max":263},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,1,6],"measured":3,"median":1,"min":1,"max":6}},
+      "after": {"serviceMs":{"values":[208,294,1023],"measured":3,"median":294,"min":208,"max":1023},"afterGitToLatestFrameMs":{"values":[702,575,2208],"measured":3,"median":702,"min":575,"max":2208},"serviceToLatestFrameMs":{"values":[910,869,3231],"measured":3,"median":910,"min":869,"max":3231},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[132,149,267],"measured":3,"median":149,"min":132,"max":267},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,1,5],"measured":3,"median":1,"min":1,"max":5}},
+      "medianChangePercent": {"serviceMs":-29,"afterGitToLatestFrameMs":-20.2,"serviceToLatestFrameMs":-29.7,"directGitCalls":-25,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":4.9,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":0}
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "before": {"serviceMs":{"values":[2940,2987,782],"measured":3,"median":2940,"min":782,"max":2987},"afterGitToLatestFrameMs":{"values":[331,932,310],"measured":3,"median":331,"min":310,"max":932},"serviceToLatestFrameMs":{"values":[3271,3919,1092],"measured":3,"median":3271,"min":1092,"max":3919},"directGitCalls":{"values":[33,35,35],"measured":3,"median":35,"min":33,"max":35},"graphGitCalls":{"values":[9,11,11],"measured":3,"median":11,"min":9,"max":11},"benchmarkNodeCpuMs":{"values":[248,350,250],"measured":3,"median":250,"min":248,"max":350},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,0,9],"measured":3,"median":1,"min":0,"max":9}},
+      "after": {"serviceMs":{"values":[879,1238,7166],"measured":3,"median":1238,"min":879,"max":7166},"afterGitToLatestFrameMs":{"values":[294,179,1325],"measured":3,"median":294,"min":179,"max":1325},"serviceToLatestFrameMs":{"values":[1173,1417,8491],"measured":3,"median":1417,"min":1173,"max":8491},"directGitCalls":{"values":[30,30,30],"measured":3,"median":30,"min":30,"max":30},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[232,123,431],"measured":3,"median":232,"min":123,"max":431},"peakOwnedSlots":{"values":[3,4,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,3,6],"measured":3,"median":3,"min":1,"max":6}},
+      "medianChangePercent": {"serviceMs":-57.9,"afterGitToLatestFrameMs":-11.2,"serviceToLatestFrameMs":-56.7,"directGitCalls":-14.3,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":-7.2,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":200}
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "before": {"serviceMs":{"values":[1186,1576,1203],"measured":3,"median":1203,"min":1186,"max":1576},"afterGitToLatestFrameMs":{"values":[1259,320,307],"measured":3,"median":320,"min":307,"max":1259},"serviceToLatestFrameMs":{"values":[2445,1896,1510],"measured":3,"median":1896,"min":1510,"max":2445},"directGitCalls":{"values":[36,36,36],"measured":3,"median":36,"min":36,"max":36},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[136,154,183],"measured":3,"median":154,"min":136,"max":183},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[3,0,0],"measured":3,"median":0,"min":0,"max":3}},
+      "after": {"serviceMs":{"values":[862,1720,7365],"measured":3,"median":1720,"min":862,"max":7365},"afterGitToLatestFrameMs":{"values":[406,740,2082],"measured":3,"median":740,"min":406,"max":2082},"serviceToLatestFrameMs":{"values":[1268,2460,9447],"measured":3,"median":2460,"min":1268,"max":9447},"directGitCalls":{"values":[31,31,31],"measured":3,"median":31,"min":31,"max":31},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[153,202,467],"measured":3,"median":202,"min":153,"max":467},"peakOwnedSlots":{"values":[3,3,4],"measured":3,"median":3,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[0,4,7],"measured":3,"median":4,"min":0,"max":7}},
+      "medianChangePercent": {"serviceMs":43,"afterGitToLatestFrameMs":131.3,"serviceToLatestFrameMs":29.7,"directGitCalls":-13.9,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":31.2,"peakOwnedSlots":-25,"incrementalPeakNodeRssMiB":null}
+    },
+    {
+      "operation": "cherry-pick",
+      "before": {"serviceMs":{"values":[305,46,129],"measured":3,"median":129,"min":46,"max":305},"afterGitToLatestFrameMs":{"values":[1171,257,536],"measured":3,"median":536,"min":257,"max":1171},"serviceToLatestFrameMs":{"values":[1476,303,665],"measured":3,"median":665,"min":303,"max":1476},"directGitCalls":{"values":[12,12,12],"measured":3,"median":12,"min":12,"max":12},"graphGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"benchmarkNodeCpuMs":{"values":[137,95,164],"measured":3,"median":137,"min":95,"max":164},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[8,0,0],"measured":3,"median":0,"min":0,"max":8}},
+      "after": {"serviceMs":{"values":[66,35,1021],"measured":3,"median":66,"min":35,"max":1021},"afterGitToLatestFrameMs":{"values":[424,348,2336],"measured":3,"median":424,"min":348,"max":2336},"serviceToLatestFrameMs":{"values":[490,383,3357],"measured":3,"median":490,"min":383,"max":3357},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[125,232,274],"measured":3,"median":232,"min":125,"max":274},"peakOwnedSlots":{"values":[4,3,4],"measured":3,"median":4,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[1,0,5],"measured":3,"median":1,"min":0,"max":5}},
+      "medianChangePercent": {"serviceMs":-48.8,"afterGitToLatestFrameMs":-20.9,"serviceToLatestFrameMs":-26.3,"directGitCalls":-25,"graphGitCalls":-27.3,"benchmarkNodeCpuMs":69.3,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":null}
+    },
+    {
+      "operation": "checkout",
+      "before": {"serviceMs":{"values":[334,492,212],"measured":3,"median":334,"min":212,"max":492},"afterGitToLatestFrameMs":{"values":[270,727,321],"measured":3,"median":321,"min":270,"max":727},"serviceToLatestFrameMs":{"values":[604,1219,533],"measured":3,"median":604,"min":533,"max":1219},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"graphGitCalls":{"values":[6,6,6],"measured":3,"median":6,"min":6,"max":6},"benchmarkNodeCpuMs":{"values":[58,137,68],"measured":3,"median":68,"min":58,"max":137},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,0,0],"measured":3,"median":0,"min":0,"max":0}},
+      "after": {"serviceMs":{"values":[200,87,1324],"measured":3,"median":200,"min":87,"max":1324},"afterGitToLatestFrameMs":{"values":[116,125,1139],"measured":3,"median":125,"min":116,"max":1139},"serviceToLatestFrameMs":{"values":[316,212,2463],"measured":3,"median":316,"min":212,"max":2463},"directGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"graphGitCalls":{"values":[5,5,5],"measured":3,"median":5,"min":5,"max":5},"benchmarkNodeCpuMs":{"values":[52,48,177],"measured":3,"median":52,"min":48,"max":177},"peakOwnedSlots":{"values":[2,2,2],"measured":3,"median":2,"min":2,"max":2},"incrementalPeakNodeRssMiB":{"values":[0,0,0],"measured":3,"median":0,"min":0,"max":0}},
+      "medianChangePercent": {"serviceMs":-40.1,"afterGitToLatestFrameMs":-61.1,"serviceToLatestFrameMs":-47.7,"directGitCalls":-11.1,"graphGitCalls":-16.7,"benchmarkNodeCpuMs":-23.5,"peakOwnedSlots":0,"incrementalPeakNodeRssMiB":null}
+    },
+    {
+      "operation": "checkout-unloaded",
+      "before": {"serviceMs":{"values":[67,252,174],"measured":3,"median":174,"min":67,"max":252},"afterGitToLatestFrameMs":{"values":[212,182,627],"measured":3,"median":212,"min":182,"max":627},"serviceToLatestFrameMs":{"values":[279,434,801],"measured":3,"median":434,"min":279,"max":801},"directGitCalls":{"values":[12,12,14],"measured":3,"median":12,"min":12,"max":14},"graphGitCalls":{"values":[9,9,11],"measured":3,"median":9,"min":9,"max":11},"benchmarkNodeCpuMs":{"values":[103,77,140],"measured":3,"median":103,"min":77,"max":140},"peakOwnedSlots":{"values":[4,4,4],"measured":3,"median":4,"min":4,"max":4},"incrementalPeakNodeRssMiB":{"values":[0,1,8],"measured":3,"median":1,"min":0,"max":8}},
+      "after": {"serviceMs":{"values":[220,52,1765],"measured":3,"median":220,"min":52,"max":1765},"afterGitToLatestFrameMs":{"values":[231,323,1810],"measured":3,"median":323,"min":231,"max":1810},"serviceToLatestFrameMs":{"values":[451,375,3575],"measured":3,"median":451,"min":375,"max":3575},"directGitCalls":{"values":[11,11,11],"measured":3,"median":11,"min":11,"max":11},"graphGitCalls":{"values":[8,8,8],"measured":3,"median":8,"min":8,"max":8},"benchmarkNodeCpuMs":{"values":[101,102,269],"measured":3,"median":102,"min":101,"max":269},"peakOwnedSlots":{"values":[3,3,4],"measured":3,"median":3,"min":3,"max":4},"incrementalPeakNodeRssMiB":{"values":[4,1,0],"measured":3,"median":1,"min":0,"max":4}},
+      "medianChangePercent": {"serviceMs":26.4,"afterGitToLatestFrameMs":52.4,"serviceToLatestFrameMs":3.9,"directGitCalls":-8.3,"graphGitCalls":-11.1,"benchmarkNodeCpuMs":-1,"peakOwnedSlots":-25,"incrementalPeakNodeRssMiB":0}
+    }
+  ],
+  "buttonOperations": [
+    {
+      "operation": "push",
+      "before": {"clickToFinalFrameMs":{"values":[689,1501,1587],"measured":3,"median":1501,"min":689,"max":1587},"clickToFirstFrameMs":{"values":[689,1369,1587],"measured":3,"median":1369,"min":689,"max":1587},"handlerMs":{"values":[513,1224,1416],"measured":3,"median":1224,"min":513,"max":1416},"directGitCalls":{"values":[30,30,25],"measured":3,"median":30,"min":25,"max":30},"benchmarkNodeCpuMs":{"values":[117,126,120],"measured":3,"median":120,"min":117,"max":126}},
+      "after": {"clickToFinalFrameMs":{"values":[640,735,865],"measured":3,"median":735,"min":640,"max":865},"clickToFirstFrameMs":{"values":[640,735,865],"measured":3,"median":735,"min":640,"max":865},"handlerMs":{"values":[467,555,665],"measured":3,"median":555,"min":467,"max":665},"directGitCalls":{"values":[30,30,30],"measured":3,"median":30,"min":30,"max":30},"benchmarkNodeCpuMs":{"values":[114,122,138],"measured":3,"median":122,"min":114,"max":138}},
+      "medianChangePercent": {"clickToFinalFrameMs":-51,"clickToFirstFrameMs":-46.3,"handlerMs":-54.7,"directGitCalls":0,"benchmarkNodeCpuMs":1.7}
+    },
+    {
+      "operation": "pull",
+      "before": {"clickToFinalFrameMs":{"values":[632,798,574],"measured":3,"median":632,"min":574,"max":798},"clickToFirstFrameMs":{"values":[595,759,537],"measured":3,"median":595,"min":537,"max":759},"handlerMs":{"values":[338,473,299],"measured":3,"median":338,"min":299,"max":473},"directGitCalls":{"values":[20,20,25],"measured":3,"median":20,"min":20,"max":25},"benchmarkNodeCpuMs":{"values":[145,123,197],"measured":3,"median":145,"min":123,"max":197}},
+      "after": {"clickToFinalFrameMs":{"values":[543,1189,633],"measured":3,"median":633,"min":543,"max":1189},"clickToFirstFrameMs":{"values":[511,1167,606],"measured":3,"median":606,"min":511,"max":1167},"handlerMs":{"values":[308,598,345],"measured":3,"median":345,"min":308,"max":598},"directGitCalls":{"values":[17,17,17],"measured":3,"median":17,"min":17,"max":17},"benchmarkNodeCpuMs":{"values":[104,99,183],"measured":3,"median":104,"min":99,"max":183}},
+      "medianChangePercent": {"clickToFinalFrameMs":0.2,"clickToFirstFrameMs":1.8,"handlerMs":2.1,"directGitCalls":-15,"benchmarkNodeCpuMs":-28.3}
+    },
+    {
+      "operation": "fetch",
+      "before": {"clickToFinalFrameMs":{"values":[502,388,721],"measured":3,"median":502,"min":388,"max":721},"clickToFirstFrameMs":{"values":[474,350,696],"measured":3,"median":474,"min":350,"max":696},"handlerMs":{"values":[280,142,459],"measured":3,"median":280,"min":142,"max":459},"directGitCalls":{"values":[12,12,10],"measured":3,"median":12,"min":10,"max":12},"benchmarkNodeCpuMs":{"values":[87,145,170],"measured":3,"median":145,"min":87,"max":170}},
+      "after": {"clickToFinalFrameMs":{"values":[1463,359,556],"measured":3,"median":556,"min":359,"max":1463},"clickToFirstFrameMs":{"values":[1143,334,511],"measured":3,"median":511,"min":334,"max":1143},"handlerMs":{"values":[812,133,285],"measured":3,"median":285,"min":133,"max":812},"directGitCalls":{"values":[9,9,9],"measured":3,"median":9,"min":9,"max":9},"benchmarkNodeCpuMs":{"values":[120,85,90],"measured":3,"median":90,"min":85,"max":120}},
+      "medianChangePercent": {"clickToFinalFrameMs":10.8,"clickToFirstFrameMs":7.8,"handlerMs":1.8,"directGitCalls":-25,"benchmarkNodeCpuMs":-37.9}
+    },
+    {
+      "operation": "interactive-rebase",
+      "before": {"clickToFinalFrameMs":{"values":[1236,1645,960],"measured":3,"median":1236,"min":960,"max":1645},"clickToFirstFrameMs":{"values":[1214,1534,929],"measured":3,"median":1214,"min":929,"max":1534},"handlerMs":{"values":[1038,1350,704],"measured":3,"median":1038,"min":704,"max":1350},"directGitCalls":{"values":[42,37,42],"measured":3,"median":42,"min":37,"max":42},"benchmarkNodeCpuMs":{"values":[188,141,177],"measured":3,"median":177,"min":141,"max":188}},
+      "after": {"clickToFinalFrameMs":{"values":[951,1413,1579],"measured":3,"median":1413,"min":951,"max":1579},"clickToFirstFrameMs":{"values":[926,1353,1446],"measured":3,"median":1353,"min":926,"max":1446},"handlerMs":{"values":[790,1176,1479],"measured":3,"median":1176,"min":790,"max":1479},"directGitCalls":{"values":[31,36,31],"measured":3,"median":31,"min":31,"max":36},"benchmarkNodeCpuMs":{"values":[131,141,164],"measured":3,"median":141,"min":131,"max":164}},
+      "medianChangePercent": {"clickToFinalFrameMs":14.3,"clickToFirstFrameMs":11.4,"handlerMs":13.3,"directGitCalls":-26.2,"benchmarkNodeCpuMs":-20.3}
+    }
+  ],
+  "buttonScope": "Actual rendered controls and registered extension callbacks; VS Code API/window/pickers replaced. Interactive rebase verifies rewrite+squash messages, order, tree and clean worktree.",
+  "rawRuns": [
+    {
+      "label": "beforea",
+      "path": "/private/tmp/gsc-full-audit27-beforea.json",
+      "sha256": "f7f32e0a8644338d6d72c133c0a4856f5537504f0087e2ef92f16c21343ccd50",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"f10e367a296d643f92a4abb9dc30f087ee407d54ad604bc8319e3beb47c5095c"}
+    },
+    {
+      "label": "aftera",
+      "path": "/private/tmp/gsc-full-audit27-aftera.json",
+      "sha256": "1f2954a229418491b00ea3b511da7c4dc97a516c33613e7b0c0727af8c627cf3",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"d02b7504a919795d0940729d40ba2725a7be9dc1293fd4d15aa5bd2dca752984"}
+    },
+    {
+      "label": "afterb",
+      "path": "/private/tmp/gsc-full-audit27-afterb.json",
+      "sha256": "552cfd2e9581d30ed57a53f1ceef5f202617f2e2a391e5d8862ef5ad4814607e",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"3c9df3be2f8aa607f032b4101a64475a2cb0f0756337fcc7530667cfbe88370e"}
+    },
+    {
+      "label": "beforeb",
+      "path": "/private/tmp/gsc-full-audit27-beforeb.json",
+      "sha256": "662608e612b7c300e8bd8420dda30946025528c79b2773512818e62addede4d8",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"29c634807155af6d385455047159b27c729eea82693b541b8cc3a06acef06446"}
+    },
+    {
+      "label": "beforec",
+      "path": "/private/tmp/gsc-full-audit27-beforec.json",
+      "sha256": "4a071477d0c3ad66795234a2995002ad7cc801e0553ca2140ed2c83460ae3aeb",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"ed1df07ee20964ef331dcca4bd3621c13005fb44da6c4edfd627964d801bfe05"}
+    },
+    {
+      "label": "afterc",
+      "path": "/private/tmp/gsc-full-audit27-afterc.json",
+      "sha256": "6bd46decae781e61d3094daec06b9626912cc38b953b084f4f2bc46811f08f8a",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"df0d9acec92b3ce6f857a2f06c00c817511a808fc4588c92412132df0fe29917"}
+    },
+    {
+      "label": "beforea",
+      "path": "/private/tmp/gsc-full-buttons27-beforea.json",
+      "sha256": "dfc1efb36d8c8848fdcedc017457402bcaadc88ac0a09d4ca5d384e2ed2a5e5c",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"48640235474d4c58bc9380fa0fad03ebe50c457c36ef8d8d234df0136ee9acc5"}
+    },
+    {
+      "label": "aftera",
+      "path": "/private/tmp/gsc-full-buttons27-aftera.json",
+      "sha256": "e4ceea5cf234ceee0f64044dbec84017e3c726be0f58082db4da64e2565042fa",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"0159cd0c5ffaae8992f87235ee7ac95c4604807a45b7d548d69087260805e298"}
+    },
+    {
+      "label": "afterb",
+      "path": "/private/tmp/gsc-full-buttons27-afterb.json",
+      "sha256": "50ddd9630fd70255342db3cece4e9d969d80edf310c090e135403ef930b024b1",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"a8583c3d8f5f26b4ec857eac9ccecc9d10eb4f97bbdea19f6d3154f9a1137104"}
+    },
+    {
+      "label": "beforeb",
+      "path": "/private/tmp/gsc-full-buttons27-beforeb.json",
+      "sha256": "13413207f5b49b6eb924a9022f851acf4f82e57bd9097d26e1f05e9e5edd4b47",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"e7fbfc9ef732e53b5c6a57177afc2034571ea1b30e4b1cccc9c32158f87253e8"}
+    },
+    {
+      "label": "beforec",
+      "path": "/private/tmp/gsc-full-buttons27-beforec.json",
+      "sha256": "db621be5234ca587ea1216da87e48ca2c940d4ac0baecbe868ec8511751757cd",
+      "source": {"kind":"commit","commit":"b9d8ed66f58156095e094f2ec1d5e4ac4d07cd9b","bundleSha256":"c3147f9ce17e64073d600eb2d7440955b8f865b9831153389a5f6177046fe439"}
+    },
+    {
+      "label": "afterc",
+      "path": "/private/tmp/gsc-full-buttons27-afterc.json",
+      "sha256": "c67cb9272dcb4abc4af947df6138c5d2fff265d621c596de7b012a394b4b568e",
+      "source": {"kind":"commit","commit":"f9e314d9bdc7419cabbac5a56c8c3f940949d8df","bundleSha256":"08c6e2d8daac908ab2188ad8b0349c02fda8e60836dd17ed4991dc6b2d7bfee5"}
+    }
+  ],
+  "harnessSha256": {
+    "scripts/benchmark-git-operations.mjs": "a1b6a5126e71c76280af319c57903aaeb5be24de5201e583c5e2d44721e6120b",
+    "scripts/benchmark-graph-buttons.mjs": "2a43c1d57380a90e965c48270cc041c16646fdc4b1089c8a71e9fe76031be646",
+    "test/benchmarks/gitOperationMatrix.ts": "61967653b1d5912e122696a1d5a9ff75fdc23d65683377d81d06265dd575f767",
+    "test/benchmarks/graphButtonFlow.ts": "cc09dfbaf43f3366fe28103d4eb52ab583931dbdc99df472899c9a6057849004",
+    "test/helpers/gitOperationFixture.ts": "b4400cb48f7408cb9c231947c8ea16da00748050105503e15714f67e13709f45",
+    "test/helpers/graphOperationPanel.ts": "06edf0366a5046be528afc5fd59d5daef9ade6b9ca3222697ce97c20fffbfd5e",
+    "test/helpers/graphLiveRenderer.ts": "7a760846449e804009c582ea81121f200bb607c8e59818596cc0ac0fbc59e9f4",
+    "test/helpers/graphNativeExpectation.ts": "950923cc0646ad0a59ec7ed4ef19e5306d946c46f92ddb5826d31ce41cd3b5dc",
+    "test/helpers/vscodeMock.ts": "916d57a67115e8403194deef6873fd8f10ac07750dc05836f0517901fc858a0e"
+  },
+  "limitations": [
+    "Only three samples per source and operation; uncontrolled external machine load. Retain the slow final candidate run.",
+    "Local bare receivers exclude external server authentication, advertisement size and real network transfer.",
+    "Smaller call counts do not prove lower wall time. Broader latency and total OS resource improvement remain unproven.",
+    "The older 0.1.72121 aggregate used an earlier final-publication selector and a different shared-upstream fixture; do not combine its timings with this series."
+  ],
+  "conclusion": "Final states are correct and direct call overhead is lower. Cumulative wall-time gains are mixed; keep the complete optimization objective active.",
+  "wholeGoalComplete": false,
+  "postMeasurementHarnessChanges": [
+    {
+      "file": "test/helpers/gitOperationFixture.ts",
+      "change": "Remove one trailing blank line only; no executable change. harnessSha256 records the measured input.",
+      "committedSha256": "3020d92ee8d85a333db4724058f3daefe9b0649b954e5df52a80ccabefcb3147"
+    }
+  ]
+}

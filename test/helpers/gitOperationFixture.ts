@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { runGit, runGitWithInput } from "../../src/git/gitExec";
@@ -62,5 +63,3 @@ export async function createGitOperationFixture(directory: string) {
   return { root, remote, main: mainOid, incoming, incomingPull, oldHistory: objectIds.get(oldHistory)!, topic: objectIds.get(topic)!, pr: objectIds.get(pr)!,
     prCommits: prMarks.map(mark => objectIds.get(mark)!), files, depth, branches, sharedUpstreamBranches };
 }
-
-import assert from "node:assert/strict";

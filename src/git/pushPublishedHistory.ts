@@ -71,8 +71,11 @@ export async function readPublishedPushTips(
     if (pending.length > 128) throw new Error("Could not verify published Git objects.");
   };
   const args = ["cat-file", "--batch-check=%(objectname) %(objecttype)"], input = requested.join("\n") + "\n";
-  if (runner.inputStream) await runner.inputStream(args, root, input, consume, options);
-  else consume(Buffer.from(await runner.input(args, root, input, options)));
+  // 부분 clone에서도 결측 tip의 존재 확인이 암묵적 fetch로 바뀌지 않게 이 batch만 제한한다.
+  // 호출자의 DAG 환경·취소·deadline은 유지하며 실제 push/필요한 객체 조회의 정책은 바꾸지 않는다.
+  const localOptions = { ...options, env: { ...options.env, GIT_NO_LAZY_FETCH: "1" } };
+  if (runner.inputStream) await runner.inputStream(args, root, input, consume, localOptions);
+  else consume(Buffer.from(await runner.input(args, root, input, localOptions)));
   if (pending) row(pending.replace(/\r$/, ""));
   if (position !== requested.length) throw new Error("Could not verify published Git objects.");
   return selected;

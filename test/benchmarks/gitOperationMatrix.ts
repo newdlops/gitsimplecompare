@@ -22,6 +22,7 @@ import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
+import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
 
 type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
@@ -36,12 +37,12 @@ function graphSignature(commits: readonly Commit[]): string {
 
 
 /** 늦게 끝난 Graph 보조 조회까지 비용에 포함하고 다음 시나리오로 넘어가기 전에 모두 정리한다. */
-async function idle(root: string, panel: any): Promise<void> {
+async function idle(root: string, panel: any, metadataReady: () => boolean = () => true): Promise<void> {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    if (!gitProcesses.isBusy(root) && !panel.workingTree.state?.loading) {
+    if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
       await new Promise(resolve => setTimeout(resolve, 20));
-      if (!gitProcesses.isBusy(root) && !panel.workingTree.state?.loading) return;
+      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) return;
     }
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -94,14 +95,18 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   });
   const localOnlyFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
   const getLocalOnlyMap = cache.getMap.bind(cache);
+  let pendingMarkers = 0;
   mock.method(cache, "getMap", async () => {
+    pendingMarkers++;
     try { return await getLocalOnlyMap(); } catch (error) {
       localOnlyFailures.push(error instanceof Error ? error.message : String(error)); throw error;
-    }
+    } finally { pendingMarkers--; }
   });
+  /** 제품이 시작한 metadata 조회만 기다리며 benchmark가 별도 계산을 먼저 시작하지 않는다. */
+  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.peek() || localOnlyFailures.length > 0);
   try {
     if (renderer) await renderer.mount(surface.webview.html);
-    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel); }
+    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady); }
     // Graph 행에서 checkout하는 일반 경로와 페이지 밖의 오래된 topic 이동을 별도 측정한다.
     const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
@@ -149,7 +154,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
       else await panel.refreshAfterGraphAction(operation === "push" || operation === "push-tracked" ? "references" : "graph");
       graphEnd = performance.now();
-      await idle(f.root, panel);
+      await idle(f.root, panel, metadataReady);
       const settledAt = performance.now(), settledRss = process.memoryUsage.rss();
       clearInterval(rssSample); measuring = false;
       const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
@@ -164,12 +169,14 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       if (operation === "checkout-unloaded") assert.equal(graphCommands.log, 1, "A checkout outside the loaded page requires one history read");
       unobserve();
       const head = (await git(["rev-parse", "HEAD"])).trim();
-      const actual = await new GitLogService(f.root).getCommitPage(panel.commits.length, 0, [], false);
+      const actual = await readNativeGraphExpectation(f.root, panel.commits.length);
       const visibleHead = actual.find(commit => commit.refs.includes("HEAD"))?.hash;
       if (visibleHead !== undefined) assert.equal(visibleHead, head);
       assert.equal(panel.commits.find((commit: Commit) => commit.refs.includes("HEAD"))?.hash, visibleHead);
       const values = (commits: Commit[]) => new Map(commits.map(commit => [commit.hash, { parents: commit.parents, refs: [...new Set(commit.refs)].sort() }]));
       assert.deepEqual(values(panel.commits), values(actual));
+      assert.equal(graphSignature(panel.commits), graphSignature(actual), "Final local-only markers must match independently seeded fresh Native data");
+      assert.deepEqual(localOnlyFailures, [], "A swallowed marker read error is not a correct completed Graph");
       for (const commit of panel.commits as Commit[]) for (const ref of commit.refs) {
         const index = /^side-(\d+)$/.exec(ref)?.[1];
         if (index !== undefined && Number(index) < f.sharedUpstreamBranches) assert.ok(commit.localOnlyBranches?.includes(ref),

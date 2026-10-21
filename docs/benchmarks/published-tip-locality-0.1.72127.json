@@ -1,0 +1,86 @@
+{
+  "version": "0.1.72127",
+  "change": "For published-tip metadata only, preserve caller options and force GIT_NO_LAZY_FETCH=1. Do not apply this guard to actual push or necessary object reads.",
+  "git": "2.53.0",
+  "nativeRegression": {
+    "paths": [
+      "stream",
+      "buffer"
+    ],
+    "before": {
+      "failed": 2,
+      "childFetchesPerCase": 1,
+      "unknownCommitDownloaded": true
+    },
+    "after": {
+      "passed": 2,
+      "childFetchesPerCase": 0,
+      "unknownCommitDownloaded": false,
+      "packListIndexConfigurationAndHeadUnchanged": true
+    },
+    "measurement": "Actual Trace2 child_start fetch events and separate no-fetch object existence probes; owned local bare receivers only."
+  },
+  "checks": {
+    "nodeTests": 30,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "typecheck": "passed",
+    "finalNativeAndRenderedCases": 18,
+    "allNamedOperations": [
+      "initial",
+      "fetch-new-history",
+      "pull-new-history",
+      "push",
+      "push-tracked",
+      "pull",
+      "pull-known-history",
+      "fetch",
+      "fetch-known-history",
+      "fetch-no-change",
+      "rebase",
+      "merge",
+      "merge-no-ff",
+      "pr-squash-cherry-pick",
+      "pr-cherry-pick",
+      "cherry-pick",
+      "checkout",
+      "checkout-unloaded"
+    ],
+    "independentFinalMetadataOracle": true
+  },
+  "sourceSha256": {
+    "src/git/pushPublishedHistory.ts": "ea8ed97e04200183c9183427863352d03201f32d2e3f28d5a6f32bdf65839458"
+  },
+  "artifact": {
+    "bytes": 991575,
+    "sha256": "e18392c2f29972ee92c6d3271a485a5f2080736661796421c902296b66df9779",
+    "extensionSha256": "b6a5c93fc0509a7f15e073a366c848ae454b05fc04c51d1081c1bafbf5a469fe",
+    "verifiedRuntimeFiles": 125
+  },
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-promisor27-before.log",
+      "sha256": "8d5110d4b174858e3b9a9404d5b8c6cc1cf0689f4da5dc25f746734f1c219e8c"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor27-node.log",
+      "sha256": "a2c83296a3920f7b827532efbf534a10d6722601b989cdf34aefad9d650ecbca"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor27-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/gsc-promisor27-final-matrix.json",
+      "sha256": "e85678db5397d776109f4395ef1cecf723b3a662961a6a7620cbd548bf586471"
+    }
+  ],
+  "cumulativeComparison": "docs/benchmarks/full-operation-audit-0.1.72126.json",
+  "limits": [
+    "Native no-fetch regression requires Git 2.45 or newer and was exercised on 2.53.0.",
+    "Do not infer wall-time, actual GitHub transfer or whole-OS resource gains from this case.",
+    "Cumulative comparison uses 0.1.72112 and 0.1.72126, not this isolated guard change."
+  ],
+  "wholeGoalComplete": false
+}

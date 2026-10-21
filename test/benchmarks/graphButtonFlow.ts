@@ -16,6 +16,7 @@ import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { createGitOperationFixture } from "../helpers/gitOperationFixture";
 import { createOperationGraphPanel } from "../helpers/graphOperationPanel";
 import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
+import { readNativeGraphExpectation } from "../helpers/graphNativeExpectation";
 import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase";
@@ -30,13 +31,13 @@ async function within<T>(promise: Promise<T>, label: string, milliseconds = 6000
 }
 
 /** 연속 게시가 안정된 뒤 늦은 status나 오래된 frame을 최종 상태로 오인하지 않게 한다. */
-async function settle(root: string, panel: any, messages: readonly unknown[]): Promise<void> {
+async function settle(root: string, panel: any, messages: readonly unknown[], metadataReady: () => boolean): Promise<void> {
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
     const count = messages.length;
-    if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading) {
+    if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
       await new Promise(resolve => setTimeout(resolve, 150));
-      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && messages.length === count) return;
+      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady() && messages.length === count) return;
     } else await new Promise(resolve => setTimeout(resolve, 20));
   }
   throw new Error("Button flow did not settle");
@@ -71,6 +72,17 @@ async function measure(directory: string, operation: Operation) {
       at: performance.now(), signature: signature(transport.panel.commits), performance: message.performance });
   });
   const { panel, messages, surface, receiveMessage } = transport;
+  const markerFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
+  const getMarkers = cache.getMap.bind(cache);
+  let pendingMarkers = 0;
+  mock.method(cache, "getMap", async () => {
+    pendingMarkers++;
+    try { return await getMarkers(); } catch (error) {
+      markerFailures.push(error instanceof Error ? error.message : String(error)); throw error;
+    } finally { pendingMarkers--; }
+  });
+  /** 실제 callback이 시작한 metadata만 기다리고 별도의 사전 계산으로 측정을 예열하지 않는다. */
+  const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.peek() || markerFailures.length > 0);
   let ready!: () => void, actionDone!: () => void, actionFailed!: (error: unknown) => void;
   const initialized = new Promise<void>(resolve => { ready = resolve; });
   const action = new Promise<void>((resolve, reject) => { actionDone = resolve; actionFailed = reject; });
@@ -88,7 +100,7 @@ async function measure(directory: string, operation: Operation) {
   try {
     await renderer.mount(surface.webview.html);
     await within(initialized, "actual ready callback");
-    await settle(f.root, panel, messages);
+    await settle(f.root, panel, messages, metadataReady);
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
     if (operation === "interactive-rebase") {
       const checkout = await captureRebaseCheckout(f.root), commits = await new RebaseService(f.root).getCommits(f.main, false, false);
@@ -104,20 +116,14 @@ async function measure(directory: string, operation: Operation) {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
-      await settle(f.root, panel, messages);
+      await settle(f.root, panel, messages, metadataReady);
       measuring = false; stop();
       const settled = performance.now(), used = process.cpuUsage(cpu), final = signature(panel.commits);
       assert.ok(receivedAt !== undefined && completedAt !== undefined);
       assert.deepEqual(__errorMessages, [], "The actual message handler must not hide a Git failure in an error toast");
+      assert.deepEqual(markerFailures, [], "A swallowed marker error is not a correct completed button flow");
       const head = (await runGit(["rev-parse", "HEAD"], f.root)).trim();
-      const verifier = new GitLogService(f.root);
-      const local = (await verifier.getLocalBranchSnapshot()).branches;
-      const remote = (await runGit(["for-each-ref", "--format=%(refname:short)%00%(objectname)%00%(symref)", "refs/remotes/"], f.root))
-        .trim().split("\n").filter(Boolean).flatMap(line => {
-          const [name, hash, symbolic] = line.split("\0"); return symbolic ? [] : [{ name, hash }];
-        });
-      verifier.seedGraphBranchTips(local, remote);
-      const fresh = await verifier.getCommitPage(panel.commits.length, 0, [], true);
+      const fresh = await readNativeGraphExpectation(f.root, panel.commits.length);
       const nativeSignature = signature(fresh);
       if (final !== nativeSignature) {
         const actual = new Map<string, unknown[]>(JSON.parse(final).map((value: unknown[]) => [String(value[0]), value]));

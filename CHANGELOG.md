@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72127] - 2026-10-21
+
+### Fixed
+
+- Disable lazy fetching in published-tip existence checks during push planning.
+  On Git versions supporting `GIT_NO_LAZY_FETCH`, unknown promisor commits stay
+  unknown instead of triggering downloads. Preserve the original DAG settings,
+  cancellation, deadlines and the actual push's object-fetching policy.
+
+### Development
+
+- Verify final Graph metadata against an independent fresh Native snapshot and
+  reject swallowed marker-read failures in service and rendered-button audits.
+- Compare all 18 operation scenarios and four actual button flows three times
+  per source, retaining slower samples and scoped CPU/memory measurements.
+- Reproduce implicit promisor fetching with Native Git and verify both streamed
+  and buffered checks leave objects, index, configuration and HEAD unchanged.
+
 ## [0.1.72126] - 2026-10-21
 
 ### Performance
