@@ -1,0 +1,3576 @@
+{
+  "version": "0.1.72126",
+  "baseline": "41223c589ca5070a33265a24c06c23bcd17d124d",
+  "order": [
+    "beforea",
+    "aftera",
+    "afterb",
+    "beforeb",
+    "beforec",
+    "afterc",
+    "afterd",
+    "befored"
+  ],
+  "sourcePinnedAcrossAllSamples": true,
+  "summary": [
+    {
+      "side": "before",
+      "samples": 4,
+      "elapsedMs": {
+        "median": 23227,
+        "min": 14187,
+        "max": 33009
+      },
+      "planningMs": {
+        "median": 19418,
+        "min": 10989,
+        "max": 29566
+      },
+      "nodeCpuMs": {
+        "median": 391,
+        "min": 265,
+        "max": 433
+      },
+      "nodeRssDeltaMiB": {
+        "median": 7.5078125,
+        "min": -8.453125,
+        "max": 14.75
+      },
+      "processes": {
+        "median": 15,
+        "min": 15,
+        "max": 15
+      }
+    },
+    {
+      "side": "after",
+      "samples": 4,
+      "elapsedMs": {
+        "median": 8785,
+        "min": 6702,
+        "max": 10662
+      },
+      "planningMs": {
+        "median": 5076.5,
+        "min": 4270,
+        "max": 5776
+      },
+      "nodeCpuMs": {
+        "median": 50.5,
+        "min": 44,
+        "max": 52
+      },
+      "nodeRssDeltaMiB": {
+        "median": -4.65625,
+        "min": -7.328125,
+        "max": 2.4375
+      },
+      "processes": {
+        "median": 13,
+        "min": 13,
+        "max": 13
+      }
+    }
+  ],
+  "raw": [
+    {
+      "label": "beforea",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "d3a257d3f7ca5d6c05d200da58a440c8877f060e6c26b1ec88f5c0090ef623b0"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 14187,
+          "planningMs": 10989,
+          "nodeCpuMs": 265,
+          "nodeRssDeltaMiB": 14.75,
+          "processes": 15,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 163,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 182,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 307,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 136,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 880,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 124,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 7416,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 7423,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1102,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 269,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 574,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 577,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 272,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 524,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 2671,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "aftera",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "8531684309107487ccd68d481160ebb6fcd2649b4a7148b55f4af2a7ce0de314"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 6702,
+          "planningMs": 4270,
+          "nodeCpuMs": 49,
+          "nodeRssDeltaMiB": 2.4375,
+          "processes": 13,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 288,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 271,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 520,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 266,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1544,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1059,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 125,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 137,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 319,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 322,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 38,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 161,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 2269,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "afterb",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "8531684309107487ccd68d481160ebb6fcd2649b4a7148b55f4af2a7ce0de314"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 8462,
+          "planningMs": 5030,
+          "nodeCpuMs": 52,
+          "nodeRssDeltaMiB": -7.328125,
+          "processes": 13,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 264,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 83,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 255,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 220,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1316,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1821,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 278,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 272,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 589,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 594,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 271,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 518,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 2911,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "beforeb",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "b915a74227f77e8ea9add068e9b98fe0fbbe805cb4702ba3c3a4614a811e39c5"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 33009,
+          "planningMs": 29566,
+          "nodeCpuMs": 433,
+          "nodeRssDeltaMiB": 7.171875,
+          "processes": 15,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 268,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 269,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 520,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 268,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 2684,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 316,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 21270,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 21281,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 3075,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 301,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 820,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 829,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 285,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 522,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 2914,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "beforec",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "c6ae5c01ad355fd2ef61b57810c7bedb754d20afafba7585f1d6fed52e7baa96"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 25123,
+          "planningMs": 21192,
+          "nodeCpuMs": 415,
+          "nodeRssDeltaMiB": 7.84375,
+          "processes": 15,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 317,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 284,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 521,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 289,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1064,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 269,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 16644,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 16650,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1113,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 270,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 642,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 651,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 291,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 533,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 3391,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "afterc",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "8531684309107487ccd68d481160ebb6fcd2649b4a7148b55f4af2a7ce0de314"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 10662,
+          "planningMs": 5776,
+          "nodeCpuMs": 52,
+          "nodeRssDeltaMiB": -6.3125,
+          "processes": 13,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 263,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 265,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 520,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 270,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1692,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1792,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 314,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 299,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 580,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 591,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 271,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 516,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 4367,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "afterd",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "8531684309107487ccd68d481160ebb6fcd2649b4a7148b55f4af2a7ce0de314"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 9108,
+          "planningMs": 5123,
+          "nodeCpuMs": 44,
+          "nodeRssDeltaMiB": -3,
+          "processes": 13,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 265,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 263,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 515,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 261,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1164,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1774,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 271,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 268,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 594,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 597,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 267,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 520,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 3463,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    },
+    {
+      "label": "befored",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+          "bundleSha256": "65dd539a0799fa2d16f1c3cdb3657211cf804b5e8bf7b39b298b93b02333646e"
+        },
+        "sourceRepositoryUnchanged": true,
+        "immutableSourcePinned": true,
+        "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+        "result": {
+          "elapsedMs": 21331,
+          "planningMs": 17644,
+          "nodeCpuMs": 367,
+          "nodeRssDeltaMiB": -8.453125,
+          "processes": 15,
+          "result": {
+            "strategy": "single",
+            "completed": 1,
+            "total": 1,
+            "estimatedBytes": 786
+          },
+          "commands": [
+            {
+              "command": "config",
+              "elapsedMs": 263,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 268,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 522,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 266,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1289,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 265,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 12864,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 12870,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 1297,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 264,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 599,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 601,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 263,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 515,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 3170,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "exactRemoteHeadAndTree": true,
+          "ownedProcessesIdle": true
+        },
+        "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+      }
+    }
+  ],
+  "readonlyGraph": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+      "bundleSha256": "f564bde9bff42d6b1f1b809d003533583f41d7dcad1d1d3fded643f4728c9f4c"
+    },
+    "readOnly": true,
+    "networkAllowed": false,
+    "repositoryUnchanged": true,
+    "references": {
+      "local": 162,
+      "remote": 2117,
+      "tags": 386
+    },
+    "results": [
+      {
+        "label": "history-page",
+        "elapsedMs": 368,
+        "nodeCpuMs": 6,
+        "nodeRssDeltaMiB": 1.375,
+        "commands": [
+          {
+            "command": "log",
+            "elapsedMs": 364,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "rows": 300
+      },
+      {
+        "label": "branch-snapshot-first",
+        "elapsedMs": 61,
+        "nodeCpuMs": 3,
+        "nodeRssDeltaMiB": 0.40625,
+        "commands": [
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 60,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "branches": 162,
+        "invalidRefs": 0
+      },
+      {
+        "label": "branch-snapshot-next",
+        "elapsedMs": 62,
+        "nodeCpuMs": 2,
+        "nodeRssDeltaMiB": 0.328125,
+        "commands": [
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 61,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "branches": 162,
+        "invalidRefs": 0,
+        "sameAsFirst": true
+      },
+      {
+        "label": "refresh-fingerprint",
+        "elapsedMs": 92,
+        "nodeCpuMs": 17,
+        "nodeRssDeltaMiB": 7.734375,
+        "commands": [
+          {
+            "command": "worktree",
+            "elapsedMs": 34,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 85,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "worktrees": 9,
+        "references": 2780,
+        "remoteTips": 2117,
+        "historyUncertain": false
+      },
+      {
+        "label": "local-only-markers",
+        "elapsedMs": 105,
+        "nodeCpuMs": 12,
+        "nodeRssDeltaMiB": 4.3125,
+        "commands": [
+          {
+            "command": "rev-list",
+            "elapsedMs": 83,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 16,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "changed": 76,
+        "markedCommits": 76
+      },
+      {
+        "label": "working-tree-authoritative",
+        "elapsedMs": 821,
+        "nodeCpuMs": 3,
+        "nodeRssDeltaMiB": 0.078125,
+        "commands": [
+          {
+            "command": "status",
+            "elapsedMs": 820,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "paths": 8,
+        "staged": 0,
+        "unstaged": 8,
+        "hasChanges": true,
+        "fsmonitorDisabled": true
+      },
+      {
+        "label": "working-tree-private-cold",
+        "elapsedMs": 631,
+        "nodeCpuMs": 162,
+        "nodeRssDeltaMiB": 28.875,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 62,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 96,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 36,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 71,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 77,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 114,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 93,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 66,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 76,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 104,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 139,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 161,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 176,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 104,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 154,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 118,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 117,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 96,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "paths": 8,
+        "staged": 0,
+        "unstaged": 8,
+        "hasChanges": true,
+        "sameAsAuthoritative": true,
+        "sourceIndexWritesAllowed": false,
+        "scratchIndexWritesAllowed": true,
+        "fsmonitorDisabled": true
+      }
+    ],
+    "limits": "Single readonly diagnosis, no mutation or real button/Graph frame timing. CPU/RSS are benchmark Node only; external user work is not blocked."
+  },
+  "ordinaryNewBranchButtons": {
+    "summary": [
+      {
+        "side": "before",
+        "samples": 2,
+        "clickToFinalFrameMs": {
+          "median": 6478.5,
+          "min": 6112,
+          "max": 6845
+        },
+        "handlerMs": {
+          "median": 3843,
+          "min": 2671,
+          "max": 5015
+        },
+        "nodeCpuMs": {
+          "median": 318,
+          "min": 288,
+          "max": 348
+        },
+        "processes": {
+          "median": 25.5,
+          "min": 23,
+          "max": 28
+        }
+      },
+      {
+        "side": "after",
+        "samples": 2,
+        "clickToFinalFrameMs": {
+          "median": 13421,
+          "min": 6485,
+          "max": 20357
+        },
+        "handlerMs": {
+          "median": 11799,
+          "min": 4043,
+          "max": 19555
+        },
+        "nodeCpuMs": {
+          "median": 302,
+          "min": 270,
+          "max": 334
+        },
+        "processes": {
+          "median": 26.5,
+          "min": 24,
+          "max": 29
+        }
+      }
+    ],
+    "raw": [
+      {
+        "label": "beforea",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "84a4d8dc18da484d3480b680f0f62184203210183f713db5adf7b9c7d859adaf"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "push",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 603,
+              "handlerMs": 5015,
+              "clickToFirstFrameMs": 6458,
+              "clickToFinalFrameMs": 6845,
+              "clickToSettledMs": 6984,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 348,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 28,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 238,
+                  "syncSpawnMs": 13,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 302,
+                  "syncSpawnMs": 44,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 286,
+                  "syncSpawnMs": 77,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 346,
+                  "syncSpawnMs": 11,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 277,
+                  "syncSpawnMs": 17,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 301,
+                  "syncSpawnMs": 22,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 283,
+                  "syncSpawnMs": 27,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 468,
+                  "syncSpawnMs": 43,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 354,
+                  "syncSpawnMs": 96,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 118,
+                  "syncSpawnMs": 21,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 92,
+                  "syncSpawnMs": 24,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 86,
+                  "syncSpawnMs": 8,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 141,
+                  "syncSpawnMs": 32,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 51,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "ls-remote",
+                  "elapsedMs": 975,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 90,
+                  "syncSpawnMs": 15,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 97,
+                  "syncSpawnMs": 16,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 130,
+                  "syncSpawnMs": 16,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 75,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 185,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "push",
+                  "elapsedMs": 1599,
+                  "syncSpawnMs": 8,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 182,
+                  "syncSpawnMs": 35,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 117,
+                  "syncSpawnMs": 10,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "branch",
+                  "elapsedMs": 320,
+                  "syncSpawnMs": 36,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 199,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 377,
+                  "syncSpawnMs": 32,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 639,
+                  "syncSpawnMs": 26,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 396,
+                  "syncSpawnMs": 88,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 10,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 6458,
+                "latestMutationToFrameMs": 6845,
+                "renderMs": 35,
+                "frameMs": 67
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "label": "aftera",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "1aa635f140b6875667bc99b58c45241cca5fb369ca940131c0fa7a1096e5540c"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "push",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 1781,
+              "handlerMs": 4043,
+              "clickToFirstFrameMs": 6485,
+              "clickToFinalFrameMs": 6485,
+              "clickToSettledMs": 6627,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 334,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 29,
+              "commands": [
+                {
+                  "command": "worktree",
+                  "elapsedMs": 392,
+                  "syncSpawnMs": 107,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 269,
+                  "syncSpawnMs": 114,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 145,
+                  "syncSpawnMs": 38,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 454,
+                  "syncSpawnMs": 25,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 521,
+                  "syncSpawnMs": 12,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 155,
+                  "syncSpawnMs": 10,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 153,
+                  "syncSpawnMs": 27,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 105,
+                  "syncSpawnMs": 35,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 72,
+                  "syncSpawnMs": 15,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 53,
+                  "syncSpawnMs": 5,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 68,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 54,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 114,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 49,
+                  "syncSpawnMs": 11,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "ls-remote",
+                  "elapsedMs": 644,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 237,
+                  "syncSpawnMs": 10,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 75,
+                  "syncSpawnMs": 11,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 157,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 179,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 67,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 108,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "push",
+                  "elapsedMs": 1579,
+                  "syncSpawnMs": 47,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 291,
+                  "syncSpawnMs": 45,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 68,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "branch",
+                  "elapsedMs": 212,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 62,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 261,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 177,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 254,
+                  "syncSpawnMs": 51,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 10,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 6485,
+                "latestMutationToFrameMs": 6485,
+                "renderMs": 11,
+                "frameMs": 13
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "label": "afterb",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "1aa635f140b6875667bc99b58c45241cca5fb369ca940131c0fa7a1096e5540c"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "push",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 154,
+              "handlerMs": 19555,
+              "clickToFirstFrameMs": 20331,
+              "clickToFinalFrameMs": 20357,
+              "clickToSettledMs": 20492,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 270,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 24,
+              "commands": [
+                {
+                  "command": "config",
+                  "elapsedMs": 431,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 501,
+                  "syncSpawnMs": 67,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 268,
+                  "syncSpawnMs": 147,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 125,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 214,
+                  "syncSpawnMs": 70,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 228,
+                  "syncSpawnMs": 12,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 633,
+                  "syncSpawnMs": 200,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 451,
+                  "syncSpawnMs": 234,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 549,
+                  "syncSpawnMs": 71,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "ls-remote",
+                  "elapsedMs": 14126,
+                  "syncSpawnMs": 869,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 294,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 81,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 55,
+                  "syncSpawnMs": 8,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 66,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 56,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 75,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "push",
+                  "elapsedMs": 1972,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 42,
+                  "syncSpawnMs": 8,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 29,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "branch",
+                  "elapsedMs": 71,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 207,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 346,
+                  "syncSpawnMs": 10,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 137,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 231,
+                  "syncSpawnMs": 53,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 8,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 20331,
+                "latestMutationToFrameMs": 20357,
+                "renderMs": 11,
+                "frameMs": 30
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "label": "beforeb",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "4da16eebfca58bb550fb0f11ce384fe1a3a15dcb25fbe79b30bc0fb84eee7a7c"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "push",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 2450,
+              "handlerMs": 2671,
+              "clickToFirstFrameMs": 5843,
+              "clickToFinalFrameMs": 6112,
+              "clickToSettledMs": 6240,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 288,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 23,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 64,
+                  "syncSpawnMs": 10,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 66,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 73,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 87,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 45,
+                  "syncSpawnMs": 5,
+                  "outcome": "error",
+                  "code": 128
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 83,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 56,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 163,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 574,
+                  "syncSpawnMs": 22,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "ls-remote",
+                  "elapsedMs": 412,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 52,
+                  "syncSpawnMs": 9,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 87,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "cat-file",
+                  "elapsedMs": 98,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 74,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 103,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "push",
+                  "elapsedMs": 671,
+                  "syncSpawnMs": 15,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 70,
+                  "syncSpawnMs": 30,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 43,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "branch",
+                  "elapsedMs": 112,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 227,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 386,
+                  "syncSpawnMs": 8,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 138,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 344,
+                  "syncSpawnMs": 9,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 8,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 5843,
+                "latestMutationToFrameMs": 6112,
+                "renderMs": 11,
+                "frameMs": 28
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      }
+    ],
+    "scope": "The new-upstream flow is unchanged by the final narrowing of tracked-branch queries. These runs precede that narrowing; retain as functional/timing observations, and verify a final-source button separately. No general latency gain is established."
+  },
+  "excludedPrototype": {
+    "reason": "Initially all pushes used a full advertisement. Final code keeps exact destination reads for ordinary tracked pushes. These values do not describe final-source timing.",
+    "summary": [
+      {
+        "side": "before",
+        "samples": 4,
+        "elapsedMs": {
+          "median": 31636.5,
+          "min": 27738,
+          "max": 43938
+        },
+        "planningMs": {
+          "median": 30171.5,
+          "min": 27097,
+          "max": 42668
+        },
+        "nodeCpuMs": {
+          "median": 608,
+          "min": 548,
+          "max": 715
+        },
+        "nodeRssDeltaMiB": {
+          "median": 5.484375,
+          "min": -0.0625,
+          "max": 12.625
+        },
+        "processes": {
+          "median": 15,
+          "min": 15,
+          "max": 15
+        }
+      },
+      {
+        "side": "after",
+        "samples": 4,
+        "elapsedMs": {
+          "median": 1169.5,
+          "min": 797,
+          "max": 1420
+        },
+        "planningMs": {
+          "median": 402,
+          "min": 348,
+          "max": 640
+        },
+        "nodeCpuMs": {
+          "median": 47.5,
+          "min": 45,
+          "max": 50
+        },
+        "nodeRssDeltaMiB": {
+          "median": 2.0234375,
+          "min": 1.984375,
+          "max": 2.078125
+        },
+        "processes": {
+          "median": 12,
+          "min": 12,
+          "max": 12
+        }
+      }
+    ],
+    "raw": [
+      {
+        "label": "beforea",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "09f461aef477b72405163aac1e7e27406eff1f04285582ff9830c1b34eab900f"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 27763,
+            "planningMs": 27279,
+            "nodeCpuMs": 593,
+            "nodeRssDeltaMiB": 5.15625,
+            "processes": 15,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 31,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 36,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 40,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 31,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 180,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 241,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 26303,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 26317,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 260,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 29,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 130,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 136,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 18,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 21,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 464,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "aftera",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "661cd89d0000797248636a48a2924464fc9e33c7d062f5e6e6ccbe4446d960be"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 1214,
+            "planningMs": 442,
+            "nodeCpuMs": 46,
+            "nodeRssDeltaMiB": 1.984375,
+            "processes": 12,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 32,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 25,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 36,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 30,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 107,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 44,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 29,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 146,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 154,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 37,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 38,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 729,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "afterb",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "661cd89d0000797248636a48a2924464fc9e33c7d062f5e6e6ccbe4446d960be"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 1420,
+            "planningMs": 640,
+            "nodeCpuMs": 50,
+            "nodeRssDeltaMiB": 1.984375,
+            "processes": 12,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 48,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 46,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 40,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 56,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 129,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 39,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 61,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 223,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 242,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 47,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 40,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 731,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "beforeb",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "a6f74a4175dc608269ce2c435e99f057c7411f134da8c7f129ea34d79bb261e2"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 27738,
+            "planningMs": 27097,
+            "nodeCpuMs": 623,
+            "nodeRssDeltaMiB": 12.625,
+            "processes": 15,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 28,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 37,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 44,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 28,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 92,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 31,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 26319,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 26365,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 144,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 48,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 290,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 299,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 26,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 28,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 611,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "beforec",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "24c902b6aae491c7d410083294c4a997b05fec4029853bc8759c4ca921ccf088"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 35510,
+            "planningMs": 33064,
+            "nodeCpuMs": 715,
+            "nodeRssDeltaMiB": 5.8125,
+            "processes": 15,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 29,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 41,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 48,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 30,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 105,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 32,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 32393,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 32410,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 185,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 28,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 171,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 183,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 40,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 40,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 2386,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "afterc",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "661cd89d0000797248636a48a2924464fc9e33c7d062f5e6e6ccbe4446d960be"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 797,
+            "planningMs": 362,
+            "nodeCpuMs": 45,
+            "nodeRssDeltaMiB": 2.0625,
+            "processes": 12,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 47,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 28,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 39,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 24,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 84,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 24,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 23,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 107,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 113,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 16,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 20,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 415,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "afterd",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "661cd89d0000797248636a48a2924464fc9e33c7d062f5e6e6ccbe4446d960be"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 1125,
+            "planningMs": 348,
+            "nodeCpuMs": 49,
+            "nodeRssDeltaMiB": 2.078125,
+            "processes": 12,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 19,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 24,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 27,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 18,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 73,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 29,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 25,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 141,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 148,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 26,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 24,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 748,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      },
+      {
+        "label": "befored",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+            "bundleSha256": "22c2da1bf8c881686cbf8216d6f9d3ad2c40273423771e64edcc679a86a1b95e"
+          },
+          "sourceRepositoryUnchanged": true,
+          "immutableSourcePinned": true,
+          "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+          "result": {
+            "elapsedMs": 43938,
+            "planningMs": 42668,
+            "nodeCpuMs": 548,
+            "nodeRssDeltaMiB": -0.0625,
+            "processes": 15,
+            "result": {
+              "strategy": "single",
+              "completed": 1,
+              "total": 1,
+              "estimatedBytes": 786
+            },
+            "commands": [
+              {
+                "command": "config",
+                "elapsedMs": 18,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 16,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 19,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "remote",
+                "elapsedMs": 87,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 68,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 20,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 41841,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 41858,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "ls-remote",
+                "elapsedMs": 371,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 67,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "rev-list",
+                "elapsedMs": 138,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "cat-file",
+                "elapsedMs": 148,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "config",
+                "elapsedMs": 286,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "for-each-ref",
+                "elapsedMs": 299,
+                "outcome": "success",
+                "code": 0
+              },
+              {
+                "command": "push",
+                "elapsedMs": 969,
+                "outcome": "success",
+                "code": 0
+              }
+            ],
+            "exactRemoteHeadAndTree": true,
+            "ownedProcessesIdle": true
+          },
+          "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Owned local bare receiver over a pinned existing object history; no real user worktree/remote mutation, network throughput or Graph timing in the primary series.",
+    "Node CPU/RSS covers the benchmark process only. Git children, Chromium, concurrent total memory and whole-OS CPU are excluded.",
+    "Uncontrolled external load and about 18.8GiB swap usage were observed. Do not infer a universal percentage from these local samples.",
+    "Unknown server tips remain conservative and are not used as exclusion proof. This does not eliminate all history walks.",
+    "Direct API calls without upstream setup can use a narrow destination probe followed by full branch discovery. The upstream-setting path reuses one advertisement."
+  ],
+  "candidateSourceSha256": {
+    "src/git/pushPublishedHistory.ts": "515a30ef9611c6bf47f9ef92940f2426cea392d6f82e5960a2e6744dbc5e4a12",
+    "src/git/sequentialPush.ts": "52423829dab7b95331b809fdef482ff4aa42624f7051b4715f6e4e7d3e75d40b",
+    "src/git/pushService.ts": "39bbf9eec5fb55285229c9c1d4e39ab7aef6a918e8b7c89009585cb878d31f2b",
+    "src/extension.ts": "900698a9f193ef384b610a34b2ae6e39ebcda4491e0b4c3d55eacb5d92f3050b"
+  },
+  "validation": {
+    "node": {
+      "uniqueNamesCovered": 102,
+      "broadGroup": {
+        "passed": 101,
+        "failed": 1
+      },
+      "correctedFocusedGroup": {
+        "passed": 17,
+        "failed": 0
+      },
+      "failedBroadCaseNowPassed": true,
+      "note": "The initial failure detected missing caller wiring for advertisement reuse; focused final-source tests cover the changed paths. Counts are unique test names across the two runs, not a single passing 102-case run."
+    },
+    "typesPassed": true,
+    "finalButton": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+        "bundleSha256": "34c8d249b22ec03b696b20cb2b349a98f10a3a8b77ac9aae232b164b29caa075"
+      },
+      "network": "owned-local-bare-only",
+      "results": [
+        {
+          "operation": "push",
+          "transport": "actual-rendered-button-and-registered-message-callback",
+          "fixture": {
+            "files": 1000,
+            "commits": 1000,
+            "branches": 100
+          },
+          "clickToRequestMs": 38,
+          "handlerMs": 5646,
+          "clickToFirstFrameMs": 6151,
+          "clickToFinalFrameMs": 6591,
+          "clickToSettledMs": 6746,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true,
+          "nodeCpuMs": 172,
+          "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+          "processes": 24,
+          "commands": [
+            {
+              "command": "rev-parse",
+              "elapsedMs": 178,
+              "syncSpawnMs": 1,
+              "outcome": "error",
+              "code": 128
+            },
+            {
+              "command": "config",
+              "elapsedMs": 301,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 247,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 137,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 253,
+              "syncSpawnMs": 1,
+              "outcome": "error",
+              "code": 128
+            },
+            {
+              "command": "config",
+              "elapsedMs": 379,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 374,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 284,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "remote",
+              "elapsedMs": 152,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "ls-remote",
+              "elapsedMs": 925,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 137,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 262,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 284,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "cat-file",
+              "elapsedMs": 285,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 123,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 248,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "push",
+              "elapsedMs": 1543,
+              "syncSpawnMs": 0,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-parse",
+              "elapsedMs": 196,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "config",
+              "elapsedMs": 144,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "branch",
+              "elapsedMs": 268,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 236,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "worktree",
+              "elapsedMs": 396,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "rev-list",
+              "elapsedMs": 257,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            },
+            {
+              "command": "status",
+              "elapsedMs": 479,
+              "syncSpawnMs": 1,
+              "outcome": "success",
+              "code": 0
+            }
+          ],
+          "graphPublications": 3,
+          "webviewMessages": 8,
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "exactLocalOnly": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 6151,
+            "latestMutationToFrameMs": 6591,
+            "renderMs": 10,
+            "frameMs": 21
+          }
+        }
+      ],
+      "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+    },
+    "finalDirectApiSmoke": {
+      "source": {
+        "kind": "working-tree",
+        "commit": "41223c589ca5070a33265a24c06c23bcd17d124d",
+        "bundleSha256": "6184010f93c11db921e606de82e7f730d50ac30c9024dca92342a28b05f82715"
+      },
+      "sourceRepositoryUnchanged": true,
+      "immutableSourcePinned": false,
+      "scenario": "Three owned commits over existing readonly history; local owned bare receiver already publishes the base",
+      "result": {
+        "elapsedMs": 11144,
+        "planningMs": 5813,
+        "nodeCpuMs": 35,
+        "nodeRssDeltaMiB": -1.375,
+        "processes": 13,
+        "result": {
+          "strategy": "single",
+          "completed": 1,
+          "total": 1,
+          "estimatedBytes": 786
+        },
+        "commands": [
+          {
+            "command": "config",
+            "elapsedMs": 263,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 201,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 457,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 262,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 1030,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 1787,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 194,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 640,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 1051,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 1173,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 2491,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 3139,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 2192,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "exactRemoteHeadAndTree": true,
+        "ownedProcessesIdle": true
+      },
+      "limits": "Existing source objects are shared through alternates, without checkout or object copying. No actual user/remote mutation, network, Graph timing or whole-OS CPU/RSS measurement. Node CPU is parent only."
+    },
+    "finalSmokesAreFunctionalOnly": true
+  },
+  "finalWiringNote": "The caller now passes an explicit published-branch read hint when it handles upstream configuration itself. This corrected the failed reuse-count case. The primary direct API default path is unchanged by that caller wiring; a final-source smoke again verified 13 Git calls, exact receiver state and unchanged source state."
+}

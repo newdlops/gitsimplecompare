@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { GitError, runGit, runGitWithInput, runGitStreamWithInput, runGitReadPipeline, type RunGitOptions } from "./gitExec";
 import { readGitConfigSnapshot } from "./gitConfigSnapshot";
-import { readPublishedPushTips } from "./pushPublishedHistory";
+import { readPublishedPushTips, readPushBranchAdvertisement } from "./pushPublishedHistory";
 import { logInfo } from "../ui/outputLog";
 
 /** 압축 전 신규 Git 객체 합계가 이 값 이상인 다중 커밋 push를 분할한다. */
@@ -37,6 +37,8 @@ export interface PushExecutionOptions {
   beforePush?: () => Promise<void>;
   /** 모든 전송 성공 후에만 고정한 로컬 브랜치의 upstream을 설정한다. */
   setUpstream?: boolean;
+  /** 첫 서버 조회에 다른 게시 branch도 포함할 범위 힌트. 실제 목적 OID/lease 검증은 생략하지 않는다. */
+  includePublishedBranches?: boolean;
   /** 현재 브랜치 push는 HEAD가 승인한 로컬 브랜치를 계속 가리키는지도 함께 확인한다. */
   requireCurrentBranch?: boolean;
   /** 상위 서비스의 승인 시점 설정 해시. 생략하면 이 실행의 초기 설정을 기준으로 고정한다. */
@@ -201,38 +203,30 @@ async function prepareTransfer(
     .trim().split(/\r?\n/).filter(Boolean);
   // 여러 push URL을 서로 다른 부분 전송 상태로 만들지 않고 기존 Git의 일괄 push 동작을 유지한다.
   if (urls.length !== 1) return single("multiplePushDestinations");
-  const remoteHead = await readRemoteHead(root, urls[0], target.targetRef, runner, runOptions);
+  // upstream을 새로 연결하는 흐름만 게시 이력을 함께 읽는다. 일반 추적 push는 정확한 목적 ref만 조회한다.
+  // 이 선택은 조회 범위 힌트이며, 실제 목적 OID와 lease는 항상 서버 응답으로 결정한다.
+  const completeAdvertisement = options.includePublishedBranches ?? (options.setUpstream === true);
+  const advertisement = await readPushBranchAdvertisement(root, urls[0], runner, runOptions, completeAdvertisement ? undefined : target.targetRef);
+  const remoteHead = advertisement.get(target.targetRef) ?? "";
   if (remoteHead === target.head) return single("alreadyPushed");
   if (remoteHead && !(await isAncestor(root, remoteHead, target.head, runner, runOptions))) {
     return single("remoteNotAncestor");
   }
-  let excludedHeads = remoteHead ? [remoteHead] : [];
-  let recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
+  // 같은 서버 광고의 게시 이력을 먼저 제외해 새 branch의 기존 기본 이력 전체를 크기 조회하지 않는다.
+  // 제외 tip은 빈 목적 branch의 lease와 분리하고, 로컬에서 commit으로 검증한 값만 사용한다.
+  const excludedHeads = remoteHead ? [remoteHead] : await readPublishedPushTips(root, urls[0], target.head, runner, runOptions, completeAdvertisement ? advertisement : undefined);
+  if (!remoteHead) logInfo("push published history checked", { repoRoot: root, verifiedTips: excludedHeads.length });
+  const recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
   // 한 커밋은 분할하지 않으므로 이미 확인한 remoteHead → target.head 조상 관계를 다시 읽지 않는다.
   if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit");
-  let complete = remoteHead ? recent.oldestParents[0] === remoteHead : recent.oldestParents.length === 0;
+  const complete = remoteHead ? recent.oldestParents[0] === remoteHead : !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
   // 직전 first-parent조차 원격 tip의 후손이 아니면 더 오래된 조상도 후손일 수 없다.
   // 두 번째 부모에서 원격 이력이 합쳐진 merge 하나만 보낼 때 전체 목록과 이진 탐색을 생략한다.
   // HEAD의 부모가 하나면 기존 remote→HEAD 검증만으로 그 부모도 후손임을 안다.
   if (remoteHead && !complete && recent.headParents.length > 1 &&
       !(await isAncestor(root, remoteHead, recent.commits[0], runner, runOptions))) return single("singleCommit");
-  let estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
+  const estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
   if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
-  if (!remoteHead) {
-    // 새 branch도 서버의 다른 branch가 기본 이력을 이미 가질 수 있다. lease는 빈 목적 ref를 계속 보호한다.
-    const published = await readPublishedPushTips(root, urls[0], target.head, runner, runOptions);
-    logInfo("push published history checked", { repoRoot: root, verifiedTips: published.length });
-    if (published.length) {
-      excludedHeads = published;
-      const wholeHistoryBytes = estimatedBytes;
-      estimatedBytes = await estimateObjectBytes(root, target.head, excludedHeads, runner, runOptions);
-      logInfo("push unpublished objects recalculated", { repoRoot: root, wholeHistoryBytes, unpublishedBytes: estimatedBytes });
-      if (estimatedBytes < threshold) return single("belowThreshold", estimatedBytes);
-      recent = await readRecentFirstParentCommits(root, target, excludedHeads, runner, runOptions);
-      if (recent.commits.length < 2 || recent.commits.at(-1) !== target.head) return single("singleCommit", estimatedBytes);
-      complete = !recent.oldestParents.length || excludedHeads.includes(recent.oldestParents[0]);
-    }
-  }
   // 실제 분할할 큰 push만 전체 전송 순서를 만든다. 작은 push는 확장 호스트에 긴 commit 배열을 남기지 않는다.
   let commits = complete ? recent.commits : await readFirstParentCommits(root, target, excludedHeads, runner, runOptions);
   if (commits.length < 2 || commits.at(-1) !== target.head) return single("singleCommit");
@@ -285,24 +279,6 @@ async function readRecentFirstParentCommits(
   });
   if (entries.length > 2 || (entries.length === 2 && entries[1].parents[0] !== entries[0].hash)) throw new Error("Could not read the outgoing commit sequence.");
   return { commits: entries.map(entry => entry.hash), oldestParents: entries[0]?.parents || [], headParents: entries.at(-1)?.parents || [] };
-}
-
-/**
- * fetch URL과 다른 push URL도 정확히 조회한다. URL/자격증명은 결과·오류·로그에 담지 않는다.
- * @param url Git이 해석한 유일한 push URL @returns 목적 ref OID 또는 새 브랜치면 빈 문자열
- */
-async function readRemoteHead(root: string, url: string, ref: string, runner: PushGitRunner, options: RunGitOptions): Promise<string> {
-  let output: string;
-  try {
-    output = await runner.run(["ls-remote", "--refs", "--", url, ref], root, options);
-  } catch (error) {
-    if (options.signal?.aborted) throw error;
-    throw new Error("Could not read the push destination. Check the remote connection and authentication.");
-  }
-  const matching = output.trim().split(/\r?\n/).filter(Boolean).map(line => line.split(/\s+/)).filter(([, name]) => name === ref);
-  if (matching.length === 0) return "";
-  if (matching.length !== 1 || !OID.test(matching[0][0])) throw new Error("Could not read the remote branch commit.");
-  return matching[0][0];
 }
 
 /**

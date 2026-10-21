@@ -7,32 +7,45 @@ const MAX_PUBLISHED_TIPS = 64;
 const OID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 
 /**
+ * 실제 push URL의 한 광고에서 목적 branch와 다른 게시 이력을 함께 읽는다.
+ * @param root source 저장소 @param url 승인 설정이 해석한 단일 push URL
+ * @param runner 공통 실행기 @param options 취소 및 원본 DAG 환경
+ * @param exactRef 주어지면 목적 branch만 조회한다. 없으면 같은 서버의 모든 branch tip을 읽는다.
+ * @returns full branch ref별 서버 OID. 다른 호출/서버로 재사용하지 않으며 중복·손상 출력은 거부한다.
+ */
+export async function readPushBranchAdvertisement(root: string, url: string, runner: PushGitRunner, options: RunGitOptions, exactRef?: string): Promise<ReadonlyMap<string, string>> {
+  let output: string;
+  try { output = await runner.run(["ls-remote", "--refs", ...(exactRef ? [] : ["--heads"]), "--", url, ...(exactRef ? [exactRef] : [])], root, options); }
+  catch (error) {
+    if (options.signal?.aborted) throw error;
+    throw new Error("Could not read the push destination. Check the remote connection and authentication.");
+  }
+  const branches = new Map<string, string>();
+  for (const line of output.trim().split(/\r?\n/).filter(Boolean)) {
+    const fields = line.split(/\s+/);
+    if (fields.length !== 2 || !OID.test(fields[0]) || !fields[1].startsWith("refs/heads/") || branches.has(fields[1])) {
+      throw new Error("Could not read the remote branch commits.");
+    }
+    branches.set(fields[1], fields[0]);
+  }
+  return branches;
+}
+
+/**
  * 실제 push URL이 광고한 branch tip 중 로컬에서도 commit으로 검증한 OID만 반환한다.
  * - fetch URL·로컬 tracking ref·추측한 기본 브랜치를 증거로 쓰지 않고 객체를 fetch하지 않는다.
  * - 결과는 크기/새 commit 범위의 제외 집합이며 목적 브랜치의 lease에는 사용하지 않는다.
  * - 다른 서버/작업으로 재사용하는 캐시를 만들지 않는다. 알 수 없는 객체는 보수적으로 제외하지 않는다.
  * @param root source 저장소 @param url Git이 해석한 유일한 push URL
  * @param sourceHead 승인한 실제 source commit @param runner 공통 Git 경계 @param options 취소·원본 DAG 환경
+ * @param advertisement 같은 실행이 방금 읽은 실제 push 서버의 광고. 없으면 직접 읽는다.
  * @returns 현재 서버가 소유하고 로컬에서 읽을 수 있는 commit tip 최대 64개
  */
 export async function readPublishedPushTips(
-  root: string, url: string, sourceHead: string, runner: PushGitRunner, options: RunGitOptions
+  root: string, url: string, sourceHead: string, runner: PushGitRunner, options: RunGitOptions,
+  advertisement?: ReadonlyMap<string, string>
 ): Promise<string[]> {
-  let output: string;
-  try { output = await runner.run(["ls-remote", "--refs", "--heads", "--", url], root, options); }
-  catch (error) {
-    if (options.signal?.aborted) throw error;
-    // URL에 자격 증명이 있을 수 있으므로 원본 transport 오류를 진행 이벤트/로그에 옮기지 않는다.
-    throw new Error("Could not read the push destination. Check the remote connection and authentication.");
-  }
-  const tips = new Set<string>();
-  for (const line of output.trim().split(/\r?\n/).filter(Boolean)) {
-    const fields = line.split(/\s+/);
-    if (fields.length !== 2 || !OID.test(fields[0]) || !fields[1].startsWith("refs/heads/")) {
-      throw new Error("Could not read the remote branch commits.");
-    }
-    tips.add(fields[0]);
-  }
+  const tips = new Set((advertisement ?? await readPushBranchAdvertisement(root, url, runner, options)).values());
   // 승인한 source 자체가 다른 원격 branch에 있으면 그 이력 전체를 이미 소유한다.
   if (tips.has(sourceHead)) return [sourceHead];
   if (!tips.size) return [];

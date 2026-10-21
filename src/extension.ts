@@ -70,6 +70,7 @@ let activeNativeDiffOverlay: NativeDiffOverlayController | undefined;
  */
 export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi {
   logInfo("extension activating", {
+    extensionVersion: context.extension?.packageJSON?.version,
     workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0,
   });
   context.subscriptions.push(new vscode.Disposable(disposeOutputLog), registerGitExecutableConfiguration(), registerBuiltinGitControl(context));

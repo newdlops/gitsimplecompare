@@ -209,7 +209,7 @@ async function executePush(repoRoot: string, plan: PushCurrentPlan, force?: Forc
   if (!force) {
     execution = await pushValidatedBranchCommits(repoRoot, {
       branch: plan.branch!, remote: plan.remote!, head: plan.snapshot.head, targetRef: plan.snapshot.targetRef,
-    }, { ...options, setUpstream: false, requireCurrentBranch: true,
+    }, { ...options, setUpstream: false, includePublishedBranches: plan.mode === "setUpstream", requireCurrentBranch: true,
       approvedConfigurationFingerprint: plan.snapshot.configFingerprint });
   } else {
     const args = ["push"];

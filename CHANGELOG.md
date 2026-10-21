@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.72126] - 2026-10-21
+
+### Performance
+
+- Exclude locally verified history advertised by the actual push server before
+  estimating a new destination's outgoing objects. Avoid first scanning the
+  entire existing history and then repeating the object-size calculation.
+- Share destination and published-branch discovery when setting an upstream.
+  Keep ordinary tracked pushes on their exact destination lookup.
+
+### Fixed
+
+- Keep published history separate from the destination lease. Preserve empty
+  initial leases, source/configuration checks, push URL separation, and
+  conservative handling of missing or non-commit advertised objects.
+- Reject duplicate destination records before selecting a remote OID.
+
+### Development
+
+- Record the running extension version at activation to distinguish installed
+  packages from sessions that have not reloaded.
+- Compare actual pushes over an existing immutable object history using owned
+  temporary bare receivers. The original repository is read-only; no checkout,
+  object copy or external network transfer is required.
+- Extend read-only Graph diagnosis to fingerprint, local-only and working-tree
+  stages, recording aggregate metrics without source paths or file contents.
+
 ## [0.1.72125] - 2026-10-21
 
 ### Performance

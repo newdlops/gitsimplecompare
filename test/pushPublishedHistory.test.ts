@@ -63,11 +63,20 @@ test("a new branch counts only unpublished objects and preserves staged, unstage
 
 test("a real 50MiB object already published on main does not split three tiny new commits", async t => {
   const f = await fixture(t, false, true);
+  const calls: string[][] = [], spawn = childProcess.spawn;
+  t.mock.method(childProcess, "spawn", (...args: any[]) => {
+    if (args[0] === "git") calls.push([...args[1]]);
+    return (spawn as Function)(...args);
+  });
   const result = await pushCurrentWithAutoUpstream(f.root, await getCurrentPushPlan(f.root));
   assert.equal(result.execution?.strategy, "single"); assert.ok(result.execution.estimatedBytes! < SEQUENTIAL_PUSH_THRESHOLD_BYTES);
   assert.deepEqual(await f.updates(), [f.tip]);
   assert.equal(await git(f.remote, "rev-parse", "main"), f.base);
   assert.equal(await git(f.remote, "show", "feature:tracked.txt"), "feature 2");
+  assert.equal(calls.filter(args => args[gitCommandIndex(args)] === "ls-remote").length, 1, "Destination and published tips share one actual-server advertisement");
+  const estimates = calls.filter(args => args.includes("--objects"));
+  assert.equal(estimates.length, 1, "The already-published full history must not be estimated first");
+  assert.ok(estimates[0].includes(`^${f.base}`), "The only object walk must exclude the server-verified base");
 });
 
 test("genuinely new large objects split only the three new commits and keep the destination's empty lease", async t => {
