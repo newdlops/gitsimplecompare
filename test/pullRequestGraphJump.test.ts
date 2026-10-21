@@ -30,6 +30,12 @@ async function refsFixture(t: TestContext, directory: string, head: string, merg
   await writeFile(executable, `#!${process.execPath}
 const fs=require('node:fs'),path=require('node:path');
 const args=process.argv.slice(2),dir=__dirname;
+if(args[0]==='repo' && args[1]==='view'){process.stdout.write(JSON.stringify({nameWithOwner:'owner/repo'}));process.exit(0);}
+if(args.some(arg=>arg.startsWith('searchQuery='))){
+  const node=JSON.parse(fs.readFileSync(path.join(dir,'refs.json'))).data.repository.pullRequest;
+  node.commits={nodes:[{commit:{oid:node.headRefOid}}],pageInfo:{hasNextPage:false}};
+  process.stdout.write(JSON.stringify({data:{search:{nodes:[node],issueCount:1,pageInfo:{hasNextPage:false}}}}));process.exit(0);
+}
 if (!args.includes('number=42') || !args.some(arg=>arg.startsWith('query=') && arg.includes('headRefOid') && !arg.includes('commits('))) process.exit(2);
 fs.appendFileSync(path.join(dir,'gh-calls.jsonl'),JSON.stringify(args)+'\\n');
 process.stdout.write(fs.readFileSync(path.join(dir,'refs.json')));
@@ -183,4 +189,24 @@ test("the registered Graph message callback resolves a first-list PR and publish
   assert.equal(graph?.type, "graph");
   if (graph?.type === "graph") assert.equal(graph.data.rows[0].hash, f.head);
   assert.equal(await r.count(), 1);
+});
+
+test("a PR kept in search results can jump after the refreshed overview omits it", async t => {
+  const f = await remoteFixture(t), r = await refsFixture(t, f.directory, f.head);
+  t.mock.method(PullRequestService.prototype, "getOverview", async () => ({ available: true, repository: "owner/repo",
+    defaultBranch: "main", hasMore: false, pullRequests: [] }));
+  t.mock.method(PullRequestStackService.prototype, "getGraphSnapshot", async () =>
+    ({ repository: "owner/repo", defaultBranch: "main", stacks: [], layers: [] }));
+  const h = createOperationGraphPanel(t, new GitLogService(f.root)); t.after(() => h.panel.dispose());
+  await h.receiveMessage({ type: "ready" });
+  await h.receiveMessage({ type: "searchPullRequests", requestId: "search-before-refresh", query: "Remote PR" });
+  assert.equal(h.panel.messages.pullRequests[0]?.number, 42);
+  await h.receiveMessage({ type: "refreshPullRequests" });
+  assert.equal(h.panel.messages.pullRequests.length, 0, "overview refresh replaces its accumulated entries");
+  const before = await protectedState(f.root);
+  await h.receiveMessage({ type: "ensureCommitVisible", requestId: "retained-search-pr", hashes: [], pullRequestNumber: 42 });
+  assert.deepEqual(h.messages.filter(message => message.type === "commitVisibility"),
+    [{ type: "commitVisibility", requestId: "retained-search-pr", found: true, hash: f.head }]);
+  assert.equal(await r.count(), 1, "resolve only the clicked PR, independently of current overview membership");
+  assert.deepEqual(await protectedState(f.root), before);
 });

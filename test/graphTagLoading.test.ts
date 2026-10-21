@@ -98,3 +98,16 @@ for (const reason of ["dispose", "repositoryChanged"] as const) {
     assert.equal(loading.resume("/original", () => {}), false); assert.equal(calls, 1);
   });
 }
+
+test("a paused tag read never carries an old empty-tag proof into its resumed read",async()=>{
+  const hints:Array<true|undefined>=[];
+  const loading=new GraphTagStatusLoading(async(_root,options)=>{
+    hints.push(options.localTagsAbsent);
+    if(hints.length===1)await new Promise<void>(resolve=>options.signal!.addEventListener("abort",()=>resolve(),{once:true}));
+    return [];
+  });
+  const first=loading.start("/snapshot",()=>{}, {localTagsAbsent:true});await settle();
+  loading.cancel("hidden");await first;
+  assert.equal(loading.resume("/snapshot",()=>{}),true);await settle();
+  assert.deepEqual(hints,[true,undefined]);
+});

@@ -387,7 +387,7 @@ export class GitGraphPanel {
     if (!this.isGraphGenerationActive(graphGeneration)) return;
     void this.tagLoading.start(repoRoot, (message) => {
       if (this.isGraphGenerationActive(graphGeneration)) this.post(message);
-    }, { forceRemote: context.cause === "refresh" });
+    }, { forceRemote: context.cause === "refresh", localTagsAbsent: context.localTagsAbsent });
   }
   /** 상세 조회만 시작한다. 조기 페이지와 경쟁하는 동안에는 표시·색인 상태를 변경하지 않는다. */
   private readBranches(context: GraphRefreshContext): Promise<Awaited<ReturnType<typeof readGraphLocalBranchData>> | undefined> {

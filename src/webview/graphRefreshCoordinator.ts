@@ -12,7 +12,7 @@ export interface GraphRefreshRequest { repoRoot: string; cause: string; mode: Gr
 /** Graph reload callback이 stale 여부를 판단할 수 있도록 전달하는 실행 문맥이다. */
 export interface GraphRefreshContext extends GraphRefreshRead { repoRoot: string; cause: string; generation: number; previous?: GraphRefreshRead; }
 /** Git reader가 이미 읽은 데이터도 현재 refresh 세대에만 전달하는 결과다. */
-export interface GraphRefreshRead { fingerprint: string; historyIdentity?: string; historyUncertain?: boolean; localBranches?: readonly LocalBranchStatus[]; refCount?: number; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; }
+export interface GraphRefreshRead { fingerprint: string; historyIdentity?: string; historyUncertain?: boolean; localBranches?: readonly LocalBranchStatus[]; refCount?: number; worktrees?: readonly WorktreeInfo[]; remoteTips?: readonly GraphRemoteBranchTip[]; localTagsAbsent?: true; }
 /** UI adapter가 주입하는 Git read, reload, publication, invalidation, logging 경계다. */
 export interface GraphRefreshLifecycleDeps {
   readFingerprint(repoRoot: string, signal?: AbortSignal, options?: { includeLocalBranches: boolean; previousRefCount?: number }): Promise<string | GraphRefreshRead>;

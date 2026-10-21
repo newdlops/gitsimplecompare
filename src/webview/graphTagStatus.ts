@@ -22,7 +22,7 @@ export class GraphTagStatusLoading {
    * @returns 조회·취소·실패의 정리가 끝나는 Promise. Graph 본문은 이 작업을 await하지 않는다.
    */
   start(repoRoot: string, post: (message: ToWebviewMessage) => void,
-    options: Pick<GitTagQueryOptions, "forceRemote"> = {}): Promise<void> {
+    options: Pick<GitTagQueryOptions, "forceRemote" | "localTagsAbsent"> = {}): Promise<void> {
     const previous = this.active;
     this.cancel("superseded");
     this.paused = undefined;

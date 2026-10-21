@@ -38,6 +38,8 @@ export interface GraphRefreshSnapshot {
   refCount?: number;
   worktrees: readonly WorktreeInfo[];
   remoteTips?: readonly GraphRemoteBranchTip[];
+  /** 같은 Native 전체 ref 조회가 로컬 태그 0개임을 검증한 경우에만 후속 빈 조회를 생략한다. */
+  localTagsAbsent?: true;
 }
 
 /**
@@ -95,6 +97,7 @@ export async function readGraphRefreshSnapshot(
     ...(localBranches ? { localBranches } : {}),
     worktrees: parsedWorktrees,
     ...(refSnapshot.remoteTips !== undefined ? { remoteTips: refSnapshot.remoteTips } : {}),
+    ...(refSnapshot.localTagsAbsent ? { localTagsAbsent: true as const } : {}),
   };
 }
 
@@ -103,7 +106,7 @@ export async function readGraphRefreshSnapshot(
  * @param output full ref·object ID·Git이 해석한 short name을 구분자로 나눈 for-each-ref 출력
  * @returns 기존 의미 ref 행과 원격 tip. 이전 형식·불완전 출력은 catalog 재조회를 유지한다.
  */
-function parseRefSnapshot(output: string): { refs: string[]; remoteTips?: GraphRemoteBranchTip[] } {
+function parseRefSnapshot(output: string): { refs: string[]; remoteTips?: GraphRemoteBranchTip[]; localTagsAbsent?: true } {
   const rows = output.split("\n").filter(Boolean).map(line => ({ line, fields: line.split(REF_SEPARATOR) }));
   const complete = rows.every(({ fields }) => fields.length === 3 && fields[0].startsWith("refs/") && fields[1] && fields[2]);
   return {
@@ -111,6 +114,8 @@ function parseRefSnapshot(output: string): { refs: string[]; remoteTips?: GraphR
     ...(complete ? {
       remoteTips: parseRemoteBranchTips(rows.map(({ fields: [fullRef, hash, name] }) => [hash, name, fullRef].join(REF_SEPARATOR)).join("\n")),
     } : {}),
+    ...(complete && rows.every(({ fields }) => /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(fields[1]) && fields[0] !== "refs/tags" && !fields[0].startsWith("refs/tags/"))
+      ? { localTagsAbsent: true as const } : {}),
   };
 }
 

@@ -14,6 +14,8 @@ export interface GitTagQueryOptions {
   forceRemote?: boolean;
   maxRemoteAgeMs?: number;
   signal?: AbortSignal;
+  /** 같은 조회 수명의 전체 ref snapshot이 로컬 tag 0개를 증명한 경우만 지정한다. 재개/다음 조회에 보관하지 않는다. */
+  localTagsAbsent?: true;
 }
 
 /** 로컬 tag 한 건. hash 는 annotated tag 를 peel 한 실제 대상 객체를 우선 사용한다. */
@@ -51,7 +53,7 @@ export class GitTagService {
   async getTagStatuses(options: GitTagQueryOptions = {}): Promise<GitTagStatus[]> {
     options.signal?.throwIfAborted();
     const reads = [
-      this.getLocalTagRefs(options.signal),
+      options.localTagsAbsent ? Promise.resolve([]) : this.getLocalTagRefs(options.signal),
       this.getRemoteTagRefs(options),
     ] as const;
     const [localTags, remoteTags] = await Promise.all(reads).catch(async error => {

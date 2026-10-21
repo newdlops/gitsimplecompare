@@ -141,3 +141,24 @@ test("the first lightweight PR list can jump before commit metadata arrives", as
   await page.locator('[data-focus-pr="42"]').click();
   await expect.poll(async () => (await readPostedMessages(page)).filter((m: any) => m.type === "ensureCommitVisible").length).toBe(3);
 });
+
+for (const [width,height] of [[390,844],[768,1024],[1440,900]]) test(`a retained search result remains navigable after overview refresh at ${width}px`, async ({page}) => {
+  await page.setViewportSize({width,height}); await mount(page);
+  await page.locator("[data-pr-search-input]").fill("Remote PR");
+  const requests = async () => (await readPostedMessages(page)).filter((message:any) => message.type === "searchPullRequests");
+  await expect.poll(async () => (await requests()).length).toBe(1);
+  const search = (await requests())[0], pr = {...overview(true).pullRequests[0], title:"Remote PR", headHash:hash(400), commitHashes:[hash(400)]};
+  await dispatchWebviewMessage(page,{type:"pullRequestSearchResult",requestId:search.requestId,
+    result:{query:"Remote PR",pullRequests:[pr],hasMore:false,totalCount:1}});
+  await dispatchWebviewMessage(page,{type:"pullRequestOverview",overview:{...overview(true),pullRequests:[]}});
+  await expect(page.locator(".pr-card")).toHaveCount(1);
+  await page.locator('[data-focus-pr="42"]').click(); const request = await latestRequest(page);
+  expect(request).toMatchObject({hashes:[hash(400)],pullRequestNumber:42});
+  await dispatchWebviewMessage(page,{type:"graph",revision:2,data:{rows:[{hash:hash(400),parents:[],refs:[],authorName:"Fixture",authorEmail:"fixture@example.test",dateIso:"2026-10-21T00:00:00Z",subject:"Remote PR search result",column:0,color:0}],edges:[],laneCount:1},state:{loadedCount:1,hasMore:false,loading:false,reset:true,colorScope:"/fixture"}});
+  await dispatchWebviewMessage(page,{type:"commitVisibility",requestId:request.requestId,found:true,hash:hash(400)});
+  await expect(page.locator(".pr-focused-row")).toHaveAttribute("data-hash",hash(400));
+  await expect(page.locator(".pr-focused-row")).toBeInViewport(); await expect(page.locator("#graph")).toBeFocused();
+  if (width === 390) await expect.poll(async () => page.locator("#detail").evaluate(node =>
+    node.getBoundingClientRect().left >= innerWidth)).toBe(true);
+  await page.mouse.move(0,height-1); await page.screenshot({path:`/private/tmp/gsc-pr-row-search-${width}.png`});
+});

@@ -282,7 +282,7 @@ export class GraphPanelMessageRouter {
           repoRoot: this.repoRoot,
           requestId: message.requestId,
           hashes: message.hashes,
-          pullRequest: this.pullRequestPager.items.find(pr => pr.number === message.pullRequestNumber),
+          pullRequest: this.pullRequestPager.findGraphTarget(message.pullRequestNumber),
           loadedHash: this.deps.loadedCommitHash,
           loadWindow: this.deps.loadCommitWindow,
           post: this.deps.post,

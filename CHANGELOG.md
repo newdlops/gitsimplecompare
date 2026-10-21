@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72150] - 2026-10-22
+
+### Fixes
+
+- Keep Jump to Pull Request Row working when an overview refresh removes a PR
+  that remains visible in search results. Reuse the current search metadata,
+  prefer newer overview data, and discard retained results on repository changes.
+- Preserve targeted object fetching, explicit branch filters, cancellation,
+  local changes and the existing loading, retry and visible-row behavior.
+
+### Performance
+
+- Skip the duplicate local tag query when the current complete ref snapshot
+  proves there are no local tags. Keep remote tags and the Native local query
+  for tagged repositories, incomplete snapshots and resumed reads.
+
 ## [0.1.72149] - 2026-10-22
 
 ### Performance

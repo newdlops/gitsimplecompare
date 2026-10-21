@@ -79,8 +79,25 @@ test("empty ref snapshot is complete while legacy rows keep the catalog fallback
   const worktrees = `worktree ${root}\nHEAD ${head}\nbranch refs/heads/main\n\n`;
   const empty = await readGraphRefreshSnapshot(root, async args => args[0] === "worktree" ? worktrees : "");
   assert.deepEqual(empty.remoteTips, []);
+  assert.equal(empty.localTagsAbsent,true);
   const legacy = await readGraphRefreshSnapshot(root, fixtureRunner(worktrees, []));
   assert.equal(legacy.remoteTips, undefined);
+  assert.equal(legacy.localTagsAbsent,undefined);
+});
+
+test("only complete tag-free Native ref rows certify an empty local tag namespace",async()=>{
+  const root=path.resolve("/fixture/main"),worktrees=`worktree ${root}\nHEAD ${head}\nbranch refs/heads/main\n\n`;
+  for(const [refs,expected] of [
+    [`refs/heads/main\x1f${head}\x1fmain\n`,true],
+    [`refs/heads/main\x1f${"b".repeat(64)}\x1fmain\n`,true],
+    [`refs/tags/v1\x1f${head}\x1fv1\n`,undefined],
+    [`refs/tags\x1f${head}\x1ftags\n`,undefined],
+    [`refs/heads/main\x1fnot-an-oid\x1fmain\n`,undefined],
+    [`refs/heads/main\x1f${head}\n`,undefined],
+  ] as const){
+    const snapshot=await readGraphRefreshSnapshot(root,async args=>args[0]==="worktree"?worktrees:refs);
+    assert.equal(snapshot.localTagsAbsent,expected);
+  }
 });
 
 test("fingerprint cancellation reaches both Git commands and prevents later fallback launches", async () => {

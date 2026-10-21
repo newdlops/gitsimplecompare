@@ -51,6 +51,8 @@ export class GraphPullRequestPager {
   // 이 값이 도중에 바뀐 조회는 응답을 화면/상태에 반영하지 않아(latest-wins) 목록이 늘었다 줄었다 깜박이는 것을 막는다.
   private generation = 0;
   private searchRequest: AbortController | undefined;
+  private searchMatches: PullRequestInfo[] = [];
+  private searchQuery = "";
   private repositoryEpoch = 0;
   /** 검색 실행기를 주입해 실제 수명주기와 지연 응답의 경쟁을 결정적으로 검증한다. */
   constructor(private readonly searcher = searchPullRequests) {}
@@ -58,6 +60,14 @@ export class GraphPullRequestPager {
   /** open/preview 동작에서 사용할 현재 누적 PR 목록을 반환한다. */
   get items(): PullRequestInfo[] {
     return this.pullRequests;
+  }
+
+  /**
+   * 현재 목록을 우선하되 새로고침 뒤에도 화면에 남은 최근 검색 결과에서 Graph 이동 대상을 찾는다.
+   * @param number 사용자가 누른 PR 번호 @returns 현재 저장소에서 실제로 조회한 PR 또는 undefined
+   */
+  findGraphTarget(number: number | undefined): PullRequestInfo | undefined {
+    return this.pullRequests.find(pr => pr.number === number) ?? this.searchMatches.find(pr => pr.number === number);
   }
 
   /** stack graph snapshot이 추가 원격 조회 없이 재사용할 owner/name 저장소 이름을 반환한다. */
@@ -79,7 +89,7 @@ export class GraphPullRequestPager {
   resetRepository(): void {
     this.cancel("repositoryChanged");
     this.searchRequest?.abort(); this.searchRequest = undefined; this.repositoryEpoch++;
-    this.pullRequests = []; this.nextCursor = undefined; this.hasMore = false;
+    this.pullRequests = []; this.searchMatches = []; this.searchQuery = ""; this.nextCursor = undefined; this.hasMore = false;
     this.repository = ""; this.defaultBranch = ""; this.resetPublication();
   }
 
@@ -161,6 +171,8 @@ export class GraphPullRequestPager {
     try {
       const result = await this.searcher(repoRoot, query, cursor, controller.signal);
       if (controller.signal.aborted || this.searchRequest !== controller || epoch !== this.repositoryEpoch) return;
+      this.searchMatches = cursor && this.searchQuery === query ? mergePullRequests(this.searchMatches, result.pullRequests) : result.pullRequests;
+      this.searchQuery = query;
       this.pullRequests = mergePullRequests(this.pullRequests, result.pullRequests);
       post({ type: "pullRequestSearchResult", requestId, result });
       logInfo("graph pull request search sent", {
