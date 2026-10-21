@@ -95,9 +95,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     try { return await readBranches(...args); } finally { if (timing) timing.finishedAt = Date.now(); }
   });
   const localOnlyFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
-  const getLocalOnlyMap = cache.getMap.bind(cache);
+  const markerRead = typeof cache.getReadOnlyMap === "function" ? "getReadOnlyMap" : "getMap";
+  const getLocalOnlyMap = cache[markerRead].bind(cache);
   let pendingMarkers = 0;
-  mock.method(cache, "getMap", async () => {
+  mock.method(cache, markerRead, async () => {
     pendingMarkers++;
     try { return await getLocalOnlyMap(); } catch (error) {
       localOnlyFailures.push(error instanceof Error ? error.message : String(error)); throw error;

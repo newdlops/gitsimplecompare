@@ -1,0 +1,593 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.72142",
+  "baselineCommit": "89ff822ee6a664a62aaa313c309778acb5a75b53",
+  "wholeGoalComplete": false,
+  "change": {
+    "scope": "Local-only metadata application to loaded Graph commits",
+    "ownedResultAdoption": true,
+    "displayUsesReadonlyMap": true,
+    "mutableMapAndArrayIsolation": true,
+    "singlePassMutableClone": true,
+    "newCaches": 0,
+    "newNativeQueries": 0,
+    "freshSnapshotAndCancellationGuardsUnchanged": true,
+    "harnessObservesActualReadonlyOrLegacyRead": true
+  },
+  "checks": {
+    "nodePass": 37,
+    "nodeFail": 0,
+    "nodeCancelled": 0,
+    "nodeSkipped": 0,
+    "typecheck": true,
+    "expectedBeforeRegressionFail": 1,
+    "nativeAndRendererVariantCases": 36,
+    "actualPrButtonCases": 4,
+    "prRowJumpNativePass": 6,
+    "prRowJumpBrowserPass": 9,
+    "prRowJumpViewports": [
+      390,
+      768,
+      1440
+    ],
+    "sourceWrites": "Owned fixtures only; Captain/stashes/recovery untouched"
+  },
+  "component": {
+    "before": {
+      "fixture": {
+        "branches": 32,
+        "localDepth": 30000,
+        "oldDepth": 1000,
+        "loadedCommits": 300,
+        "mapEntries": 30033
+      },
+      "warmSamples": [
+        {
+          "phase": "warm",
+          "repetition": 0,
+          "calls": 10,
+          "elapsedMs": 71.08129199999985,
+          "nodeCpuMs": 145.112,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 135070344,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10387456
+        },
+        {
+          "phase": "warm",
+          "repetition": 1,
+          "calls": 10,
+          "elapsedMs": 70.9595830000003,
+          "nodeCpuMs": 138.848,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134070752,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10076160
+        },
+        {
+          "phase": "warm",
+          "repetition": 2,
+          "calls": 10,
+          "elapsedMs": 63.61129200000005,
+          "nodeCpuMs": 114.196,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 133938728,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10092544
+        },
+        {
+          "phase": "warm",
+          "repetition": 3,
+          "calls": 10,
+          "elapsedMs": 53.80150000000003,
+          "nodeCpuMs": 114.27,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 135414840,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10338304
+        },
+        {
+          "phase": "warm",
+          "repetition": 4,
+          "calls": 10,
+          "elapsedMs": 54.461833999999726,
+          "nodeCpuMs": 116.933,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134086120,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 9617408
+        },
+        {
+          "phase": "warm",
+          "repetition": 0,
+          "calls": 10,
+          "elapsedMs": 68.92329100000006,
+          "nodeCpuMs": 131.725,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134786776,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 12648448
+        },
+        {
+          "phase": "warm",
+          "repetition": 1,
+          "calls": 10,
+          "elapsedMs": 65.59204200000022,
+          "nodeCpuMs": 132.032,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134038880,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10190848
+        },
+        {
+          "phase": "warm",
+          "repetition": 2,
+          "calls": 10,
+          "elapsedMs": 63.545624999999745,
+          "nodeCpuMs": 115.714,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 135408544,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10682368
+        },
+        {
+          "phase": "warm",
+          "repetition": 3,
+          "calls": 10,
+          "elapsedMs": 74.20612500000016,
+          "nodeCpuMs": 121.239,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134795240,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 10600448
+        },
+        {
+          "phase": "warm",
+          "repetition": 4,
+          "calls": 10,
+          "elapsedMs": 66.960916,
+          "nodeCpuMs": 129.261,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 134628568,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 9617408
+        }
+      ],
+      "coldSamples": [
+        {
+          "phase": "cold",
+          "repetition": 0,
+          "calls": 1,
+          "elapsedMs": 314.8950420000001,
+          "nodeCpuMs": 187.759,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 57542376,
+          "arrayBufferAfterAwaitDelta": 446301,
+          "rssAfterAwaitDelta": 12419072
+        },
+        {
+          "phase": "cold",
+          "repetition": 0,
+          "calls": 1,
+          "elapsedMs": 257.9599579999999,
+          "nodeCpuMs": 200.456,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 57310936,
+          "arrayBufferAfterAwaitDelta": 1390285,
+          "rssAfterAwaitDelta": 12091392
+        }
+      ],
+      "median": {
+        "elapsedMs": 66.27647900000011,
+        "nodeCpuMs": 125.25,
+        "heapAfterAwaitDelta": 134707672,
+        "arrayBufferAfterAwaitDelta": 0,
+        "rssAfterAwaitDelta": 10264576
+      }
+    },
+    "after": {
+      "fixture": {
+        "branches": 32,
+        "localDepth": 30000,
+        "oldDepth": 1000,
+        "loadedCommits": 300,
+        "mapEntries": 30033
+      },
+      "warmSamples": [
+        {
+          "phase": "warm",
+          "repetition": 0,
+          "calls": 10,
+          "elapsedMs": 2.616459000000077,
+          "nodeCpuMs": 7.562,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1347768,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 1,
+          "calls": 10,
+          "elapsedMs": 1.7411669999999049,
+          "nodeCpuMs": 4.91,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1340152,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 2,
+          "calls": 10,
+          "elapsedMs": 0.7327080000000024,
+          "nodeCpuMs": 2.419,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1225584,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 16384
+        },
+        {
+          "phase": "warm",
+          "repetition": 3,
+          "calls": 10,
+          "elapsedMs": 0.6945000000000618,
+          "nodeCpuMs": 2.187,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1217568,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 4,
+          "calls": 10,
+          "elapsedMs": 0.6293339999999716,
+          "nodeCpuMs": 1.023,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1216176,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 0,
+          "calls": 10,
+          "elapsedMs": 3.0387920000000577,
+          "nodeCpuMs": 10.262,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1347768,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 1,
+          "calls": 10,
+          "elapsedMs": 2.0723749999999654,
+          "nodeCpuMs": 6.791,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1340152,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 2,
+          "calls": 10,
+          "elapsedMs": 0.7965410000001611,
+          "nodeCpuMs": 2.526,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1225584,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 3,
+          "calls": 10,
+          "elapsedMs": 0.7088750000000346,
+          "nodeCpuMs": 2.724,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1217568,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        },
+        {
+          "phase": "warm",
+          "repetition": 4,
+          "calls": 10,
+          "elapsedMs": 0.5487499999999272,
+          "nodeCpuMs": 2.023,
+          "gitCalls": 0,
+          "heapAfterAwaitDelta": 1216176,
+          "arrayBufferAfterAwaitDelta": 0,
+          "rssAfterAwaitDelta": 0
+        }
+      ],
+      "coldSamples": [
+        {
+          "phase": "cold",
+          "repetition": 0,
+          "calls": 1,
+          "elapsedMs": 257.0508749999999,
+          "nodeCpuMs": 166.759,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 36781360,
+          "arrayBufferAfterAwaitDelta": 1073847,
+          "rssAfterAwaitDelta": 8224768
+        },
+        {
+          "phase": "cold",
+          "repetition": 0,
+          "calls": 1,
+          "elapsedMs": 262.9146250000001,
+          "nodeCpuMs": 173.866,
+          "gitCalls": 2,
+          "heapAfterAwaitDelta": 35190432,
+          "arrayBufferAfterAwaitDelta": 633917,
+          "rssAfterAwaitDelta": 9109504
+        }
+      ],
+      "median": {
+        "elapsedMs": 0.7646245000000818,
+        "nodeCpuMs": 2.625,
+        "heapAfterAwaitDelta": 1225584,
+        "arrayBufferAfterAwaitDelta": 0,
+        "rssAfterAwaitDelta": 0
+      }
+    }
+  },
+  "resources": {
+    "before": {
+      "cases": 18,
+      "operations": [
+        "initial",
+        "push",
+        "push-tracked",
+        "pull",
+        "pull-new-history",
+        "pull-known-history",
+        "fetch",
+        "fetch-new-history",
+        "fetch-known-history",
+        "fetch-no-change",
+        "rebase",
+        "merge",
+        "merge-no-ff",
+        "pr-squash-cherry-pick",
+        "pr-cherry-pick",
+        "cherry-pick",
+        "checkout",
+        "checkout-unloaded"
+      ],
+      "cpuMs": 36083.22900000001,
+      "sampledPeakRssBytes": 695648256,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    },
+    "after": {
+      "cases": 18,
+      "operations": [
+        "initial",
+        "push",
+        "push-tracked",
+        "pull",
+        "pull-new-history",
+        "pull-known-history",
+        "fetch",
+        "fetch-new-history",
+        "fetch-known-history",
+        "fetch-no-change",
+        "rebase",
+        "merge",
+        "merge-no-ff",
+        "pr-squash-cherry-pick",
+        "pr-cherry-pick",
+        "cherry-pick",
+        "checkout",
+        "checkout-unloaded"
+      ],
+      "cpuMs": 43214.67600000001,
+      "sampledPeakRssBytes": 638451712,
+      "scope": "Actual benchmark Node and currently visible descendants only; includes fixture setup, capture and verification plus any owned Git/browser descendants. Build/archive and observer/ps excluded.",
+      "rssScope": "Sum of simultaneous ps RSS samples (shared pages may count repeatedly); 50ms plus ps runtime, short children/peaks may be missed."
+    }
+  },
+  "buttons": {
+    "before": [
+      {
+        "operation": "pr-squash-cherry-pick",
+        "fixture": {
+          "files": 30311,
+          "commits": 72720,
+          "branches": 164
+        },
+        "nativeStateExact": true,
+        "handlerMs": 5293,
+        "clickToFinalFrameMs": 9094
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "fixture": {
+          "files": 30311,
+          "commits": 72720,
+          "branches": 164
+        },
+        "nativeStateExact": true,
+        "handlerMs": 3604,
+        "clickToFinalFrameMs": 5645
+      }
+    ],
+    "after": [
+      {
+        "operation": "pr-squash-cherry-pick",
+        "fixture": {
+          "files": 30311,
+          "commits": 72720,
+          "branches": 164
+        },
+        "nativeStateExact": true,
+        "handlerMs": 3613,
+        "clickToFinalFrameMs": 7847
+      },
+      {
+        "operation": "pr-cherry-pick",
+        "fixture": {
+          "files": 30311,
+          "commits": 72720,
+          "branches": 164
+        },
+        "nativeStateExact": true,
+        "handlerMs": 4624,
+        "clickToFinalFrameMs": 5661
+      }
+    ]
+  },
+  "limitations": [
+    "Component figures cover ten cached attachLocalOnlyBranches calls per sample, 300displayed commits from30033entries; not complete Git operation or UI latency.",
+    "B/A/A/B,10warm samples per source. Fixture/oracle/post-checks and pre-sample GC excluded from phase time/Node CPU. Memory is after-await delta, not peak or exact retained memory.",
+    "Eighteen-scenario resource comparison is one pair. Whole CPU increased and sampled RSS decreased; no general resource gain or overall latency improvement is established. All slower raw cases are retained.",
+    "Actual PR button validation is one case per source/mode using30311files/72720commits/164branches. PR list metadata and VS Code transport/pickers are fixtures; not actual GitHub timing.",
+    "Backend-only data ownership change; UI code is unchanged. Production HTML/CSP/JS is functionally checked without claiming new visual design QA.",
+    "No Marketplace status checks, OS focus changes, foreground Extension Development Host or forced reload.",
+    "Existing eslint dependency is absent; lint remains unavailable."
+  ],
+  "sourceSha256": {
+    "package.json": "bddbec87c344b3dcc1d00429f8d6f52d8d4ff92104fb3581fec0165aa256f8cc",
+    "package-lock.json": "ec5d06f628f184b4a982f7a8592747058f540b606a7c3c1b3e1b5f3ab88ff080",
+    "src/git/gitLocalOnlyBranches.ts": "ab855d3706e95e21af5656c8d4ecc7a649d12165b65878dc38a63e340517dbfc",
+    "src/git/gitLogService.ts": "c3980adadb04ef480d289f817e80bbbde4af6437cfb6ba182991c6cda576e525",
+    "test/localOnlyMapOwnership.test.ts": "7f59a7e9bdb510af585c00fd1602a6eed01961442a8fdd9ad1af97301d8b83ff",
+    "test/benchmarks/localOnlyDisplay.ts": "e8d4f04d328e5d47836677f49621b31dd7a722bbe743fb943896a1f129a06a98",
+    "test/benchmarks/gitOperationMatrix.ts": "f09ace418b1ee16a3a5f782ce608b50be125e04f89a1a057e12248ee68c8ba16",
+    "test/benchmarks/graphButtonFlow.ts": "4e398d37acd723ff5ae8e3a1ec172f847a3a2155de8f98b0bc242ce3691dc290",
+    "test/helpers/graphButtonDiagnostics.ts": "f010c62f1d02de99e992515d2ea5b6f8d39e2d2476d21a03ae5849adcdb29b30"
+  },
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-goal42-local-only-node.log",
+      "sha256": "ada2461448976d3bc3d1a7aee9e8c10803d67c8ba9aa638049054ddc1cf26def"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-types.log",
+      "sha256": "a56e762f6b761b5bb04a090d8238a004b9ca4ea654893064f4b3bfb62a5d46d1"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-before-ownership.log",
+      "sha256": "c3dd6ef3a82d60f94a01f8fe7083f3a012afefe6c8b3ac20f756f67f3c0ebdae"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-driver-state.json",
+      "sha256": "ec1df09930cc49293fb01b03a7393f70071d50e5ad0301b8c7fe63f99deae7db"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-driver.log",
+      "sha256": "a4fda6b3a9cf4d4082313695f180e0b9468515b1741ccc224e47b79eb8c46887"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-verification-state.json",
+      "sha256": "4933eb033f6068fda47578bd9549b8bf5f7fb82ad2cf66befa0ffbf53e2dc213"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-verification-driver.log",
+      "sha256": "53df24c53c4276bb249454a62065f16db6e5952163786e3e7aaf643f22568efd"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-1-before.json",
+      "sha256": "19a6bff69b4d5d4c0d00d845c33029d36c4b93cafa935d3fa822c285472856d6"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-1-before.log",
+      "sha256": "6f4a2a225889be1a7b00060e6397e7ae7413188189fbbdfcdf1facc538933b06"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-2-after.json",
+      "sha256": "a47414d42c3f593ddbc7ed5ab9e48dc1fb43e4453160a6c7339957881eca856d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-2-after.log",
+      "sha256": "fa6198962ca202410dcb588cb201288195ae3d63f39dd1d1b762f6048da4fcca"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-3-after.json",
+      "sha256": "37167defeab6e28f0413760f12aad48c250b2c636b5c0e322f93ea6c1d7f04e1"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-3-after.log",
+      "sha256": "3219ab8d023a6cee9fc483685141f4996ee76e0d1c860a9acfe43879f1cd8dfb"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-4-before.json",
+      "sha256": "0f2ee362bcc76252200cf8ea8071b17bbf1c0e0af58fbfdc78579e91118a4402"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-display-4-before.log",
+      "sha256": "262a51366532a8d1b326e72a92871f9b2b77ad51219a9ba2d106b162a6d55c4f"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-before.json",
+      "sha256": "9ca6c0b7786782288a465930cd864d1651f46a1a4c89ba91e5945113a383dc78"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-before.log",
+      "sha256": "199fd60e1439f665da78fc35dee89daf6d4151d6a45576676d30364f93dab304"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-before.json.resources.json",
+      "sha256": "d66e35dd0fc02f89cd73242f09420576f276f3bf7417acdb25d0248c522dc77c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-after.json",
+      "sha256": "c0ba4027a0f4f85ac0fe5f17efd009ac2795a718e288ee09644d442e37657e1d"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-after.log",
+      "sha256": "fc4019db11686750c1210dd1d2b750e985234f95f1e59069c34c007247c3fb68"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-matrix-after.json.resources.json",
+      "sha256": "783dbbe9e7779746f07e0a2517912184eae404df85942adfbf6988e5914c2140"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-buttons-before.json",
+      "sha256": "1cb282649e2647fa0a396e72c21ae388d3d48d93581d0ca6d2dc34ff9229ca9c"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-buttons-before.log",
+      "sha256": "a1549ae668ca54d6fd58977c0051eb7367c6c8cad01d3c972bc14c7f1cf36c37"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-buttons-after.json",
+      "sha256": "3855aa73b6ecab69bcfb740ea7b65998c4f788a5e9e7b0a1b3c7444fbf81b7e7"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-buttons-after.log",
+      "sha256": "c39329e9d50b736b6f5c1b129659a140abf038ea0ba571ec1a60bee6be695200"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-native.log",
+      "sha256": "2ec1a203d7b0c0fbd9b6666139cce522341f84241e32f1caf2a450d58492ebe2"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-browser.log",
+      "sha256": "dbd43f342ca7656c4aab64362b6cb5b85bd334af5bb5de613f159d8aafb4ac47"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-check.cjs",
+      "sha256": "e52d2054b356be20527c64459ff373a8a6c6b6b25c6325c948d3e687e0b0c448"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-390.png",
+      "sha256": "d08bde205b5446c3e12cf29a494a3a52b367b26c683eab4a370c8217e8db6c8a"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-768.png",
+      "sha256": "9ced4b5752c63b0bbb7ee4c338c1b5a3a0fa5a5033d0175723900098c60bcb38"
+    },
+    {
+      "path": "/private/tmp/gsc-goal42-pr-jump-1440.png",
+      "sha256": "0891fb4760b9a39f3997c1e5d2fbc143ee01cf0f22d6e18729232eb8ec4c163d"
+    }
+  ]
+}

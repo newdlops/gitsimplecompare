@@ -423,7 +423,7 @@ export class GitLogService {
     if (!commits.length) {
       return 0;
     }
-    const byHash = await this.localOnlyBranchCache.getMap().catch(() => new Map<string, string[]>());
+    const byHash = await this.localOnlyBranchCache.getReadOnlyMap().catch(() => new Map<string, string[]>());
     return applyLocalOnlyMarkers(commits, byHash);
   }
 

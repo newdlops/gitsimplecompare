@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.72142] - 2026-10-22
+
+### Performance
+
+- Apply local-only branch metadata to loaded Graph commits through a readonly
+  cache view, avoiding full-result copies for a small displayed page.
+- Adopt uniquely owned calculation results in the cache. Keep defensive Map
+  and array copies for mutable callers, using a single-pass clone.
+- Preserve snapshot revalidation, shared reads, cancellation, error reporting
+  and separate display arrays. Track both old and new read paths in performance
+  harnesses so metadata failures remain verification failures.
+
 ## [0.1.72141] - 2026-10-21
 
 ### Performance

@@ -108,7 +108,7 @@ export function traceLocalOnlySnapshot(t: Pick<TestContext, "mock">, cache: any)
     verified: !!cache.reuse?.completed, candidate: !!cache.reuse?.candidate,
     sameHistory: cache.reuse?.candidate?.history === cache.reuse?.history,
     sameKey: cache.reuse?.candidate?.key === cache.snapshotKey });
-  for (const name of ["beginSnapshot","setLocalBranches","setRemoteTips","setRemoteUnavailable","invalidate","cancel","getMap","peek"]) {
+  for (const name of ["beginSnapshot","setLocalBranches","setRemoteTips","setRemoteUnavailable","invalidate","cancel","getMap","getReadOnlyMap","peek"]) {
     if (typeof cache[name] !== "function") continue;
     const original = cache[name].bind(cache);
     t.mock.method(cache,name,(...args:any[]) => {

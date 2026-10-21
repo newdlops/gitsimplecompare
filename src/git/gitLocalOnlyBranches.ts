@@ -342,15 +342,24 @@ export class GitLocalOnlyBranchCache {
    * - 완료 결과와 진행 promise를 공유하며 반환 Map은 caller가 변경해도 캐시가 오염되지 않는다.
    */
   async getMap(): Promise<Map<string, string[]>> {
+    return cloneMap(await this.getReadOnlyMap());
+  }
+
+  /**
+   * 표시할 일부 commit만 조회하는 내부 소비자에게 검증된 결과를 복사 없이 제공한다.
+   * @returns 현재 snapshot의 읽기 전용 Map. 호출자는 Map/배열을 수정하지 않고 표시 배열만 별도로 복사한다.
+   * - getMap과 같은 수명·singleflight·오류 정책을 사용하며 mutable 공개 결과의 방어 복사는 유지한다.
+   */
+  async getReadOnlyMap(): Promise<ReadonlyMap<string, readonly string[]>> {
     if (!this.remoteReady) return new Map();
     this.restoreValidatedSnapshot();
     if (this.completed) {
       logInfo("graph local-only cache hit", { repoRoot: this.repoRoot, entries: this.completed.size });
-      return cloneMap(this.completed);
+      return this.completed;
     }
     if (this.pending) {
       logInfo("graph local-only cache coalesce", { repoRoot: this.repoRoot });
-      return cloneMap(await this.pending.promise);
+      return this.pending.promise;
     }
     const generation = this.generation;
     const controller = new AbortController();
@@ -368,7 +377,8 @@ export class GitLocalOnlyBranchCache {
       this.runner
     ).then((result) => {
       if (generation === this.generation) {
-        this.completed = cloneMap(result);
+        // loader가 이 호출 안에서 새로 만든 결과다. 외부 mutable 소비자는 getMap에서만 복사한다.
+        this.completed = result;
         this.reuse.complete(this.snapshotKey, this.completed);
       }
       logInfo("graph local-only cache complete", {
@@ -385,7 +395,7 @@ export class GitLocalOnlyBranchCache {
     });
     this.pending = { controller, promise };
     try {
-      return cloneMap(await promise);
+      return await promise;
     } finally {
       if (this.pending?.promise === promise) this.pending = undefined;
     }
@@ -529,5 +539,7 @@ function branchSnapshotKey(
 
 /** 완료 map의 배열까지 복사해 cache와 commit decoration 호출자의 변경을 격리한다. */
 function cloneMap(source: ReadonlyMap<string, readonly string[]>): Map<string, string[]> {
-  return new Map([...source].map(([hash, branches]) => [hash, [...branches]]));
+  const copy = new Map<string, string[]>();
+  for (const [hash, branches] of source) copy.set(hash, [...branches]);
+  return copy;
 }

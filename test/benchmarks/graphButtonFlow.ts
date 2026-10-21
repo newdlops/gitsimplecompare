@@ -109,9 +109,10 @@ async function measure(directory: string, operation: Operation) {
   const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" ? createGraphButtonDiagnostics({ mock } as any) : undefined;
   const markerFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
   const localOnlyDiagnostics = process.env.GSC_BENCH_LOCAL_ONLY_DIAGNOSTICS === "1" ? traceLocalOnlySnapshot({ mock } as any, cache) : undefined;
-  const getMarkers = cache.getMap.bind(cache);
+  const markerRead = typeof cache.getReadOnlyMap === "function" ? "getReadOnlyMap" : "getMap";
+  const getMarkers = cache[markerRead].bind(cache);
   let pendingMarkers = 0;
-  mock.method(cache, "getMap", async () => {
+  mock.method(cache, markerRead, async () => {
     pendingMarkers++;
     try { return await getMarkers(); } catch (error) {
       markerFailures.push(error instanceof Error ? error.message : String(error)); throw error;

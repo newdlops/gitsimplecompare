@@ -2,7 +2,7 @@
   "name": "gitsimplecompare",
   "displayName": "Git Simple Compare & Graph",
   "description": "%ext.description%",
-  "version": "0.1.72141",
+  "version": "0.1.72142",
   "publisher": "newdlops",
   "license": "MIT",
   "repository": {
