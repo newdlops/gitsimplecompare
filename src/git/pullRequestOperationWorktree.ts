@@ -2,6 +2,7 @@
 // - dirty working tree를 직접 stash하지 않고 격리된 checkout에서 cherry-pick/revert/rebase를 수행한다.
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
 import { runGit } from "./gitExec";
+import { commitPreparedIndex } from "./preparedIndexCommit";
 import {
   squashBody,
   squashRevertBody,
@@ -100,7 +101,7 @@ export class PullRequestOperationWorktree {
       if (!tree && !await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      await this.commitSquash(pr, worktreePath);
+      await this.commitSquash(pr, worktreePath, !tree);
       keepWorktree = true;
       const afterHead = await this.state.currentHeadIn(worktreePath);
       await this.assertComputedTree(worktreePath, afterHead, tree);
@@ -176,7 +177,7 @@ export class PullRequestOperationWorktree {
       if (!tree && !await this.state.hasPendingChangesIn(worktreePath)) {
         throw new Error(`PR #${pr.number} did not produce changes to commit.`);
       }
-      await this.commitSquashRevert(pr, worktreePath);
+      await this.commitSquashRevert(pr, worktreePath, !tree);
       keepWorktree = true;
       const afterHead = await this.state.currentHeadIn(worktreePath);
       await this.assertComputedTree(worktreePath, afterHead, tree);
@@ -278,13 +279,10 @@ export class PullRequestOperationWorktree {
    * 자동 작업이므로 pre-commit hook과 편집기를 실행하지 않는다.
    * @param pr commit 제목·본문 원본
    * @param cwd commit할 저장소/worktree
+   * @param checkout false면 계산한 tree만 index에 설치한 임시 worktree로, 최종 refresh만 실행한다.
    */
-  async commitSquash(pr: PullRequestInfo, cwd: string): Promise<void> {
-    await runGit(
-      ["commit", "--no-verify", "-m", squashTitle(pr), "-m", squashBody(pr)],
-      cwd,
-      { env: { GIT_EDITOR: "true", HUSKY: "0" } }
-    );
+  async commitSquash(pr: PullRequestInfo, cwd: string, checkout = true): Promise<void> {
+    await commitPreparedIndex(cwd, { title: squashTitle(pr), body: squashBody(pr), checkout });
   }
 
   /**
@@ -292,20 +290,10 @@ export class PullRequestOperationWorktree {
    * 자동 작업이므로 pre-commit hook과 편집기를 실행하지 않는다.
    * @param pr commit 제목·본문 원본
    * @param cwd commit할 저장소/worktree
+   * @param checkout false면 checkout 없는 격리 index에서 중복 preload를 생략한다.
    */
-  async commitSquashRevert(pr: PullRequestInfo, cwd: string): Promise<void> {
-    await runGit(
-      [
-        "commit",
-        "--no-verify",
-        "-m",
-        squashRevertTitle(pr),
-        "-m",
-        squashRevertBody(pr),
-      ],
-      cwd,
-      { env: { GIT_EDITOR: "true", HUSKY: "0" } }
-    );
+  async commitSquashRevert(pr: PullRequestInfo, cwd: string, checkout = true): Promise<void> {
+    await commitPreparedIndex(cwd, { title: squashRevertTitle(pr), body: squashRevertBody(pr), checkout });
   }
 
   /**

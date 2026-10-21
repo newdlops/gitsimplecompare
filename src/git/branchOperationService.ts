@@ -16,6 +16,7 @@ import {
   runBranchRebaseMerge,
 } from "./branchRebaseMerge";
 import { GitError, runGit } from "./gitExec";
+import { commitPreparedIndex } from "./preparedIndexCommit";
 import { assertCurrentBranchHead, assertTargetDescendsFrom } from "./refSafety";
 import { pushPreservedLocalChangesStash } from "./stashExec";
 import { listUnmergedFiles } from "./unmergedFiles";
@@ -365,18 +366,8 @@ export class BranchOperationService {
 
   /** squash merge commit 을 만든다. 자동 작업이므로 pre-commit hook 은 실행하지 않는다. */
   private async commitSquash(sourceBranch: string, destinationBranch: string, cwd: string): Promise<void> {
-    await runGit(
-      [
-        "commit",
-        "--no-verify",
-        "-m",
-        `Squash merge '${sourceBranch}'`,
-        "-m",
-        `Squash-merged branch '${sourceBranch}' into '${destinationBranch}'.`,
-      ],
-      cwd,
-      { env: { GIT_EDITOR: "true", HUSKY: "0" } }
-    );
+    await commitPreparedIndex(cwd, { title: `Squash merge '${sourceBranch}'`,
+      body: `Squash-merged branch '${sourceBranch}' into '${destinationBranch}'.` });
   }
 
   /**

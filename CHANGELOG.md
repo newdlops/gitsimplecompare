@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.72147] - 2026-10-22
+
+### Performance
+
+- Avoid unused success diffstat and rename summaries for prepared PR squash,
+  revert, recovery and branch squash commits. Keep absent partial-clone blobs
+  from being downloaded just to print a discarded summary.
+- Disable parallel index preload only in known temporary worktrees without
+  checked-out files. Keep Native refresh, message/post-commit hooks, signing,
+  result-tree checks and branch/index recovery guards.
+- Share the prepared-index commit path and log its completion in Git Simple
+  Compare Output. Preserve the regular preload policy for full checkouts.
+
 ## [0.1.72146] - 2026-10-22
 
 ### Fixes

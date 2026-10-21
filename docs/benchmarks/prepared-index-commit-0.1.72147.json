@@ -1,0 +1,512 @@
+{
+  "version": "0.1.72147",
+  "baseCommit": "36c2da573a69dd3bdac1bb8ae2f8ca375e6fe13b",
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "sourceFiles": {
+    "src/git/branchOperationService.ts": "a5c026fb2d7c01860fbfd35ede389dae8ebcc542d7f692608ca306df44998103",
+    "src/git/preparedIndexCommit.ts": "5e6013f3465fa4765e66985f509fa4caad25b6873ddd3902aa08e41b859fe069",
+    "src/git/pullRequestOperationWorktree.ts": "539909e28f30b210d76c2061b519bd205b86a4c3db8728ee279f80e0328dcef7",
+    "src/git/pullRequestWorktreeRecovery.ts": "0423424d50e936d73eb33c1979fda49f93f280ba438e5c5b730799f7e02b4ea4",
+    "test/isolatedSquashCommit.test.ts": "648fa699f2749d16137c7565dd39414dfc37e409239c7904627f1ab2887c431c",
+    "test/preparedIndexCommit.test.ts": "286c3b1e20fae1b834110dd80784c728ca57152fed39729d14dc8cd9f0ebe736"
+  },
+  "nodeTestsPassed": 104,
+  "nativeProductionDomChecks": 35,
+  "changes": [
+    "Quiet prepared-index commits for PR squash/revert, recovery and branch squash.",
+    "Disable parallel preload only for known no-checkout temporary worktrees; retain Native refresh, hooks, signing and caller result/branch/index guards."
+  ],
+  "nativeTraceDiagnosticOnly": {
+    "before": {
+      "nativeCommitMs": 244.11,
+      "checks": [
+        {
+          "kind": "preload",
+          "lstat": 30314
+        },
+        {
+          "kind": "preload",
+          "lstat": 30314
+        },
+        {
+          "kind": "refresh",
+          "lstat": 30314
+        }
+      ],
+      "totalLstat": 90942
+    },
+    "after": {
+      "nativeCommitMs": 91.852,
+      "checks": [
+        {
+          "kind": "refresh",
+          "lstat": 30314
+        }
+      ],
+      "totalLstat": 30314
+    }
+  },
+  "partialCloneRegression": {
+    "modes": [
+      "squash",
+      "squashRevert"
+    ],
+    "beforeEach": "One unwanted child fetch, failing both regressions.",
+    "afterEach": {
+      "childFetches": 0,
+      "originalMissingBlobsStillMissing": 4,
+      "packsUnchanged": true,
+      "configUnchanged": true,
+      "nativeRefreshLstatPresent": true
+    }
+  },
+  "comparison": {
+    "pr-squash-cherry-pick": {
+      "large-latency": {
+        "before": {
+          "handlerMs": 774.5,
+          "clickToFinalFrameMs": 1169.0,
+          "clickToSettledMs": 1320.0,
+          "processes": 32.0,
+          "nativeCommitMs": 304.5
+        },
+        "after": {
+          "handlerMs": 640.5,
+          "clickToFinalFrameMs": 1179.5,
+          "clickToSettledMs": 1330.0,
+          "processes": 32.0,
+          "nativeCommitMs": 73.5
+        }
+      },
+      "large-resources": {
+        "before": {
+          "handlerMs": 828.0,
+          "clickToFinalFrameMs": 1417.5,
+          "clickToSettledMs": 1576.0,
+          "processes": 32.0,
+          "nativeCommitMs": 276.5,
+          "cpu": {
+            "nodeCpuMs": 452.504,
+            "childCpuMs": 3255.94,
+            "browserCpuMs": 295.554,
+            "ownedCpuMs": 4003.999
+          }
+        },
+        "after": {
+          "handlerMs": 438.0,
+          "clickToFinalFrameMs": 837.0,
+          "clickToSettledMs": 1003.0,
+          "processes": 32.0,
+          "nativeCommitMs": 48.5,
+          "cpu": {
+            "nodeCpuMs": 376.501,
+            "childCpuMs": 963.22,
+            "browserCpuMs": 212.355,
+            "ownedCpuMs": 1552.076
+          }
+        }
+      }
+    },
+    "pr-cherry-pick": {
+      "large-latency": {
+        "before": {
+          "handlerMs": 1589.5,
+          "clickToFinalFrameMs": 1990.0,
+          "clickToSettledMs": 2153.5,
+          "processes": 30.0
+        },
+        "after": {
+          "handlerMs": 1404.0,
+          "clickToFinalFrameMs": 1806.5,
+          "clickToSettledMs": 1955.0,
+          "processes": 30.0
+        }
+      },
+      "large-resources": {
+        "before": {
+          "handlerMs": 1310.5,
+          "clickToFinalFrameMs": 1677.0,
+          "clickToSettledMs": 1838.0,
+          "processes": 30.0,
+          "cpu": {
+            "nodeCpuMs": 349.992,
+            "childCpuMs": 2820.145,
+            "browserCpuMs": 250.009,
+            "ownedCpuMs": 3420.146
+          }
+        },
+        "after": {
+          "handlerMs": 1336.5,
+          "clickToFinalFrameMs": 1723.5,
+          "clickToSettledMs": 1878.0,
+          "processes": 30.0,
+          "cpu": {
+            "nodeCpuMs": 286.761,
+            "childCpuMs": 2967.161,
+            "browserCpuMs": 261.951,
+            "ownedCpuMs": 3515.873
+          }
+        }
+      }
+    }
+  },
+  "samples": {
+    "large-latency": {
+      "before": [
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 673,
+          "clickToFinalFrameMs": 1023,
+          "clickToSettledMs": 1169,
+          "processes": 32,
+          "nativeCommitMs": [
+            273
+          ]
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1130,
+          "clickToFinalFrameMs": 1536,
+          "clickToSettledMs": 1699,
+          "processes": 30,
+          "nativeCommitMs": []
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 876,
+          "clickToFinalFrameMs": 1315,
+          "clickToSettledMs": 1471,
+          "processes": 32,
+          "nativeCommitMs": [
+            336
+          ]
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 2049,
+          "clickToFinalFrameMs": 2444,
+          "clickToSettledMs": 2608,
+          "processes": 30,
+          "nativeCommitMs": []
+        }
+      ],
+      "after": [
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 572,
+          "clickToFinalFrameMs": 1092,
+          "clickToSettledMs": 1248,
+          "processes": 32,
+          "nativeCommitMs": [
+            61
+          ]
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1221,
+          "clickToFinalFrameMs": 1552,
+          "clickToSettledMs": 1703,
+          "processes": 30,
+          "nativeCommitMs": []
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 709,
+          "clickToFinalFrameMs": 1267,
+          "clickToSettledMs": 1412,
+          "processes": 32,
+          "nativeCommitMs": [
+            86
+          ]
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1587,
+          "clickToFinalFrameMs": 2061,
+          "clickToSettledMs": 2207,
+          "processes": 30,
+          "nativeCommitMs": []
+        }
+      ]
+    },
+    "large-resources": {
+      "before": [
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 882,
+          "clickToFinalFrameMs": 1663,
+          "clickToSettledMs": 1815,
+          "processes": 32,
+          "nativeCommitMs": [
+            246
+          ],
+          "cpu": {
+            "nodeCpuMs": 529.864,
+            "childCpuMs": 2593.916,
+            "browserCpuMs": 378.246,
+            "ownedCpuMs": 3502.0260000000003
+          }
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1483,
+          "clickToFinalFrameMs": 1877,
+          "clickToSettledMs": 2049,
+          "processes": 30,
+          "nativeCommitMs": [],
+          "cpu": {
+            "nodeCpuMs": 428.536,
+            "childCpuMs": 2922.1489999999976,
+            "browserCpuMs": 235.97100000000003,
+            "ownedCpuMs": 3586.6559999999977
+          }
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 774,
+          "clickToFinalFrameMs": 1172,
+          "clickToSettledMs": 1337,
+          "processes": 32,
+          "nativeCommitMs": [
+            307
+          ],
+          "cpu": {
+            "nodeCpuMs": 375.144,
+            "childCpuMs": 3917.964000000001,
+            "browserCpuMs": 212.863,
+            "ownedCpuMs": 4505.971000000001
+          }
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1138,
+          "clickToFinalFrameMs": 1477,
+          "clickToSettledMs": 1627,
+          "processes": 30,
+          "nativeCommitMs": [],
+          "cpu": {
+            "nodeCpuMs": 271.448,
+            "childCpuMs": 2718.1409999999987,
+            "browserCpuMs": 264.04699999999997,
+            "ownedCpuMs": 3253.6359999999986
+          }
+        }
+      ],
+      "after": [
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 514,
+          "clickToFinalFrameMs": 978,
+          "clickToSettledMs": 1151,
+          "processes": 32,
+          "nativeCommitMs": [
+            53
+          ],
+          "cpu": {
+            "nodeCpuMs": 446.778,
+            "childCpuMs": 1118.498,
+            "browserCpuMs": 263.43000000000006,
+            "ownedCpuMs": 1828.7060000000001
+          }
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1324,
+          "clickToFinalFrameMs": 1748,
+          "clickToSettledMs": 1907,
+          "processes": 30,
+          "nativeCommitMs": [],
+          "cpu": {
+            "nodeCpuMs": 311.498,
+            "childCpuMs": 2877.669999999999,
+            "browserCpuMs": 304.135,
+            "ownedCpuMs": 3493.302999999999
+          }
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 362,
+          "clickToFinalFrameMs": 696,
+          "clickToSettledMs": 855,
+          "processes": 32,
+          "nativeCommitMs": [
+            44
+          ],
+          "cpu": {
+            "nodeCpuMs": 306.224,
+            "childCpuMs": 807.9429999999986,
+            "browserCpuMs": 161.28,
+            "ownedCpuMs": 1275.4469999999985
+          }
+        },
+        {
+          "operation": "pr-cherry-pick",
+          "handlerMs": 1349,
+          "clickToFinalFrameMs": 1699,
+          "clickToSettledMs": 1849,
+          "processes": 30,
+          "nativeCommitMs": [],
+          "cpu": {
+            "nodeCpuMs": 262.025,
+            "childCpuMs": 3056.651999999999,
+            "browserCpuMs": 219.76699999999997,
+            "ownedCpuMs": 3538.443999999999
+          }
+        }
+      ]
+    }
+  },
+  "matrix": [
+    {
+      "operation": "initial",
+      "operationMs": 0,
+      "processes": 11,
+      "historyExact": true
+    },
+    {
+      "operation": "push",
+      "operationMs": 235,
+      "processes": 25,
+      "historyExact": true
+    },
+    {
+      "operation": "push-tracked",
+      "operationMs": 177,
+      "processes": 20,
+      "historyExact": true
+    },
+    {
+      "operation": "pull",
+      "operationMs": 115,
+      "processes": 12,
+      "historyExact": true
+    },
+    {
+      "operation": "pull-new-history",
+      "operationMs": 150,
+      "processes": 12,
+      "historyExact": true
+    },
+    {
+      "operation": "pull-known-history",
+      "operationMs": 169,
+      "processes": 9,
+      "historyExact": true
+    },
+    {
+      "operation": "fetch",
+      "operationMs": 103,
+      "processes": 6,
+      "historyExact": true
+    },
+    {
+      "operation": "fetch-new-history",
+      "operationMs": 129,
+      "processes": 9,
+      "historyExact": true
+    },
+    {
+      "operation": "fetch-known-history",
+      "operationMs": 82,
+      "processes": 6,
+      "historyExact": true
+    },
+    {
+      "operation": "fetch-no-change",
+      "operationMs": 64,
+      "processes": 4,
+      "historyExact": true
+    },
+    {
+      "operation": "rebase",
+      "operationMs": 182,
+      "processes": 23,
+      "historyExact": true
+    },
+    {
+      "operation": "merge",
+      "operationMs": 139,
+      "processes": 21,
+      "historyExact": true
+    },
+    {
+      "operation": "merge-no-ff",
+      "operationMs": 41,
+      "processes": 9,
+      "historyExact": true
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "operationMs": 187,
+      "processes": 31,
+      "historyExact": true
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "operationMs": 172,
+      "processes": 28,
+      "historyExact": true
+    },
+    {
+      "operation": "cherry-pick",
+      "operationMs": 25,
+      "processes": 9,
+      "historyExact": true
+    },
+    {
+      "operation": "checkout",
+      "operationMs": 37,
+      "processes": 6,
+      "historyExact": true
+    },
+    {
+      "operation": "checkout-unloaded",
+      "operationMs": 39,
+      "processes": 9,
+      "historyExact": true
+    }
+  ],
+  "limits": [
+    "Two samples/source/operation/mode. Native lstat reduction is deterministic for this fixture; wall-time and aggregate CPU samples remain variable.",
+    "CPU counters are separate from uninstrumented time; Node includes Playwright transport, children are terminated/waited native work and Chromium deltas require complete stable PIDs.",
+    "Node heap/RSS deltas do not prove retained, aggregate or peak memory reduction. No universal all-operation speed claim.",
+    "Native TRACE2 is diagnostic, including its own observer overhead. It is not uninstrumented comparison evidence.",
+    "Partial-clone verification requires Native Git2.45 or newer; the current run skipped no cases.",
+    "No product UI source change, foreground Host, OS focus switch, forced reload, external GitHub timing or separate Marketplace status check. Captain is read-only."
+  ],
+  "evidenceFiles": {
+    "/private/tmp/gsc-goal47-1-trace-after-after.json": "68d81a46f3b2fddf81591755c1cff6f10b1133a807b568ebfbd440dfc6fa1e7d",
+    "/private/tmp/gsc-goal47-1-trace-after-after.log": "68055f7cb027b2e5f60428b901fffcb86b9b97b779f5d9b58062243243899d12",
+    "/private/tmp/gsc-goal47-10-matrix-after.json": "a7d73ff29a8aa51b4ed8f45509d973d5fecd4308339952333b05d905e558bc36",
+    "/private/tmp/gsc-goal47-10-matrix-after.log": "8a6659dc061a90bc34684525d89a5541d78604da86d465d6c47955068cc69f48",
+    "/private/tmp/gsc-goal47-2-large-latency-before.json": "081a7ee6a8f07c6ff025a68750984815c92a4711b76cf049e1b3ad8846716691",
+    "/private/tmp/gsc-goal47-2-large-latency-before.log": "fbf00cd26797f8f15bd10c320a614e6b84087c999345956e437b8a0ec8bfe538",
+    "/private/tmp/gsc-goal47-3-large-latency-after.json": "2d0a32db3cb25f8745fffc1564971595f682045432cfeb2352bb073578067879",
+    "/private/tmp/gsc-goal47-3-large-latency-after.log": "3d5774cbec0fecc0fcf2dad45da74d9ce6954ba3bbc6c1ca01e80b53d82e1e48",
+    "/private/tmp/gsc-goal47-4-large-latency-after.json": "aadf41fdadc46bbf91d37640d1ddbf2f28d52690b537bc4d9d36be92e2b62e40",
+    "/private/tmp/gsc-goal47-4-large-latency-after.log": "2f2b99168f0a36c78e4411b8345caf76b8c1908b282adc0413dfabb974137ecd",
+    "/private/tmp/gsc-goal47-5-large-latency-before.json": "ac336eaf47a44904e73cfa52ecb751744cdefa3de38efec52205f6f17fc2a07a",
+    "/private/tmp/gsc-goal47-5-large-latency-before.log": "bd6c4a23f8e075d21dee0aa9e4195201dc458192155fb87ef22bfac744f7b0aa",
+    "/private/tmp/gsc-goal47-6-large-resources-before.json": "981a64863f4050ab2c83f00632bbcd5d88eeb20f185504c115d807f012a76ff1",
+    "/private/tmp/gsc-goal47-6-large-resources-before.log": "fd242989eb74788a08c5d9889a59e686d94d927a554721f4cde1dc1cc8d951b4",
+    "/private/tmp/gsc-goal47-7-large-resources-after.json": "dd9d40933d9d6d8dbf00facaa0f2739968f8eda1b97f78f829ae488121012e0f",
+    "/private/tmp/gsc-goal47-7-large-resources-after.log": "d80fce54a7d0ae6569489a732ce322d3f26235f6392e847d3342630d7932d151",
+    "/private/tmp/gsc-goal47-8-large-resources-after.json": "af553dc5a7b7db45968e0be4f1491c1c0de109576794dd9e057721e89697c51b",
+    "/private/tmp/gsc-goal47-8-large-resources-after.log": "0c8e6366b2b2d9fa49718d16a3d1e012697467e03031dc66176327792b0b16a5",
+    "/private/tmp/gsc-goal47-9-large-resources-before.json": "6b0ace551f7025167d3f3687ffedf0125d1364394bd99a34c4dbc7809b56b9d6",
+    "/private/tmp/gsc-goal47-9-large-resources-before.log": "b5790346ca5c3773174fc3a120aa10d07077d30ff579e99bb031327e81164b95",
+    "/private/tmp/gsc-goal47-core-tests.log": "a096b4b51eebff66d9ae6166ac27838362d672dbeb445e5a3dfbbb8e863bc9f9",
+    "/private/tmp/gsc-goal47-driver-state.json": "e92f3f2002e6ea92da258b89ff1fe337dd7845d4265b4cb6b19b4bdcd4019532",
+    "/private/tmp/gsc-goal47-isolated-commit-before.log": "fc78b037e11b3c6680b7ecf739ab2655562faa17a2c498a08a53dcd59c5f768f",
+    "/private/tmp/gsc-goal47-isolated-final.log": "0a0b59222ed7d8f5f3e21218b69acfc2379d40acb24b70b1210002c152f4c24d",
+    "/private/tmp/gsc-goal47-native-after.perf": "57f099fd17158b3a7ab92f87bf2052fd1ecd0e1bd8dc8cb03f90aec3066d3f49",
+    "/private/tmp/gsc-goal47-native.perf": "9f4c44da3ff8975d59d3b16fd958c73c041f048c0906f4a54cc7a72bbca96437",
+    "/private/tmp/gsc-goal47-pr-squash-diagnostic.json": "ef775fdff7855f2819b210f60c4ce78b5e66c70e634ad5335dc3d5d83819fc5e",
+    "/private/tmp/gsc-goal47-pr-squash-diagnostic.log": "91397cbe0f8aa2127721ddf801d5ce62386676b07ea2b7d67870b2b4850fb099",
+    "/private/tmp/gsc-goal47-pr-squash-trace.json": "42c5a0ea66b3a6fa867d8f82d50ae7cc2b135829e344e3264cd5b844b139a795",
+    "/private/tmp/gsc-goal47-pr-squash-trace.log": "5963f4b8a435bbaddd442f355b70af0b7869e139734a9cfcfdc540b426db037b",
+    "/private/tmp/gsc-goal47-recovery-tests.log": "7add58f7988040eda73783c5c393aa59b25953222ce71f9ebf08e110243666c3",
+    "/private/tmp/gsc-goal47-types.log": "d7ce21d5b3cf7feea81a28722feae3d5915051f9f98d07769bf275efd598b52d"
+  }
+}

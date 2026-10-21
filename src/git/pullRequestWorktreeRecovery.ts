@@ -5,6 +5,7 @@ import { continuePendingDeferredCommitRebase } from "./deferredCommitRebase";
 import { ConflictService } from "./conflictService";
 import { runConflictMutation } from "./conflictMutationCoordinator";
 import { GitError, runGit } from "./gitExec";
+import { commitPreparedIndex } from "./preparedIndexCommit";
 import { assertGitOperation, captureGitOperation } from "./operationControl";
 import { PullRequestOperationSnapshot } from "./pullRequestOperationSnapshot";
 import { squashBody, squashRevertBody, squashRevertTitle, squashTitle } from "./pullRequestOperationFormat";
@@ -154,8 +155,7 @@ export class PullRequestWorktreeRecoveryService {
     const title = isRevert ? squashRevertTitle(record.pr) : squashTitle(record.pr);
     const body = isRevert ? squashRevertBody(record.pr) : squashBody(record.pr);
     // --allow-empty는 모든 변경을 현재 상태로 해결했을 때도 한 번 기록해 무한 재시도를 막는다.
-    await runGit(["commit", "--allow-empty", "--no-verify", "-m", title, "-m", body], record.worktreePath,
-      { env: { GIT_EDITOR: "true", HUSKY: "0" } });
+    await commitPreparedIndex(record.worktreePath, { title, body, allowEmpty: true, checkout: record.checkout !== false });
     return this.saveReady(resolved);
   }
 
