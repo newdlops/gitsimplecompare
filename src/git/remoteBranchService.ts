@@ -1,6 +1,6 @@
 // 현재 브랜치의 upstream remote 를 웹 브랜치 URL 로 변환하는 git 서비스.
 // - UI 레이어가 remote URL 형식(git@, ssh://, https://)을 직접 해석하지 않도록 분리한다.
-import { runGit } from "./gitExec";
+import { GitError, runGit } from "./gitExec";
 import { pushBranchCommits, type PushExecutionOptions } from "./sequentialPush";
 
 /** 현재 브랜치 upstream 을 웹에서 열기 위한 링크 정보 */
@@ -41,6 +41,24 @@ export interface RemoteBranchUnsetResult {
 /** 저장소 한 개의 remote branch 웹 URL 계산 서비스 */
 export class RemoteBranchService {
   constructor(private readonly repoRoot: string) {}
+
+  /**
+   * 정상 pull의 진입 여부만 현재 Native upstream ref 한 번으로 확인한다.
+   * - 후보 목록·ahead/behind는 설정 화면에서만 필요하므로 여기서는 읽지 않는다.
+   * - detached/unborn/미설정/gone은 false지만 timeout·권한·저장소 오류는 숨기지 않는다.
+   * @returns 현재 HEAD에 Git이 해석할 수 있는 upstream ref가 있으면 true. 실제 pull은 기준을 다시 검증한다.
+   */
+  async hasCurrentBranchUpstream(): Promise<boolean> {
+    try {
+      const output = await runGit(["rev-parse", "--verify", "--quiet", "--symbolic-full-name", "@{upstream}"], this.repoRoot, { env: { LC_ALL: "C" } });
+      if (!/^refs\/[^\r\n]+\r?\n$/.test(output)) throw new Error("Cannot verify the current branch upstream.");
+      return true;
+    } catch (error) {
+      if (error instanceof GitError && (error.code === 1 && !error.stderr.trim() || error.code === 128 &&
+          /no upstream configured|HEAD does not point to a branch|no such branch:|upstream branch .*not stored as a remote-tracking branch/i.test(error.stderr))) return false;
+      throw error;
+    }
+  }
 
   /**
    * 현재 브랜치가 추적하는 upstream remote branch 의 웹 URL 을 만든다.

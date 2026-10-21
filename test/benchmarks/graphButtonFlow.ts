@@ -34,11 +34,16 @@ async function within<T>(promise: Promise<T>, label: string, milliseconds = 6000
 /** 연속 게시가 안정된 뒤 늦은 status나 오래된 frame을 최종 상태로 오인하지 않게 한다. */
 async function settle(root: string, panel: any, messages: readonly unknown[], metadataReady: () => boolean): Promise<void> {
   const deadline = Date.now() + 20000;
+  /** ready가 비동기로 시작한 PR/stack 조회까지 끝나야 초기 Native 작업이 클릭 구간에 섞이지 않는다. */
+  const initialReadsReady = () => metadataReady() && !messages.reduce((busy: boolean, value) => {
+    const message = value as { type?: string; key?: string; busy?: boolean };
+    return message.type === "graphBusy" && message.key === "graph-pr-list" ? !!message.busy : busy;
+  }, false);
   while (Date.now() < deadline) {
     const count = messages.length;
-    if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
+    if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && initialReadsReady()) {
       await new Promise(resolve => setTimeout(resolve, 150));
-      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady() && messages.length === count) return;
+      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && initialReadsReady() && messages.length === count) return;
     } else await new Promise(resolve => setTimeout(resolve, 20));
   }
   throw new Error("Button flow did not settle");

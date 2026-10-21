@@ -1,0 +1,2938 @@
+{
+  "version": "0.1.72132",
+  "baseline": "7e4ba5ee2422c53e9c156159859209c837048213",
+  "sourceKind": "working-tree before release commit",
+  "productionChange": "Only ready-upstream gating of the existing Graph pull flow. Full branch setup and actual PullService safety/recovery remain.",
+  "sourceSha256": {
+    "src/git/remoteBranchService.ts": "7b705d17ccf4d5516426883469b07fe0d81647a48e6b8116c3b376bf02c5a90d",
+    "src/ui/remoteBranchSetup.ts": "4676058db14cc52ed8a8a481e0f35ef57a9f007474c5f4187b53cf809306f7fa"
+  },
+  "benchmarkSourceSha256": "9e2ab3746159b917b06c52e46677070bbf71831739ff78021b7820168c997ec8",
+  "nativeReadProof": {
+    "readyGate": {
+      "beforeGitCalls": 5,
+      "afterGitCalls": 1,
+      "remoteAliases": 2117,
+      "beforeStdoutBytes": 37033,
+      "afterStdoutUpperBoundExclusive": 256,
+      "noFullRemoteCatalog": true,
+      "noTrackingCountWalk": true
+    },
+    "actualPullButton": {
+      "beforeGitCalls": [
+        16,
+        16,
+        16
+      ],
+      "afterGitCalls": [
+        12,
+        12,
+        12
+      ]
+    },
+    "freshPullCheckoutAndConfigStillRead": true,
+    "noCrossCallCache": true
+  },
+  "comparison": {
+    "protocol": "Serial before/after/after/before/before/after, n3/source; identical harness and owned Native fixture. Actual production HTML/CSP/JS button and registered callback, fresh Native final metadata oracle.",
+    "fixture": {
+      "files": 1000,
+      "historyDepth": 1000,
+      "sideBranches": 100,
+      "network": "owned local bare only"
+    },
+    "scope": "Click through final matching Graph publication/renderer acknowledgement after actual initial graph-pr-list busy completion. Native fixture creation and initial hydration excluded.",
+    "cpuScope": "Parent benchmark Node including Playwright transport; excludes Git, Chromium, hooks and OS. No total CPU/RSS claim.",
+    "before": {
+      "handlerMs": {
+        "samples": [
+          754,
+          557,
+          2266
+        ],
+        "median": 754
+      },
+      "clickToFirstFrameMs": {
+        "samples": [
+          1494,
+          879,
+          2826
+        ],
+        "median": 1494
+      },
+      "clickToFinalFrameMs": {
+        "samples": [
+          1522,
+          912,
+          2944
+        ],
+        "median": 1522
+      },
+      "clickToSettledMs": {
+        "samples": [
+          1606,
+          1004,
+          3097
+        ],
+        "median": 1606
+      },
+      "processes": {
+        "samples": [
+          16,
+          16,
+          16
+        ],
+        "median": 16
+      },
+      "nodeCpuMs": {
+        "samples": [
+          153,
+          162,
+          191
+        ],
+        "median": 162
+      }
+    },
+    "after": {
+      "handlerMs": {
+        "samples": [
+          1998,
+          139,
+          206
+        ],
+        "median": 206
+      },
+      "clickToFirstFrameMs": {
+        "samples": [
+          2645,
+          296,
+          411
+        ],
+        "median": 411
+      },
+      "clickToFinalFrameMs": {
+        "samples": [
+          2773,
+          317,
+          444
+        ],
+        "median": 444
+      },
+      "clickToSettledMs": {
+        "samples": [
+          3231,
+          409,
+          503
+        ],
+        "median": 503
+      },
+      "processes": {
+        "samples": [
+          12,
+          12,
+          12
+        ],
+        "median": 12
+      },
+      "nodeCpuMs": {
+        "samples": [
+          155,
+          96,
+          127
+        ],
+        "median": 127
+      }
+    },
+    "rawRuns": [
+      {
+        "kind": "before",
+        "pid": 71794,
+        "output": "/private/tmp/gsc-pull-gate32-settled-1-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-1-before.log",
+        "started": "2026-10-21T05:20:10.842Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "78b33c69b990364c26268658eb61af3d73e929d76b55fcbaf2815b29b5a7d92c",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "111760a384b6c53de017d9bd9f2c0228e428bbe65b878cb40335b35073648bad"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 135,
+              "handlerMs": 754,
+              "clickToFirstFrameMs": 1494,
+              "clickToFinalFrameMs": 1522,
+              "clickToSettledMs": 1606,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 153,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 16,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 23,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 38,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 27,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 45,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 54,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 34,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 19,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 25,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 537,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 249,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 287,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 186,
+                  "syncSpawnMs": 10,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 37,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 228,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 37,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 67,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 1494,
+                "latestMutationToFrameMs": 1522,
+                "renderMs": 38,
+                "frameMs": 12
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 72157,
+        "output": "/private/tmp/gsc-pull-gate32-settled-2-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-2-after.log",
+        "started": "2026-10-21T05:20:21.526Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "97d517f60e3da17608503ef4ba16b20c85c79730c77cfc46f5b2f2d0478355bb",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "f1d0c15c476c1e4bf773f8949e8dca4cb53a0d383e6f55f2162f5cd7317d2249"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 43,
+              "handlerMs": 1998,
+              "clickToFirstFrameMs": 2645,
+              "clickToFinalFrameMs": 2773,
+              "clickToSettledMs": 3231,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 155,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 12,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 36,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 170,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 16,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 1757,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 226,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 253,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 204,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 235,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 221,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 304,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 520,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 2,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 2645,
+                "latestMutationToFrameMs": 2773,
+                "renderMs": 42,
+                "frameMs": 15
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 72550,
+        "output": "/private/tmp/gsc-pull-gate32-settled-3-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-3-after.log",
+        "started": "2026-10-21T05:20:35.028Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "a79fad5730ec17214ff4825f3d4d0f8a619a7a53f320d9c2215313281d231ab4",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "f1d0c15c476c1e4bf773f8949e8dca4cb53a0d383e6f55f2162f5cd7317d2249"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 35,
+              "handlerMs": 139,
+              "clickToFirstFrameMs": 296,
+              "clickToFinalFrameMs": 317,
+              "clickToSettledMs": 409,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 96,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 12,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 9,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 8,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 6,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 8,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 104,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 6,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 23,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 20,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 17,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 46,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 16,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 29,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 296,
+                "latestMutationToFrameMs": 317,
+                "renderMs": 27,
+                "frameMs": 9
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "before",
+        "pid": 72767,
+        "output": "/private/tmp/gsc-pull-gate32-settled-4-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-4-before.log",
+        "started": "2026-10-21T05:20:39.348Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "de6d4257c9cf0652b243ac8624bdc8eaf2983fa146186c4b541e50e806fda18a",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "edb5942d00736593957f3f7f5310f8996ecf402d6d4cf71b7173ee6f883f2c00"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 41,
+              "handlerMs": 557,
+              "clickToFirstFrameMs": 879,
+              "clickToFinalFrameMs": 912,
+              "clickToSettledMs": 1004,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 162,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 16,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 10,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 26,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 29,
+                  "syncSpawnMs": 10,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 42,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 44,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 24,
+                  "syncSpawnMs": 6,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 10,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 18,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 407,
+                  "syncSpawnMs": 11,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 47,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 61,
+                  "syncSpawnMs": 13,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 51,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 48,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 81,
+                  "syncSpawnMs": 7,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 43,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 879,
+                "latestMutationToFrameMs": 912,
+                "renderMs": 50,
+                "frameMs": 20
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "before",
+        "pid": 73088,
+        "output": "/private/tmp/gsc-pull-gate32-settled-5-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-5-before.log",
+        "started": "2026-10-21T05:20:47.781Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "d59520cab8ce2afa37abb2e345ce84094ef3dc8c6e465996e83078015e2fd557",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "7dab86254337b7673915f6a2420c844ef9253013f77519cf093c8c1974cf7ae5"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 32,
+              "handlerMs": 2266,
+              "clickToFirstFrameMs": 2826,
+              "clickToFinalFrameMs": 2944,
+              "clickToSettledMs": 3097,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 191,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 16,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 83,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 9,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 140,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 146,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 146,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 138,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 141,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 11,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 1729,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 198,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 221,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 182,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 203,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 184,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 185,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 204,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 2,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 2826,
+                "latestMutationToFrameMs": 2944,
+                "renderMs": 39,
+                "frameMs": 12
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 73497,
+        "output": "/private/tmp/gsc-pull-gate32-settled-6-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-settled-6-after.log",
+        "started": "2026-10-21T05:20:59.930Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "5dd0d2a1e264fda2382552b05fd94201f7165c147b6a24a50756490fe95bf4ca",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "f1d0c15c476c1e4bf773f8949e8dca4cb53a0d383e6f55f2162f5cd7317d2249"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 48,
+              "handlerMs": 206,
+              "clickToFirstFrameMs": 411,
+              "clickToFinalFrameMs": 444,
+              "clickToSettledMs": 503,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 127,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 12,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 22,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 8,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 8,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 149,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 10,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 29,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 25,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 18,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 49,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 16,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 32,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 411,
+                "latestMutationToFrameMs": 444,
+                "renderMs": 38,
+                "frameMs": 14
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      }
+    ]
+  },
+  "earlierOverlapDiagnostic": {
+    "classification": "Retained diagnostic; not combined with corrected headline samples",
+    "reason": "Old settle ignored the actual asynchronous initial graph-pr-list busy lifecycle. Some click intervals contained five initial PR/stack Native reads.",
+    "before": {
+      "handlerMs": {
+        "samples": [
+          634,
+          632,
+          1144
+        ],
+        "median": 634
+      },
+      "clickToFirstFrameMs": {
+        "samples": [
+          854,
+          898,
+          1487
+        ],
+        "median": 898
+      },
+      "clickToFinalFrameMs": {
+        "samples": [
+          874,
+          913,
+          1531
+        ],
+        "median": 913
+      },
+      "clickToSettledMs": {
+        "samples": [
+          969,
+          987,
+          1567
+        ],
+        "median": 987
+      },
+      "processes": {
+        "samples": [
+          21,
+          16,
+          21
+        ],
+        "median": 21
+      },
+      "nodeCpuMs": {
+        "samples": [
+          132,
+          137,
+          185
+        ],
+        "median": 137
+      }
+    },
+    "after": {
+      "handlerMs": {
+        "samples": [
+          442,
+          948,
+          355
+        ],
+        "median": 442
+      },
+      "clickToFirstFrameMs": {
+        "samples": [
+          904,
+          1243,
+          626
+        ],
+        "median": 904
+      },
+      "clickToFinalFrameMs": {
+        "samples": [
+          944,
+          1471,
+          644
+        ],
+        "median": 944
+      },
+      "clickToSettledMs": {
+        "samples": [
+          961,
+          1614,
+          731
+        ],
+        "median": 961
+      },
+      "processes": {
+        "samples": [
+          12,
+          12,
+          17
+        ],
+        "median": 12
+      },
+      "nodeCpuMs": {
+        "samples": [
+          179,
+          174,
+          140
+        ],
+        "median": 174
+      }
+    },
+    "rawRuns": [
+      {
+        "kind": "before",
+        "pid": 66914,
+        "output": "/private/tmp/gsc-pull-gate32-1-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-1-before.log",
+        "started": "2026-10-21T05:16:45.502Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "5dabffa2a17598af3f7304049a1a8b8488188538e7d9cb5a709993070214c37e",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "ae0b5adfc6dbb09e32cbe752527207a6c895213ca1318580f003abd465962cfe"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 53,
+              "handlerMs": 634,
+              "clickToFirstFrameMs": 854,
+              "clickToFinalFrameMs": 874,
+              "clickToSettledMs": 969,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 132,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 21,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 166,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 10,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 11,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 172,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 172,
+                  "syncSpawnMs": 0,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 176,
+                  "syncSpawnMs": 1,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 183,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 184,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 183,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 184,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 11,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 17,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 226,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 39,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 29,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 21,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 58,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 20,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 35,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 13,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 854,
+                "latestMutationToFrameMs": 874,
+                "renderMs": 36,
+                "frameMs": 12
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 67429,
+        "output": "/private/tmp/gsc-pull-gate32-2-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-2-after.log",
+        "started": "2026-10-21T05:16:57.281Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "d3b1a27ba1942a9c3e31175a1321c10a7fe299dafb199eb5f52c7e9adc68b6f8",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "567d00e187ef00172e985685c9af495e50c6fdbab840cdb53b36975f684d44d0"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 53,
+              "handlerMs": 442,
+              "clickToFirstFrameMs": 904,
+              "clickToFinalFrameMs": 944,
+              "clickToSettledMs": 961,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 179,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 12,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 23,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 35,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 22,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 21,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 329,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 37,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 76,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 77,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 61,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 180,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 56,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 133,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 904,
+                "latestMutationToFrameMs": 944,
+                "renderMs": 73,
+                "frameMs": 19
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 67642,
+        "output": "/private/tmp/gsc-pull-gate32-3-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-3-after.log",
+        "started": "2026-10-21T05:17:04.128Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "299e3ec9972c5752776e0230451cf137ae766d8e6f8644517b97dfbb89ad109f",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "567d00e187ef00172e985685c9af495e50c6fdbab840cdb53b36975f684d44d0"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 51,
+              "handlerMs": 948,
+              "clickToFirstFrameMs": 1243,
+              "clickToFinalFrameMs": 1471,
+              "clickToSettledMs": 1614,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 174,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 12,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 277,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 267,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 92,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 27,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 276,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 30,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 65,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 34,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 272,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 322,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 333,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 344,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 1243,
+                "latestMutationToFrameMs": 1471,
+                "renderMs": 56,
+                "frameMs": 19
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "before",
+        "pid": 67969,
+        "output": "/private/tmp/gsc-pull-gate32-4-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-4-before.log",
+        "started": "2026-10-21T05:17:11.567Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "aac408e63532d5b5f69b45a244613699621266eb776763c4630b5d58ae4e4f0c",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "b0777f6b9f82c15036274f9b38b54570dc95084549b2b27a3341fea04c1fa7b8"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 47,
+              "handlerMs": 632,
+              "clickToFirstFrameMs": 898,
+              "clickToFinalFrameMs": 913,
+              "clickToSettledMs": 987,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 137,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 16,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 226,
+                  "syncSpawnMs": 0,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 35,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 21,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 31,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 42,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 17,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 17,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 24,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 251,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 25,
+                  "syncSpawnMs": 5,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 54,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 31,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 46,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 52,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 48,
+                  "syncSpawnMs": 4,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 72,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 11,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 898,
+                "latestMutationToFrameMs": 913,
+                "renderMs": 7,
+                "frameMs": 8
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "before",
+        "pid": 68440,
+        "output": "/private/tmp/gsc-pull-gate32-5-before.json",
+        "log": "/private/tmp/gsc-pull-gate32-5-before.log",
+        "started": "2026-10-21T05:17:20.725Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "646f70e12a49dbca3281b1ad74558138c7b543193e5c14f96c14cad3e53c6b7f",
+        "report": {
+          "source": {
+            "kind": "commit",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "e477b352027ad6480e4e7b153f3daac22ca312c14884f2e2faed006cde75636a"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 47,
+              "handlerMs": 1144,
+              "clickToFirstFrameMs": 1487,
+              "clickToFinalFrameMs": 1531,
+              "clickToSettledMs": 1567,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 185,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 21,
+              "commands": [
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 200,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 34,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 257,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 260,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 256,
+                  "syncSpawnMs": 1,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 255,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 272,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 269,
+                  "syncSpawnMs": 2,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 269,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 278,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 13,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 15,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 28,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 568,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 30,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 72,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 54,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 32,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 91,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 31,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 68,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 3,
+              "webviewMessages": 13,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 1487,
+                "latestMutationToFrameMs": 1531,
+                "renderMs": 53,
+                "frameMs": 20
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      },
+      {
+        "kind": "after",
+        "pid": 68837,
+        "output": "/private/tmp/gsc-pull-gate32-6-after.json",
+        "log": "/private/tmp/gsc-pull-gate32-6-after.log",
+        "started": "2026-10-21T05:17:33.325Z",
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "sha256": "1d6076244d91b3c3c2e6bf444aa5ee4b06f44c0ba4b5d90cdbfa1aae6ea6bfb3",
+        "report": {
+          "source": {
+            "kind": "working-tree",
+            "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+            "bundleSha256": "567d00e187ef00172e985685c9af495e50c6fdbab840cdb53b36975f684d44d0"
+          },
+          "network": "owned-local-bare-only",
+          "results": [
+            {
+              "operation": "pull",
+              "transport": "actual-rendered-button-and-registered-message-callback",
+              "fixture": {
+                "files": 1000,
+                "commits": 1000,
+                "branches": 100
+              },
+              "clickToRequestMs": 48,
+              "handlerMs": 355,
+              "clickToFirstFrameMs": 626,
+              "clickToFinalFrameMs": 644,
+              "clickToSettledMs": 731,
+              "nativeStateExact": true,
+              "cleanWorkingTree": true,
+              "nodeCpuMs": 140,
+              "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+              "processes": 17,
+              "commands": [
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 14,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-parse",
+                  "elapsedMs": 11,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 11,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 41,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 16,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "symbolic-ref",
+                  "elapsedMs": 17,
+                  "syncSpawnMs": 1,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "config",
+                  "elapsedMs": 18,
+                  "syncSpawnMs": 1,
+                  "outcome": "error",
+                  "code": 1
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 22,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 26,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "pull",
+                  "elapsedMs": 272,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "worktree",
+                  "elapsedMs": 19,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 67,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "status",
+                  "elapsedMs": 27,
+                  "syncSpawnMs": 1,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 46,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 22,
+                  "syncSpawnMs": 3,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "remote",
+                  "elapsedMs": 20,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                },
+                {
+                  "command": "rev-list",
+                  "elapsedMs": 41,
+                  "syncSpawnMs": 2,
+                  "outcome": "success",
+                  "code": 0
+                }
+              ],
+              "graphPublications": 2,
+              "webviewMessages": 13,
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 300,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "exactLocalOnly": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 626,
+                "latestMutationToFrameMs": 644,
+                "renderMs": 39,
+                "frameMs": 13
+              }
+            }
+          ],
+          "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+        }
+      }
+    ]
+  },
+  "otherActualButtonChecks": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "7e4ba5ee2422c53e9c156159859209c837048213",
+      "bundleSha256": "f1d0c15c476c1e4bf773f8949e8dca4cb53a0d383e6f55f2162f5cd7317d2249"
+    },
+    "network": "owned-local-bare-only",
+    "results": [
+      {
+        "operation": "push",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 35,
+        "handlerMs": 583,
+        "clickToFirstFrameMs": 694,
+        "clickToFinalFrameMs": 744,
+        "clickToSettledMs": 894,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 84,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 24,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 150,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "config",
+            "elapsedMs": 213,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 65,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 18,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 10,
+            "syncSpawnMs": 1,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 19,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 13,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-remote",
+            "elapsedMs": 29,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 11,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 10,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "cat-file",
+            "elapsedMs": 11,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 11,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "push",
+            "elapsedMs": 195,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "config",
+            "elapsedMs": 9,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "branch",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 7,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 28,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 79,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 74,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 8,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 694,
+          "latestMutationToFrameMs": 744,
+          "renderMs": 8,
+          "frameMs": 15
+        }
+      },
+      {
+        "operation": "fetch",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 28,
+        "handlerMs": 179,
+        "clickToFirstFrameMs": 336,
+        "clickToFinalFrameMs": 336,
+        "clickToSettledMs": 570,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 74,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 8,
+        "commands": [
+          {
+            "command": "fetch",
+            "elapsedMs": 177,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 7,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 22,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 12,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 19,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 22,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 144,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 145,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 3,
+        "webviewMessages": 11,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 336,
+          "latestMutationToFrameMs": 336,
+          "renderMs": 3,
+          "frameMs": 7
+        }
+      },
+      {
+        "operation": "interactive-rebase",
+        "transport": "actual-rendered-button-and-registered-message-callback",
+        "fixture": {
+          "files": 1000,
+          "commits": 1000,
+          "branches": 100
+        },
+        "clickToRequestMs": 103,
+        "handlerMs": 3488,
+        "clickToFirstFrameMs": 3735,
+        "clickToFinalFrameMs": 3735,
+        "clickToSettledMs": 3820,
+        "nativeStateExact": true,
+        "cleanWorkingTree": true,
+        "nodeCpuMs": 177,
+        "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+        "processes": 25,
+        "commands": [
+          {
+            "command": "rev-parse",
+            "elapsedMs": 270,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 37,
+            "syncSpawnMs": 2,
+            "outcome": "error",
+            "code": 128
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 46,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 56,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 21,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 25,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 272,
+            "syncSpawnMs": 4,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 101,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 268,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 90,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 19,
+            "syncSpawnMs": 3,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 273,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 36,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 188,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rebase",
+            "elapsedMs": 1518,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "ls-files",
+            "elapsedMs": 53,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "worktree",
+            "elapsedMs": 44,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 46,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 70,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-parse",
+            "elapsedMs": 180,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "status",
+            "elapsedMs": 169,
+            "syncSpawnMs": 5,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "log",
+            "elapsedMs": 189,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "rev-list",
+            "elapsedMs": 36,
+            "syncSpawnMs": 0,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "remote",
+            "elapsedMs": 23,
+            "syncSpawnMs": 1,
+            "outcome": "success",
+            "code": 0
+          },
+          {
+            "command": "for-each-ref",
+            "elapsedMs": 25,
+            "syncSpawnMs": 2,
+            "outcome": "success",
+            "code": 0
+          }
+        ],
+        "graphPublications": 2,
+        "webviewMessages": 12,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "mutationToFrameMs": 3735,
+          "latestMutationToFrameMs": 3735,
+          "renderMs": 5,
+          "frameMs": 8
+        }
+      }
+    ],
+    "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers are replaced. No real user worktree writes or OS window focus."
+  },
+  "checks": {
+    "distinctPassedNodeNames": 24,
+    "distinctNames": [
+      "Native pull upstream probe preserves configured semantics",
+      "Native pull upstream probe preserves detached semantics",
+      "Native pull upstream probe preserves gone semantics",
+      "Native pull upstream probe preserves local-dot semantics",
+      "Native pull upstream probe preserves no-upstream semantics",
+      "Native pull upstream probe preserves unborn semantics",
+      "a branch switch between rollback reset and stash apply preserves the saved stash",
+      "a changed approval or removed snapshot never falls back to another stash",
+      "a clean pull completes normally without creating recovery records",
+      "a corrupt config is propagated instead of being interpreted as an unset upstream",
+      "a gone upstream still opens the existing complete setup choices without changing config",
+      "a linked worktree cannot use the main worktree recovery even on the same branch",
+      "a pull conflict can be rolled back after service recreation and stash reordering",
+      "a ready pull upstream uses one Native read without enumerating two thousand remote branches",
+      "aborting and restarting the same merge on the same branch invalidates old pull recovery",
+      "an actually missing upstream still receives the missing-branch explanation",
+      "an invalid repository is reported without opening pull setup",
+      "an old pull snapshot cannot reset or clean up another branch",
+      "fast-forward pull with a stash-apply conflict can return to the pre-pull head",
+      "pull preserves SSH authentication errors instead of reporting a missing branch",
+      "resolving a stash-apply conflict cleans up the bound snapshot without changing HEAD",
+      "resolving the original pull merge restores saved local changes and removes only its snapshot",
+      "the upstream probe follows the linked worktree rather than the main worktree branch",
+      "upstream probes always observe current configuration and preserve actual pull validation"
+    ],
+    "firstGroup": {
+      "passed": 20,
+      "failed": 0
+    },
+    "finalGroup": {
+      "passed": 12,
+      "failed": 0
+    },
+    "oldCodeRed": {
+      "passed": 0,
+      "failed": 1,
+      "reason": "Ready gate executes five Native reads including whole2117-ref catalog instead of one"
+    },
+    "actualComparedPullFlows": 12,
+    "headlinePullFlows": 6,
+    "otherActualFlows": 3,
+    "typecheck": "passed",
+    "preservation": [
+      "Index/config/HEAD and unstaged content unchanged by the probe",
+      "Configured, local-dot, gone, missing, detached and unborn upstreams",
+      "Gone upstream opens existing complete setup picks; cancellation changes no configuration",
+      "Fresh configuration observed on each call; actual PullService still rejects changed upstream",
+      "Corrupt configuration and invalid repository propagate without setup",
+      "Linked worktree uses its own branch",
+      "Existing twelve pull conflict, rollback, stash ownership and error checks"
+    ],
+    "visualInspection": "No production HTML/CSS/control change. Existing production renderer is functionally exercised headlessly; Native VS Code picker/window transport is mocked.",
+    "noMarketplaceStatusChecks": true,
+    "noFocusOrReload": true
+  },
+  "limitations": [
+    "Local sample size3/source with uncontrolled external host load. Candidate final2773ms is retained; do not extrapolate to actual Captain or GitHub network latency.",
+    "Earlier overlapping series final Graph913to944ms and NodeCPU137to174ms are retained and are not headline comparable evidence.",
+    "Probe and host Git process counts exclude Native internal fetch/gc subprocesses. Whole-OS resources are unmeasured.",
+    "Full multi-operation latency and total resource objective remains active. No actual Captain mutation or stash/recovery/PR-worktree deletion."
+  ],
+  "evidence": [
+    {
+      "path": "/private/tmp/gsc-pull-gate32-node.log",
+      "sha256": "a78d9bd44af850fffae7c4e115b1472f66686dabb59c529e3319d3a5fe545520"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-final-node.log",
+      "sha256": "09fee4f210b0a5a00a6b6e408f4fd0cefc12ffe4c9d5902cfd100373847d9285"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-before-node.log",
+      "sha256": "ad4b863ce2a3821f665568876a524922f9351fedd0d630e46f2780b2cada4b27"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-final-types.log",
+      "sha256": "6f5bace0fd91e07ba99876776669a61cda70559790f8360ca6daef9f4967c66b"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-other-buttons.json",
+      "sha256": "a39e1881a46d1ebd7b2e8029d2a4f210ddad397c45ba2ad96bf7cebce66b4309"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-other-buttons.log",
+      "sha256": "1941735ee28c4b92e82d08aefaaec3fb876c12ab55f8a8f346b7f8f2fe51f62f"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-buttons.cjs",
+      "sha256": "f67159fa4febce37d4178c5db54312b2d8abe31d3b246442c0030eacdd06fc4d"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-buttons.cjs",
+      "sha256": "e2690d5629360907c84549d97054424013199cba73e80c417b9c6ddd7f9064eb"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-buttons-state.json",
+      "sha256": "cb4bb3bb17ae73e042199a4257d52db44c2da9a44d7ca416c254c4ad77640c1e"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-buttons-state.json",
+      "sha256": "445de103808f8b5f9e6d8bf4424d03b69424785058d545c9b1ad6d4473ab5824"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-1-before.json",
+      "sha256": "78b33c69b990364c26268658eb61af3d73e929d76b55fcbaf2815b29b5a7d92c"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-1-before.log",
+      "sha256": "9bd87f655484f60c0bbf31ceb1ce75d447c1b594cdf9fe97d5dd8cbde36ea0e9"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-2-after.json",
+      "sha256": "97d517f60e3da17608503ef4ba16b20c85c79730c77cfc46f5b2f2d0478355bb"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-2-after.log",
+      "sha256": "50a8b242a7605d154ad53f94e1f8730ab11f1ad63456c170277931281b62f1e4"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-3-after.json",
+      "sha256": "a79fad5730ec17214ff4825f3d4d0f8a619a7a53f320d9c2215313281d231ab4"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-3-after.log",
+      "sha256": "bb353c6ab680d2ed9c6e19cb3fba3b1f56ca72fdf60af4127f726e5bd73c3feb"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-4-before.json",
+      "sha256": "de6d4257c9cf0652b243ac8624bdc8eaf2983fa146186c4b541e50e806fda18a"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-4-before.log",
+      "sha256": "f1a1902a8dd17421eb282b248b1df6d43d2149a1b2a08d856d0388d1b39989ff"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-5-before.json",
+      "sha256": "d59520cab8ce2afa37abb2e345ce84094ef3dc8c6e465996e83078015e2fd557"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-5-before.log",
+      "sha256": "a584c1e825f14a21a3449d8a2452841e53d60a1106b451c36a37e9aba0b8ee86"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-6-after.json",
+      "sha256": "5dd0d2a1e264fda2382552b05fd94201f7165c147b6a24a50756490fe95bf4ca"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-settled-6-after.log",
+      "sha256": "66b74c588bb9ff7c403b3ec2c7f32419de2a800e2fe60064ec85088bba1b9b84"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-1-before.json",
+      "sha256": "5dabffa2a17598af3f7304049a1a8b8488188538e7d9cb5a709993070214c37e"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-1-before.log",
+      "sha256": "4b2481a703782fea27a8cb7847195fc06b1c946d9b7c207688d724e12890db08"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-2-after.json",
+      "sha256": "d3b1a27ba1942a9c3e31175a1321c10a7fe299dafb199eb5f52c7e9adc68b6f8"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-2-after.log",
+      "sha256": "d1c0f491e29cf640d5279b0da3e3e2b3589088fde14545d5b565422645be1979"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-3-after.json",
+      "sha256": "299e3ec9972c5752776e0230451cf137ae766d8e6f8644517b97dfbb89ad109f"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-3-after.log",
+      "sha256": "5a4f98a7944a1a63538d9532143671832a4ecb0583ec06053553ff8aa37791cb"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-4-before.json",
+      "sha256": "aac408e63532d5b5f69b45a244613699621266eb776763c4630b5d58ae4e4f0c"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-4-before.log",
+      "sha256": "0d60bd3fd278535bc4c6c003957896d27a034f81e06560f0c0208936771881f9"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-5-before.json",
+      "sha256": "646f70e12a49dbca3281b1ad74558138c7b543193e5c14f96c14cad3e53c6b7f"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-5-before.log",
+      "sha256": "a28cad1ec879c88019166483137806ac7c79693591cf36ba290854d64e27f972"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-6-after.json",
+      "sha256": "1d6076244d91b3c3c2e6bf444aa5ee4b06f44c0ba4b5d90cdbfa1aae6ea6bfb3"
+    },
+    {
+      "path": "/private/tmp/gsc-pull-gate32-6-after.log",
+      "sha256": "22f3e46cf125f5335c525796ef99c89d31d0727766898882b39c1abaee5fd92b"
+    }
+  ],
+  "wholeGoalComplete": false
+}

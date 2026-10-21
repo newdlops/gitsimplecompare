@@ -107,8 +107,7 @@ export async function ensureRemoteBranchForCurrentBranch(
   reason: RemoteBranchSetupReason
 ): Promise<boolean> {
   const service = new RemoteBranchService(repoRoot);
-  const state = await service.getCurrentBranchRemoteState();
-  if (state.upstream && !state.upstreamGone) {
+  if (await service.hasCurrentBranchUpstream()) {
     return true;
   }
   const setup = await promptRemoteBranchSetup(repoRoot, reason);

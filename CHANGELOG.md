@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.72132] - 2026-10-21
+
+### Performance
+
+- Check the current upstream with one Native Git read before a normal pull.
+  Read the full remote branch catalog and tracking counts only when connection
+  setup is needed. Keep the actual pull's fresh checkout and configuration
+  validation, conflict handling and recovery checks.
+
+### Fixed
+
+- Preserve detached, unborn, missing and local upstream behavior while
+  propagating repository and configuration failures instead of opening setup.
+- Wait for the actual initial PR/stack busy lifecycle before measuring Graph
+  buttons, keeping background startup reads out of the comparison interval.
+  Retain the original overlapping samples as diagnostic evidence.
+
 ## [0.1.72131] - 2026-10-21
 
 ### Added
