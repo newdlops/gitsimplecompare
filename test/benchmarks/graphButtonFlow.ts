@@ -252,7 +252,7 @@ async function main() {
       const scenario = path.join(directory, operation); await mkdir(scenario);
       const resources=process.env.GSC_BENCH_PHASE_RESOURCES==="1"?await GraphPhaseResources.create(scenario):undefined;
       try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
-      finally{resources?.dispose();}
+      finally{await resources?.dispose();}
     }
     const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };

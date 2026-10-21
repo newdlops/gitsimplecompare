@@ -116,7 +116,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));
     const previousHead = panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.hash;
-    const checkoutTarget: string | undefined = loadedTarget
+    const fixedLoadedTarget = loadedTarget && process.env.GSC_BENCH_CHECKOUT_FIXED_TARGET === "1";
+    if (fixedLoadedTarget) assert.ok(visibleHashes.has(f.topic), "The same Native topic must be visible in both source pages");
+    const checkoutTarget: string | undefined = fixedLoadedTarget ? f.topicBranch : loadedTarget
       ? panel.lastLocalBranches.filter((branch: { current: boolean; hash: string }) => !branch.current && branch.hash !== previousHead && visibleHashes.has(branch.hash))
         .sort((left: { name: string }, right: { name: string }) => Buffer.compare(Buffer.from(left.name), Buffer.from(right.name)))[0]?.name
       : operation === "checkout-unloaded" ? f.oldHistoryBranch : f.topicBranch;
@@ -212,7 +214,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
           durationMs: read.finishedAt === undefined ? null : read.finishedAt - read.startedAt,
           firstFrameBeforeDetails: !!liveRenderer?.mutationToFrameMs && read.finishedAt !== undefined &&
             operationEndedAt + liveRenderer.mutationToFrameMs < read.finishedAt })),
-        ...(operation === "checkout" ? { checkoutTargetScope: loadedTarget ? "loaded-page" : "topic" } : {}),
+        ...(operation === "checkout" ? { checkoutTargetScope: fixedLoadedTarget ? "fixed-loaded-topic" : loadedTarget ? "loaded-page" : "topic" } : {}),
         ...(checkoutTargetFingerprint ? { checkoutTargetFingerprint, checkoutTargetFingerprintKind: "branch-and-tree" } : {}),
         ...(liveRenderer ? { liveRenderer } : {}),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
@@ -289,6 +291,6 @@ async function main() {
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));
-  } finally { resources?.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
+  } finally { await resources?.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
 }
 void main().catch(error => { console.error(error); process.exitCode = 1; });

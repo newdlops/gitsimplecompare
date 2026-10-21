@@ -2,10 +2,13 @@
 import assert from "node:assert/strict";
 import type { GraphLiveRenderer, BrowserCpuProcess } from "./graphLiveRenderer";
 import { loadChildResourceProbe, type ChildResourceCounters } from "./childResourceProbe";
+import { PhaseMemorySampler } from "./phaseMemorySampler";
+import { summarizePhaseMemory } from "./phaseMemorySummary";
 
 /** 명시적인 opt-in에서만 counter를 읽는다. 기본 실행 경로·Git executable·환경은 바꾸지 않는다. */
 export class GraphPhaseResources {
   private start?: { label:string; input:"click"|"service"; at:number; browser:BrowserCpuProcess[]; memory:NodeJS.MemoryUsage; children:ChildResourceCounters };
+  private memorySampler?: PhaseMemorySampler;
 
   /** 같은 Node의 OS 누적 카운터를 읽는 함수만 보관한다. 별도 프로세스·timer·polling은 만들지 않는다. */
   private constructor(private readonly children:()=>ChildResourceCounters) {}
@@ -21,6 +24,7 @@ export class GraphPhaseResources {
   /** 초기 로드 뒤 같은 renderer의 counter를 고정한다. input으로 실제 클릭과 직접 서비스 호출을 구분한다. */
   async begin(renderer:GraphLiveRenderer,label:string,input:"click"|"service"="click"):Promise<void>{
     assert.equal(this.start,undefined);const browser=await renderer.readCpuProcesses();
+    if (process.env.GSC_BENCH_PHASE_MEMORY === "1") this.memorySampler = await PhaseMemorySampler.start(browser.map(row => row.id));
     this.start={label,input,at:Date.now(),browser,memory:process.memoryUsage(),children:this.children()};
   }
 
@@ -41,15 +45,19 @@ export class GraphPhaseResources {
     assert.ok(Object.values(childDeltas).every(value=>Number.isFinite(value)&&value>=0),"Child counters must be finite and monotonic");
     const nodeCpuMs=(nodeCpu.user+nodeCpu.system)/1000,childCpuMs=childDeltas.userCpuMs+childDeltas.systemCpuMs;
     const browserCpuMs=browserRows.reduce((sum,row)=>sum+row.deltaCpuMs,0);
+    const phaseMemory = await this.memorySampler?.stop(); this.memorySampler = undefined;
+    assert.ok(!phaseMemory || phaseMemory.complete, "An incomplete memory observation is not a successful resource check");
+    const memoryReport = phaseMemory ? await summarizePhaseMemory(phaseMemory, start.label) : undefined;
     return {label:start.label,input:start.input,startedAt:start.at,finishedAt,elapsedMs:finishedAt-start.at,nodeCpuMs,childCpuMs,browserCpuMs,browserComplete,
       ownedCpuMs:browserComplete?nodeCpuMs+childCpuMs+browserCpuMs:null,registeredGitCalls:expectedGitCalls,
       nodeHeapAfterAwaitDelta:memory.heapUsed-start.memory.heapUsed,nodeRssAfterAwaitDelta:memory.rss-start.memory.rss,
       nodeMemoryBefore:start.memory,nodeMemoryAfter:memory,
       childrenBefore:start.children,childrenAfter,childDeltas,browserBefore:start.browser,browserAfter:browserRows,missingBrowserPids:missing,
+      ...(memoryReport ? { phaseMemory: memoryReport, memoryRunCpuIsDiagnosticOnly: true } : {}),
       scope:`Instrumented ${start.input}-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.`,
-      memoryScope:"Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."};
+      memoryScope:phaseMemory ? phaseMemory.scope : "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."};
   }
 
   /** 완료하지 않은 수명만 버린다. 소유 모듈 파일은 caller의 fixture cleanup이 회수한다. */
-  dispose():void{this.start=undefined;}
+  async dispose():Promise<void>{this.start=undefined;await this.memorySampler?.stop();this.memorySampler=undefined;}
 }
