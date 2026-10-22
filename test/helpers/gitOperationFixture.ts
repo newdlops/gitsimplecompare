@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { runGit, runGitWithInput } from "../../src/git/gitExec";
 
-/** 기본 합성 fixture 또는 명시한 읽기 전용 이력 snapshot의 격리 fixture를 만든다. */
+/** 합성/읽기 전용 이력의 격리 fixture를 만들거나, driver가 복원한 소유 입력의 모든 증명을 확인한다. */
 export async function createGitOperationFixture(directory: string, borrowedMetadataFile?: string) {
+  if (process.env.GSC_BENCH_FIXTURE_MANIFEST) return readPreparedFixture(process.env.GSC_BENCH_FIXTURE_MANIFEST);
   if (borrowedMetadataFile) return createBorrowedFixture(directory, borrowedMetadataFile);
   const root = path.join(directory, "repository"), remote = path.join(directory, "remote.git");
   await mkdir(root); await mkdir(path.join(directory, "hooks"));
@@ -70,6 +73,38 @@ export async function createGitOperationFixture(directory: string, borrowedMetad
   return { root, remote, main: mainOid, incoming, incomingPull, oldHistory: objectIds.get(oldHistory)!, topic: objectIds.get(topic)!, pr: objectIds.get(pr)!,
     prCommits: prMarks.map(mark => objectIds.get(mark)!), files, depth, branches, sharedUpstreamBranches,
     mainBranch: "main", topicBranch: "topic", prBranch: "pr-source", oldHistoryBranch: "old-history" };
+}
+
+/**
+ * 반복 비교에서 같은 소유 대형 fixture를 검증하고 재사용한다. Node·앱 cache는 매번 별도 프로세스다.
+ * @param manifest 측정 driver가 tmp 직계 소유 디렉터리에 만든 baseline manifest
+ * @returns 모든 ref·원래 index 바이트·config·HEAD·전체 Native clean 상태가 일치한 fixture
+ * driver가 성공한 실행 사이에만 Native switch와 소유 metadata 복원을 수행한다. 불일치는 재사용을 거부한다.
+ */
+async function readPreparedFixture(manifest: string): Promise<Awaited<ReturnType<typeof createBorrowedFixture>>> {
+  const pool = await realpath(path.dirname(manifest)), temporary = await realpath(os.tmpdir());
+  assert.equal(path.dirname(pool), temporary);
+  assert.ok(path.basename(pool).startsWith("gsc-button-pool-"));
+  const owner = JSON.parse(await readFile(path.join(pool, "owner.json"), "utf8"));
+  const record = JSON.parse(await readFile(manifest, "utf8"));
+  assert.equal(record.version, 1); assert.equal(record.owner, owner.id);
+  assert.equal(owner.id, process.env.GSC_BENCH_FIXTURE_OWNER);
+  assert.match(owner.id, /^[a-f0-9-]{36}$/);
+  const f = record.fixture as Awaited<ReturnType<typeof createBorrowedFixture>>;
+  assert.equal(f.root, path.join(pool, "repository")); assert.equal(f.remote, path.join(pool, "remote.git"));
+  assert.equal(await realpath(f.root), f.root);
+  assert.equal(await realpath(path.join(f.root, ".git")), path.join(f.root, ".git"));
+  /** index/config의 원래 바이트와 같음을 비교하며 앱 cache를 사전 계산하지 않는다. */
+  const digest = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+  assert.equal(digest(await readFile(path.join(f.root, ".git/index"))), record.indexSha256);
+  assert.equal(digest(await readFile(path.join(f.root, ".git/config"))), record.configSha256);
+  assert.equal(await runGit(["for-each-ref", "--format=%(refname)%00%(objectname)%00%(symref)"], f.root), record.refs);
+  assert.equal((await runGit(["symbolic-ref", "HEAD"], f.root)).trim(), `refs/heads/${f.mainBranch}`);
+  assert.equal((await runGit(["rev-parse", "HEAD"], f.root)).trim(), f.main);
+  assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote);
+  assert.equal((await runGit(["status", "--porcelain=v1", "--untracked-files=all"], f.root, { readTimeoutMs: 600000 })).trim(), "");
+  assert.equal((await runGit(["worktree", "list", "--porcelain"], f.root)).split("\n").filter(line => line.startsWith("worktree ")).length, 1);
+  return f;
 }
 
 interface BorrowedRef { ref: string; hash: string; symref: string; upstream: string; remote: string; remoteRef: string }

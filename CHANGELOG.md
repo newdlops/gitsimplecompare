@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72163] - 2026-10-23
+
+### Performance
+
+- Avoid checking out every file in eligible large temporary worktrees used for
+  commit-preserving PR cherry-pick and revert. Keep the existing Native Git engine
+  and validate configuration in both the source and new worktree.
+- Retain full checkout for hooks, external filters/drivers, special indexes and
+  unsupported settings. Check relative hook ancestors and ambiguous path encoding.
+
+### Fixes
+
+- Materialize preserved PR worktrees before exposing conflict recovery. Keep manual
+  files and deletions, persist incomplete materialization for retry, and retain
+  the existing local-change, branch-safety and Undo checks.
+
 ## [0.1.72162] - 2026-10-22
 
 ### Fixes

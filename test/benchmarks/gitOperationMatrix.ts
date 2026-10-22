@@ -45,11 +45,14 @@ function graphSignature(commits: readonly Commit[]): string {
 
 /** 늦게 끝난 Graph 보조 조회까지 비용에 포함하고 다음 시나리오로 넘어가기 전에 모두 정리한다. */
 async function idle(root: string, panel: any, metadataReady: () => boolean = () => true, quietMs = 20): Promise<void> {
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
     if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
       await new Promise(resolve => setTimeout(resolve, quietMs));
-      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) return;
+      if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && metadataReady()) {
+        assert.equal(panel.workingTree.state, undefined, "A failed or paused Native working-tree read is not a completed functional check");
+        return;
+      }
     }
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -68,6 +71,11 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   f = await isolateIncomingCommit(f, operation);
   const git = (args: string[], cwd = f.root) => runGit(args, cwd);
   await git(["switch", "-qC", `bench-${operation}`, operation === "push" || operation === "push-tracked" ? f.pr : f.main]);
+  // 선택한 기능 검증은 UI 입력 상태부터 독립 Native 결과와 맞춘다. OS cache 예열이므로 cold-start 측정과 구분한다.
+  if (process.env.GSC_BENCH_VALIDATE_INPUT_STATUS === "1") {
+    assert.equal((await runGit(["status", "--porcelain=v1"], f.root, { readTimeoutMs: 600000 })).trim(), "",
+      "Every matrix scenario must begin from a clean independently verified owned worktree");
+  }
   await git(["update-ref", `refs/heads/${f.mainBranch}`, f.main], f.remote);
   if (operation === "push-tracked") {
     // 이름이 같은 기존 upstream을 고정해 새 브랜치 publish와 일반 push 준비 경로를 분리한다.
@@ -304,6 +312,8 @@ async function main() {
       source: benchmarkSource, environmentKeys: Object.keys(process.env).length,
       fixture: { files: f.files, commits: f.depth, branches: f.branches, sharedUpstreamBranches: f.sharedUpstreamBranches,
         network: "local-bare-only", monitorPolicy: !!stopMonitor, pushThresholdBytes: PUSH_THRESHOLD,
+        ...(process.env.GSC_BENCH_VALIDATE_INPUT_STATUS === "1" ? { nativeInputValidatedBeforeGraph: true,
+          inputScope: "Filesystem-warm functional checks; not cold-start performance evidence" } : {}),
         ...(primePublishedPush ? { primedCensoredPushOutsideMeasurement: true } : {}) }, results };
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");

@@ -5,6 +5,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runGit } from "./gitExec";
+import { logInfo } from "../ui/outputLog";
 
 const PR_OPERATION_WORKTREE_PREFIX = "gsc-pr-operation-";
 
@@ -32,7 +33,9 @@ export async function createPrOperationWorktree(
 ): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), PR_OPERATION_WORKTREE_PREFIX));
   await fs.rm(dir, { recursive: true, force: true });
+  const started = Date.now();
   await runGit(["worktree", "add", "--detach", ...(checkout ? [] : ["--no-checkout"]), dir, startPoint], repoRoot);
+  logInfo("temporary worktree created", { repoRoot, worktreePath: dir, checkout, elapsedMs: Date.now() - started });
   return dir;
 }
 
@@ -42,7 +45,9 @@ export async function removeTemporaryWorktree(
   worktreePath: string
 ): Promise<void> {
   // Git의 lock·사용 중·권한 오류를 파일시스템 강제 삭제로 우회하지 않는다.
+  const started = Date.now();
   await runGit(["worktree", "remove", "--force", worktreePath], repoRoot);
+  logInfo("temporary worktree removed", { repoRoot, worktreePath, elapsedMs: Date.now() - started });
 }
 
 /** 현재 저장소에 등록된 PR operation 임시 worktree 목록을 반환한다. */

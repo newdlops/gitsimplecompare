@@ -3,6 +3,8 @@
 import { runDeferredCommitRebase } from "./deferredCommitRebase";
 import { runGit } from "./gitExec";
 import { commitPreparedIndex } from "./preparedIndexCommit";
+import { createReplayWorktree, materializeReplayWorktree } from "./replayWorktree";
+import { logError } from "../ui/outputLog";
 import {
   squashBody,
   squashRevertBody,
@@ -307,9 +309,11 @@ export class PullRequestOperationWorktree {
     await assertNoDuplicatePullRequestRecovery({
       originRoot: this.repoRoot, pr: input.pr, branch: input.branch, beforeHead: input.beforeHead, command: input.command,
     });
-    const worktreePath = await this.createTemporaryWorktree(input.beforeHead);
+    const worktree = await createReplayWorktree(this.repoRoot, input.beforeHead, input.commits);
+    const worktreePath = worktree.path;
     let keepWorktree = false;
     let snapshotRef = "";
+    let phase: "conflicts" | "ready" = "ready";
     try {
       const result = await runDeferredCommitRebase({
         kind: input.kind,
@@ -326,11 +330,8 @@ export class PullRequestOperationWorktree {
       });
       if (result.status === "conflicts") {
         keepWorktree = true;
-        throw await preservePullRequestWorktreeRecovery({
-          originRoot: this.repoRoot, worktreePath, pr: input.pr, branch: input.branch,
-          beforeHead: input.beforeHead, command: input.command, phase: "conflicts", remaining: [],
-          sourceCommits: input.commits, checkout: true,
-        }, new Error(`PR #${input.pr.number} ${input.actionLabel} has conflicts.`));
+        phase = "conflicts";
+        throw new Error(`PR #${input.pr.number} ${input.actionLabel} has conflicts.`);
       }
       const afterHead =
         result.afterHead || await this.state.currentHeadIn(worktreePath);
@@ -372,12 +373,22 @@ export class PullRequestOperationWorktree {
         await this.state.deleteSnapshotRef(input.branch, snapshotRef);
       }
       if (keepWorktree && !(error instanceof PullRequestWorktreeRecoveryError)) {
+        let failure = error;
+        if (worktree.compact) {
+          try { await materializeReplayWorktree(worktreePath); worktree.compact = false; }
+          catch (materialization) {
+            logError("PR replay recovery materialization failed", materialization, { repoRoot: this.repoRoot, worktreePath });
+            failure = new Error(`${error instanceof Error ? error.message : String(error)} ` +
+              `Some PR worktree files could not be materialized; retry recovery after fixing the file error. Worktree: ${worktreePath}.`, { cause: error });
+          }
+        }
         throw await preservePullRequestWorktreeRecovery({
           originRoot: this.repoRoot, worktreePath, pr: input.pr, branch: input.branch,
-          beforeHead: input.beforeHead, command: input.command, phase: "ready", remaining: [],
-          afterHead: await this.state.currentHeadIn(worktreePath), snapshotRef: snapshotRef || undefined,
+          beforeHead: input.beforeHead, command: input.command, phase, remaining: [],
+          ...(phase === "ready" ? { afterHead: await this.state.currentHeadIn(worktreePath) } : {}), snapshotRef: snapshotRef || undefined,
+          ...(worktree.compact ? { compactReplay: true } : {}),
           sourceCommits: input.commits, checkout: true,
-        }, error);
+        }, failure);
       }
       throw error instanceof Error ? error : new Error(String(error));
     } finally {
@@ -385,14 +396,6 @@ export class PullRequestOperationWorktree {
         await this.removeTemporaryWorktree(worktreePath);
       }
     }
-  }
-
-  /**
-   * detached 임시 worktree를 작업 시작 commit에서 만든다.
-   * @param startPoint 작업 시작 HEAD
-   */
-  private async createTemporaryWorktree(startPoint: string): Promise<string> {
-    return createPrOperationWorktree(this.repoRoot, startPoint);
   }
 
   /** 계산한 tree가 hook 등의 부작용으로 바뀌었으면 사용자 브랜치에 반영하지 않는다. */

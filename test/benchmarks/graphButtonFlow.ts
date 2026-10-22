@@ -42,8 +42,10 @@ async function within<T>(promise: Promise<T>, label: string, milliseconds = 6000
 }
 
 /** 연속 게시가 안정된 뒤 늦은 status나 오래된 frame을 최종 상태로 오인하지 않게 한다. */
-async function settle(root: string, panel: any, messages: readonly unknown[], metadataReady: () => boolean): Promise<void> {
-  const deadline = Date.now() + 20000;
+async function settle(root: string, panel: any, messages: readonly unknown[], metadataReady: () => boolean,
+  readiness?: () => Record<string, unknown>): Promise<void> {
+  // 제품의 Native 조회 제한은 30초다. 준비 대기가 먼저 status를 취소하지 않게 여유를 주되 실패는 그대로 거부한다.
+  const deadline = Date.now() + 45000;
   /** ready가 비동기로 시작한 PR/stack 조회까지 끝나야 초기 Native 작업이 클릭 구간에 섞이지 않는다. */
   const initialReadsReady = () => metadataReady() && !messages.reduce((busy: boolean, value) => {
     const message = value as { type?: string; key?: string; busy?: boolean };
@@ -56,7 +58,15 @@ async function settle(root: string, panel: any, messages: readonly unknown[], me
       if (!gitProcesses.isBusy(root) && !panel.loading && !panel.workingTree.state?.loading && initialReadsReady() && messages.length === count) return;
     } else await new Promise(resolve => setTimeout(resolve, 20));
   }
-  throw new Error("Button flow did not settle");
+  const state = { root, gitBusy: gitProcesses.isBusy(root), loading: panel.loading,
+    workingTreeLoading: panel.workingTree.state?.loading, metadataReady: metadataReady(), initialReadsReady: initialReadsReady(),
+    ...readiness?.(), latestMessages: messages.slice(-8).map(value => {
+      const message = value as { type?: string; key?: string; busy?: boolean };
+      return { type: message.type, key: message.key, busy: message.busy };
+    }), latestOutput: __outputLines.slice(-14) };
+  // 실패 원문은 큰 fixture 정리가 끝나기 전에 남겨, cleanup 대기를 실행 중인 Git으로 오해하지 않게 한다.
+  console.error("Button flow readiness timeout", JSON.stringify(state));
+  throw new Error("Button flow did not settle: " + JSON.stringify(state));
 }
 
 /** 정확한 HEAD/ref/부모/local-only 상태를 가진 최종 게시만 선택한다. */
@@ -128,6 +138,11 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     for (const file of [localFile, finalLocalFile]) assert.equal((await runGit(["ls-tree", "--name-only", "HEAD", "--", file], f.root)).trim(), "");
     await writeFile(path.join(f.root, localFile), localContents, { flag: "wx" });
   }
+  // 클릭 이후 비용만 비교하는 선택 실행에서는 UI 준비 전에도 동일한 Native 입력 검증을 한다.
+  // 앱 캐시를 채우지 않지만 OS 파일 캐시는 따뜻해지므로 cold-start 성능 근거와 구분해 기록한다.
+  const validatedInputBeforeGraph = process.env.GSC_BENCH_VALIDATE_INPUT_STATUS === "1";
+  const validatedInputStatus = validatedInputBeforeGraph
+    ? (await runGit(["status", "--porcelain=v1"], f.root, { readTimeoutMs: 600000 })).trim() : undefined;
   assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote, "Only the owned local bare receiver is permitted");
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
@@ -171,6 +186,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   });
   /** 실제 callback이 시작한 metadata만 기다리고 별도의 사전 계산으로 측정을 예열하지 않는다. */
   const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.completed || markerFailures.length > 0);
+  /** 준비 대기가 실패했을 때 캐시 상태만 읽는다. 새 Native 조회나 예열은 시작하지 않는다. */
+  const readiness = () => ({ pendingMarkers, remoteReady: cache.remoteReady, completed: !!cache.completed, markerFailures });
   let ready!: () => void, actionDone!: () => void, actionFailed!: (error: unknown) => void;
   const initialized = new Promise<void>(resolve => { ready = resolve; });
   const action = new Promise<void>((resolve, reject) => { actionDone = resolve; actionFailed = reject; });
@@ -190,11 +207,13 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   try {
     await renderer.mount(surface.webview.html);
     await within(initialized, "actual ready callback");
-    await settle(f.root, panel, messages, metadataReady);
+    await settle(f.root, panel, messages, metadataReady, readiness);
+    assert.equal(panel.workingTree.state, undefined, "Initial working-tree status must finish successfully, not become unavailable or paused");
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
     if (operation === "checkout") assert.ok(panel.commits.some((commit: Commit) => commit.hash === f.topic), "Checkout target must be in the actual loaded page");
     const initialRefs = operation === "fetch-no-change" ? await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root) : undefined;
     let initialStatus = partial || localHintScenario ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
+    if (validatedInputBeforeGraph) assert.equal(initialStatus, validatedInputStatus, "Graph initialization must preserve the independently validated Native input");
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
     if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
@@ -234,8 +253,11 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       else if (operation === "checkout") await renderer.clickControl(`.ref[data-checkout-branch="${f.topicBranch}"]`);
       else if (operation === "fetch-no-change") await renderer.clickControl("#fetch-graph");
       else await renderer.clickControl(`#${operation}-graph`);
-      await within(action, `${requestType} handler`);
-      await settle(f.root, panel, messages, metadataReady);
+      const actionTimeout = Number(process.env.GSC_BENCH_ACTION_TIMEOUT_MS || 60000);
+      assert.ok(Number.isSafeInteger(actionTimeout) && actionTimeout > 0 && actionTimeout <= 15 * 60 * 1000);
+      await within(action, `${requestType} handler`, actionTimeout);
+      await settle(f.root, panel, messages, metadataReady, readiness);
+      assert.equal(panel.workingTree.state, undefined, "Final working-tree status must finish successfully, not hide a Native read failure");
       // 실제 버튼 검증도 사후 Native 조회 전에 마지막 화면 frame을 확정한다.
       await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       measuring = false; stop();
@@ -287,6 +309,9 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       if (process.env.GSC_BENCH_SCREENSHOT_DIR) await renderer.capture(path.join(process.env.GSC_BENCH_SCREENSHOT_DIR, operation));
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
         monitorPolicy: !!stopMonitor,
+        ...(validatedInputBeforeGraph ? { nativeInputValidatedBeforeGraph: true,
+          inputScope: "Native status validated before Graph mount; app caches remain cold, filesystem is warm; not cold-start timing" } : {}),
+        ...(process.env.GSC_BENCH_FIXTURE_MANIFEST ? { ownedInputReused: true } : {}),
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}),
         ...(localHintScenario ? { localHintScenario } : {}),
         ...(prListCount ? { pullRequests: prListCount } : {}) },
@@ -295,7 +320,9 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
         ...(localHintScenario ? { localChangesPreserved: true, recentPathConfirmations: __outputLines.slice(hintLogStart)
           .filter(line => line.includes("working tree change confirmed from recent paths")).length,
-          missedHintsWithFullScan: __outputLines.slice(hintLogStart).filter(line => line.includes("working tree change hint missed; full scan required")).length } : {}),
+          missedHintsWithFullScan: __outputLines.slice(hintLogStart).filter(line => line.includes("working tree change hint missed; full scan required")).length,
+          compactReplayWorktreeSelections: __outputLines.slice(hintLogStart)
+            .filter(line => line.includes("PR replay index-only worktree prepared")).length } : {}),
         ...(profiling ? { instrumentedCpuProfile: true, profileScope: "actual click through settled final renderer frames; sampling overhead remains, not comparative latency" } : {}),
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
@@ -309,6 +336,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
   } finally {
+    // benchmark의 대기 제한이 끝나도 이미 시작한 Native 쓰기를 둔 채 fixture를 지우지 않는다.
+    if (receivedAt !== undefined && completedAt === undefined) await action.catch(() => undefined);
     try { if (nodeProfile || rendererProfile) await Promise.all([nodeProfile?.stop(), rendererProfile?.stop()]); }
     finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
   }
@@ -324,8 +353,11 @@ async function main() {
     for (const operation of selected) {
       const scenario = path.join(directory, operation); await mkdir(scenario);
       const resources=process.env.GSC_BENCH_PHASE_RESOURCES==="1"?await GraphPhaseResources.create(scenario):undefined;
+      // 별도 진단에서만 준비 중 Git의 명령 이름·수명 결과를 즉시 기록한다. 인자·입력·출력은 남기지 않는다.
+      const startup = process.env.GSC_BENCH_STARTUP_DIAGNOSTICS === "1"
+        ? setGitExecutionObserver(timing => console.error("startup Git", JSON.stringify(timing))) : undefined;
       try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
-      finally{try{await resources?.dispose();}finally{await rm(scenario,{recursive:true,force:true});}}
+      finally{startup?.();try{await resources?.dispose();}finally{await rm(scenario,{recursive:true,force:true});}}
     }
     const report = { source: benchmarkSource, environmentKeys: Object.keys(process.env).length, network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };

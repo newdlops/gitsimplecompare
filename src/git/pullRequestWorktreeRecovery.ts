@@ -18,6 +18,7 @@ import {
   type PullRequestWorktreeRecovery,
 } from "./pullRequestWorktreeRecoveryState";
 import { removeTemporaryWorktree } from "./temporaryWorktree";
+import { materializeReplayWorktree } from "./replayWorktree";
 import { logError, logInfo } from "../ui/outputLog";
 import type { PullRequestOperationResult } from "./pullRequestOperationWorktree";
 
@@ -101,6 +102,12 @@ export class PullRequestWorktreeRecoveryService {
     let record = { ...saved };
     if (record.phase === "replaying") {
       throw new Error("The PR replay was interrupted during a Git write. Its worktree was preserved; inspect it before retrying.");
+    }
+    if (record.compactReplay) {
+      await assertGitOperation(record.worktreePath, record.nativeOperation);
+      await materializeReplayWorktree(record.worktreePath);
+      record = { ...record, version: 1, compactReplay: undefined };
+      await writePullRequestWorktreeRecovery(record);
     }
     if (record.phase === "conflicts") {
       await assertGitOperation(record.worktreePath, record.nativeOperation);

@@ -13,7 +13,7 @@ export interface PullRequestRecoveryCommit { hash: string; mainline?: number }
 
 /** 원래 작업트리와 detached 계산 worktree를 함께 고정한 재개 가능한 작업이다. */
 export interface PullRequestWorktreeRecovery {
-  version: 1;
+  version: 1 | 2;
   id: string;
   originRoot: string;
   originGitDir: string;
@@ -28,6 +28,8 @@ export interface PullRequestWorktreeRecovery {
   sourceCommits: string[];
   /** false면 원래부터 파일 checkout을 생략한 결과 계산용 worktree다. */
   checkout: boolean;
+  /** true면 compact replay 파일 복원이 실패해, 사용자 재개 전에 남은 S-tag를 다시 펼쳐야 한다. */
+  compactReplay?: true;
   nativeOperation: GitOperationIdentity;
   afterHead?: string;
   expectedTree?: string;
@@ -53,7 +55,8 @@ export async function createPullRequestWorktreeRecovery(
   ]);
   const record: PullRequestWorktreeRecovery = {
     ...input, originRoot, worktreePath, originGitDir, worktreeGitDir,
-    version: 1, id: randomUUID(), createdAt: Date.now(),
+    // compact 복원 의무를 모르는 구버전은 v2를 자동 재개하지 않고 그대로 보존한다.
+    version: input.compactReplay ? 2 : 1, id: randomUUID(), createdAt: Date.now(),
   };
   await assertPullRequestRecoveryIdentity(record);
   return record;
@@ -152,7 +155,8 @@ function recordFile(gitDir: string, id: string): string { return path.join(gitDi
 function normalize(value: unknown): PullRequestWorktreeRecovery | undefined {
   if (!value || typeof value !== "object") return undefined;
   const item = value as PullRequestWorktreeRecovery;
-  if (item.version !== 1 || !ID.test(item.id) || !OID.test(item.beforeHead) ||
+  if (![1, 2].includes(item.version) || (item.version === 2 && item.compactReplay !== true) ||
+      !ID.test(item.id) || !OID.test(item.beforeHead) ||
       !["originRoot", "originGitDir", "worktreePath", "worktreeGitDir"].every(key =>
         typeof item[key as keyof typeof item] === "string" && path.isAbsolute(item[key as keyof typeof item] as string)) ||
       typeof item.branch !== "string" || !item.branch ||
@@ -163,6 +167,8 @@ function normalize(value: unknown): PullRequestWorktreeRecovery | undefined {
         (commit.mainline !== undefined && (!Number.isSafeInteger(commit.mainline) || commit.mainline < 1))) ||
       !Array.isArray(item.sourceCommits) || !item.sourceCommits.length || item.sourceCommits.some(hash => !OID.test(hash)) ||
       typeof item.checkout !== "boolean" ||
+      (item.compactReplay !== undefined && (item.version !== 2 || item.compactReplay !== true || !item.checkout ||
+        !["rebase", "rebaseRevert"].includes(item.command))) ||
       !item.nativeOperation || item.nativeOperation.gitDir !== item.worktreeGitDir ||
       !OID.test(item.nativeOperation.head) || typeof item.nativeOperation.epoch !== "string" ||
       (item.afterHead !== undefined && !OID.test(item.afterHead)) ||
