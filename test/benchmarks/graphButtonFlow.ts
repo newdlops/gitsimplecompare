@@ -95,7 +95,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
   __setQuickPickResult(items => items.find((item: any) => item?.kind !== -1));
   const prOperation = operation === "pr-squash-cherry-pick" || operation === "pr-cherry-pick";
-  const prListCount = prOperation ? await installPrButtonFixture(f, Number(process.env.GSC_BENCH_PR_LIST_SIZE || 1)) : undefined;
+  const prListCount = prOperation || process.env.GSC_BENCH_PR_LIST_ALL_OPERATIONS === "1"
+    ? await installPrButtonFixture(f, Number(process.env.GSC_BENCH_PR_LIST_SIZE || 1)) : undefined;
   const noticeHoldMs = Number(process.env.GSC_BENCH_PR_NOTICE_HOLD_MS || 0);
   const notice = prOperation ? probePrNotice(noticeHoldMs) : undefined;
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
@@ -155,7 +156,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
     if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
-    if (prOperation) {
+    if (prListCount) {
       await renderer.clickControl("#graph-pr-list");
       assert.equal(messages.filter(message => message.type === "pullRequestOverview").at(-1)?.overview.pullRequests.length, prListCount);
       assert.equal(await renderer.countElements("#detail .pr-card"), prListCount, "Actual dense PR list must be rendered before measuring");

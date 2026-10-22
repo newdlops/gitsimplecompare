@@ -1,0 +1,377 @@
+{
+  "classification": "progress",
+  "wholeGoalComplete": false,
+  "baseline": "18f7d60d53949383ea99b9cbb683a8d436640985",
+  "measuredMediaSha256": "6aacbe78e63c5c65b3257fbb7ac87d31bcf9c54fa37aca8f8693c889ab766333",
+  "finalMediaRuntimeProof": {
+    "measuredMediaSha256": "6aacbe78e63c5c65b3257fbb7ac87d31bcf9c54fa37aca8f8693c889ab766333",
+    "finalMediaSha256": "ddca8d68edc6107097f49b194ef7584e7b946050c3fb5794bad291766d41d969",
+    "minifiedRuntimeSha256": "ba5c6f2043d35478d80e41411b4290f3977c5985671c9db35835fe41dca82994",
+    "runtimeIdentical": true,
+    "change": "expanded Korean parameter/return documentation only after frozen measurements"
+  },
+  "harnessAndProduct": {
+    "media/graph/graphPrMatching.js": "6aacbe78e63c5c65b3257fbb7ac87d31bcf9c54fa37aca8f8693c889ab766333",
+    "test/helpers/graphLiveRenderer.ts": "ce4782c6977c5f2f848d4a9915b99bb3dae02c1567f5c37613ea6b5f75b19358",
+    "test/benchmarks/graphButtonFlow.ts": "834fc077521a66c67ef87bfbeeae9fe4edb12e6d07a6307355c11804f39a26bc",
+    "scripts/benchmark-pr-decorations.mjs": "05ec7c7e78872b165c81e6d4e10d1cc479e4d8f73fc0d0a4feadff0b877a06d3",
+    "test/helpers/benchmarkOverrides.ts": "c7ba2fef20ef91f143758c88ce30afb9224d942a74f0138dd0b088c685b60679",
+    "test/helpers/graphOperationPanel.ts": "b3a5ba1aabebb3fa555fc5735bba0ebc7b60a2b3511a2998af5215052e8321f3",
+    "test/helpers/prButtonFixture.ts": "9bf070dae01519adf7b68848a2115fa6600d71af22f3960f2bfdc53736b60723",
+    "test/helpers/graphPhaseResources.ts": "3a0e9b8305d0f66b4c476ed6e518792b6f636a49dc8b7636a49d0782ba8886ac",
+    "test/helpers/graphNativeExpectation.ts": "2606fb64f0cee296923619c41dfc8374f2023e40647e2f2734cc9f337e324fc7",
+    "test/helpers/gitOperationFixture.ts": "f19c31d6a1aa1d3656384f310ff02bb2b37cd912f7d26ded877f9c171e7815aa",
+    "test/benchmarks/gitOperationMatrix.ts": "a09df91f66f6c099437dd0383901b8dc86e0f58eaca6d6222401b6da762de546",
+    "scripts/benchmark-graph-buttons.mjs": "2c2969633e1265033d13f51e5fd30375173f8caebb2a6c3a114330d1c07a2407",
+    "scripts/benchmark-git-operations.mjs": "1be57ffdd2e82c0c059cb4a446ad6dd980c55c1228523b14e8b39f83a00f616c"
+  },
+  "nativeDomCases": 136,
+  "smokeNativeDomCases": 4,
+  "matrixSamplesPerSource": 2,
+  "buttonSamplesPerSourcePerMode": 2,
+  "matrixSummary": {
+    "before": {
+      "serviceSumMs": 4641.0,
+      "serviceThroughAllMessageFrameSumMs": 8849.5,
+      "gitCallsSum": 242.5
+    },
+    "after": {
+      "serviceSumMs": 4418.0,
+      "serviceThroughAllMessageFrameSumMs": 8549.0,
+      "gitCallsSum": 240.0
+    }
+  },
+  "matrixOperationColumns": [
+    "serviceMs",
+    "serviceThroughAllHostMessageFrameMs"
+  ],
+  "matrixOperations": [
+    {
+      "operation": "initial",
+      "before": [
+        0.0,
+        348.5
+      ],
+      "after": [
+        0.0,
+        467.5
+      ]
+    },
+    {
+      "operation": "push",
+      "before": [
+        469.5,
+        629.5
+      ],
+      "after": [
+        630.0,
+        815.5
+      ]
+    },
+    {
+      "operation": "push-tracked",
+      "before": [
+        436.0,
+        592.5
+      ],
+      "after": [
+        391.5,
+        560.0
+      ]
+    },
+    {
+      "operation": "pull",
+      "before": [
+        408.0,
+        629.0
+      ],
+      "after": [
+        286.0,
+        534.5
+      ]
+    },
+    {
+      "operation": "pull-new-history",
+      "before": [
+        385.0,
+        678.0
+      ],
+      "after": [
+        233.5,
+        437.5
+      ]
+    },
+    {
+      "operation": "pull-known-history",
+      "before": [
+        235.5,
+        377.0
+      ],
+      "after": [
+        233.5,
+        385.5
+      ]
+    },
+    {
+      "operation": "fetch",
+      "before": [
+        133.0,
+        275.0
+      ],
+      "after": [
+        205.0,
+        450.5
+      ]
+    },
+    {
+      "operation": "fetch-new-history",
+      "before": [
+        296.0,
+        568.5
+      ],
+      "after": [
+        195.5,
+        434.5
+      ]
+    },
+    {
+      "operation": "fetch-known-history",
+      "before": [
+        181.0,
+        337.5
+      ],
+      "after": [
+        105.5,
+        223.0
+      ]
+    },
+    {
+      "operation": "fetch-no-change",
+      "before": [
+        169.5,
+        344.0
+      ],
+      "after": [
+        116.5,
+        234.5
+      ]
+    },
+    {
+      "operation": "rebase",
+      "before": [
+        489.5,
+        806.5
+      ],
+      "after": [
+        626.5,
+        1020.5
+      ]
+    },
+    {
+      "operation": "merge",
+      "before": [
+        262.5,
+        475.0
+      ],
+      "after": [
+        252.5,
+        491.0
+      ]
+    },
+    {
+      "operation": "merge-no-ff",
+      "before": [
+        130.0,
+        440.5
+      ],
+      "after": [
+        131.0,
+        362.5
+      ]
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "before": [
+        370.0,
+        628.0
+      ],
+      "after": [
+        369.0,
+        573.5
+      ]
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "before": [
+        429.0,
+        728.5
+      ],
+      "after": [
+        303.5,
+        505.5
+      ]
+    },
+    {
+      "operation": "cherry-pick",
+      "before": [
+        64.5,
+        398.5
+      ],
+      "after": [
+        70.5,
+        304.5
+      ]
+    },
+    {
+      "operation": "checkout",
+      "before": [
+        77.0,
+        220.5
+      ],
+      "after": [
+        175.5,
+        400.5
+      ]
+    },
+    {
+      "operation": "checkout-unloaded",
+      "before": [
+        105.0,
+        372.5
+      ],
+      "after": [
+        92.5,
+        348.0
+      ]
+    }
+  ],
+  "actualButtonSummary": {
+    "before": {
+      "clickThroughAllMessageFrameSumMs": 5931.0,
+      "handlerSumMs": 3232.0
+    },
+    "after": {
+      "clickThroughAllMessageFrameSumMs": 5680.0,
+      "handlerSumMs": 2785.0
+    }
+  },
+  "actualButtonOperationFrameMs": [
+    {
+      "operation": "push",
+      "before": 1154.5,
+      "after": 899.5
+    },
+    {
+      "operation": "pull",
+      "before": 588.5,
+      "after": 576.5
+    },
+    {
+      "operation": "fetch",
+      "before": 440.0,
+      "after": 938.5
+    },
+    {
+      "operation": "interactive-rebase",
+      "before": 1633.0,
+      "after": 1061.0
+    },
+    {
+      "operation": "fetch-no-change",
+      "before": 313.5,
+      "after": 302.0
+    },
+    {
+      "operation": "checkout",
+      "before": 371.5,
+      "after": 303.0
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "before": 818.5,
+      "after": 872.5
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "before": 611.5,
+      "after": 727.0
+    }
+  ],
+  "separateCpuSummary": {
+    "before": {
+      "complete": true,
+      "scopedCpuSumMs": 8036.197,
+      "chromiumCpuSumMs": 4992.172
+    },
+    "after": {
+      "complete": true,
+      "scopedCpuSumMs": 7794.781,
+      "chromiumCpuSumMs": 4493.646
+    }
+  },
+  "isolatedSyntheticDecorationModule": {
+    "before": {
+      "medianPageMeanPerCallMs": 1.005,
+      "removedBadgesPer10Calls": [
+        800,
+        800
+      ]
+    },
+    "after": {
+      "medianPageMeanPerCallMs": 0.397,
+      "removedBadgesPer10Calls": [
+        0,
+        0
+      ]
+    }
+  },
+  "rejectedReadonlyRefFormatProbe": {
+    "refs": 2782,
+    "nonRemoteRefs": 669,
+    "samplesPerSource": 12,
+    "beforeMs": 160.58439600000003,
+    "afterMs": 174.1823334999999,
+    "notApplied": true
+  },
+  "artifacts": {
+    "/private/tmp/gsc-goal52-driver-state.json": "9901ccae4111c0f29ecac4bcf554d7914c585e97cc7e41cc8fe88e2bfe10040b",
+    "/private/tmp/gsc-goal52-runtime-proof.json": "fc14e3e2d33ac583044b3b1a4e1cbc8c04140eaf4607981a85ad51d13f5f979a",
+    "/private/tmp/gsc-goal52-decoration-micro.json": "e5e39309432c1e160abe5dfc1bd69b44e77cd7f9733ce4026193c2ca9f41ec3a",
+    "/private/tmp/gsc-goal52-ref-format-probe.json": "b3abd962db6e6021e6886d7cad931521c029625f5aba10150ccae6a37e89f767",
+    "/private/tmp/gsc-goal52-frame-smoke.json": "95b022a6a3342f7a524313f5ea14a542a4d8ecfd776a723768ad32f3bbeccf2b",
+    "/private/tmp/gsc-goal52-1-matrix-latency-before.json": "2fc788ba852c40f787649d82a03c6a1c9973c5620086d5ba1cd60a5bf259fe1b",
+    "/private/tmp/gsc-goal52-1-matrix-latency-before.log": "4c4fd9eb25c96f2aad9fa6078e6b176c55188641c249b74082cf44f3ff750516",
+    "/private/tmp/gsc-goal52-2-matrix-latency-after.json": "4f6193688efffb750de0cc4cf8a071ce66ad892397b0d76cbacfe4ba7e9b2984",
+    "/private/tmp/gsc-goal52-2-matrix-latency-after.log": "eec872364a866277b1c859ffad28f17e805fbbc671af86a89514b2d80532c9ad",
+    "/private/tmp/gsc-goal52-3-matrix-latency-after.json": "0f386fcfe327ab7bd4f3f3ea05dcefb851df475a0aa9a5f02b64c7ec191b39b4",
+    "/private/tmp/gsc-goal52-3-matrix-latency-after.log": "6c9661538444308028da09d72f93c2522522791a68f8063fc6baee8faabec026",
+    "/private/tmp/gsc-goal52-4-matrix-latency-before.json": "4a4d5c21626d6b7a6324ec25f6878a9560b4787f119c5396304b41c0c73eb42c",
+    "/private/tmp/gsc-goal52-4-matrix-latency-before.log": "52c1bfed7d8706c5cb28b2f4b1642a5dc18070bcbc0f0063d7caf7ef163cfbf2",
+    "/private/tmp/gsc-goal52-5-latency-before.json": "59ef1fbc92515c9265a96fd897e26cf0ecf9c769e5f407ffc771a143c9bab5e1",
+    "/private/tmp/gsc-goal52-5-latency-before.log": "e9bc20efeb2c3c6e82a12a055a75b4bccc72754957de2ec209f36b49a6d0e9ed",
+    "/private/tmp/gsc-goal52-6-latency-after.json": "0c83cddbd5800ae64f7070283fb398e838edbb74b9949c7f4bf56c38a417f4f0",
+    "/private/tmp/gsc-goal52-6-latency-after.log": "1cd6a3f1449bd28d96f77b5b42b4ee1a416ad4051a0bde3792dc1183223533a4",
+    "/private/tmp/gsc-goal52-7-latency-after.json": "d1349ec5c415d2a82bec0e2aea20acbba4bfb11096988319528124d9a27b419b",
+    "/private/tmp/gsc-goal52-7-latency-after.log": "b1c6036de32bfcc3ad702dbce5418c94f9a0d8d9222877217f623616d8727021",
+    "/private/tmp/gsc-goal52-8-latency-before.json": "b2967212c7b5d477d43143831ccc683f84233803de583582456505b6e13d2517",
+    "/private/tmp/gsc-goal52-8-latency-before.log": "db00455c0c16a0ec20340998c79bef0a195a9ab3db08d8ecc722efb615707a28",
+    "/private/tmp/gsc-goal52-9-cpu-before.json": "e819146f97d786370dbb87a6ddcf5b510b30405794c8cf78698d8464e7551d54",
+    "/private/tmp/gsc-goal52-9-cpu-before.log": "e5ddfdccd0cc6b3de43d54d2fd4eeb2fa518e710a8491d0b70aef2c2e6d334cd",
+    "/private/tmp/gsc-goal52-10-cpu-after.json": "a1e45a469574a83c43eb1b685cf8cf775df0fa4abf82af85ed0f7092e45f355e",
+    "/private/tmp/gsc-goal52-10-cpu-after.log": "f644aed8be6002ffbdf7a940cb99de2e7f5716cf973cdc366ecd00b610f968a5",
+    "/private/tmp/gsc-goal52-11-cpu-after.json": "e901baa78b55167e6e1a62a4ce1b82010ebb0447f6929e4fccd6b14f256cc72e",
+    "/private/tmp/gsc-goal52-11-cpu-after.log": "43dc2170f88b426cad982c9b80bb70e190c3b4e51da031b25e6a6742bd39c9c2",
+    "/private/tmp/gsc-goal52-12-cpu-before.json": "5c03951a13816ad648a79f504708ebfdd28b5244841146247b39c45f30ac5784",
+    "/private/tmp/gsc-goal52-12-cpu-before.log": "185ca35ef102cb97d00056b34cb1c8d1be58a4295b632889a611977ddef2f271"
+  },
+  "limitations": [
+    "Product change is PR decoration reconciliation only; Native mutation services are unchanged. Service-time variation is not attributed to this UI change.",
+    "1000 files/1000 commits/100 branches/8 shared upstreams; local bare receivers. No actual GitHub/server/network latency or Captain mutation timing.",
+    "Matrix has no PR overview. Eight actual button scenarios show 80 PR cards. Two independent fixture runs per source/mode; all slower samples retained.",
+    "All-host-message metric waits two frames after the final dispatched host message, including tag/PR/menu/busy state and nonvisual messages. It is a conservative distinct boundary, not the exact time of every pixel or a replacement for Graph-model ACK.",
+    "CPU runs are separate from basic latency. Scoped counters include Node/Playwright, waited Native work and complete stable-PID Chromium. No new aggregate memory, retained heap or peak claim.",
+    "Microbenchmark uses a synthetic isolated PR matching module and repeated correlated calls within two page lifetimes/source; JS/DOM only, not full Graph or Native performance.",
+    "Prior cumulative operation latency/resource limitations remain. This does not prove every named operation individually faster or the entire objective complete."
+  ],
+  "createdAt": "2026-10-21T23:57:00.221894+00:00"
+}

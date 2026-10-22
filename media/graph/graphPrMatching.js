@@ -8,6 +8,7 @@
   let focusStatus;
   let focusedHash = "";
   let resolvedPullRequest;
+  const badgeVersions = new WeakMap();
 
   /**
    * 현재 graph row에 PR badge와 강조 class를 다시 반영한다.
@@ -20,21 +21,34 @@
     if (!root) {
       return;
     }
-    root.querySelectorAll(".pr-badges").forEach((el) => el.remove());
-    root.querySelectorAll(".pr-row").forEach((el) => el.classList.remove("pr-row"));
-    root.querySelectorAll(".node.pr-node").forEach((el) => {
-      el.classList.remove("pr-node", ...prColorClasses());
-    });
-    const byHash = pullRequestsByHash(pullRequests);
-    root.querySelectorAll(".row[data-hash]").forEach((row) => {
+    const hasPrs = !!pullRequests?.length;
+    const rows = Array.from(root.querySelectorAll(hasPrs ? ".row[data-hash]" : ".row.pr-row"));
+    const byHash = pullRequestsByHash(pullRequests, new Set(rows.map(row => row.dataset.hash)));
+    rows.forEach((row) => {
       const prs = byHash.get(row.dataset.hash || "") || [];
+      const previous = row.querySelector(".pr-badges");
       if (!prs.length) {
+        previous?.remove();
+        if (row.classList.contains("pr-row")) row.classList.remove("pr-row");
         return;
       }
-      row.classList.add("pr-row");
-      row.insertBefore(badges(prs, commentCount), row.firstChild);
-      const node = root.querySelector(`.node[data-hash="${cssEscape(row.dataset.hash || "")}"]`);
-      node?.classList.add("pr-node", prColorClass(prs[0]?.number));
+      if (!row.classList.contains("pr-row")) row.classList.add("pr-row");
+      const version = badgeVersion(prs, commentCount);
+      if (previous && badgeVersions.get(previous) === version) return;
+      const focusedNumber = previous?.contains(document.activeElement) ? document.activeElement.dataset.prNumber : undefined;
+      const next = badges(prs, commentCount);
+      badgeVersions.set(next, version);
+      if (previous) previous.replaceWith(next); else row.insertBefore(next, row.firstChild);
+      if (focusedNumber) next.querySelector(`[data-pr-number="${cssEscape(focusedNumber)}"]`)?.focus({ preventScroll: true });
+    });
+    // SVG 노드를 한 번만 순회한다. 같은 hash의 중복 노드는 기존처럼 첫 번째만 장식한다.
+    const remaining = new Set(byHash.keys());
+    root.querySelectorAll(hasPrs ? ".node[data-hash]" : ".node.pr-node").forEach(node => {
+      const hash = node.dataset.hash || "", pr = remaining.delete(hash) ? byHash.get(hash)?.[0] : undefined;
+      const color = pr && prColorClass(pr.number);
+      if (pr && node.classList.contains("pr-node") && node.classList.contains(color)) return;
+      if (node.classList.contains("pr-node")) node.classList.remove("pr-node", ...prColorClasses());
+      if (pr) node.classList.add("pr-node", color);
     });
     if (focusedHash) decorateFocusedRow(findCommitRow(focusedHash));
     applyFocusStatus();
@@ -43,18 +57,31 @@
   /**
    * commit hash마다 연결된 PR 목록을 빠르게 찾는 map을 만든다.
    * @param {Array<object>} pullRequests graph에 매칭할 PR 배열
-   * @returns {Map<string, Array<object>>} 전체 commit OID를 key로 갖는 PR 목록 map
+   * @param {Set<string>} visibleHashes 현재 DOM에 있는 commit OID. 페이지 밖 PR 이력은 map에 보관하지 않는다.
+   * @returns {Map<string, Array<object>>} 표시 중인 commit OID를 key로 갖는 PR 목록 map
    */
-  function pullRequestsByHash(pullRequests) {
+  function pullRequestsByHash(pullRequests, visibleHashes) {
     const map = new Map();
     for (const pr of pullRequests || []) {
       for (const hash of matchingHashes(pr)) {
+        if (!visibleHashes.has(hash)) continue;
         const list = map.get(hash) || [];
         list.push(pr);
         map.set(hash, list);
       }
     }
     return map;
+  }
+
+  /**
+   * 화면에 표시되는 세 PR의 정보만 비교해 같은 배지를 교체하지 않도록 한다.
+   * @param {Array<object>} pullRequests 해당 commit에 연결된 우선순위 순서의 PR 목록
+   * @param {(pr: object) => number} commentCount PR별 최신 댓글 수를 반환하는 함수
+   * @returns {string} 번호·제목·표시 댓글 수의 비교 키. 제거된 배지의 키는 WeakMap과 함께 회수된다.
+   */
+  function badgeVersion(pullRequests, commentCount) {
+    return JSON.stringify(pullRequests.slice(0, 3).map(pr => [pr.number, pr.title,
+      pr.commentCountComplete === false ? "…" : Number(commentCount?.(pr) ?? pr.commentCount) || 0]));
   }
 
   /**

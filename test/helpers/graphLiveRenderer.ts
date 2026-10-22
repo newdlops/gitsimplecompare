@@ -19,6 +19,9 @@ export class GraphLiveRenderer {
   private readonly buffered: ToWebviewMessage[] = [];
   private readonly errors: string[] = [];
   private mounted = false;
+  private readonly observeAllMessages = process.env.GSC_BENCH_FULL_FRAME === "1";
+  private messageSequence = 0;
+  private messageFrame = { sequence: 0, paintedAt: 0 };
   private inbound?: (message: FromWebviewMessage) => Promise<void> | void;
 
   /** @param browser headless 전용 Chromium @param page 현재 fixture의 production Graph 문서 */
@@ -50,6 +53,26 @@ export class GraphLiveRenderer {
       if (message.type === "resyncGraph") this.errors.push("Renderer requested transport resync");
       return this.inbound?.(message);
     });
+    if (this.observeAllMessages) {
+      await this.page.exposeFunction("__gscAllMessageFrame", (value: { sequence: number; paintedAt: number }) => {
+        if (value.sequence > this.messageFrame.sequence) this.messageFrame = value;
+      });
+      await this.page.addInitScript(() => {
+        const fixtureWindow: any = window;
+        let latest = 0, observed = 0, frames = 0, scheduled = false;
+        /** 새 메시지가 끼어들면 frame 수를 다시 세어 마지막 변경보다 이른 ACK를 보내지 않는다. */
+        function frame() {
+          if (observed !== latest) { observed = latest; frames = 1; } else frames++;
+          if (frames < 2) requestAnimationFrame(frame);
+          else { scheduled = false; void fixtureWindow.__gscAllMessageFrame({ sequence: latest, paintedAt: Date.now() }); }
+        }
+        /** payload를 바꾸지 않고 실제 dispatch 직전의 순번만 관찰한다. */
+        fixtureWindow.__gscObserveMessageFrame = (sequence: number) => {
+          latest = sequence;
+          if (!scheduled) { scheduled = true; requestAnimationFrame(frame); }
+        };
+      });
+    }
     await this.page.route("**/*", async route => {
       const url = new URL(route.request().url());
       if (url.origin !== "https://gsc.fixture") { this.errors.push(`External request: ${url.origin}`); await route.abort(); return; }
@@ -99,6 +122,7 @@ export class GraphLiveRenderer {
     const matches=()=>!latest||this.paints.some(paint=>paint.performance.traceId===latest.traceId&&paint.performance.kind===latest.kind&&paint.performance.sentAt===latest.sentAt);
     const deadline=Date.now()+5000;while(!matches()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
     assert.ok(matches(),"Resource phase ended before its final Graph frame");
+    await this.waitForAllMessageFrame();
     await this.page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
     assert.deepEqual(this.errors,[]);
   }
@@ -107,12 +131,27 @@ export class GraphLiveRenderer {
   post(message: ToWebviewMessage): void {
     const payload = structuredClone(message);
     if (!this.mounted) { this.buffered.push(payload); return; }
+    const sequence = ++this.messageSequence;
     this.queue = this.queue.then(async () => {
       assert.ok(this.mounted, "Live renderer must be mounted before Graph loading");
-      await this.page.evaluate(data => window.dispatchEvent(new MessageEvent("message", { data })), payload);
+      if (this.observeAllMessages) await this.page.evaluate(({data,sequence}) => {
+        (window as any).__gscObserveMessageFrame(sequence);
+        window.dispatchEvent(new MessageEvent("message", {data}));
+      }, {data:payload,sequence});
+      else await this.page.evaluate(data => window.dispatchEvent(new MessageEvent("message", { data })), payload);
     });
     // 호출자는 postMessage를 await하지 않으므로 unhandled rejection을 막고 verify에서 원래 오류를 전파한다.
     void this.queue.catch(() => undefined);
+  }
+
+  /** Graph ACK와 별도로 tag·PR 배지·메뉴·busy를 포함한 마지막 전달 메시지의 두 frame을 기다린다. */
+  private async waitForAllMessageFrame(): Promise<void> {
+    if (!this.observeAllMessages) return;
+    await this.queue;
+    const deadline = Date.now() + 5000;
+    while (this.messageFrame.sequence < this.messageSequence && Date.now() < deadline)
+      await new Promise(resolve => setTimeout(resolve, 5));
+    assert.equal(this.messageFrame.sequence, this.messageSequence, "Last host message did not reach two renderer frames");
   }
 
   /** 실제 ACK 이후 HEAD·ref·local-only를 host snapshot과 대조하고 최종 metadata 게시의 frame도 따로 기다린다. */
@@ -135,6 +174,7 @@ export class GraphLiveRenderer {
     // tagStatus는 graphRendered와 별도 게시다. 전달 queue와 두 frame을 지난 최종 장식도 검사한다.
     await this.queue;
     await this.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await this.waitForAllMessageFrame();
     const rows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
       .filter(element => /^[a-f0-9]{40,64}$/.test((element as HTMLElement).dataset.hash || ""))
       .map(element => ({ hash: (element as HTMLElement).dataset.hash!, refs: ((element as HTMLElement).dataset.refs || "").split("\t").filter(Boolean),
@@ -159,6 +199,9 @@ export class GraphLiveRenderer {
     if (current) assert.ok(rows.find(row => row.hash === head)?.branches.includes(current), "Current branch chip is missing");
     assert.deepEqual(this.errors, [], "Live renderer reported errors");
     return { mode: "headless-production-html", renderedRows: rows.length, exactRefs: true, exactRemoteTags: true, exactHeadBadge: true, exactLocalOnly: true, headInLoadedPage: !!headCommit,
+      ...(this.observeAllMessages ? { allMessageFrameMs: Math.max(0, this.messageFrame.paintedAt - operationEndedAt),
+        allMessageFrameScope: "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+        allMessageSequence: this.messageFrame.sequence } : {}),
       mutationToFrameMs: paint ? Math.max(0, paint.paintedAt - operationEndedAt) : null,
       latestMutationToFrameMs: latestPaint ? Math.max(0, latestPaint.paintedAt - operationEndedAt) : null,
       renderMs: paint ? paint.renderedAt - paint.receivedAt : null, frameMs: paint ? paint.paintedAt - paint.renderedAt : null,

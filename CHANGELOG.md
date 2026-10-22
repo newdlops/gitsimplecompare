@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.72151] - 2026-10-22
+
+### Performance
+
+- Keep unchanged Graph PR badges and node colors during subsequent metadata
+  updates. Index PR associations only for the currently rendered Graph window
+  and visit SVG nodes once instead of finding each node repeatedly.
+- Preserve keyboard focus on unchanged badges and restore it when displayed PR
+  metadata changes. Keep updated titles/comments, moved commit associations,
+  the three-badge limit and PR row navigation current.
+- Add opt-in final-host-message frame observation and dense PR button comparisons
+  to the development benchmarks. Keep all measurement code out of the extension.
+
 ## [0.1.72150] - 2026-10-22
 
 ### Fixes
