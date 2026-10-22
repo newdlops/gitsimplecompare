@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.72159] - 2026-10-22
+
+### Performance
+
+- Read only HEAD and change presence for Graph virtual rows, avoiding complete
+  untracked-file enumeration and a separate cold-index warmup for that consumer.
+- Share complete Changes reads with Graph and promote a summary to a complete
+  read when needed. Keep cancellation, invalidation and independent returned values.
+- Retain a validated private directory cache across source index metadata-only
+  changes. Rebind current stat fields and preserve Native checks of edits and ignores.
+
+### Development
+
+- Verify operation results and branch identity with independent Native Git after
+  the final measured renderer frame. Separate ordinary latency, CPU and aggregate
+  RSS observation; preserve and reject incomplete memory observations.
+- Record all 18 operation variants on two repository sizes, including slower
+  cases and initial-load tradeoffs. Overall operation-speed completion remains open.
+
 ## [0.1.72158] - 2026-10-22
 
 ### Fixes

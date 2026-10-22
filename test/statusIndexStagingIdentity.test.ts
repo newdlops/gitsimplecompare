@@ -37,6 +37,7 @@ for (const algorithm of ["sha1", "sha256"]) for (const version of [2, 3, 4]) {
     const refreshed = await readFile(f.index); assert.notDeepEqual(refreshed, before);
     assert.equal(statusIndexStagingIdentity(refreshed), identity);
     assert.deepEqual(inspection.restoreMetadata(refreshed), restoreStatusIndexMetadata(refreshed, before));
+    assert.equal(inspection.restoreMetadata(refreshed, true), undefined, "An unwarmed index cannot satisfy a directory-cache requirement");
     await runGit(["update-index", "--index-version=4"], f.root);
     assert.equal(statusIndexStagingIdentity(await readFile(f.index)), identity);
     await writeFile(path.join(f.root, f.names[0]), "different\n"); await runGit(["add", "--", f.names[0]], f.root);
@@ -72,11 +73,12 @@ test("assume-valid, intent-to-add, executable mode, rename and merge stages chan
 });
 
 test("index shape distinguishes existing native directory caches without changing stage identity", async t => {
-  const f = await fixture(t), before = statusIndexStagingInfo(await readFile(f.index));
+  const f = await fixture(t), original = await readFile(f.index), before = statusIndexStagingInfo(original);
   await runGit(["-c", "core.untrackedCache=true", "update-index", "--force-untracked-cache"], f.root);
-  const after = statusIndexStagingInfo(await readFile(f.index));
+  const cached = await readFile(f.index), after = statusIndexStagingInfo(cached);
   assert.equal(after?.identity, before?.identity); assert.equal(after?.directoryCount, 1);
   assert.equal(after?.hasUntrackedCache, true);
+  assert.deepEqual(StatusIndexSource.inspect(original)?.restoreMetadata(cached, true), restoreStatusIndexMetadata(cached, original));
 });
 
 test("split, sparse and skip-worktree indexes use exact fallback", async t => {

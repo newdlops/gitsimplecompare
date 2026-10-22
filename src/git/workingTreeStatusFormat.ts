@@ -2,8 +2,9 @@ import { parsePorcelainGroups } from "./diffParse";
 import type { StatusGroups } from "./statusCache";
 
 /** porcelain 형식 차이를 흡수해 Changes·Graph·외부 API가 같은 authoritative 결과를 소비한다. */
-export interface WorkingTreeSnapshot {
-  repoRoot: string; head?: string; branch: string; upstream?: string; groups: StatusGroups; porcelain: string; hasChanges: boolean;
+export interface WorkingTreeSummary { head?: string; hasChanges: boolean }
+export interface WorkingTreeSnapshot extends WorkingTreeSummary {
+  repoRoot: string; branch: string; upstream?: string; groups: StatusGroups; porcelain: string;
 }
 export interface WorkingTreeEntry { xy: string; path: string; oldPath?: string }
 export interface ParsedWorkingTree { head?: string; branch: string; upstream?: string; entries: WorkingTreeEntry[] }

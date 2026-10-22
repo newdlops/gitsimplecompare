@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { GraphLiveRenderer, BrowserCpuProcess } from "./graphLiveRenderer";
 import { loadChildResourceProbe, type ChildResourceCounters } from "./childResourceProbe";
 import { PhaseMemorySampler } from "./phaseMemorySampler";
-import { summarizePhaseMemory } from "./phaseMemorySummary";
+import { preserveIncompletePhaseMemory, summarizePhaseMemory } from "./phaseMemorySummary";
 
 /** 명시적인 opt-in에서만 counter를 읽는다. 기본 실행 경로·Git executable·환경은 바꾸지 않는다. */
 export class GraphPhaseResources {
@@ -46,7 +46,10 @@ export class GraphPhaseResources {
     const nodeCpuMs=(nodeCpu.user+nodeCpu.system)/1000,childCpuMs=childDeltas.userCpuMs+childDeltas.systemCpuMs;
     const browserCpuMs=browserRows.reduce((sum,row)=>sum+row.deltaCpuMs,0);
     const phaseMemory = await this.memorySampler?.stop(); this.memorySampler = undefined;
-    assert.ok(!phaseMemory || phaseMemory.complete, "An incomplete memory observation is not a successful resource check");
+    if (phaseMemory && !phaseMemory.complete) {
+      const raw = await preserveIncompletePhaseMemory(phaseMemory, start.label);
+      assert.fail(`An incomplete memory observation is not a successful resource check: ${JSON.stringify(phaseMemory.errors)}. Raw: ${raw}`);
+    }
     const memoryReport = phaseMemory ? await summarizePhaseMemory(phaseMemory, start.label) : undefined;
     return {label:start.label,input:start.input,startedAt:start.at,finishedAt,elapsedMs:finishedAt-start.at,nodeCpuMs,childCpuMs,browserCpuMs,browserComplete,
       ownedCpuMs:browserComplete?nodeCpuMs+childCpuMs+browserCpuMs:null,registeredGitCalls:expectedGitCalls,

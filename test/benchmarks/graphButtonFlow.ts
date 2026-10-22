@@ -109,6 +109,10 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   if (operation === "pull") {
     await runGit(["config", `branch.${branch}.remote`, "origin"], f.root);
     await runGit(["config", `branch.${branch}.merge`, `refs/heads/${f.mainBranch}`], f.root);
+    // borrowed catalog에는 합성 main의 tracking ref가 없다. 아직 수신하지 않은 incoming은 그대로 두고
+    // 원래 게시된 main만 재현해 일반 pull이 upstream 설정 picker로 바뀌지 않도록 한다.
+    await runGit(["update-ref", `refs/remotes/origin/${f.mainBranch}`, f.main], f.root);
+    assert.equal((await runGit(["rev-parse", "--verify", "@{upstream}"], f.root)).trim(), f.main);
     await runGit(["update-ref", `refs/heads/${f.mainBranch}`, f.incomingPull], f.remote);
   }
   if (operation === "fetch") await runGit(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
@@ -216,7 +220,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
       await settle(f.root, panel, messages, metadataReady);
-      if(resources || profiling)await renderer.waitForPendingFrame(publications.at(-1)?.performance);
+      // 실제 버튼 검증도 사후 Native 조회 전에 마지막 화면 frame을 확정한다.
+      await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       measuring = false; stop();
       const diagnostic = diagnostics?.finish();
       const settled = performance.now(), used = process.cpuUsage(cpu), final = signature(panel.commits);

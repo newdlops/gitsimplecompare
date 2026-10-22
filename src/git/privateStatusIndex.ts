@@ -8,7 +8,7 @@ import { runGitStatus } from "./gitStatusExec";
 import { registerStatusIndex } from "./statusIndexOwnership";
 import type { StatusIndexWarmCache } from "./statusIndexWarmCache";
 import { restoreStatusIndexMetadata, statusIndexStagingIdentity, StatusIndexSource } from "./statusIndexStagingIdentity";
-import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "./workingTreeStatusFormat";
+import { parseWorkingTreeV2, workingTreeSnapshot, type ParsedWorkingTree, type WorkingTreeSnapshot, type WorkingTreeSummary } from "./workingTreeStatusFormat";
 import { COLD_STATUS_MIN_ENTRIES, readColdStatus } from "./coldStatusScan";
 import { StatusIndexWarmup } from "./statusIndexWarmup";
 import { RepositoryIndexPathReader } from "./repositoryIndexPath";
@@ -40,10 +40,30 @@ export class PrivateStatusIndex {
    * @returns 실제 index를 변경하지 않은 상태 스냅샷
    */
   async read(signal: AbortSignal, useCache = true): Promise<WorkingTreeSnapshot> {
+    return workingTreeSnapshot(this.root, await this.readParsed(signal, useCache, false));
+  }
+
+  /**
+   * Graph에 필요한 HEAD·변경 존재만 읽고 미추적 디렉터리의 파일별 열거·별도 warmup은 시작하지 않는다.
+   * @param signal 공유 조회의 취소 신호 @param useCache 전용 index 사용 여부
+   * @returns 같은 Native status가 확인한 HEAD와 staged·unstaged·untracked 변경 존재
+   */
+  async readSummary(signal: AbortSignal, useCache = true): Promise<WorkingTreeSummary> {
+    const parsed = await this.readParsed(signal, useCache, true);
+    return { head: parsed.head, hasChanges: parsed.entries.length > 0 };
+  }
+
+  /**
+   * 전체 목록과 요약의 전용 index·metadata 검증을 공유한다. 호출부의 공유 실행기가 동시 접근을 직렬화한다.
+   * @param signal Native 조회와 보조 파일 읽기의 취소 신호 @param useCache 전용 index 사용 여부
+   * @param summary true이면 디렉터리 내 개별 미추적 파일을 열거하지 않고 변경 존재만 보존한다.
+   * @returns 검증된 Native porcelain 의미. 전체 요청은 모든 경로를 포함하며 요약 요청은 공개 목록으로 노출하지 않는다.
+   */
+  private async readParsed(signal: AbortSignal, useCache: boolean, summary: boolean): Promise<ParsedWorkingTree> {
     if (signal.aborted) throw new DOMException("Git read cancelled.", "AbortError");
     if (!useCache || process.env.GIT_INDEX_FILE || process.env.GIT_DIR || process.env.GIT_WORK_TREE
       || await stat(path.join(this.root, ".gitmodules")).then(() => true, () => false)) {
-      this.warmup.setSource(undefined); return this.authoritative(signal);
+      this.warmup.setSource(undefined); return this.authoritative(signal, summary);
     }
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -57,12 +77,12 @@ export class PrivateStatusIndex {
         const before = await indexIdentity(source, signal);
         await this.prepare(before, signal, sourcePath.identity);
         const env = withGitConfigOverrides({ GIT_INDEX_FILE: this.index! }, { "core.untrackedCache": "true", "core.splitIndex": "false" });
-        const initial = this.cold ? await readColdStatus(this.root, env, signal, this.log) : undefined;
-        const parsed = initial ?? parseWorkingTreeV2(await runGitStatus(["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z", "--untracked-files=normal"], this.root,
+        const initial = !summary && this.cold ? await readColdStatus(this.root, env, signal, this.log) : undefined;
+        const parsed = initial ?? parseWorkingTreeV2(await runGitStatus(["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z", "--untracked-files=normal", ...(summary ? ["--no-renames"] : [])], this.root,
           { signal, env, allowPrivateIndexWrites: true }));
         if (!initial) this.cold = false;
-        const directories = initial ? [] : parsed.entries.filter(entry => entry.xy === "??" && entry.path.endsWith("/")).map(entry => entry.path);
-        if (!initial) parsed.entries = parsed.entries.filter(entry => !(entry.xy === "??" && entry.path.endsWith("/")));
+        const directories = initial || summary ? [] : parsed.entries.filter(entry => entry.xy === "??" && entry.path.endsWith("/")).map(entry => entry.path);
+        if (!initial && !summary) parsed.entries = parsed.entries.filter(entry => !(entry.xy === "??" && entry.path.endsWith("/")));
         const files = new Set<string>();
         for (const batch of pathBatches(directories)) {
           const output = await runGit(["--literal-pathspecs", "ls-files", "--others", "--exclude-standard", "-z", "--", ...batch], this.root, { signal, env: { GIT_INDEX_FILE: this.index!, GIT_OPTIONAL_LOCKS: "0" } });
@@ -82,7 +102,7 @@ export class PrivateStatusIndex {
           if (!initial && this.warmCache && this.warmFingerprint && !signal.aborted && Date.now() - this.publishedAt >= 30000) {
             this.publishedAt = Date.now(); await this.warmCache.store(this.root, this.warmFingerprint!, this.index!);
           }
-          return workingTreeSnapshot(this.root, parsed);
+          return parsed;
         }
         this.fingerprint = undefined;
         this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-or-metadata-changed-during-read" });
@@ -92,7 +112,7 @@ export class PrivateStatusIndex {
       this.log("private status index fallback", { repoRoot: this.root, reason: error instanceof Error ? error.name : "cache-failed" });
       await this.dispose();
     }
-    return this.authoritative(signal);
+    return this.authoritative(signal, summary);
   }
 
   /** 실행 close 뒤에 호출하며 생성한 디렉터리만 삭제한다. */
@@ -104,10 +124,11 @@ export class PrivateStatusIndex {
     if (directory) await rm(directory, { recursive: true, force: true });
   }
 
-  /** 호출자 index와 미지원 구성에서도 항상 Git의 authoritative 전체 조회로 복구한다. */
-  private async authoritative(signal: AbortSignal): Promise<WorkingTreeSnapshot> {
-    const raw = await runGitStatus(["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z", "--untracked-files=all"], this.root, { signal });
-    return workingTreeSnapshot(this.root, parseWorkingTreeV2(raw));
+  /** 호출자 index와 미지원 구성에서도 Git의 authoritative 조회로 복구하며, 전체 요청의 파일은 모두 유지한다. */
+  private async authoritative(signal: AbortSignal, summary: boolean): Promise<ParsedWorkingTree> {
+    const raw = await runGitStatus(["status", "--porcelain=v2", "--branch", "--no-ahead-behind", "-z",
+      `--untracked-files=${summary ? "normal" : "all"}`, ...(summary ? ["--no-renames"] : [])], this.root, { signal });
+    return parseWorkingTreeV2(raw);
   }
 
   /** 원본 사본·취소 수명·검증한 저장소 identity를 받아 현재 stage와 stat에 맞는 전용 index를 준비한다. */
@@ -147,13 +168,15 @@ export class PrivateStatusIndex {
       return;
     }
     // stat·UNTR·FSMN 갱신만으로 다시 전체 탐색하지 않되 stage/파일 의미 변경은 반드시 분리한다.
+    const retained = !!this.fingerprint && !!warmFingerprint && previous === warmFingerprint && this.sourceIdentity === sourceIdentity && inspection
+      ? inspection.restoreMetadata(await readFile(this.index!, { signal }), true) : undefined;
     this.warmFingerprint = warmFingerprint;
-    const warmed = this.warmFingerprint ? await this.warmCache?.load(this.root, this.warmFingerprint) : undefined;
-    const transitioned = !warmed && canTransition && source.bytes
+    const warmed = !retained && this.warmFingerprint ? await this.warmCache?.load(this.root, this.warmFingerprint) : undefined;
+    const transitioned = !retained && !warmed && canTransition && source.bytes
       ? await transitionStatusIndex(this.root, this.index!, source.bytes, previous!.slice(-64), signal, this.log, previousWarmup?.bytes, inspection) : undefined;
-    const bytes = warmed && source.bytes ? (inspection ? inspection.restoreMetadata(warmed.bytes)
-      : restoreStatusIndexMetadata(warmed.bytes, source.bytes)) ?? source.bytes : transitioned ?? source.bytes;
-    this.cold = !completedWarmup && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache && !warmed && !transitioned;
+    const bytes = retained ?? (warmed && source.bytes ? (inspection ? inspection.restoreMetadata(warmed.bytes)
+      : restoreStatusIndexMetadata(warmed.bytes, source.bytes)) ?? source.bytes : transitioned ?? source.bytes);
+    this.cold = !completedWarmup && !!info && info.directoryCount >= 256 && !info.hasUntrackedCache && !retained && !warmed && !transitioned;
     if (bytes) {
       await writeFile(this.index!, bytes, { mode: 0o600 });
       // 새 사본의 mtime이 늦으면 racy-clean 파일의 수정을 놓치므로 원본보다 이른 시각을 보존한다.
@@ -163,7 +186,8 @@ export class PrivateStatusIndex {
     else await rm(this.index!, { force: true });
     this.fingerprint = source.key;
     this.sourceIdentity = sourceIdentity;
-    this.publishedAt = 0;
+    if (!retained) this.publishedAt = 0;
+    else this.log("private status index metadata refreshed", { repoRoot: this.root, sourceInspectionReused: true });
   }
 }
 

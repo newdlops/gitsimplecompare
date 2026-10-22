@@ -44,10 +44,16 @@ export class StatusIndexSource {
     return planParsedTransition(parseIndex(cached, false, false, true), this.parsed, previousIdentity);
   }
 
-  /** 새 private index는 매번 해석·검증하고, 같은 source의 stat 위치만 재사용해 checksum을 다시 만든다. */
-  restoreMetadata(cached: Buffer): Buffer | undefined {
+  /**
+   * 새 private index를 매번 검증하고 현재 source의 stat으로 checksum을 다시 만든다.
+   * @param cached 재사용할 전용 사본 @param requireUntrackedCache 준비된 UNTR가 없는 사본을 거부할지 여부
+   * @returns stage·형식·checksum이 맞는 사본. cache 요구를 포함한 검증 실패는 undefined로 복구한다.
+   */
+  restoreMetadata(cached: Buffer, requireUntrackedCache = false): Buffer | undefined {
     if (!this.matches(this.bytes)) return undefined;
-    return restoreParsedMetadata(cached, parseIndex(cached, true), this.bytes, this.parsed);
+    const parsed = parseIndex(cached, true);
+    if (requireUntrackedCache && !parsed?.hasUntrackedCache) return undefined;
+    return restoreParsedMetadata(cached, parsed, this.bytes, this.parsed);
   }
 }
 

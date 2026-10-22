@@ -59,7 +59,7 @@ def guarded_sample():
     try:
         sample()
     except Exception as error:
-        errors.append(type(error).__name__)
+        errors.append(f"{type(error).__name__}: {str(error)[:256]}")
 
 
 guarded_sample()

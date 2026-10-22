@@ -26,8 +26,9 @@ import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
+import { verifyGitOperationResult, type GitOperationName } from "../helpers/gitOperationOracle";
 
-type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
+type Operation = GitOperationName;
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 const PUSH_THRESHOLD = process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES === undefined ? undefined : Number(process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES);
 const benchmarkSource = JSON.parse(process.env.GSC_BENCH_SOURCE!);
@@ -85,6 +86,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   if (operation === "fetch-new-history") await assert.rejects(git(["cat-file", "-e", f.incoming]), "Fresh fetch fixture must not already contain its incoming object");
   if (operation === "pull-new-history") await assert.rejects(git(["cat-file", "-e", f.incomingPull]), "Fresh pull fixture must not already contain its incoming object");
   if (operation === "fetch-known-history") await git(["update-ref", "refs/heads/known-history", f.main], f.remote);
+  if (operation === "fetch-no-change") await git(["fetch", "--all", "--prune"]);
+  const refsBefore = operation === "fetch-no-change" ? await git(["for-each-ref", "--format=%(refname) %(objectname)"]) : undefined;
   const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
   let measuring = false;
   const renderer = process.env.GSC_BENCH_LIVE_RENDERER === "1" ? await GraphLiveRenderer.create() : undefined;
@@ -146,7 +149,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     if (resources && renderer) await resources.begin(renderer, operation, "service");
     const started = performance.now(), cpu = process.cpuUsage(), rss = process.memoryUsage.rss();
     let peakRss = rss;
-    const rssSample = setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage.rss()); }, 10);
+    // 일반 시간·CPU 구간에서는 주기적 RSS 관측을 끈다. 합산 메모리는 별도 mode에서 측정한다.
+    const rssSample = process.env.GSC_BENCH_SAMPLE_NODE_RSS === "1"
+      ? setInterval(() => { peakRss = Math.max(peakRss, process.memoryUsage.rss()); }, 10) : undefined;
     measuring = true;
     const beforeMessages = messages.length;
     let operationEnd: number, operationEndedAt: number, graphEnd: number;
@@ -173,7 +178,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       else await panel.refreshAfterGraphAction(operation === "push" || operation === "push-tracked" ? "references" : "graph");
       graphEnd = performance.now();
       await idle(f.root, panel, metadataReady, resources ? 150 : 20);
-      if (resources && renderer) await renderer.waitForPendingFrame(publications.at(-1)?.performance);
+      // 일반 시간 비교도 최종 화면을 먼저 확정해 사후 Native 검증이 renderer와 CPU를 다투지 않게 한다.
+      if (renderer) await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       const settledAt = performance.now(), settledRss = process.memoryUsage.rss();
       clearInterval(rssSample); measuring = false;
       const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
@@ -188,6 +194,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       if (loadedTarget) assert.equal(graphCommands.log ?? 0, 0, "A visible checkout must reuse the existing Graph page");
       if (operation === "checkout-unloaded") assert.equal(graphCommands.log, 1, "A checkout outside the loaded page requires one history read");
       unobserve();
+      const nativeOracleStartedAt = Date.now();
+      await verifyGitOperationResult(f, operation, checkoutTarget, refsBefore,
+        operation.startsWith("checkout") ? checkoutTarget : `bench-${operation}`);
       const head = (await git(["rev-parse", "HEAD"])).trim();
       const actual = await readNativeGraphExpectation(f.root, panel.commits.length);
       const visibleHead = actual.find(commit => commit.refs.includes("HEAD"))?.hash;
@@ -211,6 +220,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const liveRenderer = await renderer?.verify(panel.commits, head, operationEndedAt, graphAlreadyCurrent, latestPublication?.performance,
         panel.lastLocalBranches.find((branch: { current: boolean }) => branch.current)?.name,
         renderer ? await readNativeRemoteTagExpectation(f.root) : []);
+      const oracleAfterFrame = liveRenderer?.allMessageFrameMs === undefined ? undefined
+        : operationEndedAt + liveRenderer.allMessageFrameMs <= nativeOracleStartedAt;
+      assert.notEqual(oracleAfterFrame, false, "Native verification must start after the final measured renderer frame");
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
       return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
         branchDetailsReads: branchReads.map(read => ({ startedAfterOperationMs: read.startedAt - operationEndedAt,
@@ -220,6 +232,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         ...(operation === "checkout" ? { checkoutTargetScope: fixedLoadedTarget ? "fixed-loaded-topic" : loadedTarget ? "loaded-page" : "topic" } : {}),
         ...(checkoutTargetFingerprint ? { checkoutTargetFingerprint, checkoutTargetFingerprintKind: "branch-and-tree" } : {}),
         ...(liveRenderer ? { liveRenderer } : {}),
+        ...(oracleAfterFrame === undefined ? {} : { nativeOracleAfterMeasuredFrame: true }),
         latestGraphPublishedMs: latestPublishedAt === undefined ? null : Math.round(latestPublishedAt - operationEnd), graphAlreadyCurrent, settledMs: Math.round(settledAt - started),
         processes: timings.length, operationProcesses, graphProcesses: timings.length - operationProcesses, peakProcesses,
         webviewMessages: messages.length - beforeMessages, graphPublications: publications.length,
@@ -232,9 +245,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
           spawnMs: timing.syncSpawnMs, finishedAfterStartMs: Math.round(timing.finishedAtMs - started), outcome: timing.outcome,
           ...(timing.statusIndex ? { statusIndex: timing.statusIndex, statusUntracked: timing.statusUntracked, optionalLocks: timing.optionalLocks } : {}) })) } : {}),
         nodeCpuMs: Math.round((cpuUsed.user + cpuUsed.system) / 1000),
-        nodeCpuScope: "benchmark Node process including Playwright transport and RSS/idle sampling", settledQuietPeriodMs: resources ? 150 : 20,
+        nodeCpuScope: "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately", settledQuietPeriodMs: resources ? 150 : 20,
         ...(phaseResources ? { phaseResources } : {}),
-        rssDeltaMiB: Math.round((settledRss - rss) / 1048576), peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576), historyExact: true };
+        rssDeltaMiB: Math.round((settledRss - rss) / 1048576), nodeRssSamplingEnabled: !!rssSample,
+        ...(rssSample ? { peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576) } : {}), nativeOperationVerified: true, nativeBranchVerified: true, historyExact: true };
     } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
 }

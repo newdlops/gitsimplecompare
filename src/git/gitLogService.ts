@@ -17,7 +17,7 @@ import { GitBranchRefCache } from "./gitBranchRefCache";
 import { invalidateGitBranchListCaches } from "./gitBranchListCache";
 import { GitGraphActionService } from "./gitGraphActionService";
 import type { RevertCommitResult } from "./gitGraphActionService";
-import { readWorkingTreeSnapshot, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
+import { readWorkingTreeSummary, invalidateWorkingTreeSnapshot } from "./workingTreeSnapshot";
 import { GraphLocalBranchTrackingReader } from "./graphLocalBranchTracking";
 import { readGitLogPage, readGitLogPageSnapshot } from "./gitLogPage";
 import { GitLocalOnlyBranchCache } from "./gitLocalOnlyBranches";
@@ -228,10 +228,11 @@ export class GitLogService {
    * - uncommitted 변경이 없으면 빈 배열을 반환해 실제 git log 만 렌더링하게 한다.
    * - ongoing 은 working tree 전체(HEAD 대비 staged+unstaged), staged 는 index 스냅샷을 뜻한다.
    * - porcelain v2 branch 헤더에서 HEAD를 함께 읽어 별도 rev-parse 실행 대기를 없앤다.
+   * - 전체 미추적 파일 목록 대신 변경 존재 요약을 사용하며, Changes가 읽는 전체 상태는 공유한다.
    * @param signal 숨김·교체된 Graph의 status 프로세스를 종료할 신호
    */
   async getVirtualCommits(signal?: AbortSignal): Promise<Commit[]> {
-    const { head, hasChanges } = await readWorkingTreeSnapshot(this.repoRoot, { signal });
+    const { head, hasChanges } = await readWorkingTreeSummary(this.repoRoot, signal);
     if (!hasChanges) {
       return [];
     }

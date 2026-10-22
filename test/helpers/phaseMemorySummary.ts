@@ -6,6 +6,19 @@ import path from "node:path";
 import type { PhaseMemoryResult } from "./phaseMemorySampler";
 
 /**
+ * 불완전한 관측도 실패 전에 원문을 보존한다. 이를 정상 요약이나 성공 peak로 반환하지 않는다.
+ * @param result observer가 종료하며 반환한 표본·누락 원인 @param label 작업 이름
+ * @param output 벤치마크 결과 경로. 단위 검사에서는 소유 임시 경로를 명시한다.
+ * @returns 실패 진단 원문의 파일 경로. 기존 파일은 덮어쓰지 않는다.
+ */
+export async function preserveIncompletePhaseMemory(result: PhaseMemoryResult, label: string, output = process.argv[2]): Promise<string> {
+  assert.equal(result.complete, false); assert.match(label, /^[a-z0-9-]+$/); assert.ok(output);
+  const file = path.resolve(output + `.memory-${label}.incomplete.json`);
+  await writeFile(file, JSON.stringify(result) + "\n", { flag: "wx" });
+  return file;
+}
+
+/**
  * Native 검증 밖의 원시 표본을 보존하고 benchmark 결과에는 작은 요약만 반환한다.
  * @param result 실제 observer가 close 뒤 반환한 표본 @param label 같은 실행 안의 유일한 작업 이름
  * @returns 같은 시점 합산 RSS 최대 표본과 개별 구성요소 최대값. 이 두 종류의 최대값을 합산하지 않는다.
