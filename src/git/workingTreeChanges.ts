@@ -1,5 +1,7 @@
 // 작업 전 변경 유무만 필요한 경로에서 전체 미추적 파일 목록을 만들지 않도록 공통 조회를 제공한다.
 import { GitError, runGit, runGitStreamResult } from "./gitExec";
+import { forgetWorkingTreeChangeHints, recentWorkingTreeChangeHints } from "./workingTreeChangeHints";
+import { logInfo } from "../ui/outputLog";
 
 /**
  * index·작업트리·미추적 파일 중 변경이 하나라도 있으면 true를 반환한다.
@@ -7,14 +9,36 @@ import { GitError, runGit, runGitStreamResult } from "./gitExec";
  * - status.showUntrackedFiles는 표시 설정이므로 작업 전 사용자 파일 보존 판단에는 적용하지 않는다.
  * - 이동 여부와 경로 목록은 사용하지 않아 rename 유사도 비교를 생략하고 stdout은 boolean만 보존한다.
  * - stdout에 변경이 있어도 Native Git이 성공/close하기 전에는 결과를 반환하지 않는다.
+ * - 최근 표시 경로에서 실제 변경을 찾으면 true로 완료한다. 찾지 못하면 캐시를 버리고 전체 검사를 실행한다.
  * @param repoRoot 검사할 저장소 또는 linked worktree의 루트
  * @param disableFsmonitor daemon 오류를 피해야 하는 기존 PR 경로에서만 fsmonitor를 비활성화한다.
  * @returns ignored 파일을 제외한 실제 변경이 있으면 true. Git 조회 오류는 숨기지 않고 전파한다.
  */
 export async function hasWorkingTreeChanges(repoRoot: string, disableFsmonitor = false): Promise<boolean> {
+  const hints = recentWorkingTreeChangeHints(repoRoot);
+  if (hints.length) {
+    if (await readChanges(repoRoot, disableFsmonitor, hints)) {
+      logInfo("working tree change confirmed from recent paths", { repoRoot, candidateCount: hints.length });
+      return true;
+    }
+    forgetWorkingTreeChangeHints(repoRoot);
+    logInfo("working tree change hint missed; full scan required", { repoRoot, candidateCount: hints.length });
+  }
+  return readChanges(repoRoot, disableFsmonitor);
+}
+
+/**
+ * Native가 성공·close한 출력의 변경 존재만 반환한다. 범위 검사가 false여도 전체 clean을 증명하지 않는다.
+ * @param repoRoot 검사 저장소 @param disableFsmonitor 기존 사전 검사의 command-scope 정책
+ * @param paths 옵션·glob으로 해석하지 않을 최근 경로 후보. 생략하면 기존 전체 조회다.
+ * @returns 해당 범위에 Native 변경이 있으면 true. 부분 출력 뒤의 오류는 그대로 전파한다.
+ */
+async function readChanges(repoRoot: string, disableFsmonitor: boolean, paths?: string[]): Promise<boolean> {
   const args = [
+    ...(paths ? ["--literal-pathspecs"] : []),
     ...(disableFsmonitor ? ["-c", "core.fsmonitor=false"] : []),
     "status", "--porcelain=v1", "-z", "--untracked-files=normal", "--no-renames",
+    ...(paths ? ["--", ...paths] : []),
   ];
   return runGitStreamResult(args, repoRoot, () => {
     // lock/spawn 재시도는 새 reader를 만든다. 이전 시도의 부분 출력으로 clean 결과를 덮지 않는다.

@@ -19,7 +19,7 @@ import { GraphLiveRenderer } from "../helpers/graphLiveRenderer";
 import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
 import { createGraphButtonDiagnostics, traceLocalOnlySnapshot } from "../helpers/graphButtonDiagnostics";
 import { createPromisorPushFixture, missingPromisorBlobs, promisorPackState } from "../helpers/promisorPushFixture";
-import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
+import { window, __errorMessages, __outputLines, __resetWindowMessages, __setQuickPickResult } from "../helpers/vscodeMock";
 import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButtonFixture";
 import { probePrNotice } from "../helpers/prNoticeProbe";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
@@ -119,6 +119,15 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   // 최신 Git의 첫 fetch는 origin/HEAD를 만들 수 있다. 실제 무변경 비교는 이 초기 ref 설정 뒤에 시작한다.
   if (operation === "fetch-no-change") await runGit(["fetch", "--all", "--prune"], f.root);
   if (operation === "checkout") f = await loadedCheckoutFixture(f);
+  const localHintScenario = process.env.GSC_BENCH_LOCAL_CHANGE_HINT_SCENARIO;
+  assert.ok(!localHintScenario || ["known", "stale"].includes(localHintScenario));
+  assert.ok(!localHintScenario || ["pull", "interactive-rebase", "pr-squash-cherry-pick", "pr-cherry-pick"].includes(operation));
+  const localFile = `gsc-local-hint-${localHintScenario === "stale" ? "previous" : "current"}.txt`;
+  const finalLocalFile = "gsc-local-hint-current.txt", localContents = "Preserved local work for the actual button scenario.\n";
+  if (localHintScenario) {
+    for (const file of [localFile, finalLocalFile]) assert.equal((await runGit(["ls-tree", "--name-only", "HEAD", "--", file], f.root)).trim(), "");
+    await writeFile(path.join(f.root, localFile), localContents, { flag: "wx" });
+  }
   assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote, "Only the owned local bare receiver is permitted");
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
@@ -185,7 +194,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
     if (operation === "checkout") assert.ok(panel.commits.some((commit: Commit) => commit.hash === f.topic), "Checkout target must be in the actual loaded page");
     const initialRefs = operation === "fetch-no-change" ? await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root) : undefined;
-    const initialStatus = partial ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
+    let initialStatus = partial || localHintScenario ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
     const originalIndex = partial ? await readFile(path.join(f.root, ".git/index")) : undefined;
     const initialPacks = partial ? await promisorPackState(f.root) : undefined;
     if (partial) assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Initial Graph must not hydrate blobs");
@@ -200,6 +209,13 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         items: [{ hash: f.prCommits[0], action: "reword", message: "rewritten click\n\nfirst body" },
           { hash: f.prCommits[1], action: "squash", message: "combined click\n\ncombined body" }, { hash: f.prCommits[2], action: "pick" }] } });
     }
+    if (localHintScenario === "stale") {
+      // UI가 기억한 경로를 정리하고 다른 위치에 편집을 만든다. 새 경로는 제품의 상태 캐시에 주입하지 않는다.
+      await rm(path.join(f.root, localFile));
+      await writeFile(path.join(f.root, finalLocalFile), localContents, { flag: "wx" });
+      initialStatus = (await runGit(["status", "--porcelain=v1"], f.root)).trim();
+    }
+    const hintLogStart = __outputLines.length;
     const initial = signature(panel.commits), beforeMessages = messages.length, timings: GitExecutionTiming[] = [];
     const profiling = !!(process.env.GSC_BENCH_CPU_PROFILE_DIR || process.env.GSC_BENCH_RENDERER_PROFILE_DIR);
     assert.ok(!resources || !profiling, "CPU sampling and resource counters require separate runs");
@@ -253,7 +269,9 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         assert.deepEqual(bodies, ["combined click\n\ncombined body", "PR 2"]);
         assert.equal((await runGit(["rev-parse", "HEAD^{tree}"], f.root)).trim(), (await runGit(["rev-parse", `${f.pr}^{tree}`], f.root)).trim());
       }
-      assert.equal((await runGit(["status", "--porcelain=v1"], f.root)).trim(), partial ? initialStatus : "");
+      assert.equal((await runGit(["status", "--porcelain=v1"], f.root)).trim(), partial || localHintScenario ? initialStatus : "");
+      if (localHintScenario) assert.equal(await readFile(path.join(f.root, finalLocalFile), "utf8"), localContents,
+        "A faster preflight must not consume or lose local changes");
       if (partial) assert.deepEqual(await readFile(path.join(f.root, ".git/index")), originalIndex);
       const promisor = partial ? { initialPacks, finalPacks: await promisorPackState(f.root),
         missingBlobs: await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), localChangesPreserved: true } : undefined;
@@ -261,15 +279,23 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       assert.ok(publication || initial === final, "Changed final state must have a publication caused after the click");
       const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance,
         operation === "checkout" ? f.topicBranch : branch, await readNativeRemoteTagExpectation(f.root));
+      if (localHintScenario) {
+        assert.equal(await renderer.countElements("#graph-content > .row.ongoing-row"), 1);
+        assert.equal(await renderer.countElements("#graph-content > .row.staged-row"), 1);
+      }
       // 실제 선택/세 viewport 촬영은 시간·CPU 창과 독립 Native oracle이 모두 끝난 뒤에만 실행한다.
       if (process.env.GSC_BENCH_SCREENSHOT_DIR) await renderer.capture(path.join(process.env.GSC_BENCH_SCREENSHOT_DIR, operation));
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
         monitorPolicy: !!stopMonitor,
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}),
+        ...(localHintScenario ? { localHintScenario } : {}),
         ...(prListCount ? { pullRequests: prListCount } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
         clickToFirstFrameMs: frame.mutationToFrameMs, clickToFinalFrameMs: frame.latestMutationToFrameMs,
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
+        ...(localHintScenario ? { localChangesPreserved: true, recentPathConfirmations: __outputLines.slice(hintLogStart)
+          .filter(line => line.includes("working tree change confirmed from recent paths")).length,
+          missedHintsWithFullScan: __outputLines.slice(hintLogStart).filter(line => line.includes("working tree change hint missed; full scan required")).length } : {}),
         ...(profiling ? { instrumentedCpuProfile: true, profileScope: "actual click through settled final renderer frames; sampling overhead remains, not comparative latency" } : {}),
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.72161] - 2026-10-22
+
+### Performance
+
+- Check recently displayed change paths first when an operation only needs to know
+  whether local changes exist. Confirm changes with fresh Native Git; after a miss,
+  discard the candidates and run the original full check.
+- Bound the candidates to eight literal paths per worktree and 32 worktrees.
+  Store independent path strings so a short path cannot retain a large status output.
+- Keep Native failure handling, full-file status results and working-copy preservation.
+
+### Development
+
+- Compare actual Pull and PR replay controls with unchanged rebase/squash controls.
+  Record ordinary latency, CPU and separately sampled aggregate RSS, including
+  slower cases and memory limitations.
+
 ## [0.1.72160] - 2026-10-22
 
 ### Fixes

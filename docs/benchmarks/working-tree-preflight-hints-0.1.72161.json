@@ -1,0 +1,579 @@
+{
+  "baselineVersion": "0.1.72160",
+  "baselineCommit": "e78fe5ee0960f6aa189c2793d3e9a9b1ee04eeac",
+  "candidate": "frozen uncommitted backend; release version bump to0.1.72161 after all comparisons",
+  "fixture": {
+    "files": 30311,
+    "commits": 72720,
+    "localBranches": 164,
+    "pullRequestCards": 80,
+    "network": "owned local bare receiver only; Captain source objects read only"
+  },
+  "design": "Per mode before/after/after/before, two independent processes per source; latency, CPU and memory runs separate",
+  "nativeAndProductionDomExactCases": 48,
+  "memoryScope": "Maximum simultaneous owned-process RSS sample per operation. Observer excluded. Not an exact peak or retained heap. Memory-run CPU/time excluded from performance comparisons.",
+  "limitations": [
+    "External machine load uncontrolled; two samples per source/mode/operation.",
+    "Unaffected rebase first baseline handler14116ms and29calls versus27calls elsewhere retained; do not attribute its variation to this candidate.",
+    "PR squash and interactive rebase do not use this optimized helper in their actual button paths.",
+    "Sampled RSS does not establish a reduction. Broader named-operation speed/resource completion remains unproven.",
+    "Earlier prototype A stopped after6of8jobs before the string ownership repair; excluded from final comparison."
+  ],
+  "runtimeAndHarnessDigest": "7d99014bb520d36f1a8c865b38fbc9f14aa447dd7999e72b9c7e7e01fbdb7c38",
+  "summary": [
+    {
+      "operation": "pull",
+      "usesOptimizedPreflight": true,
+      "latency": {
+        "handlerMs": {
+          "before": {
+            "samples": [
+              861,
+              691
+            ],
+            "median": 776.0
+          },
+          "after": {
+            "samples": [
+              397,
+              349
+            ],
+            "median": 373.0
+          },
+          "percentChange": -51.93298969072164
+        },
+        "clickToFinalFrameMs": {
+          "before": {
+            "samples": [
+              1222,
+              1022
+            ],
+            "median": 1122.0
+          },
+          "after": {
+            "samples": [
+              767,
+              726
+            ],
+            "median": 746.5
+          },
+          "percentChange": -33.46702317290553
+        },
+        "firstNativeStatusMs": {
+          "before": {
+            "samples": [
+              442,
+              325
+            ],
+            "median": 383.5
+          },
+          "after": {
+            "samples": [
+              14,
+              16
+            ],
+            "median": 15.0
+          },
+          "percentChange": -96.08865710560626
+        },
+        "processes": {
+          "before": {
+            "samples": [
+              14,
+              14
+            ],
+            "median": 14.0
+          },
+          "after": {
+            "samples": [
+              14,
+              14
+            ],
+            "median": 14.0
+          },
+          "percentChange": 0.0
+        }
+      },
+      "cpu": {
+        "before": {
+          "samples": [
+            2127.169,
+            2194.5899999999997
+          ],
+          "median": 2160.8795
+        },
+        "after": {
+          "samples": [
+            1744.7289999999998,
+            1692.5330000000008
+          ],
+          "median": 1718.6310000000003
+        },
+        "percentChange": -20.466134275418856
+      },
+      "memory": {
+        "before": {
+          "samples": [
+            753.90625,
+            746.125
+          ],
+          "median": 750.015625
+        },
+        "after": {
+          "samples": [
+            751.859375,
+            743.296875
+          ],
+          "median": 747.578125
+        },
+        "percentChange": -0.324993229307724
+      }
+    },
+    {
+      "operation": "interactive-rebase",
+      "usesOptimizedPreflight": false,
+      "latency": {
+        "handlerMs": {
+          "before": {
+            "samples": [
+              14116,
+              1247
+            ],
+            "median": 7681.5
+          },
+          "after": {
+            "samples": [
+              2102,
+              1144
+            ],
+            "median": 1623.0
+          },
+          "percentChange": -78.87131419644601
+        },
+        "clickToFinalFrameMs": {
+          "before": {
+            "samples": [
+              14538,
+              1608
+            ],
+            "median": 8073.0
+          },
+          "after": {
+            "samples": [
+              2480,
+              1512
+            ],
+            "median": 1996.0
+          },
+          "percentChange": -75.27561005821876
+        },
+        "firstNativeStatusMs": {
+          "before": {
+            "samples": [
+              70,
+              76
+            ],
+            "median": 73.0
+          },
+          "after": {
+            "samples": [
+              71,
+              71
+            ],
+            "median": 71.0
+          },
+          "percentChange": -2.73972602739726
+        },
+        "processes": {
+          "before": {
+            "samples": [
+              29,
+              27
+            ],
+            "median": 28.0
+          },
+          "after": {
+            "samples": [
+              27,
+              27
+            ],
+            "median": 27.0
+          },
+          "percentChange": -3.57142857142857
+        }
+      },
+      "cpu": {
+        "before": {
+          "samples": [
+            3438.436999999998,
+            3341.130000000003
+          ],
+          "median": 3389.7835000000005
+        },
+        "after": {
+          "samples": [
+            3564.2260000000038,
+            3397.842000000001
+          ],
+          "median": 3481.0340000000024
+        },
+        "percentChange": 2.6919270802988393
+      },
+      "memory": {
+        "before": {
+          "samples": [
+            772.875,
+            783.296875
+          ],
+          "median": 778.0859375
+        },
+        "after": {
+          "samples": [
+            754.53125,
+            800.5
+          ],
+          "median": 777.515625
+        },
+        "percentChange": -0.0732968522516142
+      }
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "usesOptimizedPreflight": false,
+      "latency": {
+        "handlerMs": {
+          "before": {
+            "samples": [
+              617,
+              343
+            ],
+            "median": 480.0
+          },
+          "after": {
+            "samples": [
+              415,
+              332
+            ],
+            "median": 373.5
+          },
+          "percentChange": -22.187500000000004
+        },
+        "clickToFinalFrameMs": {
+          "before": {
+            "samples": [
+              1070,
+              705
+            ],
+            "median": 887.5
+          },
+          "after": {
+            "samples": [
+              772,
+              705
+            ],
+            "median": 738.5
+          },
+          "percentChange": -16.7887323943662
+        },
+        "firstNativeStatusMs": {
+          "before": {
+            "samples": [
+              77,
+              66
+            ],
+            "median": 71.5
+          },
+          "after": {
+            "samples": [
+              68,
+              66
+            ],
+            "median": 67.0
+          },
+          "percentChange": -6.2937062937062915
+        },
+        "processes": {
+          "before": {
+            "samples": [
+              33,
+              33
+            ],
+            "median": 33.0
+          },
+          "after": {
+            "samples": [
+              33,
+              33
+            ],
+            "median": 33.0
+          },
+          "percentChange": 0.0
+        }
+      },
+      "cpu": {
+        "before": {
+          "samples": [
+            1548.699999999999,
+            1535.719
+          ],
+          "median": 1542.2094999999995
+        },
+        "after": {
+          "samples": [
+            1473.156,
+            1500.7550000000012
+          ],
+          "median": 1486.9555000000005
+        },
+        "percentChange": -3.5827817167511267
+      },
+      "memory": {
+        "before": {
+          "samples": [
+            719.65625,
+            725.046875
+          ],
+          "median": 722.3515625
+        },
+        "after": {
+          "samples": [
+            731.046875,
+            758.9375
+          ],
+          "median": 744.9921875
+        },
+        "percentChange": 3.134294459285547
+      }
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "usesOptimizedPreflight": true,
+      "latency": {
+        "handlerMs": {
+          "before": {
+            "samples": [
+              9915,
+              10352
+            ],
+            "median": 10133.5
+          },
+          "after": {
+            "samples": [
+              9657,
+              9839
+            ],
+            "median": 9748.0
+          },
+          "percentChange": -3.8042137464844306
+        },
+        "clickToFinalFrameMs": {
+          "before": {
+            "samples": [
+              10459,
+              10741
+            ],
+            "median": 10600.0
+          },
+          "after": {
+            "samples": [
+              10009,
+              10267
+            ],
+            "median": 10138.0
+          },
+          "percentChange": -4.358490566037732
+        },
+        "firstNativeStatusMs": {
+          "before": {
+            "samples": [
+              346,
+              446
+            ],
+            "median": 396.0
+          },
+          "after": {
+            "samples": [
+              11,
+              12
+            ],
+            "median": 11.5
+          },
+          "percentChange": -97.09595959595958
+        },
+        "processes": {
+          "before": {
+            "samples": [
+              38,
+              38
+            ],
+            "median": 38.0
+          },
+          "after": {
+            "samples": [
+              38,
+              38
+            ],
+            "median": 38.0
+          },
+          "percentChange": 0.0
+        }
+      },
+      "cpu": {
+        "before": {
+          "samples": [
+            11160.266000000001,
+            11460.954999999996
+          ],
+          "median": 11310.610499999999
+        },
+        "after": {
+          "samples": [
+            10251.885999999999,
+            11547.261000000002
+          ],
+          "median": 10899.5735
+        },
+        "percentChange": -3.6340832353832564
+      },
+      "memory": {
+        "before": {
+          "samples": [
+            1066.890625,
+            1079.375
+          ],
+          "median": 1073.1328125
+        },
+        "after": {
+          "samples": [
+            1080.640625,
+            1089.171875
+          ],
+          "median": 1084.90625
+        },
+        "percentChange": 1.0971090775402148
+      }
+    }
+  ],
+  "totals": {
+    "affectedControls": {
+      "clickToFinalFrameMs": {
+        "before": {
+          "samples": [
+            11681,
+            11763
+          ],
+          "median": 11722.0
+        },
+        "after": {
+          "samples": [
+            10776,
+            10993
+          ],
+          "median": 10884.5
+        },
+        "percentChange": -7.144685207302503
+      },
+      "ownedCpuMs": {
+        "before": {
+          "samples": [
+            13287.435000000001,
+            13655.544999999996
+          ],
+          "median": 13471.489999999998
+        },
+        "after": {
+          "samples": [
+            11996.614999999998,
+            13239.794000000004
+          ],
+          "median": 12618.2045
+        },
+        "percentChange": -6.334009823709163
+      },
+      "sampledSimultaneousRssPeakMiB": {
+        "before": {
+          "samples": [
+            1066.890625,
+            1079.375
+          ],
+          "median": 1073.1328125
+        },
+        "after": {
+          "samples": [
+            1080.640625,
+            1089.171875
+          ],
+          "median": 1084.90625
+        },
+        "percentChange": 1.0971090775402148
+      }
+    },
+    "allControlsReferenceOnly": {
+      "clickToFinalFrameMs": {
+        "before": {
+          "samples": [
+            27289,
+            14076
+          ],
+          "median": 20682.5
+        },
+        "after": {
+          "samples": [
+            14028,
+            13210
+          ],
+          "median": 13619.0
+        },
+        "percentChange": -34.15206092106854
+      },
+      "ownedCpuMs": {
+        "before": {
+          "samples": [
+            18274.572,
+            18532.394
+          ],
+          "median": 18403.483
+        },
+        "after": {
+          "samples": [
+            17033.997000000003,
+            18138.391000000003
+          ],
+          "median": 17586.194000000003
+        },
+        "percentChange": -4.440947401097917
+      },
+      "sampledSimultaneousRssPeakMiB": {
+        "before": {
+          "samples": [
+            1066.890625,
+            1079.375
+          ],
+          "median": 1073.1328125
+        },
+        "after": {
+          "samples": [
+            1080.640625,
+            1089.171875
+          ],
+          "median": 1084.90625
+        },
+        "percentChange": 1.0971090775402148
+      }
+    }
+  },
+  "rawRuns": [
+    {"kind":"latency","source":"before","rawFile":"/private/tmp/gsc-goal60b-buttons-1-latency-before.json","rawSha256":"82a92b485b90133516156f5067f4d884d175426224914074fda05819eeac14d9","bundleSha256":"c95d6b82c327078d2b550d74045741552c4c51eeff4852bd3b5a938f34d29a1d","rows":[{"operation":"pull","handlerMs":861,"clickToFinalFrameMs":1222,"clickToSettledMs":1346,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":442,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"interactive-rebase","handlerMs":14116,"clickToFinalFrameMs":14538,"clickToSettledMs":14655,"processes":29,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":70,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-squash-cherry-pick","handlerMs":617,"clickToFinalFrameMs":1070,"clickToSettledMs":1187,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":77,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-cherry-pick","handlerMs":9915,"clickToFinalFrameMs":10459,"clickToSettledMs":10577,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":346,"nativeAndDomExact":true,"localChangesPreserved":true}]},
+    {"kind":"latency","source":"after","rawFile":"/private/tmp/gsc-goal60b-buttons-2-latency-after.json","rawSha256":"21d1d735e0706ec9be6d4b87ba69826d222b768f88222925588d1e065120fdb7","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":397,"clickToFinalFrameMs":767,"clickToSettledMs":886,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":14,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"interactive-rebase","handlerMs":2102,"clickToFinalFrameMs":2480,"clickToSettledMs":2594,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":71,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-squash-cherry-pick","handlerMs":415,"clickToFinalFrameMs":772,"clickToSettledMs":895,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":68,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-cherry-pick","handlerMs":9657,"clickToFinalFrameMs":10009,"clickToSettledMs":10125,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":11,"nativeAndDomExact":true,"localChangesPreserved":true}]},
+    {"kind":"latency","source":"after","rawFile":"/private/tmp/gsc-goal60b-buttons-3-latency-after.json","rawSha256":"aabe56a30299bcc206ee7517c18bfcb0a758d9521f202cf7b85fc017cedf139b","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":349,"clickToFinalFrameMs":726,"clickToSettledMs":848,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":16,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"interactive-rebase","handlerMs":1144,"clickToFinalFrameMs":1512,"clickToSettledMs":1629,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":71,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-squash-cherry-pick","handlerMs":332,"clickToFinalFrameMs":705,"clickToSettledMs":828,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":66,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-cherry-pick","handlerMs":9839,"clickToFinalFrameMs":10267,"clickToSettledMs":10385,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":12,"nativeAndDomExact":true,"localChangesPreserved":true}]},
+    {"kind":"latency","source":"before","rawFile":"/private/tmp/gsc-goal60b-buttons-4-latency-before.json","rawSha256":"f3d4e8cac35c2069ad0c452bd0fe90e3d01146892379ad554643b66d3c7fb69f","bundleSha256":"8dc68ff72fff625392a91a5353db23cc4728e48618b573b24ea7a38a62f600fc","rows":[{"operation":"pull","handlerMs":691,"clickToFinalFrameMs":1022,"clickToSettledMs":1141,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":325,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"interactive-rebase","handlerMs":1247,"clickToFinalFrameMs":1608,"clickToSettledMs":1727,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":76,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-squash-cherry-pick","handlerMs":343,"clickToFinalFrameMs":705,"clickToSettledMs":824,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":66,"nativeAndDomExact":true,"localChangesPreserved":true},{"operation":"pr-cherry-pick","handlerMs":10352,"clickToFinalFrameMs":10741,"clickToSettledMs":10862,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":446,"nativeAndDomExact":true,"localChangesPreserved":true}]},
+    {"kind":"cpu","source":"before","rawFile":"/private/tmp/gsc-goal60b-buttons-5-cpu-before.json","rawSha256":"4b403272079b1361b83c733193afe738026cc7cb67e3e668b757115de4ba49b6","bundleSha256":"ff6a66447d9d71853e57e76ab735e4883f939d12ef9ee55ffdec04fae92fe9c9","rows":[{"operation":"pull","handlerMs":677,"clickToFinalFrameMs":1057,"clickToSettledMs":1180,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":354,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":247.375,"childCpuMs":1540.9039999999998,"browserCpuMs":338.88999999999993,"ownedCpuMs":2127.169},{"operation":"interactive-rebase","handlerMs":2002,"clickToFinalFrameMs":2421,"clickToSettledMs":2528,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":74,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":417.215,"childCpuMs":2647.846999999998,"browserCpuMs":373.37500000000006,"ownedCpuMs":3438.436999999998},{"operation":"pr-squash-cherry-pick","handlerMs":471,"clickToFinalFrameMs":880,"clickToSettledMs":997,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":71,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":317.883,"childCpuMs":908.503999999999,"browserCpuMs":322.313,"ownedCpuMs":1548.699999999999},{"operation":"pr-cherry-pick","handlerMs":9913,"clickToFinalFrameMs":10313,"clickToSettledMs":10434,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":360,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":419.428,"childCpuMs":9959.356000000002,"browserCpuMs":781.4820000000001,"ownedCpuMs":11160.266000000001}]},
+    {"kind":"cpu","source":"after","rawFile":"/private/tmp/gsc-goal60b-buttons-6-cpu-after.json","rawSha256":"a42d65e78bf424c17c0053f9b3465a2b539553f159379282aaa363717e5a3863","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":364,"clickToFinalFrameMs":791,"clickToSettledMs":885,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":15,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":364.197,"childCpuMs":1047.0549999999998,"browserCpuMs":333.477,"ownedCpuMs":1744.7289999999998},{"operation":"interactive-rebase","handlerMs":1620,"clickToFinalFrameMs":1988,"clickToSettledMs":2082,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":76,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":277.492,"childCpuMs":2916.8700000000035,"browserCpuMs":369.864,"ownedCpuMs":3564.2260000000038},{"operation":"pr-squash-cherry-pick","handlerMs":356,"clickToFinalFrameMs":765,"clickToSettledMs":883,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":70,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":349.824,"childCpuMs":820.2979999999998,"browserCpuMs":303.03400000000005,"ownedCpuMs":1473.156},{"operation":"pr-cherry-pick","handlerMs":9373,"clickToFinalFrameMs":9746,"clickToSettledMs":9871,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":12,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":484.132,"childCpuMs":9085.911,"browserCpuMs":681.8429999999998,"ownedCpuMs":10251.885999999999}]},
+    {"kind":"cpu","source":"after","rawFile":"/private/tmp/gsc-goal60b-buttons-7-cpu-after.json","rawSha256":"fee7ee78279fd01379c5ccaa557305dc5ef51764acca0cf7c5c90a95d6b912d7","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":319,"clickToFinalFrameMs":679,"clickToSettledMs":763,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":13,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":328.339,"childCpuMs":1054.0940000000007,"browserCpuMs":310.1,"ownedCpuMs":1692.5330000000008},{"operation":"interactive-rebase","handlerMs":1287,"clickToFinalFrameMs":1629,"clickToSettledMs":1755,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":67,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":252.55,"childCpuMs":2804.067000000001,"browserCpuMs":341.22499999999997,"ownedCpuMs":3397.842000000001},{"operation":"pr-squash-cherry-pick","handlerMs":367,"clickToFinalFrameMs":745,"clickToSettledMs":864,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":66,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":389.259,"childCpuMs":815.1980000000012,"browserCpuMs":296.298,"ownedCpuMs":1500.7550000000012},{"operation":"pr-cherry-pick","handlerMs":11318,"clickToFinalFrameMs":11759,"clickToSettledMs":11878,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":13,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":433.165,"childCpuMs":10251.565,"browserCpuMs":862.5310000000001,"ownedCpuMs":11547.261000000002}]},
+    {"kind":"cpu","source":"before","rawFile":"/private/tmp/gsc-goal60b-buttons-8-cpu-before.json","rawSha256":"e23eecc70ad0c7c937c87c6f3e597a4504dfcef6b3de01650779fdb374a13184","bundleSha256":"97a739e123308f383fb3f5f1177c0b6b7884826706faa33ebd39666f0b5934af","rows":[{"operation":"pull","handlerMs":736,"clickToFinalFrameMs":1113,"clickToSettledMs":1219,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":371,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":226.703,"childCpuMs":1633.2799999999997,"browserCpuMs":334.607,"ownedCpuMs":2194.5899999999997},{"operation":"interactive-rebase","handlerMs":1351,"clickToFinalFrameMs":1714,"clickToSettledMs":1832,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":75,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":304.273,"childCpuMs":2683.6370000000024,"browserCpuMs":353.22,"ownedCpuMs":3341.130000000003},{"operation":"pr-squash-cherry-pick","handlerMs":365,"clickToFinalFrameMs":730,"clickToSettledMs":846,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":68,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":390.118,"childCpuMs":836.741,"browserCpuMs":308.86,"ownedCpuMs":1535.719},{"operation":"pr-cherry-pick","handlerMs":10480,"clickToFinalFrameMs":10871,"clickToSettledMs":10988,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":451,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":376.49,"childCpuMs":10314.493999999997,"browserCpuMs":769.9709999999999,"ownedCpuMs":11460.954999999996}]},
+    {"kind":"memory","source":"before","rawFile":"/private/tmp/gsc-goal60c-buttons-1-memory-before.json","rawSha256":"f2e45fadc0593c0d61b4c3a14cfe7d982c6499dcd6e32f58a5f53725fcc9936c","bundleSha256":"5a82fc91408fff8d90fe6d2cf78ac8108060f910a9bac602ef576fa76cf96ab6","rows":[{"operation":"pull","handlerMs":960,"clickToFinalFrameMs":1329,"clickToSettledMs":1444,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":556,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":340.633,"childCpuMs":1732.2659999999996,"browserCpuMs":351.0180000000001,"ownedCpuMs":2423.9169999999995,"memory":{"sampleCount":17,"intervalMs":50,"maxObservedGapMs":114.15199999999999,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-1-memory-before.json.memory-pull.json","rawSamplesSha256":"d4a3b00cede07dfa8ea3e3d115e5d6f4879c369ad3c59344e812c9b06b84b7bc"},"sampledSimultaneousRssPeakMiB":753.90625},{"operation":"interactive-rebase","handlerMs":1984,"clickToFinalFrameMs":2353,"clickToSettledMs":2450,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":71,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":370.059,"childCpuMs":2918.3859999999986,"browserCpuMs":364.111,"ownedCpuMs":3652.5559999999987,"memory":{"sampleCount":27,"intervalMs":50,"maxObservedGapMs":140.45299999999997,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-1-memory-before.json.memory-interactive-rebase.json","rawSamplesSha256":"9d0e4be094b876af71a414926a27078b09846b3d1e8ccf53dfe1c0019b90f709"},"sampledSimultaneousRssPeakMiB":772.875},{"operation":"pr-squash-cherry-pick","handlerMs":389,"clickToFinalFrameMs":814,"clickToSettledMs":930,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":75,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":404.772,"childCpuMs":853.369999999999,"browserCpuMs":334.22400000000005,"ownedCpuMs":1592.365999999999,"memory":{"sampleCount":11,"intervalMs":50,"maxObservedGapMs":108.601,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-1-memory-before.json.memory-pr-squash-cherry-pick.json","rawSamplesSha256":"71d472ab9ad2adbcd63cd20a234800aeaf4d0e19b43c12f238d27b8503f3d1c4"},"sampledSimultaneousRssPeakMiB":719.65625},{"operation":"pr-cherry-pick","handlerMs":10416,"clickToFinalFrameMs":10829,"clickToSettledMs":10955,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":370,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":441.721,"childCpuMs":10421.916999999996,"browserCpuMs":853.538,"ownedCpuMs":11717.175999999996,"memory":{"sampleCount":117,"intervalMs":50,"maxObservedGapMs":116.02899999999863,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-1-memory-before.json.memory-pr-cherry-pick.json","rawSamplesSha256":"7b880f01ba8d4382b3c65f82e2f82045c0664596f8531d10db4aa2378b9b5cfd"},"sampledSimultaneousRssPeakMiB":1066.890625}]},
+    {"kind":"memory","source":"after","rawFile":"/private/tmp/gsc-goal60c-buttons-2-memory-after.json","rawSha256":"3a6338057c9e053440746947f5a0b378f0966b968fb267f7c7db0ffca8cc8203","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":411,"clickToFinalFrameMs":775,"clickToSettledMs":873,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":15,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":233.064,"childCpuMs":1038.7950000000003,"browserCpuMs":329.576,"ownedCpuMs":1601.4350000000004,"memory":{"sampleCount":11,"intervalMs":50,"maxObservedGapMs":122.50099999999998,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-2-memory-after.json.memory-pull.json","rawSamplesSha256":"72eaa1a97113a46e41cb885c062d5c976ee3fcec56934d5454855e97e7c7af6d"},"sampledSimultaneousRssPeakMiB":751.859375},{"operation":"interactive-rebase","handlerMs":1425,"clickToFinalFrameMs":1753,"clickToSettledMs":1857,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":73,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":273.509,"childCpuMs":2607.254000000001,"browserCpuMs":363.016,"ownedCpuMs":3243.779000000001,"memory":{"sampleCount":21,"intervalMs":50,"maxObservedGapMs":116.27900000000005,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-2-memory-after.json.memory-interactive-rebase.json","rawSamplesSha256":"0017269ccc1202f179768dff754b77df377d1099605a8759c112990b40fad0b4"},"sampledSimultaneousRssPeakMiB":754.53125},{"operation":"pr-squash-cherry-pick","handlerMs":520,"clickToFinalFrameMs":1091,"clickToSettledMs":1204,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":95,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":465.047,"childCpuMs":996.0480000000025,"browserCpuMs":353.28299999999996,"ownedCpuMs":1814.3780000000024,"memory":{"sampleCount":12,"intervalMs":50,"maxObservedGapMs":166.21500000000003,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-2-memory-after.json.memory-pr-squash-cherry-pick.json","rawSamplesSha256":"48287e51aedcea61ed13fd18186293b7688648a854e496692d11b53ba26bb559"},"sampledSimultaneousRssPeakMiB":731.046875},{"operation":"pr-cherry-pick","handlerMs":10447,"clickToFinalFrameMs":10854,"clickToSettledMs":10973,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":18,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":406.849,"childCpuMs":10320.028000000004,"browserCpuMs":899.0239999999998,"ownedCpuMs":11625.901000000003,"memory":{"sampleCount":113,"intervalMs":50,"maxObservedGapMs":150.78300000000002,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-2-memory-after.json.memory-pr-cherry-pick.json","rawSamplesSha256":"059ebe251c66822e8e89041afa7aa0d09a3af5bfb196227dbc9d9f0b38b19e2c"},"sampledSimultaneousRssPeakMiB":1080.640625}]},
+    {"kind":"memory","source":"after","rawFile":"/private/tmp/gsc-goal60c-buttons-3-memory-after.json","rawSha256":"90256c2488fe232cf1bf68680c75be4d8d4d369b0eb40820583ee8e72cd6eb5f","bundleSha256":"e89dfe31a5a300f12e0e9a95b741246261f57b24bbe582aff2fcee16a2408ded","rows":[{"operation":"pull","handlerMs":377,"clickToFinalFrameMs":726,"clickToSettledMs":844,"processes":14,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":17,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":349.655,"childCpuMs":1116.7070000000008,"browserCpuMs":314.91599999999994,"ownedCpuMs":1781.2780000000007,"memory":{"sampleCount":11,"intervalMs":50,"maxObservedGapMs":114.73400000000004,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-3-memory-after.json.memory-pull.json","rawSamplesSha256":"2f3514b701a7ca1553b243018151d42610d0fd6fc33c602ffb737623bb330509"},"sampledSimultaneousRssPeakMiB":743.296875},{"operation":"interactive-rebase","handlerMs":1817,"clickToFinalFrameMs":2191,"clickToSettledMs":2313,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":80,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":281.587,"childCpuMs":2894.1810000000014,"browserCpuMs":397.33599999999996,"ownedCpuMs":3573.104000000001,"memory":{"sampleCount":24,"intervalMs":50,"maxObservedGapMs":130.54200000000003,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-3-memory-after.json.memory-interactive-rebase.json","rawSamplesSha256":"8d9657786f85555b3f257ccf7119c4c34e0fb972fe5de23e55525c9f9d098ede"},"sampledSimultaneousRssPeakMiB":800.5},{"operation":"pr-squash-cherry-pick","handlerMs":439,"clickToFinalFrameMs":832,"clickToSettledMs":950,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":74,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":277.658,"childCpuMs":903.5579999999991,"browserCpuMs":311.7280000000001,"ownedCpuMs":1492.943999999999,"memory":{"sampleCount":12,"intervalMs":50,"maxObservedGapMs":109.11999999999995,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-3-memory-after.json.memory-pr-squash-cherry-pick.json","rawSamplesSha256":"f8107821f2ac85573e2559fe8a99ec2bee943c310d20e2e26d0a40f86427d7e7"},"sampledSimultaneousRssPeakMiB":758.9375},{"operation":"pr-cherry-pick","handlerMs":11884,"clickToFinalFrameMs":12368,"clickToSettledMs":12478,"processes":38,"recentPathConfirmations":1,"missedHintsWithFullScan":0,"firstNativeStatusMs":17,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":444.912,"childCpuMs":11428.646999999995,"browserCpuMs":933.014,"ownedCpuMs":12806.572999999995,"memory":{"sampleCount":128,"intervalMs":50,"maxObservedGapMs":135.39800000000105,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-3-memory-after.json.memory-pr-cherry-pick.json","rawSamplesSha256":"d56ef39b77b7415d51e5fb20ea7214d90a7d339d95143dc28b8f5fb3b9f76d90"},"sampledSimultaneousRssPeakMiB":1089.171875}]},
+    {"kind":"memory","source":"before","rawFile":"/private/tmp/gsc-goal60c-buttons-4-memory-before.json","rawSha256":"149719ecbfd584ec04a59851920d811f511069e8607a39d68812c8a23871b954","bundleSha256":"cbeca3f71fdc39b172bcc5b9f40b0f0e8e8041bd42a9eed5a9a327597f2afcad","rows":[{"operation":"pull","handlerMs":1037,"clickToFinalFrameMs":1401,"clickToSettledMs":1502,"processes":14,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":631,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":326.12,"childCpuMs":1870.5930000000012,"browserCpuMs":369.77299999999997,"ownedCpuMs":2566.4860000000012,"memory":{"sampleCount":17,"intervalMs":50,"maxObservedGapMs":129.66499999999996,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-4-memory-before.json.memory-pull.json","rawSamplesSha256":"5da55f6b07a83c3ce8039453abff12300bea8f9fc8a8262595dcba697501b9ee"},"sampledSimultaneousRssPeakMiB":746.125},{"operation":"interactive-rebase","handlerMs":1582,"clickToFinalFrameMs":2004,"clickToSettledMs":2111,"processes":27,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":82,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":406.068,"childCpuMs":2902.6499999999996,"browserCpuMs":404.5079999999999,"ownedCpuMs":3713.2259999999997,"memory":{"sampleCount":22,"intervalMs":50,"maxObservedGapMs":150.47100000000006,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-4-memory-before.json.memory-interactive-rebase.json","rawSamplesSha256":"af670a4114f9f85c4bfdf89085142c76b92092297a9bd9e7013d8bc47ff1ccb1"},"sampledSimultaneousRssPeakMiB":783.296875},{"operation":"pr-squash-cherry-pick","handlerMs":486,"clickToFinalFrameMs":926,"clickToSettledMs":1040,"processes":33,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":83,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":380.797,"childCpuMs":978.8760000000002,"browserCpuMs":367.938,"ownedCpuMs":1727.6110000000003,"memory":{"sampleCount":12,"intervalMs":50,"maxObservedGapMs":136.03599999999994,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-4-memory-before.json.memory-pr-squash-cherry-pick.json","rawSamplesSha256":"1b123218fff2a85c58a83bc0fb46d93d00d67a12daa0dbe107a2e816ac9539e6"},"sampledSimultaneousRssPeakMiB":725.046875},{"operation":"pr-cherry-pick","handlerMs":13686,"clickToFinalFrameMs":14171,"clickToSettledMs":14280,"processes":38,"recentPathConfirmations":0,"missedHintsWithFullScan":0,"firstNativeStatusMs":532,"nativeAndDomExact":true,"localChangesPreserved":true,"nodeCpuMs":485.652,"childCpuMs":11933.806,"browserCpuMs":1116.966,"ownedCpuMs":13536.424,"memory":{"sampleCount":141,"intervalMs":50,"maxObservedGapMs":195.09399999999914,"rawSamplesFile":"/private/tmp/gsc-goal60c-buttons-4-memory-before.json.memory-pr-cherry-pick.json","rawSamplesSha256":"3c4e5614a79388cf940f712d33fd3d7120f4cbdee2333e17e8f773d11e5e9f38"},"sampledSimultaneousRssPeakMiB":1079.375}]}
+  ]
+}

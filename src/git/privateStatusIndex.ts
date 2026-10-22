@@ -13,6 +13,7 @@ import { COLD_STATUS_MIN_ENTRIES, readColdStatus } from "./coldStatusScan";
 import { StatusIndexWarmup } from "./statusIndexWarmup";
 import { RepositoryIndexPathReader } from "./repositoryIndexPath";
 import { transitionStatusIndex } from "./statusIndexTransition";
+import { forgetWorkingTreeChangeHints, rememberWorkingTreeChangeHints } from "./workingTreeChangeHints";
 
 /** 실제 index를 복사하되 모든 상태 캐시 쓰기를 확장 소유 디렉터리로만 보내는 저장소별 캐시다. */
 export class PrivateStatusIndex {
@@ -40,7 +41,9 @@ export class PrivateStatusIndex {
    * @returns 실제 index를 변경하지 않은 상태 스냅샷
    */
   async read(signal: AbortSignal, useCache = true): Promise<WorkingTreeSnapshot> {
-    return workingTreeSnapshot(this.root, await this.readParsed(signal, useCache, false));
+    const parsed = await this.readParsed(signal, useCache, false);
+    if (useCache) rememberWorkingTreeChangeHints(this.root, parsed.entries); else forgetWorkingTreeChangeHints(this.root);
+    return workingTreeSnapshot(this.root, parsed);
   }
 
   /**
@@ -50,6 +53,7 @@ export class PrivateStatusIndex {
    */
   async readSummary(signal: AbortSignal, useCache = true): Promise<WorkingTreeSummary> {
     const parsed = await this.readParsed(signal, useCache, true);
+    if (useCache) rememberWorkingTreeChangeHints(this.root, parsed.entries); else forgetWorkingTreeChangeHints(this.root);
     return { head: parsed.head, hasChanges: parsed.entries.length > 0 };
   }
 
@@ -117,6 +121,7 @@ export class PrivateStatusIndex {
 
   /** 실행 close 뒤에 호출하며 생성한 디렉터리만 삭제한다. */
   async dispose(): Promise<void> {
+    forgetWorkingTreeChangeHints(this.root);
     await this.warmup.dispose(); this.cold = false;
     this.sourcePath.clear(); this.sourceIdentity = undefined;
     const directory = this.directory;
