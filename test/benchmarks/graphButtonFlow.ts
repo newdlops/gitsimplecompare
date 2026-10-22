@@ -23,10 +23,14 @@ import { window, __errorMessages, __resetWindowMessages, __setQuickPickResult } 
 import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButtonFixture";
 import { probePrNotice } from "../helpers/prNoticeProbe";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
+import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
 const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout", "pr-squash-cherry-pick", "pr-cherry-pick"];
+const benchmarkSource = JSON.parse(process.env.GSC_BENCH_SOURCE!);
+// source 선택용 값은 Native 명령의 환경 입력에서 제외한다.
+delete process.env.GSC_BENCH_SOURCE_REF; delete process.env.GSC_BENCH_SOURCE;
 
 /** 예외나 무한 대기를 성공으로 세지 않고 기다리던 대상을 제한 시간 오류에 남긴다. */
 async function within<T>(promise: Promise<T>, label: string, milliseconds = 60000): Promise<T> {
@@ -99,6 +103,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     ? await installPrButtonFixture(f, Number(process.env.GSC_BENCH_PR_LIST_SIZE || 1)) : undefined;
   const noticeHoldMs = Number(process.env.GSC_BENCH_PR_NOTICE_HOLD_MS || 0);
   const notice = prOperation ? probePrNotice(noticeHoldMs) : undefined;
+  const stopMonitor = process.env.GSC_BENCH_MONITOR_POLICY === "1" ? setOwnedFsmonitorPolicy(() => undefined) : undefined;
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
   let measuring = false;
   const publicationDiagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1";
@@ -116,7 +121,9 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         branchDetailsPending: message.state?.branchDetails?.loading === true } } : {}) });
   });
   const { panel, messages, surface, receiveMessage } = transport;
-  const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" ? createGraphButtonDiagnostics({ mock } as any) : undefined;
+  const processPhases = process.env.GSC_BENCH_PROCESS_PHASES === "1";
+  const diagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1" || processPhases
+    ? createGraphButtonDiagnostics({ mock } as any, { filesystem: !processPhases }) : undefined;
   const markerFailures: string[] = [], cache: any = (service as any).localOnlyBranchCache;
   const localOnlyDiagnostics = process.env.GSC_BENCH_LOCAL_ONLY_DIAGNOSTICS === "1" ? traceLocalOnlySnapshot({ mock } as any, cache) : undefined;
   const markerRead = typeof cache.getReadOnlyMap === "function" ? "getReadOnlyMap" : "getMap";
@@ -223,6 +230,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       // 실제 선택/세 viewport 촬영은 시간·CPU 창과 독립 Native oracle이 모두 끝난 뒤에만 실행한다.
       if (process.env.GSC_BENCH_SCREENSHOT_DIR) await renderer.capture(path.join(process.env.GSC_BENCH_SCREENSHOT_DIR, operation));
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
+        monitorPolicy: !!stopMonitor,
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}),
         ...(prListCount ? { pullRequests: prListCount } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
@@ -239,7 +247,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
           afterClickMs: Math.round(value.at - started), kind: value.performance?.kind, ...value.changes })) } } : {}),
         ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
-  } finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
+  } finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
 }
 
 /** 모든 사례를 같은 규모로 실행하고 fixture와 browser 자원은 종료 시 회수한다. */
@@ -255,7 +263,7 @@ async function main() {
       try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
       finally{await resources?.dispose();}
     }
-    const report = { source: JSON.parse(process.env.GSC_BENCH_SOURCE!), network: "owned-local-bare-only", results,
+    const report = { source: benchmarkSource, environmentKeys: Object.keys(process.env).length, network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };
     await writeFile(process.argv[2], JSON.stringify(report, null, 2) + "\n"); console.log(JSON.stringify(report, null, 2));
   } finally { await rm(directory, { recursive: true, force: true }); }

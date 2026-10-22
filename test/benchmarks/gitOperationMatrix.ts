@@ -30,6 +30,9 @@ import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
 type Operation = "initial" | "push" | "push-tracked" | "pull" | "pull-new-history" | "fetch" | "fetch-new-history" | "rebase" | "merge" | "merge-no-ff" | "pr-squash-cherry-pick" | "pr-cherry-pick" | "cherry-pick" | "checkout" | "checkout-unloaded" | "pull-known-history" | "fetch-known-history" | "fetch-no-change";
 const OPERATIONS: Operation[] = ["push", "pull", "fetch", "rebase", "merge", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout"];
 const PUSH_THRESHOLD = process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES === undefined ? undefined : Number(process.env.GSC_BENCH_PUSH_THRESHOLD_BYTES);
+const benchmarkSource = JSON.parse(process.env.GSC_BENCH_SOURCE!);
+// 측정 구간에는 baseline/candidate 선택·기록 환경 변수를 남기지 않는다.
+delete process.env.GSC_BENCH_SOURCE_REF; delete process.env.GSC_BENCH_SOURCE;
 assert.ok(PUSH_THRESHOLD === undefined || (Number.isFinite(PUSH_THRESHOLD) && PUSH_THRESHOLD >= 0), "Push threshold must be a non-negative byte count");
 
 /** 행 순서와 무관하게 실제 HEAD·부모·ref와 최종 local-only 표시까지 같은 게시를 식별한다. */
@@ -273,7 +276,7 @@ async function main() {
       // 오래 걸리는 원시 Git 사례를 중지해도 이미 끝난 검증 결과는 완성 결과와 구분해 보존한다.
       if (process.env.GSC_BENCH_CHECKPOINTS === "1" && process.argv[2]) {
         await writeFile(process.argv[2] + ".partial.json", JSON.stringify({ partial: true,
-          source: JSON.parse(process.env.GSC_BENCH_SOURCE || "{}"), results }) + "\n");
+          source: benchmarkSource, environmentKeys: Object.keys(process.env).length, results }) + "\n");
       }
       if (primePublishedPush && operation === "initial") {
         // 원래 push의 중단 표본은 따로 보존한다. 후속 비교만 완료 후와 같은 ref/upstream 조건으로 맞춘다.
@@ -284,7 +287,7 @@ async function main() {
       }
     }
     const result = { version: JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8")).version,
-      source: process.env.GSC_BENCH_SOURCE ? JSON.parse(process.env.GSC_BENCH_SOURCE) : undefined,
+      source: benchmarkSource, environmentKeys: Object.keys(process.env).length,
       fixture: { files: f.files, commits: f.depth, branches: f.branches, sharedUpstreamBranches: f.sharedUpstreamBranches,
         network: "local-bare-only", monitorPolicy: !!stopMonitor, pushThresholdBytes: PUSH_THRESHOLD,
         ...(primePublishedPush ? { primedCensoredPushOutsideMeasurement: true } : {}) }, results };

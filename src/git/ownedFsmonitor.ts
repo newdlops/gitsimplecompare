@@ -78,13 +78,32 @@ export async function ensureOwnedFsmonitor(root: string, options: RunGitOptions 
   return background ? fallback : ready;
 }
 
-/** 소켓 위치를 포함한 실제 설정 문맥을 나눠 다른 endpoint의 건강 상태를 재사용하지 않는다. */
+/**
+ * 소켓·include 설정의 실제 값이 바뀌면 이전 endpoint의 정상 응답을 재사용하지 않는다.
+ * @param root Git 실행 저장소 @param options 해당 명령이 전달할 실행 파일과 환경 override
+ * @param globals 설정과 경로 해석을 결정하는 Git 전역 옵션
+ * @returns 저장소·실행 파일·설정 값의 해시 키. 환경 원문은 캐시 키나 로그에 남기지 않는다.
+ */
 function monitorKey(root: string, options: RunGitOptions, globals: readonly string[]): string {
   const source = { ...process.env, ...options.env }, scope: string[] = [...globals];
+  // 슬롯 상한은 이 호출의 환경 snapshot으로 한 번 계산한다. 반복마다 전체 key 배열을 만들지 않는다.
+  const limit = Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0));
   for (const name of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_PARAMETERS"]) scope.push(source[name] ?? "");
-  for (let index = 0; index < Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0)); index++) {
+  for (let index = 0; index < limit; index++) {
     const name = source[`GIT_CONFIG_KEY_${index}`] ?? "";
     if (/^(?:core\.fsmonitor|fsmonitor\.|include)/i.test(name)) scope.push(name, source[`GIT_CONFIG_VALUE_${index}`] ?? "");
+  }
+  // --config-env의 변수 이름만 같아도 실제 endpoint/include 값이 달라질 수 있다.
+  for (let index = 0; index < globals.length; index++) {
+    const option = globals[index];
+    if (["-c", "-C", "--git-dir", "--work-tree", "--namespace"].includes(option)) { index++; continue; }
+    const mapped = option === "--config-env" ? globals[++index]
+      : option.startsWith("--config-env=") ? option.slice("--config-env=".length) : undefined;
+    const separator = mapped?.indexOf("=") ?? -1;
+    if (mapped && separator >= 0) {
+      const name = mapped.slice(separator + 1);
+      scope.push("config-env", name, JSON.stringify([source[name]]));
+    }
   }
   return `${root}\0${options.executable ?? "git"}\0${createHash("sha256").update(JSON.stringify(scope)).digest("hex")}`;
 }
@@ -244,10 +263,15 @@ async function stopOwnedMonitor(entry: MonitorPreparation | undefined): Promise<
   entry.owned.controller.abort(); await entry.owned.completion;
 }
 
-/** command-scope의 마지막 fsmonitor 값을 argv>env 순서로 읽고 파일 인자·커밋 본문은 검사하지 않는다. */
+/**
+ * command-scope의 마지막 fsmonitor 값을 argv>env 순서로 읽고 파일 인자·커밋 본문은 검사하지 않는다.
+ * @param args Native 명령의 전체 인자 @param env 호출자가 덮어쓸 환경 snapshot
+ * @returns 명시한 마지막 설정 값. 없으면 undefined로 반환해 Native 설정 조회를 유지한다.
+ */
 function explicitSetting(args: readonly string[], env?: Record<string, string>): string | undefined {
   const source = { ...process.env, ...env }; let value: string | undefined;
-  for (let index = 0; index < Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0)); index++) {
+  const limit = Math.min(Object.keys(source).length, Number(source.GIT_CONFIG_COUNT ?? 0));
+  for (let index = 0; index < limit; index++) {
     if (source[`GIT_CONFIG_KEY_${index}`]?.toLowerCase() === "core.fsmonitor") value = source[`GIT_CONFIG_VALUE_${index}`];
   }
   const position = gitCommandIndex(args);

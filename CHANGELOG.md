@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.72153] - 2026-10-22
+
+### Fixes
+
+- Recheck fsmonitor health when a `--config-env` variable keeps its name but
+  changes value. Keep socket and include contexts separate without exposing
+  environment values in logs or changing repository configuration.
+- Calculate configuration slot bounds once per command snapshot. Preserve
+  Native configuration precedence, recovery checks and process ownership.
+
+### Development
+
+- Compare actual Graph buttons with the monitor policy enabled and matched
+  environments. Keep process-phase diagnostics outside the extension package.
+- Record the rejected environment-copy prototype and its slower actual-button
+  latency/CPU results; no overall operation speedup is claimed for this release.
+
 ## [0.1.72152] - 2026-10-22
 
 ### Fixes

@@ -3,9 +3,13 @@ import childProcess from "node:child_process";
 import fs from "node:fs/promises";
 import type { TestContext } from "node:test";
 import { gitCommandIndex } from "../../src/git/gitCommandPolicy";
+import { gitProcesses } from "../../src/git/gitProcessRegistry";
 
 interface Interval { start: number; end: number }
-interface GitInterval extends Interval { command: string; shape: string; exitMs?: number; closeMs?: number }
+interface GitInterval extends Interval {
+  command: string; shape: string; pid?: number; spawnMs: number;
+  exitMs?: number; closeMs?: number; registryStartMs?: number; registryEndMs?: number;
+}
 interface FileInterval extends Interval { method: string; shape: string; outcome: "success" | "error" }
 
 /** 고정된 Git 조회 형태만 구분하며 경로·branch·메시지 등 원래 인자 값은 내보내지 않는다. */
@@ -44,25 +48,42 @@ function unionMs(intervals: readonly Interval[]): number {
 
 /**
  * 테스트가 소유한 Native/파일 IO를 그대로 실행하며 버튼 구간의 대기만 선택적으로 관찰한다.
- * @param t mock을 원래 메서드로 복원할 테스트 수명 @returns 활성화/종료 함수와 민감한 값 없는 진단 결과
+ * @param t mock을 원래 메서드로 복원할 테스트 수명
+ * @param options filesystem=false이면 파일 IO wrapper를 설치하지 않아 프로세스 관찰만 수행한다.
+ * @returns 활성화/종료 함수와 민감한 값 없는 진단 결과. 종료 시각은 Node가 관측한 경계다.
  */
-export function createGraphButtonDiagnostics(t: Pick<TestContext, "mock">) {
+export function createGraphButtonDiagnostics(t: Pick<TestContext, "mock">, options: { filesystem?: boolean } = {}) {
   let active = false, started = 0;
   const git: GitInterval[] = [], files: FileInterval[] = [];
+  const children = new WeakMap<childProcess.ChildProcess, GitInterval>(), registered = new Map<number, GitInterval>();
   const spawn = childProcess.spawn;
   t.mock.method(childProcess, "spawn", (...args: any[]) => {
     const observed = active && (args[0] === "git" || /[/\\]git(?:\.exe)?$/.test(String(args[0])));
     const began = performance.now();
     const child = (spawn as Function)(...args);
     if (observed) {
-      const interval: GitInterval = { command: args[1][gitCommandIndex(args[1])], shape: gitShape(args[1]), start: began - started, end: began - started };
+      const interval: GitInterval = { command: args[1][gitCommandIndex(args[1])], shape: gitShape(args[1]), pid: child.pid,
+        spawnMs: performance.now() - began, start: began - started, end: began - started };
       git.push(interval);
+      children.set(child, interval);
       child.once("exit", () => { interval.exitMs = performance.now() - began; });
       child.once("close", () => { interval.closeMs = performance.now() - began; interval.end = performance.now() - started; });
     }
     return child;
   });
-  for (const method of ["stat", "lstat", "realpath", "readFile", "readdir", "access", "mkdir", "open", "rename", "unlink", "writeFile", "rm"] as const) {
+  const register = gitProcesses.register.bind(gitProcesses), closed = gitProcesses.closed.bind(gitProcesses);
+  t.mock.method(gitProcesses, "register", (...args: Parameters<typeof register>) => {
+    const id = register(...args), interval = children.get(args[0]);
+    if (interval) registered.set(id, interval);
+    return id;
+  });
+  t.mock.method(gitProcesses, "closed", async (id: number) => {
+    const interval = registered.get(id);
+    if (interval) interval.registryStartMs = performance.now() - started;
+    try { await closed(id); }
+    finally { if (interval) { interval.registryEndMs = performance.now() - started; registered.delete(id); } }
+  });
+  for (const method of options.filesystem === false ? [] : ["stat", "lstat", "realpath", "readFile", "readdir", "access", "mkdir", "open", "rename", "unlink", "writeFile", "rm"] as const) {
     const original = fs[method];
     t.mock.method(fs, method, async (...args: any[]) => {
       const observed = active, began = performance.now();
@@ -82,7 +103,8 @@ export function createGraphButtonDiagnostics(t: Pick<TestContext, "mock">) {
     finish() {
       active = false;
       const elapsedMs = performance.now() - started, all = [...git, ...files];
-      return { scope: "instrumented diagnostic only; async FS wrappers add overhead and are not comparative latency evidence",
+      return { scope: "instrumented diagnostic only; Node-observed spawn/exit/stdio-close/registry completion, not pure OS execution. Wrappers add overhead; not comparative latency evidence",
+        filesystemObserved: options.filesystem !== false,
         elapsedMs: Math.round(elapsedMs), nativeUnionMs: unionMs(git), fsUnionMs: unionMs(files),
         observedUnionMs: unionMs(all), otherMs: Math.round(elapsedMs - unionMs(all)),
         git: git.map(item => ({ ...item, elapsedMs: Math.round((item.end - item.start) * 10) / 10 })),
