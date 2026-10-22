@@ -5,7 +5,8 @@ import type { Commit } from "../graph/graphTypes";
 import { filterCommitRefs } from "./graphBranchFilter";
 import type { ResolvedGraphBranchFilter } from "./graphBranchFilter";
 import { loadGraphReflogCommitWindow } from "./graphReflogCommitFocus";
-import { logInfo } from "../ui/outputLog";
+import { logInfo, logWarn } from "../ui/outputLog";
+import { GitError, isGitLifecycleError } from "../git/gitError";
 import type { PullRequestInfo } from "../git/pullRequestInfo";
 import { fetchPullRequestGraphObjects, pullRequestGraphHashes, resolvePullRequestGraphTarget } from "../git/pullRequestGraphTarget";
 
@@ -47,9 +48,24 @@ export async function loadFilteredGraphCommitWindow(
   if (pr) hashes = pullRequestGraphHashes(pr);
   if (!hashes.length) return undefined;
   // 아직 검증된 ref가 없으면 암묵적인 전체 ref 조회를 건너뛰고 선택한 OID만 확인한다.
-  let window = branchFilter.empty ? { commits: [], startIndex: 0, targetIndex: -1, totalCount: 0, hash: undefined }
-    : await loadCommitWindowForCandidates(repoRoot, hashes,
-      { before: 80, after: pageSize, refs: branchFilter.refs, signal });
+  let window: Awaited<ReturnType<typeof loadCommitWindowForCandidates>> = {
+    commits: [], startIndex: 0, targetIndex: -1, totalCount: 0,
+  };
+  if (!branchFilter.empty) {
+    try {
+      window = await loadCommitWindowForCandidates(repoRoot, hashes,
+        { before: 80, after: pageSize, refs: branchFilter.refs, signal });
+    } catch (error) {
+      signal?.throwIfAborted();
+      // catalog 이후 손상된 별도 ref가 선택한 정상 PR까지 막지 않게 한다. 실제 Native 종료 오류만
+      // 복구하며 취소·시간 제한·프로세스 정리와 사용자의 custom 범위 오류는 재조회하지 않는다.
+      if (branchFilter.mode !== "all" || !(error instanceof GitError) || isGitLifecycleError(error)
+        || typeof error.code !== "number" || error.killed || error.signal) throw error;
+      logWarn("graph commit window history unavailable; checking selected target", {
+        repoRoot, code: error.code, candidateCount: hashes.length,
+      });
+    }
+  }
   if (!window.hash && branchFilter.mode === "all") {
     if (branchFilter.filtersRefs) logInfo("graph commit window checking direct target outside catalog", {
       repoRoot, candidateCount: hashes.length, validatedRefCount: branchFilter.refs.length,

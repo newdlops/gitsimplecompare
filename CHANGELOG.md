@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72160] - 2026-10-22
+
+### Fixes
+
+- Keep PR row jumps working in All branches when an unrelated invalid ref causes
+  the history lookup to fail, including refs that break after the catalog loads.
+- Validate and display the selected local commit directly without changing refs,
+  HEAD, index, configuration or working files. Preserve explicit branch filters,
+  cancellation and process timeout boundaries, and log the recovery in Output.
+
 ## [0.1.72159] - 2026-10-22
 
 ### Performance
