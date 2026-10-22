@@ -255,6 +255,21 @@
   }
 
   /**
+   * 여러 관련 commit의 현재 DOM 행을 한 번의 순회로 찾는다. 오래된 DOM이나 전체 이력은 보관하지 않는다.
+   * @param {string[]} hashes 현재 PR의 관련 commit OID 목록
+   * @returns {Map<string, Element>} 실제로 로드된 행만 담은 일회성 map. 중복 OID는 첫 행을 유지한다.
+   */
+  function findCommitRows(hashes) {
+    const remaining = new Set(hashes), rows = new Map();
+    if (!remaining.size) return rows;
+    document.getElementById("graph-content")?.querySelectorAll(".row[data-hash]").forEach(row => {
+      const hash = row.dataset.hash;
+      if (remaining.delete(hash)) rows.set(hash, row);
+    });
+    return rows;
+  }
+
+  /**
    * 발견한 commit row와 SVG node를 강조하고 viewport 중앙으로 이동한다.
    * @param {Element} row 강조할 graph commit row
    * @returns {void}
@@ -371,6 +386,7 @@
     applyDecorations,
     colorClass: prColorClass,
     findCommitRow,
+    findCommitRows,
     focusCommitRow,
     focusPullRequestRow,
     handleCommitVisibility,

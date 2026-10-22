@@ -24,6 +24,7 @@ import { installPrButtonFixture, verifyPrButtonResult } from "../helpers/prButto
 import { probePrNotice } from "../helpers/prNoticeProbe";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
+import { startNodeCpuProfile, type NodeCpuProfile } from "../helpers/nodeCpuProfile";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
@@ -152,6 +153,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       if (message.type === requestType) { completedAt = performance.now(); noticeAtCompletion = notice?.handlerState(); actionDone(); }
     } catch (error) { actionFailed(error); throw error; }
   });
+  let nodeProfile: NodeCpuProfile | undefined, rendererProfile: NodeCpuProfile | undefined;
   try {
     await renderer.mount(surface.webview.html);
     await within(initialized, "actual ready callback");
@@ -175,6 +177,12 @@ async function measure(directory: string, operation: Operation, resources?: Grap
           { hash: f.prCommits[1], action: "squash", message: "combined click\n\ncombined body" }, { hash: f.prCommits[2], action: "pick" }] } });
     }
     const initial = signature(panel.commits), beforeMessages = messages.length, timings: GitExecutionTiming[] = [];
+    const profiling = !!(process.env.GSC_BENCH_CPU_PROFILE_DIR || process.env.GSC_BENCH_RENDERER_PROFILE_DIR);
+    assert.ok(!resources || !profiling, "CPU sampling and resource counters require separate runs");
+    if (profiling) {
+      nodeProfile = await startNodeCpuProfile(operation);
+      rendererProfile = await renderer.startCpuProfile(operation);
+    }
     await resources?.begin(renderer,operation);
     const stop = setGitExecutionObserver(timing => timings.push(timing));
     const started = performance.now(), clickedAt = Date.now(), cpu = process.cpuUsage();
@@ -188,11 +196,12 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       else await renderer.clickControl(`#${operation}-graph`);
       await within(action, `${requestType} handler`);
       await settle(f.root, panel, messages, metadataReady);
-      if(resources)await renderer.waitForPendingFrame(publications.at(-1)?.performance);
+      if(resources || profiling)await renderer.waitForPendingFrame(publications.at(-1)?.performance);
       measuring = false; stop();
       const diagnostic = diagnostics?.finish();
       const settled = performance.now(), used = process.cpuUsage(cpu), final = signature(panel.commits);
       const phaseResources=await resources?.finish(renderer,used,timings.length);
+      if (profiling) await Promise.all([nodeProfile?.stop(), rendererProfile?.stop()]);
       assert.ok(receivedAt !== undefined && completedAt !== undefined);
       assert.deepEqual(__errorMessages, [], "The actual message handler must not hide a Git failure in an error toast");
       assert.deepEqual(markerFailures, [], "A swallowed marker error is not a correct completed button flow");
@@ -236,6 +245,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
         clickToFirstFrameMs: frame.mutationToFrameMs, clickToFinalFrameMs: frame.latestMutationToFrameMs,
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
+        ...(profiling ? { instrumentedCpuProfile: true, profileScope: "actual click through settled final renderer frames; sampling overhead remains, not comparative latency" } : {}),
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
         graphPublications: publications.length, webviewMessages: messages.length - beforeMessages, frame,
@@ -247,7 +257,10 @@ async function measure(directory: string, operation: Operation, resources?: Grap
           afterClickMs: Math.round(value.at - started), kind: value.performance?.kind, ...value.changes })) } } : {}),
         ...(promisor ? { promisor } : {}), ...(localOnlyDiagnostics ? {localOnlyDiagnostics:localOnlyDiagnostics()} : {}) };
     } finally { measuring = false; stop(); }
-  } finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
+  } finally {
+    try { if (nodeProfile || rendererProfile) await Promise.all([nodeProfile?.stop(), rendererProfile?.stop()]); }
+    finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
+  }
 }
 
 /** 모든 사례를 같은 규모로 실행하고 fixture와 browser 자원은 종료 시 회수한다. */

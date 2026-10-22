@@ -6,7 +6,8 @@
   let overview = { available: false, pullRequests: [] };
   let activeDetail = { kind: "none" };
   const details = window.GscGraphPrViewState.create(message => window.GscGraphPostMessage?.(message));
-  let hostContext = "", detailPaused = false, lastDetailKey = "", lastDetailValue;
+  let hostContext = "", detailPaused = false, lastDetailKey = "", lastDetailValue, lastDetailRelated;
+  let overviewDirty = false;
   let prListLoading = false;
   let lastOverviewAt = 0;
   let hoverCard;
@@ -26,9 +27,9 @@
     document.getElementById("detail")?.addEventListener("click", handleDetailClick);
     document.getElementById("detail")?.addEventListener("keydown", handleDetailKeydown);
     window.addEventListener("message", handleMessage);
-    window.addEventListener("gsc-detail-selection", () => { activeDetail = { kind: "none" }; details.cancel(); window.GscGraphPrMatching?.cancelFocus?.(); });
+    window.addEventListener("gsc-detail-selection", () => { activeDetail = { kind: "none" }; lastDetailRelated = undefined; details.cancel(); window.GscGraphPrMatching?.cancelFocus?.(); });
     window.addEventListener("gsc-detail-visibility", event => {
-      if (!event.detail?.visible) { details.cancel(); window.GscGraphPrMatching?.cancelPendingFocus?.(); }
+      if (!event.detail?.visible) { lastDetailRelated = undefined; details.cancel(); window.GscGraphPrMatching?.cancelPendingFocus?.(); }
       else if (activeDetail.kind === "pr") { detailPaused = false; renderPullRequestDetail(activeDetail.number); }
     });
   }
@@ -45,7 +46,7 @@
       // 목록 refresh는 동일한 context도 재게시한다. 실제 저장소·인증 변경만 이동과 OID 재사용을 취소한다.
       if (hostContext !== msg.context) {
         window.GscGraphPrMatching?.cancelFocus?.(true);
-        hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
+        hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = ""; lastDetailRelated = undefined;
       }
     } else if (msg.type === "graphDetailCancelled") {
       details.cancel(msg.number, msg.requestId);
@@ -79,15 +80,24 @@
       // graph/branchStatus/tagStatus 는 모두 그래프 row 를 다시 그린다. row 가 재생성되면 PR 배지가
       // 함께 사라지므로, 이 스크립트가 graph.js 보다 먼저 message 를 받는 점을 이용해 rAF 로 재배치를 예약한다.
       hideHoverCard();
-      schedulePrRender();
+      schedulePrRender(false);
     }
   }
 
-  /** 진행 메시지 여러 건을 한 프레임으로 합치고 선택 화면과 실제 변경된 부분만 다시 그린다. */
-  function schedulePrRender() {
+  /**
+   * 메시지를 한 frame으로 합치되 Graph-only 갱신은 같은 PR 카드 HTML을 만들지 않는다.
+   * @param {boolean} updateOverview PR 데이터·진행 상태·사용자 설정이 바뀌었는지 여부
+   * @returns {void} 먼저 도착한 PR 변경은 뒤의 Graph 메시지나 IME 조합 때문에 잃지 않는다.
+   */
+  function schedulePrRender(updateOverview = true) {
+    overviewDirty ||= updateOverview;
     window.GscGraphPrViewState.schedule(() => {
+      const updateContent = overviewDirty; overviewDirty = false;
       if (!detailPaused && document.body.classList.contains("detail-open")) {
-        if (activeDetail.kind === "overview" && !window.GscGraphPrSearch?.isComposing?.()) renderOverviewDetail();
+        if (activeDetail.kind === "overview" && updateContent) {
+          if (window.GscGraphPrSearch?.isComposing?.()) overviewDirty = true;
+          else renderOverviewDetail();
+        }
         else if (activeDetail.kind === "pr") renderPullRequestDetail(activeDetail.number, false);
       }
       applyDecorations();
@@ -250,6 +260,7 @@
 
   /** toolbar PR 버튼에서 전체 PR 목록 drawer 를 연다. */
   function showOverviewDetail(refresh) {
+    lastDetailRelated = undefined;
     window.GscGraphPostMessage?.({ type: "cancelGraphDetail" }); details.cancel(); detailPaused = false;
     activeDetail = { kind: "overview" };
     if (refresh) prListLoading = true;
@@ -266,6 +277,7 @@
     if (!root) {
       return;
     }
+    overviewDirty = false;
 	    const prs = overview.pullRequests || [];
 	    const filteredPrs = window.GscGraphPrSearch?.filter?.(prs) || prs;
 	    const previousScroll = root.querySelector(".pr-detail-shell")?.scrollTop || 0;
@@ -379,8 +391,9 @@
     }
     requestPullRequestDetail(number);
     const detailState = details.get(pr), signature = JSON.stringify(pr);
-    if (!force && lastDetailKey === signature && lastDetailValue === detailState && root.querySelector(".pr-back-button")) return;
-    lastDetailKey = signature; lastDetailValue = detailState;
+    const related = relatedCommitsSection(pr);
+    if (!force && lastDetailKey === signature && lastDetailValue === detailState && lastDetailRelated === related && root.querySelector(".pr-back-button")) return;
+    lastDetailKey = signature; lastDetailValue = detailState; lastDetailRelated = related;
     window.GscGraphPrViewState.updateHtml(root, `<div class="pr-detail-shell ${prColorClass(pr.number)}">` +
       `<section class="pr-detail-header">` +
       `<button type="button" class="pr-back-button" data-pr-overview ${tooltipAttrs("Show pull request list")}>` +
@@ -395,7 +408,7 @@
       `</section>` +
       (!overview.available && pr.commitHashesComplete === false ? prListFooter() : "") +
       changedFilesSection(detailState) +
-      relatedCommitsSection(pr) +
+      related +
       `</div>`);
   }
 
@@ -451,16 +464,17 @@
   /** PR 상세 drawer 의 related commits 리스트 HTML 을 만든다. */
   function relatedCommitsSection(pr) {
     const hashes = window.GscGraphPrMatching?.rowHashes?.(pr) || pr.commitHashes || [];
+    const rows = window.GscGraphPrMatching?.findCommitRows?.(hashes);
     return `<section class="pr-detail-section">` +
       sectionHeading("git-commit", "Related commits", iconCount("git-commit", pr.commitHashesComplete === false ? "…" : hashes.length, "Related commits")) +
       (pr.commitHashesComplete === false ? `<p class="pr-empty" role="status">${esc(window.GscPrStackI18n?.loadingPrCommits)}</p>` : "") +
-      (hashes.length ? `<div class="pr-commit-list">${hashes.map(relatedCommitButton).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
+      (hashes.length ? `<div class="pr-commit-list">${hashes.map(hash => relatedCommitButton(hash, rows)).join("")}</div>` : `<p class="pr-empty">No related commits.</p>`) +
       `</section>`;
   }
 
-  /** related commit 한 건을 graph row 이동 버튼으로 만든다. */
-  function relatedCommitButton(hash) {
-    const row = window.GscGraphPrMatching?.findCommitRow?.(hash);
+  /** @param hash 관련 commit OID @param rows 이번 render의 Graph 행 map @returns 최신 제목·로드 상태를 담은 이동 버튼 HTML */
+  function relatedCommitButton(hash, rows) {
+    const row = rows ? rows.get(hash) : window.GscGraphPrMatching?.findCommitRow?.(hash);
     const subject = row?.dataset.subject || "Commit is not loaded in the graph yet.";
     const meta = row?.querySelector?.(".meta")?.textContent || "";
     const title = row ? `Jump to commit ${shortHash(hash)}` : `Commit ${shortHash(hash)} is not loaded in the graph`;

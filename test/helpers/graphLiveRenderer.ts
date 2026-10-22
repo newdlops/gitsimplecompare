@@ -1,7 +1,7 @@
 // 실제 Git/GraphPanel의 게시를 production HTML·JS와 연결하는 headless 검증 transport다.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import type { Commit } from "../../src/graph/graphTypes";
@@ -114,6 +114,31 @@ export class GraphLiveRenderer {
     const session=await this.browser.newBrowserCDPSession();
     try{const result=await session.send("SystemInfo.getProcessInfo");return result.processInfo as BrowserCpuProcess[];}
     finally{await session.detach();}
+  }
+
+  /**
+   * opt-in 진단에서만 실제 페이지의 JS CPU profile을 수집한다. 외부 포트나 OS 창은 열지 않는다.
+   * @param name 소유 fixture의 작업 이름 @returns idempotent 종료 함수. 요청하지 않았으면 undefined
+   */
+  async startCpuProfile(name: string): Promise<{ stop(): Promise<void> } | undefined> {
+    const directory = process.env.GSC_BENCH_RENDERER_PROFILE_DIR;
+    if (!directory) return undefined;
+    const session = await this.page.context().newCDPSession(this.page);
+    try {
+      await session.send("Profiler.enable");
+      await session.send("Profiler.setSamplingInterval", { interval: 1000 });
+      await session.send("Profiler.start");
+    } catch (error) { await session.detach(); throw error; }
+    let stopping: Promise<void> | undefined;
+    /** 실제 작업·최종 frame 뒤 샘플을 저장하며 실패해도 CDP 연결을 해제한다. */
+    const stop = async (): Promise<void> => {
+      try {
+        const { profile } = await session.send("Profiler.stop");
+        await mkdir(directory, { recursive: true });
+        await writeFile(path.join(directory, `${name.replace(/[^a-z0-9-]/gi, "-")}.cpuprofile`), JSON.stringify(profile));
+      } finally { await session.detach(); }
+    };
+    return { stop: () => stopping ??= stop() };
   }
 
   /** 계측 종료 전에 마지막 게시 ACK와 두 frame을 기다린다. 사후 Native oracle은 실행하지 않는다. */

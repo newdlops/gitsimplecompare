@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.72154] - 2026-10-22
+
+### Performance
+
+- Update PR decorations without rebuilding an unchanged open PR list for
+  Graph, branch and tag messages. Keep actual PR changes, loading, search,
+  reviewer controls and IME updates current when messages arrive together.
+- Retain list scroll and focus. Clear the active related-section comparison
+  when leaving the detail, and resolve related Graph rows in one DOM pass.
+
+### Fixes
+
+- Refresh related commit subjects, authors/dates, loaded state and tooltips
+  when the Graph window changes, preserving changed-file DOM and keyboard focus.
+
+### Development
+
+- Add opt-in Node and headless renderer CPU profiles around actual clicks and
+  final frames. Keep profiling separate from ordinary latency/resource runs.
+
 ## [0.1.72153] - 2026-10-22
 
 ### Fixes
