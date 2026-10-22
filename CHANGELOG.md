@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72152] - 2026-10-22
+
+### Fixes
+
+- Keep Jump to Pull Request Row running when a concurrent PR list refresh
+  republishes the same repository and authentication context. Preserve the
+  selected row and its resolved commit so repeated jumps do not reload it.
+- Continue cancelling navigation and clearing resolved commits when the
+  repository or authentication context actually changes.
+
 ## [0.1.72151] - 2026-10-22
 
 ### Performance

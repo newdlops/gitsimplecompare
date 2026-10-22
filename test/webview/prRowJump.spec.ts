@@ -142,6 +142,34 @@ test("the first lightweight PR list can jump before commit metadata arrives", as
   await expect.poll(async () => (await readPostedMessages(page)).filter((m: any) => m.type === "ensureCommitVisible").length).toBe(3);
 });
 
+for (const [width,height] of [[390,844],[768,1024],[1440,900]]) test(`an unchanged PR context refresh preserves an active jump at ${width}px`, async ({page}) => {
+  await page.setViewportSize({width,height}); await mount(page);
+  await dispatchWebviewMessage(page,{type:"pullRequestContext",context:"same-repository-and-auth"});
+  const pr = {...overview(false).pullRequests[0],headHash:undefined,commitHashes:[],commitHashesComplete:false};
+  await setPrs(page,[pr]);
+  const jump = page.locator('[data-focus-pr="42"]'); await jump.click();
+  const request = await latestRequest(page);
+  // host는 매 목록 refresh마다 같은 context를 다시 보낸다. 이 알림은 저장소 교체가 아니다.
+  await dispatchWebviewMessage(page,{type:"pullRequestContext",context:"same-repository-and-auth"});
+  await setPrs(page,[{...pr,commentCount:20}]);
+  expect((await readPostedMessages(page)).filter((m:any)=>m.type === "cancelCommitFocus")).toEqual([]);
+  await expect(jump).toBeDisabled();
+  await dispatchWebviewMessage(page,{type:"commitVisibility",requestId:request.requestId,found:true,hash:hash(180)});
+  const row = page.locator(".pr-focused-row");
+  await expect(row).toHaveAttribute("data-hash",hash(180)); await expect(row).toBeInViewport();
+  await expect(page.locator("#graph")).toBeFocused(); await expect(jump).toBeEnabled();
+  // 완료 후 같은 context 알림도 강조와 가벼운 목록의 마지막 OID 재사용을 보존한다.
+  await dispatchWebviewMessage(page,{type:"pullRequestContext",context:"same-repository-and-auth"});
+  await expect(row).toHaveAttribute("data-hash",hash(180));
+  if (width < 800) await page.getByRole("button",{name:"Show pull requests",exact:true}).click();
+  await jump.click();
+  expect((await readPostedMessages(page)).filter((m:any)=>m.type === "ensureCommitVisible")).toHaveLength(1);
+  if (width === 390) await expect.poll(async () => page.locator("#detail").evaluate(node =>
+    node.getBoundingClientRect().left >= innerWidth)).toBe(true);
+  await page.mouse.move(0,height-1);
+  await page.screenshot({path:`/private/tmp/gsc-pr-row-context-${width}.png`});
+});
+
 for (const [width,height] of [[390,844],[768,1024],[1440,900]]) test(`a retained search result remains navigable after overview refresh at ${width}px`, async ({page}) => {
   await page.setViewportSize({width,height}); await mount(page);
   await page.locator("[data-pr-search-input]").fill("Remote PR");

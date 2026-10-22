@@ -42,8 +42,11 @@
   function handleMessage(event) {
     const msg = event.data;
     if (msg.type === "pullRequestContext") {
-      window.GscGraphPrMatching?.cancelFocus?.(true);
-      hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
+      // 목록 refresh는 동일한 context도 재게시한다. 실제 저장소·인증 변경만 이동과 OID 재사용을 취소한다.
+      if (hostContext !== msg.context) {
+        window.GscGraphPrMatching?.cancelFocus?.(true);
+        hostContext = msg.context; details.setContext(`${hostContext}|${overview.repository || ""}`); lastDetailKey = "";
+      }
     } else if (msg.type === "graphDetailCancelled") {
       details.cancel(msg.number, msg.requestId);
       if (["hidden", "windowUnfocused"].includes(msg.reason)) detailPaused = true;
