@@ -10,13 +10,13 @@ test.afterEach(({page}) => { expect(errors.get(page)).toEqual([]); });
 /** Native OID와 같은 모양의 값으로 PR의 대표 row와 깊은 스크롤 위치를 구분한다. */
 const hash = (index: number) => (index + 1).toString(16).padStart(40, "0");
 
-/** production Graph/PR renderer에 깊은 선형 이력과 실제 목록 버튼을 함께 mount한다. */
-async function mount(page: Page, korean = false): Promise<void> {
+/** production Graph/PR renderer에 깊은 이력·선택한 레인 폭·실제 목록 버튼을 함께 mount한다. */
+async function mount(page: Page, korean = false, laneCount = 1): Promise<void> {
   await mountList(page, korean);
   const rows = Array.from({ length: 240 }, (_, i) => ({ hash: hash(i), parents: i < 239 ? [hash(i+1)] : [],
     refs: i === 0 ? ["HEAD", "main"] : [], authorName: "Fixture", authorEmail: "fixture@example.test",
-    dateIso: "2026-10-21T00:00:00Z", subject: `Commit ${i}`, column: 0, color: 0 }));
-  await dispatchWebviewMessage(page, { type: "graph", revision: 1, data: { rows, edges: [], laneCount: 1 },
+    dateIso: "2026-10-21T00:00:00Z", subject: `Commit ${i}`, column: i === 180 ? laneCount - 1 : 0, color: 0 }));
+  await dispatchWebviewMessage(page, { type: "graph", revision: 1, data: { rows, edges: [], laneCount },
     state: { loadedCount: rows.length, hasMore: false, loading: false, reset: true, colorScope: "/fixture" } });
   await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: { ...overview(true), pullRequests: [
     { ...overview(true).pullRequests[0], headHash: hash(180), commitHashes: [hash(180)] },
@@ -39,6 +39,60 @@ for (const [width, height] of [[390,844],[768,1024],[1440,900]]) test(`PR row ju
   })).toBe(true);
   await expect(page.locator("#graph")).toBeFocused();
   expect((await readPostedMessages(page)).filter((m:any) => m.type === "ensureCommitVisible")).toHaveLength(0);
+});
+
+for (const [width, height] of [[390,844],[768,1024],[1440,900]]) {
+  for (const unloaded of [false, true]) test(`PR jump reveals its title in a wide graph (${width}px, ${unloaded ? "unloaded" : "loaded"})`, async ({page}) => {
+    await page.setViewportSize({width,height}); await mount(page, false, 72);
+    const targetHash = hash(unloaded ? 400 : 180);
+    if (unloaded) await setPrs(page, [{...overview(true).pullRequests[0],headHash:targetHash,commitHashes:[targetHash]}]);
+    // 가로로 긴 DAG에서 세로 이동만 성공해도 제목은 화면 밖에 남는다. 실제 카드 버튼으로 검증한다.
+    await page.locator('[data-focus-pr="42"]').click();
+    if (unloaded) {
+      const request = await latestRequest(page);
+      const rows = [{hash:targetHash,parents:[],refs:Array.from({length:12},(_,i)=>`feature/long-branch-name-${i}`),
+        authorName:"Fixture",authorEmail:"fixture@example.test",dateIso:"2026-10-21T00:00:00Z",
+        subject:"Previously unloaded pull request in a wide graph",column:71,color:0}];
+      await dispatchWebviewMessage(page,{type:"graph",revision:2,data:{rows,edges:[],laneCount:72},
+        state:{loadedCount:1,hasMore:false,loading:false,reset:true,colorScope:"/fixture"}});
+      await dispatchWebviewMessage(page,{type:"commitVisibility",requestId:request.requestId,found:true,hash:targetHash});
+    }
+    const target = page.locator(`.pr-focused-row[data-hash="${targetHash}"]`);
+    await expect(target).toBeInViewport();
+    await expect.poll(() => target.locator(".subject").evaluate(subject => {
+      const box = subject.getBoundingClientRect(), graph = document.getElementById("graph")!.getBoundingClientRect();
+      return box.left >= graph.left + 4 && box.left + Math.min(box.width, 120) <= graph.right - 4;
+    })).toBe(true);
+    await expect(page.locator("#graph")).toBeFocused();
+    expect((await readPostedMessages(page)).filter((m:any)=>m.type === "ensureCommitVisible")).toHaveLength(unloaded ? 1 : 0);
+    if (width < 760) await expect.poll(()=>page.locator("#detail").evaluate(node=>node.getBoundingClientRect().left >= innerWidth)).toBe(true);
+    expect(await target.locator(".subject").evaluate(subject=>{
+      const box = subject.getBoundingClientRect();
+      return subject.contains(document.elementFromPoint(box.left + Math.min(box.width,120) / 2,box.top + box.height / 2));
+    })).toBe(true);
+    await page.mouse.move(0,height-1); await page.screenshot({path:`/private/tmp/gsc-pr-row-wide-${unloaded ? "unloaded" : "loaded"}-${width}.png`});
+  });
+}
+
+for (const [width,height] of [[390,844],[768,1024],[1440,900]]) test(`PR jump brings an overscrolled title back into view at ${width}px`, async ({page}) => {
+  await page.setViewportSize({width,height}); await mount(page);
+  const rows = [180,181].map(i=>({hash:hash(i),parents:[],refs:[],authorName:"Fixture",authorEmail:"fixture@example.test",
+    dateIso:"2026-10-21T00:00:00Z",subject:i === 180 ? "Pull request title" : "Long unrelated commit subject ".repeat(80),column:0,color:0}));
+  await dispatchWebviewMessage(page,{type:"graph",revision:2,data:{rows,edges:[],laneCount:1},
+    state:{loadedCount:2,hasMore:false,loading:false,reset:true,colorScope:"/fixture"}});
+  const graph = page.locator("#graph");
+  await expect.poll(()=>graph.evaluate(node=>node.scrollWidth)).toBeGreaterThan(4000);
+  await graph.evaluate(node=>{node.scrollLeft=node.scrollWidth;});
+  await page.locator('[data-focus-pr="42"]').click();
+  const subject = page.locator(`.pr-focused-row[data-hash="${hash(180)}"] .subject`);
+  await expect(subject).toBeInViewport(); await expect(graph).toBeFocused();
+  await expect.poll(()=>graph.evaluate(node=>node.scrollLeft)).toBeLessThan(500);
+  // 사용자가 이미 제목을 읽을 수 있는 가로 위치라면 재클릭이 그 위치를 바꾸지 않는다.
+  const before = await graph.evaluate(node=>node.scrollLeft);
+  if (width < 800) await page.getByRole("button",{name:"Show pull requests",exact:true}).click();
+  await page.locator('[data-focus-pr="42"]').click();
+  expect(await graph.evaluate(node=>node.scrollLeft)).toBe(before);
+  expect((await readPostedMessages(page)).filter((m:any)=>m.type === "ensureCommitVisible")).toHaveLength(0);
 });
 
 /** 일반 목록 갱신 메시지로 로드되지 않은 대표 OID 또는 다중 PR 선택을 만든다. */

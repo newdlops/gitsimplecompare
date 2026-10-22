@@ -270,7 +270,7 @@
   }
 
   /**
-   * 발견한 commit row와 SVG node를 강조하고 viewport 중앙으로 이동한다.
+   * 발견한 commit row와 SVG node를 강조하고 제목이 보이는 가로·세로 위치로 이동한다.
    * @param {Element} row 강조할 graph commit row
    * @returns {void}
    */
@@ -282,7 +282,23 @@
     if (detail && getComputedStyle(detail).position === "fixed") window.GscGraphDetailHost?.hide?.();
     if (graph) {
       graph.scrollTop = Math.max(0, row.offsetTop - (graph.clientHeight - row.offsetHeight) / 2);
+      revealRowTitle(graph, row);
       graph.focus({ preventScroll: true });
+    }
+  }
+
+  /**
+   * 넓은 DAG·긴 ref 배지·기존 가로 스크롤 때문에 가려진 제목의 시작을 스크롤 영역 안에 드러낸다.
+   * @param {HTMLElement} graph 실제 가로 스크롤 컨테이너. 문서나 상세 drawer는 스크롤하지 않는다.
+   * @param {Element} row 사용자가 이동을 요청한 한 행. 이미 읽을 수 있으면 가로 위치를 유지한다.
+   * @returns {void} 클릭한 행만 측정하며 후속 metadata 갱신에서는 다시 호출하지 않는다.
+   */
+  function revealRowTitle(graph, row) {
+    const subject = (row.querySelector(".subject") || row).getBoundingClientRect();
+    const left = graph.getBoundingClientRect().left + graph.clientLeft;
+    const padding = 12, visible = Math.min(subject.width, 120, Math.max(0, graph.clientWidth - padding * 2));
+    if (subject.left < left + padding || subject.left + visible > left + graph.clientWidth - padding) {
+      graph.scrollLeft = Math.max(0, graph.scrollLeft + subject.left - left - padding);
     }
   }
 

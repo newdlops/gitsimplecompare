@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72156] - 2026-10-22
+
+### Fixes
+
+- Reveal the commit title horizontally when jumping to a pull request row in a
+  wide Graph, including newly loaded commits, long ref badges and a previously
+  scrolled viewport. Preserve horizontal position when the title is already visible.
+- Keep keyboard focus, row highlighting, loading, retry and navigation cancellation
+  behavior while avoiding additional Git or GitHub requests for loaded rows.
+
 ## [0.1.72155] - 2026-10-22
 
 ### Performance
