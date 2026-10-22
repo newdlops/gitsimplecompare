@@ -59,6 +59,35 @@ test("explicit branch filters are preserved and empty filters never expand to al
   assert.deepEqual(commands, ["rev-list"], "an empty custom selection must not query the repository");
 });
 
+for (const remoteStatus of ["pending", "ready", "error"] as const) {
+  test(`an All branches jump can show an unreferenced PR while the catalog is ${remoteStatus}`, async t => {
+    const f = await safetyFixture(t, "pr-jump-safe-catalog");
+    const tree = await git(f.root, "rev-parse", "HEAD^{tree}");
+    const detached = await git(f.root, "commit-tree", tree, "-p", f.head, "-m", "PR outside the branch catalog");
+    const filter = resolveBranchFilter({ mode: "all", selected: [], compact: true },
+      [{ name: "main", kind: "local" }], remoteStatus, true);
+    const before = { refs: await git(f.root, "show-ref"), index: await readFile(path.join(f.root, ".git/index")),
+      config: await readFile(path.join(f.root, ".git/config")) };
+    const commands: string[] = [], stop = setGitExecutionObserver(row => commands.push(row.command)); t.after(stop);
+    const window = await loadFilteredGraphCommitWindow(f.root, [detached], filter, 10);
+    assert.equal(window?.hash, detached);
+    assert.deepEqual(window?.commits.map(commit => commit.hash), [detached, f.head]);
+    assert.deepEqual(commands, ["rev-list", "cat-file", "log"]);
+    assert.equal(await git(f.root, "show-ref"), before.refs);
+    assert.deepEqual(await readFile(path.join(f.root, ".git/index")), before.index);
+    assert.deepEqual(await readFile(path.join(f.root, ".git/config")), before.config);
+  });
+}
+
+test("an empty pending All branches catalog resolves only the requested commit without an implicit all-ref read", async t => {
+  const f = await safetyFixture(t, "pr-jump-empty-catalog");
+  const filter = resolveBranchFilter({ mode: "all", selected: [], compact: true }, [], "pending");
+  const commands: string[] = [], stop = setGitExecutionObserver(row => commands.push(row.command)); t.after(stop);
+  const window = await loadFilteredGraphCommitWindow(f.root, [f.head], filter, 10);
+  assert.equal(window?.hash, f.head);
+  assert.deepEqual(commands, ["cat-file", "log"]);
+});
+
 test("missing and noncommit candidates fail without repeated history reads or fetching", async t => {
   const f = await safetyFixture(t, "pr-jump-missing"), tree = await git(f.root, "rev-parse", "HEAD^{tree}");
   const commands: string[] = [], stop = setGitExecutionObserver(row => commands.push(row.command)); t.after(stop);

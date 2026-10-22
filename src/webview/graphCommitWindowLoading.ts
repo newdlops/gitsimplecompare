@@ -25,6 +25,7 @@ export interface GraphReflogWindowResult {
 
 /**
  * 후보 hash를 순서대로 확인해 현재 branch filter 안에서 찾은 첫 commit window를 반환한다.
+ * all 모드의 내부 catalog 제한은 직접 선택한 PR 객체 조회를 막지 않으며, custom 선택 범위는 유지한다.
  * @param repoRoot Git 저장소 또는 linked worktree 루트
  * @param hashes PR head 등 동일 대상을 나타낼 수 있는 후보 hash 목록
  * @param branchFilter 현재 Graph의 ref·표시 필터
@@ -41,13 +42,18 @@ export async function loadFilteredGraphCommitWindow(
   pullRequest?: PullRequestInfo
 ): Promise<GraphCommitWindowResult | undefined> {
   signal?.throwIfAborted();
-  if (branchFilter.empty) return undefined;
+  if (branchFilter.empty && branchFilter.mode !== "all") return undefined;
   let pr = pullRequest && await resolvePullRequestGraphTarget(repoRoot, pullRequest, signal);
   if (pr) hashes = pullRequestGraphHashes(pr);
   if (!hashes.length) return undefined;
-  let window = await loadCommitWindowForCandidates(repoRoot, hashes,
-    { before: 80, after: pageSize, refs: branchFilter.refs, signal });
-  if (!window.hash && branchFilter.mode === "all" && !branchFilter.filtersRefs) {
+  // 아직 검증된 ref가 없으면 암묵적인 전체 ref 조회를 건너뛰고 선택한 OID만 확인한다.
+  let window = branchFilter.empty ? { commits: [], startIndex: 0, targetIndex: -1, totalCount: 0, hash: undefined }
+    : await loadCommitWindowForCandidates(repoRoot, hashes,
+      { before: 80, after: pageSize, refs: branchFilter.refs, signal });
+  if (!window.hash && branchFilter.mode === "all") {
+    if (branchFilter.filtersRefs) logInfo("graph commit window checking direct target outside catalog", {
+      repoRoot, candidateCount: hashes.length, validatedRefCount: branchFilter.refs.length,
+    });
     let local = await loadLocalCommitWindowForCandidates(repoRoot, hashes, pageSize, signal);
     if (!local && pr) {
       // 선택한 PR만 보완한다. 명시적 branch filter에서는 범위를 넓히거나 fetch하지 않는다.

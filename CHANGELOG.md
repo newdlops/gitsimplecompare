@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72158] - 2026-10-22
+
+### Fixes
+
+- Allow PR row jumps in All branches while the remote branch catalog is pending,
+  unavailable or restricted to validated refs after a broken ref is detected.
+- Resolve only the selected commit or PR objects when the catalog is empty.
+  Preserve explicit branch selections, invalid refs, HEAD, index, configuration
+  and FETCH_HEAD, and record direct-target catalog fallbacks in Output.
+
 ## [0.1.72157] - 2026-10-22
 
 ### Fixes

@@ -115,6 +115,21 @@ test("an unfetched PR downloads only its objects and preserves refs, FETCH_HEAD,
   assert.deepEqual(await protectedState(f.root), before);
 });
 
+test("All branches can fetch the clicked PR while the remote branch catalog is still pending", async t => {
+  const f = await remoteFixture(t), r = await refsFixture(t, f.directory, f.head);
+  const filter = resolveBranchFilter({ mode: "all", selected: [], compact: true },
+    [{ name: "main", kind: "local" }], "pending");
+  const before = await protectedState(f.root), commands: string[] = [];
+  const stop = setGitExecutionObserver(row => commands.push(row.command)); t.after(stop);
+  const window = await loadFilteredGraphCommitWindow(f.root, [], filter, 20, undefined,
+    { ...r.pr, headHash: undefined, commitHashes: [], commitHashesComplete: false });
+  assert.equal(window?.hash, f.head);
+  assert.deepEqual(window?.commits.map(commit => commit.hash), [f.head, before.head]);
+  assert.equal(commands.filter(command => command === "fetch").length, 1);
+  assert.equal(await r.count(), 1);
+  assert.deepEqual(await protectedState(f.root), before);
+});
+
 test("a merged PR downloads its actual squash result before considering its original head", async t => {
   const f = await remoteFixture(t), tree = await git(f.remote, "rev-parse", `${f.head}^{tree}`);
   const merged = await git(f.remote, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test",
@@ -189,6 +204,33 @@ test("the registered Graph message callback resolves a first-list PR and publish
   assert.equal(graph?.type, "graph");
   if (graph?.type === "graph") assert.equal(graph.data.rows[0].hash, f.head);
   assert.equal(await r.count(), 1);
+});
+
+test("the registered Graph jump still publishes a PR after a broken local ref restricts All branches", async t => {
+  const f = await safetyFixture(t, "pr-graph-safe-ref-route");
+  const tree = await git(f.root, "rev-parse", "HEAD^{tree}");
+  const head = await git(f.root, "commit-tree", tree, "-p", f.head, "-m", "PR outside named refs");
+  const r = await refsFixture(t, f.directory, head), broken = join(f.root, ".git/refs/heads/broken-local");
+  const brokenContents = `${"1".repeat(40)}\n`;
+  await writeFile(broken, brokenContents);
+  const before = { index: await readFile(join(f.root, ".git/index")), config: await readFile(join(f.root, ".git/config")) };
+  t.mock.method(PullRequestService.prototype, "getOverview", async () => ({ available: true, repository: "owner/repo",
+    defaultBranch: "main", hasMore: false, pullRequests: [r.pr] }));
+  t.mock.method(PullRequestStackService.prototype, "getGraphSnapshot", async () =>
+    ({ repository: "owner/repo", defaultBranch: "main", stacks: [], layers: [] }));
+  const h = createOperationGraphPanel(t, new GitLogService(f.root)); t.after(() => h.panel.dispose());
+  await h.receiveMessage({ type: "ready" });
+  assert.ok(h.messages.some(message => message.type === "branchFilterOptions" && message.filter.mode === "all"));
+  assert.equal(h.panel.invalidLocalRefs.length, 1, "the actual panel must retain the safe ref restriction");
+  await h.receiveMessage({ type: "ensureCommitVisible", requestId: "safe-ref-route", hashes: [head], pullRequestNumber: 42 });
+  assert.deepEqual(h.messages.filter(message => message.type === "commitVisibility"),
+    [{ type: "commitVisibility", requestId: "safe-ref-route", found: true, hash: head }]);
+  assert.equal(h.panel.commits[0]?.hash, head);
+  assert.equal(await git(f.root, "rev-parse", "HEAD"), f.head);
+  assert.equal(await readFile(broken, "utf8"), brokenContents);
+  assert.deepEqual(await readFile(join(f.root, ".git/index")), before.index);
+  assert.deepEqual(await readFile(join(f.root, ".git/config")), before.config);
+  assert.equal(await r.count(), 0, "the local PR must not need a GitHub refresh");
 });
 
 test("a PR kept in search results can jump after the refreshed overview omits it", async t => {
