@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { mountGraphRenderer } from "./webviewHarness";
 
 /**
- * 실제 보조 renderer와 5천 행·천 브랜치·250개 태그를 올린 뒤 CPU 지연을 적용한다.
+ * 실제 보조 renderer와 5천 행·천 브랜치·250개 태그를 올린 뒤 명시한 CPU 지연을 적용한다.
  * @param page 검증할 Chromium 페이지 @param includeEdges 실제 선형 이력의 간선도 렌더할지 여부
+ * @param cpuThrottleRate 기본 6배 지연. 별도 성능 비교에서는 1로 고정해 지연 없이 측정한다.
  * @returns 배지/색상 호출 카운터가 준비되고 CPU 지연이 적용되면 완료한다.
  */
-export async function mountReferenceGraph(page: Page, includeEdges = false): Promise<void> {
+export async function mountReferenceGraph(page: Page, includeEdges = false, cpuThrottleRate = 6): Promise<void> {
   await mountGraphRenderer(page);
   for (const name of ["graphReferenceState.js", "graphFeatures.js", "graphLocalColors.js", "graphWorktrees.js"]) {
     await page.addScriptTag({ path: join(process.cwd(), "media/graph", name) });
@@ -38,5 +39,5 @@ export async function mountReferenceGraph(page: Page, includeEdges = false): Pro
     w.GscGraphLocalColors.makeResolver = (...args: unknown[]) => { w.__referenceFixture.resolverCalls++; return resolver(...args); };
   }, includeEdges);
   const cdp = await page.context().newCDPSession(page);
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottleRate });
 }

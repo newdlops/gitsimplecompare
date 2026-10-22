@@ -1,5 +1,47 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mountReferenceGraph } from "./graphReferenceHarness";
+
+const errors = new WeakMap<Page, string[]>();
+test.beforeEach(({ page }) => { const list: string[] = []; errors.set(page, list); page.on("pageerror", error => list.push(error.message)); });
+test.afterEach(({ page }) => { expect(errors.get(page)).toEqual([]); });
+
+test("unchanged resize and short row replacements avoid another full width-candidate traversal", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  await mountReferenceGraph(page);
+  const measured = await page.evaluate(async () => {
+    const root = document.getElementById("graph-content")!;
+    /** 기존 예약 frame과 이번 폭 측정을 분리하고 실제 렌더된 폭만 읽는다. */
+    const resize = async () => {
+      window.dispatchEvent(new Event("resize"));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    };
+    await resize();
+    const query = Element.prototype.querySelectorAll;
+    let fullTraversals = 0;
+    Element.prototype.querySelectorAll = function (selector: string) {
+      if (this === root && selector === ":scope > .row") fullTraversals++;
+      return query.call(this, selector);
+    } as typeof query;
+    try {
+      for (let index = 0; index < 3; index++) await resize();
+      const unchanged = fullTraversals;
+      root.querySelector('.row[data-index="0"]')!.classList.toggle("selected");
+      root.querySelector('.row[data-index="4000"]')!.classList.toggle("search-hit");
+      await resize();
+      const afterDecorations = fullTraversals;
+      const old = root.querySelector('.row[data-index="4000"]')!, replacement = old.cloneNode(true) as HTMLElement;
+      replacement.textContent = "short"; old.replaceWith(replacement);
+      await resize();
+      return { unchanged, afterDecorations, afterShortReplacement: fullTraversals, width: parseFloat(root.style.width),
+        right: replacement.offsetLeft + replacement.scrollWidth };
+    } finally { Element.prototype.querySelectorAll = query; }
+  });
+  await info.attach("width-candidate-traversals.json", { body: JSON.stringify(measured), contentType: "application/json" });
+  expect(measured.unchanged).toBe(0);
+  expect(measured.afterDecorations).toBe(0);
+  expect(measured.afterShortReplacement).toBe(0);
+  expect(measured.width).toBeGreaterThanOrEqual(measured.right);
+});
 
 test("a small reference change reuses width scores from unchanged graph rows", async ({ page }, info) => {
   test.setTimeout(90_000);
@@ -51,13 +93,27 @@ test("in-place row edits and reflog-style annotations invalidate width scores be
     const annotationWidth = await resize(), annotationRight = annotation.offsetLeft + annotation.scrollWidth;
     annotation.replaceChildren(document.createTextNode("An even longer annotation ".repeat(350)));
     const changedAnnotationWidth = await resize(), changedAnnotationRight = annotation.offsetLeft + annotation.scrollWidth;
+    annotation.classList.remove("row");
+    const excludedWidth = await resize();
+    annotation.classList.add("row");
+    const includedWidth = await resize();
     annotation.remove();
     const removedWidth = await resize();
-    return { textWidth, textRight, restoredWidth, annotationWidth, annotationRight, changedAnnotationWidth, changedAnnotationRight, removedWidth };
+    root.replaceChildren();
+    const emptyWidth = await resize();
+    const first = document.createElement("div"); first.className = "row"; first.style.left = "52px";
+    first.textContent = "First row after a complete graph replacement ".repeat(100); root.append(first);
+    const firstWidth = await resize(), firstRight = first.offsetLeft + first.scrollWidth;
+    return { textWidth, textRight, restoredWidth, annotationWidth, annotationRight, changedAnnotationWidth, changedAnnotationRight,
+      excludedWidth, includedWidth, removedWidth, emptyWidth, firstWidth, firstRight };
   });
   expect(measured.textWidth).toBeGreaterThanOrEqual(measured.textRight);
   expect(measured.restoredWidth).toBeLessThan(measured.textWidth);
   expect(measured.annotationWidth).toBeGreaterThanOrEqual(measured.annotationRight);
   expect(measured.changedAnnotationWidth).toBeGreaterThanOrEqual(measured.changedAnnotationRight);
+  expect(measured.excludedWidth).toBeLessThan(measured.changedAnnotationWidth);
+  expect(measured.includedWidth).toBe(measured.changedAnnotationWidth);
   expect(measured.removedWidth).toBeLessThan(measured.changedAnnotationWidth);
+  expect(measured.emptyWidth).toBeLessThan(measured.removedWidth);
+  expect(measured.firstWidth).toBeGreaterThanOrEqual(measured.firstRight);
 });

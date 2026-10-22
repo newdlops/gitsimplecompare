@@ -85,18 +85,59 @@
     const { graphEl, graphContentEl } = deps;
     const dependencies = window.GscGraphRowDependencies(), elements = new Map();
     const widthScores = new WeakMap();
+    // 최대 24개 후보만 강하게 참조한다. 전체 행/삭제된 행을 보관하는 별도 인덱스는 만들지 않는다.
+    let widthCandidates;
     let widthFrame = 0;
     // 행 교체뿐 아니라 rebase 장식·검색 강조·reflog의 제자리 수정도 다음 측정 전에 무효화한다.
     const widthObserver = new MutationObserver(invalidateWidthScores);
-    widthObserver.observe(graphContentEl, { childList: true, characterData: true, subtree: true });
+    widthObserver.observe(graphContentEl, {
+      childList: true, characterData: true, subtree: true,
+      attributes: true, attributeFilter: ["class"], attributeOldValue: true,
+    });
 
     /** @param records 행 내용의 DOM 변경 목록 @returns 변경된 행의 점수만 버려 다른 행의 텍스트 재탐색을 피한다. */
     function invalidateWidthScores(records) {
+      const changed = new Set();
       records.forEach(record => {
         const target = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+        if (record.type === "attributes") {
+          // selected/rebase/search 장식은 후보 점수를 바꾸지 않는다. 직접 자식의 row 진입/이탈만 반영한다.
+          if (target?.parentElement !== graphContentEl ||
+            /(?:^|\s)row(?:\s|$)/.test(record.oldValue || "") === target.classList.contains("row")) return;
+          if (widthCandidates?.some(entry => entry.row === target)) widthCandidates = undefined;
+          widthScores.delete(target);
+          if (target.classList.contains("row")) changed.add(target);
+          return;
+        }
+        if (target === graphContentEl && record.type === "childList") {
+          record.removedNodes.forEach(node => {
+            if (widthCandidates?.some(entry => entry.row === node)) widthCandidates = undefined;
+          });
+          record.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains("row")) changed.add(node);
+          });
+        }
         const row = target?.closest?.(".row");
-        if (row?.parentElement === graphContentEl) widthScores.delete(row);
+        if (row?.parentElement === graphContentEl) changed.add(row);
       });
+      changed.forEach(row => {
+        widthScores.delete(row);
+        if (!widthCandidates || row.parentElement !== graphContentEl) return;
+        const length = widthScore(row), candidate = widthCandidates.find(entry => entry.row === row);
+        // 기존 후보의 순위가 바뀌거나 새 행이 최소 점수에 닿으면 원래 DOM 순서로 다시 고른다.
+        if (candidate ? candidate.length !== length
+          : widthCandidates.length < WIDTH_CANDIDATES || length >= widthCandidates[0].length) widthCandidates = undefined;
+      });
+    }
+
+    /** @param row 현재 캔버스의 한 행 @returns layout 없이 읽은 텍스트·직접 자식 수 점수. 변경 전까지 약하게 재사용한다. */
+    function widthScore(row) {
+      let length = widthScores.get(row);
+      if (length === undefined) {
+        length = row.textContent.length + row.childElementCount * 2;
+        widthScores.set(row, length);
+      }
+      return length;
     }
 
     /** @param index 모델 행 위치 @returns 같은 캔버스에 붙어 있는 DOM 행. 교체된 행만 selector로 다시 찾는다. */
@@ -190,15 +231,12 @@
       }
     }
 
-    /** 텍스트가 가장 긴 행 몇 개를 고른다. */
+    /** @returns 텍스트가 가장 긴 최대 24개 행. 후보 집합이 달라질 변경이 없으면 전체 DOM 탐색을 생략한다. */
     function widestCandidates() {
+      if (widthCandidates) return widthCandidates.map(entry => entry.row);
       const scored = [];
       graphContentEl.querySelectorAll(":scope > .row").forEach((row) => {
-        let length = widthScores.get(row);
-        if (length === undefined) {
-          length = row.textContent.length + row.childElementCount * 2;
-          widthScores.set(row, length);
-        }
+        const length = widthScore(row);
         if (scored.length < WIDTH_CANDIDATES) {
           scored.push({ row, length });
           scored.sort((a, b) => a.length - b.length);
@@ -207,6 +245,7 @@
           scored.sort((a, b) => a.length - b.length);
         }
       });
+      widthCandidates = scored;
       return scored.map((entry) => entry.row);
     }
 

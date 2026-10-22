@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.72155] - 2026-10-22
+
+### Performance
+
+- Reuse at most 24 Graph width candidates across unchanged resizes and
+  short noncandidate row edits. Keep measuring actual overflow on each frame.
+- Rebuild candidates when scores, ties, row membership or removals can change
+  the result, including reflog annotations and complete Graph replacement.
+
+### Development
+
+- Add isolated and dense Graph renderer comparisons with separate CPU windows.
+  Preserve all ordinary Git/button timings and separate RSS observations,
+  including slower cases; overall operation speed and memory gains remain unproven.
+
 ## [0.1.72154] - 2026-10-22
 
 ### Performance
