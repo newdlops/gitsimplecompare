@@ -500,11 +500,8 @@ export class GitGraphPanel {
       return window && { ...window, startIndex: 0, totalCount: window.commits.length };
     });
   }
-  /**
-   * 읽어 온 commit window 로 누적 그래프를 대체해 게시한다(PR 점프·reflog 복구 공용).
-   * @param cause 성능 trace/OUTPUT 에 남길 원인
-   * @param load window 를 읽는 함수. 찾지 못하면 undefined
-   * @returns 표시한 commit hash. 오래된 세대이거나 찾지 못하면 undefined
+  /** PR/reflog window를 현재 세대에만 게시한다. cause는 OUTPUT 원인, requestId는 취소할 PR 요청이다.
+   * @param load window 조회 함수 @returns 실제 표시한 commit OID. 오래된 세대·누락이면 undefined
    */
   private async showCommitWindow(
     cause: "commitWindow" | "reflogWindow",
@@ -522,6 +519,9 @@ export class GitGraphPanel {
       current: () => this.isGraphGenerationActive(generation),
       accept: window => {
         this.workingTree.cancel(cause); this.virtualCommits = []; this.commits = window.commits;
+        // window는 현재 Native 순서로 다시 읽었다. 이전 ref-only 갱신의 재정렬 예약을 남기면
+        // 첫 자동 pagination이 이력 맨 앞을 재조회해 방금 이동한 PR 행을 제거한다.
+        this.reconcilePageOrder = false;
         this.rangeStartIndex = window.startIndex; this.rangeTotalCount = window.totalCount; this.loading = false;
         this.exhausted = this.rangeStartIndex + this.commits.length >= window.totalCount;
         this.postGraph(true, "older", trace, "window");

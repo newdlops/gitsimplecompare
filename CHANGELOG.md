@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72162] - 2026-10-22
+
+### Fixes
+
+- Keep the selected PR row visible when automatic pagination follows a jump after
+  checkout or another ref-only graph refresh. Clear the previous page-order
+  reconciliation only after the newly read commit window is accepted.
+- Preserve the original graph state after an unsuccessful jump, Native pagination
+  order, explicit branch filters and local working changes.
+
 ## [0.1.72161] - 2026-10-22
 
 ### Performance
