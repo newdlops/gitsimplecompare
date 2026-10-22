@@ -45,15 +45,21 @@ export async function createGitOperationFixture(directory: string, borrowedMetad
   await runGit(["reset", "--hard", "main"], root);
   await runGit(["-c", "init.templateDir=", "init", "-q", "--bare", "--initial-branch=main", remote], directory);
   await runGit(["remote", "add", "origin", remote], root);
-  await runGit(["push", "-qu", "origin", "main", "refs/heads/side-*:refs/heads/side-*"], root);
+  await runGit(["push", "-q", "origin", "main", "refs/heads/side-*:refs/heads/side-*"], root);
   const sharedUpstreamBranches = Number(process.env.GSC_BENCH_SHARED_UPSTREAM_BRANCHES || 0);
   assert.ok(Number.isSafeInteger(sharedUpstreamBranches) && sharedUpstreamBranches >= 0 && sharedUpstreamBranches <= branches);
-  if (sharedUpstreamBranches) {
-    // 각 feature는 자기 원격에도 게시돼 있지만 upstream은 main인 실제 PR 개발 형태를 재현한다.
-    // branch.merge는 다중 값이므로 추가 대신 교체해 Native Git이 이전 첫 값을 선택하지 않게 한다.
-    for (let index = 0; index < sharedUpstreamBranches; index++)
-      await runGit(["config", "--local", "--replace-all", `branch.side-${index}.merge`, "refs/heads/main"], root);
-  }
+  // Native push -u는 각 branch마다 config를 다시 쓴다. 이 함수가 만든 고정 ASCII fixture만 한 번 설정한다.
+  const configPath = path.join(root, ".git/config"), config = await readFile(configPath, "utf8");
+  assert.equal(/^\[branch /m.test(config), false, "A fresh fixture must not overwrite existing branch configuration");
+  const sections = [`[branch "main"]\n remote = origin\n merge = refs/heads/main\n`,
+    ...Array.from({ length: branches }, (_, index) => `[branch "side-${index}"]\n remote = origin\n merge = refs/heads/${index < sharedUpstreamBranches ? "main" : `side-${index}`}\n`)];
+  await writeFile(configPath, config + sections.join(""));
+  const configured = (await runGit(["config", "--local", "--get-regexp", "^branch\\.side-[0-9]+\\.merge$"], root)).trim().split("\n");
+  assert.equal(configured.length, branches);
+  assert.equal(configured.filter(line => line.endsWith(" refs/heads/main")).length, sharedUpstreamBranches,
+    "The reported common-upstream fixture must match Native Git configuration");
+  const published = (await runGit(["for-each-ref", "--format=%(refname)", "refs/remotes/origin/side-*"], root)).trim().split("\n");
+  assert.equal(published.length, branches, "Every fixture side branch must have its own Native remote-tracking tip");
   const mainOid = objectIds.get(main)!;
   const tree = (await runGit(["rev-parse", "main^{tree}"], root)).trim();
   const incoming = (await runGit(["-c", "user.name=Operation Fixture", "-c", "user.email=operations@example.invalid",

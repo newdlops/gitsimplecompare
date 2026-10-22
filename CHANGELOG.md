@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.72157] - 2026-10-22
+
+### Fixes
+
+- Stop local Graph branch recovery reads after cancellation, timeouts, output
+  limits or pending process termination. Preserve the original stopping error
+  instead of retrying or reporting an incomplete metadata snapshot as success.
+- Check cancellation after every Native response while retaining recovery for
+  genuinely broken refs and ordinary metadata failures. Log stopping phases.
+
+### Development
+
+- Preserve the rejected scoped tracking experiment with two balanced actual-button
+  comparisons. Keep the deployed tracking strategy after latency and process-count
+  results failed to justify the candidate.
+- Bound temporary benchmark disk use per scenario and create synthetic upstream
+  configuration in one checked write. Add opt-in readonly tracking and ref-field probes.
+
 ## [0.1.72156] - 2026-10-22
 
 ### Fixes

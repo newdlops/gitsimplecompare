@@ -15,6 +15,15 @@ interface FileInterval extends Interval { method: string; shape: string; outcome
 /** 고정된 Git 조회 형태만 구분하며 경로·branch·메시지 등 원래 인자 값은 내보내지 않는다. */
 function gitShape(args: readonly string[]): string {
   const command = args[gitCommandIndex(args)];
+  if (command === "for-each-ref") {
+    const format = args.find(value => value.startsWith("--format=")) || "";
+    if (format.includes("%(upstream:track)")) return "branch-rich-tracking";
+    if (format.includes("%(ahead-behind:")) return "branch-tracking-counts";
+    if (format.includes("\x1e%(if:equals=refs/heads)")) return "combined-ref-metadata";
+    if (format.includes("%(committerdate:")) return "branch-metadata";
+    return "reference-tips";
+  }
+  if (command === "show-ref" && args.includes("--verify")) return "equal-tip-verification";
   if (command === "rev-parse") {
     if (args.includes("--absolute-git-dir") && args.includes("--symbolic-full-name")) return "checkout-identity";
     if (args.includes("--git-path")) return "private-state-path";

@@ -1,0 +1,470 @@
+{
+  "baseline": "59f09c88def10decf8097555ccd5c1e53713dba4",
+  "decision": "rejected; scoped tracking candidate was not shipped",
+  "fixture": {
+    "files": 5000,
+    "commits": 10000,
+    "branches": 1000,
+    "pullRequests": 80,
+    "sparseSharedUpstreams": 16,
+    "denseSharedUpstreams": 1000,
+    "monitorPolicy": true
+  },
+  "order": "Separate sparse and dense B/A/A/B series; four actual production buttons per job",
+  "nativeProductionDomCases": 32,
+  "deltas": {
+    "sparse": {
+      "totals": {
+        "before": [
+          {
+            "handlerMs": 9841,
+            "clickToFinalFrameMs": 18928,
+            "processes": 94
+          },
+          {
+            "handlerMs": 3470,
+            "clickToFinalFrameMs": 7310,
+            "processes": 92
+          }
+        ],
+        "after": [
+          {
+            "handlerMs": 8895,
+            "clickToFinalFrameMs": 19050,
+            "processes": 109
+          },
+          {
+            "handlerMs": 3582,
+            "clickToFinalFrameMs": 7821,
+            "processes": 108
+          }
+        ]
+      },
+      "medianChangePercent": {
+        "handlerMs": -6.265494703628582,
+        "clickToFinalFrameMs": 2.4125314429453537,
+        "processes": 16.666666666666675
+      }
+    },
+    "dense": {
+      "totals": {
+        "before": [
+          {
+            "handlerMs": 2593,
+            "clickToFinalFrameMs": 7603,
+            "processes": 100
+          },
+          {
+            "handlerMs": 5565,
+            "clickToFinalFrameMs": 14665,
+            "processes": 107
+          }
+        ],
+        "after": [
+          {
+            "handlerMs": 5681,
+            "clickToFinalFrameMs": 12263,
+            "processes": 104
+          },
+          {
+            "handlerMs": 4236,
+            "clickToFinalFrameMs": 9698,
+            "processes": 104
+          }
+        ]
+      },
+      "medianChangePercent": {
+        "handlerMs": 21.56165726893846,
+        "clickToFinalFrameMs": -1.3786599604814098,
+        "processes": 0.48309178743961567
+      }
+    }
+  },
+  "reports": [
+    {
+      "shape": "sparse",
+      "source": "before",
+      "runtime": {
+        "kind": "commit",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "8a95fa3f895dea235b518445e38e7ae25956a525dd690bfd8080e1d7d46c3246"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 5490,
+          "clickToFirstFrameMs": 6792,
+          "clickToFinalFrameMs": 6792,
+          "processes": 27,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 3210,
+          "clickToFirstFrameMs": 7428,
+          "clickToFinalFrameMs": 7658,
+          "processes": 10,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 637,
+          "clickToFirstFrameMs": 2217,
+          "clickToFinalFrameMs": 2364,
+          "processes": 26,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 504,
+          "clickToFirstFrameMs": 1889,
+          "clickToFinalFrameMs": 2114,
+          "processes": 31,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "sparse",
+      "source": "after",
+      "runtime": {
+        "kind": "working-tree",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "66161af36278f2e9ca4476dd0176630ff3e78e53da7e8da8f361a757f187f0b2"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 2520,
+          "clickToFirstFrameMs": 3738,
+          "clickToFinalFrameMs": 3738,
+          "processes": 30,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 4909,
+          "clickToFirstFrameMs": 9354,
+          "clickToFinalFrameMs": 10822,
+          "processes": 14,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 1080,
+          "clickToFirstFrameMs": 2062,
+          "clickToFinalFrameMs": 2290,
+          "processes": 30,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 386,
+          "clickToFirstFrameMs": 1814,
+          "clickToFinalFrameMs": 2200,
+          "processes": 35,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "sparse",
+      "source": "after",
+      "runtime": {
+        "kind": "working-tree",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "66161af36278f2e9ca4476dd0176630ff3e78e53da7e8da8f361a757f187f0b2"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 1708,
+          "clickToFirstFrameMs": 2700,
+          "clickToFinalFrameMs": 2700,
+          "processes": 30,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 972,
+          "clickToFirstFrameMs": 1809,
+          "clickToFinalFrameMs": 1973,
+          "processes": 13,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 462,
+          "clickToFirstFrameMs": 1203,
+          "clickToFinalFrameMs": 1403,
+          "processes": 30,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 440,
+          "clickToFirstFrameMs": 1436,
+          "clickToFinalFrameMs": 1745,
+          "processes": 35,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "sparse",
+      "source": "before",
+      "runtime": {
+        "kind": "commit",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "a59e813e6517a72d4995b824022f0a8ea09153044f4069bac6319f1ec8d49f04"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 1684,
+          "clickToFirstFrameMs": 2627,
+          "clickToFinalFrameMs": 2627,
+          "processes": 26,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 914,
+          "clickToFirstFrameMs": 1771,
+          "clickToFinalFrameMs": 1872,
+          "processes": 9,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 584,
+          "clickToFirstFrameMs": 1524,
+          "clickToFinalFrameMs": 1636,
+          "processes": 26,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 288,
+          "clickToFirstFrameMs": 1078,
+          "clickToFinalFrameMs": 1175,
+          "processes": 31,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "dense",
+      "source": "before",
+      "runtime": {
+        "kind": "commit",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "9a12348ec874697f590f7d5f3cd01a1b44d094784ed2c4d55eabcf28fb7a7c36"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 1141,
+          "clickToFirstFrameMs": 1972,
+          "clickToFinalFrameMs": 1972,
+          "processes": 28,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 595,
+          "clickToFirstFrameMs": 1379,
+          "clickToFinalFrameMs": 1478,
+          "processes": 11,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 524,
+          "clickToFirstFrameMs": 1816,
+          "clickToFinalFrameMs": 1925,
+          "processes": 28,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 333,
+          "clickToFirstFrameMs": 2109,
+          "clickToFinalFrameMs": 2228,
+          "processes": 33,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "dense",
+      "source": "after",
+      "runtime": {
+        "kind": "working-tree",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "66161af36278f2e9ca4476dd0176630ff3e78e53da7e8da8f361a757f187f0b2"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 2558,
+          "clickToFirstFrameMs": 4039,
+          "clickToFinalFrameMs": 4039,
+          "processes": 29,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 1915,
+          "clickToFirstFrameMs": 3256,
+          "clickToFinalFrameMs": 3713,
+          "processes": 12,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 536,
+          "clickToFirstFrameMs": 1747,
+          "clickToFinalFrameMs": 2112,
+          "processes": 29,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 672,
+          "clickToFirstFrameMs": 1896,
+          "clickToFinalFrameMs": 2399,
+          "processes": 34,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "dense",
+      "source": "after",
+      "runtime": {
+        "kind": "working-tree",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "66161af36278f2e9ca4476dd0176630ff3e78e53da7e8da8f361a757f187f0b2"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 1928,
+          "clickToFirstFrameMs": 2886,
+          "clickToFinalFrameMs": 2886,
+          "processes": 29,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 1253,
+          "clickToFirstFrameMs": 2556,
+          "clickToFinalFrameMs": 2970,
+          "processes": 12,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 711,
+          "clickToFirstFrameMs": 1953,
+          "clickToFinalFrameMs": 2115,
+          "processes": 29,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 344,
+          "clickToFirstFrameMs": 1461,
+          "clickToFinalFrameMs": 1727,
+          "processes": 34,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    },
+    {
+      "shape": "dense",
+      "source": "before",
+      "runtime": {
+        "kind": "commit",
+        "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+        "bundleSha256": "e90408b2f5e23cc6b0cd778d2ac06a3dc862e0242f17cd2b1e0905b1252432ef"
+      },
+      "environmentKeys": 100,
+      "results": [
+        {
+          "operation": "push",
+          "handlerMs": 3090,
+          "clickToFirstFrameMs": 4456,
+          "clickToFinalFrameMs": 4456,
+          "processes": 29,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "fetch",
+          "handlerMs": 1468,
+          "clickToFirstFrameMs": 4602,
+          "clickToFinalFrameMs": 4796,
+          "processes": 14,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "interactive-rebase",
+          "handlerMs": 581,
+          "clickToFirstFrameMs": 2044,
+          "clickToFinalFrameMs": 2149,
+          "processes": 28,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        },
+        {
+          "operation": "pr-squash-cherry-pick",
+          "handlerMs": 426,
+          "clickToFirstFrameMs": 3078,
+          "clickToFinalFrameMs": 3264,
+          "processes": 36,
+          "nativeStateExact": true,
+          "cleanWorkingTree": true
+        }
+      ]
+    }
+  ],
+  "scope": "Negative ordinary latency evidence only. Strong system variation; no statistical significance, CPU or memory reduction claimed. Candidate prototype and its tests archived at /private/tmp/gsc-goal57-rejected-scoped-tracking. Sparse input has only 376 aggregate ahead/behind commits across shared upstream branches despite 10000 total history commits; branch count alone was not a sufficient selection rule."
+}

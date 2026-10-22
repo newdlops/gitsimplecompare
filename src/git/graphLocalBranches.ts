@@ -8,6 +8,8 @@ import type {
 } from "../graph/graphTypes";
 import { runGit, runGitWithInput, type RunGitOptions } from "./gitExec";
 import { parseTrack } from "./gitLogRefs";
+import { isGitLifecycleError } from "./gitError";
+import { logInfo } from "../ui/outputLog";
 
 const FS = "\x1f";
 
@@ -15,7 +17,7 @@ const FS = "\x1f";
 export type GraphLocalBranchRunner = (
   args: string[],
   repoRoot: string,
-  options?: Pick<RunGitOptions, "signal">
+  options?: Pick<RunGitOptions, "signal" | "env">
 ) => Promise<string>;
 
 /** 여러 ref tip을 한 프로세스에서 검증하도록 stdin 실행 경계를 대체하는 함수다. */
@@ -71,6 +73,7 @@ function rawBranchFormat(): string {
  * 로컬 브랜치 상태를 읽고, 누락 object를 가리키는 ref는 정상 브랜치와 분리한다.
  * - 첫 명령이 성공하면 추가 프로세스를 만들지 않는다.
  * - 첫 명령이 실패해도 raw ref에 손상이 확인되지 않으면 원래 오류를 다시 던져 권한/저장소 오류를 숨기지 않는다.
+ * - 취소·시간/버퍼 제한·종료 대기는 손상 증거가 아니다. 복구 조회를 시작하거나 불완전한 결과로 덮지 않는다.
  * @param repoRoot Git 저장소 또는 linked worktree 루트
  * @param runner 일반 git stdout 실행 함수
  * @param inputRunner stdin을 받는 batch git 실행 함수
@@ -90,26 +93,46 @@ export async function readGraphLocalBranchSnapshot(
       ["for-each-ref", "--sort=-committerdate", `--format=${format}`, "refs/heads"],
       repoRoot, { signal }
     );
+    signal?.throwIfAborted();
     return { branches: parseRichLocalBranches(output), invalidRefs: [] };
   } catch (primaryError) {
-    signal?.throwIfAborted();
+    propagateStoppedBranchRead(primaryError, signal, repoRoot, "primary");
     const rawOutput = await runner(
       ["for-each-ref", `--format=${rawBranchFormat()}`, "refs/heads", "refs/remotes"],
       repoRoot, { signal }
-    ).catch(() => { throw primaryError; });
+    ).catch(error => { propagateStoppedBranchRead(error, signal, repoRoot, "raw"); throw primaryError; });
+    signal?.throwIfAborted();
     const { localRefs, knownRefs } = parseRawLocalRefs(rawOutput);
     const validity = await verifyLocalRefTips(localRefs, repoRoot, inputRunner, signal)
-      .catch(() => { throw primaryError; });
+      .catch(error => { propagateStoppedBranchRead(error, signal, repoRoot, "validation"); throw primaryError; });
+    signal?.throwIfAborted();
     const invalidRefs = invalidLocalRefs(localRefs, validity);
     if (invalidRefs.length === 0) throw primaryError;
     const validRefs = localRefs.filter((_ref, index) => validity[index]);
-    const metadata = await readCommitMetadata(validRefs, repoRoot, runner, signal).catch(
-      () => new Map<string, CommitMetadata>()
-    );
+    const metadata = await readCommitMetadata(validRefs, repoRoot, runner, signal).catch(error => {
+      propagateStoppedBranchRead(error, signal, repoRoot, "metadata");
+      return new Map<string, CommitMetadata>();
+    });
+    signal?.throwIfAborted();
     return {
       branches: fallbackBranchStatuses(validRefs, knownRefs, metadata),
       invalidRefs,
     };
+  }
+}
+
+/**
+ * 조회 수명이 끝난 오류를 손상 ref 복구나 빈 metadata 성공으로 바꾸지 않도록 전파한다.
+ * @param error 현재 Native 단계의 원본 오류. 일반 오류는 기존 손상 ref 복구 정책에 남긴다.
+ * @param signal 호출자의 취소 수명. 늦게 도착한 결과도 취소 이후에는 사용하지 않는다.
+ * @param repoRoot 조회 저장소 @param phase 중단을 관측한 Native 단계. 오류 내용·ref 이름은 로그에 넣지 않는다.
+ * @returns 일반 오류이면 반환하고, 취소·제한·종료 대기이면 원래 중단 원인으로 실패한다.
+ */
+function propagateStoppedBranchRead(error: unknown, signal: AbortSignal | undefined, repoRoot: string, phase: string): void {
+  signal?.throwIfAborted();
+  if (isGitLifecycleError(error)) {
+    logInfo("graph branch snapshot stopped", { repoRoot, phase, reason: (error as { code?: string }).code || "AbortError" });
+    throw error;
   }
 }
 

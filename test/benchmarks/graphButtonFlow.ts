@@ -77,10 +77,29 @@ async function partialPushFixture(directory: string) {
     mainBranch: "main", topicBranch: "topic", prBranch: "pr-source", oldHistoryBranch: "old-history" };
 }
 
+/**
+ * 로드된 branch chip을 누르는 시나리오의 대상을 제품 렌더 전에 Native 첫 페이지로 확정한다.
+ * @param fixture 소유한 합성/borrowed 저장소. 기존 topic이 보이면 그대로 사용한다.
+ * @returns 동점 commit 날짜로 topic이 페이지 밖이면 같은 크기의 합성 side branch를 선택한 fixture다.
+ * 준비 구간에서만 읽으며 ref·이력·날짜를 바꾸거나 제품이 고른 행으로 성공 기준을 낮추지 않는다.
+ */
+async function loadedCheckoutFixture<T extends { root: string; main: string; topic: string; topicBranch: string }>(fixture: T): Promise<T> {
+  const hashes = new Set((await runGit(["log", "--topo-order", "--format=%H", "-n300", "--branches", "--remotes", "--tags"], fixture.root))
+    .trim().split("\n"));
+  if (hashes.has(fixture.topic)) return fixture;
+  assert.equal(process.env.GSC_BENCH_BORROWED_FIXTURE, undefined, "A borrowed checkout needs its explicit synthetic topic in the Native page");
+  const output = await runGit(["for-each-ref", "--format=%(refname:short)%09%(objectname)", "refs/heads/side-*"], fixture.root);
+  const target = output.trim().split("\n").map(line => line.split("\t"))
+    .find(([name, hash]) => /^side-\d+$/.test(name) && hash !== fixture.main && hashes.has(hash));
+  assert.ok(target, "The owned fixture needs a noncurrent side-branch chip in the Native first page");
+  return { ...fixture, topicBranch: target[0], topic: target[1] };
+}
+
 /** 각 작업은 독립 fixture와 local bare remote만 사용하며 실제 사용자 작업트리나 외부 네트워크에 쓰지 않는다. */
 async function measure(directory: string, operation: Operation, resources?: GraphPhaseResources) {
   const partial = operation === "push" && process.env.GSC_BENCH_PROMISOR_PUSH === "1";
-  const f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE)), branch = `button-${operation}`;
+  let f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE));
+  const branch = `button-${operation}`;
   if (partial) {
     // 같은 commit에 fixture HEAD만 연결한다. switch의 Native unpack-trees 사전 fetch를 측정 준비에 섞지 않는다.
     await runGit(["update-ref", `refs/heads/${branch}`, f.pr], f.root);
@@ -95,6 +114,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   if (operation === "fetch") await runGit(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
   // 최신 Git의 첫 fetch는 origin/HEAD를 만들 수 있다. 실제 무변경 비교는 이 초기 ref 설정 뒤에 시작한다.
   if (operation === "fetch-no-change") await runGit(["fetch", "--all", "--prune"], f.root);
+  if (operation === "checkout") f = await loadedCheckoutFixture(f);
   assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote, "Only the owned local bare receiver is permitted");
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
@@ -274,7 +294,7 @@ async function main() {
       const scenario = path.join(directory, operation); await mkdir(scenario);
       const resources=process.env.GSC_BENCH_PHASE_RESOURCES==="1"?await GraphPhaseResources.create(scenario):undefined;
       try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
-      finally{await resources?.dispose();}
+      finally{try{await resources?.dispose();}finally{await rm(scenario,{recursive:true,force:true});}}
     }
     const report = { source: benchmarkSource, environmentKeys: Object.keys(process.env).length, network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };

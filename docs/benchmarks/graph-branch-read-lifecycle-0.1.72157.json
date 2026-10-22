@@ -1,0 +1,105 @@
+{
+  "version": "0.1.72157",
+  "baseline": "59f09c88def10decf8097555ccd5c1e53713dba4",
+  "checks": {
+    "relatedNode": 98,
+    "browser": 40,
+    "preFixLifecycleFailures": 24,
+    "nativeMatrix": 18,
+    "actualLargeControls": 8,
+    "captainReadonlyReads": 4,
+    "typecheck": true,
+    "visualViewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1440,
+        900
+      ]
+    ]
+  },
+  "matrix": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+      "bundleSha256": "5cfba56f5ff79f1f8934d7e430c2edbd660d3babfad535145e9f28fb95f28608"
+    },
+    "operations": [
+      "initial",
+      "push",
+      "push-tracked",
+      "pull",
+      "pull-new-history",
+      "pull-known-history",
+      "fetch",
+      "fetch-new-history",
+      "fetch-known-history",
+      "fetch-no-change",
+      "rebase",
+      "merge",
+      "merge-no-ff",
+      "pr-squash-cherry-pick",
+      "pr-cherry-pick",
+      "cherry-pick",
+      "checkout",
+      "checkout-unloaded"
+    ],
+    "allNativeExact": true
+  },
+  "actualControls": {
+    "source": {
+      "kind": "working-tree",
+      "commit": "59f09c88def10decf8097555ccd5c1e53713dba4",
+      "bundleSha256": "a9d215a98b61db016be7fe02eab6cf27f9e1e6fda86f9e94c51ebc45c0be5348"
+    },
+    "fixture": {
+      "files": 5000,
+      "commits": 10000,
+      "branches": 1000,
+      "monitorPolicy": true,
+      "pullRequests": 80
+    },
+    "operations": [
+      "push",
+      "pull",
+      "fetch",
+      "interactive-rebase",
+      "fetch-no-change",
+      "checkout",
+      "pr-squash-cherry-pick",
+      "pr-cherry-pick"
+    ],
+    "allNativeExact": true,
+    "loadedCheckoutTarget": "Chosen from an independent Native first page before renderer creation; no ref or date rewriting. Full-size setup failure retained separately."
+  },
+  "captain": {
+    "branches": 164,
+    "tracked": 70,
+    "protectedStateStable": true,
+    "allFourReadsNativeExact": true,
+    "commandsPerRead": [
+      [
+        "for-each-ref"
+      ],
+      [
+        "for-each-ref"
+      ],
+      [
+        "for-each-ref"
+      ],
+      [
+        "for-each-ref"
+      ]
+    ]
+  },
+  "negativeExperiment": "graph-tracking-evaluation-0.1.72157.json",
+  "finalDriver": "/private/tmp/gsc-goal57-final-validation-v2-state.json",
+  "failedCheckoutSetup": "/private/tmp/gsc-goal57-final-validation-state.json",
+  "scope": "Functional final-source validation only. Final verification timings, CPU and RSS are not comparative evidence. All operation wall-time and aggregate-memory improvement remain unproven."
+}
