@@ -1,0 +1,590 @@
+{
+  "baselineVersion": "0.1.72163",
+  "baselineCommit": "fcaba63fe4615121bf099c7b6632ba2ead278dfe",
+  "candidateReleased": false,
+  "decision": "Exclude candidate: three of four frame medians increased in both distinct cohorts; source and resource variance unresolved.",
+  "productMatchesReleased63": true,
+  "prototypeArchive": "/private/tmp/gsc-goal64-rejected-wYI83t",
+  "prototypeProductSha256": "7606c00c471a15024d65c73ea9970901362da5bc39530e9f44163e418d410566",
+  "checks": {
+    "candidateRelatedNodePassed": 50,
+    "candidateAppleNewPassed": 8,
+    "pilotActualControlsPassed": 8,
+    "finalActualControlsPassed": 96,
+    "additional72MatrixRun": false
+  },
+  "readonly": {
+    "baseline": "fcaba63fe4615121bf099c7b6632ba2ead278dfe",
+    "scope": "Actual Captain READONLY: same protected metadata/refs/changed-path fingerprint and Native full status across all completed source processes. Local config retained; global/system Git config isolated and core.fsmonitor=false command scope prevents daemon calls. Time and CPU separate B/A/A/B, n2 independent processes/source/mode,3 warm repetitions/process; no Native source writes, fake changes, UI timing or memory claim.",
+    "treeEntries": 30311,
+    "nativeChangedEntries": 1,
+    "processesPerSourceAndMode": 2,
+    "repetitionsPerProcess": 3,
+    "latencyMs": {
+      "beforeProcessMedians": [
+        394.1301249999997,
+        337.1626660000002
+      ],
+      "afterProcessMedians": [
+        154.17133399999966,
+        125.02895799999897
+      ],
+      "medianBefore": 365.6463954999999,
+      "medianAfter": 139.6001459999993,
+      "percentChange": -61.82099763102975
+    },
+    "ownedCpuMs": {
+      "beforeProcessMedians": [
+        681.8910000000005,
+        687.1939999999995
+      ],
+      "afterProcessMedians": [
+        94.61899999999991,
+        95.58199999999961
+      ],
+      "medianBefore": 684.5425,
+      "medianAfter": 95.10049999999976,
+      "percentChange": -86.10743671868441
+    },
+    "nodeCpuMs": {
+      "beforeProcessMedians": [
+        27.274,
+        24.28
+      ],
+      "afterProcessMedians": [
+        25.644,
+        24.436
+      ],
+      "medianBefore": 25.777,
+      "medianAfter": 25.04,
+      "percentChange": -2.8591379912324966
+    },
+    "childCpuMs": {
+      "beforeProcessMedians": [
+        658.848,
+        665.3710000000001
+      ],
+      "afterProcessMedians": [
+        68.97499999999991,
+        70.19500000000062
+      ],
+      "medianBefore": 662.1095,
+      "medianAfter": 69.58500000000026,
+      "percentChange": -89.49040906375754
+    },
+    "protectedStateSha256": "de6e0ac113386af4460df2836d97ddb1bc91276ae5a23b5b16c9a276e5db2ba4",
+    "nativeStatusSha256": "7f9c8a72f0c3a13415d9809fa979084e68a037f1c216c4b835061eaca85fa5a0",
+    "originalStateUnchangedAcrossAllProcesses": true,
+    "limits": [
+      "Repeated summary service only, not Graph frame or VS Code/GitHub timing.",
+      "Changed-path fingerprint includes regular-file content, symlink target and path metadata; directory descendants were not recursively fingerprinted.",
+      "No source writes; separate time and CPU runs. No memory measurement."
+    ]
+  },
+  "cohorts": [
+    {
+      "id": "source-groups",
+      "summarySha256": "95e5a9e4a7be469a3fc50f00f18680ca5a4d2ff8588f2407ef36d329f9b8bb13",
+      "rawSummary": "/private/tmp/gsc-goal64-buttons-summary.json",
+      "scope": "Actual production controls+registered callbacks,30311file/72720commit/164branch owned captured input,80 PR cards and one local untracked edit. Separate fresh source process per replicate, new panel/browser each operation. Parent restores full owned Git metadata AND private object stores for root/bare remote between successful operations; immutable alternates readonly. Exact current Captain post-checkout+Husky helper copied readonly to owned hook dispatch (pre-commit not invoked). Native hook args/cwd unchanged. Not a real VS Code/GitHub network test, filesystem warm, no source repository writes. Pilot all8 controls; final4 controls pull/checkout/PR replay/fetch-no-change per source+mode B/A/A/B, latency/CPU/separate RSS.",
+      "input": {
+        "files": 30311,
+        "commits": 72720,
+        "branches": 164,
+        "indexSha256": "4be433b253daac5a5b5ebc2a8e9d37708c86936ee4e0e321eca2c5f7c04e9142",
+        "configSha256": "aa938f5c54240637d080a773f8f1d778b84ea9cccab5bbf12e72fe88c5bdc230",
+        "refsSha256": "fcd6928baba4c3c0ed00eef21780890b1a9384e408baed6b1325a1197ebbc90d",
+        "remoteRefsSha256": "2b9263232b46bad1d84a6983d83dbc6b1ee200b0c9ff7b7d425b48d2e7f49491",
+        "objectsSha256": "70eb59c512677b40dcae1f793065cba9194879c39193ed875b0a8db3296da407",
+        "remoteObjectsSha256": "92982d70c616fa250b22201ca41e87dbad0f367f2d3e6b6ba0507d2e26265bb5"
+      },
+      "hookCopy": {
+        "postCheckoutSha256": "61e7a07e1aa9502b70162df56cfee022cdb1a7311e9c71c939c4c7dc43e6da07",
+        "huskyHelperSha256": "07b0d18198f64e81ed659c440e188341d013bce33e8cbbab6b625c8b14d78787",
+        "preCommitCopied": false
+      },
+      "verifiedCases": 48,
+      "sampleCount": {
+        "latency": 16,
+        "cpu": 16,
+        "memory": 16,
+        "independentProcessesPerSourceAndMode": 2
+      },
+      "checks": {
+        "allNativeDomAndWipExact": true,
+        "fullInputAndPrivateObjectStoresRestoredPerCase": true,
+        "allSourceJobsClosed": true,
+        "ownedPoolRemoved": true
+      },
+      "perOperation": {
+        "pull": {
+          "clickToFinalFrameMs": {
+            "before": [
+              752,
+              1407
+            ],
+            "after": [
+              827,
+              736
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1079.5,
+            "medianAfter": 781.5,
+            "percentChange": -27.605372857804543
+          },
+          "ownedCpuMs": {
+            "before": [
+              2103.3969999999995,
+              1645.34
+            ],
+            "after": [
+              2402.07,
+              1966.179
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1874.3684999999996,
+            "medianAfter": 2184.1245,
+            "percentChange": 16.525885918377337
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              793952256,
+              774586368
+            ],
+            "after": [
+              771997696,
+              776339456
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 784269312,
+            "medianAfter": 774168576,
+            "percentChange": -1.2879167711205786
+          },
+          "maxObservedRssGapMs": 178.23799999999983,
+          "rssSampleCounts": [
+            11,
+            10,
+            11,
+            10
+          ]
+        },
+        "checkout": {
+          "clickToFinalFrameMs": {
+            "before": [
+              679,
+              763
+            ],
+            "after": [
+              644,
+              1118
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 721,
+            "medianAfter": 881,
+            "percentChange": 22.19140083217752
+          },
+          "ownedCpuMs": {
+            "before": [
+              1821.3220000000001,
+              1434.9410000000007
+            ],
+            "after": [
+              1647.1109999999985,
+              1034.879
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1628.1315000000004,
+            "medianAfter": 1340.9949999999992,
+            "percentChange": -17.635952624219918
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              866156544,
+              869924864
+            ],
+            "after": [
+              699777024,
+              836894720
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 868040704,
+            "medianAfter": 768335872,
+            "percentChange": -11.486193163586943
+          },
+          "maxObservedRssGapMs": 143.73699999999997,
+          "rssSampleCounts": [
+            9,
+            8,
+            8,
+            9
+          ]
+        },
+        "pr-cherry-pick": {
+          "clickToFinalFrameMs": {
+            "before": [
+              13813,
+              20162
+            ],
+            "after": [
+              16997,
+              26983
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 16987.5,
+            "medianAfter": 21990,
+            "percentChange": 29.44812362030904
+          },
+          "ownedCpuMs": {
+            "before": [
+              25558.182999999997,
+              10844.606
+            ],
+            "after": [
+              20249.254999999997,
+              20659.068000000003
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 18201.3945,
+            "medianAfter": 20454.161500000002,
+            "percentChange": 12.376892330969502
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              1247674368,
+              1097351168
+            ],
+            "after": [
+              1137557504,
+              1086193664
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1172512768,
+            "medianAfter": 1111875584,
+            "percentChange": -5.171558524128583
+          },
+          "maxObservedRssGapMs": 781.7030000000013,
+          "rssSampleCounts": [
+            127,
+            173,
+            165,
+            129
+          ]
+        },
+        "fetch-no-change": {
+          "clickToFinalFrameMs": {
+            "before": [
+              406,
+              486
+            ],
+            "after": [
+              820,
+              798
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 446,
+            "medianAfter": 809,
+            "percentChange": 81.39013452914799
+          },
+          "ownedCpuMs": {
+            "before": [
+              1077.4070000000008,
+              876.1489999999988
+            ],
+            "after": [
+              829.0929999999945,
+              933.7949999999928
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 976.7779999999998,
+            "medianAfter": 881.4439999999936,
+            "percentChange": -9.760047830725737
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              796884992,
+              761102336
+            ],
+            "after": [
+              755056640,
+              747339776
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 778993664,
+            "medianAfter": 751198208,
+            "percentChange": -3.568123501451226
+          },
+          "maxObservedRssGapMs": 160.54299999999998,
+          "rssSampleCounts": [
+            8,
+            8,
+            7,
+            7
+          ]
+        }
+      },
+      "limits": [
+        "n2 independent source processes/source/mode; each process executes4operations sequentially, new panel/browser peroperation. Shared immutable metadata caches can persist within process; order identical.",
+        "Root+bare refs/index/config/HEAD and full private object inventories restored and verified between cases. Captured objects via readonly alternate.",
+        "Post-checkout and Husky helper copied readonly; pre-commit not copied. Hook invocations Native with source cwd/args, dispatch log adds small common overhead.",
+        "Filesystem warm, external host load uncontrolled. Not actual VS Code window/GitHub timing.",
+        "A null frame means an unchanged final graph needed no new frame; never converted to zero. Signed last-source-write phase may precede cleanup and is not total operation time.",
+        "Memory runs separate, their time/CPU diagnostic only. Observed sum-RSS maxima are not true peak, physical memory or retained heap; actual sample gaps retained."
+      ]
+    },
+    {
+      "id": "per-operation-pairs",
+      "summarySha256": "562c18b57101acd3e879bcf6ba00b4dd357cfd788b351c366c5095c6990295fc",
+      "rawSummary": "/private/tmp/gsc-goal64-paired-buttons-summary.json",
+      "scope": "Actual production controls, same owned captured input/copied post-checkout/strong complete metadata and private object restoration as first cohort. Both source processes ready before each paired cohort. Per operation before/after in replicate1, after/before in replicate2; no overlapping active browser/Native operation. Idle peer waits in fs.watch with no browser, excluded from active phase resources. Latency/CPU/RSS separate. Two independent processes/source/mode; filesystem warm. All first contrary cohort results retained separately.",
+      "input": {
+        "files": 30311,
+        "commits": 72720,
+        "branches": 164,
+        "indexSha256": "90fe634cdfcb2e4b3e7a4e7a977c8ce260947d08df03a3e954d93430435d6761",
+        "configSha256": "0be70c16a90dbe9ab0af7c12f878407df173b82b67861a9da16195509af053db",
+        "refsSha256": "fcd6928baba4c3c0ed00eef21780890b1a9384e408baed6b1325a1197ebbc90d",
+        "remoteRefsSha256": "2b9263232b46bad1d84a6983d83dbc6b1ee200b0c9ff7b7d425b48d2e7f49491",
+        "objectsSha256": "70eb59c512677b40dcae1f793065cba9194879c39193ed875b0a8db3296da407",
+        "remoteObjectsSha256": "92982d70c616fa250b22201ca41e87dbad0f367f2d3e6b6ba0507d2e26265bb5"
+      },
+      "hookCopy": {
+        "postCheckoutSha256": "61e7a07e1aa9502b70162df56cfee022cdb1a7311e9c71c939c4c7dc43e6da07",
+        "huskyHelperSha256": "07b0d18198f64e81ed659c440e188341d013bce33e8cbbab6b625c8b14d78787",
+        "preCommitCopied": false
+      },
+      "verifiedCases": 48,
+      "sampleCount": {
+        "latency": 16,
+        "cpu": 16,
+        "memory": 16,
+        "independentProcessesPerSourceAndMode": 2
+      },
+      "checks": {
+        "allNativeDomAndWipExact": true,
+        "fullInputAndPrivateObjectStoresRestoredPerCase": true,
+        "allSourceJobsClosed": true,
+        "ownedPoolRemoved": true
+      },
+      "perOperation": {
+        "pull": {
+          "clickToFinalFrameMs": {
+            "before": [
+              986,
+              676
+            ],
+            "after": [
+              1096,
+              1698
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 831,
+            "medianAfter": 1397,
+            "percentChange": 68.11070998796632
+          },
+          "ownedCpuMs": {
+            "before": [
+              2053.38,
+              2070.305
+            ],
+            "after": [
+              1549.4530000000004,
+              2326.1059999999993
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 2061.8424999999997,
+            "medianAfter": 1937.7794999999999,
+            "percentChange": -6.017093934187501
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              698875904,
+              711098368
+            ],
+            "after": [
+              780304384,
+              790937600
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 704987136,
+            "medianAfter": 785620992,
+            "percentChange": 11.4376350833159
+          },
+          "maxObservedRssGapMs": 490.81600000000003,
+          "rssSampleCounts": [
+            12,
+            10,
+            11,
+            11
+          ]
+        },
+        "checkout": {
+          "clickToFinalFrameMs": {
+            "before": [
+              790,
+              882
+            ],
+            "after": [
+              840,
+              898
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 836,
+            "medianAfter": 869,
+            "percentChange": 3.9473684210526327
+          },
+          "ownedCpuMs": {
+            "before": [
+              1350.8749999999998,
+              1965.1009999999994
+            ],
+            "after": [
+              1239.8580000000004,
+              1452.2019999999989
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1657.9879999999996,
+            "medianAfter": 1346.0299999999997,
+            "percentChange": -18.81545584165868
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              807862272,
+              790298624
+            ],
+            "after": [
+              814465024,
+              781697024
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 799080448,
+            "medianAfter": 798081024,
+            "percentChange": -0.12507176248667262
+          },
+          "maxObservedRssGapMs": 249.9749999999999,
+          "rssSampleCounts": [
+            9,
+            8,
+            8,
+            11
+          ]
+        },
+        "pr-cherry-pick": {
+          "clickToFinalFrameMs": {
+            "before": [
+              18259,
+              19426
+            ],
+            "after": [
+              23351,
+              21009
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 18842.5,
+            "medianAfter": 22180,
+            "percentChange": 17.712617752421387
+          },
+          "ownedCpuMs": {
+            "before": [
+              20470.233,
+              15860.078999999998
+            ],
+            "after": [
+              18969.965,
+              14878.956999999999
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 18165.156,
+            "medianAfter": 16924.461,
+            "percentChange": -6.830081723493042
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              1020002304,
+              1073627136
+            ],
+            "after": [
+              992509952,
+              1086783488
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1046814720,
+            "medianAfter": 1039646720,
+            "percentChange": -0.6847439057792393
+          },
+          "maxObservedRssGapMs": 312.35299999999916,
+          "rssSampleCounts": [
+            150,
+            149,
+            153,
+            133
+          ]
+        },
+        "fetch-no-change": {
+          "clickToFinalFrameMs": {
+            "before": [
+              680,
+              581
+            ],
+            "after": [
+              647,
+              491
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 630.5,
+            "medianAfter": 569,
+            "percentChange": -9.754163362410784
+          },
+          "ownedCpuMs": {
+            "before": [
+              1057.2579999999982,
+              976.1390000000038
+            ],
+            "after": [
+              796.6559999999986,
+              1308.5780000000027
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 1016.698500000001,
+            "medianAfter": 1052.6170000000006,
+            "percentChange": 3.532856594162337
+          },
+          "sampledSumRssBytes": {
+            "before": [
+              715096064,
+              747945984
+            ],
+            "after": [
+              735543296,
+              743079936
+            ],
+            "completeNumericComparison": true,
+            "medianBefore": 731521024,
+            "medianAfter": 739311616,
+            "percentChange": 1.064985385847228
+          },
+          "maxObservedRssGapMs": 213.25,
+          "rssSampleCounts": [
+            8,
+            8,
+            8,
+            7
+          ]
+        }
+      },
+      "limits": [
+        "Second cohort, n2 independent processes/source/mode, both sources ready first. Per-operation B/A then A/B. New panel/browser peroperation; shared immutable metadata caches may persist within a process. Idle peer has no browser/Native work and is excluded from active resources. First contrary source-group cohort retained separately.",
+        "Root+bare refs/index/config/HEAD and full private object inventories restored and verified between cases. Captured objects via readonly alternate.",
+        "Post-checkout and Husky helper copied readonly; pre-commit not copied. Hook invocations Native with source cwd/args, dispatch log adds small common overhead.",
+        "Filesystem warm, external host load uncontrolled. Not actual VS Code window/GitHub timing.",
+        "A null frame means an unchanged final graph needed no new frame; never converted to zero. Signed last-source-write phase may precede cleanup and is not total operation time.",
+        "Memory runs separate, their time/CPU diagnostic only. Observed sum-RSS maxima are not true peak, physical memory or retained heap; actual sample gaps retained."
+      ]
+    }
+  ],
+  "limits": [
+    "Do not pool the cohorts or convert CPU/memory observations into latency samples.",
+    "Distinct owned fixture pools per cohort; exact input restoration is proved within each cohort, not byte identity between cohorts.",
+    "Hook dispatch copied post-checkout and Husky helper only; pre-commit not copied. Active hook retained full checkout.",
+    "Source original read only. No Marketplace query, foreground Dev Host, OS focus switch or forced reload."
+  ]
+}

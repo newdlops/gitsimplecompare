@@ -10,7 +10,8 @@ import { RebaseService } from "../../src/git/rebaseService";
 import { captureRebaseCheckout } from "../../src/git/rebasePlanSafety";
 import { gitProcesses } from "../../src/git/gitProcessRegistry";
 import { setGitExecutionObserver, type GitExecutionTiming } from "../../src/git/gitExecutionDiagnostics";
-import { disposeWorkingTreeSnapshots } from "../../src/git/workingTreeSnapshot";
+import { disposeWorkingTreeSnapshots, setWorkingTreeSnapshotPolicy } from "../../src/git/workingTreeSnapshot";
+import { logInfo } from "../../src/ui/outputLog";
 import type { Commit } from "../../src/graph/graphTypes";
 import type { GraphRenderPerformance } from "../../src/webview/graphProtocol";
 import { createGitOperationFixture } from "../helpers/gitOperationFixture";
@@ -25,6 +26,7 @@ import { probePrNotice } from "../helpers/prNoticeProbe";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile, type NodeCpuProfile } from "../helpers/nodeCpuProfile";
+import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
 
 type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
@@ -131,7 +133,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   if (operation === "checkout") f = await loadedCheckoutFixture(f);
   const localHintScenario = process.env.GSC_BENCH_LOCAL_CHANGE_HINT_SCENARIO;
   assert.ok(!localHintScenario || ["known", "stale"].includes(localHintScenario));
-  assert.ok(!localHintScenario || ["pull", "interactive-rebase", "pr-squash-cherry-pick", "pr-cherry-pick"].includes(operation));
+  assert.ok(!localHintScenario || supportedOperations.includes(operation));
   const localFile = `gsc-local-hint-${localHintScenario === "stale" ? "previous" : "current"}.txt`;
   const finalLocalFile = "gsc-local-hint-current.txt", localContents = "Preserved local work for the actual button scenario.\n";
   if (localHintScenario) {
@@ -153,6 +155,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   const noticeHoldMs = Number(process.env.GSC_BENCH_PR_NOTICE_HOLD_MS || 0);
   const notice = prOperation ? probePrNotice(noticeHoldMs) : undefined;
   const stopMonitor = process.env.GSC_BENCH_MONITOR_POLICY === "1" ? setOwnedFsmonitorPolicy(() => undefined) : undefined;
+  const stopSnapshotPolicy = setWorkingTreeSnapshotPolicy(() => ({ useCache: true, cancelUnused: true }), logInfo);
   const renderer = await GraphLiveRenderer.create(), service = new GitLogService(f.root);
   let measuring = false;
   const publicationDiagnostics = process.env.GSC_BENCH_BUTTON_DIAGNOSTICS === "1";
@@ -204,6 +207,10 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     } catch (error) { actionFailed(error); throw error; }
   });
   let nodeProfile: NodeCpuProfile | undefined, rendererProfile: NodeCpuProfile | undefined;
+  let lastSourceWriteEpoch: number | undefined;
+  const stopWriteObservation = gitProcesses.onDidFinishWrite(root => {
+    if (measuring && path.resolve(root) === path.resolve(f.root)) lastSourceWriteEpoch = Date.now();
+  });
   try {
     await renderer.mount(surface.webview.html);
     await within(initialized, "actual ready callback");
@@ -310,19 +317,27 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       return { operation, transport: "actual-rendered-button-and-registered-message-callback", fixture: { files: f.files, commits: f.depth, branches: f.branches,
         monitorPolicy: !!stopMonitor,
         ...(validatedInputBeforeGraph ? { nativeInputValidatedBeforeGraph: true,
-          inputScope: "Native status validated before Graph mount; app caches remain cold, filesystem is warm; not cold-start timing" } : {}),
+          inputScope: "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing" } : {}),
         ...(process.env.GSC_BENCH_FIXTURE_MANIFEST ? { ownedInputReused: true } : {}),
         ...(partial ? { promisorBlobBytes: (f as Awaited<ReturnType<typeof partialPushFixture>>).promisorBlobBytes } : {}),
         ...(localHintScenario ? { localHintScenario } : {}),
         ...(prListCount ? { pullRequests: prListCount } : {}) },
         clickToRequestMs: Math.round(receivedAt - started), handlerMs: Math.round(completedAt - receivedAt),
         clickToFirstFrameMs: frame.mutationToFrameMs, clickToFinalFrameMs: frame.latestMutationToFrameMs,
+        ...(lastSourceWriteEpoch === undefined || frame.latestMutationToFrameMs === null ? {} : {
+          lastSourceWriteAfterClickMs: lastSourceWriteEpoch - clickedAt,
+          lastSourceWriteToFinalFrameMs: frame.latestMutationToFrameMs - (lastSourceWriteEpoch - clickedAt),
+          lastSourceWriteScope: "Last owned Git write close in source worktree; signed frame difference, may precede cleanup" }),
         clickToSettledMs: Math.round(settled - started), nativeStateExact: true, cleanWorkingTree: initialStatus === "",
         ...(localHintScenario ? { localChangesPreserved: true, recentPathConfirmations: __outputLines.slice(hintLogStart)
           .filter(line => line.includes("working tree change confirmed from recent paths")).length,
           missedHintsWithFullScan: __outputLines.slice(hintLogStart).filter(line => line.includes("working tree change hint missed; full scan required")).length,
           compactReplayWorktreeSelections: __outputLines.slice(hintLogStart)
-            .filter(line => line.includes("PR replay index-only worktree prepared")).length } : {}),
+            .filter(line => line.includes("PR replay index-only worktree prepared")).length,
+          summaryPathConfirmations: __outputLines.slice(hintLogStart)
+            .filter(line => line.includes("private status summary change confirmed from recent paths")).length,
+          summaryMissesWithFullScan: __outputLines.slice(hintLogStart)
+            .filter(line => line.includes("private status summary hint missed; full scan required")).length } : {}),
         ...(profiling ? { instrumentedCpuProfile: true, profileScope: "actual click through settled final renderer frames; sampling overhead remains, not comparative latency" } : {}),
         nodeCpuMs: Math.round((used.user + used.system) / 1000), nodeCpuScope: "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
         processes: timings.length, commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome, code }) => ({ command, elapsedMs, syncSpawnMs, outcome, code })),
@@ -339,7 +354,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     // benchmark의 대기 제한이 끝나도 이미 시작한 Native 쓰기를 둔 채 fixture를 지우지 않는다.
     if (receivedAt !== undefined && completedAt === undefined) await action.catch(() => undefined);
     try { if (nodeProfile || rendererProfile) await Promise.all([nodeProfile?.stop(), rendererProfile?.stop()]); }
-    finally { panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); mock.restoreAll(); }
+    finally { stopWriteObservation(); panel.dispose(); notice?.dispose(); await renderer.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); stopSnapshotPolicy(); await gitProcesses.dispose(); mock.restoreAll(); }
   }
 }
 
@@ -349,8 +364,10 @@ async function main() {
   assert.ok(selected.length && selected.every(value => supportedOperations.includes(value)), "Unknown button operation");
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-graph-button-flow-"));
   try {
-    const results = [];
-    for (const operation of selected) {
+    const results = [], gate = BenchmarkTurnGate.fromEnvironment();
+    await gate?.ready(selected);
+    for (const [index, operation] of selected.entries()) {
+      await gate?.wait(index, operation);
       const scenario = path.join(directory, operation); await mkdir(scenario);
       const resources=process.env.GSC_BENCH_PHASE_RESOURCES==="1"?await GraphPhaseResources.create(scenario):undefined;
       // 별도 진단에서만 준비 중 Git의 명령 이름·수명 결과를 즉시 기록한다. 인자·입력·출력은 남기지 않는다.
@@ -358,6 +375,7 @@ async function main() {
         ? setGitExecutionObserver(timing => console.error("startup Git", JSON.stringify(timing))) : undefined;
       try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
       finally{startup?.();try{await resources?.dispose();}finally{await rm(scenario,{recursive:true,force:true});}}
+      await gate?.complete(index, results.at(-1));
     }
     const report = { source: benchmarkSource, environmentKeys: Object.keys(process.env).length, network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };

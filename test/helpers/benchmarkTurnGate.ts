@@ -5,8 +5,11 @@ import path from "node:path";
 
 /** 소유 임시 디렉터리의 단일 실행 권한만 교환하는 benchmark 전용 수명이다. */
 export class BenchmarkTurnGate {
-  /** @param directory coordinator가 만든 임시 경계 @param identity 파일 이름으로 사용할 검증된 source ID */
-  private constructor(private readonly directory: string, private readonly identity: string) {}
+  /**
+   * @param directory coordinator가 만든 임시 경계 @param identity 파일 이름으로 사용할 검증된 source ID
+   * @param timeoutMs 대기 source를 회수할 최대 시간. 측정 중인 Native 작업의 timeout은 변경하지 않는다.
+   */
+  private constructor(private readonly directory: string, private readonly identity: string, private readonly timeoutMs: number) {}
 
   /** 명시적인 coordinator 환경에서만 활성화한다. 일반 benchmark의 대기·실행 경로는 유지한다. */
   static fromEnvironment(): BenchmarkTurnGate | undefined {
@@ -15,10 +18,14 @@ export class BenchmarkTurnGate {
     if (!directory || !path.isAbsolute(directory) || !identity || !/^[a-z][a-z0-9-]{0,31}$/.test(identity)) {
       throw new Error("Invalid benchmark turn coordination environment.");
     }
-    return new BenchmarkTurnGate(directory, identity);
+    const timeoutMs = Number(process.env.GSC_BENCH_TURN_TIMEOUT_MS ?? 120000);
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30 * 60 * 1000) {
+      throw new Error("Invalid benchmark turn timeout.");
+    }
+    return new BenchmarkTurnGate(directory, identity, timeoutMs);
   }
 
-  /** fixture·probe 준비가 끝났음을 알린다. coordinator는 두 source 모두 준비되기 전에는 측정을 허용하지 않는다. */
+  /** 호출자가 준비한 실행 목록을 공유한다. coordinator는 두 source의 이 경계가 확인된 뒤 측정을 허용한다. */
   async ready(operations: readonly string[]): Promise<void> { await this.publish("ready", { operations }); }
 
   /**
@@ -51,7 +58,7 @@ export class BenchmarkTurnGate {
         if (!filename || filename.toString() === path.basename(grant) || filename.toString() === "abort.json") void check();
       });
       watcher.once("error", finish);
-      const timer = setTimeout(() => finish(new Error("Benchmark turn grant timed out.")), 120000);
+      const timer = setTimeout(() => finish(new Error("Benchmark turn grant timed out.")), this.timeoutMs);
       void check();
     });
   }
