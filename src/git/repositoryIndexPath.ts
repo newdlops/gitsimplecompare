@@ -4,7 +4,8 @@ import { resolveGitExecutable, runGit } from "./gitExec";
 import { readRepositoryMetadata } from "./repositoryMetadata";
 
 /** 한 번의 상태 읽기에 고정한 원본 index 위치와 metadata/실행 환경 증거다. */
-export interface RepositoryIndexPath { file: string; identity?: string; }
+export interface RepositoryIndexPath { file: string; identity?: string; boundary?: string; }
+interface MetadataProof { identity: string; boundary: string; }
 type Runner = typeof runGit;
 
 /** 저장소 하나의 마지막 검증 경로 한 개만 보관하고 metadata·환경 변경 때 native Git으로 돌아간다. */
@@ -24,46 +25,52 @@ export class RepositoryIndexPathReader {
    */
   async read(signal: AbortSignal): Promise<RepositoryIndexPath> {
     signal.throwIfAborted();
-    const before = await this.identity(); signal.throwIfAborted();
-    if (before && this.cached?.identity === before) {
+    const before = await this.proof(); signal.throwIfAborted();
+    if (before && this.cached?.identity === before.identity) {
       if (!this.reportedReuse) {
         this.reportedReuse = true; this.log("private status index path reused", { repoRoot: this.root });
       }
-      return { ...this.cached };
+      return { ...this.cached, boundary: before.boundary };
     }
     if (this.cached) this.log("private status index path invalidated", { repoRoot: this.root, reason: "metadataOrEnvironmentChanged" });
     this.cached = undefined;
-    const file = await this.fresh(signal), after = await this.identity(); signal.throwIfAborted();
-    if (before && after && before !== after) {
+    const file = await this.fresh(signal), after = await this.proof(); signal.throwIfAborted();
+    if (before && after && (before.identity !== after.identity || before.boundary !== after.boundary)) {
       this.log("private status index path discarded", { repoRoot: this.root, reason: "metadataChangedDuringResolution" });
       throw new Error("Repository metadata changed while resolving the index path.");
     }
-    const result = { file, ...(before && before === after ? { identity: after } : {}) };
+    const result = { file, ...(before && after && before.boundary === after.boundary ? after : {}) };
     if (result.identity) this.cached = result;
     return { ...result };
   }
 
   /**
-   * 상태를 계산한 뒤 .git/commondir 교체를 확인해 이전 경로로 읽은 결과가 게시되지 않게 한다.
+   * 상태를 계산한 뒤 .git/commondir 교체·원복과 디렉터리의 도중 변경을 확인한다.
    * @param value 읽기 시작 때 고정한 index 위치 @param signal 상태 조회의 취소 신호
    * @returns 동일 증거이면 true. 증거 부재·변경은 false이며 호출부가 native 전체 status로 복구한다.
    */
   async unchanged(value: RepositoryIndexPath, signal: AbortSignal): Promise<boolean> {
     signal.throwIfAborted();
-    const same = value.identity !== undefined && value.identity === await this.identity();
+    const current = await this.proof();
+    const same = value.identity !== undefined && value.boundary !== undefined
+      && value.identity === current?.identity && value.boundary === current?.boundary;
     signal.throwIfAborted(); return same;
   }
 
   /** 상태 캐시가 처분되면 경로도 즉시 해제한다. 새 세션은 native Git부터 검증한다. */
   clear(): void { this.cached = undefined; this.reportedReuse = false; }
 
-  /** index 결과에 영향을 줄 Git 환경·실행 경로와 실제 metadata inode/locator 내용을 비교한다. */
-  private async identity(): Promise<string | undefined> {
+  /**
+   * 재사용할 경로의 연결 증거와 이번 조회에만 적용할 변경 시각을 같은 metadata 읽기에서 구한다.
+   * @returns Git 실행 환경까지 고정한 경로·조회 경계 증거. 해석이 불확실하면 undefined
+   */
+  private async proof(): Promise<MetadataProof | undefined> {
     const metadata = await readRepositoryMetadata(this.root);
     if (!metadata) return undefined;
     const environment = Object.entries(process.env).filter(([key]) => key.startsWith("GIT_") || key === "PATH")
       .sort(([left], [right]) => left.localeCompare(right));
-    return JSON.stringify([resolveGitExecutable(this.root), environment, metadata.identity]);
+    const identity = JSON.stringify([resolveGitExecutable(this.root), environment, metadata.identity]);
+    return { identity, boundary: JSON.stringify([identity, metadata.boundary]) };
   }
 
   /** 경로를 추측하지 않고 Git의 --git-path 해석을 사용하며 마지막 CLI 개행만 제거한다. */

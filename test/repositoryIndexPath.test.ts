@@ -13,7 +13,9 @@ test("index path reuse still observes metadata identity after commits and new in
   await commitText(f.root, "changed index\n", "changed index");
   const next = await reader.read(new AbortController().signal);
   assert.equal(next.file, path.join(f.root, ".git/index")); assert.equal(next.file, initial.file);
-  assert.equal(await reader.unchanged(initial, new AbortController().signal), true);
+  assert.equal(await reader.unchanged(initial, new AbortController().signal), false,
+    "A commit during an earlier read invalidates that read without discarding the validated path");
+  assert.equal(await reader.unchanged(next, new AbortController().signal), true);
   assert.equal(calls, 1);
   reader.clear(); await reader.read(new AbortController().signal); assert.equal(calls, 2);
 });

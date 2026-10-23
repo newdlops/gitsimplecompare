@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.72164] - 2026-10-23
+
+### Fixes
+
+- Discard private status results if a gitfile, commondir or metadata directory is
+  replaced and restored during the read. Retry against the current repository
+  before publishing HEAD, branch or working changes to Graph and Changes.
+- Preserve Git's validated index-path reuse between normal operations. Compare a
+  fresh metadata boundary for each read and keep source indexes and files intact.
+
 ## [0.1.72163] - 2026-10-23
 
 ### Performance
