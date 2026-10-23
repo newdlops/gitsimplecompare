@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.72167] - 2026-10-24
+
+### Maintenance
+
+- Move Graph canvas sizing into the existing row layout module, keeping the main
+  renderer within the project's file-size limit. Preserve status-update scroll,
+  viewport/tail fallback, row identity and final rendered acknowledgements.
+
 ## [0.1.72166] - 2026-10-24
 
 ### Fixes

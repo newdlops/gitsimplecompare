@@ -37,7 +37,6 @@
   let rowBadgeCache = new WeakMap();
   let localColorResolver = null;
   let renderedColorScope;
-  let canvasViewportWidth = -1;
   const detailResize = window.GscGraphDetailResize?.create?.({
     splitterEl,
     detailEl,
@@ -155,17 +154,7 @@
    * @param preserveGeometry 검증된 빈 delta이면 같은 viewport/높이의 측정 폭과 스크롤을 보존한다.
    */
   function resizeGraphContent(preserveGeometry) {
-    // DOM 쓰기 전에 viewport를 읽어 width 초기화가 동기 layout을 강제하지 않게 한다.
-    const viewportWidth = graphEl.clientWidth;
-    const height = Math.max(graphContentHeight(), graphEl.clientHeight) + "px";
-    if (preserveGeometry && currentRows.length && canvasViewportWidth === viewportWidth && graphContentEl.style.height === height) return;
-    const graphWidth = graphWidthForLaneCount(currentLaneCount);
-    graphContentEl.style.width = "100%";
-    graphContentEl.style.minWidth = graphWidth + 680 + "px";
-    graphContentEl.style.height = height;
-    canvasViewportWidth = viewportWidth;
-    // tail 또는 inspector 폭이 바뀐 상태 알림도 현재 행 내용에 맞는 폭을 다시 확보한다.
-    if (preserveGeometry) rowSync.scheduleScrollableWidth();
+    rowSync.resizeCanvas(graphContentHeight(), preserveGeometry && currentRows.length > 0);
   }
 
   /**

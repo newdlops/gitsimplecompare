@@ -1,0 +1,105 @@
+{
+  "version": "0.1.72167",
+  "node": {
+    "tests": 92,
+    "pass": 92,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "tests": 75,
+    "pass": 75,
+    "headless": true,
+    "workers": 1
+  },
+  "nativeControls": {
+    "cases": 11,
+    "nativeAndDomExact": true,
+    "prCardsPerCase": 80,
+    "staleLocalChangesPreserved": true,
+    "operations": [
+      "push",
+      "pull",
+      "fetch",
+      "interactive-rebase",
+      "fetch-no-change",
+      "checkout",
+      "pr-squash-cherry-pick",
+      "pr-cherry-pick",
+      "branch-squash-merge",
+      "branch-rebase-merge",
+      "cherry-pick"
+    ]
+  },
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "rendererComparisonLifetimes": 8,
+  "screenshotsGenerated": 33,
+  "screenshotsInspected": [
+    "cherry-pick/live-graph-390.png",
+    "branch-rebase-merge/live-graph-768.png",
+    "pr-cherry-pick/live-graph-1440.png"
+  ],
+  "logs": {
+    "gsc-72167-node-tests.log": {
+      "bytes": 23428,
+      "sha256": "f0d9fce28fc26b59ff8c63249793c2449b3fde89eae7f68d320e0e9376f283e9"
+    },
+    "gsc-72167-browser-tests.log": {
+      "bytes": 12634,
+      "sha256": "a0af7afe1c8d7f9fc2a8a105b7848eb4dee4d99bf03392535614e6aba398125e"
+    },
+    "gsc-72167-types.log": {
+      "bytes": 58,
+      "sha256": "cc2fd34ab9450273acc4a706fb331b3b268f2e2380fe45097d8529372e6da3a6"
+    },
+    "gsc-72167-package.log": {
+      "bytes": 1338,
+      "sha256": "9bf49166dd0cb4dd47815135df97c90e7a582ac467677081d5c54b99c3a49187"
+    }
+  },
+  "screenshots": {
+    "interactive-rebase/live-graph-1440.png": "cf39f141632d33db163b976588be024d0f714105eb7d6fe3a69f79b63685c11d",
+    "interactive-rebase/live-graph-768.png": "43f7685bf27374e91025061add9b331c257dd46a7eeefbbaa8e223d9aa6bd562",
+    "interactive-rebase/live-graph-390.png": "a53df9488fa8d3f7055154202c2ea1fb80d79ba46a4c16f1e0ff09c2026da4e5",
+    "pr-squash-cherry-pick/live-graph-1440.png": "813e88909367af83d1376a699a44531852d2eeda2d6a0bdaa2b1b11759a6e358",
+    "pr-squash-cherry-pick/live-graph-768.png": "309cbac6bcd58d2ae9b30d2459750e5a0729b416c30b92b5a7b87030c970186c",
+    "pr-squash-cherry-pick/live-graph-390.png": "a1f1b2f690395eefdbfa7fc4a08957817fb3848d3985f54bdacf35d8fad30b6d",
+    "branch-rebase-merge/live-graph-1440.png": "b4f88d992658a1ab299c5db915fdd0b03ca9800d2dccf3574766a5729e9daf89",
+    "branch-rebase-merge/live-graph-768.png": "51826b61c09838c12f686459814203c4bf51dea44cc846ee206676c65c26fcc9",
+    "branch-rebase-merge/live-graph-390.png": "03061a1b1ce8a647046295a77d56de9e12002815581765de2c988bb734b468e9",
+    "fetch-no-change/live-graph-1440.png": "8a12359307ef1163398ad438fc454380a90e44ca4e802cbe875dc8ecbc93a5f8",
+    "fetch-no-change/live-graph-768.png": "c3da67ff455ae99bfbc1a9a51cf0aa297872e8df73cb6d25d59ef0b5ccab3bbb",
+    "fetch-no-change/live-graph-390.png": "13d09e6d17101ecd58e42c73b5f775c87d6fe2e0b9e07223534fc4541579cd3b",
+    "cherry-pick/live-graph-1440.png": "4e94b69613223ca1723c52b0240a3615b02e3ae5f56efd0610b7af3e79ac3cbd",
+    "cherry-pick/live-graph-768.png": "1f6ce7dc5b1bc880562142b842fd93753c43da5a51b0005ab88137409bc6afc0",
+    "cherry-pick/live-graph-390.png": "b6156f7c9acea087c0192fb5909bf5bd4bf444286c96b2ab09f29ca4602cce5a",
+    "pull/live-graph-1440.png": "5306c0907ee2997015d8c560134bc8f8789c326fd53150393c0b63c22df9de36",
+    "pull/live-graph-768.png": "fdc7d6a85a7f90a38b6a47e565a1ed99f4d16f9be06141367d55dcdd81b4e2f4",
+    "pull/live-graph-390.png": "0967ebd3bb736d44a35f8d3d751ef2dd512619f647dc54079ff478919df909f4",
+    "checkout/live-graph-1440.png": "d50bb5dd179f6d2616a751ba9a547267322807c19cf43e05cc5e7b2fe699e840",
+    "checkout/live-graph-768.png": "ca23498eb5f0b2e0718bf926e8cb023d23596278ac3d201a10ed18f95bc15fa0",
+    "checkout/live-graph-390.png": "497e317a2d73a764c64d76fc404eb537c68701eeb75e0ef12c4bdfc4877caa51",
+    "push/live-graph-1440.png": "37cc547a3344935bb1eac88fdea98d4da297914610d9b87b31df00258af4d940",
+    "push/live-graph-768.png": "f4673d1871e4c1a6d0148eda132eb7fe08b575be51d3612e5bdfbcb8ea04e256",
+    "push/live-graph-390.png": "5569b8e0ed94592e8846647e5bbe6319f4b2aefd9ca5a03121876d33dca6ae84",
+    "fetch/live-graph-1440.png": "39f9915bfd5c1a8a8351c9307eb68ea1079be8d682f34ef79daa57a57497268d",
+    "fetch/live-graph-768.png": "7aff08ab18769216f8d109bb2acfad479b3e1d3520845f6fcd7e6270b7db296c",
+    "fetch/live-graph-390.png": "82fa9cf5c3bfca634465c4ec7417e27289b87f51a316a047d3630e16ff789b76",
+    "pr-cherry-pick/live-graph-1440.png": "943e987e8a30bbfb8c2db4c6f3930fad1bc47a61fee4b074c82c75a4d6421e3c",
+    "pr-cherry-pick/live-graph-768.png": "727b288e224c2b73170dbc5d81125b500ebfe12aa36bf80d8a2126904b38e2b5",
+    "pr-cherry-pick/live-graph-390.png": "a4ce60af8e57660927a191ae863b711b20c8c3aeb8c67cd79f116572a21ba57d",
+    "branch-squash-merge/live-graph-1440.png": "5c8775b9a7c37aba0a1d98eb44b5cbd827fc11387a5fa5f9237d052b02c917e4",
+    "branch-squash-merge/live-graph-768.png": "dbebb7cbd8b279b7cc3d7a6a497811d72956ee62f5aaa441ee1c06e3e4616d7f",
+    "branch-squash-merge/live-graph-390.png": "3e6053e18e3cfbe17fed1755cf3f8722877dfa2c3d7ef121bd324e2d7e1b2425"
+  },
+  "priorCumulativeCases": {
+    "version": "0.1.72166",
+    "cases": 216,
+    "notRerunAs72167": true
+  },
+  "osFocusChanged": false,
+  "userWindowForcedReload": false,
+  "marketplaceStatusQueried": false
+}

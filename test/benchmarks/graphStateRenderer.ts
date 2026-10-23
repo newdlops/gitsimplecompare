@@ -11,6 +11,7 @@ import { mountReferenceGraph } from "../webview/graphReferenceHarness";
 const requireFixture = createRequire(path.join(process.env.GSC_BENCH_WORKSPACE_ROOT || process.cwd(), "package.json"));
 const { chromium } = requireFixture("playwright") as typeof import("@playwright/test");
 const file = "media/graph/graph.js", source = JSON.parse(process.env.GSC_BENCH_SOURCE!);
+const canvasFile = "media/graph/graphRowSync.js";
 const reference = process.env.GSC_BENCH_STATE_BASELINE || source.commit;
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 
@@ -52,13 +53,14 @@ async function heap(page: Page) {
   } finally { await cdp.detach(); }
 }
 
-/** 같은 renderer에서 graph.js만 교체하며 latency/CPU/GC 후 heap은 서로 다른 실행 구간으로 잰다. */
-async function measure(browser: Browser, phase: string, code: string) {
+/** 같은 renderer에서 Graph/행 기하 모듈만 교체하며 latency/CPU/GC 후 heap은 서로 다른 구간으로 잰다. */
+async function measure(browser: Browser, phase: string, code: string, canvasCode: string) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   try {
     const load = page.addScriptTag.bind(page);
-    page.addScriptTag = options => load(options.path?.endsWith(file) ? { content: code } : options);
+    page.addScriptTag = options => load(options.path?.endsWith(file) ? { content: code }
+      : options.path?.endsWith(canvasFile) ? { content: canvasCode } : options);
     await mountReferenceGraph(page, true, 1); await page.locator("#graph").focus();
     await exercise(page, 8);
     const latency = await exercise(page, 32);
@@ -74,7 +76,7 @@ async function measure(browser: Browser, phase: string, code: string) {
       assert.equal(result.rows, 5000); assert.equal(result.kept, true); assert.equal(result.svg, true); assert.equal(result.focus, true);
     }
     assert.deepEqual(errors, []);
-    return { phase, sourceSha256: digest(code), latency, cpuContract, browserCpuMs,
+    return { phase, sourceSha256: digest(code), canvasSha256: digest(canvasCode), latency, cpuContract, browserCpuMs,
       nodeCpuMs: (node.user + node.system) / 1000, heapBefore, heapAfter, heapDelta: heapAfter - heapBefore, browserComplete: true };
   } finally { await page.close(); }
 }
@@ -83,16 +85,20 @@ async function measure(browser: Browser, phase: string, code: string) {
 async function main() {
   assert.equal(source.kind, "working-tree"); assert.ok(process.argv[2], "An explicit report path is required");
   const before = execFileSync("/usr/bin/git", ["-c", "core.fsmonitor=false", "show", `${reference}:${file}`]).toString();
+  const beforeCanvas = execFileSync("/usr/bin/git", ["-c", "core.fsmonitor=false", "show", `${reference}:${canvasFile}`]).toString();
+  const afterCanvas = await readFile(canvasFile, "utf8"), canvasSha = digest(afterCanvas);
   const after = await readFile(file, "utf8"), sha = digest(after), results = [];
   for (const phase of ["before", "after", "after", "before", "after", "before", "before", "after"]) {
     const browser = await chromium.launch({ headless: true,
       ...(process.env.GSC_PLAYWRIGHT_EXECUTABLE ? { executablePath: process.env.GSC_PLAYWRIGHT_EXECUTABLE } : {}) });
-    try { results.push(await measure(browser, phase, phase === "before" ? before : after)); }
+    try { results.push(await measure(browser, phase, phase === "before" ? before : after, phase === "before" ? beforeCanvas : afterCanvas)); }
     finally { await browser.close(); }
     console.error(`Completed state renderer ${phase} (${results.length}/8)`);
   }
   assert.equal(digest(await readFile(file)), sha);
-  await writeFile(process.argv[2], JSON.stringify({ source, baseline: reference, beforeSha256: digest(before), afterSha256: sha, results,
-    scope: "5000 rows, 4999 edges, 1000 branches, 250 tags. Only graph.js differs. Four independent Chromium/page lifetimes per source in B/A/A/B+A/B/B/A order. 32 latency messages and separate 48-message CPU and post-GC JS heap windows per lifetime after 8 warmup messages. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, operation latency, total RSS or physical peak claim." }, null, 2) + "\n");
+  assert.equal(digest(await readFile(canvasFile)), canvasSha);
+  await writeFile(process.argv[2], JSON.stringify({ source, baseline: reference, beforeSha256: digest(before), afterSha256: sha,
+    beforeCanvasSha256: digest(beforeCanvas), afterCanvasSha256: canvasSha, results,
+    scope: "5000 rows, 4999 edges, 1000 branches, 250 tags. graph.js and graphRowSync.js differ; all other modules are common. Four independent Chromium/page lifetimes per source in B/A/A/B+A/B/B/A order. 32 latency messages and separate 48-message CPU and post-GC JS heap windows per lifetime after 8 warmup messages. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, operation latency, total RSS or physical peak claim." }, null, 2) + "\n");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

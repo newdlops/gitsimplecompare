@@ -88,6 +88,7 @@
     // 최대 24개 후보만 강하게 참조한다. 전체 행/삭제된 행을 보관하는 별도 인덱스는 만들지 않는다.
     let widthCandidates;
     let widthFrame = 0;
+    let canvasViewportWidth = -1;
     // 행 교체뿐 아니라 rebase 장식·검색 강조·reflog의 제자리 수정도 다음 측정 전에 무효화한다.
     const widthObserver = new MutationObserver(invalidateWidthScores);
     widthObserver.observe(graphContentEl, {
@@ -202,6 +203,24 @@
       return replaced;
     }
 
+    /**
+     * canvas 높이를 적용하고 필요한 경우에만 측정 폭을 다시 준비한다.
+     * @param contentHeight 행과 로딩 tail의 합산 높이. viewport보다 작으면 viewport 높이를 사용한다.
+     * @param preserveGeometry 검증된 빈 delta일 때 같은 viewport/높이의 폭과 스크롤을 보존한다.
+     */
+    function resizeCanvas(contentHeight, preserveGeometry) {
+      // 쓰기 전에 읽어 width 초기화로 인한 불필요한 동기 layout을 피한다.
+      const viewportWidth = graphEl.clientWidth;
+      const height = Math.max(contentHeight, graphEl.clientHeight) + "px";
+      if (preserveGeometry && canvasViewportWidth === viewportWidth && graphContentEl.style.height === height) return;
+      graphContentEl.style.width = "100%";
+      graphContentEl.style.minWidth = deps.layout().graphWidth + 680 + "px";
+      graphContentEl.style.height = height;
+      canvasViewportWidth = viewportWidth;
+      // tail 또는 inspector 폭이 바뀐 알림은 현재 행 내용의 폭도 다시 확보한다.
+      if (preserveGeometry) scheduleScrollableWidth();
+    }
+
     /** 다음 frame 에 가로 스크롤 폭을 한 번 측정하도록 예약한다(연속 호출은 합친다). */
     function scheduleScrollableWidth() {
       if (widthFrame) {
@@ -249,6 +268,6 @@
       return scored.map((entry) => entry.row);
     }
 
-    return { indexRows, elementAt, affectedRows: dependencies.affected, patchRows, scheduleScrollableWidth };
+    return { indexRows, elementAt, affectedRows: dependencies.affected, patchRows, resizeCanvas, scheduleScrollableWidth };
   };
 })();
