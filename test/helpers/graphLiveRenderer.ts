@@ -92,9 +92,15 @@ export class GraphLiveRenderer {
   onMessage(listener: (message: FromWebviewMessage) => Promise<void> | void): void { this.inbound = listener; }
 
   /** backend에 직접 메시지를 주입하지 않고 렌더된 컨트롤의 일반 click을 실행한다. */
-  async clickControl(selector: string): Promise<void> {
+  async clickControl(selector: string, button: "left" | "right" = "left"): Promise<void> {
     await this.queue;
-    await this.page.locator(selector).click();
+    await this.page.locator(selector).click({ button });
+  }
+
+  /** 실제 우클릭 메뉴의 접근성 항목을 눌러 commit 명령도 backend 주입 없이 검증한다. */
+  async clickMenuItem(name: string): Promise<void> {
+    await this.queue;
+    await this.page.getByRole("menuitem", { name, exact: true }).click();
   }
 
   /** Native 비교 전에 실제 목록이 요청한 크기로 표시됐는지 읽는다. DOM 생성이나 측정용 예열은 하지 않는다. */

@@ -27,10 +27,13 @@ import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 import { setOwnedFsmonitorPolicy } from "../../src/git/ownedFsmonitor";
 import { startNodeCpuProfile, type NodeCpuProfile } from "../helpers/nodeCpuProfile";
 import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
+import { prepareCommitButtonExpectation, verifyCommitButtonResult } from "../helpers/graphCommitButtonFixture";
 
-type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick";
+type Operation = "push" | "pull" | "fetch" | "interactive-rebase" | "fetch-no-change" | "checkout" | "pr-squash-cherry-pick" | "pr-cherry-pick"
+  | "branch-squash-merge" | "branch-rebase-merge" | "cherry-pick";
 const operations: Operation[] = ["push", "pull", "fetch", "interactive-rebase"];
-const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout", "pr-squash-cherry-pick", "pr-cherry-pick"];
+const supportedOperations: Operation[] = [...operations, "fetch-no-change", "checkout", "pr-squash-cherry-pick", "pr-cherry-pick",
+  "branch-squash-merge", "branch-rebase-merge", "cherry-pick"];
 const benchmarkSource = JSON.parse(process.env.GSC_BENCH_SOURCE!);
 // source 선택용 값은 Native 명령의 환경 입력에서 제외한다.
 delete process.env.GSC_BENCH_SOURCE_REF; delete process.env.GSC_BENCH_SOURCE;
@@ -112,12 +115,13 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   const partial = operation === "push" && process.env.GSC_BENCH_PROMISOR_PUSH === "1";
   let f = await (partial ? partialPushFixture(directory) : createGitOperationFixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE));
   const branch = `button-${operation}`;
+  const commitOperation = operation === "branch-squash-merge" || operation === "branch-rebase-merge" || operation === "cherry-pick";
   if (partial) {
     // 같은 commit에 fixture HEAD만 연결한다. switch의 Native unpack-trees 사전 fetch를 측정 준비에 섞지 않는다.
     await runGit(["update-ref", `refs/heads/${branch}`, f.pr], f.root);
     await runGit(["symbolic-ref", "HEAD", `refs/heads/${branch}`], f.root);
     assert.equal(await missingPromisorBlobs(f.root, (f as Awaited<ReturnType<typeof partialPushFixture>>).blobs), 8, "Fixture branch setup must keep blobs missing");
-  } else await runGit(["switch", "-qC", branch, operation === "push" || operation === "interactive-rebase" ? f.pr : f.main], f.root);
+  } else await runGit(["switch", "-qC", branch, operation === "push" || operation === "interactive-rebase" || operation === "branch-rebase-merge" ? f.pr : f.main], f.root);
   if (operation === "pull") {
     await runGit(["config", `branch.${branch}.remote`, "origin"], f.root);
     await runGit(["config", `branch.${branch}.merge`, `refs/heads/${f.mainBranch}`], f.root);
@@ -130,7 +134,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   if (operation === "fetch") await runGit(["update-ref", "refs/heads/incoming", f.incoming], f.remote);
   // 최신 Git의 첫 fetch는 origin/HEAD를 만들 수 있다. 실제 무변경 비교는 이 초기 ref 설정 뒤에 시작한다.
   if (operation === "fetch-no-change") await runGit(["fetch", "--all", "--prune"], f.root);
-  if (operation === "checkout") f = await loadedCheckoutFixture(f);
+  if (operation === "checkout" || commitOperation) f = await loadedCheckoutFixture(f);
+  const commitExpected = commitOperation ? await prepareCommitButtonExpectation(f.root, f.topic) : undefined;
   const localHintScenario = process.env.GSC_BENCH_LOCAL_CHANGE_HINT_SCENARIO;
   assert.ok(!localHintScenario || ["known", "stale"].includes(localHintScenario));
   assert.ok(!localHintScenario || supportedOperations.includes(operation));
@@ -148,7 +153,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   assert.equal((await runGit(["remote", "get-url", "--push", "origin"], f.root)).trim(), f.remote, "Only the owned local bare receiver is permitted");
   __resetWindowMessages();
   mock.method(window, "showWarningMessage", async (_message: string, ...choices: unknown[]) => choices.find(choice => typeof choice === "string"));
-  __setQuickPickResult(items => items.find((item: any) => item?.kind !== -1));
+  __setQuickPickResult(items => items.find((item: any) => operation === "branch-squash-merge" ? item.action === "squashMerge"
+    : operation === "branch-rebase-merge" ? item.action === "rebaseMerge" : item?.kind !== -1));
   const prOperation = operation === "pr-squash-cherry-pick" || operation === "pr-cherry-pick";
   const prListCount = prOperation || process.env.GSC_BENCH_PR_LIST_ALL_OPERATIONS === "1"
     ? await installPrButtonFixture(f, Number(process.env.GSC_BENCH_PR_LIST_SIZE || 1)) : undefined;
@@ -195,7 +201,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
   const initialized = new Promise<void>(resolve => { ready = resolve; });
   const action = new Promise<void>((resolve, reject) => { actionDone = resolve; actionFailed = reject; });
   void action.catch(() => undefined);
-  const requestType = prOperation ? "pullRequestAction" : operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch" : operation === "checkout" ? "branchAction" : operation;
+  const requestType = prOperation ? "pullRequestAction" : operation === "interactive-rebase" ? "runGraphRebase" : operation === "fetch-no-change" ? "fetch"
+    : operation === "checkout" || operation.startsWith("branch-") ? "branchAction" : operation === "cherry-pick" ? "cherryPick" : operation;
   let receivedAt: number | undefined, completedAt: number | undefined;
   let noticeAtCompletion: ReturnType<ReturnType<typeof probePrNotice>["handlerState"]> | undefined;
   renderer.onMessage(async message => {
@@ -217,7 +224,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     await settle(f.root, panel, messages, metadataReady, readiness);
     assert.equal(panel.workingTree.state, undefined, "Initial working-tree status must finish successfully, not become unavailable or paused");
     assert.ok(panel.commits.length > 0); assert.deepEqual(__errorMessages, []);
-    if (operation === "checkout") assert.ok(panel.commits.some((commit: Commit) => commit.hash === f.topic), "Checkout target must be in the actual loaded page");
+    if (operation === "checkout" || commitOperation) assert.ok(panel.commits.some((commit: Commit) => commit.hash === f.topic), "The action target must be in the actual loaded page");
     const initialRefs = operation === "fetch-no-change" ? await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root) : undefined;
     let initialStatus = partial || localHintScenario ? (await runGit(["status", "--porcelain=v1"], f.root)).trim() : "";
     if (validatedInputBeforeGraph) assert.equal(initialStatus, validatedInputStatus, "Graph initialization must preserve the independently validated Native input");
@@ -241,6 +248,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       await writeFile(path.join(f.root, finalLocalFile), localContents, { flag: "wx" });
       initialStatus = (await runGit(["status", "--porcelain=v1"], f.root)).trim();
     }
+    // 초기 Graph/PR/계획의 남은 frame이 첫 클릭의 CPU·시간으로 섞이지 않도록 실제 renderer까지 기다린다.
+    await renderer.waitForPendingFrame();
     const hintLogStart = __outputLines.length;
     const initial = signature(panel.commits), beforeMessages = messages.length, timings: GitExecutionTiming[] = [];
     const profiling = !!(process.env.GSC_BENCH_CPU_PROFILE_DIR || process.env.GSC_BENCH_RENDERER_PROFILE_DIR);
@@ -257,7 +266,11 @@ async function measure(directory: string, operation: Operation, resources?: Grap
     try {
       if (operation === "interactive-rebase") await renderer.clickNamedControl("Start rebase");
       else if (prOperation) await renderer.clickControl(`#pr-op-42-${operation === "pr-squash-cherry-pick" ? "squash" : "rebase"}`);
-      else if (operation === "checkout") await renderer.clickControl(`.ref[data-checkout-branch="${f.topicBranch}"]`);
+      else if (operation === "checkout" || operation.startsWith("branch-")) await renderer.clickControl(`.ref[data-checkout-branch="${f.topicBranch}"]`);
+      else if (operation === "cherry-pick") {
+        await renderer.clickControl(`.row[data-hash="${f.topic}"] .subject`, "right");
+        await renderer.clickMenuItem("Cherry-pick Commit");
+      }
       else if (operation === "fetch-no-change") await renderer.clickControl("#fetch-graph");
       else await renderer.clickControl(`#${operation}-graph`);
       const actionTimeout = Number(process.env.GSC_BENCH_ACTION_TIMEOUT_MS || 60000);
@@ -292,6 +305,7 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       if (operation === "fetch") assert.equal((await runGit(["rev-parse", "refs/remotes/origin/incoming"], f.root)).trim(), f.incoming);
       if (operation === "fetch-no-change") assert.equal(await runGit(["for-each-ref", "--format=%(refname) %(objectname)"], f.root), initialRefs, "Unchanged fetch fixture must preserve every Native ref");
       if (operation === "checkout") assert.equal(head, f.topic);
+      if (commitExpected && commitOperation) await verifyCommitButtonResult(f.root, operation, commitExpected);
       if (prOperation) await verifyPrButtonResult(f, operation === "pr-squash-cherry-pick");
       if (operation === "interactive-rebase") {
         const bodies = (await runGit(["log", "--reverse", "--format=%B%x00", `${f.main}..HEAD`], f.root)).split("\0").map(value => value.trim()).filter(Boolean);
@@ -363,6 +377,7 @@ async function main() {
   const selected = (process.env.GSC_BENCH_OPERATIONS?.split(",") ?? operations) as Operation[];
   assert.ok(selected.length && selected.every(value => supportedOperations.includes(value)), "Unknown button operation");
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-graph-button-flow-"));
+  let completed = false;
   try {
     const results = [], gate = BenchmarkTurnGate.fromEnvironment();
     await gate?.ready(selected);
@@ -373,13 +388,18 @@ async function main() {
       // 별도 진단에서만 준비 중 Git의 명령 이름·수명 결과를 즉시 기록한다. 인자·입력·출력은 남기지 않는다.
       const startup = process.env.GSC_BENCH_STARTUP_DIAGNOSTICS === "1"
         ? setGitExecutionObserver(timing => console.error("startup Git", JSON.stringify(timing))) : undefined;
-      try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));}
-      finally{startup?.();try{await resources?.dispose();}finally{await rm(scenario,{recursive:true,force:true});}}
+      let scenarioCompleted = false;
+      try{console.error(`Clicking ${operation}...`);results.push(await measure(scenario,operation,resources));scenarioCompleted=true;}
+      finally{startup?.();try{await resources?.dispose();}finally{
+        if(scenarioCompleted)await rm(scenario,{recursive:true,force:true});
+        else console.error(`Preserved failed owned button fixture: ${scenario}`);
+      }}
       await gate?.complete(index, results.at(-1));
     }
     const report = { source: benchmarkSource, environmentKeys: Object.keys(process.env).length, network: "owned-local-bare-only", results,
       scope: "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus." };
     await writeFile(process.argv[2], JSON.stringify(report, null, 2) + "\n"); console.log(JSON.stringify(report, null, 2));
-  } finally { await rm(directory, { recursive: true, force: true }); }
+    completed = true;
+  } finally { if (completed) await rm(directory, { recursive: true, force: true }); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

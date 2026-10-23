@@ -37,6 +37,7 @@
   let rowBadgeCache = new WeakMap();
   let localColorResolver = null;
   let renderedColorScope;
+  let canvasViewportWidth = -1;
   const detailResize = window.GscGraphDetailResize?.create?.({
     splitterEl,
     detailEl,
@@ -151,12 +152,20 @@
   /**
    * 스크롤 컨테이너는 화면 안에 고정하고, 내부 캔버스만 커밋 수만큼 키운다.
    * - 상세 패널이 긴 그래프 때문에 화면 밖으로 밀려나는 문제를 막는다.
+   * @param preserveGeometry 검증된 빈 delta이면 같은 viewport/높이의 측정 폭과 스크롤을 보존한다.
    */
-  function resizeGraphContent() {
+  function resizeGraphContent(preserveGeometry) {
+    // DOM 쓰기 전에 viewport를 읽어 width 초기화가 동기 layout을 강제하지 않게 한다.
+    const viewportWidth = graphEl.clientWidth;
+    const height = Math.max(graphContentHeight(), graphEl.clientHeight) + "px";
+    if (preserveGeometry && currentRows.length && canvasViewportWidth === viewportWidth && graphContentEl.style.height === height) return;
     const graphWidth = graphWidthForLaneCount(currentLaneCount);
     graphContentEl.style.width = "100%";
     graphContentEl.style.minWidth = graphWidth + 680 + "px";
-    graphContentEl.style.height = Math.max(graphContentHeight(), graphEl.clientHeight) + "px";
+    graphContentEl.style.height = height;
+    canvasViewportWidth = viewportWidth;
+    // tail 또는 inspector 폭이 바뀐 상태 알림도 현재 행 내용에 맞는 폭을 다시 확보한다.
+    if (preserveGeometry) rowSync.scheduleScrollableWidth();
   }
 
   /**
@@ -335,8 +344,9 @@
    * 확장에서 받은 로딩 상태를 반영한다.
    * @param state GraphLoadState
    * @param renderTail true 면 기존 그래프의 하단 로딩 행만 즉시 갱신한다.
+   * @param preserveGeometry 행/레인이 그대로인 검증된 빈 delta에만 기하 재사용을 허용한다.
    */
-  function applyLoadState(state, renderTail) {
+  function applyLoadState(state, renderTail, preserveGeometry) {
     if (!state) {
       return;
     }
@@ -350,7 +360,7 @@
     }
     updateLoadStatus();
     if (renderTail) {
-      resizeGraphContent();
+      resizeGraphContent(preserveGeometry);
       renderLoadTail();
     }
   }
@@ -557,7 +567,7 @@
       // 행 기하가 같은 빈 delta는 모든 행을 스캔하지 않고 같은 scroll 좌표를 복원한다.
       const viewport = msg.fromGraphDelta && msg.state?.loadDirection === "newer"
         ? { top: graphEl.scrollTop, left: graphEl.scrollLeft } : null;
-      applyLoadState(msg.state, true);
+      applyLoadState(msg.state, true, msg.fromGraphDelta);
       if (viewport) { graphEl.scrollTop = viewport.top; graphEl.scrollLeft = viewport.left; }
       // 빈 delta도 마지막 상태를 실제로 표시한 뒤 계측하고 기존 자동 추가 로드 조건을 유지한다.
       if (msg.fromGraphDelta) requestAnimationFrame(maybeLoadMore);

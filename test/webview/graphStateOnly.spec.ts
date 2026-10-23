@@ -94,6 +94,48 @@ test("state-only delta preserves a dense PR list without unrelated DOM mutations
   await session.detach();
 });
 
+for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) test(`state-only delta retains the measured canvas and horizontal position at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await mountGraphRenderer(page);
+  const data = history(); data.rows[0] = { ...data.rows[0], subject: "A long commit subject with useful context ".repeat(30) };
+  await dispatchWebviewMessage(page, { type: "graph", revision: 1, data, state }); await frames(page);
+  const before = await page.evaluate(() => {
+    const w: any = window, graph = document.getElementById("graph")!, content = document.getElementById("graph-content")!;
+    graph.scrollLeft = graph.scrollWidth; graph.scrollTop = 600; graph.focus();
+    w.__widthRow = content.querySelector(".row"); w.__widthSvg = content.querySelector("svg");
+    return { width: content.style.width, minWidth: content.style.minWidth, left: graph.scrollLeft, top: graph.scrollTop };
+  });
+  expect(before.left).toBeGreaterThan(0); expect(before.width).toMatch(/px$/);
+  await dispatchWebviewMessage(page, { type: "graphDelta", delta: unchanged(data), state: { ...state, reset: false, workingTree: null },
+    performance: performanceFor(`width-state-${width}`) }); await frames(page);
+  expect(await page.evaluate(() => {
+    const graph = document.getElementById("graph")!, content = document.getElementById("graph-content")!;
+    return { width: content.style.width, minWidth: content.style.minWidth, left: graph.scrollLeft, top: graph.scrollTop };
+  })).toEqual(before);
+  expect(await page.evaluate(() => { const w: any = window; return {
+    row: w.__widthRow === document.querySelector("#graph-content .row"), svg: w.__widthSvg === document.querySelector("#graph-content svg"),
+    revision: w.GscGraphDataUpdates.stats().revision };
+  })).toEqual({ row: true, svg: true, revision: 2 });
+  await expect(page.locator("#graph")).toBeFocused();
+  await page.screenshot({ path: `/private/tmp/gsc-state-canvas-${width}.png` });
+});
+
+for (const change of ["tail", "viewport"] as const) test(`state-only delta recomputes canvas geometry when ${change} changes`, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 }); await mountGraphRenderer(page);
+  const data = history(); data.rows[0] = { ...data.rows[0], subject: "A wide commit subject ".repeat(60) };
+  await dispatchWebviewMessage(page, { type: "graph", revision: 1, data, state }); await frames(page);
+  const previousHeight = await page.locator("#graph-content").evaluate(el => el.style.height);
+  if (change === "viewport") await page.locator("#graph").evaluate(el => { el.style.width = "500px"; });
+  await dispatchWebviewMessage(page, { type: "graphDelta", delta: unchanged(data), state: { ...state, reset: false,
+    ...(change === "tail" ? { loading: true, hasMore: true } : {}) } }); await frames(page);
+  const measured = await page.evaluate(() => {
+    const content = document.getElementById("graph-content")!, row = content.querySelector<HTMLElement>(".row")!;
+    return { height: parseFloat(content.style.height), width: parseFloat(content.style.width), right: row.offsetLeft + row.scrollWidth };
+  });
+  expect(measured.height).toBe(parseFloat(previousHeight) + (change === "tail" ? 42 : 0));
+  expect(measured.width).toBeGreaterThanOrEqual(measured.right + 24);
+  if (change === "tail") await expect(page.locator("#graph-tail")).toBeAttached();
+});
+
 for(const changed of ["reset","scope","lanes","empty"] as const)test(`unchanged delta still renders when ${changed} changes graph meaning`,async({page})=>{
   await mountGraphRenderer(page);const data=history(changed==="empty"?0:4),initial={...state,loadedCount:data.rows.length,loading:changed==="empty"};
   await dispatchWebviewMessage(page,{type:"graph",revision:1,data,state:initial});await frames(page);

@@ -1,0 +1,54 @@
+{
+  "version": "0.1.72166",
+  "node": {
+    "tests": 92,
+    "pass": 92,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "tests": 75,
+    "pass": 75,
+    "workers": 1,
+    "headless": true
+  },
+  "controls": {
+    "cases": 11,
+    "nativeAndDomExact": true,
+    "prCardsPerCase": 80,
+    "staleLocalChangesPreserved": true,
+    "pickerAndVsCodeTransportReplaced": true
+  },
+  "comparativeNativeDomCases": 216,
+  "comparisonBaseline": "d8c1351eaf7843a8e2deabb2a848a533ec7c5488",
+  "rendererIsolatedLifetimes": 8,
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "osFocusChanged": false,
+  "forcedUserWindowReload": false,
+  "marketplaceStatusQueried": false,
+  "logs": {
+    "gsc-72166-node-tests.log": {
+      "bytes": 23406,
+      "sha256": "4f0e43165a9c57010e7f8544caa07554f2fc0bbb14668ad984255404b64af153"
+    },
+    "gsc-72166-browser-tests.log": {
+      "bytes": 12597,
+      "sha256": "2659b1419484ef09ed15e65c81380133169d3d5e72a97783a7742ff70a049d9f"
+    },
+    "gsc-72166-types.log": {
+      "bytes": 58,
+      "sha256": "8adf9b2296aa36a4102461ae3031cb43bbe6995a783a6dc91887a57f66a54171"
+    },
+    "gsc-72166-package.log": {
+      "bytes": 1338,
+      "sha256": "2afc15eef88f705bb8688d423fc54ee0d78f2d5980e36b93e565a02f1734986b"
+    }
+  },
+  "artifacts": {
+    "docs/benchmarks/cumulative-operation-0.1.72166.json": "2c497cfe77466950f8f5455d16c5e49e569b3e30426567e67b5a7c420ca7de28",
+    "docs/benchmarks/graph-state-canvas-0.1.72166.json": "fa36f5f5f51585401690b0f1a5a603bf79e6d401de54ef65ed7a3ad6e9856891",
+    "docs/benchmarks/operation-controls-0.1.72166.json": "6aa2c53a08dfbb035183669962aed3feb565c2b9c0c9f141cb9a7b474e01aa5c"
+  }
+}

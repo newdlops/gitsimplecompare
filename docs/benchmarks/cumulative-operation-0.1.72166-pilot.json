@@ -1,0 +1,31 @@
+{
+  "scope": "Functional diagnostic only. Missing GSC_BENCH_FULL_FRAME was detected by coordinator after both source children exited 0; excluded from comparative latency, CPU and RSS. Corrected formal run is separate.",
+  "coordinatorCompleted": false,
+  "rawFailureSha256": "00969321c957effda4708c2e4f6da6493de36bd4d82dddff0ae460f4dc5d8822",
+  "runs": [
+    {
+      "identity": "before",
+      "source": {
+        "kind": "commit",
+        "commit": "d8c1351eaf7843a8e2deabb2a848a533ec7c5488",
+        "bundleSha256": "03b2a983dc2b937c836ceedd1a72c89c27d53015b24b6a3ceb953afd746f365a"
+      },
+      "childCloseCode": 0,
+      "nativeDomCases": 18,
+      "allNativeDomExact": true,
+      "reportSha256": "7604185719e800663a09dacac0cdf44fa9d2d1113d61891490c7e7db933ebe16"
+    },
+    {
+      "identity": "after",
+      "source": {
+        "kind": "working-tree",
+        "commit": "027ae26798360ac4afebd771d38b81db9fdec1f6",
+        "bundleSha256": "9819db7ef8b381fde1aa7bdafbe430a99a4f7261b1e9a38de563eb22cfee7aba"
+      },
+      "childCloseCode": 0,
+      "nativeDomCases": 18,
+      "allNativeDomExact": true,
+      "reportSha256": "e54d9c166c14bc1df229e1a7714c3a3d24146220ef7ddb3fb97e053a35019f5c"
+    }
+  ]
+}

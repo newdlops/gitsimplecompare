@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.72166] - 2026-10-24
+
+### Fixes
+
+- Preserve the measured Graph canvas width and horizontal scroll position when
+  an unchanged graph delta only updates loading or working-tree status.
+- Recompute geometry when the viewport or loading tail changes, retaining row
+  identity, focus, revision validation and the final rendered acknowledgement.
+
+### Performance
+
+- Avoid redundant canvas writes and synchronous layout during unchanged Graph
+  status updates. Read viewport dimensions before writing canvas styles.
+
 ## [0.1.72165] - 2026-10-23
 
 ### Performance

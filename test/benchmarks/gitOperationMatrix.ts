@@ -158,8 +158,9 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     });
     mock.method(gitProcesses, "closed", async (id: number) => { try { await closed(id); } finally { active.delete(id); } });
     const profile = await startNodeCpuProfile(operation);
+    const rendererProfile = await renderer?.startCpuProfile(operation);
     assert.ok(!resources || renderer, "Scoped resources require the live production renderer");
-    assert.ok(!resources || !profile, "CPU sampling and scoped resource counters require separate runs");
+    assert.ok(!resources || (!profile && !rendererProfile), "CPU sampling and scoped resource counters require separate runs");
     if (resources && renderer) await resources.begin(renderer, operation, "service");
     const started = performance.now(), cpu = process.cpuUsage(), rss = process.memoryUsage.rss();
     let peakRss = rss;
@@ -199,6 +200,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       const cpuUsed = process.cpuUsage(cpu), commands: Record<string, number> = {}, graphCommands: Record<string, number> = {}, commandTimeMs: Record<string, number> = {};
       const phaseResources = resources && renderer ? await resources.finish(renderer, cpuUsed, timings.length) : undefined;
       await profile?.stop();
+      await rendererProfile?.stop();
       for (const [index, timing] of timings.entries()) {
         commands[timing.command] = (commands[timing.command] ?? 0) + 1;
         commandTimeMs[timing.command] = (commandTimeMs[timing.command] ?? 0) + timing.elapsedMs;
@@ -263,7 +265,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         ...(phaseResources ? { phaseResources } : {}),
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), nodeRssSamplingEnabled: !!rssSample,
         ...(rssSample ? { peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576) } : {}), nativeOperationVerified: true, nativeBranchVerified: true, historyExact: true };
-    } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); }
+    } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); await rendererProfile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
 }
 
@@ -286,6 +288,7 @@ async function main() {
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-operation-matrix-"));
   let stopMonitor: (() => void) | undefined;
   let resources: GraphPhaseResources | undefined;
+  let completed = false;
   try {
     if (process.env.GSC_BENCH_PHASE_RESOURCES === "1") resources = await GraphPhaseResources.create(directory);
     const f = await fixture(directory, process.env.GSC_BENCH_BORROWED_FIXTURE), results = [];
@@ -324,6 +327,9 @@ async function main() {
     const output = process.argv[2];
     if (output) await writeFile(output, JSON.stringify(result, null, 2) + "\n");
     console.log(JSON.stringify(result, null, 2));
-  } finally { await resources?.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose(); await rm(directory, { recursive: true, force: true }); }
+    completed = true;
+  } finally { await resources?.dispose(); stopMonitor?.(); await disposeWorkingTreeSnapshots(); await gitProcesses.dispose();
+    if (completed) await rm(directory, { recursive: true, force: true });
+    else console.error(`Preserved failed owned operation fixture: ${directory}`); }
 }
 void main().catch(error => { console.error(error); process.exitCode = 1; });
