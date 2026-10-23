@@ -1,6 +1,8 @@
 // Graph 원격 추적 브랜치 카탈로그를 읽고 common Git dir 단위 요청을 합치는 모듈.
 // - 네트워크 fetch 없이 로컬 refs/remotes만 읽으며, worktree별 UI 상태는 공유하지 않는다.
 import { runGit } from "./gitExec";
+import { isGitLifecycleError } from "./gitError";
+import { SharedGitRead } from "./sharedGitRead";
 import { logInfo } from "../ui/outputLog";
 import type { GraphBranchRef } from "../webview/graphBranchFilter";
 
@@ -18,17 +20,21 @@ interface SharedRead {
   promise: Promise<GraphRemoteBranchTip[]>;
 }
 interface CompletedRead { epoch: number; tips: GraphRemoteBranchTip[]; }
+/** 취소 응답이 끝나도 실제 Native close까지 같은 root의 슬롯을 유지하는 공통 경로 조회다. */
+interface CommonDirRead { read: SharedGitRead<string>; consumers: number; running: boolean; reportedSharing?: boolean; }
 const completed = new Map<string, CompletedRead>();
 const pending = new Map<string, SharedRead>();
 const epochs = new Map<string, number>();
 const versions = new Map<string, string>();
 let resolvingCommonDirs = 0;
+let orphanAbortTimer: ReturnType<typeof setTimeout> | undefined;
 const runnerIds = new WeakMap<object, number>();
 let nextRunnerId = 1;
 
 /** common Git dir 단위 remote-tip singleflight를 제공하는 카탈로그다. */
 export class GraphBranchCatalog {
   private readonly roots = new Map<string, string>();
+  private readonly commonReads = new Map<string, CommonDirRead>();
   /** @param runner gitExec 경계를 기본값으로 쓰되 테스트에서 제어 가능한 loader를 허용한다. */
   constructor(private readonly runner: GraphBranchCatalogRunner = runGit) {}
 
@@ -43,17 +49,19 @@ export class GraphBranchCatalog {
     signal?: AbortSignal,
     version = "unversioned"
   ): Promise<GraphRemoteBranchTip[]> {
+    signal?.throwIfAborted();
     let identity: string;
     resolvingCommonDirs++;
     try {
       identity = await this.commonDir(repoRoot, signal);
     } catch (error) {
-      if (signal?.aborted) throw error;
+      if (signal?.aborted || isGitLifecycleError(error)) throw error;
       identity = `repo:${repoRoot}`;
     } finally {
       resolvingCommonDirs--;
       scheduleOrphanAbort();
     }
+    signal?.throwIfAborted();
     this.roots.set(repoRoot, identity);
     const baseKey = `${runnerId(this.runner)}:${identity}`;
     this.selectVersion(baseKey, version, repoRoot, identity);
@@ -93,13 +101,45 @@ export class GraphBranchCatalog {
     completed.delete(`${baseKey}:${epoch - 1}`);
   }
 
-  /** worktree가 공유하는 절대 common Git dir을 얻고 실패 시 호출부가 root 격리로 축소할 수 있게 한다. */
+  /**
+   * 같은 root의 첫 Native 경로 해석을 공유하고 각 소비자의 취소는 독립적으로 처리한다.
+   * @param repoRoot Git이 실제로 해석할 작업트리 @param signal 이 소비자의 취소 신호
+   * @returns 성공해 확인된 common-dir. 중단 오류는 전파하고 일반 오류의 격리는 호출부에 맡긴다.
+   */
   private async commonDir(repoRoot: string, signal?: AbortSignal): Promise<string> {
     const cached = this.roots.get(repoRoot);
     if (cached) return cached;
-    const value = (await this.runner(["rev-parse", "--path-format=absolute", "--git-common-dir"], repoRoot, { signal })).trim();
-    if (!value) throw new Error("Git common dir is unavailable.");
-    return value;
+    let entry = this.commonReads.get(repoRoot);
+    if (!entry) {
+      const created: CommonDirRead = { read: undefined!, consumers: 0, running: false };
+      created.read = new SharedGitRead(async sharedSignal => {
+        created.running = true;
+        try {
+          const value = (await this.runner(["rev-parse", "--path-format=absolute", "--git-common-dir"], repoRoot, { signal: sharedSignal })).trim();
+          if (!value) throw new Error("Git common dir is unavailable.");
+          return value;
+        } finally { created.running = false; this.releaseCommonRead(repoRoot, created); }
+      }, value => value);
+      this.commonReads.set(repoRoot, entry = created);
+    }
+    if (entry.consumers && !entry.reportedSharing) {
+      entry.reportedSharing = true;
+      logInfo("graph common directory read shared", { repoRoot });
+    }
+    entry.consumers++;
+    try {
+      const identity = await entry.read.read({ signal, maxCacheAgeMs: 0 });
+      this.roots.set(repoRoot, identity);
+      return identity;
+    } finally { entry.consumers--; this.releaseCommonRead(repoRoot, entry); }
+  }
+
+  /**
+   * 마지막 소비자와 실제 Git 실행이 모두 끝난 레코드만 해제해 중단 중 중복 spawn을 막는다.
+   * @param repoRoot 이 조회가 소유한 원래 root @param entry 완료 또는 소비자 해제를 알리는 레코드
+   */
+  private releaseCommonRead(repoRoot: string, entry: CommonDirRead): void {
+    if (!entry.consumers && !entry.running && this.commonReads.get(repoRoot) === entry) this.commonReads.delete(repoRoot);
   }
 
   /** remote ref를 한 번만 읽어 UI ref와 containment tip에 필요한 모든 필드를 만든다. */
@@ -145,7 +185,9 @@ export class GraphBranchCatalog {
 
 /** common-dir 해석 중인 linked worktree가 있으면 기다렸다가 실제 무구독 read만 취소한다. */
 function scheduleOrphanAbort(): void {
-  setTimeout(() => {
+  if (orphanAbortTimer !== undefined || !pending.size) return;
+  orphanAbortTimer = setTimeout(() => {
+    orphanAbortTimer = undefined;
     if (resolvingCommonDirs > 0) return;
     for (const shared of pending.values()) if (shared.subscribers.size === 0) shared.controller.abort();
   }, 0);

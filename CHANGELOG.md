@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.72165] - 2026-10-23
+
+### Performance
+
+- Share the initial Native common-directory lookup across concurrent Graph catalog
+  requests for the same repository. Keep cancellation independent and wait for a
+  stopped Git process to close before replacing it.
+- Coalesce pending catalog orphan checks into a single scheduled sweep.
+
+### Fixes
+
+- Propagate stopped common-directory reads instead of turning timeout, buffer-limit
+  or stopping errors into a successful fallback catalog. Reject cancelled callers
+  even when a successful catalog is already cached.
+
 ## [0.1.72164] - 2026-10-23
 
 ### Fixes
