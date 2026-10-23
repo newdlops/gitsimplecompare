@@ -96,6 +96,8 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   if (operation === "fetch-known-history") await git(["update-ref", "refs/heads/known-history", f.main], f.remote);
   if (operation === "fetch-no-change") await git(["fetch", "--all", "--prune"]);
   const refsBefore = operation === "fetch-no-change" ? await git(["for-each-ref", "--format=%(refname) %(objectname)"]) : undefined;
+  // Native 검증의 무거운 조회는 제품 초기화 전에 끝내 app cache의 수명을 측정 직전에 소비하지 않는다.
+  const initialExpected = operation === "initial" ? undefined : await readNativeGraphExpectation(f.root, 300);
   const publications: { at: number; signature: string; performance?: GraphRenderPerformance }[] = [];
   let measuring = false;
   const renderer = process.env.GSC_BENCH_LIVE_RENDERER === "1" ? await GraphLiveRenderer.create() : undefined;
@@ -125,7 +127,11 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
   const metadataReady = () => pendingMarkers === 0 && (!cache.remoteReady || !!cache.completed || localOnlyFailures.length > 0);
   try {
     if (renderer) await renderer.mount(surface.webview.html);
-    if (operation !== "initial") { assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady, resources ? 150 : 20); }
+    if (operation !== "initial") {
+      assert.equal(await panel.runDirectGraph("ready"), true); await idle(f.root, panel, metadataReady, resources ? 150 : 20);
+      assert.equal(graphSignature(panel.commits), graphSignature(initialExpected!), "Initial Graph must match an independent Native snapshot before measurement");
+      if (renderer) await renderer.waitForPendingFrame();
+    }
     // Graph 행에서 checkout하는 일반 경로와 페이지 밖의 오래된 topic 이동을 별도 측정한다.
     const loadedTarget = operation === "checkout" && process.env.GSC_BENCH_CHECKOUT_LOADED_TARGET === "1";
     const visibleHashes = new Set<string>(panel.commits.map((commit: Commit) => commit.hash));

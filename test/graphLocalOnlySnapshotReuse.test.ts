@@ -32,6 +32,8 @@ async function fixture(t:TestContext) {
   await git(f.root,"config","branch.feature.merge","refs/heads/main");
   await git(f.root,"branch","alias",tip); await git(f.root,"config","branch.alias.remote","origin");
   await git(f.root,"config","branch.alias.merge","refs/heads/main");
+  // Apple Git은 첫 fetch에서 이 symref를 만들 수 있다. 무변경 재사용 검사에서는 최초 snapshot부터 고정한다.
+  await git(f.root,"symbolic-ref","refs/remotes/origin/HEAD","refs/remotes/origin/main");
   const service=new GitLogService(f.root),{panel}=createOperationGraphPanel(t,service);
   t.after(async()=>{panel.dispose();await disposeWorkingTreeSnapshots();await gitProcesses.dispose();});
   assert.equal(await panel.runDirectGraph("ready"),true); await settled(panel,service);
@@ -43,7 +45,10 @@ for(const action of ["unchanged fetch","loaded checkout"]){
   test(`Native ${action} revalidates local-only markers without another DAG read`,{timeout:60000},async t=>{
     const f=await fixture(t), index=await readFile(join(f.root,".git/index"));
     await writeFile(join(f.root,"untracked.txt"),"keep me\n");
+    const refs=await git(f.root,"for-each-ref","--format=%(refname)%00%(objectname)%00%(symref)");
     if(action==="unchanged fetch")await f.service.fetchAll();else await f.service.checkoutLocalBranch("alias");
+    assert.equal(await git(f.root,"for-each-ref","--format=%(refname)%00%(objectname)%00%(symref)"),refs,
+      "The Native action must preserve every ref before checking unchanged-DAG reuse");
     let walks=0;const stop=setGitExecutionObserver(timing=>{if(timing.command==="rev-list")walks++;});
     try{if(action==="unchanged fetch")await f.panel.refreshAfterFetchAction();else await f.panel.refreshAfterCheckoutAction();await settled(f.panel,f.service);}finally{stop();}
     assert.equal(walks,0,"Unchanged Native local/remote/history proof must avoid another DAG walk");

@@ -1,0 +1,171 @@
+{
+  "recordedAt": "2026-10-23T10:16:36.356Z",
+  "classification": "Verification-only change, runtime0.1.72165 unchanged; original optimization goal remains incomplete",
+  "productionCommit": "482863ac10f88c8e27a1625fe7e1704887b32884",
+  "productionVersion": "0.1.72165",
+  "independence": {
+    "productLogParserUsed": false,
+    "productLocalOnlyAlgorithmUsed": false,
+    "perBranchNativeRevList": true,
+    "initialOracleBeforeProductInitialization": true,
+    "finalOracleAfterMeasuredFrameAndCounters": true,
+    "globalTopologicalFirstPageOnly": true
+  },
+  "tests": {
+    "oldHelperRed": {
+      "pass": 2,
+      "fail": 1,
+      "expectedIndependenceFailure": true
+    },
+    "finalHomebrew": {
+      "pass": 7,
+      "fail": 0,
+      "cancelled": 0
+    },
+    "finalAppleSandbox": {
+      "pass": 5,
+      "fail": 0,
+      "cancelled": 2
+    },
+    "finalAppleOutsideSandbox": {
+      "pass": 4,
+      "fail": 0,
+      "cancelled": 3
+    },
+    "newOracleCasesPassOnBothGitImplementations": 4,
+    "previousFullRangeOracleAndFixedFixtureOnBoth": {
+      "pass": 6,
+      "fail": 0,
+      "cancelled": 0
+    },
+    "typesPass": true
+  },
+  "functional": {
+    "smallBefore72112AndAfter72165": {
+      "cases": 36,
+      "independentInitialAndFinalNativeAndProductionDomExact": true,
+      "timingsAreNotPairedPerformanceEvidence": true
+    },
+    "large72164": {
+      "cases": 18,
+      "independentInitialAndFinalNativeAndProductionDomExact": true,
+      "archiveLauncherIntentionallyInterrupted": true,
+      "coordinatorCompleted": false,
+      "workerObservedAbsent": true,
+      "originalCaptainProtectedFilesAndRefsUnchanged": true,
+      "finalFixtureRestoreNotClaimed": true
+    }
+  },
+  "oracleFeasibility": {
+    "onlyValidatorCost": true,
+    "sameOwnedInputNative300CommitsExact": true,
+    "rangeQueriesBefore": 151,
+    "rangeQueriesAfter": 3,
+    "cleanEnvironmentOneObservation": {
+      "beforeMs": 11561.63,
+      "afterMs": 865.52
+    },
+    "pairedProductPerformanceClaim": false
+  },
+  "censored": {
+    "oldLargeNewBranchPushSources": [
+      "0.1.72112",
+      "0.1.72126"
+    ],
+    "completedPushSample": false,
+    "failedOwnedPoolsPreserved": true,
+    "productWorkerAndNativeGitNotSignalledForValidatorTransition": true
+  },
+  "environment": {
+    "appleGitVersionReadOutsideProductOneObservationMs": 5078.49,
+    "loadAverageOneObservation": [
+      16.85,
+      17.24,
+      14.55
+    ],
+    "cpuIdlePercentOneObservation": 30.19,
+    "scope": "Diagnostic context only, not an attribution of the cause of timeouts"
+  },
+  "runtimeChanged": false,
+  "pairedProductPerformanceRun": false,
+  "marketplaceStatusQueried": false,
+  "osFocusChanged": false,
+  "forcedReload": false,
+  "raw": [
+    {
+      "file": "/private/tmp/gsc-goal67-oracle-baseline-red.log",
+      "sha256": "f9ea4cefc2733239b840be61ad69fec16123902dd141930b241398d2a79236f9"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-native-oracle-apple-fixed.log",
+      "sha256": "4f131c6a1cd8306fdd6bf950d2000df56b5f3e3e31fad0aad8e7ab552bc39963"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-native-oracle-homebrew-fixed.log",
+      "sha256": "1d57f8ee3390d4d0aa7833dac616a7f2f99316f34e4d32880701407370461ec2"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-visible-oracle-homebrew.log",
+      "sha256": "d794e1b231e2e1aafc3fd971ad1256bca85929b1b16da2296e06213d45fbd20e"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-visible-oracle-apple.log",
+      "sha256": "d90f8678996347e6e59bb22f662e450133715ffdc3683b2c518cba3b9c40a632"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-visible-oracle-apple-unsandboxed.log",
+      "sha256": "d8af2e514cd87654506251c6825a54b9b979d761f3b730ce950c8acce4c695b6"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-independent-small-before.json",
+      "sha256": "dab99118ce81e08016536750ee9ea05080a0522034bfd8efe3c4dbaa99e8b122"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-independent-small-after.json",
+      "sha256": "032c482df94e84262e48edc3a0d21e44847246f3db77a1aef86bcb2edfb7c511"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-old-large-push-censored.json",
+      "sha256": "a418596051276af613fd6a59085725f58b2954b402e9ef6ee50895d4b0035d4c"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-26-large-push-censored.json",
+      "sha256": "ff1e8a283670ee632e5afe6f9b706f5f6bf719051af462ac9ab1e7bcb3cd6ee7"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-large64-recovered-functional.json",
+      "sha256": "dc5b2f4168c41d20eb82c72d0ef6798cd9c582792aa5845a801617c6ce0e2e23"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-large64-functional-interrupted.json",
+      "sha256": "f94e02e5889755e401e6501864cfb0b4ba7dde93e9611a57b7271e9c82e5cbbe"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-independent-large64-functional-1-functional-before.json",
+      "sha256": "052ff332c6c19bca5b30d8b8f53d5bfa5f5c5f0748e090b9b208cee56c3baba2"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-visible-oracle-feasibility.json",
+      "sha256": "7fb8e8390f08cea726185094da0e1853a0dd27e984cd3bee747ba82123d00ac1"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-visible-oracle-feasibility-clean.json",
+      "sha256": "7dbc59fd32a61fb1eb8ded0dd95eb900b38225a142451c132986432391e8b788"
+    },
+    {
+      "file": "/private/tmp/gsc-goal67-final-types.log",
+      "sha256": "2668b6b320a0fc13dd1b8d99773cd1177bf72f4a37774c9592f19217f7b04e08"
+    }
+  ],
+  "sourceChecksums": {
+    "test/helpers/nativeGraphOracle.cjs": "6968006b4d7618e8ce557b8208bf26c95b69310327e6301e03ec320d7abe5a59",
+    "test/helpers/graphNativeExpectation.ts": "621907183240fe5043bb0569cb36f7b836f744219f52c309c5de2c3d65ffe683",
+    "test/nativeGraphOracle.test.ts": "b77eb2ff9c9eb35e68a223bd29be9c502c7001c52473791a9e96f937bd54b8c2",
+    "test/graphLocalOnlySnapshotReuse.test.ts": "47ad1f7f689c921a6a55899713fa25f66b179ba0611cf79cdbc761d2e1139723",
+    "test/benchmarks/gitOperationMatrix.ts": "436e2cd4f7a9eeef1f4b62daef3921742f0c431517c4946eb8a8e42b705d5ea8"
+  },
+  "remaining": [
+    "Balanced cumulative small and release-regression large latency/CPU/separate sampled RSS audit under an appropriate measurement environment",
+    "Review all contrary per-operation results; no universal speed or memory claim"
+  ]
+}

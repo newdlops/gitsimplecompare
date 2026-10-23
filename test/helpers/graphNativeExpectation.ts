@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import path from "node:path";
+import { promisify } from "node:util";
 import { runGit } from "../../src/git/gitExec";
-import { GitLogService } from "../../src/git/gitLogService";
 import type { Commit } from "../../src/graph/graphTypes";
 
 /** 제품 tag cache/parser와 독립된 Native 원격 tag의 최종 대상이다. */
@@ -40,22 +42,16 @@ export function expectedRenderedRefs(commits: readonly Commit[], remoteTags: rea
 }
 
 /**
- * 패널 cache와 독립된 서비스에 현재 Native branch/tip을 공급해 최종 표시의 비교 기준을 만든다.
+ * 별도 Node에서 제품 코드 없는 Native log·ref·브랜치별 rev-list를 실행해 최종 표시 기준을 만든다.
  * @param root 소유 임시 저장소 @param limit 패널이 실제로 로드한 commit 수
- * @returns 새 Git log와 완료한 local-only metadata. 실패한 marker 조회를 빈 정상 결과로 받아들이지 않는다.
+ * @returns 독립적으로 계산한 Native 커밋·local-only metadata. child close 후에만 반환하며 부분 성공은 없다.
  */
-export async function readNativeGraphExpectation(root: string, limit: number) {
-  const service = new GitLogService(root);
-  const [local, output] = await Promise.all([
-    service.getLocalBranchSnapshot(),
-    runGit(["for-each-ref", "--format=%(refname:short)%00%(objectname)%00%(symref)", "refs/remotes/"], root),
-  ]);
-  assert.deepEqual(local.invalidRefs, [], "The owned fixture must have no invalid local refs");
-  const remote = output.trim().split("\n").filter(Boolean).flatMap(line => {
-    const [name, hash, symbolic] = line.split("\0"); return symbolic ? [] : [{ name, hash }];
+export async function readNativeGraphExpectation(root: string, limit: number): Promise<Commit[]> {
+  const worker = path.join(process.env.GSC_BENCH_WORKSPACE_ROOT ?? process.cwd(), "test/helpers/nativeGraphOracle.cjs");
+  const { stdout } = await promisify(execFile)(process.execPath, [worker, root, String(limit)], {
+    maxBuffer: 64 * 1024 * 1024, encoding: "utf8",
   });
-  service.seedGraphBranchTips(local.branches, remote);
-  const commits = await service.getCommitPage(limit, 0, [], true);
-  assert.ok((service as any).localOnlyBranchCache.peek(), "Fresh marker verification must finish successfully");
-  return commits;
+  const result = JSON.parse(stdout) as { commits: Commit[]; productModulesUsed: boolean };
+  assert.equal(result.productModulesUsed, false); assert.ok(Array.isArray(result.commits) && result.commits.length <= limit);
+  return result.commits;
 }
