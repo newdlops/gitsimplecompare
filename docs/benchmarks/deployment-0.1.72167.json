@@ -1,0 +1,15 @@
+{
+  "version": "0.1.72167",
+  "sourceCommit": "34cb44b8fc281669bf24bf49af2bd9c6dc70fcec",
+  "vsixSha256": "fcd3d52e0b0b999e70e4621f49537e4481df46e395ee380c37a7c5bf6fb59e34",
+  "publishCommandExitCode": 0,
+  "publishLogSha256": "4cca155fa31f5ca47c7b7ba171c91efbb7d9778aff3aca59be859a4805aa7926",
+  "installCommandExitCode": 0,
+  "installLogSha256": "86c6b6b3e21b45ec316b71978000086492c4cafaabd57d302c925f34ee338148",
+  "registeredVersion": "0.1.72167",
+  "installedRuntimeCount": 126,
+  "allInstalledRuntimeExact": true,
+  "activeHostReloaded": false,
+  "activeHostVersionInspected": false,
+  "marketplaceStatusQueried": false
+}

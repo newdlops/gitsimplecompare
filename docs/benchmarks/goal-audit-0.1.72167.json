@@ -1,0 +1,52 @@
+{
+  "version": "0.1.72167",
+  "namedOperationRequirements": {
+    "push": [
+      "push"
+    ],
+    "pull": [
+      "pull"
+    ],
+    "fetch": [
+      "fetch",
+      "fetch-no-change"
+    ],
+    "rebase": [
+      "interactive-rebase",
+      "branch-rebase-merge"
+    ],
+    "merge": [
+      "branch-squash-merge",
+      "branch-rebase-merge"
+    ],
+    "pr-squash-cherry-pick": [
+      "pr-squash-cherry-pick"
+    ],
+    "pr-cherry-pick": [
+      "pr-cherry-pick"
+    ],
+    "cherry-pick": [
+      "cherry-pick"
+    ],
+    "checkout": [
+      "checkout"
+    ]
+  },
+  "allCurrentControlsNativeAndDomExact": true,
+  "staleLocalChangesAnd80PrsVerified": true,
+  "nodeChecks": 92,
+  "browserChecks": 75,
+  "currentRendererLifetimes": 8,
+  "priorCumulativeVersion": "0.1.72166",
+  "priorCumulativeNativeDomCases": 216,
+  "priorCumulativeNotRerunAsCurrent": true,
+  "currentRuntimeCount": 126,
+  "installedBytesMatchValidatedArtifact": true,
+  "publicationAndInstallationSucceeded": true,
+  "limitations": [
+    "Comparative results are scoped to documented owned inputs; some individual timings and CPU increased.",
+    "No claim of every-operation latency reduction in every repository, GitHub transfer performance, whole-system CPU or physical/retained memory peak.",
+    "No OS focus change or forced reload; existing active host version was not inspected.",
+    "No separate Marketplace status query."
+  ]
+}

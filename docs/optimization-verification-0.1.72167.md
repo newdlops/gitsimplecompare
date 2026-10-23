@@ -63,12 +63,17 @@ Graph frame이다. VS Code transport/window/picker와 PR GitHub metadata만 대�
 80개 PR 카드와 오래된 local-change hint를 둔 11개 경로에서 Native 결과·HEAD·refs·
 remote tags·local-only·로컬 변경을 비교한다. 결과는
 [현재 컨트롤 원문](benchmarks/operation-controls-0.1.72167.json)에 있다.
-390/768/1440px 화면을 생성하고 세 크기의 실제 화면을 별도로 확인한다.
+33개 화면을 생성하고 390/768/1440px 각 한 장의 실제 화면을 별도로 확인했다.
+검사와 화면 checksum은 [현재 QA 기록](benchmarks/verification-0.1.72167.json),
+요구 경로별 확인은 [최종 감사 기록](benchmarks/goal-audit-0.1.72167.json)에 보존한다.
 
 ## 배포와 남는 관측 한계
 
 [패키지 바이트 기록](benchmarks/release-artifact-0.1.72167.json)과
 [설치·게시 기록](benchmarks/deployment-0.1.72167.json)은 검증한 동일 VSIX를 기준으로 한다.
+제품 커밋 `34cb44b8fc281669bf24bf49af2bd9c6dc70fcec`을 푸시했고,
+해당 VSIX 게시와 로컬 설치가 모두 성공했다. 설치 registry는 0.1.72167이며,
+126개 runtime 파일이 검증한 패키지와 같은 바이트다.
 test/src/scripts/docs는 패키지에서 제외한다. 이전 버전 대비 실제 runtime 변경은
 Graph 두 JS뿐이며, 나머지 Native 번들·helper·NLS·l10n은 그대로다.
 
