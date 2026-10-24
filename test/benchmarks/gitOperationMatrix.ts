@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { performance } from "node:perf_hooks";
@@ -26,6 +26,8 @@ import { startNodeCpuProfile } from "../helpers/nodeCpuProfile";
 import { readNativeGraphExpectation, readNativeRemoteTagExpectation } from "../helpers/graphNativeExpectation";
 import { GraphPhaseResources } from "../helpers/graphPhaseResources";
 import { BenchmarkTurnGate } from "../helpers/benchmarkTurnGate";
+import { GitServiceRegistry } from "../../src/git/serviceRegistry";
+import { installBenchmarkReadContention } from "../helpers/benchmarkReadContention";
 import { verifyGitOperationResult, type GitOperationName } from "../helpers/gitOperationOracle";
 
 type Operation = GitOperationName;
@@ -69,6 +71,10 @@ function pullRequest(f: Awaited<ReturnType<typeof fixture>>): PullRequestInfo {
 /** 실제 서비스 성공과 Graph의 HEAD/부모/ref가 같은 Git 상태인지 확인하는 하나의 측정이다. */
 async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operation, resources?: GraphPhaseResources) {
   f = await isolateIncomingCommit(f, operation);
+  const startupDirectories = operation === "initial" && process.env.GSC_BENCH_STARTUP_DISCOVERY === "1"
+    ? Array.from({ length: 34 }, (_, index) => path.join(f.root, "gsc-startup-discovery", `module-${index}`, "src")) : [];
+  await Promise.all(startupDirectories.map(directory => mkdir(directory, { recursive: true })));
+  const startupRoot = startupDirectories.length ? await realpath(f.root) : f.root;
   const git = (args: string[], cwd = f.root) => runGit(args, cwd);
   await git(["switch", "-qC", `bench-${operation}`, operation === "push" || operation === "push-tracked" ? f.pr : f.main]);
   // 선택한 기능 검증은 UI 입력 상태부터 독립 Native 결과와 맞춘다. OS cache 예열이므로 cold-start 측정과 구분한다.
@@ -159,6 +165,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
     mock.method(gitProcesses, "closed", async (id: number) => { try { await closed(id); } finally { active.delete(id); } });
     const profile = await startNodeCpuProfile(operation);
     const rendererProfile = await renderer?.startCpuProfile(operation);
+    const contention = installBenchmarkReadContention();
     assert.ok(!resources || renderer, "Scoped resources require the live production renderer");
     assert.ok(!resources || (!profile && !rendererProfile), "CPU sampling and scoped resource counters require separate runs");
     if (resources && renderer) await resources.begin(renderer, operation, "service");
@@ -187,7 +194,16 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
       operationEnd = performance.now();
       operationEndedAt = Date.now();
       const operationProcesses = timings.length;
-      if (operation === "initial") assert.equal(await panel.runDirectGraph("ready"), true);
+      if (operation === "initial") {
+        const registry = new GitServiceRegistry();
+        const discovery = Promise.all(startupDirectories.map(directory => registry.resolve(directory)));
+        // Graph ready와 Explorer의 서로 다른 폴더 탐색을 같은 시작 창에 실제로 겹친다.
+        const [loaded, found] = await Promise.allSettled([panel.runDirectGraph("ready"), discovery]);
+        if (loaded.status === "rejected") throw loaded.reason;
+        if (found.status === "rejected") throw found.reason;
+        assert.equal(loaded.value, true);
+        assert.ok(found.value.every(service => service?.repoRoot === startupRoot));
+      }
       else if (operation === "checkout" || operation === "checkout-unloaded") await panel.refreshAfterCheckoutAction();
       else if (operation.startsWith("fetch")) await panel.refreshAfterFetchAction();
       else await panel.refreshAfterGraphAction(operation === "push" || operation === "push-tracked" ? "references" : "graph");
@@ -240,7 +256,10 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         : operationEndedAt + liveRenderer.allMessageFrameMs <= nativeOracleStartedAt;
       assert.notEqual(oracleAfterFrame, false, "Native verification must start after the final measured renderer frame");
       if (renderer && operation === "checkout" && process.env.GSC_BENCH_SCREENSHOTS) await renderer.capture(process.env.GSC_BENCH_SCREENSHOTS);
-      return { operation, operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
+      return { operation, ...(startupDirectories.length ? { startupDiscoveryDirectories: startupDirectories.length, startupRootsNativeExact: true } : {}),
+        ...(contention ? { simulatedReadContention: contention.stats() } : {}),
+        rendererCpuThrottle: Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1),
+        operationMs: Math.round(operationEnd - started), graphMs: Math.round(graphEnd - operationEnd),
         branchDetailsReads: branchReads.map(read => ({ startedAfterOperationMs: read.startedAt - operationEndedAt,
           durationMs: read.finishedAt === undefined ? null : read.finishedAt - read.startedAt,
           firstFrameBeforeDetails: !!liveRenderer?.mutationToFrameMs && read.finishedAt !== undefined &&
@@ -265,7 +284,7 @@ async function measure(f: Awaited<ReturnType<typeof fixture>>, operation: Operat
         ...(phaseResources ? { phaseResources } : {}),
         rssDeltaMiB: Math.round((settledRss - rss) / 1048576), nodeRssSamplingEnabled: !!rssSample,
         ...(rssSample ? { peakRssDeltaMiB: Math.round((peakRss - rss) / 1048576) } : {}), nativeOperationVerified: true, nativeBranchVerified: true, historyExact: true };
-    } finally { clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); await rendererProfile?.stop(); }
+    } finally { contention?.dispose(); clearInterval(rssSample); measuring = false; unobserve(); await profile?.stop(); await rendererProfile?.stop(); }
   } finally { panel.dispose(); await renderer?.dispose(); await disposeWorkingTreeSnapshots(); mock.restoreAll(); }
 }
 

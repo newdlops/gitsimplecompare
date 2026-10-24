@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.72168] - 2026-10-25
+
+### Performance
+
+- Share Native repository discovery across different directories in the same
+  validated worktree, avoiding one Git process per Explorer folder at startup.
+- Reuse the existing short root cache for validated sibling paths while keeping
+  branch reads fresh. Record grouped discovery in Git Simple Compare Output.
+
+### Stability
+
+- Recheck physical alias boundaries after a shared read. Keep nested repositories,
+  linked worktrees, bare boundaries and clone/init invalidation separate.
+- Preserve the original Native lookup for custom executables, explicit discovery
+  environment and uncertain filesystem boundaries.
+
 ## [0.1.72167] - 2026-10-24
 
 ### Maintenance

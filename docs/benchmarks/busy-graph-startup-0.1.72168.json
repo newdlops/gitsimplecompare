@@ -1,0 +1,2785 @@
+{
+  "baselineCommit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+  "fingerprint": {
+    "files": 650,
+    "sha256": "899020b61ff4f15ce27366cfd71e74e0d6b32aef58820fb611898c239246cf15"
+  },
+  "operations": [
+    "initial"
+  ],
+  "runs": [
+    {
+      "pair": 0,
+      "identity": "before",
+      "mode": "latency",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "a61cead92fbe42d1d5c398e1ffa1d224456141d79f13bcaf789134663fb27a15",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "dc76c230590d2e273775714e92832b600ff04aaf69d012fef54f5c9875aa83e7"
+        },
+        "environmentKeys": 105,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 119,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 71,
+                "durationMs": 43,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 323,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 274,
+              "latestMutationToFrameMs": 323,
+              "renderMs": 54,
+              "frameMs": 34,
+              "latestRenderMs": 0,
+              "latestFrameMs": 14
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 283,
+            "graphAlreadyCurrent": false,
+            "settledMs": 340,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 1051,
+              "worktree": 52,
+              "for-each-ref": 107,
+              "log": 29,
+              "rev-list": 71,
+              "remote": 50,
+              "ls-remote": 37,
+              "status": 108
+            },
+            "nodeCpuMs": 204,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 21,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 0,
+      "identity": "after",
+      "mode": "latency",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "65e953825eee1e9baea036f5a0d9f1aa5c93709e741ba7d32446d37ac0605b51",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 105,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 88,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 38,
+                "durationMs": 46,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 217,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 181,
+              "latestMutationToFrameMs": 209,
+              "renderMs": 29,
+              "frameMs": 16,
+              "latestRenderMs": 0,
+              "latestFrameMs": 6
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 149,
+            "graphAlreadyCurrent": false,
+            "settledMs": 235,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 12,
+              "rev-parse": 37,
+              "for-each-ref": 79,
+              "log": 33,
+              "rev-list": 54,
+              "remote": 38,
+              "status": 19,
+              "ls-remote": 32
+            },
+            "nodeCpuMs": 143,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 20,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "before",
+      "mode": "latency",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "76f992531dc0dcc156e4fd4ac9e04c6002c10e81f031882b984682e37a9b18d2",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "218807a6a9212bae3f0800cdead0997a555005219bbd8404c4e0c6c5c9872ed0"
+        },
+        "environmentKeys": 105,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 113,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 69,
+                "durationMs": 40,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 287,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 242,
+              "latestMutationToFrameMs": 287,
+              "renderMs": 44,
+              "frameMs": 23,
+              "latestRenderMs": 1,
+              "latestFrameMs": 9
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 183,
+            "graphAlreadyCurrent": false,
+            "settledMs": 304,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 1023,
+              "worktree": 45,
+              "for-each-ref": 102,
+              "log": 27,
+              "remote": 11,
+              "ls-remote": 34,
+              "rev-list": 64,
+              "status": 18
+            },
+            "nodeCpuMs": 190,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 12,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "after",
+      "mode": "latency",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "400c4d62b381e76f33b503a8b2ab3ad70a199370bd3e432812368a51a36cfa23",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 105,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 78,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 38,
+                "durationMs": 35,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 214,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 182,
+              "latestMutationToFrameMs": 214,
+              "renderMs": 34,
+              "frameMs": 19,
+              "latestRenderMs": 1,
+              "latestFrameMs": 4
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 138,
+            "graphAlreadyCurrent": false,
+            "settledMs": 231,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "worktree": 14,
+              "rev-parse": 39,
+              "for-each-ref": 67,
+              "log": 23,
+              "remote": 10,
+              "ls-remote": 29,
+              "rev-list": 56,
+              "status": 15
+            },
+            "nodeCpuMs": 154,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 11,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 0,
+      "identity": "before",
+      "mode": "cpu",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "12a0b7d985dbf407d2df89f13eba949d17b486f95f25d33f418bf24826d1d96c",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "b307f5adca7759aefac296a33779d8b07e82a52120b51c169813ae71198851f1"
+        },
+        "environmentKeys": 106,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 202,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 78,
+                "durationMs": 116,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 455,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 390,
+              "latestMutationToFrameMs": 456,
+              "renderMs": 66,
+              "frameMs": 36,
+              "latestRenderMs": 2,
+              "latestFrameMs": 14
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 338,
+            "graphAlreadyCurrent": false,
+            "settledMs": 498,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 35,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 35,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "worktree": 51,
+              "for-each-ref": 181,
+              "rev-parse": 4006,
+              "log": 79,
+              "rev-list": 95,
+              "remote": 66,
+              "ls-remote": 64,
+              "status": 60
+            },
+            "nodeCpuMs": 278,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856000880,
+              "finishedAt": 1792856001379,
+              "elapsedMs": 499,
+              "nodeCpuMs": 278.404,
+              "childCpuMs": 595.722,
+              "browserCpuMs": 309.95599999999996,
+              "browserComplete": true,
+              "ownedCpuMs": 1184.0819999999999,
+              "registeredGitCalls": 44,
+              "nodeHeapAfterAwaitDelta": 4440072,
+              "nodeRssAfterAwaitDelta": 12763136,
+              "nodeMemoryBefore": {
+                "rss": 164855808,
+                "heapTotal": 88064000,
+                "heapUsed": 59598360,
+                "external": 4317792,
+                "arrayBuffers": 627059
+              },
+              "nodeMemoryAfter": {
+                "rss": 177618944,
+                "heapTotal": 95666176,
+                "heapUsed": 64038432,
+                "external": 3979962,
+                "arrayBuffers": 260064
+              },
+              "childrenBefore": {
+                "userCpuMs": 408.629,
+                "systemCpuMs": 913.722,
+                "minorFaults": 25843,
+                "majorFaults": 407
+              },
+              "childrenAfter": {
+                "userCpuMs": 657.716,
+                "systemCpuMs": 1260.357,
+                "minorFaults": 53980,
+                "majorFaults": 818
+              },
+              "childDeltas": {
+                "userCpuMs": 249.087,
+                "systemCpuMs": 346.635,
+                "minorFaults": 28137,
+                "majorFaults": 411
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 64352,
+                  "cpuTime": 0.259091
+                },
+                {
+                  "type": "renderer",
+                  "id": 64361,
+                  "cpuTime": 0.212809
+                },
+                {
+                  "type": "GPU",
+                  "id": 64357,
+                  "cpuTime": 0.116598
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 64358,
+                  "cpuTime": 0.0791
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 64352,
+                  "cpuTime": 0.275137,
+                  "deltaCpuMs": 16.046000000000006
+                },
+                {
+                  "type": "renderer",
+                  "id": 64361,
+                  "cpuTime": 0.484834,
+                  "deltaCpuMs": 272.025
+                },
+                {
+                  "type": "GPU",
+                  "id": 64357,
+                  "cpuTime": 0.138483,
+                  "deltaCpuMs": 21.885
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 64358,
+                  "cpuTime": 0.0791,
+                  "deltaCpuMs": 0
+                }
+              ],
+              "missingBrowserPids": [],
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+            },
+            "rssDeltaMiB": 12,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 0,
+      "identity": "after",
+      "mode": "cpu",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "8c417f3f2a4ddfb9827ad88a27cab05bb77ba11e6dcf9d2ea0ed2808b7976ff3",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 106,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 205,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 110,
+                "durationMs": 86,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 492,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 424,
+              "latestMutationToFrameMs": 485,
+              "renderMs": 67,
+              "frameMs": 36,
+              "latestRenderMs": 1,
+              "latestFrameMs": 6
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 374,
+            "graphAlreadyCurrent": false,
+            "settledMs": 618,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 45,
+              "rev-parse": 78,
+              "for-each-ref": 185,
+              "log": 54,
+              "rev-list": 131,
+              "remote": 91,
+              "status": 59,
+              "ls-remote": 157
+            },
+            "nodeCpuMs": 272,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856003702,
+              "finishedAt": 1792856004320,
+              "elapsedMs": 618,
+              "nodeCpuMs": 271.785,
+              "childCpuMs": 265.14500000000004,
+              "browserCpuMs": 324.233,
+              "browserComplete": true,
+              "ownedCpuMs": 861.163,
+              "registeredGitCalls": 11,
+              "nodeHeapAfterAwaitDelta": 7923440,
+              "nodeRssAfterAwaitDelta": 18202624,
+              "nodeMemoryBefore": {
+                "rss": 156205056,
+                "heapTotal": 86278144,
+                "heapUsed": 63856120,
+                "external": 4763840,
+                "arrayBuffers": 1073107
+              },
+              "nodeMemoryAfter": {
+                "rss": 174407680,
+                "heapTotal": 94306304,
+                "heapUsed": 71779560,
+                "external": 4129086,
+                "arrayBuffers": 409188
+              },
+              "childrenBefore": {
+                "userCpuMs": 440.546,
+                "systemCpuMs": 998.806,
+                "minorFaults": 25782,
+                "majorFaults": 483
+              },
+              "childrenAfter": {
+                "userCpuMs": 549.858,
+                "systemCpuMs": 1154.6390000000001,
+                "minorFaults": 34331,
+                "majorFaults": 584
+              },
+              "childDeltas": {
+                "userCpuMs": 109.31199999999995,
+                "systemCpuMs": 155.83300000000008,
+                "minorFaults": 8549,
+                "majorFaults": 101
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 64554,
+                  "cpuTime": 0.26274
+                },
+                {
+                  "type": "renderer",
+                  "id": 64559,
+                  "cpuTime": 0.216528
+                },
+                {
+                  "type": "GPU",
+                  "id": 64555,
+                  "cpuTime": 0.117944
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 64556,
+                  "cpuTime": 0.078093
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 64554,
+                  "cpuTime": 0.280313,
+                  "deltaCpuMs": 17.573000000000004
+                },
+                {
+                  "type": "renderer",
+                  "id": 64559,
+                  "cpuTime": 0.496019,
+                  "deltaCpuMs": 279.491
+                },
+                {
+                  "type": "GPU",
+                  "id": 64555,
+                  "cpuTime": 0.143816,
+                  "deltaCpuMs": 25.872000000000007
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 64556,
+                  "cpuTime": 0.07939,
+                  "deltaCpuMs": 1.2970000000000064
+                }
+              ],
+              "missingBrowserPids": [],
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+            },
+            "rssDeltaMiB": 17,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "before",
+      "mode": "cpu",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "8d96a147cea4906e81b02769c3ae59f58594d82cbadf46c5cd7435ab5d282358",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "35528cd067281cfd2949ae59303f3e5aef202311d363dfb35ba2e312af30048b"
+        },
+        "environmentKeys": 106,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 188,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 105,
+                "durationMs": 78,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 368,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 322,
+              "latestMutationToFrameMs": 368,
+              "renderMs": 49,
+              "frameMs": 26,
+              "latestRenderMs": 0,
+              "latestFrameMs": 10
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 266,
+            "graphAlreadyCurrent": false,
+            "settledMs": 427,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 1885,
+              "worktree": 84,
+              "for-each-ref": 173,
+              "log": 59,
+              "rev-list": 59,
+              "remote": 41,
+              "ls-remote": 32,
+              "status": 21
+            },
+            "nodeCpuMs": 220,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856013213,
+              "finishedAt": 1792856013641,
+              "elapsedMs": 428,
+              "nodeCpuMs": 219.795,
+              "childCpuMs": 488.931,
+              "browserCpuMs": 240.672,
+              "browserComplete": true,
+              "ownedCpuMs": 949.398,
+              "registeredGitCalls": 44,
+              "nodeHeapAfterAwaitDelta": 4438136,
+              "nodeRssAfterAwaitDelta": 13303808,
+              "nodeMemoryBefore": {
+                "rss": 162725888,
+                "heapTotal": 88326144,
+                "heapUsed": 59654048,
+                "external": 4285909,
+                "arrayBuffers": 595176
+              },
+              "nodeMemoryAfter": {
+                "rss": 176029696,
+                "heapTotal": 95928320,
+                "heapUsed": 64092184,
+                "external": 3970929,
+                "arrayBuffers": 251031
+              },
+              "childrenBefore": {
+                "userCpuMs": 247.502,
+                "systemCpuMs": 574.389,
+                "minorFaults": 25872,
+                "majorFaults": 407
+              },
+              "childrenAfter": {
+                "userCpuMs": 446.775,
+                "systemCpuMs": 864.047,
+                "minorFaults": 54027,
+                "majorFaults": 805
+              },
+              "childDeltas": {
+                "userCpuMs": 199.27299999999997,
+                "systemCpuMs": 289.658,
+                "minorFaults": 28155,
+                "majorFaults": 398
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 65118,
+                  "cpuTime": 0.177112
+                },
+                {
+                  "type": "renderer",
+                  "id": 65121,
+                  "cpuTime": 0.137113
+                },
+                {
+                  "type": "GPU",
+                  "id": 65119,
+                  "cpuTime": 0.081087
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65120,
+                  "cpuTime": 0.052032
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 65118,
+                  "cpuTime": 0.189376,
+                  "deltaCpuMs": 12.263999999999998
+                },
+                {
+                  "type": "renderer",
+                  "id": 65121,
+                  "cpuTime": 0.351042,
+                  "deltaCpuMs": 213.929
+                },
+                {
+                  "type": "GPU",
+                  "id": 65119,
+                  "cpuTime": 0.095566,
+                  "deltaCpuMs": 14.478999999999992
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65120,
+                  "cpuTime": 0.052032,
+                  "deltaCpuMs": 0
+                }
+              ],
+              "missingBrowserPids": [],
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+            },
+            "rssDeltaMiB": 13,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "after",
+      "mode": "cpu",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "d992033370e4e7e6119d9c06f8606e409a61d1cc200b48462413bdaea15d93b2",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 106,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 66,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 31,
+                "durationMs": 30,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 199,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 167,
+              "latestMutationToFrameMs": 199,
+              "renderMs": 33,
+              "frameMs": 19,
+              "latestRenderMs": 1,
+              "latestFrameMs": 4
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 124,
+            "graphAlreadyCurrent": false,
+            "settledMs": 291,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "worktree": 11,
+              "rev-parse": 38,
+              "for-each-ref": 57,
+              "log": 20,
+              "remote": 9,
+              "ls-remote": 28,
+              "rev-list": 53,
+              "status": 16
+            },
+            "nodeCpuMs": 146,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856011649,
+              "finishedAt": 1792856011941,
+              "elapsedMs": 292,
+              "nodeCpuMs": 145.623,
+              "childCpuMs": 133.88400000000001,
+              "browserCpuMs": 177.833,
+              "browserComplete": true,
+              "ownedCpuMs": 457.34000000000003,
+              "registeredGitCalls": 11,
+              "nodeHeapAfterAwaitDelta": 2499272,
+              "nodeRssAfterAwaitDelta": 13123584,
+              "nodeMemoryBefore": {
+                "rss": 162856960,
+                "heapTotal": 88801280,
+                "heapUsed": 58572680,
+                "external": 4183667,
+                "arrayBuffers": 492934
+              },
+              "nodeMemoryAfter": {
+                "rss": 175980544,
+                "heapTotal": 95879168,
+                "heapUsed": 61071952,
+                "external": 3965452,
+                "arrayBuffers": 245554
+              },
+              "childrenBefore": {
+                "userCpuMs": 228.825,
+                "systemCpuMs": 519.535,
+                "minorFaults": 25808,
+                "majorFaults": 472
+              },
+              "childrenAfter": {
+                "userCpuMs": 287.018,
+                "systemCpuMs": 595.226,
+                "minorFaults": 34344,
+                "majorFaults": 573
+              },
+              "childDeltas": {
+                "userCpuMs": 58.192999999999984,
+                "systemCpuMs": 75.69100000000003,
+                "minorFaults": 8536,
+                "majorFaults": 101
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 64999,
+                  "cpuTime": 0.132549
+                },
+                {
+                  "type": "renderer",
+                  "id": 65011,
+                  "cpuTime": 0.10479
+                },
+                {
+                  "type": "GPU",
+                  "id": 65009,
+                  "cpuTime": 0.056514
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65010,
+                  "cpuTime": 0.036561
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 64999,
+                  "cpuTime": 0.142142,
+                  "deltaCpuMs": 9.592999999999991
+                },
+                {
+                  "type": "renderer",
+                  "id": 65011,
+                  "cpuTime": 0.263131,
+                  "deltaCpuMs": 158.341
+                },
+                {
+                  "type": "GPU",
+                  "id": 65009,
+                  "cpuTime": 0.066413,
+                  "deltaCpuMs": 9.898999999999997
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65010,
+                  "cpuTime": 0.036561,
+                  "deltaCpuMs": 0
+                }
+              ],
+              "missingBrowserPids": [],
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+            },
+            "rssDeltaMiB": 13,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 0,
+      "identity": "before",
+      "mode": "memory",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "dc0d2c2b4eae1949f89e670827219245643ca3e8f19b575b4d120afa9d4c973f",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "6072ce1c02a4d4167278b641e769e510ea07f82d4841a73f19f323932c473be6"
+        },
+        "environmentKeys": 107,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 170,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 104,
+                "durationMs": 59,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 411,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 356,
+              "latestMutationToFrameMs": 411,
+              "renderMs": 64,
+              "frameMs": 37,
+              "latestRenderMs": 1,
+              "latestFrameMs": 3
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 272,
+            "graphAlreadyCurrent": false,
+            "settledMs": 445,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 1475,
+              "worktree": 83,
+              "for-each-ref": 144,
+              "log": 37,
+              "remote": 32,
+              "rev-list": 90,
+              "ls-remote": 43,
+              "status": 27
+            },
+            "nodeCpuMs": 263,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856022796,
+              "finishedAt": 1792856023241,
+              "elapsedMs": 445,
+              "nodeCpuMs": 263.493,
+              "childCpuMs": 541.1890000000001,
+              "browserCpuMs": 309.93199999999996,
+              "browserComplete": true,
+              "ownedCpuMs": 1114.614,
+              "registeredGitCalls": 44,
+              "nodeHeapAfterAwaitDelta": 2021048,
+              "nodeRssAfterAwaitDelta": 13254656,
+              "nodeMemoryBefore": {
+                "rss": 159907840,
+                "heapTotal": 87801856,
+                "heapUsed": 59222608,
+                "external": 4221643,
+                "arrayBuffers": 530910
+              },
+              "nodeMemoryAfter": {
+                "rss": 173162496,
+                "heapTotal": 96190464,
+                "heapUsed": 61243656,
+                "external": 3977980,
+                "arrayBuffers": 258082
+              },
+              "childrenBefore": {
+                "userCpuMs": 429.358,
+                "systemCpuMs": 945.952,
+                "minorFaults": 25837,
+                "majorFaults": 427
+              },
+              "childrenAfter": {
+                "userCpuMs": 664.511,
+                "systemCpuMs": 1251.988,
+                "minorFaults": 53940,
+                "majorFaults": 826
+              },
+              "childDeltas": {
+                "userCpuMs": 235.15299999999996,
+                "systemCpuMs": 306.03600000000006,
+                "minorFaults": 28103,
+                "majorFaults": 399
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 65499,
+                  "cpuTime": 0.253441
+                },
+                {
+                  "type": "renderer",
+                  "id": 65502,
+                  "cpuTime": 0.210844
+                },
+                {
+                  "type": "GPU",
+                  "id": 65500,
+                  "cpuTime": 0.108262
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65501,
+                  "cpuTime": 0.074413
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 65499,
+                  "cpuTime": 0.270986,
+                  "deltaCpuMs": 17.544999999999977
+                },
+                {
+                  "type": "renderer",
+                  "id": 65502,
+                  "cpuTime": 0.481719,
+                  "deltaCpuMs": 270.875
+                },
+                {
+                  "type": "GPU",
+                  "id": 65500,
+                  "cpuTime": 0.128432,
+                  "deltaCpuMs": 20.169999999999995
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65501,
+                  "cpuTime": 0.075755,
+                  "deltaCpuMs": 1.341999999999996
+                }
+              ],
+              "missingBrowserPids": [],
+              "phaseMemory": {
+                "complete": true,
+                "sampleCount": 5,
+                "intervalMs": 50,
+                "first": {
+                  "afterStartMs": 0.002,
+                  "scanMs": 71.269,
+                  "nodeRssBytes": 159891456,
+                  "chromiumRssBytes": 309444608,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 469336064,
+                  "pids": [
+                    65373,
+                    65499,
+                    65500,
+                    65501,
+                    65502
+                  ]
+                },
+                "last": {
+                  "afterStartMs": 519.467,
+                  "scanMs": 72.25,
+                  "nodeRssBytes": 173162496,
+                  "chromiumRssBytes": 395673600,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 568836096,
+                  "pids": [
+                    65373,
+                    65499,
+                    65500,
+                    65501,
+                    65502
+                  ]
+                },
+                "sampledPeak": {
+                  "afterStartMs": 519.467,
+                  "scanMs": 72.25,
+                  "nodeRssBytes": 173162496,
+                  "chromiumRssBytes": 395673600,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 568836096,
+                  "pids": [
+                    65373,
+                    65499,
+                    65500,
+                    65501,
+                    65502
+                  ]
+                },
+                "maxObservedGapMs": 141.041,
+                "componentMaxBytes": {
+                  "node": 173162496,
+                  "chromium": 395673600,
+                  "otherOwned": 20774912
+                },
+                "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-pair-LwPNJu/before.json.memory-initial.json",
+                "rawSamplesSha256": "269a0431248f5bd9cddd5605565849e1b08249c34f5a52e1d8dbfad3696402ef",
+                "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+              },
+              "memoryRunCpuIsDiagnosticOnly": true,
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "rssDeltaMiB": 13,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": [
+        {
+          "operation": "initial",
+          "sha256": "269a0431248f5bd9cddd5605565849e1b08249c34f5a52e1d8dbfad3696402ef",
+          "samples": {
+            "complete": true,
+            "rootPid": 65373,
+            "observerPid": 65512,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.002,
+                "scanMs": 71.269,
+                "nodeRssBytes": 159891456,
+                "chromiumRssBytes": 309444608,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 469336064,
+                "pids": [
+                  65373,
+                  65499,
+                  65500,
+                  65501,
+                  65502
+                ]
+              },
+              {
+                "afterStartMs": 122.927,
+                "scanMs": 85.883,
+                "nodeRssBytes": 160006144,
+                "chromiumRssBytes": 309428224,
+                "otherOwnedRssBytes": 20774912,
+                "sumRssBytes": 490209280,
+                "pids": [
+                  65373,
+                  65499,
+                  65500,
+                  65501,
+                  65502,
+                  65525,
+                  65528,
+                  65530,
+                  65532,
+                  65534,
+                  65536,
+                  65538,
+                  65540,
+                  65542,
+                  65544,
+                  65546,
+                  65548,
+                  65550,
+                  65552,
+                  65554,
+                  65556,
+                  65558,
+                  65560,
+                  65562,
+                  65564,
+                  65566,
+                  65569,
+                  65571
+                ]
+              },
+              {
+                "afterStartMs": 263.968,
+                "scanMs": 85.989,
+                "nodeRssBytes": 169721856,
+                "chromiumRssBytes": 314359808,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 484081664,
+                "pids": [
+                  65373,
+                  65499,
+                  65500,
+                  65501,
+                  65502,
+                  65603,
+                  65607
+                ]
+              },
+              {
+                "afterStartMs": 402.43,
+                "scanMs": 85.372,
+                "nodeRssBytes": 172916736,
+                "chromiumRssBytes": 364904448,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 537821184,
+                "pids": [
+                  65373,
+                  65499,
+                  65500,
+                  65501,
+                  65502
+                ]
+              },
+              {
+                "afterStartMs": 519.467,
+                "scanMs": 72.25,
+                "nodeRssBytes": 173162496,
+                "chromiumRssBytes": 395673600,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 568836096,
+                "pids": [
+                  65373,
+                  65499,
+                  65500,
+                  65501,
+                  65502
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "pair": 0,
+      "identity": "after",
+      "mode": "memory",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "94f9bc04f5758e635bbdd34660b1bb9738d6e64d4048ad976e7a299629a6a8e5",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 107,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 99,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 42,
+                "durationMs": 52,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 366,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 224,
+              "latestMutationToFrameMs": 347,
+              "renderMs": 43,
+              "frameMs": 25,
+              "latestRenderMs": 8,
+              "latestFrameMs": 73
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 171,
+            "graphAlreadyCurrent": false,
+            "settledMs": 418,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 19,
+              "for-each-ref": 86,
+              "rev-parse": 61,
+              "log": 35,
+              "remote": 41,
+              "rev-list": 63,
+              "status": 23,
+              "ls-remote": 42
+            },
+            "nodeCpuMs": 172,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856025430,
+              "finishedAt": 1792856025849,
+              "elapsedMs": 419,
+              "nodeCpuMs": 171.716,
+              "childCpuMs": 164.90100000000012,
+              "browserCpuMs": 216.65699999999995,
+              "browserComplete": true,
+              "ownedCpuMs": 553.2740000000001,
+              "registeredGitCalls": 11,
+              "nodeHeapAfterAwaitDelta": 7409928,
+              "nodeRssAfterAwaitDelta": 18153472,
+              "nodeMemoryBefore": {
+                "rss": 155910144,
+                "heapTotal": 86016000,
+                "heapUsed": 64236792,
+                "external": 4769392,
+                "arrayBuffers": 1078659
+              },
+              "nodeMemoryAfter": {
+                "rss": 174063616,
+                "heapTotal": 94568448,
+                "heapUsed": 71646720,
+                "external": 4128644,
+                "arrayBuffers": 408746
+              },
+              "childrenBefore": {
+                "userCpuMs": 435.859,
+                "systemCpuMs": 929.396,
+                "minorFaults": 25682,
+                "majorFaults": 576
+              },
+              "childrenAfter": {
+                "userCpuMs": 502.447,
+                "systemCpuMs": 1027.709,
+                "minorFaults": 34255,
+                "majorFaults": 678
+              },
+              "childDeltas": {
+                "userCpuMs": 66.58800000000002,
+                "systemCpuMs": 98.3130000000001,
+                "minorFaults": 8573,
+                "majorFaults": 102
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 65682,
+                  "cpuTime": 0.165551
+                },
+                {
+                  "type": "renderer",
+                  "id": 65685,
+                  "cpuTime": 0.126734
+                },
+                {
+                  "type": "GPU",
+                  "id": 65683,
+                  "cpuTime": 0.071281
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65684,
+                  "cpuTime": 0.04848
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 65682,
+                  "cpuTime": 0.176634,
+                  "deltaCpuMs": 11.083000000000009
+                },
+                {
+                  "type": "renderer",
+                  "id": 65685,
+                  "cpuTime": 0.317005,
+                  "deltaCpuMs": 190.27099999999996
+                },
+                {
+                  "type": "GPU",
+                  "id": 65683,
+                  "cpuTime": 0.086584,
+                  "deltaCpuMs": 15.302999999999997
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 65684,
+                  "cpuTime": 0.04848,
+                  "deltaCpuMs": 0
+                }
+              ],
+              "missingBrowserPids": [],
+              "phaseMemory": {
+                "complete": true,
+                "sampleCount": 4,
+                "intervalMs": 50,
+                "first": {
+                  "afterStartMs": 0.002,
+                  "scanMs": 60.309,
+                  "nodeRssBytes": 155860992,
+                  "chromiumRssBytes": 308428800,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 464289792,
+                  "pids": [
+                    65330,
+                    65682,
+                    65683,
+                    65684,
+                    65685
+                  ]
+                },
+                "last": {
+                  "afterStartMs": 631.396,
+                  "scanMs": 266.746,
+                  "nodeRssBytes": 171032576,
+                  "chromiumRssBytes": 393330688,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 564363264,
+                  "pids": [
+                    65330,
+                    65682,
+                    65683,
+                    65684,
+                    65685
+                  ]
+                },
+                "sampledPeak": {
+                  "afterStartMs": 631.396,
+                  "scanMs": 266.746,
+                  "nodeRssBytes": 171032576,
+                  "chromiumRssBytes": 393330688,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 564363264,
+                  "pids": [
+                    65330,
+                    65682,
+                    65683,
+                    65684,
+                    65685
+                  ]
+                },
+                "maxObservedGapMs": 394.659,
+                "componentMaxBytes": {
+                  "node": 173932544,
+                  "chromium": 393330688,
+                  "otherOwned": 16416768
+                },
+                "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-pair-LwPNJu/after.json.memory-initial.json",
+                "rawSamplesSha256": "1d7aea2765d31ead0107fa3da7c6cb13fa5e9bd65370f57858630aff9c4fcfd9",
+                "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+              },
+              "memoryRunCpuIsDiagnosticOnly": true,
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "rssDeltaMiB": 17,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": [
+        {
+          "operation": "initial",
+          "sha256": "1d7aea2765d31ead0107fa3da7c6cb13fa5e9bd65370f57858630aff9c4fcfd9",
+          "samples": {
+            "complete": true,
+            "rootPid": 65330,
+            "observerPid": 65690,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.002,
+                "scanMs": 60.309,
+                "nodeRssBytes": 155860992,
+                "chromiumRssBytes": 308428800,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 464289792,
+                "pids": [
+                  65330,
+                  65682,
+                  65683,
+                  65684,
+                  65685
+                ]
+              },
+              {
+                "afterStartMs": 115.243,
+                "scanMs": 66.323,
+                "nodeRssBytes": 159531008,
+                "chromiumRssBytes": 309493760,
+                "otherOwnedRssBytes": 16416768,
+                "sumRssBytes": 485441536,
+                "pids": [
+                  65330,
+                  65682,
+                  65683,
+                  65684,
+                  65685,
+                  65700,
+                  65702
+                ]
+              },
+              {
+                "afterStartMs": 236.737,
+                "scanMs": 394.457,
+                "nodeRssBytes": 173932544,
+                "chromiumRssBytes": 347652096,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 521584640,
+                "pids": [
+                  65330,
+                  65682,
+                  65683,
+                  65684,
+                  65685
+                ]
+              },
+              {
+                "afterStartMs": 631.396,
+                "scanMs": 266.746,
+                "nodeRssBytes": 171032576,
+                "chromiumRssBytes": 393330688,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 564363264,
+                "pids": [
+                  65330,
+                  65682,
+                  65683,
+                  65684,
+                  65685
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "pair": 1,
+      "identity": "before",
+      "mode": "memory",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "bacb1e66603c109a72e9d321b85598ef026e6ebe9f1d2d6ce2a9302d7571344b",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "ec0e981095a72468bd32ee547f0f94a0cbd854ef1b0996186e15fe1555936df9"
+        },
+        "environmentKeys": 107,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 302,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 196,
+                "durationMs": 92,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 643,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 553,
+              "latestMutationToFrameMs": 643,
+              "renderMs": 79,
+              "frameMs": 38,
+              "latestRenderMs": 1,
+              "latestFrameMs": 5
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 496,
+            "graphAlreadyCurrent": false,
+            "settledMs": 668,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 36,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "ls-remote": 1,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 3061,
+              "worktree": 172,
+              "for-each-ref": 263,
+              "log": 56,
+              "remote": 28,
+              "rev-list": 152,
+              "ls-remote": 86,
+              "status": 68
+            },
+            "nodeCpuMs": 352,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856034094,
+              "finishedAt": 1792856034762,
+              "elapsedMs": 668,
+              "nodeCpuMs": 352.284,
+              "childCpuMs": 690.7650000000001,
+              "browserCpuMs": 396.288,
+              "browserComplete": true,
+              "ownedCpuMs": 1439.337,
+              "registeredGitCalls": 44,
+              "nodeHeapAfterAwaitDelta": 4376224,
+              "nodeRssAfterAwaitDelta": 13107200,
+              "nodeMemoryBefore": {
+                "rss": 163790848,
+                "heapTotal": 88326144,
+                "heapUsed": 59667984,
+                "external": 4275902,
+                "arrayBuffers": 585169
+              },
+              "nodeMemoryAfter": {
+                "rss": 176898048,
+                "heapTotal": 95928320,
+                "heapUsed": 64044208,
+                "external": 3970739,
+                "arrayBuffers": 250841
+              },
+              "childrenBefore": {
+                "userCpuMs": 268.607,
+                "systemCpuMs": 640.901,
+                "minorFaults": 25909,
+                "majorFaults": 407
+              },
+              "childrenAfter": {
+                "userCpuMs": 560.065,
+                "systemCpuMs": 1040.208,
+                "minorFaults": 53994,
+                "majorFaults": 805
+              },
+              "childDeltas": {
+                "userCpuMs": 291.458,
+                "systemCpuMs": 399.30700000000013,
+                "minorFaults": 28085,
+                "majorFaults": 398
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 66115,
+                  "cpuTime": 0.254583
+                },
+                {
+                  "type": "renderer",
+                  "id": 66123,
+                  "cpuTime": 0.208959
+                },
+                {
+                  "type": "GPU",
+                  "id": 66120,
+                  "cpuTime": 0.106714
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 66121,
+                  "cpuTime": 0.075042
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 66115,
+                  "cpuTime": 0.275939,
+                  "deltaCpuMs": 21.355999999999987
+                },
+                {
+                  "type": "renderer",
+                  "id": 66123,
+                  "cpuTime": 0.542992,
+                  "deltaCpuMs": 334.033
+                },
+                {
+                  "type": "GPU",
+                  "id": 66120,
+                  "cpuTime": 0.145946,
+                  "deltaCpuMs": 39.23199999999999
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 66121,
+                  "cpuTime": 0.076709,
+                  "deltaCpuMs": 1.6670000000000018
+                }
+              ],
+              "missingBrowserPids": [],
+              "phaseMemory": {
+                "complete": true,
+                "sampleCount": 5,
+                "intervalMs": 50,
+                "first": {
+                  "afterStartMs": 0.003,
+                  "scanMs": 108.806,
+                  "nodeRssBytes": 163774464,
+                  "chromiumRssBytes": 309772288,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 473546752,
+                  "pids": [
+                    65889,
+                    66115,
+                    66120,
+                    66121,
+                    66123
+                  ]
+                },
+                "last": {
+                  "afterStartMs": 844.152,
+                  "scanMs": 96.09,
+                  "nodeRssBytes": 176898048,
+                  "chromiumRssBytes": 395771904,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 572669952,
+                  "pids": [
+                    65889,
+                    66115,
+                    66120,
+                    66121,
+                    66123
+                  ]
+                },
+                "sampledPeak": {
+                  "afterStartMs": 844.152,
+                  "scanMs": 96.09,
+                  "nodeRssBytes": 176898048,
+                  "chromiumRssBytes": 395771904,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 572669952,
+                  "pids": [
+                    65889,
+                    66115,
+                    66120,
+                    66121,
+                    66123
+                  ]
+                },
+                "maxObservedGapMs": 286.966,
+                "componentMaxBytes": {
+                  "node": 176898048,
+                  "chromium": 395771904,
+                  "otherOwned": 20217856
+                },
+                "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-pair-itEkxA/before.json.memory-initial.json",
+                "rawSamplesSha256": "3552ef16300cfefbc1fc6dde29608e082235ed01cf1f07fa99c423e20cb5911c",
+                "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+              },
+              "memoryRunCpuIsDiagnosticOnly": true,
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "rssDeltaMiB": 13,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": [
+        {
+          "operation": "initial",
+          "sha256": "3552ef16300cfefbc1fc6dde29608e082235ed01cf1f07fa99c423e20cb5911c",
+          "samples": {
+            "complete": true,
+            "rootPid": 65889,
+            "observerPid": 66132,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.003,
+                "scanMs": 108.806,
+                "nodeRssBytes": 163774464,
+                "chromiumRssBytes": 309772288,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 473546752,
+                "pids": [
+                  65889,
+                  66115,
+                  66120,
+                  66121,
+                  66123
+                ]
+              },
+              {
+                "afterStartMs": 160.733,
+                "scanMs": 236.08,
+                "nodeRssBytes": 163856384,
+                "chromiumRssBytes": 309772288,
+                "otherOwnedRssBytes": 20217856,
+                "sumRssBytes": 493846528,
+                "pids": [
+                  65889,
+                  66115,
+                  66120,
+                  66121,
+                  66123,
+                  66135,
+                  66137,
+                  66139,
+                  66141,
+                  66143,
+                  66145,
+                  66147,
+                  66149,
+                  66151,
+                  66153,
+                  66155,
+                  66157,
+                  66160,
+                  66162
+                ]
+              },
+              {
+                "afterStartMs": 447.699,
+                "scanMs": 186.289,
+                "nodeRssBytes": 172326912,
+                "chromiumRssBytes": 314900480,
+                "otherOwnedRssBytes": 7061504,
+                "sumRssBytes": 494288896,
+                "pids": [
+                  65889,
+                  66115,
+                  66120,
+                  66121,
+                  66123,
+                  66216,
+                  66220,
+                  66222
+                ]
+              },
+              {
+                "afterStartMs": 688.341,
+                "scanMs": 155.688,
+                "nodeRssBytes": 176783360,
+                "chromiumRssBytes": 389332992,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 566116352,
+                "pids": [
+                  65889,
+                  66115,
+                  66120,
+                  66121,
+                  66123
+                ]
+              },
+              {
+                "afterStartMs": 844.152,
+                "scanMs": 96.09,
+                "nodeRssBytes": 176898048,
+                "chromiumRssBytes": 395771904,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 572669952,
+                "pids": [
+                  65889,
+                  66115,
+                  66120,
+                  66121,
+                  66123
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "pair": 1,
+      "identity": "after",
+      "mode": "memory",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "3a2e1630a6e26018cc7ee754683a9bf03bce4ef8402a57f2ad56113ec7a942a3",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 107,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "rendererCpuThrottle": 1,
+            "operationMs": 0,
+            "graphMs": 83,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 38,
+                "durationMs": 39,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 251,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 214,
+              "latestMutationToFrameMs": 251,
+              "renderMs": 44,
+              "frameMs": 24,
+              "latestRenderMs": 0,
+              "latestFrameMs": 2
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 154,
+            "graphAlreadyCurrent": false,
+            "settledMs": 323,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "ls-remote": 1,
+              "rev-list": 2,
+              "status": 1
+            },
+            "commandTimeMs": {
+              "worktree": 13,
+              "rev-parse": 47,
+              "for-each-ref": 71,
+              "log": 26,
+              "remote": 11,
+              "ls-remote": 36,
+              "rev-list": 68,
+              "status": 17
+            },
+            "nodeCpuMs": 182,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 150,
+            "phaseResources": {
+              "label": "initial",
+              "input": "service",
+              "startedAt": 1792856031901,
+              "finishedAt": 1792856032224,
+              "elapsedMs": 323,
+              "nodeCpuMs": 181.978,
+              "childCpuMs": 171.0340000000001,
+              "browserCpuMs": 219.90900000000002,
+              "browserComplete": true,
+              "ownedCpuMs": 572.9210000000002,
+              "registeredGitCalls": 11,
+              "nodeHeapAfterAwaitDelta": 2320216,
+              "nodeRssAfterAwaitDelta": 12402688,
+              "nodeMemoryBefore": {
+                "rss": 164233216,
+                "heapTotal": 89587712,
+                "heapUsed": 59130488,
+                "external": 4175981,
+                "arrayBuffers": 485248
+              },
+              "nodeMemoryAfter": {
+                "rss": 176635904,
+                "heapTotal": 96141312,
+                "heapUsed": 61450704,
+                "external": 3965459,
+                "arrayBuffers": 245561
+              },
+              "childrenBefore": {
+                "userCpuMs": 270.835,
+                "systemCpuMs": 596.747,
+                "minorFaults": 25823,
+                "majorFaults": 470
+              },
+              "childrenAfter": {
+                "userCpuMs": 344.939,
+                "systemCpuMs": 693.677,
+                "minorFaults": 34375,
+                "majorFaults": 571
+              },
+              "childDeltas": {
+                "userCpuMs": 74.10400000000004,
+                "systemCpuMs": 96.93000000000006,
+                "minorFaults": 8552,
+                "majorFaults": 101
+              },
+              "browserBefore": [
+                {
+                  "type": "browser",
+                  "id": 65999,
+                  "cpuTime": 0.171838
+                },
+                {
+                  "type": "renderer",
+                  "id": 66004,
+                  "cpuTime": 0.136448
+                },
+                {
+                  "type": "GPU",
+                  "id": 66000,
+                  "cpuTime": 0.075743
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 66001,
+                  "cpuTime": 0.051004
+                }
+              ],
+              "browserAfter": [
+                {
+                  "type": "browser",
+                  "id": 65999,
+                  "cpuTime": 0.182794,
+                  "deltaCpuMs": 10.95600000000002
+                },
+                {
+                  "type": "renderer",
+                  "id": 66004,
+                  "cpuTime": 0.332899,
+                  "deltaCpuMs": 196.451
+                },
+                {
+                  "type": "GPU",
+                  "id": 66000,
+                  "cpuTime": 0.088245,
+                  "deltaCpuMs": 12.501999999999999
+                },
+                {
+                  "type": "network.mojom.NetworkService",
+                  "id": 66001,
+                  "cpuTime": 0.051004,
+                  "deltaCpuMs": 0
+                }
+              ],
+              "missingBrowserPids": [],
+              "phaseMemory": {
+                "complete": true,
+                "sampleCount": 5,
+                "intervalMs": 50,
+                "first": {
+                  "afterStartMs": 0.002,
+                  "scanMs": 40.357,
+                  "nodeRssBytes": 164200448,
+                  "chromiumRssBytes": 309444608,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 473645056,
+                  "pids": [
+                    65820,
+                    65999,
+                    66000,
+                    66001,
+                    66004
+                  ]
+                },
+                "last": {
+                  "afterStartMs": 365.107,
+                  "scanMs": 48.94,
+                  "nodeRssBytes": 176635904,
+                  "chromiumRssBytes": 394903552,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 571539456,
+                  "pids": [
+                    65820,
+                    65999,
+                    66000,
+                    66001,
+                    66004
+                  ]
+                },
+                "sampledPeak": {
+                  "afterStartMs": 365.107,
+                  "scanMs": 48.94,
+                  "nodeRssBytes": 176635904,
+                  "chromiumRssBytes": 394903552,
+                  "otherOwnedRssBytes": 0,
+                  "sumRssBytes": 571539456,
+                  "pids": [
+                    65820,
+                    65999,
+                    66000,
+                    66001,
+                    66004
+                  ]
+                },
+                "maxObservedGapMs": 108.28799999999998,
+                "componentMaxBytes": {
+                  "node": 176635904,
+                  "chromium": 394903552,
+                  "otherOwned": 19775488
+                },
+                "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-pair-itEkxA/after.json.memory-initial.json",
+                "rawSamplesSha256": "eb10d6cf79c4449729bea414c38bec1db7077a0715182242c0c744f658ec92a7",
+                "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+              },
+              "memoryRunCpuIsDiagnosticOnly": true,
+              "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+              "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "rssDeltaMiB": 12,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": [
+        {
+          "operation": "initial",
+          "sha256": "eb10d6cf79c4449729bea414c38bec1db7077a0715182242c0c744f658ec92a7",
+          "samples": {
+            "complete": true,
+            "rootPid": 65820,
+            "observerPid": 66009,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.002,
+                "scanMs": 40.357,
+                "nodeRssBytes": 164200448,
+                "chromiumRssBytes": 309444608,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 473645056,
+                "pids": [
+                  65820,
+                  65999,
+                  66000,
+                  66001,
+                  66004
+                ]
+              },
+              {
+                "afterStartMs": 95.476,
+                "scanMs": 53.121,
+                "nodeRssBytes": 167002112,
+                "chromiumRssBytes": 310591488,
+                "otherOwnedRssBytes": 19775488,
+                "sumRssBytes": 497369088,
+                "pids": [
+                  65820,
+                  65999,
+                  66000,
+                  66001,
+                  66004,
+                  66018,
+                  66020
+                ]
+              },
+              {
+                "afterStartMs": 203.729,
+                "scanMs": 53.194,
+                "nodeRssBytes": 176439296,
+                "chromiumRssBytes": 344064000,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 520503296,
+                "pids": [
+                  65820,
+                  65999,
+                  66000,
+                  66001,
+                  66004
+                ]
+              },
+              {
+                "afterStartMs": 312.017,
+                "scanMs": 52.026,
+                "nodeRssBytes": 176553984,
+                "chromiumRssBytes": 394870784,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 571424768,
+                "pids": [
+                  65820,
+                  65999,
+                  66000,
+                  66001,
+                  66004
+                ]
+              },
+              {
+                "afterStartMs": 365.107,
+                "scanMs": 48.94,
+                "nodeRssBytes": 176635904,
+                "chromiumRssBytes": 394903552,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 571539456,
+                "pids": [
+                  65820,
+                  65999,
+                  66000,
+                  66001,
+                  66004
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    }
+  ],
+  "completed": true,
+  "scope": "Small owned synthetic repositories only: 1000 files, 1800 commits, 100 side branches, 8 shared upstreams. Per-operation interleaving B/A then A/B; separate latency, CPU and sampled simultaneous RSS modes. Native operation and final first-page oracle plus production HTML/CSP/JS. merge-no-ff invokes Native CLI directly; other matrix rows invoke actual services, not user controls. Independent fresh source Nodes and equal deterministic fixture content; no Captain access. Filesystem-warm functional oracle, no GitHub network or active VS Code timing claim."
+}

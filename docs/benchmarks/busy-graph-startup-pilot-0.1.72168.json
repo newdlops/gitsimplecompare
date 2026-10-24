@@ -1,0 +1,6 @@
+{
+  "scope": "Excluded setup pilot; no completed comparative sample. The assertion compared /var with the Native /private/var physical spelling. Canonical expected root and joined startup cleanup were added before the completed run. Failed owned fixtures preserved.",
+  "rawSha256": "30fa2fdad68957778733b55c5f43af87325049c3887d624907ce5dcb9b3c1f16",
+  "error": "Error: before closed (1) before before-0.done.json: Measuring initial...\nPreserved failed owned operation fixture: /var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-matrix-eeOzbz\nAssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:\n\n  ok((await discovery).every((service2) => service2?.repoRoot === f.root))\n\n    at measure (/private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-3Yionw/benchmark.cjs:39344:32)\n    at async main (/private/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-source-benchmark-3Yionw/benchmark.cjs:39516:23) {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n",
+  "preservedCoordinatorDirectory": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-operation-pair-rezWYb"
+}

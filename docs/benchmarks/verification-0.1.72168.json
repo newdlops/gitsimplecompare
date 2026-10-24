@@ -1,0 +1,51 @@
+{
+  "version": "0.1.72168",
+  "productFingerprint": {
+    "files": 650,
+    "sha256": "899020b61ff4f15ce27366cfd71e74e0d6b32aef58820fb611898c239246cf15"
+  },
+  "node": {
+    "tests": 64,
+    "pass": 64,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "nativeDiscoveryBursts": 48,
+  "nativeDomStartupComparisons": 12,
+  "nativeDomConstrainedComparisons": 4,
+  "actualControls": 11,
+  "actualControlsPrCardsPerCase": 80,
+  "staleLocalChangesPreserved": true,
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "rendererChanged": false,
+  "sourceCapsPassed": true,
+  "machineWideStressGenerated": false,
+  "osFocusChanged": false,
+  "forcedHostReload": false,
+  "marketplaceStatusQueried": false,
+  "logs": {
+    "gsc-busy-discovery-related-final2.log": {
+      "bytes": 16130,
+      "sha256": "a850a734a0e70395f262199019f5231e6df245afb5d975cdf1c04ca88815d814"
+    },
+    "gsc-72168-types.log": {
+      "bytes": 58,
+      "sha256": "624ad2fa633ee0c6d998752408b0c0ea344d448c36fd69f245fb191e8f1ca1dc"
+    },
+    "gsc-72168-package.log": {
+      "bytes": 1338,
+      "sha256": "804aa69497706919062d54c4216a597919d87ad1dd6e6377a87e52fd843301be"
+    },
+    "gsc-72168-final-controls.log": {
+      "bytes": 58708,
+      "sha256": "8400a87e74185538158489189faf53b5a782a69c5605fbfc76e9f22355fbe973"
+    }
+  },
+  "artifactHashes": {
+    "busy-discovery-0.1.72168.json": "fec4007a983e2b5cf3361b8698db31c8d26ee2382515f7e7a61d99e39dc9de13",
+    "busy-graph-startup-0.1.72168.json": "8e7eb4a5c6fba77c9d2d39ed8c8e7917b647adf8295510ce76dbdb6fa73d30c8",
+    "busy-graph-constrained-0.1.72168.json": "0cd6877a9a9db560f33f2daf312a1a2028833fd96f5513f062e31af4ef14504b"
+  }
+}

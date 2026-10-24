@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Browser, Page } from "@playwright/test";
+import type { Browser, CDPSession, Page } from "@playwright/test";
 import type { Commit } from "../../src/graph/graphTypes";
 import type { FromWebviewMessage, GraphRenderPerformance, ToWebviewMessage } from "../../src/webview/graphProtocol";
 import { expectedRenderedRefs, type NativeRemoteTag } from "./graphNativeExpectation";
@@ -19,6 +19,7 @@ export class GraphLiveRenderer {
   private readonly buffered: ToWebviewMessage[] = [];
   private readonly errors: string[] = [];
   private mounted = false;
+  private cpuSession?: CDPSession;
   private readonly observeAllMessages = process.env.GSC_BENCH_FULL_FRAME === "1";
   private messageSequence = 0;
   private messageFrame = { sequence: 0, paintedAt: 0 };
@@ -84,6 +85,12 @@ export class GraphLiveRenderer {
       await route.fulfill({ contentType, body: await readFile(file) });
     });
     await this.page.goto("https://gsc.fixture/");
+    const throttle = Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1);
+    assert.ok(Number.isFinite(throttle) && throttle >= 1 && throttle <= 20);
+    if (throttle > 1) {
+      this.cpuSession = await this.page.context().newCDPSession(this.page);
+      await this.cpuSession.send("Emulation.setCPUThrottlingRate", { rate: throttle });
+    }
     this.mounted = true;
     for (const message of this.buffered.splice(0)) this.post(message);
   }

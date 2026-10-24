@@ -7,15 +7,17 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promise
 import os from "node:os";
 import path from "node:path";
 
-const operations = ["initial", "push", "push-tracked", "pull", "pull-new-history", "pull-known-history", "fetch", "fetch-new-history",
+const supportedOperations = ["initial", "push", "push-tracked", "pull", "pull-new-history", "pull-known-history", "fetch", "fetch-new-history",
   "fetch-known-history", "fetch-no-change", "rebase", "merge", "merge-no-ff", "pr-squash-cherry-pick", "pr-cherry-pick", "cherry-pick", "checkout", "checkout-unloaded"];
+const operations = process.env.GSC_BENCH_PAIRED_OPERATIONS?.split(",") || supportedOperations;
+assert.ok(operations.length && operations.every(operation => supportedOperations.includes(operation)));
 const output = path.resolve(process.argv[2] || ""), baseline = process.env.GSC_BENCH_PAIRED_BASELINE || "d8c1351eaf7843a8e2deabb2a848a533ec7c5488";
 const digest = value => createHash("sha256").update(value).digest("hex");
 const git = args => execFileSync("/usr/bin/git", ["-c", "core.fsmonitor=false", ...args]).toString();
 
 /** 측정 중 제품 소스가 바뀌면 결과를 거부한다. fixture와 보고서는 fingerprint에 포함하지 않는다. */
 async function runtimeFingerprint() {
-  const files = git(["ls-files", "-z", "src", "media", "package.json"]).split("\0").filter(Boolean).sort();
+  const files = git(["ls-files", "--cached", "--others", "--exclude-standard", "-z", "src", "media", "package.json"]).split("\0").filter(Boolean).sort();
   const hash = createHash("sha256");
   for (const file of files) hash.update(file).update("\0").update(await readFile(file)).update("\0");
   return { files: files.length, sha256: hash.digest("hex") };

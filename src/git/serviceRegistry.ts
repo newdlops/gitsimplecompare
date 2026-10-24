@@ -3,6 +3,13 @@
 //   여러 레이어가 동일한 인스턴스를 공유하도록 하는 단일 진입점이다(재사용성).
 import { GitService } from "./gitService";
 import { detectRepositoryIdentity, type DetectedRepositoryIdentity } from "./repositoryDiscovery";
+import { RepositoryDiscoveryAnchors } from "./repositoryDiscoveryAnchor";
+
+interface DiscoveryGroup {
+  result: Promise<DetectedRepositoryIdentity | undefined>;
+  leader: string;
+  consumers: number;
+}
 
 /** 저장소 탐색과 함께 얻은 공유 GitService/브랜치 결과. */
 export interface ResolvedRepositoryIdentity {
@@ -23,12 +30,16 @@ export class GitServiceRegistry {
   /** 같은 세대의 cold root/branch 조회만 공유한다. branch의 시간 기반 캐시는 만들지 않는다. */
   private readonly pendingDiscovery = new Map<string, Promise<DetectedRepositoryIdentity | undefined>>();
   private discoveryGeneration = 0;
+  private readonly anchors = new RepositoryDiscoveryAnchors();
+  private readonly anchoredDiscovery = new Map<string, DiscoveryGroup>();
 
   /**
    * production은 공통 Git 탐색을 사용하고 테스트는 지연·무효화 경계만 대체한다.
    * @param discover root와 branch를 같은 실행에서 반환할 저장소 탐색기
+   * @param report 여러 폴더의 조회 공유를 OUTPUT에 한 번 기록하는 선택적 관찰 경계
    */
-  constructor(private readonly discover = detectRepositoryIdentity) {}
+  constructor(private readonly discover = detectRepositoryIdentity,
+    private readonly report?: (fields: Record<string, unknown>) => void) {}
 
   /**
    * 저장소 루트에 해당하는 GitService 를 반환한다(없으면 생성해 캐싱).
@@ -53,7 +64,15 @@ export class GitServiceRegistry {
     if (cached && Date.now() - cached.at < 5000) {
       return cached.root ? this.get(cached.root) : undefined;
     }
-    const identity = await this.discoverOnce(cwd);
+    const existing = this.pendingDiscovery.get(cwd);
+    if (existing) { const identity = await existing; return identity ? this.get(identity.root) : undefined; }
+    const generation = this.discoveryGeneration, anchor = await this.anchors.find(cwd);
+    if (generation !== this.discoveryGeneration) return this.resolve(cwd);
+    const anchored = anchor ? this.resolveCache.get(anchor) : undefined;
+    if (anchored?.root && Date.now() - anchored.at < 5000) {
+      this.resolveCache.set(cwd, anchored); return this.get(anchored.root);
+    }
+    const identity = await this.discoverOnce(cwd, anchor ?? null);
     if (!identity) {
       return undefined;
     }
@@ -91,11 +110,15 @@ export class GitServiceRegistry {
    * - Clone/Init 후 무효화되면 이전 조회가 늦게 완료해도 새 negative/root 캐시를 덮어쓰지 않는다.
    * @param cwd 실제 Git 탐색 경로 @returns 현재 요청이 확인한 identity 또는 비저장소 결과
    */
-  private async discoverOnce(cwd: string): Promise<DetectedRepositoryIdentity | undefined> {
+  private async discoverOnce(cwd: string, knownAnchor?: string | null): Promise<DetectedRepositoryIdentity | undefined> {
     const existing = this.pendingDiscovery.get(cwd);
     if (existing) return existing;
     const generation = this.discoveryGeneration;
-    const pending = Promise.resolve().then(() => this.discover(cwd)).then(identity => {
+    const pending = Promise.resolve().then(async () => {
+      const anchor = knownAnchor === undefined ? await this.anchors.find(cwd) : knownAnchor;
+      if (!anchor || generation !== this.discoveryGeneration) return this.discover(cwd);
+      return this.discoverAnchored(cwd, anchor, generation);
+    }).then(identity => {
       if (generation === this.discoveryGeneration) {
         this.resolveCache.set(cwd, { at: Date.now(), root: identity?.root });
       }
@@ -104,6 +127,36 @@ export class GitServiceRegistry {
     this.pendingDiscovery.set(cwd, pending);
     try { return await pending; }
     finally { if (this.pendingDiscovery.get(cwd) === pending) this.pendingDiscovery.delete(cwd); }
+  }
+
+  /**
+   * 같은 작업트리 후보의 Native 조회를 공유하되 각 alias 경계를 완료 뒤 다시 확인한다.
+   * @param cwd 원래 요청 경로. Native leader도 이 cwd를 유지한다. @param anchor 검증한 가장 가까운 marker
+   * @param generation 무효화 전 결과의 cache 적용을 막는 세대 @returns 현재 alias의 Native identity
+   */
+  private async discoverAnchored(cwd: string, anchor: string, generation: number): Promise<DetectedRepositoryIdentity | undefined> {
+    let group = this.anchoredDiscovery.get(anchor);
+    if (group) group.consumers++;
+    else {
+      group = { result: Promise.resolve().then(() => this.discover(cwd)).then(identity => {
+        // Native가 직접 확인한 root만 기존 5초 root cache에 넣는다. branch 완료값은 캐시하지 않는다.
+        if (generation === this.discoveryGeneration && identity?.root === anchor)
+          this.resolveCache.set(anchor, { at: Date.now(), root: identity.root });
+        return identity;
+      }), leader: cwd, consumers: 1 };
+      this.anchoredDiscovery.set(anchor, group);
+      const owned = group;
+      void owned.result.finally(() => {
+        if (this.anchoredDiscovery.get(anchor) === owned) this.anchoredDiscovery.delete(anchor);
+        if (owned.consumers > 1) try { this.report?.({ repoRoot: anchor, consumers: owned.consumers, generation }); } catch { /* 관찰 오류는 탐색 결과를 바꾸지 않는다. */ }
+      }).catch(() => undefined);
+    }
+    const identity = await group.result;
+    const currentAnchor = await this.anchors.find(cwd);
+    if (currentAnchor !== anchor) return this.discover(cwd);
+    if (identity?.root !== anchor) return cwd === group.leader ? identity : this.discover(cwd);
+    if (generation === this.discoveryGeneration) this.resolveCache.set(anchor, { at: Date.now(), root: identity.root });
+    return identity;
   }
 
   /**
@@ -130,5 +183,7 @@ export class GitServiceRegistry {
     this.discoveryGeneration++;
     this.resolveCache.clear();
     this.pendingDiscovery.clear();
+    this.anchoredDiscovery.clear();
+    this.anchors.clear();
   }
 }

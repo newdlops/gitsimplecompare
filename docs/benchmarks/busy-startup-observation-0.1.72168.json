@@ -1,0 +1,14 @@
+{
+  "observedExtensionVersion": "0.1.72167",
+  "sourceLogSha256": "acd646dcca824c0cef5041f6189102dd0534ec41226bd2e32ed1de37f5a209c1",
+  "slowRevParseRecords": 34,
+  "uniqueCwds": 34,
+  "maxOverlappingReportedExecutionWindows": 34,
+  "minElapsedMs": 1030,
+  "maxElapsedMs": 4107,
+  "maxSyncSpawnMs": 6,
+  "currentFilesystemCandidateAnchorCounts": {
+    "123559286e0ccb66076ba7b8ff246a8bf0891a9f465376b56d15bf849e8d8178": 34
+  },
+  "scope": "Existing local log only. Overlap derives from reported begin-to-close windows, not an OS process-table peak. Filesystem anchors are current candidates; no source Git mutation, network or active Host manipulation. Paths/branch names/content omitted."
+}

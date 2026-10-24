@@ -78,7 +78,7 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
   context.subscriptions.push(new vscode.Disposable(disposePullRequestQuickEdit));
   context.subscriptions.push(new vscode.Disposable(() => { disposeBranchContentCache(); clearUntrackedStatsCache(); }));
   // 1) 저장소별 GitService 를 공유하는 레지스트리
-  const registry = new GitServiceRegistry();
+  const registry = new GitServiceRegistry(undefined, fields => logInfo("repository discovery shared", fields));
   const comparison = new ComparisonController();
   context.subscriptions.push(comparison);
   context.subscriptions.push(

@@ -1,0 +1,498 @@
+{
+  "baselineCommit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+  "fingerprint": {
+    "files": 650,
+    "sha256": "899020b61ff4f15ce27366cfd71e74e0d6b32aef58820fb611898c239246cf15"
+  },
+  "operations": [
+    "initial"
+  ],
+  "runs": [
+    {
+      "pair": 0,
+      "identity": "before",
+      "mode": "latency",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "f11d792b4f2207e9a97c33860e16e2cfff65aff4a03e3f04cf865cd9ab936d87",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "8631b53290c52c3f87244244f699f6332a7c8dd5ba12763ca64b32f60e397061"
+        },
+        "environmentKeys": 109,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "simulatedReadContention": {
+              "delayMs": 75,
+              "slots": 3,
+              "readStarts": 47,
+              "maxQueued": 33,
+              "pending": 0,
+              "scope": "Simulated read-start waiting in the owned benchmark Node; slots are preparation slots, not an OS/CPU or live-process limit. No machine-wide load was generated."
+            },
+            "rendererCpuThrottle": 6,
+            "operationMs": 0,
+            "graphMs": 1044,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 121,
+                "durationMs": 920,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 1876,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 1642,
+              "latestMutationToFrameMs": 1873,
+              "renderMs": 298,
+              "frameMs": 161,
+              "latestRenderMs": 5,
+              "latestFrameMs": 23
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 1260,
+            "graphAlreadyCurrent": false,
+            "settledMs": 1886,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "rev-parse": 35,
+              "worktree": 1,
+              "for-each-ref": 2,
+              "log": 1,
+              "rev-list": 2,
+              "remote": 1,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "rev-parse": 476,
+              "worktree": 12,
+              "for-each-ref": 91,
+              "log": 38,
+              "rev-list": 54,
+              "remote": 28,
+              "status": 37,
+              "ls-remote": 70
+            },
+            "nodeCpuMs": 206,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 12,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 0,
+      "identity": "after",
+      "mode": "latency",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "32ce910781a1bca52247a87778424ee956e529be8693d7d2dc3aee614183ca55",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 109,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "simulatedReadContention": {
+              "delayMs": 75,
+              "slots": 3,
+              "readStarts": 14,
+              "maxQueued": 1,
+              "pending": 0,
+              "scope": "Simulated read-start waiting in the owned benchmark Node; slots are preparation slots, not an OS/CPU or live-process limit. No machine-wide load was generated."
+            },
+            "rendererCpuThrottle": 6,
+            "operationMs": 0,
+            "graphMs": 247,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 123,
+                "durationMs": 120,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 950,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 750,
+              "latestMutationToFrameMs": 948,
+              "renderMs": 251,
+              "frameMs": 139,
+              "latestRenderMs": 4,
+              "latestFrameMs": 19
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 444,
+            "graphAlreadyCurrent": false,
+            "settledMs": 968,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "for-each-ref": 2,
+              "rev-parse": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 19,
+              "for-each-ref": 88,
+              "rev-parse": 55,
+              "log": 30,
+              "remote": 13,
+              "rev-list": 39,
+              "status": 24,
+              "ls-remote": 37
+            },
+            "nodeCpuMs": 161,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 20,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "before",
+      "mode": "latency",
+      "reference": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+      "closeCode": 0,
+      "reportSha256": "4876db864704e1bf701fc5075f687498ddffa684f5f78c78cce653de13464cb6",
+      "report": {
+        "version": "0.1.72167",
+        "source": {
+          "kind": "commit",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "50b8738f4f26b31089fa2006bdbf89f40453fe0b4de1234c9e2828c0a376e9d3"
+        },
+        "environmentKeys": 109,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "simulatedReadContention": {
+              "delayMs": 75,
+              "slots": 3,
+              "readStarts": 47,
+              "maxQueued": 33,
+              "pending": 0,
+              "scope": "Simulated read-start waiting in the owned benchmark Node; slots are preparation slots, not an OS/CPU or live-process limit. No machine-wide load was generated."
+            },
+            "rendererCpuThrottle": 6,
+            "operationMs": 0,
+            "graphMs": 1026,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 110,
+                "durationMs": 914,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 1713,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 1515,
+              "latestMutationToFrameMs": 1709,
+              "renderMs": 248,
+              "frameMs": 134,
+              "latestRenderMs": 4,
+              "latestFrameMs": 19
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 1215,
+            "graphAlreadyCurrent": false,
+            "settledMs": 1731,
+            "processes": 44,
+            "operationProcesses": 0,
+            "graphProcesses": 44,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 35,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 35,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 9,
+              "rev-parse": 255,
+              "for-each-ref": 67,
+              "log": 25,
+              "remote": 13,
+              "rev-list": 35,
+              "status": 19,
+              "ls-remote": 26
+            },
+            "nodeCpuMs": 173,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 11,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    },
+    {
+      "pair": 1,
+      "identity": "after",
+      "mode": "latency",
+      "reference": "working-tree",
+      "closeCode": 0,
+      "reportSha256": "81751dd760e01022c29a090a799fd91074309890643c08903b29552a7600ecaf",
+      "report": {
+        "version": "0.1.72168",
+        "source": {
+          "kind": "working-tree",
+          "commit": "b8b453b508d07cbe1fb20bf8dc340bc675d804f4",
+          "bundleSha256": "7d63a71042912001a8b61ea49486e9cb61cbab383128489c85302202ce2c89de"
+        },
+        "environmentKeys": 109,
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100,
+          "sharedUpstreamBranches": 8,
+          "network": "local-bare-only",
+          "monitorPolicy": false,
+          "nativeInputValidatedBeforeGraph": true,
+          "inputScope": "Filesystem-warm functional checks; not cold-start performance evidence"
+        },
+        "results": [
+          {
+            "operation": "initial",
+            "startupDiscoveryDirectories": 34,
+            "startupRootsNativeExact": true,
+            "simulatedReadContention": {
+              "delayMs": 75,
+              "slots": 3,
+              "readStarts": 14,
+              "maxQueued": 1,
+              "pending": 0,
+              "scope": "Simulated read-start waiting in the owned benchmark Node; slots are preparation slots, not an OS/CPU or live-process limit. No machine-wide load was generated."
+            },
+            "rendererCpuThrottle": 6,
+            "operationMs": 0,
+            "graphMs": 247,
+            "branchDetailsReads": [
+              {
+                "startedAfterOperationMs": 124,
+                "durationMs": 120,
+                "firstFrameBeforeDetails": false
+              }
+            ],
+            "liveRenderer": {
+              "mode": "headless-production-html",
+              "renderedRows": 300,
+              "exactRefs": true,
+              "exactRemoteTags": true,
+              "exactHeadBadge": true,
+              "exactLocalOnly": true,
+              "headInLoadedPage": true,
+              "allMessageFrameMs": 1066,
+              "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+              "allMessageSequence": 11,
+              "mutationToFrameMs": 825,
+              "latestMutationToFrameMs": 1062,
+              "renderMs": 293,
+              "frameMs": 152,
+              "latestRenderMs": 36,
+              "latestFrameMs": 71
+            },
+            "nativeOracleAfterMeasuredFrame": true,
+            "latestGraphPublishedMs": 446,
+            "graphAlreadyCurrent": false,
+            "settledMs": 1082,
+            "processes": 11,
+            "operationProcesses": 0,
+            "graphProcesses": 11,
+            "peakProcesses": 3,
+            "webviewMessages": 10,
+            "graphPublications": 3,
+            "branchFilterPublications": 1,
+            "branchFilterJsonBytes": 14300,
+            "commands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "graphCommands": {
+              "worktree": 1,
+              "rev-parse": 2,
+              "for-each-ref": 2,
+              "log": 1,
+              "remote": 1,
+              "rev-list": 2,
+              "status": 1,
+              "ls-remote": 1
+            },
+            "commandTimeMs": {
+              "worktree": 9,
+              "rev-parse": 18,
+              "for-each-ref": 87,
+              "log": 30,
+              "remote": 10,
+              "rev-list": 47,
+              "status": 22,
+              "ls-remote": 36
+            },
+            "nodeCpuMs": 181,
+            "nodeCpuScope": "benchmark Node process including Playwright transport and idle checks; optional legacy RSS sampling is reported separately",
+            "settledQuietPeriodMs": 20,
+            "rssDeltaMiB": 12,
+            "nodeRssSamplingEnabled": false,
+            "nativeOperationVerified": true,
+            "nativeBranchVerified": true,
+            "historyExact": true
+          }
+        ]
+      },
+      "memory": []
+    }
+  ],
+  "completed": true,
+  "scope": "Small owned synthetic repositories only: 1000 files, 1800 commits, 100 side branches, 8 shared upstreams. Per-operation interleaving B/A then A/B; separate latency, CPU and sampled simultaneous RSS modes. Native operation and final first-page oracle plus production HTML/CSP/JS. merge-no-ff invokes Native CLI directly; other matrix rows invoke actual services, not user controls. Independent fresh source Nodes and equal deterministic fixture content; no Captain access. Filesystem-warm functional oracle, no GitHub network or active VS Code timing claim."
+}
