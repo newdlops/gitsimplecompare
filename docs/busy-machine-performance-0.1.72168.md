@@ -100,9 +100,9 @@ gate의 readStarts 47/14에는 측정 뒤 검증 조회 3건도 포함되며 제
 관련 Node 검사 64건이 실패·취소·skip 없이 통과했다. cold/sibling 공유, fresh branch,
 nested/unborn·linked worktree·physical symlink·bare·ceiling·custom executable·상대 config,
 늦은 경계 변경·clone/init generation, Output/설정 오류, 기존 blame·파일 장식과 Git
-안전성을 포함한다. 타입 검사와 production package를 확인한다.
+안전성을 포함한다. 타입 검사와 production package도 통과했다.
 
-기존 80개 PR·stale local-change hint를 둔 실제 Git 컨트롤 11개도 확인하며 결과는
+기존 80개 PR·stale local-change hint를 둔 실제 Git 컨트롤 11개도 통과했으며 결과는
 [기능 기록](benchmarks/busy-functional-controls-0.1.72168.json)에 있다. 새 UI 컨트롤이나
 스타일 변경은 없다. 사용자 창 focus 전환·강제 reload·별도 Marketplace 상태 조회는
 하지 않는다. 검증한 같은 VSIX를 게시/설치하고 runtime 바이트를 대조한다.
@@ -112,3 +112,10 @@ nested/unborn·linked worktree·physical symlink·bare·ceiling·custom executab
 [패키지 기록](benchmarks/release-artifact-0.1.72168.json)에 checksum을 남긴다.
 136개 package 파일 중 126개 runtime을 소스와 대조했고 이전 설치 대비 변경은
 `dist/extension.js` 한 개다. 테스트용 대기/CPU 제한 코드와 개발 파일은 포함하지 않는다.
+
+제품 커밋 `320649a`를 origin/main에 푸시했고 검증한 같은 VSIX의 게시·설치가 성공했다.
+설치 registry는 0.1.72168이며 126개 runtime이 패키지·소스와 같은 바이트다.
+[배포 기록](benchmarks/deployment-0.1.72168.json)과
+[범위별 감사](benchmarks/goal-audit-0.1.72168.json)에 최종 상태와 한계를 남겼다.
+기존 활성 Host가 새 버전으로 다시 시작했는지는 확인하지 않는다. 현재 창에 적용되는
+시점은 정상적인 다음 확장/창 reload이며 강제로 실행하지 않았다.

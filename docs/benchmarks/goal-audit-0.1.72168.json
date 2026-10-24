@@ -1,0 +1,19 @@
+{
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "version": "0.1.72168",
+  "requirements": {
+    "observedSelfInducedContention": "34 overlapping reported rev-parse windows from 34 cwd paths; current candidate anchor is one worktree. Sanitized observation saved.",
+    "reduceWorkAndConcurrency": "34-directory Native discovery 34->1; Graph startup Git calls 44->11 and owned peak slots 36->3 in completed comparisons.",
+    "verifyConstrainedResponse": "75ms read-start delay/3 preparation slots and Chromium CPU throttle 6; four completed independent Native/DOM cases. First frame median 1578.5->787.5ms and last frame 1794.5->1008ms.",
+    "preserveCorrectness": "64 Node cases, 48 protected discovery bursts, 12 normal Native/DOM startup cases, 4 constrained Native/DOM cases, and 11 actual controls with 80 PR cards and stale local changes.",
+    "boundAdditionalWork": "Filesystem ancestor depth64 and pending map512; pending-only FS sharing, existing 5-second root cache, fresh branch reads, no new product timer/worker/watcher.",
+    "completeDelivery": "Same verified VSIX published and installed; all 126 installed runtime files match."
+  },
+  "limitations": [
+    "Controlled scheduling/CPU limits are a reproduction model, not a claim of testing every kind of whole-machine contention.",
+    "Normal comparative runs did not keep the entire machine at the initially observed 88% CPU; machine-wide stress was not generated.",
+    "Performance ratios are scoped to the documented owned input and two independent Node lifetimes/source/mode. RSS is sampled, not a physical/retained peak.",
+    "Renderer code and GitHub network behavior were not changed; necessary Native Git work still depends on machine resources.",
+    "Existing user Host was not forced to reload and active Host version was not verified."
+  ]
+}
