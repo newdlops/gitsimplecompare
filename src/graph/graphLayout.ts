@@ -3,7 +3,7 @@
 // - 레인 스윕(lane sweep) 방식으로 각 커밋의 열과 간선을 계산한다. vscode 비의존.
 import { Commit, GraphData, GraphEdge, GraphRow } from "./graphTypes";
 
-/** 동시에 보이는 lane 끼리 같은 색상 계열을 피하기 위한 색상 family 수. */
+/** 동시에 보이는 lane의 색상 계열 수. 0~15 계열은 하위 16비트의 점유 mask로 표현한다. */
 const LANE_COLOR_FAMILY_COUNT = 16;
 
 /** 페이지 경계에서 재사용할 레인 스윕 상태. 배열은 checkpoint 시점의 독립 사본이다. */
@@ -200,7 +200,7 @@ function chooseLaneColor(
   const usedFamilies = activeColorFamilies(lanes, laneColor, targetLane);
   for (let offset = 0; offset < LANE_COLOR_FAMILY_COUNT * 4; offset++) {
     const candidate = seed + offset;
-    if (!usedFamilies.has(colorFamily(candidate))) {
+    if ((usedFamilies & (1 << colorFamily(candidate))) === 0) {
       return candidate;
     }
   }
@@ -208,23 +208,25 @@ function chooseLaneColor(
 }
 
 /**
- * active lane 들의 색상 family 집합을 만든다.
+ * active lane들의 16색 점유 집합을 정수 하나로 만든다.
+ * 색상 계열은 0~15라 shift가 인덱스나 좌표를 32비트로 잘라내지 않으며,
+ * 새 색을 고를 때마다 Set과 내부 저장 공간을 할당할 필요도 없다.
  * @param lanes 현재 lane 점유 상태
  * @param laneColor lane 별 색상 인덱스
  * @param targetLane 새 색을 넣을 lane. 비어 있는 과거 색은 제외한다.
- * @returns 현재 동시에 보이는 색상 family 집합
+ * @returns 하위 16비트 중 사용 중인 색상 계열의 비트가 켜진 mask(0~65535)
  */
 function activeColorFamilies(
   lanes: (string | null)[],
   laneColor: number[],
   targetLane?: number
-): Set<number> {
-  const families = new Set<number>();
+): number {
+  let families = 0;
   for (let i = 0; i < lanes.length; i++) {
     if (i === targetLane || lanes[i] === null || laneColor[i] === undefined) {
       continue;
     }
-    families.add(colorFamily(laneColor[i]));
+    families |= 1 << colorFamily(laneColor[i]);
   }
   return families;
 }

@@ -1,0 +1,149 @@
+{
+  "version": "0.1.72175",
+  "recordedAt": "2026-10-25T23:25:01.829777+00:00",
+  "baselineCommit": "afd6b2eddc8ea01ee0a6306339253b935d4b6c5c",
+  "baselineVersion": "0.1.72174",
+  "baselineSourceSha256": "ae930fc453f1b9718103630788d30bf6165956af72de187f5861d70656569c73",
+  "candidateSourceSha256": "79270a84e288af78791a50ef160257d6e7e3c8aad1242d9f8fe5c8d9f77363a2",
+  "measurementScriptSha256": "76939898f7f5d861e5ade33207e1294c0d31f74a5764db89998137a066d0011c",
+  "measuredCandidateCompiledBytesMatchedProductAlgorithm": true,
+  "compiledAlgorithmSha256": "3848eb71c19827d19db3ccc64ca1561f6a62117150ab3e9eee861d5cf26e4dd8",
+  "correctness": {
+    "full": 52,
+    "checkpoints": 52,
+    "incremental": 256
+  },
+  "nodeTestsPassed": 19,
+  "checks": {
+    "node": {
+      "exitCode": 0,
+      "bytes": 5298,
+      "sha256": "40bc13c890f6a0defed0340a94888f63e300d7db5e3ec85c89318957f77ab071"
+    },
+    "types": {
+      "exitCode": 0,
+      "bytes": 59,
+      "sha256": "bbedb8751356c0a467748a2a85a9b6a1916015521c91b11b5fad36377b3fccd8"
+    },
+    "build": {
+      "exitCode": 0,
+      "bytes": 71,
+      "sha256": "3cfb72055ceec406d17f4c73e052786f5e30f7c5c3fbaaee18f3ecedf9df868d"
+    }
+  },
+  "performance": {
+    "scope": "synthetic Node layout only; no Git, renderer, or actual Code timing",
+    "finalSummary": [
+      {
+        "kind": "linear",
+        "rows": 300,
+        "baselineWallMs": 0.1381546516666672,
+        "maskWallMs": 0.1286802066666663,
+        "baselineCpuMs": 0.1042,
+        "maskCpuMs": 0.10462833333333332,
+        "wallChangePercent": -6.857854502691952,
+        "cpuChangePercent": 0.41106845809339987,
+        "perLifeCpuChangePercent": [
+          -1.5766731536761558,
+          -1.6436069468074854,
+          2.4514648219579716,
+          -1.883061572158673
+        ]
+      },
+      {
+        "kind": "linear",
+        "rows": 5000,
+        "baselineWallMs": 4.073249999999973,
+        "maskWallMs": 3.705984312499993,
+        "baselineCpuMs": 3.026875,
+        "maskCpuMs": 3.0641875,
+        "wallChangePercent": -9.016527036150068,
+        "cpuChangePercent": 1.2327069997935203,
+        "perLifeCpuChangePercent": [
+          5.821196299349629,
+          -5.611892141046315,
+          5.146143611313803,
+          -2.3954478532489776
+        ]
+      },
+      {
+        "kind": "merges",
+        "rows": 300,
+        "baselineWallMs": 0.10524194499999945,
+        "maskWallMs": 0.10369041666666742,
+        "baselineCpuMs": 0.095755,
+        "maskCpuMs": 0.09508333333333333,
+        "wallChangePercent": -1.4742490110117523,
+        "cpuChangePercent": -0.7014429185595361,
+        "perLifeCpuChangePercent": [
+          1.6053479067043908,
+          -0.33260322868501335,
+          -0.9786883746455644,
+          -1.865499769691381
+        ]
+      },
+      {
+        "kind": "merges",
+        "rows": 5000,
+        "baselineWallMs": 3.1952708750000625,
+        "maskWallMs": 3.1035260625000376,
+        "baselineCpuMs": 2.8836874999999997,
+        "maskCpuMs": 2.8603750000000003,
+        "wallChangePercent": -2.871268699559726,
+        "cpuChangePercent": -0.8084267105918919,
+        "perLifeCpuChangePercent": [
+          -2.4202108838723424,
+          1.5270413573700958,
+          -2.4231093515158064,
+          0.9274377898243147
+        ]
+      },
+      {
+        "kind": "wide",
+        "rows": 300,
+        "baselineWallMs": 0.26206055666666583,
+        "maskWallMs": 0.24830312499999993,
+        "baselineCpuMs": 0.24869,
+        "maskCpuMs": 0.2320483333333333,
+        "wallChangePercent": -5.249714738324773,
+        "cpuChangePercent": -6.691731338882423,
+        "perLifeCpuChangePercent": [
+          -6.802674083159143,
+          -6.16725009723843,
+          -20.38966699837983,
+          -7.088616536573323
+        ]
+      },
+      {
+        "kind": "wide",
+        "rows": 5000,
+        "baselineWallMs": 3.8022291874999965,
+        "maskWallMs": 3.6401197499999967,
+        "baselineCpuMs": 4.007687499999999,
+        "maskCpuMs": 3.8000625,
+        "wallChangePercent": -4.26353671769556,
+        "cpuChangePercent": -5.180668402913136,
+        "perLifeCpuChangePercent": [
+          -1.678736010533255,
+          -4.320269046695124,
+          -5.430459615442129,
+          -5.982107894816102
+        ]
+      }
+    ],
+    "initialIndependentLifetimeResult": "large variation and adverse medians retained; no general CPU improvement established",
+    "interleavedPilotAndFinalDenseCpuDecreasedInEveryLife": true,
+    "generalLayoutCpuImprovementProven": false,
+    "actualBusyCodeWindowImprovementProven": false,
+    "latencySavingMagnitude": "sub-millisecond per synthetic layout; not whole Graph rendering"
+  },
+  "runtimeScope": "only 16-family occupancy representation; GraphData results matched for tested cases",
+  "visualQaPerformedForThisRelease": false,
+  "companyRepositoryAccessedByThisExperiment": false,
+  "marketplaceStatusQueried": false,
+  "rawReports": [
+    "lane-color-mask-independent-0.1.72175.json",
+    "lane-color-mask-interleaved-pilot-0.1.72175.json",
+    "lane-color-mask-interleaved-final-0.1.72175.json"
+  ]
+}

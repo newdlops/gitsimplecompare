@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.72175] - 2026-10-26
+
+### Performance
+
+- Track Graph's 16 active lane color families in a bitmask to avoid allocating
+  a Set for each color choice, preserving existing colors and lane geometry.
+
 ## [0.1.72174] - 2026-10-26
 
 ### Performance
