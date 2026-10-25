@@ -72,6 +72,18 @@ async function measure(root: string, count: number, html: string, resources: Rea
   let stopObserver = () => {};
   try {
     await renderer.prepareStartup();
+    // 호출 수와 시간 측정은 분리한다. 요청한 진단 문서에만 SVG Native 경계 counter를 주입한다.
+    // 각 wrapper는 원래 매개변수·this·반환값을 그대로 전달하고 소유 문서가 닫히면 함께 사라진다.
+    if (process.env.GSC_BENCH_RENDERER_DOM_CALLS === '1') await (renderer as any).page.addInitScript(() => {
+      const calls = (window as any).__svgNativeCalls = { setAttribute: 0, createElementNS: 0, cloneNode: 0 };
+      const set = SVGElement.prototype.setAttribute, clone = SVGElement.prototype.cloneNode, create = document.createElementNS;
+      SVGElement.prototype.setAttribute = function(...args) { calls.setAttribute++; return set.apply(this, args); };
+      SVGElement.prototype.cloneNode = function(...args) { calls.cloneNode++; return clone.apply(this, args); };
+      document.createElementNS = function(...args: any[]) {
+        if (args[0] === 'http://www.w3.org/2000/svg') calls.createElementNS++;
+        return (create as any).apply(this, args);
+      } as typeof create;
+    });
     await (renderer as any).page.addInitScript(() => {
       window.addEventListener('pointerdown', event => {
         if (!event.isTrusted || event.button !== 0) return;
@@ -177,7 +189,11 @@ async function measure(root: string, count: number, html: string, resources: Rea
       const last = lifecycle.at(-1)!;
       assert.ok(lifecycle.every(sample => sample.documents === last.documents && sample.nodes === last.nodes && sample.jsEventListeners === last.jsEventListeners), 'DOM resources grew across identical reset cycles');
     }
-    return { count: commits.length, branches: branchCount, edges, lanes, profiled: !!renderProfile, cpuThrottle: Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1),
+    // 원문 SVG는 보고서에 남기지 않는다. 계측 밖의 hash로 before/after의 모든 속성·제목·순서를 확인한다.
+    const svgFingerprint = digest(await (renderer as any).page.evaluate(() => document.querySelector('#graph-content svg')?.outerHTML || ''));
+    const svgNativeCalls = await (renderer as any).page.evaluate(() => (window as any).__svgNativeCalls);
+    return { count: commits.length, branches: branchCount, edges, lanes, svgFingerprint, svgNativeCalls,
+      profiled: !!renderProfile, cpuThrottle: Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1),
       startedAt, endedAt, elapsedMs: endedAt - startedAt, readMs, layoutMs, nodeCpuMs: (used.user + used.system) / 1000,
       nodeEventLoopDelayMaxMs: delay.max / 1e6, readyCount, startup, frame, selectionRoundTripMs, selectionEvent, phaseResources,
       commands: timings.map(({ command, elapsedMs, syncSpawnMs, outcome }) => ({ command, elapsedMs, syncSpawnMs, outcome })),

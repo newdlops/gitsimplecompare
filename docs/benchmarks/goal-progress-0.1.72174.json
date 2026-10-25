@@ -1,6 +1,6 @@
 {
   "version": "0.1.72174",
-  "recordedAt": "2026-10-25T21:34:18.958431+00:00",
+  "recordedAt": "2026-10-25T22:01:07.628160+00:00",
   "goalStatus": "active",
   "overallCompletion": "unproven; installed runtime exact, all four actual windows still run 0.1.72173 and no fresh Graph paint was observed in 45 seconds",
   "requirements": [
@@ -44,12 +44,12 @@
       "result": "Installed and registered 0.1.72174 verified. Start/end live handles both show four 0.1.72173 windows; 45-second passive watch observed zero new Graph paint events. Updated-session concurrent-load responsiveness remains unverified."
     }
   ],
-  "currentTurnProgress": "Recorded actual-data V8 profile and four independent pilot lifetimes with matching Native inputs/protected state. Prototype rejected because render+frame pairs disagree. Source/published/installed runtime exact again.",
+  "currentTurnProgress": "Compared 300/1200/5000 rows in 48 documents plus 2 call-diagnostic documents. SVG hashes and Native guards exact; fewer attribute calls accompanied higher large-graph browser CPU, so prototype was reverted.",
   "remainingEvidence": "A fresh Graph interaction during concurrent load after an actual window activates 0.1.72174. Overall CPU and default small-graph performance remain uncertain; preserve original unfavorable benchmark samples.",
   "focusChanged": false,
   "userRepositoryMutated": false,
-  "previousGoalTurnClassification": "no progress; prior run ended blocked on actual updated-window interaction",
-  "currentGoalTurnClassification": "progress: current deployed CPU profile and independent unprofiled prototype comparison reject a work-shifting optimization; exact release restored",
+  "previousGoalTurnClassification": "progress: independent initial-HEAD profile/pilot rejected and exact release restored",
+  "currentGoalTurnClassification": "progress: 16-lifetime SVG comparison and separate Native-call diagnostic reject a CPU-increasing prototype; benchmark fidelity improved and exact runtime restored",
   "blocker": {
     "condition": "Updated actual Graph interaction under concurrent load is unavailable under the no-focus/no-forced-reload preference.",
     "externalChangeNeeded": "A normal user-initiated reload and Graph interaction in an actual window, or explicit permission for the required application interaction.",
@@ -70,5 +70,5 @@
     "release": "Product commit afd6b2e pushed; same VSIX published/installed, 81 runtime files and one target registration freshly verified.",
     "actualBusySession": "Missing: target version not active in any of four observed real windows; zero fresh paint events. Goal stays active."
   },
-  "latestIndependentDiagnostic": "head-position-probe-0.1.72174.json"
+  "latestIndependentDiagnostic": "svg-template-probe-0.1.72174.json"
 }
