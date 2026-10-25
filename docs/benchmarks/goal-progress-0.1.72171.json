@@ -5,16 +5,18 @@
   "version": "0.1.72171",
   "acceptedWork": [
     "Validated metadata deltas visit affected SVG nodes and outgoing edges only; reference changes remain pending until an SVG render.",
-    "Incremental preparation reuses the indexed final real row with detached/virtual fallback; unchanged SVG dimensions are not written."
+    "Incremental preparation reuses the indexed final real row with detached/virtual fallback; unchanged SVG dimensions are not written.",
+    "Verified two independent same-session lifecycle probes: 8 panel cycles each, stable listeners and closed-instance counts, no timer/Git-process accumulation and exact protected Native state."
   ],
   "evidence": "verification-0.1.72171.json",
   "remainingRequiredWork": [
-    "Inspect remaining long renderer tasks and DOM/layout scans in large Graph updates.",
-    "Verify repeated refresh/reveal/close within one session with bounded process/listener/timer/heap behavior.",
-    "Inspect actual updated-session metrics after a normal reload; latest observed active hosts remain at 0.1.72169 and no forced reload is authorized."
+    "Profile remaining large-Graph layout/paint tasks through production HTML/bundle; the raw-module diagnostic shows full-document layouts.",
+    "Inspect actual updated-session metrics after a normal reload; latest OUTPUT remains at 0.1.72169. No forced reload or OS focus changes.",
+    "Treat the short post-GC heap budget as finite probe evidence; validate actual-session memory behavior before claiming the full objective."
   ],
   "deploymentIsNotFullGoalCompletion": true,
   "deploymentComplete": true,
   "installedVersion": "0.1.72171",
-  "deploymentEvidence": "deployment-0.1.72171.json"
+  "deploymentEvidence": "deployment-0.1.72171.json",
+  "followupEvidence": "lifecycle-profile-summary-0.1.72171.json"
 }

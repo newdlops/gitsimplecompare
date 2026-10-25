@@ -1,0 +1,447 @@
+{
+  "source": {
+    "kind": "working-tree",
+    "commit": "4273f71459678a45d2ecf39c20315c52b558583c",
+    "bundleSha256": "86c7482b539a35eeef33f9d73894903903dd652c54d5efcd8cc2e19ae5eb074e"
+  },
+  "cycles": [
+    {
+      "cycle": 0,
+      "created": 1,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 51679232,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 1,
+      "created": 2,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 50050576,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 2,
+      "created": 3,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 48823440,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 3,
+      "created": 4,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 48889896,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 4,
+      "created": 5,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 49076192,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 5,
+      "created": 6,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 49086168,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 6,
+      "created": 7,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 49139856,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    },
+    {
+      "cycle": 7,
+      "created": 8,
+      "initial": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "rounds": [
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8948,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8947,
+          "jsEventListeners": 420
+        },
+        {
+          "documents": 1,
+          "nodes": 8948,
+          "jsEventListeners": 420
+        }
+      ],
+      "final": {
+        "documents": 1,
+        "nodes": 8947,
+        "jsEventListeners": 420
+      },
+      "surface": {
+        "closed": true,
+        "latePosts": 0,
+        "reveals": 4,
+        "subscriptions": 0
+      },
+      "nativeIdle": true,
+      "heapUsed": 49133144,
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "PipeWrap",
+        "ProcessWrap"
+      ],
+      "panelInstances": 1,
+      "serviceInstances": 1,
+      "rendererInstances": 1
+    }
+  ],
+  "protectedStateExact": true,
+  "closedContextsExact": true,
+  "hiddenReadsSuppressed": true,
+  "boundedNodeResources": true,
+  "nodeHeapGrowthBytes": 189880,
+  "scope": "Same Node and Chromium; 8 production panel open/close cycles, each 4 real refresh-button clicks and 4 hide/deferred-refresh/reveal command rounds, alternating close during reads. Real Native Git in an owned fixture, 80 mocked GitHub PR rows; VS Code window/transport events are faithfully modelled, no OS focus or real user worktree writes. DOM/listener counters after GC, host heap after GC; no total RSS/physical peak claim."
+}

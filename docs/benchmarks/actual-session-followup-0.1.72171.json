@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-10-25T12:37:44.629695+00:00",
+  "observations": [
+    {
+      "window": "window2",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T12:37:09.192Z"
+    },
+    {
+      "window": "window3",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T12:37:09.191Z"
+    },
+    {
+      "window": "window4",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T12:37:09.141Z"
+    },
+    {
+      "window": "window1",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T12:37:09.141Z"
+    }
+  ],
+  "scope": "Read-only active-version metadata in latest local OUTPUT; no reload, OS focus or Marketplace query."
+}

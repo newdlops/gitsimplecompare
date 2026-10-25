@@ -1,0 +1,79 @@
+diff --git a/media/graph/graphSvgRender.js b/media/graph/graphSvgRender.js
+index 8fae373..bd1251d 100644
+--- a/media/graph/graphSvgRender.js
++++ b/media/graph/graphSvgRender.js
+@@ -100,9 +100,9 @@
+     for (const index of changed) {
+       const row = options.rows[index];
+       if (!row) continue;
+-      if (svg.__gscNodeKeys[index] !== nodeKey(row, options)) {
+-        renderNodeEntry(svg, index, options);
+-        markersChanged ||= Boolean(row.compacted);
++      const key = nodeKey(row, options);
++      if (svg.__gscNodeKeys[index] !== key && !updateNodeTitle(svg, index, key, options)) {
++        renderNodeEntry(svg, index, options); markersChanged ||= Boolean(row.compacted);
+       }
+       for (let edgeIndex = first[index]; edgeIndex !== -1; edgeIndex = next[edgeIndex]) {
+         const edge = options.edges[edgeIndex], name = svg.__gscEdgeNames[edgeIndex];
+@@ -116,6 +116,26 @@
+     return svg;
+   }
+ 
++  /**
++   * 검증된 동일 구조에서 색·종류도 같은 일반 node는 title만 바꿔 SVG 전체 기하 재계산을 피한다.
++   * @param svg 기존 소유 SVG @param index 변경 행 위치 @param key 최신 전체 표시 key @param options 최신 표시 함수.
++   * @returns 기존 원과 ring을 보존했으면 true. compact·색·class·누락 요소는 기존 교체 경로로 보낸다.
++   */
++  function updateNodeTitle(svg, index, key, options) {
++    const row = options.rows[index];
++    if (row.compacted) return false;
++    const node = svg.__gscNodeElements[index]?.find(element => element.classList?.contains("node"));
++    if (!node || node.getAttribute("fill") !== options.rowDisplayColor(row) ||
++      node.getAttribute("class") !== (window.GscGraphFeatures?.nodeClass(row) || "node")) return false;
++    const title = node.querySelector("title");
++    if (!title) return false;
++    const text = options.rowTitle(row);
++    if (node.getAttribute("aria-label") !== text) node.setAttribute("aria-label", text);
++    if (title.textContent !== text) title.textContent = text;
++    svg.__gscNodeKeys[index] = key;
++    return true;
++  }
++
+   /** 실제 node 모양·좌표·툴팁을 바꾸는 입력만 key에 포함해 동일한 요소를 계속 사용한다. */
+   function nodeKey(row, options) {
+     return JSON.stringify([row.column, row.originalColumn, row.compacted, row.kind,
+diff --git a/test/webview/graphSvgMetadata.spec.ts b/test/webview/graphSvgMetadata.spec.ts
+index 3f65c1a..ce4b510 100644
+--- a/test/webview/graphSvgMetadata.spec.ts
++++ b/test/webview/graphSvgMetadata.spec.ts
+@@ -13,6 +13,30 @@ async function svgShape(page: Page) {
+   ].join("\n")).sort());
+ }
+ 
++test("HEAD, subject and author updates preserve SVG geometry and refresh accessible tooltips", async ({ page }) => {
++  test.setTimeout(90_000);
++  await mountReferenceGraph(page, true, 1);
++  const result = await page.evaluate(() => {
++    const w = window as any, fixture = w.__referenceFixture, svg = document.querySelector("#graph-content svg")!;
++    const node = svg.querySelector('.node[data-row="1"]')!, oldTitle = node.getAttribute("aria-label");
++    const observer = new MutationObserver(() => undefined); observer.observe(svg, { subtree: true, childList: true });
++    const changed = { ...fixture.rows[1], refs: ["HEAD", ...fixture.rows[1].refs], subject: "Changed title", authorName: "Changed author" };
++    window.dispatchEvent(new MessageEvent("message", { data: { type: "graphDelta", delta: { baseRevision: 0, revision: 1,
++      rowStart: fixture.rows.length, rows: [], rowUpdates: [{ index: 0, row: { ...fixture.rows[0], refs: fixture.rows[0].refs.filter((ref: string) => ref !== "HEAD") } },
++        { index: 1, row: changed }], edgeStart: fixture.edges.length,
++      edges: [], edgeUpdates: [], laneCount: 1 }, state: { loadedCount: fixture.rows.length, reset: false,
++        loading: false, hasMore: false, colorScope: "/fixture/references" } } }));
++    const geometryMutations = observer.takeRecords().flatMap(record => [...record.addedNodes, ...record.removedNodes])
++      .filter(node => node.nodeType === Node.ELEMENT_NODE && ["circle", "path"].includes((node as Element).localName)).length;
++    observer.disconnect();
++    return { same: node === svg.querySelector('.node[data-row="1"]'), geometryMutations,
++      oldTitle, title: node.getAttribute("aria-label"), tooltip: node.querySelector("title")?.textContent };
++  });
++  expect(result.same).toBe(true); expect(result.geometryMutations).toBe(0);
++  expect(result.title).not.toBe(result.oldTitle); expect(result.title).toContain("Changed title");
++  expect(result.title).toContain("HEAD"); expect(result.tooltip).toBe(result.title);
++});
++
+ for (const unknownScope of [false, true]) {
+   test(`metadata SVG matches full snapshot after reference changes (unknown scope: ${unknownScope})`, async ({ page }) => {
+     test.setTimeout(90_000);

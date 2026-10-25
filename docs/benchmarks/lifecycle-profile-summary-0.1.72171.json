@@ -1,0 +1,92 @@
+{
+  "version": "0.1.72171",
+  "productChanged": false,
+  "lifecycle": {
+    "independentRuns": 2,
+    "sameNodeAndBrowserCyclesPerRun": 8,
+    "refreshesPerRun": 32,
+    "revealsPerRun": 32,
+    "additionalWarmupRefreshesPerRun": 8,
+    "fixture": {
+      "files": 1000,
+      "commits": 1800,
+      "branches": 100,
+      "prCards": 80
+    },
+    "listenersAfterWarmup": 420,
+    "listenersAfterRefreshes": 420,
+    "closedSubscriptions": 0,
+    "latePosts": 0,
+    "nativeIdleAfterClose": true,
+    "protectedFilesIndexConfigRefsExact": true,
+    "reachableClosedStageObjectsPerCycle": {
+      "panels": 1,
+      "services": 1,
+      "renderers": 1
+    },
+    "objectScope": "The current iteration remains in the harness stack; closed instances do not accumulate across iterations.",
+    "resourcesPerClosedCycle": {
+      "PipeWrap": 4,
+      "ProcessWrap": 1
+    },
+    "timeoutsPerClosedCycle": 0,
+    "nodeHeapGrowthBytes": 189880,
+    "heapBudgetBytes": 3145728,
+    "heapScope": "Post-GC Node host heap, not RSS or a proof of zero long-run allocation. Original 8-cycle confirmation showed 310221 bytes growth; live closed-object counts were added and remained constant in the second independent run."
+  },
+  "profile": {
+    "harness": "raw modules; 5000 rows/4999 edges, CPU 6x with profiler/tracing overhead",
+    "layoutCount": 8,
+    "layoutTotalMs": 773.9870000000001,
+    "dirtyObjects": [
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11,
+      11
+    ],
+    "totalObjects": [
+      53971,
+      53971,
+      53971,
+      53971,
+      53971,
+      53971,
+      53971,
+      53971
+    ],
+    "root": "#document",
+    "scope": "Diagnostic categories, not comparative or active VS Code latency. A production-bundle profile is the next renderer gate."
+  },
+  "titleCandidate": {
+    "decision": "rejected",
+    "metrics": {
+      "before": {
+        "handlerMs": 51.1499999910593,
+        "frameMs": 231.67500000447035,
+        "browserCpuMs32": 981.6225000000002
+      },
+      "after": {
+        "handlerMs": 39.94999999552965,
+        "frameMs": 172.3999999910593,
+        "browserCpuMs32": 1049.9669999999999
+      }
+    },
+    "reason": "CPU median increased and paired latency/CPU results were inconsistent under changing host load. Candidate product/test edits were removed.",
+    "raw": "rejected-title-candidate-0.1.72171.json",
+    "patch": "rejected-title-candidate-0.1.72171.patch"
+  },
+  "rowContainmentExperiment": {
+    "decision": "rejected",
+    "reason": "No meaningful layout reduction; eight layouts still cover the same full document. Only the owned diagnostic page was styled; product CSS was never changed."
+  },
+  "probeCorrection": "Initial DOM counters were sampled before the first Playwright locator/click initialized its own handlers (394 to 420). Warm an actual button click and Native/DOM verification before the baseline; subsequent rounds stay at 420. Failed owned fixtures were preserved.",
+  "scopeLimitations": [
+    "VS Code event transport is modelled; no OS focus, foreground Extension Host or forced reload.",
+    "Active local OUTPUT remains at 0.1.72169; updated-session behavior is not proven.",
+    "Remaining renderer work must be profiled through production HTML/bundle before claiming an end-to-end improvement."
+  ]
+}
