@@ -1,0 +1,31 @@
+{
+  "version": "0.1.72170",
+  "verifiedAt": "2026-10-25T10:21:47.700168+00:00",
+  "productCommit": "c63bc8f5ab08f366de18a121c7d960edb52fdd1f",
+  "productCommitPushed": true,
+  "artifact": "gitsimplecompare-0.1.72170.vsix",
+  "artifactSha256": "f102bb54e9e33d282cc7354af26130ed8106b5f0f8e49bca174f17458b6b1274",
+  "publishedUsingSameVsix": true,
+  "publishCliSucceeded": true,
+  "installedUsingSameVsix": true,
+  "installCliSucceeded": true,
+  "sourceVsixInstalledRuntimeMatched": true,
+  "runtimeCount": 81,
+  "registeredVersion": "0.1.72170",
+  "registeredEntries": 1,
+  "browserBundleMatchesMeasuredBytes": true,
+  "forcedHostReload": false,
+  "postInstallActiveHostVersionVerified": false,
+  "marketplaceStatusQueried": false,
+  "fullGoalStatus": "active",
+  "logs": {
+    "gsc-72170-publish.log": {
+      "bytes": 354,
+      "sha256": "5d7e6828feef4cf20f89f42a9bf7631c78f4b7bbe5817217bf0c4731c5687e5a"
+    },
+    "gsc-72170-install.log": {
+      "bytes": 398,
+      "sha256": "17aa574156797210275103261576acff97a804b6c76cb35a836611e6755e1bcd"
+    }
+  }
+}

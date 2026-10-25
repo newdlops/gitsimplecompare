@@ -81,3 +81,11 @@ Node에는 Playwright transport 비용도 포함된다. GitHub 네트워크 지�
 `absolute-discovery-0.1.72170.json`, `performance-summary-0.1.72170.json`,
 `functional-controls-0.1.72170.json`에 있다. 실제 설정 관찰은
 `actual-configuration-observation-0.1.72170.json`에 경로를 제외하고 기록했다.
+
+## 배포
+
+제품 커밋 `c63bc8f`를 origin/main에 푸시했고 동일 VSIX로 publish와 설치가 성공했다.
+SHA-256은 `f102bb54e9e33d282cc7354af26130ed8106b5f0f8e49bca174f17458b6b1274`다.
+소스·패키지·설치된 실행 파일 81개가 일치하며 registry는 0.1.72170이다.
+사용자 창은 강제로 reload하지 않았다. 설치 기록은
+`benchmarks/deployment-0.1.72170.json`에 있다. 전체 목표 상태는 active다.
