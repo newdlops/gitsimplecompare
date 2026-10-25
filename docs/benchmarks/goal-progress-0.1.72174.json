@@ -1,6 +1,6 @@
 {
   "version": "0.1.72174",
-  "recordedAt": "2026-10-25T20:59:57.280196+00:00",
+  "recordedAt": "2026-10-25T21:01:58.423170+00:00",
   "goalStatus": "active",
   "overallCompletion": "unproven; large Graph rendering improved in owned production renderer, actual busy VS Code response still pending",
   "requirements": [
@@ -33,7 +33,7 @@
     {
       "requirement": "Commit, push, version, publish and install same tested package",
       "evidence": "deployment-0.1.72174.json",
-      "result": "Verified package prepared; deployment receipt follows successful publish/install."
+      "result": "Verified; product commit pushed, same tested VSIX published and installed, 81 runtime files match and one registration is on 0.1.72174."
     },
     {
       "requirement": "Updated extension in actual busy user session",
@@ -41,7 +41,7 @@
       "result": "Four real sessions were verified on 0.1.72173 in the prior observation. 0.1.72174 actual session response under concurrent load remains unverified; background install does not prove host activation."
     }
   ],
-  "currentTurnProgress": "Actual-data readonly comparison, grouping/viewport fixes, full functional and visual verification, release preparation.",
+  "currentTurnProgress": "Actual-data readonly comparison, grouping/viewport fixes, full functional and visual verification, release committed/pushed/published/installed.",
   "remainingEvidence": "Fresh interaction in an updated actual Graph during concurrent load; preserve user focus preference and do not force reload.",
   "focusChanged": false,
   "userRepositoryMutated": false
