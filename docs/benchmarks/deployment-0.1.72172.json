@@ -1,0 +1,30 @@
+{
+  "version": "0.1.72172",
+  "recordedAt": "2026-10-25T14:41:09.538840+00:00",
+  "productCommit": "a75325b69090c2dd9d10e78d2fc22febc13d2fc7",
+  "pushedTo": "origin/main",
+  "artifact": "gitsimplecompare-0.1.72172.vsix",
+  "bytes": 934855,
+  "sha256": "369a9389b55971895f4ac63914b881b2119cc766467c04086c695d6399f01940",
+  "publishExitCode": 0,
+  "installExitCode": 0,
+  "sameVerifiedVsixPublishedAndInstalled": true,
+  "installedRuntimeMatched": true,
+  "runtimeFiles": 81,
+  "registeredVersion": "0.1.72172",
+  "registeredEntries": 1,
+  "marketplaceStatusQueried": false,
+  "forcedHostReload": false,
+  "osFocusChanged": false,
+  "goalStatus": "active",
+  "logs": {
+    "gsc-72172-publish.log": {
+      "bytes": 354,
+      "sha256": "9b6b04e6da0b48db59d272b018845cd9e6cbfd7b293c99fdac95a85427ed83f5"
+    },
+    "gsc-72172-install.log": {
+      "bytes": 397,
+      "sha256": "2c3de729fc10a069e748136b3e807db4f1fe37c520601f6c2b78cc81784e666a"
+    }
+  }
+}

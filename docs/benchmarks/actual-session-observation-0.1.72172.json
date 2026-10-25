@@ -1,22 +1,23 @@
 {
-  "observedAt": "2026-10-25T13:42:35.080973+00:00",
+  "observedAt": "2026-10-25T14:41:09.578298+00:00",
+  "installedVersion": "0.1.72172",
   "observations": [
-    {
-      "window": "window4",
-      "activeVersion": "0.1.72169"
-    },
-    {
-      "window": "window2",
-      "activeVersion": "0.1.72169"
-    },
     {
       "window": "window1",
       "activeVersion": "0.1.72169"
     },
     {
+      "window": "window4",
+      "activeVersion": "0.1.72169"
+    },
+    {
       "window": "window3",
+      "activeVersion": "0.1.72169"
+    },
+    {
+      "window": "window2",
       "activeVersion": "0.1.72169"
     }
   ],
-  "scope": "Read-only activation metadata; no user-session CPU/heap attribution or updated-host performance claim. No forced reload or focus change."
+  "scope": "Read-only activation metadata after installation; no forced reload, OS focus or user-session CPU attribution."
 }

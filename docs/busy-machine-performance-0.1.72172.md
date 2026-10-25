@@ -94,3 +94,12 @@ GitHub 네트워크·사용자 VS Code 세션
 `production-profile-after-0.1.72172.json`에 있다. 실제 OUTPUT의 네 창은 아직
 0.1.72169이며 정상 reload 이후의 실제 지표는 미검증이다. 사용자 창 강제 reload,
 OS 포커스 변경, Marketplace 상태 점검은 하지 않았다.
+
+## 배포
+
+제품 커밋 `a75325b`를 origin/main에 푸시하고 검증한 동일 VSIX로 게시·설치를
+완료했다. VSIX는 934,855 bytes이며 SHA-256은
+`369a9389b55971895f4ac63914b881b2119cc766467c04086c695d6399f01940`이다.
+설치된 실행 파일 81개가 소스·패키지와 일치하고 registry는 0.1.72172 하나다.
+배포 근거는 `benchmarks/deployment-0.1.72172.json`에 있다. 전체 성능 목표는
+`benchmarks/goal-progress-0.1.72172.json`에 진행 중으로 유지한다.

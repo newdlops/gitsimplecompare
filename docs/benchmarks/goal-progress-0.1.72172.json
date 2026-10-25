@@ -19,5 +19,8 @@
     "Investigate remaining full-document layout/paint and active rebase decoration lookup costs; final production profile still shows full-document layouts.",
     "Inspect actual updated-session CPU and memory after a normal reload; latest OUTPUT remains at 0.1.72169. No forced reload or OS focus changes."
   ],
-  "deploymentIsNotFullGoalCompletion": true
+  "deploymentIsNotFullGoalCompletion": true,
+  "deploymentComplete": true,
+  "installedVersion": "0.1.72172",
+  "deploymentEvidence": "deployment-0.1.72172.json"
 }
