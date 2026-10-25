@@ -1,8 +1,8 @@
 {
   "version": "0.1.72174",
-  "recordedAt": "2026-10-25T21:01:58.423170+00:00",
+  "recordedAt": "2026-10-25T21:05:34.888094+00:00",
   "goalStatus": "active",
-  "overallCompletion": "unproven; large Graph rendering improved in owned production renderer, actual busy VS Code response still pending",
+  "overallCompletion": "unproven; installed runtime exact, all four actual windows still run 0.1.72173 and no fresh Graph paint was observed in 45 seconds",
   "requirements": [
     {
       "requirement": "Cold assets, ready and first/final frame under constrained CPU",
@@ -37,12 +37,37 @@
     },
     {
       "requirement": "Updated extension in actual busy user session",
-      "evidence": "actual-runtime-validation-0.1.72173.json",
-      "result": "Four real sessions were verified on 0.1.72173 in the prior observation. 0.1.72174 actual session response under concurrent load remains unverified; background install does not prove host activation."
+      "evidence": [
+        "actual-session-observation-0.1.72174.json",
+        "release-artifact-0.1.72174.json"
+      ],
+      "result": "Installed and registered 0.1.72174 verified. Start/end live handles both show four 0.1.72173 windows; 45-second passive watch observed zero new Graph paint events. Updated-session concurrent-load responsiveness remains unverified."
     }
   ],
-  "currentTurnProgress": "Actual-data readonly comparison, grouping/viewport fixes, full functional and visual verification, release committed/pushed/published/installed.",
-  "remainingEvidence": "Fresh interaction in an updated actual Graph during concurrent load; preserve user focus preference and do not force reload.",
+  "currentTurnProgress": "Revalidated installed artifact and actual open log handles; preserved no-focus/no-reload constraint. Observation is not a passing responsiveness result.",
+  "remainingEvidence": "A fresh Graph interaction during concurrent load after an actual window activates 0.1.72174. Overall CPU and default small-graph performance remain uncertain; preserve original unfavorable benchmark samples.",
   "focusChanged": false,
-  "userRepositoryMutated": false
+  "userRepositoryMutated": false,
+  "previousGoalTurnClassification": "progress: version 0.1.72174 committed, pushed, published and installed with exact runtime verification",
+  "currentGoalTurnClassification": "no progress toward actual busy-session response validation; passive live-handle watch was completed and no target-version frame appeared",
+  "blocker": {
+    "condition": "Updated actual Graph interaction under concurrent load is unavailable under the no-focus/no-forced-reload preference.",
+    "externalChangeNeeded": "A normal user-initiated reload and Graph interaction in an actual window, or explicit permission for the required application interaction.",
+    "consecutiveGoalTurnsObservedAtLeast": 1,
+    "currentGoalStatus": "active",
+    "runtimeBeforeAndAfterWatch": [
+      "0.1.72173",
+      "0.1.72173",
+      "0.1.72173",
+      "0.1.72173"
+    ],
+    "freshTargetFrameObserved": false
+  },
+  "completionAudit": {
+    "ownedRenderer": "Large-graph latency supported by current original/focused evidence; no whole-product claim.",
+    "functionalAndNative": "Existing 120 webview and 10 Node tests, Native controls and exact artifact remain scoped evidence; source runtime unchanged since release.",
+    "resources": "Finite lifecycle stable, CPU/default-small comparisons uncertain with adverse samples retained.",
+    "release": "Product commit afd6b2e pushed; same VSIX published/installed, 81 runtime files and one target registration freshly verified.",
+    "actualBusySession": "Missing: target version not active in any of four observed real windows; zero fresh paint events. Goal stays active."
+  }
 }
