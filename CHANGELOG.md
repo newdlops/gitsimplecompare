@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72169] - 2026-10-25
+
+### Performance
+
+- Delegate Graph drag handling to its container, avoiding a pointer listener
+  and binding attribute on every row and node during rendering and refresh.
+- Find a dragged row's SVG node directly, preserving ref/button actions,
+  pointer capture and existing rebase preview transforms.
+
 ## [0.1.72168] - 2026-10-25
 
 ### Performance

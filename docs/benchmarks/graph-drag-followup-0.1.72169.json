@@ -1,0 +1,232 @@
+{
+  "source": {
+    "kind": "working-tree",
+    "commit": "5023e8ef36dd22a1256d60365b88b8bd241b2aa7",
+    "bundleSha256": "c9bb2bd226e51e3cfce4783c3eaa7e0de7c89edfc9d8fd32f8e4f022cb21fba7"
+  },
+  "reference": "5023e8ef36dd22a1256d60365b88b8bd241b2aa7",
+  "files": [
+    "media/graph/graphFeatures.js"
+  ],
+  "counts": [
+    1200
+  ],
+  "beforeSha256": [
+    "af0a97cbfb9b2e37fb4d3e85ed08efa7d2a2c5df7829f76314efa226b2bc32ad"
+  ],
+  "afterSha256": [
+    "50ccbd4fef39d8bec5ddf9a094d5769e8b5fd8fa093b72069d009f8b48171f4b"
+  ],
+  "results": [
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 555.1999999880791,
+      "frameMs": 675.5,
+      "dragStartMs": 7.0999999940395355,
+      "ambientLoadBefore": [
+        29.36572265625,
+        29.40234375,
+        23.0205078125
+      ],
+      "ambientLoadAfter": [
+        29.09619140625,
+        29.345703125,
+        23.03759765625
+      ],
+      "nodeCpuMs": 1.701,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 492.80000001192093,
+      "frameMs": 585.9000000059605,
+      "dragStartMs": 2.699999988079071,
+      "ambientLoadBefore": [
+        29.09619140625,
+        29.345703125,
+        23.03759765625
+      ],
+      "ambientLoadAfter": [
+        29.09619140625,
+        29.345703125,
+        23.03759765625
+      ],
+      "nodeCpuMs": 1.287,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 531.5,
+      "frameMs": 632.7000000178814,
+      "dragStartMs": 3.800000011920929,
+      "ambientLoadBefore": [
+        29.09619140625,
+        29.345703125,
+        23.03759765625
+      ],
+      "ambientLoadAfter": [
+        29.09619140625,
+        29.345703125,
+        23.03759765625
+      ],
+      "nodeCpuMs": 1.249,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 586.6999999880791,
+      "frameMs": 677.7999999821186,
+      "dragStartMs": 7.300000011920929,
+      "ambientLoadBefore": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "ambientLoadAfter": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "nodeCpuMs": 0.92,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 473,
+      "frameMs": 558.1999999880791,
+      "dragStartMs": 3.4000000059604645,
+      "ambientLoadBefore": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "ambientLoadAfter": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "nodeCpuMs": 0.976,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 512.4000000059605,
+      "frameMs": 628.9000000059605,
+      "dragStartMs": 8.099999994039536,
+      "ambientLoadBefore": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "ambientLoadAfter": [
+        27.64697265625,
+        29.041015625,
+        22.966796875
+      ],
+      "nodeCpuMs": 0.987,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 587.5999999940395,
+      "frameMs": 675.4000000059605,
+      "dragStartMs": 6.0999999940395355,
+      "ambientLoadBefore": [
+        27.6748046875,
+        29.0234375,
+        22.99609375
+      ],
+      "ambientLoadAfter": [
+        27.6748046875,
+        29.0234375,
+        22.99609375
+      ],
+      "nodeCpuMs": 1.01,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 504.2999999821186,
+      "frameMs": 598.2999999821186,
+      "dragStartMs": 3.199999988079071,
+      "ambientLoadBefore": [
+        27.6748046875,
+        29.0234375,
+        22.99609375
+      ],
+      "ambientLoadAfter": [
+        27.6748046875,
+        29.0234375,
+        22.99609375
+      ],
+      "nodeCpuMs": 0.87,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    }
+  ],
+  "completed": true,
+  "scope": "Real Graph DOM/JS/CSS, synthetic linear rows and 100 branch badges; row counts are explicit. Full reset with HEAD at row 100 and a long offscreen title. Only graphFeatures.js differs. Fresh Chromium per source/count/phase. B/A/A/B+A/B/B/A: four independent lifetimes per source. 6x CDP throttle for latency; independent unthrottled CPU and post-GC JS heap runs. No Native Git/network, physical RSS, active VS Code or machine-wide contention claim."
+}

@@ -1,0 +1,1221 @@
+{
+  "source": {
+    "kind": "working-tree",
+    "commit": "5023e8ef36dd22a1256d60365b88b8bd241b2aa7",
+    "bundleSha256": "aa75014c1e50808aa9c6d6ea310d93f94e67c4e04aa468197990365f9ac19e86"
+  },
+  "reference": "5023e8ef36dd22a1256d60365b88b8bd241b2aa7",
+  "files": [
+    "media/graph/graphFeatures.js"
+  ],
+  "beforeSha256": [
+    "af0a97cbfb9b2e37fb4d3e85ed08efa7d2a2c5df7829f76314efa226b2bc32ad"
+  ],
+  "afterSha256": [
+    "50ccbd4fef39d8bec5ddf9a094d5769e8b5fd8fa093b72069d009f8b48171f4b"
+  ],
+  "results": [
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 240.5,
+      "frameMs": 315.2999999821186,
+      "dragStartMs": 2.300000011920929,
+      "nodeCpuMs": 1.432,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 259.7999999821186,
+      "frameMs": 359.89999997615814,
+      "dragStartMs": 4,
+      "nodeCpuMs": 1.122,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 218.89999997615814,
+      "frameMs": 269,
+      "dragStartMs": 2.899999976158142,
+      "nodeCpuMs": 1.192,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 209.69999998807907,
+      "frameMs": 270.19999998807907,
+      "dragStartMs": 2.0999999940395355,
+      "nodeCpuMs": 0.657,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 199.2000000178814,
+      "frameMs": 258.30000001192093,
+      "dragStartMs": 3,
+      "nodeCpuMs": 0.66,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 215.2999999821186,
+      "frameMs": 274.2999999821186,
+      "dragStartMs": 2.800000011920929,
+      "nodeCpuMs": 0.631,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 204.80000001192093,
+      "frameMs": 265.90000000596046,
+      "dragStartMs": 3,
+      "nodeCpuMs": 0.657,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 300,
+      "handlerMs": 195,
+      "frameMs": 260.40000000596046,
+      "dragStartMs": 3,
+      "nodeCpuMs": 0.728,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 641.6999999880791,
+      "frameMs": 755.5,
+      "dragStartMs": 7.4000000059604645,
+      "nodeCpuMs": 0.922,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 651.3000000119209,
+      "frameMs": 790.6000000238419,
+      "dragStartMs": 5.300000011920929,
+      "nodeCpuMs": 1.193,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 1303,
+      "frameMs": 1494.300000011921,
+      "dragStartMs": 0.5999999940395355,
+      "nodeCpuMs": 0.937,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 1083.4000000059605,
+      "frameMs": 1283,
+      "dragStartMs": 9.5,
+      "nodeCpuMs": 1.195,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 1118.4000000059605,
+      "frameMs": 1313.4000000059605,
+      "dragStartMs": 5.299999982118607,
+      "nodeCpuMs": 1.231,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 970,
+      "frameMs": 1122.199999988079,
+      "dragStartMs": 6.5999999940395355,
+      "nodeCpuMs": 1.366,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 704.6999999880791,
+      "frameMs": 821.6999999880791,
+      "dragStartMs": 6.5,
+      "nodeCpuMs": 0.801,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 1200,
+      "handlerMs": 880.7000000178814,
+      "frameMs": 1053.2000000178814,
+      "dragStartMs": 4.9000000059604645,
+      "nodeCpuMs": 1.398,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 2141.699999988079,
+      "frameMs": 2551.399999976158,
+      "dragStartMs": 35.69999998807907,
+      "nodeCpuMs": 1.483,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 4829.199999988079,
+      "frameMs": 5359.0999999940395,
+      "dragStartMs": 9.399999976158142,
+      "nodeCpuMs": 1.082,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 2638.199999988079,
+      "frameMs": 2965.0999999940395,
+      "dragStartMs": 5.5,
+      "nodeCpuMs": 1.012,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 4138,
+      "frameMs": 4663.699999988079,
+      "dragStartMs": 34.5,
+      "nodeCpuMs": 0.98,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 3899.5999999940395,
+      "frameMs": 4300.700000017881,
+      "dragStartMs": 10.599999994039536,
+      "nodeCpuMs": 1.197,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 2191,
+      "frameMs": 2630.4000000059605,
+      "dragStartMs": 32,
+      "nodeCpuMs": 0.944,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 4440.799999982119,
+      "frameMs": 5035.799999982119,
+      "dragStartMs": 36.70000001788139,
+      "nodeCpuMs": 0.94,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "count": 5000,
+      "handlerMs": 2376.0999999940395,
+      "frameMs": 2696.9000000059605,
+      "dragStartMs": 5.5,
+      "nodeCpuMs": 0.799,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 28.30000001192093,
+      "frameMs": 35.70000001788139,
+      "browserCpuMs": 46.15199999999999,
+      "nodeCpuMs": 2.916,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 26.900000005960464,
+      "frameMs": 33.70000001788139,
+      "browserCpuMs": 45.599000000000004,
+      "nodeCpuMs": 2.685,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 25.30000001192093,
+      "frameMs": 31.80000001192093,
+      "browserCpuMs": 41.971999999999966,
+      "nodeCpuMs": 0.618,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 26.700000017881393,
+      "frameMs": 33.70000001788139,
+      "browserCpuMs": 43.895999999999994,
+      "nodeCpuMs": 0.596,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 26.5,
+      "frameMs": 33.400000005960464,
+      "browserCpuMs": 45.101999999999975,
+      "nodeCpuMs": 0.568,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 27.5,
+      "frameMs": 34.5,
+      "browserCpuMs": 48.842,
+      "nodeCpuMs": 0.591,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 28.19999998807907,
+      "frameMs": 35.19999998807907,
+      "browserCpuMs": 51.64300000000001,
+      "nodeCpuMs": 0.625,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 300,
+      "handlerMs": 29.19999998807907,
+      "frameMs": 36.5,
+      "browserCpuMs": 47.400999999999996,
+      "nodeCpuMs": 0.508,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 73.90000000596046,
+      "frameMs": 86.59999999403954,
+      "browserCpuMs": 111.28800000000003,
+      "nodeCpuMs": 0.746,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 71.2999999821186,
+      "frameMs": 84,
+      "browserCpuMs": 106.73,
+      "nodeCpuMs": 0.534,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 74.2999999821186,
+      "frameMs": 86.5,
+      "browserCpuMs": 107.97300000000003,
+      "nodeCpuMs": 0.599,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 76.2999999821186,
+      "frameMs": 87.59999999403954,
+      "browserCpuMs": 100.94400000000003,
+      "nodeCpuMs": 0.539,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 78.30000001192093,
+      "frameMs": 91.40000000596046,
+      "browserCpuMs": 109.60799999999998,
+      "nodeCpuMs": 0.526,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 81.7000000178814,
+      "frameMs": 95,
+      "browserCpuMs": 111.431,
+      "nodeCpuMs": 0.556,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 76.59999999403954,
+      "frameMs": 127.69999998807907,
+      "browserCpuMs": 113.478,
+      "nodeCpuMs": 0.607,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 1200,
+      "handlerMs": 134.39999997615814,
+      "frameMs": 149.7999999821186,
+      "browserCpuMs": 115.73200000000001,
+      "nodeCpuMs": 0.485,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 296.7000000178814,
+      "frameMs": 339.80000001192093,
+      "browserCpuMs": 446.1319999999999,
+      "nodeCpuMs": 0.853,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 277.30000001192093,
+      "frameMs": 318.90000000596046,
+      "browserCpuMs": 415.30100000000004,
+      "nodeCpuMs": 1.121,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 288.90000000596046,
+      "frameMs": 330,
+      "browserCpuMs": 432.77899999999994,
+      "nodeCpuMs": 0.489,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 303.10000002384186,
+      "frameMs": 337.80000001192093,
+      "browserCpuMs": 435.1689999999999,
+      "nodeCpuMs": 0.801,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 270.7999999821186,
+      "frameMs": 306.7999999821186,
+      "browserCpuMs": 387.8,
+      "nodeCpuMs": 0.599,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 292,
+      "frameMs": 330.09999999403954,
+      "browserCpuMs": 413.44199999999995,
+      "nodeCpuMs": 0.544,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 284.80000001192093,
+      "frameMs": 321.5,
+      "browserCpuMs": 412.1430000000001,
+      "nodeCpuMs": 0.712,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "count": 5000,
+      "handlerMs": 281.19999998807907,
+      "frameMs": 322.69999998807907,
+      "browserCpuMs": 405.194,
+      "nodeCpuMs": 0.536,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 27.19999998807907,
+      "frameMs": 33.30000001192093,
+      "nodeCpuMs": 0.582,
+      "heapBefore": 1499884,
+      "heapAfter": 2004192,
+      "heapDelta": 504308,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 27.400000005960464,
+      "frameMs": 33.5,
+      "nodeCpuMs": 1.486,
+      "heapBefore": 1499488,
+      "heapAfter": 1964272,
+      "heapDelta": 464784,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 30.099999994039536,
+      "frameMs": 36,
+      "nodeCpuMs": 0.469,
+      "heapBefore": 1497184,
+      "heapAfter": 1964208,
+      "heapDelta": 467024,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 26.600000023841858,
+      "frameMs": 33.30000001192093,
+      "nodeCpuMs": 0.64,
+      "heapBefore": 1497580,
+      "heapAfter": 2004016,
+      "heapDelta": 506436,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 35.099999994039536,
+      "frameMs": 41.79999998211861,
+      "nodeCpuMs": 0.578,
+      "heapBefore": 1497184,
+      "heapAfter": 1964208,
+      "heapDelta": 467024,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 27.599999994039536,
+      "frameMs": 34.5,
+      "nodeCpuMs": 0.569,
+      "heapBefore": 1497580,
+      "heapAfter": 2003808,
+      "heapDelta": 506228,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 31.100000023841858,
+      "frameMs": 38.10000002384186,
+      "nodeCpuMs": 0.558,
+      "heapBefore": 1499884,
+      "heapAfter": 2004032,
+      "heapDelta": 504148,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 300,
+      "handlerMs": 27.299999982118607,
+      "frameMs": 33.79999998211861,
+      "nodeCpuMs": 0.48,
+      "heapBefore": 1499488,
+      "heapAfter": 1964480,
+      "heapDelta": 464992,
+      "contract": {
+        "rows": 300,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 67.7000000178814,
+      "frameMs": 84.40000000596046,
+      "nodeCpuMs": 0.587,
+      "heapBefore": 1904900,
+      "heapAfter": 3108856,
+      "heapDelta": 1203956,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 71.09999999403954,
+      "frameMs": 83.09999999403954,
+      "nodeCpuMs": 0.609,
+      "heapBefore": 1904504,
+      "heapAfter": 2972564,
+      "heapDelta": 1068060,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 79.5,
+      "frameMs": 91.5,
+      "nodeCpuMs": 0.507,
+      "heapBefore": 1904504,
+      "heapAfter": 2972492,
+      "heapDelta": 1067988,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 70.59999999403954,
+      "frameMs": 82,
+      "nodeCpuMs": 0.459,
+      "heapBefore": 1907204,
+      "heapAfter": 3109000,
+      "heapDelta": 1201796,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 60.5,
+      "frameMs": 71.7999999821186,
+      "nodeCpuMs": 0.466,
+      "heapBefore": 1904504,
+      "heapAfter": 2972564,
+      "heapDelta": 1068060,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 65.69999998807907,
+      "frameMs": 76.39999997615814,
+      "nodeCpuMs": 3.251,
+      "heapBefore": 1904900,
+      "heapAfter": 3108760,
+      "heapDelta": 1203860,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 71.19999998807907,
+      "frameMs": 83.69999998807907,
+      "nodeCpuMs": 0.754,
+      "heapBefore": 1904900,
+      "heapAfter": 3108760,
+      "heapDelta": 1203860,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 1200,
+      "handlerMs": 71.40000000596046,
+      "frameMs": 83.30000001192093,
+      "nodeCpuMs": 0.5,
+      "heapBefore": 1906808,
+      "heapAfter": 2972708,
+      "heapDelta": 1065900,
+      "contract": {
+        "rows": 1200,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 272.59999999403954,
+      "frameMs": 307.59999999403954,
+      "nodeCpuMs": 0.765,
+      "heapBefore": 3617560,
+      "heapAfter": 7492376,
+      "heapDelta": 3874816,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 254.90000000596046,
+      "frameMs": 291.60000002384186,
+      "nodeCpuMs": 0.598,
+      "heapBefore": 3614860,
+      "heapAfter": 6929312,
+      "heapDelta": 3314452,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 297.30000001192093,
+      "frameMs": 338.90000000596046,
+      "nodeCpuMs": 0.593,
+      "heapBefore": 3614860,
+      "heapAfter": 6929440,
+      "heapDelta": 3314580,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 317,
+      "frameMs": 357.30000001192093,
+      "nodeCpuMs": 48.833,
+      "heapBefore": 3615256,
+      "heapAfter": 7491688,
+      "heapDelta": 3876432,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 305.5,
+      "frameMs": 344.89999997615814,
+      "nodeCpuMs": 1.015,
+      "heapBefore": 3614860,
+      "heapAfter": 6929136,
+      "heapDelta": 3314276,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 310.09999999403954,
+      "frameMs": 349.09999999403954,
+      "nodeCpuMs": 0.735,
+      "heapBefore": 3615256,
+      "heapAfter": 7492088,
+      "heapDelta": 3876832,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "before",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 287.59999999403954,
+      "frameMs": 324.59999999403954,
+      "nodeCpuMs": 0.783,
+      "heapBefore": 3615256,
+      "heapAfter": 7492568,
+      "heapDelta": 3877312,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    },
+    {
+      "phase": "after",
+      "mode": "heap",
+      "count": 5000,
+      "handlerMs": 274.30000001192093,
+      "frameMs": 310.09999999403954,
+      "nodeCpuMs": 5.47,
+      "heapBefore": 3614860,
+      "heapAfter": 6928736,
+      "heapDelta": 3313876,
+      "contract": {
+        "rows": 5000,
+        "exactHashes": true,
+        "headVisible": true,
+        "widthCoversLongest": true
+      },
+      "browserComplete": true
+    }
+  ],
+  "completed": true,
+  "scope": "Real Graph DOM/JS/CSS, synthetic 300/1200/5000 linear rows and 100 branch badges. Full reset with HEAD at row 100 and a long offscreen title. Only graphFeatures.js differs. Fresh Chromium per source/count/phase. B/A/A/B+A/B/B/A: four independent lifetimes per source. 6x CDP throttle for latency; independent unthrottled CPU and post-GC JS heap runs. No Native Git/network, physical RSS, active VS Code or machine-wide contention claim."
+}

@@ -257,7 +257,8 @@ export class GraphLiveRenderer {
       assert.equal(await this.page.locator("#graph-content > .row.selected").count(), 1);
       await this.page.keyboard.press("Escape");
       await this.page.locator("#graph").evaluate(element => { element.scrollLeft = 0; });
-      await this.page.screenshot({ path: path.join(directory, `live-graph-${width}.png`) });
+      // drawer 닫힘 transition의 중간 위치가 QA 이미지에 남지 않게 유한 animation을 완료한 상태로 촬영한다.
+      await this.page.screenshot({ path: path.join(directory, `live-graph-${width}.png`), animations: "disabled" });
     }
     assert.deepEqual(this.errors, []);
   }

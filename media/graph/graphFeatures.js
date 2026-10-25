@@ -332,7 +332,7 @@
     window.dispatchEvent(new CustomEvent(name, { detail }));
   }
 
-  /** SVG commit node 에 pointer drag lifecycle 을 연결한다. */
+  /** Graph 컨테이너에 한 번만 drag를 위임한다. 새 페이지와 교체된 행/노드에 개별 listener를 다시 만들지 않는다. */
   function attachNodeDrag(root) {
     if (!root) {
       return;
@@ -340,11 +340,9 @@
     attachBranchCheckout(root);
     attachRefActionMenu(root);
     attachGraphContextMenu(root);
-    attachRowDrag(root);
-    root.querySelectorAll('.node:not([data-drag-bound="1"])').forEach((node) => {
-      node.dataset.dragBound = "1";
-      node.addEventListener("pointerdown", (event) => startNodeDrag(event, node));
-    });
+    if (root.dataset.nodeDragBound === "1") return;
+    root.dataset.nodeDragBound = "1";
+    root.addEventListener("pointerdown", handleGraphDrag);
   }
 
   /** 브랜치/태그 chip 의 click/keyboard 보조 액션을 연결한다. 우클릭은 graphContextMenu 가 맡는다. */
@@ -361,23 +359,15 @@
     }, true);
   }
 
-  /** 커밋 행 전체를 노드 drag handle 로 등록한다. */
-  function attachRowDrag(root) {
-    root.querySelectorAll('.row:not([data-drag-bound="1"]):not([data-reflog-virtual])').forEach((row) => {
-      if (row.dataset.reflogVirtual === "1") {
-        return;
-      }
-      row.dataset.dragBound = "1";
-      row.addEventListener("pointerdown", (event) => {
-        if (event.target.closest?.(".ref,button,.rebase-row-actions")) {
-          return;
-        }
-        const node = nodeForHash(root, row.dataset.hash || "");
-        if (node) {
-          startNodeDrag(event, node, row);
-        }
-      });
-    });
+  /** @param event 컨테이너로 전달된 pointerdown @returns 기존 ref/버튼/가상 행을 제외하고 실제 node 또는 row의 drag를 시작한다. */
+  function handleGraphDrag(event) {
+    const root = event.currentTarget, target = eventTargetElement(event);
+    const node = target?.closest?.(".node");
+    if (node && root.contains(node)) { startNodeDrag(event, node); return; }
+    const row = target?.closest?.(".row:not([data-reflog-virtual])");
+    if (!row || !root.contains(row) || target.closest(".ref,button,.rebase-row-actions")) return;
+    const rowNode = nodeForHash(root, row.dataset.hash || "");
+    if (rowNode) startNodeDrag(event, rowNode, row);
   }
 
   /** graph 전용 context menu 를 연결하고 undo 가능 여부 계산 함수를 넘긴다. */
@@ -517,8 +507,9 @@
     }
   }
 
-  /** 해시로 SVG 노드를 찾는다. CSS.escape 의존 없이 dataset 을 직접 비교한다. */
+  /** 해시로 SVG 노드를 찾는다. Native selector로 pointerdown 때 모든 node의 배열·dataset 읽기를 피한다. */
   function nodeForHash(root, hash) {
+    if (window.CSS?.escape) return root.querySelector(`.node[data-hash="${window.CSS.escape(hash)}"]`);
     return Array.from(root.querySelectorAll(".node")).find(
       (node) => node.dataset.hash === hash
     );

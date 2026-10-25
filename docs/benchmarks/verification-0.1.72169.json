@@ -1,0 +1,75 @@
+{
+  "version": "0.1.72169",
+  "productFingerprint": {
+    "files": 650,
+    "sha256": "25757b22295697fa17d53d2080ba301d7b46dc3c7354929c0b9f9b7d73f15c62"
+  },
+  "node": {
+    "tests": 35,
+    "pass": 35,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "webview": {
+    "tests": 81,
+    "pass": 81,
+    "fail": 0
+  },
+  "rendererComparisonCases": 72,
+  "rendererFollowupCases": 8,
+  "actualControls": 11,
+  "actualControlsPrCardsPerCase": 80,
+  "staleLocalChangesPreserved": true,
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "nativeBundleUnchanged": true,
+  "runtimeChangedFromPrevious": [
+    "media/graph/graphFeatures.js"
+  ],
+  "sourceCapsPassed": true,
+  "visualViewports": [
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "stableProductionScreensInspected": true,
+  "osFocusChanged": false,
+  "forcedHostReload": false,
+  "marketplaceStatusQueried": false,
+  "logs": {
+    "gsc-72169-final-node.log": {
+      "bytes": 9117,
+      "sha256": "741250c33842b2fa1a45930afe1aa59c007160270bb07f142388ff2502aa5247"
+    },
+    "gsc-72169-final-webview.log": {
+      "bytes": 13608,
+      "sha256": "3f65cd904794d4930a234726e07db4eca62ef61d86a6d17e9165b540be2e23cd"
+    },
+    "gsc-72169-final-types.log": {
+      "bytes": 58,
+      "sha256": "635d724a5a93a4ae767dd34b61ff3411d867a3605ce195eda0cace102fb9386e"
+    },
+    "gsc-72169-package.log": {
+      "bytes": 1338,
+      "sha256": "64e90d3dcc02de7fc903124e71b93e7db797ccb8b793833a6347763bc6257203"
+    },
+    "gsc-72169-final-controls.log": {
+      "bytes": 56951,
+      "sha256": "404e5b7f9f81945343505a9e3364e8472708a86bbc8afc80e147126c80935a7f"
+    },
+    "gsc-72169-stable-checkout.log": {
+      "bytes": 3535,
+      "sha256": "e0edc2913dd2d18378df7a8bbc450040769de9ed13b2d28727b36c4a2a60b15b"
+    }
+  }
+}
