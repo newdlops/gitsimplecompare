@@ -15,6 +15,7 @@ import { PrivateStatusIndex } from "../../src/git/privateStatusIndex";
 import { isOwnedStatusIndex } from "../../src/git/statusIndexOwnership";
 import { runGitStatus } from "../../src/git/gitStatusExec";
 import { parseWorkingTreeV2, workingTreeSnapshot, type WorkingTreeSnapshot } from "../../src/git/workingTreeStatusFormat";
+import { snapshotDigest } from "../helpers/snapshotDigest";
 
 /** 원문 대신 해시만 메모리에서 비교한다. 해시와 실제 경로도 결과 파일에는 내보내지 않는다. */
 function digest(value: string | Buffer): string { return createHash("sha256").update(value).digest("hex"); }
@@ -67,7 +68,7 @@ async function measure<T>(label: string, read: () => Promise<T>) {
 
 /** 현재 branch snapshot 두 번이 이름을 내보내지 않고도 완전히 같은 결과인지 비교한다. */
 function branchSignature(snapshot: Awaited<ReturnType<GitLogService["getLocalBranchSnapshot"]>>): string {
-  return digest(JSON.stringify(snapshot));
+  return snapshotDigest(snapshot);
 }
 
 /** 경로 대신 상태 개수만 기록하고 비교용 원문은 메모리 안에서만 해시한다. */

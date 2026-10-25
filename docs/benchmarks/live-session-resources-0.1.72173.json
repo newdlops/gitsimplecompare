@@ -1,0 +1,165 @@
+{
+  "observedAt": "2026-10-25T16:59:44.627695+00:00",
+  "elapsedSeconds": 32.741776791983284,
+  "processes": [
+    {
+      "window": "window2",
+      "version": "0.1.72173",
+      "cpuMsDelta": 80.00000000000007,
+      "cpuPercentOneCore": 0.24433615960508231,
+      "rssStartKiB": 110032,
+      "rssEndKiB": 118256,
+      "rssSampledMaxKiB": 118256
+    },
+    {
+      "window": "window1",
+      "version": "0.1.72173",
+      "cpuMsDelta": 89.99999999999986,
+      "cpuPercentOneCore": 0.2748781795557169,
+      "rssStartKiB": 112192,
+      "rssEndKiB": 119648,
+      "rssSampledMaxKiB": 119648
+    },
+    {
+      "window": "window4",
+      "version": "0.1.72173",
+      "cpuMsDelta": 1039.999999999999,
+      "cpuPercentOneCore": 3.176370074866065,
+      "rssStartKiB": 211296,
+      "rssEndKiB": 211488,
+      "rssSampledMaxKiB": 212176
+    },
+    {
+      "window": "window3",
+      "version": "0.1.72173",
+      "cpuMsDelta": 89.99999999999986,
+      "cpuPercentOneCore": 0.2748781795557169,
+      "rssStartKiB": 237280,
+      "rssEndKiB": 251648,
+      "rssSampledMaxKiB": 251648
+    }
+  ],
+  "samples": [
+    {
+      "afterStartSeconds": 0.7410978749976493,
+      "loadAverage": [
+        25.90576171875,
+        27.64013671875,
+        26.9150390625
+      ],
+      "hosts": {
+        "16088": {
+          "cpuSeconds": 8.94,
+          "rssKiB": 110032,
+          "psCpuPercent": 0.1
+        },
+        "16089": {
+          "cpuSeconds": 11.49,
+          "rssKiB": 112192,
+          "psCpuPercent": 0.0
+        },
+        "16090": {
+          "cpuSeconds": 44.17,
+          "rssKiB": 211296,
+          "psCpuPercent": 0.0
+        },
+        "16091": {
+          "cpuSeconds": 10.02,
+          "rssKiB": 237280,
+          "psCpuPercent": 0.1
+        }
+      }
+    },
+    {
+      "afterStartSeconds": 11.69580658400082,
+      "loadAverage": [
+        29.087890625,
+        28.2353515625,
+        27.1328125
+      ],
+      "hosts": {
+        "16088": {
+          "cpuSeconds": 8.95,
+          "rssKiB": 110064,
+          "psCpuPercent": 0.0
+        },
+        "16089": {
+          "cpuSeconds": 11.51,
+          "rssKiB": 112256,
+          "psCpuPercent": 0.1
+        },
+        "16090": {
+          "cpuSeconds": 44.43,
+          "rssKiB": 211968,
+          "psCpuPercent": 0.0
+        },
+        "16091": {
+          "cpuSeconds": 10.04,
+          "rssKiB": 233376,
+          "psCpuPercent": 0.0
+        }
+      }
+    },
+    {
+      "afterStartSeconds": 22.551325999986148,
+      "loadAverage": [
+        33.64794921875,
+        29.2197265625,
+        27.49365234375
+      ],
+      "hosts": {
+        "16088": {
+          "cpuSeconds": 8.96,
+          "rssKiB": 110128,
+          "psCpuPercent": 0.0
+        },
+        "16089": {
+          "cpuSeconds": 11.53,
+          "rssKiB": 112544,
+          "psCpuPercent": 0.0
+        },
+        "16090": {
+          "cpuSeconds": 44.68,
+          "rssKiB": 212176,
+          "psCpuPercent": 0.5
+        },
+        "16091": {
+          "cpuSeconds": 10.06,
+          "rssKiB": 233568,
+          "psCpuPercent": 0.1
+        }
+      }
+    },
+    {
+      "afterStartSeconds": 33.48287466698093,
+      "loadAverage": [
+        32.58349609375,
+        29.15771484375,
+        27.49267578125
+      ],
+      "hosts": {
+        "16088": {
+          "cpuSeconds": 9.02,
+          "rssKiB": 118256,
+          "psCpuPercent": 0.0
+        },
+        "16089": {
+          "cpuSeconds": 11.58,
+          "rssKiB": 119648,
+          "psCpuPercent": 0.0
+        },
+        "16090": {
+          "cpuSeconds": 45.21,
+          "rssKiB": 211488,
+          "psCpuPercent": 0.8
+        },
+        "16091": {
+          "cpuSeconds": 10.11,
+          "rssKiB": 251648,
+          "psCpuPercent": 0.0
+        }
+      }
+    }
+  ],
+  "scope": "Passive actual 0.1.72173 extension-host process counters under naturally occurring machine load. Each host contains other extensions; CPU/RSS is a whole-host observation, not per-extension attribution. No foreground action, artificial stress, Git or application writes. Short observation, not a long-term leak test."
+}

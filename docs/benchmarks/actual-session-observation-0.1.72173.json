@@ -1,32 +1,28 @@
 {
-  "observedAt": "2026-10-25T16:18:09.902524+00:00",
+  "observedAt": "2026-10-25T17:52:26.201981+00:00",
   "installedVersion": "0.1.72173",
   "observations": [
     {
       "window": "window1",
-      "activeVersion": "0.1.72169",
-      "activationAt": "[2026-10-25T08:01:04.320Z]",
+      "activeVersion": "0.1.72173",
       "liveLogOpen": true
     },
     {
       "window": "window2",
-      "activeVersion": "0.1.72169",
-      "activationAt": "[2026-10-25T08:01:00.153Z]",
+      "activeVersion": "0.1.72173",
       "liveLogOpen": true
     },
     {
       "window": "window3",
-      "activeVersion": "0.1.72169",
-      "activationAt": "[2026-10-25T08:01:00.493Z]",
+      "activeVersion": "0.1.72173",
       "liveLogOpen": true
     },
     {
       "window": "window4",
-      "activeVersion": "0.1.72169",
-      "activationAt": "[2026-10-25T08:01:00.004Z]",
+      "activeVersion": "0.1.72173",
       "liveLogOpen": true
     }
   ],
   "lsofVerified": true,
-  "scope": "Read-only latest activation metadata in currently open VS Code log handles. No forced reload, OS focus or user-session CPU attribution."
+  "scope": "Fresh read-only current log handles and last activation version. No focus or application action."
 }

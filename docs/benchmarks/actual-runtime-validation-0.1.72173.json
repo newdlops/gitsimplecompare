@@ -1,0 +1,372 @@
+{
+  "version": "0.1.72173",
+  "observedAt": "2026-10-25T17:52:26.201981+00:00",
+  "runtime": [
+    {
+      "window": "window1",
+      "activeVersion": "0.1.72173",
+      "liveLogOpen": true
+    },
+    {
+      "window": "window2",
+      "activeVersion": "0.1.72173",
+      "liveLogOpen": true
+    },
+    {
+      "window": "window3",
+      "activeVersion": "0.1.72173",
+      "liveLogOpen": true
+    },
+    {
+      "window": "window4",
+      "activeVersion": "0.1.72173",
+      "liveLogOpen": true
+    }
+  ],
+  "graphEvents": [
+    {
+      "at": "2026-10-25T16:34:53.958Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance fingerprint",
+      "repoAlias": "123559286e0c",
+      "cause": "ready",
+      "generation": 1,
+      "elapsedMs": 2503
+    },
+    {
+      "at": "2026-10-25T16:34:53.960Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance start",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2
+    },
+    {
+      "at": "2026-10-25T16:34:56.708Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2,
+      "phase": "localBranches",
+      "elapsedMs": 2736,
+      "totalElapsedMs": 2748,
+      "count": 164,
+      "source": "git"
+    },
+    {
+      "at": "2026-10-25T16:34:56.708Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2,
+      "phase": "worktrees",
+      "elapsedMs": 11,
+      "totalElapsedMs": 2748,
+      "count": 7
+    },
+    {
+      "at": "2026-10-25T16:34:56.708Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2,
+      "phase": "branchSnapshot",
+      "elapsedMs": 2736,
+      "totalElapsedMs": 2748
+    },
+    {
+      "at": "2026-10-25T16:34:56.708Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2,
+      "phase": "remoteBranches",
+      "elapsedMs": 19,
+      "totalElapsedMs": 2748,
+      "count": 2113,
+      "source": "fingerprint"
+    },
+    {
+      "at": "2026-10-25T16:34:57.221Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1t85k-1",
+      "cause": "ready",
+      "generation": 2,
+      "phase": "status",
+      "elapsedMs": 508,
+      "totalElapsedMs": 3261,
+      "background": true
+    },
+    {
+      "at": "2026-10-25T16:35:01.297Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance start",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1tdtd-2",
+      "cause": "pagination:older",
+      "generation": 3
+    },
+    {
+      "at": "2026-10-25T16:35:02.905Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance fingerprint",
+      "repoAlias": "123559286e0c",
+      "cause": "ready",
+      "generation": 1,
+      "elapsedMs": 1618
+    },
+    {
+      "at": "2026-10-25T16:35:02.915Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance start",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1tf2b-3",
+      "cause": "ready",
+      "generation": 4
+    },
+    {
+      "at": "2026-10-25T16:35:14.737Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance fingerprint",
+      "repoAlias": "123559286e0c",
+      "cause": "ready",
+      "generation": 2,
+      "elapsedMs": 554
+    },
+    {
+      "at": "2026-10-25T16:35:14.741Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance start",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6
+    },
+    {
+      "at": "2026-10-25T16:35:15.337Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "localBranches",
+      "elapsedMs": 589,
+      "totalElapsedMs": 596,
+      "count": 164,
+      "source": "git"
+    },
+    {
+      "at": "2026-10-25T16:35:15.337Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "worktrees",
+      "elapsedMs": 10,
+      "totalElapsedMs": 596,
+      "count": 7
+    },
+    {
+      "at": "2026-10-25T16:35:15.337Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "branchSnapshot",
+      "elapsedMs": 589,
+      "totalElapsedMs": 596
+    },
+    {
+      "at": "2026-10-25T16:35:15.337Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "remoteBranches",
+      "elapsedMs": 12,
+      "totalElapsedMs": 596,
+      "count": 2113,
+      "source": "fingerprint"
+    },
+    {
+      "at": "2026-10-25T16:35:15.593Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "gitLog",
+      "elapsedMs": 853,
+      "totalElapsedMs": 852,
+      "prepared": true
+    },
+    {
+      "at": "2026-10-25T16:35:15.595Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "layout",
+      "elapsedMs": 1,
+      "totalElapsedMs": 854,
+      "kind": "initial",
+      "rows": 300,
+      "edges": 300
+    },
+    {
+      "at": "2026-10-25T16:35:15.609Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance postMessage",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "kind": "initial",
+      "accepted": true,
+      "elapsedMs": 14
+    },
+    {
+      "at": "2026-10-25T16:35:15.659Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance webview paint",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "kind": "initial",
+      "transportMs": 3,
+      "renderMs": 17,
+      "frameMs": 44,
+      "totalMs": 918
+    },
+    {
+      "at": "2026-10-25T16:35:15.722Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "status",
+      "elapsedMs": 380,
+      "totalElapsedMs": 981,
+      "background": true
+    },
+    {
+      "at": "2026-10-25T16:35:15.723Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance phase",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "generation": 6,
+      "phase": "layout",
+      "elapsedMs": 1,
+      "totalElapsedMs": 982,
+      "kind": "workingTree",
+      "rows": 302,
+      "edges": 302
+    },
+    {
+      "at": "2026-10-25T16:35:15.725Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance postMessage",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "kind": "workingTree",
+      "accepted": true,
+      "elapsedMs": 2
+    },
+    {
+      "at": "2026-10-25T16:35:15.766Z",
+      "window": "window1",
+      "version": "0.1.72173",
+      "event": "graph performance webview paint",
+      "repoAlias": "123559286e0c",
+      "traceId": "mvo1to6t-4",
+      "cause": "ready",
+      "kind": "workingTree",
+      "transportMs": 3,
+      "renderMs": 31,
+      "frameMs": 8,
+      "totalMs": 1024
+    }
+  ],
+  "liveReadDiagnostic": "live-git-read-0.1.72173.json",
+  "passiveResources": "live-session-resources-0.1.72173.json",
+  "trackingProbe": {
+    "decision": "rejected; production thresholds unchanged",
+    "stats": {
+      "before": {
+        "elapsedMs": 362.21017700000004,
+        "nodeCpuMs": 1.92075,
+        "childCpuMs": 72.1335
+      },
+      "after": {
+        "elapsedMs": 260.67538550000006,
+        "nodeCpuMs": 8.905,
+        "childCpuMs": 102.49775
+      }
+    },
+    "independentNodes": 8,
+    "correlatedWarmReads": 32,
+    "nativeSemanticExact": true,
+    "protectedRepositoryStateStable": true,
+    "raw": "readonly-tracking-wide-probe-0.1.72173.json"
+  },
+  "comparatorFix": "Deep strict equality checks actual Native values and array order. Hashes now ignore object insertion order only; four focused tests passed.",
+  "scopeLimits": [
+    "Startup frame traces and passive load samples were captured at different times; they are not a simultaneous-load comparison.",
+    "Isolated Node CPU excludes Native child CPU; the separate tracking probe reports waited Native child CPU explicitly.",
+    "Actual host CPU/RSS includes other extensions and is not per-extension attribution or long-term leak proof.",
+    "Fresh actual Graph response under observed concurrent load still needs a user interaction or permission for a brief foreground refresh."
+  ],
+  "freshFrameObserved": false,
+  "productionRuntimeChangedThisFollowup": false,
+  "osFocusChanged": false,
+  "forcedReload": false,
+  "marketplaceStatusQueried": false
+}

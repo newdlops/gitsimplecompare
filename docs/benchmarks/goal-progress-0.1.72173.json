@@ -1,7 +1,7 @@
 {
   "version": "0.1.72173",
-  "recordedAt": "2026-10-25T16:18:09.902524+00:00",
-  "overallCompletion": "unproven",
+  "recordedAt": "2026-10-25T17:52:26.201981+00:00",
+  "overallCompletion": "unproven; actual runtime checkpoint resolved, concurrent-load interaction pending",
   "requirements": [
     {
       "requirement": "Cold assets, ready, first/final frame under constrained CPU",
@@ -36,22 +36,26 @@
     },
     {
       "requirement": "Updated extension in actual busy user session",
-      "evidence": "actual-session-observation-0.1.72173.json",
-      "result": "Not verified: live logs still show old runtime"
+      "evidence": [
+        "actual-session-observation-0.1.72173.json",
+        "actual-runtime-validation-0.1.72173.json"
+      ],
+      "result": "All four real sessions run 0.1.72173. Startup timing, readonly Native diagnostics and passive resources recorded; fresh interaction/load correlation is still missing."
     }
   ],
   "blocker": {
-    "condition": "Updated installed runtime is not yet running in the observed live user sessions. Actual updated-session CPU, memory and symptoms cannot be verified from old runtime data.",
-    "consecutiveGoalTurnsObservedAtLeast": 3,
-    "priorEvidence": [
-      "actual-session-observation-0.1.72171.json",
-      "actual-session-observation-0.1.72172.json"
-    ],
+    "condition": "Fresh real Graph interaction is needed during the observed load window. Prior user preference prohibits unapproved focus disruption.",
+    "externalChangeNeeded": "User performs a readonly Graph refresh, or explicitly permits briefly activating one Graph window and restoring the previous window.",
+    "consecutiveGoalTurnsObservedAtLeast": 1,
+    "currentGoalStatus": "active",
+    "independentChecksThisFollowup": "Actual Native tracking strategy expansion tested and rejected due higher child CPU; hash-gate bug fixed without weakening semantic comparison."
+  },
+  "priorBlockerResolved": {
+    "condition": "Old runtime still active",
+    "resolved": true,
+    "observedAt": "2026-10-25T17:52:26.201981+00:00",
     "currentLiveVersions": [
-      "0.1.72169"
-    ],
-    "externalChangeNeeded": "Normal user-controlled window restart/reload and updated-session observations. Do not force reload/focus.",
-    "independentRequiredChecksRemaining": false,
-    "assessment": "No further change is justified by current updated-session evidence because no updated user session is observable; repeated synthetic-only tweaks cannot validate the remaining real symptom."
+      "0.1.72173"
+    ]
   }
 }

@@ -1,5 +1,6 @@
 // 실제 branch/ref 규모에서 Native 추적 조회만 검증한다. 이름·제목·OID 원문은 보고서에 남기지 않는다.
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { createHash } from "node:crypto";
 import { readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +10,7 @@ import { runGit } from "../../src/git/gitExec";
 import { gitCommandIndex } from "../../src/git/gitCommandPolicy";
 import { gitProcesses } from "../../src/git/gitProcessRegistry";
 import { readRepositoryMetadata } from "../../src/git/repositoryMetadata";
+import { snapshotDigest } from "../helpers/snapshotDigest";
 
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const source = JSON.parse(process.env.GSC_BENCH_SOURCE!);
@@ -50,10 +52,10 @@ async function main() {
     const elapsedMs = performance.now() - start, used = process.cpuUsage(cpu), commands = [...calls];
     const native = await readGraphLocalBranchSnapshot(root, runner), after = digest(await refs()), stateAfter = await markers(root);
     const stable = before === after && JSON.stringify(stateBefore) === JSON.stringify(stateAfter);
-    const actualHash = digest(JSON.stringify(actual)), expectedHash = digest(JSON.stringify(native));
-    if (stable) assert.equal(actualHash, expectedHash, "Stable readonly branch state differs from independent Native Git");
+    const actualHash = snapshotDigest(actual), expectedHash = snapshotDigest(native), nativeExact = isDeepStrictEqual(actual, native);
+    if (stable) assert.ok(nativeExact, "Stable readonly branch state differs from independent Native Git");
     results.push({ round, elapsedMs, nodeCpuMs: (used.user + used.system) / 1000, commands, stable,
-      nativeExact: actualHash === expectedHash, actualHash, expectedHash, branches: actual.branches.length });
+      nativeExact, actualHash, expectedHash, branches: actual.branches.length });
   }
   const protectedAfter = await markers(root), refsAfter = digest(await refs());
   const report = { source, environmentKeys: Object.keys(process.env).length, initialBranches: initial.branches.length,

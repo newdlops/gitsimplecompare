@@ -1,0 +1,109 @@
+{
+  "observedAt": "2026-10-25T16:48:38.423Z",
+  "version": "0.1.72173",
+  "repoAlias": "123559286e0c",
+  "rounds": [
+    {
+      "round": 0,
+      "kind": "localBranches",
+      "elapsedMs": 333.379333,
+      "nodeCpuMs": 3.878,
+      "branches": 164,
+      "tracked": 70,
+      "uniqueUpstreams": 16,
+      "totalTrackingDistance": 254728,
+      "commands": [
+        {
+          "command": "for-each-ref",
+          "syncSpawnMs": 1,
+          "elapsedMs": 332,
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "round": 0,
+      "kind": "gitLog",
+      "elapsedMs": 285.33491599999996,
+      "nodeCpuMs": 4.791,
+      "rows": 301,
+      "commands": [
+        {
+          "command": "log",
+          "syncSpawnMs": 3,
+          "elapsedMs": 283,
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "round": 1,
+      "kind": "localBranches",
+      "elapsedMs": 116.43004100000007,
+      "nodeCpuMs": 2.326,
+      "branches": 164,
+      "tracked": 70,
+      "uniqueUpstreams": 16,
+      "totalTrackingDistance": 254728,
+      "commands": [
+        {
+          "command": "for-each-ref",
+          "syncSpawnMs": 2,
+          "elapsedMs": 116,
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "round": 1,
+      "kind": "gitLog",
+      "elapsedMs": 154.90724999999998,
+      "nodeCpuMs": 4.22,
+      "rows": 301,
+      "commands": [
+        {
+          "command": "log",
+          "syncSpawnMs": 1,
+          "elapsedMs": 154,
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "kind": "localBranches",
+      "elapsedMs": 112.29887499999984,
+      "nodeCpuMs": 2.043,
+      "branches": 164,
+      "tracked": 70,
+      "uniqueUpstreams": 16,
+      "totalTrackingDistance": 254728,
+      "commands": [
+        {
+          "command": "for-each-ref",
+          "syncSpawnMs": 1,
+          "elapsedMs": 112,
+          "outcome": "success"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "kind": "gitLog",
+      "elapsedMs": 173.731583,
+      "nodeCpuMs": 3.747,
+      "rows": 301,
+      "commands": [
+        {
+          "command": "log",
+          "syncSpawnMs": 1,
+          "elapsedMs": 173,
+          "outcome": "success"
+        }
+      ]
+    }
+  ],
+  "eventLoopDelayMaxMs": 2.0018750000000125,
+  "protectedFilesExact": true,
+  "scope": "Actual session repository, isolated diagnostic Node using production gitExec and readers, sequential read-only commands. No VS Code UI, writes, GitHub network or Native-only CPU attribution."
+}

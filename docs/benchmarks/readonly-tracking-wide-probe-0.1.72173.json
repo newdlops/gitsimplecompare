@@ -1,0 +1,869 @@
+{
+  "results": [
+    {
+      "phase": "before",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "before",
+        "minimumTracked": 128,
+        "maximumBases": 8,
+        "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "before",
+          "minimumTracked": 128,
+          "maximumBases": 8,
+          "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 91.346,
+            "round": 0,
+            "elapsedMs": 671.2785420000005,
+            "nodeCpuMs": 3.242,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 99.57499999999999,
+            "round": 1,
+            "elapsedMs": 828.3652919999995,
+            "nodeCpuMs": 2.275,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 84.75099999999998,
+            "round": 2,
+            "elapsedMs": 679.9835420000018,
+            "nodeCpuMs": 10.129,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 84.96499999999992,
+            "round": 3,
+            "elapsedMs": 549.6753750000007,
+            "nodeCpuMs": 2.304,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "after",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "after",
+        "minimumTracked": 64,
+        "maximumBases": 16,
+        "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "after",
+          "minimumTracked": 64,
+          "maximumBases": 16,
+          "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 103.029,
+            "round": 0,
+            "elapsedMs": 204.171333,
+            "nodeCpuMs": 10.441,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 117.732,
+            "round": 1,
+            "elapsedMs": 169.16591700000004,
+            "nodeCpuMs": 8.908,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 107.40900000000005,
+            "round": 2,
+            "elapsedMs": 184.18841700000007,
+            "nodeCpuMs": 9.383,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 124.40300000000013,
+            "round": 3,
+            "elapsedMs": 201.52683300000012,
+            "nodeCpuMs": 7.327,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "after",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "after",
+        "minimumTracked": 64,
+        "maximumBases": 16,
+        "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "after",
+          "minimumTracked": 64,
+          "maximumBases": 16,
+          "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 132.483,
+            "round": 0,
+            "elapsedMs": 353.33120799999995,
+            "nodeCpuMs": 16.76,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 148.71499999999992,
+            "round": 1,
+            "elapsedMs": 303.655084,
+            "nodeCpuMs": 14.838,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 128.71399999999994,
+            "round": 2,
+            "elapsedMs": 282.061459,
+            "nodeCpuMs": 13.257,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 163.49,
+            "round": 3,
+            "elapsedMs": 440.4586669999999,
+            "nodeCpuMs": 8.674,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "before",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "before",
+        "minimumTracked": 128,
+        "maximumBases": 8,
+        "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "before",
+          "minimumTracked": 128,
+          "maximumBases": 8,
+          "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 89.58599999999998,
+            "round": 0,
+            "elapsedMs": 151.81154100000003,
+            "nodeCpuMs": 4.013,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 94.24100000000004,
+            "round": 1,
+            "elapsedMs": 114.38545900000008,
+            "nodeCpuMs": 2.705,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 105.13099999999997,
+            "round": 2,
+            "elapsedMs": 369.3867919999998,
+            "nodeCpuMs": 2.268,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 94.32899999999995,
+            "round": 3,
+            "elapsedMs": 593.7064169999999,
+            "nodeCpuMs": 2.272,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "after",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "after",
+        "minimumTracked": 64,
+        "maximumBases": 16,
+        "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "after",
+          "minimumTracked": 64,
+          "maximumBases": 16,
+          "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 112.56900000000002,
+            "round": 0,
+            "elapsedMs": 965.812167,
+            "nodeCpuMs": 9.777,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 93.45700000000005,
+            "round": 1,
+            "elapsedMs": 665.8151670000007,
+            "nodeCpuMs": 7.474,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 90.40500000000003,
+            "round": 2,
+            "elapsedMs": 616.0556660000002,
+            "nodeCpuMs": 7.552,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 91.39299999999992,
+            "round": 3,
+            "elapsedMs": 610.4799169999997,
+            "nodeCpuMs": 12.056,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "before",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "before",
+        "minimumTracked": 128,
+        "maximumBases": 8,
+        "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "before",
+          "minimumTracked": 128,
+          "maximumBases": 8,
+          "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 67.04399999999998,
+            "round": 0,
+            "elapsedMs": 652.11825,
+            "nodeCpuMs": 1.985,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 55.252999999999986,
+            "round": 1,
+            "elapsedMs": 479.2228750000004,
+            "nodeCpuMs": 1.285,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 56.91100000000006,
+            "round": 2,
+            "elapsedMs": 448.41949999999997,
+            "nodeCpuMs": 1.173,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 55.31200000000001,
+            "round": 3,
+            "elapsedMs": 150.93279200000052,
+            "nodeCpuMs": 1.421,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "before",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "before",
+        "minimumTracked": 128,
+        "maximumBases": 8,
+        "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "before",
+          "minimumTracked": 128,
+          "maximumBases": 8,
+          "bundleSha256": "171ec44604cfe4053d48fda61bfe17699c712f836fd17e21178e7af32dd93289"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 61.259,
+            "round": 0,
+            "elapsedMs": 82.26745799999992,
+            "nodeCpuMs": 2.338,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 45.002999999999986,
+            "round": 1,
+            "elapsedMs": 49.71808299999998,
+            "nodeCpuMs": 1.184,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 47.68799999999999,
+            "round": 2,
+            "elapsedMs": 51.48733399999992,
+            "nodeCpuMs": 1.034,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 47.863,
+            "round": 3,
+            "elapsedMs": 51.254875000000084,
+            "nodeCpuMs": 1.33,
+            "commands": [
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    },
+    {
+      "phase": "after",
+      "source": {
+        "kind": "isolated-diagnostic",
+        "phase": "after",
+        "minimumTracked": 64,
+        "maximumBases": 16,
+        "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+      },
+      "report": {
+        "source": {
+          "kind": "isolated-diagnostic",
+          "phase": "after",
+          "minimumTracked": 64,
+          "maximumBases": 16,
+          "bundleSha256": "569e96b85e3b67a6fff87f77be51ec06382a9ba5c0ca1f84f5d7fcf2ae2630db"
+        },
+        "environmentKeys": 87,
+        "initialBranches": 164,
+        "initialTracked": 70,
+        "initialDivergent": 57,
+        "initialUniqueUpstreams": 99,
+        "results": [
+          {
+            "childCpuMs": 69.41900000000001,
+            "round": 0,
+            "elapsedMs": 144.31899999999996,
+            "nodeCpuMs": 8.174,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 62.94999999999999,
+            "round": 1,
+            "elapsedMs": 115.70629100000008,
+            "nodeCpuMs": 6.449,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 60.748999999999995,
+            "round": 2,
+            "elapsedMs": 118.11045800000011,
+            "nodeCpuMs": 6.301,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          },
+          {
+            "childCpuMs": 71.02600000000004,
+            "round": 3,
+            "elapsedMs": 122.64383399999997,
+            "nodeCpuMs": 5.011,
+            "commands": [
+              "for-each-ref",
+              "for-each-ref",
+              "for-each-ref"
+            ],
+            "stable": true,
+            "nativeExact": true,
+            "actualHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "expectedHash": "01c8c5eb25ed68221dc0756e81ba0ceb8ba6f1dbab7587ab0c2bf30c0a76d3fc",
+            "branches": 164
+          }
+        ],
+        "protectedBefore": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "protectedAfter": {
+          "metadata": "c1a67fbd5a46180cb76fc83c076991eb6bf8ee808f4f68bdfa6af5e05cb12e66",
+          "hashes": [
+            "126a9bad04fe4d21077cb2f09d61e2d7b29ad39820652c1bc0b3f432bc8398df",
+            "c583188505b5ff0cbbbfaa4b1e19c2d0ab616d2c968cdf918c998035e259993f",
+            "f393c311c9e517ff2106e1ca6c7e511f46ee962da1f3d9caa5c78a6c53f3d3e9",
+            "absent"
+          ]
+        },
+        "refsBefore": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "refsAfter": "b368c817838e010d5dfdef767772001096929eb9ba48dfa740080dc475202e2e",
+        "protectedStateStable": true,
+        "scope": "Actual target read only: Native ref/metadata/tracking queries, no checkout/config/index/ref writes or network hydration. Reports/builds outside target. Four correlated warm reads in one process/source; Node CPU excludes Native children and OS. Private branch names, subjects and OIDs are represented only by whole-result hashes. Concurrent target changes mark results unstable; unstable timings are not comparative evidence."
+      }
+    }
+  ],
+  "scope": "8 independent diagnostic Nodes, B/A/A/B+A/B/B/A. Each has 4 correlated warm read windows; Native oracle and ref/index/config protection outside each window. Only threshold constants differ in isolated esbuild memory; production source and installed extension unchanged. Node and waited Native child CPU separated. Actual target read-only, no lazy fetch, writes or network."
+}
