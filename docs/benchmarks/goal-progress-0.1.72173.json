@@ -1,0 +1,57 @@
+{
+  "version": "0.1.72173",
+  "recordedAt": "2026-10-25T16:18:09.902524+00:00",
+  "overallCompletion": "unproven",
+  "requirements": [
+    {
+      "requirement": "Cold assets, ready, first/final frame under constrained CPU",
+      "evidence": "cold-summary-0.1.72173.json",
+      "result": "24 owned independent lifetimes verified; no actual user-session timing claim"
+    },
+    {
+      "requirement": "Full/partial/state updates, input and presentation fidelity",
+      "evidence": [
+        "performance-summary-0.1.72173.json",
+        "verification-0.1.72173.json"
+      ],
+      "result": "Production Graph comparisons, 13 focused functional tests and three viewport inspections passed; active-stack improvements only"
+    },
+    {
+      "requirement": "Native Git results and local-change protection",
+      "evidence": [
+        "functional-controls-0.1.72173.json",
+        "release-artifact-0.1.72173.json"
+      ],
+      "result": "Current checkout/PR squash exact; Native runtime byte-identical to previously verified runtime"
+    },
+    {
+      "requirement": "Repeated lifecycle and resource bounds",
+      "evidence": "lifecycle-0.1.72173.json",
+      "result": "8 default cycles passed; active-stack separate heap/reconciliation evidence; no long-term or overall RSS improvement claim"
+    },
+    {
+      "requirement": "Commit, push, version, publish and install same tested package",
+      "evidence": "deployment-0.1.72173.json",
+      "result": "Verified"
+    },
+    {
+      "requirement": "Updated extension in actual busy user session",
+      "evidence": "actual-session-observation-0.1.72173.json",
+      "result": "Not verified: live logs still show old runtime"
+    }
+  ],
+  "blocker": {
+    "condition": "Updated installed runtime is not yet running in the observed live user sessions. Actual updated-session CPU, memory and symptoms cannot be verified from old runtime data.",
+    "consecutiveGoalTurnsObservedAtLeast": 3,
+    "priorEvidence": [
+      "actual-session-observation-0.1.72171.json",
+      "actual-session-observation-0.1.72172.json"
+    ],
+    "currentLiveVersions": [
+      "0.1.72169"
+    ],
+    "externalChangeNeeded": "Normal user-controlled window restart/reload and updated-session observations. Do not force reload/focus.",
+    "independentRequiredChecksRemaining": false,
+    "assessment": "No further change is justified by current updated-session evidence because no updated user session is observable; repeated synthetic-only tweaks cannot validate the remaining real symptom."
+  }
+}

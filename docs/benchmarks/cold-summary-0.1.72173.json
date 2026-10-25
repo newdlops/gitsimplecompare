@@ -1,0 +1,32 @@
+{
+  "version": "0.1.72173",
+  "baseline": "0.1.72172",
+  "runs": 24,
+  "stats": {
+    "before": {
+      "readyMs": 124.5,
+      "firstGraphFrameMs": 617.5,
+      "latestGraphFrameMs": 817.5,
+      "scriptRequests": 1.0,
+      "scriptDecodedBytes": 225385.0,
+      "ownedCpuMs": 1086.5065,
+      "sampledPeakOwnedSumRssBytes": 593158144.0
+    },
+    "after": {
+      "readyMs": 110.5,
+      "firstGraphFrameMs": 564.0,
+      "latestGraphFrameMs": 757.0,
+      "scriptRequests": 1.0,
+      "scriptDecodedBytes": 226751.0,
+      "ownedCpuMs": 1164.063,
+      "sampledPeakOwnedSumRssBytes": 592846848.0
+    }
+  },
+  "scope": "24 independent Node/browser lifetimes, B/A/A/B+A/B/B/A per separate latency/CPU/sampled-RSS mode. Browser-cold assets on an empty same-origin shell; source/fixture filesystem warm. Real registered ready callback and Native Git/DOM verification. Latency renderer throttled before HTML navigation; resource runs unthrottled. No active VS Code, GitHub network or machine-wide artificial stress.",
+  "result": "Ready/first/final frame medians improved in this run; owned CPU median increased about 7.1%. Sampled sum RSS similar. No cold CPU or memory reduction/equivalence claim.",
+  "sampledMemoryLimit": "Discrete owned-process sum RSS, including Node/Playwright and Chromium, with shared pages and sampling gaps; not physical or exact peak memory.",
+  "fingerprintUnchanged": true,
+  "nativeAndDomExact": true,
+  "sourceBundleMatchesPublishedAndInstalled": true,
+  "raw": "production-cold-0.1.72173.json"
+}

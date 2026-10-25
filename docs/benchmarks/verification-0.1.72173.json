@@ -85,5 +85,9 @@
       "bytes": 1380,
       "sha256": "7f4cfc8341efe39d8ec39ed43d8c2186cdcdf2001b4724919b630e0634dd5faf"
     }
-  }
+  },
+  "installedRuntimeMatched": true,
+  "coldIndependentLifetimes": 24,
+  "coldNativeAndDomExact": true,
+  "coldSourceBundleMatchesPackage": true
 }

@@ -40,11 +40,22 @@ PR stack 미표시 조건의 frame은 119.3 → 118.6ms로 비슷했다. 이 조
 
 ## 남은 실제 세션 확인
 
+배포한 동일 소스로 독립 Node/browser 24회의 초기 로드도 감사했다. CPU 제한은
+HTML 탐색 전에 적용했다. ready는 124.5 → 110.5ms, 첫 frame은 617.5 → 564ms,
+최종 frame은 817.5 → 757ms였다. 별도 소유 프로세스 CPU는 약 7.1% 늘었고
+표본 합산 RSS는 약 565MiB로 비슷했다. 초기화 CPU·메모리 감소나 동등성을
+주장하지 않는다. RSS는 공유 페이지와 표본 간격을 포함하는 소유 프로세스 합이며
+정확한 물리 메모리 peak가 아니다. 24회 모두 Native Git·최종 DOM 일치 검사를 통과했다.
+
 새 버전 설치와 현재 열린 창에서의 실행은 다르다. 읽기 전용으로 확인한 사용자
-창의 활성화 로그는 아직 0.1.72169였다. 일반적인 창 재시작 이후 새 runtime의
+4개 창의 열린 로그 핸들과 마지막 활성화 버전은 아직 0.1.72169였다.
+같은 조건이 이전 목표 turn들에서도 반복됐다. 일반적인 창 재시작 이후 새 runtime의
 실제 CPU·메모리·사용 지연을 확인해야 전체 목표의 완료를 입증할 수 있다.
 사용자 창의 포커스를 바꾸거나 강제로 reload하지 않는다.
 
 [성능 원시 표본과 요약](benchmarks/performance-summary-0.1.72173.json),
 [기능·수명 검증](benchmarks/verification-0.1.72173.json),
-[패키지 바이트 검증](benchmarks/release-artifact-0.1.72173.json).
+[초기 로드 감사](benchmarks/cold-summary-0.1.72173.json),
+[패키지 바이트 검증](benchmarks/release-artifact-0.1.72173.json),
+[동일 VSIX 배포·설치 기록](benchmarks/deployment-0.1.72173.json),
+[전체 목표 감사와 남은 조건](benchmarks/goal-progress-0.1.72173.json).
