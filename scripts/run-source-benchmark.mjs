@@ -5,6 +5,8 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import os from "node:os";
+import { existsSync } from "node:fs";
+import { graphBrowserBuildOptions } from "./browser-bundle.mjs";
 
 /** source만 격리하고 같은 harness로 실행한다. 명시한 observer는 build 뒤 자식 Node만 감싸며 기본 실행에는 없다. */
 export async function runSourceBenchmark(entryPoint, sharedFiles = [], nodeArgs = [], observerPrefix) {
@@ -26,6 +28,8 @@ export async function runSourceBenchmark(entryPoint, sharedFiles = [], nodeArgs 
         await copyFile(path.join(workspaceRoot, relative), path.join(sourceRoot, relative));
       }
     }
+    // 새 source는 production Graph 자산도 같은 compiler 옵션으로 준비한다. 이전 classic source는 원래 자산을 쓴다.
+    if (existsSync(path.join(sourceRoot, "media/graph/graphEntry.js"))) await build(graphBrowserBuildOptions(sourceRoot));
     const outfile = path.join(directory, "benchmark.cjs");
     await build({ entryPoints: [path.join(sourceRoot, entryPoint)], outfile, bundle: true, platform: "node", format: "cjs",
       target: "node18", logLevel: "silent", nodePaths: [path.join(workspaceRoot, "node_modules")], alias: { vscode: path.join(sourceRoot, "test/helpers/vscodeMock.ts") } });

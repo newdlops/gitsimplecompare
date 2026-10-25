@@ -1,0 +1,97 @@
+{
+  "observedAt": "2026-10-25T10:09:20.975695+00:00",
+  "observations": [
+    {
+      "window": "window4",
+      "activeVersion": "0.1.72169",
+      "configuredGit": "/Library/Developer/CommandLineTools/usr/bin/git",
+      "slowRevParseMs": [
+        5420
+      ],
+      "distinctSlowRevParseCwds": 1,
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "1657fdf9e78fcce85bb1d895066f34f51a9f7599c1dfe7172a28fc335dee1cb1"
+    },
+    {
+      "window": "window2",
+      "activeVersion": "0.1.72169",
+      "configuredGit": "/Library/Developer/CommandLineTools/usr/bin/git",
+      "slowRevParseMs": [
+        1865,
+        1875,
+        1936,
+        1942,
+        2176,
+        2221,
+        2189,
+        2198,
+        2174,
+        2391,
+        2400,
+        2398,
+        2487,
+        2502,
+        2564
+      ],
+      "distinctSlowRevParseCwds": 15,
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "3a21067cce70ed21ee67cc183b8786e24d6abbc3725c2a3e056ae438247a40b7"
+    },
+    {
+      "window": "window3",
+      "activeVersion": "0.1.72169",
+      "configuredGit": "/Library/Developer/CommandLineTools/usr/bin/git",
+      "slowRevParseMs": [
+        1024,
+        3165,
+        3283,
+        3385,
+        3292,
+        3282,
+        3312,
+        3292,
+        3295,
+        3294,
+        3276,
+        3291,
+        3288,
+        3278,
+        3286,
+        3285,
+        3277,
+        3384,
+        3281,
+        2384
+      ],
+      "distinctSlowRevParseCwds": 20,
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "32c50d4f1b20aaa642b7123fc46f5d574f4a96ede116ddaf80a269658fd8060f"
+    },
+    {
+      "window": "window1",
+      "activeVersion": "0.1.72169",
+      "configuredGit": "/Library/Developer/CommandLineTools/usr/bin/git",
+      "slowRevParseMs": [
+        3139,
+        3157,
+        3077,
+        3106,
+        3071,
+        3140,
+        3078,
+        3091,
+        3064,
+        2023,
+        557,
+        675,
+        337,
+        274,
+        272
+      ],
+      "distinctSlowRevParseCwds": 11,
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "daf463b3f5c4a0b9d35284c0b2748d9a97862b2f41a61b485d88d7f525809918"
+    }
+  ],
+  "scope": "Read-only VS Code OUTPUT logs. Workspace paths omitted. Slow rev-parse argv are not logged, so this does not classify every row as a discovery query. Version 0.1.72169 code excludes configured absolute executables from shared anchors; the owned benchmark exercises the same configured Native Git path. No post-install active session claim."
+}

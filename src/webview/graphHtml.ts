@@ -3,7 +3,6 @@
 import * as vscode from "vscode";
 import {
   sharedWebviewResources,
-  sharedWebviewScriptTags,
   sharedWebviewStyleTags,
 } from "./sharedWebviewResources";
 
@@ -19,52 +18,7 @@ export function buildGraphHtml(
 ): string {
   const webview = panel.webview;
   const mediaRoot = vscode.Uri.joinPath(extensionUri, "media", "graph");
-  const scriptUri = script(webview, mediaRoot, "graph.js");
-  const featureScriptUri = script(webview, mediaRoot, "graphFeatures.js");
-  const referenceStateScriptUri = script(webview, mediaRoot, "graphReferenceState.js");
-  const loadStatusScriptUri = script(webview, mediaRoot, "graphLoadStatus.js");
-  const worktreeScriptUri = script(webview, mediaRoot, "graphWorktrees.js");
-  const searchScriptUri = script(webview, mediaRoot, "graphSearch.js");
-  const headJumpScriptUri = script(webview, mediaRoot, "graphHeadJump.js");
-  const remoteScriptUri = script(webview, mediaRoot, "graphRemote.js");
-  const branchFilterScriptUri = script(webview, mediaRoot, "graphBranchFilter.js");
-  const contextScriptUri = script(webview, mediaRoot, "graphContextMenu.js");
-  const localColorScriptUri = script(webview, mediaRoot, "graphLocalColors.js");
-  const colorScriptUri = script(webview, mediaRoot, "graphColors.js");
-  const compactRenderScriptUri = script(webview, mediaRoot, "graphCompactRender.js");
-  const svgRenderScriptUri = script(webview, mediaRoot, "graphSvgRender.js");
-  const viewportScriptUri = script(webview, mediaRoot, "graphViewport.js");
-  const rowSyncScriptUri = script(webview, mediaRoot, "graphRowSync.js");
-  const detailResizeScriptUri = script(webview, mediaRoot, "graphDetailResize.js");
-  const detailVisibilityScriptUri = script(webview, mediaRoot, "graphDetailVisibility.js");
-  const dataUpdatesScriptUri = script(webview, mediaRoot, "graphDataUpdates.js");
-  const performanceScriptUri = script(webview, mediaRoot, "graphPerformance.js");
-  const actionFeedbackScriptUri = script(webview, mediaRoot, "graphActionFeedback.js");
-  const prFilesScriptUri = script(webview, mediaRoot, "graphPrFiles.js");
-  const prLabelsScriptUri = script(webview, mediaRoot, "graphPrLabels.js");
-  const prSearchScriptUri = script(webview, mediaRoot, "graphPrSearch.js");
-  const prMatchingScriptUri = script(webview, mediaRoot, "graphPrMatching.js");
-  const prActionsScriptUri = script(webview, mediaRoot, "graphPrActions.js");
-  const prStacksScriptUri = script(webview, mediaRoot, "graphPrStacks.js");
-  const prScriptUri = script(webview, mediaRoot, "graphPr.js");
-  const prViewStateScriptUri = script(webview, mediaRoot, "graphPrViewState.js");
-  const prPeopleScriptUri = script(webview, mediaRoot, "graphPrPeople.js");
-  const detailScriptUri = script(webview, mediaRoot, "graphDetail.js");
-  const rebaseScriptUri = script(webview, mediaRoot, "graphRebase.js");
-  const rebaseMessageScriptUri = script(webview, mediaRoot, "graphRebaseMessages.js");
-  const rebaseDetailScriptUri = script(webview, mediaRoot, "graphRebaseDetail.js");
-  const rebaseFilesScriptUri = script(webview, mediaRoot, "graphRebaseFiles.js");
-  const rebaseRowsScriptUri = script(webview, mediaRoot, "graphRebaseRows.js");
-  const rebaseMovesScriptUri = script(webview, mediaRoot, "graphRebaseMoves.js");
-  const rebasePreviewScriptUri = script(webview, mediaRoot, "graphRebasePreview.js");
-  const rebaseProgressScriptUri = script(webview, mediaRoot, "graphRebaseProgress.js");
-  const rebaseAiScriptUri = script(webview, mediaRoot, "graphRebaseAi.js");
-  const reflogModelScriptUri = script(webview, mediaRoot, "graphReflogModel.js");
-  const reflogDetailScriptUri = script(webview, mediaRoot, "graphReflogDetail.js");
-  const reflogListScriptUri = script(webview, mediaRoot, "graphReflogList.js");
-  const reflogSlotLayoutScriptUri = script(webview, mediaRoot, "graphReflogSlotLayout.js");
-  const reflogMarkersScriptUri = script(webview, mediaRoot, "graphReflogMarkers.js");
-  const reflogScriptUri = script(webview, mediaRoot, "graphReflog.js");
+  const scriptUri = script(webview, vscode.Uri.joinPath(extensionUri, "media", "bundled"), "graph.js");
   const styleUri = style(webview, mediaRoot, "graph.css");
   const healthStyleUri = style(webview, mediaRoot, "graphHealth.css");
   const worktreeStyleUri = style(webview, mediaRoot, "graphWorktrees.css");
@@ -319,53 +273,7 @@ export function buildGraphHtml(
   </div>
   <div id="drawer-backdrop"></div>
   <script nonce="${nonce}">window.GscPrStackI18n = ${prStackI18n};</script>
-  ${sharedWebviewScriptTags(sharedResources, nonce)}
-  <script nonce="${nonce}" src="${colorScriptUri}"></script>
-  <script nonce="${nonce}" src="${referenceStateScriptUri}"></script>
-  <script nonce="${nonce}" src="${featureScriptUri}"></script>
-  <script nonce="${nonce}" src="${worktreeScriptUri}"></script>
-  <script nonce="${nonce}" src="${searchScriptUri}"></script>
-  <script nonce="${nonce}" src="${headJumpScriptUri}"></script>
-  <script nonce="${nonce}" src="${remoteScriptUri}"></script>
-  <script nonce="${nonce}" src="${localColorScriptUri}"></script>
-  <script nonce="${nonce}" src="${compactRenderScriptUri}"></script>
-  <script nonce="${nonce}" src="${svgRenderScriptUri}"></script>
-  <script nonce="${nonce}" src="${prFilesScriptUri}"></script>
-  <script nonce="${nonce}" src="${prLabelsScriptUri}"></script>
-  <script nonce="${nonce}" src="${prSearchScriptUri}"></script>
-  <script nonce="${nonce}" src="${prMatchingScriptUri}"></script>
-  <script nonce="${nonce}" src="${prActionsScriptUri}"></script>
-  <script nonce="${nonce}" src="${prStacksScriptUri}"></script>
-  <script nonce="${nonce}" src="${prViewStateScriptUri}"></script>
-  <script nonce="${nonce}" src="${prPeopleScriptUri}"></script>
-  <script nonce="${nonce}" src="${prScriptUri}"></script>
-  <script nonce="${nonce}" src="${contextScriptUri}"></script>
-  <script nonce="${nonce}" src="${detailScriptUri}"></script>
-  <script nonce="${nonce}" src="${branchFilterScriptUri}"></script>
-  <script nonce="${nonce}" src="${viewportScriptUri}"></script>
-  <script nonce="${nonce}" src="${rowSyncScriptUri}"></script>
-  <script nonce="${nonce}" src="${detailResizeScriptUri}"></script>
-  <script nonce="${nonce}" src="${detailVisibilityScriptUri}"></script>
-  <script nonce="${nonce}" src="${dataUpdatesScriptUri}"></script>
-  <script nonce="${nonce}" src="${performanceScriptUri}"></script>
-  <script nonce="${nonce}" src="${actionFeedbackScriptUri}"></script>
-  <script nonce="${nonce}" src="${loadStatusScriptUri}"></script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogModelScriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogDetailScriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogListScriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogSlotLayoutScriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogMarkersScriptUri}"></script>
-  <script nonce="${nonce}" src="${reflogScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseMessageScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseDetailScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseFilesScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseRowsScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseMovesScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebasePreviewScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseProgressScriptUri}"></script>
-  <script nonce="${nonce}" src="${rebaseAiScriptUri}"></script>
 </body>
 </html>`;
 }

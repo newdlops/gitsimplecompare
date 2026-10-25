@@ -13,6 +13,7 @@ import { loadChildResourceProbe } from "../helpers/childResourceProbe";
 import { PhaseMemorySampler } from "../helpers/phaseMemorySampler";
 import { summarizePhaseMemory } from "../helpers/phaseMemorySummary";
 import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
+import { setGitExecutableResolver } from "../../src/git/gitExec";
 
 const source = JSON.parse(process.env.GSC_BENCH_SOURCE!), mode = process.env.GSC_BENCH_DISCOVERY_MODE || "latency";
 delete process.env.GSC_BENCH_SOURCE; delete process.env.GSC_BENCH_SOURCE_REF;
@@ -74,6 +75,8 @@ async function burst(root: string, dirs: string[], mixed: boolean, label: string
 async function main() {
   assert.ok(process.argv[2]); assert.ok(["latency", "cpu", "memory"].includes(mode));
   const directory = await mkdtemp(path.join(os.tmpdir(), "gsc-discovery-benchmark-")), root = path.join(directory, "repository");
+  const executable = process.env.GSC_BENCH_DISCOVERY_EXECUTABLE;
+  const restoreExecutable = executable ? setGitExecutableResolver(() => executable) : undefined;
   let complete = false;
   try {
     await mkdir(root); native(root, "-c", "init.templateDir=", "init", "-q", "--initial-branch=main");
@@ -91,9 +94,9 @@ async function main() {
     for (const [kind, mixed] of [["root", false], ["mixed", true]] as const) {
       for (let index = 0; index < 2; index++) results.push(await burst(physicalRoot, dirs, mixed, `${kind}-${index}`, probe));
     }
-    await writeFile(process.argv[2], JSON.stringify({ source, mode, results,
+    await writeFile(process.argv[2], JSON.stringify({ source, mode, executable: executable || "git", results,
       scope: "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim." }, null, 2) + "\n");
     complete = true;
-  } finally { await gitProcesses.dispose(); if (complete) await rm(directory, { recursive: true, force: true }); else console.error(`Preserved discovery fixture: ${directory}`); }
+  } finally { restoreExecutable?.(); await gitProcesses.dispose(); if (complete) await rm(directory, { recursive: true, force: true }); else console.error(`Preserved discovery fixture: ${directory}`); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

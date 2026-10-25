@@ -105,13 +105,43 @@ test("a nested repository created while the leader is reading is rechecked befor
   assert.equal((await registry.resolve(cwd))?.repoRoot, cwd);
 });
 
-test("an explicitly configured executable keeps every lookup at its original cwd", async t => {
+test("an unknown configured executable keeps every lookup at its original cwd", async t => {
   const f = await safetyFixture(t, "discovery-custom-executable"), dirs = await directories(f.root, 2), root = await realpath(f.root);
-  const stop = setGitExecutableResolver(() => "/usr/bin/git");
+  const other = path.join(f.directory, "wrapper-other"); await git(root, "worktree", "add", "-qb", "wrapper-other", other);
+  const executable = path.join(f.directory, "custom-git"), redirected = await realpath(dirs[1]);
+  await writeFile(executable, `#!/bin/sh\nif [ "$(pwd -P)" = ${quoteShell(redirected)} ]; then\nexec /usr/bin/git -C ${quoteShell(other)} "$@"\nfi\nexec /usr/bin/git "$@"\n`, { mode: 0o755 });
+  const stop = setGitExecutableResolver(() => executable);
   try {
     const registry = new GitServiceRegistry(), { result, calls } = await observed(() => Promise.all(dirs.map(cwd => registry.resolve(cwd))));
-    assert.ok(result.every(value => value?.repoRoot === root)); assert.equal(calls.length, 2);
+    assert.deepEqual(result.map(value => value?.repoRoot), [root, await realpath(other)]); assert.equal(calls.length, 2);
     assert.deepEqual(calls.map(value => value.repoRoot).sort(), dirs.map(value => path.resolve(value)).sort());
+  } finally { stop(); }
+});
+
+/** 소유 테스트 경로를 shell wrapper에 안전하게 넣는다. @param value 테스트 경로 @returns POSIX 단일 인자. */
+function quoteShell(value: string): string { return "'" + value.replace(/'/g, "'\\''") + "'"; }
+
+test("a standard Native Git absolute path shares discovery across different folders", async t => {
+  const f = await safetyFixture(t, "discovery-absolute-native"), root = await realpath(f.root), dirs = await directories(root, 34);
+  const stop = setGitExecutableResolver(() => "/usr/bin/git");
+  try {
+    const registry = new GitServiceRegistry(), { result, calls } = await observed(() => Promise.all(dirs.map(cwd => registry.resolveWithBranch(cwd))));
+    assert.ok(result.every(value => value?.service.repoRoot === root && value.branch === "main")); assert.equal(calls.length, 1);
+    await git(root, "switch", "-qc", "after-native-share");
+    assert.equal((await registry.resolveWithBranch(dirs[0]))?.branch, "after-native-share");
+  } finally { stop(); }
+});
+
+test("the configured Apple Command Line Tools Git shares Native discovery", { skip: process.platform !== "darwin" }, async t => {
+  try { await realpath("/Library/Developer/CommandLineTools/usr/bin/git"); }
+  catch { t.skip("Apple Command Line Tools Git is not installed"); return; }
+  const f = await safetyFixture(t, "discovery-configured-apple-git"), root = await realpath(f.root), dirs = await directories(root, 34);
+  const stop = setGitExecutableResolver(() => "/Library/Developer/CommandLineTools/usr/bin/git");
+  try {
+    const registry = new GitServiceRegistry(), { result, calls } = await observed(() => Promise.all(dirs.map(cwd => registry.resolveWithBranch(cwd))));
+    assert.ok(result.every(value => value?.service.repoRoot === root && value.branch === "main")); assert.equal(calls.length, 1);
+    const nested = dirs[0]; await git(nested, "init", "-q", "-b", "inner"); registry.invalidateResolveCache();
+    assert.equal((await registry.resolve(nested))?.repoRoot, nested);
   } finally { stop(); }
 });
 

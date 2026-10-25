@@ -1,0 +1,17 @@
+{
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "goalStatus": "active",
+  "auditOutcome": "partial progress; full objective not yet proven",
+  "version": "0.1.72170",
+  "acceptedWork": [
+    "Configured standard Native Git absolute paths now share repository discovery; the current user-selected Apple Git path is tested.",
+    "Graph assets retain their initializer order in one measured browser bundle; unused standalone runtime scripts are excluded."
+  ],
+  "evidence": "verification-0.1.72170.json",
+  "remainingRequiredWork": [
+    "Profile large loaded Graph metadata updates, including full SVG/DOM scans and long renderer tasks.",
+    "Verify repeated refresh/reveal/close within one session with bounded process/listener/timer/heap behavior.",
+    "Inspect actual session metrics after a normal reload; no forced user-session reload."
+  ],
+  "deploymentIsNotFullGoalCompletion": true
+}

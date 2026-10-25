@@ -2,6 +2,7 @@
 import { lstat, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { resolveGitExecutable } from "./gitExec";
+import { RepositoryDiscoveryExecutables } from "./repositoryDiscoveryExecutable";
 
 const DISCOVERY_ENVIRONMENT = ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_CEILING_DIRECTORIES",
   "GIT_DISCOVERY_ACROSS_FILESYSTEM", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -11,6 +12,7 @@ const MAX_DEPTH = 64, MAX_PENDING = 512;
 /** 완료 결과는 캐시하지 않고 겹치는 경로의 진행 중 파일시스템 확인만 공유한다. */
 export class RepositoryDiscoveryAnchors {
   private pending = new Map<string, Promise<string | undefined>>();
+  private readonly executables = new RepositoryDiscoveryExecutables();
 
   /**
    * 물리 경로에서 가장 가까운 .git을 찾는다. bare·권한 오류·설정 override는 기존 Native 조회로 돌린다.
@@ -19,19 +21,20 @@ export class RepositoryDiscoveryAnchors {
   async find(cwd: string): Promise<string | undefined> {
     const pending = this.pending;
     try {
-      if (DISCOVERY_ENVIRONMENT.some(key => process.env[key] !== undefined) || resolveGitExecutable(cwd) !== "git") return undefined;
+      const executable = resolveGitExecutable(cwd);
+      if (DISCOVERY_ENVIRONMENT.some(key => process.env[key] !== undefined) || !await this.executables.canShare(executable)) return undefined;
       for (const key of ["GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"]) {
         if (process.env[key] && !path.isAbsolute(process.env[key]!)) return undefined;
       }
       const physical = await realpath(cwd);
       if (!(await stat(physical)).isDirectory()) return undefined;
       const anchor = await this.walk(physical, MAX_DEPTH, pending);
-      return anchor && resolveGitExecutable(anchor) === "git" ? anchor : undefined;
+      return anchor && resolveGitExecutable(anchor) === executable ? anchor : undefined;
     } catch { return undefined; }
   }
 
   /** 무효화 전 경로 확인이 새 세대의 진행 중 확인에 합류하지 않도록 map 수명 자체를 바꾼다. */
-  clear(): void { this.pending = new Map(); }
+  clear(): void { this.pending = new Map(); this.executables.clear(); }
 
   /**
    * 공유 marker 확인을 위로 연결하되 완료 항목을 즉시 해제하고 filesystem 경계를 넘지 않는다.

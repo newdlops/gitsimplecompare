@@ -1,0 +1,3436 @@
+{
+  "baseline": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+  "fingerprint": {
+    "files": 652,
+    "sha256": "2c040295e9daddc76d2020c9d0f32f84ae40283c671fe144ca2ec1a70a690ee0"
+  },
+  "completed": true,
+  "runs": [
+    {
+      "phase": "before",
+      "mode": "latency",
+      "reportSha256": "5d7d427dc091ecc3b7eb4f9148089793fd68bcb74a0fddebddb3fdbe13aa1232",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "117fc327966b0299f3e292e718e5381310f0129f9970d8fb3692d48ad034c5a1"
+        },
+        "mode": "latency",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 188.4972090000001,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 67.942,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "loadAfter": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "events": []
+          },
+          {
+            "label": "root-1",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 160.51400000000012,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 68.664,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "loadAfter": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-0",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 193.70558299999993,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 72.7,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "loadAfter": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-1",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 131.76600000000008,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 78.983,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "loadAfter": [
+              17.451171875,
+              24.14794921875,
+              23.65576171875
+            ],
+            "events": []
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "reportSha256": "02afcfa1283c7ff5bfabd3f891f963daa61b248c6baa6c858ff86f03c4c155a0",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "latency",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 110.63050000000021,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 39.964,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "loadAfter": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "root-1",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 131.45650000000023,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 35.82,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "loadAfter": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-0",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 142.35779100000036,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 36.616,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "loadAfter": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-1",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 84.15999999999985,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 41.02,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "loadAfter": [
+              16.14501953125,
+              23.64794921875,
+              23.484375
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "after",
+      "mode": "latency",
+      "reportSha256": "33c019e9b832a24232c121d71f98dff5c9ff600e0f3171f67196a6965f156225",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "latency",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 171.84175000000005,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 42.709,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "loadAfter": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "root-1",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 223.5953330000002,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 42.528,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "loadAfter": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-0",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 255.49524999999994,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 43.507,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "loadAfter": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-1",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 126.04270799999995,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 45.737,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "loadAfter": [
+              15.64208984375,
+              23.2958984375,
+              23.361328125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "before",
+      "mode": "latency",
+      "reportSha256": "5c52fccef2c0d8190ffdcf09c1e92f93737b305ea856e936d89429e7a9a06922",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "f879e46c1101f8c7ead21434ea3f0e4c0f77ea3188eb784ce3965bd63479260f"
+        },
+        "mode": "latency",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 255.35962500000005,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 76.42,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "loadAfter": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "events": []
+          },
+          {
+            "label": "root-1",
+            "mode": "latency",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 158.07958299999996,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 70.458,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "loadAfter": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-0",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 168.6232500000001,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 74.206,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "loadAfter": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-1",
+            "mode": "latency",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 250.0532500000004,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 88.548,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "loadAfter": [
+              18.9404296875,
+              23.47314453125,
+              23.41845703125
+            ],
+            "events": []
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "reportSha256": "f4f3591f06a742639787ad2e8ab6d2fa5244b4df00b4ab9f20c4af41f775bb79",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "fc86b46eb49cf32f36cdcaec79d5cb25aa950dcfb99df5862376c3439c72a2de"
+        },
+        "mode": "cpu",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 189.80441599999995,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 81.18,
+            "childCpuMs": 501.65700000000004,
+            "ownedCpuMs": 582.837,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              20.78466796875,
+              23.5263671875,
+              23.44140625
+            ],
+            "loadAfter": [
+              20.78466796875,
+              23.5263671875,
+              23.44140625
+            ],
+            "events": []
+          },
+          {
+            "label": "root-1",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 190.9990829999997,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 76.846,
+            "childCpuMs": 464.8289999999997,
+            "ownedCpuMs": 541.6749999999997,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              20.78466796875,
+              23.5263671875,
+              23.44140625
+            ],
+            "loadAfter": [
+              20.9619140625,
+              23.517578125,
+              23.4384765625
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-0",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 139.29245899999933,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 72.447,
+            "childCpuMs": 458.93000000000006,
+            "ownedCpuMs": 531.3770000000001,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              20.9619140625,
+              23.517578125,
+              23.4384765625
+            ],
+            "loadAfter": [
+              20.9619140625,
+              23.517578125,
+              23.4384765625
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-1",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 202.18220800000017,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 85.107,
+            "childCpuMs": 448.63099999999986,
+            "ownedCpuMs": 533.7379999999998,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              20.9619140625,
+              23.517578125,
+              23.4384765625
+            ],
+            "loadAfter": [
+              20.9619140625,
+              23.517578125,
+              23.4384765625
+            ],
+            "events": []
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "reportSha256": "228cc0a4ab840dddf44db74bdc856fe6f51de2d0c574da91e974f00d1f8420c2",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "cpu",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 102.54758300000049,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 39.011,
+            "childCpuMs": 18.5739999999999,
+            "ownedCpuMs": 57.5849999999999,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "loadAfter": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "root-1",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 69.97595799999999,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 40.518,
+            "childCpuMs": 16.694000000000074,
+            "ownedCpuMs": 57.212000000000074,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "loadAfter": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-0",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 122.11987500000032,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 39.613,
+            "childCpuMs": 16.589000000000055,
+            "ownedCpuMs": 56.202000000000055,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "loadAfter": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-1",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 46.734834000000774,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 41.76,
+            "childCpuMs": 13.829000000000178,
+            "ownedCpuMs": 55.589000000000176,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "loadAfter": [
+              22.05322265625,
+              23.611328125,
+              23.4716796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "after",
+      "mode": "cpu",
+      "reportSha256": "01ea93b8372852eee1c7fc44f872291c12d5c70020bc15539a3342a0e7e6251b",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "cpu",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 162.89149999999972,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 30.825,
+            "childCpuMs": 15.448000000000036,
+            "ownedCpuMs": 46.27300000000004,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "loadAfter": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "root-1",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 104.54666700000053,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 35.259,
+            "childCpuMs": 15.127000000000066,
+            "ownedCpuMs": 50.38600000000007,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "loadAfter": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-0",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 54.90162499999951,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 35.68,
+            "childCpuMs": 15.053999999999974,
+            "ownedCpuMs": 50.73399999999997,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "loadAfter": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          },
+          {
+            "label": "mixed-1",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 76.70112499999959,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 38.772,
+            "childCpuMs": 14.127999999999929,
+            "ownedCpuMs": 52.89999999999993,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "loadAfter": [
+              22.20458984375,
+              23.59130859375,
+              23.4658203125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ]
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "before",
+      "mode": "cpu",
+      "reportSha256": "7c99c27d96b6c456d7f343f42a479c727b315c829d033613ae9d631a99574bd7",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d7a17b4d3668850764089f8027e1969b1bf0eb44278b2119fc50c9100b9c8c4f"
+        },
+        "mode": "cpu",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 460.2336660000001,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 87.536,
+            "childCpuMs": 513.6420000000003,
+            "ownedCpuMs": 601.1780000000003,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "loadAfter": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "events": []
+          },
+          {
+            "label": "root-1",
+            "mode": "cpu",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 203.86491699999988,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 74.857,
+            "childCpuMs": 460.337,
+            "ownedCpuMs": 535.194,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "loadAfter": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-0",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 321.4485830000003,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 73.204,
+            "childCpuMs": 447.0680000000002,
+            "ownedCpuMs": 520.2720000000002,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "loadAfter": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "events": []
+          },
+          {
+            "label": "mixed-1",
+            "mode": "cpu",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 353.6095829999995,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 95.823,
+            "childCpuMs": 505.3920000000003,
+            "ownedCpuMs": 601.2150000000003,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              22.447265625,
+              23.5068359375,
+              23.439453125
+            ],
+            "loadAfter": [
+              25.5341796875,
+              24.12890625,
+              23.6591796875
+            ],
+            "events": []
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": []
+    },
+    {
+      "phase": "before",
+      "mode": "memory",
+      "reportSha256": "bfcc044586d2b3a514e0732fe1675396066b3f3009e804bfbd1191977feeb8bd",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "b2f8a195ae66e379a11b2ab76c1eaf84161bf853c46ae53ac38e456c6f62dc87"
+        },
+        "mode": "memory",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 463.8262080000004,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 82.834,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              29.1875,
+              25.10986328125,
+              24.02685546875
+            ],
+            "loadAfter": [
+              29.1875,
+              25.10986328125,
+              24.02685546875
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 204.361,
+                "nodeRssBytes": 57262080,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57262080,
+                "pids": [
+                  6887
+                ]
+              },
+              "last": {
+                "afterStartMs": 787.919,
+                "scanMs": 217.568,
+                "nodeRssBytes": 57868288,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57868288,
+                "pids": [
+                  6887
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 259.257,
+                "scanMs": 263.494,
+                "nodeRssBytes": 57278464,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17858560,
+                "sumRssBytes": 75137024,
+                "pids": [
+                  6887,
+                  6999,
+                  7000,
+                  7001,
+                  7003,
+                  7004,
+                  7005,
+                  7006,
+                  7008,
+                  7009,
+                  7010,
+                  7011,
+                  7012
+                ]
+              },
+              "maxObservedGapMs": 318.478,
+              "componentMaxBytes": {
+                "node": 57868288,
+                "chromium": 0,
+                "otherOwned": 17858560
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-0.json.memory-root-0.json",
+              "rawSamplesSha256": "52c7a092d9d51ccbb86f7edb8dbca34d04de4e057f0f41313d900f7c96c89ae2",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "root-1",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 487.1936249999999,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 83.251,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              29.1875,
+              25.10986328125,
+              24.02685546875
+            ],
+            "loadAfter": [
+              27.81103515625,
+              24.89208984375,
+              23.9560546875
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 180.391,
+                "nodeRssBytes": 57933824,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57933824,
+                "pids": [
+                  6887
+                ]
+              },
+              "last": {
+                "afterStartMs": 755.381,
+                "scanMs": 199.282,
+                "nodeRssBytes": 58277888,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58277888,
+                "pids": [
+                  6887
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 235.017,
+                "scanMs": 244.416,
+                "nodeRssBytes": 57933824,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 31031296,
+                "sumRssBytes": 88965120,
+                "pids": [
+                  6887,
+                  7076,
+                  7077,
+                  7079,
+                  7080,
+                  7081,
+                  7083,
+                  7084,
+                  7085,
+                  7086,
+                  7088
+                ]
+              },
+              "maxObservedGapMs": 298.118,
+              "componentMaxBytes": {
+                "node": 58277888,
+                "chromium": 0,
+                "otherOwned": 31031296
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-0.json.memory-root-1.json",
+              "rawSamplesSha256": "ce1a6aff74b2403fbe4e703e9ce8fd71e2adecfe4f68d176666e3ba4b30ea040",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-0",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 443.1767920000002,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 102.656,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              27.81103515625,
+              24.89208984375,
+              23.9560546875
+            ],
+            "loadAfter": [
+              27.81103515625,
+              24.89208984375,
+              23.9560546875
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.006,
+                "scanMs": 188.267,
+                "nodeRssBytes": 55672832,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 55672832,
+                "pids": [
+                  6887
+                ]
+              },
+              "last": {
+                "afterStartMs": 696.881,
+                "scanMs": 188.063,
+                "nodeRssBytes": 54296576,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 54296576,
+                "pids": [
+                  6887
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 530.286,
+                "scanMs": 166.363,
+                "nodeRssBytes": 55721984,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 19890176,
+                "sumRssBytes": 75612160,
+                "pids": [
+                  6887,
+                  7130,
+                  7131,
+                  7132,
+                  7133,
+                  7134,
+                  7135,
+                  7136,
+                  7138,
+                  7139,
+                  7140,
+                  7141,
+                  7143,
+                  7144,
+                  7145,
+                  7146,
+                  7147,
+                  7148,
+                  7149,
+                  7150,
+                  7151,
+                  7152,
+                  7153,
+                  7154,
+                  7155,
+                  7156,
+                  7157,
+                  7158,
+                  7159,
+                  7160,
+                  7161,
+                  7162,
+                  7163,
+                  7165,
+                  7166
+                ]
+              },
+              "maxObservedGapMs": 288.58799999999997,
+              "componentMaxBytes": {
+                "node": 56066048,
+                "chromium": 0,
+                "otherOwned": 19890176
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-0.json.memory-mixed-0.json",
+              "rawSamplesSha256": "06c0763d1da314c8670c1ac52ac05e3707cb7e1afa22248a89b2c636396476b3",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-1",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 496.5316670000011,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 95.296,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              27.81103515625,
+              24.89208984375,
+              23.9560546875
+            ],
+            "loadAfter": [
+              27.81103515625,
+              24.89208984375,
+              23.9560546875
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 180.952,
+                "nodeRssBytes": 54673408,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 54673408,
+                "pids": [
+                  6887
+                ]
+              },
+              "last": {
+                "afterStartMs": 689.472,
+                "scanMs": 191.72,
+                "nodeRssBytes": 57491456,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57491456,
+                "pids": [
+                  6887
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 235.459,
+                "scanMs": 194.806,
+                "nodeRssBytes": 55771136,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 18235392,
+                "sumRssBytes": 74006528,
+                "pids": [
+                  6887,
+                  7193,
+                  7194,
+                  7195,
+                  7197,
+                  7198,
+                  7200,
+                  7202,
+                  7204,
+                  7205
+                ]
+              },
+              "maxObservedGapMs": 246.985,
+              "componentMaxBytes": {
+                "node": 57491456,
+                "chromium": 0,
+                "otherOwned": 18235392
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-0.json.memory-mixed-1.json",
+              "rawSamplesSha256": "caf4cc1f4f5ee7779cf9558390b5433a9c2bb44ae093a264cebc313d349054be",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": [
+        {
+          "label": "root-0",
+          "sha256": "52c7a092d9d51ccbb86f7edb8dbca34d04de4e057f0f41313d900f7c96c89ae2",
+          "samples": {
+            "complete": true,
+            "rootPid": 6887,
+            "observerPid": 6992,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 204.361,
+                "nodeRssBytes": 57262080,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57262080,
+                "pids": [
+                  6887
+                ]
+              },
+              {
+                "afterStartMs": 259.257,
+                "scanMs": 263.494,
+                "nodeRssBytes": 57278464,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17858560,
+                "sumRssBytes": 75137024,
+                "pids": [
+                  6887,
+                  6999,
+                  7000,
+                  7001,
+                  7003,
+                  7004,
+                  7005,
+                  7006,
+                  7008,
+                  7009,
+                  7010,
+                  7011,
+                  7012
+                ]
+              },
+              {
+                "afterStartMs": 577.735,
+                "scanMs": 209.924,
+                "nodeRssBytes": 57868288,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 11812864,
+                "sumRssBytes": 69681152,
+                "pids": [
+                  6887,
+                  7034,
+                  7038,
+                  7040
+                ]
+              },
+              {
+                "afterStartMs": 787.919,
+                "scanMs": 217.568,
+                "nodeRssBytes": 57868288,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57868288,
+                "pids": [
+                  6887
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "root-1",
+          "sha256": "ce1a6aff74b2403fbe4e703e9ce8fd71e2adecfe4f68d176666e3ba4b30ea040",
+          "samples": {
+            "complete": true,
+            "rootPid": 6887,
+            "observerPid": 7064,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 180.391,
+                "nodeRssBytes": 57933824,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57933824,
+                "pids": [
+                  6887
+                ]
+              },
+              {
+                "afterStartMs": 235.017,
+                "scanMs": 244.416,
+                "nodeRssBytes": 57933824,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 31031296,
+                "sumRssBytes": 88965120,
+                "pids": [
+                  6887,
+                  7076,
+                  7077,
+                  7079,
+                  7080,
+                  7081,
+                  7083,
+                  7084,
+                  7085,
+                  7086,
+                  7088
+                ]
+              },
+              {
+                "afterStartMs": 533.135,
+                "scanMs": 222.051,
+                "nodeRssBytes": 58261504,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 15777792,
+                "sumRssBytes": 74039296,
+                "pids": [
+                  6887,
+                  7076,
+                  7077,
+                  7079,
+                  7080,
+                  7081,
+                  7083,
+                  7084,
+                  7085,
+                  7086,
+                  7088,
+                  7090,
+                  7091,
+                  7092,
+                  7093,
+                  7094,
+                  7095,
+                  7096,
+                  7097,
+                  7098,
+                  7099,
+                  7100,
+                  7101,
+                  7102,
+                  7103,
+                  7104,
+                  7105,
+                  7106,
+                  7107,
+                  7108,
+                  7109,
+                  7111,
+                  7113,
+                  7114,
+                  7115
+                ]
+              },
+              {
+                "afterStartMs": 755.381,
+                "scanMs": 199.282,
+                "nodeRssBytes": 58277888,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58277888,
+                "pids": [
+                  6887
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-0",
+          "sha256": "06c0763d1da314c8670c1ac52ac05e3707cb7e1afa22248a89b2c636396476b3",
+          "samples": {
+            "complete": true,
+            "rootPid": 6887,
+            "observerPid": 7126,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.006,
+                "scanMs": 188.267,
+                "nodeRssBytes": 55672832,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 55672832,
+                "pids": [
+                  6887
+                ]
+              },
+              {
+                "afterStartMs": 241.698,
+                "scanMs": 234.104,
+                "nodeRssBytes": 56066048,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17711104,
+                "sumRssBytes": 73777152,
+                "pids": [
+                  6887,
+                  7130,
+                  7131,
+                  7132,
+                  7133,
+                  7134,
+                  7135,
+                  7136,
+                  7138,
+                  7139,
+                  7140,
+                  7141
+                ]
+              },
+              {
+                "afterStartMs": 530.286,
+                "scanMs": 166.363,
+                "nodeRssBytes": 55721984,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 19890176,
+                "sumRssBytes": 75612160,
+                "pids": [
+                  6887,
+                  7130,
+                  7131,
+                  7132,
+                  7133,
+                  7134,
+                  7135,
+                  7136,
+                  7138,
+                  7139,
+                  7140,
+                  7141,
+                  7143,
+                  7144,
+                  7145,
+                  7146,
+                  7147,
+                  7148,
+                  7149,
+                  7150,
+                  7151,
+                  7152,
+                  7153,
+                  7154,
+                  7155,
+                  7156,
+                  7157,
+                  7158,
+                  7159,
+                  7160,
+                  7161,
+                  7162,
+                  7163,
+                  7165,
+                  7166
+                ]
+              },
+              {
+                "afterStartMs": 696.881,
+                "scanMs": 188.063,
+                "nodeRssBytes": 54296576,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 54296576,
+                "pids": [
+                  6887
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-1",
+          "sha256": "caf4cc1f4f5ee7779cf9558390b5433a9c2bb44ae093a264cebc313d349054be",
+          "samples": {
+            "complete": true,
+            "rootPid": 6887,
+            "observerPid": 7187,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 180.952,
+                "nodeRssBytes": 54673408,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 54673408,
+                "pids": [
+                  6887
+                ]
+              },
+              {
+                "afterStartMs": 235.459,
+                "scanMs": 194.806,
+                "nodeRssBytes": 55771136,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 18235392,
+                "sumRssBytes": 74006528,
+                "pids": [
+                  6887,
+                  7193,
+                  7194,
+                  7195,
+                  7197,
+                  7198,
+                  7200,
+                  7202,
+                  7204,
+                  7205
+                ]
+              },
+              {
+                "afterStartMs": 482.444,
+                "scanMs": 206.82,
+                "nodeRssBytes": 56705024,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 16924672,
+                "sumRssBytes": 73629696,
+                "pids": [
+                  6887,
+                  7193,
+                  7194,
+                  7195,
+                  7197,
+                  7198,
+                  7200,
+                  7202,
+                  7204,
+                  7205,
+                  7206,
+                  7207,
+                  7208,
+                  7209,
+                  7210,
+                  7211,
+                  7212,
+                  7213,
+                  7214,
+                  7215,
+                  7216,
+                  7217,
+                  7218,
+                  7219,
+                  7220,
+                  7222,
+                  7224,
+                  7225,
+                  7226,
+                  7227,
+                  7228,
+                  7229
+                ]
+              },
+              {
+                "afterStartMs": 689.472,
+                "scanMs": 191.72,
+                "nodeRssBytes": 57491456,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57491456,
+                "pids": [
+                  6887
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "mode": "memory",
+      "reportSha256": "ef78cdf98cfb95ed539ee8294865f4398015172469e5c7b00b05524edad25a00",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "memory",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 136.6325829999996,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 44.605,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              25.80859375,
+              24.564453125,
+              23.8505859375
+            ],
+            "loadAfter": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.003,
+                "scanMs": 197.24,
+                "nodeRssBytes": 56705024,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56705024,
+                "pids": [
+                  7318
+                ]
+              },
+              "last": {
+                "afterStartMs": 435.059,
+                "scanMs": 166.986,
+                "nodeRssBytes": 56918016,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56918016,
+                "pids": [
+                  7318
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 251.507,
+                "scanMs": 183.336,
+                "nodeRssBytes": 56868864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4014080,
+                "sumRssBytes": 60882944,
+                "pids": [
+                  7318,
+                  7387
+                ]
+              },
+              "maxObservedGapMs": 251.50400000000002,
+              "componentMaxBytes": {
+                "node": 56918016,
+                "chromium": 0,
+                "otherOwned": 4014080
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-1.json.memory-root-0.json",
+              "rawSamplesSha256": "47ae8ead550dbcf696e5e86fc26d3ac88ad1c9459a4a0e029c50dc3e839e6386",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "root-1",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 125.40645800000038,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 43.136,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "loadAfter": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 212.105,
+                "nodeRssBytes": 57081856,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57081856,
+                "pids": [
+                  7318
+                ]
+              },
+              "last": {
+                "afterStartMs": 478.693,
+                "scanMs": 343.63,
+                "nodeRssBytes": 57360384,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57360384,
+                "pids": [
+                  7318
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 267.071,
+                "scanMs": 211.38,
+                "nodeRssBytes": 57262080,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4407296,
+                "sumRssBytes": 61669376,
+                "pids": [
+                  7318,
+                  7426
+                ]
+              },
+              "maxObservedGapMs": 267.06600000000003,
+              "componentMaxBytes": {
+                "node": 57360384,
+                "chromium": 0,
+                "otherOwned": 4407296
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-1.json.memory-root-1.json",
+              "rawSamplesSha256": "9925983280df191858cd99523122655d4c944f20dd3fdadfc4d3401207229553",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-0",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 126.50545799999963,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 35.572,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "loadAfter": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.006,
+                "scanMs": 321.969,
+                "nodeRssBytes": 57376768,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57376768,
+                "pids": [
+                  7318
+                ]
+              },
+              "last": {
+                "afterStartMs": 754.207,
+                "scanMs": 651.932,
+                "nodeRssBytes": 56082432,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56082432,
+                "pids": [
+                  7318
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 377.597,
+                "scanMs": 376.135,
+                "nodeRssBytes": 55754752,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3899392,
+                "sumRssBytes": 59654144,
+                "pids": [
+                  7318,
+                  7448
+                ]
+              },
+              "maxObservedGapMs": 377.591,
+              "componentMaxBytes": {
+                "node": 57376768,
+                "chromium": 0,
+                "otherOwned": 3899392
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-1.json.memory-mixed-0.json",
+              "rawSamplesSha256": "18e9144bc5f9fdf4b5b0d7594e9b89c495dce0cf5e1551dbc71e2a9e6c2589c1",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-1",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 135.45241700000042,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 45.222,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              24.86279296875,
+              24.388671875,
+              23.79248046875
+            ],
+            "loadAfter": [
+              25.19384765625,
+              24.46484375,
+              23.82275390625
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.006,
+                "scanMs": 326.474,
+                "nodeRssBytes": 56131584,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56131584,
+                "pids": [
+                  7318
+                ]
+              },
+              "last": {
+                "afterStartMs": 1071.204,
+                "scanMs": 515.527,
+                "nodeRssBytes": 57245696,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57245696,
+                "pids": [
+                  7318
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 381.881,
+                "scanMs": 689.084,
+                "nodeRssBytes": 57245696,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57245696,
+                "pids": [
+                  7318
+                ]
+              },
+              "maxObservedGapMs": 689.323,
+              "componentMaxBytes": {
+                "node": 57245696,
+                "chromium": 0,
+                "otherOwned": 0
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-1.json.memory-mixed-1.json",
+              "rawSamplesSha256": "795c8116425e026eef402ced527a744a9884abe6e5dc91ba8d9d8107ff8600ff",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": [
+        {
+          "label": "root-0",
+          "sha256": "47ae8ead550dbcf696e5e86fc26d3ac88ad1c9459a4a0e029c50dc3e839e6386",
+          "samples": {
+            "complete": true,
+            "rootPid": 7318,
+            "observerPid": 7376,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.003,
+                "scanMs": 197.24,
+                "nodeRssBytes": 56705024,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56705024,
+                "pids": [
+                  7318
+                ]
+              },
+              {
+                "afterStartMs": 251.507,
+                "scanMs": 183.336,
+                "nodeRssBytes": 56868864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4014080,
+                "sumRssBytes": 60882944,
+                "pids": [
+                  7318,
+                  7387
+                ]
+              },
+              {
+                "afterStartMs": 435.059,
+                "scanMs": 166.986,
+                "nodeRssBytes": 56918016,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56918016,
+                "pids": [
+                  7318
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "root-1",
+          "sha256": "9925983280df191858cd99523122655d4c944f20dd3fdadfc4d3401207229553",
+          "samples": {
+            "complete": true,
+            "rootPid": 7318,
+            "observerPid": 7415,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 212.105,
+                "nodeRssBytes": 57081856,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57081856,
+                "pids": [
+                  7318
+                ]
+              },
+              {
+                "afterStartMs": 267.071,
+                "scanMs": 211.38,
+                "nodeRssBytes": 57262080,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4407296,
+                "sumRssBytes": 61669376,
+                "pids": [
+                  7318,
+                  7426
+                ]
+              },
+              {
+                "afterStartMs": 478.693,
+                "scanMs": 343.63,
+                "nodeRssBytes": 57360384,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57360384,
+                "pids": [
+                  7318
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-0",
+          "sha256": "18e9144bc5f9fdf4b5b0d7594e9b89c495dce0cf5e1551dbc71e2a9e6c2589c1",
+          "samples": {
+            "complete": true,
+            "rootPid": 7318,
+            "observerPid": 7437,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.006,
+                "scanMs": 321.969,
+                "nodeRssBytes": 57376768,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57376768,
+                "pids": [
+                  7318
+                ]
+              },
+              {
+                "afterStartMs": 377.597,
+                "scanMs": 376.135,
+                "nodeRssBytes": 55754752,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3899392,
+                "sumRssBytes": 59654144,
+                "pids": [
+                  7318,
+                  7448
+                ]
+              },
+              {
+                "afterStartMs": 754.207,
+                "scanMs": 651.932,
+                "nodeRssBytes": 56082432,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56082432,
+                "pids": [
+                  7318
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-1",
+          "sha256": "795c8116425e026eef402ced527a744a9884abe6e5dc91ba8d9d8107ff8600ff",
+          "samples": {
+            "complete": true,
+            "rootPid": 7318,
+            "observerPid": 7486,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.006,
+                "scanMs": 326.474,
+                "nodeRssBytes": 56131584,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56131584,
+                "pids": [
+                  7318
+                ]
+              },
+              {
+                "afterStartMs": 381.881,
+                "scanMs": 689.084,
+                "nodeRssBytes": 57245696,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57245696,
+                "pids": [
+                  7318
+                ]
+              },
+              {
+                "afterStartMs": 1071.204,
+                "scanMs": 515.527,
+                "nodeRssBytes": 57245696,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57245696,
+                "pids": [
+                  7318
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "mode": "memory",
+      "reportSha256": "bed25b6fc743f917f7ad6913e62ea80f5df3973c90dcf8245de773c2faacd340",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "d9798964cd8081cd8463bd94c0e387f2edff43ed2d0f003f0a707881e4a75fb5"
+        },
+        "mode": "memory",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 130.07033300000057,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 44.241,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.62646484375,
+              24.15283203125,
+              23.71923828125
+            ],
+            "loadAfter": [
+              23.62646484375,
+              24.15283203125,
+              23.71923828125
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.004,
+                "scanMs": 295.502,
+                "nodeRssBytes": 56836096,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56836096,
+                "pids": [
+                  7613
+                ]
+              },
+              "last": {
+                "afterStartMs": 545.605,
+                "scanMs": 172.075,
+                "nodeRssBytes": 56934400,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56934400,
+                "pids": [
+                  7613
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 346.194,
+                "scanMs": 199.178,
+                "nodeRssBytes": 56868864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3997696,
+                "sumRssBytes": 60866560,
+                "pids": [
+                  7613,
+                  7681
+                ]
+              },
+              "maxObservedGapMs": 346.19,
+              "componentMaxBytes": {
+                "node": 56934400,
+                "chromium": 0,
+                "otherOwned": 3997696
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-2.json.memory-root-0.json",
+              "rawSamplesSha256": "10448480ec573a207f613ee8db0e1e5e49d60c2ca316821ad637fd8d1fc44f7b",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "root-1",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 133.25783299999966,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 43.427,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.62646484375,
+              24.15283203125,
+              23.71923828125
+            ],
+            "loadAfter": [
+              23.095703125,
+              24.03369140625,
+              23.6796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.004,
+                "scanMs": 182.011,
+                "nodeRssBytes": 57016320,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57016320,
+                "pids": [
+                  7613
+                ]
+              },
+              "last": {
+                "afterStartMs": 427.12,
+                "scanMs": 171.22,
+                "nodeRssBytes": 57442304,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57442304,
+                "pids": [
+                  7613
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 234.173,
+                "scanMs": 192.729,
+                "nodeRssBytes": 57294848,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4325376,
+                "sumRssBytes": 61620224,
+                "pids": [
+                  7613,
+                  7699
+                ]
+              },
+              "maxObservedGapMs": 234.169,
+              "componentMaxBytes": {
+                "node": 57442304,
+                "chromium": 0,
+                "otherOwned": 4325376
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-2.json.memory-root-1.json",
+              "rawSamplesSha256": "2dc7be52d09cc08e3c68ec68ed4498d29574f4a9a0470db644e2180beaa937ab",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-0",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 75.46358400000099,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 40.589,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.095703125,
+              24.03369140625,
+              23.6796875
+            ],
+            "loadAfter": [
+              23.095703125,
+              24.03369140625,
+              23.6796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.008,
+                "scanMs": 202.753,
+                "nodeRssBytes": 57475072,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57475072,
+                "pids": [
+                  7613
+                ]
+              },
+              "last": {
+                "afterStartMs": 437.514,
+                "scanMs": 187.28,
+                "nodeRssBytes": 57606144,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57606144,
+                "pids": [
+                  7613
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 257.675,
+                "scanMs": 179.623,
+                "nodeRssBytes": 57606144,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57606144,
+                "pids": [
+                  7613
+                ]
+              },
+              "maxObservedGapMs": 257.66700000000003,
+              "componentMaxBytes": {
+                "node": 57606144,
+                "chromium": 0,
+                "otherOwned": 0
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-2.json.memory-mixed-0.json",
+              "rawSamplesSha256": "96eedbb4977f238db6112e5625b3b8da0f63f4b1b73cd7e2f9ca516dc0730b20",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-1",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 186.6164170000011,
+            "calls": 1,
+            "peakGitProcesses": 1,
+            "nodeCpuMs": 40.073,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.095703125,
+              24.03369140625,
+              23.6796875
+            ],
+            "loadAfter": [
+              23.095703125,
+              24.03369140625,
+              23.6796875
+            ],
+            "events": [
+              {
+                "consumers": 34
+              }
+            ],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.003,
+                "scanMs": 342.751,
+                "nodeRssBytes": 57638912,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57638912,
+                "pids": [
+                  7613
+                ]
+              },
+              "last": {
+                "afterStartMs": 655.79,
+                "scanMs": 213.188,
+                "nodeRssBytes": 57966592,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57966592,
+                "pids": [
+                  7613
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 394.791,
+                "scanMs": 260.775,
+                "nodeRssBytes": 57884672,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3063808,
+                "sumRssBytes": 60948480,
+                "pids": [
+                  7613,
+                  7809
+                ]
+              },
+              "maxObservedGapMs": 394.788,
+              "componentMaxBytes": {
+                "node": 57966592,
+                "chromium": 0,
+                "otherOwned": 3063808
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-2.json.memory-mixed-1.json",
+              "rawSamplesSha256": "e85e396c95636d0425eeef2558813e397b886c34bc35945e08569fb95182594d",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": [
+        {
+          "label": "root-0",
+          "sha256": "10448480ec573a207f613ee8db0e1e5e49d60c2ca316821ad637fd8d1fc44f7b",
+          "samples": {
+            "complete": true,
+            "rootPid": 7613,
+            "observerPid": 7668,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.004,
+                "scanMs": 295.502,
+                "nodeRssBytes": 56836096,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56836096,
+                "pids": [
+                  7613
+                ]
+              },
+              {
+                "afterStartMs": 346.194,
+                "scanMs": 199.178,
+                "nodeRssBytes": 56868864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3997696,
+                "sumRssBytes": 60866560,
+                "pids": [
+                  7613,
+                  7681
+                ]
+              },
+              {
+                "afterStartMs": 545.605,
+                "scanMs": 172.075,
+                "nodeRssBytes": 56934400,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56934400,
+                "pids": [
+                  7613
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "root-1",
+          "sha256": "2dc7be52d09cc08e3c68ec68ed4498d29574f4a9a0470db644e2180beaa937ab",
+          "samples": {
+            "complete": true,
+            "rootPid": 7613,
+            "observerPid": 7696,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.004,
+                "scanMs": 182.011,
+                "nodeRssBytes": 57016320,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57016320,
+                "pids": [
+                  7613
+                ]
+              },
+              {
+                "afterStartMs": 234.173,
+                "scanMs": 192.729,
+                "nodeRssBytes": 57294848,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 4325376,
+                "sumRssBytes": 61620224,
+                "pids": [
+                  7613,
+                  7699
+                ]
+              },
+              {
+                "afterStartMs": 427.12,
+                "scanMs": 171.22,
+                "nodeRssBytes": 57442304,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57442304,
+                "pids": [
+                  7613
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-0",
+          "sha256": "96eedbb4977f238db6112e5625b3b8da0f63f4b1b73cd7e2f9ca516dc0730b20",
+          "samples": {
+            "complete": true,
+            "rootPid": 7613,
+            "observerPid": 7711,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.008,
+                "scanMs": 202.753,
+                "nodeRssBytes": 57475072,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57475072,
+                "pids": [
+                  7613
+                ]
+              },
+              {
+                "afterStartMs": 257.675,
+                "scanMs": 179.623,
+                "nodeRssBytes": 57606144,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57606144,
+                "pids": [
+                  7613
+                ]
+              },
+              {
+                "afterStartMs": 437.514,
+                "scanMs": 187.28,
+                "nodeRssBytes": 57606144,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57606144,
+                "pids": [
+                  7613
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-1",
+          "sha256": "e85e396c95636d0425eeef2558813e397b886c34bc35945e08569fb95182594d",
+          "samples": {
+            "complete": true,
+            "rootPid": 7613,
+            "observerPid": 7748,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.003,
+                "scanMs": 342.751,
+                "nodeRssBytes": 57638912,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57638912,
+                "pids": [
+                  7613
+                ]
+              },
+              {
+                "afterStartMs": 394.791,
+                "scanMs": 260.775,
+                "nodeRssBytes": 57884672,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 3063808,
+                "sumRssBytes": 60948480,
+                "pids": [
+                  7613,
+                  7809
+                ]
+              },
+              {
+                "afterStartMs": 655.79,
+                "scanMs": 213.188,
+                "nodeRssBytes": 57966592,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57966592,
+                "pids": [
+                  7613
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "mode": "memory",
+      "reportSha256": "7810b37b7e867f4e448cf8dd7fc4a50cfccc90f0098a0fb597eddcb106fa8e8b",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "f373eca855bb8196c7a411d5f93bc75ccddf9f0a1ffe013d08b99a150bc4e5d7"
+        },
+        "mode": "memory",
+        "executable": "/Library/Developer/CommandLineTools/usr/bin/git",
+        "results": [
+          {
+            "label": "root-0",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 524.5273749999997,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 85.972,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.72509765625,
+              24.0673828125,
+              23.70166015625
+            ],
+            "loadAfter": [
+              23.72509765625,
+              24.0673828125,
+              23.70166015625
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.007,
+                "scanMs": 204.579,
+                "nodeRssBytes": 56999936,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56999936,
+                "pids": [
+                  8363
+                ]
+              },
+              "last": {
+                "afterStartMs": 756.349,
+                "scanMs": 225.083,
+                "nodeRssBytes": 57589760,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57589760,
+                "pids": [
+                  8363
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 258.948,
+                "scanMs": 236.779,
+                "nodeRssBytes": 57016320,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 21184512,
+                "sumRssBytes": 78200832,
+                "pids": [
+                  8363,
+                  8472,
+                  8473,
+                  8475,
+                  8476,
+                  8478,
+                  8480,
+                  8484,
+                  8485
+                ]
+              },
+              "maxObservedGapMs": 291.303,
+              "componentMaxBytes": {
+                "node": 57589760,
+                "chromium": 0,
+                "otherOwned": 21184512
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-3.json.memory-root-0.json",
+              "rawSamplesSha256": "5406c4900a9b60322e8208152009b1825b9b9c15441e5b6668eb51e83735c942",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "root-1",
+            "mode": "memory",
+            "input": "root-only",
+            "directories": 34,
+            "elapsedMs": 418.5675000000001,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 81.412,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              23.72509765625,
+              24.0673828125,
+              23.70166015625
+            ],
+            "loadAfter": [
+              24.3076171875,
+              24.18212890625,
+              23.744140625
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 214.191,
+                "nodeRssBytes": 57622528,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57622528,
+                "pids": [
+                  8363
+                ]
+              },
+              "last": {
+                "afterStartMs": 963.178,
+                "scanMs": 168.822,
+                "nodeRssBytes": 57982976,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57982976,
+                "pids": [
+                  8363
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 271.139,
+                "scanMs": 284.406,
+                "nodeRssBytes": 57737216,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17203200,
+                "sumRssBytes": 74940416,
+                "pids": [
+                  8363,
+                  8528,
+                  8529,
+                  8530,
+                  8531,
+                  8532,
+                  8533,
+                  8534,
+                  8535,
+                  8536,
+                  8537,
+                  8538,
+                  8539,
+                  8541,
+                  8542,
+                  8543,
+                  8544
+                ]
+              },
+              "maxObservedGapMs": 354.04499999999996,
+              "componentMaxBytes": {
+                "node": 57982976,
+                "chromium": 0,
+                "otherOwned": 17203200
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-3.json.memory-root-1.json",
+              "rawSamplesSha256": "6a750dbacc7a1c2a7bfc2a3253c7f266dd6aae1b83961087700f4233c53c94dd",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-0",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 344.91499999999996,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 86.116,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              24.3076171875,
+              24.18212890625,
+              23.744140625
+            ],
+            "loadAfter": [
+              24.3076171875,
+              24.18212890625,
+              23.744140625
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 3,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.006,
+                "scanMs": 170.938,
+                "nodeRssBytes": 58015744,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58015744,
+                "pids": [
+                  8363
+                ]
+              },
+              "last": {
+                "afterStartMs": 534.272,
+                "scanMs": 151.694,
+                "nodeRssBytes": 58802176,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58802176,
+                "pids": [
+                  8363
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 223.677,
+                "scanMs": 310.346,
+                "nodeRssBytes": 58114048,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 15138816,
+                "sumRssBytes": 73252864,
+                "pids": [
+                  8363,
+                  8595,
+                  8596,
+                  8597,
+                  8598,
+                  8599,
+                  8600,
+                  8601,
+                  8603,
+                  8604,
+                  8605,
+                  8606
+                ]
+              },
+              "maxObservedGapMs": 310.595,
+              "componentMaxBytes": {
+                "node": 58802176,
+                "chromium": 0,
+                "otherOwned": 15138816
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-3.json.memory-mixed-0.json",
+              "rawSamplesSha256": "9393f350ccbc578720fbfb56936658b7ddb5bdcfc2e5d55b38cf1be0107d67b9",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          },
+          {
+            "label": "mixed-1",
+            "mode": "memory",
+            "input": "mixed-root-branch",
+            "directories": 34,
+            "elapsedMs": 531.9273749999993,
+            "calls": 34,
+            "peakGitProcesses": 34,
+            "nodeCpuMs": 99.837,
+            "nativeIdentityExact": true,
+            "protectedStateUnchanged": true,
+            "loadBefore": [
+              24.3076171875,
+              24.18212890625,
+              23.744140625
+            ],
+            "loadAfter": [
+              24.3076171875,
+              24.18212890625,
+              23.744140625
+            ],
+            "events": [],
+            "memory": {
+              "complete": true,
+              "sampleCount": 4,
+              "intervalMs": 50,
+              "first": {
+                "afterStartMs": 0.005,
+                "scanMs": 167.11,
+                "nodeRssBytes": 58834944,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58834944,
+                "pids": [
+                  8363
+                ]
+              },
+              "last": {
+                "afterStartMs": 778.19,
+                "scanMs": 177.999,
+                "nodeRssBytes": 61521920,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 61521920,
+                "pids": [
+                  8363
+                ]
+              },
+              "sampledPeak": {
+                "afterStartMs": 218.662,
+                "scanMs": 207.747,
+                "nodeRssBytes": 58916864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 15613952,
+                "sumRssBytes": 74530816,
+                "pids": [
+                  8363,
+                  8639,
+                  8640,
+                  8642,
+                  8643,
+                  8644,
+                  8645,
+                  8646,
+                  8647,
+                  8649,
+                  8650,
+                  8652
+                ]
+              },
+              "maxObservedGapMs": 297.78800000000007,
+              "componentMaxBytes": {
+                "node": 61521920,
+                "chromium": 0,
+                "otherOwned": 15613952
+              },
+              "rawSamplesFile": "/var/folders/pc/jdz8pf2x2hl_wf6wpxl1zjzm0000gn/T/gsc-discovery-paired-HmYu1V/memory-3.json.memory-mixed-1.json",
+              "rawSamplesSha256": "8d1be8708ba86b1783a9e694711b1991dd46be4c1771761bd04606853dbe3fda",
+              "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+            },
+            "memoryRunTimeAndCpuDiagnosticOnly": true
+          }
+        ],
+        "scope": "34 distinct physical directories in one owned worktree. Fresh registry per burst, fixed Native root/branch oracle and HEAD/index/config/refs byte protection. Existing machine load observed; no machine-wide stress generated. Separate latency, Node+waited-Native CPU and sampled simultaneous RSS modes. CPU excludes fixture/probe/oracle; memory mode time/CPU diagnostic only. Two rounds per request kind within one Node are correlated; use independent source Node lifetimes for comparison. No GitHub, rendered Graph or active VS Code transport latency claim."
+      },
+      "memory": [
+        {
+          "label": "root-0",
+          "sha256": "5406c4900a9b60322e8208152009b1825b9b9c15441e5b6668eb51e83735c942",
+          "samples": {
+            "complete": true,
+            "rootPid": 8363,
+            "observerPid": 8463,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.007,
+                "scanMs": 204.579,
+                "nodeRssBytes": 56999936,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 56999936,
+                "pids": [
+                  8363
+                ]
+              },
+              {
+                "afterStartMs": 258.948,
+                "scanMs": 236.779,
+                "nodeRssBytes": 57016320,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 21184512,
+                "sumRssBytes": 78200832,
+                "pids": [
+                  8363,
+                  8472,
+                  8473,
+                  8475,
+                  8476,
+                  8478,
+                  8480,
+                  8484,
+                  8485
+                ]
+              },
+              {
+                "afterStartMs": 550.251,
+                "scanMs": 205.884,
+                "nodeRssBytes": 57114624,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17301504,
+                "sumRssBytes": 74416128,
+                "pids": [
+                  8363,
+                  8472,
+                  8473,
+                  8475,
+                  8476,
+                  8478,
+                  8480,
+                  8484,
+                  8485,
+                  8486,
+                  8487,
+                  8488,
+                  8489,
+                  8490,
+                  8491,
+                  8492,
+                  8493,
+                  8494,
+                  8495,
+                  8496,
+                  8497,
+                  8498,
+                  8499,
+                  8500,
+                  8501,
+                  8502,
+                  8503,
+                  8505,
+                  8506,
+                  8507,
+                  8508,
+                  8509,
+                  8510,
+                  8511
+                ]
+              },
+              {
+                "afterStartMs": 756.349,
+                "scanMs": 225.083,
+                "nodeRssBytes": 57589760,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57589760,
+                "pids": [
+                  8363
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "root-1",
+          "sha256": "6a750dbacc7a1c2a7bfc2a3253c7f266dd6aae1b83961087700f4233c53c94dd",
+          "samples": {
+            "complete": true,
+            "rootPid": 8363,
+            "observerPid": 8522,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 214.191,
+                "nodeRssBytes": 57622528,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57622528,
+                "pids": [
+                  8363
+                ]
+              },
+              {
+                "afterStartMs": 271.139,
+                "scanMs": 284.406,
+                "nodeRssBytes": 57737216,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 17203200,
+                "sumRssBytes": 74940416,
+                "pids": [
+                  8363,
+                  8528,
+                  8529,
+                  8530,
+                  8531,
+                  8532,
+                  8533,
+                  8534,
+                  8535,
+                  8536,
+                  8537,
+                  8538,
+                  8539,
+                  8541,
+                  8542,
+                  8543,
+                  8544
+                ]
+              },
+              {
+                "afterStartMs": 609.133,
+                "scanMs": 353.683,
+                "nodeRssBytes": 57982976,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57982976,
+                "pids": [
+                  8363,
+                  8553,
+                  8554
+                ]
+              },
+              {
+                "afterStartMs": 963.178,
+                "scanMs": 168.822,
+                "nodeRssBytes": 57982976,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 57982976,
+                "pids": [
+                  8363
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-0",
+          "sha256": "9393f350ccbc578720fbfb56936658b7ddb5bdcfc2e5d55b38cf1be0107d67b9",
+          "samples": {
+            "complete": true,
+            "rootPid": 8363,
+            "observerPid": 8591,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.006,
+                "scanMs": 170.938,
+                "nodeRssBytes": 58015744,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58015744,
+                "pids": [
+                  8363
+                ]
+              },
+              {
+                "afterStartMs": 223.677,
+                "scanMs": 310.346,
+                "nodeRssBytes": 58114048,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 15138816,
+                "sumRssBytes": 73252864,
+                "pids": [
+                  8363,
+                  8595,
+                  8596,
+                  8597,
+                  8598,
+                  8599,
+                  8600,
+                  8601,
+                  8603,
+                  8604,
+                  8605,
+                  8606
+                ]
+              },
+              {
+                "afterStartMs": 534.272,
+                "scanMs": 151.694,
+                "nodeRssBytes": 58802176,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58802176,
+                "pids": [
+                  8363
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        },
+        {
+          "label": "mixed-1",
+          "sha256": "8d1be8708ba86b1783a9e694711b1991dd46be4c1771761bd04606853dbe3fda",
+          "samples": {
+            "complete": true,
+            "rootPid": 8363,
+            "observerPid": 8637,
+            "intervalMs": 50,
+            "samples": [
+              {
+                "afterStartMs": 0.005,
+                "scanMs": 167.11,
+                "nodeRssBytes": 58834944,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 58834944,
+                "pids": [
+                  8363
+                ]
+              },
+              {
+                "afterStartMs": 218.662,
+                "scanMs": 207.747,
+                "nodeRssBytes": 58916864,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 15613952,
+                "sumRssBytes": 74530816,
+                "pids": [
+                  8363,
+                  8639,
+                  8640,
+                  8642,
+                  8643,
+                  8644,
+                  8645,
+                  8646,
+                  8647,
+                  8649,
+                  8650,
+                  8652
+                ]
+              },
+              {
+                "afterStartMs": 480.402,
+                "scanMs": 297.564,
+                "nodeRssBytes": 60293120,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 11550720,
+                "sumRssBytes": 71843840,
+                "pids": [
+                  8363,
+                  8639,
+                  8640,
+                  8642,
+                  8643,
+                  8644,
+                  8645,
+                  8646,
+                  8647,
+                  8649,
+                  8650,
+                  8652,
+                  8653,
+                  8654,
+                  8655,
+                  8656,
+                  8657,
+                  8658,
+                  8659,
+                  8660,
+                  8661,
+                  8662,
+                  8663,
+                  8664,
+                  8666,
+                  8668,
+                  8670,
+                  8672,
+                  8673
+                ]
+              },
+              {
+                "afterStartMs": 778.19,
+                "scanMs": 177.999,
+                "nodeRssBytes": 61521920,
+                "chromiumRssBytes": 0,
+                "otherOwnedRssBytes": 0,
+                "sumRssBytes": 61521920,
+                "pids": [
+                  8363
+                ]
+              }
+            ],
+            "errors": [],
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          }
+        }
+      ]
+    }
+  ],
+  "scope": "Existing machine load observed without machine-wide stress. Separate latency, waited-Native+Node CPU and sampled owned-process RSS modes, each B/A/A/B. Two independent Node lifetimes/source/mode; two correlated rounds/request kind/lifetime. Fixed 34-directory owned input, independent Native identity and protected HEAD/index/config/refs. Full resource scopes and limits are in each report."
+}

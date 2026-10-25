@@ -24,6 +24,9 @@ export class GraphLiveRenderer {
   private messageSequence = 0;
   private messageFrame = { sequence: 0, paintedAt: 0 };
   private inbound?: (message: FromWebviewMessage) => Promise<void> | void;
+  private startupStartedAt = 0;
+  private startupReadyAt = 0;
+  private navigationMs = 0;
 
   /** @param browser headless 전용 Chromium @param page 현재 fixture의 production Graph 문서 */
   private constructor(private readonly browser: Browser, private readonly page: Page) {}
@@ -40,16 +43,23 @@ export class GraphLiveRenderer {
     } catch (error) { await browser.close(); throw error; }
   }
 
+  /** 빈 동일-origin shell만 준비해 CPU 계측의 renderer PID를 고정한다. Graph 자산은 아직 읽지 않는다. */
+  async prepareStartup(): Promise<void> {
+    await this.page.route("https://gsc.fixture/__startup", route => route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Startup fixture</title>" }));
+    await this.page.goto("https://gsc.fixture/__startup");
+  }
+
   /** production HTML의 nonce/CSP를 유지하고 fixture origin의 로컬 media 파일만 제공한다. 외부 통신은 차단한다. */
   async mount(html: string): Promise<void> {
     const nonce = /<script nonce="([^"]+)"/.exec(html)?.[1];
     assert.ok(nonce, "Production Graph CSP nonce is missing");
-    const bridge = `<script nonce="${nonce}">window.acquireVsCodeApi=()=>({postMessage:message=>window.__gscLivePost(message),getState:()=>undefined,setState:()=>{}});</script>`;
+    const bridge = `<script nonce="${nonce}">(()=>{let acquired=false;window.acquireVsCodeApi=()=>{if(acquired)throw new Error("VS Code API acquired more than once");acquired=true;return{postMessage:message=>window.__gscLivePost(message),getState:()=>undefined,setState:()=>{}};};})();</script>`;
     const theme = `html,body{color-scheme:dark;--vscode-font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--vscode-font-size:13px;--vscode-foreground:#ccc;--vscode-descriptionForeground:#9d9d9d;--vscode-editor-background:#1e1e1e;--vscode-sideBar-background:#252526;--vscode-panel-border:#454545;--vscode-focusBorder:#007fd4;--vscode-icon-foreground:#c5c5c5;--vscode-toolbar-hoverBackground:#3a3d41;--vscode-list-hoverBackground:#2a2d2e;--vscode-list-activeSelectionBackground:#094771;--vscode-input-background:#3c3c3c;--vscode-input-foreground:#ccc;--vscode-button-background:#0e639c;--vscode-button-foreground:#fff}`;
     const document = html.replace("<head>", `<head>${bridge}`).replace("</head>", `<link rel="stylesheet" href="https://gsc.fixture/media/__fixture-theme.css"></head>`);
     this.page.on("pageerror", error => this.errors.push(error.message));
     this.page.on("console", message => { if (message.type() === "error") this.errors.push(message.text()); });
     await this.page.exposeFunction("__gscLivePost", (message: FromWebviewMessage) => {
+      if (message.type === "ready" && !this.startupReadyAt) this.startupReadyAt = Date.now();
       if (message.type === "graphRendered") this.paints.push(message);
       if (message.type === "resyncGraph") this.errors.push("Renderer requested transport resync");
       return this.inbound?.(message);
@@ -84,15 +94,37 @@ export class GraphLiveRenderer {
       const contentType = file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "font/ttf";
       await route.fulfill({ contentType, body: await readFile(file) });
     });
-    await this.page.goto("https://gsc.fixture/");
     const throttle = Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1);
     assert.ok(Number.isFinite(throttle) && throttle >= 1 && throttle <= 20);
+    const throttleBeforeLoad = process.env.GSC_BENCH_THROTTLE_BEFORE_LOAD === "1";
+    if (throttleBeforeLoad) await this.page.addInitScript(() => {
+      const w: any = window; w.__gscStartupTasks = [];
+      new PerformanceObserver(list => w.__gscStartupTasks.push(...list.getEntries().map(entry => ({ startTime: entry.startTime, duration: entry.duration }))))
+        .observe({ entryTypes: ["longtask"] });
+    });
+    if (!throttleBeforeLoad) { this.startupStartedAt = Date.now(); await this.page.goto("https://gsc.fixture/"); }
     if (throttle > 1) {
       this.cpuSession = await this.page.context().newCDPSession(this.page);
       await this.cpuSession.send("Emulation.setCPUThrottlingRate", { rate: throttle });
     }
+    if (throttleBeforeLoad) { this.startupStartedAt = Date.now(); await this.page.goto("https://gsc.fixture/"); }
+    this.navigationMs = Date.now() - this.startupStartedAt;
     this.mounted = true;
     for (const message of this.buffered.splice(0)) this.post(message);
+  }
+
+  /** 실제 자산 로드부터 Graph ready/첫 frame까지 기록한다. 사후 Native oracle와 화면 촬영 전에 호출한다. */
+  async startupMetrics() {
+    await this.queue;
+    const page = await this.page.evaluate(() => {
+      const entries = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
+      const scripts = entries.filter(entry => new URL(entry.name).pathname.endsWith(".js"));
+      return { scriptRequests: scripts.length, scriptDecodedBytes: scripts.reduce((sum, entry) => sum + entry.decodedBodySize, 0),
+        resourceRequests: entries.length, longTasks: (window as any).__gscStartupTasks || [] };
+    });
+    return { ...page, navigationMs: this.navigationMs, readyMs: this.startupReadyAt - this.startupStartedAt,
+      firstGraphFrameMs: this.paints[0] ? this.paints[0].paintedAt - this.startupStartedAt : null,
+      latestGraphFrameMs: this.paints.length ? this.paints[this.paints.length - 1].paintedAt - this.startupStartedAt : null };
   }
 
   /** 기존 renderer가 실제로 보낸 메시지만 VS Code transport 대역에 연결한다. */

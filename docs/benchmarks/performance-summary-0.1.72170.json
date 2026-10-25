@@ -1,0 +1,69 @@
+{
+  "version": "0.1.72170",
+  "cold": {
+    "before": {
+      "scriptRequests": 55,
+      "scriptBytes": 498850,
+      "readyMs": 667.5,
+      "firstFrameMs": 2403.5,
+      "latestFrameMs": 2883.5,
+      "ownedCpuMs": 2543.8375,
+      "sampledRssMiB": 568.8359375
+    },
+    "after": {
+      "scriptRequests": 1,
+      "scriptBytes": 223159,
+      "readyMs": 285.5,
+      "firstFrameMs": 2022.0,
+      "latestFrameMs": 2561.5,
+      "ownedCpuMs": 1841.3065000000001,
+      "sampledRssMiB": 579.0078125
+    }
+  },
+  "absoluteDiscovery": {
+    "before": {
+      "latency": {
+        "calls": [
+          34
+        ],
+        "elapsedMs": 178.5602295000001
+      },
+      "cpu": {
+        "calls": [
+          34
+        ],
+        "elapsedMs": 203.02356250000003,
+        "ownedCpuMs": 538.4344999999998
+      },
+      "memory": {
+        "calls": [
+          34
+        ],
+        "elapsedMs": 475.50991650000014,
+        "sampledRssMiB": 71.5625
+      }
+    },
+    "after": {
+      "latency": {
+        "calls": [
+          1
+        ],
+        "elapsedMs": 136.9071455000003
+      },
+      "cpu": {
+        "calls": [
+          1
+        ],
+        "elapsedMs": 89.62435400000004,
+        "ownedCpuMs": 54.24450000000005
+      },
+      "memory": {
+        "calls": [
+          1
+        ],
+        "elapsedMs": 131.66408300000012,
+        "sampledRssMiB": 58.0546875
+      }
+    }
+  }
+}

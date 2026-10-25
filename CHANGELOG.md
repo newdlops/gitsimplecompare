@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.72170] - 2026-10-25
+
+### Performance
+
+- Share repository discovery when Git is configured with a verified standard
+  Native executable path, including Apple Command Line Tools. Keep custom
+  wrappers and uncertain paths on their original per-directory lookup.
+- Load Graph through one browser bundle instead of 55 separate scripts, retaining
+  initialization order and CSP. Exclude unused standalone Graph scripts from VSIX.
+- Measure startup before HTML navigation, including assets, the actual ready
+  callback, Native reads and the first/final rendered frame.
+
 ## [0.1.72169] - 2026-10-25
 
 ### Performance

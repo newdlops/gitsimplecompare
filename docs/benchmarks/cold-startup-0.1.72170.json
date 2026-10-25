@@ -1,0 +1,5709 @@
+{
+  "baseline": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+  "fingerprint": {
+    "files": 653,
+    "sha256": "dad7d6a409ccd23f4e14110b52b5cd498286e808f6b96f8f4382b0e3c95e7d6a",
+    "browserBundleSha256": "1ac5354ae5fc1c5de77e2dbc086667253e68020c2a35a70c9dad27c641011bf1"
+  },
+  "runs": [
+    {
+      "mode": "latency",
+      "phase": "before",
+      "index": 0,
+      "closeCode": 0,
+      "reportSha256": "87e53b2e3d253fc0189ed254934e6acdc410f8571ccdd0f8ea65753f9dba8d80",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "fb9555cf31031687a9fa4230d614d94aea3bdf0432ac1ed7d6aa08200adc476a"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918493625,
+        "measuredEndedAt": 1792918496471,
+        "elapsedMs": 2846,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1259.5,
+              "duration": 633
+            },
+            {
+              "startTime": 1893.9000000059605,
+              "duration": 184
+            },
+            {
+              "startTime": 2089.4000000059605,
+              "duration": 155
+            },
+            {
+              "startTime": 2246,
+              "duration": 184
+            },
+            {
+              "startTime": 2562.5,
+              "duration": 70
+            },
+            {
+              "startTime": 2634.7999999821186,
+              "duration": 80
+            }
+          ],
+          "navigationMs": 834,
+          "readyMs": 691,
+          "firstGraphFrameMs": 2251,
+          "latestGraphFrameMs": 2776
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "symbolic-ref": 2,
+          "config": 3,
+          "rev-parse": 3,
+          "remote": 1,
+          "rev-list": 2,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2824,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2278,
+          "latestMutationToFrameMs": null,
+          "renderMs": 516,
+          "frameMs": 381,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "after",
+      "index": 1,
+      "closeCode": 0,
+      "reportSha256": "05e67ecd92a9140509516310181e97c1f2f65b4fc20d040460949c45a3109d42",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918508847,
+        "measuredEndedAt": 1792918511779,
+        "elapsedMs": 2932,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 1159,
+              "duration": 845
+            },
+            {
+              "startTime": 2005.5,
+              "duration": 166
+            },
+            {
+              "startTime": 2180.2000000178814,
+              "duration": 116
+            },
+            {
+              "startTime": 2297.800000011921,
+              "duration": 156
+            },
+            {
+              "startTime": 2640.100000023842,
+              "duration": 78
+            },
+            {
+              "startTime": 2718.300000011921,
+              "duration": 91
+            }
+          ],
+          "navigationMs": 325,
+          "readyMs": 294,
+          "firstGraphFrameMs": 2301,
+          "latestGraphFrameMs": 2862
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-list": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2886,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2325,
+          "latestMutationToFrameMs": null,
+          "renderMs": 693,
+          "frameMs": 331,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "after",
+      "index": 2,
+      "closeCode": 0,
+      "reportSha256": "27d84e07b9cf867c24f5a8de48a97751e168a7490e0a80864d57e1f50f8703d6",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918521906,
+        "measuredEndedAt": 1792918524438,
+        "elapsedMs": 2532,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 686.8999999761581,
+              "duration": 75
+            },
+            {
+              "startTime": 937.2999999821186,
+              "duration": 809
+            },
+            {
+              "startTime": 1747.3999999761581,
+              "duration": 153
+            },
+            {
+              "startTime": 1907,
+              "duration": 83
+            },
+            {
+              "startTime": 1993.7999999821186,
+              "duration": 110
+            },
+            {
+              "startTime": 2219.2999999821186,
+              "duration": 73
+            },
+            {
+              "startTime": 2293.199999988079,
+              "duration": 97
+            }
+          ],
+          "navigationMs": 288,
+          "readyMs": 277,
+          "firstGraphFrameMs": 1997,
+          "latestGraphFrameMs": 2486
+        },
+        "gitProcesses": 22,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "config": 2,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2507,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2019,
+          "latestMutationToFrameMs": null,
+          "renderMs": 631,
+          "frameMs": 280,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "before",
+      "index": 3,
+      "closeCode": 0,
+      "reportSha256": "fe76bb86e2d66d03d546fba6ac1364b98cde2e0e584eecfaf24f57eb8d8de45d",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "0ed5b1b538110792f8ca1abff092bfb461c48e95185185a4b870dfc15c868ed0"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918538629,
+        "measuredEndedAt": 1792918542996,
+        "elapsedMs": 4367,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 2132.399999976158,
+              "duration": 481
+            },
+            {
+              "startTime": 2615.5999999940395,
+              "duration": 103
+            },
+            {
+              "startTime": 2723.7999999821186,
+              "duration": 60
+            },
+            {
+              "startTime": 2785.899999976158,
+              "duration": 78
+            },
+            {
+              "startTime": 2928.199999988079,
+              "duration": 52
+            },
+            {
+              "startTime": 2980.699999988079,
+              "duration": 66
+            }
+          ],
+          "navigationMs": 1066,
+          "readyMs": 852,
+          "firstGraphFrameMs": 2792,
+          "latestGraphFrameMs": 4292
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 4329,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2830,
+          "latestMutationToFrameMs": null,
+          "renderMs": 377,
+          "frameMs": 195,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "after",
+      "index": 4,
+      "closeCode": 0,
+      "reportSha256": "ff2d0bd303a8462147194001784168a0033e92a0547cb99e8f4680022f4d5ea3",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918551120,
+        "measuredEndedAt": 1792918553373,
+        "elapsedMs": 2253,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 802.1999999880791,
+              "duration": 701
+            },
+            {
+              "startTime": 1504,
+              "duration": 155
+            },
+            {
+              "startTime": 1664.800000011921,
+              "duration": 69
+            },
+            {
+              "startTime": 1737.800000011921,
+              "duration": 92
+            },
+            {
+              "startTime": 1912,
+              "duration": 69
+            },
+            {
+              "startTime": 1981.5999999940395,
+              "duration": 111
+            }
+          ],
+          "navigationMs": 247,
+          "readyMs": 237,
+          "firstGraphFrameMs": 1741,
+          "latestGraphFrameMs": 2207
+        },
+        "gitProcesses": 22,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "symbolic-ref": 2,
+          "config": 2,
+          "remote": 1,
+          "rev-parse": 3,
+          "rev-list": 2,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2228,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 1763,
+          "latestMutationToFrameMs": null,
+          "renderMs": 562,
+          "frameMs": 272,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "before",
+      "index": 5,
+      "closeCode": 0,
+      "reportSha256": "b86bd416b89e7d15f6030eeff261b91052ce907d6e94f1cf5ed422453ac913d4",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "5dd3b70fde27b1114fc507db6e2a3195d8b51395d3fc4a5fa22b67257adff907"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918566735,
+        "measuredEndedAt": 1792918569489,
+        "elapsedMs": 2754,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1091.7999999821186,
+              "duration": 628
+            },
+            {
+              "startTime": 1721.199999988079,
+              "duration": 247
+            },
+            {
+              "startTime": 1977.5999999940395,
+              "duration": 130
+            },
+            {
+              "startTime": 2109.5999999940395,
+              "duration": 134
+            },
+            {
+              "startTime": 2378.5999999940395,
+              "duration": 88
+            },
+            {
+              "startTime": 2468.5,
+              "duration": 121
+            }
+          ],
+          "navigationMs": 476,
+          "readyMs": 376,
+          "firstGraphFrameMs": 2112,
+          "latestGraphFrameMs": 2714
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2727,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2127,
+          "latestMutationToFrameMs": null,
+          "renderMs": 496,
+          "frameMs": 423,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "before",
+      "index": 6,
+      "closeCode": 0,
+      "reportSha256": "e7f580932b3f937bede5a847f5e5aab835d851488596d3876b0af6cd4b580b42",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "38631258ba8dce2a1ec0638f336b08bc44a67a23e86ed46ab598e5b733b1fe7b"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918589578,
+        "measuredEndedAt": 1792918592628,
+        "elapsedMs": 3050,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1340.5999999940395,
+              "duration": 877
+            },
+            {
+              "startTime": 2218.899999976158,
+              "duration": 209
+            },
+            {
+              "startTime": 2438.2999999821186,
+              "duration": 113
+            },
+            {
+              "startTime": 2552.399999976158,
+              "duration": 129
+            },
+            {
+              "startTime": 2790.199999988079,
+              "duration": 64
+            },
+            {
+              "startTime": 2855.0999999940395,
+              "duration": 90
+            }
+          ],
+          "navigationMs": 808,
+          "readyMs": 644,
+          "firstGraphFrameMs": 2556,
+          "latestGraphFrameMs": 2991
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "ls-remote": 1,
+          "symbolic-ref": 2,
+          "config": 3,
+          "rev-parse": 3,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3029,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2573,
+          "latestMutationToFrameMs": null,
+          "renderMs": 724,
+          "frameMs": 370,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "latency",
+      "phase": "after",
+      "index": 7,
+      "closeCode": 0,
+      "reportSha256": "2e594c9fad3c1bf52444f86c854d9d15d0cd20bc1b2ccba1c4bf55cefe74f65d",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "latency",
+        "cpuThrottle": 6,
+        "startedAt": 1792918609757,
+        "measuredEndedAt": 1792918612457,
+        "elapsedMs": 2700,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 859.0999999940395,
+              "duration": 830
+            },
+            {
+              "startTime": 1690.4000000059605,
+              "duration": 195
+            },
+            {
+              "startTime": 1891.9000000059605,
+              "duration": 150
+            },
+            {
+              "startTime": 2042.0999999940395,
+              "duration": 203
+            },
+            {
+              "startTime": 2394,
+              "duration": 93
+            },
+            {
+              "startTime": 2488.5999999940395,
+              "duration": 88
+            }
+          ],
+          "navigationMs": 329,
+          "readyMs": 310,
+          "firstGraphFrameMs": 2047,
+          "latestGraphFrameMs": 2637
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2677,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2066,
+          "latestMutationToFrameMs": null,
+          "renderMs": 647,
+          "frameMs": 390,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "before",
+      "index": 0,
+      "closeCode": 0,
+      "reportSha256": "1a726c21d538a15a4de7a19eea7e59cf381c2c0f6c04c1c4efe19bdcffc8b682",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "9e188a21841d5688991c48ed3fe41e2a48e7a06789bae820fe9b0fac05c697b0"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918634277,
+        "measuredEndedAt": 1792918636244,
+        "elapsedMs": 1967,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 919.6999999880791,
+              "duration": 92
+            }
+          ],
+          "navigationMs": 660,
+          "readyMs": 331,
+          "firstGraphFrameMs": 1048,
+          "latestGraphFrameMs": 1854
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918634277,
+          "finishedAt": 1792918636187,
+          "elapsedMs": 1910,
+          "nodeCpuMs": 531.617,
+          "childCpuMs": 815.5050000000001,
+          "browserCpuMs": 773.2330000000001,
+          "browserComplete": true,
+          "ownedCpuMs": 2120.355,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 10606872,
+          "nodeRssAfterAwaitDelta": 34144256,
+          "nodeMemoryBefore": {
+            "rss": 141475840,
+            "heapTotal": 87605248,
+            "heapUsed": 53464936,
+            "external": 3781798,
+            "arrayBuffers": 91065
+          },
+          "nodeMemoryAfter": {
+            "rss": 175620096,
+            "heapTotal": 95911936,
+            "heapUsed": 64071808,
+            "external": 4200366,
+            "arrayBuffers": 480468
+          },
+          "childrenBefore": {
+            "userCpuMs": 501.864,
+            "systemCpuMs": 1361.546,
+            "minorFaults": 28888,
+            "majorFaults": 1743
+          },
+          "childrenAfter": {
+            "userCpuMs": 819.167,
+            "systemCpuMs": 1859.748,
+            "minorFaults": 57388,
+            "majorFaults": 1935
+          },
+          "childDeltas": {
+            "userCpuMs": 317.30300000000005,
+            "systemCpuMs": 498.202,
+            "minorFaults": 28500,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 79305,
+              "cpuTime": 0.172595
+            },
+            {
+              "type": "renderer",
+              "id": 79317,
+              "cpuTime": 0.072375
+            },
+            {
+              "type": "GPU",
+              "id": 79314,
+              "cpuTime": 0.103605
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 79316,
+              "cpuTime": 0.045615
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 79305,
+              "cpuTime": 0.301521,
+              "deltaCpuMs": 128.926
+            },
+            {
+              "type": "renderer",
+              "id": 79317,
+              "cpuTime": 0.581408,
+              "deltaCpuMs": 509.0330000000001
+            },
+            {
+              "type": "GPU",
+              "id": 79314,
+              "cpuTime": 0.205162,
+              "deltaCpuMs": 101.557
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 79316,
+              "cpuTime": 0.079332,
+              "deltaCpuMs": 33.717
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 1870,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 1064,
+          "latestMutationToFrameMs": null,
+          "renderMs": 72,
+          "frameMs": 38,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "after",
+      "index": 1,
+      "closeCode": 0,
+      "reportSha256": "7090d9a23cee220bdfe51eb7e00375aceb23733bd7d23d222b7b77ace3c7efd2",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918648794,
+        "measuredEndedAt": 1792918652349,
+        "elapsedMs": 3555,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 2249.9000000059605,
+              "duration": 70
+            }
+          ],
+          "navigationMs": 126,
+          "readyMs": 91,
+          "firstGraphFrameMs": 2337,
+          "latestGraphFrameMs": 3455
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918648794,
+          "finishedAt": 1792918652344,
+          "elapsedMs": 3550,
+          "nodeCpuMs": 342.935,
+          "childCpuMs": 836.0609999999999,
+          "browserCpuMs": 606.107,
+          "browserComplete": true,
+          "ownedCpuMs": 1785.1029999999998,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 9558152,
+          "nodeRssAfterAwaitDelta": 17137664,
+          "nodeMemoryBefore": {
+            "rss": 155533312,
+            "heapTotal": 85688320,
+            "heapUsed": 50533496,
+            "external": 3780029,
+            "arrayBuffers": 89296
+          },
+          "nodeMemoryAfter": {
+            "rss": 172670976,
+            "heapTotal": 92766208,
+            "heapUsed": 60091648,
+            "external": 4189701,
+            "arrayBuffers": 469803
+          },
+          "childrenBefore": {
+            "userCpuMs": 483.816,
+            "systemCpuMs": 1111.247,
+            "minorFaults": 30155,
+            "majorFaults": 385
+          },
+          "childrenAfter": {
+            "userCpuMs": 783.882,
+            "systemCpuMs": 1647.242,
+            "minorFaults": 58878,
+            "majorFaults": 577
+          },
+          "childDeltas": {
+            "userCpuMs": 300.066,
+            "systemCpuMs": 535.9949999999999,
+            "minorFaults": 28723,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 80210,
+              "cpuTime": 0.191366
+            },
+            {
+              "type": "renderer",
+              "id": 80224,
+              "cpuTime": 0.077933
+            },
+            {
+              "type": "GPU",
+              "id": 80222,
+              "cpuTime": 0.110467
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 80223,
+              "cpuTime": 0.049726
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 80210,
+              "cpuTime": 0.251255,
+              "deltaCpuMs": 59.888999999999996
+            },
+            {
+              "type": "renderer",
+              "id": 80224,
+              "cpuTime": 0.475854,
+              "deltaCpuMs": 397.921
+            },
+            {
+              "type": "GPU",
+              "id": 80222,
+              "cpuTime": 0.248438,
+              "deltaCpuMs": 137.971
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 80223,
+              "cpuTime": 0.060052,
+              "deltaCpuMs": 10.326000000000002
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3515,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2356,
+          "latestMutationToFrameMs": null,
+          "renderMs": 55,
+          "frameMs": 18,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "after",
+      "index": 2,
+      "closeCode": 0,
+      "reportSha256": "20a88b373702c231015544d7ab8567be6408d99134cc9a756b789400cad08702",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918665923,
+        "measuredEndedAt": 1792918669766,
+        "elapsedMs": 3843,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 2390.199999988079,
+              "duration": 72
+            }
+          ],
+          "navigationMs": 120,
+          "readyMs": 81,
+          "firstGraphFrameMs": 2479,
+          "latestGraphFrameMs": 3754
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918665923,
+          "finishedAt": 1792918669761,
+          "elapsedMs": 3838,
+          "nodeCpuMs": 353.671,
+          "childCpuMs": 860.8910000000001,
+          "browserCpuMs": 653.8580000000001,
+          "browserComplete": true,
+          "ownedCpuMs": 1868.42,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 8587128,
+          "nodeRssAfterAwaitDelta": 28049408,
+          "nodeMemoryBefore": {
+            "rss": 145752064,
+            "heapTotal": 88309760,
+            "heapUsed": 53674224,
+            "external": 3789999,
+            "arrayBuffers": 99266
+          },
+          "nodeMemoryAfter": {
+            "rss": 173801472,
+            "heapTotal": 94519296,
+            "heapUsed": 62261352,
+            "external": 4190030,
+            "arrayBuffers": 470132
+          },
+          "childrenBefore": {
+            "userCpuMs": 501.815,
+            "systemCpuMs": 1216.261,
+            "minorFaults": 31101,
+            "majorFaults": 392
+          },
+          "childrenAfter": {
+            "userCpuMs": 805.747,
+            "systemCpuMs": 1773.22,
+            "minorFaults": 59674,
+            "majorFaults": 584
+          },
+          "childDeltas": {
+            "userCpuMs": 303.93199999999996,
+            "systemCpuMs": 556.9590000000001,
+            "minorFaults": 28573,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 80785,
+              "cpuTime": 0.17334
+            },
+            {
+              "type": "renderer",
+              "id": 80791,
+              "cpuTime": 0.075008
+            },
+            {
+              "type": "GPU",
+              "id": 80787,
+              "cpuTime": 0.100846
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 80788,
+              "cpuTime": 0.046084
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 80785,
+              "cpuTime": 0.234311,
+              "deltaCpuMs": 60.971
+            },
+            {
+              "type": "renderer",
+              "id": 80791,
+              "cpuTime": 0.499418,
+              "deltaCpuMs": 424.40999999999997
+            },
+            {
+              "type": "GPU",
+              "id": 80787,
+              "cpuTime": 0.258645,
+              "deltaCpuMs": 157.79900000000004
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 80788,
+              "cpuTime": 0.056762,
+              "deltaCpuMs": 10.678
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3803,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2495,
+          "latestMutationToFrameMs": null,
+          "renderMs": 56,
+          "frameMs": 18,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "before",
+      "index": 3,
+      "closeCode": 0,
+      "reportSha256": "668b9830c0a2a5ca642b6977fed23cb2566b6824686e2bcfc335773baf7e04d2",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "0bf500f789f92457eec8888c02c165258e25bbec1fa08f46ac36557e43b32fc8"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918688381,
+        "measuredEndedAt": 1792918691041,
+        "elapsedMs": 2660,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 733.8000000119209,
+              "duration": 88
+            }
+          ],
+          "navigationMs": 417,
+          "readyMs": 310,
+          "firstGraphFrameMs": 844,
+          "latestGraphFrameMs": 2603
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918688381,
+          "finishedAt": 1792918691035,
+          "elapsedMs": 2654,
+          "nodeCpuMs": 551.625,
+          "childCpuMs": 1079.0810000000001,
+          "browserCpuMs": 830.631,
+          "browserComplete": true,
+          "ownedCpuMs": 2461.337,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 16030112,
+          "nodeRssAfterAwaitDelta": 19202048,
+          "nodeMemoryBefore": {
+            "rss": 153436160,
+            "heapTotal": 81575936,
+            "heapUsed": 53866432,
+            "external": 3781338,
+            "arrayBuffers": 90605
+          },
+          "nodeMemoryAfter": {
+            "rss": 172638208,
+            "heapTotal": 95125504,
+            "heapUsed": 69896544,
+            "external": 4202536,
+            "arrayBuffers": 482638
+          },
+          "childrenBefore": {
+            "userCpuMs": 483.952,
+            "systemCpuMs": 1092.981,
+            "minorFaults": 30048,
+            "majorFaults": 385
+          },
+          "childrenAfter": {
+            "userCpuMs": 830.612,
+            "systemCpuMs": 1825.402,
+            "minorFaults": 58612,
+            "majorFaults": 577
+          },
+          "childDeltas": {
+            "userCpuMs": 346.65999999999997,
+            "systemCpuMs": 732.421,
+            "minorFaults": 28564,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 81571,
+              "cpuTime": 0.183829
+            },
+            {
+              "type": "renderer",
+              "id": 81585,
+              "cpuTime": 0.071577
+            },
+            {
+              "type": "GPU",
+              "id": 81582,
+              "cpuTime": 0.103554
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 81583,
+              "cpuTime": 0.044553
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 81571,
+              "cpuTime": 0.313772,
+              "deltaCpuMs": 129.943
+            },
+            {
+              "type": "renderer",
+              "id": 81585,
+              "cpuTime": 0.608283,
+              "deltaCpuMs": 536.706
+            },
+            {
+              "type": "GPU",
+              "id": 81582,
+              "cpuTime": 0.232467,
+              "deltaCpuMs": 128.913
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 81583,
+              "cpuTime": 0.079622,
+              "deltaCpuMs": 35.068999999999996
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2619,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 860,
+          "latestMutationToFrameMs": null,
+          "renderMs": 69,
+          "frameMs": 24,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "after",
+      "index": 4,
+      "closeCode": 0,
+      "reportSha256": "dfd79ca21df08f5f9ce09cd6cde451911996ae252e1b79d057c8a0e925fada61",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918702443,
+        "measuredEndedAt": 1792918703505,
+        "elapsedMs": 1062,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 605.3000000119209,
+              "duration": 92
+            }
+          ],
+          "navigationMs": 118,
+          "readyMs": 106,
+          "firstGraphFrameMs": 735,
+          "latestGraphFrameMs": 895
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918702443,
+          "finishedAt": 1792918703494,
+          "elapsedMs": 1051,
+          "nodeCpuMs": 426.066,
+          "childCpuMs": 802.3000000000002,
+          "browserCpuMs": 585.827,
+          "browserComplete": true,
+          "ownedCpuMs": 1814.1930000000002,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 9186848,
+          "nodeRssAfterAwaitDelta": 28590080,
+          "nodeMemoryBefore": {
+            "rss": 143048704,
+            "heapTotal": 88309760,
+            "heapUsed": 53734160,
+            "external": 3789997,
+            "arrayBuffers": 99264
+          },
+          "nodeMemoryAfter": {
+            "rss": 171638784,
+            "heapTotal": 95125504,
+            "heapUsed": 62921008,
+            "external": 4194008,
+            "arrayBuffers": 474110
+          },
+          "childrenBefore": {
+            "userCpuMs": 515.968,
+            "systemCpuMs": 1305.6689999999999,
+            "minorFaults": 30135,
+            "majorFaults": 385
+          },
+          "childrenAfter": {
+            "userCpuMs": 840.997,
+            "systemCpuMs": 1782.94,
+            "minorFaults": 58639,
+            "majorFaults": 577
+          },
+          "childDeltas": {
+            "userCpuMs": 325.029,
+            "systemCpuMs": 477.2710000000002,
+            "minorFaults": 28504,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 82071,
+              "cpuTime": 0.18447
+            },
+            {
+              "type": "renderer",
+              "id": 82076,
+              "cpuTime": 0.080847
+            },
+            {
+              "type": "GPU",
+              "id": 82073,
+              "cpuTime": 0.108476
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 82074,
+              "cpuTime": 0.047285
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 82071,
+              "cpuTime": 0.250727,
+              "deltaCpuMs": 66.25699999999998
+            },
+            {
+              "type": "renderer",
+              "id": 82076,
+              "cpuTime": 0.500168,
+              "deltaCpuMs": 419.32099999999997
+            },
+            {
+              "type": "GPU",
+              "id": 82073,
+              "cpuTime": 0.197726,
+              "deltaCpuMs": 89.25000000000001
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 82074,
+              "cpuTime": 0.058284,
+              "deltaCpuMs": 10.999000000000002
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "config": 3,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 1016,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 756,
+          "latestMutationToFrameMs": null,
+          "renderMs": 72,
+          "frameMs": 40,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "before",
+      "index": 5,
+      "closeCode": 0,
+      "reportSha256": "245aed368242232529effbb789133610c9ad63155e330a550cbc89f6957120ca",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "9b9e65adbd0598e2fa1c9ff939d737435aec66cb4084b03fa3f9a31b1a44347d"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918717374,
+        "measuredEndedAt": 1792918722239,
+        "elapsedMs": 4865,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1070.0999999940395,
+              "duration": 88
+            }
+          ],
+          "navigationMs": 295,
+          "readyMs": 209,
+          "firstGraphFrameMs": 1181,
+          "latestGraphFrameMs": 4828
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918717374,
+          "finishedAt": 1792918722235,
+          "elapsedMs": 4861,
+          "nodeCpuMs": 559.634,
+          "childCpuMs": 1145.763,
+          "browserCpuMs": 920.9410000000001,
+          "browserComplete": true,
+          "ownedCpuMs": 2626.338,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 16760640,
+          "nodeRssAfterAwaitDelta": 18972672,
+          "nodeMemoryBefore": {
+            "rss": 155156480,
+            "heapTotal": 81575936,
+            "heapUsed": 53845792,
+            "external": 3781343,
+            "arrayBuffers": 90610
+          },
+          "nodeMemoryAfter": {
+            "rss": 174129152,
+            "heapTotal": 94945280,
+            "heapUsed": 70606432,
+            "external": 4195187,
+            "arrayBuffers": 475289
+          },
+          "childrenBefore": {
+            "userCpuMs": 499.411,
+            "systemCpuMs": 1102.997,
+            "minorFaults": 30114,
+            "majorFaults": 385
+          },
+          "childrenAfter": {
+            "userCpuMs": 860.902,
+            "systemCpuMs": 1887.269,
+            "minorFaults": 58685,
+            "majorFaults": 577
+          },
+          "childDeltas": {
+            "userCpuMs": 361.49100000000004,
+            "systemCpuMs": 784.2719999999999,
+            "minorFaults": 28571,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 82558,
+              "cpuTime": 0.166033
+            },
+            {
+              "type": "renderer",
+              "id": 82563,
+              "cpuTime": 0.074291
+            },
+            {
+              "type": "GPU",
+              "id": 82561,
+              "cpuTime": 0.100725
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 82562,
+              "cpuTime": 0.045382
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 82558,
+              "cpuTime": 0.298701,
+              "deltaCpuMs": 132.668
+            },
+            {
+              "type": "renderer",
+              "id": 82563,
+              "cpuTime": 0.647278,
+              "deltaCpuMs": 572.9870000000001
+            },
+            {
+              "type": "GPU",
+              "id": 82561,
+              "cpuTime": 0.280369,
+              "deltaCpuMs": 179.64399999999998
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 82562,
+              "cpuTime": 0.081024,
+              "deltaCpuMs": 35.642
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "rev-parse": 3,
+          "symbolic-ref": 2,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 4843,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 1196,
+          "latestMutationToFrameMs": null,
+          "renderMs": 69,
+          "frameMs": 24,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "before",
+      "index": 6,
+      "closeCode": 0,
+      "reportSha256": "4cdd8365d625a43a91a50ba0ecf780050cd7e4261c87e2708c160c3628cbaea3",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "5bb586cbc1a57445f6a65a6afe804c8c3e74b44896279261710d6e5dde75d240"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918740052,
+        "measuredEndedAt": 1792918744301,
+        "elapsedMs": 4249,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 2744.9000000059605,
+              "duration": 93
+            }
+          ],
+          "navigationMs": 563,
+          "readyMs": 368,
+          "firstGraphFrameMs": 2862,
+          "latestGraphFrameMs": 4192
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918740052,
+          "finishedAt": 1792918744294,
+          "elapsedMs": 4242,
+          "nodeCpuMs": 580.879,
+          "childCpuMs": 1082.9739999999997,
+          "browserCpuMs": 1042.629,
+          "browserComplete": true,
+          "ownedCpuMs": 2706.4819999999995,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 15812456,
+          "nodeRssAfterAwaitDelta": 18300928,
+          "nodeMemoryBefore": {
+            "rss": 155680768,
+            "heapTotal": 81575936,
+            "heapUsed": 54034648,
+            "external": 3781800,
+            "arrayBuffers": 91067
+          },
+          "nodeMemoryAfter": {
+            "rss": 173981696,
+            "heapTotal": 95207424,
+            "heapUsed": 69847104,
+            "external": 4195738,
+            "arrayBuffers": 475840
+          },
+          "childrenBefore": {
+            "userCpuMs": 530.778,
+            "systemCpuMs": 1184.948,
+            "minorFaults": 30114,
+            "majorFaults": 416
+          },
+          "childrenAfter": {
+            "userCpuMs": 907.12,
+            "systemCpuMs": 1891.58,
+            "minorFaults": 59215,
+            "majorFaults": 608
+          },
+          "childDeltas": {
+            "userCpuMs": 376.342,
+            "systemCpuMs": 706.6319999999998,
+            "minorFaults": 29101,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 83151,
+              "cpuTime": 0.188124
+            },
+            {
+              "type": "renderer",
+              "id": 83166,
+              "cpuTime": 0.081642
+            },
+            {
+              "type": "GPU",
+              "id": 83162,
+              "cpuTime": 0.11585
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 83163,
+              "cpuTime": 0.052176
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 83151,
+              "cpuTime": 0.326913,
+              "deltaCpuMs": 138.789
+            },
+            {
+              "type": "renderer",
+              "id": 83166,
+              "cpuTime": 0.725435,
+              "deltaCpuMs": 643.793
+            },
+            {
+              "type": "GPU",
+              "id": 83162,
+              "cpuTime": 0.338945,
+              "deltaCpuMs": 223.095
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 83163,
+              "cpuTime": 0.089128,
+              "deltaCpuMs": 36.952
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "config": 3,
+          "rev-parse": 3,
+          "symbolic-ref": 2,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 4208,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2878,
+          "latestMutationToFrameMs": null,
+          "renderMs": 74,
+          "frameMs": 26,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "cpu",
+      "phase": "after",
+      "index": 7,
+      "closeCode": 0,
+      "reportSha256": "d1eb8bfd7dc8827f3f0b506844acd23d27e32944183898905e62380b5a05c8c1",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "cpu",
+        "cpuThrottle": 1,
+        "startedAt": 1792918759109,
+        "measuredEndedAt": 1792918760174,
+        "elapsedMs": 1065,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 664.0999999940395,
+              "duration": 95
+            }
+          ],
+          "navigationMs": 113,
+          "readyMs": 100,
+          "firstGraphFrameMs": 797,
+          "latestGraphFrameMs": 955
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918759109,
+          "finishedAt": 1792918760169,
+          "elapsedMs": 1060,
+          "nodeCpuMs": 445.491,
+          "childCpuMs": 953.483,
+          "browserCpuMs": 624.3559999999999,
+          "browserComplete": true,
+          "ownedCpuMs": 2023.33,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 5540848,
+          "nodeRssAfterAwaitDelta": 34881536,
+          "nodeMemoryBefore": {
+            "rss": 137773056,
+            "heapTotal": 83853312,
+            "heapUsed": 57205992,
+            "external": 3789676,
+            "arrayBuffers": 98943
+          },
+          "nodeMemoryAfter": {
+            "rss": 172654592,
+            "heapTotal": 95649792,
+            "heapUsed": 62746840,
+            "external": 4191954,
+            "arrayBuffers": 472056
+          },
+          "childrenBefore": {
+            "userCpuMs": 559.067,
+            "systemCpuMs": 1385.205,
+            "minorFaults": 30138,
+            "majorFaults": 395
+          },
+          "childrenAfter": {
+            "userCpuMs": 912.229,
+            "systemCpuMs": 1985.5259999999998,
+            "minorFaults": 59014,
+            "majorFaults": 587
+          },
+          "childDeltas": {
+            "userCpuMs": 353.16200000000003,
+            "systemCpuMs": 600.3209999999999,
+            "minorFaults": 28876,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 83742,
+              "cpuTime": 0.194093
+            },
+            {
+              "type": "renderer",
+              "id": 83755,
+              "cpuTime": 0.089235
+            },
+            {
+              "type": "GPU",
+              "id": 83753,
+              "cpuTime": 0.118752
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 83754,
+              "cpuTime": 0.056398
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 83742,
+              "cpuTime": 0.264717,
+              "deltaCpuMs": 70.624
+            },
+            {
+              "type": "renderer",
+              "id": 83755,
+              "cpuTime": 0.543769,
+              "deltaCpuMs": 454.53399999999993
+            },
+            {
+              "type": "GPU",
+              "id": 83753,
+              "cpuTime": 0.206302,
+              "deltaCpuMs": 87.55000000000001
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 83754,
+              "cpuTime": 0.068046,
+              "deltaCpuMs": 11.647999999999998
+            }
+          ],
+          "missingBrowserPids": [],
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 1040,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 816,
+          "latestMutationToFrameMs": null,
+          "renderMs": 74,
+          "frameMs": 40,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      }
+    },
+    {
+      "mode": "memory",
+      "phase": "before",
+      "index": 0,
+      "closeCode": 0,
+      "reportSha256": "b68962f134833e3a3b290fdb1623031f9f193a1c345f9e135fb51432e59e2b57",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "49e77774d8546257bbd223fbdbffedf118b1a93c25f7f3f940d76f46a8daf400"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918780759,
+        "measuredEndedAt": 1792918783464,
+        "elapsedMs": 2705,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1176.5,
+              "duration": 102
+            }
+          ],
+          "navigationMs": 872,
+          "readyMs": 549,
+          "firstGraphFrameMs": 1320,
+          "latestGraphFrameMs": 2455
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918780759,
+          "finishedAt": 1792918783302,
+          "elapsedMs": 2543,
+          "nodeCpuMs": 623.794,
+          "childCpuMs": 984.6889999999999,
+          "browserCpuMs": 874.949,
+          "browserComplete": true,
+          "ownedCpuMs": 2483.432,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 9842992,
+          "nodeRssAfterAwaitDelta": 16793600,
+          "nodeMemoryBefore": {
+            "rss": 156336128,
+            "heapTotal": 86294528,
+            "heapUsed": 51595512,
+            "external": 3781817,
+            "arrayBuffers": 91084
+          },
+          "nodeMemoryAfter": {
+            "rss": 173129728,
+            "heapTotal": 93634560,
+            "heapUsed": 61438504,
+            "external": 4190648,
+            "arrayBuffers": 470750
+          },
+          "childrenBefore": {
+            "userCpuMs": 556.506,
+            "systemCpuMs": 1363.72,
+            "minorFaults": 30043,
+            "majorFaults": 479
+          },
+          "childrenAfter": {
+            "userCpuMs": 929.034,
+            "systemCpuMs": 1975.8809999999999,
+            "minorFaults": 58629,
+            "majorFaults": 671
+          },
+          "childDeltas": {
+            "userCpuMs": 372.528,
+            "systemCpuMs": 612.1609999999998,
+            "minorFaults": 28586,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 84280,
+              "cpuTime": 0.197466
+            },
+            {
+              "type": "renderer",
+              "id": 84295,
+              "cpuTime": 0.086959
+            },
+            {
+              "type": "GPU",
+              "id": 84291,
+              "cpuTime": 0.116492
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 84293,
+              "cpuTime": 0.051626
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 84280,
+              "cpuTime": 0.347871,
+              "deltaCpuMs": 150.40499999999997
+            },
+            {
+              "type": "renderer",
+              "id": 84295,
+              "cpuTime": 0.66721,
+              "deltaCpuMs": 580.251
+            },
+            {
+              "type": "GPU",
+              "id": 84291,
+              "cpuTime": 0.220838,
+              "deltaCpuMs": 104.346
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 84293,
+              "cpuTime": 0.091573,
+              "deltaCpuMs": 39.947
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 10,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.003,
+              "scanMs": 177.858,
+              "nodeRssBytes": 156319744,
+              "chromiumRssBytes": 261128192,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 417447936,
+              "pids": [
+                84112,
+                84280,
+                84291,
+                84293,
+                84295
+              ]
+            },
+            "last": {
+              "afterStartMs": 2728.182,
+              "scanMs": 142.311,
+              "nodeRssBytes": 173129728,
+              "chromiumRssBytes": 397869056,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 570998784,
+              "pids": [
+                84112,
+                84280,
+                84291,
+                84293,
+                84295
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 1593.052,
+              "scanMs": 285.408,
+              "nodeRssBytes": 172883968,
+              "chromiumRssBytes": 395591680,
+              "otherOwnedRssBytes": 35340288,
+              "sumRssBytes": 603815936,
+              "pids": [
+                84112,
+                84280,
+                84291,
+                84293,
+                84295,
+                84374,
+                84381
+              ]
+            },
+            "maxObservedGapMs": 398.7909999999997,
+            "componentMaxBytes": {
+              "node": 173129728,
+              "chromium": 397869056,
+              "otherOwned": 59703296
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-0-before.json.memory-cold-startup.json",
+            "rawSamplesSha256": "3364f286fc15d6c72effacfef3c981b5579c96a83a28a2d77e59977771f18e23",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2507,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 1372,
+          "latestMutationToFrameMs": null,
+          "renderMs": 78,
+          "frameMs": 45,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 84112,
+        "observerPid": 84323,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.003,
+            "scanMs": 177.858,
+            "nodeRssBytes": 156319744,
+            "chromiumRssBytes": 261128192,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 417447936,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295
+            ]
+          },
+          {
+            "afterStartMs": 233.153,
+            "scanMs": 328.027,
+            "nodeRssBytes": 156729344,
+            "chromiumRssBytes": 264175616,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 420904960,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295
+            ]
+          },
+          {
+            "afterStartMs": 617.545,
+            "scanMs": 202.295,
+            "nodeRssBytes": 157908992,
+            "chromiumRssBytes": 307183616,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 465092608,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295
+            ]
+          },
+          {
+            "afterStartMs": 872.911,
+            "scanMs": 324.888,
+            "nodeRssBytes": 159940608,
+            "chromiumRssBytes": 309477376,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 474038272,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84336
+            ]
+          },
+          {
+            "afterStartMs": 1259.14,
+            "scanMs": 276.1,
+            "nodeRssBytes": 165969920,
+            "chromiumRssBytes": 315097088,
+            "otherOwnedRssBytes": 59703296,
+            "sumRssBytes": 540770304,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84353,
+              84355,
+              84357,
+              84359,
+              84361,
+              84363,
+              84365,
+              84367,
+              84370,
+              84372
+            ]
+          },
+          {
+            "afterStartMs": 1593.052,
+            "scanMs": 285.408,
+            "nodeRssBytes": 172883968,
+            "chromiumRssBytes": 395591680,
+            "otherOwnedRssBytes": 35340288,
+            "sumRssBytes": 603815936,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84374,
+              84381
+            ]
+          },
+          {
+            "afterStartMs": 1933.584,
+            "scanMs": 111.256,
+            "nodeRssBytes": 173015040,
+            "chromiumRssBytes": 397836288,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 575897600,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84381
+            ]
+          },
+          {
+            "afterStartMs": 2097.099,
+            "scanMs": 341.495,
+            "nodeRssBytes": 173015040,
+            "chromiumRssBytes": 397819904,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 575881216,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84381
+            ]
+          },
+          {
+            "afterStartMs": 2495.89,
+            "scanMs": 225.316,
+            "nodeRssBytes": 173015040,
+            "chromiumRssBytes": 397836288,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 575897600,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295,
+              84381
+            ]
+          },
+          {
+            "afterStartMs": 2728.182,
+            "scanMs": 142.311,
+            "nodeRssBytes": 173129728,
+            "chromiumRssBytes": 397869056,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 570998784,
+            "pids": [
+              84112,
+              84280,
+              84291,
+              84293,
+              84295
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "3364f286fc15d6c72effacfef3c981b5579c96a83a28a2d77e59977771f18e23"
+    },
+    {
+      "mode": "memory",
+      "phase": "after",
+      "index": 1,
+      "closeCode": 0,
+      "reportSha256": "7199bbf631928c1369b7bae0d6890749c12f764d877f5d0e47b3684be7eb191c",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918796754,
+        "measuredEndedAt": 1792918800386,
+        "elapsedMs": 3632,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 2703.300000011921,
+              "duration": 95
+            }
+          ],
+          "navigationMs": 171,
+          "readyMs": 110,
+          "firstGraphFrameMs": 2822,
+          "latestGraphFrameMs": 3347
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918796754,
+          "finishedAt": 1792918800151,
+          "elapsedMs": 3397,
+          "nodeCpuMs": 431.052,
+          "childCpuMs": 1024.8619999999999,
+          "browserCpuMs": 811.9449999999998,
+          "browserComplete": true,
+          "ownedCpuMs": 2267.8589999999995,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 8139368,
+          "nodeRssAfterAwaitDelta": 14073856,
+          "nodeMemoryBefore": {
+            "rss": 155926528,
+            "heapTotal": 86474752,
+            "heapUsed": 51244096,
+            "external": 3790011,
+            "arrayBuffers": 99278
+          },
+          "nodeMemoryAfter": {
+            "rss": 170000384,
+            "heapTotal": 91979776,
+            "heapUsed": 59383464,
+            "external": 4190601,
+            "arrayBuffers": 470703
+          },
+          "childrenBefore": {
+            "userCpuMs": 567.058,
+            "systemCpuMs": 1234.9850000000001,
+            "minorFaults": 30148,
+            "majorFaults": 416
+          },
+          "childrenAfter": {
+            "userCpuMs": 938.424,
+            "systemCpuMs": 1888.481,
+            "minorFaults": 58703,
+            "majorFaults": 608
+          },
+          "childDeltas": {
+            "userCpuMs": 371.366,
+            "systemCpuMs": 653.4959999999999,
+            "minorFaults": 28555,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 84713,
+              "cpuTime": 0.189126
+            },
+            {
+              "type": "renderer",
+              "id": 84718,
+              "cpuTime": 0.079629
+            },
+            {
+              "type": "GPU",
+              "id": 84716,
+              "cpuTime": 0.110109
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 84717,
+              "cpuTime": 0.048394
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 84713,
+              "cpuTime": 0.261959,
+              "deltaCpuMs": 72.83300000000001
+            },
+            {
+              "type": "renderer",
+              "id": 84718,
+              "cpuTime": 0.62166,
+              "deltaCpuMs": 542.031
+            },
+            {
+              "type": "GPU",
+              "id": 84716,
+              "cpuTime": 0.293689,
+              "deltaCpuMs": 183.57999999999996
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 84717,
+              "cpuTime": 0.061895,
+              "deltaCpuMs": 13.501
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 17,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.003,
+              "scanMs": 153.789,
+              "nodeRssBytes": 155910144,
+              "chromiumRssBytes": 260947968,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 416858112,
+              "pids": [
+                84565,
+                84713,
+                84716,
+                84717,
+                84718
+              ]
+            },
+            "last": {
+              "afterStartMs": 3657.232,
+              "scanMs": 119.866,
+              "nodeRssBytes": 170000384,
+              "chromiumRssBytes": 397066240,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 567066624,
+              "pids": [
+                84565,
+                84713,
+                84716,
+                84717,
+                84718
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 3276.656,
+              "scanMs": 219.367,
+              "nodeRssBytes": 169558016,
+              "chromiumRssBytes": 395673600,
+              "otherOwnedRssBytes": 46907392,
+              "sumRssBytes": 612139008,
+              "pids": [
+                84565,
+                84713,
+                84716,
+                84717,
+                84718,
+                84815,
+                84826,
+                84827
+              ]
+            },
+            "maxObservedGapMs": 309.125,
+            "componentMaxBytes": {
+              "node": 170000384,
+              "chromium": 397066240,
+              "otherOwned": 46907392
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-1-after.json.memory-cold-startup.json",
+            "rawSamplesSha256": "8ceeab45fd24042f89a5ca6564da9ed15ae5a954168b7f14c1139f752a321e91",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3363,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2838,
+          "latestMutationToFrameMs": null,
+          "renderMs": 74,
+          "frameMs": 26,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 84565,
+        "observerPid": 84744,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.003,
+            "scanMs": 153.789,
+            "nodeRssBytes": 155910144,
+            "chromiumRssBytes": 260947968,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 416858112,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718
+            ]
+          },
+          {
+            "afterStartMs": 208.47,
+            "scanMs": 176.175,
+            "nodeRssBytes": 157990912,
+            "chromiumRssBytes": 310362112,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 468353024,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718
+            ]
+          },
+          {
+            "afterStartMs": 439.711,
+            "scanMs": 169.625,
+            "nodeRssBytes": 159989760,
+            "chromiumRssBytes": 312623104,
+            "otherOwnedRssBytes": 3964928,
+            "sumRssBytes": 476577792,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84751,
+              84753
+            ]
+          },
+          {
+            "afterStartMs": 664.481,
+            "scanMs": 162.804,
+            "nodeRssBytes": 159989760,
+            "chromiumRssBytes": 312639488,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 477249536,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84751
+            ]
+          },
+          {
+            "afterStartMs": 879.986,
+            "scanMs": 168.807,
+            "nodeRssBytes": 159989760,
+            "chromiumRssBytes": 312688640,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 477298688,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84751
+            ]
+          },
+          {
+            "afterStartMs": 1103.912,
+            "scanMs": 178.873,
+            "nodeRssBytes": 159989760,
+            "chromiumRssBytes": 312770560,
+            "otherOwnedRssBytes": 4636672,
+            "sumRssBytes": 477396992,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84751
+            ]
+          },
+          {
+            "afterStartMs": 1335.703,
+            "scanMs": 166.981,
+            "nodeRssBytes": 159989760,
+            "chromiumRssBytes": 312836096,
+            "otherOwnedRssBytes": 4653056,
+            "sumRssBytes": 477478912,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84751
+            ]
+          },
+          {
+            "afterStartMs": 1557.856,
+            "scanMs": 160.63,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314228736,
+            "otherOwnedRssBytes": 1327104,
+            "sumRssBytes": 475676672,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 1773.441,
+            "scanMs": 167.871,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314228736,
+            "otherOwnedRssBytes": 8667136,
+            "sumRssBytes": 483016704,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 1996.415,
+            "scanMs": 150.826,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314228736,
+            "otherOwnedRssBytes": 9519104,
+            "sumRssBytes": 483868672,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 2200.162,
+            "scanMs": 202.996,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314245120,
+            "otherOwnedRssBytes": 9519104,
+            "sumRssBytes": 483885056,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 2458.286,
+            "scanMs": 169.574,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314245120,
+            "otherOwnedRssBytes": 11878400,
+            "sumRssBytes": 486244352,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 2683.173,
+            "scanMs": 255.862,
+            "nodeRssBytes": 160120832,
+            "chromiumRssBytes": 314245120,
+            "otherOwnedRssBytes": 12075008,
+            "sumRssBytes": 486440960,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84769,
+              84772
+            ]
+          },
+          {
+            "afterStartMs": 2992.298,
+            "scanMs": 233.618,
+            "nodeRssBytes": 169164800,
+            "chromiumRssBytes": 373587968,
+            "otherOwnedRssBytes": 196608,
+            "sumRssBytes": 542949376,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84794,
+              84795,
+              84796
+            ]
+          },
+          {
+            "afterStartMs": 3276.656,
+            "scanMs": 219.367,
+            "nodeRssBytes": 169558016,
+            "chromiumRssBytes": 395673600,
+            "otherOwnedRssBytes": 46907392,
+            "sumRssBytes": 612139008,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718,
+              84815,
+              84826,
+              84827
+            ]
+          },
+          {
+            "afterStartMs": 3549.514,
+            "scanMs": 107.564,
+            "nodeRssBytes": 170000384,
+            "chromiumRssBytes": 396984320,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 566984704,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718
+            ]
+          },
+          {
+            "afterStartMs": 3657.232,
+            "scanMs": 119.866,
+            "nodeRssBytes": 170000384,
+            "chromiumRssBytes": 397066240,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 567066624,
+            "pids": [
+              84565,
+              84713,
+              84716,
+              84717,
+              84718
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "8ceeab45fd24042f89a5ca6564da9ed15ae5a954168b7f14c1139f752a321e91"
+    },
+    {
+      "mode": "memory",
+      "phase": "after",
+      "index": 2,
+      "closeCode": 0,
+      "reportSha256": "f3f900b4a6cfb61220cc59abb59423c85a457329f95529eae294071f30aa6125",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918812163,
+        "measuredEndedAt": 1792918815912,
+        "elapsedMs": 3749,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 2530.9000000059605,
+              "duration": 105
+            }
+          ],
+          "navigationMs": 174,
+          "readyMs": 129,
+          "firstGraphFrameMs": 2681,
+          "latestGraphFrameMs": 3400
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918812163,
+          "finishedAt": 1792918815601,
+          "elapsedMs": 3438,
+          "nodeCpuMs": 484.109,
+          "childCpuMs": 1077.605,
+          "browserCpuMs": 883.8660000000001,
+          "browserComplete": true,
+          "ownedCpuMs": 2445.58,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 16927776,
+          "nodeRssAfterAwaitDelta": 16433152,
+          "nodeMemoryBefore": {
+            "rss": 155992064,
+            "heapTotal": 81494016,
+            "heapUsed": 53529400,
+            "external": 3781857,
+            "arrayBuffers": 91124
+          },
+          "nodeMemoryAfter": {
+            "rss": 172425216,
+            "heapTotal": 93552640,
+            "heapUsed": 70457176,
+            "external": 4196916,
+            "arrayBuffers": 477018
+          },
+          "childrenBefore": {
+            "userCpuMs": 581.505,
+            "systemCpuMs": 1245.912,
+            "minorFaults": 30132,
+            "majorFaults": 416
+          },
+          "childrenAfter": {
+            "userCpuMs": 985.44,
+            "systemCpuMs": 1919.5819999999999,
+            "minorFaults": 58717,
+            "majorFaults": 608
+          },
+          "childDeltas": {
+            "userCpuMs": 403.93500000000006,
+            "systemCpuMs": 673.6699999999998,
+            "minorFaults": 28585,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 85191,
+              "cpuTime": 0.200965
+            },
+            {
+              "type": "renderer",
+              "id": 85200,
+              "cpuTime": 0.086113
+            },
+            {
+              "type": "GPU",
+              "id": 85197,
+              "cpuTime": 0.127923
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 85198,
+              "cpuTime": 0.051874
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 85191,
+              "cpuTime": 0.278876,
+              "deltaCpuMs": 77.911
+            },
+            {
+              "type": "renderer",
+              "id": 85200,
+              "cpuTime": 0.674296,
+              "deltaCpuMs": 588.183
+            },
+            {
+              "type": "GPU",
+              "id": 85197,
+              "cpuTime": 0.332335,
+              "deltaCpuMs": 204.41199999999998
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 85198,
+              "cpuTime": 0.065234,
+              "deltaCpuMs": 13.359999999999998
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 14,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.004,
+              "scanMs": 194.131,
+              "nodeRssBytes": 155975680,
+              "chromiumRssBytes": 261193728,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 417169408,
+              "pids": [
+                85020,
+                85191,
+                85197,
+                85198,
+                85200
+              ]
+            },
+            "last": {
+              "afterStartMs": 3653.021,
+              "scanMs": 276.868,
+              "nodeRssBytes": 172425216,
+              "chromiumRssBytes": 397819904,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 570245120,
+              "pids": [
+                85020,
+                85191,
+                85197,
+                85198,
+                85200
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 3190.557,
+              "scanMs": 148.018,
+              "nodeRssBytes": 172228608,
+              "chromiumRssBytes": 396771328,
+              "otherOwnedRssBytes": 33128448,
+              "sumRssBytes": 602128384,
+              "pids": [
+                85020,
+                85191,
+                85197,
+                85198,
+                85200,
+                85330,
+                85340
+              ]
+            },
+            "maxObservedGapMs": 464.50199999999995,
+            "componentMaxBytes": {
+              "node": 172425216,
+              "chromium": 397819904,
+              "otherOwned": 33128448
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-2-after.json.memory-cold-startup.json",
+            "rawSamplesSha256": "e51e74cb3dd816ce1e9f12448bffea6745caa2cbc832cb77becb9f40d9dd5041",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "rev-list": 2,
+          "remote": 1,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3419,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2700,
+          "latestMutationToFrameMs": null,
+          "renderMs": 81,
+          "frameMs": 48,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 85020,
+        "observerPid": 85254,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.004,
+            "scanMs": 194.131,
+            "nodeRssBytes": 155975680,
+            "chromiumRssBytes": 261193728,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 417169408,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200
+            ]
+          },
+          {
+            "afterStartMs": 248.906,
+            "scanMs": 213.423,
+            "nodeRssBytes": 163168256,
+            "chromiumRssBytes": 294682624,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 457850880,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200
+            ]
+          },
+          {
+            "afterStartMs": 517.575,
+            "scanMs": 186.495,
+            "nodeRssBytes": 165232640,
+            "chromiumRssBytes": 313016320,
+            "otherOwnedRssBytes": 8486912,
+            "sumRssBytes": 486735872,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85263,
+              85265
+            ]
+          },
+          {
+            "afterStartMs": 755.742,
+            "scanMs": 177.7,
+            "nodeRssBytes": 165232640,
+            "chromiumRssBytes": 313049088,
+            "otherOwnedRssBytes": 4636672,
+            "sumRssBytes": 482918400,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85263
+            ]
+          },
+          {
+            "afterStartMs": 988.386,
+            "scanMs": 171.813,
+            "nodeRssBytes": 165232640,
+            "chromiumRssBytes": 313114624,
+            "otherOwnedRssBytes": 4636672,
+            "sumRssBytes": 482983936,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85263
+            ]
+          },
+          {
+            "afterStartMs": 1215.369,
+            "scanMs": 187.997,
+            "nodeRssBytes": 165232640,
+            "chromiumRssBytes": 313163776,
+            "otherOwnedRssBytes": 4653056,
+            "sumRssBytes": 483049472,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85263
+            ]
+          },
+          {
+            "afterStartMs": 1455.448,
+            "scanMs": 241.005,
+            "nodeRssBytes": 165232640,
+            "chromiumRssBytes": 313196544,
+            "otherOwnedRssBytes": 4653056,
+            "sumRssBytes": 483082240,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85263
+            ]
+          },
+          {
+            "afterStartMs": 1751.622,
+            "scanMs": 229.152,
+            "nodeRssBytes": 165380096,
+            "chromiumRssBytes": 314572800,
+            "otherOwnedRssBytes": 7110656,
+            "sumRssBytes": 487063552,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85288,
+              85291
+            ]
+          },
+          {
+            "afterStartMs": 2032.124,
+            "scanMs": 183.354,
+            "nodeRssBytes": 165380096,
+            "chromiumRssBytes": 314572800,
+            "otherOwnedRssBytes": 9502720,
+            "sumRssBytes": 489455616,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85288,
+              85291
+            ]
+          },
+          {
+            "afterStartMs": 2269.313,
+            "scanMs": 409.328,
+            "nodeRssBytes": 165380096,
+            "chromiumRssBytes": 314441728,
+            "otherOwnedRssBytes": 11812864,
+            "sumRssBytes": 491634688,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85288,
+              85291
+            ]
+          },
+          {
+            "afterStartMs": 2733.815,
+            "scanMs": 401.625,
+            "nodeRssBytes": 171638784,
+            "chromiumRssBytes": 348700672,
+            "otherOwnedRssBytes": 4718592,
+            "sumRssBytes": 525058048,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85310,
+              85316,
+              85318,
+              85320,
+              85322,
+              85325
+            ]
+          },
+          {
+            "afterStartMs": 3190.557,
+            "scanMs": 148.018,
+            "nodeRssBytes": 172228608,
+            "chromiumRssBytes": 396771328,
+            "otherOwnedRssBytes": 33128448,
+            "sumRssBytes": 602128384,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85330,
+              85340
+            ]
+          },
+          {
+            "afterStartMs": 3395.743,
+            "scanMs": 257.116,
+            "nodeRssBytes": 172244992,
+            "chromiumRssBytes": 397361152,
+            "otherOwnedRssBytes": 5226496,
+            "sumRssBytes": 574832640,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200,
+              85340,
+              85353,
+              85354
+            ]
+          },
+          {
+            "afterStartMs": 3653.021,
+            "scanMs": 276.868,
+            "nodeRssBytes": 172425216,
+            "chromiumRssBytes": 397819904,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 570245120,
+            "pids": [
+              85020,
+              85191,
+              85197,
+              85198,
+              85200
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "e51e74cb3dd816ce1e9f12448bffea6745caa2cbc832cb77becb9f40d9dd5041"
+    },
+    {
+      "mode": "memory",
+      "phase": "before",
+      "index": 3,
+      "closeCode": 0,
+      "reportSha256": "a3abc273648c66bcb01ff4c1989b38a65a375378a23037244ebdc628fc8dfaa6",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "9db33034614e11c31abe293e57a63d594f9c8755c5993529206a053fc3f89f7d"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918844430,
+        "measuredEndedAt": 1792918846101,
+        "elapsedMs": 1671,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 974.1999999880791,
+              "duration": 108
+            }
+          ],
+          "navigationMs": 530,
+          "readyMs": 373,
+          "firstGraphFrameMs": 1114,
+          "latestGraphFrameMs": 1421
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918844430,
+          "finishedAt": 1792918845917,
+          "elapsedMs": 1487,
+          "nodeCpuMs": 733.484,
+          "childCpuMs": 754.7969999999998,
+          "browserCpuMs": 941.901,
+          "browserComplete": true,
+          "ownedCpuMs": 2430.182,
+          "registeredGitCalls": 18,
+          "nodeHeapAfterAwaitDelta": 2239080,
+          "nodeRssAfterAwaitDelta": 29507584,
+          "nodeMemoryBefore": {
+            "rss": 141983744,
+            "heapTotal": 80789504,
+            "heapUsed": 58352208,
+            "external": 3782001,
+            "arrayBuffers": 91268
+          },
+          "nodeMemoryAfter": {
+            "rss": 171491328,
+            "heapTotal": 93372416,
+            "heapUsed": 60591288,
+            "external": 4196553,
+            "arrayBuffers": 476655
+          },
+          "childrenBefore": {
+            "userCpuMs": 630.139,
+            "systemCpuMs": 1495.755,
+            "minorFaults": 30100,
+            "majorFaults": 416
+          },
+          "childrenAfter": {
+            "userCpuMs": 908.911,
+            "systemCpuMs": 1971.78,
+            "minorFaults": 48182,
+            "majorFaults": 558
+          },
+          "childDeltas": {
+            "userCpuMs": 278.77199999999993,
+            "systemCpuMs": 476.02499999999986,
+            "minorFaults": 18082,
+            "majorFaults": 142
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 85930,
+              "cpuTime": 0.230289
+            },
+            {
+              "type": "renderer",
+              "id": 85949,
+              "cpuTime": 0.093435
+            },
+            {
+              "type": "GPU",
+              "id": 85947,
+              "cpuTime": 0.133105
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 85948,
+              "cpuTime": 0.061772
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 85930,
+              "cpuTime": 0.390926,
+              "deltaCpuMs": 160.637
+            },
+            {
+              "type": "renderer",
+              "id": 85949,
+              "cpuTime": 0.716417,
+              "deltaCpuMs": 622.982
+            },
+            {
+              "type": "GPU",
+              "id": 85947,
+              "cpuTime": 0.248555,
+              "deltaCpuMs": 115.45
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 85948,
+              "cpuTime": 0.104604,
+              "deltaCpuMs": 42.832
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 8,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.004,
+              "scanMs": 127.206,
+              "nodeRssBytes": 141950976,
+              "chromiumRssBytes": 261488640,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 403439616,
+              "pids": [
+                85672,
+                85930,
+                85947,
+                85948,
+                85949
+              ]
+            },
+            "last": {
+              "afterStartMs": 1620.702,
+              "scanMs": 159.089,
+              "nodeRssBytes": 171507712,
+              "chromiumRssBytes": 396918784,
+              "otherOwnedRssBytes": 1753088,
+              "sumRssBytes": 570179584,
+              "pids": [
+                85672,
+                85930,
+                85947,
+                85948,
+                85949,
+                86072
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 1471.505,
+              "scanMs": 141.849,
+              "nodeRssBytes": 171360256,
+              "chromiumRssBytes": 396083200,
+              "otherOwnedRssBytes": 16400384,
+              "sumRssBytes": 583843840,
+              "pids": [
+                85672,
+                85930,
+                85947,
+                85948,
+                85949,
+                86054,
+                86069,
+                86072,
+                86074,
+                86078
+              ]
+            },
+            "maxObservedGapMs": 319.17699999999996,
+            "componentMaxBytes": {
+              "node": 171507712,
+              "chromium": 396918784,
+              "otherOwned": 16400384
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-3-before.json.memory-cold-startup.json",
+            "rawSamplesSha256": "d9563e869ffb7ebf12ccb64f2692911b98b0164289df5a596cf726c97650a714",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 18,
+        "gitCommands": {
+          "worktree": 2,
+          "for-each-ref": 4,
+          "log": 1,
+          "remote": 1,
+          "symbolic-ref": 1,
+          "config": 2,
+          "rev-list": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 1860,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 1145,
+          "latestMutationToFrameMs": null,
+          "renderMs": 84,
+          "frameMs": 34,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 85672,
+        "observerPid": 86000,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.004,
+            "scanMs": 127.206,
+            "nodeRssBytes": 141950976,
+            "chromiumRssBytes": 261488640,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 403439616,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949
+            ]
+          },
+          {
+            "afterStartMs": 178.118,
+            "scanMs": 206.494,
+            "nodeRssBytes": 145244160,
+            "chromiumRssBytes": 265633792,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 410877952,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949
+            ]
+          },
+          {
+            "afterStartMs": 436.382,
+            "scanMs": 263.429,
+            "nodeRssBytes": 156041216,
+            "chromiumRssBytes": 308281344,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 464322560,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949
+            ]
+          },
+          {
+            "afterStartMs": 755.559,
+            "scanMs": 159.192,
+            "nodeRssBytes": 158597120,
+            "chromiumRssBytes": 313458688,
+            "otherOwnedRssBytes": 2392064,
+            "sumRssBytes": 474447872,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949,
+              86039,
+              86042
+            ]
+          },
+          {
+            "afterStartMs": 965.337,
+            "scanMs": 146.739,
+            "nodeRssBytes": 158613504,
+            "chromiumRssBytes": 313638912,
+            "otherOwnedRssBytes": 11927552,
+            "sumRssBytes": 484179968,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949,
+              86039,
+              86042
+            ]
+          },
+          {
+            "afterStartMs": 1162.638,
+            "scanMs": 253.387,
+            "nodeRssBytes": 169541632,
+            "chromiumRssBytes": 347029504,
+            "otherOwnedRssBytes": 15056896,
+            "sumRssBytes": 531628032,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949,
+              86047,
+              86049,
+              86052,
+              86054,
+              86055
+            ]
+          },
+          {
+            "afterStartMs": 1471.505,
+            "scanMs": 141.849,
+            "nodeRssBytes": 171360256,
+            "chromiumRssBytes": 396083200,
+            "otherOwnedRssBytes": 16400384,
+            "sumRssBytes": 583843840,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949,
+              86054,
+              86069,
+              86072,
+              86074,
+              86078
+            ]
+          },
+          {
+            "afterStartMs": 1620.702,
+            "scanMs": 159.089,
+            "nodeRssBytes": 171507712,
+            "chromiumRssBytes": 396918784,
+            "otherOwnedRssBytes": 1753088,
+            "sumRssBytes": 570179584,
+            "pids": [
+              85672,
+              85930,
+              85947,
+              85948,
+              85949,
+              86072
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "d9563e869ffb7ebf12ccb64f2692911b98b0164289df5a596cf726c97650a714"
+    },
+    {
+      "mode": "memory",
+      "phase": "after",
+      "index": 4,
+      "closeCode": 0,
+      "reportSha256": "97ddfc0ec2db2cb0ff5f0ddccc83a34151f9b12a14b81143c1e088e2a44f6ef1",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918863679,
+        "measuredEndedAt": 1792918865562,
+        "elapsedMs": 1883,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 1079.5999999940395,
+              "duration": 117
+            }
+          ],
+          "navigationMs": 157,
+          "readyMs": 143,
+          "firstGraphFrameMs": 1227,
+          "latestGraphFrameMs": 1584
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918863679,
+          "finishedAt": 1792918865416,
+          "elapsedMs": 1737,
+          "nodeCpuMs": 504.364,
+          "childCpuMs": 1138.4209999999998,
+          "browserCpuMs": 730.4209999999999,
+          "browserComplete": true,
+          "ownedCpuMs": 2373.2059999999997,
+          "registeredGitCalls": 26,
+          "nodeHeapAfterAwaitDelta": 18356800,
+          "nodeRssAfterAwaitDelta": 14876672,
+          "nodeMemoryBefore": {
+            "rss": 156696576,
+            "heapTotal": 86212608,
+            "heapUsed": 51196992,
+            "external": 3790010,
+            "arrayBuffers": 99277
+          },
+          "nodeMemoryAfter": {
+            "rss": 171573248,
+            "heapTotal": 92504064,
+            "heapUsed": 69553792,
+            "external": 4195789,
+            "arrayBuffers": 475891
+          },
+          "childrenBefore": {
+            "userCpuMs": 637.542,
+            "systemCpuMs": 1465.8229999999999,
+            "minorFaults": 30018,
+            "majorFaults": 508
+          },
+          "childrenAfter": {
+            "userCpuMs": 1076.021,
+            "systemCpuMs": 2165.765,
+            "minorFaults": 61271,
+            "majorFaults": 721
+          },
+          "childDeltas": {
+            "userCpuMs": 438.4789999999999,
+            "systemCpuMs": 699.942,
+            "minorFaults": 31253,
+            "majorFaults": 213
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 86442,
+              "cpuTime": 0.23679
+            },
+            {
+              "type": "renderer",
+              "id": 86470,
+              "cpuTime": 0.104517
+            },
+            {
+              "type": "GPU",
+              "id": 86451,
+              "cpuTime": 0.135045
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 86453,
+              "cpuTime": 0.067818
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 86442,
+              "cpuTime": 0.322966,
+              "deltaCpuMs": 86.17599999999997
+            },
+            {
+              "type": "renderer",
+              "id": 86470,
+              "cpuTime": 0.59753,
+              "deltaCpuMs": 493.01300000000003
+            },
+            {
+              "type": "GPU",
+              "id": 86451,
+              "cpuTime": 0.27268,
+              "deltaCpuMs": 137.635
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 86453,
+              "cpuTime": 0.081415,
+              "deltaCpuMs": 13.596999999999998
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 8,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.003,
+              "scanMs": 185.503,
+              "nodeRssBytes": 156680192,
+              "chromiumRssBytes": 260521984,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 417202176,
+              "pids": [
+                86212,
+                86442,
+                86451,
+                86453,
+                86470
+              ]
+            },
+            "last": {
+              "afterStartMs": 1927.711,
+              "scanMs": 117.436,
+              "nodeRssBytes": 171573248,
+              "chromiumRssBytes": 392626176,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 564199424,
+              "pids": [
+                86212,
+                86442,
+                86451,
+                86453,
+                86470
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 1686.204,
+              "scanMs": 241.165,
+              "nodeRssBytes": 171442176,
+              "chromiumRssBytes": 392216576,
+              "otherOwnedRssBytes": 5079040,
+              "sumRssBytes": 568737792,
+              "pids": [
+                86212,
+                86442,
+                86451,
+                86453,
+                86470,
+                86645,
+                86655,
+                86656
+              ]
+            },
+            "maxObservedGapMs": 355.0720000000001,
+            "componentMaxBytes": {
+              "node": 171573248,
+              "chromium": 392626176,
+              "otherOwned": 20561920
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-4-after.json.memory-cold-startup.json",
+            "rawSamplesSha256": "9bf6e7221d4f2e736cfbddb2235788a58454d94eaeaf1a5b69a87e1598ed4708",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 26,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "config": 5,
+          "remote": 1,
+          "symbolic-ref": 2,
+          "rev-list": 2,
+          "rev-parse": 4,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 1719,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 17,
+          "mutationToFrameMs": 1257,
+          "latestMutationToFrameMs": null,
+          "renderMs": 84,
+          "frameMs": 31,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 86212,
+        "observerPid": 86555,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.003,
+            "scanMs": 185.503,
+            "nodeRssBytes": 156680192,
+            "chromiumRssBytes": 260521984,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 417202176,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470
+            ]
+          },
+          {
+            "afterStartMs": 239.492,
+            "scanMs": 247.477,
+            "nodeRssBytes": 157581312,
+            "chromiumRssBytes": 271794176,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 429375488,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470
+            ]
+          },
+          {
+            "afterStartMs": 542.178,
+            "scanMs": 190.046,
+            "nodeRssBytes": 161300480,
+            "chromiumRssBytes": 312295424,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 473595904,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470
+            ]
+          },
+          {
+            "afterStartMs": 784.45,
+            "scanMs": 203.929,
+            "nodeRssBytes": 161349632,
+            "chromiumRssBytes": 313737216,
+            "otherOwnedRssBytes": 9519104,
+            "sumRssBytes": 484605952,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470,
+              86584,
+              86586
+            ]
+          },
+          {
+            "afterStartMs": 1043.664,
+            "scanMs": 301.541,
+            "nodeRssBytes": 163135488,
+            "chromiumRssBytes": 317227008,
+            "otherOwnedRssBytes": 20561920,
+            "sumRssBytes": 500924416,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470,
+              86598,
+              86600,
+              86602,
+              86604,
+              86606,
+              86608,
+              86611,
+              86616
+            ]
+          },
+          {
+            "afterStartMs": 1398.736,
+            "scanMs": 232.304,
+            "nodeRssBytes": 171360256,
+            "chromiumRssBytes": 362692608,
+            "otherOwnedRssBytes": 5062656,
+            "sumRssBytes": 539115520,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470,
+              86641,
+              86645
+            ]
+          },
+          {
+            "afterStartMs": 1686.204,
+            "scanMs": 241.165,
+            "nodeRssBytes": 171442176,
+            "chromiumRssBytes": 392216576,
+            "otherOwnedRssBytes": 5079040,
+            "sumRssBytes": 568737792,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470,
+              86645,
+              86655,
+              86656
+            ]
+          },
+          {
+            "afterStartMs": 1927.711,
+            "scanMs": 117.436,
+            "nodeRssBytes": 171573248,
+            "chromiumRssBytes": 392626176,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 564199424,
+            "pids": [
+              86212,
+              86442,
+              86451,
+              86453,
+              86470
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "9bf6e7221d4f2e736cfbddb2235788a58454d94eaeaf1a5b69a87e1598ed4708"
+    },
+    {
+      "mode": "memory",
+      "phase": "before",
+      "index": 5,
+      "closeCode": 0,
+      "reportSha256": "922d979e4ba3ef7b447461c449a19aa56c54bbc6a24a600b7631eb824bcf6eb0",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "f3e9b016895772de3d3d9c6d781a6763ca26b03a46d440a6d02a1cfd11ace415"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918883327,
+        "measuredEndedAt": 1792918885553,
+        "elapsedMs": 2226,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1026.2000000178814,
+              "duration": 117
+            }
+          ],
+          "navigationMs": 500,
+          "readyMs": 306,
+          "firstGraphFrameMs": 1175,
+          "latestGraphFrameMs": 2032
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918883327,
+          "finishedAt": 1792918885412,
+          "elapsedMs": 2085,
+          "nodeCpuMs": 827.404,
+          "childCpuMs": 1246.0079999999998,
+          "browserCpuMs": 966.492,
+          "browserComplete": true,
+          "ownedCpuMs": 3039.9039999999995,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 17273264,
+          "nodeRssAfterAwaitDelta": 19955712,
+          "nodeMemoryBefore": {
+            "rss": 155713536,
+            "heapTotal": 81838080,
+            "heapUsed": 54378280,
+            "external": 3781861,
+            "arrayBuffers": 91128
+          },
+          "nodeMemoryAfter": {
+            "rss": 175669248,
+            "heapTotal": 96518144,
+            "heapUsed": 71651544,
+            "external": 4032840,
+            "arrayBuffers": 312942
+          },
+          "childrenBefore": {
+            "userCpuMs": 680.332,
+            "systemCpuMs": 1407.036,
+            "minorFaults": 30090,
+            "majorFaults": 458
+          },
+          "childrenAfter": {
+            "userCpuMs": 1118.291,
+            "systemCpuMs": 2215.085,
+            "minorFaults": 58718,
+            "majorFaults": 650
+          },
+          "childDeltas": {
+            "userCpuMs": 437.95899999999995,
+            "systemCpuMs": 808.049,
+            "minorFaults": 28628,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 87033,
+              "cpuTime": 0.237025
+            },
+            {
+              "type": "renderer",
+              "id": 87055,
+              "cpuTime": 0.109285
+            },
+            {
+              "type": "GPU",
+              "id": 87050,
+              "cpuTime": 0.13894
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 87051,
+              "cpuTime": 0.060172
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 87033,
+              "cpuTime": 0.408146,
+              "deltaCpuMs": 171.121
+            },
+            {
+              "type": "renderer",
+              "id": 87055,
+              "cpuTime": 0.734775,
+              "deltaCpuMs": 625.49
+            },
+            {
+              "type": "GPU",
+              "id": 87050,
+              "cpuTime": 0.263358,
+              "deltaCpuMs": 124.41799999999998
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 87051,
+              "cpuTime": 0.105635,
+              "deltaCpuMs": 45.463
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 12,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.003,
+              "scanMs": 119.802,
+              "nodeRssBytes": 155680768,
+              "chromiumRssBytes": 261275648,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 416956416,
+              "pids": [
+                86916,
+                87033,
+                87050,
+                87051,
+                87055
+              ]
+            },
+            "last": {
+              "afterStartMs": 2210.217,
+              "scanMs": 121.342,
+              "nodeRssBytes": 175669248,
+              "chromiumRssBytes": 393428992,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 569098240,
+              "pids": [
+                86916,
+                87033,
+                87050,
+                87051,
+                87055
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 1480.435,
+              "scanMs": 171.3,
+              "nodeRssBytes": 175489024,
+              "chromiumRssBytes": 393134080,
+              "otherOwnedRssBytes": 45957120,
+              "sumRssBytes": 614580224,
+              "pids": [
+                86916,
+                87033,
+                87050,
+                87051,
+                87055,
+                87182,
+                87188,
+                87193
+              ]
+            },
+            "maxObservedGapMs": 280.34900000000005,
+            "componentMaxBytes": {
+              "node": 175669248,
+              "chromium": 393428992,
+              "otherOwned": 45957120
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-5-before.json.memory-cold-startup.json",
+            "rawSamplesSha256": "6d5e7917ab75a3750ac4c25904acdacd112c2be93fef71ad988b1bd3330a8d99",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-list": 2,
+          "rev-parse": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2051,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 17,
+          "mutationToFrameMs": 1195,
+          "latestMutationToFrameMs": null,
+          "renderMs": 93,
+          "frameMs": 34,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 86916,
+        "observerPid": 87114,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.003,
+            "scanMs": 119.802,
+            "nodeRssBytes": 155680768,
+            "chromiumRssBytes": 261275648,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 416956416,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055
+            ]
+          },
+          {
+            "afterStartMs": 176.11,
+            "scanMs": 154.945,
+            "nodeRssBytes": 157007872,
+            "chromiumRssBytes": 272695296,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 429703168,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055
+            ]
+          },
+          {
+            "afterStartMs": 381.83,
+            "scanMs": 160.797,
+            "nodeRssBytes": 162463744,
+            "chromiumRssBytes": 309051392,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 471515136,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055
+            ]
+          },
+          {
+            "afterStartMs": 593.745,
+            "scanMs": 130.799,
+            "nodeRssBytes": 164888576,
+            "chromiumRssBytes": 310542336,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 480051200,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87135
+            ]
+          },
+          {
+            "afterStartMs": 779.691,
+            "scanMs": 146.987,
+            "nodeRssBytes": 166002688,
+            "chromiumRssBytes": 314589184,
+            "otherOwnedRssBytes": 3112960,
+            "sumRssBytes": 483704832,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87149,
+              87151
+            ]
+          },
+          {
+            "afterStartMs": 979.166,
+            "scanMs": 225.079,
+            "nodeRssBytes": 167706624,
+            "chromiumRssBytes": 318504960,
+            "otherOwnedRssBytes": 21839872,
+            "sumRssBytes": 508051456,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87157,
+              87159,
+              87161,
+              87163,
+              87165,
+              87167,
+              87170,
+              87172,
+              87175,
+              87177
+            ]
+          },
+          {
+            "afterStartMs": 1259.515,
+            "scanMs": 165.752,
+            "nodeRssBytes": 175374336,
+            "chromiumRssBytes": 363495424,
+            "otherOwnedRssBytes": 5062656,
+            "sumRssBytes": 543932416,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87182,
+              87188
+            ]
+          },
+          {
+            "afterStartMs": 1480.435,
+            "scanMs": 171.3,
+            "nodeRssBytes": 175489024,
+            "chromiumRssBytes": 393134080,
+            "otherOwnedRssBytes": 45957120,
+            "sumRssBytes": 614580224,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87182,
+              87188,
+              87193
+            ]
+          },
+          {
+            "afterStartMs": 1704.564,
+            "scanMs": 133.947,
+            "nodeRssBytes": 175554560,
+            "chromiumRssBytes": 393265152,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 573865984,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87188
+            ]
+          },
+          {
+            "afterStartMs": 1891.351,
+            "scanMs": 120.349,
+            "nodeRssBytes": 175554560,
+            "chromiumRssBytes": 393248768,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 573849600,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87188
+            ]
+          },
+          {
+            "afterStartMs": 2063.001,
+            "scanMs": 133.597,
+            "nodeRssBytes": 175554560,
+            "chromiumRssBytes": 393248768,
+            "otherOwnedRssBytes": 5046272,
+            "sumRssBytes": 573849600,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055,
+              87188
+            ]
+          },
+          {
+            "afterStartMs": 2210.217,
+            "scanMs": 121.342,
+            "nodeRssBytes": 175669248,
+            "chromiumRssBytes": 393428992,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 569098240,
+            "pids": [
+              86916,
+              87033,
+              87050,
+              87051,
+              87055
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "6d5e7917ab75a3750ac4c25904acdacd112c2be93fef71ad988b1bd3330a8d99"
+    },
+    {
+      "mode": "memory",
+      "phase": "before",
+      "index": 6,
+      "closeCode": 0,
+      "reportSha256": "a1d014dd36698708e5bc34ac920cee85a899bfc34a47a6b0e84d49c23df5cfd8",
+      "report": {
+        "source": {
+          "kind": "commit",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "73980f8fe22cf5cbde8a322544747f65fff482bb54d8298d9002bc1f25b785f6"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918904908,
+        "measuredEndedAt": 1792918907626,
+        "elapsedMs": 2718,
+        "startup": {
+          "scriptRequests": 55,
+          "scriptDecodedBytes": 498850,
+          "resourceRequests": 80,
+          "longTasks": [
+            {
+              "startTime": 1741,
+              "duration": 141
+            }
+          ],
+          "navigationMs": 913,
+          "readyMs": 684,
+          "firstGraphFrameMs": 1935,
+          "latestGraphFrameMs": 2218
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918904908,
+          "finishedAt": 1792918907319,
+          "elapsedMs": 2411,
+          "nodeCpuMs": 851.983,
+          "childCpuMs": 1013.249,
+          "browserCpuMs": 1145.244,
+          "browserComplete": true,
+          "ownedCpuMs": 3010.4759999999997,
+          "registeredGitCalls": 18,
+          "nodeHeapAfterAwaitDelta": 6526552,
+          "nodeRssAfterAwaitDelta": 32866304,
+          "nodeMemoryBefore": {
+            "rss": 142262272,
+            "heapTotal": 80527360,
+            "heapUsed": 58323408,
+            "external": 3782002,
+            "arrayBuffers": 91269
+          },
+          "nodeMemoryAfter": {
+            "rss": 175128576,
+            "heapTotal": 95731712,
+            "heapUsed": 64849960,
+            "external": 4021369,
+            "arrayBuffers": 301471
+          },
+          "childrenBefore": {
+            "userCpuMs": 688.415,
+            "systemCpuMs": 1617.8429999999998,
+            "minorFaults": 30026,
+            "majorFaults": 489
+          },
+          "childrenAfter": {
+            "userCpuMs": 1091.45,
+            "systemCpuMs": 2228.057,
+            "minorFaults": 54009,
+            "majorFaults": 651
+          },
+          "childDeltas": {
+            "userCpuMs": 403.0350000000001,
+            "systemCpuMs": 610.2139999999999,
+            "minorFaults": 23983,
+            "majorFaults": 162
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 87687,
+              "cpuTime": 0.252752
+            },
+            {
+              "type": "renderer",
+              "id": 87694,
+              "cpuTime": 0.106083
+            },
+            {
+              "type": "GPU",
+              "id": 87691,
+              "cpuTime": 0.156981
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 87692,
+              "cpuTime": 0.065007
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 87687,
+              "cpuTime": 0.437926,
+              "deltaCpuMs": 185.174
+            },
+            {
+              "type": "renderer",
+              "id": 87694,
+              "cpuTime": 0.848662,
+              "deltaCpuMs": 742.579
+            },
+            {
+              "type": "GPU",
+              "id": 87691,
+              "cpuTime": 0.323633,
+              "deltaCpuMs": 166.652
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 87692,
+              "cpuTime": 0.115846,
+              "deltaCpuMs": 50.839000000000006
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 10,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.006,
+              "scanMs": 295.794,
+              "nodeRssBytes": 142213120,
+              "chromiumRssBytes": 261079040,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 403292160,
+              "pids": [
+                87495,
+                87687,
+                87691,
+                87692,
+                87694
+              ]
+            },
+            "last": {
+              "afterStartMs": 2850.055,
+              "scanMs": 149.32,
+              "nodeRssBytes": 175161344,
+              "chromiumRssBytes": 396836864,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 571998208,
+              "pids": [
+                87495,
+                87687,
+                87691,
+                87692,
+                87694
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 2413.129,
+              "scanMs": 185.6,
+              "nodeRssBytes": 174964736,
+              "chromiumRssBytes": 394067968,
+              "otherOwnedRssBytes": 20086784,
+              "sumRssBytes": 589119488,
+              "pids": [
+                87495,
+                87687,
+                87691,
+                87692,
+                87694,
+                87881,
+                87886
+              ]
+            },
+            "maxObservedGapMs": 396.809,
+            "componentMaxBytes": {
+              "node": 175161344,
+              "chromium": 396836864,
+              "otherOwned": 20086784
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-6-before.json.memory-cold-startup.json",
+            "rawSamplesSha256": "8c02a493c693de4cdf8c99e9c62d2e13007ce1cb0d90a52c06ac1a3c19420e7f",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "config": 3,
+          "symbolic-ref": 2,
+          "rev-list": 2,
+          "rev-parse": 3,
+          "remote": 1,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 2577,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2044,
+          "latestMutationToFrameMs": null,
+          "renderMs": 103,
+          "frameMs": 55,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 87495,
+        "observerPid": 87766,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.006,
+            "scanMs": 295.794,
+            "nodeRssBytes": 142213120,
+            "chromiumRssBytes": 261079040,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 403292160,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694
+            ]
+          },
+          {
+            "afterStartMs": 372.214,
+            "scanMs": 344.333,
+            "nodeRssBytes": 142966784,
+            "chromiumRssBytes": 263749632,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 406716416,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694
+            ]
+          },
+          {
+            "afterStartMs": 769.023,
+            "scanMs": 262.923,
+            "nodeRssBytes": 156073984,
+            "chromiumRssBytes": 306397184,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 462471168,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694
+            ]
+          },
+          {
+            "afterStartMs": 1087.199,
+            "scanMs": 289.203,
+            "nodeRssBytes": 157188096,
+            "chromiumRssBytes": 309395456,
+            "otherOwnedRssBytes": 1327104,
+            "sumRssBytes": 467910656,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87823,
+              87825
+            ]
+          },
+          {
+            "afterStartMs": 1431.567,
+            "scanMs": 284.249,
+            "nodeRssBytes": 158859264,
+            "chromiumRssBytes": 312492032,
+            "otherOwnedRssBytes": 4636672,
+            "sumRssBytes": 475987968,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87823
+            ]
+          },
+          {
+            "afterStartMs": 1770.714,
+            "scanMs": 303.023,
+            "nodeRssBytes": 159088640,
+            "chromiumRssBytes": 313884672,
+            "otherOwnedRssBytes": 11894784,
+            "sumRssBytes": 484868096,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87846,
+              87848
+            ]
+          },
+          {
+            "afterStartMs": 2124.599,
+            "scanMs": 235.288,
+            "nodeRssBytes": 174522368,
+            "chromiumRssBytes": 318636032,
+            "otherOwnedRssBytes": 10747904,
+            "sumRssBytes": 503906304,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87859,
+              87861,
+              87878,
+              87880
+            ]
+          },
+          {
+            "afterStartMs": 2413.129,
+            "scanMs": 185.6,
+            "nodeRssBytes": 174964736,
+            "chromiumRssBytes": 394067968,
+            "otherOwnedRssBytes": 20086784,
+            "sumRssBytes": 589119488,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87881,
+              87886
+            ]
+          },
+          {
+            "afterStartMs": 2653.73,
+            "scanMs": 196.094,
+            "nodeRssBytes": 175063040,
+            "chromiumRssBytes": 396066816,
+            "otherOwnedRssBytes": 6619136,
+            "sumRssBytes": 577748992,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694,
+              87906,
+              87910
+            ]
+          },
+          {
+            "afterStartMs": 2850.055,
+            "scanMs": 149.32,
+            "nodeRssBytes": 175161344,
+            "chromiumRssBytes": 396836864,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 571998208,
+            "pids": [
+              87495,
+              87687,
+              87691,
+              87692,
+              87694
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "8c02a493c693de4cdf8c99e9c62d2e13007ce1cb0d90a52c06ac1a3c19420e7f"
+    },
+    {
+      "mode": "memory",
+      "phase": "after",
+      "index": 7,
+      "closeCode": 0,
+      "reportSha256": "327aab472f53c182567337bbbc4d53448b2f6965be60e8f8e57a49e18ea8a616",
+      "report": {
+        "source": {
+          "kind": "working-tree",
+          "commit": "2f6331eaaeee5b96b95944d31795aba12895dc2f",
+          "bundleSha256": "20de6bbfa6682f653f66861bd82668a17b178d03ef2455aedfeb14e04fadc989"
+        },
+        "fixture": {
+          "files": 1000,
+          "commits": 1800,
+          "branches": 100
+        },
+        "mode": "memory",
+        "cpuThrottle": 1,
+        "startedAt": 1792918925337,
+        "measuredEndedAt": 1792918929458,
+        "elapsedMs": 4121,
+        "startup": {
+          "scriptRequests": 1,
+          "scriptDecodedBytes": 223159,
+          "resourceRequests": 26,
+          "longTasks": [
+            {
+              "startTime": 2207.5999999940395,
+              "duration": 118
+            }
+          ],
+          "navigationMs": 207,
+          "readyMs": 138,
+          "firstGraphFrameMs": 2358,
+          "latestGraphFrameMs": 3892
+        },
+        "phaseResources": {
+          "label": "cold-startup",
+          "input": "click",
+          "startedAt": 1792918925337,
+          "finishedAt": 1792918929270,
+          "elapsedMs": 3933,
+          "nodeCpuMs": 596.611,
+          "childCpuMs": 1349.298,
+          "browserCpuMs": 1114.9759999999999,
+          "browserComplete": true,
+          "ownedCpuMs": 3060.885,
+          "registeredGitCalls": 23,
+          "nodeHeapAfterAwaitDelta": 4977552,
+          "nodeRssAfterAwaitDelta": 29310976,
+          "nodeMemoryBefore": {
+            "rss": 140509184,
+            "heapTotal": 81494016,
+            "heapUsed": 57605112,
+            "external": 3781858,
+            "arrayBuffers": 91125
+          },
+          "nodeMemoryAfter": {
+            "rss": 169820160,
+            "heapTotal": 94601216,
+            "heapUsed": 62582664,
+            "external": 4182042,
+            "arrayBuffers": 462144
+          },
+          "childrenBefore": {
+            "userCpuMs": 696.723,
+            "systemCpuMs": 1594.9850000000001,
+            "minorFaults": 30187,
+            "majorFaults": 416
+          },
+          "childrenAfter": {
+            "userCpuMs": 1194.465,
+            "systemCpuMs": 2446.541,
+            "minorFaults": 58777,
+            "majorFaults": 608
+          },
+          "childDeltas": {
+            "userCpuMs": 497.74199999999996,
+            "systemCpuMs": 851.556,
+            "minorFaults": 28590,
+            "majorFaults": 192
+          },
+          "browserBefore": [
+            {
+              "type": "browser",
+              "id": 88279,
+              "cpuTime": 0.262304
+            },
+            {
+              "type": "renderer",
+              "id": 88286,
+              "cpuTime": 0.113738
+            },
+            {
+              "type": "GPU",
+              "id": 88284,
+              "cpuTime": 0.155306
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 88285,
+              "cpuTime": 0.068546
+            }
+          ],
+          "browserAfter": [
+            {
+              "type": "browser",
+              "id": 88279,
+              "cpuTime": 0.360114,
+              "deltaCpuMs": 97.81
+            },
+            {
+              "type": "renderer",
+              "id": 88286,
+              "cpuTime": 0.852737,
+              "deltaCpuMs": 738.9989999999999
+            },
+            {
+              "type": "GPU",
+              "id": 88284,
+              "cpuTime": 0.417398,
+              "deltaCpuMs": 262.092
+            },
+            {
+              "type": "network.mojom.NetworkService",
+              "id": 88285,
+              "cpuTime": 0.084621,
+              "deltaCpuMs": 16.075000000000006
+            }
+          ],
+          "missingBrowserPids": [],
+          "phaseMemory": {
+            "complete": true,
+            "sampleCount": 18,
+            "intervalMs": 50,
+            "first": {
+              "afterStartMs": 0.006,
+              "scanMs": 141.305,
+              "nodeRssBytes": 140492800,
+              "chromiumRssBytes": 260980736,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 401473536,
+              "pids": [
+                88037,
+                88279,
+                88284,
+                88285,
+                88286
+              ]
+            },
+            "last": {
+              "afterStartMs": 4081.779,
+              "scanMs": 164.289,
+              "nodeRssBytes": 169820160,
+              "chromiumRssBytes": 397770752,
+              "otherOwnedRssBytes": 0,
+              "sumRssBytes": 567590912,
+              "pids": [
+                88037,
+                88279,
+                88284,
+                88285,
+                88286
+              ]
+            },
+            "sampledPeak": {
+              "afterStartMs": 3639.55,
+              "scanMs": 195.011,
+              "nodeRssBytes": 169672704,
+              "chromiumRssBytes": 397541376,
+              "otherOwnedRssBytes": 49528832,
+              "sumRssBytes": 616742912,
+              "pids": [
+                88037,
+                88279,
+                88284,
+                88285,
+                88286,
+                88413,
+                88431,
+                88434
+              ]
+            },
+            "maxObservedGapMs": 389.7940000000003,
+            "componentMaxBytes": {
+              "node": 169820160,
+              "chromium": 397770752,
+              "otherOwned": 49528832
+            },
+            "rawSamplesFile": "/private/tmp/gsc-cold-paired-72170.json.runs/memory-7-after.json.memory-cold-startup.json",
+            "rawSamplesSha256": "e1f21d553fc52b97199b94e4ed87cdf507701a073d284f644ec863b9394dba82",
+            "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+          },
+          "memoryRunCpuIsDiagnosticOnly": true,
+          "scope": "Instrumented click-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+          "memoryScope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+        },
+        "gitProcesses": 23,
+        "gitCommands": {
+          "worktree": 3,
+          "for-each-ref": 6,
+          "log": 1,
+          "remote": 1,
+          "rev-list": 2,
+          "symbolic-ref": 2,
+          "rev-parse": 3,
+          "config": 3,
+          "ls-remote": 1,
+          "status": 1
+        },
+        "nativeAndDomExact": true,
+        "frame": {
+          "mode": "headless-production-html",
+          "renderedRows": 300,
+          "exactRefs": true,
+          "exactRemoteTags": true,
+          "exactHeadBadge": true,
+          "exactLocalOnly": true,
+          "headInLoadedPage": true,
+          "allMessageFrameMs": 3914,
+          "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+          "allMessageSequence": 18,
+          "mutationToFrameMs": 2380,
+          "latestMutationToFrameMs": null,
+          "renderMs": 90,
+          "frameMs": 36,
+          "latestRenderMs": null,
+          "latestFrameMs": null
+        },
+        "completed": true,
+        "scope": "New browser context, empty same-origin shell, browser-cold Graph assets; OS filesystem warm from source/fixture setup. CPU throttle before production HTML navigation. Actual registered ready callback, Native Git and first/final frame included; setup, Native oracle and screenshots excluded. No active VS Code, GitHub network or OS-wide contention claim."
+      },
+      "memorySamples": {
+        "complete": true,
+        "rootPid": 88037,
+        "observerPid": 88318,
+        "intervalMs": 50,
+        "samples": [
+          {
+            "afterStartMs": 0.006,
+            "scanMs": 141.305,
+            "nodeRssBytes": 140492800,
+            "chromiumRssBytes": 260980736,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 401473536,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286
+            ]
+          },
+          {
+            "afterStartMs": 195.653,
+            "scanMs": 191.174,
+            "nodeRssBytes": 146112512,
+            "chromiumRssBytes": 275496960,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 421609472,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286
+            ]
+          },
+          {
+            "afterStartMs": 441.344,
+            "scanMs": 179.59,
+            "nodeRssBytes": 149848064,
+            "chromiumRssBytes": 312852480,
+            "otherOwnedRssBytes": 327680,
+            "sumRssBytes": 463028224,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88339,
+              88341
+            ]
+          },
+          {
+            "afterStartMs": 676.137,
+            "scanMs": 170.792,
+            "nodeRssBytes": 149880832,
+            "chromiumRssBytes": 312868864,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 467369984,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88339
+            ]
+          },
+          {
+            "afterStartMs": 902.746,
+            "scanMs": 187.402,
+            "nodeRssBytes": 149897216,
+            "chromiumRssBytes": 312918016,
+            "otherOwnedRssBytes": 4620288,
+            "sumRssBytes": 467435520,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88339
+            ]
+          },
+          {
+            "afterStartMs": 1141.94,
+            "scanMs": 174.216,
+            "nodeRssBytes": 149897216,
+            "chromiumRssBytes": 312934400,
+            "otherOwnedRssBytes": 4636672,
+            "sumRssBytes": 467468288,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88339
+            ]
+          },
+          {
+            "afterStartMs": 1366.983,
+            "scanMs": 174.42,
+            "nodeRssBytes": 151928832,
+            "chromiumRssBytes": 313032704,
+            "otherOwnedRssBytes": 245760,
+            "sumRssBytes": 465207296,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88373,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 1595.769,
+            "scanMs": 159.36,
+            "nodeRssBytes": 152059904,
+            "chromiumRssBytes": 314425344,
+            "otherOwnedRssBytes": 9371648,
+            "sumRssBytes": 475856896,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88373,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 1807.139,
+            "scanMs": 141.909,
+            "nodeRssBytes": 152059904,
+            "chromiumRssBytes": 314425344,
+            "otherOwnedRssBytes": 9486336,
+            "sumRssBytes": 475971584,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88373,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 2004.101,
+            "scanMs": 158.8,
+            "nodeRssBytes": 152059904,
+            "chromiumRssBytes": 314425344,
+            "otherOwnedRssBytes": 11878400,
+            "sumRssBytes": 478363648,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88373,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 2217.045,
+            "scanMs": 153.021,
+            "nodeRssBytes": 152059904,
+            "chromiumRssBytes": 314425344,
+            "otherOwnedRssBytes": 13320192,
+            "sumRssBytes": 479805440,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88373,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 2425.095,
+            "scanMs": 193.331,
+            "nodeRssBytes": 168214528,
+            "chromiumRssBytes": 363118592,
+            "otherOwnedRssBytes": 6651904,
+            "sumRssBytes": 537985024,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88375
+            ]
+          },
+          {
+            "afterStartMs": 2671.231,
+            "scanMs": 239.056,
+            "nodeRssBytes": 168919040,
+            "chromiumRssBytes": 375848960,
+            "otherOwnedRssBytes": 13615104,
+            "sumRssBytes": 558383104,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88388,
+              88391,
+              88393,
+              88395,
+              88397,
+              88401,
+              88403,
+              88405
+            ]
+          },
+          {
+            "afterStartMs": 2965.683,
+            "scanMs": 231.474,
+            "nodeRssBytes": 169295872,
+            "chromiumRssBytes": 391905280,
+            "otherOwnedRssBytes": 18874368,
+            "sumRssBytes": 580075520,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88393,
+              88395,
+              88413,
+              88415,
+              88417,
+              88420
+            ]
+          },
+          {
+            "afterStartMs": 3249.756,
+            "scanMs": 337.329,
+            "nodeRssBytes": 169672704,
+            "chromiumRssBytes": 397459456,
+            "otherOwnedRssBytes": 47120384,
+            "sumRssBytes": 614252544,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88413,
+              88428,
+              88431
+            ]
+          },
+          {
+            "afterStartMs": 3639.55,
+            "scanMs": 195.011,
+            "nodeRssBytes": 169672704,
+            "chromiumRssBytes": 397541376,
+            "otherOwnedRssBytes": 49528832,
+            "sumRssBytes": 616742912,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88413,
+              88431,
+              88434
+            ]
+          },
+          {
+            "afterStartMs": 3888.541,
+            "scanMs": 183.211,
+            "nodeRssBytes": 169705472,
+            "chromiumRssBytes": 397541376,
+            "otherOwnedRssBytes": 14303232,
+            "sumRssBytes": 581550080,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286,
+              88431,
+              88440,
+              88442
+            ]
+          },
+          {
+            "afterStartMs": 4081.779,
+            "scanMs": 164.289,
+            "nodeRssBytes": 169820160,
+            "chromiumRssBytes": 397770752,
+            "otherOwnedRssBytes": 0,
+            "sumRssBytes": 567590912,
+            "pids": [
+              88037,
+              88279,
+              88284,
+              88285,
+              88286
+            ]
+          }
+        ],
+        "errors": [],
+        "scope": "Sampled simultaneous process RSS; observer/ps excluded. Includes benchmark Node, known Chromium and other owned descendants. Short-lived children or peaks between samples may be missed; summed RSS can double-count shared pages and is not physical/retained heap."
+      },
+      "memorySamplesSha256": "e1f21d553fc52b97199b94e4ed87cdf507701a073d284f644ec863b9394dba82"
+    }
+  ],
+  "completed": true,
+  "scope": "24 independent Node/browser lifetimes, B/A/A/B+A/B/B/A per separate latency/CPU/sampled-RSS mode. Browser-cold assets on an empty same-origin shell; source/fixture filesystem warm. Real registered ready callback and Native Git/DOM verification. Latency renderer throttled before HTML navigation; resource runs unthrottled. No active VS Code, GitHub network or machine-wide artificial stress."
+}
