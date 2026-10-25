@@ -41,7 +41,7 @@ async function exercise(page: Page, measure: boolean) {
     }
     w.__widthRevision = revision;
     const longRow = root.querySelector<HTMLElement>('.row[data-index="200"]')!;
-    return { samples, rows: root.querySelectorAll(":scope > .row").length, kept: kept === root.querySelector('.row[data-index="1000"]'),
+    return { samples, rows: root.querySelectorAll(":scope .row").length, kept: kept === root.querySelector('.row[data-index="1000"]'),
       width: parseFloat(root.style.width), right: longRow.offsetLeft + longRow.scrollWidth,
       focus: document.activeElement === graph, selected: root.querySelector('.row[data-index="1"]')?.classList.contains("selected") };
   }, measure);
@@ -61,7 +61,7 @@ async function measure(browser: Browser, phase: string, code: string) {
   try {
     const load = page.addScriptTag.bind(page);
     page.addScriptTag = options => load(options.path?.endsWith(file) ? { content: code } : options);
-    await mountReferenceGraph(page, false, 1);
+    await mountReferenceGraph(page, false, 1, false);
     await page.keyboard.press("Escape"); await page.locator('.row[data-index="1"] .commit-hash').click(); await page.keyboard.press("Escape");
     await page.locator("#graph").focus();
     await exercise(page, false);

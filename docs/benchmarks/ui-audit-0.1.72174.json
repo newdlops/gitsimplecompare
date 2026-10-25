@@ -1,0 +1,35 @@
+{
+  "version": "0.1.72174",
+  "scope": "Changed Graph DOM/geometry and existing focus styles only; not a full-product WCAG certification.",
+  "implementationIntegrity": "pass; product controls, tokens, all row DOM/search semantics retained; new offscreen groups have no interactive roles or content hiding",
+  "dimensions": {
+    "accessibility": {
+      "score": 3,
+      "evidence": "focus identity/nativefind/distant keyboard focus tested; no screen-reader certification"
+    },
+    "performance": {
+      "score": 3,
+      "evidence": "separatepairedlatency/CPU; group geometry usesinline values; actualupdatedVSCode session stillunproven"
+    },
+    "responsive": {
+      "score": 3,
+      "evidence": "390/768/1440 viewport mouse/scroll/drag checks; no physicaltouch claim"
+    },
+    "theming": {
+      "score": 3,
+      "evidence": "no new colors; samefocus var declarations relocated; dark captures inspected, other themes not recertified"
+    },
+    "integrity": {
+      "score": 4,
+      "evidence": "bounded group ownership/reset; no dependencies, no fabricated UI data; detector findingsverified"
+    }
+  },
+  "newP0": 0,
+  "newP1": 0,
+  "mechanicalDetector": {
+    "initial": [],
+    "confirmation": []
+  },
+  "guidelinesSource": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md",
+  "outOfScopeExistingToolingFinding": "Impeccable reports .impeccable/design.json older than DESIGN.md; not modified. Optional document refresh remains separate."
+}

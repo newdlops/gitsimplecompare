@@ -62,10 +62,10 @@
   function prepare(root, delta, elementAt) {
     const svg = root.querySelector("svg");
     const cached = delta?.rowStart ? elementAt?.(delta.rowStart - 1) : null;
-    const last = cached?.parentElement === root && cached.classList.contains("row") &&
+    const last = window.GscGraphRowGroups.owns(root, cached) && cached.classList.contains("row") &&
       Number(cached.dataset.index) === delta.rowStart - 1 && !cached.hasAttribute("data-reflog-virtual") ? cached
-      : delta?.rowStart ? root.querySelector(`:scope > .row[data-index="${delta.rowStart - 1}"]:not([data-reflog-virtual])`) : null;
-    if (!delta || !svg?.__gscEdgeElements || (delta.rowStart && !last)) { root.innerHTML = ""; return false; }
+      : delta?.rowStart ? root.querySelector(`:scope .row[data-index="${delta.rowStart - 1}"]:not([data-reflog-virtual])`) : null;
+    if (!delta || !svg?.__gscEdgeElements || (delta.rowStart && !last)) { window.GscGraphRowGroups.reset(root); root.innerHTML = ""; return false; }
     root.querySelector("#graph-tail")?.remove();
     root.querySelectorAll("[data-reflog-virtual]").forEach(node => node.remove());
     return true;
@@ -74,24 +74,24 @@
   /** SVG가 이미 첫 위치에 있으면 이동하지 않아 keyboard focus와 hover 상태를 유지한다. */
   function placeSvg(root, svg) { if (root.firstChild !== svg) root.prepend(svg); }
 
-  /** @param elementAt 기존 행 인덱스 조회 함수. 이미 있는 행을 유지하고 변경·추가 행과 실제 레인 폭 변화만 반영한다. */
-  function renderRows(root, rows, width, build, delta, elementAt) {
+  /** @param elementAt 기존 행 인덱스 조회 함수 @param rowHeight renderer와 같은 행 높이. 기존 DOM을 유지하고 변경·추가 행과 레인 폭만 반영한다. */
+  function renderRows(root, rows, width, build, delta, elementAt, rowHeight) {
     if (!delta) {
       const fragment = document.createDocumentFragment();
       rows.forEach((row, index) => fragment.appendChild(build(row, index, width)));
-      root.appendChild(fragment);
+      window.GscGraphRowGroups.append(root, fragment, rows.length, rowHeight);
       return;
     }
-    const previousWidth = root.querySelector(":scope > .row")?.style.left;
+    const previousWidth = root.querySelector(":scope .row")?.style.left;
     for (const item of delta.rowUpdates) {
-      const existing = elementAt?.(item.index) || root.querySelector(`:scope > .row[data-index="${item.index}"]:not([data-reflog-virtual])`);
+      const existing = elementAt?.(item.index) || root.querySelector(`:scope .row[data-index="${item.index}"]:not([data-reflog-virtual])`);
       existing?.replaceWith(build(item.row, item.index, width));
     }
     const fragment = document.createDocumentFragment();
     for (let index = delta.rowStart; index < rows.length; index++) fragment.appendChild(build(rows[index], index, width));
-    root.appendChild(fragment);
+    window.GscGraphRowGroups.append(root, fragment, rows.length, rowHeight);
     if (previousWidth !== `${width}px`) {
-      for (const node of root.querySelectorAll(":scope > .row")) if (node.style.left !== `${width}px`) node.style.left = `${width}px`;
+      for (const node of root.querySelectorAll(":scope .row")) if (node.style.left !== `${width}px`) node.style.left = `${width}px`;
     }
   }
 

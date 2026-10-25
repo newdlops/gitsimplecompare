@@ -32,6 +32,7 @@ import "./graphContextMenu.js";
 import "./graphDetail.js";
 import "./graphBranchFilter.js";
 import "./graphViewport.js";
+import "./graphRowGroups.js";
 import "./graphRowSync.js";
 import "./graphDetailResize.js";
 import "./graphDetailVisibility.js";

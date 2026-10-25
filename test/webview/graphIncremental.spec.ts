@@ -24,21 +24,21 @@ test("graph page append preserves unchanged row, SVG, focus and viewport and rep
   const input = history(2200), before = layoutGraph(input.slice(0, 2000)), after = layoutGraph(input);
   const state = { loadedCount: 2000, hasMore: true, loading: false, reset: true, colorScope: "/fixture" };
   await dispatchWebviewMessage(page, { type: "graph", data: before, revision: 1, state });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(2000);
-  await page.locator('#graph-content > .row[data-hash="commit-205"]').click();
+  await expect(page.locator("#graph-content .row")).toHaveCount(2000);
+  await page.locator('#graph-content .row[data-hash="commit-205"]').click();
   await page.evaluate(() => {
     const w: any = window;
-    w.__row = document.querySelector('#graph-content > .row[data-hash="commit-205"]');
+    w.__row = document.querySelector('#graph-content .row[data-hash="commit-205"]');
     w.__svg = document.querySelector("#graph-content svg");
     w.__node = document.querySelector('.node[data-hash="commit-205"]');
     w.__focus = document.getElementById("graph"); w.__focus.focus(); w.__scroll = w.__focus.scrollTop;
     w.__graphEvents = 0; window.addEventListener("message", event => { if (event.data?.type === "graph") w.__graphEvents++; });
   });
   await dispatchWebviewMessage(page, { type: "graphDelta", delta: delta(before, after), state: { ...state, loadedCount: 2200, reset: false } });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(2200);
+  await expect(page.locator("#graph-content .row")).toHaveCount(2200);
   expect(await page.evaluate(() => {
     const w: any = window; return {
-      row: w.__row === document.querySelector('#graph-content > .row[data-hash="commit-205"]'),
+      row: w.__row === document.querySelector('#graph-content .row[data-hash="commit-205"]'),
       svg: w.__svg === document.querySelector("#graph-content svg"), node: w.__node === document.querySelector('.node[data-hash="commit-205"]'),
       focus: document.activeElement === w.__focus, scroll: document.getElementById("graph")!.scrollTop === w.__scroll,
       events: w.__graphEvents, stats: w.GscGraphDataUpdates.stats(),
@@ -47,7 +47,7 @@ test("graph page append preserves unchanged row, SVG, focus and viewport and rep
     stats: { revision: 2, rows: 2200, edges: 2199, waiting: false } });
   for (let i = 0; i < 2; i++) await dispatchWebviewMessage(page, { type: "graphDelta", delta: { ...delta(before, after), baseRevision: 9, revision: 10 }, state });
   expect((await readPostedMessages(page)).filter((m: any) => m.type === "resyncGraph")).toHaveLength(1);
-  await expect(page.locator("#graph-content > .row")).toHaveCount(2200);
+  await expect(page.locator("#graph-content .row")).toHaveCount(2200);
   await dispatchWebviewMessage(page, { type: "graph", data: after, revision: 10, state: { ...state, loadedCount: 2200, reset: false } });
   expect(await page.evaluate(() => (window as any).GscGraphDataUpdates.stats().waiting)).toBe(false);
 });
@@ -79,8 +79,8 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await dispatchWebviewMessage(page, { type: "graphDelta", delta: { ...delta(before, after),
       rowUpdates: before.rows.flatMap((row, index) => JSON.stringify(row) === JSON.stringify(after.rows[index]) ? [] : [{ index, row: after.rows[index] }]) },
       state: { ...state, reset: false, loadedCount: 120 } });
-    await expect(page.locator("#graph-content > .row")).toHaveCount(120);
-    await page.locator('#graph-content > .row[data-hash="commit-4"]').click();
+    await expect(page.locator("#graph-content .row")).toHaveCount(120);
+    await page.locator('#graph-content .row[data-hash="commit-4"]').click();
     if (width < 1100) await page.keyboard.press("Escape");
     await page.mouse.move(width - 1, height - 1);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));

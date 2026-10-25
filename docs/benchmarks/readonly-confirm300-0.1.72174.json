@@ -1,0 +1,2475 @@
+{
+  "completed": true,
+  "order": [
+    "before",
+    "after",
+    "after",
+    "before",
+    "after",
+    "before",
+    "before",
+    "after"
+  ],
+  "modes": [
+    "latency",
+    "cpu"
+  ],
+  "runs": [
+    {
+      "mode": "latency",
+      "index": 0,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:51:49.526Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961512054,
+          "endedAt": 1792961514876,
+          "elapsedMs": 2822,
+          "readMs": 1048.7825000000003,
+          "layoutMs": 2.991291999999703,
+          "nodeCpuMs": 247.24,
+          "nodeEventLoopDelayMaxMs": 71.827455,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 1512.7999999821186,
+                "duration": 84
+              },
+              {
+                "startTime": 1672.8999999761581,
+                "duration": 378
+              },
+              {
+                "startTime": 2051.5999999940395,
+                "duration": 723
+              }
+            ],
+            "navigationMs": 465,
+            "readyMs": 409,
+            "firstGraphFrameMs": 2782,
+            "latestGraphFrameMs": 2782
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 2798,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 2799,
+            "latestMutationToFrameMs": 2799,
+            "renderMs": 243,
+            "frameMs": 757,
+            "latestRenderMs": 243,
+            "latestFrameMs": 757
+          },
+          "selectionRoundTripMs": 313.2492920000004,
+          "selectionEvent": {
+            "frameMs": 111.39999997615814
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 902,
+              "syncSpawnMs": 24,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 1045,
+              "syncSpawnMs": 30,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            16.4384765625,
+            21.48486328125,
+            21.93701171875
+          ],
+          "systemLoadAfter": [
+            17.2041015625,
+            21.5595703125,
+            21.96044921875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 1,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:51:57.002Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961520349,
+          "endedAt": 1792961522795,
+          "elapsedMs": 2446,
+          "readMs": 1785.1908329999997,
+          "layoutMs": 0.899916000000303,
+          "nodeCpuMs": 184.436,
+          "nodeEventLoopDelayMaxMs": 40.075263,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 110,
+                "duration": 104
+              },
+              {
+                "startTime": 1911.2999999821186,
+                "duration": 50
+              },
+              {
+                "startTime": 2004.5,
+                "duration": 157
+              },
+              {
+                "startTime": 2162.2999999821186,
+                "duration": 239
+              }
+            ],
+            "navigationMs": 232,
+            "readyMs": 110,
+            "firstGraphFrameMs": 2407,
+            "latestGraphFrameMs": 2407
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 2422,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 2423,
+            "latestMutationToFrameMs": 2423,
+            "renderMs": 86,
+            "frameMs": 256,
+            "latestRenderMs": 86,
+            "latestFrameMs": 256
+          },
+          "selectionRoundTripMs": 256.64504099999976,
+          "selectionEvent": {
+            "frameMs": 166.59999999403954
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 1368,
+              "syncSpawnMs": 15,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 1784,
+              "syncSpawnMs": 21,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            16.06640625,
+            21.2509765625,
+            21.84912109375
+          ],
+          "systemLoadAfter": [
+            16.06640625,
+            21.2509765625,
+            21.84912109375
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 2,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:52:04.263Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961525007,
+          "endedAt": 1792961526643,
+          "elapsedMs": 1636,
+          "readMs": 231.5880410000002,
+          "layoutMs": 1.2910830000000715,
+          "nodeCpuMs": 231.445,
+          "nodeEventLoopDelayMaxMs": 29.949951,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 473.19999998807907,
+                "duration": 63
+              },
+              {
+                "startTime": 582.4000000059605,
+                "duration": 372
+              },
+              {
+                "startTime": 954.5,
+                "duration": 622
+              }
+            ],
+            "navigationMs": 229,
+            "readyMs": 220,
+            "firstGraphFrameMs": 1585,
+            "latestGraphFrameMs": 1585
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1601,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1603,
+            "latestMutationToFrameMs": 1603,
+            "renderMs": 241,
+            "frameMs": 660,
+            "latestRenderMs": 241,
+            "latestFrameMs": 660
+          },
+          "selectionRoundTripMs": 430.7136250000003,
+          "selectionEvent": {
+            "frameMs": 200.59999999403954
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 208,
+              "syncSpawnMs": 2,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 230,
+              "syncSpawnMs": 4,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            15.50048828125,
+            21.04736328125,
+            21.7734375
+          ],
+          "systemLoadAfter": [
+            15.50048828125,
+            21.04736328125,
+            21.7734375
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 3,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:52:10.749Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961532407,
+          "endedAt": 1792961534129,
+          "elapsedMs": 1722,
+          "readMs": 356.019542,
+          "layoutMs": 2.024333000000297,
+          "nodeCpuMs": 269.362,
+          "nodeEventLoopDelayMaxMs": 49.283071,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 719.2000000178814,
+                "duration": 64
+              },
+              {
+                "startTime": 869.5,
+                "duration": 321
+              },
+              {
+                "startTime": 1191.4000000059605,
+                "duration": 437
+              }
+            ],
+            "navigationMs": 349,
+            "readyMs": 333,
+            "firstGraphFrameMs": 1637,
+            "latestGraphFrameMs": 1637
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1698,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1700,
+            "latestMutationToFrameMs": 1700,
+            "renderMs": 198,
+            "frameMs": 472,
+            "latestRenderMs": 198,
+            "latestFrameMs": 472
+          },
+          "selectionRoundTripMs": 273.249417,
+          "selectionEvent": {
+            "frameMs": 140.09999999403954
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 301,
+              "syncSpawnMs": 6,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 352,
+              "syncSpawnMs": 6,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            15.6201171875,
+            20.97998046875,
+            21.7451171875
+          ],
+          "systemLoadAfter": [
+            15.970703125,
+            20.96337890625,
+            21.73486328125
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 4,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:52:16.371Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961537990,
+          "endedAt": 1792961540003,
+          "elapsedMs": 2013,
+          "readMs": 1384.2733750000002,
+          "layoutMs": 1.279417000000194,
+          "nodeCpuMs": 148.061,
+          "nodeEventLoopDelayMaxMs": 38.141951,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 97.7999999821186,
+                "duration": 97
+              },
+              {
+                "startTime": 1562.199999988079,
+                "duration": 174
+              },
+              {
+                "startTime": 1736.699999988079,
+                "duration": 243
+              }
+            ],
+            "navigationMs": 210,
+            "readyMs": 99,
+            "firstGraphFrameMs": 1984,
+            "latestGraphFrameMs": 1984
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1996,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1997,
+            "latestMutationToFrameMs": 1997,
+            "renderMs": 101,
+            "frameMs": 262,
+            "latestRenderMs": 101,
+            "latestFrameMs": 262
+          },
+          "selectionRoundTripMs": 208.32645799999955,
+          "selectionEvent": {
+            "frameMs": 88
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 1084,
+              "syncSpawnMs": 14,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 1382,
+              "syncSpawnMs": 12,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            15.970703125,
+            20.96337890625,
+            21.73486328125
+          ],
+          "systemLoadAfter": [
+            16.212890625,
+            20.9306640625,
+            21.71875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 5,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:52:21.070Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961542256,
+          "endedAt": 1792961544385,
+          "elapsedMs": 2129,
+          "readMs": 295.89158299999986,
+          "layoutMs": 1.6929580000000897,
+          "nodeCpuMs": 276.691,
+          "nodeEventLoopDelayMaxMs": 50.462719,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 664.7999999821186,
+                "duration": 75
+              },
+              {
+                "startTime": 825,
+                "duration": 432
+              },
+              {
+                "startTime": 1257.0999999940395,
+                "duration": 707
+              }
+            ],
+            "navigationMs": 355,
+            "readyMs": 328,
+            "firstGraphFrameMs": 1982,
+            "latestGraphFrameMs": 1982
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 2022,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 2026,
+            "latestMutationToFrameMs": 2026,
+            "renderMs": 289,
+            "frameMs": 755,
+            "latestRenderMs": 289,
+            "latestFrameMs": 755
+          },
+          "selectionRoundTripMs": 322.1287500000003,
+          "selectionEvent": {
+            "frameMs": 90.89999997615814
+          },
+          "commands": [
+            {
+              "command": "log",
+              "elapsedMs": 291,
+              "syncSpawnMs": 5,
+              "outcome": "success"
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 287,
+              "syncSpawnMs": 3,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            16.212890625,
+            20.9306640625,
+            21.71875
+          ],
+          "systemLoadAfter": [
+            17.23681640625,
+            21.064453125,
+            21.76123046875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 6,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:52:27.826Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961550764,
+          "endedAt": 1792961552127,
+          "elapsedMs": 1363,
+          "readMs": 277.3093750000007,
+          "layoutMs": 0.9624590000003082,
+          "nodeCpuMs": 217.165,
+          "nodeEventLoopDelayMaxMs": 25.919487,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 660.1999999880791,
+                "duration": 216
+              },
+              {
+                "startTime": 876.4000000059605,
+                "duration": 386
+              }
+            ],
+            "navigationMs": 281,
+            "readyMs": 274,
+            "firstGraphFrameMs": 1271,
+            "latestGraphFrameMs": 1271
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1343,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1345,
+            "latestMutationToFrameMs": 1345,
+            "renderMs": 120,
+            "frameMs": 410,
+            "latestRenderMs": 120,
+            "latestFrameMs": 410
+          },
+          "selectionRoundTripMs": 427.7436660000003,
+          "selectionEvent": {
+            "frameMs": 289.7999999821186
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 182,
+              "syncSpawnMs": 0,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 276,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            17.6982421875,
+            21.09619140625,
+            21.76806640625
+          ],
+          "systemLoadAfter": [
+            17.6982421875,
+            21.09619140625,
+            21.76806640625
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "latency",
+      "index": 7,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:52:34.655Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 6,
+          "startedAt": 1792961555403,
+          "endedAt": 1792961557019,
+          "elapsedMs": 1616,
+          "readMs": 344.10574999999994,
+          "layoutMs": 1.0617080000001806,
+          "nodeCpuMs": 222.542,
+          "nodeEventLoopDelayMaxMs": 34.406399,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 595.7000000178814,
+                "duration": 51
+              },
+              {
+                "startTime": 697.1000000238419,
+                "duration": 313
+              },
+              {
+                "startTime": 1010.2000000178814,
+                "duration": 555
+              }
+            ],
+            "navigationMs": 240,
+            "readyMs": 233,
+            "firstGraphFrameMs": 1575,
+            "latestGraphFrameMs": 1575
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1592,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1594,
+            "latestMutationToFrameMs": 1594,
+            "renderMs": 194,
+            "frameMs": 588,
+            "latestRenderMs": 194,
+            "latestFrameMs": 588
+          },
+          "selectionRoundTripMs": 427.81891700000006,
+          "selectionEvent": {
+            "frameMs": 104.7000000178814
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 309,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 343,
+              "syncSpawnMs": 2,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            17.40185546875,
+            20.97802734375,
+            21.72216796875
+          ],
+          "systemLoadAfter": [
+            17.40185546875,
+            20.97802734375,
+            21.72216796875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 0,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:52:43.844Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961567935,
+          "endedAt": 1792961568283,
+          "elapsedMs": 348,
+          "readMs": 148.9308340000007,
+          "layoutMs": 0.8477500000008149,
+          "nodeCpuMs": 142.285,
+          "nodeEventLoopDelayMaxMs": 33.325055,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 62,
+            "readyMs": 58,
+            "firstGraphFrameMs": 317,
+            "latestGraphFrameMs": 317
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 328,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 328,
+            "latestMutationToFrameMs": 328,
+            "renderMs": 14,
+            "frameMs": 36,
+            "latestRenderMs": 14,
+            "latestFrameMs": 36
+          },
+          "selectionRoundTripMs": 54.94891700000153,
+          "selectionEvent": {
+            "frameMs": 18.600000023841858
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961567935,
+            "finishedAt": 1792961568283,
+            "elapsedMs": 348,
+            "nodeCpuMs": 142.285,
+            "childCpuMs": 182.81400000000002,
+            "browserCpuMs": 198.37400000000002,
+            "browserComplete": true,
+            "ownedCpuMs": 523.4730000000001,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 4024808,
+            "nodeRssAfterAwaitDelta": 18939904,
+            "nodeMemoryBefore": {
+              "rss": 144670720,
+              "heapTotal": 70221824,
+              "heapUsed": 48345312,
+              "external": 4226421,
+              "arrayBuffers": 540993
+            },
+            "nodeMemoryAfter": {
+              "rss": 163610624,
+              "heapTotal": 86212608,
+              "heapUsed": 52370120,
+              "external": 4462274,
+              "arrayBuffers": 747681
+            },
+            "childrenBefore": {
+              "userCpuMs": 228.743,
+              "systemCpuMs": 499.598,
+              "minorFaults": 11718,
+              "majorFaults": 1821
+            },
+            "childrenAfter": {
+              "userCpuMs": 340.555,
+              "systemCpuMs": 570.6,
+              "minorFaults": 18605,
+              "majorFaults": 1837
+            },
+            "childDeltas": {
+              "userCpuMs": 111.81200000000001,
+              "systemCpuMs": 71.00200000000001,
+              "minorFaults": 6887,
+              "majorFaults": 16
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 90621,
+                "cpuTime": 0.131069
+              },
+              {
+                "type": "renderer",
+                "id": 90635,
+                "cpuTime": 0.055662
+              },
+              {
+                "type": "GPU",
+                "id": 90630,
+                "cpuTime": 0.082639
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90633,
+                "cpuTime": 0.0359
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 90621,
+                "cpuTime": 0.16666,
+                "deltaCpuMs": 35.59100000000001
+              },
+              {
+                "type": "renderer",
+                "id": 90635,
+                "cpuTime": 0.198529,
+                "deltaCpuMs": 142.86700000000002
+              },
+              {
+                "type": "GPU",
+                "id": 90630,
+                "cpuTime": 0.095719,
+                "deltaCpuMs": 13.079999999999995
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90633,
+                "cpuTime": 0.042736,
+                "deltaCpuMs": 6.836000000000002
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 141,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 148,
+              "syncSpawnMs": 2,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            22.4931640625,
+            21.94970703125,
+            22.05810546875
+          ],
+          "systemLoadAfter": [
+            22.4931640625,
+            21.94970703125,
+            22.05810546875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 1,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:52:50.740Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961571376,
+          "endedAt": 1792961572735,
+          "elapsedMs": 1359,
+          "readMs": 960.7041250000002,
+          "layoutMs": 2.1059589999999844,
+          "nodeCpuMs": 269.169,
+          "nodeEventLoopDelayMaxMs": 50.102271,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 1161.5,
+                "duration": 60
+              },
+              {
+                "startTime": 1222.0999999940395,
+                "duration": 94
+              }
+            ],
+            "navigationMs": 81,
+            "readyMs": 70,
+            "firstGraphFrameMs": 1320,
+            "latestGraphFrameMs": 1320
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1334,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1334,
+            "latestMutationToFrameMs": 1334,
+            "renderMs": 35,
+            "frameMs": 101,
+            "latestRenderMs": 35,
+            "latestFrameMs": 101
+          },
+          "selectionRoundTripMs": 250.47708299999977,
+          "selectionEvent": {
+            "frameMs": 12.399999976158142
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961571376,
+            "finishedAt": 1792961572735,
+            "elapsedMs": 1359,
+            "nodeCpuMs": 269.169,
+            "childCpuMs": 329.136,
+            "browserCpuMs": 353.735,
+            "browserComplete": true,
+            "ownedCpuMs": 952.0400000000001,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3683080,
+            "nodeRssAfterAwaitDelta": 13434880,
+            "nodeMemoryBefore": {
+              "rss": 143949824,
+              "heapTotal": 74170368,
+              "heapUsed": 48683144,
+              "external": 4214826,
+              "arrayBuffers": 529398
+            },
+            "nodeMemoryAfter": {
+              "rss": 157384704,
+              "heapTotal": 85590016,
+              "heapUsed": 52366224,
+              "external": 4445506,
+              "arrayBuffers": 730913
+            },
+            "childrenBefore": {
+              "userCpuMs": 158.84,
+              "systemCpuMs": 144.917,
+              "minorFaults": 13167,
+              "majorFaults": 247
+            },
+            "childrenAfter": {
+              "userCpuMs": 350.495,
+              "systemCpuMs": 282.398,
+              "minorFaults": 20070,
+              "majorFaults": 262
+            },
+            "childDeltas": {
+              "userCpuMs": 191.655,
+              "systemCpuMs": 137.48100000000002,
+              "minorFaults": 6903,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 90755,
+                "cpuTime": 0.141157
+              },
+              {
+                "type": "renderer",
+                "id": 90758,
+                "cpuTime": 0.062817
+              },
+              {
+                "type": "GPU",
+                "id": 90756,
+                "cpuTime": 0.082298
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90757,
+                "cpuTime": 0.038598
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 90755,
+                "cpuTime": 0.196098,
+                "deltaCpuMs": 54.94099999999999
+              },
+              {
+                "type": "renderer",
+                "id": 90758,
+                "cpuTime": 0.325624,
+                "deltaCpuMs": 262.807
+              },
+              {
+                "type": "GPU",
+                "id": 90756,
+                "cpuTime": 0.107033,
+                "deltaCpuMs": 24.735000000000007
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90757,
+                "cpuTime": 0.04985,
+                "deltaCpuMs": 11.251999999999999
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 500,
+              "syncSpawnMs": 5,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 959,
+              "syncSpawnMs": 5,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            21.17236328125,
+            21.6845703125,
+            21.9638671875
+          ],
+          "systemLoadAfter": [
+            21.17236328125,
+            21.6845703125,
+            21.9638671875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 2,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:52:58.198Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961580472,
+          "endedAt": 1792961580959,
+          "elapsedMs": 487,
+          "readMs": 215.15349999999944,
+          "layoutMs": 1.1092500000004293,
+          "nodeCpuMs": 232.161,
+          "nodeEventLoopDelayMaxMs": 25.460735,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 87,
+            "readyMs": 83,
+            "firstGraphFrameMs": 449,
+            "latestGraphFrameMs": 449
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 468,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 468,
+            "latestMutationToFrameMs": 468,
+            "renderMs": 17,
+            "frameMs": 46,
+            "latestRenderMs": 17,
+            "latestFrameMs": 46
+          },
+          "selectionRoundTripMs": 63.268708000000515,
+          "selectionEvent": {
+            "frameMs": 23.900000005960464
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961580472,
+            "finishedAt": 1792961580959,
+            "elapsedMs": 487,
+            "nodeCpuMs": 232.161,
+            "childCpuMs": 221.08100000000002,
+            "browserCpuMs": 264.076,
+            "browserComplete": true,
+            "ownedCpuMs": 717.318,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 2692928,
+            "nodeRssAfterAwaitDelta": 19415040,
+            "nodeMemoryBefore": {
+              "rss": 141639680,
+              "heapTotal": 74170368,
+              "heapUsed": 48417152,
+              "external": 4207694,
+              "arrayBuffers": 522266
+            },
+            "nodeMemoryAfter": {
+              "rss": 161054720,
+              "heapTotal": 85180416,
+              "heapUsed": 51110080,
+              "external": 4091679,
+              "arrayBuffers": 377086
+            },
+            "childrenBefore": {
+              "userCpuMs": 247.686,
+              "systemCpuMs": 248.761,
+              "minorFaults": 13094,
+              "majorFaults": 249
+            },
+            "childrenAfter": {
+              "userCpuMs": 390.832,
+              "systemCpuMs": 326.696,
+              "minorFaults": 19982,
+              "majorFaults": 265
+            },
+            "childDeltas": {
+              "userCpuMs": 143.146,
+              "systemCpuMs": 77.93500000000003,
+              "minorFaults": 6888,
+              "majorFaults": 16
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 90898,
+                "cpuTime": 0.174653
+              },
+              {
+                "type": "renderer",
+                "id": 90901,
+                "cpuTime": 0.064313
+              },
+              {
+                "type": "GPU",
+                "id": 90899,
+                "cpuTime": 0.104085
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90900,
+                "cpuTime": 0.044598
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 90898,
+                "cpuTime": 0.224203,
+                "deltaCpuMs": 49.55000000000001
+              },
+              {
+                "type": "renderer",
+                "id": 90901,
+                "cpuTime": 0.24693,
+                "deltaCpuMs": 182.61700000000002
+              },
+              {
+                "type": "GPU",
+                "id": 90899,
+                "cpuTime": 0.127153,
+                "deltaCpuMs": 23.06799999999999
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 90900,
+                "cpuTime": 0.053439,
+                "deltaCpuMs": 8.841000000000001
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "log",
+              "elapsedMs": 193,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            },
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 212,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            23.17919921875,
+            22.07763671875,
+            22.0986328125
+          ],
+          "systemLoadAfter": [
+            23.17919921875,
+            22.07763671875,
+            22.0986328125
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 3,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:53:03.844Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961585135,
+          "endedAt": 1792961587933,
+          "elapsedMs": 2798,
+          "readMs": 2425.377958,
+          "layoutMs": 2.4225839999999152,
+          "nodeCpuMs": 240.219,
+          "nodeEventLoopDelayMaxMs": 51.970047,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 2710.300000011921,
+                "duration": 61
+              }
+            ],
+            "navigationMs": 73,
+            "readyMs": 64,
+            "firstGraphFrameMs": 2774,
+            "latestGraphFrameMs": 2774
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 2788,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 2788,
+            "latestMutationToFrameMs": 2788,
+            "renderMs": 27,
+            "frameMs": 66,
+            "latestRenderMs": 27,
+            "latestFrameMs": 66
+          },
+          "selectionRoundTripMs": 114.77124999999978,
+          "selectionEvent": {
+            "frameMs": 12.300000011920929
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961585135,
+            "finishedAt": 1792961587934,
+            "elapsedMs": 2799,
+            "nodeCpuMs": 240.219,
+            "childCpuMs": 407.26599999999996,
+            "browserCpuMs": 307.186,
+            "browserComplete": true,
+            "ownedCpuMs": 954.6709999999998,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3401176,
+            "nodeRssAfterAwaitDelta": 16957440,
+            "nodeMemoryBefore": {
+              "rss": 140984320,
+              "heapTotal": 74678272,
+              "heapUsed": 49875928,
+              "external": 4217177,
+              "arrayBuffers": 531749
+            },
+            "nodeMemoryAfter": {
+              "rss": 157941760,
+              "heapTotal": 86622208,
+              "heapUsed": 53277104,
+              "external": 4454810,
+              "arrayBuffers": 740217
+            },
+            "childrenBefore": {
+              "userCpuMs": 161.435,
+              "systemCpuMs": 174.341,
+              "minorFaults": 13027,
+              "majorFaults": 347
+            },
+            "childrenAfter": {
+              "userCpuMs": 396.161,
+              "systemCpuMs": 346.881,
+              "minorFaults": 19902,
+              "majorFaults": 362
+            },
+            "childDeltas": {
+              "userCpuMs": 234.726,
+              "systemCpuMs": 172.53999999999996,
+              "minorFaults": 6875,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 91001,
+                "cpuTime": 0.152194
+              },
+              {
+                "type": "renderer",
+                "id": 91006,
+                "cpuTime": 0.063692
+              },
+              {
+                "type": "GPU",
+                "id": 91003,
+                "cpuTime": 0.089559
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91004,
+                "cpuTime": 0.040547
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 91001,
+                "cpuTime": 0.20466,
+                "deltaCpuMs": 52.466000000000015
+              },
+              {
+                "type": "renderer",
+                "id": 91006,
+                "cpuTime": 0.28823,
+                "deltaCpuMs": 224.53799999999998
+              },
+              {
+                "type": "GPU",
+                "id": 91003,
+                "cpuTime": 0.109202,
+                "deltaCpuMs": 19.642999999999994
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91004,
+                "cpuTime": 0.051086,
+                "deltaCpuMs": 10.539
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 1371,
+              "syncSpawnMs": 3,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 2420,
+              "syncSpawnMs": 3,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            22.60400390625,
+            21.9765625,
+            22.0625
+          ],
+          "systemLoadAfter": [
+            22.60400390625,
+            21.9765625,
+            22.0625
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 4,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:53:10.445Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961593787,
+          "endedAt": 1792961594608,
+          "elapsedMs": 821,
+          "readMs": 453.37587500000063,
+          "layoutMs": 1.0555829999993875,
+          "nodeCpuMs": 222.897,
+          "nodeEventLoopDelayMaxMs": 38.404095,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 167,
+            "readyMs": 148,
+            "firstGraphFrameMs": 769,
+            "latestGraphFrameMs": 769
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 797,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 797,
+            "latestMutationToFrameMs": 797,
+            "renderMs": 23,
+            "frameMs": 52,
+            "latestRenderMs": 23,
+            "latestFrameMs": 52
+          },
+          "selectionRoundTripMs": 66.54512500000055,
+          "selectionEvent": {
+            "frameMs": 22.599999994039536
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961593787,
+            "finishedAt": 1792961594608,
+            "elapsedMs": 821,
+            "nodeCpuMs": 222.897,
+            "childCpuMs": 270.993,
+            "browserCpuMs": 313.34200000000004,
+            "browserComplete": true,
+            "ownedCpuMs": 807.232,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3508856,
+            "nodeRssAfterAwaitDelta": 11173888,
+            "nodeMemoryBefore": {
+              "rss": 143785984,
+              "heapTotal": 73908224,
+              "heapUsed": 48536192,
+              "external": 4207689,
+              "arrayBuffers": 522261
+            },
+            "nodeMemoryAfter": {
+              "rss": 154959872,
+              "heapTotal": 85327872,
+              "heapUsed": 52045048,
+              "external": 4445085,
+              "arrayBuffers": 730492
+            },
+            "childrenBefore": {
+              "userCpuMs": 254.027,
+              "systemCpuMs": 252.558,
+              "minorFaults": 12948,
+              "majorFaults": 395
+            },
+            "childrenAfter": {
+              "userCpuMs": 410.676,
+              "systemCpuMs": 366.902,
+              "minorFaults": 19898,
+              "majorFaults": 410
+            },
+            "childDeltas": {
+              "userCpuMs": 156.649,
+              "systemCpuMs": 114.344,
+              "minorFaults": 6950,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 91160,
+                "cpuTime": 0.201716
+              },
+              {
+                "type": "renderer",
+                "id": 91166,
+                "cpuTime": 0.092603
+              },
+              {
+                "type": "GPU",
+                "id": 91163,
+                "cpuTime": 0.115571
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91164,
+                "cpuTime": 0.054199
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 91160,
+                "cpuTime": 0.264873,
+                "deltaCpuMs": 63.15700000000002
+              },
+              {
+                "type": "renderer",
+                "id": 91166,
+                "cpuTime": 0.300969,
+                "deltaCpuMs": 208.36599999999999
+              },
+              {
+                "type": "GPU",
+                "id": 91163,
+                "cpuTime": 0.14448,
+                "deltaCpuMs": 28.909000000000002
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91164,
+                "cpuTime": 0.067109,
+                "deltaCpuMs": 12.910000000000005
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 329,
+              "syncSpawnMs": 5,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 447,
+              "syncSpawnMs": 6,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            24.87744140625,
+            22.4580078125,
+            22.23193359375
+          ],
+          "systemLoadAfter": [
+            27.52978515625,
+            23.0478515625,
+            22.44140625
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 5,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:53:19.152Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961601113,
+          "endedAt": 1792961601533,
+          "elapsedMs": 420,
+          "readMs": 253.58820800000012,
+          "layoutMs": 0.8520410000000993,
+          "nodeCpuMs": 132.782,
+          "nodeEventLoopDelayMaxMs": 32.555007,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 46,
+            "readyMs": 42,
+            "firstGraphFrameMs": 396,
+            "latestGraphFrameMs": 396
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 404,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 404,
+            "latestMutationToFrameMs": 404,
+            "renderMs": 13,
+            "frameMs": 31,
+            "latestRenderMs": 13,
+            "latestFrameMs": 31
+          },
+          "selectionRoundTripMs": 73.92608399999972,
+          "selectionEvent": {
+            "frameMs": 29.299999982118607
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961601113,
+            "finishedAt": 1792961601533,
+            "elapsedMs": 420,
+            "nodeCpuMs": 132.782,
+            "childCpuMs": 195.31699999999998,
+            "browserCpuMs": 179.398,
+            "browserComplete": true,
+            "ownedCpuMs": 507.49699999999996,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3118832,
+            "nodeRssAfterAwaitDelta": 18350080,
+            "nodeMemoryBefore": {
+              "rss": 146014208,
+              "heapTotal": 74678272,
+              "heapUsed": 49131760,
+              "external": 4226419,
+              "arrayBuffers": 540991
+            },
+            "nodeMemoryAfter": {
+              "rss": 164364288,
+              "heapTotal": 86097920,
+              "heapUsed": 52250592,
+              "external": 4454114,
+              "arrayBuffers": 739521
+            },
+            "childrenBefore": {
+              "userCpuMs": 143.894,
+              "systemCpuMs": 155.881,
+              "minorFaults": 13102,
+              "majorFaults": 289
+            },
+            "childrenAfter": {
+              "userCpuMs": 259.037,
+              "systemCpuMs": 236.055,
+              "minorFaults": 19997,
+              "majorFaults": 304
+            },
+            "childDeltas": {
+              "userCpuMs": 115.14299999999997,
+              "systemCpuMs": 80.174,
+              "minorFaults": 6895,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 91375,
+                "cpuTime": 0.116653
+              },
+              {
+                "type": "renderer",
+                "id": 91379,
+                "cpuTime": 0.047411
+              },
+              {
+                "type": "GPU",
+                "id": 91377,
+                "cpuTime": 0.072838
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91378,
+                "cpuTime": 0.031939
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 91375,
+                "cpuTime": 0.148775,
+                "deltaCpuMs": 32.121999999999986
+              },
+              {
+                "type": "renderer",
+                "id": 91379,
+                "cpuTime": 0.176686,
+                "deltaCpuMs": 129.275
+              },
+              {
+                "type": "GPU",
+                "id": 91377,
+                "cpuTime": 0.084277,
+                "deltaCpuMs": 11.439000000000005
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91378,
+                "cpuTime": 0.038501,
+                "deltaCpuMs": 6.5619999999999985
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 219,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 252,
+              "syncSpawnMs": 1,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            26.8466796875,
+            22.98046875,
+            22.4208984375
+          ],
+          "systemLoadAfter": [
+            26.8466796875,
+            22.98046875,
+            22.4208984375
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 6,
+      "variant": "before",
+      "observedAt": "2026-10-25T20:53:23.737Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72173",
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961604676,
+          "endedAt": 1792961606133,
+          "elapsedMs": 1457,
+          "readMs": 1309.765542,
+          "layoutMs": 0.7689170000003287,
+          "nodeCpuMs": 139.495,
+          "nodeEventLoopDelayMaxMs": 33.030143,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 226751,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 73,
+            "readyMs": 40,
+            "firstGraphFrameMs": 1437,
+            "latestGraphFrameMs": 1437
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 1445,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 1445,
+            "latestMutationToFrameMs": 1445,
+            "renderMs": 11,
+            "frameMs": 28,
+            "latestRenderMs": 11,
+            "latestFrameMs": 28
+          },
+          "selectionRoundTripMs": 78.85679100000016,
+          "selectionEvent": {
+            "frameMs": 43.599999994039536
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961604676,
+            "finishedAt": 1792961606133,
+            "elapsedMs": 1457,
+            "nodeCpuMs": 139.495,
+            "childCpuMs": 187.824,
+            "browserCpuMs": 166.95499999999998,
+            "browserComplete": true,
+            "ownedCpuMs": 494.274,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3508624,
+            "nodeRssAfterAwaitDelta": 19382272,
+            "nodeMemoryBefore": {
+              "rss": 145031168,
+              "heapTotal": 74416128,
+              "heapUsed": 48944192,
+              "external": 4224313,
+              "arrayBuffers": 538885
+            },
+            "nodeMemoryAfter": {
+              "rss": 164413440,
+              "heapTotal": 85835776,
+              "heapUsed": 52452816,
+              "external": 4453867,
+              "arrayBuffers": 739274
+            },
+            "childrenBefore": {
+              "userCpuMs": 134.183,
+              "systemCpuMs": 127.055,
+              "minorFaults": 13210,
+              "majorFaults": 216
+            },
+            "childrenAfter": {
+              "userCpuMs": 236.859,
+              "systemCpuMs": 212.203,
+              "minorFaults": 20106,
+              "majorFaults": 231
+            },
+            "childDeltas": {
+              "userCpuMs": 102.67600000000002,
+              "systemCpuMs": 85.148,
+              "minorFaults": 6896,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 91472,
+                "cpuTime": 0.112661
+              },
+              {
+                "type": "renderer",
+                "id": 91478,
+                "cpuTime": 0.048069
+              },
+              {
+                "type": "GPU",
+                "id": 91476,
+                "cpuTime": 0.066072
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91477,
+                "cpuTime": 0.030223
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 91472,
+                "cpuTime": 0.146223,
+                "deltaCpuMs": 33.562
+              },
+              {
+                "type": "renderer",
+                "id": 91478,
+                "cpuTime": 0.162536,
+                "deltaCpuMs": 114.46700000000001
+              },
+              {
+                "type": "GPU",
+                "id": 91476,
+                "cpuTime": 0.0773,
+                "deltaCpuMs": 11.227999999999987
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91477,
+                "cpuTime": 0.037921,
+                "deltaCpuMs": 7.698000000000003
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 969,
+              "syncSpawnMs": 12,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 1308,
+              "syncSpawnMs": 12,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            25.57763671875,
+            22.78125,
+            22.353515625
+          ],
+          "systemLoadAfter": [
+            25.57763671875,
+            22.78125,
+            22.353515625
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    {
+      "mode": "resources",
+      "index": 7,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:53:29.367Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 300,
+          "branches": 164,
+          "edges": 300,
+          "lanes": 1,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961610066,
+          "endedAt": 1792961610541,
+          "elapsedMs": 475,
+          "readMs": 289.4121250000003,
+          "layoutMs": 0.7592500000000655,
+          "nodeCpuMs": 139.459,
+          "nodeEventLoopDelayMaxMs": 31.227903,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 52,
+            "readyMs": 49,
+            "firstGraphFrameMs": 454,
+            "latestGraphFrameMs": 454
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 300,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": false,
+            "allMessageFrameMs": 462,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 462,
+            "latestMutationToFrameMs": 462,
+            "renderMs": 15,
+            "frameMs": 47,
+            "latestRenderMs": 15,
+            "latestFrameMs": 47
+          },
+          "selectionRoundTripMs": 286.411333,
+          "selectionEvent": {
+            "frameMs": 250.39999997615814
+          },
+          "phaseResources": {
+            "label": "readonly-graph-300",
+            "input": "service",
+            "startedAt": 1792961610066,
+            "finishedAt": 1792961610541,
+            "elapsedMs": 475,
+            "nodeCpuMs": 139.459,
+            "childCpuMs": 196.85500000000002,
+            "browserCpuMs": 183.935,
+            "browserComplete": true,
+            "ownedCpuMs": 520.249,
+            "registeredGitCalls": 2,
+            "nodeHeapAfterAwaitDelta": 3337344,
+            "nodeRssAfterAwaitDelta": 19398656,
+            "nodeMemoryBefore": {
+              "rss": 144146432,
+              "heapTotal": 74170368,
+              "heapUsed": 48595024,
+              "external": 4206638,
+              "arrayBuffers": 521210
+            },
+            "nodeMemoryAfter": {
+              "rss": 163545088,
+              "heapTotal": 85327872,
+              "heapUsed": 51932368,
+              "external": 4444383,
+              "arrayBuffers": 729790
+            },
+            "childrenBefore": {
+              "userCpuMs": 126.994,
+              "systemCpuMs": 128.543,
+              "minorFaults": 13201,
+              "majorFaults": 216
+            },
+            "childrenAfter": {
+              "userCpuMs": 238.568,
+              "systemCpuMs": 213.824,
+              "minorFaults": 20095,
+              "majorFaults": 231
+            },
+            "childDeltas": {
+              "userCpuMs": 111.57400000000001,
+              "systemCpuMs": 85.281,
+              "minorFaults": 6894,
+              "majorFaults": 15
+            },
+            "browserBefore": [
+              {
+                "type": "browser",
+                "id": 91603,
+                "cpuTime": 0.105834
+              },
+              {
+                "type": "renderer",
+                "id": 91611,
+                "cpuTime": 0.046253
+              },
+              {
+                "type": "GPU",
+                "id": 91607,
+                "cpuTime": 0.06637
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91608,
+                "cpuTime": 0.028965
+              }
+            ],
+            "browserAfter": [
+              {
+                "type": "browser",
+                "id": 91603,
+                "cpuTime": 0.138412,
+                "deltaCpuMs": 32.57800000000001
+              },
+              {
+                "type": "renderer",
+                "id": 91611,
+                "cpuTime": 0.180564,
+                "deltaCpuMs": 134.311
+              },
+              {
+                "type": "GPU",
+                "id": 91607,
+                "cpuTime": 0.07725,
+                "deltaCpuMs": 10.88
+              },
+              {
+                "type": "network.mojom.NetworkService",
+                "id": 91608,
+                "cpuTime": 0.035131,
+                "deltaCpuMs": 6.166000000000001
+              }
+            ],
+            "missingBrowserPids": [],
+            "scope": "Instrumented service-to-settled counter windows only; fixture setup, Native oracle, screenshots and probe build excluded. Node includes Playwright transport; children includes all OS-accounted terminated/waited native work, not per-Git attribution. Chromium root remains alive until after these counters, so its descendants are not also counted as waited children. Chromium deltas are complete only if all starting PIDs remain with monotonic same-type counters. Probe overhead remains; use separate uninstrumented latency evidence.",
+            "memoryScope": "Node after-await deltas only; not retained heap, aggregate memory or a process-tree peak. Cumulative child maxRSS is deliberately not subtracted or presented as a phase peak."
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 280,
+              "syncSpawnMs": 0,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 288,
+              "syncSpawnMs": 0,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            24.810546875,
+            22.66845703125,
+            22.31591796875
+          ],
+          "systemLoadAfter": [
+            24.810546875,
+            22.66845703125,
+            22.31591796875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "3c9cdde4a449661e44c9538fc33f5fe1cf08655997839a6eef45172a8beadadc",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    }
+  ],
+  "identicalNativeInputs": true,
+  "sameNodeHarness": true
+}

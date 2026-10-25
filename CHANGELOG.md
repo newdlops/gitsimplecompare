@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.72174] - 2026-10-26
+
+### Performance
+
+- Render large Graph histories in small groups so offscreen text can skip layout
+  and paint while the complete history remains searchable and keyboard accessible.
+- Preserve row identity, focus, global coordinates, SVG hit targets and measured
+  horizontal width across pagination, metadata updates and reflog annotations.
+- Add a read-only real-repository renderer benchmark with an independent Native
+  Git oracle, protected-state checks and separate latency/resource measurements.
+
 ## [0.1.72172] - 2026-10-25
 
 ### Performance

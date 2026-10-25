@@ -37,7 +37,7 @@ export async function mountProductionReference(browser: Browser, page: Page, bun
   const buildGraphHtml = await productionHtmlBuilder();
   await live.mount(buildGraphHtml(surface.surface, Uri.file(process.cwd())),
     bundle === undefined ? undefined : new Map([["media/bundled/graph.js", bundle]]));
-  await page.waitForFunction(() => document.querySelectorAll("#graph-content > .row").length === 5000);
+  await page.waitForFunction(() => document.querySelectorAll("#graph-content .row").length === 5000);
   await page.evaluate(fixture => { (window as any).__referenceFixture = fixture; }, fixture);
   return live;
 }

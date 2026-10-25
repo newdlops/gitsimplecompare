@@ -128,20 +128,6 @@ body.resizing {
   transform: translateX(-50%) translateY(0);
 }
 
-.icon-button:focus-visible,
-.icon-mini:focus-visible,
-.search-icon-button:focus-visible,
-.branch-filter-shortcut:focus-visible,
-.message-copy:focus-visible,
-.file-view-button:focus-visible,
-.search-result:focus-visible,
-#main-splitter:focus-visible,
-.detail-splitter:focus-visible,
-#load-more:focus-visible {
-  outline: 1px solid var(--vscode-focusBorder);
-  outline-offset: -1px;
-}
-
 #load-status {
   overflow: hidden;
   opacity: 0.72;
@@ -222,6 +208,30 @@ body.resizing {
   margin: 0;
   padding: 16px;
   opacity: 0.6;
+}
+
+/* 큰 이력의 텍스트 행만 묶는다. SVG hit target은 투명 컨테이너 아래에서도 유지한다. */
+.graph-row-group {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  content-visibility: auto;
+  pointer-events: none;
+}
+
+.graph-row-group-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.graph-row-group.graph-width-measure-group {
+  content-visibility: visible;
+}
+
+.graph-row-group .row {
+  pointer-events: auto;
 }
 
 .row {

@@ -1,0 +1,376 @@
+{
+  "source": {
+    "kind": "working-tree",
+    "commit": "a795e2d58f322464c3f14a6d9b13ea0998ac0e24",
+    "bundleSha256": "6ea661f01c4f540fd81fe0827917762d4dbed1b799eb2bcd178fa4b6fe84ee64"
+  },
+  "environmentKeys": 93,
+  "network": "owned-local-bare-only",
+  "results": [
+    {
+      "operation": "checkout",
+      "transport": "actual-rendered-button-and-registered-message-callback",
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 100,
+        "monitorPolicy": true,
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "clickToRequestMs": 403,
+      "handlerMs": 542,
+      "clickToFirstFrameMs": 4506,
+      "clickToFinalFrameMs": 4506,
+      "lastSourceWriteAfterClickMs": 934,
+      "lastSourceWriteToFinalFrameMs": 3572,
+      "lastSourceWriteScope": "Last owned Git write close in source worktree; signed frame difference, may precede cleanup",
+      "clickToSettledMs": 4524,
+      "nativeStateExact": true,
+      "cleanWorkingTree": false,
+      "localChangesPreserved": true,
+      "recentPathConfirmations": 0,
+      "missedHintsWithFullScan": 0,
+      "compactReplayWorktreeSelections": 0,
+      "summaryPathConfirmations": 0,
+      "summaryMissesWithFullScan": 0,
+      "nodeCpuMs": 282,
+      "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+      "processes": 7,
+      "commands": [
+        {
+          "command": "for-each-ref",
+          "elapsedMs": 169,
+          "syncSpawnMs": 12,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "for-each-ref",
+          "elapsedMs": 32,
+          "syncSpawnMs": 3,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 144,
+          "syncSpawnMs": 4,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "switch",
+          "elapsedMs": 181,
+          "syncSpawnMs": 2,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "worktree",
+          "elapsedMs": 66,
+          "syncSpawnMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "for-each-ref",
+          "elapsedMs": 147,
+          "syncSpawnMs": 2,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 37,
+          "syncSpawnMs": 4,
+          "outcome": "success",
+          "code": 0
+        }
+      ],
+      "graphPublications": 2,
+      "webviewMessages": 5,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "allMessageFrameMs": 4506,
+        "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+        "allMessageSequence": 25,
+        "mutationToFrameMs": 4506,
+        "latestMutationToFrameMs": 4506,
+        "renderMs": 725,
+        "frameMs": 462,
+        "latestRenderMs": 725,
+        "latestFrameMs": 462
+      }
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "transport": "actual-rendered-button-and-registered-message-callback",
+      "fixture": {
+        "files": 1000,
+        "commits": 1000,
+        "branches": 100,
+        "monitorPolicy": true,
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "clickToRequestMs": 296,
+      "handlerMs": 3337,
+      "clickToFirstFrameMs": 4651,
+      "clickToFinalFrameMs": 5033,
+      "lastSourceWriteAfterClickMs": 3543,
+      "lastSourceWriteToFinalFrameMs": 1490,
+      "lastSourceWriteScope": "Last owned Git write close in source worktree; signed frame difference, may precede cleanup",
+      "clickToSettledMs": 5047,
+      "nativeStateExact": true,
+      "cleanWorkingTree": false,
+      "localChangesPreserved": true,
+      "recentPathConfirmations": 0,
+      "missedHintsWithFullScan": 0,
+      "compactReplayWorktreeSelections": 0,
+      "summaryPathConfirmations": 0,
+      "summaryMissesWithFullScan": 0,
+      "nodeCpuMs": 185,
+      "nodeCpuScope": "benchmark Node including Playwright transport; Git/Chromium/OS CPU excluded",
+      "processes": 29,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 137,
+          "syncSpawnMs": 17,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 139,
+          "syncSpawnMs": 24,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "cat-file",
+          "elapsedMs": 150,
+          "syncSpawnMs": 8,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "log",
+          "elapsedMs": 153,
+          "syncSpawnMs": 12,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 134,
+          "syncSpawnMs": 17,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "worktree",
+          "elapsedMs": 310,
+          "syncSpawnMs": 22,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "config",
+          "elapsedMs": 84,
+          "syncSpawnMs": 8,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "read-tree",
+          "elapsedMs": 191,
+          "syncSpawnMs": 9,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "commit",
+          "elapsedMs": 430,
+          "syncSpawnMs": 18,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 168,
+          "syncSpawnMs": 12,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 187,
+          "syncSpawnMs": 22,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "update-ref",
+          "elapsedMs": 197,
+          "syncSpawnMs": 17,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 136,
+          "syncSpawnMs": 21,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "merge-base",
+          "elapsedMs": 178,
+          "syncSpawnMs": 23,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 100,
+          "syncSpawnMs": 19,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 90,
+          "syncSpawnMs": 7,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "diff",
+          "elapsedMs": 137,
+          "syncSpawnMs": 14,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 157,
+          "syncSpawnMs": 30,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "reset",
+          "elapsedMs": 169,
+          "syncSpawnMs": 21,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "worktree",
+          "elapsedMs": 57,
+          "syncSpawnMs": 5,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 36,
+          "syncSpawnMs": 4,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 27,
+          "syncSpawnMs": 5,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 13,
+          "syncSpawnMs": 1,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "worktree",
+          "elapsedMs": 19,
+          "syncSpawnMs": 1,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "for-each-ref",
+          "elapsedMs": 81,
+          "syncSpawnMs": 4,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 24,
+          "syncSpawnMs": 1,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "log",
+          "elapsedMs": 36,
+          "syncSpawnMs": 3,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "remote",
+          "elapsedMs": 14,
+          "syncSpawnMs": 2,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "rev-list",
+          "elapsedMs": 17,
+          "syncSpawnMs": 1,
+          "outcome": "success",
+          "code": 0
+        }
+      ],
+      "graphPublications": 2,
+      "webviewMessages": 11,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "allMessageFrameMs": 5032,
+        "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+        "allMessageSequence": 31,
+        "mutationToFrameMs": 4651,
+        "latestMutationToFrameMs": 5033,
+        "renderMs": 248,
+        "frameMs": 268,
+        "latestRenderMs": 45,
+        "latestFrameMs": 197
+      },
+      "notice": {
+        "modeledHoldMs": 0,
+        "pendingAtHandlerCompletion": false,
+        "gitToHandlerMs": 7,
+        "gitToFinalFrameMs": 1406
+      }
+    }
+  ],
+  "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus."
+}

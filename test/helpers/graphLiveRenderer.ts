@@ -161,6 +161,26 @@ export class GraphLiveRenderer {
     finally{await session.detach();}
   }
 
+  /** 반복 reset 검증에서만 GC 뒤 문서·DOM·listener 수와 JS heap을 읽는다. RSS나 최대 물리 메모리는 아니다. */
+  async readCollectedDomState() {
+    await this.queue;
+    const session = await this.page.context().newCDPSession(this.page);
+    try {
+      await session.send("HeapProfiler.collectGarbage");
+      const dom = await session.send("Memory.getDOMCounters"), heap = await session.send("Runtime.getHeapUsage");
+      return { ...dom, jsHeapUsedBytes: heap.usedSize };
+    } finally { await session.detach(); }
+  }
+
+  /** DOM geometry를 읽지 않고 이미 완료된 특정 게시의 paint ACK만 반환한다. */
+  readCompletedPaint(performance: GraphRenderPerformance) {
+    const paint = this.paints.find(paint => paint.performance.traceId === performance.traceId &&
+      paint.performance.kind === performance.kind && paint.performance.sentAt === performance.sentAt);
+    assert.ok(paint, "Requested paint ACK has not completed");
+    return { renderMs: paint.renderedAt - paint.receivedAt, frameMs: paint.paintedAt - paint.renderedAt,
+      endToEndMs: paint.paintedAt - performance.extensionStartedAt };
+  }
+
   /**
    * opt-in 진단에서만 실제 페이지의 JS CPU profile을 수집한다. 외부 포트나 OS 창은 열지 않는다.
    * @param name 소유 fixture의 작업 이름 @returns idempotent 종료 함수. 요청하지 않았으면 undefined
@@ -245,7 +265,7 @@ export class GraphLiveRenderer {
     await this.queue;
     await this.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     await this.waitForAllMessageFrame();
-    const rows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
+    const rows = await this.page.locator("#graph-content .row[data-hash]").evaluateAll(elements => elements
       .filter(element => /^[a-f0-9]{40,64}$/.test((element as HTMLElement).dataset.hash || ""))
       .map(element => ({ hash: (element as HTMLElement).dataset.hash!, refs: ((element as HTMLElement).dataset.refs || "").split("\t").filter(Boolean),
         localOnly: ((element as HTMLElement).dataset.localOnlyBranches || "").split("\t").filter(Boolean),
@@ -259,10 +279,10 @@ export class GraphLiveRenderer {
     }
     const headCommit = commits.find(commit => commit.hash === head);
     assert.deepEqual(rows.filter(row => row.head).map(row => row.hash), headCommit ? [head] : [], "Rendered HEAD badge differs from the native loaded page");
-    if (currentBranch) assert.deepEqual(await this.page.locator("#graph-content > .row .current-local[data-branch-name]")
+    if (currentBranch) assert.deepEqual(await this.page.locator("#graph-content .row .current-local[data-branch-name]")
       .evaluateAll(chips => chips.map(chip => (chip as HTMLElement).dataset.branchName)), headCommit ? [currentBranch] : [],
       "Rendered current-branch chip differs from the Native checkout");
-    const positionedRows = await this.page.locator("#graph-content > .row[data-hash]").evaluateAll(elements => elements
+    const positionedRows = await this.page.locator("#graph-content .row[data-hash]").evaluateAll(elements => elements
       .map(element => getComputedStyle(element).top));
     assert.ok(positionedRows.every(top => top !== "auto"), "Production CSP blocked Graph row positions");
     const current = headCommit?.refs.find(ref => ref !== "HEAD" && !ref.startsWith("tag:") && !ref.includes("/"));
@@ -285,8 +305,8 @@ export class GraphLiveRenderer {
     for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
       await this.page.setViewportSize({ width, height });
       await this.page.keyboard.press("Escape");
-      await this.page.locator("#graph-content > .row .commit-hash").first().click();
-      assert.equal(await this.page.locator("#graph-content > .row.selected").count(), 1);
+      await this.page.locator("#graph-content .row .commit-hash").first().click();
+      assert.equal(await this.page.locator("#graph-content .row.selected").count(), 1);
       await this.page.keyboard.press("Escape");
       await this.page.locator("#graph").evaluate(element => { element.scrollLeft = 0; });
       // drawer 닫힘 transition의 중간 위치가 QA 이미지에 남지 않게 유한 animation을 완료한 상태로 촬영한다.

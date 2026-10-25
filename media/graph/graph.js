@@ -76,7 +76,7 @@
     const previousHeight = graphContentHeight();
     const resetView = Boolean(state && state.reset);
     const preserveView = resetView || state?.loadDirection === "newer";
-    const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl) : null;
+    const viewport = preserveView ? window.GscGraphViewport?.capture(graphEl, graphContentEl, ROW_H) : null;
     applyLoadState(state, false);
     if (resetView && !viewport) {
       selectedHash = null;
@@ -127,12 +127,12 @@
     svgPresentation.clear();
 
     // 2) 텍스트 행(그래프 폭만큼 왼쪽 여백)
-    window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta, rowSync.elementAt);
+    window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta, rowSync.elementAt, ROW_H);
     rowSync.indexRows(currentRows, delta);
     if (delta && !keepColors) refreshRowDecorations();
     rowSync.scheduleScrollableWidth();
     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);
-    const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport);
+    const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport, ROW_H);
     if (resetView && !restored) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);
     window.GscGraphSearch?.update(graphEl, graphContentEl);
 

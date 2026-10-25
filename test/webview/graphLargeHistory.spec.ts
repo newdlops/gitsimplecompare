@@ -23,9 +23,9 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     expect(box).not.toBeNull();
     // locator의 자동 scrollIntoView를 쓰지 않고 현재 보이는 텍스트 위치를 직접 클릭한다.
     await page.mouse.click(box!.x + Math.min(150, box!.width / 2), box!.y + 45);
-    await expect(page.locator('#graph-content > .row.selected[data-index="3001"]')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row.selected[data-index="3001"]')).toHaveCount(1);
     await page.keyboard.press("Escape");
-    const selected = await page.locator('#graph-content > .row[data-index="3001"]').evaluate(row => ({
+    const selected = await page.locator('#graph-content .row[data-index="3001"]').evaluate(row => ({
       height: row.getBoundingClientRect().height,
       top: row.getBoundingClientRect().top,
       scroll: document.getElementById("graph")!.scrollLeft,
@@ -34,7 +34,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     expect(selected.top).toBeGreaterThanOrEqual(box!.y);
     expect(selected.scroll).toBeGreaterThanOrEqual(1000);
     await page.screenshot({ path: info.outputPath(`large-graph-scroll-${width}.png`) });
-    await expect(page.locator("#graph-content > .row")).toHaveCount(5000);
+    await expect(page.locator("#graph-content .row")).toHaveCount(5000);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect(errors).toEqual([]);
   });
@@ -50,7 +50,7 @@ test("returning from a large graph to one page keeps ordinary row sizing and mea
       state: { reset: true, loading: false, hasMore: false, hasMoreBefore: false, loadedCount: 300, colorScope: "/fixture/references" } } }));
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(300);
+  await expect(page.locator("#graph-content .row")).toHaveCount(300);
   const measured = await page.evaluate(() => {
     const root = document.getElementById("graph-content")!, row = root.querySelector<HTMLElement>('.row[data-index="200"]')!;
     return { width: parseFloat(root.style.width), right: row.offsetLeft + row.scrollWidth };

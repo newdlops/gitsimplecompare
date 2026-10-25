@@ -34,11 +34,11 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await page.addScriptTag({ path: path.join(process.cwd(), "media/graph/graphViewport.js") });
     await page.keyboard.press("Escape");
     await dispatchWebviewMessage(page, { type: "graph", data: data(), state: pendingState() });
-    await expect(page.locator('#graph-content > .row[data-hash="initial-0"]')).toBeVisible();
+    await expect(page.locator('#graph-content .row[data-hash="initial-0"]')).toBeVisible();
     await expect(page.locator("#load-status")).toContainText("Reading working tree...");
     await expect(page.locator("#load-status")).toHaveClass(/loading/);
     await page.screenshot({ path: info.outputPath(`initial-pending-${width}.png`) });
-    await page.locator('#graph-content > .row[data-hash="initial-5"] .subject').click();
+    await page.locator('#graph-content .row[data-hash="initial-5"] .subject').click();
     await expect.poll(async () => (await readPostedMessages(page)).some((message: any) => message.type === "selectCommit" && message.hash === "initial-5")).toBe(true);
     await page.keyboard.press("Escape");
     const graph = page.locator("#graph"), box = await graph.boundingBox();
@@ -57,7 +57,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
       return row.offsetTop - element.scrollTop;
     }, anchor.hash);
     expect(after).toBeCloseTo(anchor.offset, 0);
-    await expect(page.locator('#graph-content > .row.selected[data-hash="initial-5"]')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row.selected[data-hash="initial-5"]')).toHaveCount(1);
     await expect(page.locator("#load-status")).not.toContainText("Reading working tree");
     await expect(page.locator("#load-status")).not.toHaveClass(/loading/);
     await page.screenshot({ path: info.outputPath(`initial-complete-${width}.png`) });
@@ -83,7 +83,7 @@ test("working-tree loading does not block normal pagination and a failure keeps 
       detail: "커밋 이력은 사용할 수 있습니다. Git Simple Compare 출력을 확인한 뒤 새로고침하세요. 원인: status deadline",
     },
   } });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(600);
+  await expect(page.locator("#graph-content .row")).toHaveCount(600);
   await expect(page.locator("#load-status")).toContainText("작업트리 상태를 불러오지 못했습니다.");
   await expect(page.locator("#load-status")).toHaveAttribute("title", /status deadline/);
   await expect(page.locator("#load-status")).not.toHaveClass(/loading/);

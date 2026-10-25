@@ -1,0 +1,176 @@
+{
+  "completed": true,
+  "order": [
+    "after"
+  ],
+  "modes": [
+    "lifecycle"
+  ],
+  "runs": [
+    {
+      "mode": "lifecycle",
+      "index": 0,
+      "variant": "after",
+      "observedAt": "2026-10-25T20:44:58.845Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "working-tree-0.1.72174",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 5000,
+          "branches": 164,
+          "edges": 5004,
+          "lanes": 11,
+          "profiled": false,
+          "cpuThrottle": 1,
+          "startedAt": 1792961102956,
+          "endedAt": 1792961105068,
+          "elapsedMs": 2112,
+          "readMs": 1231.4735,
+          "layoutMs": 6.07024999999976,
+          "nodeCpuMs": 709.634,
+          "nodeEventLoopDelayMaxMs": 180.092927,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [
+              {
+                "startTime": 1672.2999999821186,
+                "duration": 358
+              },
+              {
+                "startTime": 2031,
+                "duration": 55
+              }
+            ],
+            "navigationMs": 85,
+            "readyMs": 60,
+            "firstGraphFrameMs": 2089,
+            "latestGraphFrameMs": 2089
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 5000,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": true,
+            "allMessageFrameMs": 2097,
+            "allMessageFrameScope": "last delivered host message plus two renderer frames; includes nonvisual messages; distinct from Graph model ACK",
+            "allMessageSequence": 2,
+            "mutationToFrameMs": 2097,
+            "latestMutationToFrameMs": 2097,
+            "renderMs": 195,
+            "frameMs": 92,
+            "latestRenderMs": 195,
+            "latestFrameMs": 92
+          },
+          "selectionRoundTripMs": 204.61425000000054,
+          "selectionEvent": {
+            "frameMs": 142.7000000178814
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 879,
+              "syncSpawnMs": 11,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 1223,
+              "syncSpawnMs": 12,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            19.97607421875,
+            22.70068359375,
+            22.5712890625
+          ],
+          "systemLoadAfter": [
+            18.3935546875,
+            22.21044921875,
+            22.39794921875
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+          "lifecycle": [
+            {
+              "cycle": 0,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10069088
+            },
+            {
+              "cycle": 1,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10380088
+            },
+            {
+              "cycle": 2,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10403756
+            },
+            {
+              "cycle": 3,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10538688
+            },
+            {
+              "cycle": 4,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10575184
+            },
+            {
+              "cycle": 5,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10628588
+            },
+            {
+              "cycle": 6,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10644832
+            },
+            {
+              "cycle": 7,
+              "documents": 1,
+              "nodes": 61332,
+              "jsEventListeners": 5118,
+              "jsHeapUsedBytes": 10559376
+            }
+          ]
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    }
+  ],
+  "identicalNativeInputs": true,
+  "sameNodeHarness": true
+}

@@ -21,7 +21,7 @@ async function mount(page: Page, korean = false, laneCount = 1): Promise<void> {
   await dispatchWebviewMessage(page, { type: "pullRequestOverview", overview: { ...overview(true), pullRequests: [
     { ...overview(true).pullRequests[0], headHash: hash(180), commitHashes: [hash(180)] },
   ] } });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(240);
+  await expect(page.locator("#graph-content .row")).toHaveCount(240);
   await page.getByRole("button", { name: "Show pull requests", exact: true }).click();
 }
 
@@ -29,7 +29,7 @@ for (const [width, height] of [[390,844],[768,1024],[1440,900]]) test(`PR row ju
   await page.setViewportSize({width,height}); await mount(page);
   const jump = page.getByRole("button", { name: "Jump to pull request #42 row in the graph", exact: true });
   await jump.focus(); await page.keyboard.press("Enter");
-  const target = page.locator(`#graph-content > .row[data-hash="${hash(180)}"]`);
+  const target = page.locator(`#graph-content .row[data-hash="${hash(180)}"]`);
   await expect(target).toHaveClass(/pr-focused-row/);
   await expect(target).toBeInViewport();
   await page.screenshot({path:`/private/tmp/gsc-pr-row-jump-${width}.png`});

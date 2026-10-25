@@ -71,8 +71,8 @@ export async function mountGraphRenderer(page: Page, syncActions = false, option
   await bridge(page, "__gscI18n");
   await assets(
     page,
-    ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphHealth.css", "graph/graphDetail.css", ...(options.branchFilter ? ["graph/graphControls.css"] : [])],
-    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphDetailVisibility.js", "graph/graphDataUpdates.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graphActionFeedback.js", "graph/graphLoadStatus.js", "graph/graph.js", ...(options.branchFilter ? ["graph/graphBranchFilter.js"] : [])]
+    ["codicons/codicon.css", "shared/reset.css", "shared/tokens.css", "shared/controls.css", "graph/graph.css", "graph/graphHealth.css", "graph/graphDetail.css", "graph/graphControls.css"],
+    ["graph/graphColors.js", "graph/graphSvgRender.js", "graph/graphDetailResize.js", "graph/graphDetailVisibility.js", "graph/graphRowGroups.js", "graph/graphDataUpdates.js", "graph/graphPerformance.js", "graph/graphRowSync.js", "graph/graphActionFeedback.js", "graph/graphLoadStatus.js", "graph/graph.js", ...(options.branchFilter ? ["graph/graphBranchFilter.js"] : [])]
   );
   await applyVSCodeTheme(page);
 }

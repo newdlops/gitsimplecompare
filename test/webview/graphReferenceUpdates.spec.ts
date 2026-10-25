@@ -10,7 +10,7 @@ for (const width of [390, 768, 1440]) {
     page.on("pageerror", error => { errors.push(error.message); });
     await mountReferenceGraph(page);
     await page.keyboard.press("Escape");
-    await page.locator('#graph-content > .row[data-index="1"] .commit-hash').click(); await page.keyboard.press("Escape");
+    await page.locator('#graph-content .row[data-index="1"] .commit-hash').click(); await page.keyboard.press("Escape");
     await page.locator("#graph").evaluate(element => { element.scrollTop = 4000; });
     const before = await page.locator("#graph").evaluate(element => ({ top: element.scrollTop, left: element.scrollLeft }));
     const measured = await page.evaluate(() => {
@@ -30,7 +30,7 @@ for (const width of [390, 768, 1440]) {
     expect(measured.badgeCalls).toBe(0); expect(measured.resolverCalls).toBe(0);
     await info.attach("reference-update-metrics.json", { body: JSON.stringify(measured), contentType: "application/json" });
     expect(await page.locator("#graph").evaluate(element => ({ top: element.scrollTop, left: element.scrollLeft }))).toEqual(before);
-    await expect(page.locator('#graph-content > .row.selected[data-index="1"]')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row.selected[data-index="1"]')).toHaveCount(1);
     const changed = await page.evaluate(() => {
       const fixture = (window as any).__referenceFixture;
       const branches = structuredClone(fixture.branches), tags = structuredClone(fixture.tags);
@@ -43,8 +43,8 @@ for (const width of [390, 768, 1440]) {
     await expect(page.locator('.ref.current-local[data-branch-name="bench-1"]')).toHaveCount(1);
     await expect(page.locator('.ref[data-branch-name="bench-1"]')).toHaveAttribute("data-tooltip", /Updated branch tooltip/);
     await expect(page.locator('.ref.tag-diverged[data-tag-name="release-0"][data-tag-local="1"]')).toHaveCount(1);
-    await expect(page.locator('#graph-content > .row[data-index="3000"] [data-tag-name="release-0"][data-tag-remote="origin"]')).toHaveCount(1);
-    await page.locator('#graph-content > .row[data-index="0"]').scrollIntoViewIfNeeded();
+    await expect(page.locator('#graph-content .row[data-index="3000"] [data-tag-name="release-0"][data-tag-remote="origin"]')).toHaveCount(1);
+    await page.locator('#graph-content .row[data-index="0"]').scrollIntoViewIfNeeded();
     await page.locator("#graph").evaluate(element => { element.scrollLeft = 0; });
     await page.screenshot({ path: info.outputPath(`reference-update-${width}.png`) });
     expect(errors).toEqual([]);

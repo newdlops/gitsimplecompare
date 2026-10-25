@@ -1,3 +1,18 @@
+/* Graph 컨트롤의 공통 키보드 포커스는 각 컨트롤 스타일과 함께 관리한다. */
+.icon-button:focus-visible,
+.icon-mini:focus-visible,
+.search-icon-button:focus-visible,
+.branch-filter-shortcut:focus-visible,
+.message-copy:focus-visible,
+.file-view-button:focus-visible,
+.search-result:focus-visible,
+#main-splitter:focus-visible,
+.detail-splitter:focus-visible,
+#load-more:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
 /* git 그래프 보조 컨트롤 스타일. 검색/복사/액션 강조처럼 기본 레이아웃과 분리 가능한 UI만 둔다. */
 #graph-search {
   position: relative;

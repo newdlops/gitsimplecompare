@@ -19,7 +19,7 @@ test("unchanged resize and short row replacements avoid another full width-candi
     const query = Element.prototype.querySelectorAll;
     let fullTraversals = 0;
     Element.prototype.querySelectorAll = function (selector: string) {
-      if (this === root && selector === ":scope > .row") fullTraversals++;
+      if (this === root && selector === ":scope .row") fullTraversals++;
       return query.call(this, selector);
     } as typeof query;
     try {
@@ -65,7 +65,7 @@ test("a small reference change reuses width scores from unchanged graph rows", a
   });
   console.log(`[graph-width-update] ${JSON.stringify(measured)}`);
   await info.attach("width-update-metrics.json", { body: JSON.stringify(measured), contentType: "application/json" });
-  await expect(page.locator('#graph-content > .row[data-index="3000"] [data-tag-name="release-0"]')).toHaveCount(1);
+  await expect(page.locator('#graph-content .row[data-index="3000"] [data-tag-name="release-0"]')).toHaveCount(1);
   expect(measured.rowTextReads).toBeLessThanOrEqual(20);
 });
 

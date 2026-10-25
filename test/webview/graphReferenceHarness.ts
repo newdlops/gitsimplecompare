@@ -6,10 +6,15 @@ import { mountGraphRenderer } from "./webviewHarness";
  * 실제 보조 renderer와 5천 행·천 브랜치·250개 태그를 올린 뒤 명시한 CPU 지연을 적용한다.
  * @param page 검증할 Chromium 페이지 @param includeEdges 실제 선형 이력의 간선도 렌더할지 여부
  * @param cpuThrottleRate 기본 6배 지연. 별도 성능 비교에서는 1로 고정해 지연 없이 측정한다.
+ * @param groupRows 기본 true. 과거 RowSync 단독 비교에서만 양쪽 DOM 구조를 기존 직접 행으로 고정한다.
  * @returns 배지/색상 호출 카운터가 준비되고 CPU 지연이 적용되면 완료한다.
  */
-export async function mountReferenceGraph(page: Page, includeEdges = false, cpuThrottleRate = 6): Promise<void> {
+export async function mountReferenceGraph(page: Page, includeEdges = false, cpuThrottleRate = 6, groupRows = true): Promise<void> {
   await mountGraphRenderer(page);
+  if (!groupRows) await page.evaluate(() => {
+    // 과거 RowSync는 중첩 행을 지원하지 않는다. 이 단독 비교는 양쪽 모두 같은 기존 구조로 제한한다.
+    (window as any).GscGraphRowGroups.append = (root: HTMLElement, fragment: DocumentFragment) => root.append(fragment);
+  });
   for (const name of ["graphReferenceState.js", "graphFeatures.js", "graphLocalColors.js", "graphWorktrees.js"]) {
     await page.addScriptTag({ path: join(process.cwd(), "media/graph", name) });
   }

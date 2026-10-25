@@ -32,7 +32,7 @@ async function exercise(page: Page, count: number) {
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       samples.push({ handlerMs, frameMs: performance.now() - start });
     }
-    return { samples, rows: root.querySelectorAll(":scope > .row").length, kept: kept === root.querySelector(".row"),
+    return { samples, rows: root.querySelectorAll(":scope .row").length, kept: kept === root.querySelector(".row"),
       svg: svg === root.querySelector("svg"), focus: document.activeElement === graph,
       revision: w.GscGraphDataUpdates.stats().revision, width: root.style.width };
   }, count);

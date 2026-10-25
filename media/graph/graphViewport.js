@@ -11,12 +11,26 @@
   }
 
   /**
+   * renderer가 고정 높이와 전역 inline top을 보증하면 layout 없이 위치를 읽는다.
+   * @param row 현재 모델의 실제 행
+   * @param rowHeight renderer의 고정 높이. 생략한 기존 호출은 Native geometry를 유지한다.
+   * @returns CSS pixel 기준 전역 top. 임의 CSS 위치는 기존 offsetTop으로 확인한다.
+   */
+  function rowTop(row, rowHeight) {
+    if (Number.isFinite(rowHeight) && rowHeight > 0 && /^-?\d+(?:\.\d+)?px$/.test(row.style.top)) {
+      return parseFloat(row.style.top);
+    }
+    return row.offsetTop;
+  }
+
+  /**
    * 현재 viewport 의 기준 row 와 row 내부 offset 을 캡처한다.
    * @param graphEl 스크롤 컨테이너
    * @param graphContent 그래프 row 를 담는 컨테이너
+   * @param rowHeight renderer가 보증하는 고정 높이. 제공되면 화면 밖 행의 layout을 강제하지 않는다.
    * @returns 복원에 필요한 anchor. 렌더링된 row 가 없으면 null
    */
-  function capture(graphEl, graphContent) {
+  function capture(graphEl, graphContent, rowHeight) {
     if (!graphEl || !graphContent) {
       return null;
     }
@@ -25,10 +39,11 @@
       return null;
     }
     const top = graphEl.scrollTop;
-    const visible = rows.find((row) => row.offsetTop + row.offsetHeight > top) || rows[0];
+    const knownHeight = Number.isFinite(rowHeight) && rowHeight > 0;
+    const visible = rows.find(row => rowTop(row, rowHeight) + (knownHeight ? rowHeight : row.offsetHeight) > top) || rows[0];
     return {
       hash: visible.dataset.hash || "",
-      offset: visible.offsetTop - top,
+      offset: rowTop(visible, rowHeight) - top,
       scrollTop: top,
       scrollLeft: graphEl.scrollLeft,
     };
@@ -39,16 +54,17 @@
    * @param graphEl 스크롤 컨테이너
    * @param graphContent 그래프 row 를 담는 컨테이너
    * @param anchor capture 가 반환한 기준 위치
+   * @param rowHeight capture와 같은 renderer 높이. 생략하면 기존 Native 위치를 사용한다.
    * @returns 스크롤 복원을 시도했으면 true
    */
-  function restore(graphEl, graphContent, anchor) {
+  function restore(graphEl, graphContent, anchor, rowHeight) {
     if (!graphEl || !graphContent || !anchor) {
       return false;
     }
     const row = anchor.hash
       ? graphContent.querySelector(`.row[data-hash="${cssEscape(anchor.hash)}"]`)
       : null;
-    const wantedTop = row ? row.offsetTop - anchor.offset : anchor.scrollTop;
+    const wantedTop = row ? rowTop(row, rowHeight) - anchor.offset : anchor.scrollTop;
     const maxTop = Math.max(0, graphEl.scrollHeight - graphEl.clientHeight);
     const maxLeft = Math.max(0, graphEl.scrollWidth - graphEl.clientWidth);
     graphEl.scrollTop = Math.min(Math.max(0, wantedTop), maxTop);

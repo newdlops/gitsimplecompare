@@ -110,27 +110,29 @@
         const target = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
         if (record.type === "attributes") {
           // selected/rebase/search 장식은 후보 점수를 바꾸지 않는다. 직접 자식의 row 진입/이탈만 반영한다.
-          if (target?.parentElement !== graphContentEl ||
+          if (!window.GscGraphRowGroups.owns(graphContentEl, target) ||
             /(?:^|\s)row(?:\s|$)/.test(record.oldValue || "") === target.classList.contains("row")) return;
           if (widthCandidates?.some(entry => entry.row === target)) widthCandidates = undefined;
           widthScores.delete(target);
           if (target.classList.contains("row")) changed.add(target);
           return;
         }
-        if (target === graphContentEl && record.type === "childList") {
+        if (window.GscGraphRowGroups.isRowContainer(graphContentEl, target) && record.type === "childList") {
           record.removedNodes.forEach(node => {
-            if (widthCandidates?.some(entry => entry.row === node)) widthCandidates = undefined;
+            if (widthCandidates?.some(entry => entry.row === node || node.contains(entry.row))) widthCandidates = undefined;
           });
           record.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains("row")) changed.add(node);
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+            if (node.classList.contains("row")) changed.add(node);
+            else node.querySelectorAll(".row").forEach(row => changed.add(row));
           });
         }
         const row = target?.closest?.(".row");
-        if (row?.parentElement === graphContentEl) changed.add(row);
+        if (window.GscGraphRowGroups.owns(graphContentEl, row)) changed.add(row);
       });
       changed.forEach(row => {
         widthScores.delete(row);
-        if (!widthCandidates || row.parentElement !== graphContentEl) return;
+        if (!widthCandidates || !window.GscGraphRowGroups.owns(graphContentEl, row)) return;
         const length = widthScore(row), candidate = widthCandidates.find(entry => entry.row === row);
         // 기존 후보의 순위가 바뀌거나 새 행이 최소 점수에 닿으면 원래 DOM 순서로 다시 고른다.
         if (candidate ? candidate.length !== length
@@ -151,8 +153,8 @@
     /** @param index 모델 행 위치 @returns 같은 캔버스에 붙어 있는 DOM 행. 교체된 행만 selector로 다시 찾는다. */
     function elementAt(index) {
       const cached = elements.get(index);
-      return cached?.parentElement === graphContentEl && Number(cached.dataset.index) === index ? cached
-        : graphContentEl.querySelector(`:scope > .row[data-index="${index}"]:not([data-reflog-virtual])`);
+      return window.GscGraphRowGroups.owns(graphContentEl, cached) && Number(cached.dataset.index) === index ? cached
+        : graphContentEl.querySelector(`:scope .row[data-index="${index}"]:not([data-reflog-virtual])`);
     }
     // 기존 역색인과 행 캐시를 공유한다. WeakMap은 다른 캔버스나 닫힌 문서의 DOM을 강하게 보관하지 않는다.
     rowLookups.set(graphContentEl, hash => {
@@ -171,7 +173,7 @@
         return;
       }
       elements.clear();
-      graphContentEl.querySelectorAll(":scope > .row:not([data-reflog-virtual])").forEach(element => {
+      graphContentEl.querySelectorAll(":scope .row:not([data-reflog-virtual])").forEach(element => {
         elements.set(Number(element.dataset.index), element);
       });
     }
@@ -187,7 +189,7 @@
       const graphWidth = deps.layout().graphWidth;
       let replaced = 0;
       const candidates = indices ? [...indices].map(elementAt).filter(Boolean)
-        : graphContentEl.querySelectorAll(":scope > .row:not([data-reflog-virtual])");
+        : graphContentEl.querySelectorAll(":scope .row:not([data-reflog-virtual])");
       candidates.forEach((element) => {
         const index = Number(element.dataset.index);
         const row = rows[index];
@@ -225,12 +227,14 @@
       const viewportWidth = graphEl.clientWidth;
       const height = Math.max(contentHeight, graphEl.clientHeight) + "px";
       if (preserveGeometry && canvasViewportWidth === viewportWidth && graphContentEl.style.height === height) return;
-      graphContentEl.style.width = "100%";
+      // 다음 폭 측정 전까지 기존 폭을 유지해 전체 교체 중 가로 스크롤이 먼저 0으로 clamp되지 않게 한다.
+      const measuredWidth = graphContentEl.style.width.endsWith("px");
+      if (!measuredWidth) graphContentEl.style.width = "100%";
       graphContentEl.style.minWidth = deps.layout().graphWidth + 680 + "px";
       graphContentEl.style.height = height;
       canvasViewportWidth = viewportWidth;
-      // tail 또는 inspector 폭이 바뀐 알림은 현재 행 내용의 폭도 다시 확보한다.
-      if (preserveGeometry) scheduleScrollableWidth();
+      // 빈 화면으로 돌아가도 이전의 큰 폭은 다음 frame에 줄인다. 새 행의 폭 예약과는 합친다.
+      if (preserveGeometry || measuredWidth) scheduleScrollableWidth();
     }
 
     /** 다음 frame 에 가로 스크롤 폭을 한 번 측정하도록 예약한다(연속 호출은 합친다). */
@@ -251,7 +255,9 @@
     function syncScrollableWidth() {
       invalidateWidthScores(widthObserver.takeRecords());
       const graphWidth = deps.layout().graphWidth;
-      const rowsRight = widestCandidates().reduce(
+      const candidates = widestCandidates();
+      window.GscGraphRowGroups.measure(graphContentEl, candidates);
+      const rowsRight = candidates.reduce(
         (max, row) => Math.max(max, row.offsetLeft + row.scrollWidth + 24),
         0
       );
@@ -266,7 +272,7 @@
     function widestCandidates() {
       if (widthCandidates) return widthCandidates.map(entry => entry.row);
       const scored = [];
-      graphContentEl.querySelectorAll(":scope > .row").forEach((row) => {
+      graphContentEl.querySelectorAll(":scope .row").forEach((row) => {
         const length = widthScore(row);
         if (scored.length < WIDTH_CANDIDATES) {
           scored.push({ row, length });

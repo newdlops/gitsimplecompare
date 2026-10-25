@@ -1,0 +1,49 @@
+{
+  "version": "0.1.72174",
+  "webviewGraphAndPrTests": {
+    "passed": 120,
+    "log": "/private/tmp/gsc-row-groups-final-suite.log"
+  },
+  "nodeTests": {
+    "passed": 10,
+    "log": "/private/tmp/gsc-row-groups-final-node.log"
+  },
+  "typecheckPassed": true,
+  "productionBuildPassed": true,
+  "diffWhitespacePassed": true,
+  "functionalControls": {
+    "operations": [
+      "checkout",
+      "pr-squash-cherry-pick"
+    ],
+    "allNativeExact": true,
+    "allLocalChangesPreserved": true
+  },
+  "functionalCases": [
+    "large horizontal scroll and distant mouse selection",
+    "600->650 row transition with same focused ref DOM",
+    "populated reflog across32-row boundaries",
+    "native find and distant keyboard focus",
+    "working-tree prefix addition/removal with viewport anchor",
+    "full-reset horizontal scroll retention",
+    "SVG/row drag and cancellation",
+    "PR row jump atthree widths",
+    "80stack layers and same-message zero decoration writes",
+    "partial metadata/state-only updates and bounded row lookups/width scans"
+  ],
+  "visualViewports": [
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "visualScope": "Owned public synthetic fixtures, dark theme; emulated widths, not physical mobile/touch/assistive-technology certification."
+}

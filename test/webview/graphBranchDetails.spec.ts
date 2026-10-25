@@ -38,7 +38,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await expect(remote).toHaveAttribute("aria-label", "Branch details are not available yet.");
     await expect(page.locator("#load-status")).toContainText("300 commits loaded · Updating branch details...");
     await page.screenshot({ path: info.outputPath(`branch-pending-${width}.png`) });
-    const row = page.locator('#graph-content > .row[data-hash="0000000000000000000000000000000000000005"]');
+    const row = page.locator('#graph-content .row[data-hash="0000000000000000000000000000000000000005"]');
     await row.locator(".subject").click(); await page.keyboard.press("Escape");
     expect((await readPostedMessages(page)).some((message: any) => message.type === "selectCommit" && message.hash.endsWith("0005"))).toBe(true);
     const before = await page.locator("#graph").evaluate(element => element.scrollTop);
@@ -65,7 +65,7 @@ test("paused and failed details keep history readable and stop the progress indi
       branchDetails: { loading: false, message, detail: "Original query deadline; use Refresh or Show Output." } } });
     await expect(page.locator("#load-status")).toContainText(message);
     await expect(page.locator("#load-status")).not.toHaveClass(/loading/);
-    await expect(page.locator("#graph-content > .row")).toHaveCount(300);
+    await expect(page.locator("#graph-content .row")).toHaveCount(300);
     await expect(page.locator("#load-status")).toHaveAttribute("title", /Original query deadline/);
   }
   await page.screenshot({ path: info.outputPath("branch-details-unavailable-390.png") });

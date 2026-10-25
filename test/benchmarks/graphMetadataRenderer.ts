@@ -47,7 +47,7 @@ async function exercise(page: Page, count: number) {
       samples.push({ handlerMs, frameMs: performance.now() - start });
     }
     const head = root.querySelector('.row .head')?.closest<HTMLElement>(".row")?.dataset.index;
-    return { samples, rows: root.querySelectorAll(":scope > .row").length, edges: fixture.edges.length,
+    return { samples, rows: root.querySelectorAll(":scope .row").length, edges: fixture.edges.length,
       stackChips: root.querySelectorAll(".pr-stack-layer-chip").length,
       keptRow: keptRow === root.querySelector('.row[data-index="1500"]'), keptNode: keptNode === root.querySelector('.node[data-row="1500"]'),
       keptEdge: keptEdge === svg.__gscEdgeElements[1500][0], svg: svg === root.querySelector("svg"),

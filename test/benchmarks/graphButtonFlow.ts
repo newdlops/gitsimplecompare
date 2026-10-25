@@ -323,8 +323,8 @@ async function measure(directory: string, operation: Operation, resources?: Grap
       const frame = await renderer.verify(panel.commits, head, clickedAt, initial === final, publication?.performance,
         operation === "checkout" ? f.topicBranch : branch, await readNativeRemoteTagExpectation(f.root));
       if (localHintScenario) {
-        assert.equal(await renderer.countElements("#graph-content > .row.ongoing-row"), 1);
-        assert.equal(await renderer.countElements("#graph-content > .row.staged-row"), 1);
+        assert.equal(await renderer.countElements("#graph-content .row.ongoing-row"), 1);
+        assert.equal(await renderer.countElements("#graph-content .row.staged-row"), 1);
       }
       // 실제 선택/세 viewport 촬영은 시간·CPU 창과 독립 Native oracle이 모두 끝난 뒤에만 실행한다.
       if (process.env.GSC_BENCH_SCREENSHOT_DIR) await renderer.capture(path.join(process.env.GSC_BENCH_SCREENSHOT_DIR, operation));

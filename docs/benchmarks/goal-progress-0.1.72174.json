@@ -1,0 +1,48 @@
+{
+  "version": "0.1.72174",
+  "recordedAt": "2026-10-25T20:59:57.280196+00:00",
+  "goalStatus": "active",
+  "overallCompletion": "unproven; large Graph rendering improved in owned production renderer, actual busy VS Code response still pending",
+  "requirements": [
+    {
+      "requirement": "Cold assets, ready and first/final frame under constrained CPU",
+      "evidence": [
+        "readonly-renderer-0.1.72174.json",
+        "performance-summary-0.1.72174.json"
+      ],
+      "result": "16 independent Node lifetimes and 48 renderer documents on actual readonly inputs; large-row latency improves, mixed 300-row and CPU results remain uncertain."
+    },
+    {
+      "requirement": "Full/partial/state updates, input and presentation fidelity",
+      "evidence": "verification-0.1.72174.json",
+      "result": "120 Graph/PR webview tests and 10 Node tests passed; grouped rows preserve focus, search, SVG geometry and viewport; dark synthetic captures inspected at 390/768/1440px."
+    },
+    {
+      "requirement": "Native Git results and local-change protection",
+      "evidence": [
+        "functional-controls-0.1.72174.json",
+        "release-artifact-0.1.72174.json"
+      ],
+      "result": "Owned checkout/PR squash operations exact with preserved local changes; actual readonly Native inputs and protected repository metadata exact; packaged Node runtime unchanged."
+    },
+    {
+      "requirement": "Repeated lifecycle and resource bounds",
+      "evidence": "readonly-lifecycle-0.1.72174.json",
+      "result": "Eight 300/5000 row cycles retain stable post-GC document/DOM/listener counts; no long-term leak or physical-memory improvement claim."
+    },
+    {
+      "requirement": "Commit, push, version, publish and install same tested package",
+      "evidence": "deployment-0.1.72174.json",
+      "result": "Verified package prepared; deployment receipt follows successful publish/install."
+    },
+    {
+      "requirement": "Updated extension in actual busy user session",
+      "evidence": "actual-runtime-validation-0.1.72173.json",
+      "result": "Four real sessions were verified on 0.1.72173 in the prior observation. 0.1.72174 actual session response under concurrent load remains unverified; background install does not prove host activation."
+    }
+  ],
+  "currentTurnProgress": "Actual-data readonly comparison, grouping/viewport fixes, full functional and visual verification, release preparation.",
+  "remainingEvidence": "Fresh interaction in an updated actual Graph during concurrent load; preserve user focus preference and do not force reload.",
+  "focusChanged": false,
+  "userRepositoryMutated": false
+}

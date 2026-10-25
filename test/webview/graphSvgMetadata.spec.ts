@@ -81,15 +81,15 @@ test("a detached cached tail and a virtual lookalike recover from the complete l
   const state = { loadedCount: rows.length, reset: false, loading: false, hasMore: false, colorScope: "/fixture/tail" };
   await dispatchWebviewMessage(page, { type: "graph", data: { rows, edges: [], laneCount: 1 }, revision: 1, state: { ...state, reset: true } });
   await page.evaluate(() => {
-    const tail = document.querySelector('#graph-content > .row[data-index="3"]')!;
+    const tail = document.querySelector('#graph-content .row[data-index="3"]')!;
     const virtual = tail.cloneNode(true) as HTMLElement; virtual.dataset.reflogVirtual = "1";
     tail.replaceWith(virtual);
   });
   rows[1].subject = "Updated after detached tail";
   await dispatchWebviewMessage(page, { type: "graphDelta", delta: { baseRevision: 1, revision: 2,
     rowStart: rows.length, rows: [], rowUpdates: [{ index: 1, row: rows[1] }], edgeStart: 0, edges: [], edgeUpdates: [], laneCount: 1 }, state });
-  await expect(page.locator('#graph-content > .row:not([data-reflog-virtual])')).toHaveCount(4);
-  await expect(page.locator('#graph-content > .row[data-index="1"]')).toContainText("Updated after detached tail");
+  await expect(page.locator('#graph-content .row:not([data-reflog-virtual])')).toHaveCount(4);
+  await expect(page.locator('#graph-content .row[data-index="1"]')).toContainText("Updated after detached tail");
   await expect(page.locator('[data-reflog-virtual]')).toHaveCount(0);
   await expect(page.locator('#graph-content .node[data-row="3"]')).toHaveCount(1);
 });

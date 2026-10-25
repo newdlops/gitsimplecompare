@@ -33,27 +33,27 @@ test("branch/tag status updates keep unchanged graph rows and replace only rows 
   await page.setViewportSize({ width: 1200, height: 800 });
   await mountGraphRenderer(page);
   await renderLinearGraph(page);
-  await expect(page.locator("#graph-content > .row")).toHaveCount(ROWS);
+  await expect(page.locator("#graph-content .row")).toHaveCount(ROWS);
 
   await page.evaluate(() => {
     const w = window as any;
-    w.__keep = document.querySelector('#graph-content > .row[data-hash="h1000"]');
-    w.__old = document.querySelector('#graph-content > .row[data-hash="h5"]');
+    w.__keep = document.querySelector('#graph-content .row[data-hash="h1000"]');
+    w.__old = document.querySelector('#graph-content .row[data-hash="h5"]');
   });
-  await page.locator('#graph-content > .row[data-hash="h5"]').click();
+  await page.locator('#graph-content .row[data-hash="h5"]').click();
   await dispatchWebviewMessage(page, { type: "branchStatus", branches: [], worktrees: [] });
   await dispatchWebviewMessage(page, { type: "tagStatus", tags: [] });
 
   const identity = await page.evaluate(() => {
     const w = window as any;
     return {
-      kept: document.querySelector('#graph-content > .row[data-hash="h1000"]') === w.__keep,
-      selectedReplaced: document.querySelector('#graph-content > .row[data-hash="h5"]') !== w.__old,
-      rows: document.querySelectorAll("#graph-content > .row").length,
+      kept: document.querySelector('#graph-content .row[data-hash="h1000"]') === w.__keep,
+      selectedReplaced: document.querySelector('#graph-content .row[data-hash="h5"]') !== w.__old,
+      rows: document.querySelectorAll("#graph-content .row").length,
     };
   });
   expect(identity).toEqual({ kept: true, selectedReplaced: false, rows: ROWS });
-  await expect(page.locator('#graph-content > .row[data-hash="h5"]')).toHaveClass(/selected/);
+  await expect(page.locator('#graph-content .row[data-hash="h5"]')).toHaveClass(/selected/);
 });
 
 test("graph canvas widens to the longest row after the next frame without measuring every row", async ({ page }) => {
@@ -62,7 +62,7 @@ test("graph canvas widens to the longest row after the next frame without measur
   await renderLinearGraph(page);
   const width = await page.evaluate(() => parseFloat(document.getElementById("graph-content")!.style.width));
   const longRowWidth = await page.evaluate(() => {
-    const row = document.querySelector('#graph-content > .row[data-hash="h1500"]') as HTMLElement;
+    const row = document.querySelector('#graph-content .row[data-hash="h1500"]') as HTMLElement;
     return row.offsetLeft + row.scrollWidth;
   });
   expect(width).toBeGreaterThanOrEqual(longRowWidth);

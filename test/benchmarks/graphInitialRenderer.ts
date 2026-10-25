@@ -115,7 +115,7 @@ async function measure(phase: string, mode: string, count: number, code: string[
     const contract = await page.evaluate(() => {
       const root = document.getElementById("graph-content")!, graph = document.getElementById("graph")!;
       const expected = (window as any).__initialGraphFixture;
-      const rows = [...root.querySelectorAll<HTMLElement>(":scope > .row")];
+      const rows = [...root.querySelectorAll<HTMLElement>(":scope .row")];
       const long = rows[rows.length - 100], head = rows[100];
       return { rows: rows.length, exactHashes: rows.every((row, index) => row.dataset.hash === expected.rows[index].hash),
         headVisible: head.offsetTop >= graph.scrollTop && head.offsetTop < graph.scrollTop + graph.clientHeight,

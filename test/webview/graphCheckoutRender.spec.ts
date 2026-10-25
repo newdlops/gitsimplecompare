@@ -8,11 +8,11 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await mountReferenceGraph(page, true);
     await page.keyboard.press("Escape");
-    await page.locator('#graph-content > .row[data-index="1"] .commit-hash').click(); await page.keyboard.press("Escape");
+    await page.locator('#graph-content .row[data-index="1"] .commit-hash').click(); await page.keyboard.press("Escape");
     await page.locator("#graph").evaluate(element => { element.scrollTop = 4000; (element as HTMLElement).focus(); });
     const measured = await page.evaluate(async () => {
       const w = window as any, fixture = w.__referenceFixture, graph = document.getElementById("graph")!;
-      const keptRow = document.querySelector('#graph-content > .row[data-index="1500"]');
+      const keptRow = document.querySelector('#graph-content .row[data-index="1500"]');
       const keptNode = document.querySelector('.node[data-row="1500"]');
       const keptEdge = (document.querySelector("#graph-content svg") as any).__gscEdgeElements[1500][0];
       const scroll = graph.scrollTop;
@@ -44,7 +44,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         painted.push(+(performance.now() - start).toFixed(1));
       }
-      return { badgeCalls: fixture.badgeCalls, colorCalls, nodeCalls, resolverCalls: fixture.resolverCalls, phases, samples, painted, keptRow: keptRow === document.querySelector('#graph-content > .row[data-index="1500"]'),
+      return { badgeCalls: fixture.badgeCalls, colorCalls, nodeCalls, resolverCalls: fixture.resolverCalls, phases, samples, painted, keptRow: keptRow === document.querySelector('#graph-content .row[data-index="1500"]'),
         keptNode: keptNode === document.querySelector('.node[data-row="1500"]'), keptEdge: keptEdge === (document.querySelector("#graph-content svg") as any).__gscEdgeElements[1500][0],
         edges: fixture.edges.length, scroll: graph.scrollTop === scroll, focus: document.activeElement === graph };
     });
@@ -55,11 +55,11 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     expect(measured.badgeCalls).toBeLessThanOrEqual(120);
     expect(measured.colorCalls).toBeLessThanOrEqual(12); expect(measured.resolverCalls).toBe(0);
     expect(measured.nodeCalls).toBeLessThanOrEqual(30);
-    await expect(page.locator('#graph-content > .row.selected[data-index="1"]')).toHaveCount(1);
-    await expect(page.locator('#graph-content > .row[data-index="1"] .head')).toHaveCount(1);
-    await expect(page.locator('#graph-content > .row[data-index="0"] .head')).toHaveCount(0);
+    await expect(page.locator('#graph-content .row.selected[data-index="1"]')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row[data-index="1"] .head')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row[data-index="0"] .head')).toHaveCount(0);
     await expect(page.locator('.ref.current-local[data-branch-name="bench-1"]')).toHaveCount(1);
-    await page.locator('#graph-content > .row[data-index="0"]').scrollIntoViewIfNeeded();
+    await page.locator('#graph-content .row[data-index="0"]').scrollIntoViewIfNeeded();
     await page.locator("#graph").evaluate(element => { element.scrollLeft = 0; });
     await page.screenshot({ path: info.outputPath(`checkout-render-${width}.png`) });
     expect(errors).toEqual([]);
@@ -77,7 +77,7 @@ test("changing a local-only tip recomputes the ancestor and edge colors beyond t
     const state = { loadedCount: rows.length, reset: true, loading: false, hasMore: false, colorScope: "/fixture/references" };
     const send = (data: unknown) => window.dispatchEvent(new MessageEvent("message", { data }));
     send({ type: "graph", data: { rows, edges, laneCount: 1 }, revision: 10, state });
-    const ancestor = () => document.querySelector<HTMLElement>('#graph-content > .row[data-index="1201"]')!.style.getPropertyValue("--branch-color");
+    const ancestor = () => document.querySelector<HTMLElement>('#graph-content .row[data-index="1201"]')!.style.getPropertyValue("--branch-color");
     const before = ancestor(), changed = { ...rows[1200], refs: ["bench-1"] };
     send({ type: "graphDelta", delta: { baseRevision: 10, revision: 11, rowStart: rows.length, rows: [],
       rowUpdates: [{ index: 1200, row: changed }], edgeStart: edges.length, edges: [], edgeUpdates: [], laneCount: 1 }, state: { ...state, reset: false } });
@@ -110,7 +110,7 @@ test("worktree-only changes refresh their cached badge before and after a metada
     send({ type: "branchStatus", branches: fixture.branches, worktrees: [{ branch: "bench-2", name: "old", path: "/fixture/old" }, other] });
     send({ type: "graph", data: { rows: structuredClone(fixture.rows), edges: [], laneCount: 1 }, revision: 10,
       state: { loadedCount: fixture.rows.length, reset: true, loading: false, hasMore: false, colorScope: "/fixture/references" } });
-    const kept = document.querySelector('#graph-content > .row[data-index="3"]');
+    const kept = document.querySelector('#graph-content .row[data-index="3"]');
     fixture.badgeCalls = 0;
     const updates = [
       { branch: "bench-2", name: "moved", path: "/fixture/moved", locked: "keep" },
@@ -126,7 +126,7 @@ test("worktree-only changes refresh their cached badge before and after a metada
         state: { loadedCount: fixture.rows.length, reset: false, loading: false, hasMore: false, colorScope: "/fixture/references" } });
       return { immediate, tooltip, after: read()?.textContent || "" };
     });
-    return { states, badgeCalls: fixture.badgeCalls, kept: kept === document.querySelector('#graph-content > .row[data-index="3"]') };
+    return { states, badgeCalls: fixture.badgeCalls, kept: kept === document.querySelector('#graph-content .row[data-index="3"]') };
   });
   expect(result.states).toEqual([
     { immediate: "moved", after: "moved", tooltip: "Worktree: moved | Path: /fixture/moved | locked: keep" },
@@ -142,7 +142,7 @@ test("a load-state scope change invalidates colors from the last rendered graph"
   const result = await page.evaluate(() => {
     const w = window as any, fixture = w.__referenceFixture;
     const send = (data: unknown) => window.dispatchEvent(new MessageEvent("message", { data }));
-    const color = () => document.querySelector<HTMLElement>('#graph-content > .row[data-index="4000"]')!.style.getPropertyValue("--branch-color");
+    const color = () => document.querySelector<HTMLElement>('#graph-content .row[data-index="4000"]')!.style.getPropertyValue("--branch-color");
     const before = color(); w.GscGraphColors.rowColor = () => "#123456";
     const state = { loadedCount: fixture.rows.length, reset: false, loading: false, hasMore: false, colorScope: "/fixture/other" };
     send({ type: "graphLoadState", state });

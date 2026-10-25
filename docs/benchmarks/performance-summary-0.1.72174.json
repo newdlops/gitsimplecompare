@@ -1,0 +1,1792 @@
+{
+  "version": "0.1.72174",
+  "baseline": "0.1.72173",
+  "recordedAt": "2026-10-25T20:59:13.162625+00:00",
+  "orderPerMode": [
+    "before",
+    "after",
+    "after",
+    "before",
+    "after",
+    "before",
+    "before",
+    "after"
+  ],
+  "independentNodeLifetimes": 16,
+  "independentRendererLifetimes": 48,
+  "independentLifetimesPerArmAndCase": 4,
+  "latencyRendererCpuThrottle": 6,
+  "resourceRendererCpuThrottle": 1,
+  "sameNativeInputs": true,
+  "sameNodeHarness": true,
+  "allProtectedStateExact": true,
+  "allBrowserCountersComplete": true,
+  "media": {
+    "before": {
+      "effectiveBundleSha256": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+      "effectiveCssSha256": "68a69100dc833f0b475f9d0d84df8ccd4df9120b13106db4d8ce370d9e74e716",
+      "effectiveControlsCssSha256": "6a5e43c7d8f68b80c001c74fbee6390bd31347bf3a19c47770b38889fdcce73c"
+    },
+    "after": {
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055"
+    }
+  },
+  "cases": [
+    {
+      "rows": 300,
+      "renderAndFrameMs": {
+        "beforeMedian": 716.0,
+        "afterMedian": 1028.5,
+        "medianReductionPercent": -43.64525139664806,
+        "raw": {
+          "before": [
+            667,
+            860,
+            348,
+            765
+          ],
+          "after": [
+            1093,
+            343,
+            1038,
+            1019
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 667,
+            "after": 1093,
+            "reductionPercent": -63.868065967016484
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 860,
+            "after": 343,
+            "reductionPercent": 60.116279069767444
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 348,
+            "after": 1038,
+            "reductionPercent": -198.27586206896552
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 765,
+            "after": 1019,
+            "reductionPercent": -33.20261437908496
+          }
+        ]
+      },
+      "firstFrameMs": {
+        "beforeMedian": 3084.5,
+        "afterMedian": 3504.5,
+        "medianReductionPercent": -13.616469443994173,
+        "raw": {
+          "before": [
+            3155,
+            3188,
+            1883,
+            3014
+          ],
+          "after": [
+            4062,
+            1004,
+            3058,
+            3951
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 3155,
+            "after": 4062,
+            "reductionPercent": -28.748019017432647
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 3188,
+            "after": 1004,
+            "reductionPercent": 68.5069008782936
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1883,
+            "after": 3058,
+            "reductionPercent": -62.40042485395645
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 3014,
+            "after": 3951,
+            "reductionPercent": -31.088254810882553
+          }
+        ]
+      },
+      "trustedPointerToTwoFramesMs": {
+        "beforeMedian": 150.1499999910593,
+        "afterMedian": 222.8500000089407,
+        "medianReductionPercent": -48.4182484330405,
+        "raw": {
+          "before": [
+            318.40000000596046,
+            114.59999999403954,
+            185.69999998807907,
+            93.5
+          ],
+          "after": [
+            288.5,
+            52,
+            157.2000000178814,
+            368.19999998807907
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 318.40000000596046,
+            "after": 288.5,
+            "reductionPercent": 9.390703519284148
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 114.59999999403954,
+            "after": 52,
+            "reductionPercent": 54.624781847552725
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 185.69999998807907,
+            "after": 157.2000000178814,
+            "reductionPercent": 15.347334395275835
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 93.5,
+            "after": 368.19999998807907,
+            "reductionPercent": -293.7967914311006
+          }
+        ]
+      },
+      "ownedCpuMs": {
+        "beforeMedian": 776.693,
+        "afterMedian": 572.733,
+        "medianReductionPercent": 26.26005384366796,
+        "raw": {
+          "before": [
+            431.229,
+            669.159,
+            884.2269999999999,
+            886.0150000000001
+          ],
+          "after": [
+            520.8489999999999,
+            624.617,
+            847.088,
+            496.76300000000003
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 431.229,
+            "after": 520.8489999999999,
+            "reductionPercent": -20.782461290868646
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 669.159,
+            "after": 624.617,
+            "reductionPercent": 6.656414992550353
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 884.2269999999999,
+            "after": 847.088,
+            "reductionPercent": 4.200165794530131
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 886.0150000000001,
+            "after": 496.76300000000003,
+            "reductionPercent": 43.93289052668409
+          }
+        ]
+      },
+      "browserCpuMs": {
+        "beforeMedian": 275.20300000000003,
+        "afterMedian": 216.044,
+        "medianReductionPercent": 21.496495314367948,
+        "raw": {
+          "before": [
+            150.238,
+            252.703,
+            324.15399999999994,
+            297.70300000000003
+          ],
+          "after": [
+            196.447,
+            235.64100000000002,
+            316.585,
+            174.739
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 150.238,
+            "after": 196.447,
+            "reductionPercent": -30.757198578255828
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 252.703,
+            "after": 235.64100000000002,
+            "reductionPercent": 6.751799543337434
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 324.15399999999994,
+            "after": 316.585,
+            "reductionPercent": 2.335001264830905
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 297.70300000000003,
+            "after": 174.739,
+            "reductionPercent": 41.30425289634301
+          }
+        ]
+      },
+      "nodeCpuMs": {
+        "beforeMedian": 211.166,
+        "afterMedian": 153.721,
+        "medianReductionPercent": 27.203716507392283,
+        "raw": {
+          "before": [
+            112.267,
+            180.736,
+            242.03,
+            241.596
+          ],
+          "after": [
+            138.106,
+            169.336,
+            238.36,
+            125.144
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 112.267,
+            "after": 138.106,
+            "reductionPercent": -23.015668005736334
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 180.736,
+            "after": 169.336,
+            "reductionPercent": 6.30754249291784
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 242.03,
+            "after": 238.36,
+            "reductionPercent": 1.5163409494690638
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 241.596,
+            "after": 125.144,
+            "reductionPercent": 48.20112915776751
+          }
+        ]
+      },
+      "waitedChildCpuMs": {
+        "beforeMedian": 276.88149999999996,
+        "afterMedian": 208.26,
+        "medianReductionPercent": 24.783707109359053,
+        "raw": {
+          "before": [
+            168.724,
+            235.71999999999997,
+            318.043,
+            346.716
+          ],
+          "after": [
+            186.29599999999996,
+            219.64,
+            292.14300000000003,
+            196.88
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 168.724,
+            "after": 186.29599999999996,
+            "reductionPercent": -10.4146416633081
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 235.71999999999997,
+            "after": 219.64,
+            "reductionPercent": 6.821652808416756
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 318.043,
+            "after": 292.14300000000003,
+            "reductionPercent": 8.14355291580069
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 346.716,
+            "after": 196.88,
+            "reductionPercent": 43.215773139976235
+          }
+        ]
+      }
+    },
+    {
+      "rows": 1200,
+      "renderAndFrameMs": {
+        "beforeMedian": 1455.0,
+        "afterMedian": 840.0,
+        "medianReductionPercent": 42.26804123711341,
+        "raw": {
+          "before": [
+            1119,
+            2375,
+            945,
+            1791
+          ],
+          "after": [
+            854,
+            826,
+            938,
+            821
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 1119,
+            "after": 854,
+            "reductionPercent": 23.68185880250223
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 2375,
+            "after": 826,
+            "reductionPercent": 65.22105263157894
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 945,
+            "after": 938,
+            "reductionPercent": 0.7407407407407418
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 1791,
+            "after": 821,
+            "reductionPercent": 54.15968732551647
+          }
+        ]
+      },
+      "firstFrameMs": {
+        "beforeMedian": 3064.0,
+        "afterMedian": 2774.0,
+        "medianReductionPercent": 9.464751958224538,
+        "raw": {
+          "before": [
+            2525,
+            3603,
+            1622,
+            4108
+          ],
+          "after": [
+            2732,
+            2816,
+            3253,
+            2089
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 2525,
+            "after": 2732,
+            "reductionPercent": -8.198019801980205
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 3603,
+            "after": 2816,
+            "reductionPercent": 21.84290868720511
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1622,
+            "after": 3253,
+            "reductionPercent": -100.55487053020964
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 4108,
+            "after": 2089,
+            "reductionPercent": 49.14800389483934
+          }
+        ]
+      },
+      "trustedPointerToTwoFramesMs": {
+        "beforeMedian": 166.24999998509884,
+        "afterMedian": 157.09999999403954,
+        "medianReductionPercent": 5.503759393611684,
+        "raw": {
+          "before": [
+            109.69999998807907,
+            144.39999997615814,
+            188.09999999403954,
+            260.90000000596046
+          ],
+          "after": [
+            170.39999997615814,
+            143.80000001192093,
+            324.59999999403954,
+            80.40000000596046
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 109.69999998807907,
+            "after": 170.39999997615814,
+            "reductionPercent": -55.332725610460564
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 144.39999997615814,
+            "after": 143.80000001192093,
+            "reductionPercent": 0.4155124406760913
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 188.09999999403954,
+            "after": 324.59999999403954,
+            "reductionPercent": -72.5677830963984
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 260.90000000596046,
+            "after": 80.40000000596046,
+            "reductionPercent": 69.1835952456406
+          }
+        ]
+      },
+      "ownedCpuMs": {
+        "beforeMedian": 914.4425,
+        "afterMedian": 978.793,
+        "medianReductionPercent": -7.037129179800816,
+        "raw": {
+          "before": [
+            710.156,
+            936.1390000000001,
+            892.7459999999999,
+            962.7109999999998
+          ],
+          "after": [
+            722.5329999999999,
+            1142.728,
+            1153.8129999999999,
+            814.858
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 710.156,
+            "after": 722.5329999999999,
+            "reductionPercent": -1.7428564991353923
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 936.1390000000001,
+            "after": 1142.728,
+            "reductionPercent": -22.06819713739092
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 892.7459999999999,
+            "after": 1153.8129999999999,
+            "reductionPercent": -29.243144186588353
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 962.7109999999998,
+            "after": 814.858,
+            "reductionPercent": 15.35798386016155
+          }
+        ]
+      },
+      "browserCpuMs": {
+        "beforeMedian": 417.30500000000006,
+        "afterMedian": 452.87249999999995,
+        "medianReductionPercent": -8.523142545620077,
+        "raw": {
+          "before": [
+            311.907,
+            467.11000000000007,
+            411.7540000000001,
+            422.856
+          ],
+          "after": [
+            328.1909999999999,
+            549.802,
+            541.655,
+            364.09
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 311.907,
+            "after": 328.1909999999999,
+            "reductionPercent": -5.220786965345425
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 467.11000000000007,
+            "after": 549.802,
+            "reductionPercent": -17.70289653400696
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 411.7540000000001,
+            "after": 541.655,
+            "reductionPercent": -31.548205967640854
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 422.856,
+            "after": 364.09,
+            "reductionPercent": 13.897402425411965
+          }
+        ]
+      },
+      "nodeCpuMs": {
+        "beforeMedian": 241.404,
+        "afterMedian": 271.4875,
+        "medianReductionPercent": -12.461889612433929,
+        "raw": {
+          "before": [
+            220.481,
+            253.889,
+            228.919,
+            306.971
+          ],
+          "after": [
+            179.102,
+            299.124,
+            349.348,
+            243.851
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 220.481,
+            "after": 179.102,
+            "reductionPercent": 18.76760355767617
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 253.889,
+            "after": 299.124,
+            "reductionPercent": -17.81684121801259
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 228.919,
+            "after": 349.348,
+            "reductionPercent": -52.60769092997959
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 306.971,
+            "after": 243.851,
+            "reductionPercent": 20.56220294425206
+          }
+        ]
+      },
+      "waitedChildCpuMs": {
+        "beforeMedian": 224.01199999999994,
+        "afterMedian": 239.02499999999995,
+        "medianReductionPercent": -6.7018731139403265,
+        "raw": {
+          "before": [
+            177.76799999999992,
+            215.1400000000001,
+            252.07299999999975,
+            232.8839999999998
+          ],
+          "after": [
+            215.23999999999995,
+            293.8019999999999,
+            262.80999999999995,
+            206.91699999999992
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 177.76799999999992,
+            "after": 215.23999999999995,
+            "reductionPercent": -21.0791593537645
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 215.1400000000001,
+            "after": 293.8019999999999,
+            "reductionPercent": -36.56316816956391
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 252.07299999999975,
+            "after": 262.80999999999995,
+            "reductionPercent": -4.2594803886176535
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 232.8839999999998,
+            "after": 206.91699999999992,
+            "reductionPercent": 11.150186358873903
+          }
+        ]
+      }
+    },
+    {
+      "rows": 5000,
+      "renderAndFrameMs": {
+        "beforeMedian": 7099.5,
+        "afterMedian": 2459.5,
+        "medianReductionPercent": 65.35671526163814,
+        "raw": {
+          "before": [
+            6851,
+            8344,
+            3220,
+            7348
+          ],
+          "after": [
+            5023,
+            2325,
+            2594,
+            1919
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 6851,
+            "after": 5023,
+            "reductionPercent": 26.682236169902207
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 8344,
+            "after": 2325,
+            "reductionPercent": 72.13566634707574
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 3220,
+            "after": 2594,
+            "reductionPercent": 19.44099378881987
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 7348,
+            "after": 1919,
+            "reductionPercent": 73.88405008165488
+          }
+        ]
+      },
+      "firstFrameMs": {
+        "beforeMedian": 11633.5,
+        "afterMedian": 6337.0,
+        "medianReductionPercent": 45.52800103150385,
+        "raw": {
+          "before": [
+            11808,
+            11556,
+            6047,
+            11711
+          ],
+          "after": [
+            10530,
+            4235,
+            7722,
+            4952
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 11808,
+            "after": 10530,
+            "reductionPercent": 10.823170731707322
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 11556,
+            "after": 4235,
+            "reductionPercent": 63.352371062651436
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 6047,
+            "after": 7722,
+            "reductionPercent": -27.699685794608886
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 11711,
+            "after": 4952,
+            "reductionPercent": 57.71496883272138
+          }
+        ]
+      },
+      "trustedPointerToTwoFramesMs": {
+        "beforeMedian": 374.45000000298023,
+        "afterMedian": 216.44999998807907,
+        "medianReductionPercent": 42.195219659138374,
+        "raw": {
+          "before": [
+            438.09999999403954,
+            401.60000002384186,
+            347.2999999821186,
+            274.5
+          ],
+          "after": [
+            210.89999997615814,
+            98.90000000596046,
+            222,
+            251.40000000596046
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 438.09999999403954,
+            "after": 210.89999997615814,
+            "reductionPercent": 51.860305871027734
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 401.60000002384186,
+            "after": 98.90000000596046,
+            "reductionPercent": 75.37350597607345
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 347.2999999821186,
+            "after": 222,
+            "reductionPercent": 36.07831845337458
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 274.5,
+            "after": 251.40000000596046,
+            "reductionPercent": 8.415300544276693
+          }
+        ]
+      },
+      "ownedCpuMs": {
+        "beforeMedian": 2063.2679999999996,
+        "afterMedian": 2341.0235,
+        "medianReductionPercent": -13.461920603624943,
+        "raw": {
+          "before": [
+            1562.558,
+            3083.698,
+            2363.243,
+            1763.2929999999994
+          ],
+          "after": [
+            2264.9759999999997,
+            2448.7749999999996,
+            2417.071,
+            1451.235
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 1562.558,
+            "after": 2264.9759999999997,
+            "reductionPercent": -44.95308334154635
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 3083.698,
+            "after": 2448.7749999999996,
+            "reductionPercent": 20.589662152389764
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 2363.243,
+            "after": 2417.071,
+            "reductionPercent": -2.2777175262975513
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 1763.2929999999994,
+            "after": 1451.235,
+            "reductionPercent": 17.697455839727127
+          }
+        ]
+      },
+      "browserCpuMs": {
+        "beforeMedian": 1269.049,
+        "afterMedian": 1128.4499999999998,
+        "medianReductionPercent": 11.079083628764542,
+        "raw": {
+          "before": [
+            899.949,
+            1745.2649999999999,
+            1498.938,
+            1039.1599999999999
+          ],
+          "after": [
+            1109.456,
+            1147.4439999999997,
+            1210.782,
+            724.819
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 899.949,
+            "after": 1109.456,
+            "reductionPercent": -23.279874748457964
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 1745.2649999999999,
+            "after": 1147.4439999999997,
+            "reductionPercent": 34.25388121574662
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1498.938,
+            "after": 1210.782,
+            "reductionPercent": 19.22401059950446
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 1039.1599999999999,
+            "after": 724.819,
+            "reductionPercent": 30.24952846529889
+          }
+        ]
+      },
+      "nodeCpuMs": {
+        "beforeMedian": 533.5525,
+        "afterMedian": 851.263,
+        "medianReductionPercent": -59.54624896331664,
+        "raw": {
+          "before": [
+            435.703,
+            957.957,
+            576.714,
+            490.391
+          ],
+          "after": [
+            837.321,
+            912.211,
+            865.205,
+            485.266
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 435.703,
+            "after": 837.321,
+            "reductionPercent": -92.17701048650116
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 957.957,
+            "after": 912.211,
+            "reductionPercent": 4.775370919571542
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 576.714,
+            "after": 865.205,
+            "reductionPercent": -50.02323508706221
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 490.391,
+            "after": 485.266,
+            "reductionPercent": 1.0450844326262088
+          }
+        ]
+      },
+      "waitedChildCpuMs": {
+        "beforeMedian": 260.6664999999997,
+        "afterMedian": 329.6415,
+        "medianReductionPercent": -26.461014361262535,
+        "raw": {
+          "before": [
+            226.90600000000006,
+            380.4759999999999,
+            287.5909999999999,
+            233.7419999999995
+          ],
+          "after": [
+            318.19899999999996,
+            389.1199999999999,
+            341.08400000000006,
+            241.14999999999998
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 226.90600000000006,
+            "after": 318.19899999999996,
+            "reductionPercent": -40.233841326364164
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 380.4759999999999,
+            "after": 389.1199999999999,
+            "reductionPercent": -2.271890999695114
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 287.5909999999999,
+            "after": 341.08400000000006,
+            "reductionPercent": -18.600373447013354
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 233.7419999999995,
+            "after": 241.14999999999998,
+            "reductionPercent": -3.169306329200783
+          }
+        ]
+      },
+      "fullReset": {
+        "perLifetimeMedianRenderAndFrameMs": {
+          "beforeMedian": 5461.0,
+          "afterMedian": 1678.5,
+          "medianReductionPercent": 69.2638710858817,
+          "raw": {
+            "before": [
+              5313.0,
+              5787.5,
+              5202.5,
+              5609.0
+            ],
+            "after": [
+              1655.0,
+              1916.0,
+              1702.0,
+              1470.0
+            ]
+          },
+          "pairs": [
+            {
+              "beforeIndex": 0,
+              "afterIndex": 1,
+              "before": 5313.0,
+              "after": 1655.0,
+              "reductionPercent": 68.84999058912102
+            },
+            {
+              "beforeIndex": 3,
+              "afterIndex": 2,
+              "before": 5787.5,
+              "after": 1916.0,
+              "reductionPercent": 66.89416846652267
+            },
+            {
+              "beforeIndex": 5,
+              "afterIndex": 4,
+              "before": 5202.5,
+              "after": 1702.0,
+              "reductionPercent": 67.28495915425276
+            },
+            {
+              "beforeIndex": 6,
+              "afterIndex": 7,
+              "before": 5609.0,
+              "after": 1470.0,
+              "reductionPercent": 73.79211980745231
+            }
+          ]
+        },
+        "perLifetimeMedianEndToEndMs": {
+          "beforeMedian": 7196.0,
+          "afterMedian": 2902.75,
+          "medianReductionPercent": 59.66161756531406,
+          "raw": {
+            "before": [
+              7071.0,
+              7716.5,
+              6881.0,
+              7321.0
+            ],
+            "after": [
+              2817.0,
+              3291.0,
+              2988.5,
+              2534.0
+            ]
+          },
+          "pairs": [
+            {
+              "beforeIndex": 0,
+              "afterIndex": 1,
+              "before": 7071.0,
+              "after": 2817.0,
+              "reductionPercent": 60.16122189223589
+            },
+            {
+              "beforeIndex": 3,
+              "afterIndex": 2,
+              "before": 7716.5,
+              "after": 3291.0,
+              "reductionPercent": 57.35113069396747
+            },
+            {
+              "beforeIndex": 5,
+              "afterIndex": 4,
+              "before": 6881.0,
+              "after": 2988.5,
+              "reductionPercent": 56.56881267257666
+            },
+            {
+              "beforeIndex": 6,
+              "afterIndex": 7,
+              "before": 7321.0,
+              "after": 2534.0,
+              "reductionPercent": 65.38724218003004
+            }
+          ]
+        },
+        "ownedCpuFourResetsMs": {
+          "beforeMedian": 4374.103499999999,
+          "afterMedian": 4218.3495,
+          "medianReductionPercent": 3.560821091681965,
+          "raw": {
+            "before": [
+              3785.8900000000003,
+              4962.316999999999,
+              6733.898999999999,
+              3435.9399999999996
+            ],
+            "after": [
+              5510.386,
+              4438.041,
+              3998.6579999999994,
+              3667.0519999999997
+            ]
+          },
+          "pairs": [
+            {
+              "beforeIndex": 0,
+              "afterIndex": 1,
+              "before": 3785.8900000000003,
+              "after": 5510.386,
+              "reductionPercent": -45.550610292427926
+            },
+            {
+              "beforeIndex": 3,
+              "afterIndex": 2,
+              "before": 4962.316999999999,
+              "after": 4438.041,
+              "reductionPercent": 10.565145273871035
+            },
+            {
+              "beforeIndex": 5,
+              "afterIndex": 4,
+              "before": 6733.898999999999,
+              "after": 3998.6579999999994,
+              "reductionPercent": 40.61897869273062
+            },
+            {
+              "beforeIndex": 6,
+              "afterIndex": 7,
+              "before": 3435.9399999999996,
+              "after": 3667.0519999999997,
+              "reductionPercent": -6.726310703912186
+            }
+          ]
+        },
+        "warmupsPerLifetime": 2,
+        "measuredResetsPerLifetime": 4,
+        "nativeAndDomExact": true
+      }
+    }
+  ],
+  "focusedFollowups": [
+    {
+      "name": "300-only",
+      "mode": "latency",
+      "rows": 300,
+      "independentLifetimesPerArm": 4,
+      "fullResets": 0,
+      "renderAndFrameMs": {
+        "beforeMedian": 835.0,
+        "afterMedian": 572.5,
+        "medianReductionPercent": 31.437125748502993,
+        "raw": {
+          "before": [
+            1000,
+            670,
+            1044,
+            530
+          ],
+          "after": [
+            342,
+            901,
+            363,
+            782
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 1000,
+            "after": 342,
+            "reductionPercent": 65.8
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 670,
+            "after": 901,
+            "reductionPercent": -34.4776119402985
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1044,
+            "after": 363,
+            "reductionPercent": 65.22988505747126
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 530,
+            "after": 782,
+            "reductionPercent": -47.54716981132074
+          }
+        ]
+      }
+    },
+    {
+      "name": "300-only",
+      "mode": "resources",
+      "rows": 300,
+      "independentLifetimesPerArm": 4,
+      "fullResets": 0,
+      "renderAndFrameMs": {
+        "beforeMedian": 47.0,
+        "afterMedian": 69.0,
+        "medianReductionPercent": -46.808510638297875,
+        "raw": {
+          "before": [
+            50,
+            93,
+            44,
+            39
+          ],
+          "after": [
+            136,
+            63,
+            75,
+            62
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 50,
+            "after": 136,
+            "reductionPercent": -172.00000000000003
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 93,
+            "after": 63,
+            "reductionPercent": 32.25806451612904
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 44,
+            "after": 75,
+            "reductionPercent": -70.45454545454545
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 39,
+            "after": 62,
+            "reductionPercent": -58.974358974358964
+          }
+        ]
+      },
+      "ownedCpuMs": {
+        "beforeMedian": 515.485,
+        "afterMedian": 762.275,
+        "medianReductionPercent": -47.87530190015228,
+        "raw": {
+          "before": [
+            523.4730000000001,
+            954.6709999999998,
+            507.49699999999996,
+            494.274
+          ],
+          "after": [
+            952.0400000000001,
+            717.318,
+            807.232,
+            520.249
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 523.4730000000001,
+            "after": 952.0400000000001,
+            "reductionPercent": -81.86993407491885
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 954.6709999999998,
+            "after": 717.318,
+            "reductionPercent": 24.862282398857815
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 507.49699999999996,
+            "after": 807.232,
+            "reductionPercent": -59.06143287546528
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 494.274,
+            "after": 520.249,
+            "reductionPercent": -5.255182348252196
+          }
+        ]
+      },
+      "browserCpuMs": {
+        "beforeMedian": 188.88600000000002,
+        "afterMedian": 288.70900000000006,
+        "medianReductionPercent": -52.84827885602959,
+        "raw": {
+          "before": [
+            198.37400000000002,
+            307.186,
+            179.398,
+            166.95499999999998
+          ],
+          "after": [
+            353.735,
+            264.076,
+            313.34200000000004,
+            183.935
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 198.37400000000002,
+            "after": 353.735,
+            "reductionPercent": -78.31721899039188
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 307.186,
+            "after": 264.076,
+            "reductionPercent": 14.033842688143327
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 179.398,
+            "after": 313.34200000000004,
+            "reductionPercent": -74.66303972173604
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 166.95499999999998,
+            "after": 183.935,
+            "reductionPercent": -10.170405199005739
+          }
+        ]
+      },
+      "nodeCpuMs": {
+        "beforeMedian": 140.89,
+        "afterMedian": 227.529,
+        "medianReductionPercent": -61.49407339058841,
+        "raw": {
+          "before": [
+            142.285,
+            240.219,
+            132.782,
+            139.495
+          ],
+          "after": [
+            269.169,
+            232.161,
+            222.897,
+            139.459
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 142.285,
+            "after": 269.169,
+            "reductionPercent": -89.17594967846223
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 240.219,
+            "after": 232.161,
+            "reductionPercent": 3.3544390743446617
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 132.782,
+            "after": 222.897,
+            "reductionPercent": -67.86687954692651
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 139.495,
+            "after": 139.459,
+            "reductionPercent": 0.02580737660847765
+          }
+        ]
+      },
+      "childCpuMs": {
+        "beforeMedian": 191.57049999999998,
+        "afterMedian": 246.037,
+        "medianReductionPercent": -28.431569578823467,
+        "raw": {
+          "before": [
+            182.81400000000002,
+            407.26599999999996,
+            195.31699999999998,
+            187.824
+          ],
+          "after": [
+            329.136,
+            221.08100000000002,
+            270.993,
+            196.85500000000002
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 182.81400000000002,
+            "after": 329.136,
+            "reductionPercent": -80.0387278873609
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 407.26599999999996,
+            "after": 221.08100000000002,
+            "reductionPercent": 45.71582209170418
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 195.31699999999998,
+            "after": 270.993,
+            "reductionPercent": -38.745219310147114
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 187.824,
+            "after": 196.85500000000002,
+            "reductionPercent": -4.8082247210154305
+          }
+        ]
+      }
+    },
+    {
+      "name": "5000-cpu-only",
+      "mode": "resources",
+      "rows": 5000,
+      "independentLifetimesPerArm": 4,
+      "fullResets": 0,
+      "renderAndFrameMs": {
+        "beforeMedian": 690.5,
+        "afterMedian": 291.0,
+        "medianReductionPercent": 57.85662563359884,
+        "raw": {
+          "before": [
+            518,
+            732,
+            905,
+            649
+          ],
+          "after": [
+            226,
+            287,
+            295,
+            485
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 518,
+            "after": 226,
+            "reductionPercent": 56.37065637065637
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 732,
+            "after": 287,
+            "reductionPercent": 60.79234972677596
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 905,
+            "after": 295,
+            "reductionPercent": 67.40331491712708
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 649,
+            "after": 485,
+            "reductionPercent": 25.269645608628654
+          }
+        ]
+      },
+      "ownedCpuMs": {
+        "beforeMedian": 2597.6345,
+        "afterMedian": 1589.1915,
+        "medianReductionPercent": 38.821589411443384,
+        "raw": {
+          "before": [
+            1847.876,
+            2944.922,
+            3072.794000000001,
+            2250.3469999999998
+          ],
+          "after": [
+            1487.937,
+            1563.798,
+            1614.585,
+            2446.157
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 1847.876,
+            "after": 1487.937,
+            "reductionPercent": 19.478525615355146
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 2944.922,
+            "after": 1563.798,
+            "reductionPercent": 46.8984917087787
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 3072.794000000001,
+            "after": 1614.585,
+            "reductionPercent": 47.45547537517973
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 2250.3469999999998,
+            "after": 2446.157,
+            "reductionPercent": -8.701324729030691
+          }
+        ]
+      },
+      "browserCpuMs": {
+        "beforeMedian": 1331.8890000000001,
+        "afterMedian": 665.8755,
+        "medianReductionPercent": 50.00518061189785,
+        "raw": {
+          "before": [
+            967.921,
+            1464.1940000000002,
+            1672.7820000000004,
+            1199.5839999999998
+          ],
+          "after": [
+            615.1899999999999,
+            638.709,
+            693.042,
+            1124.34
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 967.921,
+            "after": 615.1899999999999,
+            "reductionPercent": 36.442126991768966
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 1464.1940000000002,
+            "after": 638.709,
+            "reductionPercent": 56.3781165610568
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1672.7820000000004,
+            "after": 693.042,
+            "reductionPercent": 58.569496802332885
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 1199.5839999999998,
+            "after": 1124.34,
+            "reductionPercent": 6.272507802704929
+          }
+        ]
+      },
+      "nodeCpuMs": {
+        "beforeMedian": 917.6835000000001,
+        "afterMedian": 694.0844999999999,
+        "medianReductionPercent": 24.36559009723942,
+        "raw": {
+          "before": [
+            649.233,
+            1080.927,
+            1065.209,
+            770.158
+          ],
+          "after": [
+            661.316,
+            705.351,
+            682.818,
+            940.668
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 649.233,
+            "after": 661.316,
+            "reductionPercent": -1.8611191975762331
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 1080.927,
+            "after": 705.351,
+            "reductionPercent": 34.74573213547261
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 1065.209,
+            "after": 682.818,
+            "reductionPercent": 35.89821340225252
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 770.158,
+            "after": 940.668,
+            "reductionPercent": -22.139612910597563
+          }
+        ]
+      },
+      "childCpuMs": {
+        "beforeMedian": 307.704,
+        "afterMedian": 229.23150000000004,
+        "medianReductionPercent": 25.502593401450735,
+        "raw": {
+          "before": [
+            230.722,
+            399.801,
+            334.803,
+            280.605
+          ],
+          "after": [
+            211.43099999999998,
+            219.73800000000003,
+            238.72500000000002,
+            381.149
+          ]
+        },
+        "pairs": [
+          {
+            "beforeIndex": 0,
+            "afterIndex": 1,
+            "before": 230.722,
+            "after": 211.43099999999998,
+            "reductionPercent": 8.36114458092424
+          },
+          {
+            "beforeIndex": 3,
+            "afterIndex": 2,
+            "before": 399.801,
+            "after": 219.73800000000003,
+            "reductionPercent": 45.03815648285021
+          },
+          {
+            "beforeIndex": 5,
+            "afterIndex": 4,
+            "before": 334.803,
+            "after": 238.72500000000002,
+            "reductionPercent": 28.696875476026197
+          },
+          {
+            "beforeIndex": 6,
+            "afterIndex": 7,
+            "before": 280.605,
+            "after": 381.149,
+            "reductionPercent": -35.83115054970509
+          }
+        ]
+      }
+    }
+  ],
+  "interpretation": "Large-row latency and deep full-reset gains are supported by paired results. Mixed-workload 300-row and CPU values vary substantially, including regressions; do not claim overall CPU improvement or small-graph equivalence from these medians. Focused followups remove preceding large reset work; all original samples retained.",
+  "scope": "Actual repository Native pages/local branches with independent Native oracle, production HTML/CSP/bundle and owned headless transport. Browser-cold documents; filesystem warmed by oracle/source setup. CPU is owned Node + waited native children + complete Chromium deltas, not whole VS Code or per-Git-only CPU. Full-reset samples within a lifetime are correlated and summarized per lifetime. Native metadata protection covers HEAD/index/config/packed refs and complete ref set; no source worktree or Git writes, network or OS focus actions. Status/local-only/remote-tag/GitHub startup work is excluded from this diagnostic pipeline. No physical display, Web Vitals INP, physical memory or real VS Code session timing claim."
+}

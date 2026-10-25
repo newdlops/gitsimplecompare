@@ -45,7 +45,8 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
       return { writes, sameOverlay: root.querySelector(".pr-stack-flow-overlay") === overlay,
         sameChips: chips.every(chip => chip === root.querySelector(`[data-stack-branch="${(chip as HTMLElement).dataset.stackBranch}"]`)),
         samePaths: paths.every((path, index) => path === overlay.querySelectorAll(".pr-stack-flow-path")[index]),
-        attached: chips.every(chip => chip.isConnected && chip.parentElement?.parentElement === root) };
+        attached: chips.every((chip, index) => root.contains(chip) &&
+          chip.closest<HTMLElement>(".row")?.dataset.hash === fixture.rows[index].hash) };
     });
     expect(result).toEqual({ writes: 0, sameOverlay: true, sameChips: true, samePaths: true, attached: true });
     await expect(page.locator(".pr-stack-flow-path")).toHaveCount(80);

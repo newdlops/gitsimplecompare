@@ -25,7 +25,7 @@ async function mountDenseGraph(page: Page) {
     };
   });
   await page.keyboard.press("Escape");
-  await page.locator('#graph-content > .row[data-hash="hash-0"]').click();
+  await page.locator('#graph-content .row[data-hash="hash-0"]').click();
   await page.keyboard.press("Escape");
   await page.locator("#graph").evaluate(element => { element.scrollTop = 3000; });
   const cdp = await page.context().newCDPSession(page);
@@ -57,7 +57,7 @@ for (const width of [390, 768, 1440]) {
     }
     const observed = await page.evaluate(() => (window as any).__syncFeedback);
     expect(observed).toHaveLength(10); expect(observed.every((item: any) => item.busyBeforeIPC)).toBe(true);
-    await expect(page.locator('#graph-content > .row.selected[data-hash="hash-0"]')).toHaveCount(1);
+    await expect(page.locator('#graph-content .row.selected[data-hash="hash-0"]')).toHaveCount(1);
     expect(await page.locator("#graph").evaluate(element => element.scrollTop)).toBe(before);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     expect(errors).toEqual([]);

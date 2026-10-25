@@ -36,8 +36,8 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     await mountProductionReference(browser, page); await observe(page);
     for (let round = 0; round < 3; round++) await update(page);
     expect(await page.evaluate(() => (window as any).__inactiveCounts)).toEqual({ cleanupScans: 0, captures: 0 });
-    await expect(page.locator("#graph-content > .row")).toHaveCount(5000);
-    await expect(page.locator('#graph-content > .row[data-index="0"] .subject')).toHaveText("Changed 2");
+    await expect(page.locator("#graph-content .row")).toHaveCount(5000);
+    await expect(page.locator('#graph-content .row[data-index="0"] .subject')).toHaveText("Changed 2");
   });
 }
 

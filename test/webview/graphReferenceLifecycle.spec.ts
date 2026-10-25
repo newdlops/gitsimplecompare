@@ -26,7 +26,7 @@ test("reference updates follow reordered and reset models while preserving reflo
     branches.push({ name: "new-color-branch", current: false, hash: hash(4001) });
     window.dispatchEvent(new MessageEvent("message", { data: { type: "branchStatus", branches, worktrees: [] } }));
   });
-  await expect(page.locator('#graph-content > .row[data-index="2"] [data-branch-name="bench-0"]')).toHaveAttribute("data-tooltip", /Updated after reordering/);
+  await expect(page.locator('#graph-content .row[data-index="2"] [data-branch-name="bench-0"]')).toHaveAttribute("data-tooltip", /Updated after reordering/);
   expect(await page.evaluate(() => document.querySelector('[data-reflog-virtual="1"]') === (window as any).__keptReferenceOverlay)).toBe(true);
 
   await page.evaluate(() => {
@@ -35,13 +35,13 @@ test("reference updates follow reordered and reset models while preserving reflo
     const branches = structuredClone(w.__referenceFixture.branches); branches[0].subject = "Changed while empty";
     window.dispatchEvent(new MessageEvent("message", { data: { type: "branchStatus", branches, worktrees: [] } }));
   });
-  await expect(page.locator("#graph-content > .row")).toHaveCount(0);
+  await expect(page.locator("#graph-content .row")).toHaveCount(0);
   await page.evaluate(() => {
     const w = window as any; w.__sendReferenceGraph([...w.__referenceRows].reverse());
     const branches = structuredClone(w.__referenceFixture.branches); branches[0].subject = "Updated after reset";
     window.dispatchEvent(new MessageEvent("message", { data: { type: "branchStatus", branches, worktrees: [] } }));
   });
-  const chip = page.locator('#graph-content > .row[data-index="0"] [data-branch-name="bench-0"]');
+  const chip = page.locator('#graph-content .row[data-index="0"] [data-branch-name="bench-0"]');
   await expect(chip).toHaveAttribute("data-tooltip", /Updated after reset/);
   await expect(chip).toHaveRole("button"); await expect(chip).toHaveAccessibleName("Branch actions for bench-0");
   await page.keyboard.press("Escape"); await chip.focus(); await expect(chip).toBeFocused(); await chip.press("Enter");
