@@ -1,0 +1,43 @@
+{
+  "recordedAt": "2026-10-25T23:29:00.013424+00:00",
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "goalStatusAtRecording": "active",
+  "objectiveAchieved": false,
+  "latestRelease": "0.1.72175",
+  "productCommit": "9cc3eaebc0d8575c02f032f03e92fdac32e71e78",
+  "previousGoalTurnClassification": "progress: identified a 16-color Set as a concrete bitmask candidate",
+  "currentGoalTurnClassification": "progress: proved canonical data equality, measured candidate, implemented, tested, committed, pushed, published and installed",
+  "sameBlockerConsecutiveGoalTurns": 0,
+  "provenThisTurn": {
+    "fullGraphDataComparisons": 52,
+    "checkpointComparisons": 52,
+    "incrementalComparisons": 256,
+    "nodeTestsPassed": 19,
+    "typecheckAndProductionBuildPassed": true,
+    "all81PackagedAndInstalledRuntimeBytesMatched": true,
+    "denseSyntheticNodeLayoutCpuReducedAcrossPilotAndFinalLives": 8
+  },
+  "limitations": [
+    "General Node layout CPU improvement was not proved; adverse initial samples were retained.",
+    "Savings in the measured dense synthetic Node layout were below one millisecond per layout.",
+    "Actual updated busy-window response, overall CPU behavior and first-page latency still require direct evidence."
+  ],
+  "currentRuntime": {
+    "recordedAt": "2026-10-25T23:29:00.013424+00:00",
+    "since": "2026-10-25T23:21:24.131Z",
+    "registeredVersion": "0.1.72175",
+    "activeVersionCounts": {
+      "0.1.72173": 4
+    },
+    "liveLogHandlesVerified": true,
+    "targetVersionActive": false,
+    "targetVersionGraphFrames": 0,
+    "nativeInputActionsPerformed": false,
+    "forcedHostReload": false,
+    "privateAppTextPersisted": false,
+    "actualUpdatedBusyWindowLatencyVerified": false
+  },
+  "nextRequiredEvidence": "Activate the installed target in an existing actual Code window and observe its Graph response with concurrent host-load context.",
+  "applicationInteractionAuthorization": "prior explicit brief one-window/manual-reload question remains unanswered; no forced reload or focus action",
+  "liveJobs": []
+}

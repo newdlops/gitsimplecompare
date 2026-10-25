@@ -21,6 +21,10 @@ Graph의 사용 중인 16색 계열을 하위 16비트로 기록한다. 새 색�
 
 ## 재현과 범위
 
-프로젝트 루트에서 `node scripts/benchmark-graph-color-mask.mjs afd6b2eddc8ea01ee0a6306339253b935d4b6c5c /private/tmp/graph-color-mask.json`을 실행한다. 이 비교는 합성 데이터만 사용한다. 사용자 저장소를 읽거나 변경하지 않는다. 이번 버전의 시각 QA는 수행하지 않았다. 별도로 VSIX의 브라우저 자산과 설치된 runtime 바이트를 확인한다.
+프로젝트 루트에서 `node scripts/benchmark-graph-color-mask.mjs afd6b2eddc8ea01ee0a6306339253b935d4b6c5c /private/tmp/graph-color-mask.json`을 실행한다. 이 비교는 합성 데이터만 사용한다. 사용자 저장소를 읽거나 변경하지 않는다. 이번 버전의 시각 QA는 수행하지 않았다. VSIX의 runtime 81개가 소스 산출물·설치 파일과 일치했다. 0.1.72174 대비 브라우저 자산은 바이트 단위로 같고 실행 자산 중 dist/extension.js만 달라졌다.
 
 [요약과 검사 로그 해시](benchmarks/lane-color-mask-0.1.72175.json), [최초 독립 수명 원본](benchmarks/lane-color-mask-independent-0.1.72175.json), [교차 pilot 원본](benchmarks/lane-color-mask-interleaved-pilot-0.1.72175.json), [최종 교차 원본](benchmarks/lane-color-mask-interleaved-final-0.1.72175.json).
+
+동일 VSIX로 0.1.72175 게시와 로컬 설치를 완료했다. 현재 열린 실제 창 4개는 0.1.72173을 실행 중이어서 업데이트된 실제 창의 부하 응답 검증은 남아 있다.
+
+[산출물 검증](benchmarks/release-artifact-0.1.72175.json), [배포·설치](benchmarks/deployment-0.1.72175.json), [실제 세션 관찰](benchmarks/actual-session-observation-0.1.72175.json), [전체 목표 진행 상태](benchmarks/goal-progress-0.1.72175.json).

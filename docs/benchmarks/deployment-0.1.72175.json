@@ -1,0 +1,34 @@
+{
+  "version": "0.1.72175",
+  "recordedAt": "2026-10-25T23:29:00.013424+00:00",
+  "productCommit": "9cc3eaebc0d8575c02f032f03e92fdac32e71e78",
+  "pushedTo": "origin/main",
+  "artifact": "gitsimplecompare-0.1.72175.vsix",
+  "bytes": 936690,
+  "sha256": "bf98b0108f6708d4253f3528b4df0f94e3af90515ac674e1e8cacb943f293ee6",
+  "publishExitCode": 0,
+  "installExitCode": 0,
+  "sameVerifiedVsixPublishedAndInstalled": true,
+  "installedRuntimeMatched": true,
+  "runtimeFiles": 81,
+  "registeredVersion": "0.1.72175",
+  "registeredEntries": 1,
+  "marketplaceStatusQueried": false,
+  "forcedHostReload": false,
+  "nativeInputActionsPerformed": false,
+  "actualUpdatedSessionLatencyVerified": false,
+  "logs": {
+    "gsc-color-mask-package-72175.log": {
+      "bytes": 1381,
+      "sha256": "779cfc35850d1664d298eda07fc3532567e25daad450d2f1c035e898c8ec08d5"
+    },
+    "gsc-color-mask-publish-72175.log": {
+      "bytes": 355,
+      "sha256": "e42879dd3dba6d9a4f51118e71e8f4e61be5e89b0ebf33f5a2a0e94b65429d61"
+    },
+    "gsc-color-mask-install-72175.log": {
+      "bytes": 399,
+      "sha256": "a086feee30c5ba6d8f08c568b3037d9858e88b723d8ebc9e81fbc4f8ef20d05a"
+    }
+  }
+}

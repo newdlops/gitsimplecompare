@@ -1,0 +1,15 @@
+{
+  "recordedAt": "2026-10-25T23:29:00.013424+00:00",
+  "since": "2026-10-25T23:21:24.131Z",
+  "registeredVersion": "0.1.72175",
+  "activeVersionCounts": {
+    "0.1.72173": 4
+  },
+  "liveLogHandlesVerified": true,
+  "targetVersionActive": false,
+  "targetVersionGraphFrames": 0,
+  "nativeInputActionsPerformed": false,
+  "forcedHostReload": false,
+  "privateAppTextPersisted": false,
+  "actualUpdatedBusyWindowLatencyVerified": false
+}
