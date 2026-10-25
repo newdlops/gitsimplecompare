@@ -67,3 +67,15 @@ renderer에만 CDP CPU 6배 지연을 적용했고 머신 전체 부하는 만�
 `media/graph/graphFeatures.js` 하나다. Git 실행·안전 검사 bundle과 CSS는 이전
 버전과 바이트가 같다. 제외한 renderer와 benchmark 코드는 VSIX에 포함하지 않는다.
 패키지 해시는 `benchmarks/release-artifact-0.1.72169.json`에 기록한다.
+
+재측정은 `GSC_BENCH_RENDERER_BASELINE=5023e8ef36dd22a1256d60365b88b8bd241b2aa7`
+환경에서 `node scripts/benchmark-graph-initial-renderer.mjs /private/tmp/graph-renderer.json`으로 실행한다.
+
+## 배포와 설치
+
+제품 커밋 `7fd16e1e45de8483af05b0adaec165438af5cc74`를 origin/main에 푸시했다.
+검증한 동일 VSIX로 publish와 VS Code 설치가 성공했다. SHA-256은
+`5f690194d86d5e57e05d299affc5d7c9ebac329920eab0b8d3e8a3db7f28bc74`다.
+소스·VSIX·설치된 runtime 126개의 바이트가 일치하며 설치 registry는 0.1.72169다.
+기존 세션은 다음 일반 창 reload에서 새 버전을 사용한다.
+실행 기록은 `benchmarks/deployment-0.1.72169.json`에 있다.

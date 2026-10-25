@@ -144,5 +144,9 @@
     "package.nls.ko.json": "7e15635587234659600b096506b51d655d057a21f37f65f9f1277a2b4b975d7c"
   },
   "benchmarkFlagsBundled": false,
-  "rejectedRowRendererBundled": false
+  "rejectedRowRendererBundled": false,
+  "installedRuntimeMatched": true,
+  "installedPath": "/Users/lky/.vscode/extensions/newdlops.gitsimplecompare-0.1.72169",
+  "registeredVersion": "0.1.72169",
+  "registeredEntries": 1
 }

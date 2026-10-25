@@ -1,0 +1,54 @@
+{
+  "objective": "Reduce extension overhead on a busy machine while preserving Git results and Graph interactions.",
+  "auditOutcome": "achieved",
+  "version": "0.1.72169",
+  "productCommit": "7fd16e1e45de8483af05b0adaec165438af5cc74",
+  "previousAcceptedWork": "0.1.72168 shares sibling repository discovery, reducing the measured 34 Native reads to one; its Native bundle remains byte-identical.",
+  "acceptedChange": "One delegated Graph pointer listener and direct row-to-node lookup; no new cache, timer or worker.",
+  "evidence": {
+    "rendererCases": 72,
+    "followupCases": 8,
+    "webviewPass": 81,
+    "nativeNodePass": 35,
+    "actualControls": 11,
+    "prCardsPerControl": 80,
+    "nativeAndDomExact": true,
+    "localChangesPreserved": true,
+    "typesPassed": true,
+    "packagePassed": true,
+    "installedRuntimeMatched": true
+  },
+  "performance": {
+    "5000RowsDragStartMs": {
+      "before": 35.1,
+      "after": 7.45,
+      "scope": "Real pointerdown at Graph capture to drag-start dispatch, 6x CPU-throttled test renderer; excludes OS input queue."
+    },
+    "5000RowsBrowserRenderCpuMs": {
+      "before": 424.31,
+      "after": 410.25
+    },
+    "5000RowsPostGcJsHeapGrowthBytes": {
+      "before": 3876632,
+      "after": 3314364
+    },
+    "generalFirstFrameSpeedupClaimed": false
+  },
+  "visualViewports": [
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "rejectedCandidatesShipped": false,
+  "activationScope": "Registered VSIX installation verified. Existing user session is not forcibly reloaded; next normal reload activates this version.",
+  "requiredProductWorkRemaining": []
+}
