@@ -10,6 +10,21 @@
   let activeBranch = "";
   let stackBusy = false;
   let flowRendered = false;
+  let flowOverlay, flowRows = new Set();
+  let flowEntries = new Map();
+
+  /** 표시를 모두 해제할 때 소유 DOM과 참조를 비운다. 반환값 없이 다음 frame의 재사용 상태까지 초기화한다. */
+  function clearGraphFlow() {
+    flowOverlay?.remove(); flowOverlay = undefined;
+    flowEntries.forEach(entry => { entry.chip?.remove(); entry.path?.remove(); }); flowEntries.clear();
+    flowRows.forEach(row => row.classList.remove("pr-stack-head-row")); flowRows.clear();
+    flowRendered = false;
+  }
+
+  /** @param element 소유 SVG @param name 속성 이름 @param value 새 값 @returns 값이 바뀐 속성만 써서 불필요한 SVG paint를 피한다. */
+  function setFlowAttribute(element, name, value) {
+    if (element.getAttribute(name) !== String(value)) element.setAttribute(name, String(value));
+  }
 
   /** stack toolbar, graph chip, detail panel 이벤트와 extension 메시지를 등록한다. */
   function init() {
@@ -75,32 +90,56 @@
     button.classList.toggle("has-stack-error", Boolean(loadError));
   }
 
-  /** 현재 commit node 사이 PR 방향 arrow와 layer head chip을 다시 그린다. */
+  /** 현재 행·좌표와 다른 chip/arrow만 갱신한다. 모든 예약 callback은 유지해 reflog의 후속 좌표도 반영한다. */
   function renderGraphFlow() {
     const root = document.getElementById("graph-content");
     if (!root) return;
-    if (flowRendered) {
-      root.querySelector(".pr-stack-flow-overlay")?.remove();
-      root.querySelectorAll(".pr-stack-layer-chip").forEach((element) => element.remove());
-      root.querySelectorAll(".pr-stack-head-row").forEach((element) => element.classList.remove("pr-stack-head-row"));
-      flowRendered = false;
-    }
+    const focused = root.contains(document.activeElement) && document.activeElement?.classList.contains("pr-stack-layer-chip")
+      ? document.activeElement : null;
     const baseSvg = root.querySelector("svg:not(.pr-stack-flow-overlay)");
     const layers = Array.isArray(snapshot.layers) ? snapshot.layers : [];
-    if (!baseSvg || !layers.length) return;
-    const overlay = svgElement("svg", {
-      class: "pr-stack-flow-overlay",
-      width: baseSvg.getAttribute("width") || "100%",
-      height: baseSvg.getAttribute("height") || "0",
-      "aria-hidden": "true",
-    });
-    overlay.appendChild(arrowDefinitions());
-    const elements = graphElements(root, baseSvg);
-    for (const layer of layers) {
-      appendLayerChip(elements.row(layer.headHash), layer);
-      appendLayerArrow(elements.node(layer.headHash), elements.node(layer.parentHash), overlay, layer);
+    if (!baseSvg || !layers.length) { clearGraphFlow(); return; }
+    if (!flowOverlay) {
+      flowOverlay = svgElement("svg", { class: "pr-stack-flow-overlay", "aria-hidden": "true" });
+      flowOverlay.appendChild(arrowDefinitions());
     }
-    root.appendChild(overlay);
+    setFlowAttribute(flowOverlay, "width", baseSvg.getAttribute("width") || "100%");
+    setFlowAttribute(flowOverlay, "height", baseSvg.getAttribute("height") || "0");
+    const elements = graphElements(root, baseSvg);
+    const rowChips = new Map(), nextEntries = new Map(), branchCounts = new Map();
+    let previousPath = flowOverlay.firstChild;
+    layers.forEach(layer => {
+      // 브랜치 순서가 바뀌어도 같은 버튼의 포커스를 유지한다. 중복 이름도 각 출현을 독립적으로 취급한다.
+      const branch = String(layer.branch), occurrence = branchCounts.get(branch) || 0;
+      branchCounts.set(branch, occurrence + 1);
+      const key = JSON.stringify([branch, occurrence]), entry = flowEntries.get(key) || {}, row = elements.row(layer.headHash);
+      nextEntries.set(key, entry);
+      syncLayerChip(row, layer, entry);
+      if (row) {
+        const chips = rowChips.get(row) || []; chips.push(entry.chip); rowChips.set(row, chips);
+      }
+      syncLayerArrow(elements.node(layer.headHash), elements.node(layer.parentHash), layer, entry);
+      if (entry.path) {
+        if (previousPath.nextSibling !== entry.path) flowOverlay.insertBefore(entry.path, previousPath.nextSibling);
+        previousPath = entry.path;
+      }
+    });
+    flowEntries.forEach((entry, key) => { if (!nextEntries.has(key)) { entry.chip?.remove(); entry.path?.remove(); } });
+    flowEntries = nextEntries;
+    flowRows.forEach(row => { if (!rowChips.has(row)) row.classList.remove("pr-stack-head-row"); });
+    flowRows = new Set(rowChips.keys());
+    for (const [row, chips] of rowChips) {
+      // 동일 head를 공유하는 layer도 기존 insertBefore 순서(마지막 layer가 먼저)를 유지한다.
+      let before = row.firstChild;
+      for (let index = chips.length - 1; index >= 0; index--) {
+        const chip = chips[index];
+        if (chip !== before) row.insertBefore(chip, before);
+        before = chip.nextSibling;
+      }
+    }
+    if (root.lastChild !== flowOverlay) root.appendChild(flowOverlay);
+    // insertBefore로 동일 버튼을 옮겨도 브라우저가 focus를 해제할 수 있으므로 같은 실제 layer에 복원한다.
+    if (focused?.isConnected && root.contains(focused) && document.activeElement !== focused) focused.focus({ preventScroll: true });
     flowRendered = true;
   }
 
@@ -122,49 +161,50 @@
     };
   }
 
-  /** layer head commit row에 상태/PR 번호가 포함된 stack action chip을 붙인다. */
-  function appendLayerChip(row, layer) {
-    if (!row) return;
-    row.classList.add("pr-stack-head-row");
-    const button = document.createElement("button");
+  /** @param row 최신 실제 행 @param layer 표시 데이터 @param entry 재사용 슬롯 @returns chip을 유지하고 표시가 바뀐 때만 HTML/tooltip을 쓴다. */
+  function syncLayerChip(row, layer, entry) {
+    if (!row) { entry.chip?.remove(); entry.chip = undefined; entry.chipKey = undefined; return; }
+    if (!row.classList.contains("pr-stack-head-row")) row.classList.add("pr-stack-head-row");
+    const button = entry.chip || (entry.chip = document.createElement("button"));
     const pullRequest = layer.pullRequest;
     const state = pullRequest?.state || (layer.local ? text("local") : text("remote"));
     const number = pullRequest?.number ? ` #${pullRequest.number}` : "";
     const title = text("showLayerFlow", layer.branch, layer.parentBranch);
-    button.type = "button";
-    button.className = `pr-stack-layer-chip state-${String(state).toLowerCase()}` +
+    const className = `pr-stack-layer-chip state-${String(state).toLowerCase()}` +
       (layer.needsRestack ? " needs-restack" : "");
-    button.dataset.stackBranch = layer.branch;
-    button.title = title;
-    button.dataset.tooltip = title;
-    button.setAttribute("aria-label", title);
-    button.innerHTML =
+    const html =
       `<span class="codicon codicon-layers" aria-hidden="true"></span>` +
       `<span class="pr-stack-chip-depth">L${Number(layer.depth) + 1}</span>` +
       `<span>${escapeHtml(number || layer.branch)}</span>` +
       (layer.needsRestack
         ? `<span class="codicon codicon-warning" aria-hidden="true"></span>`
         : "");
-    row.insertBefore(button, row.firstChild);
+    const key = JSON.stringify([className, layer.branch, title, html]);
+    if (entry.chipKey !== key) {
+      button.type = "button"; button.className = className; button.dataset.stackBranch = layer.branch;
+      button.title = title; button.dataset.tooltip = title; button.setAttribute("aria-label", title);
+      button.innerHTML = html; entry.chipKey = key;
+    }
   }
 
-  /** graph에 head와 parent node가 모두 보이면 head→base dashed arrow를 overlay에 추가한다. */
-  function appendLayerArrow(head, parent, overlay, layer) {
-    if (!head || !parent || layer.headHash === layer.parentHash) return;
+  /** @param head 최신 head node @param parent 최신 parent node @param layer 표시 데이터 @param entry 소유 path @returns 좌표·상태·설명이 달라진 부분만 쓴다. */
+  function syncLayerArrow(head, parent, layer, entry) {
+    if (!head || !parent || layer.headHash === layer.parentHash) {
+      entry.path?.remove(); entry.path = undefined; entry.pathTitle = undefined; return;
+    }
     const headX = numberAttribute(head, "cx");
     const headY = numberAttribute(head, "cy");
     const parentX = numberAttribute(parent, "cx");
     const parentY = numberAttribute(parent, "cy");
     const railX = Math.max(headX, parentX) + 10 + Math.min(Number(layer.depth) || 0, 5) * 4;
-    const path = svgElement("path", {
-      class: `pr-stack-flow-path${layer.needsRestack ? " needs-restack" : ""}`,
-      d: `M ${headX} ${headY} C ${railX} ${headY}, ${railX} ${parentY}, ${parentX} ${parentY}`,
-      "marker-end": "url(#pr-stack-arrow-head)",
-    });
-    const title = svgElement("title", {});
-    title.textContent = text("pullRequestFlow", layer.parentBranch, layer.branch);
-    path.appendChild(title);
-    overlay.appendChild(path);
+    if (!entry.path) {
+      entry.path = svgElement("path", { "marker-end": "url(#pr-stack-arrow-head)" });
+      entry.pathTitle = svgElement("title", {}); entry.path.appendChild(entry.pathTitle);
+    }
+    setFlowAttribute(entry.path, "class", `pr-stack-flow-path${layer.needsRestack ? " needs-restack" : ""}`);
+    setFlowAttribute(entry.path, "d", `M ${headX} ${headY} C ${railX} ${headY}, ${railX} ${parentY}, ${parentX} ${parentY}`);
+    const title = text("pullRequestFlow", layer.parentBranch, layer.branch);
+    if (entry.pathTitle.textContent !== title) entry.pathTitle.textContent = title;
   }
 
   /** stack chip click을 commit 선택보다 먼저 소비하고 해당 layer detail을 연다. */

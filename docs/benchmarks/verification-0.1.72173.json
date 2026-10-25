@@ -1,0 +1,89 @@
+{
+  "version": "0.1.72173",
+  "productFingerprint": {
+    "files": 652,
+    "sha256": "89556a455d5b238fd2ea4bb7929c52e5029797b8b0b197104c9d20fa14bb066f"
+  },
+  "webview": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0
+  },
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "comparativeProductionBrowsers": 16,
+  "baselinePublishedBytesMatched": true,
+  "sameMessageOwnedDomWrites": 0,
+  "stackChipsAndPaths": 80,
+  "reorderAndMovedChipFocusPreserved": true,
+  "populatedReflogCoordinatesPassed": true,
+  "actualControls": 2,
+  "operations": [
+    "checkout",
+    "pr-squash-cherry-pick"
+  ],
+  "prCardsPerControlCase": 80,
+  "nativeAndDomExact": true,
+  "localChangesPreserved": true,
+  "sameSessionPanelCycles": 8,
+  "sameSessionMeasuredRefreshes": 32,
+  "sameSessionReveals": 32,
+  "closedSubscriptions": 0,
+  "latePosts": 0,
+  "closedBrowserContexts": 0,
+  "boundedNativeResources": true,
+  "lifecycleNodeHeapGrowthBytes": 205453.33333333582,
+  "lifecycleScope": "Default Graph with 80 PR overview rows; active-stack retention also has separate 32-update heap windows and reconciliation/clear tests. No long-term or RSS claim.",
+  "previousNativeNodeEvidence": {
+    "version": "0.1.72170",
+    "tests": 62,
+    "pass": 62,
+    "rerunThisRelease": false,
+    "reason": "Packaged Native runtime byte-identical through 0.1.72171/0.1.72172."
+  },
+  "sourceRuntimeMatched": true,
+  "onlyGraphBundleChanged": true,
+  "nativeRuntimeByteIdentical": true,
+  "packagedBundleMatchesBothComparativeWorkloads": true,
+  "visualViewports": [
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "screensInspected": true,
+  "machineWideStressGenerated": false,
+  "osFocusChanged": false,
+  "forcedHostReload": false,
+  "marketplaceStatusQueried": false,
+  "logs": {
+    "gsc-reconcile-final-tests-72173.log": {
+      "bytes": 2167,
+      "sha256": "c03895b81c4a80b39c842a66ec336d6f9c95c045e86570bca6be72d27627a0ff"
+    },
+    "gsc-reconcile-final-types.log": {
+      "bytes": 58,
+      "sha256": "22668052af2c52378db82924c9ef46d8eb076776a588db34d85bf00b17c2e393"
+    },
+    "gsc-reconcile-controls-72173.log": {
+      "bytes": 10311,
+      "sha256": "b3469e815c14177dbe8dff3128c8140a6c01998a326887f38b10c77182a649ab"
+    },
+    "gsc-reconcile-lifecycle-72173.log": {
+      "bytes": 3428,
+      "sha256": "98c679976da2efb997d6d5c85efe7150efa08aeebbc68dde78e8b800033026b1"
+    },
+    "gsc-reconcile-package-72173.log": {
+      "bytes": 1380,
+      "sha256": "7f4cfc8341efe39d8ec39ed43d8c2186cdcdf2001b4724919b630e0634dd5faf"
+    }
+  }
+}

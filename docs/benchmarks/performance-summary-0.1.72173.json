@@ -1,0 +1,100 @@
+{
+  "version": "0.1.72173",
+  "baseline": "0.1.72172",
+  "workloads": {
+    "inactive": {
+      "stats": {
+        "before": {
+          "handlerMs": 26.225000008940697,
+          "frameMs": 119.25000000745058,
+          "browserCpuMs32": 594.2625000000002,
+          "nodeCpuMs32": 0.8405,
+          "postGcHeapGrowthBytes32": 13248.0,
+          "latencyLongTasks64": 65
+        },
+        "after": {
+          "handlerMs": 24.775000005960464,
+          "frameMs": 118.55000000447035,
+          "browserCpuMs32": 656.485,
+          "nodeCpuMs32": 0.982,
+          "postGcHeapGrowthBytes32": 13224.0,
+          "latencyLongTasks64": 65
+        }
+      },
+      "pairs": [
+        {
+          "frameReductionPercent": -13.946262105427444,
+          "cpuReductionPercent": -142.65230560170377
+        },
+        {
+          "frameReductionPercent": -8.012170390714113,
+          "cpuReductionPercent": -6.014047847118542
+        },
+        {
+          "frameReductionPercent": 28.413152261049035,
+          "cpuReductionPercent": 19.073188915260175
+        },
+        {
+          "frameReductionPercent": -33.94871794260466,
+          "cpuReductionPercent": -41.23119341742476
+        }
+      ],
+      "scope": "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. 5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows.",
+      "raw": "production-inactive-0.1.72173.json"
+    },
+    "stacks80": {
+      "stats": {
+        "before": {
+          "handlerMs": 21.350000008940697,
+          "frameMs": 290.1249999925494,
+          "browserCpuMs32": 1594.5785,
+          "nodeCpuMs32": 0.8935,
+          "postGcHeapGrowthBytes32": 7772.0,
+          "latencyLongTasks64": 124
+        },
+        "after": {
+          "handlerMs": 21.80000000447035,
+          "frameMs": 191.77499999850988,
+          "browserCpuMs32": 898.8950000000002,
+          "nodeCpuMs32": 0.98,
+          "postGcHeapGrowthBytes32": 17096.0,
+          "latencyLongTasks64": 124
+        }
+      },
+      "pairs": [
+        {
+          "frameReductionPercent": 32.609389968420324,
+          "cpuReductionPercent": 43.64389030136885
+        },
+        {
+          "frameReductionPercent": 32.42805755610089,
+          "cpuReductionPercent": 37.485123271263355
+        },
+        {
+          "frameReductionPercent": 33.83104929514092,
+          "cpuReductionPercent": 40.466298036476985
+        },
+        {
+          "frameReductionPercent": 35.25227460293519,
+          "cpuReductionPercent": 48.69170116031366
+        }
+      ],
+      "scope": "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. 5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows.",
+      "raw": "production-stacks80-0.1.72173.json"
+    }
+  },
+  "aggregation": "Median of four independent browser-lifetime medians per source. Within-browser observations are correlated. B/A/A/B and A/B/B/A order.",
+  "implementation": "Reconcile PR stack chips by branch/occurrence, retain overlay/paths, update only changed HTML/attributes and actual row placement, prune removed layers, restore focus after moving a surviving chip. Keep all original RAF callbacks.",
+  "sourceShaBefore": "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe",
+  "sourceShaAfter": "757401074702f74b38041084130fdb990c5ea74071b0c57cf07002d38c714d4e",
+  "inactiveSchedulingGuardByteIdentical": true,
+  "inactiveResult": "Frame median approximately unchanged. CPU median increased about 10.5% with large run variation; no inactive CPU improvement or equivalence claim. The inactive scheduling guard is unchanged; new owned-element registries are initialized once, not populated in this workload.",
+  "memoryClaim": "No overall memory or RSS reduction claim. Separate post-GC growth windows and bounded lifecycle evidence are reported.",
+  "acceptanceRationale": "Target active-stack frame and CPU reductions occur in all four paired lifetimes. Identical presentation produces zero owned DOM writes in functional QA; detached rows, reorder, state updates, missing nodes and clearing remain correct.",
+  "earlierOwnershipOnlyCandidate": "Rejected and restored; see graph-owned-cleanup-experiment-2026-10-26.json. Its numbers are not this release.",
+  "limitations": [
+    "Owned synthetic production Graph; not active VS Code, GitHub network or Native Git latency.",
+    "Long tasks remain. No claim that all busy-machine symptoms are resolved.",
+    "Actual updated-session CPU/memory remains unverified while observed user windows run 0.1.72169."
+  ]
+}
