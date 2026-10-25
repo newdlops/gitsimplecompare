@@ -88,3 +88,13 @@ bundle hash를 패키지와 대조했다. 초기화 순서도 동일하다.
 설치 버전과 활성 버전을 구분하며 정상 reload 이후의 실제 지표는 아직 검증하지
 않았다. 사용자 창을 강제로 reload하거나 포커스를 바꾸지 않는다.
 관찰 근거는 `benchmarks/actual-session-observation-0.1.72171.json`에 있다.
+
+## 배포
+
+제품 커밋 `d315b51`을 origin/main에 푸시하고 검증한 동일 VSIX로 게시와 설치를
+완료했다. SHA-256은
+`1b4d77649c5206faab9b5e5f4cef13ee3657c63646ac0796389fc8af1d1a9481`이다.
+설치된 실행 파일 81개가 패키지·소스와 일치하고 registry는 0.1.72171 하나다.
+Marketplace 상태 점검이나 사용자 창 강제 reload는 실행하지 않았다.
+배포 기록은 `benchmarks/deployment-0.1.72171.json`에 있다. 전체 성능 목표는
+`benchmarks/goal-progress-0.1.72171.json`에 진행 중으로 유지한다.

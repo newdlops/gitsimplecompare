@@ -13,5 +13,8 @@
     "Verify repeated refresh/reveal/close within one session with bounded process/listener/timer/heap behavior.",
     "Inspect actual updated-session metrics after a normal reload; latest observed active hosts remain at 0.1.72169 and no forced reload is authorized."
   ],
-  "deploymentIsNotFullGoalCompletion": true
+  "deploymentIsNotFullGoalCompletion": true,
+  "deploymentComplete": true,
+  "installedVersion": "0.1.72171",
+  "deploymentEvidence": "deployment-0.1.72171.json"
 }
