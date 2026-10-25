@@ -47,6 +47,7 @@
     graphEl, graphContentEl, buildRow, rowRenderKey,
     layout: () => ({ graphWidth: graphWidthForLaneCount(currentLaneCount) }),
   });
+  const svgPresentation = window.GscGraphSvgRender.createPresentationChanges();
 
   /** 레인 인덱스를 x 좌표로 변환한다. */
   function laneX(col) {
@@ -91,13 +92,14 @@
       localColorResolver = window.GscGraphLocalColors?.makeResolver?.(currentRows, currentEdges) || null;
     }
     currentLaneCount = data.laneCount || 1;
-    const incremental = window.GscGraphDataUpdates.prepare(graphContentEl, delta);
+    const incremental = window.GscGraphDataUpdates.prepare(graphContentEl, delta, rowSync.elementAt);
     if (!incremental) delta = undefined;
 
     if (!currentRows.length) {
       resizeGraphContent();
       graphContentEl.innerHTML = '<p class="empty">' + (loadState.loading ? "Loading..." : "No commits.") + "</p>";
       rowSync.indexRows(currentRows);
+      svgPresentation.clear();
       renderLoadTail();
       updateLoadStatus();
       return;
@@ -109,6 +111,7 @@
 
     window.GscGraphDataUpdates.placeSvg(graphContentEl, window.GscGraphSvgRender.render({
       svg: incremental ? graphContentEl.querySelector("svg") : undefined, delta,
+      stableStructure: keepColors, presentationRows: svgPresentation.pending(),
       rows: currentRows,
       edges: currentEdges,
       graphWidth,
@@ -121,6 +124,7 @@
       edgeDisplayColor,
       rowTitle,
     }));
+    svgPresentation.clear();
 
     // 2) 텍스트 행(그래프 폭만큼 왼쪽 여백)
     window.GscGraphDataUpdates.renderRows(graphContentEl, currentRows, graphWidth, buildRow, delta, rowSync.elementAt);
@@ -213,6 +217,7 @@
   }
   /** @param indices 참조 상태에 의존하는 행 집합. 팔레트/초기화처럼 범위를 모르면 전체 배지 캐시를 비운다. */
   function invalidateRowBadges(indices) {
+    svgPresentation.add(indices);
     if (indices) indices.forEach(index => rowBadgeCache.delete(currentRows[index]));
     else rowBadgeCache = new WeakMap();
   }

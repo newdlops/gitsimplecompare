@@ -1,0 +1,17 @@
+{
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "goalStatus": "active",
+  "auditOutcome": "partial progress; full objective not yet proven",
+  "version": "0.1.72171",
+  "acceptedWork": [
+    "Validated metadata deltas visit affected SVG nodes and outgoing edges only; reference changes remain pending until an SVG render.",
+    "Incremental preparation reuses the indexed final real row with detached/virtual fallback; unchanged SVG dimensions are not written."
+  ],
+  "evidence": "verification-0.1.72171.json",
+  "remainingRequiredWork": [
+    "Inspect remaining long renderer tasks and DOM/layout scans in large Graph updates.",
+    "Verify repeated refresh/reveal/close within one session with bounded process/listener/timer/heap behavior.",
+    "Inspect actual updated-session metrics after a normal reload; latest observed active hosts remain at 0.1.72169 and no forced reload is authorized."
+  ],
+  "deploymentIsNotFullGoalCompletion": true
+}

@@ -1,0 +1,55 @@
+{
+  "before": {
+    "independentBrowsers": 4,
+    "handlerMs": 71.55000001192093,
+    "frameMs": 219.1749999895692,
+    "browserCpuMs32": 1170.6109999999996,
+    "nodeCpuMs32": 1.3780000000000001,
+    "heapBeforeBytes": 9682680.0,
+    "heapGrowthBytes32": 8356.0,
+    "longTaskCount64": 68,
+    "maxLongTaskMs": 814,
+    "fullSnapshotExact": true
+  },
+  "after": {
+    "independentBrowsers": 4,
+    "handlerMs": 34.45000000298023,
+    "frameMs": 150.22500000149012,
+    "browserCpuMs32": 876.1749999999997,
+    "nodeCpuMs32": 1.5190000000000001,
+    "heapBeforeBytes": 9368850.0,
+    "heapGrowthBytes32": 13912.0,
+    "longTaskCount64": 67,
+    "maxLongTaskMs": 604,
+    "fullSnapshotExact": true
+  },
+  "version": "0.1.72171",
+  "baseline": "0.1.72170",
+  "pairRelativeReductions": [
+    {
+      "handlerMsReductionPercent": 55.096904110041464,
+      "frameMsReductionPercent": 30.860722075976877,
+      "browserCpuReductionPercent": 28.242319931205028
+    },
+    {
+      "handlerMsReductionPercent": 49.68465313726593,
+      "frameMsReductionPercent": 26.522359651884187,
+      "browserCpuReductionPercent": 29.523181023290277
+    },
+    {
+      "handlerMsReductionPercent": 54.00696862989872,
+      "frameMsReductionPercent": 36.0070129275821,
+      "browserCpuReductionPercent": 20.495363957971303
+    },
+    {
+      "handlerMsReductionPercent": 49.44000002159119,
+      "frameMsReductionPercent": 28.652702355003214,
+      "browserCpuReductionPercent": 22.589317271237086
+    }
+  ],
+  "aggregation": "Median of four browser-lifetime medians per source; each adjacent before/after pair is also reported. Samples within a browser are correlated.",
+  "observedLoadShift": "The first before/after pair was substantially slower than the remaining pairs; all four pairs improve in handler, two-frame latency and browser CPU.",
+  "scope": "5000 rows, 4999 edges, 1000 branches, 250 tags; only graph.js, graphSvgRender.js and graphDataUpdates.js differ. Four independent Chromium lifetimes per source in B/A/A/B+A/B/B/A order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows.",
+  "memoryClaim": "No total-memory or RSS improvement claim. Post-GC JS heap growth is small in both variants but larger after. Typed outgoing-edge indexes require 4*(rows+edges) bytes and are owned by the current SVG.",
+  "remaining": "Long renderer tasks remain, including 67 tasks over the after latency windows. This is partial progress on the full performance objective."
+}

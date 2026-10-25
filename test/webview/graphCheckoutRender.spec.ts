@@ -24,7 +24,9 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
         };
       }
       fixture.badgeCalls = 0; fixture.resolverCalls = 0;
-      let colorCalls = 0;
+      let colorCalls = 0, nodeCalls = 0;
+      const nodeClass = w.GscGraphFeatures.nodeClass;
+      w.GscGraphFeatures.nodeClass = (...args: unknown[]) => { nodeCalls++; return nodeClass(...args); };
       const rowColor = w.GscGraphColors.rowColor;
       w.GscGraphColors.rowColor = (...args: unknown[]) => { colorCalls++; return rowColor(...args); };
       const samples: number[] = [], painted: number[] = [];
@@ -42,7 +44,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         painted.push(+(performance.now() - start).toFixed(1));
       }
-      return { badgeCalls: fixture.badgeCalls, colorCalls, resolverCalls: fixture.resolverCalls, phases, samples, painted, keptRow: keptRow === document.querySelector('#graph-content > .row[data-index="1500"]'),
+      return { badgeCalls: fixture.badgeCalls, colorCalls, nodeCalls, resolverCalls: fixture.resolverCalls, phases, samples, painted, keptRow: keptRow === document.querySelector('#graph-content > .row[data-index="1500"]'),
         keptNode: keptNode === document.querySelector('.node[data-row="1500"]'), keptEdge: keptEdge === (document.querySelector("#graph-content svg") as any).__gscEdgeElements[1500][0],
         edges: fixture.edges.length, scroll: graph.scrollTop === scroll, focus: document.activeElement === graph };
     });
@@ -52,6 +54,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1440, 900]]) {
     expect(measured.keptEdge).toBe(true); expect(measured.edges).toBe(4999);
     expect(measured.badgeCalls).toBeLessThanOrEqual(120);
     expect(measured.colorCalls).toBeLessThanOrEqual(12); expect(measured.resolverCalls).toBe(0);
+    expect(measured.nodeCalls).toBeLessThanOrEqual(30);
     await expect(page.locator('#graph-content > .row.selected[data-index="1"]')).toHaveCount(1);
     await expect(page.locator('#graph-content > .row[data-index="1"] .head')).toHaveCount(1);
     await expect(page.locator('#graph-content > .row[data-index="0"] .head')).toHaveCount(0);

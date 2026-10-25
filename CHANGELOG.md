@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72171] - 2026-10-25
+
+### Performance
+
+- Update only affected SVG nodes and outgoing edges for validated HEAD/title
+  deltas. Keep full comparison for geometry, palette and unknown reference changes.
+- Reuse the indexed last commit row during incremental preparation and avoid
+  writing unchanged SVG dimensions. Preserve detached-row and reflog recovery.
+
 ## [0.1.72170] - 2026-10-25
 
 ### Performance

@@ -1,0 +1,351 @@
+{
+  "version": "0.1.72171",
+  "source": {
+    "kind": "working-tree",
+    "commit": "8fd050da2fc5f8c76e95db00a201abbb64744779",
+    "bundleSha256": "25aa0e19c2e33392ee5a5fab7a0fb07954d5bf590757543f861816b3840d45c5"
+  },
+  "rawReportSha256": "a7312d8239326c2b74b00c4532c676501f7c56e33749a268a03a9be2ccce2ede",
+  "rendererCpuThrottle": 6,
+  "operations": [
+    {
+      "operation": "push",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 9778,
+        "latestMutationToFrameMs": 9778,
+        "renderMs": 647,
+        "frameMs": 749,
+        "latestRenderMs": 647,
+        "latestFrameMs": 749
+      }
+    },
+    {
+      "operation": "pull",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 4782,
+        "latestMutationToFrameMs": 5540,
+        "renderMs": 672,
+        "frameMs": 695,
+        "latestRenderMs": 78,
+        "latestFrameMs": 431
+      }
+    },
+    {
+      "operation": "fetch",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 1961,
+        "latestMutationToFrameMs": 2400,
+        "renderMs": 274,
+        "frameMs": 330,
+        "latestRenderMs": 37,
+        "latestFrameMs": 237
+      }
+    },
+    {
+      "operation": "interactive-rebase",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 2555,
+        "latestMutationToFrameMs": 2939,
+        "renderMs": 247,
+        "frameMs": 304,
+        "latestRenderMs": 39,
+        "latestFrameMs": 220
+      }
+    },
+    {
+      "operation": "fetch-no-change",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 2486,
+        "latestMutationToFrameMs": 2486,
+        "renderMs": 199,
+        "frameMs": 219,
+        "latestRenderMs": 199,
+        "latestFrameMs": 219
+      }
+    },
+    {
+      "operation": "checkout",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 4071,
+        "latestMutationToFrameMs": 4071,
+        "renderMs": 691,
+        "frameMs": 833,
+        "latestRenderMs": 691,
+        "latestFrameMs": 833
+      }
+    },
+    {
+      "operation": "pr-squash-cherry-pick",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 6540,
+        "latestMutationToFrameMs": 7004,
+        "renderMs": 290,
+        "frameMs": 305,
+        "latestRenderMs": 42,
+        "latestFrameMs": 277
+      }
+    },
+    {
+      "operation": "pr-cherry-pick",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 7541,
+        "latestMutationToFrameMs": 7985,
+        "renderMs": 358,
+        "frameMs": 353,
+        "latestRenderMs": 48,
+        "latestFrameMs": 253
+      }
+    },
+    {
+      "operation": "branch-squash-merge",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 11912,
+        "latestMutationToFrameMs": 12431,
+        "renderMs": 321,
+        "frameMs": 424,
+        "latestRenderMs": 59,
+        "latestFrameMs": 255
+      }
+    },
+    {
+      "operation": "branch-rebase-merge",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 4606,
+        "latestMutationToFrameMs": 5003,
+        "renderMs": 196,
+        "frameMs": 323,
+        "latestRenderMs": 43,
+        "latestFrameMs": 227
+      }
+    },
+    {
+      "operation": "cherry-pick",
+      "fixture": {
+        "files": 1000,
+        "commits": 1800,
+        "branches": 100,
+        "monitorPolicy": false,
+        "nativeInputValidatedBeforeGraph": true,
+        "inputScope": "Native status validated before Graph mount; normal initial Graph/PR load precedes click; no previous-process app caches; filesystem warm, not cold-start timing",
+        "localHintScenario": "stale",
+        "pullRequests": 80
+      },
+      "nativeStateExact": true,
+      "localChangesPreserved": true,
+      "frame": {
+        "mode": "headless-production-html",
+        "renderedRows": 300,
+        "exactRefs": true,
+        "exactRemoteTags": true,
+        "exactHeadBadge": true,
+        "exactLocalOnly": true,
+        "headInLoadedPage": true,
+        "mutationToFrameMs": 2227,
+        "latestMutationToFrameMs": 3228,
+        "renderMs": 254,
+        "frameMs": 296,
+        "latestRenderMs": 18,
+        "latestFrameMs": 237
+      }
+    }
+  ],
+  "scope": "Production HTML/CSP/JS button and extension callback with real Native Git; VS Code transport/window/pickers and selected PR GitHub list metadata are replaced. No real user worktree writes or OS window focus.",
+  "screensInspected": {
+    "live-graph-390.png": "39525ec50062fa2c8fa33c906c9dfc929551eac1b118dfd6e1fa9ca6716223c1",
+    "live-graph-768.png": "775cc391c90b098bcdc897d95b5c019221770ae10bb5af12a573c85f5f8879a4",
+    "live-graph-1440.png": "8d476ec8c41c606cf87c8410c6cf2667181a4c65a20b59e5b36d683b4a3c1ded"
+  },
+  "marketplaceStatusQueried": false,
+  "forcedHostReload": false,
+  "osFocusChanged": false
+}

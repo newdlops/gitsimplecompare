@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-10-25T11:56:46.042101+00:00",
+  "observations": [
+    {
+      "window": "window2",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T11:56:39.437Z",
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "941f06a13f2efd5dc0fc9860988f7beefc3a7bce0f1cdff8bdf1aa393ad1b139"
+    },
+    {
+      "window": "window1",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T11:56:38.996Z",
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "76e230b584d7283cc3566e1af0a4664effd5045719283b57da6396d9464e7c28"
+    },
+    {
+      "window": "window3",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T11:56:38.996Z",
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "99b78c2f4ad958fe844c00f3893648d431a4462c1d93475b217ca1254c0bf852"
+    },
+    {
+      "window": "window4",
+      "activeVersion": "0.1.72169",
+      "lastLogTime": "2026-10-25T11:56:38.959Z",
+      "sharedDiscoveryEvents": 0,
+      "rawLogSha256": "53929cfa2f8471d2eb857cc868b78b73cc050a7c515ad01febdfa22ff065c553"
+    }
+  ],
+  "scope": "Read-only latest OUTPUT logs per window; extensionVersion read from activation metadata. Installed version is a separate fact. No post-update active-host timing claim, forced reload or focus changes."
+}

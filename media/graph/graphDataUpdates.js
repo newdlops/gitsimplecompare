@@ -54,10 +54,17 @@
       !delta.rows.length && !delta.edges.length && !delta.rowUpdates.length && !delta.edgeUpdates.length;
   }
 
-  /** 추가 페이지는 기존 SVG/행을 유지하고 전체 snapshot만 기존 DOM을 지운다. */
-  function prepare(root, delta) {
+  /**
+   * 추가 페이지는 기존 SVG/행을 유지하고 전체 snapshot만 기존 DOM을 지운다.
+   * @param root 현재 Graph 캔버스 @param delta 검증된 증분 데이터 @param elementAt 기존 행 인덱스 조회 함수.
+   * @returns SVG와 마지막 실제 행이 남아 있으면 true. 캐시가 없거나 분리된 행은 기존 selector로 재확인한다.
+   */
+  function prepare(root, delta, elementAt) {
     const svg = root.querySelector("svg");
-    const last = delta?.rowStart ? root.querySelector(`:scope > .row[data-index="${delta.rowStart - 1}"]:not([data-reflog-virtual])`) : null;
+    const cached = delta?.rowStart ? elementAt?.(delta.rowStart - 1) : null;
+    const last = cached?.parentElement === root && cached.classList.contains("row") &&
+      Number(cached.dataset.index) === delta.rowStart - 1 && !cached.hasAttribute("data-reflog-virtual") ? cached
+      : delta?.rowStart ? root.querySelector(`:scope > .row[data-index="${delta.rowStart - 1}"]:not([data-reflog-virtual])`) : null;
     if (!delta || !svg?.__gscEdgeElements || (delta.rowStart && !last)) { root.innerHTML = ""; return false; }
     root.querySelector("#graph-tail")?.remove();
     root.querySelectorAll("[data-reflog-virtual]").forEach(node => node.remove());

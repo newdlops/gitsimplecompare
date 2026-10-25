@@ -5,6 +5,23 @@
 
   const SVG_NS = "http://www.w3.org/2000/svg";
 
+  /**
+   * branch/tag 알림 이후 SVG가 아직 반영하지 않은 행을 모은다. 범위가 불명확하면 전체 비교를 유지한다.
+   * @returns add(indices)로 누적하고 pending()으로 읽으며, 실제 SVG 갱신 뒤 clear()로 비우는 상태 객체.
+   */
+  function createPresentationChanges() {
+    let unknown = true;
+    const rows = new Set();
+    return {
+      add(indices) {
+        if (!indices) { unknown = true; rows.clear(); }
+        else if (!unknown) indices.forEach(index => rows.add(index));
+      },
+      pending: () => unknown ? undefined : rows,
+      clear() { unknown = false; rows.clear(); },
+    };
+  }
+
   /** 네임스페이스를 지정해 SVG 요소를 만든다. */
   function svgEl(name, attrs) {
     const el = document.createElementNS(SVG_NS, name);
@@ -29,6 +46,7 @@
     svg.append(svg.__gscEdges, svg.__gscNodes);
     svg.__gscEdgeElements = []; svg.__gscNodeElements = [];
     svg.__gscEdgeValues = []; svg.__gscNodeKeys = []; svg.__gscEdgeKeys = [];
+    svg.__gscEdgeNames = edgeBranchNames;
     for (let edgeIndex = 0; edgeIndex < options.edges.length; edgeIndex++) {
       renderEdgeEntry(svg, edgeIndex, edgeBranchNames[edgeIndex], options);
     }
@@ -41,7 +59,13 @@
 
   /** 작은 페이지 추가는 기존 SVG node/path를 유지하고 연결/표시가 바뀐 요소만 교체한다. */
   function update(svg, options) {
+    if (options.stableStructure && options.presentationRows && svg.__gscEdgeNames &&
+      svg.__gscEdgeValues.length === options.edges.length && svg.__gscNodeKeys.length === options.rows.length) {
+      return updatePresentation(svg, options);
+    }
     const names = makeEdgeBranchNames(options.rows, options.edges);
+    svg.__gscEdgeNames = names;
+    svg.__gscOutgoingEdges = undefined;
     svg.__gscLaneHighlightModel = window.GscGraphCompactRender?.makeLaneHighlightModel?.(options.edges, names);
     svg.setAttribute("width", options.graphWidth); svg.setAttribute("height", options.bodyHeight);
     for (let index = 0; index < options.edges.length; index++) {
@@ -52,6 +76,43 @@
       if (svg.__gscNodeKeys[index] !== nodeKey(options.rows[index], options)) renderNodeEntry(svg, index, options);
     }
     window.GscGraphCompactRender?.raiseMarkers?.(svg);
+    return svg;
+  }
+
+  /**
+   * 구조가 같다고 검증한 delta는 변경 행의 node와 그 행에서 나가는 edge만 재평가한다.
+   * @param svg 소유 요소와 이전 key를 가진 기존 SVG @param options 완전한 최신 모델과 알려진 표시 변경 행.
+   * @returns 선택·hover·미변경 요소를 유지한 SVG. compact marker를 교체했을 때만 최상단으로 되돌린다.
+   */
+  function updatePresentation(svg, options) {
+    // reflog가 확장한 크기는 복원하되 동일한 SVG 치수를 반복 기록해 전체 기하를 무효화하지 않는다.
+    if (svg.getAttribute("width") !== String(options.graphWidth)) svg.setAttribute("width", options.graphWidth);
+    if (svg.getAttribute("height") !== String(options.bodyHeight)) svg.setAttribute("height", options.bodyHeight);
+    if (!svg.__gscOutgoingEdges) {
+      const first = new Int32Array(options.rows.length).fill(-1), next = new Int32Array(options.edges.length).fill(-1);
+      options.edges.forEach((edge, index) => { next[index] = first[edge.fromRow]; first[edge.fromRow] = index; });
+      svg.__gscOutgoingEdges = { first, next };
+    }
+    const changed = new Set(options.presentationRows);
+    options.delta.rowUpdates.forEach(({ index }) => changed.add(index));
+    const { first, next } = svg.__gscOutgoingEdges;
+    let markersChanged = false;
+    for (const index of changed) {
+      const row = options.rows[index];
+      if (!row) continue;
+      if (svg.__gscNodeKeys[index] !== nodeKey(row, options)) {
+        renderNodeEntry(svg, index, options);
+        markersChanged ||= Boolean(row.compacted);
+      }
+      for (let edgeIndex = first[index]; edgeIndex !== -1; edgeIndex = next[edgeIndex]) {
+        const edge = options.edges[edgeIndex], name = svg.__gscEdgeNames[edgeIndex];
+        if (svg.__gscEdgeKeys[edgeIndex] !== `${name}|${options.edgeDisplayColor(edge)}`) {
+          renderEdgeEntry(svg, edgeIndex, name, options);
+          markersChanged ||= Boolean(edge.compacted);
+        }
+      }
+    }
+    if (markersChanged) window.GscGraphCompactRender?.raiseMarkers?.(svg);
     return svg;
   }
 
@@ -275,5 +336,5 @@
       : vars;
   }
 
-  window.GscGraphSvgRender = { render };
+  window.GscGraphSvgRender = { render, createPresentationChanges };
 })();
