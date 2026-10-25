@@ -1,6 +1,6 @@
 {
   "version": "0.1.72174",
-  "recordedAt": "2026-10-25T21:05:34.888094+00:00",
+  "recordedAt": "2026-10-25T21:34:18.958431+00:00",
   "goalStatus": "active",
   "overallCompletion": "unproven; installed runtime exact, all four actual windows still run 0.1.72173 and no fresh Graph paint was observed in 45 seconds",
   "requirements": [
@@ -44,16 +44,16 @@
       "result": "Installed and registered 0.1.72174 verified. Start/end live handles both show four 0.1.72173 windows; 45-second passive watch observed zero new Graph paint events. Updated-session concurrent-load responsiveness remains unverified."
     }
   ],
-  "currentTurnProgress": "Revalidated installed artifact and actual open log handles; preserved no-focus/no-reload constraint. Observation is not a passing responsiveness result.",
+  "currentTurnProgress": "Recorded actual-data V8 profile and four independent pilot lifetimes with matching Native inputs/protected state. Prototype rejected because render+frame pairs disagree. Source/published/installed runtime exact again.",
   "remainingEvidence": "A fresh Graph interaction during concurrent load after an actual window activates 0.1.72174. Overall CPU and default small-graph performance remain uncertain; preserve original unfavorable benchmark samples.",
   "focusChanged": false,
   "userRepositoryMutated": false,
-  "previousGoalTurnClassification": "progress: version 0.1.72174 committed, pushed, published and installed with exact runtime verification",
-  "currentGoalTurnClassification": "no progress toward actual busy-session response validation; passive live-handle watch was completed and no target-version frame appeared",
+  "previousGoalTurnClassification": "no progress; prior run ended blocked on actual updated-window interaction",
+  "currentGoalTurnClassification": "progress: current deployed CPU profile and independent unprofiled prototype comparison reject a work-shifting optimization; exact release restored",
   "blocker": {
     "condition": "Updated actual Graph interaction under concurrent load is unavailable under the no-focus/no-forced-reload preference.",
     "externalChangeNeeded": "A normal user-initiated reload and Graph interaction in an actual window, or explicit permission for the required application interaction.",
-    "consecutiveGoalTurnsObservedAtLeast": 1,
+    "consecutiveGoalTurnsObservedAtLeast": 0,
     "currentGoalStatus": "active",
     "runtimeBeforeAndAfterWatch": [
       "0.1.72173",
@@ -69,5 +69,6 @@
     "resources": "Finite lifecycle stable, CPU/default-small comparisons uncertain with adverse samples retained.",
     "release": "Product commit afd6b2e pushed; same VSIX published/installed, 81 runtime files and one target registration freshly verified.",
     "actualBusySession": "Missing: target version not active in any of four observed real windows; zero fresh paint events. Goal stays active."
-  }
+  },
+  "latestIndependentDiagnostic": "head-position-probe-0.1.72174.json"
 }

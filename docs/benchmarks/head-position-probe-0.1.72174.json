@@ -1,0 +1,669 @@
+{
+  "recordedAt": "2026-10-25T21:34:18.958431+00:00",
+  "baselineVersion": "0.1.72174",
+  "decision": "rejected; prototype not shipped; restored exact published and installed runtime",
+  "profile": {
+    "report": {
+      "observedAt": "2026-10-25T21:21:08.504Z",
+      "source": {
+        "kind": "working-tree",
+        "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+      },
+      "mode": "profile",
+      "sourceVersion": "0.1.72174",
+      "repoAlias": "123559286e0c",
+      "bundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "label": "published-0.1.72174-cpu-attribution",
+      "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+      "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+      "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+      "referenceCount": 2782,
+      "results": [
+        {
+          "count": 5000,
+          "branches": 164,
+          "edges": 5004,
+          "lanes": 11,
+          "profiled": true,
+          "cpuThrottle": 1,
+          "startedAt": 1792963271522,
+          "endedAt": 1792963277128,
+          "elapsedMs": 5606,
+          "readMs": 3222.7652909999997,
+          "layoutMs": 17.032917000000452,
+          "nodeCpuMs": 1228.159,
+          "nodeEventLoopDelayMaxMs": 445.120511,
+          "readyCount": 1,
+          "startup": {
+            "scriptRequests": 1,
+            "scriptDecodedBytes": 229805,
+            "resourceRequests": 26,
+            "longTasks": [],
+            "navigationMs": 460,
+            "readyMs": 396,
+            "firstGraphFrameMs": 5542,
+            "latestGraphFrameMs": 5542
+          },
+          "frame": {
+            "mode": "headless-production-html",
+            "renderedRows": 5000,
+            "exactRefs": true,
+            "exactHeadBadge": true,
+            "headInLoadedPage": true,
+            "mutationToFrameMs": 5579,
+            "latestMutationToFrameMs": 5579,
+            "renderMs": 466,
+            "frameMs": 204,
+            "latestRenderMs": 466,
+            "latestFrameMs": 204
+          },
+          "selectionRoundTripMs": 155.94770900000003,
+          "selectionEvent": {
+            "frameMs": 47.599999994039536
+          },
+          "commands": [
+            {
+              "command": "for-each-ref",
+              "elapsedMs": 2309,
+              "syncSpawnMs": 3,
+              "outcome": "success"
+            },
+            {
+              "command": "log",
+              "elapsedMs": 3166,
+              "syncSpawnMs": 14,
+              "outcome": "success"
+            }
+          ],
+          "systemLoadBefore": [
+            20.27392578125,
+            18.63037109375,
+            17.57421875
+          ],
+          "systemLoadAfter": [
+            20.572265625,
+            18.71923828125,
+            17.61181640625
+          ],
+          "nativeSemanticsExact": true,
+          "selectionExact": true,
+          "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+          "lifecycle": []
+        }
+      ],
+      "completed": true,
+      "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+      "repositoryProtectedStateExact": true
+    },
+    "rawFile": "head-position-render-0.1.72174.cpuprofile",
+    "sha256": "e2e9dc4316fe9644a115ce8fff9cc1f53a5222418d1fbf81dad61d644fa70e63",
+    "selfSamples": [
+      {
+        "function": "(idle)",
+        "sampledMs": 4526.353000000001,
+        "line": -1,
+        "column": -1
+      },
+      {
+        "function": "(program)",
+        "sampledMs": 423.9670000000001,
+        "line": -1,
+        "column": -1
+      },
+      {
+        "function": "M",
+        "sampledMs": 133.02000000000004,
+        "line": 0,
+        "column": 32903
+      },
+      {
+        "function": "d",
+        "sampledMs": 95.92700000000005,
+        "line": 2,
+        "column": 3086
+      },
+      {
+        "function": "",
+        "sampledMs": 63.79800000000001,
+        "line": 1,
+        "column": 21622
+      },
+      {
+        "function": "M",
+        "sampledMs": 37.413,
+        "line": 0,
+        "column": 45199
+      },
+      {
+        "function": "M",
+        "sampledMs": 30.447000000000003,
+        "line": 0,
+        "column": 45199
+      },
+      {
+        "function": "(garbage collector)",
+        "sampledMs": 26.367999999999995,
+        "line": -1,
+        "column": -1
+      },
+      {
+        "function": "A",
+        "sampledMs": 17.148,
+        "line": 1,
+        "column": 16456
+      },
+      {
+        "function": "",
+        "sampledMs": 11.578,
+        "line": 0,
+        "column": 0
+      },
+      {
+        "function": "h",
+        "sampledMs": 8.866,
+        "line": 1,
+        "column": 19913
+      },
+      {
+        "function": "E",
+        "sampledMs": 8.518999999999998,
+        "line": 0,
+        "column": 48387
+      },
+      {
+        "function": "p",
+        "sampledMs": 8.495000000000001,
+        "line": 0,
+        "column": 47647
+      },
+      {
+        "function": "k",
+        "sampledMs": 7.049,
+        "line": 1,
+        "column": 20543
+      },
+      {
+        "function": "",
+        "sampledMs": 6.561999999999999,
+        "line": 1,
+        "column": 20494
+      },
+      {
+        "function": "p",
+        "sampledMs": 6.492,
+        "line": 0,
+        "column": 47647
+      },
+      {
+        "function": "parseEvaluationResultValue",
+        "sampledMs": 6.419,
+        "line": 105,
+        "column": 35
+      },
+      {
+        "function": "appendChild",
+        "sampledMs": 6.257,
+        "line": -1,
+        "column": -1
+      }
+    ],
+    "candidate": "graphHeadJump.focusHead, minified M at line 0 column 32903; calls row.offsetTop after rows are inserted",
+    "scope": "One diagnostic V8 sampled wall-time profile including idle/program/native work; not process CPU or a latency comparison. Source location suggests a possible forced-layout site; samples do not attribute all time to layout."
+  },
+  "prototype": {
+    "bundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+    "sourcePatch": "diff --git a/media/graph/graph.js b/media/graph/graph.js\nindex 0fec6de..80e1f72 100644\n--- a/media/graph/graph.js\n+++ b/media/graph/graph.js\n@@ -108,6 +108,7 @@\n     const graphWidth = graphWidthForLaneCount(currentLaneCount);\n     const bodyHeight = currentRows.length * ROW_H;\n     if (!keepColors || previousHeight !== graphContentHeight()) resizeGraphContent();\n+    const positioned = resetView && !viewport && window.GscGraphHeadJump?.positionInitialHead(graphEl, currentRows, ROW_H);\n \n     window.GscGraphDataUpdates.placeSvg(graphContentEl, window.GscGraphSvgRender.render({\n       svg: incremental ? graphContentEl.querySelector(\"svg\") : undefined, delta,\n@@ -133,7 +134,7 @@\n     rowSync.scheduleScrollableWidth();\n     window.GscGraphFeatures && window.GscGraphFeatures.attachNodeDrag(graphContentEl);\n     const restored = preserveView && window.GscGraphViewport?.restore(graphEl, graphContentEl, viewport, ROW_H);\n-    if (resetView && !restored) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);\n+    if (resetView && !restored && !positioned) window.GscGraphHeadJump?.focusHead(graphEl, graphContentEl);\n     window.GscGraphSearch?.update(graphEl, graphContentEl);\n \n     renderLoadTail();\ndiff --git a/media/graph/graphHeadJump.js b/media/graph/graphHeadJump.js\nindex cc89498..7fc2886 100644\n--- a/media/graph/graphHeadJump.js\n+++ b/media/graph/graphHeadJump.js\n@@ -6,6 +6,20 @@\n   let requestSeq = 0;\n   let pendingRequestId = \"\";\n \n+  /**\n+   * DOM\uc744 \ucc44\uc6b0\uae30 \uc804, \uace0\uc815 \ud589 \uc88c\ud45c\ub85c \uccab HEAD \uc704\uce58\ub97c \uc801\uc6a9\ud574 \ud070 \uc774\ub825\uc758 \uac15\uc81c layout\uc744 \ud53c\ud55c\ub2e4.\n+   * @param graphEl \uc2a4\ud06c\ub864 \ucee8\ud14c\uc774\ub108. caller\uac00 \uc774\ubbf8 \uc804\uccb4 canvas \ub192\uc774\ub97c \uc124\uc815\ud574\uc57c \ud55c\ub2e4.\n+   * @param rows renderer\uac00 \uc0ac\uc6a9\ud560 \uac19\uc740 \uc21c\uc11c\uc758 \ud589 \ubaa8\ub378 @param rowHeight renderer\uc758 \uace0\uc815 \ud589 \ub192\uc774\n+   * @returns \ud604\uc7ac \ubaa8\ub378\uc5d0\uc11c HEAD\ub97c \ucc3e\uc544 \uc704\uce58\ub97c \uc801\uc6a9\ud588\uc73c\uba74 true. \uae30\uc874 viewport \ubcf5\uc6d0\uc5d0\ub294 \uc0ac\uc6a9\ud558\uc9c0 \uc54a\ub294\ub2e4.\n+   */\n+  function positionInitialHead(graphEl, rows, rowHeight) {\n+    if (!graphEl || !Number.isFinite(rowHeight) || rowHeight <= 0) return false;\n+    const index = rows.findIndex(row => (row.refs || []).includes(\"HEAD\"));\n+    if (index < 0) return false;\n+    graphEl.scrollTop = Math.max(0, index * rowHeight - 60);\n+    return true;\n+  }\n+\n   /** graph \ucd5c\ucd08 \ub85c\ub4dc \uc2dc \ud604\uc7ac \ub80c\ub354 \ubc94\uc704\uc758 HEAD row \ub85c \uc2a4\ud06c\ub864\ud55c\ub2e4. */\n   function focusHead(graphEl, root) {\n     const row = headRow(root);\n@@ -71,5 +85,5 @@\n   }\n \n   window.addEventListener(\"message\", handleMessage);\n-  window.GscGraphHeadJump = { focusHead, jumpToHead };\n+  window.GscGraphHeadJump = { positionInitialHead, focusHead, jumpToHead };\n })();\n",
+    "behavior": "Set initial HEAD scroll from fixed row coordinates after canvas sizing and before SVG/text DOM insertion; preserve viewport restoration and legacy fallback."
+  },
+  "unprofiledPilot": {
+    "raw": {
+      "completed": true,
+      "order": [
+        "before",
+        "after",
+        "after",
+        "before"
+      ],
+      "runs": [
+        {
+          "index": 0,
+          "variant": "before",
+          "observedAt": "2026-10-25T21:26:43.134Z",
+          "source": {
+            "kind": "working-tree",
+            "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+          },
+          "mode": "latency",
+          "sourceVersion": "0.1.72174",
+          "repoAlias": "123559286e0c",
+          "bundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "label": "published-0.1.72174-cpu-attribution",
+          "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+          "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+          "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+          "referenceCount": 2782,
+          "results": [
+            {
+              "count": 5000,
+              "branches": 164,
+              "edges": 5004,
+              "lanes": 11,
+              "profiled": false,
+              "cpuThrottle": 6,
+              "startedAt": 1792963607005,
+              "endedAt": 1792963617152,
+              "elapsedMs": 10147,
+              "readMs": 2339.983666,
+              "layoutMs": 17.838957999999366,
+              "nodeCpuMs": 1156.282,
+              "nodeEventLoopDelayMaxMs": 509.083647,
+              "readyCount": 1,
+              "startup": {
+                "scriptRequests": 1,
+                "scriptDecodedBytes": 229805,
+                "resourceRequests": 26,
+                "longTasks": [],
+                "navigationMs": 143,
+                "readyMs": 92,
+                "firstGraphFrameMs": 10111,
+                "latestGraphFrameMs": 10111
+              },
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 5000,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 10122,
+                "latestMutationToFrameMs": 10122,
+                "renderMs": 3780,
+                "frameMs": 1208,
+                "latestRenderMs": 3780,
+                "latestFrameMs": 1208
+              },
+              "selectionRoundTripMs": 635.6996660000004,
+              "selectionEvent": {
+                "frameMs": 308.5
+              },
+              "commands": [
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 1541,
+                  "syncSpawnMs": 20,
+                  "outcome": "success"
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 2319,
+                  "syncSpawnMs": 18,
+                  "outcome": "success"
+                }
+              ],
+              "systemLoadBefore": [
+                12.861328125,
+                16.94970703125,
+                17.23388671875
+              ],
+              "systemLoadAfter": [
+                14.8154296875,
+                17.18017578125,
+                17.31103515625
+              ],
+              "nativeSemanticsExact": true,
+              "selectionExact": true,
+              "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+              "lifecycle": []
+            }
+          ],
+          "completed": true,
+          "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+          "repositoryProtectedStateExact": true
+        },
+        {
+          "index": 1,
+          "variant": "after",
+          "observedAt": "2026-10-25T21:27:06.956Z",
+          "source": {
+            "kind": "working-tree",
+            "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+          },
+          "mode": "latency",
+          "sourceVersion": "0.1.72174",
+          "repoAlias": "123559286e0c",
+          "bundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "label": "published-0.1.72174-cpu-attribution",
+          "effectiveBundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+          "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+          "referenceCount": 2782,
+          "results": [
+            {
+              "count": 5000,
+              "branches": 164,
+              "edges": 5004,
+              "lanes": 11,
+              "profiled": false,
+              "cpuThrottle": 6,
+              "startedAt": 1792963631794,
+              "endedAt": 1792963638433,
+              "elapsedMs": 6639,
+              "readMs": 993.8779170000007,
+              "layoutMs": 7.3744159999996555,
+              "nodeCpuMs": 743.046,
+              "nodeEventLoopDelayMaxMs": 204.996607,
+              "readyCount": 1,
+              "startup": {
+                "scriptRequests": 1,
+                "scriptDecodedBytes": 230062,
+                "resourceRequests": 26,
+                "longTasks": [],
+                "navigationMs": 94,
+                "readyMs": 77,
+                "firstGraphFrameMs": 6595,
+                "latestGraphFrameMs": 6595
+              },
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 5000,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 6603,
+                "latestMutationToFrameMs": 6603,
+                "renderMs": 1250,
+                "frameMs": 2868,
+                "latestRenderMs": 1250,
+                "latestFrameMs": 2868
+              },
+              "selectionRoundTripMs": 680.591375,
+              "selectionEvent": {
+                "frameMs": 232.19999998807907
+              },
+              "commands": [
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 644,
+                  "syncSpawnMs": 5,
+                  "outcome": "success"
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 983,
+                  "syncSpawnMs": 6,
+                  "outcome": "success"
+                }
+              ],
+              "systemLoadBefore": [
+                14.654296875,
+                17.06005859375,
+                17.26611328125
+              ],
+              "systemLoadAfter": [
+                16.86328125,
+                17.37939453125,
+                17.373046875
+              ],
+              "nativeSemanticsExact": true,
+              "selectionExact": true,
+              "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+              "lifecycle": []
+            }
+          ],
+          "completed": true,
+          "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+          "repositoryProtectedStateExact": true
+        },
+        {
+          "index": 2,
+          "variant": "after",
+          "observedAt": "2026-10-25T21:27:30.671Z",
+          "source": {
+            "kind": "working-tree",
+            "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+          },
+          "mode": "latency",
+          "sourceVersion": "0.1.72174",
+          "repoAlias": "123559286e0c",
+          "bundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "label": "published-0.1.72174-cpu-attribution",
+          "effectiveBundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+          "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+          "referenceCount": 2782,
+          "results": [
+            {
+              "count": 5000,
+              "branches": 164,
+              "edges": 5004,
+              "lanes": 11,
+              "profiled": false,
+              "cpuThrottle": 6,
+              "startedAt": 1792963653236,
+              "endedAt": 1792963657173,
+              "elapsedMs": 3937,
+              "readMs": 350.50083300000006,
+              "layoutMs": 8.114916999999878,
+              "nodeCpuMs": 607.383,
+              "nodeEventLoopDelayMaxMs": 192.282623,
+              "readyCount": 1,
+              "startup": {
+                "scriptRequests": 1,
+                "scriptDecodedBytes": 230062,
+                "resourceRequests": 26,
+                "longTasks": [],
+                "navigationMs": 66,
+                "readyMs": 56,
+                "firstGraphFrameMs": 3919,
+                "latestGraphFrameMs": 3919
+              },
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 5000,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 3925,
+                "latestMutationToFrameMs": 3925,
+                "renderMs": 1105,
+                "frameMs": 970,
+                "latestRenderMs": 1105,
+                "latestFrameMs": 970
+              },
+              "selectionRoundTripMs": 537.1088330000002,
+              "selectionEvent": {
+                "frameMs": 262.10000002384186
+              },
+              "commands": [
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 338,
+                  "syncSpawnMs": 4,
+                  "outcome": "success"
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 342,
+                  "syncSpawnMs": 3,
+                  "outcome": "success"
+                }
+              ],
+              "systemLoadBefore": [
+                16.3935546875,
+                17.2734375,
+                17.33544921875
+              ],
+              "systemLoadAfter": [
+                16.4384765625,
+                17.24853515625,
+                17.3251953125
+              ],
+              "nativeSemanticsExact": true,
+              "selectionExact": true,
+              "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+              "lifecycle": []
+            }
+          ],
+          "completed": true,
+          "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+          "repositoryProtectedStateExact": true
+        },
+        {
+          "index": 3,
+          "variant": "before",
+          "observedAt": "2026-10-25T21:27:45.504Z",
+          "source": {
+            "kind": "working-tree",
+            "bundleSha256": "22980f23a1a00c3654fa42fb2637a210b3e0c727d630ef65e1b82d00a1a431c3"
+          },
+          "mode": "latency",
+          "sourceVersion": "0.1.72174",
+          "repoAlias": "123559286e0c",
+          "bundleSha256": "932ac67f50dc722081fc1c6289edeea0dcec3451907014171df3682b8eca8dfa",
+          "label": "published-0.1.72174-cpu-attribution",
+          "effectiveBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+          "effectiveCssSha256": "e37a0fdbb6fff2d7cfb113f2032bf89e3f219d2754bf19bcea357b78abcb8a10",
+          "effectiveControlsCssSha256": "dbf753907820d60ba5804fefcd991d8f13a7b6e471a285c28316780194b5a055",
+          "referenceCount": 2782,
+          "results": [
+            {
+              "count": 5000,
+              "branches": 164,
+              "edges": 5004,
+              "lanes": 11,
+              "profiled": false,
+              "cpuThrottle": 6,
+              "startedAt": 1792963668265,
+              "endedAt": 1792963673114,
+              "elapsedMs": 4849,
+              "readMs": 1549.6360829999994,
+              "layoutMs": 7.077125000000706,
+              "nodeCpuMs": 603.571,
+              "nodeEventLoopDelayMaxMs": 187.039743,
+              "readyCount": 1,
+              "startup": {
+                "scriptRequests": 1,
+                "scriptDecodedBytes": 229805,
+                "resourceRequests": 26,
+                "longTasks": [],
+                "navigationMs": 107,
+                "readyMs": 66,
+                "firstGraphFrameMs": 4831,
+                "latestGraphFrameMs": 4831
+              },
+              "frame": {
+                "mode": "headless-production-html",
+                "renderedRows": 5000,
+                "exactRefs": true,
+                "exactHeadBadge": true,
+                "headInLoadedPage": true,
+                "mutationToFrameMs": 4838,
+                "latestMutationToFrameMs": 4838,
+                "renderMs": 1348,
+                "frameMs": 566,
+                "latestRenderMs": 1348,
+                "latestFrameMs": 566
+              },
+              "selectionRoundTripMs": 490.16370800000004,
+              "selectionEvent": {
+                "frameMs": 241.59999999403954
+              },
+              "commands": [
+                {
+                  "command": "for-each-ref",
+                  "elapsedMs": 986,
+                  "syncSpawnMs": 18,
+                  "outcome": "success"
+                },
+                {
+                  "command": "log",
+                  "elapsedMs": 1540,
+                  "syncSpawnMs": 20,
+                  "outcome": "success"
+                }
+              ],
+              "systemLoadBefore": [
+                15.9228515625,
+                17.1279296875,
+                17.2822265625
+              ],
+              "systemLoadAfter": [
+                14.93798828125,
+                16.87646484375,
+                17.19091796875
+              ],
+              "nativeSemanticsExact": true,
+              "selectionExact": true,
+              "inputFingerprint": "39b7271103c4ad44e0a7fdc82b8f8a8e1000eb229e7a9ff39776d4dddcf3cff3",
+              "lifecycle": []
+            }
+          ],
+          "completed": true,
+          "scope": "Actual repository, independent Native page oracle and production Git readers/layout/HTML/bundle in a fresh owned headless Chromium for each row count. No VS Code transport, GitHub/remote-tag/status/local-only loading, UI focus change or repository write. Native oracle runs before each measurement and warms filesystem caches. Input is frontend selection plus two frames, not backend detail loading.",
+          "repositoryProtectedStateExact": true
+        }
+      ],
+      "scope": "Unprofiled pilot, 6x renderer CPU throttle, actual readonly inputs, independent Node/renderer per run; not actual VS Code.",
+      "sameNativeInputs": true,
+      "sameNodeHarness": true
+    },
+    "pairs": [
+      {
+        "beforeIndex": 0,
+        "afterIndex": 1,
+        "beforeRenderAndFrameMs": 4988,
+        "afterRenderAndFrameMs": 4118,
+        "reductionPercent": 17.441860465116278
+      },
+      {
+        "beforeIndex": 3,
+        "afterIndex": 2,
+        "beforeRenderAndFrameMs": 1914,
+        "afterRenderAndFrameMs": 2075,
+        "reductionPercent": -8.411703239289437
+      }
+    ],
+    "independentLifetimesPerArm": 2,
+    "rendererCpuThrottle": 6,
+    "rawLabelCaveat": "Inner label remained a constant attribution-run label for both arms; outer variant and effective bundle hashes identify actual baseline/prototype bytes.",
+    "interpretation": "Render-handler time fell, but following frame time rose. Two adjacent total render+frame pairs disagree; Native/Node phases also vary. No overall latency/CPU improvement or small-graph equivalence claim. No functional/visual signoff of unshipped prototype."
+  },
+  "restored": {
+    "runtimeFiles": 81,
+    "allPublishedInstalledSourceBytesMatch": true,
+    "browserBundleSha256": "14a25f71b6d1110e95c40c79c9aa71d5c7ed5c2a423b9ad56c254f92b9a3ed05",
+    "productFingerprint": {
+      "files": 653,
+      "sha256": "a2764d90fec02d4e92735b38b5096608b4680c3879a80c98300e567a2759cfad"
+    },
+    "noNewProductRelease": true
+  },
+  "actualRuntime": {
+    "observedAt": "2026-10-25T21:32:19.681548+00:00",
+    "liveHandlesVerified": true,
+    "runtime": [
+      {
+        "window": "window3",
+        "activeVersion": "0.1.72173",
+        "latestGraphPaintAt": null
+      },
+      {
+        "window": "window4",
+        "activeVersion": "0.1.72173",
+        "latestGraphPaintAt": null
+      },
+      {
+        "window": "window2",
+        "activeVersion": "0.1.72173",
+        "latestGraphPaintAt": null
+      },
+      {
+        "window": "window1",
+        "activeVersion": "0.1.72173",
+        "latestGraphPaintAt": "2026-10-25T16:35:15.766Z"
+      }
+    ],
+    "focusChanged": false,
+    "forcedReload": false
+  },
+  "goalCompletion": "unproven; actual updated busy-window response and CPU/default-small behavior remain unverified"
+}
