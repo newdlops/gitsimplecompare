@@ -1,0 +1,171 @@
+diff --git a/media/graph/graphDataUpdates.js b/media/graph/graphDataUpdates.js
+index 31605a6..8b93c4c 100644
+--- a/media/graph/graphDataUpdates.js
++++ b/media/graph/graphDataUpdates.js
+@@ -67,7 +67,8 @@
+       : delta?.rowStart ? root.querySelector(`:scope > .row[data-index="${delta.rowStart - 1}"]:not([data-reflog-virtual])`) : null;
+     if (!delta || !svg?.__gscEdgeElements || (delta.rowStart && !last)) { root.innerHTML = ""; return false; }
+     root.querySelector("#graph-tail")?.remove();
+-    root.querySelectorAll("[data-reflog-virtual]").forEach(node => node.remove());
++    if (window.GscGraphReflogMarkers?.removeVirtualRows) window.GscGraphReflogMarkers.removeVirtualRows(root);
++    else root.querySelectorAll("[data-reflog-virtual]").forEach(node => node.remove());
+     return true;
+   }
+ 
+diff --git a/media/graph/graphPrStacks.js b/media/graph/graphPrStacks.js
+index ae36d31..5ae1d80 100644
+--- a/media/graph/graphPrStacks.js
++++ b/media/graph/graphPrStacks.js
+@@ -10,6 +10,16 @@
+   let activeBranch = "";
+   let stackBusy = false;
+   let flowRendered = false;
++  let flowOverlay;
++  const flowChips = [], flowRows = new Set();
++
++  /** 직접 생성한 overlay·chip·행 표시만 정리한다. 분리된 이전 snapshot도 잊어 전체 DOM 탐색을 피한다. */
++  function clearGraphFlow() {
++    flowOverlay?.remove(); flowOverlay = undefined;
++    flowChips.forEach(chip => chip.remove()); flowChips.length = 0;
++    flowRows.forEach(row => row.classList.remove("pr-stack-head-row")); flowRows.clear();
++    flowRendered = false;
++  }
+ 
+   /** stack toolbar, graph chip, detail panel 이벤트와 extension 메시지를 등록한다. */
+   function init() {
+@@ -79,12 +89,7 @@
+   function renderGraphFlow() {
+     const root = document.getElementById("graph-content");
+     if (!root) return;
+-    if (flowRendered) {
+-      root.querySelector(".pr-stack-flow-overlay")?.remove();
+-      root.querySelectorAll(".pr-stack-layer-chip").forEach((element) => element.remove());
+-      root.querySelectorAll(".pr-stack-head-row").forEach((element) => element.classList.remove("pr-stack-head-row"));
+-      flowRendered = false;
+-    }
++    if (flowRendered) clearGraphFlow();
+     const baseSvg = root.querySelector("svg:not(.pr-stack-flow-overlay)");
+     const layers = Array.isArray(snapshot.layers) ? snapshot.layers : [];
+     if (!baseSvg || !layers.length) return;
+@@ -101,6 +106,7 @@
+       appendLayerArrow(elements.node(layer.headHash), elements.node(layer.parentHash), overlay, layer);
+     }
+     root.appendChild(overlay);
++    flowOverlay = overlay;
+     flowRendered = true;
+   }
+ 
+@@ -126,6 +132,7 @@
+   function appendLayerChip(row, layer) {
+     if (!row) return;
+     row.classList.add("pr-stack-head-row");
++    flowRows.add(row);
+     const button = document.createElement("button");
+     const pullRequest = layer.pullRequest;
+     const state = pullRequest?.state || (layer.local ? text("local") : text("remote"));
+@@ -146,6 +153,7 @@
+         ? `<span class="codicon codicon-warning" aria-hidden="true"></span>`
+         : "");
+     row.insertBefore(button, row.firstChild);
++    flowChips.push(button);
+   }
+ 
+   /** graph에 head와 parent node가 모두 보이면 head→base dashed arrow를 overlay에 추가한다. */
+diff --git a/media/graph/graphReflogMarkers.js b/media/graph/graphReflogMarkers.js
+index 4492574..db8936e 100644
+--- a/media/graph/graphReflogMarkers.js
++++ b/media/graph/graphReflogMarkers.js
+@@ -4,6 +4,17 @@
+   "use strict";
+ 
+   const SVG_NS = "http://www.w3.org/2000/svg";
++  const virtualRows = new WeakMap();
++
++  /**
++   * 현재 캔버스에 직접 추가한 가상 행만 제거한다. 전체 commit/SVG 탐색은 하지 않는다.
++   * @param graphContent 가상 행을 소유한 캔버스. 전체 snapshot으로 이미 분리된 행도 잊는다.
++   * @returns 기존 좌표 복원은 clearVirtualLayout에 맡기고 행 DOM과 소유 목록만 정리한다.
++   */
++  function removeVirtualRows(graphContent) {
++    virtualRows.get(graphContent)?.forEach(row => { if (row.parentElement === graphContent) row.remove(); });
++    virtualRows.delete(graphContent);
++  }
+ 
+   /** 네임스페이스를 지정해 SVG 요소를 만든다. */
+   function svgEl(name, attrs) {
+@@ -257,6 +268,7 @@
+     if (!graphContent) {
+       return;
+     }
++    removeVirtualRows(graphContent);
+     const svg = graphContent.querySelector("svg");
+     const shouldRestoreHeight = Boolean(
+       graphContent.querySelector("[data-reflog-base-top]") || svg?.dataset.reflogBaseHeight
+@@ -458,6 +470,9 @@
+       }
+     });
+     graphContent.appendChild(row);
++    let owned = virtualRows.get(graphContent);
++    if (!owned) { owned = new Set(); virtualRows.set(graphContent, owned); }
++    owned.add(row);
+   }
+ 
+   /** 가상 row 내부 HTML 을 만든다. */
+@@ -547,5 +562,5 @@
+     return "T";
+   }
+ 
+-  window.GscGraphReflogMarkers = { clearVirtualLayout, renderVirtualBranch };
++  window.GscGraphReflogMarkers = { clearVirtualLayout, renderVirtualBranch, removeVirtualRows };
+ })();
+diff --git a/test/webview/graphInactiveDecorations.spec.ts b/test/webview/graphInactiveDecorations.spec.ts
+index 95c5b86..b06ca38 100644
+--- a/test/webview/graphInactiveDecorations.spec.ts
++++ b/test/webview/graphInactiveDecorations.spec.ts
+@@ -21,7 +21,7 @@ async function observe(page: Page) {
+     const w = window as any, root = document.getElementById("graph-content")!, query = root.querySelectorAll.bind(root);
+     w.__inactiveCounts = { cleanupScans: 0, captures: 0 };
+     root.querySelectorAll = ((selector: string) => {
+-      if (/pr-stack-(layer-chip|head-row)|rebase-progress-(target|todo)/.test(selector)) w.__inactiveCounts.cleanupScans++;
++      if (/pr-stack-(layer-chip|head-row)|rebase-progress-(target|todo)|^\[data-reflog-virtual\]$/.test(selector)) w.__inactiveCounts.cleanupScans++;
+       return query(selector);
+     }) as typeof root.querySelectorAll;
+     const capture = w.GscGraphViewport.capture;
+@@ -79,6 +79,7 @@ test("80 active stack layers remain complete across consecutive Graph and branch
+   test.setTimeout(90_000); await mountProductionReference(browser, page, undefined, 80);
+   await expect(page.locator(".pr-stack-layer-chip")).toHaveCount(80);
+   await expect(page.locator(".pr-stack-flow-path")).toHaveCount(80);
++  await observe(page);
+   await page.evaluate(() => {
+     const w = window as any, root = document.getElementById("graph-content")!, query = root.querySelector.bind(root);
+     w.__stackHashQueries = 0;
+@@ -93,6 +94,7 @@ test("80 active stack layers remain complete across consecutive Graph and branch
+   await expect(page.locator(".pr-stack-flow-path")).toHaveCount(80);
+   await expect(page.locator(".row.pr-stack-head-row")).toHaveCount(80);
+   expect(await page.evaluate(() => (window as any).__stackHashQueries)).toBe(0);
++  expect(await page.evaluate(() => (window as any).__inactiveCounts.cleanupScans)).toBe(0);
+ });
+ 
+ test("stack arrows follow nodes repositioned by a populated reflog after a metadata delta", async ({ browser, page }) => {
+@@ -107,7 +109,10 @@ test("stack arrows follow nodes repositioned by a populated reflog after a metad
+       recovery: { kind: "reachable" }, flowStatus: "timeline", eventKind: "commit" }] } }));
+   });
+   await expect(page.locator(".reflog-virtual-row")).toHaveCount(1);
+-  await update(page, 1);
++  for (let round = 0; round < 3; round++) {
++    await update(page, 1);
++    await expect(page.locator(".reflog-virtual-row")).toHaveCount(1);
++  }
+   const positions = await page.evaluate(() => {
+     const path = document.querySelector(".pr-stack-flow-path")!;
+     const numbers = path.getAttribute("d")!.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+@@ -116,4 +121,9 @@ test("stack arrows follow nodes repositioned by a populated reflog after a metad
+       parent: Number(document.querySelector('.graph-node-layer .node[data-row="1"]')!.getAttribute("cy")) };
+   });
+   expect(positions.pathHead).toBe(positions.head); expect(positions.pathParent).toBe(positions.parent);
++  await page.locator("#close-reflog").click();
++  await expect(page.locator(".reflog-virtual-row")).toHaveCount(0);
++  await update(page, 1);
++  await expect(page.locator(".reflog-virtual-row")).toHaveCount(0);
++  expect(await page.locator('.graph-node-layer .node[data-row="1"]').getAttribute("cy")).toBe("45");
+ });
