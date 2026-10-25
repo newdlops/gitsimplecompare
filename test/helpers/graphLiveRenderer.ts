@@ -49,8 +49,8 @@ export class GraphLiveRenderer {
     await this.page.goto("https://gsc.fixture/__startup");
   }
 
-  /** production HTML의 nonce/CSP를 유지하고 fixture origin의 로컬 media 파일만 제공한다. 외부 통신은 차단한다. */
-  async mount(html: string): Promise<void> {
+  /** production HTML의 nonce/CSP를 유지한다. resources는 비교할 불변 media 바이트만 교체하며 외부 통신은 차단한다. */
+  async mount(html: string, resources: ReadonlyMap<string, string> = new Map()): Promise<void> {
     const nonce = /<script nonce="([^"]+)"/.exec(html)?.[1];
     assert.ok(nonce, "Production Graph CSP nonce is missing");
     const bridge = `<script nonce="${nonce}">(()=>{let acquired=false;window.acquireVsCodeApi=()=>{if(acquired)throw new Error("VS Code API acquired more than once");acquired=true;return{postMessage:message=>window.__gscLivePost(message),getState:()=>undefined,setState:()=>{}};};})();</script>`;
@@ -92,7 +92,7 @@ export class GraphLiveRenderer {
       const relative = decodeURIComponent(url.pathname).slice(1), file = path.resolve(process.cwd(), relative);
       assert.ok(file.startsWith(path.join(process.cwd(), "media") + path.sep), "Fixture request escaped media directory");
       const contentType = file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "font/ttf";
-      await route.fulfill({ contentType, body: await readFile(file) });
+      await route.fulfill({ contentType, body: resources.get(relative) ?? await readFile(file) });
     });
     const throttle = Number(process.env.GSC_BENCH_RENDERER_CPU_THROTTLE || 1);
     assert.ok(Number.isFinite(throttle) && throttle >= 1 && throttle <= 20);

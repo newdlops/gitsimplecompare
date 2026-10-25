@@ -6,6 +6,7 @@
 
   /** 폭 측정 후보로 삼을 가장 긴 행 수. 배지 padding 차이를 감안해 여유 있게 잡는다. */
   const WIDTH_CANDIDATES = 24;
+  const rowLookups = new WeakMap();
 
   /**
    * graph payload의 ref·local-only 브랜치·해시를 행 인덱스로 역조회한다. DOM이나 Git 상태를 보관하지 않는다.
@@ -68,7 +69,13 @@
       });
       return result;
     }
-    return { update, affected };
+    /** @param hash commit의 정확한 hash @returns 현재 모델에서 가장 앞선 행 위치. 중복 hash도 DOM 순서를 유지한다. */
+    function firstIndex(hash) {
+      let first;
+      byHash.get(hash)?.forEach(index => { if (first === undefined || index < first) first = index; });
+      return first;
+    }
+    return { update, affected, firstIndex };
   };
 
   /**
@@ -147,6 +154,11 @@
       return cached?.parentElement === graphContentEl && Number(cached.dataset.index) === index ? cached
         : graphContentEl.querySelector(`:scope > .row[data-index="${index}"]:not([data-reflog-virtual])`);
     }
+    // 기존 역색인과 행 캐시를 공유한다. WeakMap은 다른 캔버스나 닫힌 문서의 DOM을 강하게 보관하지 않는다.
+    rowLookups.set(graphContentEl, hash => {
+      const index = dependencies.firstIndex(hash), element = index === undefined ? null : elementAt(index);
+      return element?.dataset.hash === hash ? element : null;
+    });
 
     /** @param rows 새 graph 모델 @param delta 검증된 변경 @returns 작은 행 교체는 인덱스도 부분 갱신하고 페이지 추가/전체 교체는 DOM을 다시 수집한다. */
     function indexRows(rows, delta) {
@@ -270,4 +282,6 @@
 
     return { indexRows, elementAt, affectedRows: dependencies.affected, patchRows, resizeCanvas, scheduleScrollableWidth };
   };
+  /** @param root 소유 Graph 캔버스 @param hash commit hash @returns 최신 실제 행. 미등록/미로딩 hash는 호출자가 직접 조회한다. */
+  window.GscGraphRowSync.rowForHash = (root, hash) => hash ? rowLookups.get(root)?.(String(hash)) : null;
 })();

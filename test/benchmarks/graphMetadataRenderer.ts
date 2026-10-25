@@ -7,10 +7,15 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import { mountReferenceGraph } from "../webview/graphReferenceHarness";
+import { mountProductionReference } from "../helpers/graphProductionReference";
+import { baselineBrowserBundle } from "../helpers/graphBaselineBundle";
+import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
 
 const requireFixture = createRequire(path.join(process.env.GSC_BENCH_WORKSPACE_ROOT || process.cwd(), "package.json"));
 const { chromium } = requireFixture("playwright") as typeof import("@playwright/test");
-const files = ["media/graph/graph.js", "media/graph/graphSvgRender.js", "media/graph/graphDataUpdates.js"];
+const production = process.env.GSC_BENCH_PRODUCTION_METADATA === "1";
+const stackLayers = Number(process.env.GSC_BENCH_METADATA_STACK_LAYERS || 0);
+const files = production ? ["media/bundled/graph.js"] : ["media/graph/graph.js", "media/graph/graphSvgRender.js", "media/graph/graphDataUpdates.js"];
 const source = JSON.parse(process.env.GSC_BENCH_SOURCE!);
 const reference = process.env.GSC_BENCH_METADATA_BASELINE || "8fd050da2fc5f8c76e95db00a201abbb64744779";
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
@@ -43,6 +48,7 @@ async function exercise(page: Page, count: number) {
     }
     const head = root.querySelector('.row .head')?.closest<HTMLElement>(".row")?.dataset.index;
     return { samples, rows: root.querySelectorAll(":scope > .row").length, edges: fixture.edges.length,
+      stackChips: root.querySelectorAll(".pr-stack-layer-chip").length,
       keptRow: keptRow === root.querySelector('.row[data-index="1500"]'), keptNode: keptNode === root.querySelector('.node[data-row="1500"]'),
       keptEdge: keptEdge === svg.__gscEdgeElements[1500][0], svg: svg === root.querySelector("svg"),
       scroll: graph.scrollTop === scroll, focus: document.activeElement === graph,
@@ -67,7 +73,7 @@ async function heap(page: Page) {
 
 /** 최신 full snapshot과 SVG 속성·툴팁이 같은지 측정 구간 밖에서 검증한다. */
 async function verifySnapshot(page: Page) {
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const w = window as any, root = document.getElementById("graph-content")!, fixture = w.__referenceFixture;
     const shape = () => [...root.querySelectorAll("svg *")].map(node => [node.tagName,
       [...node.attributes].map(attr => `${attr.name}=${attr.value}`).sort().join("|"), node.children.length ? "" : node.textContent].join("\n")).sort();
@@ -75,6 +81,7 @@ async function verifySnapshot(page: Page) {
     window.dispatchEvent(new MessageEvent("message", { data: { type: "graph", revision: w.GscGraphDataUpdates.stats().revision + 1,
       data: { rows: w.__metadataRows, edges: fixture.edges, laneCount: 1 },
       state: { loadedCount: fixture.rows.length, reset: false, loading: false, hasMore: false, colorScope: "/fixture/references" } } }));
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     return JSON.stringify(incremental) === JSON.stringify(shape());
   });
 }
@@ -89,7 +96,11 @@ async function measure(browser: Browser, phase: string, code: string[]) {
       const index = files.findIndex(file => options.path?.endsWith(file));
       return load(index < 0 ? options : { content: code[index] });
     };
-    await mountReferenceGraph(page, true, 1); await page.locator("#graph").focus(); await exercise(page, 8);
+    if (production) await mountProductionReference(browser, page, code[0], stackLayers);
+    else await mountReferenceGraph(page, true, 1);
+    await page.locator("#graph").focus(); await exercise(page, 8);
+    if (production) assert.equal(await page.locator("#graph-content .pr-stack-layer-chip").count(), stackLayers,
+      "Configured stack layers must actually be rendered before measuring");
     await page.evaluate(() => {
       const w = window as any; w.__metadataLongTasks = [];
       w.__metadataObserver = new PerformanceObserver(list => w.__metadataLongTasks.push(...list.getEntries().map(entry => entry.duration)));
@@ -111,31 +122,42 @@ async function measure(browser: Browser, phase: string, code: string[]) {
     const heapBefore = await heap(page); await exercise(page, 32); const heapAfter = await heap(page);
     for (const result of [latency, cpuContract]) {
       assert.equal(result.rows, 5000); assert.equal(result.edges, 4999);
+      if (production) assert.equal(result.stackChips, stackLayers);
       for (const key of ["keptRow", "keptNode", "keptEdge", "svg", "scroll", "focus", "headExact"] as const) assert.equal(result[key], true, key);
     }
     assert.equal(await verifySnapshot(page), true); assert.deepEqual(errors, []);
     return { phase, sourceSha256: code.map(digest), latency, latencyLongTasks, cpuContract, browserCpuMs,
       nodeCpuMs: (node.user + node.system) / 1000, heapBefore, heapAfter, heapDelta: heapAfter - heapBefore,
       browserComplete: true, fullSnapshotExact: true };
-  } finally { await page.close(); }
+  } finally { await page.close(); mock.restoreAll(); }
 }
 
 /** B/A/A/B와 반대 순서를 독립 browser에서 실행하고 source 불변성과 원시 표본을 저장한다. */
 async function main() {
   assert.equal(source.kind, "working-tree"); assert.ok(process.argv[2], "An explicit report path is required");
-  const before = files.map(file => execFileSync("/usr/bin/git", ["-c", "core.fsmonitor=false", "show", `${reference}:${file}`]).toString());
+  assert.ok(Number.isInteger(stackLayers) && stackLayers >= 0 && stackLayers <= 80);
+  const before = production ? [await baselineBrowserBundle(reference)]
+    : files.map(file => execFileSync("/usr/bin/git", ["-c", "core.fsmonitor=false", "show", `${reference}:${file}`]).toString());
+  if (production && process.env.GSC_BENCH_BASELINE_BUNDLE_SHA256) {
+    assert.equal(digest(before[0]), process.env.GSC_BENCH_BASELINE_BUNDLE_SHA256, "Baseline must match the published bundle before measuring");
+  }
   const after = await Promise.all(files.map(file => readFile(file, "utf8"))), results = [];
   const preparedBrowserBundleSha256 = digest(await readFile("media/bundled/graph.js"));
-  for (const phase of ["before", "after", "after", "before", "after", "before", "before", "after"]) {
+  const order = process.env.GSC_BENCH_METADATA_SHORT === "1" ? ["before", "after", "after", "before"]
+    : ["before", "after", "after", "before", "after", "before", "before", "after"];
+  for (const phase of order) {
     const browser = await chromium.launch({ headless: true,
       ...(process.env.GSC_PLAYWRIGHT_EXECUTABLE ? { executablePath: process.env.GSC_PLAYWRIGHT_EXECUTABLE } : {}) });
     try { results.push(await measure(browser, phase, phase === "before" ? before : after)); } finally { await browser.close(); }
-    console.error(`Completed metadata renderer ${phase} (${results.length}/8)`);
+    console.error(`Completed metadata renderer ${phase} (${results.length}/${order.length})`);
   }
   assert.deepEqual((await Promise.all(files.map(file => readFile(file)))).map(digest), after.map(digest));
   assert.equal(digest(await readFile("media/bundled/graph.js")), preparedBrowserBundleSha256);
   await writeFile(process.argv[2], JSON.stringify({ source, baseline: reference, files, beforeSha256: before.map(digest), afterSha256: after.map(digest),
-    harness: "Raw source modules; the production bundle is prepared and fingerprinted separately, and is exercised by the Native controls QA.", preparedBrowserBundleSha256, results,
-    scope: "5000 rows, 4999 edges, 1000 branches, 250 tags; only graph.js, graphSvgRender.js and graphDataUpdates.js differ. Four independent Chromium lifetimes per source in B/A/A/B+A/B/B/A order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows." }, null, 2) + "\n");
+    stackLayers, order, harness: production ? "Actual production HTML/CSP/bundle/ready; immutable before/after bundle bytes override the same resource route. Other assets and fixture input are common."
+      : "Raw source modules; the production bundle is prepared and fingerprinted separately, and is exercised by the Native controls QA.", preparedBrowserBundleSha256, results,
+    scope: (production ? "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. "
+      : "Raw modules: only graph.js, graphSvgRender.js and graphDataUpdates.js differ. ") +
+      "5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows." }, null, 2) + "\n");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

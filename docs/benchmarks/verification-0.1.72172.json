@@ -1,0 +1,85 @@
+{
+  "version": "0.1.72172",
+  "productFingerprint": {
+    "files": 652,
+    "sha256": "7786a21c1e6d853cfb35b598ccbb43c98d3444cc641bbcc42502397f1d62dbc7"
+  },
+  "webview": {
+    "tests": 110,
+    "pass": 110,
+    "fail": 0
+  },
+  "typesPassed": true,
+  "productionPackagePassed": true,
+  "comparativeProductionBrowsers": 16,
+  "separateWorkloads": [
+    "inactive",
+    "80 active stack layers"
+  ],
+  "comparativeBaselinePublishedBytesMatched": true,
+  "actualControls": 11,
+  "prCardsPerControlCase": 80,
+  "nativeAndDomExact": true,
+  "localChangesPreserved": true,
+  "sameSessionPanelCycles": 8,
+  "sameSessionMeasuredRefreshes": 32,
+  "sameSessionReveals": 32,
+  "closedSubscriptions": 0,
+  "latePosts": 0,
+  "boundedNativeResources": true,
+  "lifecycleNodeHeapGrowthBytes": 299893.33333332837,
+  "previousNativeNodeEvidence": {
+    "version": "0.1.72170",
+    "tests": 62,
+    "pass": 62,
+    "skipped": 0,
+    "runtimeByteIdentityVia": "0.1.72171",
+    "rerunThisRelease": false
+  },
+  "sourceRuntimeMatched": true,
+  "onlyGraphBundleChanged": true,
+  "nativeRuntimeByteIdentical": true,
+  "packagedBundleMatchesBothComparativeWorkloads": true,
+  "graphInitializationOrderPreserved": true,
+  "visualViewports": [
+    [
+      390,
+      844
+    ],
+    [
+      768,
+      1024
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "screensInspected": true,
+  "machineWideStressGenerated": false,
+  "osFocusChanged": false,
+  "forcedHostReload": false,
+  "marketplaceStatusQueried": false,
+  "logs": {
+    "gsc-72172-shared-final-webview.log": {
+      "bytes": 18975,
+      "sha256": "ec957cb158cd920cf9c0f5d9b184765f2b29401bb1946d587f56493756c06865"
+    },
+    "gsc-72172-final-types.log": {
+      "bytes": 58,
+      "sha256": "22668052af2c52378db82924c9ef46d8eb076776a588db34d85bf00b17c2e393"
+    },
+    "gsc-72172-shared-controls.log": {
+      "bytes": 56459,
+      "sha256": "36771c58c262814dc7daf69ac807c901f4587b206d585c276e2e1c41ae044295"
+    },
+    "gsc-graph-lifecycle-72172-final.log": {
+      "bytes": 3429,
+      "sha256": "552243bebd50cf100772f4bf66a4de9614d0388e7095777ac697cb8fb91d3550"
+    },
+    "gsc-72172-package.log": {
+      "bytes": 1416,
+      "sha256": "241cbc0c55e7565c081bd6e7bbbad12e403a3b59ad6d2796eb9d7d675c7d868c"
+    }
+  }
+}

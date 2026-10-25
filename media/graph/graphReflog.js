@@ -492,22 +492,15 @@
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
-  /** 그래프가 다시 렌더링된 뒤 reflog 연결 표시를 다시 붙인다. */
+  /** 열린 패널의 연결 표시만 한 frame에 갱신한다. 닫힌 패널에서는 viewport DOM 탐색도 하지 않는다. */
   function scheduleGraphSync() {
-    if (syncFrame) {
-      return;
-    }
+    if (syncFrame || !panel || panel.hidden) return;
     syncFrame = window.requestAnimationFrame(() => {
+      syncFrame = 0;
+      if (panel.hidden) { pendingGraphViewport = undefined; return; }
       const viewport = pendingGraphViewport || captureGraphViewport();
       pendingGraphViewport = undefined;
-      syncFrame = 0;
-      if (!panel?.hidden) {
-        render({
-          preserveGraphViewport: true,
-          preservePanelScroll: true,
-          graphViewport: viewport,
-        });
-      }
+      render({ preserveGraphViewport: true, preservePanelScroll: true, graphViewport: viewport });
     });
   }
 

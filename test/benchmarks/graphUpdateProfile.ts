@@ -3,6 +3,8 @@ import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { mountReferenceGraph } from "../webview/graphReferenceHarness";
+import { mountProductionReference } from "../helpers/graphProductionReference";
+import { benchmarkOverrides as mock } from "../helpers/benchmarkOverrides";
 
 const requireFixture = createRequire(path.join(process.env.GSC_BENCH_WORKSPACE_ROOT || process.cwd(), "package.json"));
 const { chromium } = requireFixture("playwright") as typeof import("@playwright/test");
@@ -36,7 +38,9 @@ async function main() {
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
-    await mountReferenceGraph(page, true, 1);
+    const production = process.env.GSC_BENCH_PROFILE_PRODUCTION === "1";
+    if (production) await mountProductionReference(browser, page);
+    else await mountReferenceGraph(page, true, 1);
     if (process.env.GSC_BENCH_ROW_CONTAINMENT === "1") await page.addStyleTag({ content: ".row { contain: layout style; }" });
     await updates(page, 4);
     const cdp = await page.context().newCDPSession(page);
@@ -54,8 +58,8 @@ async function main() {
     await writeFile(process.argv[2] + ".cpuprofile", JSON.stringify(profile));
     await writeFile(process.argv[2] + ".trace.json", chunks.join(""));
     await writeFile(process.argv[2], JSON.stringify({ source: JSON.parse(process.env.GSC_BENCH_SOURCE!), samples,
-      rowContainmentExperiment: process.env.GSC_BENCH_ROW_CONTAINMENT === "1",
-      scope: "Owned raw Graph modules, 5000 rows, 4999 edges, CPU 6x; profiling overhead included. Not a comparative latency or CPU benchmark." }, null, 2) + "\n");
-  } finally { await browser.close(); }
+      production, rowContainmentExperiment: process.env.GSC_BENCH_ROW_CONTAINMENT === "1",
+      scope: "Owned Graph page, 5000 rows, 4999 edges, CPU 6x; production flag selects actual HTML/CSP/bundle/ready. Profiling overhead included. Not a comparative latency, Native Git or active VS Code benchmark." }, null, 2) + "\n");
+  } finally { await browser.close(); mock.restoreAll(); }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

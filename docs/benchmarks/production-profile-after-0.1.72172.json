@@ -1,0 +1,33 @@
+{
+  "version": "0.1.72172",
+  "production": true,
+  "bundleSha256": "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe",
+  "layoutCount": 8,
+  "layoutObjects": [
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039
+  ],
+  "layoutRoots": [
+    "#document",
+    "#document",
+    "#document",
+    "#document",
+    "#document",
+    "#document",
+    "#document",
+    "#document"
+  ],
+  "rawFileHashes": {
+    "": "9e40bc9e398eb1df08897f6004a74c9f8c8fa76148d6307d7cc5d14f3310d0d4",
+    ".cpuprofile": "ddae58643d2595467f7ccdbaee9f853688d0623df1d2b0f664b5db71b4b453d2",
+    ".trace.json": "fec135ee7c773c61dcf19ae54da4c727f6ca649beca5dcd6e7fedea56f4e5c4c"
+  },
+  "scope": "Owned Graph page, 5000 rows, 4999 edges, CPU 6x; production flag selects actual HTML/CSP/bundle/ready. Profiling overhead included. Not a comparative latency, Native Git or active VS Code benchmark.",
+  "interpretation": "Full document layouts remain. Diagnostic profiling is separate from comparative latency and active user-session timing."
+}

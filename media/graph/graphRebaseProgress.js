@@ -11,6 +11,7 @@
   let current = null;
   let hideTimer = null;
   let focusedKey = "";
+  let hasMarks = false;
 
   /** HTML 특수문자를 이스케이프해 안전하게 삽입한다. */
   function esc(text) {
@@ -175,6 +176,7 @@
       const node = graphContent.querySelector(`.node[data-hash="${escaped}"]`);
       row?.classList.add("rebase-progress-target", `rebase-progress-${current.phase}`);
       node?.classList.add("rebase-progress-target-node", `rebase-progress-${current.phase}-node`);
+      if (row || node) hasMarks = true;
       firstRow = firstRow || row;
     });
     if (firstRow) {
@@ -195,11 +197,15 @@
       const node = graphContent.querySelector(`.node[data-hash="${escaped}"]`);
       row?.classList.add("rebase-progress-todo-row", `rebase-progress-role-${role}`);
       node?.classList.add("rebase-progress-todo-node", `rebase-progress-role-${role}-node`);
+      if (row || node) hasMarks = true;
     });
   }
 
   /** 이전 진행 강조 클래스를 모두 제거한다. */
   function clearMarks() {
+    // 생성한 강조가 없으면 수천 행/SVG를 훑지 않는다. 활성화·종료 시 실제 장식은 기존 경로로 정리한다.
+    if (!hasMarks) return;
+    hasMarks = false;
     graphContent.querySelectorAll(".rebase-progress-target").forEach((row) => {
       row.classList.remove(
         "rebase-progress-target",
@@ -335,7 +341,7 @@
         removePanel();
       }
     } else if (msg.type === "graph") {
-      window.setTimeout(applyMarks, 0);
+      if (current || hasMarks) window.setTimeout(applyMarks, 0);
     } else if (!current || current.phase === "running") {
       const fallback = fallbackProgress(msg);
       if (fallback) {

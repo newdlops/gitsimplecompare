@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72172] - 2026-10-25
+
+### Performance
+
+- Skip Graph decoration scans and scheduled work when PR stacks, rebase progress
+  or the reflog panel have no active presentation to update or clear.
+- Reuse existing row/hash and SVG indexes for stack layers, preserving first-match
+  lookup, active decoration cleanup and cross-feature frame ordering.
+
 ## [0.1.72171] - 2026-10-25
 
 ### Performance

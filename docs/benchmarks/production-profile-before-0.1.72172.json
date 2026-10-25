@@ -1,0 +1,30 @@
+{
+  "version": "0.1.72171",
+  "production": true,
+  "bundleSha256": "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c",
+  "sameByteSourceMapGenerated": true,
+  "layoutCount": 8,
+  "layoutObjects": [
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039,
+    59039
+  ],
+  "profileScope": "Owned Graph page, 5000 rows, 4999 edges, CPU 6x; production flag selects actual HTML/CSP/bundle/ready. Profiling overhead included. Not a comparative latency, Native Git or active VS Code benchmark.",
+  "hotSearchCallers": [
+    "graphPrStacks.renderGraphFlow (inactive cleanup)",
+    "graphRebaseProgress.clearMarks (no current progress)",
+    "graphViewport.capture via closed graphReflog.scheduleGraphSync",
+    "graphDataUpdates.prepare (remaining virtual-row cleanup)"
+  ],
+  "rawFileHashes": {
+    "": "227180eb1c7ec351262393e1c69269a35078346d9e28bc62bc7ce98206eedb20",
+    ".cpuprofile": "8b32bb7ef5542749b68c1c63afa9a2ef866974dbf358e023c1ca051484f7991b",
+    ".trace.json": "08544b793ce064d01e06942267628967039378f30434f5c1b8bd3b855a89d8dc"
+  },
+  "interpretation": "Diagnostic call attribution only; profiler overhead included and no active user-session timing claim."
+}

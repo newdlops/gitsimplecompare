@@ -9,6 +9,7 @@
   let loadError = "";
   let activeBranch = "";
   let stackBusy = false;
+  let flowRendered = false;
 
   /** stack toolbar, graph chip, detail panel 이벤트와 extension 메시지를 등록한다. */
   function init() {
@@ -25,7 +26,7 @@
       snapshot = message.snapshot || { repository: "", stacks: [], layers: [] };
       loadError = "";
       updateToolbarState();
-      requestAnimationFrame(renderGraphFlow);
+      scheduleGraphFlow();
       if (activeBranch) {
         if (activeBranch !== "__overview__" && !findLayer(activeBranch)) {
           showOverview();
@@ -49,8 +50,14 @@
       return;
     }
     if (message.type === "graph" || message.type === "branchStatus" || message.type === "tagStatus") {
-      requestAnimationFrame(renderGraphFlow);
+      scheduleGraphFlow();
     }
+  }
+
+  /** 표시/정리가 필요할 때만 예약한다. 활성 상태는 reflog 등 다른 장식과의 기존 frame 순서를 유지한다. */
+  function scheduleGraphFlow() {
+    if (!flowRendered && !snapshot.layers?.length) return;
+    requestAnimationFrame(renderGraphFlow);
   }
 
   /** toolbar button에 layer 수와 데이터 오류 상태를 접근성 label로 반영한다. */
@@ -72,11 +79,12 @@
   function renderGraphFlow() {
     const root = document.getElementById("graph-content");
     if (!root) return;
-    root.querySelector(".pr-stack-flow-overlay")?.remove();
-    root.querySelectorAll(".pr-stack-layer-chip").forEach((element) => element.remove());
-    root.querySelectorAll(".pr-stack-head-row").forEach((element) =>
-      element.classList.remove("pr-stack-head-row")
-    );
+    if (flowRendered) {
+      root.querySelector(".pr-stack-flow-overlay")?.remove();
+      root.querySelectorAll(".pr-stack-layer-chip").forEach((element) => element.remove());
+      root.querySelectorAll(".pr-stack-head-row").forEach((element) => element.classList.remove("pr-stack-head-row"));
+      flowRendered = false;
+    }
     const baseSvg = root.querySelector("svg:not(.pr-stack-flow-overlay)");
     const layers = Array.isArray(snapshot.layers) ? snapshot.layers : [];
     if (!baseSvg || !layers.length) return;
@@ -87,16 +95,35 @@
       "aria-hidden": "true",
     });
     overlay.appendChild(arrowDefinitions());
+    const elements = graphElements(root, baseSvg);
     for (const layer of layers) {
-      appendLayerChip(root, layer);
-      appendLayerArrow(root, overlay, layer);
+      appendLayerChip(elements.row(layer.headHash), layer);
+      appendLayerArrow(elements.node(layer.headHash), elements.node(layer.parentHash), overlay, layer);
     }
     root.appendChild(overlay);
+    flowRendered = true;
+  }
+
+  /**
+   * 행 동기화의 기존 hash 역색인과 SVG 소유 요소를 재사용해 layer마다 DOM을 다시 검색하지 않는다.
+   * @param root 현재 Graph 캔버스 @param svg 현재 실제 Graph SVG
+   * @returns 최신 실제 행과 node 조회 API. 미로딩/독립 fixture처럼 색인이 없는 경우 기존 selector로 조회한다.
+   */
+  function graphElements(root, svg) {
+    const cachedRow = hash => window.GscGraphRowSync?.rowForHash?.(root, hash);
+    return {
+      row: hash => cachedRow(hash) || findRow(root, hash),
+      node: hash => {
+        const row = cachedRow(hash), index = row ? Number(row.dataset.index) : -1;
+        const node = svg.__gscNodeElements?.[index]?.find(element => element.classList?.contains("node") &&
+          element.getAttribute("data-hash") === String(hash) && element.parentNode === svg.__gscNodes);
+        return node || findNode(root, hash);
+      },
+    };
   }
 
   /** layer head commit row에 상태/PR 번호가 포함된 stack action chip을 붙인다. */
-  function appendLayerChip(root, layer) {
-    const row = findRow(root, layer.headHash);
+  function appendLayerChip(row, layer) {
     if (!row) return;
     row.classList.add("pr-stack-head-row");
     const button = document.createElement("button");
@@ -122,9 +149,7 @@
   }
 
   /** graph에 head와 parent node가 모두 보이면 head→base dashed arrow를 overlay에 추가한다. */
-  function appendLayerArrow(root, overlay, layer) {
-    const head = findNode(root, layer.headHash);
-    const parent = findNode(root, layer.parentHash);
+  function appendLayerArrow(head, parent, overlay, layer) {
     if (!head || !parent || layer.headHash === layer.parentHash) return;
     const headX = numberAttribute(head, "cx");
     const headY = numberAttribute(head, "cy");

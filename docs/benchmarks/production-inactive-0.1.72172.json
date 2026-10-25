@@ -1,0 +1,2045 @@
+{
+  "source": {
+    "kind": "working-tree",
+    "commit": "7afbf266bdeeb43d4be4b2bdc87530fee5a40d29",
+    "bundleSha256": "052f0473013ef878964d56e7fe866970366a10e5f13f7a56434c81d4561fbc38"
+  },
+  "baseline": "7afbf266bdeeb43d4be4b2bdc87530fee5a40d29",
+  "files": [
+    "media/bundled/graph.js"
+  ],
+  "beforeSha256": [
+    "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c"
+  ],
+  "afterSha256": [
+    "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe"
+  ],
+  "stackLayers": 0,
+  "order": [
+    "before",
+    "after",
+    "after",
+    "before",
+    "after",
+    "before",
+    "before",
+    "after"
+  ],
+  "harness": "Actual production HTML/CSP/bundle/ready; immutable before/after bundle bytes override the same resource route. Other assets and fixture input are common.",
+  "preparedBrowserBundleSha256": "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe",
+  "results": [
+    {
+      "phase": "before",
+      "sourceSha256": [
+        "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 28.400000005960464,
+            "frameMs": 162.60000002384186
+          },
+          {
+            "handlerMs": 25.200000017881393,
+            "frameMs": 157.09999999403954
+          },
+          {
+            "handlerMs": 26.400000005960464,
+            "frameMs": 153.2000000178814
+          },
+          {
+            "handlerMs": 27.200000017881393,
+            "frameMs": 157
+          },
+          {
+            "handlerMs": 47.80000001192093,
+            "frameMs": 213.7000000178814
+          },
+          {
+            "handlerMs": 26.299999982118607,
+            "frameMs": 155.59999999403954
+          },
+          {
+            "handlerMs": 27.099999994039536,
+            "frameMs": 156.89999997615814
+          },
+          {
+            "handlerMs": 28.599999994039536,
+            "frameMs": 163.7000000178814
+          },
+          {
+            "handlerMs": 28.19999998807907,
+            "frameMs": 155.69999998807907
+          },
+          {
+            "handlerMs": 27.69999998807907,
+            "frameMs": 145.40000000596046
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 186.2999999821186
+          },
+          {
+            "handlerMs": 23.19999998807907,
+            "frameMs": 149.19999998807907
+          },
+          {
+            "handlerMs": 25.799999982118607,
+            "frameMs": 146.90000000596046
+          },
+          {
+            "handlerMs": 24.19999998807907,
+            "frameMs": 145.09999999403954
+          },
+          {
+            "handlerMs": 24.19999998807907,
+            "frameMs": 144.59999999403954
+          },
+          {
+            "handlerMs": 24.80000001192093,
+            "frameMs": 132.59999999403954
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        124,
+        125,
+        123,
+        127,
+        183,
+        122,
+        126,
+        126,
+        126,
+        120,
+        118,
+        64,
+        120,
+        117,
+        115,
+        116,
+        111
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 19.19999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.400000005960464
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 18.600000023841858
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 21.400000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 19.30000001192093
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 21.099999994039536
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 18.19999998807907
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 22.5
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 23.799999982118607
+          },
+          {
+            "handlerMs": 4,
+            "frameMs": 19.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 22.30000001192093
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 17.799999982118607
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 16.900000005960464
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 21.400000005960464
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 16.5
+          },
+          {
+            "handlerMs": 2.800000011920929,
+            "frameMs": 16
+          },
+          {
+            "handlerMs": 2.699999988079071,
+            "frameMs": 17.19999998807907
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 21.30000001192093
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 18.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 15.900000005960464
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 712.5840000000001,
+      "nodeCpuMs": 1.129,
+      "heapBefore": 11742392,
+      "heapAfter": 11756556,
+      "heapDelta": 14164,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "after",
+      "sourceSha256": [
+        "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 27.19999998807907,
+            "frameMs": 118.09999999403954
+          },
+          {
+            "handlerMs": 24.30000001192093,
+            "frameMs": 117
+          },
+          {
+            "handlerMs": 24,
+            "frameMs": 117.7000000178814
+          },
+          {
+            "handlerMs": 25.400000005960464,
+            "frameMs": 115.40000000596046
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 119.5
+          },
+          {
+            "handlerMs": 23.900000005960464,
+            "frameMs": 116.2999999821186
+          },
+          {
+            "handlerMs": 25.900000005960464,
+            "frameMs": 156.40000000596046
+          },
+          {
+            "handlerMs": 23.099999994039536,
+            "frameMs": 118.09999999403954
+          },
+          {
+            "handlerMs": 25.099999994039536,
+            "frameMs": 119.09999999403954
+          },
+          {
+            "handlerMs": 22.599999994039536,
+            "frameMs": 120
+          },
+          {
+            "handlerMs": 26.899999976158142,
+            "frameMs": 124.39999997615814
+          },
+          {
+            "handlerMs": 23,
+            "frameMs": 120.7999999821186
+          },
+          {
+            "handlerMs": 23,
+            "frameMs": 122.40000000596046
+          },
+          {
+            "handlerMs": 24.400000005960464,
+            "frameMs": 121.19999998807907
+          },
+          {
+            "handlerMs": 25,
+            "frameMs": 157.40000000596046
+          },
+          {
+            "handlerMs": 23.599999994039536,
+            "frameMs": 118.2999999821186
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        90,
+        114,
+        115,
+        113,
+        116,
+        114,
+        153,
+        116,
+        115,
+        115,
+        119,
+        116,
+        116,
+        116,
+        154,
+        114
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 20.69999998807907
+          },
+          {
+            "handlerMs": 3.7000000178813934,
+            "frameMs": 24.5
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 22.80000001192093
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.100000023841858
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 23.400000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.599999994039536
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 23
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.30000001192093
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 22.799999982118607
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.100000023841858
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 16.899999976158142
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 22.799999982118607
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.30000001192093
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16.799999982118607
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.100000023841858
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 23.599999994039536
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.400000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 23.100000023841858
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 17.399999976158142
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 15
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 17.30000001192093
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 22.5
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.30000001192093
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 639.1859999999999,
+      "nodeCpuMs": 0.719,
+      "heapBefore": 12602424,
+      "heapAfter": 12615648,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "after",
+      "sourceSha256": [
+        "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 26.099999994039536,
+            "frameMs": 119.39999997615814
+          },
+          {
+            "handlerMs": 24.599999994039536,
+            "frameMs": 121.90000000596046
+          },
+          {
+            "handlerMs": 25.099999994039536,
+            "frameMs": 121.7000000178814
+          },
+          {
+            "handlerMs": 24,
+            "frameMs": 122.2999999821186
+          },
+          {
+            "handlerMs": 23.700000017881393,
+            "frameMs": 122
+          },
+          {
+            "handlerMs": 23.30000001192093,
+            "frameMs": 116.5
+          },
+          {
+            "handlerMs": 28,
+            "frameMs": 161.90000000596046
+          },
+          {
+            "handlerMs": 23.600000023841858,
+            "frameMs": 118.7000000178814
+          },
+          {
+            "handlerMs": 24,
+            "frameMs": 120
+          },
+          {
+            "handlerMs": 23,
+            "frameMs": 117
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 120.09999999403954
+          },
+          {
+            "handlerMs": 24.299999982118607,
+            "frameMs": 119.2999999821186
+          },
+          {
+            "handlerMs": 23.200000017881393,
+            "frameMs": 117
+          },
+          {
+            "handlerMs": 23.599999994039536,
+            "frameMs": 118.09999999403954
+          },
+          {
+            "handlerMs": 24.299999982118607,
+            "frameMs": 157.7999999821186
+          },
+          {
+            "handlerMs": 24.100000023841858,
+            "frameMs": 119.2000000178814
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        93,
+        116,
+        118,
+        117,
+        119,
+        113,
+        160,
+        117,
+        113,
+        113,
+        119,
+        115,
+        113,
+        114,
+        155,
+        114
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 3.9000000059604645,
+            "frameMs": 20.900000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 16.299999982118607
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.700000017881393
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 23.200000017881393
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.30000001192093
+          },
+          {
+            "handlerMs": 3.7000000178813934,
+            "frameMs": 23.400000005960464
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 23.099999994039536
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.599999994039536
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 16.900000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.700000017881393
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 15.399999976158142
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 17.100000023841858
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16.799999982118607
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 17.30000001192093
+          },
+          {
+            "handlerMs": 3.7000000178813934,
+            "frameMs": 22.80000001192093
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.799999982118607
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 22.69999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 23.19999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.100000023841858
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 23.599999994039536
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.69999998807907
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 636.1150000000002,
+      "nodeCpuMs": 0.856,
+      "heapBefore": 12601784,
+      "heapAfter": 12615008,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "before",
+      "sourceSha256": [
+        "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 25.099999994039536,
+            "frameMs": 150.69999998807907
+          },
+          {
+            "handlerMs": 27.5,
+            "frameMs": 142.90000000596046
+          },
+          {
+            "handlerMs": 27.30000001192093,
+            "frameMs": 133
+          },
+          {
+            "handlerMs": 25.599999994039536,
+            "frameMs": 133.19999998807907
+          },
+          {
+            "handlerMs": 27.30000001192093,
+            "frameMs": 135.40000000596046
+          },
+          {
+            "handlerMs": 25.80000001192093,
+            "frameMs": 169.5
+          },
+          {
+            "handlerMs": 27.900000005960464,
+            "frameMs": 133.59999999403954
+          },
+          {
+            "handlerMs": 22.099999994039536,
+            "frameMs": 117.80000001192093
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 122
+          },
+          {
+            "handlerMs": 24,
+            "frameMs": 129.30000001192093
+          },
+          {
+            "handlerMs": 22.799999982118607,
+            "frameMs": 133
+          },
+          {
+            "handlerMs": 24.5,
+            "frameMs": 141.40000000596046
+          },
+          {
+            "handlerMs": 25.799999982118607,
+            "frameMs": 188.19999998807907
+          },
+          {
+            "handlerMs": 26.400000005960464,
+            "frameMs": 149.59999999403954
+          },
+          {
+            "handlerMs": 22.80000001192093,
+            "frameMs": 145.90000000596046
+          },
+          {
+            "handlerMs": 24.19999998807907,
+            "frameMs": 141.69999998807907
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        115,
+        118,
+        110,
+        109,
+        113,
+        148,
+        107,
+        96,
+        101,
+        109,
+        102,
+        112,
+        115,
+        65,
+        119,
+        116,
+        112
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 19.099999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.600000023841858
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.799999982118607
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 21.69999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.599999994039536
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22
+          },
+          {
+            "handlerMs": 3.7999999821186066,
+            "frameMs": 19.899999976158142
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 20.600000023841858
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.299999982118607
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 22.30000001192093
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 18
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 16.299999982118607
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 21.69999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.600000023841858
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 21.900000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.19999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22.200000017881393
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.5
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 22
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 18.5
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 22.100000023841858
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 20.799999982118607
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 19.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 21.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 18.099999994039536
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 22.5
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 18.30000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 22.399999976158142
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 726.3440000000004,
+      "nodeCpuMs": 0.684,
+      "heapBefore": 11961940,
+      "heapAfter": 11975164,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "after",
+      "sourceSha256": [
+        "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 28.100000023841858,
+            "frameMs": 129.80000001192093
+          },
+          {
+            "handlerMs": 27.100000023841858,
+            "frameMs": 129.10000002384186
+          },
+          {
+            "handlerMs": 26.400000005960464,
+            "frameMs": 125.59999999403954
+          },
+          {
+            "handlerMs": 26,
+            "frameMs": 122
+          },
+          {
+            "handlerMs": 28.600000023841858,
+            "frameMs": 125.60000002384186
+          },
+          {
+            "handlerMs": 26.30000001192093,
+            "frameMs": 169.7000000178814
+          },
+          {
+            "handlerMs": 29.19999998807907,
+            "frameMs": 129.59999999403954
+          },
+          {
+            "handlerMs": 24.100000023841858,
+            "frameMs": 118.7000000178814
+          },
+          {
+            "handlerMs": 22.900000005960464,
+            "frameMs": 120.59999999403954
+          },
+          {
+            "handlerMs": 23.400000005960464,
+            "frameMs": 111.69999998807907
+          },
+          {
+            "handlerMs": 21.799999982118607,
+            "frameMs": 110.59999999403954
+          },
+          {
+            "handlerMs": 23.900000005960464,
+            "frameMs": 122.90000000596046
+          },
+          {
+            "handlerMs": 23.799999982118607,
+            "frameMs": 117.5
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 154.40000000596046
+          },
+          {
+            "handlerMs": 24,
+            "frameMs": 118.39999997615814
+          },
+          {
+            "handlerMs": 24.5,
+            "frameMs": 118.69999998807907
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        99,
+        126,
+        123,
+        120,
+        124,
+        168,
+        128,
+        117,
+        118,
+        110,
+        107,
+        119,
+        114,
+        152,
+        117,
+        115
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 16.899999976158142
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 20.299999982118607
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 17.5
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 23.100000023841858
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 17.299999982118607
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.30000001192093
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.5
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.900000005960464
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 23.600000023841858
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.099999994039536
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 23.30000001192093
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 23.099999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.200000017881393
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 16.100000023841858
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 23.19999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 23.5
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 17
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 14.900000005960464
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.900000005960464
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.400000005960464
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 632.4419999999999,
+      "nodeCpuMs": 1.053,
+      "heapBefore": 12601728,
+      "heapAfter": 12614952,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "before",
+      "sourceSha256": [
+        "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 28.19999998807907,
+            "frameMs": 160.19999998807907
+          },
+          {
+            "handlerMs": 26.599999994039536,
+            "frameMs": 152.09999999403954
+          },
+          {
+            "handlerMs": 26.69999998807907,
+            "frameMs": 155.39999997615814
+          },
+          {
+            "handlerMs": 27.19999998807907,
+            "frameMs": 144.09999999403954
+          },
+          {
+            "handlerMs": 28.400000005960464,
+            "frameMs": 184.90000000596046
+          },
+          {
+            "handlerMs": 23.5,
+            "frameMs": 146.2000000178814
+          },
+          {
+            "handlerMs": 22.299999982118607,
+            "frameMs": 144.40000000596046
+          },
+          {
+            "handlerMs": 24.799999982118607,
+            "frameMs": 144.19999998807907
+          },
+          {
+            "handlerMs": 25.599999994039536,
+            "frameMs": 145
+          },
+          {
+            "handlerMs": 24.099999994039536,
+            "frameMs": 148.19999998807907
+          },
+          {
+            "handlerMs": 25.80000001192093,
+            "frameMs": 149.09999999403954
+          },
+          {
+            "handlerMs": 26.5,
+            "frameMs": 187.40000000596046
+          },
+          {
+            "handlerMs": 23.599999994039536,
+            "frameMs": 147.19999998807907
+          },
+          {
+            "handlerMs": 22.899999976158142,
+            "frameMs": 142.5
+          },
+          {
+            "handlerMs": 23.19999998807907,
+            "frameMs": 142.59999999403954
+          },
+          {
+            "handlerMs": 22.599999994039536,
+            "frameMs": 144.39999997615814
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        122,
+        122,
+        125,
+        116,
+        118,
+        61,
+        115,
+        113,
+        115,
+        117,
+        119,
+        121,
+        159,
+        118,
+        114,
+        112,
+        115
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 19
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.400000005960464
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 24
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.80000001192093
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 21.799999982118607
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 18.69999998807907
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 21.700000017881393
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 17.900000005960464
+          },
+          {
+            "handlerMs": 3.100000023841858,
+            "frameMs": 22.80000001192093
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 18.80000001192093
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 21.5
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.80000001192093
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 22.099999994039536
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 21.5
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 20.19999998807907
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 17.599999994039536
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 16.900000005960464
+          },
+          {
+            "handlerMs": 2.800000011920929,
+            "frameMs": 16.100000023841858
+          },
+          {
+            "handlerMs": 2.5999999940395355,
+            "frameMs": 16
+          },
+          {
+            "handlerMs": 2.699999988079071,
+            "frameMs": 16.099999994039536
+          },
+          {
+            "handlerMs": 2.800000011920929,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 2.800000011920929,
+            "frameMs": 16.30000001192093
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 16.19999998807907
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 2.7999999821186066,
+            "frameMs": 16.5
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 17
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 18
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 22.400000005960464
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 18.200000017881393
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 711.1090000000005,
+      "nodeCpuMs": 0.904,
+      "heapBefore": 12612244,
+      "heapAfter": 12625468,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "before",
+      "sourceSha256": [
+        "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 28.200000017881393,
+            "frameMs": 158.30000001192093
+          },
+          {
+            "handlerMs": 31.5,
+            "frameMs": 162.59999999403954
+          },
+          {
+            "handlerMs": 28.69999998807907,
+            "frameMs": 155.69999998807907
+          },
+          {
+            "handlerMs": 26.799999982118607,
+            "frameMs": 156.90000000596046
+          },
+          {
+            "handlerMs": 25.30000001192093,
+            "frameMs": 194.09999999403954
+          },
+          {
+            "handlerMs": 25.700000017881393,
+            "frameMs": 149.60000002384186
+          },
+          {
+            "handlerMs": 28,
+            "frameMs": 156.7999999821186
+          },
+          {
+            "handlerMs": 30.400000005960464,
+            "frameMs": 160
+          },
+          {
+            "handlerMs": 27.100000023841858,
+            "frameMs": 154.40000000596046
+          },
+          {
+            "handlerMs": 25.19999998807907,
+            "frameMs": 155
+          },
+          {
+            "handlerMs": 25.100000023841858,
+            "frameMs": 154.7000000178814
+          },
+          {
+            "handlerMs": 24.19999998807907,
+            "frameMs": 188.2999999821186
+          },
+          {
+            "handlerMs": 21.900000005960464,
+            "frameMs": 138.90000000596046
+          },
+          {
+            "handlerMs": 23.900000005960464,
+            "frameMs": 143.30000001192093
+          },
+          {
+            "handlerMs": 23.900000005960464,
+            "frameMs": 146.19999998807907
+          },
+          {
+            "handlerMs": 22.19999998807907,
+            "frameMs": 142.69999998807907
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        121,
+        133,
+        126,
+        126,
+        122,
+        66,
+        121,
+        125,
+        127,
+        124,
+        122,
+        124,
+        162,
+        113,
+        114,
+        117,
+        114
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.5,
+            "frameMs": 20
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 18.19999998807907
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 21.69999998807907
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 18.30000001192093
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 22.299999982118607
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 18.700000017881393
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 21.900000005960464
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 18.799999982118607
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.900000005960464
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 21.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 18.80000001192093
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 20.900000005960464
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 18.599999994039536
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22.400000005960464
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 20.400000005960464
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 20.599999994039536
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 17.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 22.700000017881393
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 18
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 22.599999994039536
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 18.5
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 22
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 18.200000017881393
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 22.200000017881393
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 18.899999976158142
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 21.69999998807907
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 18.400000005960464
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 21.400000005960464
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 18
+          },
+          {
+            "handlerMs": 2.9000000059604645,
+            "frameMs": 17.599999994039536
+          },
+          {
+            "handlerMs": 3,
+            "frameMs": 21.900000005960464
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 739.197,
+      "nodeCpuMs": 0.922,
+      "heapBefore": 12612624,
+      "heapAfter": 12625896,
+      "heapDelta": 13272,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    },
+    {
+      "phase": "after",
+      "sourceSha256": [
+        "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe"
+      ],
+      "latency": {
+        "samples": [
+          {
+            "handlerMs": 28.200000017881393,
+            "frameMs": 124.2000000178814
+          },
+          {
+            "handlerMs": 24.700000017881393,
+            "frameMs": 118.7000000178814
+          },
+          {
+            "handlerMs": 28.30000001192093,
+            "frameMs": 127.09999999403954
+          },
+          {
+            "handlerMs": 30.19999998807907,
+            "frameMs": 132.59999999403954
+          },
+          {
+            "handlerMs": 27.700000017881393,
+            "frameMs": 125.09999999403954
+          },
+          {
+            "handlerMs": 25.200000017881393,
+            "frameMs": 121
+          },
+          {
+            "handlerMs": 24.799999982118607,
+            "frameMs": 157.90000000596046
+          },
+          {
+            "handlerMs": 24.200000017881393,
+            "frameMs": 118.5
+          },
+          {
+            "handlerMs": 24.19999998807907,
+            "frameMs": 119.59999999403954
+          },
+          {
+            "handlerMs": 22.30000001192093,
+            "frameMs": 114.10000002384186
+          },
+          {
+            "handlerMs": 25.900000005960464,
+            "frameMs": 118
+          },
+          {
+            "handlerMs": 23.900000005960464,
+            "frameMs": 116.5
+          },
+          {
+            "handlerMs": 25.400000005960464,
+            "frameMs": 120.2000000178814
+          },
+          {
+            "handlerMs": 23.799999982118607,
+            "frameMs": 115.40000000596046
+          },
+          {
+            "handlerMs": 27.69999998807907,
+            "frameMs": 159.40000000596046
+          },
+          {
+            "handlerMs": 24.30000001192093,
+            "frameMs": 122
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "latencyLongTasks": [
+        95,
+        116,
+        124,
+        129,
+        124,
+        119,
+        154,
+        118,
+        118,
+        112,
+        112,
+        113,
+        116,
+        114,
+        158,
+        115
+      ],
+      "cpuContract": {
+        "samples": [
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 16.400000005960464
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 20.69999998807907
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 17.69999998807907
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 17.19999998807907
+          },
+          {
+            "handlerMs": 3.7999999821186066,
+            "frameMs": 23.299999982118607
+          },
+          {
+            "handlerMs": 3.600000023841858,
+            "frameMs": 17.200000017881393
+          },
+          {
+            "handlerMs": 3.5999999940395355,
+            "frameMs": 23.30000001192093
+          },
+          {
+            "handlerMs": 3.9000000059604645,
+            "frameMs": 17.69999998807907
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 22.80000001192093
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 23.600000023841858
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 17
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 22.900000005960464
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 17.400000005960464
+          },
+          {
+            "handlerMs": 3.9000000059604645,
+            "frameMs": 23
+          },
+          {
+            "handlerMs": 3.5,
+            "frameMs": 16.899999976158142
+          },
+          {
+            "handlerMs": 3.699999988079071,
+            "frameMs": 23.599999994039536
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.69999998807907
+          },
+          {
+            "handlerMs": 3.4000000059604645,
+            "frameMs": 16.80000001192093
+          },
+          {
+            "handlerMs": 3.0999999940395355,
+            "frameMs": 16.200000017881393
+          },
+          {
+            "handlerMs": 3.399999976158142,
+            "frameMs": 14.899999976158142
+          },
+          {
+            "handlerMs": 3.199999988079071,
+            "frameMs": 16.299999982118607
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 16.30000001192093
+          },
+          {
+            "handlerMs": 3.2000000178813934,
+            "frameMs": 16.30000001192093
+          },
+          {
+            "handlerMs": 3.300000011920929,
+            "frameMs": 15.300000011920929
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16.799999982118607
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 16.599999994039536
+          },
+          {
+            "handlerMs": 3.2999999821186066,
+            "frameMs": 15.799999982118607
+          }
+        ],
+        "rows": 5000,
+        "edges": 4999,
+        "stackChips": 0,
+        "keptRow": true,
+        "keptNode": true,
+        "keptEdge": true,
+        "svg": true,
+        "scroll": true,
+        "focus": true,
+        "headExact": true
+      },
+      "browserCpuMs": 623.3520000000004,
+      "nodeCpuMs": 0.848,
+      "heapBefore": 11953436,
+      "heapAfter": 11966660,
+      "heapDelta": 13224,
+      "browserComplete": true,
+      "fullSnapshotExact": true
+    }
+  ],
+  "scope": "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. 5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows."
+}

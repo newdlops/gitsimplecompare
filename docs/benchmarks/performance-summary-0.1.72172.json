@@ -1,0 +1,103 @@
+{
+  "version": "0.1.72172",
+  "baseline": "0.1.72171",
+  "workloads": {
+    "inactive": {
+      "stats": {
+        "before": {
+          "handlerMs": 25.42500000447035,
+          "frameMs": 151.02499999850988,
+          "browserCpuMs32": 719.4640000000002,
+          "nodeCpuMs32": 0.913,
+          "postGcHeapGrowthBytes32": 13248.0,
+          "latencyLongTasks64": 68
+        },
+        "after": {
+          "handlerMs": 24.225000008940697,
+          "frameMs": 120.14999999850988,
+          "browserCpuMs32": 634.2785000000001,
+          "nodeCpuMs32": 0.852,
+          "postGcHeapGrowthBytes32": 13224.0,
+          "latencyLongTasks64": 64
+        }
+      },
+      "pairs": [
+        {
+          "frameReductionPercent": 23.353678121508203,
+          "cpuReductionPercent": 10.300259337846507
+        },
+        {
+          "frameReductionPercent": 13.511560705979797,
+          "cpuReductionPercent": 12.422350842025276
+        },
+        {
+          "frameReductionPercent": 16.530334014660774,
+          "cpuReductionPercent": 11.062579717033616
+        },
+        {
+          "frameReductionPercent": 22.368844535843014,
+          "cpuReductionPercent": 15.671735680745403
+        }
+      ],
+      "scope": "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. 5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows.",
+      "sourceShaBefore": "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c",
+      "sourceShaAfter": "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe",
+      "raw": "production-inactive-0.1.72172.json"
+    },
+    "stacks80": {
+      "stats": {
+        "before": {
+          "handlerMs": 23.724999994039536,
+          "frameMs": 428.4750000014901,
+          "browserCpuMs32": 2487.396999999999,
+          "nodeCpuMs32": 1.833,
+          "postGcHeapGrowthBytes32": 11086.0,
+          "latencyLongTasks64": 126
+        },
+        "after": {
+          "handlerMs": 24.149999998509884,
+          "frameMs": 306.67500001192093,
+          "browserCpuMs32": 1860.4135,
+          "nodeCpuMs32": 1.7765,
+          "postGcHeapGrowthBytes32": 13736.0,
+          "latencyLongTasks64": 124
+        }
+      },
+      "pairs": [
+        {
+          "frameReductionPercent": 28.89247578040265,
+          "cpuReductionPercent": 27.68996306406092
+        },
+        {
+          "frameReductionPercent": 29.251216325345286,
+          "cpuReductionPercent": 39.3819466131645
+        },
+        {
+          "frameReductionPercent": 23.01423324445444,
+          "cpuReductionPercent": 12.10448473302389
+        },
+        {
+          "frameReductionPercent": 33.73620598740911,
+          "cpuReductionPercent": 10.377943154655345
+        }
+      ],
+      "scope": "Production HTML/CSP/ready with archived baseline and current browser bundles; common HTML/CSS and immutable fixture. 5000 rows, 4999 edges, 1000 branches, 250 tags. Independent Chromium lifetimes in the explicit recorded order. 16 latency messages at CPU 6x and separate 32-message unthrottled CPU and post-GC JS heap windows after 8 warmups. Within-page samples are correlated. Complete stable Chromium PID counters and separate Node/Playwright CPU; no Native Git, active VS Code timing, total RSS or physical peak claim. Full snapshot equality verified outside measured windows.",
+      "sourceShaBefore": "e0556cc6150f02227b1b24308f21d26fe87edb7b401b77bdeab2bd9cf545633c",
+      "sourceShaAfter": "64c293a8bf7b64fcaa8aaffaf3a429b5479a84154987873919fd6713707ceffe",
+      "raw": "production-stacks80-0.1.72172.json"
+    }
+  },
+  "comparativeHarness": "Actual production HTML/CSP/bundle/ready. Archived baseline includes media/package/tsconfig; published bundle SHA gate runs before measuring.",
+  "aggregation": "Median of four browser-lifetime medians per source; within-browser samples are correlated. Both before/after orders are used.",
+  "implementation": "Skip inactive decoration cleanup, preserve active callback ordering, reuse existing row/hash inverse index and SVG-owned elements; no new per-render full DOM index.",
+  "memoryClaim": "No overall memory/RSS reduction claim. WeakMap stores the existing row lookup per root, reusing existing caches.",
+  "discardedCandidates": [
+    "Reconstructed baseline without tsconfig strict prefix; corrected before final measurement.",
+    "Frame coalescing: failed combined populated reflog/stack coordinates (45 instead of 75). Removed before final source/benchmarks.",
+    "Temporary full DOM indexing: replaced by reuse of existing row/hash and SVG indexes."
+  ],
+  "scopeLimitations": [
+    "Synthetic owned Graph input; comparative windows do not measure Native Git, GitHub network or active user VS Code session latency.",
+    "Full document layouts and long renderer tasks remain."
+  ]
+}
