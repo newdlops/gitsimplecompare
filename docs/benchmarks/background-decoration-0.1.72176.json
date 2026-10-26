@@ -1,0 +1,96 @@
+{
+  "version": "0.1.72176",
+  "recordedAt": "2026-10-26T01:05:18.879417+00:00",
+  "baselineCommit": "9cc3eaebc0d8575c02f032f03e92fdac32e71e78",
+  "baselineVersion": "0.1.72175",
+  "providerSourceSha256": "b4bae8695bd6aa55fa68957d4a63872115d6d2c8f9cf8289f7e9767c5deafdda",
+  "baselineProviderSourceSha256": "07923eaf1dc0f4993d17d818f9b2747099eba81c01bdc24a3b6a84805e98f609",
+  "decorationPresentationFooterByteIdentical": true,
+  "nodeTestsPassed": 18,
+  "checks": {
+    "node": {
+      "exitCode": 0,
+      "bytes": 5062,
+      "sha256": "8dea197f5faa98cc8305aec4318d959209d5e0ed2809652562a813bd8c8c9fad"
+    },
+    "types": {
+      "exitCode": 0,
+      "bytes": 59,
+      "sha256": "953f15edd88c24e7dea92556028973f24687ad7034fa66edbea743c06b6e09bc"
+    },
+    "build": {
+      "exitCode": 0,
+      "bytes": 71,
+      "sha256": "fc90ee3c69f4b55a3ad66cc263a3e0ed3b1223bb3e1aa364878bc39eb19f34d1"
+    }
+  },
+  "regressions": {
+    "originalProviderFailedNewCases": 7,
+    "nativeOnlyInvalidationCaseReproducedThenFixed": true
+  },
+  "verifiedProviderBoundary": {
+    "unfocusedPassiveUriQueries": 100,
+    "repositoryResolutions": 0,
+    "statusRequests": 0,
+    "statusRequestsAfterFocus": 1,
+    "cachedBadgesRetained": true,
+    "nestedRepositoriesResume": true,
+    "unfocusedRetrySuppressed": true,
+    "nativeGitOnlyFocusInvalidations": 0
+  },
+  "actualBaseline": {
+    "baselineVersion": "0.1.72175",
+    "cutoff": "2026-10-26T00:31:50.832798+00:00",
+    "liveTargetWindowsVerified": 4,
+    "columns": [
+      "window",
+      "at",
+      "event",
+      "focusedFromLoggedWindowEvents",
+      "safeFields"
+    ],
+    "backgroundDecorationRefreshes": [
+      {
+        "window": "window2",
+        "at": "2026-10-26T00:29:12.303Z",
+        "durationMs": 12999,
+        "files": 47
+      },
+      {
+        "window": "window3",
+        "at": "2026-10-26T00:29:23.112Z",
+        "durationMs": 18919,
+        "files": 5
+      },
+      {
+        "window": "window4",
+        "at": "2026-10-26T00:29:17.456Z",
+        "durationMs": 14640,
+        "files": 5
+      }
+    ],
+    "postFrameLoadContext": {
+      "logicalCpus": 15,
+      "loadAverage": [
+        52.48,
+        71.85,
+        67.8
+      ],
+      "observedNear": "2026-10-26T00:31:50Z",
+      "timeAlignedWithFrames": false
+    },
+    "scope": "actual passive logs; no automated input, paired before/after trial or causal attribution",
+    "privatePathsRefsAuthorsSubjectsPreserved": false
+  },
+  "pairedRuntimeCpuOrLatencyReductionMeasured": false,
+  "targetRuntimeBehaviorVerifiedInActualCode": false,
+  "visualQaPerformedForThisChange": false,
+  "remaining": [
+    "Observe the installed new version in actual Code under concurrent host-load context.",
+    "Native Explorer focus-transition visual behavior has not been exercised on the new version.",
+    "Initial fingerprint and branch reads remain material in the observed baseline; total CPU improvement is unproven."
+  ],
+  "nativeInputActionsPerformed": false,
+  "forcedHostReload": false,
+  "marketplaceStatusQueried": false
+}

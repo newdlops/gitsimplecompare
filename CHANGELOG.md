@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72176] - 2026-10-26
+
+### Performance
+
+- Defer initial Explorer decoration discovery and passive file queries in unfocused
+  windows, retaining cached badges and refreshing deferred resources on focus.
+- Avoid starting status reads or retrying invalidated reads after focus is lost,
+  preserving nested repository badges and native Git decoration ownership.
+
 ## [0.1.72175] - 2026-10-26
 
 ### Performance

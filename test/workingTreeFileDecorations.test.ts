@@ -37,7 +37,7 @@ function snapshot(root: string, porcelain: string): WorkingTreeSnapshot {
  * @param roots multi-root workspace 경로
  * @returns 화면 질의, 상태 전환 및 실제 등록 watcher 이벤트를 조작할 fixture
  */
-function fixture(t: TestContext, roots = ["/repo"]) {
+function fixture(t: TestContext, roots = ["/repo"], initiallyFocused = true) {
   t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_700_000_000_000 });
   const enabled = new Map(roots.map(root => [root, false]));
   let outsideEnabled = true;
@@ -58,7 +58,7 @@ function fixture(t: TestContext, roots = ["/repo"]) {
   const notifications: Array<vscode.Uri[] | undefined> = [];
   let loader = async (root: string): Promise<WorkingTreeSnapshot> => snapshot(root, values.get(root) ?? "");
   const originalState = window.state;
-  window.state = { focused: true };
+  window.state = { focused: initiallyFocused };
   t.after(() => { window.state = originalState; });
   const extra = {
     workspaceFolders: roots.map((root, index) => ({ uri: Uri.file(root), name: path.basename(root), index })),
@@ -283,4 +283,117 @@ test("a delayed status cannot resurrect decorations after native Git is enabled 
   assert.ok(f.reads.every(read => read.signal?.aborted));
   const reads = f.reads.length; invalidateWorkingTreeSnapshot("/repo"); t.mock.timers.tick(60_000); await settle();
   assert.equal(f.reads.length, reads);
+});
+
+// 비활성 창의 최초 준비와 수백 개 URI 질의가 foreground 창의 Git 작업과 경쟁하지 않게 한다.
+test("unfocused activation and passive Explorer queries defer discovery and status until focus", async t => {
+  const f = fixture(t, ["/repo"], false);
+  await settle();
+  assert.equal(f.resolutions.length, 0);
+  assert.equal(f.reads.length, 0);
+  assert.equal(f.watchers.length, 0);
+  const badges = await Promise.all(Array.from({ length: 100 }, () => f.read()));
+  assert.ok(badges.every(badge => badge === undefined));
+  assert.equal(f.resolutions.length, 0);
+  assert.equal(f.reads.length, 0);
+  f.focus(true); await settle(); t.mock.timers.tick(180); await settle();
+  assert.equal((await f.read())?.badge, "M");
+  assert.equal((await f.read("new.txt"))?.badge, "U");
+  assert.equal(f.reads.length, 1);
+  assert.equal(f.notifications.filter(uris => uris === undefined).length, 1, "deferred URI results must be queried again");
+});
+
+// 표시한 배지는 캐시에서 유지하고 새 URI·무효화 폭주를 모아 복귀 시 한 번만 읽는다.
+test("unfocused passive requests retain cached badges and resume one current snapshot", async t => {
+  const f = fixture(t); await settle();
+  const previous = await f.read(), resolutions = f.resolutions.length;
+  f.focus(false);
+  f.values.set("/repo", "?? nested/changed.txt\0?? nested/only-on-focus.txt\0");
+  invalidateWorkingTreeSnapshot("/repo");
+  assert.strictEqual(await f.read(), previous);
+  const missing = await Promise.all(Array.from({ length: 100 }, (_, index) => f.read(`unseen/file-${index}.txt`)));
+  assert.ok(missing.every(badge => badge === undefined));
+  t.mock.timers.tick(60_000); await settle();
+  assert.equal(f.resolutions.length, resolutions);
+  assert.equal(f.reads.length, 1);
+  f.focus(true); await settle(); t.mock.timers.tick(180); await settle();
+  assert.equal((await f.read())?.badge, "U");
+  assert.equal((await f.read("nested/only-on-focus.txt"))?.badge, "U");
+  assert.equal(f.reads.length, 2);
+});
+
+// 이미 시작한 공유 root 탐색은 유지하되 창이 비활성화된 뒤 새 status로 이어가지 않는다.
+test("workspace discovery finishing after focus loss does not start a background status", async t => {
+  const f = fixture(t);
+  f.focus(false); await settle();
+  assert.equal(f.resolutions.length, 1, "the foreground discovery was already started");
+  assert.equal(f.reads.length, 0);
+  f.focus(true); await settle();
+  assert.equal((await f.read())?.badge, "M");
+  assert.equal(f.reads.length, 1);
+});
+
+// 파일 stat을 기다리는 동안 포커스가 바뀌면 URI별 저장소 탐색도 뒤로 미룬다.
+test("a passive URI request crossing focus loss stops before repository discovery", async t => {
+  const f = fixture(t); await settle();
+  const resolutions = f.resolutions.length;
+  const waiting = f.read("unseen/path.txt");
+  f.focus(false);
+  assert.equal(await waiting, undefined);
+  assert.equal(f.resolutions.length, resolutions);
+  assert.equal(f.reads.length, 1);
+});
+
+// 상태 조회 중 변경이 더 생겨도 비활성 창에서는 재시도하지 않고 복귀한 창에서 최신 상태를 읽는다.
+test("invalidated in-flight status does not retry while the window is unfocused", async t => {
+  const f = fixture(t);
+  let release!: (value: WorkingTreeSnapshot) => void;
+  let calls = 0;
+  f.load(root => ++calls === 1 ? new Promise(resolve => { release = resolve; }) : Promise.resolve(snapshot(root, "?? nested/changed.txt\0")));
+  await settle();
+  assert.equal(f.reads.length, 1);
+  f.focus(false); invalidateWorkingTreeSnapshot("/repo");
+  release(snapshot("/repo", " M nested/changed.txt\0"));
+  await settle();
+  assert.equal(f.reads.length, 1);
+  f.focus(true); await settle(); t.mock.timers.tick(180); await settle();
+  assert.equal((await f.read())?.badge, "U");
+  assert.equal(f.reads.length, 2);
+});
+
+// 비활성 중 반환한 undefined가 VS Code에 남아 중첩 저장소의 배지를 영구히 숨기지 않게 한다.
+test("deferred nested repository URI results are invalidated when focus returns", async t => {
+  const f = fixture(t, ["/repo"], false);
+  f.outsideRoot("/repo/nested-repo", " M changed.txt\0");
+  assert.equal(await f.read("changed.txt", "/repo/nested-repo"), undefined);
+  assert.equal(f.resolutions.length, 0);
+  f.focus(true); await settle();
+  assert.ok(f.notifications.some(uris => uris === undefined));
+  assert.equal((await f.read("changed.txt", "/repo/nested-repo"))?.badge, "M");
+  assert.deepEqual(f.reads.map(read => read.root).sort(), ["/repo", "/repo/nested-repo"]);
+});
+
+// 비활성 중 소유권 설정이 바뀌면 이전 배지를 반환하지 않고 재활성화까지 새 Git 조회를 미룬다.
+test("native Git ownership changes while unfocused do not retain stale fallback badges or start reads", async t => {
+  const f = fixture(t); await settle();
+  assert.equal((await f.read())?.badge, "M");
+  f.focus(false); f.configure(true); await settle();
+  assert.equal(await f.read(), undefined);
+  f.configure(false); await settle();
+  assert.equal(await f.read(), undefined);
+  assert.equal(f.reads.length, 1);
+  f.focus(true); await settle();
+  assert.equal((await f.read())?.badge, "M");
+  assert.equal(f.reads.length, 2);
+});
+
+// 내장 Git이 모든 폴더를 소유하면 복귀할 때 자체 배지의 전체 재질의도 만들지 않는다.
+test("native-only background workspaces do not invalidate fallback URI results on focus", async t => {
+  const f = fixture(t, ["/repo"], false);
+  f.configure(true); await settle();
+  f.notifications.length = 0;
+  f.focus(true); await settle();
+  assert.equal(f.reads.length, 0);
+  assert.equal(f.resolutions.length, 0);
+  assert.equal(f.notifications.length, 0);
 });

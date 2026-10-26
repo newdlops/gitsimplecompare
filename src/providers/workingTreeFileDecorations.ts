@@ -41,11 +41,13 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
   private watchers: vscode.Disposable[] = [];
   private timer?: ReturnType<typeof setTimeout>;
   private burstStartedAt?: number;
+  private readsDeferred = false;
   private epoch = 0;
   private disposed = false;
 
   /**
-   * 설정·공유 상태·파일 이벤트를 연결하고 비활성 Git workspace의 최초 상태를 준비한다.
+   * 설정·공유 상태·파일 이벤트를 연결하고 내장 Git이 꺼진 workspace의 표시 수명을 준비한다.
+   * 최초 탐색과 상태 조회는 현재 창이 활성화됐을 때만 시작한다.
    * @param registry 저장소 탐색을 기존 확장 소비자와 공유할 레지스트리
    * @param status Changes·Graph·Tab Manager와 같은 authoritative snapshot 공급자
    */
@@ -69,6 +71,7 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
   /**
    * 파일 URI의 저장소를 찾아 현재 작업 상태 장식을 반환한다.
    * - 디렉터리별 탐색과 저장소별 진행 중 조회를 합쳐 한 화면의 여러 파일이 중복 status를 만들지 않는다.
+   * - 비활성 창은 직전 배지를 재사용하고 새 URI의 조회는 포커스 복귀까지 미룬다.
    * @param uri 기본 Explorer·Tab Manager·탭이 질의한 resource URI
    * @param token 해당 URI 질의의 취소 신호
    * @returns 수정/추가/삭제/rename/충돌이면 장식, 정상·비-file·내장 Git 사용 범위면 undefined
@@ -77,11 +80,24 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
     if (this.disposed || token.isCancellationRequested || !usesFallback(uri)) return undefined;
     const epoch = this.epoch;
     const key = uri.toString();
+    if (!vscode.window.state.focused) {
+      this.deferReads("resourceQuery");
+      return this.cachedDecoration(key);
+    }
     let root = this.resourceRoots.get(key);
     if (!root) {
       const directory = await stat(uri.fsPath).then(info => info.isDirectory() ? uri.fsPath : path.dirname(uri.fsPath), () => path.dirname(uri.fsPath));
+      if (this.disposed || epoch !== this.epoch || token.isCancellationRequested) return undefined;
+      if (!vscode.window.state.focused) {
+        this.deferReads("resourceStat");
+        return this.cachedDecoration(key);
+      }
       root = await this.resolveDirectory(directory);
       if (this.disposed || epoch !== this.epoch || token.isCancellationRequested || !root) return undefined;
+      if (!vscode.window.state.focused) {
+        this.deferReads("resourceDiscovery");
+        return this.cachedDecoration(key);
+      }
       if (this.resourceRoots.size >= 4096) this.resourceRoots.delete(this.resourceRoots.keys().next().value!);
       this.resourceRoots.set(key, root);
     }
@@ -94,11 +110,12 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
   /**
    * 설정/폴더 전환 때 늦은 이전 결과를 취소하고 장식·탐색 범위를 다시 준비한다.
    * @param reason OUTPUT에 남길 전환 원인
-   * @returns 반환값 없이 최초 workspace 조회를 비동기로 예약한다.
+   * @returns 반환값 없이 활성 창의 최초 조회를 시작하거나 비활성 창의 복귀 조회를 예약한다.
    */
   private reconfigure(reason: string): void {
     if (this.disposed) return;
     this.epoch++;
+    this.readsDeferred = false;
     this.clearTimer();
     for (const repository of this.repositories.values()) repository.controller.abort();
     this.repositories.clear();
@@ -107,8 +124,31 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
     this.rebuildWatchers();
     // 해제된 공급자가 이전 배지를 남기지 않도록 알려 새 URI 질의가 현재 설정을 확인하게 한다.
     this.changed.fire(undefined);
-    logInfo("working tree file decorations configured", { reason, scopes: this.fallbackFolders().length });
+    const scopes = this.fallbackFolders().length;
+    logInfo("working tree file decorations configured", { reason, scopes });
+    if (!vscode.window.state.focused) { if (scopes) this.deferReads(reason); return; }
     void this.discoverWorkspace(this.epoch);
+  }
+
+  /**
+   * 비활성 창에서는 새 파일 IO나 Git 조회 없이 이미 해석한 URI의 배지만 재사용한다.
+   * @param key 이전 조회에서 저장소와 연결한 URI 문자열
+   * @returns 아직 조회하지 않은 URI나 배지가 없는 정상 파일은 undefined
+   */
+  private cachedDecoration(key: string): vscode.FileDecoration | undefined {
+    const root = this.resourceRoots.get(key);
+    return root ? this.repositories.get(root)?.decorations.get(key) : undefined;
+  }
+
+  /**
+   * 비활성 중 생략한 URI 결과를 복귀 시 한 번 무효화하도록 기록하고 로그 폭주를 막는다.
+   * @param reason 초기 설정·URI 질의·진행 중 탐색 등 조회를 미룬 경계
+   * @returns 반환값 없이 현재 비활성 기간의 지연 의도를 하나로 합친다.
+   */
+  private deferReads(reason: string): void {
+    if (this.readsDeferred) return;
+    this.readsDeferred = true;
+    logInfo("working tree decoration reads deferred", { reason, repositories: this.repositories.size });
   }
 
   /** 내장 Git 비활성·장식 활성 설정을 상속하는 file workspace 폴더만 반환한다. */
@@ -122,10 +162,13 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
    * @returns 해당 전환의 최초 폴더 탐색이 모두 완료되면 끝나는 Promise
    */
   private async discoverWorkspace(epoch: number): Promise<void> {
+    if (this.disposed || epoch !== this.epoch) return;
+    if (!vscode.window.state.focused) { this.deferReads("workspaceDiscovery"); return; }
     await Promise.all(this.fallbackFolders().map(async folder => {
       try {
         const root = await this.resolveDirectory(folder.uri.fsPath);
         if (this.disposed || epoch !== this.epoch || !root) return;
+        if (!vscode.window.state.focused) { this.deferReads("workspaceResolved"); return; }
         await this.refreshRepository(this.repository(root));
       } catch (error) {
         if (!this.disposed && epoch === this.epoch) logWarn("working tree decoration repository discovery failed", { folder: folder.uri.fsPath, error: String(error) });
@@ -187,9 +230,13 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
    * @returns 새 상태 적용 또는 실패 기록이 완료되면 끝나는 공유 Promise
    */
   private refreshRepository(repository: DecorationRepository): Promise<void> {
+    if (this.disposed || repository.controller.signal.aborted) return Promise.resolve();
+    if (!vscode.window.state.focused) { this.deferReads("statusRefresh"); return Promise.resolve(); }
     if (repository.pending) return repository.pending;
     repository.pending = Promise.resolve().then(async () => {
       while (!this.disposed && !repository.controller.signal.aborted) {
+        // 진행 중 status가 무효화돼 재시도할 때도 포커스를 다시 확인한다.
+        if (!vscode.window.state.focused) { this.deferReads("statusRetry"); return; }
         const revision = repository.revision;
         repository.dirty = false;
         const startedAt = Date.now();
@@ -261,7 +308,11 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
     this.rebuildWatchers();
     logInfo(`working tree decoration watcher ${focused ? "resumed" : "suspended"}`, { repositories: this.repositories.size });
     if (!focused) return;
+    const deferred = this.readsDeferred;
+    this.readsDeferred = false;
     for (const repository of this.repositories.values()) invalidateWorkingTreeSnapshot(repository.root);
+    // 비활성 중 undefined를 반환한 새 파일·중첩 저장소 URI도 VS Code가 다시 질의하게 한다.
+    if (deferred) this.changed.fire(undefined);
     void this.discoverWorkspace(this.epoch);
   }
 
