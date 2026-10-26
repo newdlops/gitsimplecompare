@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.72177] - 2026-10-26
+
+### Performance
+
+- Skip untracked-file expansion for private status results whose repository
+  metadata was already invalidated, retaining the final consistency checks.
+
+### Fixes
+
+- Reject transient HEAD and configuration rewrites before publishing cached
+  status, and distinguish index changes from metadata invalidation in Output.
+
 ## [0.1.72176] - 2026-10-26
 
 ### Performance

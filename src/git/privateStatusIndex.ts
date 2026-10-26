@@ -87,13 +87,23 @@ export class PrivateStatusIndex {
         if (!initial) this.cold = false;
         const directories = initial || summary ? [] : parsed.entries.filter(entry => entry.xy === "??" && entry.path.endsWith("/")).map(entry => entry.path);
         if (!initial && !summary) parsed.entries = parsed.entries.filter(entry => !(entry.xy === "??" && entry.path.endsWith("/")));
+        // 이미 무효가 된 status에 비싼 전체 미추적 파일 열거를 덧붙이지 않는다.
+        // 열거 중 변경도 마지막 경계에서 다시 검사하므로 이른 검사로 최종 검증을 대체하지 않는다.
+        if (directories.length && !await this.sourcePath.unchangedForStatus(sourcePath, signal)) {
+          this.fingerprint = undefined;
+          this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-or-metadata-changed-during-read",
+            phase: "beforeUntrackedExpansion", metadataChanged: true });
+          continue;
+        }
         const files = new Set<string>();
         for (const batch of pathBatches(directories)) {
           const output = await runGit(["--literal-pathspecs", "ls-files", "--others", "--exclude-standard", "-z", "--", ...batch], this.root, { signal, env: { GIT_INDEX_FILE: this.index!, GIT_OPTIONAL_LOCKS: "0" } });
           for (const file of output.split("\0")) if (file) files.add(file);
         }
         for (const file of files) parsed.entries.push({ xy: "??", path: file });
-        if (before.key === (await indexIdentity(source, signal)).key && await this.sourcePath.unchanged(sourcePath, signal)) {
+        const indexUnchanged = before.key === (await indexIdentity(source, signal)).key;
+        const bindingUnchanged = indexUnchanged && await this.sourcePath.unchangedForStatus(sourcePath, signal);
+        if (indexUnchanged && bindingUnchanged) {
           if (initial && !signal.aborted && this.warmFingerprint && before.bytes && before.mtime !== undefined) {
             const key = this.warmFingerprint;
             this.warmup.schedule({ key, bytes: before.bytes, mtimeMs: before.mtime,
@@ -109,7 +119,9 @@ export class PrivateStatusIndex {
           return parsed;
         }
         this.fingerprint = undefined;
-        this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-or-metadata-changed-during-read" });
+        this.log("private status index invalidated", { repoRoot: this.root, reason: "real-index-or-metadata-changed-during-read",
+          indexChanged: !indexUnchanged, metadataChecked: indexUnchanged,
+          ...(indexUnchanged ? { metadataChanged: !bindingUnchanged } : {}) });
       }
     } catch (error) {
       if (signal.aborted || isGitLifecycleError(error)) { await this.dispose(); throw error; }

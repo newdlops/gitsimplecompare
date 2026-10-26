@@ -4,8 +4,8 @@ import { resolveGitExecutable, runGit } from "./gitExec";
 import { readRepositoryMetadata } from "./repositoryMetadata";
 
 /** 한 번의 상태 읽기에 고정한 원본 index 위치와 metadata/실행 환경 증거다. */
-export interface RepositoryIndexPath { file: string; identity?: string; boundary?: string; }
-interface MetadataProof { identity: string; boundary: string; }
+export interface RepositoryIndexPath { file: string; identity?: string; boundary?: string; statusBoundary?: string; }
+interface MetadataProof { identity: string; boundary: string; statusBoundary: string; }
 type Runner = typeof runGit;
 
 /** 저장소 하나의 마지막 검증 경로 한 개만 보관하고 metadata·환경 변경 때 native Git으로 돌아간다. */
@@ -30,7 +30,7 @@ export class RepositoryIndexPathReader {
       if (!this.reportedReuse) {
         this.reportedReuse = true; this.log("private status index path reused", { repoRoot: this.root });
       }
-      return { ...this.cached, boundary: before.boundary };
+      return { ...this.cached, boundary: before.boundary, statusBoundary: before.statusBoundary };
     }
     if (this.cached) this.log("private status index path invalidated", { repoRoot: this.root, reason: "metadataOrEnvironmentChanged" });
     this.cached = undefined;
@@ -57,6 +57,21 @@ export class RepositoryIndexPathReader {
     signal.throwIfAborted(); return same;
   }
 
+  /**
+   * private status에 기존 연결·디렉터리 검사와 HEAD·설정 파일 검사를 함께 적용한다.
+   * - 전후 같은 경로로 돌아온 저장소와 HEAD/설정의 제자리 재쓰기도 무효화한다.
+   * - 실제 index byte·시각 검증은 호출부가 별도로 수행한다.
+   * @param value 조회 시작 때 고정한 index 위치와 status 경계
+   * @param signal 소비자 취소 신호 @returns 증거가 없거나 달라지면 false
+   */
+  async unchangedForStatus(value: RepositoryIndexPath, signal: AbortSignal): Promise<boolean> {
+    signal.throwIfAborted();
+    const current = await this.proof();
+    const same = value.identity !== undefined && value.statusBoundary !== undefined
+      && value.identity === current?.identity && value.statusBoundary === current?.statusBoundary;
+    signal.throwIfAborted(); return same;
+  }
+
   /** 상태 캐시가 처분되면 경로도 즉시 해제한다. 새 세션은 native Git부터 검증한다. */
   clear(): void { this.cached = undefined; this.reportedReuse = false; }
 
@@ -65,12 +80,13 @@ export class RepositoryIndexPathReader {
    * @returns Git 실행 환경까지 고정한 경로·조회 경계 증거. 해석이 불확실하면 undefined
    */
   private async proof(): Promise<MetadataProof | undefined> {
-    const metadata = await readRepositoryMetadata(this.root);
-    if (!metadata) return undefined;
+    const metadata = await readRepositoryMetadata(this.root, true);
+    if (!metadata?.statusBoundary) return undefined;
     const environment = Object.entries(process.env).filter(([key]) => key.startsWith("GIT_") || key === "PATH")
       .sort(([left], [right]) => left.localeCompare(right));
     const identity = JSON.stringify([resolveGitExecutable(this.root), environment, metadata.identity]);
-    return { identity, boundary: JSON.stringify([identity, metadata.boundary]) };
+    return { identity, boundary: JSON.stringify([identity, metadata.boundary]),
+      statusBoundary: JSON.stringify([identity, metadata.boundary, metadata.statusBoundary]) };
   }
 
   /** 경로를 추측하지 않고 Git의 --git-path 해석을 사용하며 마지막 CLI 개행만 제거한다. */

@@ -1,0 +1,1063 @@
+{
+  "recordedAt": "2026-10-26T02:44:01.011Z",
+  "baseline": "69e8fd3",
+  "candidate": "working-tree-0.1.72177",
+  "scope": "Owned Native fixtures only. Three fixture states in one Node harness; four correlated rounds per case, alternating order. Instrumented per-read Node and waited Native CPU; wall time is diagnostic. Setup, independent oracle, source-index verification and cleanup excluded. No actual Code or whole-app CPU claim.",
+  "fixture": {
+    "trackedFiles": 2000,
+    "untrackedFiles": 1000,
+    "untrackedDirectories": 16
+  },
+  "allNativeResultsEqual": true,
+  "allSourceIndexesUnchanged": true,
+  "samples": [
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 464.38729199999943,
+      "nodeCpuMs": 10.064,
+      "nativeCpuMs": 212.2800000000002,
+      "ownedCpuMs": 222.3440000000002,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 386.29620800000066,
+      "nodeCpuMs": 9.306,
+      "nativeCpuMs": 183.32699999999977,
+      "ownedCpuMs": 192.63299999999978,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 374.1917090000006,
+      "nodeCpuMs": 11.159,
+      "nativeCpuMs": 179.71500000000015,
+      "ownedCpuMs": 190.87400000000014,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 361.89275,
+      "nodeCpuMs": 8.133,
+      "nativeCpuMs": 173.2990000000002,
+      "ownedCpuMs": 181.43200000000022,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 357.536916,
+      "nodeCpuMs": 7.205,
+      "nativeCpuMs": 169.35199999999986,
+      "ownedCpuMs": 176.55699999999987,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 393.62041600000066,
+      "nodeCpuMs": 7.568,
+      "nativeCpuMs": 172.16200000000003,
+      "ownedCpuMs": 179.73000000000005,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 474.7238750000006,
+      "nodeCpuMs": 9.405,
+      "nativeCpuMs": 196.5590000000002,
+      "ownedCpuMs": 205.9640000000002,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 346.5323330000001,
+      "nodeCpuMs": 6.841,
+      "nativeCpuMs": 166.4459999999999,
+      "ownedCpuMs": 173.28699999999992,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 821.1991669999989,
+      "nodeCpuMs": 13.617,
+      "nativeCpuMs": 353.3960000000002,
+      "ownedCpuMs": 367.0130000000002,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 894.2082090000004,
+      "nodeCpuMs": 12.613,
+      "nativeCpuMs": 354.4720000000002,
+      "ownedCpuMs": 367.0850000000002,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 850.9699170000004,
+      "nodeCpuMs": 14.344,
+      "nativeCpuMs": 344.3960000000002,
+      "ownedCpuMs": 358.7400000000002,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 1006.365749999999,
+      "nodeCpuMs": 13.547,
+      "nativeCpuMs": 400.1760000000004,
+      "ownedCpuMs": 413.7230000000004,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 902.036458999999,
+      "nodeCpuMs": 12.628,
+      "nativeCpuMs": 378.28399999999965,
+      "ownedCpuMs": 390.91199999999964,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 844.9275419999994,
+      "nodeCpuMs": 11.592,
+      "nativeCpuMs": 341.491,
+      "ownedCpuMs": 353.08299999999997,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 946.7107080000005,
+      "nodeCpuMs": 13.553,
+      "nativeCpuMs": 359.77800000000025,
+      "ownedCpuMs": 373.33100000000024,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 709.387917,
+      "nodeCpuMs": 12.524,
+      "nativeCpuMs": 332.509,
+      "ownedCpuMs": 345.033,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 200.71258300000045,
+      "nodeCpuMs": 8.434,
+      "nativeCpuMs": 142.07200000000103,
+      "ownedCpuMs": 150.50600000000102,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 320.8305419999997,
+      "nodeCpuMs": 7.277,
+      "nativeCpuMs": 145.84799999999996,
+      "ownedCpuMs": 153.12499999999994,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 195.91287499999817,
+      "nodeCpuMs": 7.527,
+      "nativeCpuMs": 144.20299999999952,
+      "ownedCpuMs": 151.7299999999995,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 185.2418749999997,
+      "nodeCpuMs": 8.717,
+      "nativeCpuMs": 141.4430000000002,
+      "ownedCpuMs": 150.16000000000022,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 205.40000000000146,
+      "nodeCpuMs": 8.101,
+      "nativeCpuMs": 141.9359999999997,
+      "ownedCpuMs": 150.0369999999997,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 217.997374999999,
+      "nodeCpuMs": 17.776,
+      "nativeCpuMs": 155.65400000000045,
+      "ownedCpuMs": 173.43000000000046,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 204.10099999999875,
+      "nodeCpuMs": 7.746,
+      "nativeCpuMs": 150.98799999999937,
+      "ownedCpuMs": 158.73399999999938,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 184.22708299999795,
+      "nodeCpuMs": 9.11,
+      "nativeCpuMs": 141.15300000000025,
+      "ownedCpuMs": 150.26300000000026,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 304.3630000000012,
+      "nodeCpuMs": 12.838,
+      "nativeCpuMs": 239.33400000000074,
+      "ownedCpuMs": 252.17200000000074,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 314.07829200000197,
+      "nodeCpuMs": 15.411,
+      "nativeCpuMs": 243.6219999999994,
+      "ownedCpuMs": 259.0329999999994,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 318.3740829999988,
+      "nodeCpuMs": 13.741,
+      "nativeCpuMs": 247.21700000000055,
+      "ownedCpuMs": 260.95800000000054,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 366.5067080000008,
+      "nodeCpuMs": 11.692,
+      "nativeCpuMs": 246.89500000000044,
+      "ownedCpuMs": 258.58700000000044,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 333.41100000000006,
+      "nodeCpuMs": 13.382,
+      "nativeCpuMs": 255.33299999999872,
+      "ownedCpuMs": 268.7149999999987,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 316.3214999999982,
+      "nodeCpuMs": 13.476,
+      "nativeCpuMs": 244.57000000000153,
+      "ownedCpuMs": 258.0460000000015,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 326.79870799999844,
+      "nodeCpuMs": 12.119,
+      "nativeCpuMs": 247.47400000000016,
+      "ownedCpuMs": 259.5930000000002,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 298.7930000000015,
+      "nodeCpuMs": 11.604,
+      "nativeCpuMs": 227.95799999999872,
+      "ownedCpuMs": 239.5619999999987,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 100.12325000000055,
+      "nodeCpuMs": 11.791,
+      "nativeCpuMs": 72.40799999999945,
+      "ownedCpuMs": 84.19899999999944,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 89.98325000000114,
+      "nodeCpuMs": 12.705,
+      "nativeCpuMs": 74.56200000000172,
+      "ownedCpuMs": 87.26700000000172,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 109.37716600000203,
+      "nodeCpuMs": 12.381,
+      "nativeCpuMs": 78.90899999999965,
+      "ownedCpuMs": 91.28999999999965,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 127.51987499999814,
+      "nodeCpuMs": 13.89,
+      "nativeCpuMs": 77.70900000000074,
+      "ownedCpuMs": 91.59900000000074,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 117.7342499999977,
+      "nodeCpuMs": 14.406,
+      "nativeCpuMs": 76.11399999999958,
+      "ownedCpuMs": 90.51999999999958,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 127.18791699999929,
+      "nodeCpuMs": 12.935,
+      "nativeCpuMs": 79.17199999999866,
+      "ownedCpuMs": 92.10699999999866,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "stable",
+      "elapsedMs": 115.87370799999917,
+      "nodeCpuMs": 13.388,
+      "nativeCpuMs": 77.8080000000009,
+      "ownedCpuMs": 91.19600000000091,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "stable",
+      "elapsedMs": 115.60733400000026,
+      "nodeCpuMs": 12.396,
+      "nativeCpuMs": 78.65300000000025,
+      "ownedCpuMs": 91.04900000000025,
+      "statuses": 1,
+      "untrackedExpansions": 1,
+      "gitCalls": 3
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 188.59708300000057,
+      "nodeCpuMs": 19.015,
+      "nativeCpuMs": 129.7479999999996,
+      "ownedCpuMs": 148.76299999999958,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 156.2678330000017,
+      "nodeCpuMs": 17.938,
+      "nativeCpuMs": 114.8809999999994,
+      "ownedCpuMs": 132.8189999999994,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 307.72625000000335,
+      "nodeCpuMs": 19.487,
+      "nativeCpuMs": 117.45700000000033,
+      "ownedCpuMs": 136.94400000000033,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 170.19404100000247,
+      "nodeCpuMs": 19.196,
+      "nativeCpuMs": 138.03000000000065,
+      "ownedCpuMs": 157.22600000000065,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 167.87387500000114,
+      "nodeCpuMs": 20.524,
+      "nativeCpuMs": 143.6810000000005,
+      "ownedCpuMs": 164.2050000000005,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 152.08116599999994,
+      "nodeCpuMs": 23.96,
+      "nativeCpuMs": 109.45600000000013,
+      "ownedCpuMs": 133.41600000000014,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "after",
+      "kind": "invalidated",
+      "elapsedMs": 132.1294170000001,
+      "nodeCpuMs": 16.425,
+      "nativeCpuMs": 116.0069999999996,
+      "ownedCpuMs": 132.43199999999962,
+      "statuses": 2,
+      "untrackedExpansions": 1,
+      "gitCalls": 4
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "after",
+        "before"
+      ],
+      "variant": "before",
+      "kind": "invalidated",
+      "elapsedMs": 147.46708299999955,
+      "nodeCpuMs": 18.314,
+      "nativeCpuMs": 137.45800000000054,
+      "ownedCpuMs": 155.77200000000053,
+      "statuses": 2,
+      "untrackedExpansions": 2,
+      "gitCalls": 5
+    }
+  ],
+  "summary": [
+    {
+      "kind": "stable",
+      "lives": [
+        {
+          "life": 0,
+          "medians": {
+            "before": {
+              "elapsedMs": 359.714833,
+              "nodeCpuMs": 7.669,
+              "nativeCpuMs": 171.32550000000003,
+              "ownedCpuMs": 178.99450000000004,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            },
+            "after": {
+              "elapsedMs": 389.95831200000066,
+              "nodeCpuMs": 9.3555,
+              "nativeCpuMs": 181.52099999999996,
+              "ownedCpuMs": 191.75349999999997,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": 8.407626326602058,
+            "nodeCpuMs": 21.99113313339418,
+            "nativeCpuMs": 5.950953010497506,
+            "ownedCpuMs": 7.1281519823234385
+          }
+        },
+        {
+          "life": 1,
+          "medians": {
+            "before": {
+              "elapsedMs": 211.04918749999888,
+              "nodeCpuMs": 7.6365,
+              "nativeCpuMs": 148.41799999999967,
+              "ownedCpuMs": 155.92949999999968,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            },
+            "after": {
+              "elapsedMs": 192.97722900000008,
+              "nodeCpuMs": 8.5755,
+              "nativeCpuMs": 141.68949999999995,
+              "ownedCpuMs": 150.21150000000023,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": -8.562913088684077,
+            "nodeCpuMs": 12.296208996267932,
+            "nativeCpuMs": -4.533479766604942,
+            "ownedCpuMs": -3.667041836214102
+          }
+        },
+        {
+          "life": 2,
+          "medians": {
+            "before": {
+              "elapsedMs": 116.67079199999898,
+              "nodeCpuMs": 13.143,
+              "nativeCpuMs": 76.91150000000016,
+              "ownedCpuMs": 90.78449999999992,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            },
+            "after": {
+              "elapsedMs": 112.6254370000006,
+              "nodeCpuMs": 12.82,
+              "nativeCpuMs": 78.35850000000028,
+              "ownedCpuMs": 91.24300000000028,
+              "statuses": 1.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 3.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": -3.467324538260108,
+            "nodeCpuMs": -2.4575819828045353,
+            "nativeCpuMs": 1.881383148163951,
+            "ownedCpuMs": 0.5050421602810662
+          }
+        }
+      ],
+      "mediansOfFixtureMedians": {
+        "before": {
+          "elapsedMs": 211.04918749999888,
+          "nodeCpuMs": 7.669,
+          "nativeCpuMs": 148.41799999999967,
+          "ownedCpuMs": 155.92949999999968
+        },
+        "after": {
+          "elapsedMs": 192.97722900000008,
+          "nodeCpuMs": 9.3555,
+          "nativeCpuMs": 141.68949999999995,
+          "ownedCpuMs": 150.21150000000023
+        }
+      },
+      "changePercent": {
+        "elapsedMs": -8.562913088684077,
+        "nodeCpuMs": 21.99113313339418,
+        "nativeCpuMs": -4.533479766604942,
+        "ownedCpuMs": -3.667041836214102
+      }
+    },
+    {
+      "kind": "invalidated",
+      "lives": [
+        {
+          "life": 0,
+          "medians": {
+            "before": {
+              "elapsedMs": 861.6178129999989,
+              "nodeCpuMs": 13.0875,
+              "nativeCpuMs": 365.8399999999999,
+              "ownedCpuMs": 378.9624999999999,
+              "statuses": 2.0,
+              "untrackedExpansions": 2.0,
+              "gitCalls": 5.0
+            },
+            "after": {
+              "elapsedMs": 872.5890630000004,
+              "nodeCpuMs": 13.083,
+              "nativeCpuMs": 349.4340000000002,
+              "ownedCpuMs": 362.9125000000002,
+              "statuses": 2.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 4.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": 1.273331381323417,
+            "nodeCpuMs": -0.03438395415472639,
+            "nativeCpuMs": -4.484474087032508,
+            "ownedCpuMs": -4.235247550878974
+          }
+        },
+        {
+          "life": 1,
+          "medians": {
+            "before": {
+              "elapsedMs": 317.3477914999985,
+              "nodeCpuMs": 13.6085,
+              "nativeCpuMs": 245.89350000000104,
+              "ownedCpuMs": 259.31299999999976,
+              "statuses": 2.0,
+              "untrackedExpansions": 2.0,
+              "gitCalls": 5.0
+            },
+            "after": {
+              "elapsedMs": 318.8870000000006,
+              "nodeCpuMs": 12.265,
+              "nativeCpuMs": 243.1145000000006,
+              "ownedCpuMs": 255.37950000000058,
+              "statuses": 2.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 4.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": 0.4850225970462141,
+            "nodeCpuMs": -9.872506154241822,
+            "nativeCpuMs": -1.1301640750977282,
+            "ownedCpuMs": -1.5168927126673948
+          }
+        },
+        {
+          "life": 2,
+          "medians": {
+            "before": {
+              "elapsedMs": 169.0339580000018,
+              "nodeCpuMs": 19.1055,
+              "nativeCpuMs": 137.7440000000006,
+              "ownedCpuMs": 156.4990000000006,
+              "statuses": 2.0,
+              "untrackedExpansions": 2.0,
+              "gitCalls": 5.0
+            },
+            "after": {
+              "elapsedMs": 154.17449950000082,
+              "nodeCpuMs": 18.7125,
+              "nativeCpuMs": 115.4439999999995,
+              "ownedCpuMs": 133.11749999999978,
+              "statuses": 2.0,
+              "untrackedExpansions": 1.0,
+              "gitCalls": 4.0
+            }
+          },
+          "changePercent": {
+            "elapsedMs": -8.790812612931198,
+            "nodeCpuMs": -2.056999293397188,
+            "nativeCpuMs": -16.189452898130586,
+            "ownedCpuMs": -14.940351056556732
+          }
+        }
+      ],
+      "mediansOfFixtureMedians": {
+        "before": {
+          "elapsedMs": 317.3477914999985,
+          "nodeCpuMs": 13.6085,
+          "nativeCpuMs": 245.89350000000104,
+          "ownedCpuMs": 259.31299999999976
+        },
+        "after": {
+          "elapsedMs": 318.8870000000006,
+          "nodeCpuMs": 13.083,
+          "nativeCpuMs": 243.1145000000006,
+          "ownedCpuMs": 255.37950000000058
+        }
+      },
+      "changePercent": {
+        "elapsedMs": 0.4850225970462141,
+        "nodeCpuMs": -3.8615571150383943,
+        "nativeCpuMs": -1.1301640750977282,
+        "ownedCpuMs": -1.5168927126673948
+      }
+    }
+  ],
+  "sourceSha256": {
+    "src/git/repositoryMetadata.ts": "86595fdbe87011d7e77ad692537b88c2728f220724f01d27e0676968a6e344f7",
+    "src/git/repositoryIndexPath.ts": "f9553a3a493065fd7547b6eb55923af59ee25977ee49160339622be8dfafb957",
+    "src/git/privateStatusIndex.ts": "f410d8cb3a9bec8e5e5403708fabf329e979256b7bac7b931d6897622999fa32"
+  },
+  "driverSha256": "dcd65ac1e559d3e6bdbb8ec8d37f369cd6bf4f9faa8aea6c7ad79f47fc2bbeca"
+}

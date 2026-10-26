@@ -1,0 +1,52 @@
+{
+  "version": "0.1.72177",
+  "baselineCommit": "69e8fd3",
+  "baselineControls": {
+    "tests": 7,
+    "pass": 2,
+    "fail": 5,
+    "productionOverrides": [
+      "repositoryMetadata.ts",
+      "repositoryIndexPath.ts",
+      "privateStatusIndex.ts"
+    ],
+    "rawLogSha256": "a86bf1b071de43c6a2f3d6a67fa481da6a8f530d0fecb3e782977a41b02a7ce2"
+  },
+  "finalRelatedTests": {
+    "tests": 114,
+    "pass": 114,
+    "fail": 0,
+    "rawLogSha256": "44007de252ad906798c140cc8b2f4193b22a9e0a5111be802e2fc168deb1b796",
+    "files": [
+      "privateStatusBindingBoundary",
+      "repositoryIndexPath",
+      "repositoryMetadataAba",
+      "privateStatusIndexPath",
+      "privateStatusIndexColdScan",
+      "privateStatusIndexMetadata",
+      "privateStatusIndexWarmSessions",
+      "workingTreeSnapshot",
+      "graphWorkingTreeSummary",
+      "gitReadIndexSafety",
+      "gitStatePathScope",
+      "replayWorktreeHookPolicy",
+      "replayWorktreePaths",
+      "workingTreeFileDecorations",
+      "gitStatusExec",
+      "sharedGitRead"
+    ]
+  },
+  "typecheckPassed": true,
+  "productionBuildPassed": true,
+  "sourceLineCounts": {
+    "src/git/repositoryMetadata.ts": 102,
+    "src/git/repositoryIndexPath.ts": 99,
+    "src/git/privateStatusIndex.ts": 242
+  },
+  "scope": "Owned fixtures only. No actual-user repository mutations or native UI input. Package/deployment receipts are recorded separately.",
+  "lint": {
+    "completed": false,
+    "reason": "Repository has no eslint.config.*; invoked ESLint exited 2 before checking source",
+    "rawLogSha256": "416bb048edfbddc6fb9668039722e3b43be6c9bda4cd3ca52260a6f942179d8b"
+  }
+}
