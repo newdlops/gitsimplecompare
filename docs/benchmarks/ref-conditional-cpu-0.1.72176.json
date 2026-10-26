@@ -1,0 +1,1495 @@
+{
+  "recordedAt": "2026-10-26T01:32:08.073Z",
+  "node": "v22.22.2",
+  "gitVersion": "git version 2.53.0",
+  "scope": "Owned packed-ref fixtures only; Node self CPU and OS-accounted waited Native child CPU measured separately. The single Git read is the only child in each sample. Build, setup, verification and cleanup excluded. No actual VS Code latency or whole-app CPU claim.",
+  "fixtures": 3,
+  "tagRefs": 2000,
+  "remoteRefs": 100,
+  "localRefs": 22,
+  "otherRefs": 1,
+  "allIdentityAndRemoteShortNameChecksPassed": true,
+  "allRefsUnchanged": true,
+  "formats": {
+    "original": "%(refname)\u001f%(objectname)\u001f%(refname:short)",
+    "conditional": "%(refname)\u001f%(objectname)\u001f%(if:equals=refs/remotes)%(refname:rstrip=-2)%(then)%(refname:short)%(else)%(refname)%(end)",
+    "raw": "%(refname)\u001f%(objectname)\u001f%(refname)"
+  },
+  "samples": [
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 1343.2766249999986,
+      "nodeCpuMs": 7.464,
+      "childCpuMs": 152.03600000000006,
+      "childBefore": {
+        "userCpuMs": 432.006,
+        "systemCpuMs": 3838.871,
+        "minorFaults": 13931,
+        "majorFaults": 381
+      },
+      "childAfter": {
+        "userCpuMs": 481.732,
+        "systemCpuMs": 3941.181,
+        "minorFaults": 14587,
+        "majorFaults": 389
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 844.9567500000048,
+      "nodeCpuMs": 9.476,
+      "childCpuMs": 158.79599999999982,
+      "childBefore": {
+        "userCpuMs": 481.732,
+        "systemCpuMs": 3941.181,
+        "minorFaults": 14587,
+        "majorFaults": 389
+      },
+      "childAfter": {
+        "userCpuMs": 535.001,
+        "systemCpuMs": 4046.708,
+        "minorFaults": 15246,
+        "majorFaults": 397
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 210.42629099999613,
+      "nodeCpuMs": 4.581,
+      "childCpuMs": 37.42000000000007,
+      "childBefore": {
+        "userCpuMs": 535.001,
+        "systemCpuMs": 4046.708,
+        "minorFaults": 15246,
+        "majorFaults": 397
+      },
+      "childAfter": {
+        "userCpuMs": 552.046,
+        "systemCpuMs": 4067.083,
+        "minorFaults": 15902,
+        "majorFaults": 405
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 700.8120409999974,
+      "nodeCpuMs": 5.394,
+      "childCpuMs": 141.68699999999944,
+      "childBefore": {
+        "userCpuMs": 552.046,
+        "systemCpuMs": 4067.083,
+        "minorFaults": 15902,
+        "majorFaults": 405
+      },
+      "childAfter": {
+        "userCpuMs": 600.094,
+        "systemCpuMs": 4160.722,
+        "minorFaults": 16557,
+        "majorFaults": 413
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 83.18000000000029,
+      "nodeCpuMs": 4.293,
+      "childCpuMs": 25.72899999999936,
+      "childBefore": {
+        "userCpuMs": 600.094,
+        "systemCpuMs": 4160.722,
+        "minorFaults": 16557,
+        "majorFaults": 413
+      },
+      "childAfter": {
+        "userCpuMs": 612.319,
+        "systemCpuMs": 4174.226,
+        "minorFaults": 17207,
+        "majorFaults": 421
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 580.9196250000023,
+      "nodeCpuMs": 4.333,
+      "childCpuMs": 141.09100000000035,
+      "childBefore": {
+        "userCpuMs": 612.319,
+        "systemCpuMs": 4174.226,
+        "minorFaults": 17207,
+        "majorFaults": 421
+      },
+      "childAfter": {
+        "userCpuMs": 658.613,
+        "systemCpuMs": 4269.023,
+        "minorFaults": 17865,
+        "majorFaults": 429
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 103.84483300000284,
+      "nodeCpuMs": 5.369,
+      "childCpuMs": 34.72600000000057,
+      "childBefore": {
+        "userCpuMs": 658.613,
+        "systemCpuMs": 4269.023,
+        "minorFaults": 17865,
+        "majorFaults": 429
+      },
+      "childAfter": {
+        "userCpuMs": 675.061,
+        "systemCpuMs": 4287.301,
+        "minorFaults": 18520,
+        "majorFaults": 437
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 498.33183299999655,
+      "nodeCpuMs": 5.394,
+      "childCpuMs": 146.39999999999964,
+      "childBefore": {
+        "userCpuMs": 675.061,
+        "systemCpuMs": 4287.301,
+        "minorFaults": 18520,
+        "majorFaults": 437
+      },
+      "childAfter": {
+        "userCpuMs": 722.665,
+        "systemCpuMs": 4386.097,
+        "minorFaults": 19175,
+        "majorFaults": 445
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 435.612000000001,
+      "nodeCpuMs": 4.495,
+      "childCpuMs": 153.38600000000042,
+      "childBefore": {
+        "userCpuMs": 722.665,
+        "systemCpuMs": 4386.097,
+        "minorFaults": 19175,
+        "majorFaults": 445
+      },
+      "childAfter": {
+        "userCpuMs": 773.954,
+        "systemCpuMs": 4488.194,
+        "minorFaults": 19835,
+        "majorFaults": 453
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 83.47916699999769,
+      "nodeCpuMs": 4.372,
+      "childCpuMs": 33.14899999999943,
+      "childBefore": {
+        "userCpuMs": 773.954,
+        "systemCpuMs": 4488.194,
+        "minorFaults": 19835,
+        "majorFaults": 453
+      },
+      "childAfter": {
+        "userCpuMs": 789.57,
+        "systemCpuMs": 4505.727,
+        "minorFaults": 20484,
+        "majorFaults": 461
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 859.3273750000008,
+      "nodeCpuMs": 6.426,
+      "childCpuMs": 164.47500000000036,
+      "childBefore": {
+        "userCpuMs": 789.57,
+        "systemCpuMs": 4505.727,
+        "minorFaults": 20484,
+        "majorFaults": 461
+      },
+      "childAfter": {
+        "userCpuMs": 845.159,
+        "systemCpuMs": 4614.613,
+        "minorFaults": 21139,
+        "majorFaults": 469
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 960.3774580000027,
+      "nodeCpuMs": 4.938,
+      "childCpuMs": 159.96599999999944,
+      "childBefore": {
+        "userCpuMs": 845.159,
+        "systemCpuMs": 4614.613,
+        "minorFaults": 21139,
+        "majorFaults": 469
+      },
+      "childAfter": {
+        "userCpuMs": 897.49,
+        "systemCpuMs": 4722.248,
+        "minorFaults": 21796,
+        "majorFaults": 477
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 1492.9682079999984,
+      "nodeCpuMs": 6.011,
+      "childCpuMs": 168.1850000000004,
+      "childBefore": {
+        "userCpuMs": 897.49,
+        "systemCpuMs": 4722.248,
+        "minorFaults": 21796,
+        "majorFaults": 477
+      },
+      "childAfter": {
+        "userCpuMs": 953.243,
+        "systemCpuMs": 4834.68,
+        "minorFaults": 22457,
+        "majorFaults": 485
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 880.0552090000056,
+      "nodeCpuMs": 5.177,
+      "childCpuMs": 152.42699999999968,
+      "childBefore": {
+        "userCpuMs": 953.243,
+        "systemCpuMs": 4834.68,
+        "minorFaults": 22457,
+        "majorFaults": 485
+      },
+      "childAfter": {
+        "userCpuMs": 1002.133,
+        "systemCpuMs": 4938.217,
+        "minorFaults": 23108,
+        "majorFaults": 493
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 216.88804199999868,
+      "nodeCpuMs": 4.059,
+      "childCpuMs": 31.778000000000247,
+      "childBefore": {
+        "userCpuMs": 1002.133,
+        "systemCpuMs": 4938.217,
+        "minorFaults": 23108,
+        "majorFaults": 493
+      },
+      "childAfter": {
+        "userCpuMs": 1016.838,
+        "systemCpuMs": 4955.29,
+        "minorFaults": 23762,
+        "majorFaults": 501
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 957.7280419999952,
+      "nodeCpuMs": 3.9,
+      "childCpuMs": 157.10300000000007,
+      "childBefore": {
+        "userCpuMs": 1016.838,
+        "systemCpuMs": 4955.29,
+        "minorFaults": 23762,
+        "majorFaults": 501
+      },
+      "childAfter": {
+        "userCpuMs": 1066.592,
+        "systemCpuMs": 5062.639,
+        "minorFaults": 24413,
+        "majorFaults": 509
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 271.42487500000425,
+      "nodeCpuMs": 4.495,
+      "childCpuMs": 34.15099999999984,
+      "childBefore": {
+        "userCpuMs": 1066.592,
+        "systemCpuMs": 5062.639,
+        "minorFaults": 24413,
+        "majorFaults": 509
+      },
+      "childAfter": {
+        "userCpuMs": 1082.488,
+        "systemCpuMs": 5080.894,
+        "minorFaults": 25067,
+        "majorFaults": 517
+      },
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 937.9626669999998,
+      "nodeCpuMs": 5.204,
+      "childCpuMs": 152.72899999999936,
+      "childBefore": {
+        "userCpuMs": 1082.488,
+        "systemCpuMs": 5080.894,
+        "minorFaults": 25067,
+        "majorFaults": 517
+      },
+      "childAfter": {
+        "userCpuMs": 1134.446,
+        "systemCpuMs": 5181.665,
+        "minorFaults": 25722,
+        "majorFaults": 525
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 180.45124999999825,
+      "nodeCpuMs": 9.404,
+      "childCpuMs": 79.70899999999892,
+      "childBefore": {
+        "userCpuMs": 1517.062,
+        "systemCpuMs": 9753.807,
+        "minorFaults": 33267,
+        "majorFaults": 624
+      },
+      "childAfter": {
+        "userCpuMs": 1542.721,
+        "systemCpuMs": 9807.857,
+        "minorFaults": 33926,
+        "majorFaults": 632
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 276.231375000003,
+      "nodeCpuMs": 3.025,
+      "childCpuMs": 21.054000000000087,
+      "childBefore": {
+        "userCpuMs": 1542.721,
+        "systemCpuMs": 9807.857,
+        "minorFaults": 33926,
+        "majorFaults": 632
+      },
+      "childAfter": {
+        "userCpuMs": 1551.6860000000001,
+        "systemCpuMs": 9819.946,
+        "minorFaults": 34583,
+        "majorFaults": 640
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 360.07183300000906,
+      "nodeCpuMs": 3.511,
+      "childCpuMs": 79.35499999999956,
+      "childBefore": {
+        "userCpuMs": 1551.6860000000001,
+        "systemCpuMs": 9819.946,
+        "minorFaults": 34583,
+        "majorFaults": 640
+      },
+      "childAfter": {
+        "userCpuMs": 1574.981,
+        "systemCpuMs": 9876.006,
+        "minorFaults": 35240,
+        "majorFaults": 648
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 140.36116699999548,
+      "nodeCpuMs": 2.512,
+      "childCpuMs": 15.751000000000204,
+      "childBefore": {
+        "userCpuMs": 1574.981,
+        "systemCpuMs": 9876.006,
+        "minorFaults": 35240,
+        "majorFaults": 648
+      },
+      "childAfter": {
+        "userCpuMs": 1582.222,
+        "systemCpuMs": 9884.516,
+        "minorFaults": 35894,
+        "majorFaults": 656
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 228.87408300000243,
+      "nodeCpuMs": 2.958,
+      "childCpuMs": 79.65799999999945,
+      "childBefore": {
+        "userCpuMs": 1582.222,
+        "systemCpuMs": 9884.516,
+        "minorFaults": 35894,
+        "majorFaults": 656
+      },
+      "childAfter": {
+        "userCpuMs": 1605.577,
+        "systemCpuMs": 9940.819,
+        "minorFaults": 36546,
+        "majorFaults": 664
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 175.80183299999044,
+      "nodeCpuMs": 2.745,
+      "childCpuMs": 83.61100000000079,
+      "childBefore": {
+        "userCpuMs": 1605.577,
+        "systemCpuMs": 9940.819,
+        "minorFaults": 36546,
+        "majorFaults": 664
+      },
+      "childAfter": {
+        "userCpuMs": 1630.6950000000002,
+        "systemCpuMs": 9999.312,
+        "minorFaults": 37209,
+        "majorFaults": 672
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 60.94466700000339,
+      "nodeCpuMs": 2.058,
+      "childCpuMs": 17.676000000001295,
+      "childBefore": {
+        "userCpuMs": 1630.6950000000002,
+        "systemCpuMs": 9999.312,
+        "minorFaults": 37209,
+        "majorFaults": 672
+      },
+      "childAfter": {
+        "userCpuMs": 1638.0720000000001,
+        "systemCpuMs": 10009.611,
+        "minorFaults": 37866,
+        "majorFaults": 680
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 102.51516700000502,
+      "nodeCpuMs": 2.581,
+      "childCpuMs": 84.96099999999933,
+      "childBefore": {
+        "userCpuMs": 1638.0720000000001,
+        "systemCpuMs": 10009.611,
+        "minorFaults": 37866,
+        "majorFaults": 680
+      },
+      "childAfter": {
+        "userCpuMs": 1663.371,
+        "systemCpuMs": 10069.273,
+        "minorFaults": 38520,
+        "majorFaults": 688
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 214.17575000000943,
+      "nodeCpuMs": 3.252,
+      "childCpuMs": 82.35300000000097,
+      "childBefore": {
+        "userCpuMs": 1663.371,
+        "systemCpuMs": 10069.273,
+        "minorFaults": 38520,
+        "majorFaults": 688
+      },
+      "childAfter": {
+        "userCpuMs": 1687.841,
+        "systemCpuMs": 10127.156,
+        "minorFaults": 39174,
+        "majorFaults": 696
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 311.4870840000076,
+      "nodeCpuMs": 2.996,
+      "childCpuMs": 92.07099999999991,
+      "childBefore": {
+        "userCpuMs": 1687.841,
+        "systemCpuMs": 10127.156,
+        "minorFaults": 39174,
+        "majorFaults": 696
+      },
+      "childAfter": {
+        "userCpuMs": 1715.091,
+        "systemCpuMs": 10191.977,
+        "minorFaults": 39837,
+        "majorFaults": 704
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 217.37504099999205,
+      "nodeCpuMs": 2.664,
+      "childCpuMs": 88.45799999999872,
+      "childBefore": {
+        "userCpuMs": 1715.091,
+        "systemCpuMs": 10191.977,
+        "minorFaults": 39837,
+        "majorFaults": 704
+      },
+      "childAfter": {
+        "userCpuMs": 1740.851,
+        "systemCpuMs": 10254.675,
+        "minorFaults": 40491,
+        "majorFaults": 712
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 120.46837500001129,
+      "nodeCpuMs": 2.452,
+      "childCpuMs": 19.690999999998894,
+      "childBefore": {
+        "userCpuMs": 1740.851,
+        "systemCpuMs": 10254.675,
+        "minorFaults": 40491,
+        "majorFaults": 712
+      },
+      "childAfter": {
+        "userCpuMs": 1748.8809999999999,
+        "systemCpuMs": 10266.336,
+        "minorFaults": 41142,
+        "majorFaults": 720
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 262.7236660000053,
+      "nodeCpuMs": 2.366,
+      "childCpuMs": 74.54399999999987,
+      "childBefore": {
+        "userCpuMs": 1748.8809999999999,
+        "systemCpuMs": 10266.336,
+        "minorFaults": 41142,
+        "majorFaults": 720
+      },
+      "childAfter": {
+        "userCpuMs": 1771.406,
+        "systemCpuMs": 10318.355,
+        "minorFaults": 41796,
+        "majorFaults": 728
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 84.34691700000258,
+      "nodeCpuMs": 2.317,
+      "childCpuMs": 15.88800000000083,
+      "childBefore": {
+        "userCpuMs": 1771.406,
+        "systemCpuMs": 10318.355,
+        "minorFaults": 41796,
+        "majorFaults": 728
+      },
+      "childAfter": {
+        "userCpuMs": 1778.815,
+        "systemCpuMs": 10326.834,
+        "minorFaults": 42445,
+        "majorFaults": 736
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 180.30070899998827,
+      "nodeCpuMs": 2.2,
+      "childCpuMs": 82.26399999999921,
+      "childBefore": {
+        "userCpuMs": 1778.815,
+        "systemCpuMs": 10326.834,
+        "minorFaults": 42445,
+        "majorFaults": 736
+      },
+      "childAfter": {
+        "userCpuMs": 1804.251,
+        "systemCpuMs": 10383.662,
+        "minorFaults": 43108,
+        "majorFaults": 744
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 170.72054200001003,
+      "nodeCpuMs": 2.282,
+      "childCpuMs": 75.07200000000012,
+      "childBefore": {
+        "userCpuMs": 1804.251,
+        "systemCpuMs": 10383.662,
+        "minorFaults": 43108,
+        "majorFaults": 744
+      },
+      "childAfter": {
+        "userCpuMs": 1826.8600000000001,
+        "systemCpuMs": 10436.125,
+        "minorFaults": 43763,
+        "majorFaults": 752
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 303.4369580000057,
+      "nodeCpuMs": 2.703,
+      "childCpuMs": 94.46799999999894,
+      "childBefore": {
+        "userCpuMs": 1826.8600000000001,
+        "systemCpuMs": 10436.125,
+        "minorFaults": 43763,
+        "majorFaults": 752
+      },
+      "childAfter": {
+        "userCpuMs": 1855.0549999999998,
+        "systemCpuMs": 10502.398,
+        "minorFaults": 44423,
+        "majorFaults": 760
+      },
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 86.85779099998763,
+      "nodeCpuMs": 13.289,
+      "childCpuMs": 16.273000000001048,
+      "childBefore": {
+        "userCpuMs": 1855.0549999999998,
+        "systemCpuMs": 10502.398,
+        "minorFaults": 44423,
+        "majorFaults": 760
+      },
+      "childAfter": {
+        "userCpuMs": 1862.674,
+        "systemCpuMs": 10511.052,
+        "minorFaults": 45077,
+        "majorFaults": 768
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 18.576667000015732,
+      "nodeCpuMs": 2.059,
+      "childCpuMs": 14.027000000000044,
+      "childBefore": {
+        "userCpuMs": 2135.851,
+        "systemCpuMs": 13998.965,
+        "minorFaults": 52659,
+        "majorFaults": 857
+      },
+      "childAfter": {
+        "userCpuMs": 2142.832,
+        "systemCpuMs": 14006.011,
+        "minorFaults": 53310,
+        "majorFaults": 865
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 93.04995799998869,
+      "nodeCpuMs": 1.917,
+      "childCpuMs": 69.71699999999873,
+      "childBefore": {
+        "userCpuMs": 2142.832,
+        "systemCpuMs": 14006.011,
+        "minorFaults": 53310,
+        "majorFaults": 865
+      },
+      "childAfter": {
+        "userCpuMs": 2164.535,
+        "systemCpuMs": 14054.025,
+        "minorFaults": 53958,
+        "majorFaults": 873
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "order": [
+        "raw",
+        "original",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 83.47179200002574,
+      "nodeCpuMs": 2.011,
+      "childCpuMs": 72.2450000000008,
+      "childBefore": {
+        "userCpuMs": 2164.535,
+        "systemCpuMs": 14054.025,
+        "minorFaults": 53958,
+        "majorFaults": 873
+      },
+      "childAfter": {
+        "userCpuMs": 2188.12,
+        "systemCpuMs": 14102.685,
+        "minorFaults": 54613,
+        "majorFaults": 881
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 82.54870799998753,
+      "nodeCpuMs": 1.97,
+      "childCpuMs": 15.92200000000048,
+      "childBefore": {
+        "userCpuMs": 2188.12,
+        "systemCpuMs": 14102.685,
+        "minorFaults": 54613,
+        "majorFaults": 881
+      },
+      "childAfter": {
+        "userCpuMs": 2195.95,
+        "systemCpuMs": 14110.777,
+        "minorFaults": 55265,
+        "majorFaults": 889
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 108.09720799999195,
+      "nodeCpuMs": 2.523,
+      "childCpuMs": 72.64299999999821,
+      "childBefore": {
+        "userCpuMs": 2195.95,
+        "systemCpuMs": 14110.777,
+        "minorFaults": 55265,
+        "majorFaults": 889
+      },
+      "childAfter": {
+        "userCpuMs": 2219.776,
+        "systemCpuMs": 14159.594,
+        "minorFaults": 55925,
+        "majorFaults": 897
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "order": [
+        "raw",
+        "conditional",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 207.6435829999973,
+      "nodeCpuMs": 2.203,
+      "childCpuMs": 74.52800000000025,
+      "childBefore": {
+        "userCpuMs": 2219.776,
+        "systemCpuMs": 14159.594,
+        "minorFaults": 55925,
+        "majorFaults": 897
+      },
+      "childAfter": {
+        "userCpuMs": 2242.972,
+        "systemCpuMs": 14210.926,
+        "minorFaults": 56584,
+        "majorFaults": 905
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 147.91291700000875,
+      "nodeCpuMs": 1.922,
+      "childCpuMs": 73.63299999999981,
+      "childBefore": {
+        "userCpuMs": 2242.972,
+        "systemCpuMs": 14210.926,
+        "minorFaults": 56584,
+        "majorFaults": 905
+      },
+      "childAfter": {
+        "userCpuMs": 2266.678,
+        "systemCpuMs": 14260.853,
+        "minorFaults": 57247,
+        "majorFaults": 913
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 149.37054199998965,
+      "nodeCpuMs": 2.142,
+      "childCpuMs": 73.0580000000009,
+      "childBefore": {
+        "userCpuMs": 2266.678,
+        "systemCpuMs": 14260.853,
+        "minorFaults": 57247,
+        "majorFaults": 913
+      },
+      "childAfter": {
+        "userCpuMs": 2288.916,
+        "systemCpuMs": 14311.673,
+        "minorFaults": 57898,
+        "majorFaults": 921
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "order": [
+        "conditional",
+        "original",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 40.9515830000164,
+      "nodeCpuMs": 1.65,
+      "childCpuMs": 14.10399999999936,
+      "childBefore": {
+        "userCpuMs": 2288.916,
+        "systemCpuMs": 14311.673,
+        "minorFaults": 57898,
+        "majorFaults": 921
+      },
+      "childAfter": {
+        "userCpuMs": 2295.986,
+        "systemCpuMs": 14318.707,
+        "minorFaults": 58552,
+        "majorFaults": 929
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "original",
+      "elapsedMs": 80.99533399997745,
+      "nodeCpuMs": 1.969,
+      "childCpuMs": 68.6190000000006,
+      "childBefore": {
+        "userCpuMs": 2295.986,
+        "systemCpuMs": 14318.707,
+        "minorFaults": 58552,
+        "majorFaults": 929
+      },
+      "childAfter": {
+        "userCpuMs": 2317.4030000000002,
+        "systemCpuMs": 14365.909,
+        "minorFaults": 59207,
+        "majorFaults": 937
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "raw",
+      "elapsedMs": 32.05387500001234,
+      "nodeCpuMs": 1.819,
+      "childCpuMs": 15.006999999999607,
+      "childBefore": {
+        "userCpuMs": 2317.4030000000002,
+        "systemCpuMs": 14365.909,
+        "minorFaults": 59207,
+        "majorFaults": 937
+      },
+      "childAfter": {
+        "userCpuMs": 2324.909,
+        "systemCpuMs": 14373.41,
+        "minorFaults": 59862,
+        "majorFaults": 945
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "order": [
+        "original",
+        "raw",
+        "conditional"
+      ],
+      "key": "conditional",
+      "elapsedMs": 110.57454199998756,
+      "nodeCpuMs": 2.67,
+      "childCpuMs": 73.99499999999898,
+      "childBefore": {
+        "userCpuMs": 2324.909,
+        "systemCpuMs": 14373.41,
+        "minorFaults": 59862,
+        "majorFaults": 945
+      },
+      "childAfter": {
+        "userCpuMs": 2348.9700000000003,
+        "systemCpuMs": 14423.344,
+        "minorFaults": 60519,
+        "majorFaults": 953
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "original",
+      "elapsedMs": 82.87416599999415,
+      "nodeCpuMs": 1.944,
+      "childCpuMs": 70.9330000000009,
+      "childBefore": {
+        "userCpuMs": 2348.9700000000003,
+        "systemCpuMs": 14423.344,
+        "minorFaults": 60519,
+        "majorFaults": 953
+      },
+      "childAfter": {
+        "userCpuMs": 2371.031,
+        "systemCpuMs": 14472.216,
+        "minorFaults": 61170,
+        "majorFaults": 961
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "conditional",
+      "elapsedMs": 123.43074999999953,
+      "nodeCpuMs": 1.82,
+      "childCpuMs": 73.46199999999953,
+      "childBefore": {
+        "userCpuMs": 2371.031,
+        "systemCpuMs": 14472.216,
+        "minorFaults": 61170,
+        "majorFaults": 961
+      },
+      "childAfter": {
+        "userCpuMs": 2394.962,
+        "systemCpuMs": 14521.747,
+        "minorFaults": 61829,
+        "majorFaults": 969
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "order": [
+        "original",
+        "conditional",
+        "raw"
+      ],
+      "key": "raw",
+      "elapsedMs": 74.46058299997821,
+      "nodeCpuMs": 1.847,
+      "childCpuMs": 16.27900000000227,
+      "childBefore": {
+        "userCpuMs": 2394.962,
+        "systemCpuMs": 14521.747,
+        "minorFaults": 61829,
+        "majorFaults": 969
+      },
+      "childAfter": {
+        "userCpuMs": 2402.003,
+        "systemCpuMs": 14530.985,
+        "minorFaults": 62479,
+        "majorFaults": 977
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "conditional",
+      "elapsedMs": 100.02412499999627,
+      "nodeCpuMs": 2.283,
+      "childCpuMs": 76.89400000000023,
+      "childBefore": {
+        "userCpuMs": 2402.003,
+        "systemCpuMs": 14530.985,
+        "minorFaults": 62479,
+        "majorFaults": 977
+      },
+      "childAfter": {
+        "userCpuMs": 2426.788,
+        "systemCpuMs": 14583.094000000001,
+        "minorFaults": 63135,
+        "majorFaults": 985
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "raw",
+      "elapsedMs": 18.72829199998523,
+      "nodeCpuMs": 1.708,
+      "childCpuMs": 13.824999999998909,
+      "childBefore": {
+        "userCpuMs": 2426.788,
+        "systemCpuMs": 14583.094000000001,
+        "minorFaults": 63135,
+        "majorFaults": 985
+      },
+      "childAfter": {
+        "userCpuMs": 2433.701,
+        "systemCpuMs": 14590.006,
+        "minorFaults": 63788,
+        "majorFaults": 993
+      },
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "order": [
+        "conditional",
+        "raw",
+        "original"
+      ],
+      "key": "original",
+      "elapsedMs": 86.81962500000373,
+      "nodeCpuMs": 2.008,
+      "childCpuMs": 69.73700000000099,
+      "childBefore": {
+        "userCpuMs": 2433.701,
+        "systemCpuMs": 14590.006,
+        "minorFaults": 63788,
+        "majorFaults": 993
+      },
+      "childAfter": {
+        "userCpuMs": 2455.531,
+        "systemCpuMs": 14637.913,
+        "minorFaults": 64443,
+        "majorFaults": 1001
+      },
+      "rows": 2123
+    }
+  ],
+  "summary": [
+    {
+      "life": 0,
+      "medians": {
+        "original": {
+          "elapsedMs": 918.8916255000004,
+          "nodeCpuMs": 5.057499999999999,
+          "childCpuMs": 152.23149999999987
+        },
+        "conditional": {
+          "elapsedMs": 852.1420625000028,
+          "nodeCpuMs": 5.702500000000001,
+          "childCpuMs": 156.09100000000012
+        },
+        "raw": {
+          "elapsedMs": 157.13556199999948,
+          "nodeCpuMs": 4.4335,
+          "childCpuMs": 33.649999999999636
+        }
+      },
+      "conditionalNativeCpuChangePercent": 2.5352834334551266,
+      "conditionalWallChangePercent": -7.264138789346008
+    },
+    {
+      "life": 1,
+      "medians": {
+        "original": {
+          "elapsedMs": 223.12456199999724,
+          "nodeCpuMs": 2.811,
+          "childCpuMs": 79.5064999999995
+        },
+        "conditional": {
+          "elapsedMs": 180.37597949999326,
+          "nodeCpuMs": 2.724,
+          "childCpuMs": 84.28600000000006
+        },
+        "raw": {
+          "elapsedMs": 103.66308299999946,
+          "nodeCpuMs": 2.482,
+          "childCpuMs": 16.97450000000117
+        }
+      },
+      "conditionalNativeCpuChangePercent": 6.0114581826650415,
+      "conditionalWallChangePercent": -19.15906618116051
+    },
+    {
+      "life": 2,
+      "medians": {
+        "original": {
+          "elapsedMs": 89.93479149999621,
+          "nodeCpuMs": 1.9885000000000002,
+          "childCpuMs": 70.33500000000095
+        },
+        "conditional": {
+          "elapsedMs": 109.33587499998976,
+          "nodeCpuMs": 2.1470000000000002,
+          "childCpuMs": 73.54749999999967
+        },
+        "raw": {
+          "elapsedMs": 36.50272900001437,
+          "nodeCpuMs": 1.833,
+          "childCpuMs": 14.555499999999483
+        }
+      },
+      "conditionalNativeCpuChangePercent": 4.567427312147121,
+      "conditionalWallChangePercent": 21.572389479542366
+    }
+  ],
+  "productionChanged": false,
+  "conclusion": "Conditional formatting increased median waited Native child CPU by 2.5%, 6.0%, and 4.6% in the three owned fixtures. Wall-time directions were mixed. Reject this candidate; preserve existing Native short-name formatting.",
+  "gitSourceReviewed": "https://github.com/git/git/blob/v2.53.0/ref-filter.c#L2310-L2352"
+}

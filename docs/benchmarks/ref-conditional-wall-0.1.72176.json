@@ -1,0 +1,557 @@
+{
+  "recordedAt": "2026-10-26T01:25:56.512Z",
+  "node": "v22.22.2",
+  "scope": "Owned packed-ref fixtures only; wall time, no Git CPU or actual VS Code latency claim",
+  "fixtures": 3,
+  "tagRefs": 2000,
+  "remoteRefs": 100,
+  "localRefs": 22,
+  "otherRefs": 1,
+  "allIdentityAndRemoteShortNameChecksPassed": true,
+  "allRefsUnchanged": true,
+  "formats": {
+    "original": "%(refname)\u001f%(objectname)\u001f%(refname:short)",
+    "conditional": "%(refname)\u001f%(objectname)\u001f%(if:equals=refs/remotes)%(refname:rstrip=-2)%(then)%(refname:short)%(else)%(refname)%(end)",
+    "raw": "%(refname)\u001f%(objectname)\u001f%(refname)"
+  },
+  "samples": [
+    {
+      "life": 0,
+      "round": 0,
+      "key": "original",
+      "elapsedMs": 256.41712499999994,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "key": "conditional",
+      "elapsedMs": 235.34616599999572,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 0,
+      "key": "raw",
+      "elapsedMs": 34.17725000000064,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "key": "raw",
+      "elapsedMs": 30.137957999999344,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "key": "conditional",
+      "elapsedMs": 135.1330420000013,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 1,
+      "key": "original",
+      "elapsedMs": 163.63208399999712,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "key": "original",
+      "elapsedMs": 373.81750000000466,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "key": "conditional",
+      "elapsedMs": 245.91870799999742,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 2,
+      "key": "raw",
+      "elapsedMs": 46.848416000000725,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "key": "raw",
+      "elapsedMs": 41.692583999996714,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "key": "conditional",
+      "elapsedMs": 188.73270800000319,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 3,
+      "key": "original",
+      "elapsedMs": 266.1702499999956,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "key": "original",
+      "elapsedMs": 207.99720900000102,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "key": "conditional",
+      "elapsedMs": 380.3419169999979,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 4,
+      "key": "raw",
+      "elapsedMs": 90.61270800000057,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "key": "raw",
+      "elapsedMs": 90.72654200000397,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "key": "conditional",
+      "elapsedMs": 327.57108299999527,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 5,
+      "key": "original",
+      "elapsedMs": 209.46879199999967,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 6,
+      "key": "original",
+      "elapsedMs": 257.72350000000006,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 6,
+      "key": "conditional",
+      "elapsedMs": 223.93058399999427,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 6,
+      "key": "raw",
+      "elapsedMs": 63.873625000000175,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 7,
+      "key": "raw",
+      "elapsedMs": 54.644749999999476,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 7,
+      "key": "conditional",
+      "elapsedMs": 231.6852910000016,
+      "rows": 2123
+    },
+    {
+      "life": 0,
+      "round": 7,
+      "key": "original",
+      "elapsedMs": 216.96162499999627,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "key": "raw",
+      "elapsedMs": 57.286999999996624,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "key": "conditional",
+      "elapsedMs": 162.13195799999812,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 0,
+      "key": "original",
+      "elapsedMs": 201.75004199999967,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "key": "original",
+      "elapsedMs": 341.25787500001024,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "key": "conditional",
+      "elapsedMs": 343.291790999996,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 1,
+      "key": "raw",
+      "elapsedMs": 154.61083299999882,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "key": "raw",
+      "elapsedMs": 131.47037500000442,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "key": "conditional",
+      "elapsedMs": 278.70824999999604,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 2,
+      "key": "original",
+      "elapsedMs": 299.8168750000041,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "key": "original",
+      "elapsedMs": 167.6325829999987,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "key": "conditional",
+      "elapsedMs": 344.59787500000675,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 3,
+      "key": "raw",
+      "elapsedMs": 93.9467910000094,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "key": "raw",
+      "elapsedMs": 55.16441699999268,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "key": "conditional",
+      "elapsedMs": 534.8900419999991,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 4,
+      "key": "original",
+      "elapsedMs": 622.0882500000007,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "key": "original",
+      "elapsedMs": 697.7608330000076,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "key": "conditional",
+      "elapsedMs": 308.7048330000107,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 5,
+      "key": "raw",
+      "elapsedMs": 87.9774999999936,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 6,
+      "key": "raw",
+      "elapsedMs": 145.61050000000978,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 6,
+      "key": "conditional",
+      "elapsedMs": 537.0021669999987,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 6,
+      "key": "original",
+      "elapsedMs": 670.4462499999936,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 7,
+      "key": "original",
+      "elapsedMs": 860.5350000000035,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 7,
+      "key": "conditional",
+      "elapsedMs": 1218.9509590000089,
+      "rows": 2123
+    },
+    {
+      "life": 1,
+      "round": 7,
+      "key": "raw",
+      "elapsedMs": 94.3259160000016,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "key": "original",
+      "elapsedMs": 120.05245899999863,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "key": "conditional",
+      "elapsedMs": 123.06095899999491,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 0,
+      "key": "raw",
+      "elapsedMs": 28.222749999986263,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "key": "raw",
+      "elapsedMs": 28.30945800000336,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "key": "conditional",
+      "elapsedMs": 80.71491599999717,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 1,
+      "key": "original",
+      "elapsedMs": 84.17395900000702,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "key": "original",
+      "elapsedMs": 161.96591599998646,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "key": "conditional",
+      "elapsedMs": 107.03658400001586,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 2,
+      "key": "raw",
+      "elapsedMs": 41.676582999993116,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "key": "raw",
+      "elapsedMs": 151.8537500000093,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "key": "conditional",
+      "elapsedMs": 116.68770800001221,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 3,
+      "key": "original",
+      "elapsedMs": 170.4800830000022,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "key": "original",
+      "elapsedMs": 94.28933299999335,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "key": "conditional",
+      "elapsedMs": 93.43912499997532,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 4,
+      "key": "raw",
+      "elapsedMs": 29.06666700000642,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "key": "raw",
+      "elapsedMs": 56.07116700001643,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "key": "conditional",
+      "elapsedMs": 125.44149999998626,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 5,
+      "key": "original",
+      "elapsedMs": 225.5838329999824,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 6,
+      "key": "original",
+      "elapsedMs": 134.48433300000033,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 6,
+      "key": "conditional",
+      "elapsedMs": 131.55320799999754,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 6,
+      "key": "raw",
+      "elapsedMs": 21.63008400000399,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 7,
+      "key": "raw",
+      "elapsedMs": 23.977458999986993,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 7,
+      "key": "conditional",
+      "elapsedMs": 95.35966700001154,
+      "rows": 2123
+    },
+    {
+      "life": 2,
+      "round": 7,
+      "key": "original",
+      "elapsedMs": 79.73433399997884,
+      "rows": 2123
+    }
+  ],
+  "summary": [
+    {
+      "life": 0,
+      "medianMs": {
+        "original": 236.6893749999981,
+        "conditional": 233.51572849999866,
+        "raw": 50.7465830000001
+      },
+      "conditionalChangePercent": -1.340848738985212,
+      "conditionalFasterPairs": 5
+    },
+    {
+      "life": 1,
+      "medianMs": {
+        "original": 481.67306250000547,
+        "conditional": 343.9448330000014,
+        "raw": 94.1363535000055
+      },
+      "conditionalChangePercent": -28.59371640696692,
+      "conditionalFasterPairs": 5
+    },
+    {
+      "life": 2,
+      "medianMs": {
+        "original": 127.26839599999948,
+        "conditional": 111.86214600001404,
+        "raw": 28.68806250000489
+      },
+      "conditionalChangePercent": -12.105322675698304,
+      "conditionalFasterPairs": 6
+    }
+  ],
+  "conclusion": "All three fixture wall-time medians were lower for the conditional format, with variable effect sizes (1.3%-28.6%). Native Git CPU was not measured and this is insufficient evidence to ship a formatting change. Existing Native formatting is retained.",
+  "productionChanged": false
+}

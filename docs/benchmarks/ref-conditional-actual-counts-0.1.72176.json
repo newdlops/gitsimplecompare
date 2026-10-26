@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-10-26T01:35:25.049Z",
+  "source": "Existing live window1 Graph repository selected from its open actual log handle",
+  "scope": "Read-only Native namespace counts only. No latency or CPU comparison. No index, config, ref, object or working-tree writes; lazy fetch, optional locks and fsmonitor disabled.",
+  "counts": {
+    "total": 2782,
+    "local": 164,
+    "remote": 2113,
+    "tags": 388,
+    "stash": 1,
+    "recovery": 116,
+    "other": 0
+  },
+  "refsStableAcrossReads": true,
+  "protectedMetadataUnchanged": true,
+  "commands": [
+    "rev-parse",
+    "for-each-ref",
+    "for-each-ref"
+  ],
+  "pathOrRefNamesDisclosed": false,
+  "productionChanged": false
+}
