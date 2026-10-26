@@ -1,0 +1,549 @@
+{
+  "version": "0.1.72178",
+  "recordedAt": "2026-10-26T05:05:06.656Z",
+  "matrixSha256": "8cb90a98f581b12708b4463fdb0d96c7e382c45d51cac200cea1f1781c73f23e",
+  "pilotSha256": "2d96eb4e70b7361839f2c348f01718963e28bc64f1aa811a29d3d1d540ee57d6",
+  "samples": 96,
+  "pairs": 48,
+  "inflightBlurSamples": 64,
+  "warmCacheRestorationVerifiedForAllWarmSamples": true,
+  "cohorts": [
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "active",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 653.638,
+      "afterOwnedCpuMedianMs": 589.333,
+      "beforeNativeCpuMedianMs": 503.581,
+      "afterNativeCpuMedianMs": 456.253,
+      "beforeNodeCpuMedianMs": 145.748,
+      "afterNodeCpuMedianMs": 120.278,
+      "pairedOwnedCpuChangeMedianPct": -5.886,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "afterGitCalls": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "beforeVisibleMedianMs": 563.352,
+      "afterVisibleMedianMs": 508.29,
+      "pairedVisibleChangeMedianPct": -5.488,
+      "visiblePairsImproved": 2
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "hidden",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 1034.329,
+      "afterOwnedCpuMedianMs": 557.941,
+      "beforeNativeCpuMedianMs": 944.086,
+      "afterNativeCpuMedianMs": 461.966,
+      "beforeNodeCpuMedianMs": 90.243,
+      "afterNodeCpuMedianMs": 95.975,
+      "pairedOwnedCpuChangeMedianPct": -49.97,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        14,
+        14,
+        14,
+        20
+      ],
+      "afterGitCalls": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "beforeVisibleMedianMs": 472.591,
+      "afterVisibleMedianMs": 286.291,
+      "pairedVisibleChangeMedianPct": -39.898,
+      "visiblePairsImproved": 4
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "rapid",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 738.551,
+      "afterOwnedCpuMedianMs": 415.935,
+      "beforeNativeCpuMedianMs": 671.012,
+      "afterNativeCpuMedianMs": 359.798,
+      "beforeNodeCpuMedianMs": 68.357,
+      "afterNodeCpuMedianMs": 57.561,
+      "pairedOwnedCpuChangeMedianPct": -43.364,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        14,
+        14,
+        14,
+        14
+      ],
+      "afterGitCalls": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "beforeVisibleMedianMs": 451.435,
+      "afterVisibleMedianMs": 209.384,
+      "pairedVisibleChangeMedianPct": -53.008,
+      "visiblePairsImproved": 4
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "active",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 253.99,
+      "afterOwnedCpuMedianMs": 235.132,
+      "beforeNativeCpuMedianMs": 202.565,
+      "afterNativeCpuMedianMs": 188.198,
+      "beforeNodeCpuMedianMs": 51.425,
+      "afterNodeCpuMedianMs": 45.639,
+      "pairedOwnedCpuChangeMedianPct": -6.831,
+      "cpuPairsImproved": 3,
+      "beforeGitCalls": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "afterGitCalls": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "beforeVisibleMedianMs": 268.463,
+      "afterVisibleMedianMs": 257.288,
+      "pairedVisibleChangeMedianPct": -5.946,
+      "visiblePairsImproved": 3
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "hidden",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 565.648,
+      "afterOwnedCpuMedianMs": 429.741,
+      "beforeNativeCpuMedianMs": 485.151,
+      "afterNativeCpuMedianMs": 319.866,
+      "beforeNodeCpuMedianMs": 80.017,
+      "afterNodeCpuMedianMs": 100.995,
+      "pairedOwnedCpuChangeMedianPct": -26.631,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "afterGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "beforeVisibleMedianMs": 496.539,
+      "afterVisibleMedianMs": 399.266,
+      "pairedVisibleChangeMedianPct": -19.539,
+      "visiblePairsImproved": 3
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "rapid",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 648.992,
+      "afterOwnedCpuMedianMs": 496.533,
+      "beforeNativeCpuMedianMs": 550.909,
+      "afterNativeCpuMedianMs": 381.011,
+      "beforeNodeCpuMedianMs": 92.603,
+      "afterNodeCpuMedianMs": 111.906,
+      "pairedOwnedCpuChangeMedianPct": -22.22,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "afterGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "beforeVisibleMedianMs": 869.735,
+      "afterVisibleMedianMs": 495.206,
+      "pairedVisibleChangeMedianPct": -41.305,
+      "visiblePairsImproved": 4
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "cold",
+      "kind": "active",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 374.322,
+      "afterOwnedCpuMedianMs": 399.853,
+      "beforeNativeCpuMedianMs": 291.756,
+      "afterNativeCpuMedianMs": 316.85,
+      "beforeNodeCpuMedianMs": 82.631,
+      "afterNodeCpuMedianMs": 78.665,
+      "pairedOwnedCpuChangeMedianPct": 2.952,
+      "cpuPairsImproved": 2,
+      "beforeGitCalls": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "afterGitCalls": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "beforeVisibleMedianMs": 204.505,
+      "afterVisibleMedianMs": 204.447,
+      "pairedVisibleChangeMedianPct": 4.734,
+      "visiblePairsImproved": 1
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "cold",
+      "kind": "hidden",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 1398.912,
+      "afterOwnedCpuMedianMs": 590.179,
+      "beforeNativeCpuMedianMs": 1198.333,
+      "afterNativeCpuMedianMs": 432.392,
+      "beforeNodeCpuMedianMs": 200.579,
+      "afterNodeCpuMedianMs": 134.495,
+      "pairedOwnedCpuChangeMedianPct": -57.808,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "afterGitCalls": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "beforeVisibleMedianMs": 319.454,
+      "afterVisibleMedianMs": 276.599,
+      "pairedVisibleChangeMedianPct": -21.69,
+      "visiblePairsImproved": 3
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "cold",
+      "kind": "rapid",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 880.856,
+      "afterOwnedCpuMedianMs": 538.326,
+      "beforeNativeCpuMedianMs": 748.775,
+      "afterNativeCpuMedianMs": 419.309,
+      "beforeNodeCpuMedianMs": 121.727,
+      "afterNodeCpuMedianMs": 119.017,
+      "pairedOwnedCpuChangeMedianPct": -38.148,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        14,
+        14,
+        14,
+        14
+      ],
+      "afterGitCalls": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "beforeVisibleMedianMs": 336.308,
+      "afterVisibleMedianMs": 241.069,
+      "pairedVisibleChangeMedianPct": -28.958,
+      "visiblePairsImproved": 4
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "warm",
+      "kind": "active",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 279.517,
+      "afterOwnedCpuMedianMs": 276.172,
+      "beforeNativeCpuMedianMs": 182.169,
+      "afterNativeCpuMedianMs": 181.207,
+      "beforeNodeCpuMedianMs": 95.697,
+      "afterNodeCpuMedianMs": 97.615,
+      "pairedOwnedCpuChangeMedianPct": 0.161,
+      "cpuPairsImproved": 2,
+      "beforeGitCalls": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "afterGitCalls": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "beforeVisibleMedianMs": 245.11,
+      "afterVisibleMedianMs": 238.275,
+      "pairedVisibleChangeMedianPct": -2.766,
+      "visiblePairsImproved": 3
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "warm",
+      "kind": "hidden",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 677.911,
+      "afterOwnedCpuMedianMs": 355.663,
+      "beforeNativeCpuMedianMs": 513.317,
+      "afterNativeCpuMedianMs": 239.234,
+      "beforeNodeCpuMedianMs": 145.846,
+      "afterNodeCpuMedianMs": 126.928,
+      "pairedOwnedCpuChangeMedianPct": -41.92,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "afterGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "beforeVisibleMedianMs": 344.127,
+      "afterVisibleMedianMs": 253.798,
+      "pairedVisibleChangeMedianPct": -10.645,
+      "visiblePairsImproved": 2
+    },
+    {
+      "life": 1,
+      "rootKind": "linked",
+      "warmth": "warm",
+      "kind": "rapid",
+      "pairs": 4,
+      "beforeOwnedCpuMedianMs": 392.253,
+      "afterOwnedCpuMedianMs": 364.757,
+      "beforeNativeCpuMedianMs": 299.145,
+      "afterNativeCpuMedianMs": 251.105,
+      "beforeNodeCpuMedianMs": 94.601,
+      "afterNodeCpuMedianMs": 118.567,
+      "pairedOwnedCpuChangeMedianPct": -3.404,
+      "cpuPairsImproved": 4,
+      "beforeGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "afterGitCalls": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "beforeVisibleMedianMs": 281.329,
+      "afterVisibleMedianMs": 228.071,
+      "pairedVisibleChangeMedianPct": -19.835,
+      "visiblePairsImproved": 4
+    }
+  ],
+  "pilotCohorts": [
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "active",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 298.035,
+      "afterOwnedCpuMedianMs": 262.991,
+      "beforeNativeCpuMedianMs": 219.06,
+      "afterNativeCpuMedianMs": 200.403,
+      "beforeNodeCpuMedianMs": 78.975,
+      "afterNodeCpuMedianMs": 62.588,
+      "pairedOwnedCpuChangeMedianPct": -11.758,
+      "cpuPairsImproved": 1,
+      "beforeGitCalls": [
+        7
+      ],
+      "afterGitCalls": [
+        7
+      ],
+      "beforeVisibleMedianMs": 122.735,
+      "afterVisibleMedianMs": 95.41,
+      "pairedVisibleChangeMedianPct": -22.263,
+      "visiblePairsImproved": 1
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "hidden",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 1036.603,
+      "afterOwnedCpuMedianMs": 394.699,
+      "beforeNativeCpuMedianMs": 907.21,
+      "afterNativeCpuMedianMs": 319.126,
+      "beforeNodeCpuMedianMs": 129.393,
+      "afterNodeCpuMedianMs": 75.573,
+      "pairedOwnedCpuChangeMedianPct": -61.924,
+      "cpuPairsImproved": 1,
+      "beforeGitCalls": [
+        27
+      ],
+      "afterGitCalls": [
+        10
+      ],
+      "beforeVisibleMedianMs": 103.417,
+      "afterVisibleMedianMs": 157.945,
+      "pairedVisibleChangeMedianPct": 52.726,
+      "visiblePairsImproved": 0
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "rapid",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 571.092,
+      "afterOwnedCpuMedianMs": 427.07,
+      "beforeNativeCpuMedianMs": 481.633,
+      "afterNativeCpuMedianMs": 329.797,
+      "beforeNodeCpuMedianMs": 89.459,
+      "afterNodeCpuMedianMs": 97.273,
+      "pairedOwnedCpuChangeMedianPct": -25.219,
+      "cpuPairsImproved": 1,
+      "beforeGitCalls": [
+        13
+      ],
+      "afterGitCalls": [
+        10
+      ],
+      "beforeVisibleMedianMs": 182.838,
+      "afterVisibleMedianMs": 141.05,
+      "pairedVisibleChangeMedianPct": -22.855,
+      "visiblePairsImproved": 1
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "active",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 192.077,
+      "afterOwnedCpuMedianMs": 214.831,
+      "beforeNativeCpuMedianMs": 134.144,
+      "afterNativeCpuMedianMs": 154.432,
+      "beforeNodeCpuMedianMs": 57.933,
+      "afterNodeCpuMedianMs": 60.399,
+      "pairedOwnedCpuChangeMedianPct": 11.846,
+      "cpuPairsImproved": 0,
+      "beforeGitCalls": [
+        3
+      ],
+      "afterGitCalls": [
+        3
+      ],
+      "beforeVisibleMedianMs": 142.202,
+      "afterVisibleMedianMs": 137.551,
+      "pairedVisibleChangeMedianPct": -3.271,
+      "visiblePairsImproved": 1
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "hidden",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 536.032,
+      "afterOwnedCpuMedianMs": 261.207,
+      "beforeNativeCpuMedianMs": 459.037,
+      "afterNativeCpuMedianMs": 195.806,
+      "beforeNodeCpuMedianMs": 76.995,
+      "afterNodeCpuMedianMs": 65.401,
+      "pairedOwnedCpuChangeMedianPct": -51.27,
+      "cpuPairsImproved": 1,
+      "beforeGitCalls": [
+        9
+      ],
+      "afterGitCalls": [
+        5
+      ],
+      "beforeVisibleMedianMs": 88.468,
+      "afterVisibleMedianMs": 107.879,
+      "pairedVisibleChangeMedianPct": 21.942,
+      "visiblePairsImproved": 0
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "rapid",
+      "pairs": 1,
+      "beforeOwnedCpuMedianMs": 261.971,
+      "afterOwnedCpuMedianMs": 246.853,
+      "beforeNativeCpuMedianMs": 217.632,
+      "afterNativeCpuMedianMs": 198.219,
+      "beforeNodeCpuMedianMs": 44.339,
+      "afterNodeCpuMedianMs": 48.634,
+      "pairedOwnedCpuChangeMedianPct": -5.771,
+      "cpuPairsImproved": 1,
+      "beforeGitCalls": [
+        5
+      ],
+      "afterGitCalls": [
+        5
+      ],
+      "beforeVisibleMedianMs": 136.346,
+      "afterVisibleMedianMs": 106.844,
+      "pairedVisibleChangeMedianPct": -21.637,
+      "visiblePairsImproved": 1
+    }
+  ],
+  "gitVersionObservedLocallyAfterRun": "2.53.0",
+  "sourceAndHelperGuardsMatchCandidate": true,
+  "interpretation": {
+    "cpuScope": "One harness Node CPU plus OS-accounted waited children, including process inspection and awaited read disposal",
+    "phaseCpuSnapshots": "RUSAGE_CHILDREN accounts CPU at process completion; phase deltas are not time-sliced CPU attribution",
+    "percentFormula": "median((after / before - 1) * 100) over matching round pairs; differs from ratio of independent medians",
+    "coldMeaning": "Initial private cache empty; OS filesystem cache is not cold",
+    "controlledHostLoad": false,
+    "wholeAppCpuClaim": false,
+    "normalReadEquivalenceClaim": false,
+    "actualCodeFocusVisualQaPerformed": false,
+    "pilotAdverseSamplesRetained": true
+  }
+}

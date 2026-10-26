@@ -1,0 +1,1048 @@
+{
+  "recordedAt": "2026-10-26T04:59:16.330Z",
+  "baseline": "db9ed984ba5a3d88b106652162e505eb7ce0d6f3",
+  "candidate": "0111964845245cb54d330bc58e971de000a35663",
+  "node": "v22.22.2",
+  "fixture": {
+    "trackedFiles": 10000,
+    "trackedDirectories": 320,
+    "untrackedFiles": 2000,
+    "untrackedDirectories": 16,
+    "lifecycles": 1
+  },
+  "protocol": {
+    "rounds": 1,
+    "blurAfterFirstNativeStatusSpawnMs": 5,
+    "rapidResumeDelayMs": 10,
+    "hiddenResumeDelayMs": 200,
+    "mockEventsOnly": true,
+    "userRepositoriesTouched": false,
+    "actualDesktopInput": false,
+    "processInspectionIncludedInNativeCpu": true,
+    "measuredScope": "Two display consumers through real GitService/shared/private status, including awaited read disposal. Setup, warm template, oracle, assertions and fixture removal excluded.",
+    "systemLoadBefore": [
+      7.2978515625,
+      8.60888671875,
+      7.5205078125
+    ],
+    "systemLoadAfter": [
+      7.35400390625,
+      8.5986328125,
+      7.52294921875
+    ],
+    "controlledHostCpuLoad": false,
+    "actualCodeCpuClaim": false
+  },
+  "allFinalNativeGroupsEqual": true,
+  "allSourceIndexesUnchanged": true,
+  "samples": [
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "active",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 124.88716699999895,
+      "nodeCpuMs": 78.975,
+      "nativeCpuMs": 219.06000000000017,
+      "ownedCpuMs": 298.0350000000002,
+      "visibleReadyMs": 122.73508399999992,
+      "gitCalls": 7,
+      "statusCalls": 1,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 7,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 15,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 37,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 37,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 39,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 68,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 20,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "active",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 96.03779200000099,
+      "nodeCpuMs": 62.588,
+      "nativeCpuMs": 200.40300000000025,
+      "ownedCpuMs": 262.99100000000027,
+      "visibleReadyMs": 95.4103750000013,
+      "gitCalls": 7,
+      "statusCalls": 1,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 11,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 26,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 28,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 28,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 58,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 19,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "hidden",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 323.5953330000011,
+      "nodeCpuMs": 129.393,
+      "nativeCpuMs": 907.21,
+      "ownedCpuMs": 1036.603,
+      "visibleReadyMs": 322.64666600000055,
+      "resumeToVisibleMs": 103.41737499999908,
+      "hiddenStage": {
+        "wallMs": 219.22929100000147,
+        "nodeCpuMs": 68.374,
+        "nativeCpuMs": 590.2550000000001,
+        "ownedCpuMs": 658.6290000000001
+      },
+      "resumedStage": {
+        "wallMs": 104.36604199999965,
+        "nodeCpuMs": 61.019,
+        "nativeCpuMs": 316.9549999999999,
+        "ownedCpuMs": 377.97399999999993
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 19.074750000001586,
+      "gitCalls": 27,
+      "statusCalls": 5,
+      "cancelledCalls": 2,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 11,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 28,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 31,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 31,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 64,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 23,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 15,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 30,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 32,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 31,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 59,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 17,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 11,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 25,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 27,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 28,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 61,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 28,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "status",
+          "elapsedMs": 33,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 12,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 25,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 27,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 27,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 55,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 17,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "hidden",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 382.0757910000011,
+      "nodeCpuMs": 75.573,
+      "nativeCpuMs": 319.12599999999975,
+      "ownedCpuMs": 394.6989999999997,
+      "visibleReadyMs": 380.7931660000013,
+      "resumeToVisibleMs": 157.94508300000052,
+      "hiddenStage": {
+        "wallMs": 222.84808300000077,
+        "nodeCpuMs": 21.248,
+        "nativeCpuMs": 86.41600000000017,
+        "ownedCpuMs": 107.66400000000017
+      },
+      "resumedStage": {
+        "wallMs": 159.22770800000035,
+        "nodeCpuMs": 54.325,
+        "nativeCpuMs": 232.70999999999958,
+        "ownedCpuMs": 287.03499999999957
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 20.32183299999997,
+      "gitCalls": 10,
+      "statusCalls": 2,
+      "cancelledCalls": 2,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 15,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 15,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 22,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 40,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 41,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 43,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 41,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 112,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "rapid",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 216.17150000000038,
+      "nodeCpuMs": 89.459,
+      "nativeCpuMs": 481.63300000000027,
+      "ownedCpuMs": 571.0920000000003,
+      "visibleReadyMs": 213.65683399999944,
+      "resumeToVisibleMs": 182.83766699999978,
+      "hiddenStage": {
+        "wallMs": 30.819166999999652,
+        "nodeCpuMs": 8.903,
+        "nativeCpuMs": 5.025000000000546,
+        "ownedCpuMs": 13.928000000000546
+      },
+      "resumedStage": {
+        "wallMs": 185.35233300000073,
+        "nodeCpuMs": 80.556,
+        "nativeCpuMs": 476.6079999999997,
+        "ownedCpuMs": 557.1639999999998
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 21.162874999999985,
+      "gitCalls": 13,
+      "statusCalls": 2,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 9,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 15,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 31,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 34,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 34,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 75,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 27,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 13,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 36,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 38,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 37,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 78,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 30,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "cold",
+      "kind": "rapid",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 174.84370800000033,
+      "nodeCpuMs": 97.273,
+      "nativeCpuMs": 329.79699999999957,
+      "ownedCpuMs": 427.0699999999996,
+      "visibleReadyMs": 173.69912499999919,
+      "resumeToVisibleMs": 141.04975000000013,
+      "hiddenStage": {
+        "wallMs": 32.649374999999054,
+        "nodeCpuMs": 12.446,
+        "nativeCpuMs": 19.30600000000004,
+        "ownedCpuMs": 31.752000000000038
+      },
+      "resumedStage": {
+        "wallMs": 142.19433300000128,
+        "nodeCpuMs": 84.827,
+        "nativeCpuMs": 310.491,
+        "ownedCpuMs": 395.318
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 20.903125000000728,
+      "gitCalls": 10,
+      "statusCalls": 2,
+      "cancelledCalls": 2,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 9,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 15,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "status",
+          "elapsedMs": 17,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 12,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 13,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 43,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 41,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 43,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 88,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 29,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "active",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 142.9527080000007,
+      "nodeCpuMs": 57.933,
+      "nativeCpuMs": 134.14399999999978,
+      "ownedCpuMs": 192.07699999999977,
+      "visibleReadyMs": 142.20241700000042,
+      "gitCalls": 3,
+      "statusCalls": 1,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 7,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 75,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 13,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "active",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 138.2164159999993,
+      "nodeCpuMs": 60.399,
+      "nativeCpuMs": 154.43200000000024,
+      "ownedCpuMs": 214.83100000000024,
+      "visibleReadyMs": 137.55141599999843,
+      "gitCalls": 3,
+      "statusCalls": 1,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 8,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 69,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 13,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "hidden",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 326.49645800000144,
+      "nodeCpuMs": 76.995,
+      "nativeCpuMs": 459.03699999999935,
+      "ownedCpuMs": 536.0319999999994,
+      "visibleReadyMs": 325.7662080000009,
+      "resumeToVisibleMs": 88.46758299999965,
+      "hiddenStage": {
+        "wallMs": 237.29862500000127,
+        "nodeCpuMs": 36.406,
+        "nativeCpuMs": 349.28399999999965,
+        "ownedCpuMs": 385.68999999999966
+      },
+      "resumedStage": {
+        "wallMs": 89.19783300000017,
+        "nodeCpuMs": 40.589,
+        "nativeCpuMs": 109.7529999999997,
+        "ownedCpuMs": 150.3419999999997
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 36.953708000000915,
+      "gitCalls": 9,
+      "statusCalls": 4,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 8,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 69,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 10,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 57,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 10,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 41,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 9,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 48,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 12,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "hidden",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 335.1926660000008,
+      "nodeCpuMs": 65.401,
+      "nativeCpuMs": 195.8060000000005,
+      "ownedCpuMs": 261.2070000000005,
+      "visibleReadyMs": 334.006625,
+      "resumeToVisibleMs": 107.878917,
+      "hiddenStage": {
+        "wallMs": 226.12770799999998,
+        "nodeCpuMs": 16.971,
+        "nativeCpuMs": 78.70899999999983,
+        "ownedCpuMs": 95.67999999999984
+      },
+      "resumedStage": {
+        "wallMs": 109.06495800000084,
+        "nodeCpuMs": 48.43,
+        "nativeCpuMs": 117.09700000000066,
+        "ownedCpuMs": 165.52700000000067
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 23.985915999999634,
+      "gitCalls": 5,
+      "statusCalls": 2,
+      "cancelledCalls": 1,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 7,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 15,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 58,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 10,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "rapid",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "before",
+      "wallMs": 167.26129200000105,
+      "nodeCpuMs": 44.339,
+      "nativeCpuMs": 217.6319999999996,
+      "ownedCpuMs": 261.9709999999996,
+      "visibleReadyMs": 166.69329199999993,
+      "resumeToVisibleMs": 136.34583399999974,
+      "hiddenStage": {
+        "wallMs": 30.347458000000188,
+        "nodeCpuMs": 13.783,
+        "nativeCpuMs": 3.9589999999998327,
+        "ownedCpuMs": 17.741999999999834
+      },
+      "resumedStage": {
+        "wallMs": 136.91383400000086,
+        "nodeCpuMs": 30.556,
+        "nativeCpuMs": 213.67299999999977,
+        "ownedCpuMs": 244.2289999999998
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 20.19341700000041,
+      "gitCalls": 5,
+      "statusCalls": 2,
+      "cancelledCalls": 0,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 5,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 60,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 10,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 47,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 10,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    },
+    {
+      "life": 0,
+      "rootKind": "main",
+      "warmth": "warm",
+      "kind": "rapid",
+      "round": 0,
+      "order": [
+        "before",
+        "after"
+      ],
+      "variant": "after",
+      "wallMs": 143.67729099999997,
+      "nodeCpuMs": 48.634,
+      "nativeCpuMs": 198.21900000000096,
+      "ownedCpuMs": 246.85300000000097,
+      "visibleReadyMs": 143.12937500000044,
+      "resumeToVisibleMs": 106.84429200000159,
+      "hiddenStage": {
+        "wallMs": 36.28508299999885,
+        "nodeCpuMs": 12.552,
+        "nativeCpuMs": 75.78999999999996,
+        "ownedCpuMs": 88.34199999999996
+      },
+      "resumedStage": {
+        "wallMs": 107.39220800000112,
+        "nodeCpuMs": 36.082,
+        "nativeCpuMs": 122.42900000000009,
+        "ownedCpuMs": 158.51100000000008
+      },
+      "firstStatusStillRunningAtBlur": true,
+      "actualBlurAfterStartMs": 24.046457999998893,
+      "gitCalls": 5,
+      "statusCalls": 2,
+      "cancelledCalls": 1,
+      "commands": [
+        {
+          "command": "rev-parse",
+          "elapsedMs": 7,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 14,
+          "outcome": "error",
+          "code": "ABORT_ERR"
+        },
+        {
+          "command": "rev-parse",
+          "elapsedMs": 6,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "status",
+          "elapsedMs": 60,
+          "outcome": "success",
+          "code": 0
+        },
+        {
+          "command": "ls-files",
+          "elapsedMs": 9,
+          "outcome": "success",
+          "code": 0
+        }
+      ]
+    }
+  ]
+}
