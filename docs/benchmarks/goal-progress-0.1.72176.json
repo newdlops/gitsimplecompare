@@ -1,0 +1,48 @@
+{
+  "recordedAt": "2026-10-26T01:15:07.814430+00:00",
+  "objective": "해당 머신이 바쁠때 우리 익스텐션의 성능이 떨어져, 사실 git만 사용하는 익스텐션이고 그래프를 랜더링하는 단순한 확장이라 성능 저하가 많지 않아야 해.",
+  "goalStatusAtRecording": "active",
+  "objectiveAchieved": false,
+  "latestRelease": "0.1.72176",
+  "productCommit": "bf1ee3cd335730c92c35f45738a2d3f1b862bdee",
+  "currentGoalTurnClassification": "progress: observed actual target activation and slow startup traces; reproduced seven provider regressions and a native-owner edge; fixed, tested, committed, pushed, published and installed 0.1.72176",
+  "sameBlockerConsecutiveGoalTurns": 0,
+  "provenThisTurn": {
+    "actualBaselineVersion": "0.1.72175",
+    "actualBaselineWindows": 4,
+    "unfocusedBaselineDecorationDurationsMs": [
+      12999,
+      18919,
+      14640
+    ],
+    "nodeTestsPassed": 18,
+    "typecheckAndProductionBuildPassed": true,
+    "unfocusedProviderRequestsIn100UriTest": {
+      "discovery": 0,
+      "status": 0
+    },
+    "statusRequestsAfterFocusInTest": 1,
+    "all81PackagedAndInstalledRuntimeBytesMatched": true
+  },
+  "currentRuntime": {
+    "recordedAt": "2026-10-26T01:15:07.814430+00:00",
+    "registeredVersion": "0.1.72176",
+    "activeVersionCounts": {
+      "0.1.72175": 4
+    },
+    "liveLogHandlesVerified": true,
+    "targetVersionActive": false,
+    "targetVersionGraphFrames": 0,
+    "nativeInputActionsPerformed": false,
+    "forcedHostReload": false,
+    "actualUpdatedBusyWindowImprovementVerified": false
+  },
+  "remaining": [
+    "Actual 0.1.72176 runtime behavior and Native Explorer focus-transition visual QA are not yet verified.",
+    "Whole-app CPU reduction, first-page equivalence and concurrent-load response improvements remain unproven.",
+    "Actual baseline fingerprint and branch phases are still material and warrant targeted Native read investigation."
+  ],
+  "nextAvailableIndependentAction": "Inspect actual fingerprint/branch reader boundaries and measure current Native ref formatting with owned fixtures; verify ref-kind distribution before attributing costs or changing short-name expansion.",
+  "applicationInteractionAuthorization": "Prior brief one-window operation question remains unanswered; activation of 0.1.72175 was observed passively and does not authorize native input.",
+  "liveJobs": []
+}

@@ -1,0 +1,34 @@
+{
+  "version": "0.1.72176",
+  "recordedAt": "2026-10-26T01:15:07.814430+00:00",
+  "productCommit": "bf1ee3cd335730c92c35f45738a2d3f1b862bdee",
+  "pushedTo": "origin/main",
+  "artifact": "gitsimplecompare-0.1.72176.vsix",
+  "bytes": 937014,
+  "sha256": "26aed81b54e05ce86360e1736a043514f150505c9eac71c6ac4e1de5892d092d",
+  "publishExitCode": 0,
+  "installExitCode": 0,
+  "sameVerifiedVsixPublishedAndInstalled": true,
+  "installedRuntimeMatched": true,
+  "runtimeFiles": 81,
+  "registeredVersion": "0.1.72176",
+  "registeredEntries": 1,
+  "marketplaceStatusQueried": false,
+  "forcedHostReload": false,
+  "nativeInputActionsPerformed": false,
+  "actualUpdatedSessionLatencyVerified": false,
+  "logs": {
+    "gsc-decoration-focus-package-72176.log": {
+      "bytes": 1381,
+      "sha256": "03a6ddd0449e06e341b1e6b8d515b68eb0ec089fc69169196d832386be659bf0"
+    },
+    "gsc-decoration-focus-publish-72176.log": {
+      "bytes": 355,
+      "sha256": "839a25db1767416baa9e0b19d4a35d93f366e7ee8935a15a31ef173168fe91ba"
+    },
+    "gsc-decoration-focus-install-72176.log": {
+      "bytes": 399,
+      "sha256": "f2ebc162139b3062c547c8eda4db33f500c18dcfca13712c299863e3a4fd5413"
+    }
+  }
+}

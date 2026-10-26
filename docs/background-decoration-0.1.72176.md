@@ -21,3 +21,7 @@ Graph에서는 pagination으로 기록된 300행(skip 0)의 trace 전체가 3,16
 재현: 프로젝트 루트에서 `npm test -- test/workingTreeFileDecorations.test.ts`, `npm run check-types`, `npm run package`를 실행한다.
 
 [검사와 호출 경계](benchmarks/background-decoration-0.1.72176.json), [개인 정보를 제외한 실제 로그](benchmarks/background-decoration-actual-0.1.72176.json).
+
+동일 VSIX로 0.1.72176 게시와 설치를 완료했다. 실행 자산 81개가 빌드·패키지·설치 파일과 일치했고 브라우저 자산은 이전 버전과 바이트 단위로 같았다. 현재 실제 창 4개는 0.1.72175를 실행 중이다.
+
+[산출물 검증](benchmarks/release-artifact-0.1.72176.json), [배포·설치](benchmarks/deployment-0.1.72176.json), [실제 실행 상태](benchmarks/actual-session-observation-0.1.72176.json), [전체 성능 목표](benchmarks/goal-progress-0.1.72176.json).
