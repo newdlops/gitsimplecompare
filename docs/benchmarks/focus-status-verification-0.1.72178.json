@@ -1,0 +1,83 @@
+{
+  "version": "0.1.72178",
+  "baselineProductCommit": "ea9bd7ba7436ee7fc732fe2ca874f6e9e2a5e28b",
+  "regressionBeforeFix": {
+    "log": "gsc-focus-status-red-72178.log",
+    "sha256": "c77b0610d2a175c555977e1c30d9f7b79fa7696d2e2d7eca29d6b17b0c61058d",
+    "tests": 23,
+    "pass": 19,
+    "fail": 4,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "finalRelatedSuite": {
+    "exitCode": 0,
+    "outsideToolSandbox": true,
+    "files": [
+      "test/workingTreeFileDecorations.test.ts",
+      "test/workingStatusFocusLifecycle.test.ts",
+      "test/statusStats.test.ts",
+      "test/sharedGitRead.test.ts",
+      "test/workingTreeSnapshot.test.ts",
+      "test/graphWorkingTreeSummary.test.ts",
+      "test/extensionRefreshPolicy.test.ts",
+      "test/statusCache.test.ts",
+      "test/gitStatusExec.test.ts",
+      "test/gitProcessLifecycle.test.ts",
+      "test/gitProcessActivity.test.ts",
+      "test/privateStatusIndexColdScan.test.ts",
+      "test/privateStatusIndexWarmSessions.test.ts",
+      "test/statusIndexWarmCache.test.ts"
+    ],
+    "log": "gsc-focus-status-final-node-escalated-72178.log",
+    "sha256": "995e9ac04a9356e4f9dde91887be8a691a76bde66addd71d6eee30aaa43be3f8",
+    "tests": 140,
+    "pass": 140,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "typecheck": {
+    "command": "npm run check-types",
+    "exitCode": 0,
+    "logSha256": "29e44118e20fbdbaba5a6cbad50a9d383cc822c8cbea0307d85f7c25ccc6971a"
+  },
+  "productionBuild": {
+    "command": "npm run package",
+    "viaVscePrepublish": true,
+    "exitCode": 0,
+    "logSha256": "e305767003653c2b32997ab68858c502aab93186c532a3e6e93c6a096c78d924"
+  },
+  "restrictedRun": {
+    "log": "gsc-focus-status-final-node-72178.log",
+    "logSha256": "6817bbe6640c160df481f1863b29e130e25065e27281c4473d687986fd441753",
+    "completedFailures": 8,
+    "intentionallyInterruptedAfterVerifiedFailures": true,
+    "ownedFixtureOrphanChildrenCleaned": 1,
+    "ownedProcessTerminationVerified": true,
+    "sameSourcePassedOutsideSandbox": true
+  },
+  "initialDraftAssertionCorrection": "Changes normalizes untracked status to A; one new test expectation was corrected from ? before final verification",
+  "sourceSha256": {
+    "src/extension.ts": "aa5f9bec920e77dbb5a6bb3ad67cbef1fc03e1d9fb1992662c176e096a0a427e",
+    "src/commands/refreshChangesView.ts": "9074c1adcf689afe916aeb14e4c474c4b68420b2aa62b9dcbf4d5b9bc20debcc",
+    "src/commands/workingStatusRefresh.ts": "6164f0a0e50169f94201e153384dfe40fbc4d0c67c698d2a1d9b3bbbb125dea3",
+    "src/commands/workingStatusRefreshState.ts": "9e5d6b9e421fbdfb49c038a6c9c687a24e2fa78802efeadbac538baa5a6d0570",
+    "src/providers/workingTreeFileDecorations.ts": "743b9c70479e97fb9c7053d132940fda827d6f7e56b735c3f38cb76c509070e1"
+  },
+  "sourceLines": {
+    "src/extension.ts": 599,
+    "src/commands/refreshChangesView.ts": 349,
+    "src/commands/workingStatusRefresh.ts": 559,
+    "src/commands/workingStatusRefreshState.ts": 99,
+    "src/providers/workingTreeFileDecorations.ts": 455,
+    "test/workingTreeFileDecorations.test.ts": 514,
+    "test/workingStatusFocusLifecycle.test.ts": 166
+  },
+  "lintCompleted": false,
+  "lintReason": "Repository has no eslint.config.* or .eslintrc*; no unrelated configuration or dependency was added",
+  "nativeUiInputPerformed": false,
+  "nativeExplorerFocusVisualQaPerformed": false,
+  "wholeAppCpuReductionProven": false,
+  "pairedBusyLatencyGainProven": false
+}

@@ -163,6 +163,7 @@ async function refreshChangesViewOnce(
     }
   }
   const forceGitStatus = shouldForceChangesGitStatus(reason);
+  const focusScoped = !shouldShowChangesRefreshProgress(reason);
   const shouldDiscover =
     sections.includes("repositories") || !deps.changesView.getActiveRepo();
   const repositoryLoad = shouldDiscover
@@ -172,7 +173,7 @@ async function refreshChangesViewOnce(
   let prefetchedWorking =
     repositoryLoad && initialRoot && sections.includes("workingChanges")
       ? timedRefreshSection("workingChanges", () =>
-          refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason })
+          refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason, focusScoped })
         )
       : undefined;
   // repositoryLoad가 먼저 실패해도 이미 시작한 status Promise가 unhandled rejection으로 남지 않게 한다.
@@ -199,7 +200,7 @@ async function refreshChangesViewOnce(
       ? prefetchedWorking
         ? promisedSectionTask("workingChanges", prefetchedWorking)
         : sectionTask("workingChanges", () =>
-            refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason })
+            refreshWorkingChanges(deps, { forceGit: forceGitStatus, reason, focusScoped })
           )
       : undefined,
     sections.includes("fileHistory")

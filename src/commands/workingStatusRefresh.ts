@@ -1,6 +1,7 @@
 // Changes 작업 상태의 조회 source 선택, 최신성 검증, 통계 보강을 조립한다.
 // - VS Code Git의 빠른 snapshot과 실제 Git CLI SoT 사이의 동기화 경계를 한곳에서 관리한다.
 // - stage/commit 전 요청이 늦게 끝나 최신 UI를 덮지 않도록 repo/request/generation을 모두 확인한다.
+import * as vscode from "vscode";
 import type { StatusGroups } from "../git/gitService";
 import { shouldComputeLineStats } from "../git/largeChangeSet";
 import { hasLineStatsWork } from "../git/statusStats";
@@ -12,6 +13,7 @@ import { logError, logInfo, logWarn } from "../ui/outputLog";
 import { directFileFallbackAction } from "../utils/extensionRefreshPolicy";
 import type { CommandDeps } from "./shared";
 import { statesByActivation, stateFor, cancelPendingStats, type WorkingStatusRefreshState, type WorkingStatusRequest, type StatusStatsRequest } from './workingStatusRefreshState';
+export { pauseWorkingStatusRefresh } from "./workingStatusRefreshState";
 
 /** 작업 상태 refresh 호출자가 선택할 수 있는 source 정책. */
 export interface RefreshWorkingChangesOptions {
@@ -19,6 +21,8 @@ export interface RefreshWorkingChangesOptions {
   forceGit?: boolean;
   /** direct-file/provider/manual 원인을 구분해 지연 CLI fallback을 제어한다. */
   reason?: string;
+  /** 자동 표시 갱신이면 비활성 창에서 새 조회·queued 재시도·fallback을 시작하지 않는다. */
+  focusScoped?: boolean;
 }
 
 // 자체 Git mutation 직후에는 provider가 아직 옛 index를 들 수 있어 우선 CLI를 읽는다.
@@ -79,6 +83,10 @@ async function refreshWorkingStatusAttempt(
   options: RefreshWorkingChangesOptions,
   generationRetry: number
 ): Promise<void> {
+  if (options.focusScoped && !vscode.window.state.focused) {
+    logInfo("working status read deferred", { reason: options.reason ?? "request", phase: "beforeRead" });
+    return;
+  }
   const root = deps.changesView.getActiveRepo();
   if (!root) {
     invalidateActivationRequests(deps);
@@ -109,6 +117,7 @@ async function refreshWorkingStatusAttempt(
     generation: service.getStatusGeneration(),
     providerRevision: deps.vscodeGitStatus.getStatusRevision(root),
     startedAt: Date.now(),
+    focusScoped: options.focusScoped === true,
   };
   const recentMutation = service.mutatedRecently(RECENT_MUTATION_WINDOW_MS);
   const forceGit = options.forceGit === true || recentMutation;
@@ -217,7 +226,7 @@ async function retryAfterGenerationChange(
   });
   await refreshWorkingStatusAttempt(
     request.deps,
-    { forceGit: true },
+    { forceGit: true, focusScoped: request.focusScoped },
     generationRetry + 1
   );
 }
@@ -369,6 +378,7 @@ function scheduleDeferredGitFallback(
     void refreshWorkingStatus(request.deps, {
       forceGit: true,
       reason: "directFileFallback",
+      focusScoped: request.focusScoped,
     });
   }, DIRECT_FILE_FALLBACK_GRACE_MS);
   logInfo("deferred CLI fallback scheduled", {

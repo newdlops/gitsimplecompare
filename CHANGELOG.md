@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.72178] - 2026-10-26
+
+### Performance
+
+- Release Explorer and Changes status consumers when their window loses focus,
+  preventing unused shared reads from retrying invalidated generations.
+- Defer queued automatic status reads until focus returns, retaining cached
+  displays and preserving explicit requests and other shared API consumers.
+
 ## [0.1.72177] - 2026-10-26
 
 ### Performance

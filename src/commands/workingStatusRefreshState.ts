@@ -32,6 +32,7 @@ export interface WorkingStatusRequest {
   generation: number;
   providerRevision?: number;
   startedAt: number;
+  focusScoped?: boolean;
 }
 
 
@@ -39,6 +40,27 @@ export const statesByActivation = new WeakMap<
   CommandDeps,
   Map<string, WorkingStatusRefreshState>
 >();
+
+/**
+ * 창 비활성화 때 Changes의 표시용 소비자·통계·지연 fallback을 해제한다.
+ * - 요청 번호를 먼저 올려 늦은 완료·오류가 UI 적용이나 세대 재시도를 시작하지 못하게 한다.
+ * - 공유 Git의 다른 소비자, 실제 쓰기 작업, 마지막 정상 목록과 provider fence는 유지한다.
+ * @param deps 현재 activation의 조회 상태를 찾는 공유 의존성 identity
+ * @returns 최신성 토큰과 표시용 예약을 해제한 저장소 상태 수. 실제 Git 프로세스 수는 아니다.
+ */
+export function pauseWorkingStatusRefresh(deps: CommandDeps): number {
+  const repositories = statesByActivation.get(deps);
+  if (!repositories) return 0;
+  for (const state of repositories.values()) {
+    state.requestId++;
+    state.statusController?.abort();
+    state.statusController = undefined;
+    cancelPendingStats(state);
+    clearTimeout(state.fallbackTimer);
+    state.fallbackTimer = undefined;
+  }
+  return repositories.size;
+}
 
 /** 활성화/deps와 저장소에 대응하는 최신성 상태를 반환한다. */
 export function stateFor(

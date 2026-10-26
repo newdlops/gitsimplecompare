@@ -39,7 +39,7 @@ import {
 import { COMPARE_SCHEME } from "./utils/uri";
 import { registerCommands } from "./commands";
 import { CommandDeps } from "./commands/shared";
-import { disposeWorkingStatusRefresh } from "./commands/workingStatusRefresh";
+import { disposeWorkingStatusRefresh, pauseWorkingStatusRefresh } from "./commands/workingStatusRefresh";
 import { syncBuiltinGitContext, syncViewContext } from "./commands/viewState";
 import { disposeOutputLog, logError, logInfo } from "./ui/outputLog";
 import { registerViewConfigurationEvents } from "./ui/viewConfiguration";
@@ -439,9 +439,9 @@ export function activate(context: vscode.ExtensionContext): GitSimpleCompareApi 
     }),
     vscode.window.onDidChangeWindowState((state) => {
       if (!state.focused) {
-        if (gitWatcher.setFocused(false)) {
-          logInfo("git metadata watcher suspended", { reason: "window-unfocused" });
-        }
+        const repositories = pauseWorkingStatusRefresh(deps);
+        if (repositories) logInfo("working status reads paused", { reason: "window-unfocused", repositories });
+        if (gitWatcher.setFocused(false)) logInfo("git metadata watcher suspended", { reason: "window-unfocused" });
         return;
       }
       hunkCheckboxes.refresh();

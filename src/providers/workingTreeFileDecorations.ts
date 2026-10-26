@@ -14,6 +14,7 @@ import { uriBelongsToRoot } from "./localChangesWatcher";
 interface DecorationRepository {
   root: string;
   controller: AbortController;
+  readController?: AbortController;
   decorations: Map<string, vscode.FileDecoration>;
   porcelain?: string;
   pending?: Promise<void>;
@@ -232,16 +233,25 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
   private refreshRepository(repository: DecorationRepository): Promise<void> {
     if (this.disposed || repository.controller.signal.aborted) return Promise.resolve();
     if (!vscode.window.state.focused) { this.deferReads("statusRefresh"); return Promise.resolve(); }
-    if (repository.pending) return repository.pending;
+    if (repository.pending) {
+      // 빠른 포커스 복귀도 취소된 소비자의 정리를 기다린 뒤 최신 조회 하나에 합류한다.
+      return repository.readController?.signal.aborted
+        ? repository.pending.then(() => this.refreshRepository(repository)) : repository.pending;
+    }
+    const controller = new AbortController();
+    repository.readController = controller;
+    const abort = () => controller.abort();
+    repository.controller.signal.addEventListener("abort", abort, { once: true });
     repository.pending = Promise.resolve().then(async () => {
-      while (!this.disposed && !repository.controller.signal.aborted) {
+      while (!this.disposed && !controller.signal.aborted) {
         // 진행 중 status가 무효화돼 재시도할 때도 포커스를 다시 확인한다.
         if (!vscode.window.state.focused) { this.deferReads("statusRetry"); return; }
         const revision = repository.revision;
         repository.dirty = false;
         const startedAt = Date.now();
-        const snapshot = await this.status.getStatus(repository.root, { signal: repository.controller.signal });
-        if (this.disposed || this.repositories.get(repository.root) !== repository || repository.controller.signal.aborted) return;
+        const snapshot = await this.status.getStatus(repository.root, { signal: controller.signal });
+        if (this.disposed || this.repositories.get(repository.root) !== repository || controller.signal.aborted) return;
+        if (!vscode.window.state.focused) { repository.dirty = true; this.deferReads("statusResult"); return; }
         if (revision !== repository.revision) continue;
         if (snapshot.porcelain !== repository.porcelain) {
           const next = workingTreeFileDecorations(repository.root, snapshot.porcelain);
@@ -254,8 +264,13 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
         return;
       }
     }).catch(error => {
-      if (!this.disposed && !repository.controller.signal.aborted) logWarn("working tree file decoration refresh failed", { root: repository.root, error: String(error) });
-    }).finally(() => { repository.pending = undefined; });
+      if (!this.disposed && !controller.signal.aborted) logWarn("working tree file decoration refresh failed", { root: repository.root, error: String(error) });
+    }).finally(() => {
+      repository.controller.signal.removeEventListener("abort", abort);
+      controller.abort();
+      if (repository.readController === controller) repository.readController = undefined;
+      repository.pending = undefined;
+    });
     return repository.pending;
   }
 
@@ -307,7 +322,20 @@ export class WorkingTreeFileDecorationProvider implements vscode.FileDecorationP
     this.clearTimer();
     this.rebuildWatchers();
     logInfo(`working tree decoration watcher ${focused ? "resumed" : "suspended"}`, { repositories: this.repositories.size });
-    if (!focused) return;
+    if (!focused) {
+      let repositories = 0;
+      for (const repository of this.repositories.values()) {
+        if (!repository.readController || repository.readController.signal.aborted) continue;
+        repository.dirty = true;
+        repository.readController.abort();
+        repositories++;
+      }
+      if (repositories) {
+        this.deferReads("focusLost");
+        logInfo("working tree decoration reads cancelled", { reason: "window-unfocused", repositories });
+      }
+      return;
+    }
     const deferred = this.readsDeferred;
     this.readsDeferred = false;
     for (const repository of this.repositories.values()) invalidateWorkingTreeSnapshot(repository.root);

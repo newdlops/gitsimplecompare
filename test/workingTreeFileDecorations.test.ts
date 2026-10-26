@@ -11,6 +11,9 @@ import { parsePorcelainEntries, parsePorcelainGroups } from "../src/git/diffPars
 import { runGit } from "../src/git/gitExec";
 import { readWorkingTreeSnapshot, disposeWorkingTreeSnapshots, onWorkingTreeSnapshotInvalidated, invalidateWorkingTreeSnapshot } from "../src/git/workingTreeSnapshot";
 import type { WorkingTreeSnapshot } from "../src/git/workingTreeStatusFormat";
+import { SharedGitRead } from "../src/git/sharedGitRead";
+import { refreshWorkingStatus, pauseWorkingStatusRefresh, disposeWorkingStatusRefresh } from "../src/commands/workingStatusRefresh";
+import type { CommandDeps } from "../src/commands/shared";
 
 const token = { isCancellationRequested: false } as vscode.CancellationToken;
 
@@ -56,7 +59,7 @@ function fixture(t: TestContext, roots = ["/repo"], initiallyFocused = true) {
   const values = new Map(roots.map(root => [root, " M nested/changed.txt\0?? new.txt\0"]));
   const reads: Array<{ root: string; signal?: AbortSignal }> = [];
   const notifications: Array<vscode.Uri[] | undefined> = [];
-  let loader = async (root: string): Promise<WorkingTreeSnapshot> => snapshot(root, values.get(root) ?? "");
+  let loader = async (root: string, _signal?: AbortSignal): Promise<WorkingTreeSnapshot> => snapshot(root, values.get(root) ?? "");
   const originalState = window.state;
   window.state = { focused: initiallyFocused };
   t.after(() => { window.state = originalState; });
@@ -97,7 +100,7 @@ function fixture(t: TestContext, roots = ["/repo"], initiallyFocused = true) {
   } } as GitServiceRegistry;
   const provider = new WorkingTreeFileDecorationProvider(registry, {
     version: 1, onDidChange: changed.event,
-    getStatus: async (root, options) => { reads.push({ root, signal: options?.signal }); return loader(root); },
+    getStatus: async (root, options) => { reads.push({ root, signal: options?.signal }); return loader(root, options?.signal); },
   });
   t.mock.method((provider as any).changed, "fire", (uris: vscode.Uri[] | undefined) => { notifications.push(uris); });
   t.after(onWorkingTreeSnapshotInvalidated(root => changed.fire(root)));
@@ -396,4 +399,116 @@ test("native-only background workspaces do not invalidate fallback URI results o
   assert.equal(f.reads.length, 0);
   assert.equal(f.resolutions.length, 0);
   assert.equal(f.notifications.length, 0);
+});
+
+/**
+ * 실제 공유 실행기의 첫 loader close를 제어해 비활성 중 내부 세대 재시도를 재현한다.
+ * @param t 공급자·공유 실행기와 미완료 close를 정리할 테스트 컨텍스트
+ * @param cancelUnused 마지막 소비자가 해제됐을 때 실제 조회도 취소할 기존 정책
+ * @returns VS Code 이벤트 fixture, 실제 공유 실행기, 시작 신호와 close 해제 함수
+ */
+function sharedReadFixture(t: TestContext, cancelUnused = true) {
+  const f = fixture(t);
+  const signals: AbortSignal[] = [];
+  let release!: () => void;
+  const close = new Promise<void>(resolve => { release = resolve; });
+  const shared = new SharedGitRead<WorkingTreeSnapshot>(async signal => {
+    signals.push(signal);
+    const first = signals.length === 1;
+    if (first) await close;
+    signal.throwIfAborted();
+    return snapshot("/repo", `${first ? " M" : "??"} nested/changed.txt\0`);
+  }, value => structuredClone(value), () => cancelUnused);
+  f.load((_root, signal) => shared.read({ signal }));
+  t.after(async () => { release(); await shared.dispose(); });
+  return { ...f, shared, signals, release };
+}
+
+// provider 바깥의 실제 공유 실행기에 붙은 소비자도 포커스를 잃을 때 즉시 해제해야 한다.
+test("focus loss releases the pending decoration consumer and cancels an otherwise unused shared read", async t => {
+  const f = sharedReadFixture(t); await settle();
+  assert.equal(f.signals.length, 1);
+  f.focus(false);
+  assert.equal(f.reads[0].signal?.aborted, true);
+  assert.equal(f.signals[0].aborted, true);
+});
+
+// provider 자체의 재시도 조건만으로 막지 못했던 SharedGitRead.latest 내부 재시도를 검증한다.
+test("an invalidated shared read does not restart for an unfocused decoration consumer", async t => {
+  const f = sharedReadFixture(t); await settle();
+  f.focus(false); f.shared.invalidate(); f.release();
+  await settle();
+  assert.equal(f.signals.length, 1, "a hidden consumer must not start another loader after close");
+  assert.equal(f.reads.length, 1);
+});
+
+// 실제 실행 close가 늦어져도 빠른 포커스 복귀는 이전 결과를 버리고 최신 실행 하나에 합류한다.
+test("rapid focus return waits for the cancelled shared close and publishes one fresh snapshot", async t => {
+  const f = sharedReadFixture(t); await settle();
+  f.focus(false); f.shared.invalidate(); f.focus(true);
+  await settle();
+  const first = f.read(), second = f.read();
+  assert.equal(f.signals.length, 1, "the old owned read must close before the next loader starts");
+  f.release(); await settle();
+  assert.equal((await first)?.badge, "U");
+  assert.equal((await second)?.badge, "U");
+  assert.equal(f.signals.length, 2);
+  assert.equal(f.reads.length, 2);
+});
+
+// 한 표시 소비자의 해제가 다른 API 소비자의 Native 조회·세대 재시도를 끊으면 안 된다.
+test("focus cancellation preserves another shared API consumer and its current result", async t => {
+  const f = sharedReadFixture(t); await settle();
+  const other = new AbortController();
+  const external = f.shared.read({ signal: other.signal });
+  void external.catch(() => undefined);
+  t.after(() => other.abort());
+  f.focus(false);
+  assert.equal(f.reads[0].signal?.aborted, true);
+  assert.equal(f.signals[0].aborted, false);
+  f.shared.invalidate(); f.release();
+  assert.equal((await external).porcelain, "?? nested/changed.txt\0");
+  assert.equal(f.signals.length, 2);
+  assert.equal(other.signal.aborted, false);
+});
+
+// cancelUnused=false 설정은 실제 실행을 유지해도 불필요한 표시 소비자의 후속 조회는 막는다.
+test("focus release preserves the keep-unused policy without allowing hidden generation retries", async t => {
+  const f = sharedReadFixture(t, false); await settle();
+  f.focus(false); f.shared.invalidate();
+  assert.equal(f.signals[0].aborted, false);
+  f.release(); await settle();
+  assert.equal(f.signals.length, 1);
+  assert.equal(f.reads[0].signal?.aborted, true);
+});
+
+// 실제 창처럼 Explorer와 Changes가 같은 실행을 기다릴 때 두 표시 소비자를 모두 해제해야 한다.
+test("Explorer and Changes release the same invalidated read and share one fresh result on focus return", async t => {
+  const f = sharedReadFixture(t); await settle();
+  const applied: WorkingTreeSnapshot["groups"][] = [];
+  const service = {
+    getStatusGeneration: () => 0, mutatedRecently: () => false,
+    getStatusGroups: async (options: { signal?: AbortSignal }) => (await f.shared.read(options)).groups,
+    addStatusStats: async (groups: WorkingTreeSnapshot["groups"]) => groups,
+  };
+  const deps = {
+    registry: { get: () => service },
+    changesView: { getActiveRepo: () => "/repo", setStatusGroups: (groups: WorkingTreeSnapshot["groups"]) => applied.push(groups) },
+    vscodeGitStatus: { getStatusGroups: async () => undefined, getStatusRevision: () => 0 },
+  } as unknown as CommandDeps;
+  t.after(() => disposeWorkingStatusRefresh(deps));
+  const changes = refreshWorkingStatus(deps, { reason: "viewReady" });
+  await settle();
+  f.focus(false); pauseWorkingStatusRefresh(deps); f.shared.invalidate();
+  assert.equal(f.signals[0].aborted, true);
+  f.release(); await changes; await settle();
+  assert.equal(f.signals.length, 1, "neither hidden display may keep the generation retry alive");
+  assert.equal(applied.length, 0);
+  f.focus(true);
+  await refreshWorkingStatus(deps, { reason: "windowFocusedReconcile" });
+  await settle();
+  assert.equal((await f.read())?.badge, "U");
+  assert.equal(f.signals.length, 2);
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0].unstaged[0].status, "A");
 });
