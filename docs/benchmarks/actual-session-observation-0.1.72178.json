@@ -1,16 +1,18 @@
 {
-  "observedAt": "2026-10-26T04:34:39.518172+00:00",
+  "observedAt": "2026-10-26T06:06:04.372913+00:00",
   "targetVersion": "0.1.72178",
   "registeredVersions": [
     "0.1.72178"
   ],
   "activeVersionCounts": {
-    "0.1.72177": 4
+    "0.1.72178": 6
   },
-  "targetVersionActive": false,
-  "activeTargetWindows": 0,
+  "targetVersionActive": true,
+  "activeTargetWindows": 6,
   "openOutputHandlesVerified": true,
   "nativeUiInput": false,
   "forcedReload": false,
-  "scope": "Actual activation evidence only; not a paired busy latency or CPU measurement"
+  "scope": "Actual activation evidence; detailed Graph and passive CPU scope in actual-target-runtime-0.1.72178.json",
+  "observationAuthority": "host-scoped require_escalated tool; positive open Output handles and matching live extension-host PIDs",
+  "priorSandboxAbsenceEvidenceReliable": false
 }

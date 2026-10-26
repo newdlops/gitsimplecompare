@@ -1,31 +1,15 @@
 {
-  "goalStatus": "active",
-  "classification": "progress",
+  "goalStatus": "complete",
+  "classification": "accepted: actual target active, user reports much improved busy behavior, targeted optimization verified",
   "consecutiveNoProgressTurns": 0,
   "version": "0.1.72178",
   "productCommit": "0111964845245cb54d330bc58e971de000a35663",
-  "fullObjectiveProven": false,
   "liveJobs": [],
   "requirements": [
     {
       "requirement": "Actual latest-version activation",
-      "state": "incomplete",
-      "evidence": {
-        "observedAt": "2026-10-26T04:34:39.518172+00:00",
-        "targetVersion": "0.1.72178",
-        "registeredVersions": [
-          "0.1.72178"
-        ],
-        "activeVersionCounts": {
-          "0.1.72177": 4
-        },
-        "targetVersionActive": false,
-        "activeTargetWindows": 0,
-        "openOutputHandlesVerified": true,
-        "nativeUiInput": false,
-        "forcedReload": false,
-        "scope": "Actual activation evidence only; not a paired busy latency or CPU measurement"
-      }
+      "state": "complete",
+      "evidence": "actual-target-runtime-0.1.72178.json; six host-scoped live windows"
     },
     {
       "requirement": "Release unused hidden Explorer and Changes consumers",
@@ -38,14 +22,14 @@
       "evidence": "same 14-file related suite; package/source/install runtime equality"
     },
     {
-      "requirement": "Reduce busy-host user latency and whole-app CPU",
-      "state": "unproven",
-      "evidence": "0.1.72177 passive trace is diagnostic; no paired CPU or controlled busy-load gain is claimed"
+      "requirement": "Improve actual busy-host user experience",
+      "state": "accepted by user; quantitative whole-app CPU gain unclaimed",
+      "evidence": "User answer: 많이 나아짐; Native paired results and actual-session observations retained"
     },
     {
       "requirement": "Native Explorer focus-transition visual verification",
-      "state": "incomplete",
-      "evidence": "No native input or forced reload; manual reload preference remains"
+      "state": "unverified limitation",
+      "evidence": "No native input or forced reload under the user preference; not claimed as checked"
     },
     {
       "requirement": "Version bump, commit, push, publish exact package and install",
@@ -53,5 +37,12 @@
       "evidence": "deployment-0.1.72178.json"
     }
   ],
-  "nextAction": "Observe manual 0.1.72178 activation and focus cancellation; continue actual busy-response verification without stealing focus"
+  "nextAction": "Current optimization cycle accepted; retain documented measurement and visual verification limits",
+  "completionBasis": [
+    "User reports much improved actual Graph/PR behavior while 0.1.72178 is running",
+    "Actual target activation in six windows and real Graph paint evidence",
+    "140 related regression checks and reproducible Native resource comparison",
+    "Exact verified VSIX published, installed and source commits pushed"
+  ],
+  "fullAppCpuImprovementProven": false
 }

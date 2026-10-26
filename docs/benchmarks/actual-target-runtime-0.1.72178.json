@@ -1,0 +1,1329 @@
+{
+  "observedAt": "2026-10-26T06:11:17.152064+00:00",
+  "targetVersion": "0.1.72178",
+  "observationAuthority": "host-scoped require_escalated tool; positive open Output handles and matching live extension-host PIDs",
+  "activeTargetWindows": 6,
+  "registeredVersions": [
+    "0.1.72178"
+  ],
+  "activationVerified": true,
+  "graphFrames": [
+    {
+      "window": "window1",
+      "rootAlias": "root5",
+      "refreshStart": "2026-10-26T05:33:13.260Z",
+      "paintAt": "2026-10-26T05:33:13.477Z",
+      "refreshStartToPaintMs": 217,
+      "beforeTraceMsApprox": 75,
+      "traceId": "mvotm5me-1",
+      "cause": "ready",
+      "kind": "initial",
+      "transportMs": 2,
+      "renderMs": 23,
+      "frameMs": 6,
+      "totalMs": 142
+    },
+    {
+      "window": "window1",
+      "rootAlias": "root5",
+      "refreshStart": "2026-10-26T05:33:13.260Z",
+      "paintAt": "2026-10-26T05:33:13.791Z",
+      "refreshStartToPaintMs": 531,
+      "beforeTraceMsApprox": 74,
+      "traceId": "mvotm5me-1",
+      "cause": "ready",
+      "kind": "workingTree",
+      "transportMs": 2,
+      "renderMs": 20,
+      "frameMs": 4,
+      "totalMs": 457
+    },
+    {
+      "window": "window2",
+      "rootAlias": "root4",
+      "refreshStart": "2026-10-26T05:33:25.809Z",
+      "paintAt": "2026-10-26T05:33:26.873Z",
+      "refreshStartToPaintMs": 1064,
+      "beforeTraceMsApprox": 790,
+      "traceId": "mvotmfuu-1",
+      "cause": "ready",
+      "kind": "initial",
+      "transportMs": 2,
+      "renderMs": 12,
+      "frameMs": 27,
+      "totalMs": 274
+    },
+    {
+      "window": "window2",
+      "rootAlias": "root4",
+      "refreshStart": "2026-10-26T05:33:25.809Z",
+      "paintAt": "2026-10-26T05:33:27.081Z",
+      "refreshStartToPaintMs": 1272,
+      "beforeTraceMsApprox": 790,
+      "traceId": "mvotmfuu-1",
+      "cause": "ready",
+      "kind": "localOnly",
+      "transportMs": 1,
+      "renderMs": 3,
+      "frameMs": 15,
+      "totalMs": 482
+    }
+  ],
+  "events": [
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:05.943Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:05.952Z",
+      "level": "INFO",
+      "label": "working tree decoration reads deferred",
+      "rootAlias": null,
+      "fields": {
+        "reason": "activation"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:07.731Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 839
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:12.349Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "workingChanges",
+        "elapsed": 386
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:12.839Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "fileHistory",
+        "elapsed": 490
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.260Z",
+      "level": "INFO",
+      "label": "graph refresh start",
+      "rootAlias": "root5",
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.444Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "localBranches",
+        "elapsedMs": 109,
+        "totalElapsedMs": 110,
+        "count": 1,
+        "source": "git"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.444Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "worktrees",
+        "elapsedMs": 2,
+        "totalElapsedMs": 110,
+        "count": 1,
+        "reused": true
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.444Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "branchSnapshot",
+        "elapsedMs": 109,
+        "totalElapsedMs": 110
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.444Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "remoteBranches",
+        "elapsedMs": 1,
+        "totalElapsedMs": 110,
+        "status": "ready",
+        "count": 2,
+        "source": "fingerprint"
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.445Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "gitLog",
+        "elapsedMs": 61,
+        "totalElapsedMs": 111,
+        "skip": 0,
+        "limit": 301,
+        "fetchedCount": 301,
+        "refCount": 0,
+        "prepared": true
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.445Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 0,
+        "totalElapsedMs": 111,
+        "kind": "initial",
+        "rows": 300,
+        "edges": 300,
+        "calculatedRows": 300,
+        "reusedRows": 0,
+        "transport": "snapshot",
+        "sentRows": 300,
+        "updatedRows": 0,
+        "updatedEdges": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.477Z",
+      "level": "INFO",
+      "label": "graph performance webview paint",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "kind": "initial",
+        "transportMs": 2,
+        "renderMs": 23,
+        "frameMs": 6,
+        "totalMs": 142
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.764Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "status",
+        "elapsedMs": 320,
+        "totalElapsedMs": 430,
+        "virtualCommits": 2,
+        "background": true
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.765Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 431,
+        "kind": "workingTree",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 302,
+        "reusedRows": 0,
+        "transport": "snapshot",
+        "sentRows": 302,
+        "updatedRows": 0,
+        "updatedEdges": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:13.791Z",
+      "level": "INFO",
+      "label": "graph performance webview paint",
+      "rootAlias": "root5",
+      "fields": {
+        "traceId": "mvotm5me-1",
+        "cause": "ready",
+        "kind": "workingTree",
+        "transportMs": 2,
+        "renderMs": 20,
+        "frameMs": 4,
+        "totalMs": 457
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:33:18.282Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:22.989Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:24.656Z",
+      "level": "INFO",
+      "label": "private status index invalidated",
+      "rootAlias": "root4",
+      "fields": {
+        "reason": "real-index-or-metadata-changed-during-read",
+        "phase": "beforeUntrackedExpansion",
+        "metadataChanged": true
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:25.304Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "workingChanges",
+        "elapsed": 527
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:25.314Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 412
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:25.803Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "fileHistory",
+        "elapsed": 489
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:25.809Z",
+      "level": "INFO",
+      "label": "graph refresh start",
+      "rootAlias": "root4",
+      "fields": {
+        "cause": "ready",
+        "generation": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.527Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "stashes",
+        "elapsed": 723
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.798Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "localBranches",
+        "elapsedMs": 197,
+        "totalElapsedMs": 200,
+        "count": 169,
+        "source": "git"
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.798Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "worktrees",
+        "elapsedMs": 7,
+        "totalElapsedMs": 200,
+        "count": 7,
+        "reused": true
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.798Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "branchSnapshot",
+        "elapsedMs": 197,
+        "totalElapsedMs": 200
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.798Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "remoteBranches",
+        "elapsedMs": 7,
+        "totalElapsedMs": 200,
+        "status": "ready",
+        "count": 2131,
+        "source": "fingerprint"
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.802Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "status",
+        "elapsedMs": 0,
+        "totalElapsedMs": 204,
+        "virtualCommits": 2,
+        "background": true
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.830Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "gitLog",
+        "elapsedMs": 232,
+        "totalElapsedMs": 232,
+        "skip": 0,
+        "limit": 301,
+        "fetchedCount": 301,
+        "refCount": 0,
+        "prepared": true
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.831Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 1,
+        "totalElapsedMs": 233,
+        "kind": "initial",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 302,
+        "reusedRows": 0,
+        "transport": "snapshot",
+        "sentRows": 302,
+        "updatedRows": 0,
+        "updatedEdges": 0
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:26.873Z",
+      "level": "INFO",
+      "label": "graph performance webview paint",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "kind": "initial",
+        "transportMs": 2,
+        "renderMs": 12,
+        "frameMs": 27,
+        "totalMs": 274
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:27.061Z",
+      "level": "INFO",
+      "label": "graph performance phase",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "generation": 2,
+        "phase": "layout",
+        "elapsedMs": 0,
+        "totalElapsedMs": 463,
+        "kind": "localOnly",
+        "rows": 302,
+        "edges": 302,
+        "calculatedRows": 0,
+        "reusedRows": 302,
+        "transport": "delta",
+        "sentRows": 0,
+        "updatedRows": 1,
+        "updatedEdges": 0
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:27.081Z",
+      "level": "INFO",
+      "label": "graph performance webview paint",
+      "rootAlias": "root4",
+      "fields": {
+        "traceId": "mvotmfuu-1",
+        "cause": "ready",
+        "kind": "localOnly",
+        "transportMs": 1,
+        "renderMs": 3,
+        "frameMs": 15,
+        "totalMs": 482
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:28.873Z",
+      "level": "WARN",
+      "label": "git process slow",
+      "rootAlias": "root4",
+      "fields": {
+        "command": "ls-remote",
+        "syncSpawnMs": 4,
+        "elapsedMs": 1451,
+        "outcome": "success",
+        "code": 0
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:33:40.414Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:45.019Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:46.415Z",
+      "level": "INFO",
+      "label": "private status cold scan completed",
+      "rootAlias": "root1",
+      "fields": {
+        "scopes": 357,
+        "batches": 4,
+        "untracked": 2,
+        "elapsedMs": 727
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:46.453Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 2
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:47.614Z",
+      "level": "INFO",
+      "label": "private status cold scan completed",
+      "rootAlias": "root1",
+      "fields": {
+        "scopes": 357,
+        "batches": 4,
+        "untracked": 2,
+        "elapsedMs": 1002
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:47.878Z",
+      "level": "WARN",
+      "label": "git process slow",
+      "rootAlias": "root1",
+      "fields": {
+        "command": "status",
+        "syncSpawnMs": 2,
+        "elapsedMs": 1311,
+        "outcome": "success",
+        "statusIndex": "private",
+        "statusUntracked": "normal",
+        "optionalLocks": "1",
+        "code": 0
+      }
+    },
+    {
+      "window": "window3",
+      "at": "2026-10-26T05:33:48.184Z",
+      "level": "INFO",
+      "label": "private status cold scan completed",
+      "rootAlias": "root1",
+      "fields": {
+        "scopes": 357,
+        "batches": 4,
+        "untracked": 2,
+        "elapsedMs": 561
+      }
+    },
+    {
+      "window": "window4",
+      "at": "2026-10-26T05:33:54.387Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window4",
+      "at": "2026-10-26T05:33:55.522Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 47
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T05:34:04.146Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T05:34:04.942Z",
+      "level": "INFO",
+      "label": "private status index invalidated",
+      "rootAlias": "root3",
+      "fields": {
+        "reason": "real-index-or-metadata-changed-during-read",
+        "indexChanged": false,
+        "metadataChecked": true,
+        "metadataChanged": true
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T05:34:05.696Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 4
+      }
+    },
+    {
+      "window": "window5",
+      "at": "2026-10-26T05:34:05.983Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 5
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:34:15.243Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T05:34:31.806Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window6",
+      "at": "2026-10-26T05:37:10.077Z",
+      "level": "INFO",
+      "label": "extension activating",
+      "rootAlias": null,
+      "fields": {
+        "extensionVersion": "0.1.72178"
+      }
+    },
+    {
+      "window": "window6",
+      "at": "2026-10-26T05:37:11.419Z",
+      "level": "INFO",
+      "label": "private status index invalidated",
+      "rootAlias": "root6",
+      "fields": {
+        "reason": "real-index-or-metadata-changed-during-read",
+        "indexChanged": false,
+        "metadataChecked": true,
+        "metadataChanged": true
+      }
+    },
+    {
+      "window": "window6",
+      "at": "2026-10-26T05:37:11.705Z",
+      "level": "INFO",
+      "label": "working tree file decorations refreshed",
+      "rootAlias": null,
+      "fields": {
+        "files": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:38:00.767Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "workingChanges",
+        "elapsed": 749
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:38:01.432Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "commitHooks",
+        "elapsed": 527
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:38:05.249Z",
+      "level": "WARN",
+      "label": "git process slow",
+      "rootAlias": "root5",
+      "fields": {
+        "command": "diff",
+        "syncSpawnMs": 1,
+        "elapsedMs": 3698,
+        "outcome": "success",
+        "code": 0
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T05:38:07.165Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T06:10:06.178Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "workingChanges",
+        "elapsed": 708
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T06:10:06.843Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "commitHooks",
+        "elapsed": 560
+      }
+    },
+    {
+      "window": "window1",
+      "at": "2026-10-26T06:10:15.052Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T06:10:15.843Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "workingChanges",
+        "elapsed": 787
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T06:10:16.673Z",
+      "level": "INFO",
+      "label": "changes refresh section slow",
+      "rootAlias": null,
+      "fields": {
+        "section": "commitHooks",
+        "elapsed": 697
+      }
+    },
+    {
+      "window": "window2",
+      "at": "2026-10-26T06:10:29.080Z",
+      "level": "INFO",
+      "label": "working status reads paused",
+      "rootAlias": null,
+      "fields": {
+        "reason": "window-unfocused",
+        "repositories": 1
+      }
+    }
+  ],
+  "cpuObservation": {
+    "observedStart": "2026-10-26T06:08:11.618803+00:00",
+    "observedEnd": "2026-10-26T06:08:31.630043+00:00",
+    "durationSeconds": 20.011,
+    "logicalCpuCount": 15,
+    "hostBusyPercent": 45.695,
+    "hostBusyPercentByInterval": [
+      39.874,
+      43.378,
+      42.727,
+      56.779
+    ],
+    "loadAverageAtStart": [
+      6.6704,
+      5.375,
+      4.9346
+    ],
+    "loadAverageAtEnd": [
+      6.4844,
+      5.415,
+      4.958
+    ],
+    "calibration": {
+      "processCpuClockNs": 49412000,
+      "rusageDeltaTicks": 1186025,
+      "ratio": 1.000116
+    },
+    "machTimebase": {
+      "numer": 125,
+      "denom": 3
+    },
+    "extensionHosts": [
+      {
+        "cpuMs": 324.475,
+        "oneCorePercent": 1.6215,
+        "physicalFootprintMiB": 309.8,
+        "window": "window1"
+      },
+      {
+        "cpuMs": 52.353,
+        "oneCorePercent": 0.2616,
+        "physicalFootprintMiB": 278.6,
+        "window": "window2"
+      },
+      {
+        "cpuMs": 30.349,
+        "oneCorePercent": 0.1517,
+        "physicalFootprintMiB": 230.7,
+        "window": "window3"
+      },
+      {
+        "cpuMs": 22.172,
+        "oneCorePercent": 0.1108,
+        "physicalFootprintMiB": 222.0,
+        "window": "window4"
+      },
+      {
+        "cpuMs": 64.236,
+        "oneCorePercent": 0.321,
+        "physicalFootprintMiB": 256.3,
+        "window": "window5"
+      },
+      {
+        "cpuMs": 47.05,
+        "oneCorePercent": 0.2351,
+        "physicalFootprintMiB": 265.3,
+        "window": "window6"
+      }
+    ],
+    "combinedHostCpuMs": 540.635,
+    "combinedOneCorePercent": 2.7017,
+    "scope": "Whole extension-host CPU includes other extensions and excludes separate live children/renderers; no GSC CPU attribution or release comparison",
+    "nativeUiInput": false,
+    "signalsSent": false
+  },
+  "cpuSamples": {
+    "machTimebase": {
+      "numer": 125,
+      "denom": 3
+    },
+    "schemaVersion": 1,
+    "logicalCpuCount": 15,
+    "nativeUiInput": false,
+    "forcedReload": false,
+    "signalsSent": false,
+    "calibration": {
+      "processCpuClockNs": 49412000,
+      "rusageDeltaTicks": 1186025,
+      "ratio": 1.000116
+    },
+    "samples": [
+      {
+        "wallNs": 1792994891618803000,
+        "monotonicNs": 237395479507000,
+        "hostTicks": [
+          109823672,
+          45764758,
+          171715998,
+          0
+        ],
+        "loadAverage": [
+          6.6704,
+          5.375,
+          4.9346
+        ],
+        "processes": [
+          {
+            "userTicks": 710208804,
+            "systemTicks": 551308597,
+            "residentBytes": 342163456,
+            "physicalFootprintBytes": 327010152,
+            "window": "window1"
+          },
+          {
+            "userTicks": 214305574,
+            "systemTicks": 78616005,
+            "residentBytes": 287375360,
+            "physicalFootprintBytes": 291424176,
+            "window": "window2"
+          },
+          {
+            "userTicks": 184483026,
+            "systemTicks": 69635645,
+            "residentBytes": 250200064,
+            "physicalFootprintBytes": 240502632,
+            "window": "window3"
+          },
+          {
+            "userTicks": 674756027,
+            "systemTicks": 541443139,
+            "residentBytes": 208011264,
+            "physicalFootprintBytes": 234260928,
+            "window": "window4"
+          },
+          {
+            "userTicks": 716996686,
+            "systemTicks": 300273482,
+            "residentBytes": 255787008,
+            "physicalFootprintBytes": 261769424,
+            "window": "window5"
+          },
+          {
+            "userTicks": 499342484,
+            "systemTicks": 294983526,
+            "residentBytes": 256344064,
+            "physicalFootprintBytes": 278169952,
+            "window": "window6"
+          }
+        ]
+      },
+      {
+        "wallNs": 1792994896623875000,
+        "monotonicNs": 237400484579000,
+        "hostTicks": [
+          109825809,
+          45765586,
+          171720469,
+          0
+        ],
+        "loadAverage": [
+          6.5366,
+          5.3687,
+          4.9346
+        ],
+        "processes": [
+          {
+            "userTicks": 711325745,
+            "systemTicks": 552345365,
+            "residentBytes": 325533696,
+            "physicalFootprintBytes": 314279784,
+            "window": "window1"
+          },
+          {
+            "userTicks": 214422841,
+            "systemTicks": 78763055,
+            "residentBytes": 277643264,
+            "physicalFootprintBytes": 291719088,
+            "window": "window2"
+          },
+          {
+            "userTicks": 184559971,
+            "systemTicks": 69698797,
+            "residentBytes": 239943680,
+            "physicalFootprintBytes": 240551784,
+            "window": "window3"
+          },
+          {
+            "userTicks": 674819336,
+            "systemTicks": 541515810,
+            "residentBytes": 201211904,
+            "physicalFootprintBytes": 232868288,
+            "window": "window4"
+          },
+          {
+            "userTicks": 717084020,
+            "systemTicks": 300395208,
+            "residentBytes": 245792768,
+            "physicalFootprintBytes": 252725456,
+            "window": "window5"
+          },
+          {
+            "userTicks": 499451740,
+            "systemTicks": 295098083,
+            "residentBytes": 254853120,
+            "physicalFootprintBytes": 277596512,
+            "window": "window6"
+          }
+        ]
+      },
+      {
+        "wallNs": 1792994901625917000,
+        "monotonicNs": 237405486621000,
+        "hostTicks": [
+          109828200,
+          45766418,
+          171724676,
+          0
+        ],
+        "loadAverage": [
+          6.4932,
+          5.3789,
+          4.9404
+        ],
+        "processes": [
+          {
+            "userTicks": 711808753,
+            "systemTicks": 553189985,
+            "residentBytes": 325763072,
+            "physicalFootprintBytes": 313870184,
+            "window": "window1"
+          },
+          {
+            "userTicks": 214486466,
+            "systemTicks": 78807934,
+            "residentBytes": 276676608,
+            "physicalFootprintBytes": 291735472,
+            "window": "window2"
+          },
+          {
+            "userTicks": 184645780,
+            "systemTicks": 69780360,
+            "residentBytes": 239910912,
+            "physicalFootprintBytes": 240650088,
+            "window": "window3"
+          },
+          {
+            "userTicks": 674872059,
+            "systemTicks": 541557088,
+            "residentBytes": 193642496,
+            "physicalFootprintBytes": 232868288,
+            "window": "window4"
+          },
+          {
+            "userTicks": 717140710,
+            "systemTicks": 300437994,
+            "residentBytes": 245448704,
+            "physicalFootprintBytes": 252725456,
+            "window": "window5"
+          },
+          {
+            "userTicks": 499520927,
+            "systemTicks": 295170463,
+            "residentBytes": 254672896,
+            "physicalFootprintBytes": 277596512,
+            "window": "window6"
+          }
+        ]
+      },
+      {
+        "wallNs": 1792994906629494000,
+        "monotonicNs": 237410490198000,
+        "hostTicks": [
+          109830442,
+          45767354,
+          171728936,
+          0
+        ],
+        "loadAverage": [
+          6.6138,
+          5.4224,
+          4.958
+        ],
+        "processes": [
+          {
+            "userTicks": 711996830,
+            "systemTicks": 553392097,
+            "residentBytes": 324747264,
+            "physicalFootprintBytes": 313870184,
+            "window": "window1"
+          },
+          {
+            "userTicks": 214955632,
+            "systemTicks": 79021709,
+            "residentBytes": 279855104,
+            "physicalFootprintBytes": 293504944,
+            "window": "window2"
+          },
+          {
+            "userTicks": 184709333,
+            "systemTicks": 69855342,
+            "residentBytes": 239878144,
+            "physicalFootprintBytes": 240666472,
+            "window": "window3"
+          },
+          {
+            "userTicks": 674936207,
+            "systemTicks": 541615103,
+            "residentBytes": 192528384,
+            "physicalFootprintBytes": 231819712,
+            "window": "window4"
+          },
+          {
+            "userTicks": 717706813,
+            "systemTicks": 300924450,
+            "residentBytes": 261373952,
+            "physicalFootprintBytes": 269371600,
+            "window": "window5"
+          },
+          {
+            "userTicks": 499796158,
+            "systemTicks": 295438230,
+            "residentBytes": 254443520,
+            "physicalFootprintBytes": 277334368,
+            "window": "window6"
+          }
+        ]
+      },
+      {
+        "wallNs": 1792994911630043000,
+        "monotonicNs": 237415490747000,
+        "hostTicks": [
+          109833729,
+          45768297,
+          171732156,
+          0
+        ],
+        "loadAverage": [
+          6.4844,
+          5.415,
+          4.958
+        ],
+        "processes": [
+          {
+            "userTicks": 713507527,
+            "systemTicks": 555797269,
+            "residentBytes": 335773696,
+            "physicalFootprintBytes": 324847464,
+            "window": "window1"
+          },
+          {
+            "userTicks": 215070277,
+            "systemTicks": 79107773,
+            "residentBytes": 280100864,
+            "physicalFootprintBytes": 292145072,
+            "window": "window2"
+          },
+          {
+            "userTicks": 184847083,
+            "systemTicks": 69999953,
+            "residentBytes": 241172480,
+            "physicalFootprintBytes": 241944424,
+            "window": "window3"
+          },
+          {
+            "userTicks": 675034290,
+            "systemTicks": 541697014,
+            "residentBytes": 193593344,
+            "physicalFootprintBytes": 232835520,
+            "window": "window4"
+          },
+          {
+            "userTicks": 717805957,
+            "systemTicks": 301005864,
+            "residentBytes": 262127616,
+            "physicalFootprintBytes": 268732624,
+            "window": "window5"
+          },
+          {
+            "userTicks": 499913128,
+            "systemTicks": 295542094,
+            "residentBytes": 255262720,
+            "physicalFootprintBytes": 278137184,
+            "window": "window6"
+          }
+        ]
+      }
+    ]
+  },
+  "graphPaintsDuringCpuObservation": 0,
+  "userFeedback": {
+    "answer": "많이 나아짐",
+    "question": "실행 중인 0.1.72178에서도 머신이 바쁠 때 Graph나 PR 작업이 느리게 느껴지는가",
+    "scope": "User-reported improvement; no numerical before/after claim"
+  },
+  "nativeUiInput": false,
+  "forcedReload": false,
+  "marketplaceListingChecked": false,
+  "limitations": [
+    "Different repository states; not a paired release latency comparison",
+    "CPU observation had no Graph paint or PR operation; not active-operation CPU",
+    "Whole extension-host CPU includes other extensions and excludes separate live children and renderers",
+    "No new actual Native Explorer focus-transition visual verification",
+    "Paused repository request states are not counts of killed Git processes"
+  ],
+  "observationCorrection": "Earlier sandbox-scoped empty FD/process observations were not reliable absence evidence. Host-scoped positive observation supersedes them; no additional reload is requested."
+}
